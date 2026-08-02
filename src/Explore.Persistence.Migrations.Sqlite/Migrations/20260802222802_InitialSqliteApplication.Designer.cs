@@ -12,7 +12,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Explore.Persistence.Migrations.Sqlite.Migrations
 {
     [DbContext(typeof(ExploreDbContext))]
-    [Migration("20260802195923_InitialSqliteApplication")]
+    [Migration("20260802222802_InitialSqliteApplication")]
     partial class InitialSqliteApplication
     {
         /// <inheritdoc />
@@ -45,13 +45,13 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("master_code");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_account_authority_kinds");
+                        .HasName("pk_ie_account_authority_kinds");
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
                         .HasDatabaseName("ux_account_authority_kinds_master_code");
 
-                    b.ToTable("islamu_event_account_authority_kinds", (string)null);
+                    b.ToTable("ie_account_authority_kinds", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.Actor", b =>
@@ -160,37 +160,37 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("user_id");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_actors");
+                        .HasName("pk_ie_actors");
 
                     b.HasIndex("ActorTypeId")
-                        .HasDatabaseName("ix_islamu_event_actors_actor_type_id");
+                        .HasDatabaseName("ix_ie_actors_actor_type_id");
 
                     b.HasIndex("ExternalActorSubjectId")
                         .IsUnique()
-                        .HasDatabaseName("ix_islamu_event_actors_external_actor_subject_id")
+                        .HasDatabaseName("ix_ie_actors_external_actor_subject_id")
                         .HasFilter("external_actor_subject_id IS NOT NULL");
 
                     b.HasIndex("GroupId")
                         .IsUnique()
-                        .HasDatabaseName("ix_islamu_event_actors_group_id")
+                        .HasDatabaseName("ix_ie_actors_group_id")
                         .HasFilter("group_id IS NOT NULL");
 
                     b.HasIndex("OrganizationId")
                         .IsUnique()
-                        .HasDatabaseName("ix_islamu_event_actors_organization_id")
+                        .HasDatabaseName("ix_ie_actors_organization_id")
                         .HasFilter("organization_id IS NOT NULL");
 
                     b.HasIndex("ServicePrincipalId")
                         .IsUnique()
-                        .HasDatabaseName("ix_islamu_event_actors_service_principal_id")
+                        .HasDatabaseName("ix_ie_actors_service_principal_id")
                         .HasFilter("service_principal_id IS NOT NULL");
 
                     b.HasIndex("UserId")
                         .IsUnique()
-                        .HasDatabaseName("ix_islamu_event_actors_user_id")
+                        .HasDatabaseName("ix_ie_actors_user_id")
                         .HasFilter("user_id IS NOT NULL");
 
-                    b.ToTable("islamu_event_actors", null, t =>
+                    b.ToTable("ie_actors", null, t =>
                         {
                             t.HasCheckConstraint("ck_actors_external_type_matches_owner", "(external_actor_subject_id IS NULL AND actor_type_id <> 6) OR (external_actor_subject_id IS NOT NULL AND actor_type_id = 6)");
                         });
@@ -237,15 +237,15 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("tenant_id");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_actor_key_stores");
+                        .HasName("pk_ie_actor_key_stores");
 
                     b.HasIndex("ActorId")
-                        .HasDatabaseName("ix_islamu_event_actor_key_stores_actor_id");
+                        .HasDatabaseName("ix_ie_actor_key_stores_actor_id");
 
                     b.HasIndex("TenantId")
-                        .HasDatabaseName("ix_islamu_event_actor_key_stores_tenant_id");
+                        .HasDatabaseName("ix_ie_actor_key_stores_tenant_id");
 
-                    b.ToTable("islamu_event_actor_key_stores", (string)null);
+                    b.ToTable("ie_actor_key_stores", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.ActorMerge", b =>
@@ -282,16 +282,16 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("source_actor_id");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_actor_merges");
+                        .HasName("pk_ie_actor_merges");
 
                     b.HasIndex("CanonicalActorId")
-                        .HasDatabaseName("ix_islamu_event_actor_merges_canonical_actor_id");
+                        .HasDatabaseName("ix_ie_actor_merges_canonical_actor_id");
 
                     b.HasIndex("SourceActorId")
                         .IsUnique()
-                        .HasDatabaseName("ix_islamu_event_actor_merges_source_actor_id");
+                        .HasDatabaseName("ix_ie_actor_merges_source_actor_id");
 
-                    b.ToTable("islamu_event_actor_merges", null, t =>
+                    b.ToTable("ie_actor_merges", null, t =>
                         {
                             t.HasCheckConstraint("ck_actor_merges_distinct_actors", "source_actor_id <> canonical_actor_id");
                         });
@@ -327,12 +327,12 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("reason_code");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_actor_moderation_records");
+                        .HasName("pk_ie_actor_moderation_records");
 
                     b.HasIndex("ActorId")
-                        .HasDatabaseName("ix_islamu_event_actor_moderation_records_actor_id");
+                        .HasDatabaseName("ix_ie_actor_moderation_records_actor_id");
 
-                    b.ToTable("islamu_event_actor_moderation_records", (string)null);
+                    b.ToTable("ie_actor_moderation_records", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.ActorPii", b =>
@@ -353,9 +353,9 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("profile_picture_uri");
 
                     b.HasKey("ActorId")
-                        .HasName("pk_islamu_event_actor_pii");
+                        .HasName("pk_ie_actor_pii");
 
-                    b.ToTable("islamu_event_actor_pii", (string)null);
+                    b.ToTable("ie_actor_pii", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.ActorSubscription", b =>
@@ -443,22 +443,22 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("updated_by");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_actor_subscriptions");
+                        .HasName("pk_ie_actor_subscriptions");
 
                     b.HasIndex("NotificationLevelId")
-                        .HasDatabaseName("ix_islamu_event_actor_subscriptions_notification_level_id");
+                        .HasDatabaseName("ix_ie_actor_subscriptions_notification_level_id");
 
                     b.HasIndex("StatusId")
-                        .HasDatabaseName("ix_islamu_event_actor_subscriptions_status_id");
+                        .HasDatabaseName("ix_ie_actor_subscriptions_status_id");
 
                     b.HasIndex("SubscriberUserId")
-                        .HasDatabaseName("ix_islamu_event_actor_subscriptions_subscriber_user_id");
+                        .HasDatabaseName("ix_ie_actor_subscriptions_subscriber_user_id");
 
                     b.HasIndex("TargetActorId")
-                        .HasDatabaseName("ix_islamu_event_actor_subscriptions_target_actor_id");
+                        .HasDatabaseName("ix_ie_actor_subscriptions_target_actor_id");
 
                     b.HasIndex("TargetActorTypeId")
-                        .HasDatabaseName("ix_islamu_event_actor_subscriptions_target_actor_type_id");
+                        .HasDatabaseName("ix_ie_actor_subscriptions_target_actor_type_id");
 
                     b.HasIndex("TenantId", "SubscriberUserId")
                         .HasDatabaseName("ix_actor_subscriptions_subscriber_user");
@@ -471,7 +471,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                     b.HasIndex("TenantId", "TargetActorId", "StatusId", "NotificationLevelId")
                         .HasDatabaseName("ix_actor_subscriptions_fanout_scan");
 
-                    b.ToTable("islamu_event_actor_subscriptions", null, t =>
+                    b.ToTable("ie_actor_subscriptions", null, t =>
                         {
                             t.HasCheckConstraint("ck_actor_subscriptions_notification_level", "notification_level_id IN (1, 2, 3)");
 
@@ -507,13 +507,13 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("master_code");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_actor_subscription_notification_levels");
+                        .HasName("pk_ie_actor_subscription_notification_levels");
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
                         .HasDatabaseName("ux_actor_subscription_notification_levels_master_code");
 
-                    b.ToTable("islamu_event_actor_subscription_notification_levels", (string)null);
+                    b.ToTable("ie_actor_subscription_notification_levels", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.ActorSubscriptionStatus", b =>
@@ -540,13 +540,13 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("master_code");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_actor_subscription_statuses");
+                        .HasName("pk_ie_actor_subscription_statuses");
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
                         .HasDatabaseName("ux_actor_subscription_statuses_master_code");
 
-                    b.ToTable("islamu_event_actor_subscription_statuses", (string)null);
+                    b.ToTable("ie_actor_subscription_statuses", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.ActorType", b =>
@@ -573,9 +573,9 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("master_code");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_actor_types");
+                        .HasName("pk_ie_actor_types");
 
-                    b.ToTable("islamu_event_actor_types", (string)null);
+                    b.ToTable("ie_actor_types", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.AdvanceRegistrationObligation", b =>
@@ -602,13 +602,13 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("master_code");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_advance_registration_obligations");
+                        .HasName("pk_ie_advance_registration_obligations");
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
-                        .HasDatabaseName("ix_islamu_event_advance_registration_obligations_master_code");
+                        .HasDatabaseName("ix_ie_advance_registration_obligations_master_code");
 
-                    b.ToTable("islamu_event_advance_registration_obligations", (string)null);
+                    b.ToTable("ie_advance_registration_obligations", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.Ai.AiConversation", b =>
@@ -694,16 +694,16 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("user_id");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_ai_conversations");
+                        .HasName("pk_ie_ai_conversations");
 
                     b.HasIndex("ActorId")
-                        .HasDatabaseName("ix_islamu_event_ai_conversations_actor_id");
+                        .HasDatabaseName("ix_ie_ai_conversations_actor_id");
 
                     b.HasIndex("StatusId")
-                        .HasDatabaseName("ix_islamu_event_ai_conversations_status_id");
+                        .HasDatabaseName("ix_ie_ai_conversations_status_id");
 
                     b.HasIndex("UserId")
-                        .HasDatabaseName("ix_islamu_event_ai_conversations_user_id");
+                        .HasDatabaseName("ix_ie_ai_conversations_user_id");
 
                     b.HasIndex("TenantId", "ActorId", "UpdatedAt")
                         .IsDescending(false, false, true)
@@ -714,7 +714,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .IsDescending(false, false, false, true)
                         .HasDatabaseName("ix_ai_conversations_tenant_user_status_updated_at");
 
-                    b.ToTable("islamu_event_ai_conversations", null, t =>
+                    b.ToTable("ie_ai_conversations", null, t =>
                         {
                             t.HasCheckConstraint("ck_ai_conversations_last_message_sequence_nonnegative", "last_message_sequence >= 0");
                         });
@@ -763,19 +763,19 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("tenant_id");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_ai_conversation_references");
+                        .HasName("pk_ie_ai_conversation_references");
 
                     b.HasIndex("ConversationId")
-                        .HasDatabaseName("ix_islamu_event_ai_conversation_references_conversation_id");
+                        .HasDatabaseName("ix_ie_ai_conversation_references_conversation_id");
 
                     b.HasIndex("KindId")
-                        .HasDatabaseName("ix_islamu_event_ai_conversation_references_kind_id");
+                        .HasDatabaseName("ix_ie_ai_conversation_references_kind_id");
 
                     b.HasIndex("TenantId", "ConversationId", "KindId", "ReferenceId")
                         .IsUnique()
                         .HasDatabaseName("ux_ai_conversation_references_identity");
 
-                    b.ToTable("islamu_event_ai_conversation_references", (string)null);
+                    b.ToTable("ie_ai_conversation_references", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.Ai.AiConversationStatusLookup", b =>
@@ -802,13 +802,13 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("master_code");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_ai_conversation_statuses");
+                        .HasName("pk_ie_ai_conversation_statuses");
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
                         .HasDatabaseName("ux_ai_conversation_statuses_master_code");
 
-                    b.ToTable("islamu_event_ai_conversation_statuses", (string)null);
+                    b.ToTable("ie_ai_conversation_statuses", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.Ai.AiMessage", b =>
@@ -853,13 +853,13 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("tenant_id");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_ai_messages");
+                        .HasName("pk_ie_ai_messages");
 
                     b.HasIndex("ConversationId")
-                        .HasDatabaseName("ix_islamu_event_ai_messages_conversation_id");
+                        .HasDatabaseName("ix_ie_ai_messages_conversation_id");
 
                     b.HasIndex("RoleId")
-                        .HasDatabaseName("ix_islamu_event_ai_messages_role_id");
+                        .HasDatabaseName("ix_ie_ai_messages_role_id");
 
                     b.HasIndex("TenantId", "ConversationId", "CreatedAt")
                         .HasDatabaseName("ix_ai_messages_tenant_conversation_created_at");
@@ -868,7 +868,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .IsUnique()
                         .HasDatabaseName("ux_ai_messages_tenant_conversation_sequence");
 
-                    b.ToTable("islamu_event_ai_messages", null, t =>
+                    b.ToTable("ie_ai_messages", null, t =>
                         {
                             t.HasCheckConstraint("ck_ai_messages_sequence_positive", "sequence > 0");
                         });
@@ -898,13 +898,13 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("master_code");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_ai_message_roles");
+                        .HasName("pk_ie_ai_message_roles");
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
                         .HasDatabaseName("ux_ai_message_roles_master_code");
 
-                    b.ToTable("islamu_event_ai_message_roles", (string)null);
+                    b.ToTable("ie_ai_message_roles", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.Ai.AiProposedAction", b =>
@@ -984,22 +984,22 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("tenant_id");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_ai_proposed_actions");
+                        .HasName("pk_ie_ai_proposed_actions");
 
                     b.HasIndex("ActingActorId")
-                        .HasDatabaseName("ix_islamu_event_ai_proposed_actions_acting_actor_id");
+                        .HasDatabaseName("ix_ie_ai_proposed_actions_acting_actor_id");
 
                     b.HasIndex("ConversationId")
-                        .HasDatabaseName("ix_islamu_event_ai_proposed_actions_conversation_id");
+                        .HasDatabaseName("ix_ie_ai_proposed_actions_conversation_id");
 
                     b.HasIndex("KindId")
-                        .HasDatabaseName("ix_islamu_event_ai_proposed_actions_kind_id");
+                        .HasDatabaseName("ix_ie_ai_proposed_actions_kind_id");
 
                     b.HasIndex("MessageId")
-                        .HasDatabaseName("ix_islamu_event_ai_proposed_actions_message_id");
+                        .HasDatabaseName("ix_ie_ai_proposed_actions_message_id");
 
                     b.HasIndex("StatusId")
-                        .HasDatabaseName("ix_islamu_event_ai_proposed_actions_status_id");
+                        .HasDatabaseName("ix_ie_ai_proposed_actions_status_id");
 
                     b.HasIndex("TenantId", "ActingActorId", "CreatedAt")
                         .IsDescending(false, false, true)
@@ -1012,7 +1012,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                     b.HasIndex("TenantId", "StatusId", "KindId", "CreatedAt")
                         .HasDatabaseName("ix_ai_proposed_actions_tenant_status_kind_created_at");
 
-                    b.ToTable("islamu_event_ai_proposed_actions", (string)null);
+                    b.ToTable("ie_ai_proposed_actions", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.Ai.AiProposedActionKindLookup", b =>
@@ -1039,13 +1039,13 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("master_code");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_ai_proposed_action_kinds");
+                        .HasName("pk_ie_ai_proposed_action_kinds");
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
                         .HasDatabaseName("ux_ai_proposed_action_kinds_master_code");
 
-                    b.ToTable("islamu_event_ai_proposed_action_kinds", (string)null);
+                    b.ToTable("ie_ai_proposed_action_kinds", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.Ai.AiProposedActionStatusLookup", b =>
@@ -1072,13 +1072,13 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("master_code");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_ai_proposed_action_statuses");
+                        .HasName("pk_ie_ai_proposed_action_statuses");
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
                         .HasDatabaseName("ux_ai_proposed_action_statuses_master_code");
 
-                    b.ToTable("islamu_event_ai_proposed_action_statuses", (string)null);
+                    b.ToTable("ie_ai_proposed_action_statuses", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.Ai.AiProviderKindLookup", b =>
@@ -1105,13 +1105,13 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("master_code");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_ai_provider_kinds");
+                        .HasName("pk_ie_ai_provider_kinds");
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
                         .HasDatabaseName("ux_ai_provider_kinds_master_code");
 
-                    b.ToTable("islamu_event_ai_provider_kinds", (string)null);
+                    b.ToTable("ie_ai_provider_kinds", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.Ai.AiReferenceKindLookup", b =>
@@ -1138,13 +1138,13 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("master_code");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_ai_reference_kinds");
+                        .HasName("pk_ie_ai_reference_kinds");
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
                         .HasDatabaseName("ux_ai_reference_kinds_master_code");
 
-                    b.ToTable("islamu_event_ai_reference_kinds", (string)null);
+                    b.ToTable("ie_ai_reference_kinds", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.Ai.AiRun", b =>
@@ -1203,13 +1203,13 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("tenant_id");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_ai_runs");
+                        .HasName("pk_ie_ai_runs");
 
                     b.HasIndex("ConversationId")
-                        .HasDatabaseName("ix_islamu_event_ai_runs_conversation_id");
+                        .HasDatabaseName("ix_ie_ai_runs_conversation_id");
 
                     b.HasIndex("StatusId")
-                        .HasDatabaseName("ix_islamu_event_ai_runs_status_id");
+                        .HasDatabaseName("ix_ie_ai_runs_status_id");
 
                     b.HasIndex("TenantId", "ConversationId", "QueuedAt")
                         .HasDatabaseName("ix_ai_runs_tenant_conversation_queued_at");
@@ -1217,7 +1217,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                     b.HasIndex("TenantId", "StatusId", "QueuedAt")
                         .HasDatabaseName("ix_ai_runs_tenant_status_queued_at");
 
-                    b.ToTable("islamu_event_ai_runs", (string)null);
+                    b.ToTable("ie_ai_runs", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.Ai.AiRunStatusLookup", b =>
@@ -1244,13 +1244,13 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("master_code");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_ai_run_statuses");
+                        .HasName("pk_ie_ai_run_statuses");
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
                         .HasDatabaseName("ux_ai_run_statuses_master_code");
 
-                    b.ToTable("islamu_event_ai_run_statuses", (string)null);
+                    b.ToTable("ie_ai_run_statuses", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.Ai.AiToolExecution", b =>
@@ -1297,10 +1297,10 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("tool_name");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_ai_tool_executions");
+                        .HasName("pk_ie_ai_tool_executions");
 
                     b.HasIndex("ProposedActionId")
-                        .HasDatabaseName("ix_islamu_event_ai_tool_executions_proposed_action_id");
+                        .HasDatabaseName("ix_ie_ai_tool_executions_proposed_action_id");
 
                     b.HasIndex("TenantId", "ProposedActionId", "StartedAt")
                         .HasDatabaseName("ix_ai_tool_executions_tenant_action_started_at");
@@ -1308,7 +1308,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                     b.HasIndex("TenantId", "ToolName", "StartedAt")
                         .HasDatabaseName("ix_ai_tool_executions_tenant_tool_started_at");
 
-                    b.ToTable("islamu_event_ai_tool_executions", (string)null);
+                    b.ToTable("ie_ai_tool_executions", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.AiConsentGrant", b =>
@@ -1397,7 +1397,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("updated_by");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_ai_consent_grants");
+                        .HasName("pk_ie_ai_consent_grants");
 
                     b.HasIndex("TenantId")
                         .HasDatabaseName("IX_AiConsentGrants_TenantId");
@@ -1405,7 +1405,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                     b.HasIndex("SubjectUserId", "EntityName", "FieldName", "ProviderTrustTierId")
                         .HasDatabaseName("IX_AiConsentGrants_Subject_Entity_Field_Tier");
 
-                    b.ToTable("islamu_event_ai_consent_grants", (string)null);
+                    b.ToTable("ie_ai_consent_grants", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.AnalyticsProvider", b =>
@@ -1432,9 +1432,9 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("master_code");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_analytics_providers");
+                        .HasName("pk_ie_analytics_providers");
 
-                    b.ToTable("islamu_event_analytics_providers", (string)null);
+                    b.ToTable("ie_analytics_providers", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.AppSetting", b =>
@@ -1507,18 +1507,18 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("value_type");
 
                     b.HasKey("ConfigKey")
-                        .HasName("pk_islamu_event_app_settings");
+                        .HasName("pk_ie_app_settings");
 
                     b.HasIndex("Category")
-                        .HasDatabaseName("ix_islamu_event_app_settings_category");
+                        .HasDatabaseName("ix_ie_app_settings_category");
 
                     b.HasIndex("IsSensitive")
-                        .HasDatabaseName("ix_islamu_event_app_settings_is_sensitive");
+                        .HasDatabaseName("ix_ie_app_settings_is_sensitive");
 
                     b.HasIndex("KeyVersion")
-                        .HasDatabaseName("ix_islamu_event_app_settings_key_version");
+                        .HasDatabaseName("ix_ie_app_settings_key_version");
 
-                    b.ToTable("islamu_event_app_settings", null, t =>
+                    b.ToTable("ie_app_settings", null, t =>
                         {
                             t.HasCheckConstraint("CK_AppSettings_NoHighValueSecrets", "config_key NOT LIKE 'Database:%' AND config_key NOT LIKE 'Security:MasterKey%' AND config_key NOT LIKE 'ConnectionStrings:%'");
                         });
@@ -1548,9 +1548,9 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("master_code");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_approval_statuses");
+                        .HasName("pk_ie_approval_statuses");
 
-                    b.ToTable("islamu_event_approval_statuses", (string)null);
+                    b.ToTable("ie_approval_statuses", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.AssignmentStatus", b =>
@@ -1576,13 +1576,13 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("master_code");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_assignment_statuses");
+                        .HasName("pk_ie_assignment_statuses");
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
-                        .HasDatabaseName("ix_islamu_event_assignment_statuses_master_code");
+                        .HasDatabaseName("ix_ie_assignment_statuses_master_code");
 
-                    b.ToTable("islamu_event_assignment_statuses", (string)null);
+                    b.ToTable("ie_assignment_statuses", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.AtprotoIdentity", b =>
@@ -1685,19 +1685,19 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("updated_by");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_atproto_identities");
+                        .HasName("pk_ie_atproto_identities");
 
                     b.HasIndex("ActorId")
-                        .HasDatabaseName("ix_islamu_event_atproto_identities_actor_id");
+                        .HasDatabaseName("ix_ie_atproto_identities_actor_id");
 
                     b.HasIndex("Did")
                         .IsUnique()
-                        .HasDatabaseName("ix_islamu_event_atproto_identities_did");
+                        .HasDatabaseName("ix_ie_atproto_identities_did");
 
                     b.HasIndex("DidCustodyTypeId")
-                        .HasDatabaseName("ix_islamu_event_atproto_identities_did_custody_type_id");
+                        .HasDatabaseName("ix_ie_atproto_identities_did_custody_type_id");
 
-                    b.ToTable("islamu_event_atproto_identities", (string)null);
+                    b.ToTable("ie_atproto_identities", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.AtprotoIdentityModerationRecord", b =>
@@ -1730,12 +1730,12 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("reason_code");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_atproto_identity_moderation_records");
+                        .HasName("pk_ie_atproto_identity_moderation_records");
 
                     b.HasIndex("AtprotoIdentityId")
-                        .HasDatabaseName("ix_islamu_event_atproto_identity_moderation_records_atproto_identity_id");
+                        .HasDatabaseName("ix_ie_atproto_identity_moderation_records_atproto_identity_id");
 
-                    b.ToTable("islamu_event_atproto_identity_moderation_records", (string)null);
+                    b.ToTable("ie_atproto_identity_moderation_records", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.AtprotoRecord", b =>
@@ -1823,7 +1823,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("uri");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_atproto_records");
+                        .HasName("pk_ie_atproto_records");
 
                     b.HasIndex("SubjectUri")
                         .HasDatabaseName("ix_atproto_records_subject_uri")
@@ -1838,7 +1838,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .IsUnique()
                         .HasDatabaseName("ux_atproto_records_identity");
 
-                    b.ToTable("islamu_event_atproto_records", null, t =>
+                    b.ToTable("ie_atproto_records", null, t =>
                         {
                             t.HasCheckConstraint("ck_atproto_records_direction", "direction BETWEEN 1 AND 3");
 
@@ -1877,9 +1877,9 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("min_age");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_audience_ages");
+                        .HasName("pk_ie_audience_ages");
 
-                    b.ToTable("islamu_event_audience_ages", (string)null);
+                    b.ToTable("ie_audience_ages", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.AudienceGender", b =>
@@ -1903,9 +1903,9 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("master_code");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_audience_genders");
+                        .HasName("pk_ie_audience_genders");
 
-                    b.ToTable("islamu_event_audience_genders", (string)null);
+                    b.ToTable("ie_audience_genders", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.AuditLog", b =>
@@ -1960,7 +1960,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasDefaultValueSql("CURRENT_TIMESTAMP");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_audit_logs");
+                        .HasName("pk_ie_audit_logs");
 
                     b.HasIndex("TenantId", "Timestamp")
                         .IsDescending(false, true)
@@ -1973,7 +1973,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                     b.HasIndex("TenantId", "EntityType", "EntityId")
                         .HasDatabaseName("ix_auditlogs_tenant_entity");
 
-                    b.ToTable("islamu_event_audit_logs", (string)null);
+                    b.ToTable("ie_audit_logs", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.BookingPartyType", b =>
@@ -2000,13 +2000,13 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("master_code");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_booking_party_types");
+                        .HasName("pk_ie_booking_party_types");
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
-                        .HasDatabaseName("ix_islamu_event_booking_party_types_master_code");
+                        .HasDatabaseName("ix_ie_booking_party_types_master_code");
 
-                    b.ToTable("islamu_event_booking_party_types", (string)null);
+                    b.ToTable("ie_booking_party_types", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.CapacityHoldPolicy", b =>
@@ -2033,13 +2033,13 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("master_code");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_capacity_hold_policies");
+                        .HasName("pk_ie_capacity_hold_policies");
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
-                        .HasDatabaseName("ix_islamu_event_capacity_hold_policies_master_code");
+                        .HasDatabaseName("ix_ie_capacity_hold_policies_master_code");
 
-                    b.ToTable("islamu_event_capacity_hold_policies", (string)null);
+                    b.ToTable("ie_capacity_hold_policies", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.CapacityOversellPolicy", b =>
@@ -2066,13 +2066,13 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("master_code");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_capacity_oversell_policies");
+                        .HasName("pk_ie_capacity_oversell_policies");
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
-                        .HasDatabaseName("ix_islamu_event_capacity_oversell_policies_master_code");
+                        .HasDatabaseName("ix_ie_capacity_oversell_policies_master_code");
 
-                    b.ToTable("islamu_event_capacity_oversell_policies", (string)null);
+                    b.ToTable("ie_capacity_oversell_policies", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.Category", b =>
@@ -2108,7 +2108,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("tenant_id");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_categories");
+                        .HasName("pk_ie_categories");
 
                     b.HasAlternateKey("TenantId", "Id")
                         .HasName("ak_categories_tenant_id_id");
@@ -2118,9 +2118,9 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasDatabaseName("ix_categories_tenant_master_code");
 
                     b.HasIndex("TenantId", "ParentId")
-                        .HasDatabaseName("ix_islamu_event_categories_tenant_id_parent_id");
+                        .HasDatabaseName("ix_ie_categories_tenant_id_parent_id");
 
-                    b.ToTable("islamu_event_categories", (string)null);
+                    b.ToTable("ie_categories", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.CategoryType", b =>
@@ -2147,9 +2147,9 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("master_code");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_category_types");
+                        .HasName("pk_ie_category_types");
 
-                    b.ToTable("islamu_event_category_types", (string)null);
+                    b.ToTable("ie_category_types", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.CategoryTypeCategories", b =>
@@ -2172,19 +2172,19 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("tenant_id");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_category_type_categories");
+                        .HasName("pk_ie_category_type_categories");
 
                     b.HasIndex("CategoryId")
-                        .HasDatabaseName("ix_islamu_event_category_type_categories_category_id");
+                        .HasDatabaseName("ix_ie_category_type_categories_category_id");
 
                     b.HasIndex("CategoryTypeId")
-                        .HasDatabaseName("ix_islamu_event_category_type_categories_category_type_id");
+                        .HasDatabaseName("ix_ie_category_type_categories_category_type_id");
 
                     b.HasIndex("TenantId", "CategoryId", "CategoryTypeId")
                         .IsUnique()
-                        .HasDatabaseName("ix_islamu_event_category_type_categories_tenant_id_category_id_category_type_id");
+                        .HasDatabaseName("ix_ie_category_type_categories_tenant_id_category_id_category_type_id");
 
-                    b.ToTable("islamu_event_category_type_categories", (string)null);
+                    b.ToTable("ie_category_type_categories", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.ConfigurationChangeLog", b =>
@@ -2252,21 +2252,21 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("user_id");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_configuration_change_logs");
+                        .HasName("pk_ie_configuration_change_logs");
 
                     b.HasIndex("SettingKey")
-                        .HasDatabaseName("ix_islamu_event_configuration_change_logs_setting_key");
+                        .HasDatabaseName("ix_ie_configuration_change_logs_setting_key");
 
                     b.HasIndex("Timestamp")
-                        .HasDatabaseName("ix_islamu_event_configuration_change_logs_timestamp");
+                        .HasDatabaseName("ix_ie_configuration_change_logs_timestamp");
 
                     b.HasIndex("UserId")
-                        .HasDatabaseName("ix_islamu_event_configuration_change_logs_user_id");
+                        .HasDatabaseName("ix_ie_configuration_change_logs_user_id");
 
                     b.HasIndex("SettingScopeId", "ScopeId")
-                        .HasDatabaseName("ix_islamu_event_configuration_change_logs_setting_scope_id_scope_id");
+                        .HasDatabaseName("ix_ie_configuration_change_logs_setting_scope_id_scope_id");
 
-                    b.ToTable("islamu_event_configuration_change_logs", (string)null);
+                    b.ToTable("ie_configuration_change_logs", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.CustomPropertyDefinition", b =>
@@ -2453,10 +2453,10 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("updated_by");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_custom_property_definitions");
+                        .HasName("pk_ie_custom_property_definitions");
 
                     b.HasIndex("DefaultOptionId")
-                        .HasDatabaseName("ix_islamu_event_custom_property_definitions_default_option_id");
+                        .HasDatabaseName("ix_ie_custom_property_definitions_default_option_id");
 
                     b.HasIndex("TenantId", "EntityTypeName", "IsActive")
                         .HasDatabaseName("ix_cpd_tenant_entity_active");
@@ -2468,7 +2468,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_cpd_tenant_entity_namespace_key");
 
-                    b.ToTable("islamu_event_custom_property_definitions", null, t =>
+                    b.ToTable("ie_custom_property_definitions", null, t =>
                         {
                             t.HasCheckConstraint("ck_custom_property_definitions_shared_entity_type", "entity_type_name IN ('Organization', 'Group')");
                         });
@@ -2564,10 +2564,10 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("value");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_custom_property_options");
+                        .HasName("pk_ie_custom_property_options");
 
                     b.HasIndex("ParentOptionId")
-                        .HasDatabaseName("ix_islamu_event_custom_property_options_parent_option_id");
+                        .HasDatabaseName("ix_ie_custom_property_options_parent_option_id");
 
                     b.HasIndex("CustomPropertyDefinitionId", "SortOrder")
                         .HasDatabaseName("ix_cpo_definition_sort");
@@ -2576,7 +2576,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_cpo_definition_namespace_key");
 
-                    b.ToTable("islamu_event_custom_property_options", (string)null);
+                    b.ToTable("ie_custom_property_options", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.CustomPropertyProjectionDirtyScope", b =>
@@ -2630,10 +2630,10 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("tenant_id");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_custom_property_projection_dirty_scope");
+                        .HasName("pk_ie_custom_property_projection_dirty_scope");
 
                     b.HasIndex("TenantId")
-                        .HasDatabaseName("ix_islamu_event_custom_property_projection_dirty_scope_tenant_id");
+                        .HasDatabaseName("ix_ie_custom_property_projection_dirty_scope_tenant_id");
 
                     b.HasIndex("ProjectionName", "ProjectionVersion", "TenantId")
                         .HasDatabaseName("ix_dirty_scope_pending")
@@ -2643,7 +2643,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_dirty_scope_unique");
 
-                    b.ToTable("islamu_event_custom_property_projection_dirty_scope", (string)null);
+                    b.ToTable("ie_custom_property_projection_dirty_scope", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.CustomPropertyProjectionStatus", b =>
@@ -2699,12 +2699,12 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("state");
 
                     b.HasKey("ProjectionName", "ProjectionVersion", "TenantId")
-                        .HasName("pk_islamu_event_custom_property_projection_status");
+                        .HasName("pk_ie_custom_property_projection_status");
 
                     b.HasIndex("TenantId")
-                        .HasDatabaseName("ix_islamu_event_custom_property_projection_status_tenant_id");
+                        .HasDatabaseName("ix_ie_custom_property_projection_status_tenant_id");
 
-                    b.ToTable("islamu_event_custom_property_projection_status", (string)null);
+                    b.ToTable("ie_custom_property_projection_status", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.CustomPropertyValue", b =>
@@ -2788,10 +2788,10 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("updated_by");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_custom_property_values");
+                        .HasName("pk_ie_custom_property_values");
 
                     b.HasIndex("OptionId")
-                        .HasDatabaseName("ix_islamu_event_custom_property_values_option_id");
+                        .HasDatabaseName("ix_ie_custom_property_values_option_id");
 
                     b.HasIndex("TenantId", "CustomPropertyDefinitionId")
                         .HasDatabaseName("ix_cpv_tenant_definition");
@@ -2803,7 +2803,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_cpv_definition_entity_ordinal");
 
-                    b.ToTable("islamu_event_custom_property_values", (string)null);
+                    b.ToTable("ie_custom_property_values", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.DidCustodyType", b =>
@@ -2830,9 +2830,9 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("master_code");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_did_custody_types");
+                        .HasName("pk_ie_did_custody_types");
 
-                    b.ToTable("islamu_event_did_custody_types", (string)null);
+                    b.ToTable("ie_did_custody_types", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.EmailDispatchAttempt", b =>
@@ -2914,19 +2914,19 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("updated_by");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_email_dispatch_attempts");
+                        .HasName("pk_ie_email_dispatch_attempts");
 
                     b.HasIndex("EmailDispatchOutboxId", "AttemptNumber")
                         .IsUnique()
                         .HasDatabaseName("ux_email_dispatch_attempts_outbox_attempt");
 
                     b.HasIndex("TenantId", "EmailDispatchOutboxId")
-                        .HasDatabaseName("ix_islamu_event_email_dispatch_attempts_tenant_id_email_dispatch_outbox_id");
+                        .HasDatabaseName("ix_ie_email_dispatch_attempts_tenant_id_email_dispatch_outbox_id");
 
                     b.HasIndex("TenantId", "StartedAt")
                         .HasDatabaseName("ix_email_dispatch_attempts_tenant_started");
 
-                    b.ToTable("islamu_event_email_dispatch_attempts", null, t =>
+                    b.ToTable("ie_email_dispatch_attempts", null, t =>
                         {
                             t.HasCheckConstraint("ck_email_dispatch_attempts_provider_handoff_fence", "failure_category <> 'provider_handoff_started' OR (outcome = 3 AND completed_at IS NULL AND provider_message_id IS NULL)");
                         });
@@ -3126,7 +3126,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("updated_by");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_email_dispatch_outbox");
+                        .HasName("pk_ie_email_dispatch_outbox");
 
                     b.HasAlternateKey("TenantId", "Id")
                         .HasName("ak_email_dispatch_outbox_tenant_id");
@@ -3141,10 +3141,10 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasName("ak_email_dispatch_outbox_tenant_id_intent_address_source");
 
                     b.HasIndex("EventId")
-                        .HasDatabaseName("ix_islamu_event_email_dispatch_outbox_event_id");
+                        .HasDatabaseName("ix_ie_email_dispatch_outbox_event_id");
 
                     b.HasIndex("ManagedTenantProvisioningOperationId")
-                        .HasDatabaseName("ix_islamu_event_email_dispatch_outbox_managed_tenant_provisioning_operation_id");
+                        .HasDatabaseName("ix_ie_email_dispatch_outbox_managed_tenant_provisioning_operation_id");
 
                     b.HasIndex("TenantId", "NotificationIntentId")
                         .IsUnique()
@@ -3155,16 +3155,16 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasDatabaseName("ux_email_dispatch_outbox_tenant_publish_event");
 
                     b.HasIndex("TenantId", "RecipientUserId")
-                        .HasDatabaseName("ix_islamu_event_email_dispatch_outbox_tenant_id_recipient_user_id");
+                        .HasDatabaseName("ix_ie_email_dispatch_outbox_tenant_id_recipient_user_id");
 
                     b.HasIndex("TenantId", "RegistrationOrderId")
-                        .HasDatabaseName("ix_islamu_event_email_dispatch_outbox_tenant_id_registration_order_id");
+                        .HasDatabaseName("ix_ie_email_dispatch_outbox_tenant_id_registration_order_id");
 
                     b.HasIndex("Status", "NextAttemptAt", "CreatedAt")
                         .HasDatabaseName("ix_email_dispatch_outbox_worker_poll");
 
                     b.HasIndex("TenantId", "NotificationIntentId", "RecipientUserId")
-                        .HasDatabaseName("ix_islamu_event_email_dispatch_outbox_tenant_id_notification_intent_id_recipient_user_id");
+                        .HasDatabaseName("ix_ie_email_dispatch_outbox_tenant_id_notification_intent_id_recipient_user_id");
 
                     b.HasIndex("TenantId", "Status", "LastFailureAt")
                         .HasDatabaseName("ix_email_dispatch_outbox_tenant_status");
@@ -3175,7 +3175,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                     b.HasIndex("TenantId", "ContentRedactedAt", "Status", "SentAt", "LastFailureAt", "CreatedAt")
                         .HasDatabaseName("ix_email_dispatch_outbox_retention");
 
-                    b.ToTable("islamu_event_email_dispatch_outbox", null, t =>
+                    b.ToTable("ie_email_dispatch_outbox", null, t =>
                         {
                             t.HasCheckConstraint("ck_email_dispatch_outbox_processing_fence", "(status = 2) = (processing_started_at IS NOT NULL AND processing_lease_token IS NOT NULL)");
 
@@ -3242,13 +3242,13 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("updated_by");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_email_dispatch_processor_states");
+                        .HasName("pk_ie_email_dispatch_processor_states");
 
                     b.HasIndex("ProcessorCode")
                         .IsUnique()
                         .HasDatabaseName("ux_email_dispatch_processor_states_processor_code");
 
-                    b.ToTable("islamu_event_email_dispatch_processor_states", null, t =>
+                    b.ToTable("ie_email_dispatch_processor_states", null, t =>
                         {
                             t.HasCheckConstraint("ck_email_dispatch_processor_states_global_rate_override", "global_smtp_rate_limit_per_minute_override IS NULL OR global_smtp_rate_limit_per_minute_override BETWEEN 1 AND 100000");
 
@@ -3334,7 +3334,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("updated_by");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_email_dispatch_receipts");
+                        .HasName("pk_ie_email_dispatch_receipts");
 
                     b.HasIndex("EmailDispatchOutboxId", "Status")
                         .HasDatabaseName("ix_email_dispatch_receipts_outbox_status");
@@ -3348,9 +3348,9 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasDatabaseName("ux_email_dispatch_receipts_tenant_publish_event");
 
                     b.HasIndex("TenantId", "EmailDispatchOutboxId", "PublishEventId")
-                        .HasDatabaseName("ix_islamu_event_email_dispatch_receipts_tenant_id_email_dispatch_outbox_id_publish_event_id");
+                        .HasDatabaseName("ix_ie_email_dispatch_receipts_tenant_id_email_dispatch_outbox_id_publish_event_id");
 
-                    b.ToTable("islamu_event_email_dispatch_receipts", (string)null);
+                    b.ToTable("ie_email_dispatch_receipts", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.EmailDispatchTenantControl", b =>
@@ -3406,7 +3406,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("updated_by");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_email_dispatch_tenant_controls");
+                        .HasName("pk_ie_email_dispatch_tenant_controls");
 
                     b.HasIndex("TenantId")
                         .IsUnique()
@@ -3415,7 +3415,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                     b.HasIndex("IsPaused", "UpdatedAt")
                         .HasDatabaseName("ix_email_dispatch_tenant_controls_pause_state");
 
-                    b.ToTable("islamu_event_email_dispatch_tenant_controls", null, t =>
+                    b.ToTable("ie_email_dispatch_tenant_controls", null, t =>
                         {
                             t.HasCheckConstraint("ck_email_dispatch_tenant_controls_smtp_rate_pair", "(smtp_available_tokens IS NULL) = (smtp_refill_at IS NULL)");
 
@@ -3447,13 +3447,13 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("master_code");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_entitlement_scope_types");
+                        .HasName("pk_ie_entitlement_scope_types");
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
-                        .HasDatabaseName("ix_islamu_event_entitlement_scope_types_master_code");
+                        .HasDatabaseName("ix_ie_entitlement_scope_types_master_code");
 
-                    b.ToTable("islamu_event_entitlement_scope_types", (string)null);
+                    b.ToTable("ie_entitlement_scope_types", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.EntitlementSelectionRule", b =>
@@ -3480,13 +3480,13 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("master_code");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_entitlement_selection_rules");
+                        .HasName("pk_ie_entitlement_selection_rules");
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
-                        .HasDatabaseName("ix_islamu_event_entitlement_selection_rules_master_code");
+                        .HasDatabaseName("ix_ie_entitlement_selection_rules_master_code");
 
-                    b.ToTable("islamu_event_entitlement_selection_rules", (string)null);
+                    b.ToTable("ie_entitlement_selection_rules", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.Event", b =>
@@ -3719,58 +3719,58 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("visibility_type_id");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_events");
+                        .HasName("pk_ie_events");
 
                     b.HasAlternateKey("TenantId", "Id")
                         .HasName("ak_events_tenant_id_id");
 
                     b.HasIndex("ActorId")
-                        .HasDatabaseName("ix_islamu_event_events_actor_id");
+                        .HasDatabaseName("ix_ie_events_actor_id");
 
                     b.HasIndex("AtprotoRecordId")
-                        .HasDatabaseName("ix_islamu_event_events_atproto_record_id");
+                        .HasDatabaseName("ix_ie_events_atproto_record_id");
 
                     b.HasIndex("AudienceAgeId")
-                        .HasDatabaseName("ix_islamu_event_events_audience_age_id");
+                        .HasDatabaseName("ix_ie_events_audience_age_id");
 
                     b.HasIndex("AudienceGenderId")
-                        .HasDatabaseName("ix_islamu_event_events_audience_gender_id");
+                        .HasDatabaseName("ix_ie_events_audience_gender_id");
 
                     b.HasIndex("BackgroundImageId")
-                        .HasDatabaseName("ix_islamu_event_events_background_image_id");
+                        .HasDatabaseName("ix_ie_events_background_image_id");
 
                     b.HasIndex("EventFormatId")
-                        .HasDatabaseName("ix_islamu_event_events_event_format_id");
+                        .HasDatabaseName("ix_ie_events_event_format_id");
 
                     b.HasIndex("EventProvenanceTypeId")
-                        .HasDatabaseName("ix_islamu_event_events_event_provenance_type_id");
+                        .HasDatabaseName("ix_ie_events_event_provenance_type_id");
 
                     b.HasIndex("EventSeriesId")
-                        .HasDatabaseName("ix_islamu_event_events_event_series_id");
+                        .HasDatabaseName("ix_ie_events_event_series_id");
 
                     b.HasIndex("EventStatusId")
-                        .HasDatabaseName("ix_islamu_event_events_event_status_id");
+                        .HasDatabaseName("ix_ie_events_event_status_id");
 
                     b.HasIndex("EventTypeId")
-                        .HasDatabaseName("ix_islamu_event_events_event_type_id");
+                        .HasDatabaseName("ix_ie_events_event_type_id");
 
                     b.HasIndex("FeaturedImageId")
-                        .HasDatabaseName("ix_islamu_event_events_featured_image_id");
+                        .HasDatabaseName("ix_ie_events_featured_image_id");
 
                     b.HasIndex("MadhabId")
-                        .HasDatabaseName("ix_islamu_event_events_madhab_id");
+                        .HasDatabaseName("ix_ie_events_madhab_id");
 
                     b.HasIndex("OrganizerActorId")
-                        .HasDatabaseName("ix_islamu_event_events_organizer_actor_id");
+                        .HasDatabaseName("ix_ie_events_organizer_actor_id");
 
                     b.HasIndex("RegistrationPolicyId")
-                        .HasDatabaseName("ix_islamu_event_events_registration_policy_id");
+                        .HasDatabaseName("ix_ie_events_registration_policy_id");
 
                     b.HasIndex("SubmittedByUserId")
-                        .HasDatabaseName("ix_islamu_event_events_submitted_by_user_id");
+                        .HasDatabaseName("ix_ie_events_submitted_by_user_id");
 
                     b.HasIndex("VisibilityTypeId")
-                        .HasDatabaseName("ix_islamu_event_events_visibility_type_id");
+                        .HasDatabaseName("ix_ie_events_visibility_type_id");
 
                     b.HasIndex("TenantId", "EventTypeId")
                         .HasDatabaseName("ix_events_tenant_eventtype");
@@ -3792,7 +3792,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                     b.HasIndex("TenantId", "IsDeleted", "EventStatusId")
                         .HasDatabaseName("ix_events_tenant_active_status");
 
-                    b.ToTable("islamu_event_events", null, t =>
+                    b.ToTable("ie_events", null, t =>
                         {
                             t.HasCheckConstraint("CK_Event_SessionDateRange", "first_session_date IS NULL OR last_session_date IS NULL OR first_session_date <= last_session_date");
 
@@ -3920,19 +3920,19 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("updated_by");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_event_agenda_items");
+                        .HasName("pk_ie_event_agenda_items");
 
                     b.HasIndex("KindId")
-                        .HasDatabaseName("ix_islamu_event_event_agenda_items_kind_id");
+                        .HasDatabaseName("ix_ie_event_agenda_items_kind_id");
 
                     b.HasIndex("TenantId", "EventId", "EventDayId")
-                        .HasDatabaseName("ix_islamu_event_event_agenda_items_tenant_id_event_id_event_day_id");
+                        .HasDatabaseName("ix_ie_event_agenda_items_tenant_id_event_id_event_day_id");
 
                     b.HasIndex("TenantId", "EventId", "SortOrder")
                         .HasDatabaseName("ix_event_agenda_items_tenant_event_sort");
 
                     b.HasIndex("TenantId", "LocationId", "RoomId")
-                        .HasDatabaseName("ix_islamu_event_event_agenda_items_tenant_id_location_id_room_id");
+                        .HasDatabaseName("ix_ie_event_agenda_items_tenant_id_location_id_room_id");
 
                     b.HasIndex("TenantId", "EventId", "EventLocationId", "LocationId")
                         .HasDatabaseName("ix_event_agenda_items_elp_consistency");
@@ -3940,7 +3940,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                     b.HasIndex("TenantId", "EventId", "LocalStartDate", "LocalStartMinuteOfDay")
                         .HasDatabaseName("ix_event_agenda_items_tenant_event_local_start");
 
-                    b.ToTable("islamu_event_event_agenda_items", null, t =>
+                    b.ToTable("ie_event_agenda_items", null, t =>
                         {
                             t.HasCheckConstraint("CK_EventAgendaItem_EndAfterStart", "end_time > start_time");
 
@@ -4030,23 +4030,23 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("updated_by");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_event_capacity_pools");
+                        .HasName("pk_ie_event_capacity_pools");
 
                     b.HasAlternateKey("TenantId", "Id")
                         .HasName("ak_event_capacity_pools_tenant_id_id");
 
                     b.HasIndex("CapacityHoldPolicyId")
-                        .HasDatabaseName("ix_islamu_event_event_capacity_pools_capacity_hold_policy_id");
+                        .HasDatabaseName("ix_ie_event_capacity_pools_capacity_hold_policy_id");
 
                     b.HasIndex("CapacityOversellPolicyId")
-                        .HasDatabaseName("ix_islamu_event_event_capacity_pools_capacity_oversell_policy_id");
+                        .HasDatabaseName("ix_ie_event_capacity_pools_capacity_oversell_policy_id");
 
                     b.HasIndex("TenantId", "EventId", "Name")
                         .IsUnique()
-                        .HasDatabaseName("ix_islamu_event_event_capacity_pools_tenant_id_event_id_name")
+                        .HasDatabaseName("ix_ie_event_capacity_pools_tenant_id_event_id_name")
                         .HasFilter("is_deleted = false");
 
-                    b.ToTable("islamu_event_event_capacity_pools", (string)null);
+                    b.ToTable("ie_event_capacity_pools", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.EventCategories", b =>
@@ -4090,16 +4090,16 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("updated_by");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_event_categories");
+                        .HasName("pk_ie_event_categories");
 
                     b.HasIndex("TenantId", "CategoryId")
-                        .HasDatabaseName("ix_islamu_event_event_categories_tenant_id_category_id");
+                        .HasDatabaseName("ix_ie_event_categories_tenant_id_category_id");
 
                     b.HasIndex("TenantId", "EventId", "CategoryId")
                         .IsUnique()
                         .HasDatabaseName("ix_event_categories_tenant_event_category");
 
-                    b.ToTable("islamu_event_event_categories", (string)null);
+                    b.ToTable("ie_event_categories", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.EventContactShareConsent", b =>
@@ -4187,19 +4187,19 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("withdrawn_at");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_event_contact_share_consents");
+                        .HasName("pk_ie_event_contact_share_consents");
 
                     b.HasIndex("RecipientActorId")
-                        .HasDatabaseName("ix_islamu_event_event_contact_share_consents_recipient_actor_id");
+                        .HasDatabaseName("ix_ie_event_contact_share_consents_recipient_actor_id");
 
                     b.HasIndex("UserId")
-                        .HasDatabaseName("ix_islamu_event_event_contact_share_consents_user_id");
+                        .HasDatabaseName("ix_ie_event_contact_share_consents_user_id");
 
                     b.HasIndex("TenantId", "SourceEventId")
-                        .HasDatabaseName("ix_islamu_event_event_contact_share_consents_tenant_id_source_event_id");
+                        .HasDatabaseName("ix_ie_event_contact_share_consents_tenant_id_source_event_id");
 
                     b.HasIndex("TenantId", "SourceRegistrationOrderId")
-                        .HasDatabaseName("ix_islamu_event_event_contact_share_consents_tenant_id_source_registration_order_id");
+                        .HasDatabaseName("ix_ie_event_contact_share_consents_tenant_id_source_registration_order_id");
 
                     b.HasIndex("TenantId", "RecipientActorId", "Status")
                         .HasDatabaseName("ix_eventcontactshareconsents_recipient_status");
@@ -4211,7 +4211,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_eventcontactshareconsents_scope_unique");
 
-                    b.ToTable("islamu_event_event_contact_share_consents", (string)null);
+                    b.ToTable("ie_event_contact_share_consents", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.EventContactShareExport", b =>
@@ -4252,21 +4252,21 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("tenant_id");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_event_contact_share_exports");
+                        .HasName("pk_ie_event_contact_share_exports");
 
                     b.HasIndex("ExportedByUserId")
-                        .HasDatabaseName("ix_islamu_event_event_contact_share_exports_exported_by_user_id");
+                        .HasDatabaseName("ix_ie_event_contact_share_exports_exported_by_user_id");
 
                     b.HasIndex("RecipientActorId")
-                        .HasDatabaseName("ix_islamu_event_event_contact_share_exports_recipient_actor_id");
+                        .HasDatabaseName("ix_ie_event_contact_share_exports_recipient_actor_id");
 
                     b.HasIndex("TenantId", "EventId")
-                        .HasDatabaseName("ix_islamu_event_event_contact_share_exports_tenant_id_event_id");
+                        .HasDatabaseName("ix_ie_event_contact_share_exports_tenant_id_event_id");
 
                     b.HasIndex("TenantId", "RecipientActorId", "CreatedAt")
                         .HasDatabaseName("ix_eventcontactshareexports_recipient_date");
 
-                    b.ToTable("islamu_event_event_contact_share_exports", (string)null);
+                    b.ToTable("ie_event_contact_share_exports", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.EventContactShareExportItem", b =>
@@ -4286,12 +4286,12 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("email_snapshot");
 
                     b.HasKey("ExportId", "ConsentId")
-                        .HasName("pk_islamu_event_event_contact_share_export_items");
+                        .HasName("pk_ie_event_contact_share_export_items");
 
                     b.HasIndex("ConsentId")
-                        .HasDatabaseName("ix_islamu_event_event_contact_share_export_items_consent_id");
+                        .HasDatabaseName("ix_ie_event_contact_share_export_items_consent_id");
 
-                    b.ToTable("islamu_event_event_contact_share_export_items", (string)null);
+                    b.ToTable("ie_event_contact_share_export_items", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.EventCustomPropertyDefinition", b =>
@@ -4501,13 +4501,13 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("updated_by");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_event_custom_property_definitions");
+                        .HasName("pk_ie_event_custom_property_definitions");
 
                     b.HasIndex("DefaultOptionId")
-                        .HasDatabaseName("ix_islamu_event_event_custom_property_definitions_default_option_id");
+                        .HasDatabaseName("ix_ie_event_custom_property_definitions_default_option_id");
 
                     b.HasIndex("SourceTemplateId")
-                        .HasDatabaseName("ix_islamu_event_event_custom_property_definitions_source_template_id");
+                        .HasDatabaseName("ix_ie_event_custom_property_definitions_source_template_id");
 
                     b.HasIndex("EventId", "Namespace", "Key")
                         .IsUnique()
@@ -4516,7 +4516,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                     b.HasIndex("TenantId", "EventId", "IsSearchable", "IsFilterable")
                         .HasDatabaseName("ix_ecpd_tenant_event_search_filter");
 
-                    b.ToTable("islamu_event_event_custom_property_definitions", (string)null);
+                    b.ToTable("ie_event_custom_property_definitions", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.EventCustomPropertyOption", b =>
@@ -4617,10 +4617,10 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("value");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_event_custom_property_options");
+                        .HasName("pk_ie_event_custom_property_options");
 
                     b.HasIndex("ParentOptionId")
-                        .HasDatabaseName("ix_islamu_event_event_custom_property_options_parent_option_id");
+                        .HasDatabaseName("ix_ie_event_custom_property_options_parent_option_id");
 
                     b.HasIndex("EventCustomPropertyDefinitionId", "SortOrder")
                         .HasDatabaseName("ix_ecpo_definition_sort");
@@ -4629,7 +4629,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_ecpo_definition_namespace_key");
 
-                    b.ToTable("islamu_event_event_custom_property_options", (string)null);
+                    b.ToTable("ie_event_custom_property_options", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.EventCustomPropertyProjection", b =>
@@ -4737,20 +4737,20 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("updated_at");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_event_custom_property_projections");
+                        .HasName("pk_ie_event_custom_property_projections");
 
                     b.HasIndex("EventCustomPropertyDefinitionId")
-                        .HasDatabaseName("ix_islamu_event_event_custom_property_projections_event_custom_property_definition_id");
+                        .HasDatabaseName("ix_ie_event_custom_property_projections_event_custom_property_definition_id");
 
                     b.HasIndex("EventCustomPropertyValueId")
                         .IsUnique()
                         .HasDatabaseName("ix_ecpp_value");
 
                     b.HasIndex("EventId")
-                        .HasDatabaseName("ix_islamu_event_event_custom_property_projections_event_id");
+                        .HasDatabaseName("ix_ie_event_custom_property_projections_event_id");
 
                     b.HasIndex("OptionId")
-                        .HasDatabaseName("ix_islamu_event_event_custom_property_projections_option_id");
+                        .HasDatabaseName("ix_ie_event_custom_property_projections_option_id");
 
                     b.HasIndex("TenantId", "ExposureLevel")
                         .HasDatabaseName("ix_ecpp_tenant_exposure");
@@ -4761,7 +4761,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                     b.HasIndex("TenantId", "EventId", "Namespace", "Key", "Ordinal")
                         .HasDatabaseName("ix_ecpp_tenant_event_namespace_key_ordinal");
 
-                    b.ToTable("islamu_event_event_custom_property_projections", (string)null);
+                    b.ToTable("ie_event_custom_property_projections", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.EventCustomPropertyValue", b =>
@@ -4845,13 +4845,13 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("updated_by");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_event_custom_property_values");
+                        .HasName("pk_ie_event_custom_property_values");
 
                     b.HasIndex("EventId")
-                        .HasDatabaseName("ix_islamu_event_event_custom_property_values_event_id");
+                        .HasDatabaseName("ix_ie_event_custom_property_values_event_id");
 
                     b.HasIndex("OptionId")
-                        .HasDatabaseName("ix_islamu_event_event_custom_property_values_option_id");
+                        .HasDatabaseName("ix_ie_event_custom_property_values_option_id");
 
                     b.HasIndex("TenantId", "EventId")
                         .HasDatabaseName("ix_ecpv_tenant_event");
@@ -4860,7 +4860,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_ecpv_definition_event_ordinal");
 
-                    b.ToTable("islamu_event_event_custom_property_values", (string)null);
+                    b.ToTable("ie_event_custom_property_values", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.EventDay", b =>
@@ -4947,7 +4947,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("updated_by");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_event_days");
+                        .HasName("pk_ie_event_days");
 
                     b.HasAlternateKey("TenantId", "Id")
                         .HasName("ak_event_days_tenant_id_id");
@@ -4956,7 +4956,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasName("ak_event_days_tenant_id_event_id_id");
 
                     b.HasIndex("BannerImageId")
-                        .HasDatabaseName("ix_islamu_event_event_days_banner_image_id");
+                        .HasDatabaseName("ix_ie_event_days_banner_image_id");
 
                     b.HasIndex("TenantId", "EventId", "IsPublished")
                         .HasDatabaseName("ix_event_days_tenant_event_published");
@@ -4968,7 +4968,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                     b.HasIndex("TenantId", "EventId", "SortOrder")
                         .HasDatabaseName("ix_event_days_tenant_event_sort");
 
-                    b.ToTable("islamu_event_event_days", (string)null);
+                    b.ToTable("ie_event_days", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.EventFormat", b =>
@@ -4995,9 +4995,9 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("master_code");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_event_formats");
+                        .HasName("pk_ie_event_formats");
 
-                    b.ToTable("islamu_event_event_formats", (string)null);
+                    b.ToTable("ie_event_formats", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.EventIslamicAspect", b =>
@@ -5035,15 +5035,15 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("reference_prayer");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_event_islamic_aspects");
+                        .HasName("pk_ie_event_islamic_aspects");
 
                     b.HasIndex("MadhabId")
-                        .HasDatabaseName("ix_islamu_event_event_islamic_aspects_madhab_id");
+                        .HasDatabaseName("ix_ie_event_islamic_aspects_madhab_id");
 
                     b.HasIndex("PrimaryLanguageId")
-                        .HasDatabaseName("ix_islamu_event_event_islamic_aspects_primary_language_id");
+                        .HasDatabaseName("ix_ie_event_islamic_aspects_primary_language_id");
 
-                    b.ToTable("islamu_event_event_islamic_aspects", (string)null);
+                    b.ToTable("ie_event_islamic_aspects", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.EventLocation", b =>
@@ -5155,7 +5155,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("updated_by");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_event_locations");
+                        .HasName("pk_ie_event_locations");
 
                     b.HasAlternateKey("TenantId", "Id")
                         .HasName("ak_event_locations_tenant_id_id");
@@ -5164,7 +5164,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasName("ak_event_locations_tenant_id_event_id_id");
 
                     b.HasIndex("FullDetailsAudienceId")
-                        .HasDatabaseName("ix_islamu_event_event_locations_full_details_audience_id");
+                        .HasDatabaseName("ix_ie_event_locations_full_details_audience_id");
 
                     b.HasIndex("TenantId", "EventId")
                         .IsUnique()
@@ -5172,7 +5172,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasFilter("is_deleted = false AND is_to_be_announced = true");
 
                     b.HasIndex("TenantId", "LocationId")
-                        .HasDatabaseName("ix_islamu_event_event_locations_tenant_id_location_id");
+                        .HasDatabaseName("ix_ie_event_locations_tenant_id_location_id");
 
                     b.HasIndex("TenantId", "EventId", "IsDeleted")
                         .HasDatabaseName("ix_event_locations_tenant_event_active");
@@ -5182,7 +5182,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasDatabaseName("ux_event_locations_active_physical")
                         .HasFilter("is_deleted = false AND is_to_be_announced = false AND location_id IS NOT NULL");
 
-                    b.ToTable("islamu_event_event_locations", null, t =>
+                    b.ToTable("ie_event_locations", null, t =>
                         {
                             t.HasCheckConstraint("ck_event_locations_physical_or_tba", "(location_id IS NOT NULL AND is_to_be_announced = false) OR (location_id IS NULL AND is_to_be_announced = true)");
 
@@ -5252,13 +5252,13 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("tenant_id");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_event_location_disclosure_audits");
+                        .HasName("pk_ie_event_location_disclosure_audits");
 
                     b.HasIndex("NewAudienceId")
-                        .HasDatabaseName("ix_islamu_event_event_location_disclosure_audits_new_audience_id");
+                        .HasDatabaseName("ix_ie_event_location_disclosure_audits_new_audience_id");
 
                     b.HasIndex("PreviousAudienceId")
-                        .HasDatabaseName("ix_islamu_event_event_location_disclosure_audits_previous_audience_id");
+                        .HasDatabaseName("ix_ie_event_location_disclosure_audits_previous_audience_id");
 
                     b.HasIndex("TenantId", "EventLocationId", "NewPolicyVersion")
                         .IsUnique()
@@ -5267,7 +5267,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                     b.HasIndex("TenantId", "EventLocationId", "OccurredAtUtc")
                         .HasDatabaseName("ix_event_location_disclosure_audits_history");
 
-                    b.ToTable("islamu_event_event_location_disclosure_audits", null, t =>
+                    b.ToTable("ie_event_location_disclosure_audits", null, t =>
                         {
                             t.HasCheckConstraint("ck_event_location_disclosure_audits_field_flags", "previous_fields BETWEEN 0 AND 127 AND new_fields BETWEEN 0 AND 127");
 
@@ -5317,7 +5317,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("was_authorized");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_event_location_exact_read_audits");
+                        .HasName("pk_ie_event_location_exact_read_audits");
 
                     b.HasIndex("TenantId", "EventLocationId", "OccurredAtUtc")
                         .HasDatabaseName("ix_event_location_exact_read_audits_history");
@@ -5325,7 +5325,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                     b.HasIndex("TenantId", "RequesterUserId", "OccurredAtUtc")
                         .HasDatabaseName("ix_event_location_exact_read_audits_requester");
 
-                    b.ToTable("islamu_event_event_location_exact_read_audits", null, t =>
+                    b.ToTable("ie_event_location_exact_read_audits", null, t =>
                         {
                             t.HasCheckConstraint("ck_event_location_exact_read_audits_purpose", "purpose BETWEEN 1 AND 4");
 
@@ -5396,13 +5396,13 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("tenant_id");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_event_moderation_records");
+                        .HasName("pk_ie_event_moderation_records");
 
                     b.HasAlternateKey("TenantId", "Id")
                         .HasName("ak_event_moderation_records_tenant_id_id");
 
                     b.HasIndex("SourceModerationRecordId")
-                        .HasDatabaseName("ix_islamu_event_event_moderation_records_source_moderation_record_id");
+                        .HasDatabaseName("ix_ie_event_moderation_records_source_moderation_record_id");
 
                     b.HasIndex("TenantId", "CorrelationId")
                         .IsUnique()
@@ -5434,7 +5434,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .IsUnique()
                         .HasDatabaseName("ux_event_moderation_records_exact_receipt_fk");
 
-                    b.ToTable("islamu_event_event_moderation_records", null, t =>
+                    b.ToTable("ie_event_moderation_records", null, t =>
                         {
                             t.HasCheckConstraint("ck_event_moderation_records_correlation_not_blank", "correlation_id IS NULL OR trim(correlation_id) <> ''");
 
@@ -5530,24 +5530,24 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("updated_by");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_event_organizer_claims");
+                        .HasName("pk_ie_event_organizer_claims");
 
                     b.HasAlternateKey("TenantId", "Id")
                         .HasName("ak_event_organizer_claims_tenant_id_id");
 
                     b.HasIndex("ClaimantActorId")
-                        .HasDatabaseName("ix_islamu_event_event_organizer_claims_claimant_actor_id");
+                        .HasDatabaseName("ix_ie_event_organizer_claims_claimant_actor_id");
 
                     b.HasIndex("ReviewerUserId")
-                        .HasDatabaseName("ix_islamu_event_event_organizer_claims_reviewer_user_id");
+                        .HasDatabaseName("ix_ie_event_organizer_claims_reviewer_user_id");
 
                     b.HasIndex("StatusId")
-                        .HasDatabaseName("ix_islamu_event_event_organizer_claims_status_id");
+                        .HasDatabaseName("ix_ie_event_organizer_claims_status_id");
 
                     b.HasIndex("TenantId", "EventId")
-                        .HasDatabaseName("ix_islamu_event_event_organizer_claims_tenant_id_event_id");
+                        .HasDatabaseName("ix_ie_event_organizer_claims_tenant_id_event_id");
 
-                    b.ToTable("islamu_event_event_organizer_claims", (string)null);
+                    b.ToTable("ie_event_organizer_claims", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.EventOrganizerClaimStatus", b =>
@@ -5574,13 +5574,13 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("master_code");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_event_organizer_claim_statuses");
+                        .HasName("pk_ie_event_organizer_claim_statuses");
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
-                        .HasDatabaseName("ix_islamu_event_event_organizer_claim_statuses_master_code");
+                        .HasDatabaseName("ix_ie_event_organizer_claim_statuses_master_code");
 
-                    b.ToTable("islamu_event_event_organizer_claim_statuses", (string)null);
+                    b.ToTable("ie_event_organizer_claim_statuses", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.EventParticipationConfiguration", b =>
@@ -5645,21 +5645,21 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("updated_by");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_event_participation_configurations");
+                        .HasName("pk_ie_event_participation_configurations");
 
                     b.HasAlternateKey("TenantId", "Id")
                         .HasName("ak_event_participation_configurations_tenant_id_id");
 
                     b.HasIndex("AdvanceRegistrationObligationId")
-                        .HasDatabaseName("ix_islamu_event_event_participation_configurations_advance_registration_obligation_id");
+                        .HasDatabaseName("ix_ie_event_participation_configurations_advance_registration_obligation_id");
 
                     b.HasIndex("IdentityAccessModeId")
-                        .HasDatabaseName("ix_islamu_event_event_participation_configurations_identity_access_mode_id");
+                        .HasDatabaseName("ix_ie_event_participation_configurations_identity_access_mode_id");
 
                     b.HasIndex("ParticipationHandlingModeId")
-                        .HasDatabaseName("ix_islamu_event_event_participation_configurations_participation_handling_mode_id");
+                        .HasDatabaseName("ix_ie_event_participation_configurations_participation_handling_mode_id");
 
-                    b.ToTable("islamu_event_event_participation_configurations", (string)null);
+                    b.ToTable("ie_event_participation_configurations", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.EventProvenanceType", b =>
@@ -5686,13 +5686,13 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("master_code");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_event_provenance_types");
+                        .HasName("pk_ie_event_provenance_types");
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
-                        .HasDatabaseName("ix_islamu_event_event_provenance_types_master_code");
+                        .HasDatabaseName("ix_ie_event_provenance_types_master_code");
 
-                    b.ToTable("islamu_event_event_provenance_types", (string)null);
+                    b.ToTable("ie_event_provenance_types", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.EventPublicAction", b =>
@@ -5779,21 +5779,21 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("url");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_event_public_actions");
+                        .HasName("pk_ie_event_public_actions");
 
                     b.HasAlternateKey("TenantId", "Id")
                         .HasName("ak_event_public_actions_tenant_id_id");
 
                     b.HasIndex("EventPublicActionKindId")
-                        .HasDatabaseName("ix_islamu_event_event_public_actions_event_public_action_kind_id");
+                        .HasDatabaseName("ix_ie_event_public_actions_event_public_action_kind_id");
 
                     b.HasIndex("HealthStateId")
-                        .HasDatabaseName("ix_islamu_event_event_public_actions_health_state_id");
+                        .HasDatabaseName("ix_ie_event_public_actions_health_state_id");
 
                     b.HasIndex("TenantId", "EventId")
                         .HasDatabaseName("ix_event_public_actions_tenant_event");
 
-                    b.ToTable("islamu_event_event_public_actions", (string)null);
+                    b.ToTable("ie_event_public_actions", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.EventPublicActionHealthState", b =>
@@ -5820,13 +5820,13 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("master_code");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_event_public_action_health_states");
+                        .HasName("pk_ie_event_public_action_health_states");
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
-                        .HasDatabaseName("ix_islamu_event_event_public_action_health_states_master_code");
+                        .HasDatabaseName("ix_ie_event_public_action_health_states_master_code");
 
-                    b.ToTable("islamu_event_event_public_action_health_states", (string)null);
+                    b.ToTable("ie_event_public_action_health_states", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.EventPublicActionKind", b =>
@@ -5853,13 +5853,13 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("master_code");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_event_public_action_kinds");
+                        .HasName("pk_ie_event_public_action_kinds");
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
-                        .HasDatabaseName("ix_islamu_event_event_public_action_kinds_master_code");
+                        .HasDatabaseName("ix_ie_event_public_action_kinds_master_code");
 
-                    b.ToTable("islamu_event_event_public_action_kinds", (string)null);
+                    b.ToTable("ie_event_public_action_kinds", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.EventRegistration", b =>
@@ -5953,19 +5953,19 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("updated_by");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_event_registrations");
+                        .HasName("pk_ie_event_registrations");
 
                     b.HasIndex("ApprovalStatusId")
-                        .HasDatabaseName("ix_islamu_event_event_registrations_approval_status_id");
+                        .HasDatabaseName("ix_ie_event_registrations_approval_status_id");
 
                     b.HasIndex("AtprotoRecordId")
-                        .HasDatabaseName("ix_islamu_event_event_registrations_atproto_record_id");
+                        .HasDatabaseName("ix_ie_event_registrations_atproto_record_id");
 
                     b.HasIndex("LinkedUserId")
                         .HasDatabaseName("ix_eventregistrations_user");
 
                     b.HasIndex("TenantId", "TicketTypeEntitlementId")
-                        .HasDatabaseName("ix_islamu_event_event_registrations_tenant_id_ticket_type_entitlement_id");
+                        .HasDatabaseName("ix_ie_event_registrations_tenant_id_ticket_type_entitlement_id");
 
                     b.HasIndex("TenantId", "EventSessionId", "RegistrationParticipantId")
                         .IsUnique()
@@ -5973,7 +5973,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasFilter("is_deleted = false");
 
                     b.HasIndex("TenantId", "RegistrationOrderId", "RegistrationParticipantId")
-                        .HasDatabaseName("ix_islamu_event_event_registrations_tenant_id_registration_order_id_registration_participant_id");
+                        .HasDatabaseName("ix_ie_event_registrations_tenant_id_registration_order_id_registration_participant_id");
 
                     b.HasIndex("TenantId", "EventId", "EventSessionId", "LinkedUserId")
                         .HasDatabaseName("ix_eventregistrations_session_user")
@@ -5984,7 +5984,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasDatabaseName("ix_eventregistrations_order_admission")
                         .HasFilter("registration_order_line_id IS NOT NULL AND ticket_type_entitlement_id IS NOT NULL AND entitlement_ordinal IS NOT NULL AND is_deleted = false");
 
-                    b.ToTable("islamu_event_event_registrations", (string)null);
+                    b.ToTable("ie_event_registrations", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.EventRegistrationPolicy", b =>
@@ -6011,13 +6011,13 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("master_code");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_event_registration_policies");
+                        .HasName("pk_ie_event_registration_policies");
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
                         .HasDatabaseName("ix_event_registration_policies_master_code");
 
-                    b.ToTable("islamu_event_event_registration_policies", (string)null);
+                    b.ToTable("ie_event_registration_policies", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.EventReport", b =>
@@ -6141,7 +6141,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("updated_by");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_event_reports");
+                        .HasName("pk_ie_event_reports");
 
                     b.HasAlternateKey("TenantId", "Id")
                         .HasName("ak_event_reports_tenant_id_id");
@@ -6150,10 +6150,10 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasName("ak_event_reports_tenant_id_event_id_id");
 
                     b.HasIndex("ReporterActorId")
-                        .HasDatabaseName("ix_islamu_event_event_reports_reporter_actor_id");
+                        .HasDatabaseName("ix_ie_event_reports_reporter_actor_id");
 
                     b.HasIndex("ReporterUserId")
-                        .HasDatabaseName("ix_islamu_event_event_reports_reporter_user_id");
+                        .HasDatabaseName("ix_ie_event_reports_reporter_user_id");
 
                     b.HasIndex("TenantId", "DuplicateGroupId")
                         .HasDatabaseName("ix_event_reports_tenant_duplicate_group")
@@ -6172,7 +6172,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasDatabaseName("ix_event_reports_tenant_reporter_event_reason_created")
                         .HasFilter("reporter_user_id IS NOT NULL");
 
-                    b.ToTable("islamu_event_event_reports", null, t =>
+                    b.ToTable("ie_event_reports", null, t =>
                         {
                             t.HasCheckConstraint("ck_event_reports_closed_at_terminal_status", "(closed_at IS NULL AND status NOT IN (4, 5, 6, 8)) OR (closed_at IS NOT NULL AND status IN (4, 5, 6, 8))");
 
@@ -6260,7 +6260,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("updated_by");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_event_report_cases");
+                        .HasName("pk_ie_event_report_cases");
 
                     b.HasAlternateKey("TenantId", "Id")
                         .HasName("ak_event_report_cases_tenant_id_id");
@@ -6269,7 +6269,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasName("ak_event_report_cases_tenant_id_report_id_id");
 
                     b.HasIndex("AssignedModeratorUserId")
-                        .HasDatabaseName("ix_islamu_event_event_report_cases_assigned_moderator_user_id");
+                        .HasDatabaseName("ix_ie_event_report_cases_assigned_moderator_user_id");
 
                     b.HasIndex("TenantId", "SlaDueAt")
                         .HasDatabaseName("ix_event_report_cases_tenant_sla_due_at")
@@ -6288,7 +6288,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .IsDescending(false, false, false, false, true)
                         .HasDatabaseName("ix_event_report_cases_tenant_queue_status_priority_created");
 
-                    b.ToTable("islamu_event_event_report_cases", null, t =>
+                    b.ToTable("ie_event_report_cases", null, t =>
                         {
                             t.HasCheckConstraint("ck_event_report_cases_priority", "priority BETWEEN 1 AND 4");
 
@@ -6376,7 +6376,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("updated_by");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_event_report_decisions");
+                        .HasName("pk_ie_event_report_decisions");
 
                     b.HasAlternateKey("TenantId", "ReportId", "Id")
                         .HasName("ak_event_report_decisions_tenant_id_report_id_id");
@@ -6385,7 +6385,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasName("ak_event_report_decisions_tenant_report_case_id");
 
                     b.HasIndex("ModeratorUserId")
-                        .HasDatabaseName("ix_islamu_event_event_report_decisions_moderator_user_id");
+                        .HasDatabaseName("ix_ie_event_report_decisions_moderator_user_id");
 
                     b.HasIndex("TenantId", "CaseId", "CreatedAt")
                         .IsDescending(false, false, true)
@@ -6400,7 +6400,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasDatabaseName("ux_event_report_decisions_tenant_source_target_external")
                         .HasFilter("external_decision_id IS NOT NULL");
 
-                    b.ToTable("islamu_event_event_report_decisions", null, t =>
+                    b.ToTable("ie_event_report_decisions", null, t =>
                         {
                             t.HasCheckConstraint("ck_event_report_decisions_duplicate_group_shape", "(decision_kind = 2 AND duplicate_group_id IS NOT NULL) OR (decision_kind <> 2 AND duplicate_group_id IS NULL)");
 
@@ -6500,7 +6500,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("version");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_event_report_decision_executions");
+                        .HasName("pk_ie_event_report_decision_executions");
 
                     b.HasAlternateKey("TenantId", "Id")
                         .HasName("ak_event_report_decision_executions_tenant_id_id");
@@ -6510,7 +6510,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasDatabaseName("ux_event_report_decision_executions_tenant_decision");
 
                     b.HasIndex("TenantId", "ModerationRecordId")
-                        .HasDatabaseName("ix_islamu_event_event_report_decision_executions_tenant_id_moderation_record_id");
+                        .HasDatabaseName("ix_ie_event_report_decision_executions_tenant_id_moderation_record_id");
 
                     b.HasIndex("State", "ProcessingLeaseExpiresAtUtc", "CreatedAt")
                         .HasDatabaseName("ix_event_report_decision_executions_runnable");
@@ -6519,7 +6519,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .IsUnique()
                         .HasDatabaseName("ux_event_report_decision_executions_tenant_report_decision");
 
-                    b.ToTable("islamu_event_event_report_decision_executions", null, t =>
+                    b.ToTable("ie_event_report_decision_executions", null, t =>
                         {
                             t.HasCheckConstraint("ck_event_report_decision_executions_failure_code_not_blank", "last_failure_code IS NULL OR trim(last_failure_code) <> ''");
 
@@ -6598,10 +6598,10 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("updated_by");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_event_report_evidence");
+                        .HasName("pk_ie_event_report_evidence");
 
                     b.HasIndex("CreatedByUserId")
-                        .HasDatabaseName("ix_islamu_event_event_report_evidence_created_by_user_id");
+                        .HasDatabaseName("ix_ie_event_report_evidence_created_by_user_id");
 
                     b.HasIndex("TenantId", "ContentHash")
                         .HasDatabaseName("ix_event_report_evidence_tenant_content_hash")
@@ -6612,13 +6612,13 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasFilter("retention_until IS NOT NULL");
 
                     b.HasIndex("TenantId", "StorageObjectId")
-                        .HasDatabaseName("ix_islamu_event_event_report_evidence_tenant_id_storage_object_id");
+                        .HasDatabaseName("ix_ie_event_report_evidence_tenant_id_storage_object_id");
 
                     b.HasIndex("TenantId", "ReportId", "EvidenceKind", "CreatedAt")
                         .IsDescending(false, false, false, true)
                         .HasDatabaseName("ix_event_report_evidence_tenant_report_kind_created");
 
-                    b.ToTable("islamu_event_event_report_evidence", null, t =>
+                    b.ToTable("ie_event_report_evidence", null, t =>
                         {
                             t.HasCheckConstraint("ck_event_report_evidence_classification", "classification BETWEEN 1 AND 3");
 
@@ -6718,10 +6718,10 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("updated_by");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_event_report_external_links");
+                        .HasName("pk_ie_event_report_external_links");
 
                     b.HasIndex("TenantId", "ReportId", "CaseId")
-                        .HasDatabaseName("ix_islamu_event_event_report_external_links_tenant_id_report_id_case_id");
+                        .HasDatabaseName("ix_ie_event_report_external_links_tenant_id_report_id_case_id");
 
                     b.HasIndex("TenantId", "Provider", "ProviderTargetScope", "ProviderTargetId", "CorrelationId")
                         .IsUnique()
@@ -6741,7 +6741,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .IsDescending(false, false, false, false, false, true)
                         .HasDatabaseName("ix_event_report_external_links_tenant_provider_target_state_created");
 
-                    b.ToTable("islamu_event_event_report_external_links", null, t =>
+                    b.ToTable("ie_event_report_external_links", null, t =>
                         {
                             t.HasCheckConstraint("ck_event_report_external_links_correlation_id_not_blank", "trim(correlation_id) <> ''");
 
@@ -6856,10 +6856,10 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("verdict");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_event_report_signals");
+                        .HasName("pk_ie_event_report_signals");
 
                     b.HasIndex("TenantId", "EventId", "ReportId")
-                        .HasDatabaseName("ix_islamu_event_event_report_signals_tenant_id_event_id_report_id");
+                        .HasDatabaseName("ix_ie_event_report_signals_tenant_id_event_id_report_id");
 
                     b.HasIndex("TenantId", "Provider", "ProviderTargetScope", "ProviderTargetId", "CorrelationId")
                         .IsUnique()
@@ -6879,7 +6879,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasDatabaseName("ix_event_report_signals_tenant_report_provider_target_created")
                         .HasFilter("report_id IS NOT NULL");
 
-                    b.ToTable("islamu_event_event_report_signals", null, t =>
+                    b.ToTable("ie_event_report_signals", null, t =>
                         {
                             t.HasCheckConstraint("ck_event_report_signals_correlation_id_not_blank", "trim(correlation_id) <> ''");
 
@@ -6938,10 +6938,10 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("tenant_id");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_event_report_targets");
+                        .HasName("pk_ie_event_report_targets");
 
                     b.HasIndex("TenantId", "StorageObjectId")
-                        .HasDatabaseName("ix_islamu_event_event_report_targets_tenant_id_storage_object_id");
+                        .HasDatabaseName("ix_ie_event_report_targets_tenant_id_storage_object_id");
 
                     b.HasIndex("TenantId", "TargetKind", "TargetId")
                         .HasDatabaseName("ix_event_report_targets_tenant_target");
@@ -6949,7 +6949,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                     b.HasIndex("TenantId", "ReportId", "TargetKind", "TargetId")
                         .HasDatabaseName("ix_event_report_targets_tenant_report_target");
 
-                    b.ToTable("islamu_event_event_report_targets", null, t =>
+                    b.ToTable("ie_event_report_targets", null, t =>
                         {
                             t.HasCheckConstraint("ck_event_report_targets_field_path_not_blank", "field_path IS NULL OR trim(field_path) <> ''");
 
@@ -7022,13 +7022,13 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("version");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_event_role_assignments");
+                        .HasName("pk_ie_event_role_assignments");
 
                     b.HasIndex("RoleId")
-                        .HasDatabaseName("ix_islamu_event_event_role_assignments_role_id");
+                        .HasDatabaseName("ix_ie_event_role_assignments_role_id");
 
                     b.HasIndex("UserId")
-                        .HasDatabaseName("ix_islamu_event_event_role_assignments_user_id");
+                        .HasDatabaseName("ix_ie_event_role_assignments_user_id");
 
                     b.HasIndex("TenantId", "EventId", "RoleId", "Status")
                         .HasDatabaseName("ix_event_role_assignments_tenant_event_role_status");
@@ -7044,7 +7044,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                     b.HasIndex("TenantId", "UserId", "EventId", "Status")
                         .HasDatabaseName("ix_event_role_assignments_tenant_user_event_status");
 
-                    b.ToTable("islamu_event_event_role_assignments", null, t =>
+                    b.ToTable("ie_event_role_assignments", null, t =>
                         {
                             t.HasCheckConstraint("ck_event_role_assignments_validity_window", "expires_at_utc IS NULL OR expires_at_utc > starts_at_utc");
                         });
@@ -7139,28 +7139,28 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("visibility_type_id");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_event_series");
+                        .HasName("pk_ie_event_series");
 
                     b.HasIndex("ActorId")
-                        .HasDatabaseName("ix_islamu_event_event_series_actor_id");
+                        .HasDatabaseName("ix_ie_event_series_actor_id");
 
                     b.HasIndex("FeaturedImageId")
-                        .HasDatabaseName("ix_islamu_event_event_series_featured_image_id");
+                        .HasDatabaseName("ix_ie_event_series_featured_image_id");
 
                     b.HasIndex("VisibilityTypeId")
-                        .HasDatabaseName("ix_islamu_event_event_series_visibility_type_id");
+                        .HasDatabaseName("ix_ie_event_series_visibility_type_id");
 
                     b.HasIndex("TenantId", "IsPublished")
-                        .HasDatabaseName("ix_islamu_event_event_series_tenant_id_is_published");
+                        .HasDatabaseName("ix_ie_event_series_tenant_id_is_published");
 
                     b.HasIndex("TenantId", "Slug")
                         .IsUnique()
-                        .HasDatabaseName("ix_islamu_event_event_series_tenant_id_slug");
+                        .HasDatabaseName("ix_ie_event_series_tenant_id_slug");
 
                     b.HasIndex("TenantId", "TotalViews")
-                        .HasDatabaseName("ix_islamu_event_event_series_tenant_id_total_views");
+                        .HasDatabaseName("ix_ie_event_series_tenant_id_total_views");
 
-                    b.ToTable("islamu_event_event_series", (string)null);
+                    b.ToTable("ie_event_series", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.EventSession", b =>
@@ -7329,7 +7329,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("updated_by");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_event_sessions");
+                        .HasName("pk_ie_event_sessions");
 
                     b.HasAlternateKey("TenantId", "Id")
                         .HasName("ak_event_sessions_tenant_id_id");
@@ -7344,16 +7344,16 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasDatabaseName("ix_event_sessions_event_session_status_id");
 
                     b.HasIndex("FeaturedImageId")
-                        .HasDatabaseName("ix_islamu_event_event_sessions_featured_image_id");
+                        .HasDatabaseName("ix_ie_event_sessions_featured_image_id");
 
                     b.HasIndex("RegistrationModeId")
-                        .HasDatabaseName("ix_islamu_event_event_sessions_registration_mode_id");
+                        .HasDatabaseName("ix_ie_event_sessions_registration_mode_id");
 
                     b.HasIndex("TenantId", "EventDayId", "SortOrder")
                         .HasDatabaseName("ix_event_sessions_tenant_day_sort");
 
                     b.HasIndex("TenantId", "EventId", "EventDayId")
-                        .HasDatabaseName("ix_islamu_event_event_sessions_tenant_id_event_id_event_day_id");
+                        .HasDatabaseName("ix_ie_event_sessions_tenant_id_event_id_event_day_id");
 
                     b.HasIndex("TenantId", "EventId", "EventLocationId", "LocationId")
                         .HasDatabaseName("ix_event_sessions_elp_consistency");
@@ -7364,7 +7364,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                     b.HasIndex("TenantId", "LocationId", "RoomId", "StartTime", "EndTime")
                         .HasDatabaseName("ix_event_sessions_tenant_location_room_time");
 
-                    b.ToTable("islamu_event_event_sessions", null, t =>
+                    b.ToTable("ie_event_sessions", null, t =>
                         {
                             t.HasCheckConstraint("CK_EventSession_EndAfterStart", "end_time IS NULL OR start_time IS NULL OR end_time > start_time");
 
@@ -7423,18 +7423,18 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("title");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_event_session_agenda_items");
+                        .HasName("pk_ie_event_session_agenda_items");
 
                     b.HasIndex("TenantId", "EventLocationId")
-                        .HasDatabaseName("ix_islamu_event_event_session_agenda_items_tenant_id_event_location_id");
+                        .HasDatabaseName("ix_ie_event_session_agenda_items_tenant_id_event_location_id");
 
                     b.HasIndex("TenantId", "LocationId")
-                        .HasDatabaseName("ix_islamu_event_event_session_agenda_items_tenant_id_location_id");
+                        .HasDatabaseName("ix_ie_event_session_agenda_items_tenant_id_location_id");
 
                     b.HasIndex("TenantId", "EventSessionId", "EventLocationId", "LocationId")
                         .HasDatabaseName("ix_event_session_agenda_items_elp_consistency");
 
-                    b.ToTable("islamu_event_event_session_agenda_items", (string)null);
+                    b.ToTable("ie_event_session_agenda_items", (string)null);
 
                     b.HasAnnotation("EventLocationPrivacy:ConsistencyTrigger", "event_session_agenda_items:tenant_id,event_session_id,event_location_id,location_id");
                 });
@@ -7475,16 +7475,16 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("updated_by");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_event_session_categories");
+                        .HasName("pk_ie_event_session_categories");
 
                     b.HasIndex("TenantId", "CategoryId")
-                        .HasDatabaseName("ix_islamu_event_event_session_categories_tenant_id_category_id");
+                        .HasDatabaseName("ix_ie_event_session_categories_tenant_id_category_id");
 
                     b.HasIndex("TenantId", "EventSessionId", "CategoryId")
                         .IsUnique()
                         .HasDatabaseName("ix_event_session_categories_tenant_session_category");
 
-                    b.ToTable("islamu_event_event_session_categories", (string)null);
+                    b.ToTable("ie_event_session_categories", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.EventSessionCustomPropertyDefinition", b =>
@@ -7694,13 +7694,13 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("updated_by");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_event_session_custom_property_definitions");
+                        .HasName("pk_ie_event_session_custom_property_definitions");
 
                     b.HasIndex("DefaultOptionId")
-                        .HasDatabaseName("ix_islamu_event_event_session_custom_property_definitions_default_option_id");
+                        .HasDatabaseName("ix_ie_event_session_custom_property_definitions_default_option_id");
 
                     b.HasIndex("SourceTemplateId")
-                        .HasDatabaseName("ix_islamu_event_event_session_custom_property_definitions_source_template_id");
+                        .HasDatabaseName("ix_ie_event_session_custom_property_definitions_source_template_id");
 
                     b.HasIndex("EventSessionId", "Namespace", "Key")
                         .IsUnique()
@@ -7709,7 +7709,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                     b.HasIndex("TenantId", "EventSessionId", "IsSearchable", "IsFilterable")
                         .HasDatabaseName("ix_escpd_tenant_session_search_filter");
 
-                    b.ToTable("islamu_event_event_session_custom_property_definitions", (string)null);
+                    b.ToTable("ie_event_session_custom_property_definitions", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.EventSessionCustomPropertyOption", b =>
@@ -7810,10 +7810,10 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("value");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_event_session_custom_property_options");
+                        .HasName("pk_ie_event_session_custom_property_options");
 
                     b.HasIndex("ParentOptionId")
-                        .HasDatabaseName("ix_islamu_event_event_session_custom_property_options_parent_option_id");
+                        .HasDatabaseName("ix_ie_event_session_custom_property_options_parent_option_id");
 
                     b.HasIndex("EventSessionCustomPropertyDefinitionId", "SortOrder")
                         .HasDatabaseName("ix_escpo_definition_sort");
@@ -7822,7 +7822,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_escpo_definition_namespace_key");
 
-                    b.ToTable("islamu_event_event_session_custom_property_options", (string)null);
+                    b.ToTable("ie_event_session_custom_property_options", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.EventSessionCustomPropertyProjection", b =>
@@ -7930,20 +7930,20 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("updated_at");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_event_session_custom_property_projections");
+                        .HasName("pk_ie_event_session_custom_property_projections");
 
                     b.HasIndex("EventSessionCustomPropertyDefinitionId")
-                        .HasDatabaseName("ix_islamu_event_event_session_custom_property_projections_event_session_custom_property_definition_id");
+                        .HasDatabaseName("ix_ie_event_session_custom_property_projections_event_session_custom_property_definition_id");
 
                     b.HasIndex("EventSessionCustomPropertyValueId")
                         .IsUnique()
                         .HasDatabaseName("ix_escpp_value");
 
                     b.HasIndex("EventSessionId")
-                        .HasDatabaseName("ix_islamu_event_event_session_custom_property_projections_event_session_id");
+                        .HasDatabaseName("ix_ie_event_session_custom_property_projections_event_session_id");
 
                     b.HasIndex("OptionId")
-                        .HasDatabaseName("ix_islamu_event_event_session_custom_property_projections_option_id");
+                        .HasDatabaseName("ix_ie_event_session_custom_property_projections_option_id");
 
                     b.HasIndex("TenantId", "ExposureLevel")
                         .HasDatabaseName("ix_escpp_tenant_exposure");
@@ -7954,7 +7954,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                     b.HasIndex("TenantId", "EventSessionId", "Namespace", "Key", "Ordinal")
                         .HasDatabaseName("ix_escpp_tenant_session_namespace_key_ordinal");
 
-                    b.ToTable("islamu_event_event_session_custom_property_projections", (string)null);
+                    b.ToTable("ie_event_session_custom_property_projections", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.EventSessionCustomPropertyValue", b =>
@@ -8038,13 +8038,13 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("updated_by");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_event_session_custom_property_values");
+                        .HasName("pk_ie_event_session_custom_property_values");
 
                     b.HasIndex("EventSessionId")
-                        .HasDatabaseName("ix_islamu_event_event_session_custom_property_values_event_session_id");
+                        .HasDatabaseName("ix_ie_event_session_custom_property_values_event_session_id");
 
                     b.HasIndex("OptionId")
-                        .HasDatabaseName("ix_islamu_event_event_session_custom_property_values_option_id");
+                        .HasDatabaseName("ix_ie_event_session_custom_property_values_option_id");
 
                     b.HasIndex("TenantId", "EventSessionId")
                         .HasDatabaseName("ix_escpv_tenant_session");
@@ -8053,7 +8053,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_escpv_definition_session_ordinal");
 
-                    b.ToTable("islamu_event_event_session_custom_property_values", (string)null);
+                    b.ToTable("ie_event_session_custom_property_values", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.EventSessionGroup", b =>
@@ -8146,7 +8146,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("updated_by");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_event_session_groups");
+                        .HasName("pk_ie_event_session_groups");
 
                     b.HasAlternateKey("TenantId", "Id")
                         .HasName("ak_event_session_groups_tenant_id_id");
@@ -8163,12 +8163,12 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasDatabaseName("ix_event_session_groups_tenant_event_sort");
 
                     b.HasIndex("TenantId", "LocationId", "RoomId")
-                        .HasDatabaseName("ix_islamu_event_event_session_groups_tenant_id_location_id_room_id");
+                        .HasDatabaseName("ix_ie_event_session_groups_tenant_id_location_id_room_id");
 
                     b.HasIndex("TenantId", "EventId", "EventLocationId", "LocationId")
                         .HasDatabaseName("ix_event_session_groups_elp_consistency");
 
-                    b.ToTable("islamu_event_event_session_groups", null, t =>
+                    b.ToTable("ie_event_session_groups", null, t =>
                         {
                             t.HasCheckConstraint("CK_EventSessionGroup_RoomRequiresLocation", "room_id IS NULL OR location_id IS NOT NULL");
                         });
@@ -8238,7 +8238,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("updated_by");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_event_session_group_sessions");
+                        .HasName("pk_ie_event_session_group_sessions");
 
                     b.HasIndex("TenantId", "EventSessionGroupId", "SortOrder")
                         .HasDatabaseName("ix_event_session_group_sessions_tenant_group_sort");
@@ -8253,7 +8253,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasDatabaseName("ix_event_session_group_sessions_tenant_event_session_primary")
                         .HasFilter("is_primary = true AND is_deleted = false");
 
-                    b.ToTable("islamu_event_event_session_group_sessions", (string)null);
+                    b.ToTable("ie_event_session_group_sessions", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.EventSessionIslamicAspect", b =>
@@ -8293,9 +8293,9 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("start_time_type");
 
                     b.HasKey("EventSessionId")
-                        .HasName("pk_islamu_event_event_session_islamic_aspects");
+                        .HasName("pk_ie_event_session_islamic_aspects");
 
-                    b.ToTable("islamu_event_event_session_islamic_aspects", null, t =>
+                    b.ToTable("ie_event_session_islamic_aspects", null, t =>
                         {
                             t.HasCheckConstraint("CK_EventSessionIslamicAspect_EndOffsetRange", "end_offset_minutes IS NULL OR end_offset_minutes BETWEEN -180 AND 180");
 
@@ -8335,13 +8335,13 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("master_code");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_event_session_kinds");
+                        .HasName("pk_ie_event_session_kinds");
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
                         .HasDatabaseName("ix_event_session_kinds_master_code");
 
-                    b.ToTable("islamu_event_event_session_kinds", (string)null);
+                    b.ToTable("ie_event_session_kinds", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.EventSessionLanguage", b =>
@@ -8369,16 +8369,16 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("tenant_id");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_event_session_languages");
+                        .HasName("pk_ie_event_session_languages");
 
                     b.HasIndex("LanguageId")
-                        .HasDatabaseName("ix_islamu_event_event_session_languages_language_id");
+                        .HasDatabaseName("ix_ie_event_session_languages_language_id");
 
                     b.HasIndex("TenantId", "EventSessionId", "LanguageId")
                         .IsUnique()
                         .HasDatabaseName("ix_eventsessionlanguages_session_language");
 
-                    b.ToTable("islamu_event_event_session_languages", (string)null);
+                    b.ToTable("ie_event_session_languages", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.EventSessionSpeaker", b =>
@@ -8406,16 +8406,16 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("tenant_id");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_event_session_speakers");
+                        .HasName("pk_ie_event_session_speakers");
 
                     b.HasIndex("ActorId")
-                        .HasDatabaseName("ix_islamu_event_event_session_speakers_actor_id");
+                        .HasDatabaseName("ix_ie_event_session_speakers_actor_id");
 
                     b.HasIndex("TenantId", "EventSessionId", "ActorId")
                         .IsUnique()
                         .HasDatabaseName("ix_event_session_speakers_tenant_session_actor");
 
-                    b.ToTable("islamu_event_event_session_speakers", (string)null);
+                    b.ToTable("ie_event_session_speakers", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.EventSessionStatus", b =>
@@ -8442,9 +8442,9 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("master_code");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_event_session_statuses");
+                        .HasName("pk_ie_event_session_statuses");
 
-                    b.ToTable("islamu_event_event_session_statuses", (string)null);
+                    b.ToTable("ie_event_session_statuses", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.EventSessionTag", b =>
@@ -8483,16 +8483,16 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("updated_by");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_event_session_tags");
+                        .HasName("pk_ie_event_session_tags");
 
                     b.HasIndex("TenantId", "TagId")
-                        .HasDatabaseName("ix_islamu_event_event_session_tags_tenant_id_tag_id");
+                        .HasDatabaseName("ix_ie_event_session_tags_tenant_id_tag_id");
 
                     b.HasIndex("TenantId", "EventSessionId", "TagId")
                         .IsUnique()
                         .HasDatabaseName("ix_event_session_tags_tenant_session_tag");
 
-                    b.ToTable("islamu_event_event_session_tags", (string)null);
+                    b.ToTable("ie_event_session_tags", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.EventSessionTemplate", b =>
@@ -8577,7 +8577,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("version");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_event_session_templates");
+                        .HasName("pk_ie_event_session_templates");
 
                     b.HasIndex("EventTemplateId", "SessionTemplateKey", "Version")
                         .IsUnique()
@@ -8586,7 +8586,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                     b.HasIndex("TenantId", "IsPublished", "IsActive")
                         .HasDatabaseName("ix_est_tenant_published_active");
 
-                    b.ToTable("islamu_event_event_session_templates", (string)null);
+                    b.ToTable("ie_event_session_templates", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.EventSessionTemplateCustomPropertyDefinition", b =>
@@ -8771,10 +8771,10 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("updated_by");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_event_session_template_custom_property_definitions");
+                        .HasName("pk_ie_event_session_template_custom_property_definitions");
 
                     b.HasIndex("DefaultOptionId")
-                        .HasDatabaseName("ix_islamu_event_event_session_template_custom_property_definitions_default_option_id");
+                        .HasDatabaseName("ix_ie_event_session_template_custom_property_definitions_default_option_id");
 
                     b.HasIndex("EventSessionTemplateId", "Namespace", "Key")
                         .IsUnique()
@@ -8783,7 +8783,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                     b.HasIndex("TenantId", "IsSearchable", "IsFilterable")
                         .HasDatabaseName("ix_estcpd_tenant_search_filter");
 
-                    b.ToTable("islamu_event_event_session_template_custom_property_definitions", (string)null);
+                    b.ToTable("ie_event_session_template_custom_property_definitions", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.EventSessionTemplateCustomPropertyOption", b =>
@@ -8876,10 +8876,10 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("value");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_event_session_template_custom_property_options");
+                        .HasName("pk_ie_event_session_template_custom_property_options");
 
                     b.HasIndex("ParentOptionId")
-                        .HasDatabaseName("ix_islamu_event_event_session_template_custom_property_options_parent_option_id");
+                        .HasDatabaseName("ix_ie_event_session_template_custom_property_options_parent_option_id");
 
                     b.HasIndex("EventSessionTemplateCustomPropertyDefinitionId", "SortOrder")
                         .HasDatabaseName("ix_estcpo_definition_sort");
@@ -8888,7 +8888,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_estcpo_definition_namespace_key");
 
-                    b.ToTable("islamu_event_event_session_template_custom_property_options", (string)null);
+                    b.ToTable("ie_event_session_template_custom_property_options", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.EventStatus", b =>
@@ -8915,9 +8915,9 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("master_code");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_event_statuses");
+                        .HasName("pk_ie_event_statuses");
 
-                    b.ToTable("islamu_event_event_statuses", (string)null);
+                    b.ToTable("ie_event_statuses", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.EventTags", b =>
@@ -8961,16 +8961,16 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("updated_by");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_event_tags");
+                        .HasName("pk_ie_event_tags");
 
                     b.HasIndex("TenantId", "TagId")
-                        .HasDatabaseName("ix_islamu_event_event_tags_tenant_id_tag_id");
+                        .HasDatabaseName("ix_ie_event_tags_tenant_id_tag_id");
 
                     b.HasIndex("TenantId", "EventId", "TagId")
                         .IsUnique()
                         .HasDatabaseName("ix_event_tags_tenant_event_tag");
 
-                    b.ToTable("islamu_event_event_tags", (string)null);
+                    b.ToTable("ie_event_tags", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.EventTechAspect", b =>
@@ -9027,9 +9027,9 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("tech_stack_tags");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_event_tech_aspects");
+                        .HasName("pk_ie_event_tech_aspects");
 
-                    b.ToTable("islamu_event_event_tech_aspects", (string)null);
+                    b.ToTable("ie_event_tech_aspects", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.EventTemplate", b =>
@@ -9114,10 +9114,10 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("version");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_event_templates");
+                        .HasName("pk_ie_event_templates");
 
                     b.HasIndex("EventTypeId")
-                        .HasDatabaseName("ix_islamu_event_event_templates_event_type_id");
+                        .HasDatabaseName("ix_ie_event_templates_event_type_id");
 
                     b.HasIndex("TenantId", "IsPublished", "IsActive")
                         .HasDatabaseName("ix_event_templates_tenant_published_active");
@@ -9126,7 +9126,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_event_templates_tenant_key_version");
 
-                    b.ToTable("islamu_event_event_templates", (string)null);
+                    b.ToTable("ie_event_templates", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.EventTemplateCustomPropertyDefinition", b =>
@@ -9311,10 +9311,10 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("updated_by");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_event_template_custom_property_definitions");
+                        .HasName("pk_ie_event_template_custom_property_definitions");
 
                     b.HasIndex("DefaultOptionId")
-                        .HasDatabaseName("ix_islamu_event_event_template_custom_property_definitions_default_option_id");
+                        .HasDatabaseName("ix_ie_event_template_custom_property_definitions_default_option_id");
 
                     b.HasIndex("EventTemplateId", "Namespace", "Key")
                         .IsUnique()
@@ -9323,7 +9323,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                     b.HasIndex("TenantId", "IsSearchable", "IsFilterable")
                         .HasDatabaseName("ix_etcpd_tenant_search_filter");
 
-                    b.ToTable("islamu_event_event_template_custom_property_definitions", (string)null);
+                    b.ToTable("ie_event_template_custom_property_definitions", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.EventTemplateCustomPropertyOption", b =>
@@ -9416,10 +9416,10 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("value");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_event_template_custom_property_options");
+                        .HasName("pk_ie_event_template_custom_property_options");
 
                     b.HasIndex("ParentOptionId")
-                        .HasDatabaseName("ix_islamu_event_event_template_custom_property_options_parent_option_id");
+                        .HasDatabaseName("ix_ie_event_template_custom_property_options_parent_option_id");
 
                     b.HasIndex("EventTemplateCustomPropertyDefinitionId", "SortOrder")
                         .HasDatabaseName("ix_etcpo_definition_sort");
@@ -9428,7 +9428,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_etcpo_definition_namespace_key");
 
-                    b.ToTable("islamu_event_event_template_custom_property_options", (string)null);
+                    b.ToTable("ie_event_template_custom_property_options", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.EventTicketCatalogVersion", b =>
@@ -9495,25 +9495,25 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("version_number");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_event_ticket_catalog_versions");
+                        .HasName("pk_ie_event_ticket_catalog_versions");
 
                     b.HasAlternateKey("TenantId", "Id")
                         .HasName("ak_event_ticket_catalog_versions_tenant_id_id");
 
                     b.HasIndex("TicketCatalogStatusId")
-                        .HasDatabaseName("ix_islamu_event_event_ticket_catalog_versions_ticket_catalog_status_id");
+                        .HasDatabaseName("ix_ie_event_ticket_catalog_versions_ticket_catalog_status_id");
 
                     b.HasIndex("TenantId", "EventId")
                         .IsUnique()
-                        .HasDatabaseName("ix_islamu_event_event_ticket_catalog_versions_tenant_id_event_id")
+                        .HasDatabaseName("ix_ie_event_ticket_catalog_versions_tenant_id_event_id")
                         .HasFilter("ticket_catalog_status_id = 2 AND is_deleted = false");
 
                     b.HasIndex("TenantId", "EventId", "VersionNumber")
                         .IsUnique()
-                        .HasDatabaseName("ix_islamu_event_event_ticket_catalog_versions_tenant_id_event_id_version_number")
+                        .HasDatabaseName("ix_ie_event_ticket_catalog_versions_tenant_id_event_id_version_number")
                         .HasFilter("is_deleted = false");
 
-                    b.ToTable("islamu_event_event_ticket_catalog_versions", (string)null);
+                    b.ToTable("ie_event_ticket_catalog_versions", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.EventTicketType", b =>
@@ -9634,24 +9634,24 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("updated_by");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_event_ticket_types");
+                        .HasName("pk_ie_event_ticket_types");
 
                     b.HasAlternateKey("TenantId", "Id")
                         .HasName("ak_event_ticket_types_tenant_id_id");
 
                     b.HasIndex("ParticipantDataCollectionModeId")
-                        .HasDatabaseName("ix_islamu_event_event_ticket_types_participant_data_collection_mode_id");
+                        .HasDatabaseName("ix_ie_event_ticket_types_participant_data_collection_mode_id");
 
                     b.HasIndex("TicketPricingModeId")
-                        .HasDatabaseName("ix_islamu_event_event_ticket_types_ticket_pricing_mode_id");
+                        .HasDatabaseName("ix_ie_event_ticket_types_ticket_pricing_mode_id");
 
                     b.HasIndex("TenantId", "CapacityPoolId")
-                        .HasDatabaseName("ix_islamu_event_event_ticket_types_tenant_id_capacity_pool_id");
+                        .HasDatabaseName("ix_ie_event_ticket_types_tenant_id_capacity_pool_id");
 
                     b.HasIndex("TenantId", "CatalogId")
-                        .HasDatabaseName("ix_islamu_event_event_ticket_types_tenant_id_catalog_id");
+                        .HasDatabaseName("ix_ie_event_ticket_types_tenant_id_catalog_id");
 
-                    b.ToTable("islamu_event_event_ticket_types", (string)null);
+                    b.ToTable("ie_event_ticket_types", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.EventType", b =>
@@ -9683,7 +9683,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("tenant_id");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_event_types");
+                        .HasName("pk_ie_event_types");
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
@@ -9695,7 +9695,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasDatabaseName("ix_event_types_tenant_master_code")
                         .HasFilter("tenant_id IS NOT NULL");
 
-                    b.ToTable("islamu_event_event_types", (string)null);
+                    b.ToTable("ie_event_types", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.ExternalActorSubject", b =>
@@ -9747,9 +9747,9 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("updated_by");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_external_actor_subjects");
+                        .HasName("pk_ie_external_actor_subjects");
 
-                    b.ToTable("islamu_event_external_actor_subjects", (string)null);
+                    b.ToTable("ie_external_actor_subjects", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.ExternalApiKey", b =>
@@ -9850,28 +9850,28 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("updated_by");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_external_api_keys");
+                        .HasName("pk_ie_external_api_keys");
 
                     b.HasIndex("ExternalApiKeyCreditPeriodId")
-                        .HasDatabaseName("ix_islamu_event_external_api_keys_external_api_key_credit_period_id");
+                        .HasDatabaseName("ix_ie_external_api_keys_external_api_key_credit_period_id");
 
                     b.HasIndex("ExternalApiKeyOwnerTypeId")
-                        .HasDatabaseName("ix_islamu_event_external_api_keys_external_api_key_owner_type_id");
+                        .HasDatabaseName("ix_ie_external_api_keys_external_api_key_owner_type_id");
 
                     b.HasIndex("ExternalApiKeyStatusId")
-                        .HasDatabaseName("ix_islamu_event_external_api_keys_external_api_key_status_id");
+                        .HasDatabaseName("ix_ie_external_api_keys_external_api_key_status_id");
 
                     b.HasIndex("KeyId")
                         .IsUnique()
-                        .HasDatabaseName("ix_islamu_event_external_api_keys_key_id");
+                        .HasDatabaseName("ix_ie_external_api_keys_key_id");
 
                     b.HasIndex("TenantId", "ExternalApiKeyStatusId")
-                        .HasDatabaseName("ix_islamu_event_external_api_keys_tenant_id_external_api_key_status_id");
+                        .HasDatabaseName("ix_ie_external_api_keys_tenant_id_external_api_key_status_id");
 
                     b.HasIndex("TenantId", "ExternalApiKeyOwnerTypeId", "OwnerId")
-                        .HasDatabaseName("ix_islamu_event_external_api_keys_tenant_id_external_api_key_owner_type_id_owner_id");
+                        .HasDatabaseName("ix_ie_external_api_keys_tenant_id_external_api_key_owner_type_id_owner_id");
 
-                    b.ToTable("islamu_event_external_api_keys", (string)null);
+                    b.ToTable("ie_external_api_keys", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.ExternalApiKeyCreditPeriod", b =>
@@ -9898,9 +9898,9 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("master_code");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_external_api_key_credit_periods");
+                        .HasName("pk_ie_external_api_key_credit_periods");
 
-                    b.ToTable("islamu_event_external_api_key_credit_periods", (string)null);
+                    b.ToTable("ie_external_api_key_credit_periods", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.ExternalApiKeyOwnerTypeLookup", b =>
@@ -9927,13 +9927,13 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("master_code");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_external_api_key_owner_types");
+                        .HasName("pk_ie_external_api_key_owner_types");
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
-                        .HasDatabaseName("ix_islamu_event_external_api_key_owner_types_master_code");
+                        .HasDatabaseName("ix_ie_external_api_key_owner_types_master_code");
 
-                    b.ToTable("islamu_event_external_api_key_owner_types", (string)null);
+                    b.ToTable("ie_external_api_key_owner_types", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.ExternalApiKeyQuota", b =>
@@ -9988,13 +9988,13 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("updated_by");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_external_api_key_quotas");
+                        .HasName("pk_ie_external_api_key_quotas");
 
                     b.HasIndex("ExternalApiKeyId", "PeriodStart")
                         .IsUnique()
-                        .HasDatabaseName("ix_islamu_event_external_api_key_quotas_external_api_key_id_period_start");
+                        .HasDatabaseName("ix_ie_external_api_key_quotas_external_api_key_id_period_start");
 
-                    b.ToTable("islamu_event_external_api_key_quotas", (string)null);
+                    b.ToTable("ie_external_api_key_quotas", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.ExternalApiKeyStatus", b =>
@@ -10025,9 +10025,9 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("master_code");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_external_api_key_statuses");
+                        .HasName("pk_ie_external_api_key_statuses");
 
-                    b.ToTable("islamu_event_external_api_key_statuses", (string)null);
+                    b.ToTable("ie_external_api_key_statuses", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.ExternalBinding", b =>
@@ -10108,7 +10108,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("updated_by");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_external_bindings");
+                        .HasName("pk_ie_external_bindings");
 
                     b.HasIndex("ScopeTenantId")
                         .HasDatabaseName("ix_external_bindings_scope_tenant_id");
@@ -10133,7 +10133,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasDatabaseName("ix_external_bindings_internal_tenant_unique")
                         .HasFilter("scope_tenant_id IS NOT NULL");
 
-                    b.ToTable("islamu_event_external_bindings", null, t =>
+                    b.ToTable("ie_external_bindings", null, t =>
                         {
                             t.HasCheckConstraint("ck_external_bindings_registered_pair_scope", "(external_type = 'customer-group' AND internal_type = 'Group' AND scope_tenant_id IS NOT NULL) OR (external_type = 'customer-group-actor' AND internal_type = 'Actor' AND scope_tenant_id IS NOT NULL) OR (external_type = 'customer-organization' AND internal_type = 'Organization' AND scope_tenant_id IS NOT NULL) OR (external_type = 'customer-organization-actor' AND internal_type = 'Actor' AND scope_tenant_id IS NOT NULL) OR (external_type = 'external-admin-tenant-user' AND internal_type = 'TenantUser' AND scope_tenant_id IS NOT NULL) OR (external_type = 'external-admin-tenant-user-profile' AND internal_type = 'TenantUserProfile' AND scope_tenant_id IS NOT NULL) OR (external_type = 'external-admin-user' AND internal_type = 'User' AND scope_tenant_id IS NOT NULL) OR (external_type = 'external-admin-user-actor' AND internal_type = 'Actor' AND scope_tenant_id IS NOT NULL) OR (external_type = 'external-admin-user-login' AND internal_type = 'UserExternalLogin' AND scope_tenant_id IS NOT NULL) OR (external_type = 'managed-tenant-provisioning-operation' AND internal_type = 'Tenant' AND scope_tenant_id IS NOT NULL) OR (external_type = 'provider-customer' AND internal_type = 'Tenant' AND scope_tenant_id IS NULL)");
 
@@ -10167,13 +10167,13 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("master_code");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_external_workflow_provider_kinds");
+                        .HasName("pk_ie_external_workflow_provider_kinds");
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
                         .HasDatabaseName("ux_external_workflow_provider_kinds_master_code");
 
-                    b.ToTable("islamu_event_external_workflow_provider_kinds", (string)null);
+                    b.ToTable("ie_external_workflow_provider_kinds", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.Federation.AtprotoEventProjection", b =>
@@ -10238,7 +10238,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("status");
 
                     b.HasKey("AtprotoRecordId")
-                        .HasName("pk_islamu_event_atproto_event_projections");
+                        .HasName("pk_ie_atproto_event_projections");
 
                     b.HasIndex("CreatedAt", "AtprotoRecordId")
                         .HasDatabaseName("ix_atproto_event_projections_created_at");
@@ -10249,7 +10249,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                     b.HasIndex("StartsAt", "AtprotoRecordId")
                         .HasDatabaseName("ix_atproto_event_projections_starts_at");
 
-                    b.ToTable("islamu_event_atproto_event_projections", null, t =>
+                    b.ToTable("ie_atproto_event_projections", null, t =>
                         {
                             t.HasCheckConstraint("ck_atproto_event_projections_source_version", "source_version >= 0");
 
@@ -10266,7 +10266,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                     b.Property<long>("Cursor")
                         .HasColumnType("INTEGER")
-                        .HasColumnName("cursor");
+                        .HasColumnName("jetstream_cursor");
 
                     b.Property<DateTime?>("LastEventAt")
                         .HasColumnType("TEXT")
@@ -10301,15 +10301,15 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("updated_at");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_atproto_jetstream_consumer_states");
+                        .HasName("pk_ie_atproto_jetstream_consumer_states");
 
                     b.HasIndex("Service")
                         .IsUnique()
                         .HasDatabaseName("ux_atproto_jetstream_consumer_service");
 
-                    b.ToTable("islamu_event_atproto_jetstream_consumer_states", null, t =>
+                    b.ToTable("ie_atproto_jetstream_consumer_states", null, t =>
                         {
-                            t.HasCheckConstraint("ck_atproto_jetstream_cursor", "cursor >= 0");
+                            t.HasCheckConstraint("ck_atproto_jetstream_cursor", "jetstream_cursor >= 0");
 
                             t.HasCheckConstraint("ck_atproto_jetstream_lease_fence", "lease_fence >= 0");
 
@@ -10330,7 +10330,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                     b.Property<long>("Cursor")
                         .HasColumnType("INTEGER")
-                        .HasColumnName("cursor");
+                        .HasColumnName("jetstream_cursor");
 
                     b.Property<string>("EnvelopeHash")
                         .IsRequired()
@@ -10358,7 +10358,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("record_identity_hash");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_atproto_jetstream_quarantines");
+                        .HasName("pk_ie_atproto_jetstream_quarantines");
 
                     b.HasIndex("ConsumerStateId", "Cursor")
                         .IsUnique()
@@ -10367,9 +10367,9 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                     b.HasIndex("ReasonCode", "QuarantinedAt")
                         .HasDatabaseName("ix_atproto_jetstream_quarantine_reason");
 
-                    b.ToTable("islamu_event_atproto_jetstream_quarantines", null, t =>
+                    b.ToTable("ie_atproto_jetstream_quarantines", null, t =>
                         {
-                            t.HasCheckConstraint("ck_atproto_jetstream_quarantine_cursor", "cursor >= 0");
+                            t.HasCheckConstraint("ck_atproto_jetstream_quarantine_cursor", "jetstream_cursor >= 0");
                         });
                 });
 
@@ -10410,10 +10410,10 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("user_id");
 
                     b.HasKey("AtprotoRecordId")
-                        .HasName("pk_islamu_event_atproto_outbound_record_ownerships");
+                        .HasName("pk_ie_atproto_outbound_record_ownerships");
 
                     b.HasIndex("UserId")
-                        .HasDatabaseName("ix_islamu_event_atproto_outbound_record_ownerships_user_id");
+                        .HasDatabaseName("ix_ie_atproto_outbound_record_ownerships_user_id");
 
                     b.HasIndex("TenantId", "UserId")
                         .HasDatabaseName("ix_atproto_outbound_ownership_user");
@@ -10422,7 +10422,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .IsUnique()
                         .HasDatabaseName("ux_atproto_outbound_ownership_source");
 
-                    b.ToTable("islamu_event_atproto_outbound_record_ownerships", (string)null);
+                    b.ToTable("ie_atproto_outbound_record_ownerships", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.Federation.AtprotoRecordTenantPresentation", b =>
@@ -10448,15 +10448,15 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("source_version");
 
                     b.HasKey("TenantId", "AtprotoRecordId")
-                        .HasName("pk_islamu_event_atproto_record_tenant_presentations");
+                        .HasName("pk_ie_atproto_record_tenant_presentations");
 
                     b.HasIndex("AtprotoRecordId")
-                        .HasDatabaseName("ix_islamu_event_atproto_record_tenant_presentations_atproto_record_id");
+                        .HasDatabaseName("ix_ie_atproto_record_tenant_presentations_atproto_record_id");
 
                     b.HasIndex("TenantId", "IsVisible", "EvaluatedAt")
                         .HasDatabaseName("ix_atproto_record_presentations_visible");
 
-                    b.ToTable("islamu_event_atproto_record_tenant_presentations", null, t =>
+                    b.ToTable("ie_atproto_record_tenant_presentations", null, t =>
                         {
                             t.HasCheckConstraint("ck_atproto_record_tenant_presentations_source_version", "source_version >= 0");
                         });
@@ -10625,20 +10625,20 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("user_id");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_pds_sync_outbox");
+                        .HasName("pk_ie_pds_sync_outbox");
 
                     b.HasIndex("AtprotoRecordId")
-                        .HasDatabaseName("ix_islamu_event_pds_sync_outbox_atproto_record_id");
+                        .HasDatabaseName("ix_ie_pds_sync_outbox_atproto_record_id");
 
                     b.HasIndex("DependsOnAtprotoRecordId")
                         .HasDatabaseName("ix_pds_sync_outbox_dependency")
                         .HasFilter("depends_on_atproto_record_id IS NOT NULL");
 
                     b.HasIndex("SupersededById")
-                        .HasDatabaseName("ix_islamu_event_pds_sync_outbox_superseded_by_id");
+                        .HasDatabaseName("ix_ie_pds_sync_outbox_superseded_by_id");
 
                     b.HasIndex("UserId")
-                        .HasDatabaseName("ix_islamu_event_pds_sync_outbox_user_id");
+                        .HasDatabaseName("ix_ie_pds_sync_outbox_user_id");
 
                     b.HasIndex("TenantId", "IdempotencyKey")
                         .IsUnique()
@@ -10658,7 +10658,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasDatabaseName("ux_pds_sync_outbox_source_version")
                         .HasFilter("status IN (1, 2) AND superseded_at IS NULL");
 
-                    b.ToTable("islamu_event_pds_sync_outbox", null, t =>
+                    b.ToTable("ie_pds_sync_outbox", null, t =>
                         {
                             t.HasCheckConstraint("ck_pds_sync_outbox_completion_shape", "status <> 3 OR (processed_at IS NOT NULL AND settled_uri IS NOT NULL AND settled_cid IS NOT NULL)");
 
@@ -10702,9 +10702,9 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("master_code");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_file_types");
+                        .HasName("pk_ie_file_types");
 
-                    b.ToTable("islamu_event_file_types", (string)null);
+                    b.ToTable("ie_file_types", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.Group", b =>
@@ -10761,9 +10761,9 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("updated_by");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_groups");
+                        .HasName("pk_ie_groups");
 
-                    b.ToTable("islamu_event_groups", (string)null);
+                    b.ToTable("ie_groups", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.GroupMember", b =>
@@ -10824,28 +10824,28 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("user_id");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_group_members");
+                        .HasName("pk_ie_group_members");
 
                     b.HasIndex("GroupPositionId")
-                        .HasDatabaseName("ix_islamu_event_group_members_group_position_id");
+                        .HasDatabaseName("ix_ie_group_members_group_position_id");
 
                     b.HasIndex("RoleId")
-                        .HasDatabaseName("ix_islamu_event_group_members_role_id");
+                        .HasDatabaseName("ix_ie_group_members_role_id");
 
                     b.HasIndex("UserId")
-                        .HasDatabaseName("ix_islamu_event_group_members_user_id");
+                        .HasDatabaseName("ix_ie_group_members_user_id");
 
                     b.HasIndex("GroupTenantId", "UserId")
                         .IsUnique()
                         .HasDatabaseName("ix_group_members_group_user");
 
                     b.HasIndex("TenantId", "GroupTenantId")
-                        .HasDatabaseName("ix_islamu_event_group_members_tenant_id_group_tenant_id");
+                        .HasDatabaseName("ix_ie_group_members_tenant_id_group_tenant_id");
 
                     b.HasIndex("TenantId", "UserId")
                         .HasDatabaseName("ix_group_members_tenant_user");
 
-                    b.ToTable("islamu_event_group_members", (string)null);
+                    b.ToTable("ie_group_members", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.GroupPosition", b =>
@@ -10872,9 +10872,9 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("master_code");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_group_positions");
+                        .HasName("pk_ie_group_positions");
 
-                    b.ToTable("islamu_event_group_positions", (string)null);
+                    b.ToTable("ie_group_positions", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.GroupSetting", b =>
@@ -10922,16 +10922,16 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("value");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_group_setting_overrides");
+                        .HasName("pk_ie_group_setting_overrides");
 
                     b.HasIndex("GroupTenantId", "SettingKey")
                         .IsUnique()
-                        .HasDatabaseName("ix_islamu_event_group_setting_overrides_group_tenant_id_setting_key");
+                        .HasDatabaseName("ix_ie_group_setting_overrides_group_tenant_id_setting_key");
 
                     b.HasIndex("TenantId", "GroupTenantId")
-                        .HasDatabaseName("ix_islamu_event_group_setting_overrides_tenant_id_group_tenant_id");
+                        .HasDatabaseName("ix_ie_group_setting_overrides_tenant_id_group_tenant_id");
 
-                    b.ToTable("islamu_event_group_setting_overrides", (string)null);
+                    b.ToTable("ie_group_setting_overrides", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.GroupTenant", b =>
@@ -11071,7 +11071,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("updated_by");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_group_tenants");
+                        .HasName("pk_ie_group_tenants");
 
                     b.HasAlternateKey("TenantId", "GroupId")
                         .HasName("ak_group_tenants_tenant_id_group_id");
@@ -11080,35 +11080,35 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasName("ak_group_tenants_tenant_id_id");
 
                     b.HasIndex("ApprovalStatusId")
-                        .HasDatabaseName("ix_islamu_event_group_tenants_approval_status_id");
+                        .HasDatabaseName("ix_ie_group_tenants_approval_status_id");
 
                     b.HasIndex("BackgroundImageId")
-                        .HasDatabaseName("ix_islamu_event_group_tenants_background_image_id");
+                        .HasDatabaseName("ix_ie_group_tenants_background_image_id");
 
                     b.HasIndex("BannerPictureId")
-                        .HasDatabaseName("ix_islamu_event_group_tenants_banner_picture_id");
+                        .HasDatabaseName("ix_ie_group_tenants_banner_picture_id");
 
                     b.HasIndex("GroupId")
-                        .HasDatabaseName("ix_islamu_event_group_tenants_group_id");
+                        .HasDatabaseName("ix_ie_group_tenants_group_id");
 
                     b.HasIndex("ProfilePictureId")
-                        .HasDatabaseName("ix_islamu_event_group_tenants_profile_picture_id");
+                        .HasDatabaseName("ix_ie_group_tenants_profile_picture_id");
 
                     b.HasIndex("TenantId", "GroupId")
                         .IsUnique()
-                        .HasDatabaseName("ix_islamu_event_group_tenants_tenant_id_group_id")
+                        .HasDatabaseName("ix_ie_group_tenants_tenant_id_group_id")
                         .HasFilter("is_deleted = false");
 
                     b.HasIndex("TenantId", "ParentGroupTenantId")
-                        .HasDatabaseName("ix_islamu_event_group_tenants_tenant_id_parent_group_tenant_id");
+                        .HasDatabaseName("ix_ie_group_tenants_tenant_id_parent_group_tenant_id");
 
                     b.HasIndex("TenantId", "ParentOrganizationTenantId")
-                        .HasDatabaseName("ix_islamu_event_group_tenants_tenant_id_parent_organization_tenant_id");
+                        .HasDatabaseName("ix_ie_group_tenants_tenant_id_parent_organization_tenant_id");
 
                     b.HasIndex("TenantId", "IsDeleted", "ApprovalStatusId")
-                        .HasDatabaseName("ix_islamu_event_group_tenants_tenant_id_is_deleted_approval_status_id");
+                        .HasDatabaseName("ix_ie_group_tenants_tenant_id_is_deleted_approval_status_id");
 
-                    b.ToTable("islamu_event_group_tenants", null, t =>
+                    b.ToTable("ie_group_tenants", null, t =>
                         {
                             t.HasCheckConstraint("ck_group_tenants_no_self_parent", "parent_group_tenant_id IS NULL OR parent_group_tenant_id <> id");
 
@@ -11189,7 +11189,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("user_id");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_idempotency_records");
+                        .HasName("pk_ie_idempotency_records");
 
                     b.HasIndex("ExpiresAt")
                         .HasDatabaseName("IX_IdempotencyRecords_ExpiresAt");
@@ -11198,7 +11198,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .IsUnique()
                         .HasDatabaseName("IX_IdempotencyRecords_Key_TenantId");
 
-                    b.ToTable("islamu_event_idempotency_records", (string)null);
+                    b.ToTable("ie_idempotency_records", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.IdentityAccessMode", b =>
@@ -11225,13 +11225,13 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("master_code");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_identity_access_modes");
+                        .HasName("pk_ie_identity_access_modes");
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
-                        .HasDatabaseName("ix_islamu_event_identity_access_modes_master_code");
+                        .HasDatabaseName("ix_ie_identity_access_modes_master_code");
 
-                    b.ToTable("islamu_event_identity_access_modes", (string)null);
+                    b.ToTable("ie_identity_access_modes", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.IncomingWebhookEffectOutbox", b =>
@@ -11347,7 +11347,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("updated_by");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_incoming_webhook_effect_outbox");
+                        .HasName("pk_ie_incoming_webhook_effect_outbox");
 
                     b.HasAlternateKey("TenantId", "Id")
                         .HasName("ak_incoming_webhook_effect_outbox_tenant_id");
@@ -11363,7 +11363,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .IsUnique()
                         .HasDatabaseName("ux_incoming_webhook_effect_outbox_provider_decision");
 
-                    b.ToTable("islamu_event_incoming_webhook_effect_outbox", null, t =>
+                    b.ToTable("ie_incoming_webhook_effect_outbox", null, t =>
                         {
                             t.HasCheckConstraint("ck_incoming_webhook_effect_outbox_attempt_count", "attempt_count >= 0");
 
@@ -11430,7 +11430,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("updated_by");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_incoming_webhook_effect_receipts");
+                        .HasName("pk_ie_incoming_webhook_effect_receipts");
 
                     b.HasAlternateKey("TenantId", "Id")
                         .HasName("ak_incoming_webhook_effect_receipts_tenant_id");
@@ -11442,7 +11442,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .IsUnique()
                         .HasDatabaseName("ux_incoming_webhook_effect_receipts_identity");
 
-                    b.ToTable("islamu_event_incoming_webhook_effect_receipts", null, t =>
+                    b.ToTable("ie_incoming_webhook_effect_receipts", null, t =>
                         {
                             t.HasCheckConstraint("ck_incoming_webhook_effect_receipts_processing_generation", "processing_generation >= 1");
                         });
@@ -11665,22 +11665,22 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("payload_bytes");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_incoming_webhook_messages");
+                        .HasName("pk_ie_incoming_webhook_messages");
 
                     b.HasAlternateKey("TenantId", "Id")
                         .HasName("ak_incoming_webhook_messages_tenant_id");
 
                     b.HasIndex("PayloadProvenanceId")
-                        .HasDatabaseName("ix_islamu_event_incoming_webhook_messages_payload_provenance_id");
+                        .HasDatabaseName("ix_ie_incoming_webhook_messages_payload_provenance_id");
 
                     b.HasIndex("SettlementSourceId")
-                        .HasDatabaseName("ix_islamu_event_incoming_webhook_messages_settlement_source_id");
+                        .HasDatabaseName("ix_ie_incoming_webhook_messages_settlement_source_id");
 
                     b.HasIndex("StatusId")
-                        .HasDatabaseName("ix_islamu_event_incoming_webhook_messages_status_id");
+                        .HasDatabaseName("ix_ie_incoming_webhook_messages_status_id");
 
                     b.HasIndex("WebhookConsumerProviderBindingId")
-                        .HasDatabaseName("ix_islamu_event_incoming_webhook_messages_webhook_consumer_provider_binding_id");
+                        .HasDatabaseName("ix_ie_incoming_webhook_messages_webhook_consumer_provider_binding_id");
 
                     b.HasIndex("TenantId", "DeadLetterEvidenceRetentionUntil")
                         .HasDatabaseName("ix_incoming_webhook_messages_tenant_dead_letter_retention");
@@ -11689,7 +11689,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasDatabaseName("ix_incoming_webhook_messages_tenant_attempt_retention");
 
                     b.HasIndex("TenantId", "SettledByEffectReceiptId")
-                        .HasDatabaseName("ix_islamu_event_incoming_webhook_messages_tenant_id_settled_by_effect_receipt_id");
+                        .HasDatabaseName("ix_ie_incoming_webhook_messages_tenant_id_settled_by_effect_receipt_id");
 
                     b.HasIndex("TenantId", "PayloadRetentionUntil", "ReplayWindowUntil")
                         .HasDatabaseName("ix_incoming_webhook_messages_tenant_payload_retention")
@@ -11713,7 +11713,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                     b.HasIndex("TenantId", "StatusId", "NextAttemptAt", "ProcessingLeaseExpiresAt")
                         .HasDatabaseName("ix_incoming_webhook_messages_claim_due");
 
-                    b.ToTable("islamu_event_incoming_webhook_messages", null, t =>
+                    b.ToTable("ie_incoming_webhook_messages", null, t =>
                         {
                             t.HasCheckConstraint("ck_incoming_webhook_messages_payload_byte_length", "payload_byte_length > 0");
 
@@ -11747,13 +11747,13 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("master_code");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_incoming_webhook_message_statuses");
+                        .HasName("pk_ie_incoming_webhook_message_statuses");
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
                         .HasDatabaseName("ux_incoming_webhook_message_statuses_master_code");
 
-                    b.ToTable("islamu_event_incoming_webhook_message_statuses", (string)null);
+                    b.ToTable("ie_incoming_webhook_message_statuses", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.IncomingWebhookProcessingAttempt", b =>
@@ -11822,13 +11822,13 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("updated_by");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_incoming_webhook_processing_attempts");
+                        .HasName("pk_ie_incoming_webhook_processing_attempts");
 
                     b.HasAlternateKey("TenantId", "Id")
                         .HasName("ak_incoming_webhook_processing_attempts_tenant_id_id");
 
                     b.HasIndex("OutcomeId")
-                        .HasDatabaseName("ix_islamu_event_incoming_webhook_processing_attempts_outcome_id");
+                        .HasDatabaseName("ix_ie_incoming_webhook_processing_attempts_outcome_id");
 
                     b.HasIndex("TenantId", "RecordedAt")
                         .HasDatabaseName("ix_incoming_webhook_processing_attempts_tenant_recorded");
@@ -11837,7 +11837,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .IsUnique()
                         .HasDatabaseName("ux_incoming_webhook_processing_attempts_evidence");
 
-                    b.ToTable("islamu_event_incoming_webhook_processing_attempts", null, t =>
+                    b.ToTable("ie_incoming_webhook_processing_attempts", null, t =>
                         {
                             t.HasCheckConstraint("ck_incoming_webhook_processing_attempts_fence", "processing_fence >= 0");
 
@@ -11871,13 +11871,13 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("master_code");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_incoming_webhook_processing_attempt_outcomes");
+                        .HasName("pk_ie_incoming_webhook_processing_attempt_outcomes");
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
                         .HasDatabaseName("ux_incoming_webhook_processing_attempt_outcomes_master_code");
 
-                    b.ToTable("islamu_event_incoming_webhook_processing_attempt_outcomes", (string)null);
+                    b.ToTable("ie_incoming_webhook_processing_attempt_outcomes", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.IncomingWebhookRedriveRecord", b =>
@@ -11940,19 +11940,19 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("updated_by");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_incoming_webhook_redrive_records");
+                        .HasName("pk_ie_incoming_webhook_redrive_records");
 
                     b.HasAlternateKey("TenantId", "Id")
                         .HasName("ak_incoming_webhook_redrive_records_tenant_id_id");
 
                     b.HasIndex("ResultId")
-                        .HasDatabaseName("ix_islamu_event_incoming_webhook_redrive_records_result_id");
+                        .HasDatabaseName("ix_ie_incoming_webhook_redrive_records_result_id");
 
                     b.HasIndex("TenantId", "IncomingWebhookMessageId", "TargetProcessingGeneration")
                         .IsUnique()
                         .HasDatabaseName("ux_incoming_webhook_redrive_records_target_generation");
 
-                    b.ToTable("islamu_event_incoming_webhook_redrive_records", null, t =>
+                    b.ToTable("ie_incoming_webhook_redrive_records", null, t =>
                         {
                             t.HasCheckConstraint("ck_incoming_webhook_redrive_records_generation_order", "target_processing_generation > source_processing_generation AND source_processing_generation >= 1");
                         });
@@ -11982,13 +11982,13 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("master_code");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_incoming_webhook_redrive_results");
+                        .HasName("pk_ie_incoming_webhook_redrive_results");
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
                         .HasDatabaseName("ux_incoming_webhook_redrive_results_master_code");
 
-                    b.ToTable("islamu_event_incoming_webhook_redrive_results", (string)null);
+                    b.ToTable("ie_incoming_webhook_redrive_results", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.IncomingWebhookSettlementSourceLookup", b =>
@@ -12015,13 +12015,13 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("master_code");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_incoming_webhook_settlement_sources");
+                        .HasName("pk_ie_incoming_webhook_settlement_sources");
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
                         .HasDatabaseName("ux_incoming_webhook_settlement_sources_master_code");
 
-                    b.ToTable("islamu_event_incoming_webhook_settlement_sources", (string)null);
+                    b.ToTable("ie_incoming_webhook_settlement_sources", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.InstanceBootstrapState", b =>
@@ -12057,14 +12057,14 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("selected_deployment_mode");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_instance_bootstrap_states");
+                        .HasName("pk_ie_instance_bootstrap_states");
 
                     b.HasIndex("IsCompleted")
                         .IsUnique()
                         .HasDatabaseName("ix_instance_bootstrap_state_completed_unique")
                         .HasFilter("\"is_completed\" = true");
 
-                    b.ToTable("islamu_event_instance_bootstrap_states", (string)null);
+                    b.ToTable("ie_instance_bootstrap_states", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.IntegrationSyncOutbox", b =>
@@ -12205,16 +12205,16 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("user_id");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_integration_sync_outbox");
+                        .HasName("pk_ie_integration_sync_outbox");
 
                     b.HasIndex("EventId")
-                        .HasDatabaseName("ix_islamu_event_integration_sync_outbox_event_id");
+                        .HasDatabaseName("ix_ie_integration_sync_outbox_event_id");
 
                     b.HasIndex("UserId")
-                        .HasDatabaseName("ix_islamu_event_integration_sync_outbox_user_id");
+                        .HasDatabaseName("ix_ie_integration_sync_outbox_user_id");
 
                     b.HasIndex("TenantId", "RegistrationOrderId")
-                        .HasDatabaseName("ix_islamu_event_integration_sync_outbox_tenant_id_registration_order_id");
+                        .HasDatabaseName("ix_ie_integration_sync_outbox_tenant_id_registration_order_id");
 
                     b.HasIndex("Status", "NextAttemptAt", "CreatedAt")
                         .HasDatabaseName("ix_integration_sync_outbox_worker_poll");
@@ -12227,7 +12227,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasDatabaseName("ux_integration_sync_outbox_tenant_source_kind")
                         .HasFilter("is_deleted = false");
 
-                    b.ToTable("islamu_event_integration_sync_outbox", (string)null);
+                    b.ToTable("ie_integration_sync_outbox", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.Language", b =>
@@ -12254,9 +12254,9 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("master_code");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_languages");
+                        .HasName("pk_ie_languages");
 
-                    b.ToTable("islamu_event_languages", (string)null);
+                    b.ToTable("ie_languages", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.Location", b =>
@@ -12339,19 +12339,19 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("updated_by");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_locations");
+                        .HasName("pk_ie_locations");
 
                     b.HasAlternateKey("TenantId", "Id")
                         .HasName("ak_locations_tenant_id_id");
 
                     b.HasIndex("LocationKindId")
-                        .HasDatabaseName("ix_islamu_event_locations_location_kind_id");
+                        .HasDatabaseName("ix_ie_locations_location_kind_id");
 
                     b.HasIndex("LocationPrivacyStateId")
-                        .HasDatabaseName("ix_islamu_event_locations_location_privacy_state_id");
+                        .HasDatabaseName("ix_ie_locations_location_privacy_state_id");
 
                     b.HasIndex("OwnerUserId")
-                        .HasDatabaseName("ix_islamu_event_locations_owner_user_id");
+                        .HasDatabaseName("ix_ie_locations_owner_user_id");
 
                     b.HasIndex("TenantId", "City")
                         .HasDatabaseName("ix_locations_tenant_city");
@@ -12359,7 +12359,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                     b.HasIndex("TenantId", "Country")
                         .HasDatabaseName("ix_locations_tenant_country");
 
-                    b.ToTable("islamu_event_locations", null, t =>
+                    b.ToTable("ie_locations", null, t =>
                         {
                             t.HasCheckConstraint("ck_locations_erasure_state", "(location_privacy_state_id = 3 AND owner_user_id IS NULL AND pii_erased_at_utc IS NOT NULL AND pii_erasure_reason IS NOT NULL) OR (location_privacy_state_id <> 3 AND pii_erased_at_utc IS NULL AND pii_erasure_reason IS NULL)");
 
@@ -12391,13 +12391,13 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("master_code");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_location_disclosure_audiences");
+                        .HasName("pk_ie_location_disclosure_audiences");
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
-                        .HasDatabaseName("ix_islamu_event_location_disclosure_audiences_master_code");
+                        .HasDatabaseName("ix_ie_location_disclosure_audiences_master_code");
 
-                    b.ToTable("islamu_event_location_disclosure_audiences", (string)null);
+                    b.ToTable("ie_location_disclosure_audiences", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.LocationKind", b =>
@@ -12424,13 +12424,13 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("master_code");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_location_kinds");
+                        .HasName("pk_ie_location_kinds");
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
-                        .HasDatabaseName("ix_islamu_event_location_kinds_master_code");
+                        .HasDatabaseName("ix_ie_location_kinds_master_code");
 
-                    b.ToTable("islamu_event_location_kinds", (string)null);
+                    b.ToTable("ie_location_kinds", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.LocationPii", b =>
@@ -12460,9 +12460,9 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("postcode");
 
                     b.HasKey("LocationId")
-                        .HasName("pk_islamu_event_location_pii");
+                        .HasName("pk_ie_location_pii");
 
-                    b.ToTable("islamu_event_location_pii", (string)null);
+                    b.ToTable("ie_location_pii", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.LocationPrivacyState", b =>
@@ -12489,13 +12489,13 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("master_code");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_location_privacy_states");
+                        .HasName("pk_ie_location_privacy_states");
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
-                        .HasDatabaseName("ix_islamu_event_location_privacy_states_master_code");
+                        .HasDatabaseName("ix_ie_location_privacy_states_master_code");
 
-                    b.ToTable("islamu_event_location_privacy_states", (string)null);
+                    b.ToTable("ie_location_privacy_states", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.LocationRoom", b =>
@@ -12571,7 +12571,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("updated_by");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_location_rooms");
+                        .HasName("pk_ie_location_rooms");
 
                     b.HasAlternateKey("TenantId", "Id")
                         .HasName("ak_location_rooms_tenant_id_id");
@@ -12580,7 +12580,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasName("ak_location_rooms_tenant_id_location_id_id");
 
                     b.HasIndex("LocationId")
-                        .HasDatabaseName("ix_islamu_event_location_rooms_location_id");
+                        .HasDatabaseName("ix_ie_location_rooms_location_id");
 
                     b.HasIndex("TenantId", "LocationId", "Name")
                         .IsUnique()
@@ -12589,7 +12589,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                     b.HasIndex("TenantId", "LocationId", "SortOrder")
                         .HasDatabaseName("ix_location_rooms_tenant_location_sort");
 
-                    b.ToTable("islamu_event_location_rooms", null, t =>
+                    b.ToTable("ie_location_rooms", null, t =>
                         {
                             t.HasCheckConstraint("CK_LocationRoom_NonNegativeCapacity", "capacity IS NULL OR capacity >= 0");
                         });
@@ -12619,9 +12619,9 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("master_code");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_madhabs");
+                        .HasName("pk_ie_madhabs");
 
-                    b.ToTable("islamu_event_madhabs", (string)null);
+                    b.ToTable("ie_madhabs", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.ManagedControlPlaneRegistration", b =>
@@ -12752,28 +12752,28 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("updated_by");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_managed_control_plane_registrations");
+                        .HasName("pk_ie_managed_control_plane_registrations");
 
                     b.HasIndex("ControlPlaneToEventKeyId")
                         .IsUnique()
-                        .HasDatabaseName("ix_islamu_event_managed_control_plane_registrations_control_plane_to_event_key_id");
+                        .HasDatabaseName("ix_ie_managed_control_plane_registrations_control_plane_to_event_key_id");
 
                     b.HasIndex("CredentialSecretBindingId")
-                        .HasDatabaseName("ix_islamu_event_managed_control_plane_registrations_credential_secret_binding_id");
+                        .HasDatabaseName("ix_ie_managed_control_plane_registrations_credential_secret_binding_id");
 
                     b.HasIndex("EventInstanceId")
                         .IsUnique()
-                        .HasDatabaseName("ix_islamu_event_managed_control_plane_registrations_event_instance_id");
+                        .HasDatabaseName("ix_ie_managed_control_plane_registrations_event_instance_id");
 
                     b.HasIndex("EventToControlPlaneKeyId")
                         .IsUnique()
-                        .HasDatabaseName("ix_islamu_event_managed_control_plane_registrations_event_to_control_plane_key_id");
+                        .HasDatabaseName("ix_ie_managed_control_plane_registrations_event_to_control_plane_key_id");
 
                     b.HasIndex("ManagedInstanceId")
                         .IsUnique()
-                        .HasDatabaseName("ix_islamu_event_managed_control_plane_registrations_managed_instance_id");
+                        .HasDatabaseName("ix_ie_managed_control_plane_registrations_managed_instance_id");
 
-                    b.ToTable("islamu_event_managed_control_plane_registrations", null, t =>
+                    b.ToTable("ie_managed_control_plane_registrations", null, t =>
                         {
                             t.HasCheckConstraint("ck_managed_control_plane_registration_expiry", "event_to_control_plane_credential_expires_at > created_at AND control_plane_to_event_credential_expires_at > created_at");
 
@@ -12890,10 +12890,10 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("updated_by");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_managed_tenant_provisioning_operations");
+                        .HasName("pk_ie_managed_tenant_provisioning_operations");
 
                     b.HasIndex("TenantId")
-                        .HasDatabaseName("ix_islamu_event_managed_tenant_provisioning_operations_tenant_id");
+                        .HasDatabaseName("ix_ie_managed_tenant_provisioning_operations_tenant_id");
 
                     b.HasIndex("ManagedInstanceId", "ExternalCustomerReference")
                         .IsUnique()
@@ -12904,13 +12904,13 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasDatabaseName("ux_managed_tenant_provisioning_instance_request");
 
                     b.HasIndex("Status", "CreatedAt")
-                        .HasDatabaseName("ix_islamu_event_managed_tenant_provisioning_operations_status_created_at");
+                        .HasDatabaseName("ix_ie_managed_tenant_provisioning_operations_status_created_at");
 
                     b.HasIndex("TenantId", "Id")
                         .IsUnique()
                         .HasDatabaseName("ux_managed_tenant_provisioning_operations_tenant_id");
 
-                    b.ToTable("islamu_event_managed_tenant_provisioning_operations", null, t =>
+                    b.ToTable("ie_managed_tenant_provisioning_operations", null, t =>
                         {
                             t.HasCheckConstraint("ck_managed_tenant_provisioning_cancelled", "(status = 'Cancelled') = (cancelled_at IS NOT NULL)");
 
@@ -12978,16 +12978,16 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("wizard_schema_url");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_module_definitions");
+                        .HasName("pk_ie_module_definitions");
 
                     b.HasIndex("DisplayOrder")
-                        .HasDatabaseName("ix_islamu_event_module_definitions_display_order");
+                        .HasDatabaseName("ix_ie_module_definitions_display_order");
 
                     b.HasIndex("ModuleKey")
                         .IsUnique()
-                        .HasDatabaseName("ix_islamu_event_module_definitions_module_key");
+                        .HasDatabaseName("ix_ie_module_definitions_module_key");
 
-                    b.ToTable("islamu_event_module_definitions", (string)null);
+                    b.ToTable("ie_module_definitions", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.Modules.TenantCapability", b =>
@@ -13038,16 +13038,16 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("updated_by");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_tenant_capabilities");
+                        .HasName("pk_ie_tenant_capabilities");
 
                     b.HasIndex("ModuleId")
-                        .HasDatabaseName("ix_islamu_event_tenant_capabilities_module_id");
+                        .HasDatabaseName("ix_ie_tenant_capabilities_module_id");
 
                     b.HasIndex("TenantId", "ModuleId")
                         .IsUnique()
-                        .HasDatabaseName("ix_islamu_event_tenant_capabilities_tenant_id_module_id");
+                        .HasDatabaseName("ix_ie_tenant_capabilities_tenant_id_module_id");
 
-                    b.ToTable("islamu_event_tenant_capabilities", (string)null);
+                    b.ToTable("ie_tenant_capabilities", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.Notification", b =>
@@ -13166,28 +13166,28 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("user_id");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_notifications");
+                        .HasName("pk_ie_notifications");
 
                     b.HasAlternateKey("TenantId", "Id")
                         .HasName("ak_notifications_tenant_id");
 
                     b.HasIndex("NotificationEntityTypeId")
-                        .HasDatabaseName("ix_islamu_event_notifications_notification_entity_type_id");
+                        .HasDatabaseName("ix_ie_notifications_notification_entity_type_id");
 
                     b.HasIndex("NotificationReasonId")
-                        .HasDatabaseName("ix_islamu_event_notifications_notification_reason_id");
+                        .HasDatabaseName("ix_ie_notifications_notification_reason_id");
 
                     b.HasIndex("NotificationScopeId")
-                        .HasDatabaseName("ix_islamu_event_notifications_notification_scope_id");
+                        .HasDatabaseName("ix_ie_notifications_notification_scope_id");
 
                     b.HasIndex("NotificationTypeId")
-                        .HasDatabaseName("ix_islamu_event_notifications_notification_type_id");
+                        .HasDatabaseName("ix_ie_notifications_notification_type_id");
 
                     b.HasIndex("RecipientContextActorId")
-                        .HasDatabaseName("ix_islamu_event_notifications_recipient_context_actor_id");
+                        .HasDatabaseName("ix_ie_notifications_recipient_context_actor_id");
 
                     b.HasIndex("SourceActorId")
-                        .HasDatabaseName("ix_islamu_event_notifications_source_actor_id");
+                        .HasDatabaseName("ix_ie_notifications_source_actor_id");
 
                     b.HasIndex("TenantId", "NotificationIntentId")
                         .IsUnique()
@@ -13202,7 +13202,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasDatabaseName("ux_notifications_tenant_id_intent_link");
 
                     b.HasIndex("TenantId", "NotificationIntentId", "UserId")
-                        .HasDatabaseName("ix_islamu_event_notifications_tenant_id_notification_intent_id_user_id");
+                        .HasDatabaseName("ix_ie_notifications_tenant_id_notification_intent_id_user_id");
 
                     b.HasIndex("TenantId", "UserId", "CreatedAt")
                         .IsDescending(false, false, true)
@@ -13224,7 +13224,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .IsDescending(false, false, false, true)
                         .HasDatabaseName("ix_notifications_tenant_user_unread");
 
-                    b.ToTable("islamu_event_notifications", (string)null);
+                    b.ToTable("ie_notifications", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.NotificationCategory", b =>
@@ -13251,13 +13251,13 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("master_code");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_notification_categories");
+                        .HasName("pk_ie_notification_categories");
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
                         .HasDatabaseName("ux_notification_categories_master_code");
 
-                    b.ToTable("islamu_event_notification_categories", (string)null);
+                    b.ToTable("ie_notification_categories", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.NotificationChannelPreference", b =>
@@ -13341,25 +13341,25 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("user_id");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_notification_channel_preferences");
+                        .HasName("pk_ie_notification_channel_preferences");
 
                     b.HasIndex("CategoryId")
-                        .HasDatabaseName("ix_islamu_event_notification_channel_preferences_category_id");
+                        .HasDatabaseName("ix_ie_notification_channel_preferences_category_id");
 
                     b.HasIndex("ChannelId")
-                        .HasDatabaseName("ix_islamu_event_notification_channel_preferences_channel_id");
+                        .HasDatabaseName("ix_ie_notification_channel_preferences_channel_id");
 
                     b.HasIndex("GroupId")
-                        .HasDatabaseName("ix_islamu_event_notification_channel_preferences_group_id");
+                        .HasDatabaseName("ix_ie_notification_channel_preferences_group_id");
 
                     b.HasIndex("OrganizationId")
-                        .HasDatabaseName("ix_islamu_event_notification_channel_preferences_organization_id");
+                        .HasDatabaseName("ix_ie_notification_channel_preferences_organization_id");
 
                     b.HasIndex("ScopeId")
-                        .HasDatabaseName("ix_islamu_event_notification_channel_preferences_scope_id");
+                        .HasDatabaseName("ix_ie_notification_channel_preferences_scope_id");
 
                     b.HasIndex("UserId")
-                        .HasDatabaseName("ix_islamu_event_notification_channel_preferences_user_id");
+                        .HasDatabaseName("ix_ie_notification_channel_preferences_user_id");
 
                     b.HasIndex("TenantId", "CategoryId", "ChannelId", "ScopeId")
                         .HasDatabaseName("ix_notification_channel_preferences_resolver");
@@ -13384,7 +13384,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasDatabaseName("ux_notification_channel_preferences_user")
                         .HasFilter("is_deleted = false AND user_id IS NOT NULL");
 
-                    b.ToTable("islamu_event_notification_channel_preferences", null, t =>
+                    b.ToTable("ie_notification_channel_preferences", null, t =>
                         {
                             t.HasCheckConstraint("ck_notification_channel_preferences_scope_target", "(scope_id IN (0, 1, 2) AND user_id IS NULL AND organization_id IS NULL AND group_id IS NULL) OR (scope_id = 3 AND organization_id IS NOT NULL AND user_id IS NULL AND group_id IS NULL) OR (scope_id = 4 AND group_id IS NOT NULL AND user_id IS NULL AND organization_id IS NULL) OR (scope_id = 5 AND user_id IS NOT NULL AND organization_id IS NULL AND group_id IS NULL)");
                         });
@@ -13515,19 +13515,19 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("updated_by");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_notification_deliveries");
+                        .HasName("pk_ie_notification_deliveries");
 
                     b.HasAlternateKey("TenantId", "Id", "NotificationIntentId", "ChannelId")
                         .HasName("ak_notification_deliveries_tenant_id_intent_channel");
 
                     b.HasIndex("ChannelId")
-                        .HasDatabaseName("ix_islamu_event_notification_deliveries_channel_id");
+                        .HasDatabaseName("ix_ie_notification_deliveries_channel_id");
 
                     b.HasIndex("DeliveryPolicyId")
-                        .HasDatabaseName("ix_islamu_event_notification_deliveries_delivery_policy_id");
+                        .HasDatabaseName("ix_ie_notification_deliveries_delivery_policy_id");
 
                     b.HasIndex("StatusId")
-                        .HasDatabaseName("ix_islamu_event_notification_deliveries_status_id");
+                        .HasDatabaseName("ix_ie_notification_deliveries_status_id");
 
                     b.HasIndex("TenantId", "EmailDispatchOutboxId")
                         .IsUnique()
@@ -13547,9 +13547,9 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasDatabaseName("ix_notification_deliveries_tenant_status_created");
 
                     b.HasIndex("TenantId", "EmailDispatchOutboxId", "NotificationIntentId", "RecipientAddressSource")
-                        .HasDatabaseName("ix_islamu_event_notification_deliveries_tenant_id_email_dispatch_outbox_id_notification_intent_id_recipient_address_source");
+                        .HasDatabaseName("ix_ie_notification_deliveries_tenant_id_email_dispatch_outbox_id_notification_intent_id_recipient_address_source");
 
-                    b.ToTable("islamu_event_notification_deliveries", null, t =>
+                    b.ToTable("ie_notification_deliveries", null, t =>
                         {
                             t.HasCheckConstraint("ck_notification_deliveries_channel_link", "NOT (email_dispatch_outbox_id IS NOT NULL AND notification_id IS NOT NULL) AND (email_dispatch_outbox_id IS NULL OR (channel_id = 1 AND recipient_address_source IS NOT NULL)) AND (notification_id IS NULL OR channel_id = 2) AND (channel_id <> 2 OR recipient_address_source IS NULL) AND (email_dispatch_outbox_id IS NOT NULL OR recipient_address_source IS NULL)");
                         });
@@ -13579,13 +13579,13 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("master_code");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_notification_delivery_policies");
+                        .HasName("pk_ie_notification_delivery_policies");
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
                         .HasDatabaseName("ux_notification_delivery_policies_master_code");
 
-                    b.ToTable("islamu_event_notification_delivery_policies", (string)null);
+                    b.ToTable("ie_notification_delivery_policies", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.NotificationDeliveryStatus", b =>
@@ -13612,13 +13612,13 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("master_code");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_notification_delivery_statuses");
+                        .HasName("pk_ie_notification_delivery_statuses");
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
                         .HasDatabaseName("ux_notification_delivery_statuses_master_code");
 
-                    b.ToTable("islamu_event_notification_delivery_statuses", (string)null);
+                    b.ToTable("ie_notification_delivery_statuses", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.NotificationEntityType", b =>
@@ -13645,9 +13645,9 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("master_code");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_notification_entity_types");
+                        .HasName("pk_ie_notification_entity_types");
 
-                    b.ToTable("islamu_event_notification_entity_types", (string)null);
+                    b.ToTable("ie_notification_entity_types", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.NotificationExternalDelegation", b =>
@@ -13745,25 +13745,25 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("updated_by");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_notification_external_delegations");
+                        .HasName("pk_ie_notification_external_delegations");
 
                     b.HasIndex("AccountAuthorityKindId")
-                        .HasDatabaseName("ix_islamu_event_notification_external_delegations_account_authority_kind_id");
+                        .HasDatabaseName("ix_ie_notification_external_delegations_account_authority_kind_id");
 
                     b.HasIndex("ProviderKindId")
-                        .HasDatabaseName("ix_islamu_event_notification_external_delegations_provider_kind_id");
+                        .HasDatabaseName("ix_ie_notification_external_delegations_provider_kind_id");
 
                     b.HasIndex("RecipientKindId")
-                        .HasDatabaseName("ix_islamu_event_notification_external_delegations_recipient_kind_id");
+                        .HasDatabaseName("ix_ie_notification_external_delegations_recipient_kind_id");
 
                     b.HasIndex("ReportDecisionId")
-                        .HasDatabaseName("ix_islamu_event_notification_external_delegations_report_decision_id");
+                        .HasDatabaseName("ix_ie_notification_external_delegations_report_decision_id");
 
                     b.HasIndex("ReportId")
-                        .HasDatabaseName("ix_islamu_event_notification_external_delegations_report_id");
+                        .HasDatabaseName("ix_ie_notification_external_delegations_report_id");
 
                     b.HasIndex("StatusId")
-                        .HasDatabaseName("ix_islamu_event_notification_external_delegations_status_id");
+                        .HasDatabaseName("ix_ie_notification_external_delegations_status_id");
 
                     b.HasIndex("TenantId", "ExternalCorrelationId")
                         .HasDatabaseName("ix_notification_external_delegations_tenant_external_correlation");
@@ -13777,7 +13777,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                     b.HasIndex("TenantId", "ProviderKindId", "StatusId", "CreatedAt")
                         .HasDatabaseName("ix_notification_external_delegations_tenant_provider_status");
 
-                    b.ToTable("islamu_event_notification_external_delegations", (string)null);
+                    b.ToTable("ie_notification_external_delegations", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.NotificationExternalDelegationStatus", b =>
@@ -13804,13 +13804,13 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("master_code");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_notification_external_delegation_statuses");
+                        .HasName("pk_ie_notification_external_delegation_statuses");
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
                         .HasDatabaseName("ux_notification_external_delegation_statuses_master_code");
 
-                    b.ToTable("islamu_event_notification_external_delegation_statuses", (string)null);
+                    b.ToTable("ie_notification_external_delegation_statuses", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.NotificationFanoutOccurrence", b =>
@@ -13922,22 +13922,22 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("tenant_id");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_notification_fanout_occurrences");
+                        .HasName("pk_ie_notification_fanout_occurrences");
 
                     b.HasAlternateKey("TenantId", "Id")
                         .HasName("ak_notification_fanout_occurrences_tenant_id");
 
                     b.HasIndex("DeliveryPolicyId")
-                        .HasDatabaseName("ix_islamu_event_notification_fanout_occurrences_delivery_policy_id");
+                        .HasDatabaseName("ix_ie_notification_fanout_occurrences_delivery_policy_id");
 
                     b.HasIndex("TenantId", "EventId")
-                        .HasDatabaseName("ix_islamu_event_notification_fanout_occurrences_tenant_id_event_id");
+                        .HasDatabaseName("ix_ie_notification_fanout_occurrences_tenant_id_event_id");
 
                     b.HasIndex("TenantId", "SessionId")
-                        .HasDatabaseName("ix_islamu_event_notification_fanout_occurrences_tenant_id_session_id");
+                        .HasDatabaseName("ix_ie_notification_fanout_occurrences_tenant_id_session_id");
 
                     b.HasIndex("TenantId", "SupersededByOccurrenceId")
-                        .HasDatabaseName("ix_islamu_event_notification_fanout_occurrences_tenant_id_superseded_by_occurrence_id");
+                        .HasDatabaseName("ix_ie_notification_fanout_occurrences_tenant_id_superseded_by_occurrence_id");
 
                     b.HasIndex("TenantId", "CoalescingKey", "State", "OccurredAt")
                         .HasDatabaseName("ix_notification_fanout_occurrences_coalescing");
@@ -13953,7 +13953,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasDatabaseName("ix_notification_fanout_occurrences_global_runnable")
                         .HasFilter("state = 1");
 
-                    b.ToTable("islamu_event_notification_fanout_occurrences", null, t =>
+                    b.ToTable("ie_notification_fanout_occurrences", null, t =>
                         {
                             t.HasCheckConstraint("ck_notification_fanout_occurrences_state", "state IN (1, 2)");
 
@@ -13985,13 +13985,13 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("updated_at");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_notification_fanout_processor_states");
+                        .HasName("pk_ie_notification_fanout_processor_states");
 
                     b.HasIndex("ProcessorCode")
                         .IsUnique()
                         .HasDatabaseName("ux_notification_fanout_processor_states_processor_code");
 
-                    b.ToTable("islamu_event_notification_fanout_processor_states", (string)null);
+                    b.ToTable("ie_notification_fanout_processor_states", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.NotificationFanoutRun", b =>
@@ -14121,13 +14121,13 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("updated_by");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_notification_fanout_runs");
+                        .HasName("pk_ie_notification_fanout_runs");
 
                     b.HasIndex("NotificationEntityTypeId")
-                        .HasDatabaseName("ix_islamu_event_notification_fanout_runs_notification_entity_type_id");
+                        .HasDatabaseName("ix_ie_notification_fanout_runs_notification_entity_type_id");
 
                     b.HasIndex("SourceActorId")
-                        .HasDatabaseName("ix_islamu_event_notification_fanout_runs_source_actor_id");
+                        .HasDatabaseName("ix_ie_notification_fanout_runs_source_actor_id");
 
                     b.HasIndex("TenantId", "FanoutOccurrenceId")
                         .IsUnique()
@@ -14141,7 +14141,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasDatabaseName("ux_notification_fanout_runs_source")
                         .HasFilter("fanout_occurrence_id IS NULL");
 
-                    b.ToTable("islamu_event_notification_fanout_runs", null, t =>
+                    b.ToTable("ie_notification_fanout_runs", null, t =>
                         {
                             t.HasCheckConstraint("ck_notification_fanout_runs_created_count_nonnegative", "created_notification_count >= 0");
 
@@ -14260,7 +14260,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("updated_by");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_notification_intents");
+                        .HasName("pk_ie_notification_intents");
 
                     b.HasAlternateKey("TenantId", "Id")
                         .HasName("ak_notification_intents_tenant_id");
@@ -14269,25 +14269,25 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasName("ak_notification_intents_tenant_id_recipient");
 
                     b.HasIndex("CategoryId")
-                        .HasDatabaseName("ix_islamu_event_notification_intents_category_id");
+                        .HasDatabaseName("ix_ie_notification_intents_category_id");
 
                     b.HasIndex("EventId")
-                        .HasDatabaseName("ix_islamu_event_notification_intents_event_id");
+                        .HasDatabaseName("ix_ie_notification_intents_event_id");
 
                     b.HasIndex("OwnershipTypeId")
-                        .HasDatabaseName("ix_islamu_event_notification_intents_ownership_type_id");
+                        .HasDatabaseName("ix_ie_notification_intents_ownership_type_id");
 
                     b.HasIndex("RecipientKindId")
-                        .HasDatabaseName("ix_islamu_event_notification_intents_recipient_kind_id");
+                        .HasDatabaseName("ix_ie_notification_intents_recipient_kind_id");
 
                     b.HasIndex("ReportDecisionId")
-                        .HasDatabaseName("ix_islamu_event_notification_intents_report_decision_id");
+                        .HasDatabaseName("ix_ie_notification_intents_report_decision_id");
 
                     b.HasIndex("ReportId")
-                        .HasDatabaseName("ix_islamu_event_notification_intents_report_id");
+                        .HasDatabaseName("ix_ie_notification_intents_report_id");
 
                     b.HasIndex("StatusId")
-                        .HasDatabaseName("ix_islamu_event_notification_intents_status_id");
+                        .HasDatabaseName("ix_ie_notification_intents_status_id");
 
                     b.HasIndex("TenantId", "DeduplicationKey")
                         .IsUnique()
@@ -14295,7 +14295,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasFilter("is_deleted = false");
 
                     b.HasIndex("TenantId", "RecipientUserId")
-                        .HasDatabaseName("ix_islamu_event_notification_intents_tenant_id_recipient_user_id");
+                        .HasDatabaseName("ix_ie_notification_intents_tenant_id_recipient_user_id");
 
                     b.HasIndex("TenantId", "CategoryId", "CreatedAt")
                         .HasDatabaseName("ix_notification_intents_tenant_category_created");
@@ -14310,7 +14310,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                     b.HasIndex("TenantId", "StatusId", "CreatedAt")
                         .HasDatabaseName("ix_notification_intents_tenant_status_created");
 
-                    b.ToTable("islamu_event_notification_intents", (string)null);
+                    b.ToTable("ie_notification_intents", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.NotificationIntentStatus", b =>
@@ -14337,13 +14337,13 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("master_code");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_notification_intent_statuses");
+                        .HasName("pk_ie_notification_intent_statuses");
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
                         .HasDatabaseName("ux_notification_intent_statuses_master_code");
 
-                    b.ToTable("islamu_event_notification_intent_statuses", (string)null);
+                    b.ToTable("ie_notification_intent_statuses", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.NotificationOwnershipType", b =>
@@ -14370,13 +14370,13 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("master_code");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_notification_ownership_types");
+                        .HasName("pk_ie_notification_ownership_types");
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
                         .HasDatabaseName("ux_notification_ownership_types_master_code");
 
-                    b.ToTable("islamu_event_notification_ownership_types", (string)null);
+                    b.ToTable("ie_notification_ownership_types", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.NotificationPreferenceCategory", b =>
@@ -14425,13 +14425,13 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("sort_order");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_notification_preference_categories");
+                        .HasName("pk_ie_notification_preference_categories");
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
                         .HasDatabaseName("ux_notification_preference_categories_master_code");
 
-                    b.ToTable("islamu_event_notification_preference_categories", (string)null);
+                    b.ToTable("ie_notification_preference_categories", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.NotificationPreferenceChannel", b =>
@@ -14462,13 +14462,13 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("sort_order");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_notification_preference_channels");
+                        .HasName("pk_ie_notification_preference_channels");
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
                         .HasDatabaseName("ux_notification_preference_channels_master_code");
 
-                    b.ToTable("islamu_event_notification_preference_channels", (string)null);
+                    b.ToTable("ie_notification_preference_channels", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.NotificationPreferenceProfile", b =>
@@ -14544,19 +14544,19 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("user_id");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_notification_preference_profiles");
+                        .HasName("pk_ie_notification_preference_profiles");
 
                     b.HasIndex("GroupId")
-                        .HasDatabaseName("ix_islamu_event_notification_preference_profiles_group_id");
+                        .HasDatabaseName("ix_ie_notification_preference_profiles_group_id");
 
                     b.HasIndex("OrganizationId")
-                        .HasDatabaseName("ix_islamu_event_notification_preference_profiles_organization_id");
+                        .HasDatabaseName("ix_ie_notification_preference_profiles_organization_id");
 
                     b.HasIndex("ScopeId")
-                        .HasDatabaseName("ix_islamu_event_notification_preference_profiles_scope_id");
+                        .HasDatabaseName("ix_ie_notification_preference_profiles_scope_id");
 
                     b.HasIndex("UserId")
-                        .HasDatabaseName("ix_islamu_event_notification_preference_profiles_user_id");
+                        .HasDatabaseName("ix_ie_notification_preference_profiles_user_id");
 
                     b.HasIndex("TenantId", "ScopeId")
                         .IsUnique()
@@ -14578,7 +14578,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasDatabaseName("ux_notification_preference_profiles_user")
                         .HasFilter("is_deleted = false AND user_id IS NOT NULL");
 
-                    b.ToTable("islamu_event_notification_preference_profiles", null, t =>
+                    b.ToTable("ie_notification_preference_profiles", null, t =>
                         {
                             t.HasCheckConstraint("ck_notification_preference_profiles_scope_target", "(scope_id IN (0, 1, 2) AND user_id IS NULL AND organization_id IS NULL AND group_id IS NULL) OR (scope_id = 3 AND organization_id IS NOT NULL AND user_id IS NULL AND group_id IS NULL) OR (scope_id = 4 AND group_id IS NOT NULL AND user_id IS NULL AND organization_id IS NULL) OR (scope_id = 5 AND user_id IS NOT NULL AND organization_id IS NULL AND group_id IS NULL)");
                         });
@@ -14608,9 +14608,9 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("master_code");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_notification_reasons");
+                        .HasName("pk_ie_notification_reasons");
 
-                    b.ToTable("islamu_event_notification_reasons", (string)null);
+                    b.ToTable("ie_notification_reasons", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.NotificationRecipientKind", b =>
@@ -14637,13 +14637,13 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("master_code");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_notification_recipient_kinds");
+                        .HasName("pk_ie_notification_recipient_kinds");
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
                         .HasDatabaseName("ux_notification_recipient_kinds_master_code");
 
-                    b.ToTable("islamu_event_notification_recipient_kinds", (string)null);
+                    b.ToTable("ie_notification_recipient_kinds", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.NotificationScopeType", b =>
@@ -14670,13 +14670,13 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("master_code");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_notification_scope_types");
+                        .HasName("pk_ie_notification_scope_types");
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
-                        .HasDatabaseName("ix_islamu_event_notification_scope_types_master_code");
+                        .HasDatabaseName("ix_ie_notification_scope_types_master_code");
 
-                    b.ToTable("islamu_event_notification_scope_types", (string)null);
+                    b.ToTable("ie_notification_scope_types", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.NotificationType", b =>
@@ -14703,9 +14703,9 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("master_code");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_notification_types");
+                        .HasName("pk_ie_notification_types");
 
-                    b.ToTable("islamu_event_notification_types", (string)null);
+                    b.ToTable("ie_notification_types", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.Organization", b =>
@@ -14756,9 +14756,9 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("website_url");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_organizations");
+                        .HasName("pk_ie_organizations");
 
-                    b.ToTable("islamu_event_organizations", (string)null);
+                    b.ToTable("ie_organizations", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.OrganizationMember", b =>
@@ -14817,13 +14817,13 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("user_id");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_organization_members");
+                        .HasName("pk_ie_organization_members");
 
                     b.HasIndex("OrganizationPositionId")
-                        .HasDatabaseName("ix_islamu_event_organization_members_organization_position_id");
+                        .HasDatabaseName("ix_ie_organization_members_organization_position_id");
 
                     b.HasIndex("RoleId")
-                        .HasDatabaseName("ix_islamu_event_organization_members_role_id");
+                        .HasDatabaseName("ix_ie_organization_members_role_id");
 
                     b.HasIndex("UserId")
                         .HasDatabaseName("ix_orgmembers_user");
@@ -14833,9 +14833,9 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasDatabaseName("ix_orgmembers_org_user");
 
                     b.HasIndex("TenantId", "OrganizationTenantId")
-                        .HasDatabaseName("ix_islamu_event_organization_members_tenant_id_organization_tenant_id");
+                        .HasDatabaseName("ix_ie_organization_members_tenant_id_organization_tenant_id");
 
-                    b.ToTable("islamu_event_organization_members", (string)null);
+                    b.ToTable("ie_organization_members", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.OrganizationPii", b =>
@@ -14876,12 +14876,12 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("postcode");
 
                     b.HasKey("OrganizationId")
-                        .HasName("pk_islamu_event_organization_pii");
+                        .HasName("pk_ie_organization_pii");
 
                     b.HasIndex("FullName")
                         .HasDatabaseName("ix_organization_pii_name");
 
-                    b.ToTable("islamu_event_organization_pii", (string)null);
+                    b.ToTable("ie_organization_pii", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.OrganizationPosition", b =>
@@ -14908,9 +14908,9 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("master_code");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_organization_positions");
+                        .HasName("pk_ie_organization_positions");
 
-                    b.ToTable("islamu_event_organization_positions", (string)null);
+                    b.ToTable("ie_organization_positions", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.OrganizationReview", b =>
@@ -14980,21 +14980,21 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("user_id");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_organization_reviews");
+                        .HasName("pk_ie_organization_reviews");
 
                     b.HasIndex("EventId")
-                        .HasDatabaseName("ix_islamu_event_organization_reviews_event_id");
+                        .HasDatabaseName("ix_ie_organization_reviews_event_id");
 
                     b.HasIndex("OrganizationId")
-                        .HasDatabaseName("ix_islamu_event_organization_reviews_organization_id");
+                        .HasDatabaseName("ix_ie_organization_reviews_organization_id");
 
                     b.HasIndex("TenantId")
-                        .HasDatabaseName("ix_islamu_event_organization_reviews_tenant_id");
+                        .HasDatabaseName("ix_ie_organization_reviews_tenant_id");
 
                     b.HasIndex("UserId")
-                        .HasDatabaseName("ix_islamu_event_organization_reviews_user_id");
+                        .HasDatabaseName("ix_ie_organization_reviews_user_id");
 
-                    b.ToTable("islamu_event_organization_reviews", (string)null);
+                    b.ToTable("ie_organization_reviews", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.OrganizationSetting", b =>
@@ -15042,16 +15042,16 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("value");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_organization_setting_overrides");
+                        .HasName("pk_ie_organization_setting_overrides");
 
                     b.HasIndex("OrganizationTenantId", "SettingKey")
                         .IsUnique()
-                        .HasDatabaseName("ix_islamu_event_organization_setting_overrides_organization_tenant_id_setting_key");
+                        .HasDatabaseName("ix_ie_organization_setting_overrides_organization_tenant_id_setting_key");
 
                     b.HasIndex("TenantId", "OrganizationTenantId")
-                        .HasDatabaseName("ix_islamu_event_organization_setting_overrides_tenant_id_organization_tenant_id");
+                        .HasDatabaseName("ix_ie_organization_setting_overrides_tenant_id_organization_tenant_id");
 
-                    b.ToTable("islamu_event_organization_setting_overrides", (string)null);
+                    b.ToTable("ie_organization_setting_overrides", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.OrganizationTenant", b =>
@@ -15193,7 +15193,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("website_url_override");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_organization_tenants");
+                        .HasName("pk_ie_organization_tenants");
 
                     b.HasAlternateKey("TenantId", "Id")
                         .HasName("ak_organization_tenants_tenant_id_id");
@@ -15202,29 +15202,29 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasName("ak_organization_tenants_tenant_id_organization_id");
 
                     b.HasIndex("ApprovalStatusId")
-                        .HasDatabaseName("ix_islamu_event_organization_tenants_approval_status_id");
+                        .HasDatabaseName("ix_ie_organization_tenants_approval_status_id");
 
                     b.HasIndex("BackgroundImageId")
-                        .HasDatabaseName("ix_islamu_event_organization_tenants_background_image_id");
+                        .HasDatabaseName("ix_ie_organization_tenants_background_image_id");
 
                     b.HasIndex("BannerPictureId")
-                        .HasDatabaseName("ix_islamu_event_organization_tenants_banner_picture_id");
+                        .HasDatabaseName("ix_ie_organization_tenants_banner_picture_id");
 
                     b.HasIndex("OrganizationId")
-                        .HasDatabaseName("ix_islamu_event_organization_tenants_organization_id");
+                        .HasDatabaseName("ix_ie_organization_tenants_organization_id");
 
                     b.HasIndex("ProfilePictureId")
-                        .HasDatabaseName("ix_islamu_event_organization_tenants_profile_picture_id");
+                        .HasDatabaseName("ix_ie_organization_tenants_profile_picture_id");
 
                     b.HasIndex("TenantId", "OrganizationId")
                         .IsUnique()
-                        .HasDatabaseName("ix_islamu_event_organization_tenants_tenant_id_organization_id")
+                        .HasDatabaseName("ix_ie_organization_tenants_tenant_id_organization_id")
                         .HasFilter("is_deleted = false");
 
                     b.HasIndex("TenantId", "IsDeleted", "ApprovalStatusId")
-                        .HasDatabaseName("ix_islamu_event_organization_tenants_tenant_id_is_deleted_approval_status_id");
+                        .HasDatabaseName("ix_ie_organization_tenants_tenant_id_is_deleted_approval_status_id");
 
-                    b.ToTable("islamu_event_organization_tenants", (string)null);
+                    b.ToTable("ie_organization_tenants", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.OrganizationTenantEvidence", b =>
@@ -15287,28 +15287,28 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("updated_by");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_organization_tenant_evidence");
+                        .HasName("pk_ie_organization_tenant_evidence");
 
                     b.HasAlternateKey("TenantId", "Id")
                         .HasName("ak_organization_tenant_evidence_tenant_id_id");
 
                     b.HasIndex("ReviewStatusId")
-                        .HasDatabaseName("ix_islamu_event_organization_tenant_evidence_review_status_id");
+                        .HasDatabaseName("ix_ie_organization_tenant_evidence_review_status_id");
 
                     b.HasIndex("ReviewedByUserId")
-                        .HasDatabaseName("ix_islamu_event_organization_tenant_evidence_reviewed_by_user_id");
+                        .HasDatabaseName("ix_ie_organization_tenant_evidence_reviewed_by_user_id");
 
                     b.HasIndex("TenantId", "DocumentStorageObjectId")
-                        .HasDatabaseName("ix_islamu_event_organization_tenant_evidence_tenant_id_document_storage_object_id");
+                        .HasDatabaseName("ix_ie_organization_tenant_evidence_tenant_id_document_storage_object_id");
 
                     b.HasIndex("TenantId", "OrganizationTenantId", "DocumentStorageObjectId")
                         .IsUnique()
-                        .HasDatabaseName("ix_islamu_event_organization_tenant_evidence_tenant_id_organization_tenant_id_document_storage_object_id");
+                        .HasDatabaseName("ix_ie_organization_tenant_evidence_tenant_id_organization_tenant_id_document_storage_object_id");
 
                     b.HasIndex("TenantId", "OrganizationTenantId", "ReviewStatusId")
-                        .HasDatabaseName("ix_islamu_event_organization_tenant_evidence_tenant_id_organization_tenant_id_review_status_id");
+                        .HasDatabaseName("ix_ie_organization_tenant_evidence_tenant_id_organization_tenant_id_review_status_id");
 
-                    b.ToTable("islamu_event_organization_tenant_evidence", (string)null);
+                    b.ToTable("ie_organization_tenant_evidence", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.OutboxMessage", b =>
@@ -15374,7 +15374,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("status");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_outbox_messages");
+                        .HasName("pk_ie_outbox_messages");
 
                     b.HasIndex("AggregateType", "AggregateId")
                         .HasDatabaseName("IX_OutboxMessages_Aggregate");
@@ -15385,7 +15385,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                     b.HasIndex("AggregateType", "AggregateId", "EventType", "CreatedAt")
                         .HasDatabaseName("IX_OutboxMessages_Dedup");
 
-                    b.ToTable("islamu_event_outbox_messages", (string)null);
+                    b.ToTable("ie_outbox_messages", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.OwnerType", b =>
@@ -15410,9 +15410,9 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("master_code");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_owner_types");
+                        .HasName("pk_ie_owner_types");
 
-                    b.ToTable("islamu_event_owner_types", (string)null);
+                    b.ToTable("ie_owner_types", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.ParticipantDataCollectionMode", b =>
@@ -15439,13 +15439,13 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("master_code");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_participant_data_collection_modes");
+                        .HasName("pk_ie_participant_data_collection_modes");
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
-                        .HasDatabaseName("ix_islamu_event_participant_data_collection_modes_master_code");
+                        .HasDatabaseName("ix_ie_participant_data_collection_modes_master_code");
 
-                    b.ToTable("islamu_event_participant_data_collection_modes", (string)null);
+                    b.ToTable("ie_participant_data_collection_modes", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.ParticipantType", b =>
@@ -15471,13 +15471,13 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("master_code");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_participant_types");
+                        .HasName("pk_ie_participant_types");
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
-                        .HasDatabaseName("ix_islamu_event_participant_types_master_code");
+                        .HasDatabaseName("ix_ie_participant_types_master_code");
 
-                    b.ToTable("islamu_event_participant_types", (string)null);
+                    b.ToTable("ie_participant_types", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.ParticipationHandlingMode", b =>
@@ -15504,13 +15504,13 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("master_code");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_participation_handling_modes");
+                        .HasName("pk_ie_participation_handling_modes");
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
-                        .HasDatabaseName("ix_islamu_event_participation_handling_modes_master_code");
+                        .HasDatabaseName("ix_ie_participation_handling_modes_master_code");
 
-                    b.ToTable("islamu_event_participation_handling_modes", (string)null);
+                    b.ToTable("ie_participation_handling_modes", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.ParticipationRequirementAttachment", b =>
@@ -15587,31 +15587,31 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("updated_by");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_participation_requirement_attachments");
+                        .HasName("pk_ie_participation_requirement_attachments");
 
                     b.HasIndex("ParticipationConfigurationId", "IsStandaloneQuestionnaire")
                         .IsUnique()
-                        .HasDatabaseName("ix_islamu_event_participation_requirement_attachments_participation_configuration_id_is_standalone_questionnaire")
+                        .HasDatabaseName("ix_ie_participation_requirement_attachments_participation_configuration_id_is_standalone_questionnaire")
                         .HasFilter("is_deleted = false AND is_standalone_questionnaire = true");
 
                     b.HasIndex("ParticipationConfigurationId", "RegistrationRequirementId")
                         .IsUnique()
-                        .HasDatabaseName("ix_islamu_event_participation_requirement_attachments_participation_configuration_id_registration_requirement_id")
+                        .HasDatabaseName("ix_ie_participation_requirement_attachments_participation_configuration_id_registration_requirement_id")
                         .HasFilter("is_deleted = false");
 
                     b.HasIndex("TenantId", "EventId")
-                        .HasDatabaseName("ix_islamu_event_participation_requirement_attachments_tenant_id_event_id");
+                        .HasDatabaseName("ix_ie_participation_requirement_attachments_tenant_id_event_id");
 
                     b.HasIndex("TenantId", "ParticipationConfigurationId")
-                        .HasDatabaseName("ix_islamu_event_participation_requirement_attachments_tenant_id_participation_configuration_id");
+                        .HasDatabaseName("ix_ie_participation_requirement_attachments_tenant_id_participation_configuration_id");
 
                     b.HasIndex("TenantId", "EventId", "RegistrationFormId", "RegistrationFormVersionId")
-                        .HasDatabaseName("ix_islamu_event_participation_requirement_attachments_tenant_id_event_id_registration_form_id_registration_form_version_id");
+                        .HasDatabaseName("ix_ie_participation_requirement_attachments_tenant_id_event_id_registration_form_id_registration_form_version_id");
 
                     b.HasIndex("TenantId", "EventId", "RegistrationWorkflowId", "RegistrationRequirementId")
-                        .HasDatabaseName("ix_islamu_event_participation_requirement_attachments_tenant_id_event_id_registration_workflow_id_registration_requirement_id");
+                        .HasDatabaseName("ix_ie_participation_requirement_attachments_tenant_id_event_id_registration_workflow_id_registration_requirement_id");
 
-                    b.ToTable("islamu_event_participation_requirement_attachments", null, t =>
+                    b.ToTable("ie_participation_requirement_attachments", null, t =>
                         {
                             t.HasCheckConstraint("ck_participation_requirement_attachments_configuration_event", "event_id = participation_configuration_id");
 
@@ -15707,7 +15707,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("updated_by");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_permissions");
+                        .HasName("pk_ie_permissions");
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
@@ -15719,7 +15719,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                     b.HasIndex("ResourceKind", "Action")
                         .HasDatabaseName("ix_permissions_resource_action");
 
-                    b.ToTable("islamu_event_permissions", (string)null);
+                    b.ToTable("ie_permissions", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.PlatformContributionOption", b =>
@@ -15745,17 +15745,17 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("sort_order");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_platform_contribution_options");
+                        .HasName("pk_ie_platform_contribution_options");
 
                     b.HasIndex("PlatformContributionSettingId", "ContributionBasisPoints")
                         .IsUnique()
-                        .HasDatabaseName("ix_islamu_event_platform_contribution_options_platform_contribution_setting_id_contribution_basis_points");
+                        .HasDatabaseName("ix_ie_platform_contribution_options_platform_contribution_setting_id_contribution_basis_points");
 
                     b.HasIndex("PlatformContributionSettingId", "SortOrder")
                         .IsUnique()
-                        .HasDatabaseName("ix_islamu_event_platform_contribution_options_platform_contribution_setting_id_sort_order");
+                        .HasDatabaseName("ix_ie_platform_contribution_options_platform_contribution_setting_id_sort_order");
 
-                    b.ToTable("islamu_event_platform_contribution_options", (string)null);
+                    b.ToTable("ie_platform_contribution_options", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.PlatformContributionSetting", b =>
@@ -15805,18 +15805,18 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("version_number");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_platform_contribution_settings");
+                        .HasName("pk_ie_platform_contribution_settings");
 
                     b.HasIndex("IsActive")
                         .IsUnique()
-                        .HasDatabaseName("ix_islamu_event_platform_contribution_settings_is_active")
+                        .HasDatabaseName("ix_ie_platform_contribution_settings_is_active")
                         .HasFilter("is_active = true");
 
                     b.HasIndex("VersionNumber")
                         .IsUnique()
-                        .HasDatabaseName("ix_islamu_event_platform_contribution_settings_version_number");
+                        .HasDatabaseName("ix_ie_platform_contribution_settings_version_number");
 
-                    b.ToTable("islamu_event_platform_contribution_settings", (string)null);
+                    b.ToTable("ie_platform_contribution_settings", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.PlatformFeeFixedCharge", b =>
@@ -15840,13 +15840,13 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("platform_fee_policy_id");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_platform_fee_fixed_charges");
+                        .HasName("pk_ie_platform_fee_fixed_charges");
 
                     b.HasIndex("PlatformFeePolicyId", "CurrencyCode")
                         .IsUnique()
-                        .HasDatabaseName("ix_islamu_event_platform_fee_fixed_charges_platform_fee_policy_id_currency_code");
+                        .HasDatabaseName("ix_ie_platform_fee_fixed_charges_platform_fee_policy_id_currency_code");
 
-                    b.ToTable("islamu_event_platform_fee_fixed_charges", (string)null);
+                    b.ToTable("ie_platform_fee_fixed_charges", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.PlatformFeePolicy", b =>
@@ -15888,18 +15888,18 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("version_number");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_platform_fee_policies");
+                        .HasName("pk_ie_platform_fee_policies");
 
                     b.HasIndex("IsActive")
                         .IsUnique()
-                        .HasDatabaseName("ix_islamu_event_platform_fee_policies_is_active")
+                        .HasDatabaseName("ix_ie_platform_fee_policies_is_active")
                         .HasFilter("is_active = true");
 
                     b.HasIndex("VersionNumber")
                         .IsUnique()
-                        .HasDatabaseName("ix_islamu_event_platform_fee_policies_version_number");
+                        .HasDatabaseName("ix_ie_platform_fee_policies_version_number");
 
-                    b.ToTable("islamu_event_platform_fee_policies", (string)null);
+                    b.ToTable("ie_platform_fee_policies", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.PlatformUserRole", b =>
@@ -15928,19 +15928,19 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("user_id");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_platform_user_roles");
+                        .HasName("pk_ie_platform_user_roles");
 
                     b.HasIndex("RoleId")
-                        .HasDatabaseName("ix_islamu_event_platform_user_roles_role_id");
+                        .HasDatabaseName("ix_ie_platform_user_roles_role_id");
 
                     b.HasIndex("UserId")
-                        .HasDatabaseName("ix_islamu_event_platform_user_roles_user_id");
+                        .HasDatabaseName("ix_ie_platform_user_roles_user_id");
 
                     b.HasIndex("UserId", "RoleId")
                         .IsUnique()
-                        .HasDatabaseName("ix_islamu_event_platform_user_roles_user_id_role_id");
+                        .HasDatabaseName("ix_ie_platform_user_roles_user_id_role_id");
 
-                    b.ToTable("islamu_event_platform_user_roles", (string)null);
+                    b.ToTable("ie_platform_user_roles", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.Policies.InstancePolicySet", b =>
@@ -15973,9 +15973,9 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("updated_by");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_instance_policy_sets");
+                        .HasName("pk_ie_instance_policy_sets");
 
-                    b.ToTable("islamu_event_instance_policy_sets", (string)null);
+                    b.ToTable("ie_instance_policy_sets", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.Policies.OrganizationPolicySet", b =>
@@ -16016,13 +16016,13 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("updated_by");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_organization_policy_sets");
+                        .HasName("pk_ie_organization_policy_sets");
 
                     b.HasIndex("OrganizationId")
                         .IsUnique()
-                        .HasDatabaseName("ix_islamu_event_organization_policy_sets_organization_id");
+                        .HasDatabaseName("ix_ie_organization_policy_sets_organization_id");
 
-                    b.ToTable("islamu_event_organization_policy_sets", (string)null);
+                    b.ToTable("ie_organization_policy_sets", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.Policies.PolicyChangeOutbox", b =>
@@ -16075,12 +16075,12 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("status");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_policy_change_outbox");
+                        .HasName("pk_ie_policy_change_outbox");
 
                     b.HasIndex("Status", "NextRetryAt")
                         .HasDatabaseName("ix_policy_change_outbox_status_retry");
 
-                    b.ToTable("islamu_event_policy_change_outbox", (string)null);
+                    b.ToTable("ie_policy_change_outbox", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.Policies.TenantPolicySet", b =>
@@ -16117,13 +16117,13 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("updated_by");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_tenant_policy_sets");
+                        .HasName("pk_ie_tenant_policy_sets");
 
                     b.HasIndex("TenantId")
                         .IsUnique()
-                        .HasDatabaseName("ix_islamu_event_tenant_policy_sets_tenant_id");
+                        .HasDatabaseName("ix_ie_tenant_policy_sets_tenant_id");
 
-                    b.ToTable("islamu_event_tenant_policy_sets", (string)null);
+                    b.ToTable("ie_tenant_policy_sets", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.PrivacyErasurePolicyCoverage", b =>
@@ -16145,9 +16145,9 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("covered_at_utc");
 
                     b.HasKey("IntentId", "SubjectKind", "PolicyVersion")
-                        .HasName("pk_islamu_event_privacy_erasure_policy_coverage");
+                        .HasName("pk_ie_privacy_erasure_policy_coverage");
 
-                    b.ToTable("islamu_event_privacy_erasure_policy_coverage", null, t =>
+                    b.ToTable("ie_privacy_erasure_policy_coverage", null, t =>
                         {
                             t.HasCheckConstraint("ck_privacy_erasure_policy_coverage_policy_version", "policy_version > 0");
 
@@ -16262,16 +16262,16 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("updated_at_utc");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_privacy_erasure_provider_work");
+                        .HasName("pk_ie_privacy_erasure_provider_work");
 
                     b.HasIndex("Status", "NextAttemptAtUtc", "LeaseExpiresAtUtc")
-                        .HasDatabaseName("ix_islamu_event_privacy_erasure_provider_work_status_next_attempt_at_utc_lease_expires_at_utc");
+                        .HasDatabaseName("ix_ie_privacy_erasure_provider_work_status_next_attempt_at_utc_lease_expires_at_utc");
 
                     b.HasIndex("IntentId", "ProviderKind", "Action", "TenantId", "TargetId")
                         .IsUnique()
-                        .HasDatabaseName("ix_islamu_event_privacy_erasure_provider_work_intent_id_provider_kind_action_tenant_id_target_id");
+                        .HasDatabaseName("ix_ie_privacy_erasure_provider_work_intent_id_provider_kind_action_tenant_id_target_id");
 
-                    b.ToTable("islamu_event_privacy_erasure_provider_work", null, t =>
+                    b.ToTable("ie_privacy_erasure_provider_work", null, t =>
                         {
                             t.HasCheckConstraint("ck_privacy_erasure_provider_work_attempt_count", "attempt_count >= 0");
 
@@ -16329,7 +16329,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("subject_kind");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_privacy_erasure_replay_checkpoints");
+                        .HasName("pk_ie_privacy_erasure_replay_checkpoints");
 
                     b.HasIndex("AuthoritySequence")
                         .IsUnique()
@@ -16343,7 +16343,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .IsUnique()
                         .HasDatabaseName("ux_privacy_erasure_checkpoints_previous");
 
-                    b.ToTable("islamu_event_privacy_erasure_replay_checkpoints", null, t =>
+                    b.ToTable("ie_privacy_erasure_replay_checkpoints", null, t =>
                         {
                             t.HasCheckConstraint("ck_privacy_erasure_replay_checkpoints_chain", "(authority_sequence = 1 AND previous_checkpoint_id IS NULL) OR (authority_sequence > 1 AND previous_checkpoint_id IS NOT NULL)");
 
@@ -16418,21 +16418,21 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("updated_at_utc");
 
                     b.HasKey("IntentId")
-                        .HasName("pk_islamu_event_privacy_erasure_sagas");
+                        .HasName("pk_ie_privacy_erasure_sagas");
 
                     b.HasIndex("ReceiptHash")
                         .IsUnique()
-                        .HasDatabaseName("ix_islamu_event_privacy_erasure_sagas_receipt_hash");
+                        .HasDatabaseName("ix_ie_privacy_erasure_sagas_receipt_hash");
 
                     b.HasIndex("SubjectKind", "SubjectId")
                         .IsUnique()
-                        .HasDatabaseName("ix_islamu_event_privacy_erasure_sagas_subject_kind_subject_id");
+                        .HasDatabaseName("ix_ie_privacy_erasure_sagas_subject_kind_subject_id");
 
                     b.HasIndex("IntentId", "SubjectKind", "PolicyVersion")
                         .IsUnique()
-                        .HasDatabaseName("ix_islamu_event_privacy_erasure_sagas_intent_id_subject_kind_policy_version");
+                        .HasDatabaseName("ix_ie_privacy_erasure_sagas_intent_id_subject_kind_policy_version");
 
-                    b.ToTable("islamu_event_privacy_erasure_sagas", null, t =>
+                    b.ToTable("ie_privacy_erasure_sagas", null, t =>
                         {
                             t.HasCheckConstraint("ck_privacy_erasure_sagas_fence", "fence_token > 0");
 
@@ -16622,48 +16622,266 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("updated_by");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_registration_answers");
+                        .HasName("pk_ie_registration_answers");
 
                     b.HasIndex("AnswerSubjectTypeId")
-                        .HasDatabaseName("ix_islamu_event_registration_answers_answer_subject_type_id");
+                        .HasDatabaseName("ix_ie_registration_answers_answer_subject_type_id");
 
                     b.HasIndex("TenantId", "RegistrationOrderId")
-                        .HasDatabaseName("ix_islamu_event_registration_answers_tenant_id_registration_order_id");
+                        .HasDatabaseName("ix_ie_registration_answers_tenant_id_registration_order_id");
 
                     b.HasIndex("TenantId", "SensitiveAnswerValueId")
                         .IsUnique()
-                        .HasDatabaseName("ix_islamu_event_registration_answers_tenant_id_sensitive_answer_value_id");
+                        .HasDatabaseName("ix_ie_registration_answers_tenant_id_sensitive_answer_value_id");
 
                     b.HasIndex("TenantId", "RegistrationOrderId", "ParticipantSubjectId")
-                        .HasDatabaseName("ix_islamu_event_registration_answers_tenant_id_registration_order_id_participant_subject_id");
+                        .HasDatabaseName("ix_ie_registration_answers_tenant_id_registration_order_id_participant_subject_id");
 
                     b.HasIndex("TenantId", "RegistrationOrderId", "TicketAssignmentOrderLineId", "RequirementSubjectId")
-                        .HasDatabaseName("ix_islamu_event_registration_answers_tenant_id_registration_order_id_ticket_assignment_order_line_id_requirement_subject_id");
+                        .HasDatabaseName("ix_ie_registration_answers_tenant_id_registration_order_id_ticket_assignment_order_line_id_requirement_subject_id");
 
                     b.HasIndex("TenantId", "RegistrationOrderId", "TicketAssignmentSubjectId", "TicketAssignmentOrderLineId")
-                        .HasDatabaseName("ix_islamu_event_registration_answers_tenant_id_registration_order_id_ticket_assignment_subject_id_ticket_assignment_order_line_id");
+                        .HasDatabaseName("ix_ie_registration_answers_tenant_id_registration_order_id_ticket_assignment_subject_id_ticket_assignment_order_line_id");
 
                     b.HasIndex("TenantId", "EventId", "RegistrationWorkflowId", "RegistrationRequirementId", "RequirementSubjectTypeId", "RequirementSubjectKey")
-                        .HasDatabaseName("ix_islamu_event_registration_answers_tenant_id_event_id_registration_workflow_id_registration_requirement_id_requirement_subject_type_id_requirement_subject_key");
+                        .HasDatabaseName("ix_ie_registration_answers_tenant_id_event_id_registration_workflow_id_registration_requirement_id_requirement_subject_type_id_requirement_subject_key");
 
                     b.HasIndex("TenantId", "RegistrationSubmissionId", "RegistrationFormFieldId", "AnswerSubjectTypeId", "EffectiveSubjectIdentity", "Ordinal")
                         .IsUnique()
                         .HasDatabaseName("ux_registration_answers_durable_identity");
 
                     b.HasIndex("TenantId", "EventId", "RegistrationFormId", "RegistrationFormVersionId", "RegistrationFormSectionId", "RegistrationFormFieldId", "FieldTypeId")
-                        .HasDatabaseName("ix_islamu_event_registration_answers_tenant_id_event_id_registration_form_id_registration_form_version_id_registration_form_section_id_registration_form_field_id_field_type_id");
+                        .HasDatabaseName("ix_ie_registration_answers_tenant_id_event_id_registration_form_id_registration_form_version_id_registration_form_section_id_registration_form_field_id_field_type_id");
 
                     b.HasIndex("TenantId", "EventId", "RegistrationFormId", "RegistrationFormVersionId", "RegistrationFormSectionId", "RegistrationFormFieldId", "SelectedOptionId")
-                        .HasDatabaseName("ix_islamu_event_registration_answers_tenant_id_event_id_registration_form_id_registration_form_version_id_registration_form_section_id_registration_form_field_id_selected_option_id");
+                        .HasDatabaseName("ix_ie_registration_answers_tenant_id_event_id_registration_form_id_registration_form_version_id_registration_form_section_id_registration_form_field_id_selected_option_id");
 
                     b.HasIndex("TenantId", "EventId", "RegistrationOrderId", "RegistrationWorkflowId", "RegistrationRequirementId", "RegistrationFormId", "RegistrationFormVersionId", "RegistrationAttemptId", "RegistrationSubmissionId")
-                        .HasDatabaseName("ix_islamu_event_registration_answers_tenant_id_event_id_registration_order_id_registration_workflow_id_registration_requirement_id_registration_form_id_registration_form_version_id_registration_attempt_id_registration_submission_id");
+                        .HasDatabaseName("ix_ie_registration_answers_tenant_id_event_id_registration_order_id_registration_workflow_id_registration_requirement_id_registration_form_id_registration_form_version_id_registration_attempt_id_registration_submission_id");
 
-                    b.ToTable("islamu_event_registration_answers", null, t =>
+                    b.ToTable("ie_registration_answers", null, t =>
                         {
                             t.HasCheckConstraint("ck_registration_answers_positive_ordinal", "ordinal > 0");
 
                             t.HasCheckConstraint("ck_registration_answers_value_matches_field_type", "(field_type_id IN (1, 2, 9, 10, 11, 12, 13) AND (text_value IS NOT NULL OR sensitive_answer_value_id IS NOT NULL)) OR (field_type_id IN (3, 16) AND (integer_value IS NOT NULL OR sensitive_answer_value_id IS NOT NULL)) OR (field_type_id = 4 AND (decimal_value IS NOT NULL OR sensitive_answer_value_id IS NOT NULL)) OR (field_type_id = 5 AND (boolean_value IS NOT NULL OR sensitive_answer_value_id IS NOT NULL)) OR (field_type_id = 6 AND (date_value IS NOT NULL OR sensitive_answer_value_id IS NOT NULL)) OR (field_type_id = 7 AND (time_value IS NOT NULL OR sensitive_answer_value_id IS NOT NULL)) OR (field_type_id = 8 AND (instant_value IS NOT NULL OR sensitive_answer_value_id IS NOT NULL)) OR (field_type_id IN (14, 15) AND selected_option_id IS NOT NULL)");
+                        });
+                });
+
+            modelBuilder.Entity("Explore.Domain.RegistrationAnswerFile", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("ConcurrencyStamp")
+                        .IsConcurrencyToken()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("concurrency_stamp");
+
+                    b.Property<string>("ContentType")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("content_type");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("deleted_by");
+
+                    b.Property<Guid>("EventId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("event_id");
+
+                    b.Property<string>("Extension")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("extension");
+
+                    b.Property<int>("FieldTypeId")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("field_type_id");
+
+                    b.Property<bool>("IsDeleted")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_deleted");
+
+                    b.Property<string>("QuarantineState")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("quarantine_state");
+
+                    b.Property<DateTime>("QuarantinedAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("quarantined_at");
+
+                    b.Property<Guid>("RegistrationFormFieldId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("registration_form_field_id");
+
+                    b.Property<Guid>("RegistrationFormId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("registration_form_id");
+
+                    b.Property<Guid>("RegistrationFormSectionId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("registration_form_section_id");
+
+                    b.Property<Guid>("RegistrationFormVersionId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("registration_form_version_id");
+
+                    b.Property<Guid>("RegistrationSubmissionId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("registration_submission_id");
+
+                    b.Property<DateTime?>("ReleasedAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("released_at");
+
+                    b.Property<Guid?>("ReleasedBy")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("released_by");
+
+                    b.Property<string>("SafeDisplayName")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("safe_display_name");
+
+                    b.Property<string>("ScanStatus")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("scan_status");
+
+                    b.Property<string>("Sha256Checksum")
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("sha256checksum");
+
+                    b.Property<long>("Size")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("size");
+
+                    b.Property<Guid>("StorageObjectId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("storage_object_id");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_ie_registration_answer_files");
+
+                    b.HasAlternateKey("TenantId", "Id")
+                        .HasName("ak_registration_answer_files_tenant_id_id");
+
+                    b.HasIndex("TenantId", "StorageObjectId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_ie_registration_answer_files_tenant_id_storage_object_id");
+
+                    b.HasIndex("TenantId", "EventId", "RegistrationSubmissionId")
+                        .HasDatabaseName("ix_ie_registration_answer_files_tenant_id_event_id_registration_submission_id");
+
+                    b.HasIndex("TenantId", "StorageObjectId", "QuarantineState")
+                        .HasDatabaseName("ix_ie_registration_answer_files_tenant_id_storage_object_id_quarantine_state");
+
+                    b.HasIndex("TenantId", "RegistrationSubmissionId", "RegistrationFormFieldId", "StorageObjectId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_ie_registration_answer_files_tenant_id_registration_submission_id_registration_form_field_id_storage_object_id");
+
+                    b.HasIndex("TenantId", "EventId", "RegistrationFormId", "RegistrationFormVersionId", "RegistrationFormSectionId", "RegistrationFormFieldId", "FieldTypeId")
+                        .HasDatabaseName("ix_ie_registration_answer_files_tenant_id_event_id_registration_form_id_registration_form_version_id_registration_form_section_id_registration_form_field_id_field_type_id");
+
+                    b.ToTable("ie_registration_answer_files", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_registration_answer_files_field_type", "field_type_id = 18");
+
+                            t.HasCheckConstraint("ck_registration_answer_files_quarantine_state", "quarantine_state IN ('quarantined', 'released')");
+
+                            t.HasCheckConstraint("ck_registration_answer_files_release_shape", "(quarantine_state = 'quarantined' AND released_at IS NULL AND released_by IS NULL) OR (quarantine_state = 'released' AND released_at IS NOT NULL AND released_by IS NOT NULL)");
+
+                            t.HasCheckConstraint("ck_registration_answer_files_scan_status", "scan_status = 'not_scanned'");
+
+                            t.HasCheckConstraint("ck_registration_answer_files_size_nonnegative", "size >= 0");
+                        });
+                });
+
+            modelBuilder.Entity("Explore.Domain.RegistrationAnswerFileRelease", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("id");
+
+                    b.Property<string>("NewQuarantineState")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("new_quarantine_state");
+
+                    b.Property<string>("PreviousQuarantineState")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("previous_quarantine_state");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("reason");
+
+                    b.Property<Guid>("RegistrationAnswerFileId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("registration_answer_file_id");
+
+                    b.Property<DateTime>("ReleasedAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("released_at");
+
+                    b.Property<Guid>("ReleasedBy")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("released_by");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("tenant_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_ie_registration_answer_file_releases");
+
+                    b.HasIndex("TenantId", "RegistrationAnswerFileId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_ie_registration_answer_file_releases_tenant_id_registration_answer_file_id");
+
+                    b.ToTable("ie_registration_answer_file_releases", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_registration_answer_file_releases_transition", "previous_quarantine_state = 'quarantined' AND new_quarantine_state = 'released'");
                         });
                 });
 
@@ -16689,9 +16907,9 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("master_code");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_registration_answer_subject_types");
+                        .HasName("pk_ie_registration_answer_subject_types");
 
-                    b.ToTable("islamu_event_registration_answer_subject_types", (string)null);
+                    b.ToTable("ie_registration_answer_subject_types", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.RegistrationAnswerSyncMode", b =>
@@ -16718,13 +16936,13 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("master_code");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_registration_answer_sync_modes");
+                        .HasName("pk_ie_registration_answer_sync_modes");
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
-                        .HasDatabaseName("ix_islamu_event_registration_answer_sync_modes_master_code");
+                        .HasDatabaseName("ix_ie_registration_answer_sync_modes_master_code");
 
-                    b.ToTable("islamu_event_registration_answer_sync_modes", (string)null);
+                    b.ToTable("ie_registration_answer_sync_modes", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.RegistrationAttempt", b =>
@@ -16851,7 +17069,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("updated_by");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_registration_attempts");
+                        .HasName("pk_ie_registration_attempts");
 
                     b.HasAlternateKey("TenantId", "Id")
                         .HasName("ak_registration_attempts_tenant_id_id");
@@ -16863,28 +17081,28 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasName("ak_registration_attempts_tenant_id_event_id_registration_order_id_registration_workflow_id_registration_requirement_id_registration_channel_id_registration_form_id_registration_form_version_id_id");
 
                     b.HasIndex("StatusId")
-                        .HasDatabaseName("ix_islamu_event_registration_attempts_status_id");
+                        .HasDatabaseName("ix_ie_registration_attempts_status_id");
 
                     b.HasIndex("TenantId", "CapabilityTokenHash")
                         .IsUnique()
-                        .HasDatabaseName("ix_islamu_event_registration_attempts_tenant_id_capability_token_hash");
+                        .HasDatabaseName("ix_ie_registration_attempts_tenant_id_capability_token_hash");
 
                     b.HasIndex("TenantId", "StatusId", "ExpiresAt")
-                        .HasDatabaseName("ix_islamu_event_registration_attempts_tenant_id_status_id_expires_at");
+                        .HasDatabaseName("ix_ie_registration_attempts_tenant_id_status_id_expires_at");
 
                     b.HasIndex("TenantId", "EventId", "RegistrationFormId", "RegistrationFormVersionId")
-                        .HasDatabaseName("ix_islamu_event_registration_attempts_tenant_id_event_id_registration_form_id_registration_form_version_id");
+                        .HasDatabaseName("ix_ie_registration_attempts_tenant_id_event_id_registration_form_id_registration_form_version_id");
 
                     b.HasIndex("TenantId", "EventId", "RegistrationWorkflowId", "RegistrationOrderId")
-                        .HasDatabaseName("ix_islamu_event_registration_attempts_tenant_id_event_id_registration_workflow_id_registration_order_id");
+                        .HasDatabaseName("ix_ie_registration_attempts_tenant_id_event_id_registration_workflow_id_registration_order_id");
 
                     b.HasIndex("TenantId", "EventId", "RegistrationWorkflowId", "RegistrationRequirementId", "RegistrationChannelId", "RegistrationProviderBindingKey")
-                        .HasDatabaseName("ix_islamu_event_registration_attempts_tenant_id_event_id_registration_workflow_id_registration_requirement_id_registration_channel_id_registration_provider_binding_key");
+                        .HasDatabaseName("ix_ie_registration_attempts_tenant_id_event_id_registration_workflow_id_registration_requirement_id_registration_channel_id_registration_provider_binding_key");
 
                     b.HasIndex("TenantId", "EventId", "RegistrationOrderId", "RegistrationWorkflowId", "RegistrationRequirementId", "RegistrationChannelId", "RegistrationFormId", "SupersededByRegistrationAttemptId")
-                        .HasDatabaseName("ix_islamu_event_registration_attempts_tenant_id_event_id_registration_order_id_registration_workflow_id_registration_requirement_id_registration_channel_id_registration_form_id_superseded_by_registration_attempt_id");
+                        .HasDatabaseName("ix_ie_registration_attempts_tenant_id_event_id_registration_order_id_registration_workflow_id_registration_requirement_id_registration_channel_id_registration_form_id_superseded_by_registration_attempt_id");
 
-                    b.ToTable("islamu_event_registration_attempts", null, t =>
+                    b.ToTable("ie_registration_attempts", null, t =>
                         {
                             t.HasCheckConstraint("ck_registration_attempts_consumption", "(status_id = 2 AND consumed_at IS NOT NULL) OR (status_id <> 2 AND consumed_at IS NULL AND submission_consumption_claim_id IS NULL)");
 
@@ -16922,13 +17140,13 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("master_code");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_registration_attempt_statuses");
+                        .HasName("pk_ie_registration_attempt_statuses");
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
-                        .HasDatabaseName("ix_islamu_event_registration_attempt_statuses_master_code");
+                        .HasDatabaseName("ix_ie_registration_attempt_statuses_master_code");
 
-                    b.ToTable("islamu_event_registration_attempt_statuses", (string)null);
+                    b.ToTable("ie_registration_attempt_statuses", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.RegistrationChannel", b =>
@@ -17007,7 +17225,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("updated_by");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_registration_channels");
+                        .HasName("pk_ie_registration_channels");
 
                     b.HasAlternateKey("TenantId", "EventId", "RegistrationWorkflowId", "RegistrationRequirementId", "Id")
                         .HasName("ak_registration_channels_tenant_id_event_id_registration_workflow_id_registration_requirement_id_id");
@@ -17016,19 +17234,208 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasName("ak_registration_channels_tenant_id_event_id_registration_workflow_id_registration_requirement_id_id_registration_provider_binding_key");
 
                     b.HasIndex("RegistrationProviderBindingId")
-                        .HasDatabaseName("ix_islamu_event_registration_channels_registration_provider_binding_id");
+                        .HasDatabaseName("ix_ie_registration_channels_registration_provider_binding_id");
 
                     b.HasIndex("RegistrationRequirementId", "Ordinal")
                         .IsUnique()
-                        .HasDatabaseName("ix_islamu_event_registration_channels_registration_requirement_id_ordinal");
+                        .HasDatabaseName("ix_ie_registration_channels_registration_requirement_id_ordinal");
 
                     b.HasIndex("TenantId", "EventId")
-                        .HasDatabaseName("ix_islamu_event_registration_channels_tenant_id_event_id");
+                        .HasDatabaseName("ix_ie_registration_channels_tenant_id_event_id");
 
-                    b.ToTable("islamu_event_registration_channels", null, t =>
+                    b.ToTable("ie_registration_channels", null, t =>
                         {
                             t.HasCheckConstraint("ck_registration_channels_provider_shape", "(is_native = true AND registration_provider_binding_id IS NULL AND registration_provider_binding_key = '00000000-0000-0000-0000-000000000000') OR (is_native = false AND registration_provider_binding_id IS NOT NULL AND registration_provider_binding_key = registration_provider_binding_id)");
                         });
+                });
+
+            modelBuilder.Entity("Explore.Domain.RegistrationConsentRecord", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("id");
+
+                    b.Property<int>("AnswerSubjectTypeId")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("answer_subject_type_id");
+
+                    b.Property<string>("ConsentTextSnapshot")
+                        .IsRequired()
+                        .HasMaxLength(4000)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("consent_text_snapshot");
+
+                    b.Property<string>("ConsentTextVersion")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("consent_text_version");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("created_by");
+
+                    b.Property<Guid>("EffectiveSubjectIdentity")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("effective_subject_identity")
+                        .HasComputedColumnSql("COALESCE(order_subject_id, purchaser_subject_id, participant_subject_id, ticket_assignment_subject_id, session_selection_subject_id)", true);
+
+                    b.Property<Guid>("EventId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("event_id");
+
+                    b.Property<int>("FieldTypeId")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("field_type_id");
+
+                    b.Property<DateTime>("GrantedAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("granted_at");
+
+                    b.Property<string>("LanguageTag")
+                        .IsRequired()
+                        .HasMaxLength(35)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("language_tag");
+
+                    b.Property<Guid?>("OrderSubjectId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("order_subject_id");
+
+                    b.Property<Guid?>("ParticipantSubjectId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("participant_subject_id");
+
+                    b.Property<Guid?>("PurchaserSubjectId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("purchaser_subject_id");
+
+                    b.Property<string>("PurposeCode")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("purpose_code");
+
+                    b.Property<Guid>("RegistrationAttemptId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("registration_attempt_id");
+
+                    b.Property<Guid>("RegistrationFormFieldId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("registration_form_field_id");
+
+                    b.Property<Guid>("RegistrationFormId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("registration_form_id");
+
+                    b.Property<Guid>("RegistrationFormSectionId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("registration_form_section_id");
+
+                    b.Property<int>("RegistrationFormVersion")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("registration_form_version");
+
+                    b.Property<Guid>("RegistrationFormVersionId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("registration_form_version_id");
+
+                    b.Property<Guid>("RegistrationOrderId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("registration_order_id");
+
+                    b.Property<Guid>("RegistrationRequirementId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("registration_requirement_id");
+
+                    b.Property<Guid>("RegistrationSubmissionId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("registration_submission_id");
+
+                    b.Property<Guid>("RegistrationWorkflowId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("registration_workflow_id");
+
+                    b.Property<Guid?>("RequirementSubjectId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("requirement_subject_id");
+
+                    b.Property<Guid>("RequirementSubjectKey")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("requirement_subject_key")
+                        .HasComputedColumnSql("COALESCE(requirement_subject_id, '00000000-0000-0000-0000-000000000000')", true);
+
+                    b.Property<int>("RequirementSubjectTypeId")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("requirement_subject_type_id");
+
+                    b.Property<Guid?>("SessionSelectionSubjectId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("session_selection_subject_id");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<Guid?>("TicketAssignmentOrderLineId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("ticket_assignment_order_line_id");
+
+                    b.Property<Guid?>("TicketAssignmentSubjectId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("ticket_assignment_subject_id");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("updated_by");
+
+                    b.Property<DateTime?>("WithdrawnAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("withdrawn_at");
+
+                    b.HasKey("Id")
+                        .HasName("pk_ie_registration_consent_records");
+
+                    b.HasIndex("AnswerSubjectTypeId")
+                        .HasDatabaseName("ix_ie_registration_consent_records_answer_subject_type_id");
+
+                    b.HasIndex("TenantId", "RegistrationOrderId", "ParticipantSubjectId")
+                        .HasDatabaseName("ix_ie_registration_consent_records_tenant_id_registration_order_id_participant_subject_id");
+
+                    b.HasIndex("TenantId", "AnswerSubjectTypeId", "EffectiveSubjectIdentity", "WithdrawnAt")
+                        .HasDatabaseName("ix_registration_consent_records_subject");
+
+                    b.HasIndex("TenantId", "RegistrationOrderId", "TicketAssignmentOrderLineId", "RequirementSubjectId")
+                        .HasDatabaseName("ix_ie_registration_consent_records_tenant_id_registration_order_id_ticket_assignment_order_line_id_requirement_subject_id");
+
+                    b.HasIndex("TenantId", "RegistrationOrderId", "TicketAssignmentSubjectId", "TicketAssignmentOrderLineId")
+                        .HasDatabaseName("ix_ie_registration_consent_records_tenant_id_registration_order_id_ticket_assignment_subject_id_ticket_assignment_order_line_id");
+
+                    b.HasIndex("TenantId", "RegistrationSubmissionId", "RegistrationFormFieldId", "AnswerSubjectTypeId", "EffectiveSubjectIdentity")
+                        .IsUnique()
+                        .HasDatabaseName("ux_registration_consent_records_evidence");
+
+                    b.HasIndex("TenantId", "EventId", "RegistrationWorkflowId", "RegistrationRequirementId", "RequirementSubjectTypeId", "RequirementSubjectKey")
+                        .HasDatabaseName("ix_ie_registration_consent_records_tenant_id_event_id_registration_workflow_id_registration_requirement_id_requirement_subject_type_id_requirement_subject_key");
+
+                    b.HasIndex("TenantId", "EventId", "RegistrationFormId", "RegistrationFormVersionId", "RegistrationFormSectionId", "RegistrationFormFieldId", "FieldTypeId")
+                        .HasDatabaseName("ix_ie_registration_consent_records_tenant_id_event_id_registration_form_id_registration_form_version_id_registration_form_section_id_registration_form_field_id_field_type_id");
+
+                    b.HasIndex("TenantId", "EventId", "RegistrationOrderId", "RegistrationWorkflowId", "RegistrationRequirementId", "RegistrationFormId", "RegistrationFormVersionId", "RegistrationAttemptId", "RegistrationSubmissionId")
+                        .HasDatabaseName("ix_ie_registration_consent_records_tenant_id_event_id_registration_order_id_registration_workflow_id_registration_requirement_id_registration_form_id_registration_form_version_id_registration_attempt_id_registration_submission_id");
+
+                    b.ToTable("ie_registration_consent_records", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.RegistrationFieldType", b =>
@@ -17055,13 +17462,106 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("master_code");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_registration_field_types");
+                        .HasName("pk_ie_registration_field_types");
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
-                        .HasDatabaseName("ix_islamu_event_registration_field_types_master_code");
+                        .HasDatabaseName("ix_ie_registration_field_types_master_code");
 
-                    b.ToTable("islamu_event_registration_field_types", (string)null);
+                    b.ToTable("ie_registration_field_types", (string)null);
+                });
+
+            modelBuilder.Entity("Explore.Domain.RegistrationFinalizationEffect", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("id");
+
+                    b.Property<int>("AttemptCount")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("attempt_count");
+
+                    b.Property<DateTime?>("CompletedAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("completed_at");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("created_by");
+
+                    b.Property<Guid>("EventId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("event_id");
+
+                    b.Property<DateTime?>("NextAttemptAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("next_attempt_at");
+
+                    b.Property<long>("ProcessingFence")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("processing_fence");
+
+                    b.Property<DateTime?>("ProcessingLeaseExpiresAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("processing_lease_expires_at");
+
+                    b.Property<string>("ProcessingLeaseOwner")
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("processing_lease_owner");
+
+                    b.Property<Guid?>("ProcessingLeaseToken")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("processing_lease_token");
+
+                    b.Property<Guid>("RegistrationOrderId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("registration_order_id");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("status");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_ie_registration_finalization_effects");
+
+                    b.HasAlternateKey("TenantId", "Id")
+                        .HasName("ak_registration_finalization_effects_tenant_id_id");
+
+                    b.HasIndex("TenantId", "RegistrationOrderId")
+                        .IsUnique()
+                        .HasDatabaseName("ux_registration_finalization_effects_order");
+
+                    b.HasIndex("Status", "NextAttemptAt", "CreatedAt")
+                        .HasDatabaseName("ix_registration_finalization_effects_worker_poll");
+
+                    b.HasIndex("TenantId", "EventId", "RegistrationOrderId")
+                        .HasDatabaseName("ix_ie_registration_finalization_effects_tenant_id_event_id_registration_order_id");
+
+                    b.ToTable("ie_registration_finalization_effects", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_registration_finalization_effects_attempt_count", "attempt_count >= 0");
+
+                            t.HasCheckConstraint("ck_registration_finalization_effects_processing_fence", "processing_fence >= 0");
+
+                            t.HasCheckConstraint("ck_registration_finalization_effects_state", "(status IN (1, 4) AND processing_lease_owner IS NULL AND processing_lease_token IS NULL AND processing_lease_expires_at IS NULL AND completed_at IS NULL) OR (status = 2 AND processing_lease_owner IS NOT NULL AND processing_lease_token IS NOT NULL AND processing_lease_expires_at IS NOT NULL AND completed_at IS NULL) OR (status = 3 AND processing_lease_owner IS NULL AND processing_lease_token IS NULL AND processing_lease_expires_at IS NULL AND completed_at IS NOT NULL)");
+                        });
                 });
 
             modelBuilder.Entity("Explore.Domain.RegistrationForm", b =>
@@ -17132,17 +17632,17 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("updated_by");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_registration_forms");
+                        .HasName("pk_ie_registration_forms");
 
                     b.HasAlternateKey("TenantId", "EventId", "Id")
                         .HasName("ak_registration_forms_tenant_id_event_id_id");
 
                     b.HasIndex("TenantId", "EventId", "Namespace", "Key")
                         .IsUnique()
-                        .HasDatabaseName("ix_islamu_event_registration_forms_tenant_id_event_id_namespace_key")
+                        .HasDatabaseName("ix_ie_registration_forms_tenant_id_event_id_namespace_key")
                         .HasFilter("is_deleted = false");
 
-                    b.ToTable("islamu_event_registration_forms", (string)null);
+                    b.ToTable("ie_registration_forms", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.RegistrationFormField", b =>
@@ -17165,6 +17665,11 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("TEXT")
                         .HasColumnName("consent_purpose_code");
+
+                    b.Property<string>("ConsentText")
+                        .HasMaxLength(4000)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("consent_text");
 
                     b.Property<string>("ConsentTextVersion")
                         .HasMaxLength(100)
@@ -17301,7 +17806,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("updated_by");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_registration_form_fields");
+                        .HasName("pk_ie_registration_form_fields");
 
                     b.HasAlternateKey("TenantId", "EventId", "RegistrationFormId", "RegistrationFormVersionId", "RegistrationFormSectionId", "Id")
                         .HasName("ak_registration_form_fields_tenant_id_event_id_registration_form_id_registration_form_version_id_registration_form_section_id_id");
@@ -17310,24 +17815,24 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasName("ak_registration_form_fields_tenant_id_event_id_registration_form_id_registration_form_version_id_registration_form_section_id_id_field_type_id");
 
                     b.HasIndex("FieldTypeId")
-                        .HasDatabaseName("ix_islamu_event_registration_form_fields_field_type_id");
+                        .HasDatabaseName("ix_ie_registration_form_fields_field_type_id");
 
                     b.HasIndex("OrganizerVisibilityId")
-                        .HasDatabaseName("ix_islamu_event_registration_form_fields_organizer_visibility_id");
+                        .HasDatabaseName("ix_ie_registration_form_fields_organizer_visibility_id");
 
                     b.HasIndex("TenantId", "EventId", "RegistrationFormVersionId", "Namespace", "Key")
                         .IsUnique()
-                        .HasDatabaseName("ix_islamu_event_registration_form_fields_tenant_id_event_id_registration_form_version_id_namespace_key")
+                        .HasDatabaseName("ix_ie_registration_form_fields_tenant_id_event_id_registration_form_version_id_namespace_key")
                         .HasFilter("is_deleted = false");
 
                     b.HasIndex("TenantId", "EventId", "RegistrationFormVersionId", "RegistrationFormSectionId", "Ordinal")
                         .IsUnique()
-                        .HasDatabaseName("ix_islamu_event_registration_form_fields_tenant_id_event_id_registration_form_version_id_registration_form_section_id_ordinal")
+                        .HasDatabaseName("ix_ie_registration_form_fields_tenant_id_event_id_registration_form_version_id_registration_form_section_id_ordinal")
                         .HasFilter("is_deleted = false");
 
-                    b.ToTable("islamu_event_registration_form_fields", null, t =>
+                    b.ToTable("ie_registration_form_fields", null, t =>
                         {
-                            t.HasCheckConstraint("ck_registration_form_fields_consent_metadata", "(requires_explicit_consent AND consent_purpose_code IS NOT NULL AND consent_text_version IS NOT NULL AND trim(consent_purpose_code) <> '' AND trim(consent_text_version) <> '') OR (NOT requires_explicit_consent AND consent_purpose_code IS NULL AND consent_text_version IS NULL)");
+                            t.HasCheckConstraint("ck_registration_form_fields_consent_metadata", "(requires_explicit_consent AND consent_purpose_code IS NOT NULL AND consent_text IS NOT NULL AND consent_text_version IS NOT NULL AND trim(consent_purpose_code) <> '' AND trim(consent_text) <> '' AND trim(consent_text_version) <> '') OR (NOT requires_explicit_consent AND consent_purpose_code IS NULL AND consent_text IS NULL AND consent_text_version IS NULL)");
                         });
                 });
 
@@ -17417,22 +17922,22 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("updated_by");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_registration_form_field_options");
+                        .HasName("pk_ie_registration_form_field_options");
 
                     b.HasAlternateKey("TenantId", "EventId", "RegistrationFormId", "RegistrationFormVersionId", "RegistrationFormSectionId", "RegistrationFormFieldId", "Id")
                         .HasName("ak_registration_form_field_options_tenant_id_event_id_registration_form_id_registration_form_version_id_registration_form_section_id_registration_form_field_id_id");
 
                     b.HasIndex("TenantId", "EventId", "RegistrationFormVersionId", "RegistrationFormFieldId", "Key")
                         .IsUnique()
-                        .HasDatabaseName("ix_islamu_event_registration_form_field_options_tenant_id_event_id_registration_form_version_id_registration_form_field_id_key")
+                        .HasDatabaseName("ix_ie_registration_form_field_options_tenant_id_event_id_registration_form_version_id_registration_form_field_id_key")
                         .HasFilter("is_deleted = false");
 
                     b.HasIndex("TenantId", "EventId", "RegistrationFormVersionId", "RegistrationFormFieldId", "Ordinal")
                         .IsUnique()
-                        .HasDatabaseName("ix_islamu_event_registration_form_field_options_tenant_id_event_id_registration_form_version_id_registration_form_field_id_ordinal")
+                        .HasDatabaseName("ix_ie_registration_form_field_options_tenant_id_event_id_registration_form_version_id_registration_form_field_id_ordinal")
                         .HasFilter("is_deleted = false");
 
-                    b.ToTable("islamu_event_registration_form_field_options", (string)null);
+                    b.ToTable("ie_registration_form_field_options", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.RegistrationFormRule", b =>
@@ -17518,20 +18023,20 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("updated_by");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_registration_form_rules");
+                        .HasName("pk_ie_registration_form_rules");
 
                     b.HasAlternateKey("TenantId", "EventId", "RegistrationFormId", "RegistrationFormVersionId", "Id")
                         .HasName("ak_registration_form_rules_tenant_id_event_id_registration_form_id_registration_form_version_id_id");
 
                     b.HasIndex("TenantId", "EventId", "RegistrationFormVersionId", "Ordinal")
                         .IsUnique()
-                        .HasDatabaseName("ix_islamu_event_registration_form_rules_tenant_id_event_id_registration_form_version_id_ordinal")
+                        .HasDatabaseName("ix_ie_registration_form_rules_tenant_id_event_id_registration_form_version_id_ordinal")
                         .HasFilter("is_deleted = false");
 
                     b.HasIndex("TenantId", "EventId", "RegistrationFormVersionId", "TargetNamespace", "TargetKey")
-                        .HasDatabaseName("ix_islamu_event_registration_form_rules_tenant_id_event_id_registration_form_version_id_target_namespace_target_key");
+                        .HasDatabaseName("ix_ie_registration_form_rules_tenant_id_event_id_registration_form_version_id_target_namespace_target_key");
 
-                    b.ToTable("islamu_event_registration_form_rules", null, t =>
+                    b.ToTable("ie_registration_form_rules", null, t =>
                         {
                             t.HasCheckConstraint("ck_registration_form_rules_effect", "effect BETWEEN 1 AND 4");
 
@@ -17607,17 +18112,17 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("updated_by");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_registration_form_sections");
+                        .HasName("pk_ie_registration_form_sections");
 
                     b.HasAlternateKey("TenantId", "EventId", "RegistrationFormId", "RegistrationFormVersionId", "Id")
                         .HasName("ak_registration_form_sections_tenant_id_event_id_registration_form_id_registration_form_version_id_id");
 
                     b.HasIndex("TenantId", "EventId", "RegistrationFormVersionId", "Ordinal")
                         .IsUnique()
-                        .HasDatabaseName("ix_islamu_event_registration_form_sections_tenant_id_event_id_registration_form_version_id_ordinal")
+                        .HasDatabaseName("ix_ie_registration_form_sections_tenant_id_event_id_registration_form_version_id_ordinal")
                         .HasFilter("is_deleted = false");
 
-                    b.ToTable("islamu_event_registration_form_sections", (string)null);
+                    b.ToTable("ie_registration_form_sections", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.RegistrationFormStatus", b =>
@@ -17644,13 +18149,13 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("master_code");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_registration_form_statuses");
+                        .HasName("pk_ie_registration_form_statuses");
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
-                        .HasDatabaseName("ix_islamu_event_registration_form_statuses_master_code");
+                        .HasDatabaseName("ix_ie_registration_form_statuses_master_code");
 
-                    b.ToTable("islamu_event_registration_form_statuses", (string)null);
+                    b.ToTable("ie_registration_form_statuses", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.RegistrationFormVersion", b =>
@@ -17758,23 +18263,23 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("version");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_registration_form_versions");
+                        .HasName("pk_ie_registration_form_versions");
 
                     b.HasAlternateKey("TenantId", "EventId", "RegistrationFormId", "Id")
                         .HasName("ak_registration_form_versions_tenant_id_event_id_registration_form_id_id");
 
                     b.HasIndex("StatusId")
-                        .HasDatabaseName("ix_islamu_event_registration_form_versions_status_id");
+                        .HasDatabaseName("ix_ie_registration_form_versions_status_id");
 
                     b.HasIndex("TenantId", "EventId", "RegistrationFormId", "Version")
                         .IsUnique()
-                        .HasDatabaseName("ix_islamu_event_registration_form_versions_tenant_id_event_id_registration_form_id_version")
+                        .HasDatabaseName("ix_ie_registration_form_versions_tenant_id_event_id_registration_form_id_version")
                         .HasFilter("is_deleted = false");
 
                     b.HasIndex("TenantId", "EventId", "RegistrationFormId", "StatusId", "LanguageTag")
-                        .HasDatabaseName("ix_islamu_event_registration_form_versions_tenant_id_event_id_registration_form_id_status_id_language_tag");
+                        .HasDatabaseName("ix_ie_registration_form_versions_tenant_id_event_id_registration_form_id_status_id_language_tag");
 
-                    b.ToTable("islamu_event_registration_form_versions", null, t =>
+                    b.ToTable("ie_registration_form_versions", null, t =>
                         {
                             t.HasCheckConstraint("ck_registration_form_versions_schema_artifacts", "(status_id = 1 AND schema_hash IS NULL AND data_schema_artifact IS NULL AND ui_schema_artifact IS NULL AND logic_schema_artifact IS NULL AND mapping_artifact IS NULL) OR (status_id IN (2, 3) AND schema_hash IS NOT NULL AND data_schema_artifact IS NOT NULL AND ui_schema_artifact IS NOT NULL AND logic_schema_artifact IS NOT NULL AND mapping_artifact IS NOT NULL)");
                         });
@@ -17858,27 +18363,27 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("updated_by");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_registration_inventory_holds");
+                        .HasName("pk_ie_registration_inventory_holds");
 
                     b.HasAlternateKey("TenantId", "Id")
                         .HasName("ak_registration_inventory_holds_tenant_id_id");
 
                     b.HasIndex("RegistrationInventoryHoldStatusId")
-                        .HasDatabaseName("ix_islamu_event_registration_inventory_holds_registration_inventory_hold_status_id");
+                        .HasDatabaseName("ix_ie_registration_inventory_holds_registration_inventory_hold_status_id");
 
                     b.HasIndex("TenantId", "RegistrationOrderId")
-                        .HasDatabaseName("ix_islamu_event_registration_inventory_holds_tenant_id_registration_order_id");
+                        .HasDatabaseName("ix_ie_registration_inventory_holds_tenant_id_registration_order_id");
 
                     b.HasIndex("TenantId", "TicketTypeId")
-                        .HasDatabaseName("ix_islamu_event_registration_inventory_holds_tenant_id_ticket_type_id");
+                        .HasDatabaseName("ix_ie_registration_inventory_holds_tenant_id_ticket_type_id");
 
                     b.HasIndex("TenantId", "CapacityPoolId", "RegistrationInventoryHoldStatusId")
-                        .HasDatabaseName("ix_islamu_event_registration_inventory_holds_tenant_id_capacity_pool_id_registration_inventory_hold_status_id");
+                        .HasDatabaseName("ix_ie_registration_inventory_holds_tenant_id_capacity_pool_id_registration_inventory_hold_status_id");
 
                     b.HasIndex("TenantId", "RegistrationInventoryHoldStatusId", "ExpiresAt")
-                        .HasDatabaseName("ix_islamu_event_registration_inventory_holds_tenant_id_registration_inventory_hold_status_id_expires_at");
+                        .HasDatabaseName("ix_ie_registration_inventory_holds_tenant_id_registration_inventory_hold_status_id_expires_at");
 
-                    b.ToTable("islamu_event_registration_inventory_holds", (string)null);
+                    b.ToTable("ie_registration_inventory_holds", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.RegistrationInventoryHoldStatus", b =>
@@ -17905,13 +18410,13 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("master_code");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_registration_inventory_hold_statuses");
+                        .HasName("pk_ie_registration_inventory_hold_statuses");
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
-                        .HasDatabaseName("ix_islamu_event_registration_inventory_hold_statuses_master_code");
+                        .HasDatabaseName("ix_ie_registration_inventory_hold_statuses_master_code");
 
-                    b.ToTable("islamu_event_registration_inventory_hold_statuses", (string)null);
+                    b.ToTable("ie_registration_inventory_hold_statuses", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.RegistrationMode", b =>
@@ -17938,9 +18443,9 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("master_code");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_registration_modes");
+                        .HasName("pk_ie_registration_modes");
 
-                    b.ToTable("islamu_event_registration_modes", (string)null);
+                    b.ToTable("ie_registration_modes", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.RegistrationOrder", b =>
@@ -18078,7 +18583,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("updated_by");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_registration_orders");
+                        .HasName("pk_ie_registration_orders");
 
                     b.HasAlternateKey("TenantId", "Id")
                         .HasName("ak_registration_orders_tenant_id_id");
@@ -18090,21 +18595,21 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasName("ak_registration_orders_tenant_id_event_id_registration_workflow_version_key_id");
 
                     b.HasIndex("BookingPartyTypeId")
-                        .HasDatabaseName("ix_islamu_event_registration_orders_booking_party_type_id");
+                        .HasDatabaseName("ix_ie_registration_orders_booking_party_type_id");
 
                     b.HasIndex("RegistrationOrderStatusId")
-                        .HasDatabaseName("ix_islamu_event_registration_orders_registration_order_status_id");
+                        .HasDatabaseName("ix_ie_registration_orders_registration_order_status_id");
 
                     b.HasIndex("TenantId", "ExpiresAt")
-                        .HasDatabaseName("ix_islamu_event_registration_orders_tenant_id_expires_at");
+                        .HasDatabaseName("ix_ie_registration_orders_tenant_id_expires_at");
 
                     b.HasIndex("TenantId", "TicketCatalogVersionId")
-                        .HasDatabaseName("ix_islamu_event_registration_orders_tenant_id_ticket_catalog_version_id");
+                        .HasDatabaseName("ix_ie_registration_orders_tenant_id_ticket_catalog_version_id");
 
                     b.HasIndex("TenantId", "EventId", "RegistrationOrderStatusId")
-                        .HasDatabaseName("ix_islamu_event_registration_orders_tenant_id_event_id_registration_order_status_id");
+                        .HasDatabaseName("ix_ie_registration_orders_tenant_id_event_id_registration_order_status_id");
 
-                    b.ToTable("islamu_event_registration_orders", null, t =>
+                    b.ToTable("ie_registration_orders", null, t =>
                         {
                             t.HasCheckConstraint("ck_registration_orders_workflow_key", "(registration_workflow_version_id IS NULL AND registration_workflow_version_key = '00000000-0000-0000-0000-000000000000') OR registration_workflow_version_key = registration_workflow_version_id");
 
@@ -18201,7 +18706,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("updated_by");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_registration_order_lines");
+                        .HasName("pk_ie_registration_order_lines");
 
                     b.HasAlternateKey("TenantId", "Id")
                         .HasName("ak_registration_order_lines_tenant_id_id");
@@ -18213,16 +18718,16 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasName("ak_registration_order_lines_tenant_id_registration_order_id_id_ticket_type_id");
 
                     b.HasIndex("TenantId", "TicketCatalogVersionId")
-                        .HasDatabaseName("ix_islamu_event_registration_order_lines_tenant_id_ticket_catalog_version_id");
+                        .HasDatabaseName("ix_ie_registration_order_lines_tenant_id_ticket_catalog_version_id");
 
                     b.HasIndex("TenantId", "TicketTypeId")
-                        .HasDatabaseName("ix_islamu_event_registration_order_lines_tenant_id_ticket_type_id");
+                        .HasDatabaseName("ix_ie_registration_order_lines_tenant_id_ticket_type_id");
 
                     b.HasIndex("TenantId", "RegistrationOrderId", "TicketTypeId")
                         .IsUnique()
-                        .HasDatabaseName("ix_islamu_event_registration_order_lines_tenant_id_registration_order_id_ticket_type_id");
+                        .HasDatabaseName("ix_ie_registration_order_lines_tenant_id_registration_order_id_ticket_type_id");
 
-                    b.ToTable("islamu_event_registration_order_lines", (string)null);
+                    b.ToTable("ie_registration_order_lines", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.RegistrationOrderPii", b =>
@@ -18277,15 +18782,15 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("updated_by");
 
                     b.HasKey("RegistrationOrderId")
-                        .HasName("pk_islamu_event_registration_order_pii");
+                        .HasName("pk_ie_registration_order_pii");
 
                     b.HasAlternateKey("TenantId", "RegistrationOrderId")
                         .HasName("ak_registration_order_pii_tenant_id_registration_order_id");
 
                     b.HasIndex("TenantId", "NormalizedEmail")
-                        .HasDatabaseName("ix_islamu_event_registration_order_pii_tenant_id_normalized_email");
+                        .HasDatabaseName("ix_ie_registration_order_pii_tenant_id_normalized_email");
 
-                    b.ToTable("islamu_event_registration_order_pii", (string)null);
+                    b.ToTable("ie_registration_order_pii", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.RegistrationOrderPlatformContribution", b =>
@@ -18341,16 +18846,16 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("updated_by");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_registration_order_platform_contributions");
+                        .HasName("pk_ie_registration_order_platform_contributions");
 
                     b.HasAlternateKey("TenantId", "Id")
                         .HasName("ak_registration_order_platform_contributions_tenant_id_id");
 
                     b.HasIndex("TenantId", "RegistrationOrderId")
                         .IsUnique()
-                        .HasDatabaseName("ix_islamu_event_registration_order_platform_contributions_tenant_id_registration_order_id");
+                        .HasDatabaseName("ix_ie_registration_order_platform_contributions_tenant_id_registration_order_id");
 
-                    b.ToTable("islamu_event_registration_order_platform_contributions", (string)null);
+                    b.ToTable("ie_registration_order_platform_contributions", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.RegistrationOrderStatus", b =>
@@ -18377,13 +18882,13 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("master_code");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_registration_order_statuses");
+                        .HasName("pk_ie_registration_order_statuses");
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
-                        .HasDatabaseName("ix_islamu_event_registration_order_statuses_master_code");
+                        .HasDatabaseName("ix_ie_registration_order_statuses_master_code");
 
-                    b.ToTable("islamu_event_registration_order_statuses", (string)null);
+                    b.ToTable("ie_registration_order_statuses", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.RegistrationOrganizerVisibility", b =>
@@ -18410,13 +18915,13 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("master_code");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_registration_organizer_visibilities");
+                        .HasName("pk_ie_registration_organizer_visibilities");
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
-                        .HasDatabaseName("ix_islamu_event_registration_organizer_visibilities_master_code");
+                        .HasDatabaseName("ix_ie_registration_organizer_visibilities_master_code");
 
-                    b.ToTable("islamu_event_registration_organizer_visibilities", (string)null);
+                    b.ToTable("ie_registration_organizer_visibilities", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.RegistrationParticipant", b =>
@@ -18481,7 +18986,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("updated_by");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_registration_participants");
+                        .HasName("pk_ie_registration_participants");
 
                     b.HasAlternateKey("TenantId", "Id")
                         .HasName("ak_registration_participants_tenant_id_id");
@@ -18490,24 +18995,24 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasName("ak_registration_participants_tenant_id_registration_order_id_id");
 
                     b.HasIndex("LinkedUserId")
-                        .HasDatabaseName("ix_islamu_event_registration_participants_linked_user_id");
+                        .HasDatabaseName("ix_ie_registration_participants_linked_user_id");
 
                     b.HasIndex("ParticipantTypeId")
-                        .HasDatabaseName("ix_islamu_event_registration_participants_participant_type_id");
+                        .HasDatabaseName("ix_ie_registration_participants_participant_type_id");
 
                     b.HasIndex("TenantId", "GuardianParticipantId")
-                        .HasDatabaseName("ix_islamu_event_registration_participants_tenant_id_guardian_participant_id");
+                        .HasDatabaseName("ix_ie_registration_participants_tenant_id_guardian_participant_id");
 
                     b.HasIndex("TenantId", "LinkedUserId")
-                        .HasDatabaseName("ix_islamu_event_registration_participants_tenant_id_linked_user_id");
+                        .HasDatabaseName("ix_ie_registration_participants_tenant_id_linked_user_id");
 
                     b.HasIndex("TenantId", "RegistrationOrderId")
-                        .HasDatabaseName("ix_islamu_event_registration_participants_tenant_id_registration_order_id");
+                        .HasDatabaseName("ix_ie_registration_participants_tenant_id_registration_order_id");
 
                     b.HasIndex("TenantId", "RegistrationOrderId", "GuardianParticipantId")
-                        .HasDatabaseName("ix_islamu_event_registration_participants_tenant_id_registration_order_id_guardian_participant_id");
+                        .HasDatabaseName("ix_ie_registration_participants_tenant_id_registration_order_id_guardian_participant_id");
 
-                    b.ToTable("islamu_event_registration_participants", (string)null);
+                    b.ToTable("ie_registration_participants", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.RegistrationParticipantPii", b =>
@@ -18557,15 +19062,15 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("updated_by");
 
                     b.HasKey("RegistrationParticipantId")
-                        .HasName("pk_islamu_event_registration_participant_pii");
+                        .HasName("pk_ie_registration_participant_pii");
 
                     b.HasAlternateKey("TenantId", "RegistrationParticipantId")
                         .HasName("ak_registration_participant_pii_tenant_id_registration_participant_id");
 
                     b.HasIndex("TenantId", "NormalizedEmail")
-                        .HasDatabaseName("ix_islamu_event_registration_participant_pii_tenant_id_normalized_email");
+                        .HasDatabaseName("ix_ie_registration_participant_pii_tenant_id_normalized_email");
 
-                    b.ToTable("islamu_event_registration_participant_pii", (string)null);
+                    b.ToTable("ie_registration_participant_pii", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.RegistrationRequirement", b =>
@@ -18656,7 +19161,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("updated_by");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_registration_requirements");
+                        .HasName("pk_ie_registration_requirements");
 
                     b.HasAlternateKey("TenantId", "EventId", "RegistrationWorkflowId", "Id")
                         .HasName("ak_registration_requirements_tenant_id_event_id_registration_workflow_id_id");
@@ -18665,25 +19170,25 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasName("ak_registration_requirements_tenant_id_event_id_registration_workflow_id_id_applies_to_subject_type_id_applies_to_subject_key");
 
                     b.HasIndex("AnswerSyncModeId")
-                        .HasDatabaseName("ix_islamu_event_registration_requirements_answer_sync_mode_id");
+                        .HasDatabaseName("ix_ie_registration_requirements_answer_sync_mode_id");
 
                     b.HasIndex("AppliesToSubjectTypeId")
-                        .HasDatabaseName("ix_islamu_event_registration_requirements_applies_to_subject_type_id");
+                        .HasDatabaseName("ix_ie_registration_requirements_applies_to_subject_type_id");
 
                     b.HasIndex("CompletionEffectId")
-                        .HasDatabaseName("ix_islamu_event_registration_requirements_completion_effect_id");
+                        .HasDatabaseName("ix_ie_registration_requirements_completion_effect_id");
 
                     b.HasIndex("CriticalityId")
-                        .HasDatabaseName("ix_islamu_event_registration_requirements_criticality_id");
+                        .HasDatabaseName("ix_ie_registration_requirements_criticality_id");
 
                     b.HasIndex("RegistrationWorkflowId", "Ordinal")
                         .IsUnique()
-                        .HasDatabaseName("ix_islamu_event_registration_requirements_registration_workflow_id_ordinal");
+                        .HasDatabaseName("ix_ie_registration_requirements_registration_workflow_id_ordinal");
 
                     b.HasIndex("TenantId", "EventId")
-                        .HasDatabaseName("ix_islamu_event_registration_requirements_tenant_id_event_id");
+                        .HasDatabaseName("ix_ie_registration_requirements_tenant_id_event_id");
 
-                    b.ToTable("islamu_event_registration_requirements", (string)null);
+                    b.ToTable("ie_registration_requirements", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.RegistrationRequirementCompletionEffect", b =>
@@ -18710,13 +19215,13 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("master_code");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_registration_requirement_completion_effects");
+                        .HasName("pk_ie_registration_requirement_completion_effects");
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
-                        .HasDatabaseName("ix_islamu_event_registration_requirement_completion_effects_master_code");
+                        .HasDatabaseName("ix_ie_registration_requirement_completion_effects_master_code");
 
-                    b.ToTable("islamu_event_registration_requirement_completion_effects", (string)null);
+                    b.ToTable("ie_registration_requirement_completion_effects", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.RegistrationRequirementCriticality", b =>
@@ -18743,13 +19248,103 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("master_code");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_registration_requirement_criticalities");
+                        .HasName("pk_ie_registration_requirement_criticalities");
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
-                        .HasDatabaseName("ix_islamu_event_registration_requirement_criticalities_master_code");
+                        .HasDatabaseName("ix_ie_registration_requirement_criticalities_master_code");
 
-                    b.ToTable("islamu_event_registration_requirement_criticalities", (string)null);
+                    b.ToTable("ie_registration_requirement_criticalities", (string)null);
+                });
+
+            modelBuilder.Entity("Explore.Domain.RegistrationRequirementFulfillment", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("created_by");
+
+                    b.Property<Guid>("EventId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("event_id");
+
+                    b.Property<bool>("IsSkipped")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("is_skipped");
+
+                    b.Property<DateTime>("RecordedAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("recorded_at");
+
+                    b.Property<Guid>("RegistrationOrderId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("registration_order_id");
+
+                    b.Property<Guid>("RegistrationRequirementId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("registration_requirement_id");
+
+                    b.Property<Guid>("RegistrationWorkflowId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("registration_workflow_id");
+
+                    b.Property<Guid?>("SourceRegistrationSubmissionId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("source_registration_submission_id");
+
+                    b.Property<Guid>("SubjectId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("subject_id");
+
+                    b.Property<int>("SubjectTypeId")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("subject_type_id");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_ie_registration_requirement_fulfillments");
+
+                    b.HasAlternateKey("TenantId", "Id")
+                        .HasName("ak_registration_requirement_fulfillments_tenant_id_id");
+
+                    b.HasIndex("SubjectTypeId")
+                        .HasDatabaseName("ix_ie_registration_requirement_fulfillments_subject_type_id");
+
+                    b.HasIndex("TenantId", "EventId", "RegistrationOrderId")
+                        .HasDatabaseName("ix_ie_registration_requirement_fulfillments_tenant_id_event_id_registration_order_id");
+
+                    b.HasIndex("TenantId", "EventId", "SourceRegistrationSubmissionId")
+                        .HasDatabaseName("ix_ie_registration_requirement_fulfillments_tenant_id_event_id_source_registration_submission_id");
+
+                    b.HasIndex("TenantId", "EventId", "RegistrationWorkflowId", "RegistrationRequirementId")
+                        .HasDatabaseName("ix_ie_registration_requirement_fulfillments_tenant_id_event_id_registration_workflow_id_registration_requirement_id");
+
+                    b.HasIndex("TenantId", "RegistrationOrderId", "RegistrationRequirementId", "SubjectTypeId", "SubjectId", "IsSkipped")
+                        .IsUnique()
+                        .HasDatabaseName("ux_registration_requirement_fulfillments_identity");
+
+                    b.ToTable("ie_registration_requirement_fulfillments", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_registration_requirement_fulfillments_outcome", "(is_skipped = true AND source_registration_submission_id IS NULL) OR (is_skipped = false AND source_registration_submission_id IS NOT NULL)");
+                        });
                 });
 
             modelBuilder.Entity("Explore.Domain.RegistrationRequirementSubjectType", b =>
@@ -18776,13 +19371,13 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("master_code");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_registration_requirement_subject_types");
+                        .HasName("pk_ie_registration_requirement_subject_types");
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
-                        .HasDatabaseName("ix_islamu_event_registration_requirement_subject_types_master_code");
+                        .HasDatabaseName("ix_ie_registration_requirement_subject_types_master_code");
 
-                    b.ToTable("islamu_event_registration_requirement_subject_types", (string)null);
+                    b.ToTable("ie_registration_requirement_subject_types", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.RegistrationScope", b =>
@@ -18809,13 +19404,13 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("master_code");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_registration_scopes");
+                        .HasName("pk_ie_registration_scopes");
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
                         .HasDatabaseName("ix_registration_scopes_master_code");
 
-                    b.ToTable("islamu_event_registration_scopes", (string)null);
+                    b.ToTable("ie_registration_scopes", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.RegistrationSensitiveAnswerValue", b =>
@@ -18869,15 +19464,15 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("updated_by");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_registration_sensitive_answer_values");
+                        .HasName("pk_ie_registration_sensitive_answer_values");
 
                     b.HasAlternateKey("TenantId", "Id")
                         .HasName("ak_registration_sensitive_answer_values_tenant_id_id");
 
                     b.HasIndex("TenantId", "KeyVersion")
-                        .HasDatabaseName("ix_islamu_event_registration_sensitive_answer_values_tenant_id_key_version");
+                        .HasDatabaseName("ix_ie_registration_sensitive_answer_values_tenant_id_key_version");
 
-                    b.ToTable("islamu_event_registration_sensitive_answer_values", null, t =>
+                    b.ToTable("ie_registration_sensitive_answer_values", null, t =>
                         {
                             t.HasCheckConstraint("ck_registration_sensitive_answer_values_shape", "key_version > 0 AND trim(ciphertext) <> ''");
                         });
@@ -19031,7 +19626,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("updated_by");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_registration_submissions");
+                        .HasName("pk_ie_registration_submissions");
 
                     b.HasAlternateKey("TenantId", "EventId", "Id")
                         .HasName("ak_registration_submissions_tenant_id_event_id_id");
@@ -19040,13 +19635,13 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasName("ak_registration_submissions_tenant_id_event_id_registration_order_id_registration_workflow_id_registration_requirement_id_registration_form_id_registration_form_version_id_registration_attempt_id_id");
 
                     b.HasIndex("AttemptStatusAtReceiptId")
-                        .HasDatabaseName("ix_islamu_event_registration_submissions_attempt_status_at_receipt_id");
+                        .HasDatabaseName("ix_ie_registration_submissions_attempt_status_at_receipt_id");
 
                     b.HasIndex("HttpIdempotencyKeyHash")
-                        .HasDatabaseName("ix_islamu_event_registration_submissions_http_idempotency_key_hash");
+                        .HasDatabaseName("ix_ie_registration_submissions_http_idempotency_key_hash");
 
                     b.HasIndex("StatusId")
-                        .HasDatabaseName("ix_islamu_event_registration_submissions_status_id");
+                        .HasDatabaseName("ix_ie_registration_submissions_status_id");
 
                     b.HasIndex("TenantId", "RegistrationAttemptId", "BusinessDeduplicationKey")
                         .IsUnique()
@@ -19054,7 +19649,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasFilter("registration_provider_binding_id IS NULL");
 
                     b.HasIndex("TenantId", "RegistrationAttemptId", "ReceivedAt")
-                        .HasDatabaseName("ix_islamu_event_registration_submissions_tenant_id_registration_attempt_id_received_at");
+                        .HasDatabaseName("ix_ie_registration_submissions_tenant_id_registration_attempt_id_received_at");
 
                     b.HasIndex("TenantId", "RegistrationProviderBindingId", "ProviderSubmissionId", "ProviderResponseRevision")
                         .IsUnique()
@@ -19062,14 +19657,78 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasFilter("registration_provider_binding_id IS NOT NULL");
 
                     b.HasIndex("TenantId", "EventId", "RegistrationOrderId", "RegistrationWorkflowId", "RegistrationRequirementId", "RegistrationChannelId", "RegistrationFormId", "RegistrationFormVersionId", "RegistrationAttemptId")
-                        .HasDatabaseName("ix_islamu_event_registration_submissions_tenant_id_event_id_registration_order_id_registration_workflow_id_registration_requirement_id_registration_channel_id_registration_form_id_registration_form_version_id_registration_attempt_id");
+                        .HasDatabaseName("ix_ie_registration_submissions_tenant_id_event_id_registration_order_id_registration_workflow_id_registration_requirement_id_registration_channel_id_registration_form_id_registration_form_version_id_registration_attempt_id");
 
-                    b.ToTable("islamu_event_registration_submissions", null, t =>
+                    b.ToTable("ie_registration_submissions", null, t =>
                         {
                             t.HasCheckConstraint("ck_registration_submissions_finalization_shape", "(status_id = 3 AND is_finalizable = false AND attempt_consumption_claim_id IS NULL AND finalized_at IS NULL) OR (status_id = 1 AND is_finalizable = true AND attempt_consumption_claim_id IS NOT NULL AND finalized_at IS NULL) OR (status_id = 2 AND is_finalizable = true AND attempt_consumption_claim_id IS NOT NULL AND finalized_at IS NOT NULL)");
 
                             t.HasCheckConstraint("ck_registration_submissions_provider_tuple", "(registration_provider_binding_id IS NULL AND provider_mapping_revision_hash IS NULL AND provider_submission_id IS NULL AND provider_response_revision IS NULL) OR (registration_provider_binding_id IS NOT NULL AND provider_mapping_revision_hash IS NOT NULL AND provider_submission_id IS NOT NULL AND provider_response_revision IS NOT NULL)");
                         });
+                });
+
+            modelBuilder.Entity("Explore.Domain.RegistrationSubmissionIssue", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("code");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("created_by");
+
+                    b.Property<Guid>("EventId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("event_id");
+
+                    b.Property<Guid>("RegistrationAttemptId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("registration_attempt_id");
+
+                    b.Property<Guid?>("RegistrationFormFieldId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("registration_form_field_id");
+
+                    b.Property<Guid>("RegistrationFormVersionId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("registration_form_version_id");
+
+                    b.Property<Guid>("RegistrationSubmissionId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("registration_submission_id");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_ie_registration_submission_issues");
+
+                    b.HasIndex("TenantId", "RegistrationSubmissionId")
+                        .HasDatabaseName("ix_ie_registration_submission_issues_tenant_id_registration_submission_id");
+
+                    b.HasIndex("TenantId", "EventId", "RegistrationSubmissionId")
+                        .HasDatabaseName("ix_ie_registration_submission_issues_tenant_id_event_id_registration_submission_id");
+
+                    b.ToTable("ie_registration_submission_issues", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.RegistrationSubmissionRevision", b =>
@@ -19145,16 +19804,16 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("updated_by");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_registration_submission_revisions");
+                        .HasName("pk_ie_registration_submission_revisions");
 
                     b.HasIndex("TenantId", "EventId", "RegistrationSubmissionId")
-                        .HasDatabaseName("ix_islamu_event_registration_submission_revisions_tenant_id_event_id_registration_submission_id");
+                        .HasDatabaseName("ix_ie_registration_submission_revisions_tenant_id_event_id_registration_submission_id");
 
                     b.HasIndex("TenantId", "RegistrationSubmissionId", "RevisionNumber")
                         .IsUnique()
                         .HasDatabaseName("ux_registration_submission_revisions_submission_revision_number");
 
-                    b.ToTable("islamu_event_registration_submission_revisions", null, t =>
+                    b.ToTable("ie_registration_submission_revisions", null, t =>
                         {
                             t.HasCheckConstraint("ck_registration_submission_revisions_number", "revision_number > 0");
                         });
@@ -19184,13 +19843,13 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("master_code");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_registration_submission_statuses");
+                        .HasName("pk_ie_registration_submission_statuses");
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
-                        .HasDatabaseName("ix_islamu_event_registration_submission_statuses_master_code");
+                        .HasDatabaseName("ix_ie_registration_submission_statuses_master_code");
 
-                    b.ToTable("islamu_event_registration_submission_statuses", (string)null);
+                    b.ToTable("ie_registration_submission_statuses", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.RegistrationTicketAssignment", b =>
@@ -19255,7 +19914,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("updated_by");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_registration_ticket_assignments");
+                        .HasName("pk_ie_registration_ticket_assignments");
 
                     b.HasAlternateKey("TenantId", "Id")
                         .HasName("ak_registration_ticket_assignments_tenant_id_id");
@@ -19267,25 +19926,25 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasName("ak_registration_ticket_assignments_tenant_id_registration_order_id_id_registration_order_line_id");
 
                     b.HasIndex("AssignmentStatusId")
-                        .HasDatabaseName("ix_islamu_event_registration_ticket_assignments_assignment_status_id");
+                        .HasDatabaseName("ix_ie_registration_ticket_assignments_assignment_status_id");
 
                     b.HasIndex("TenantId", "ParticipantId")
-                        .HasDatabaseName("ix_islamu_event_registration_ticket_assignments_tenant_id_participant_id");
+                        .HasDatabaseName("ix_ie_registration_ticket_assignments_tenant_id_participant_id");
 
                     b.HasIndex("TenantId", "RegistrationOrderId")
-                        .HasDatabaseName("ix_islamu_event_registration_ticket_assignments_tenant_id_registration_order_id");
+                        .HasDatabaseName("ix_ie_registration_ticket_assignments_tenant_id_registration_order_id");
 
                     b.HasIndex("TenantId", "RegistrationOrderId", "ParticipantId")
-                        .HasDatabaseName("ix_islamu_event_registration_ticket_assignments_tenant_id_registration_order_id_participant_id");
+                        .HasDatabaseName("ix_ie_registration_ticket_assignments_tenant_id_registration_order_id_participant_id");
 
                     b.HasIndex("TenantId", "RegistrationOrderId", "RegistrationOrderLineId")
-                        .HasDatabaseName("ix_islamu_event_registration_ticket_assignments_tenant_id_registration_order_id_registration_order_line_id");
+                        .HasDatabaseName("ix_ie_registration_ticket_assignments_tenant_id_registration_order_id_registration_order_line_id");
 
                     b.HasIndex("TenantId", "RegistrationOrderLineId", "Ordinal")
                         .IsUnique()
-                        .HasDatabaseName("ix_islamu_event_registration_ticket_assignments_tenant_id_registration_order_line_id_ordinal");
+                        .HasDatabaseName("ix_ie_registration_ticket_assignments_tenant_id_registration_order_line_id_ordinal");
 
-                    b.ToTable("islamu_event_registration_ticket_assignments", (string)null);
+                    b.ToTable("ie_registration_ticket_assignments", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.RegistrationWorkflow", b =>
@@ -19344,16 +20003,16 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("updated_by");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_registration_workflows");
+                        .HasName("pk_ie_registration_workflows");
 
                     b.HasAlternateKey("TenantId", "EventId", "Id")
                         .HasName("ak_registration_workflows_tenant_id_event_id_id");
 
                     b.HasIndex("TenantId", "EventId", "Purpose")
                         .IsUnique()
-                        .HasDatabaseName("ix_islamu_event_registration_workflows_tenant_id_event_id_purpose");
+                        .HasDatabaseName("ix_ie_registration_workflows_tenant_id_event_id_purpose");
 
-                    b.ToTable("islamu_event_registration_workflows", (string)null);
+                    b.ToTable("ie_registration_workflows", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.Role", b =>
@@ -19390,7 +20049,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("role_scope_id");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_roles");
+                        .HasName("pk_ie_roles");
 
                     b.HasAlternateKey("Id", "RoleScopeId")
                         .HasName("ak_roles_id_role_scope_id");
@@ -19402,7 +20061,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                     b.HasIndex("RoleScopeId")
                         .HasDatabaseName("ix_roles_role_scope_id");
 
-                    b.ToTable("islamu_event_roles", (string)null);
+                    b.ToTable("ie_roles", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.RolePermission", b =>
@@ -19426,7 +20085,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("granted_by");
 
                     b.HasKey("RoleId", "PermissionId")
-                        .HasName("pk_islamu_event_role_permissions");
+                        .HasName("pk_ie_role_permissions");
 
                     b.HasIndex("PermissionId")
                         .HasDatabaseName("ix_rolepermissions_permission");
@@ -19434,7 +20093,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                     b.HasIndex("RoleId")
                         .HasDatabaseName("ix_rolepermissions_role");
 
-                    b.ToTable("islamu_event_role_permissions", (string)null);
+                    b.ToTable("ie_role_permissions", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.RoleScope", b =>
@@ -19461,13 +20120,13 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("master_code");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_role_scopes");
+                        .HasName("pk_ie_role_scopes");
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
-                        .HasDatabaseName("ix_islamu_event_role_scopes_master_code");
+                        .HasDatabaseName("ix_ie_role_scopes_master_code");
 
-                    b.ToTable("islamu_event_role_scopes", (string)null);
+                    b.ToTable("ie_role_scopes", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.ScheduleItemKind", b =>
@@ -19494,13 +20153,13 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("master_code");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_schedule_item_kinds");
+                        .HasName("pk_ie_schedule_item_kinds");
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
                         .HasDatabaseName("ix_schedule_item_kinds_master_code");
 
-                    b.ToTable("islamu_event_schedule_item_kinds", (string)null);
+                    b.ToTable("ie_schedule_item_kinds", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.SecretSourceTypeLookup", b =>
@@ -19527,13 +20186,13 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("master_code");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_secret_source_types");
+                        .HasName("pk_ie_secret_source_types");
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
-                        .HasDatabaseName("ix_islamu_event_secret_source_types_master_code");
+                        .HasDatabaseName("ix_ie_secret_source_types_master_code");
 
-                    b.ToTable("islamu_event_secret_source_types", (string)null);
+                    b.ToTable("ie_secret_source_types", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.SecretValidationStatus", b =>
@@ -19560,13 +20219,13 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("master_code");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_secret_validation_statuses");
+                        .HasName("pk_ie_secret_validation_statuses");
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
-                        .HasDatabaseName("ix_islamu_event_secret_validation_statuses_master_code");
+                        .HasDatabaseName("ix_ie_secret_validation_statuses_master_code");
 
-                    b.ToTable("islamu_event_secret_validation_statuses", (string)null);
+                    b.ToTable("ie_secret_validation_statuses", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.Secrets.SecretBinding", b =>
@@ -19666,13 +20325,13 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("updated_by");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_secret_bindings");
+                        .HasName("pk_ie_secret_bindings");
 
                     b.HasIndex("SecretSourceTypeId")
-                        .HasDatabaseName("ix_islamu_event_secret_bindings_secret_source_type_id");
+                        .HasDatabaseName("ix_ie_secret_bindings_secret_source_type_id");
 
                     b.HasIndex("SecretValidationStatusId")
-                        .HasDatabaseName("ix_islamu_event_secret_bindings_secret_validation_status_id");
+                        .HasDatabaseName("ix_ie_secret_bindings_secret_validation_status_id");
 
                     b.HasIndex("SettingKey")
                         .IsUnique()
@@ -19687,7 +20346,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                     b.HasIndex("SettingScopeId", "ScopeId")
                         .HasDatabaseName("ix_secret_bindings_setting_scope_id_scope_id");
 
-                    b.ToTable("islamu_event_secret_bindings", null, t =>
+                    b.ToTable("ie_secret_bindings", null, t =>
                         {
                             t.HasCheckConstraint("ck_secret_bindings_setting_scope_scope_id", "(setting_scope_id = 1 AND scope_id IS NULL) OR (setting_scope_id = 2 AND scope_id IS NOT NULL)");
 
@@ -19748,13 +20407,13 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("updated_by");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_service_principals");
+                        .HasName("pk_ie_service_principals");
 
                     b.HasIndex("Code")
                         .IsUnique()
-                        .HasDatabaseName("ix_islamu_event_service_principals_code");
+                        .HasDatabaseName("ix_ie_service_principals_code");
 
-                    b.ToTable("islamu_event_service_principals", (string)null);
+                    b.ToTable("ie_service_principals", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.SettingScopeLookup", b =>
@@ -19781,13 +20440,13 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("master_code");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_setting_scopes");
+                        .HasName("pk_ie_setting_scopes");
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
-                        .HasDatabaseName("ix_islamu_event_setting_scopes_master_code");
+                        .HasDatabaseName("ix_ie_setting_scopes_master_code");
 
-                    b.ToTable("islamu_event_setting_scopes", (string)null);
+                    b.ToTable("ie_setting_scopes", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.SettingValueTypeLookup", b =>
@@ -19814,13 +20473,13 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("master_code");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_setting_value_types");
+                        .HasName("pk_ie_setting_value_types");
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
-                        .HasDatabaseName("ix_islamu_event_setting_value_types_master_code");
+                        .HasDatabaseName("ix_ie_setting_value_types_master_code");
 
-                    b.ToTable("islamu_event_setting_value_types", (string)null);
+                    b.ToTable("ie_setting_value_types", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.Settings.Documents.TenantSettingsDocument", b =>
@@ -19879,16 +20538,16 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("updated_by");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_tenant_settings_documents");
+                        .HasName("pk_ie_tenant_settings_documents");
 
                     b.HasIndex("DocumentKey")
-                        .HasDatabaseName("ix_islamu_event_tenant_settings_documents_document_key");
+                        .HasDatabaseName("ix_ie_tenant_settings_documents_document_key");
 
                     b.HasIndex("TenantId", "DocumentKey")
                         .IsUnique()
-                        .HasDatabaseName("ix_islamu_event_tenant_settings_documents_tenant_id_document_key");
+                        .HasDatabaseName("ix_ie_tenant_settings_documents_tenant_id_document_key");
 
-                    b.ToTable("islamu_event_tenant_settings_documents", null, t =>
+                    b.ToTable("ie_tenant_settings_documents", null, t =>
                         {
                             t.HasCheckConstraint("ck_tenant_settings_documents_document_key_not_blank", "length(trim(document_key)) > 0");
 
@@ -20038,16 +20697,16 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("visibility");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_storage_objects");
+                        .HasName("pk_ie_storage_objects");
 
                     b.HasAlternateKey("TenantId", "Id")
                         .HasName("ak_storage_objects_tenant_id_id");
 
                     b.HasIndex("ActorId")
-                        .HasDatabaseName("ix_islamu_event_storage_objects_actor_id");
+                        .HasDatabaseName("ix_ie_storage_objects_actor_id");
 
                     b.HasIndex("FileTypeId")
-                        .HasDatabaseName("ix_islamu_event_storage_objects_file_type_id");
+                        .HasDatabaseName("ix_ie_storage_objects_file_type_id");
 
                     b.HasIndex("Provider", "ObjectKey")
                         .IsUnique()
@@ -20064,7 +20723,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                     b.HasIndex("TenantId", "Visibility", "Purpose")
                         .HasDatabaseName("ix_storage_objects_tenant_visibility_purpose");
 
-                    b.ToTable("islamu_event_storage_objects", null, t =>
+                    b.ToTable("ie_storage_objects", null, t =>
                         {
                             t.HasCheckConstraint("ck_storage_objects_lifecycle_state", "lifecycle_state IN ('pending', 'active', 'quarantined', 'delete_requested', 'deleted')");
 
@@ -20242,13 +20901,13 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("visibility");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_storage_upload_sessions");
+                        .HasName("pk_ie_storage_upload_sessions");
 
                     b.HasIndex("StorageObjectId")
-                        .HasDatabaseName("ix_islamu_event_storage_upload_sessions_storage_object_id");
+                        .HasDatabaseName("ix_ie_storage_upload_sessions_storage_object_id");
 
                     b.HasIndex("UserId")
-                        .HasDatabaseName("ix_islamu_event_storage_upload_sessions_user_id");
+                        .HasDatabaseName("ix_ie_storage_upload_sessions_user_id");
 
                     b.HasIndex("Provider", "ObjectKey")
                         .HasDatabaseName("ix_storage_upload_sessions_provider_object_key")
@@ -20266,7 +20925,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                     b.HasIndex("TenantId", "Status", "ExpiresAt")
                         .HasDatabaseName("ix_storage_upload_sessions_tenant_status_expires_at");
 
-                    b.ToTable("islamu_event_storage_upload_sessions", null, t =>
+                    b.ToTable("ie_storage_upload_sessions", null, t =>
                         {
                             t.HasCheckConstraint("ck_storage_upload_sessions_expected_size_nonnegative", "expected_size_bytes >= 0");
 
@@ -20345,13 +21004,13 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("used_bytes");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_storage_usage_counters");
+                        .HasName("pk_ie_storage_usage_counters");
 
                     b.HasIndex("TenantId", "Provider")
                         .IsUnique()
                         .HasDatabaseName("ux_storage_usage_counters_tenant_provider");
 
-                    b.ToTable("islamu_event_storage_usage_counters", null, t =>
+                    b.ToTable("ie_storage_usage_counters", null, t =>
                         {
                             t.HasCheckConstraint("ck_storage_usage_counters_object_count_nonnegative", "object_count >= 0");
 
@@ -20446,13 +21105,13 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("trace_id");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_support_access_audit_events");
+                        .HasName("pk_ie_support_access_audit_events");
 
                     b.HasIndex("EventTypeId")
-                        .HasDatabaseName("ix_islamu_event_support_access_audit_events_event_type_id");
+                        .HasDatabaseName("ix_ie_support_access_audit_events_event_type_id");
 
                     b.HasIndex("TargetTenantUserId")
-                        .HasDatabaseName("ix_islamu_event_support_access_audit_events_target_tenant_user_id");
+                        .HasDatabaseName("ix_ie_support_access_audit_events_target_tenant_user_id");
 
                     b.HasIndex("ActorUserId", "OccurredAtUtc")
                         .IsDescending(false, true)
@@ -20466,7 +21125,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .IsDescending(false, true)
                         .HasDatabaseName("ix_support_access_audit_events_tenant_occurred");
 
-                    b.ToTable("islamu_event_support_access_audit_events", (string)null);
+                    b.ToTable("ie_support_access_audit_events", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.SupportAccessAuditEventType", b =>
@@ -20497,13 +21156,13 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("master_code");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_support_access_audit_event_types");
+                        .HasName("pk_ie_support_access_audit_event_types");
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
-                        .HasDatabaseName("ix_islamu_event_support_access_audit_event_types_master_code");
+                        .HasDatabaseName("ix_ie_support_access_audit_event_types_master_code");
 
-                    b.ToTable("islamu_event_support_access_audit_event_types", (string)null);
+                    b.ToTable("ie_support_access_audit_event_types", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.SupportAccessEndReason", b =>
@@ -20530,13 +21189,13 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("master_code");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_support_access_end_reasons");
+                        .HasName("pk_ie_support_access_end_reasons");
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
-                        .HasDatabaseName("ix_islamu_event_support_access_end_reasons_master_code");
+                        .HasDatabaseName("ix_ie_support_access_end_reasons_master_code");
 
-                    b.ToTable("islamu_event_support_access_end_reasons", (string)null);
+                    b.ToTable("ie_support_access_end_reasons", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.SupportAccessMode", b =>
@@ -20567,13 +21226,13 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("master_code");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_support_access_modes");
+                        .HasName("pk_ie_support_access_modes");
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
-                        .HasDatabaseName("ix_islamu_event_support_access_modes_master_code");
+                        .HasDatabaseName("ix_ie_support_access_modes_master_code");
 
-                    b.ToTable("islamu_event_support_access_modes", (string)null);
+                    b.ToTable("ie_support_access_modes", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.SupportAccessSession", b =>
@@ -20668,7 +21327,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("updated_by");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_support_access_sessions");
+                        .HasName("pk_ie_support_access_sessions");
 
                     b.HasIndex("ActorUserId")
                         .IsUnique()
@@ -20676,19 +21335,19 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasFilter("status_id = 2 AND ended_at_utc IS NULL");
 
                     b.HasIndex("ApprovedByUserId")
-                        .HasDatabaseName("ix_islamu_event_support_access_sessions_approved_by_user_id");
+                        .HasDatabaseName("ix_ie_support_access_sessions_approved_by_user_id");
 
                     b.HasIndex("EndReasonId")
-                        .HasDatabaseName("ix_islamu_event_support_access_sessions_end_reason_id");
+                        .HasDatabaseName("ix_ie_support_access_sessions_end_reason_id");
 
                     b.HasIndex("ModeId")
-                        .HasDatabaseName("ix_islamu_event_support_access_sessions_mode_id");
+                        .HasDatabaseName("ix_ie_support_access_sessions_mode_id");
 
                     b.HasIndex("StatusId")
-                        .HasDatabaseName("ix_islamu_event_support_access_sessions_status_id");
+                        .HasDatabaseName("ix_ie_support_access_sessions_status_id");
 
                     b.HasIndex("TargetTenantUserId")
-                        .HasDatabaseName("ix_islamu_event_support_access_sessions_target_tenant_user_id");
+                        .HasDatabaseName("ix_ie_support_access_sessions_target_tenant_user_id");
 
                     b.HasIndex("TargetTenantId", "StartedAtUtc")
                         .IsDescending(false, true)
@@ -20701,7 +21360,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                     b.HasIndex("Id", "ActorUserId", "StatusId")
                         .HasDatabaseName("ix_support_access_sessions_id_actor_status");
 
-                    b.ToTable("islamu_event_support_access_sessions", null, t =>
+                    b.ToTable("ie_support_access_sessions", null, t =>
                         {
                             t.HasCheckConstraint("ck_support_access_sessions_end_after_start", "ended_at_utc IS NULL OR ended_at_utc >= started_at_utc");
 
@@ -20739,13 +21398,13 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("master_code");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_support_access_session_statuses");
+                        .HasName("pk_ie_support_access_session_statuses");
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
-                        .HasDatabaseName("ix_islamu_event_support_access_session_statuses_master_code");
+                        .HasDatabaseName("ix_ie_support_access_session_statuses_master_code");
 
-                    b.ToTable("islamu_event_support_access_session_statuses", (string)null);
+                    b.ToTable("ie_support_access_session_statuses", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.SyncState", b =>
@@ -20774,13 +21433,13 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("updated_at");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_sync_states");
+                        .HasName("pk_ie_sync_states");
 
                     b.HasIndex("Service")
                         .IsUnique()
-                        .HasDatabaseName("ix_islamu_event_sync_states_service");
+                        .HasDatabaseName("ix_ie_sync_states_service");
 
-                    b.ToTable("islamu_event_sync_states", (string)null);
+                    b.ToTable("ie_sync_states", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.SystemSetting", b =>
@@ -20850,16 +21509,16 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("value");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_system_settings");
+                        .HasName("pk_ie_system_settings");
 
                     b.HasIndex("SettingKey")
                         .IsUnique()
-                        .HasDatabaseName("ix_islamu_event_system_settings_setting_key");
+                        .HasDatabaseName("ix_ie_system_settings_setting_key");
 
                     b.HasIndex("SettingValueTypeId")
-                        .HasDatabaseName("ix_islamu_event_system_settings_setting_value_type_id");
+                        .HasDatabaseName("ix_ie_system_settings_setting_value_type_id");
 
-                    b.ToTable("islamu_event_system_settings", (string)null);
+                    b.ToTable("ie_system_settings", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.Tag", b =>
@@ -20886,7 +21545,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("tenant_id");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_tags");
+                        .HasName("pk_ie_tags");
 
                     b.HasAlternateKey("TenantId", "Id")
                         .HasName("ak_tags_tenant_id_id");
@@ -20895,7 +21554,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_tags_tenant_master_code");
 
-                    b.ToTable("islamu_event_tags", (string)null);
+                    b.ToTable("ie_tags", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.TagType", b =>
@@ -20922,9 +21581,9 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("master_code");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_tag_types");
+                        .HasName("pk_ie_tag_types");
 
-                    b.ToTable("islamu_event_tag_types", (string)null);
+                    b.ToTable("ie_tag_types", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.TagTypeTags", b =>
@@ -20947,19 +21606,19 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("tenant_id");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_tag_type_tags");
+                        .HasName("pk_ie_tag_type_tags");
 
                     b.HasIndex("TagId")
-                        .HasDatabaseName("ix_islamu_event_tag_type_tags_tag_id");
+                        .HasDatabaseName("ix_ie_tag_type_tags_tag_id");
 
                     b.HasIndex("TagTypeId")
-                        .HasDatabaseName("ix_islamu_event_tag_type_tags_tag_type_id");
+                        .HasDatabaseName("ix_ie_tag_type_tags_tag_type_id");
 
                     b.HasIndex("TenantId", "TagId", "TagTypeId")
                         .IsUnique()
-                        .HasDatabaseName("ix_islamu_event_tag_type_tags_tenant_id_tag_id_tag_type_id");
+                        .HasDatabaseName("ix_ie_tag_type_tags_tenant_id_tag_id_tag_type_id");
 
-                    b.ToTable("islamu_event_tag_type_tags", (string)null);
+                    b.ToTable("ie_tag_type_tags", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.Tenant", b =>
@@ -21007,16 +21666,16 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("updated_by");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_tenants");
+                        .HasName("pk_ie_tenants");
 
                     b.HasIndex("Slug")
                         .IsUnique()
-                        .HasDatabaseName("ix_islamu_event_tenants_slug");
+                        .HasDatabaseName("ix_ie_tenants_slug");
 
                     b.HasIndex("TenantStatusId")
-                        .HasDatabaseName("ix_islamu_event_tenants_tenant_status_id");
+                        .HasDatabaseName("ix_ie_tenants_tenant_status_id");
 
-                    b.ToTable("islamu_event_tenants", (string)null);
+                    b.ToTable("ie_tenants", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.TenantFooterLink", b =>
@@ -21077,12 +21736,12 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("url");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_tenant_footer_links");
+                        .HasName("pk_ie_tenant_footer_links");
 
                     b.HasIndex("FooterLinkGroupId", "Order")
-                        .HasDatabaseName("ix_islamu_event_tenant_footer_links_footer_link_group_id_order");
+                        .HasDatabaseName("ix_ie_tenant_footer_links_footer_link_group_id_order");
 
-                    b.ToTable("islamu_event_tenant_footer_links", (string)null);
+                    b.ToTable("ie_tenant_footer_links", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.TenantFooterLinkGroup", b =>
@@ -21131,15 +21790,15 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("updated_by");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_tenant_footer_link_groups");
+                        .HasName("pk_ie_tenant_footer_link_groups");
 
                     b.HasIndex("TenantId")
-                        .HasDatabaseName("ix_islamu_event_tenant_footer_link_groups_tenant_id");
+                        .HasDatabaseName("ix_ie_tenant_footer_link_groups_tenant_id");
 
                     b.HasIndex("TenantId", "Order")
-                        .HasDatabaseName("ix_islamu_event_tenant_footer_link_groups_tenant_id_order");
+                        .HasDatabaseName("ix_ie_tenant_footer_link_groups_tenant_id_order");
 
-                    b.ToTable("islamu_event_tenant_footer_link_groups", (string)null);
+                    b.ToTable("ie_tenant_footer_link_groups", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.TenantInvitation", b =>
@@ -21215,19 +21874,19 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("updated_by");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_tenant_invitations");
+                        .HasName("pk_ie_tenant_invitations");
 
                     b.HasIndex("RoleId")
-                        .HasDatabaseName("ix_islamu_event_tenant_invitations_role_id");
+                        .HasDatabaseName("ix_ie_tenant_invitations_role_id");
 
                     b.HasIndex("Token")
                         .IsUnique()
-                        .HasDatabaseName("ix_islamu_event_tenant_invitations_token");
+                        .HasDatabaseName("ix_ie_tenant_invitations_token");
 
                     b.HasIndex("TenantId", "Email")
-                        .HasDatabaseName("ix_islamu_event_tenant_invitations_tenant_id_email");
+                        .HasDatabaseName("ix_ie_tenant_invitations_tenant_id_email");
 
-                    b.ToTable("islamu_event_tenant_invitations", (string)null);
+                    b.ToTable("ie_tenant_invitations", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.TenantLifecycleLog", b =>
@@ -21283,21 +21942,21 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("updated_by");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_tenant_lifecycle_logs");
+                        .HasName("pk_ie_tenant_lifecycle_logs");
 
                     b.HasIndex("NewStatusId")
-                        .HasDatabaseName("ix_islamu_event_tenant_lifecycle_logs_new_status_id");
+                        .HasDatabaseName("ix_ie_tenant_lifecycle_logs_new_status_id");
 
                     b.HasIndex("OldStatusId")
-                        .HasDatabaseName("ix_islamu_event_tenant_lifecycle_logs_old_status_id");
+                        .HasDatabaseName("ix_ie_tenant_lifecycle_logs_old_status_id");
 
                     b.HasIndex("TransitionedByUserId")
-                        .HasDatabaseName("ix_islamu_event_tenant_lifecycle_logs_transitioned_by_user_id");
+                        .HasDatabaseName("ix_ie_tenant_lifecycle_logs_transitioned_by_user_id");
 
                     b.HasIndex("TenantId", "TransitionedAt")
-                        .HasDatabaseName("ix_islamu_event_tenant_lifecycle_logs_tenant_id_transitioned_at");
+                        .HasDatabaseName("ix_ie_tenant_lifecycle_logs_tenant_id_transitioned_at");
 
-                    b.ToTable("islamu_event_tenant_lifecycle_logs", (string)null);
+                    b.ToTable("ie_tenant_lifecycle_logs", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.TenantNavigationLink", b =>
@@ -21375,15 +22034,15 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("url");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_tenant_navigation_links");
+                        .HasName("pk_ie_tenant_navigation_links");
 
                     b.HasIndex("TenantId")
-                        .HasDatabaseName("ix_islamu_event_tenant_navigation_links_tenant_id");
+                        .HasDatabaseName("ix_ie_tenant_navigation_links_tenant_id");
 
                     b.HasIndex("TenantId", "Order")
-                        .HasDatabaseName("ix_islamu_event_tenant_navigation_links_tenant_id_order");
+                        .HasDatabaseName("ix_ie_tenant_navigation_links_tenant_id_order");
 
-                    b.ToTable("islamu_event_tenant_navigation_links", (string)null);
+                    b.ToTable("ie_tenant_navigation_links", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.TenantOnboardingState", b =>
@@ -21434,13 +22093,13 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("total_steps");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_tenant_onboarding_states");
+                        .HasName("pk_ie_tenant_onboarding_states");
 
                     b.HasIndex("TenantId")
                         .IsUnique()
-                        .HasDatabaseName("ix_islamu_event_tenant_onboarding_states_tenant_id");
+                        .HasDatabaseName("ix_ie_tenant_onboarding_states_tenant_id");
 
-                    b.ToTable("islamu_event_tenant_onboarding_states", (string)null);
+                    b.ToTable("ie_tenant_onboarding_states", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.TenantPlan", b =>
@@ -21484,13 +22143,13 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("updated_by");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_tenant_plans");
+                        .HasName("pk_ie_tenant_plans");
 
                     b.HasIndex("Key")
                         .IsUnique()
-                        .HasDatabaseName("ix_islamu_event_tenant_plans_key");
+                        .HasDatabaseName("ix_ie_tenant_plans_key");
 
-                    b.ToTable("islamu_event_tenant_plans", (string)null);
+                    b.ToTable("ie_tenant_plans", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.TenantPlanApplicationLog", b =>
@@ -21564,31 +22223,31 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("updated_by");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_tenant_plan_application_logs");
+                        .HasName("pk_ie_tenant_plan_application_logs");
 
                     b.HasIndex("AppliedByUserId")
-                        .HasDatabaseName("ix_islamu_event_tenant_plan_application_logs_applied_by_user_id");
+                        .HasDatabaseName("ix_ie_tenant_plan_application_logs_applied_by_user_id");
 
                     b.HasIndex("PreviousTenantPlanVersionId")
-                        .HasDatabaseName("ix_islamu_event_tenant_plan_application_logs_previous_tenant_plan_version_id");
+                        .HasDatabaseName("ix_ie_tenant_plan_application_logs_previous_tenant_plan_version_id");
 
                     b.HasIndex("TenantPlanApplicationStatusId")
-                        .HasDatabaseName("ix_islamu_event_tenant_plan_application_logs_tenant_plan_application_status_id");
+                        .HasDatabaseName("ix_ie_tenant_plan_application_logs_tenant_plan_application_status_id");
 
                     b.HasIndex("TenantPlanAssignmentId")
-                        .HasDatabaseName("ix_islamu_event_tenant_plan_application_logs_tenant_plan_assignment_id");
+                        .HasDatabaseName("ix_ie_tenant_plan_application_logs_tenant_plan_assignment_id");
 
                     b.HasIndex("TenantPlanId")
-                        .HasDatabaseName("ix_islamu_event_tenant_plan_application_logs_tenant_plan_id");
+                        .HasDatabaseName("ix_ie_tenant_plan_application_logs_tenant_plan_id");
 
                     b.HasIndex("TenantPlanVersionId")
-                        .HasDatabaseName("ix_islamu_event_tenant_plan_application_logs_tenant_plan_version_id");
+                        .HasDatabaseName("ix_ie_tenant_plan_application_logs_tenant_plan_version_id");
 
                     b.HasIndex("TenantId", "AppliedAt")
                         .IsDescending(false, true)
-                        .HasDatabaseName("ix_islamu_event_tenant_plan_application_logs_tenant_id_applied_at");
+                        .HasDatabaseName("ix_ie_tenant_plan_application_logs_tenant_id_applied_at");
 
-                    b.ToTable("islamu_event_tenant_plan_application_logs", (string)null);
+                    b.ToTable("ie_tenant_plan_application_logs", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.TenantPlanApplicationStatus", b =>
@@ -21619,13 +22278,13 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("master_code");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_tenant_plan_application_statuses");
+                        .HasName("pk_ie_tenant_plan_application_statuses");
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
-                        .HasDatabaseName("ix_islamu_event_tenant_plan_application_statuses_master_code");
+                        .HasDatabaseName("ix_ie_tenant_plan_application_statuses_master_code");
 
-                    b.ToTable("islamu_event_tenant_plan_application_statuses", (string)null);
+                    b.ToTable("ie_tenant_plan_application_statuses", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.TenantPlanAssignment", b =>
@@ -21680,7 +22339,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("updated_by");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_tenant_plan_assignments");
+                        .HasName("pk_ie_tenant_plan_assignments");
 
                     b.HasIndex("TenantId")
                         .IsUnique()
@@ -21688,15 +22347,15 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasFilter("tenant_plan_assignment_status_id = 1");
 
                     b.HasIndex("TenantPlanAssignmentStatusId")
-                        .HasDatabaseName("ix_islamu_event_tenant_plan_assignments_tenant_plan_assignment_status_id");
+                        .HasDatabaseName("ix_ie_tenant_plan_assignments_tenant_plan_assignment_status_id");
 
                     b.HasIndex("TenantPlanId")
-                        .HasDatabaseName("ix_islamu_event_tenant_plan_assignments_tenant_plan_id");
+                        .HasDatabaseName("ix_ie_tenant_plan_assignments_tenant_plan_id");
 
                     b.HasIndex("TenantPlanVersionId", "TenantPlanAssignmentStatusId")
-                        .HasDatabaseName("ix_islamu_event_tenant_plan_assignments_tenant_plan_version_id_tenant_plan_assignment_status_id");
+                        .HasDatabaseName("ix_ie_tenant_plan_assignments_tenant_plan_version_id_tenant_plan_assignment_status_id");
 
-                    b.ToTable("islamu_event_tenant_plan_assignments", (string)null);
+                    b.ToTable("ie_tenant_plan_assignments", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.TenantPlanAssignmentStatus", b =>
@@ -21727,13 +22386,13 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("master_code");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_tenant_plan_assignment_statuses");
+                        .HasName("pk_ie_tenant_plan_assignment_statuses");
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
-                        .HasDatabaseName("ix_islamu_event_tenant_plan_assignment_statuses_master_code");
+                        .HasDatabaseName("ix_ie_tenant_plan_assignment_statuses_master_code");
 
-                    b.ToTable("islamu_event_tenant_plan_assignment_statuses", (string)null);
+                    b.ToTable("ie_tenant_plan_assignment_statuses", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.TenantPlanStatus", b =>
@@ -21764,13 +22423,13 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("master_code");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_tenant_plan_statuses");
+                        .HasName("pk_ie_tenant_plan_statuses");
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
-                        .HasDatabaseName("ix_islamu_event_tenant_plan_statuses_master_code");
+                        .HasDatabaseName("ix_ie_tenant_plan_statuses_master_code");
 
-                    b.ToTable("islamu_event_tenant_plan_statuses", (string)null);
+                    b.ToTable("ie_tenant_plan_statuses", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.TenantPlanVersion", b =>
@@ -21830,16 +22489,16 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("version_number");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_tenant_plan_versions");
+                        .HasName("pk_ie_tenant_plan_versions");
 
                     b.HasIndex("TenantPlanId", "VersionNumber")
                         .IsUnique()
-                        .HasDatabaseName("ix_islamu_event_tenant_plan_versions_tenant_plan_id_version_number");
+                        .HasDatabaseName("ix_ie_tenant_plan_versions_tenant_plan_id_version_number");
 
                     b.HasIndex("TenantPlanStatusId", "IsActiveForProvisioning")
-                        .HasDatabaseName("ix_islamu_event_tenant_plan_versions_tenant_plan_status_id_is_active_for_provisioning");
+                        .HasDatabaseName("ix_ie_tenant_plan_versions_tenant_plan_status_id_is_active_for_provisioning");
 
-                    b.ToTable("islamu_event_tenant_plan_versions", (string)null);
+                    b.ToTable("ie_tenant_plan_versions", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.TenantPlanVersionQuota", b =>
@@ -21880,13 +22539,13 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("updated_by");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_tenant_plan_version_quotas");
+                        .HasName("pk_ie_tenant_plan_version_quotas");
 
                     b.HasIndex("TenantPlanVersionId", "QuotaKey")
                         .IsUnique()
-                        .HasDatabaseName("ix_islamu_event_tenant_plan_version_quotas_tenant_plan_version_id_quota_key");
+                        .HasDatabaseName("ix_ie_tenant_plan_version_quotas_tenant_plan_version_id_quota_key");
 
-                    b.ToTable("islamu_event_tenant_plan_version_quotas", (string)null);
+                    b.ToTable("ie_tenant_plan_version_quotas", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.TenantPlanVersionSetting", b =>
@@ -21932,13 +22591,13 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("updated_by");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_tenant_plan_version_settings");
+                        .HasName("pk_ie_tenant_plan_version_settings");
 
                     b.HasIndex("TenantPlanVersionId", "SettingKey")
                         .IsUnique()
-                        .HasDatabaseName("ix_islamu_event_tenant_plan_version_settings_tenant_plan_version_id_setting_key");
+                        .HasDatabaseName("ix_ie_tenant_plan_version_settings_tenant_plan_version_id_setting_key");
 
-                    b.ToTable("islamu_event_tenant_plan_version_settings", (string)null);
+                    b.ToTable("ie_tenant_plan_version_settings", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.TenantSetting", b =>
@@ -21988,13 +22647,13 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("value");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_tenant_setting_overrides");
+                        .HasName("pk_ie_tenant_setting_overrides");
 
                     b.HasIndex("TenantId", "SettingKey")
                         .IsUnique()
-                        .HasDatabaseName("ix_islamu_event_tenant_setting_overrides_tenant_id_setting_key");
+                        .HasDatabaseName("ix_ie_tenant_setting_overrides_tenant_id_setting_key");
 
-                    b.ToTable("islamu_event_tenant_setting_overrides", (string)null);
+                    b.ToTable("ie_tenant_setting_overrides", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.TenantStatus", b =>
@@ -22025,9 +22684,9 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("master_code");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_tenant_statuses");
+                        .HasName("pk_ie_tenant_statuses");
 
-                    b.ToTable("islamu_event_tenant_statuses", (string)null);
+                    b.ToTable("ie_tenant_statuses", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.TenantUser", b =>
@@ -22115,7 +22774,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("user_id");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_tenant_users");
+                        .HasName("pk_ie_tenant_users");
 
                     b.HasAlternateKey("TenantId", "Id")
                         .HasName("ak_tenant_users_tenant_id_id");
@@ -22124,17 +22783,17 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasName("ak_tenant_users_tenant_id_user_id");
 
                     b.HasIndex("ActorId")
-                        .HasDatabaseName("ix_islamu_event_tenant_users_actor_id");
+                        .HasDatabaseName("ix_ie_tenant_users_actor_id");
 
                     b.HasIndex("UserId")
-                        .HasDatabaseName("ix_islamu_event_tenant_users_user_id");
+                        .HasDatabaseName("ix_ie_tenant_users_user_id");
 
                     b.HasIndex("TenantId", "ActorId")
                         .IsUnique()
                         .HasDatabaseName("ix_tenantusers_tenant_actor")
                         .HasFilter("actor_id IS NOT NULL");
 
-                    b.ToTable("islamu_event_tenant_users", null, t =>
+                    b.ToTable("ie_tenant_users", null, t =>
                         {
                             t.HasCheckConstraint("ck_tenant_users_status", "status_id IN (1, 2, 3, 4)");
                         });
@@ -22207,7 +22866,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("updated_by");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_tenant_user_profiles");
+                        .HasName("pk_ie_tenant_user_profiles");
 
                     b.HasIndex("TenantUserId")
                         .IsUnique()
@@ -22217,7 +22876,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasDatabaseName("ix_tenantuserprofiles_tenant_contact_email")
                         .HasFilter("contact_email_override IS NOT NULL");
 
-                    b.ToTable("islamu_event_tenant_user_profiles", (string)null);
+                    b.ToTable("ie_tenant_user_profiles", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.TenantUserRoleGrant", b =>
@@ -22287,10 +22946,10 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("updated_by");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_tenant_user_role_grants");
+                        .HasName("pk_ie_tenant_user_role_grants");
 
                     b.HasIndex("RoleId", "RoleScopeId")
-                        .HasDatabaseName("ix_islamu_event_tenant_user_role_grants_role_id_role_scope_id");
+                        .HasDatabaseName("ix_ie_tenant_user_role_grants_role_id_role_scope_id");
 
                     b.HasIndex("TenantId", "RoleId")
                         .HasDatabaseName("ix_tenant_user_role_grants_tenant_role");
@@ -22300,7 +22959,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasDatabaseName("ix_tenant_user_role_grants_active_tenant_user_role")
                         .HasFilter("revoked_at IS NULL");
 
-                    b.ToTable("islamu_event_tenant_user_role_grants", null, t =>
+                    b.ToTable("ie_tenant_user_role_grants", null, t =>
                         {
                             t.HasCheckConstraint("ck_tenant_user_role_grants_role_scope", "role_scope_id = 1");
                         });
@@ -22330,13 +22989,13 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("master_code");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_ticket_catalog_statuses");
+                        .HasName("pk_ie_ticket_catalog_statuses");
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
-                        .HasDatabaseName("ix_islamu_event_ticket_catalog_statuses_master_code");
+                        .HasDatabaseName("ix_ie_ticket_catalog_statuses_master_code");
 
-                    b.ToTable("islamu_event_ticket_catalog_statuses", (string)null);
+                    b.ToTable("ie_ticket_catalog_statuses", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.TicketPricingMode", b =>
@@ -22363,13 +23022,13 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("master_code");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_ticket_pricing_modes");
+                        .HasName("pk_ie_ticket_pricing_modes");
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
-                        .HasDatabaseName("ix_islamu_event_ticket_pricing_modes_master_code");
+                        .HasDatabaseName("ix_ie_ticket_pricing_modes_master_code");
 
-                    b.ToTable("islamu_event_ticket_pricing_modes", (string)null);
+                    b.ToTable("ie_ticket_pricing_modes", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.TicketTypeEntitlement", b =>
@@ -22411,27 +23070,27 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("ticket_type_id");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_ticket_type_entitlements");
+                        .HasName("pk_ie_ticket_type_entitlements");
 
                     b.HasAlternateKey("TenantId", "Id")
                         .HasName("ak_ticket_type_entitlements_tenant_id_id");
 
                     b.HasIndex("EntitlementScopeTypeId")
-                        .HasDatabaseName("ix_islamu_event_ticket_type_entitlements_entitlement_scope_type_id");
+                        .HasDatabaseName("ix_ie_ticket_type_entitlements_entitlement_scope_type_id");
 
                     b.HasIndex("EntitlementSelectionRuleId")
-                        .HasDatabaseName("ix_islamu_event_ticket_type_entitlements_entitlement_selection_rule_id");
+                        .HasDatabaseName("ix_ie_ticket_type_entitlements_entitlement_selection_rule_id");
 
                     b.HasIndex("TenantId", "TicketTypeId")
-                        .HasDatabaseName("ix_islamu_event_ticket_type_entitlements_tenant_id_ticket_type_id");
+                        .HasDatabaseName("ix_ie_ticket_type_entitlements_tenant_id_ticket_type_id");
 
                     b.HasIndex("TenantId", "TargetEventId", "EventDayId")
-                        .HasDatabaseName("ix_islamu_event_ticket_type_entitlements_tenant_id_target_event_id_event_day_id");
+                        .HasDatabaseName("ix_ie_ticket_type_entitlements_tenant_id_target_event_id_event_day_id");
 
                     b.HasIndex("TenantId", "TargetEventId", "EventSessionId")
-                        .HasDatabaseName("ix_islamu_event_ticket_type_entitlements_tenant_id_target_event_id_event_session_id");
+                        .HasDatabaseName("ix_ie_ticket_type_entitlements_tenant_id_target_event_id_event_session_id");
 
-                    b.ToTable("islamu_event_ticket_type_entitlements", (string)null);
+                    b.ToTable("ie_ticket_type_entitlements", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.UiTheme", b =>
@@ -22505,29 +23164,29 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("updated_by");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_ui_themes");
+                        .HasName("pk_ie_ui_themes");
 
                     b.HasIndex("IsDefault")
                         .IsUnique()
-                        .HasDatabaseName("ix_islamu_event_ui_themes_is_default")
+                        .HasDatabaseName("ix_ie_ui_themes_is_default")
                         .HasFilter("tenant_id IS NULL AND is_default = true");
 
                     b.HasIndex("ThemeKey")
                         .IsUnique()
-                        .HasDatabaseName("ix_islamu_event_ui_themes_theme_key")
+                        .HasDatabaseName("ix_ie_ui_themes_theme_key")
                         .HasFilter("tenant_id IS NULL");
 
                     b.HasIndex("TenantId", "IsDefault")
                         .IsUnique()
-                        .HasDatabaseName("ix_islamu_event_ui_themes_tenant_id_is_default")
+                        .HasDatabaseName("ix_ie_ui_themes_tenant_id_is_default")
                         .HasFilter("tenant_id IS NOT NULL AND is_default = true");
 
                     b.HasIndex("TenantId", "ThemeKey")
                         .IsUnique()
-                        .HasDatabaseName("ix_islamu_event_ui_themes_tenant_id_theme_key")
+                        .HasDatabaseName("ix_ie_ui_themes_tenant_id_theme_key")
                         .HasFilter("tenant_id IS NOT NULL");
 
-                    b.ToTable("islamu_event_ui_themes", (string)null);
+                    b.ToTable("ie_ui_themes", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.UiThemePreset", b =>
@@ -22619,22 +23278,22 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("updated_by");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_ui_theme_presets");
+                        .HasName("pk_ie_ui_theme_presets");
 
                     b.HasIndex("ThemeKey")
                         .IsUnique()
-                        .HasDatabaseName("ix_islamu_event_ui_theme_presets_theme_key")
+                        .HasDatabaseName("ix_ie_ui_theme_presets_theme_key")
                         .HasFilter("tenant_id IS NULL AND is_deleted = false");
 
                     b.HasIndex("TenantId", "IsActive")
-                        .HasDatabaseName("ix_islamu_event_ui_theme_presets_tenant_id_is_active");
+                        .HasDatabaseName("ix_ie_ui_theme_presets_tenant_id_is_active");
 
                     b.HasIndex("TenantId", "ThemeKey")
                         .IsUnique()
-                        .HasDatabaseName("ix_islamu_event_ui_theme_presets_tenant_id_theme_key")
+                        .HasDatabaseName("ix_ie_ui_theme_presets_tenant_id_theme_key")
                         .HasFilter("tenant_id IS NOT NULL AND is_deleted = false");
 
-                    b.ToTable("islamu_event_ui_theme_presets", (string)null);
+                    b.ToTable("ie_ui_theme_presets", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.User", b =>
@@ -22696,9 +23355,9 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("updated_by");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_users");
+                        .HasName("pk_ie_users");
 
-                    b.ToTable("islamu_event_users", (string)null);
+                    b.ToTable("ie_users", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.UserAppearancePreference", b =>
@@ -22745,16 +23404,16 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("user_id");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_user_appearance_preferences");
+                        .HasName("pk_ie_user_appearance_preferences");
 
                     b.HasIndex("ActiveProfileId")
-                        .HasDatabaseName("ix_islamu_event_user_appearance_preferences_active_profile_id");
+                        .HasDatabaseName("ix_ie_user_appearance_preferences_active_profile_id");
 
                     b.HasIndex("UserId", "TenantId")
                         .IsUnique()
-                        .HasDatabaseName("ix_islamu_event_user_appearance_preferences_user_id_tenant_id");
+                        .HasDatabaseName("ix_ie_user_appearance_preferences_user_id_tenant_id");
 
-                    b.ToTable("islamu_event_user_appearance_preferences", (string)null);
+                    b.ToTable("ie_user_appearance_preferences", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.UserAppearanceProfile", b =>
@@ -22838,23 +23497,23 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("user_id");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_user_appearance_profiles");
+                        .HasName("pk_ie_user_appearance_profiles");
 
                     b.HasIndex("UserId", "SourcePresetId")
-                        .HasDatabaseName("ix_islamu_event_user_appearance_profiles_user_id_source_preset_id");
+                        .HasDatabaseName("ix_ie_user_appearance_profiles_user_id_source_preset_id");
 
                     b.HasIndex("UserId", "TenantId", "IsArchived")
-                        .HasDatabaseName("ix_islamu_event_user_appearance_profiles_user_id_tenant_id_is_archived");
+                        .HasDatabaseName("ix_ie_user_appearance_profiles_user_id_tenant_id_is_archived");
 
                     b.HasIndex("UserId", "TenantId", "IsDefault")
                         .IsUnique()
-                        .HasDatabaseName("ix_islamu_event_user_appearance_profiles_user_id_tenant_id_is_default")
+                        .HasDatabaseName("ix_ie_user_appearance_profiles_user_id_tenant_id_is_default")
                         .HasFilter("is_default = true");
 
                     b.HasIndex("UserId", "TenantId", "Name")
-                        .HasDatabaseName("ix_islamu_event_user_appearance_profiles_user_id_tenant_id_name");
+                        .HasDatabaseName("ix_ie_user_appearance_profiles_user_id_tenant_id_name");
 
-                    b.ToTable("islamu_event_user_appearance_profiles", (string)null);
+                    b.ToTable("ie_user_appearance_profiles", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.UserAuthenticationToken", b =>
@@ -22938,16 +23597,16 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("user_id");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_user_authentication_tokens");
+                        .HasName("pk_ie_user_authentication_tokens");
 
                     b.HasIndex("UserId")
-                        .HasDatabaseName("ix_islamu_event_user_authentication_tokens_user_id");
+                        .HasDatabaseName("ix_ie_user_authentication_tokens_user_id");
 
                     b.HasIndex("TenantId", "Provider", "SubjectDid")
                         .IsUnique()
                         .HasDatabaseName("ux_user_authentication_tokens_tenant_provider_subject_did");
 
-                    b.ToTable("islamu_event_user_authentication_tokens", null, t =>
+                    b.ToTable("ie_user_authentication_tokens", null, t =>
                         {
                             t.HasCheckConstraint("ck_user_authentication_tokens_envelope_version", "envelope_version = 1");
 
@@ -23002,20 +23661,20 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("user_id");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_user_external_logins");
+                        .HasName("pk_ie_user_external_logins");
 
                     b.HasIndex("TenantId")
-                        .HasDatabaseName("ix_islamu_event_user_external_logins_tenant_id");
+                        .HasDatabaseName("ix_ie_user_external_logins_tenant_id");
 
                     b.HasIndex("UserId")
-                        .HasDatabaseName("ix_islamu_event_user_external_logins_user_id");
+                        .HasDatabaseName("ix_ie_user_external_logins_user_id");
 
                     b.HasIndex("Provider", "ProviderKey")
                         .IsUnique()
-                        .HasDatabaseName("ix_islamu_event_user_external_logins_provider_provider_key")
+                        .HasDatabaseName("ix_ie_user_external_logins_provider_provider_key")
                         .HasFilter("provider IS NOT NULL AND provider_key IS NOT NULL");
 
-                    b.ToTable("islamu_event_user_external_logins", (string)null);
+                    b.ToTable("ie_user_external_logins", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.UserNotificationPreference", b =>
@@ -23066,16 +23725,16 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("user_id");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_user_notification_preferences");
+                        .HasName("pk_ie_user_notification_preferences");
 
                     b.HasIndex("UserId")
-                        .HasDatabaseName("ix_islamu_event_user_notification_preferences_user_id");
+                        .HasDatabaseName("ix_ie_user_notification_preferences_user_id");
 
                     b.HasIndex("TenantId", "UserId", "Category")
                         .IsUnique()
-                        .HasDatabaseName("ix_islamu_event_user_notification_preferences_tenant_id_user_id_category");
+                        .HasDatabaseName("ix_ie_user_notification_preferences_tenant_id_user_id_category");
 
-                    b.ToTable("islamu_event_user_notification_preferences", (string)null);
+                    b.ToTable("ie_user_notification_preferences", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.UserPii", b =>
@@ -23103,13 +23762,13 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("last_name");
 
                     b.HasKey("UserId")
-                        .HasName("pk_islamu_event_user_pii");
+                        .HasName("pk_ie_user_pii");
 
                     b.HasIndex("Email")
                         .IsUnique()
-                        .HasDatabaseName("ix_islamu_event_user_pii_email");
+                        .HasDatabaseName("ix_ie_user_pii_email");
 
-                    b.ToTable("islamu_event_user_pii", (string)null);
+                    b.ToTable("ie_user_pii", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.UserPreference", b =>
@@ -23157,13 +23816,13 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("value");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_user_preferences");
+                        .HasName("pk_ie_user_preferences");
 
                     b.HasIndex("TenantId", "UserId", "SettingKey")
                         .IsUnique()
-                        .HasDatabaseName("ix_islamu_event_user_preferences_tenant_id_user_id_setting_key");
+                        .HasDatabaseName("ix_ie_user_preferences_tenant_id_user_id_setting_key");
 
-                    b.ToTable("islamu_event_user_preferences", (string)null);
+                    b.ToTable("ie_user_preferences", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.Views.EventWithSessionsView", b =>
@@ -23311,9 +23970,9 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("master_code");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_visibility_types");
+                        .HasName("pk_ie_visibility_types");
 
-                    b.ToTable("islamu_event_visibility_types", (string)null);
+                    b.ToTable("ie_visibility_types", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.WebPushDispatchOutbox", b =>
@@ -23437,16 +24096,16 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("user_id");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_web_push_dispatch_outbox");
+                        .HasName("pk_ie_web_push_dispatch_outbox");
 
                     b.HasIndex("CategoryId")
-                        .HasDatabaseName("ix_islamu_event_web_push_dispatch_outbox_category_id");
+                        .HasDatabaseName("ix_ie_web_push_dispatch_outbox_category_id");
 
                     b.HasIndex("SubscriptionId")
-                        .HasDatabaseName("ix_islamu_event_web_push_dispatch_outbox_subscription_id");
+                        .HasDatabaseName("ix_ie_web_push_dispatch_outbox_subscription_id");
 
                     b.HasIndex("UserId")
-                        .HasDatabaseName("ix_islamu_event_web_push_dispatch_outbox_user_id");
+                        .HasDatabaseName("ix_ie_web_push_dispatch_outbox_user_id");
 
                     b.HasIndex("Status", "NextAttemptAt", "CreatedAt")
                         .HasDatabaseName("ix_web_push_dispatch_outbox_worker_poll");
@@ -23459,7 +24118,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                     b.HasIndex("TenantId", "Status", "LastFailureAt")
                         .HasDatabaseName("ix_web_push_dispatch_outbox_tenant_status");
 
-                    b.ToTable("islamu_event_web_push_dispatch_outbox", (string)null);
+                    b.ToTable("ie_web_push_dispatch_outbox", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.WebPushSubscription", b =>
@@ -23564,7 +24223,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("user_id");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_web_push_subscriptions");
+                        .HasName("pk_ie_web_push_subscriptions");
 
                     b.HasIndex("Endpoint")
                         .IsUnique()
@@ -23572,7 +24231,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasFilter("is_deleted = false AND is_active = true");
 
                     b.HasIndex("UserId")
-                        .HasDatabaseName("ix_islamu_event_web_push_subscriptions_user_id");
+                        .HasDatabaseName("ix_ie_web_push_subscriptions_user_id");
 
                     b.HasIndex("TenantId", "UserId", "DeviceIdentifier")
                         .IsUnique()
@@ -23582,7 +24241,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                     b.HasIndex("TenantId", "UserId", "IsActive")
                         .HasDatabaseName("ix_web_push_subscriptions_tenant_user_active");
 
-                    b.ToTable("islamu_event_web_push_subscriptions", (string)null);
+                    b.ToTable("ie_web_push_subscriptions", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.WebhookAuditActionLookup", b =>
@@ -23609,13 +24268,13 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("master_code");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_webhook_audit_actions");
+                        .HasName("pk_ie_webhook_audit_actions");
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
                         .HasDatabaseName("ux_webhook_audit_actions_master_code");
 
-                    b.ToTable("islamu_event_webhook_audit_actions", (string)null);
+                    b.ToTable("ie_webhook_audit_actions", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.WebhookAuditEvent", b =>
@@ -23708,19 +24367,19 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("tenant_id");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_webhook_audit_events");
+                        .HasName("pk_ie_webhook_audit_events");
 
                     b.HasIndex("ActionId")
-                        .HasDatabaseName("ix_islamu_event_webhook_audit_events_action_id");
+                        .HasDatabaseName("ix_ie_webhook_audit_events_action_id");
 
                     b.HasIndex("OutcomeId")
-                        .HasDatabaseName("ix_islamu_event_webhook_audit_events_outcome_id");
+                        .HasDatabaseName("ix_ie_webhook_audit_events_outcome_id");
 
                     b.HasIndex("PrincipalKindId")
-                        .HasDatabaseName("ix_islamu_event_webhook_audit_events_principal_kind_id");
+                        .HasDatabaseName("ix_ie_webhook_audit_events_principal_kind_id");
 
                     b.HasIndex("TargetKindId")
-                        .HasDatabaseName("ix_islamu_event_webhook_audit_events_target_kind_id");
+                        .HasDatabaseName("ix_ie_webhook_audit_events_target_kind_id");
 
                     b.HasIndex("TenantId", "CorrelationId")
                         .HasDatabaseName("ix_webhook_audit_events_tenant_correlation");
@@ -23740,7 +24399,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .IsDescending(false, false, false, true)
                         .HasDatabaseName("ix_webhook_audit_events_tenant_target_occurred");
 
-                    b.ToTable("islamu_event_webhook_audit_events", null, t =>
+                    b.ToTable("ie_webhook_audit_events", null, t =>
                         {
                             t.HasCheckConstraint("ck_webhook_audit_events_effective_scope", "(effective_scope_kind_id = 2 AND tenant_id IS NULL AND effective_scope_id IS NOT NULL) OR (effective_scope_kind_id IN (1, 3, 4, 5) AND tenant_id IS NOT NULL AND effective_scope_id IS NOT NULL)");
 
@@ -23772,13 +24431,13 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("master_code");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_webhook_audit_outcomes");
+                        .HasName("pk_ie_webhook_audit_outcomes");
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
                         .HasDatabaseName("ux_webhook_audit_outcomes_master_code");
 
-                    b.ToTable("islamu_event_webhook_audit_outcomes", (string)null);
+                    b.ToTable("ie_webhook_audit_outcomes", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.WebhookAuditPrincipalKindLookup", b =>
@@ -23805,13 +24464,13 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("master_code");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_webhook_audit_principal_kinds");
+                        .HasName("pk_ie_webhook_audit_principal_kinds");
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
                         .HasDatabaseName("ux_webhook_audit_principal_kinds_master_code");
 
-                    b.ToTable("islamu_event_webhook_audit_principal_kinds", (string)null);
+                    b.ToTable("ie_webhook_audit_principal_kinds", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.WebhookAuditScopeKindLookup", b =>
@@ -23838,13 +24497,13 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("master_code");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_webhook_audit_scope_kinds");
+                        .HasName("pk_ie_webhook_audit_scope_kinds");
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
                         .HasDatabaseName("ux_webhook_audit_scope_kinds_master_code");
 
-                    b.ToTable("islamu_event_webhook_audit_scope_kinds", (string)null);
+                    b.ToTable("ie_webhook_audit_scope_kinds", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.WebhookAuditTargetKindLookup", b =>
@@ -23871,13 +24530,13 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("master_code");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_webhook_audit_target_kinds");
+                        .HasName("pk_ie_webhook_audit_target_kinds");
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
                         .HasDatabaseName("ux_webhook_audit_target_kinds_master_code");
 
-                    b.ToTable("islamu_event_webhook_audit_target_kinds", (string)null);
+                    b.ToTable("ie_webhook_audit_target_kinds", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.WebhookBulkReplayOperation", b =>
@@ -24032,16 +24691,16 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("webhook_endpoint_id");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_webhook_bulk_replay_operations");
+                        .HasName("pk_ie_webhook_bulk_replay_operations");
 
                     b.HasAlternateKey("TenantId", "Id")
                         .HasName("ak_webhook_bulk_replay_operations_tenant_id_id");
 
                     b.HasIndex("WebhookConsumerId")
-                        .HasDatabaseName("ix_islamu_event_webhook_bulk_replay_operations_webhook_consumer_id");
+                        .HasDatabaseName("ix_ie_webhook_bulk_replay_operations_webhook_consumer_id");
 
                     b.HasIndex("WebhookEndpointId")
-                        .HasDatabaseName("ix_islamu_event_webhook_bulk_replay_operations_webhook_endpoint_id");
+                        .HasDatabaseName("ix_ie_webhook_bulk_replay_operations_webhook_endpoint_id");
 
                     b.HasIndex("TenantId", "OperationKey")
                         .IsUnique()
@@ -24056,7 +24715,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                     b.HasIndex("TenantId", "StatusId", "QueuedAt")
                         .HasDatabaseName("ix_webhook_bulk_replay_operations_tenant_status_queue");
 
-                    b.ToTable("islamu_event_webhook_bulk_replay_operations", null, t =>
+                    b.ToTable("ie_webhook_bulk_replay_operations", null, t =>
                         {
                             t.HasCheckConstraint("ck_webhook_bulk_replay_operations_concurrency_version", "concurrency_version > 0");
 
@@ -24096,13 +24755,13 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("master_code");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_webhook_bulk_replay_statuses");
+                        .HasName("pk_ie_webhook_bulk_replay_statuses");
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
                         .HasDatabaseName("ux_webhook_bulk_replay_statuses_master_code");
 
-                    b.ToTable("islamu_event_webhook_bulk_replay_statuses", (string)null);
+                    b.ToTable("ie_webhook_bulk_replay_statuses", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.WebhookConsumer", b =>
@@ -24185,13 +24844,13 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("updated_by");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_webhook_consumers");
+                        .HasName("pk_ie_webhook_consumers");
 
                     b.HasAlternateKey("ConfigurationScopeId", "Id")
                         .HasName("ak_webhook_consumers_configuration_scope_id");
 
                     b.HasIndex("ConsumerKindId")
-                        .HasDatabaseName("ix_islamu_event_webhook_consumers_consumer_kind_id");
+                        .HasDatabaseName("ix_ie_webhook_consumers_consumer_kind_id");
 
                     b.HasIndex("ExternalProviderAppId")
                         .IsUnique()
@@ -24199,10 +24858,10 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasFilter("external_provider_app_id IS NOT NULL");
 
                     b.HasIndex("ProviderModeId")
-                        .HasDatabaseName("ix_islamu_event_webhook_consumers_provider_mode_id");
+                        .HasDatabaseName("ix_ie_webhook_consumers_provider_mode_id");
 
                     b.HasIndex("StatusId")
-                        .HasDatabaseName("ix_islamu_event_webhook_consumers_status_id");
+                        .HasDatabaseName("ix_ie_webhook_consumers_status_id");
 
                     b.HasIndex("InstanceId", "Name")
                         .IsUnique()
@@ -24236,7 +24895,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                     b.HasIndex("TenantId", "StatusId", "ProviderModeId")
                         .HasDatabaseName("ix_webhook_consumers_tenant_status_provider");
 
-                    b.ToTable("islamu_event_webhook_consumers", null, t =>
+                    b.ToTable("ie_webhook_consumers", null, t =>
                         {
                             t.HasCheckConstraint("ck_webhook_consumers_configuration_scope", "configuration_scope_id = COALESCE(tenant_id, instance_id)");
 
@@ -24270,13 +24929,13 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("master_code");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_webhook_consumer_kinds");
+                        .HasName("pk_ie_webhook_consumer_kinds");
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
                         .HasDatabaseName("ux_webhook_consumer_kinds_master_code");
 
-                    b.ToTable("islamu_event_webhook_consumer_kinds", (string)null);
+                    b.ToTable("ie_webhook_consumer_kinds", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.WebhookConsumerProviderBinding", b =>
@@ -24412,16 +25071,16 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("webhook_consumer_id");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_webhook_consumer_provider_bindings");
+                        .HasName("pk_ie_webhook_consumer_provider_bindings");
 
                     b.HasIndex("TenantId")
-                        .HasDatabaseName("ix_islamu_event_webhook_consumer_provider_bindings_tenant_id");
+                        .HasDatabaseName("ix_ie_webhook_consumer_provider_bindings_tenant_id");
 
                     b.HasIndex("VerificationStateId")
-                        .HasDatabaseName("ix_islamu_event_webhook_consumer_provider_bindings_verification_state_id");
+                        .HasDatabaseName("ix_ie_webhook_consumer_provider_bindings_verification_state_id");
 
                     b.HasIndex("ConfigurationScopeId", "WebhookConsumerId")
-                        .HasDatabaseName("ix_islamu_event_webhook_consumer_provider_bindings_configuration_scope_id_webhook_consumer_id");
+                        .HasDatabaseName("ix_ie_webhook_consumer_provider_bindings_configuration_scope_id_webhook_consumer_id");
 
                     b.HasIndex("ProviderKindId", "NormalizedEnvironment", "NormalizedApplicationUid")
                         .IsUnique()
@@ -24441,7 +25100,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasDatabaseName("ux_webhook_provider_bindings_provider_application_identity")
                         .HasFilter("normalized_external_application_id IS NOT NULL");
 
-                    b.ToTable("islamu_event_webhook_consumer_provider_bindings", null, t =>
+                    b.ToTable("ie_webhook_consumer_provider_bindings", null, t =>
                         {
                             t.HasCheckConstraint("ck_webhook_consumer_provider_bindings_capabilities_known", "capabilities >= 0 AND capabilities <= 4095");
 
@@ -24481,13 +25140,13 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("master_code");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_webhook_consumer_statuses");
+                        .HasName("pk_ie_webhook_consumer_statuses");
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
                         .HasDatabaseName("ux_webhook_consumer_statuses_master_code");
 
-                    b.ToTable("islamu_event_webhook_consumer_statuses", (string)null);
+                    b.ToTable("ie_webhook_consumer_statuses", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.WebhookDeliveryAttempt", b =>
@@ -24580,16 +25239,16 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("updated_by");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_webhook_delivery_attempts");
+                        .HasName("pk_ie_webhook_delivery_attempts");
 
                     b.HasAlternateKey("TenantId", "Id")
                         .HasName("ak_webhook_delivery_attempts_tenant_id_id");
 
                     b.HasIndex("EndpointId")
-                        .HasDatabaseName("ix_islamu_event_webhook_delivery_attempts_endpoint_id");
+                        .HasDatabaseName("ix_ie_webhook_delivery_attempts_endpoint_id");
 
                     b.HasIndex("OutcomeId")
-                        .HasDatabaseName("ix_islamu_event_webhook_delivery_attempts_outcome_id");
+                        .HasDatabaseName("ix_ie_webhook_delivery_attempts_outcome_id");
 
                     b.HasIndex("TenantId", "EndpointId", "OutcomeId", "ScheduledAt")
                         .HasDatabaseName("ix_webhook_delivery_attempts_tenant_endpoint_status");
@@ -24604,7 +25263,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                     b.HasIndex("TenantId", "OutcomeId", "ScheduledAt", "CreatedAt")
                         .HasDatabaseName("ix_webhook_delivery_attempts_worker_poll");
 
-                    b.ToTable("islamu_event_webhook_delivery_attempts", (string)null);
+                    b.ToTable("ie_webhook_delivery_attempts", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.WebhookDeliveryAttemptOutcomeLookup", b =>
@@ -24631,13 +25290,13 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("master_code");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_webhook_delivery_attempt_outcomes");
+                        .HasName("pk_ie_webhook_delivery_attempt_outcomes");
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
                         .HasDatabaseName("ux_webhook_delivery_attempt_outcomes_master_code");
 
-                    b.ToTable("islamu_event_webhook_delivery_attempt_outcomes", (string)null);
+                    b.ToTable("ie_webhook_delivery_attempt_outcomes", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.WebhookDeliveryPlanSnapshot", b =>
@@ -24736,16 +25395,16 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("webhook_message_id");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_webhook_delivery_plan_snapshots");
+                        .HasName("pk_ie_webhook_delivery_plan_snapshots");
 
                     b.HasAlternateKey("TenantId", "Id")
                         .HasName("ak_webhook_delivery_plan_snapshots_tenant_id_id");
 
                     b.HasIndex("ProviderModeId")
-                        .HasDatabaseName("ix_islamu_event_webhook_delivery_plan_snapshots_provider_mode_id");
+                        .HasDatabaseName("ix_ie_webhook_delivery_plan_snapshots_provider_mode_id");
 
                     b.HasIndex("WebhookConsumerId")
-                        .HasDatabaseName("ix_islamu_event_webhook_delivery_plan_snapshots_webhook_consumer_id");
+                        .HasDatabaseName("ix_ie_webhook_delivery_plan_snapshots_webhook_consumer_id");
 
                     b.HasIndex("TenantId", "AttemptRetentionUntilUtc")
                         .HasDatabaseName("ix_webhook_delivery_plan_snapshots_tenant_attempt_retention");
@@ -24766,7 +25425,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                     b.HasIndex("TenantId", "WebhookConsumerId", "MaterializedAtUtc")
                         .HasDatabaseName("ix_webhook_delivery_plan_snapshots_tenant_consumer_materialized");
 
-                    b.ToTable("islamu_event_webhook_delivery_plan_snapshots", (string)null);
+                    b.ToTable("ie_webhook_delivery_plan_snapshots", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.WebhookEndpoint", b =>
@@ -24923,16 +25582,16 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("url");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_webhook_endpoints");
+                        .HasName("pk_ie_webhook_endpoints");
 
                     b.HasAlternateKey("ConfigurationScopeId", "Id")
                         .HasName("ak_webhook_endpoints_configuration_scope_id");
 
                     b.HasIndex("StatusId")
-                        .HasDatabaseName("ix_islamu_event_webhook_endpoints_status_id");
+                        .HasDatabaseName("ix_ie_webhook_endpoints_status_id");
 
                     b.HasIndex("ConfigurationScopeId", "ConsumerId")
-                        .HasDatabaseName("ix_islamu_event_webhook_endpoints_configuration_scope_id_consumer_id");
+                        .HasDatabaseName("ix_ie_webhook_endpoints_configuration_scope_id_consumer_id");
 
                     b.HasIndex("InstanceId", "ProviderEndpointId")
                         .IsUnique()
@@ -24954,7 +25613,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                     b.HasIndex("TenantId", "StatusId", "Id")
                         .HasDatabaseName("ix_webhook_endpoints_status_tenant_id");
 
-                    b.ToTable("islamu_event_webhook_endpoints", null, t =>
+                    b.ToTable("ie_webhook_endpoints", null, t =>
                         {
                             t.HasCheckConstraint("ck_webhook_endpoints_configuration_scope", "(tenant_id IS NOT NULL AND instance_id IS NULL) OR (tenant_id IS NULL AND instance_id IS NOT NULL)");
 
@@ -24988,13 +25647,13 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("master_code");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_webhook_endpoint_statuses");
+                        .HasName("pk_ie_webhook_endpoint_statuses");
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
                         .HasDatabaseName("ux_webhook_endpoint_statuses_master_code");
 
-                    b.ToTable("islamu_event_webhook_endpoint_statuses", (string)null);
+                    b.ToTable("ie_webhook_endpoint_statuses", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.WebhookEndpointSubscription", b =>
@@ -25049,13 +25708,13 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("updated_by");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_webhook_endpoint_subscriptions");
+                        .HasName("pk_ie_webhook_endpoint_subscriptions");
 
                     b.HasIndex("EventTypeId")
-                        .HasDatabaseName("ix_islamu_event_webhook_endpoint_subscriptions_event_type_id");
+                        .HasDatabaseName("ix_ie_webhook_endpoint_subscriptions_event_type_id");
 
                     b.HasIndex("ConfigurationScopeId", "EndpointId")
-                        .HasDatabaseName("ix_islamu_event_webhook_endpoint_subscriptions_configuration_scope_id_endpoint_id");
+                        .HasDatabaseName("ix_ie_webhook_endpoint_subscriptions_configuration_scope_id_endpoint_id");
 
                     b.HasIndex("InstanceId", "EndpointId", "EventTypeId")
                         .IsUnique()
@@ -25074,7 +25733,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                     b.HasIndex("TenantId", "EventTypeId", "IsEnabled")
                         .HasDatabaseName("ix_webhook_endpoint_subscriptions_tenant_event_type");
 
-                    b.ToTable("islamu_event_webhook_endpoint_subscriptions", null, t =>
+                    b.ToTable("ie_webhook_endpoint_subscriptions", null, t =>
                         {
                             t.HasCheckConstraint("ck_webhook_endpoint_subscriptions_configuration_scope", "(tenant_id IS NOT NULL AND instance_id IS NULL) OR (tenant_id IS NULL AND instance_id IS NOT NULL)");
 
@@ -25147,7 +25806,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("updated_by");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_webhook_event_types");
+                        .HasName("pk_ie_webhook_event_types");
 
                     b.HasIndex("Name")
                         .IsUnique()
@@ -25156,7 +25815,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                     b.HasIndex("GroupName", "IsEnabled", "IsPublic")
                         .HasDatabaseName("ix_webhook_event_types_group_enabled_public");
 
-                    b.ToTable("islamu_event_webhook_event_types", (string)null);
+                    b.ToTable("ie_webhook_event_types", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.WebhookLocalDeliveryStatusLookup", b =>
@@ -25183,13 +25842,13 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("master_code");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_webhook_local_delivery_statuses");
+                        .HasName("pk_ie_webhook_local_delivery_statuses");
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
                         .HasDatabaseName("ux_webhook_local_delivery_statuses_master_code");
 
-                    b.ToTable("islamu_event_webhook_local_delivery_statuses", (string)null);
+                    b.ToTable("ie_webhook_local_delivery_statuses", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.WebhookLocalTargetSnapshot", b =>
@@ -25306,16 +25965,16 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("webhook_message_id");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_webhook_local_target_snapshots");
+                        .HasName("pk_ie_webhook_local_target_snapshots");
 
                     b.HasAlternateKey("TenantId", "Id")
                         .HasName("ak_webhook_local_target_snapshots_tenant_id_id");
 
                     b.HasIndex("DeliveryStatusId")
-                        .HasDatabaseName("ix_islamu_event_webhook_local_target_snapshots_delivery_status_id");
+                        .HasDatabaseName("ix_ie_webhook_local_target_snapshots_delivery_status_id");
 
                     b.HasIndex("WebhookEndpointId")
-                        .HasDatabaseName("ix_islamu_event_webhook_local_target_snapshots_webhook_endpoint_id");
+                        .HasDatabaseName("ix_ie_webhook_local_target_snapshots_webhook_endpoint_id");
 
                     b.HasIndex("TenantId", "WebhookMessageId")
                         .HasDatabaseName("ix_webhook_local_targets_tenant_message");
@@ -25327,7 +25986,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                     b.HasIndex("TenantId", "DeliveryStatusId", "NextActionAtUtc", "ProcessingLeaseExpiresAtUtc")
                         .HasDatabaseName("ix_webhook_local_targets_tenant_claim_due");
 
-                    b.ToTable("islamu_event_webhook_local_target_snapshots", null, t =>
+                    b.ToTable("ie_webhook_local_target_snapshots", null, t =>
                         {
                             t.HasCheckConstraint("ck_webhook_local_targets_concurrency_version", "concurrency_version > 0");
 
@@ -25443,16 +26102,16 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("payload_bytes");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_webhook_messages");
+                        .HasName("pk_ie_webhook_messages");
 
                     b.HasAlternateKey("TenantId", "Id")
                         .HasName("ak_webhook_messages_tenant_id_id");
 
                     b.HasIndex("ConsumerId")
-                        .HasDatabaseName("ix_islamu_event_webhook_messages_consumer_id");
+                        .HasDatabaseName("ix_ie_webhook_messages_consumer_id");
 
                     b.HasIndex("PayloadProvenanceId")
-                        .HasDatabaseName("ix_islamu_event_webhook_messages_payload_provenance_id");
+                        .HasDatabaseName("ix_ie_webhook_messages_payload_provenance_id");
 
                     b.HasIndex("TenantId", "PayloadRetentionUntil")
                         .HasDatabaseName("ix_webhook_messages_tenant_payload_retention")
@@ -25468,7 +26127,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .IsUnique()
                         .HasDatabaseName("ux_webhook_messages_tenant_event");
 
-                    b.ToTable("islamu_event_webhook_messages", null, t =>
+                    b.ToTable("ie_webhook_messages", null, t =>
                         {
                             t.HasCheckConstraint("ck_webhook_messages_payload_byte_length", "payload_byte_length > 0");
 
@@ -25500,13 +26159,13 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("master_code");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_webhook_payload_provenances");
+                        .HasName("pk_ie_webhook_payload_provenances");
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
                         .HasDatabaseName("ux_webhook_payload_provenances_master_code");
 
-                    b.ToTable("islamu_event_webhook_payload_provenances", (string)null);
+                    b.ToTable("ie_webhook_payload_provenances", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.WebhookPendingWorkDecisionLookup", b =>
@@ -25533,13 +26192,13 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("master_code");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_webhook_pending_work_decisions");
+                        .HasName("pk_ie_webhook_pending_work_decisions");
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
                         .HasDatabaseName("ux_webhook_pending_work_decisions_master_code");
 
-                    b.ToTable("islamu_event_webhook_pending_work_decisions", (string)null);
+                    b.ToTable("ie_webhook_pending_work_decisions", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.WebhookProviderBindingVerificationStateLookup", b =>
@@ -25566,13 +26225,13 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("master_code");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_webhook_provider_binding_verification_states");
+                        .HasName("pk_ie_webhook_provider_binding_verification_states");
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
                         .HasDatabaseName("ux_webhook_provider_binding_verification_states_master_code");
 
-                    b.ToTable("islamu_event_webhook_provider_binding_verification_states", (string)null);
+                    b.ToTable("ie_webhook_provider_binding_verification_states", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.WebhookProviderCapabilityLookup", b =>
@@ -25599,13 +26258,13 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("master_code");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_webhook_provider_capabilities");
+                        .HasName("pk_ie_webhook_provider_capabilities");
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
                         .HasDatabaseName("ux_webhook_provider_capabilities_master_code");
 
-                    b.ToTable("islamu_event_webhook_provider_capabilities", (string)null);
+                    b.ToTable("ie_webhook_provider_capabilities", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.WebhookProviderKindLookup", b =>
@@ -25632,13 +26291,13 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("master_code");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_webhook_provider_kinds");
+                        .HasName("pk_ie_webhook_provider_kinds");
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
                         .HasDatabaseName("ux_webhook_provider_kinds_master_code");
 
-                    b.ToTable("islamu_event_webhook_provider_kinds", (string)null);
+                    b.ToTable("ie_webhook_provider_kinds", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.WebhookProviderModeLookup", b =>
@@ -25665,13 +26324,13 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("master_code");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_webhook_provider_modes");
+                        .HasName("pk_ie_webhook_provider_modes");
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
                         .HasDatabaseName("ux_webhook_provider_modes_master_code");
 
-                    b.ToTable("islamu_event_webhook_provider_modes", (string)null);
+                    b.ToTable("ie_webhook_provider_modes", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.WebhookProviderPublication", b =>
@@ -25892,28 +26551,28 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("webhook_message_id");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_webhook_provider_publications");
+                        .HasName("pk_ie_webhook_provider_publications");
 
                     b.HasAlternateKey("TenantId", "Id")
                         .HasName("ak_webhook_provider_publications_tenant_id_id");
 
                     b.HasIndex("ModeSnapshotId")
-                        .HasDatabaseName("ix_islamu_event_webhook_provider_publications_mode_snapshot_id");
+                        .HasDatabaseName("ix_ie_webhook_provider_publications_mode_snapshot_id");
 
                     b.HasIndex("ProviderBindingId")
-                        .HasDatabaseName("ix_islamu_event_webhook_provider_publications_provider_binding_id");
+                        .HasDatabaseName("ix_ie_webhook_provider_publications_provider_binding_id");
 
                     b.HasIndex("ProviderKindId")
-                        .HasDatabaseName("ix_islamu_event_webhook_provider_publications_provider_kind_id");
+                        .HasDatabaseName("ix_ie_webhook_provider_publications_provider_kind_id");
 
                     b.HasIndex("StatusId")
-                        .HasDatabaseName("ix_islamu_event_webhook_provider_publications_status_id");
+                        .HasDatabaseName("ix_ie_webhook_provider_publications_status_id");
 
                     b.HasIndex("TenantId", "PublicationRetentionUntil")
                         .HasDatabaseName("ix_webhook_provider_publications_tenant_retention");
 
                     b.HasIndex("TenantId", "WebhookDeliveryPlanSnapshotId")
-                        .HasDatabaseName("ix_islamu_event_webhook_provider_publications_tenant_id_webhook_delivery_plan_snapshot_id");
+                        .HasDatabaseName("ix_ie_webhook_provider_publications_tenant_id_webhook_delivery_plan_snapshot_id");
 
                     b.HasIndex("TenantId", "ProviderKindId", "ProviderEventId")
                         .IsUnique()
@@ -25926,7 +26585,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .IsUnique()
                         .HasDatabaseName("ux_webhook_provider_publications_tenant_message_provider_binding");
 
-                    b.ToTable("islamu_event_webhook_provider_publications", null, t =>
+                    b.ToTable("ie_webhook_provider_publications", null, t =>
                         {
                             t.HasCheckConstraint("ck_webhook_provider_publications_concurrency_version", "concurrency_version > 0");
 
@@ -26001,13 +26660,13 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("webhook_provider_publication_id");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_webhook_provider_publication_attempts");
+                        .HasName("pk_ie_webhook_provider_publication_attempts");
 
                     b.HasAlternateKey("TenantId", "Id")
                         .HasName("ak_webhook_provider_publication_attempts_tenant_id_id");
 
                     b.HasIndex("OutcomeId")
-                        .HasDatabaseName("ix_islamu_event_webhook_provider_publication_attempts_outcome_id");
+                        .HasDatabaseName("ix_ie_webhook_provider_publication_attempts_outcome_id");
 
                     b.HasIndex("TenantId", "OutcomeId", "RecordedAt")
                         .HasDatabaseName("ix_webhook_provider_publication_attempts_tenant_outcome_recorded");
@@ -26019,7 +26678,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .IsUnique()
                         .HasDatabaseName("ux_webhook_provider_publication_attempts_tenant_publication_attempt");
 
-                    b.ToTable("islamu_event_webhook_provider_publication_attempts", (string)null);
+                    b.ToTable("ie_webhook_provider_publication_attempts", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.WebhookProviderPublicationAttemptOutcomeLookup", b =>
@@ -26046,13 +26705,13 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("master_code");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_webhook_provider_publication_attempt_outcomes");
+                        .HasName("pk_ie_webhook_provider_publication_attempt_outcomes");
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
                         .HasDatabaseName("ux_webhook_provider_publication_attempt_outcomes_master_code");
 
-                    b.ToTable("islamu_event_webhook_provider_publication_attempt_outcomes", (string)null);
+                    b.ToTable("ie_webhook_provider_publication_attempt_outcomes", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.WebhookProviderPublicationStatusLookup", b =>
@@ -26079,13 +26738,13 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("master_code");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_webhook_provider_publication_statuses");
+                        .HasName("pk_ie_webhook_provider_publication_statuses");
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
                         .HasDatabaseName("ux_webhook_provider_publication_statuses_master_code");
 
-                    b.ToTable("islamu_event_webhook_provider_publication_statuses", (string)null);
+                    b.ToTable("ie_webhook_provider_publication_statuses", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.WebhookRetentionHold", b =>
@@ -26142,18 +26801,18 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("updated_by");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_webhook_retention_holds");
+                        .HasName("pk_ie_webhook_retention_holds");
 
                     b.HasAlternateKey("TenantId", "Id")
                         .HasName("ak_webhook_retention_holds_tenant_id_id");
 
                     b.HasIndex("SubjectKindId")
-                        .HasDatabaseName("ix_islamu_event_webhook_retention_holds_subject_kind_id");
+                        .HasDatabaseName("ix_ie_webhook_retention_holds_subject_kind_id");
 
                     b.HasIndex("TenantId", "SubjectKindId", "SubjectId", "ReleasedAt", "ExpiresAt")
                         .HasDatabaseName("ix_webhook_retention_holds_tenant_subject_active");
 
-                    b.ToTable("islamu_event_webhook_retention_holds", null, t =>
+                    b.ToTable("ie_webhook_retention_holds", null, t =>
                         {
                             t.HasCheckConstraint("ck_webhook_retention_holds_expiry", "expires_at IS NULL OR expires_at > placed_at");
 
@@ -26185,13 +26844,13 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("master_code");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_webhook_retention_subject_kinds");
+                        .HasName("pk_ie_webhook_retention_subject_kinds");
 
                     b.HasIndex("MasterCode")
                         .IsUnique()
                         .HasDatabaseName("ux_webhook_retention_subject_kinds_master_code");
 
-                    b.ToTable("islamu_event_webhook_retention_subject_kinds", (string)null);
+                    b.ToTable("ie_webhook_retention_subject_kinds", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.Actor", b =>
@@ -26201,37 +26860,37 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasForeignKey("ActorTypeId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_actors_actor_types_actor_type_id");
+                        .HasConstraintName("fk_ie_actors_actor_types_actor_type_id");
 
                     b.HasOne("Explore.Domain.ExternalActorSubject", "ExternalActorSubject")
                         .WithOne("Actor")
                         .HasForeignKey("Explore.Domain.Actor", "ExternalActorSubjectId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_islamu_event_actors_external_actor_subjects_external_actor_subject_id");
+                        .HasConstraintName("fk_ie_actors_external_actor_subjects_external_actor_subject_id");
 
                     b.HasOne("Explore.Domain.Group", "Group")
                         .WithOne("Actor")
                         .HasForeignKey("Explore.Domain.Actor", "GroupId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_islamu_event_actors_groups_group_id");
+                        .HasConstraintName("fk_ie_actors_groups_group_id");
 
                     b.HasOne("Explore.Domain.Organization", "Organization")
                         .WithOne("Actor")
                         .HasForeignKey("Explore.Domain.Actor", "OrganizationId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_islamu_event_actors_organizations_organization_id");
+                        .HasConstraintName("fk_ie_actors_organizations_organization_id");
 
                     b.HasOne("Explore.Domain.ServicePrincipal", "ServicePrincipal")
                         .WithOne("Actor")
                         .HasForeignKey("Explore.Domain.Actor", "ServicePrincipalId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_islamu_event_actors_service_principals_service_principal_id");
+                        .HasConstraintName("fk_ie_actors_service_principals_service_principal_id");
 
                     b.HasOne("Explore.Domain.User", "User")
                         .WithOne("Actor")
                         .HasForeignKey("Explore.Domain.Actor", "UserId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_islamu_event_actors_users_user_id");
+                        .HasConstraintName("fk_ie_actors_users_user_id");
 
                     b.Navigation("ActorType");
 
@@ -26253,14 +26912,14 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasForeignKey("ActorId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_actor_key_stores_islamu_event_actors_actor_id");
+                        .HasConstraintName("fk_ie_actor_key_stores_ie_actors_actor_id");
 
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_actor_key_stores_tenants_tenant_id");
+                        .HasConstraintName("fk_ie_actor_key_stores_tenants_tenant_id");
 
                     b.Navigation("Actor");
 
@@ -26274,14 +26933,14 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasForeignKey("CanonicalActorId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_actor_merges_islamu_event_actors_canonical_actor_id");
+                        .HasConstraintName("fk_ie_actor_merges_ie_actors_canonical_actor_id");
 
                     b.HasOne("Explore.Domain.Actor", "SourceActor")
                         .WithMany("MergesFrom")
                         .HasForeignKey("SourceActorId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_actor_merges_islamu_event_actors_source_actor_id");
+                        .HasConstraintName("fk_ie_actor_merges_ie_actors_source_actor_id");
 
                     b.Navigation("CanonicalActor");
 
@@ -26295,7 +26954,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasForeignKey("ActorId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_actor_moderation_records_islamu_event_actors_actor_id");
+                        .HasConstraintName("fk_ie_actor_moderation_records_ie_actors_actor_id");
 
                     b.Navigation("Actor");
                 });
@@ -26307,7 +26966,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasForeignKey("Explore.Domain.ActorPii", "ActorId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_actor_pii_islamu_event_actors_actor_id");
+                        .HasConstraintName("fk_ie_actor_pii_ie_actors_actor_id");
 
                     b.Navigation("Actor");
                 });
@@ -26319,42 +26978,42 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasForeignKey("NotificationLevelId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_actor_subscriptions_actor_subscription_notification_levels_notification_level_id");
+                        .HasConstraintName("fk_ie_actor_subscriptions_actor_subscription_notification_levels_notification_level_id");
 
                     b.HasOne("Explore.Domain.ActorSubscriptionStatus", "Status")
                         .WithMany()
                         .HasForeignKey("StatusId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_actor_subscriptions_actor_subscription_statuses_status_id");
+                        .HasConstraintName("fk_ie_actor_subscriptions_actor_subscription_statuses_status_id");
 
                     b.HasOne("Explore.Domain.User", "SubscriberUser")
                         .WithMany()
                         .HasForeignKey("SubscriberUserId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_actor_subscriptions_users_subscriber_user_id");
+                        .HasConstraintName("fk_ie_actor_subscriptions_users_subscriber_user_id");
 
                     b.HasOne("Explore.Domain.Actor", "TargetActor")
                         .WithMany()
                         .HasForeignKey("TargetActorId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_actor_subscriptions_islamu_event_actors_target_actor_id");
+                        .HasConstraintName("fk_ie_actor_subscriptions_ie_actors_target_actor_id");
 
                     b.HasOne("Explore.Domain.ActorType", "TargetActorType")
                         .WithMany()
                         .HasForeignKey("TargetActorTypeId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_actor_subscriptions_actor_types_target_actor_type_id");
+                        .HasConstraintName("fk_ie_actor_subscriptions_actor_types_target_actor_type_id");
 
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_actor_subscriptions_tenants_tenant_id");
+                        .HasConstraintName("fk_ie_actor_subscriptions_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.TenantUser", "SubscriberTenantUser")
                         .WithMany()
@@ -26362,7 +27021,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_actor_subscriptions_tenant_users_tenant_id_subscriber_tenant_user_id");
+                        .HasConstraintName("fk_ie_actor_subscriptions_tenant_users_tenant_id_subscriber_tenant_user_id");
 
                     b.Navigation("NotificationLevel");
 
@@ -26385,28 +27044,28 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .WithMany()
                         .HasForeignKey("ActorId")
                         .OnDelete(DeleteBehavior.SetNull)
-                        .HasConstraintName("fk_islamu_event_ai_conversations_islamu_event_actors_actor_id");
+                        .HasConstraintName("fk_ie_ai_conversations_ie_actors_actor_id");
 
                     b.HasOne("Explore.Domain.Ai.AiConversationStatusLookup", "StatusLookup")
                         .WithMany()
                         .HasForeignKey("StatusId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_ai_conversations_ai_conversation_statuses_status_id");
+                        .HasConstraintName("fk_ie_ai_conversations_ai_conversation_statuses_status_id");
 
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_ai_conversations_tenants_tenant_id");
+                        .HasConstraintName("fk_ie_ai_conversations_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.User", "User")
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_ai_conversations_users_user_id");
+                        .HasConstraintName("fk_ie_ai_conversations_users_user_id");
 
                     b.Navigation("Actor");
 
@@ -26424,14 +27083,14 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasForeignKey("ConversationId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_ai_conversation_references_islamu_event_ai_conversations_conversation_id");
+                        .HasConstraintName("fk_ie_ai_conversation_references_ie_ai_conversations_conversation_id");
 
                     b.HasOne("Explore.Domain.Ai.AiReferenceKindLookup", "KindLookup")
                         .WithMany()
                         .HasForeignKey("KindId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_ai_conversation_references_ai_reference_kinds_kind_id");
+                        .HasConstraintName("fk_ie_ai_conversation_references_ai_reference_kinds_kind_id");
 
                     b.Navigation("Conversation");
 
@@ -26445,14 +27104,14 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasForeignKey("ConversationId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_ai_messages_islamu_event_ai_conversations_conversation_id");
+                        .HasConstraintName("fk_ie_ai_messages_ie_ai_conversations_conversation_id");
 
                     b.HasOne("Explore.Domain.Ai.AiMessageRoleLookup", "RoleLookup")
                         .WithMany()
                         .HasForeignKey("RoleId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_ai_messages_ai_message_roles_role_id");
+                        .HasConstraintName("fk_ie_ai_messages_ai_message_roles_role_id");
 
                     b.Navigation("Conversation");
 
@@ -26465,34 +27124,34 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .WithMany()
                         .HasForeignKey("ActingActorId")
                         .OnDelete(DeleteBehavior.SetNull)
-                        .HasConstraintName("fk_islamu_event_ai_proposed_actions_islamu_event_actors_acting_actor_id");
+                        .HasConstraintName("fk_ie_ai_proposed_actions_ie_actors_acting_actor_id");
 
                     b.HasOne("Explore.Domain.Ai.AiConversation", "Conversation")
                         .WithMany("ProposedActions")
                         .HasForeignKey("ConversationId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_ai_proposed_actions_islamu_event_ai_conversations_conversation_id");
+                        .HasConstraintName("fk_ie_ai_proposed_actions_ie_ai_conversations_conversation_id");
 
                     b.HasOne("Explore.Domain.Ai.AiProposedActionKindLookup", "KindLookup")
                         .WithMany()
                         .HasForeignKey("KindId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_ai_proposed_actions_ai_proposed_action_kinds_kind_id");
+                        .HasConstraintName("fk_ie_ai_proposed_actions_ai_proposed_action_kinds_kind_id");
 
                     b.HasOne("Explore.Domain.Ai.AiMessage", "Message")
                         .WithMany()
                         .HasForeignKey("MessageId")
                         .OnDelete(DeleteBehavior.SetNull)
-                        .HasConstraintName("fk_islamu_event_ai_proposed_actions_islamu_event_ai_messages_message_id");
+                        .HasConstraintName("fk_ie_ai_proposed_actions_ie_ai_messages_message_id");
 
                     b.HasOne("Explore.Domain.Ai.AiProposedActionStatusLookup", "StatusLookup")
                         .WithMany()
                         .HasForeignKey("StatusId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_ai_proposed_actions_ai_proposed_action_statuses_status_id");
+                        .HasConstraintName("fk_ie_ai_proposed_actions_ai_proposed_action_statuses_status_id");
 
                     b.Navigation("ActingActor");
 
@@ -26512,14 +27171,14 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasForeignKey("ConversationId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_ai_runs_islamu_event_ai_conversations_conversation_id");
+                        .HasConstraintName("fk_ie_ai_runs_ie_ai_conversations_conversation_id");
 
                     b.HasOne("Explore.Domain.Ai.AiRunStatusLookup", "StatusLookup")
                         .WithMany()
                         .HasForeignKey("StatusId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_ai_runs_ai_run_statuses_status_id");
+                        .HasConstraintName("fk_ie_ai_runs_ai_run_statuses_status_id");
 
                     b.Navigation("Conversation");
 
@@ -26533,7 +27192,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasForeignKey("ProposedActionId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_ai_tool_executions_islamu_event_ai_proposed_actions_proposed_action_id");
+                        .HasConstraintName("fk_ie_ai_tool_executions_ie_ai_proposed_actions_proposed_action_id");
 
                     b.Navigation("ProposedAction");
                 });
@@ -26545,21 +27204,21 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasForeignKey("Id")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_ai_consent_grants_islamu_event_ai_consent_grants_id");
+                        .HasConstraintName("fk_ie_ai_consent_grants_ie_ai_consent_grants_id");
 
                     b.HasOne("Explore.Domain.User", "SubjectUser")
                         .WithMany()
                         .HasForeignKey("SubjectUserId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_ai_consent_grants_users_subject_user_id");
+                        .HasConstraintName("fk_ie_ai_consent_grants_users_subject_user_id");
 
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_ai_consent_grants_tenants_tenant_id");
+                        .HasConstraintName("fk_ie_ai_consent_grants_tenants_tenant_id");
 
                     b.Navigation("Self");
 
@@ -26575,13 +27234,13 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasForeignKey("ActorId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_atproto_identities_islamu_event_actors_actor_id");
+                        .HasConstraintName("fk_ie_atproto_identities_ie_actors_actor_id");
 
                     b.HasOne("Explore.Domain.DidCustodyType", "DidCustodyType")
                         .WithMany()
                         .HasForeignKey("DidCustodyTypeId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_islamu_event_atproto_identities_did_custody_types_did_custody_type_id");
+                        .HasConstraintName("fk_ie_atproto_identities_did_custody_types_did_custody_type_id");
 
                     b.Navigation("Actor");
 
@@ -26595,7 +27254,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasForeignKey("AtprotoIdentityId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_atproto_identity_moderation_records_islamu_event_atproto_identities_atproto_identity_id");
+                        .HasConstraintName("fk_ie_atproto_identity_moderation_records_ie_atproto_identities_atproto_identity_id");
 
                     b.Navigation("AtprotoIdentity");
                 });
@@ -26607,7 +27266,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_audit_logs_tenants_tenant_id");
+                        .HasConstraintName("fk_ie_audit_logs_tenants_tenant_id");
 
                     b.Navigation("Tenant");
                 });
@@ -26619,14 +27278,14 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_categories_tenants_tenant_id");
+                        .HasConstraintName("fk_ie_categories_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.Category", "Parent")
                         .WithMany()
                         .HasForeignKey("TenantId", "ParentId")
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_islamu_event_categories_islamu_event_categories_tenant_id_parent_id");
+                        .HasConstraintName("fk_ie_categories_ie_categories_tenant_id_parent_id");
 
                     b.Navigation("Parent");
 
@@ -26640,21 +27299,21 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasForeignKey("CategoryId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_category_type_categories_islamu_event_categories_category_id");
+                        .HasConstraintName("fk_ie_category_type_categories_ie_categories_category_id");
 
                     b.HasOne("Explore.Domain.CategoryType", "CategoryType")
                         .WithMany()
                         .HasForeignKey("CategoryTypeId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_category_type_categories_islamu_event_category_types_category_type_id");
+                        .HasConstraintName("fk_ie_category_type_categories_ie_category_types_category_type_id");
 
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_category_type_categories_tenants_tenant_id");
+                        .HasConstraintName("fk_ie_category_type_categories_tenants_tenant_id");
 
                     b.Navigation("Category");
 
@@ -26670,7 +27329,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasForeignKey("SettingScopeId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_configuration_change_logs_setting_scopes_setting_scope_id");
+                        .HasConstraintName("fk_ie_configuration_change_logs_setting_scopes_setting_scope_id");
 
                     b.Navigation("SettingScope");
                 });
@@ -26681,14 +27340,14 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .WithMany()
                         .HasForeignKey("DefaultOptionId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_islamu_event_custom_property_definitions_custom_property_options_default_option_id");
+                        .HasConstraintName("fk_ie_custom_property_definitions_custom_property_options_default_option_id");
 
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_custom_property_definitions_tenants_tenant_id");
+                        .HasConstraintName("fk_ie_custom_property_definitions_tenants_tenant_id");
 
                     b.Navigation("DefaultOption");
 
@@ -26702,13 +27361,13 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasForeignKey("CustomPropertyDefinitionId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_custom_property_options_islamu_event_custom_property_definitions_custom_property_definition_id");
+                        .HasConstraintName("fk_ie_custom_property_options_ie_custom_property_definitions_custom_property_definition_id");
 
                     b.HasOne("Explore.Domain.CustomPropertyOption", "ParentOption")
                         .WithMany("ChildOptions")
                         .HasForeignKey("ParentOptionId")
                         .OnDelete(DeleteBehavior.SetNull)
-                        .HasConstraintName("fk_islamu_event_custom_property_options_islamu_event_custom_property_options_parent_option_id");
+                        .HasConstraintName("fk_ie_custom_property_options_ie_custom_property_options_parent_option_id");
 
                     b.Navigation("Definition");
 
@@ -26722,7 +27381,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_custom_property_projection_dirty_scope_tenants_tenant_id");
+                        .HasConstraintName("fk_ie_custom_property_projection_dirty_scope_tenants_tenant_id");
 
                     b.Navigation("Tenant");
                 });
@@ -26734,7 +27393,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_custom_property_projection_status_tenants_tenant_id");
+                        .HasConstraintName("fk_ie_custom_property_projection_status_tenants_tenant_id");
 
                     b.Navigation("Tenant");
                 });
@@ -26746,20 +27405,20 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasForeignKey("CustomPropertyDefinitionId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_custom_property_values_islamu_event_custom_property_definitions_custom_property_definition_id");
+                        .HasConstraintName("fk_ie_custom_property_values_ie_custom_property_definitions_custom_property_definition_id");
 
                     b.HasOne("Explore.Domain.CustomPropertyOption", "Option")
                         .WithMany()
                         .HasForeignKey("OptionId")
                         .OnDelete(DeleteBehavior.SetNull)
-                        .HasConstraintName("fk_islamu_event_custom_property_values_islamu_event_custom_property_options_option_id");
+                        .HasConstraintName("fk_ie_custom_property_values_ie_custom_property_options_option_id");
 
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_custom_property_values_tenants_tenant_id");
+                        .HasConstraintName("fk_ie_custom_property_values_tenants_tenant_id");
 
                     b.Navigation("Definition");
 
@@ -26775,7 +27434,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_email_dispatch_attempts_tenants_tenant_id");
+                        .HasConstraintName("fk_ie_email_dispatch_attempts_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.EmailDispatchOutbox", "EmailDispatchOutbox")
                         .WithMany()
@@ -26783,7 +27442,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_email_dispatch_attempts_email_dispatch_outbox_tenant_id_email_dispatch_outbox_id");
+                        .HasConstraintName("fk_ie_email_dispatch_attempts_email_dispatch_outbox_tenant_id_email_dispatch_outbox_id");
 
                     b.Navigation("EmailDispatchOutbox");
 
@@ -26796,20 +27455,20 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .WithMany()
                         .HasForeignKey("EventId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_islamu_event_email_dispatch_outbox_events_event_id");
+                        .HasConstraintName("fk_ie_email_dispatch_outbox_events_event_id");
 
                     b.HasOne("Explore.Domain.ManagedTenantProvisioningOperation", "ManagedTenantProvisioningOperation")
                         .WithMany()
                         .HasForeignKey("ManagedTenantProvisioningOperationId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_islamu_event_email_dispatch_outbox_managed_tenant_provisioning_operations_managed_tenant_provisioning_operation_id");
+                        .HasConstraintName("fk_ie_email_dispatch_outbox_managed_tenant_provisioning_operations_managed_tenant_provisioning_operation_id");
 
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_email_dispatch_outbox_tenants_tenant_id");
+                        .HasConstraintName("fk_ie_email_dispatch_outbox_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.TenantUser", "RecipientTenantUser")
                         .WithMany()
@@ -26817,14 +27476,14 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasPrincipalKey("TenantId", "UserId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_email_dispatch_outbox_tenant_users_tenant_id_recipient_user_id");
+                        .HasConstraintName("fk_ie_email_dispatch_outbox_tenant_users_tenant_id_recipient_user_id");
 
                     b.HasOne("Explore.Domain.RegistrationOrder", "RegistrationOrder")
                         .WithMany()
                         .HasForeignKey("TenantId", "RegistrationOrderId")
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_islamu_event_email_dispatch_outbox_registration_orders_tenant_id_registration_order_id");
+                        .HasConstraintName("fk_ie_email_dispatch_outbox_registration_orders_tenant_id_registration_order_id");
 
                     b.HasOne("Explore.Domain.NotificationIntent", "NotificationIntent")
                         .WithMany()
@@ -26854,7 +27513,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_email_dispatch_receipts_tenants_tenant_id");
+                        .HasConstraintName("fk_ie_email_dispatch_receipts_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.EmailDispatchOutbox", "EmailDispatchOutbox")
                         .WithMany()
@@ -26862,7 +27521,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasPrincipalKey("TenantId", "Id", "PublishEventId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_email_dispatch_receipts_islamu_event_email_dispatch_outbox_tenant_id_email_dispatch_outbox_id_publish_event_id");
+                        .HasConstraintName("fk_ie_email_dispatch_receipts_ie_email_dispatch_outbox_tenant_id_email_dispatch_outbox_id_publish_event_id");
 
                     b.Navigation("EmailDispatchOutbox");
 
@@ -26876,7 +27535,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_email_dispatch_tenant_controls_tenants_tenant_id");
+                        .HasConstraintName("fk_ie_email_dispatch_tenant_controls_tenants_tenant_id");
 
                     b.Navigation("Tenant");
                 });
@@ -26888,107 +27547,107 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasForeignKey("ActorId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_events_islamu_event_actors_actor_id");
+                        .HasConstraintName("fk_ie_events_ie_actors_actor_id");
 
                     b.HasOne("Explore.Domain.AtprotoRecord", "AtprotoRecord")
                         .WithMany()
                         .HasForeignKey("AtprotoRecordId")
                         .OnDelete(DeleteBehavior.SetNull)
-                        .HasConstraintName("fk_islamu_event_events_islamu_event_atproto_records_atproto_record_id");
+                        .HasConstraintName("fk_ie_events_ie_atproto_records_atproto_record_id");
 
                     b.HasOne("Explore.Domain.AudienceAge", "AudienceAge")
                         .WithMany()
                         .HasForeignKey("AudienceAgeId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_islamu_event_events_islamu_event_audience_ages_audience_age_id");
+                        .HasConstraintName("fk_ie_events_ie_audience_ages_audience_age_id");
 
                     b.HasOne("Explore.Domain.AudienceGender", "AudienceGender")
                         .WithMany()
                         .HasForeignKey("AudienceGenderId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_islamu_event_events_islamu_event_audience_genders_audience_gender_id");
+                        .HasConstraintName("fk_ie_events_ie_audience_genders_audience_gender_id");
 
                     b.HasOne("Explore.Domain.StorageObject", "BackgroundImage")
                         .WithMany()
                         .HasForeignKey("BackgroundImageId")
                         .OnDelete(DeleteBehavior.SetNull)
-                        .HasConstraintName("fk_islamu_event_events_storage_objects_background_image_id");
+                        .HasConstraintName("fk_ie_events_storage_objects_background_image_id");
 
                     b.HasOne("Explore.Domain.EventFormat", "EventFormat")
                         .WithMany()
                         .HasForeignKey("EventFormatId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_events_event_formats_event_format_id");
+                        .HasConstraintName("fk_ie_events_event_formats_event_format_id");
 
                     b.HasOne("Explore.Domain.EventProvenanceType", "EventProvenanceType")
                         .WithMany()
                         .HasForeignKey("EventProvenanceTypeId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_events_event_provenance_types_event_provenance_type_id");
+                        .HasConstraintName("fk_ie_events_event_provenance_types_event_provenance_type_id");
 
                     b.HasOne("Explore.Domain.EventSeries", "EventSeries")
                         .WithMany("Events")
                         .HasForeignKey("EventSeriesId")
-                        .HasConstraintName("fk_islamu_event_events_event_series_event_series_id");
+                        .HasConstraintName("fk_ie_events_event_series_event_series_id");
 
                     b.HasOne("Explore.Domain.EventStatus", "EventStatus")
                         .WithMany()
                         .HasForeignKey("EventStatusId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_events_event_statuses_event_status_id");
+                        .HasConstraintName("fk_ie_events_event_statuses_event_status_id");
 
                     b.HasOne("Explore.Domain.EventType", "EventType")
                         .WithMany()
                         .HasForeignKey("EventTypeId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_islamu_event_events_event_types_event_type_id");
+                        .HasConstraintName("fk_ie_events_event_types_event_type_id");
 
                     b.HasOne("Explore.Domain.StorageObject", "FeaturedImage")
                         .WithMany()
                         .HasForeignKey("FeaturedImageId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_islamu_event_events_storage_objects_featured_image_id");
+                        .HasConstraintName("fk_ie_events_storage_objects_featured_image_id");
 
                     b.HasOne("Explore.Domain.Madhab", "Madhab")
                         .WithMany()
                         .HasForeignKey("MadhabId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_islamu_event_events_madhabs_madhab_id");
+                        .HasConstraintName("fk_ie_events_madhabs_madhab_id");
 
                     b.HasOne("Explore.Domain.Actor", "OrganizerActor")
                         .WithMany()
                         .HasForeignKey("OrganizerActorId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_islamu_event_events_islamu_event_actors_organizer_actor_id");
+                        .HasConstraintName("fk_ie_events_ie_actors_organizer_actor_id");
 
                     b.HasOne("Explore.Domain.EventRegistrationPolicy", "RegistrationPolicy")
                         .WithMany()
                         .HasForeignKey("RegistrationPolicyId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_islamu_event_events_event_registration_policies_registration_policy_id");
+                        .HasConstraintName("fk_ie_events_event_registration_policies_registration_policy_id");
 
                     b.HasOne("Explore.Domain.User", "SubmittedByUser")
                         .WithMany()
                         .HasForeignKey("SubmittedByUserId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_islamu_event_events_users_submitted_by_user_id");
+                        .HasConstraintName("fk_ie_events_users_submitted_by_user_id");
 
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_events_tenants_tenant_id");
+                        .HasConstraintName("fk_ie_events_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.VisibilityType", "VisibilityType")
                         .WithMany()
                         .HasForeignKey("VisibilityTypeId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_events_visibility_types_visibility_type_id");
+                        .HasConstraintName("fk_ie_events_visibility_types_visibility_type_id");
 
                     b.Navigation("Actor");
 
@@ -27031,14 +27690,14 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .WithMany()
                         .HasForeignKey("KindId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_islamu_event_event_agenda_items_schedule_item_kinds_kind_id");
+                        .HasConstraintName("fk_ie_event_agenda_items_schedule_item_kinds_kind_id");
 
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_event_agenda_items_tenants_tenant_id");
+                        .HasConstraintName("fk_ie_event_agenda_items_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.Event", "Event")
                         .WithMany("AgendaItems")
@@ -27046,35 +27705,35 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_event_agenda_items_islamu_event_events_tenant_id_event_id");
+                        .HasConstraintName("fk_ie_event_agenda_items_ie_events_tenant_id_event_id");
 
                     b.HasOne("Explore.Domain.Location", "Location")
                         .WithMany()
                         .HasForeignKey("TenantId", "LocationId")
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_islamu_event_event_agenda_items_locations_tenant_id_location_id");
+                        .HasConstraintName("fk_ie_event_agenda_items_locations_tenant_id_location_id");
 
                     b.HasOne("Explore.Domain.EventDay", "EventDay")
                         .WithMany()
                         .HasForeignKey("TenantId", "EventId", "EventDayId")
                         .HasPrincipalKey("TenantId", "EventId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_islamu_event_event_agenda_items_event_days_tenant_id_event_id_event_day_id");
+                        .HasConstraintName("fk_ie_event_agenda_items_event_days_tenant_id_event_id_event_day_id");
 
                     b.HasOne("Explore.Domain.EventLocation", "EventLocation")
                         .WithMany()
                         .HasForeignKey("TenantId", "EventId", "EventLocationId")
                         .HasPrincipalKey("TenantId", "EventId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_islamu_event_event_agenda_items_event_locations_tenant_id_event_id_event_location_id");
+                        .HasConstraintName("fk_ie_event_agenda_items_event_locations_tenant_id_event_id_event_location_id");
 
                     b.HasOne("Explore.Domain.LocationRoom", "Room")
                         .WithMany()
                         .HasForeignKey("TenantId", "LocationId", "RoomId")
                         .HasPrincipalKey("TenantId", "LocationId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_islamu_event_event_agenda_items_location_rooms_tenant_id_location_id_room_id");
+                        .HasConstraintName("fk_ie_event_agenda_items_location_rooms_tenant_id_location_id_room_id");
 
                     b.Navigation("Event");
 
@@ -27098,21 +27757,21 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasForeignKey("CapacityHoldPolicyId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_event_capacity_pools_islamu_event_capacity_hold_policies_capacity_hold_policy_id");
+                        .HasConstraintName("fk_ie_event_capacity_pools_ie_capacity_hold_policies_capacity_hold_policy_id");
 
                     b.HasOne("Explore.Domain.CapacityOversellPolicy", "CapacityOversellPolicy")
                         .WithMany()
                         .HasForeignKey("CapacityOversellPolicyId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_event_capacity_pools_islamu_event_capacity_oversell_policies_capacity_oversell_policy_id");
+                        .HasConstraintName("fk_ie_event_capacity_pools_ie_capacity_oversell_policies_capacity_oversell_policy_id");
 
                     b.HasOne("Explore.Domain.Tenant", null)
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_event_capacity_pools_tenants_tenant_id");
+                        .HasConstraintName("fk_ie_event_capacity_pools_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.Event", null)
                         .WithMany("CapacityPools")
@@ -27120,7 +27779,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_event_capacity_pools_islamu_event_events_tenant_id_event_id");
+                        .HasConstraintName("fk_ie_event_capacity_pools_ie_events_tenant_id_event_id");
 
                     b.Navigation("CapacityHoldPolicy");
 
@@ -27134,7 +27793,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_event_categories_tenants_tenant_id");
+                        .HasConstraintName("fk_ie_event_categories_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.Category", "Category")
                         .WithMany()
@@ -27142,7 +27801,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_event_categories_islamu_event_categories_tenant_id_category_id");
+                        .HasConstraintName("fk_ie_event_categories_ie_categories_tenant_id_category_id");
 
                     b.HasOne("Explore.Domain.Event", "Event")
                         .WithMany()
@@ -27150,7 +27809,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_event_categories_islamu_event_events_tenant_id_event_id");
+                        .HasConstraintName("fk_ie_event_categories_ie_events_tenant_id_event_id");
 
                     b.Navigation("Category");
 
@@ -27166,35 +27825,35 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasForeignKey("RecipientActorId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_event_contact_share_consents_islamu_event_actors_recipient_actor_id");
+                        .HasConstraintName("fk_ie_event_contact_share_consents_ie_actors_recipient_actor_id");
 
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_event_contact_share_consents_tenants_tenant_id");
+                        .HasConstraintName("fk_ie_event_contact_share_consents_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.User", "User")
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_event_contact_share_consents_users_user_id");
+                        .HasConstraintName("fk_ie_event_contact_share_consents_users_user_id");
 
                     b.HasOne("Explore.Domain.Event", "SourceEvent")
                         .WithMany()
                         .HasForeignKey("TenantId", "SourceEventId")
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_islamu_event_event_contact_share_consents_islamu_event_events_tenant_id_source_event_id");
+                        .HasConstraintName("fk_ie_event_contact_share_consents_ie_events_tenant_id_source_event_id");
 
                     b.HasOne("Explore.Domain.RegistrationOrder", "SourceRegistrationOrder")
                         .WithMany()
                         .HasForeignKey("TenantId", "SourceRegistrationOrderId")
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_islamu_event_event_contact_share_consents_registration_orders_tenant_id_source_registration_order_id");
+                        .HasConstraintName("fk_ie_event_contact_share_consents_registration_orders_tenant_id_source_registration_order_id");
 
                     b.Navigation("RecipientActor");
 
@@ -27213,28 +27872,28 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .WithMany()
                         .HasForeignKey("ExportedByUserId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_islamu_event_event_contact_share_exports_users_exported_by_user_id");
+                        .HasConstraintName("fk_ie_event_contact_share_exports_users_exported_by_user_id");
 
                     b.HasOne("Explore.Domain.Actor", "RecipientActor")
                         .WithMany()
                         .HasForeignKey("RecipientActorId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_event_contact_share_exports_islamu_event_actors_recipient_actor_id");
+                        .HasConstraintName("fk_ie_event_contact_share_exports_ie_actors_recipient_actor_id");
 
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_event_contact_share_exports_tenants_tenant_id");
+                        .HasConstraintName("fk_ie_event_contact_share_exports_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.Event", "Event")
                         .WithMany()
                         .HasForeignKey("TenantId", "EventId")
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_islamu_event_event_contact_share_exports_islamu_event_events_tenant_id_event_id");
+                        .HasConstraintName("fk_ie_event_contact_share_exports_ie_events_tenant_id_event_id");
 
                     b.Navigation("Event");
 
@@ -27252,14 +27911,14 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasForeignKey("ConsentId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_event_contact_share_export_items_islamu_event_event_contact_share_consents_consent_id");
+                        .HasConstraintName("fk_ie_event_contact_share_export_items_ie_event_contact_share_consents_consent_id");
 
                     b.HasOne("Explore.Domain.EventContactShareExport", "Export")
                         .WithMany("Items")
                         .HasForeignKey("ExportId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_event_contact_share_export_items_islamu_event_event_contact_share_exports_export_id");
+                        .HasConstraintName("fk_ie_event_contact_share_export_items_ie_event_contact_share_exports_export_id");
 
                     b.Navigation("Consent");
 
@@ -27272,27 +27931,27 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .WithMany()
                         .HasForeignKey("DefaultOptionId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_islamu_event_event_custom_property_definitions_event_custom_property_options_default_option_id");
+                        .HasConstraintName("fk_ie_event_custom_property_definitions_event_custom_property_options_default_option_id");
 
                     b.HasOne("Explore.Domain.Event", "Event")
                         .WithMany()
                         .HasForeignKey("EventId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_event_custom_property_definitions_islamu_event_events_event_id");
+                        .HasConstraintName("fk_ie_event_custom_property_definitions_ie_events_event_id");
 
                     b.HasOne("Explore.Domain.EventTemplate", "SourceTemplate")
                         .WithMany()
                         .HasForeignKey("SourceTemplateId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_islamu_event_event_custom_property_definitions_event_templates_source_template_id");
+                        .HasConstraintName("fk_ie_event_custom_property_definitions_event_templates_source_template_id");
 
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_event_custom_property_definitions_tenants_tenant_id");
+                        .HasConstraintName("fk_ie_event_custom_property_definitions_tenants_tenant_id");
 
                     b.Navigation("DefaultOption");
 
@@ -27330,34 +27989,34 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasForeignKey("EventCustomPropertyDefinitionId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_event_custom_property_projections_islamu_event_event_custom_property_definitions_event_custom_property_definition_id");
+                        .HasConstraintName("fk_ie_event_custom_property_projections_ie_event_custom_property_definitions_event_custom_property_definition_id");
 
                     b.HasOne("Explore.Domain.EventCustomPropertyValue", "Value")
                         .WithMany()
                         .HasForeignKey("EventCustomPropertyValueId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_event_custom_property_projections_event_custom_property_values_event_custom_property_value_id");
+                        .HasConstraintName("fk_ie_event_custom_property_projections_event_custom_property_values_event_custom_property_value_id");
 
                     b.HasOne("Explore.Domain.Event", "Event")
                         .WithMany()
                         .HasForeignKey("EventId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_event_custom_property_projections_islamu_event_events_event_id");
+                        .HasConstraintName("fk_ie_event_custom_property_projections_ie_events_event_id");
 
                     b.HasOne("Explore.Domain.EventCustomPropertyOption", "Option")
                         .WithMany()
                         .HasForeignKey("OptionId")
                         .OnDelete(DeleteBehavior.SetNull)
-                        .HasConstraintName("fk_islamu_event_event_custom_property_projections_islamu_event_event_custom_property_options_option_id");
+                        .HasConstraintName("fk_ie_event_custom_property_projections_ie_event_custom_property_options_option_id");
 
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_event_custom_property_projections_tenants_tenant_id");
+                        .HasConstraintName("fk_ie_event_custom_property_projections_tenants_tenant_id");
 
                     b.Navigation("Definition");
 
@@ -27377,27 +28036,27 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasForeignKey("EventCustomPropertyDefinitionId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_event_custom_property_values_islamu_event_event_custom_property_definitions_event_custom_property_definition_id");
+                        .HasConstraintName("fk_ie_event_custom_property_values_ie_event_custom_property_definitions_event_custom_property_definition_id");
 
                     b.HasOne("Explore.Domain.Event", "Event")
                         .WithMany()
                         .HasForeignKey("EventId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_event_custom_property_values_islamu_event_events_event_id");
+                        .HasConstraintName("fk_ie_event_custom_property_values_ie_events_event_id");
 
                     b.HasOne("Explore.Domain.EventCustomPropertyOption", "Option")
                         .WithMany()
                         .HasForeignKey("OptionId")
                         .OnDelete(DeleteBehavior.SetNull)
-                        .HasConstraintName("fk_islamu_event_event_custom_property_values_islamu_event_event_custom_property_options_option_id");
+                        .HasConstraintName("fk_ie_event_custom_property_values_ie_event_custom_property_options_option_id");
 
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_event_custom_property_values_tenants_tenant_id");
+                        .HasConstraintName("fk_ie_event_custom_property_values_tenants_tenant_id");
 
                     b.Navigation("Definition");
 
@@ -27414,14 +28073,14 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .WithMany()
                         .HasForeignKey("BannerImageId")
                         .OnDelete(DeleteBehavior.SetNull)
-                        .HasConstraintName("fk_islamu_event_event_days_storage_objects_banner_image_id");
+                        .HasConstraintName("fk_ie_event_days_storage_objects_banner_image_id");
 
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_event_days_tenants_tenant_id");
+                        .HasConstraintName("fk_ie_event_days_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.Event", "Event")
                         .WithMany("Days")
@@ -27429,7 +28088,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_event_days_islamu_event_events_tenant_id_event_id");
+                        .HasConstraintName("fk_ie_event_days_ie_events_tenant_id_event_id");
 
                     b.Navigation("BannerImage");
 
@@ -27445,19 +28104,19 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasForeignKey("Explore.Domain.EventIslamicAspect", "Id")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_event_islamic_aspects_islamu_event_events_id");
+                        .HasConstraintName("fk_ie_event_islamic_aspects_ie_events_id");
 
                     b.HasOne("Explore.Domain.Madhab", "Madhab")
                         .WithMany()
                         .HasForeignKey("MadhabId")
                         .OnDelete(DeleteBehavior.SetNull)
-                        .HasConstraintName("fk_islamu_event_event_islamic_aspects_madhabs_madhab_id");
+                        .HasConstraintName("fk_ie_event_islamic_aspects_madhabs_madhab_id");
 
                     b.HasOne("Explore.Domain.Language", "PrimaryLanguage")
                         .WithMany()
                         .HasForeignKey("PrimaryLanguageId")
                         .OnDelete(DeleteBehavior.SetNull)
-                        .HasConstraintName("fk_islamu_event_event_islamic_aspects_languages_primary_language_id");
+                        .HasConstraintName("fk_ie_event_islamic_aspects_languages_primary_language_id");
 
                     b.Navigation("Event");
 
@@ -27473,14 +28132,14 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasForeignKey("FullDetailsAudienceId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_event_locations_location_disclosure_audiences_full_details_audience_id");
+                        .HasConstraintName("fk_ie_event_locations_location_disclosure_audiences_full_details_audience_id");
 
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_event_locations_tenants_tenant_id");
+                        .HasConstraintName("fk_ie_event_locations_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.Event", "Event")
                         .WithMany()
@@ -27488,14 +28147,14 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_event_locations_islamu_event_events_tenant_id_event_id");
+                        .HasConstraintName("fk_ie_event_locations_ie_events_tenant_id_event_id");
 
                     b.HasOne("Explore.Domain.Location", "Location")
                         .WithMany()
                         .HasForeignKey("TenantId", "LocationId")
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_islamu_event_event_locations_locations_tenant_id_location_id");
+                        .HasConstraintName("fk_ie_event_locations_locations_tenant_id_location_id");
 
                     b.Navigation("Event");
 
@@ -27513,21 +28172,21 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasForeignKey("NewAudienceId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_event_location_disclosure_audits_location_disclosure_audiences_new_audience_id");
+                        .HasConstraintName("fk_ie_event_location_disclosure_audits_location_disclosure_audiences_new_audience_id");
 
                     b.HasOne("Explore.Domain.LocationDisclosureAudience", null)
                         .WithMany()
                         .HasForeignKey("PreviousAudienceId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_event_location_disclosure_audits_location_disclosure_audiences_previous_audience_id");
+                        .HasConstraintName("fk_ie_event_location_disclosure_audits_location_disclosure_audiences_previous_audience_id");
 
                     b.HasOne("Explore.Domain.Tenant", null)
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_event_location_disclosure_audits_tenants_tenant_id");
+                        .HasConstraintName("fk_ie_event_location_disclosure_audits_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.EventLocation", null)
                         .WithMany()
@@ -27535,7 +28194,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_event_location_disclosure_audits_islamu_event_event_locations_tenant_id_event_location_id");
+                        .HasConstraintName("fk_ie_event_location_disclosure_audits_ie_event_locations_tenant_id_event_location_id");
                 });
 
             modelBuilder.Entity("Explore.Domain.EventLocationExactReadAudit", b =>
@@ -27545,7 +28204,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_event_location_exact_read_audits_tenants_tenant_id");
+                        .HasConstraintName("fk_ie_event_location_exact_read_audits_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.EventLocation", null)
                         .WithMany()
@@ -27553,7 +28212,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_event_location_exact_read_audits_islamu_event_event_locations_tenant_id_event_location_id");
+                        .HasConstraintName("fk_ie_event_location_exact_read_audits_ie_event_locations_tenant_id_event_location_id");
                 });
 
             modelBuilder.Entity("Explore.Domain.EventModerationRecord", b =>
@@ -27562,14 +28221,14 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .WithMany()
                         .HasForeignKey("SourceModerationRecordId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_islamu_event_event_moderation_records_islamu_event_event_moderation_records_source_moderation_record_id");
+                        .HasConstraintName("fk_ie_event_moderation_records_ie_event_moderation_records_source_moderation_record_id");
 
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_event_moderation_records_tenants_tenant_id");
+                        .HasConstraintName("fk_ie_event_moderation_records_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.Event", "Event")
                         .WithMany("ModerationRecords")
@@ -27577,21 +28236,21 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_event_moderation_records_islamu_event_events_tenant_id_event_id");
+                        .HasConstraintName("fk_ie_event_moderation_records_ie_events_tenant_id_event_id");
 
                     b.HasOne("Explore.Domain.EventReport", "SourceReport")
                         .WithMany()
                         .HasForeignKey("TenantId", "SourceReportId")
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_islamu_event_event_moderation_records_event_reports_tenant_id_source_report_id");
+                        .HasConstraintName("fk_ie_event_moderation_records_event_reports_tenant_id_source_report_id");
 
                     b.HasOne("Explore.Domain.EventReportDecision", "SourceReportDecision")
                         .WithMany()
                         .HasForeignKey("TenantId", "SourceReportId", "SourceReportDecisionId")
                         .HasPrincipalKey("TenantId", "ReportId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_islamu_event_event_moderation_records_event_report_decisions_tenant_id_source_report_id_source_report_decision_id");
+                        .HasConstraintName("fk_ie_event_moderation_records_event_report_decisions_tenant_id_source_report_id_source_report_decision_id");
 
                     b.Navigation("Event");
 
@@ -27611,27 +28270,27 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasForeignKey("ClaimantActorId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_event_organizer_claims_islamu_event_actors_claimant_actor_id");
+                        .HasConstraintName("fk_ie_event_organizer_claims_ie_actors_claimant_actor_id");
 
                     b.HasOne("Explore.Domain.User", "ReviewerUser")
                         .WithMany()
                         .HasForeignKey("ReviewerUserId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_islamu_event_event_organizer_claims_users_reviewer_user_id");
+                        .HasConstraintName("fk_ie_event_organizer_claims_users_reviewer_user_id");
 
                     b.HasOne("Explore.Domain.EventOrganizerClaimStatus", "Status")
                         .WithMany()
                         .HasForeignKey("StatusId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_event_organizer_claims_event_organizer_claim_statuses_status_id");
+                        .HasConstraintName("fk_ie_event_organizer_claims_event_organizer_claim_statuses_status_id");
 
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_event_organizer_claims_tenants_tenant_id");
+                        .HasConstraintName("fk_ie_event_organizer_claims_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.Event", "Event")
                         .WithMany("OrganizerClaims")
@@ -27639,7 +28298,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_event_organizer_claims_islamu_event_events_tenant_id_event_id");
+                        .HasConstraintName("fk_ie_event_organizer_claims_ie_events_tenant_id_event_id");
 
                     b.Navigation("ClaimantActor");
 
@@ -27659,27 +28318,27 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasForeignKey("AdvanceRegistrationObligationId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_event_participation_configurations_islamu_event_advance_registration_obligations_advance_registration_obligation_id");
+                        .HasConstraintName("fk_ie_event_participation_configurations_ie_advance_registration_obligations_advance_registration_obligation_id");
 
                     b.HasOne("Explore.Domain.IdentityAccessMode", "IdentityAccessMode")
                         .WithMany()
                         .HasForeignKey("IdentityAccessModeId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_islamu_event_event_participation_configurations_identity_access_modes_identity_access_mode_id");
+                        .HasConstraintName("fk_ie_event_participation_configurations_identity_access_modes_identity_access_mode_id");
 
                     b.HasOne("Explore.Domain.ParticipationHandlingMode", "ParticipationHandlingMode")
                         .WithMany()
                         .HasForeignKey("ParticipationHandlingModeId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_event_participation_configurations_participation_handling_modes_participation_handling_mode_id");
+                        .HasConstraintName("fk_ie_event_participation_configurations_participation_handling_modes_participation_handling_mode_id");
 
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_event_participation_configurations_tenants_tenant_id");
+                        .HasConstraintName("fk_ie_event_participation_configurations_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.Event", "Event")
                         .WithOne("ParticipationConfiguration")
@@ -27687,7 +28346,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasPrincipalKey("Explore.Domain.Event", "TenantId", "Id")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_event_participation_configurations_islamu_event_events_tenant_id_id");
+                        .HasConstraintName("fk_ie_event_participation_configurations_ie_events_tenant_id_id");
 
                     b.Navigation("AdvanceRegistrationObligation");
 
@@ -27707,21 +28366,21 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasForeignKey("EventPublicActionKindId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_event_public_actions_event_public_action_kinds_event_public_action_kind_id");
+                        .HasConstraintName("fk_ie_event_public_actions_event_public_action_kinds_event_public_action_kind_id");
 
                     b.HasOne("Explore.Domain.EventPublicActionHealthState", "HealthState")
                         .WithMany()
                         .HasForeignKey("HealthStateId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_event_public_actions_event_public_action_health_states_health_state_id");
+                        .HasConstraintName("fk_ie_event_public_actions_event_public_action_health_states_health_state_id");
 
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_event_public_actions_tenants_tenant_id");
+                        .HasConstraintName("fk_ie_event_public_actions_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.Event", "Event")
                         .WithMany("PublicActions")
@@ -27729,7 +28388,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_event_public_actions_islamu_event_events_tenant_id_event_id");
+                        .HasConstraintName("fk_ie_event_public_actions_ie_events_tenant_id_event_id");
 
                     b.Navigation("Event");
 
@@ -27746,26 +28405,26 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .WithMany()
                         .HasForeignKey("ApprovalStatusId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_islamu_event_event_registrations_islamu_event_approval_statuses_approval_status_id");
+                        .HasConstraintName("fk_ie_event_registrations_ie_approval_statuses_approval_status_id");
 
                     b.HasOne("Explore.Domain.AtprotoRecord", "AtprotoRecord")
                         .WithMany()
                         .HasForeignKey("AtprotoRecordId")
                         .OnDelete(DeleteBehavior.SetNull)
-                        .HasConstraintName("fk_islamu_event_event_registrations_islamu_event_atproto_records_atproto_record_id");
+                        .HasConstraintName("fk_ie_event_registrations_ie_atproto_records_atproto_record_id");
 
                     b.HasOne("Explore.Domain.User", "LinkedUser")
                         .WithMany()
                         .HasForeignKey("LinkedUserId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_islamu_event_event_registrations_users_linked_user_id");
+                        .HasConstraintName("fk_ie_event_registrations_users_linked_user_id");
 
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_event_registrations_tenants_tenant_id");
+                        .HasConstraintName("fk_ie_event_registrations_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.Event", "Event")
                         .WithMany()
@@ -27773,28 +28432,28 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_event_registrations_islamu_event_events_tenant_id_event_id");
+                        .HasConstraintName("fk_ie_event_registrations_ie_events_tenant_id_event_id");
 
                     b.HasOne("Explore.Domain.RegistrationOrder", "RegistrationOrder")
                         .WithMany()
                         .HasForeignKey("TenantId", "RegistrationOrderId")
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_islamu_event_event_registrations_registration_orders_tenant_id_registration_order_id");
+                        .HasConstraintName("fk_ie_event_registrations_registration_orders_tenant_id_registration_order_id");
 
                     b.HasOne("Explore.Domain.RegistrationOrderLine", "RegistrationOrderLine")
                         .WithMany()
                         .HasForeignKey("TenantId", "RegistrationOrderLineId")
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_islamu_event_event_registrations_registration_order_lines_tenant_id_registration_order_line_id");
+                        .HasConstraintName("fk_ie_event_registrations_registration_order_lines_tenant_id_registration_order_line_id");
 
                     b.HasOne("Explore.Domain.TicketTypeEntitlement", "TicketTypeEntitlement")
                         .WithMany()
                         .HasForeignKey("TenantId", "TicketTypeEntitlementId")
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_islamu_event_event_registrations_ticket_type_entitlements_tenant_id_ticket_type_entitlement_id");
+                        .HasConstraintName("fk_ie_event_registrations_ticket_type_entitlements_tenant_id_ticket_type_entitlement_id");
 
                     b.HasOne("Explore.Domain.EventSession", "EventSession")
                         .WithMany()
@@ -27802,14 +28461,14 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasPrincipalKey("TenantId", "EventId", "Id")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_event_registrations_event_sessions_tenant_id_event_id_event_session_id");
+                        .HasConstraintName("fk_ie_event_registrations_event_sessions_tenant_id_event_id_event_session_id");
 
                     b.HasOne("Explore.Domain.RegistrationParticipant", "RegistrationParticipant")
                         .WithMany()
                         .HasForeignKey("TenantId", "RegistrationOrderId", "RegistrationParticipantId")
                         .HasPrincipalKey("TenantId", "RegistrationOrderId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_islamu_event_event_registrations_registration_participants_tenant_id_registration_order_id_registration_participant_id");
+                        .HasConstraintName("fk_ie_event_registrations_registration_participants_tenant_id_registration_order_id_registration_participant_id");
 
                     b.Navigation("ApprovalStatus");
 
@@ -27838,20 +28497,20 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .WithMany()
                         .HasForeignKey("ReporterActorId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_islamu_event_event_reports_islamu_event_actors_reporter_actor_id");
+                        .HasConstraintName("fk_ie_event_reports_ie_actors_reporter_actor_id");
 
                     b.HasOne("Explore.Domain.User", "ReporterUser")
                         .WithMany()
                         .HasForeignKey("ReporterUserId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_islamu_event_event_reports_users_reporter_user_id");
+                        .HasConstraintName("fk_ie_event_reports_users_reporter_user_id");
 
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_event_reports_tenants_tenant_id");
+                        .HasConstraintName("fk_ie_event_reports_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.Event", "Event")
                         .WithMany()
@@ -27859,7 +28518,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_event_reports_islamu_event_events_tenant_id_event_id");
+                        .HasConstraintName("fk_ie_event_reports_ie_events_tenant_id_event_id");
 
                     b.Navigation("Event");
 
@@ -27876,14 +28535,14 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .WithMany()
                         .HasForeignKey("AssignedModeratorUserId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_islamu_event_event_report_cases_users_assigned_moderator_user_id");
+                        .HasConstraintName("fk_ie_event_report_cases_users_assigned_moderator_user_id");
 
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_event_report_cases_tenants_tenant_id");
+                        .HasConstraintName("fk_ie_event_report_cases_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.EventReport", "Report")
                         .WithMany("Cases")
@@ -27891,14 +28550,14 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.ClientNoAction)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_event_report_cases_islamu_event_event_reports_tenant_id_report_id");
+                        .HasConstraintName("fk_ie_event_report_cases_ie_event_reports_tenant_id_report_id");
 
                     b.HasOne("Explore.Domain.EventReportDecision", "CurrentDecision")
                         .WithMany()
                         .HasForeignKey("TenantId", "ReportId", "Id", "CurrentDecisionId")
                         .HasPrincipalKey("TenantId", "ReportId", "CaseId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_islamu_event_event_report_cases_event_report_decisions_tenant_id_report_id_id_current_decision_id");
+                        .HasConstraintName("fk_ie_event_report_cases_event_report_decisions_tenant_id_report_id_id_current_decision_id");
 
                     b.Navigation("AssignedModeratorUser");
 
@@ -27915,14 +28574,14 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .WithMany()
                         .HasForeignKey("ModeratorUserId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_islamu_event_event_report_decisions_users_moderator_user_id");
+                        .HasConstraintName("fk_ie_event_report_decisions_users_moderator_user_id");
 
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_event_report_decisions_tenants_tenant_id");
+                        .HasConstraintName("fk_ie_event_report_decisions_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.EventReport", "Report")
                         .WithMany("Decisions")
@@ -27930,7 +28589,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.ClientNoAction)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_event_report_decisions_islamu_event_event_reports_tenant_id_report_id");
+                        .HasConstraintName("fk_ie_event_report_decisions_ie_event_reports_tenant_id_report_id");
 
                     b.HasOne("Explore.Domain.EventReportCase", "Case")
                         .WithMany()
@@ -27938,7 +28597,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasPrincipalKey("TenantId", "ReportId", "Id")
                         .OnDelete(DeleteBehavior.ClientNoAction)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_event_report_decisions_islamu_event_event_report_cases_tenant_id_report_id_case_id");
+                        .HasConstraintName("fk_ie_event_report_decisions_ie_event_report_cases_tenant_id_report_id_case_id");
 
                     b.Navigation("Case");
 
@@ -27956,14 +28615,14 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_event_report_decision_executions_tenants_tenant_id");
+                        .HasConstraintName("fk_ie_event_report_decision_executions_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.EventModerationRecord", "ModerationRecord")
                         .WithMany()
                         .HasForeignKey("TenantId", "ModerationRecordId")
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_islamu_event_event_report_decision_executions_islamu_event_event_moderation_records_tenant_id_moderation_record_id");
+                        .HasConstraintName("fk_ie_event_report_decision_executions_ie_event_moderation_records_tenant_id_moderation_record_id");
 
                     b.HasOne("Explore.Domain.EventReport", "Report")
                         .WithMany()
@@ -27971,7 +28630,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_event_report_decision_executions_islamu_event_event_reports_tenant_id_report_id");
+                        .HasConstraintName("fk_ie_event_report_decision_executions_ie_event_reports_tenant_id_report_id");
 
                     b.HasOne("Explore.Domain.EventReportDecision", "Decision")
                         .WithOne("Execution")
@@ -27979,7 +28638,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasPrincipalKey("Explore.Domain.EventReportDecision", "TenantId", "ReportId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_event_report_decision_executions_islamu_event_event_report_decisions_tenant_id_report_id_decision_id");
+                        .HasConstraintName("fk_ie_event_report_decision_executions_ie_event_report_decisions_tenant_id_report_id_decision_id");
 
                     b.Navigation("Decision");
 
@@ -27996,14 +28655,14 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .WithMany()
                         .HasForeignKey("CreatedByUserId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_islamu_event_event_report_evidence_users_created_by_user_id");
+                        .HasConstraintName("fk_ie_event_report_evidence_users_created_by_user_id");
 
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_event_report_evidence_tenants_tenant_id");
+                        .HasConstraintName("fk_ie_event_report_evidence_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.EventReport", "Report")
                         .WithMany("EvidenceItems")
@@ -28011,14 +28670,14 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.ClientNoAction)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_event_report_evidence_islamu_event_event_reports_tenant_id_report_id");
+                        .HasConstraintName("fk_ie_event_report_evidence_ie_event_reports_tenant_id_report_id");
 
                     b.HasOne("Explore.Domain.StorageObject", "StorageObject")
                         .WithMany()
                         .HasForeignKey("TenantId", "StorageObjectId")
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_islamu_event_event_report_evidence_storage_objects_tenant_id_storage_object_id");
+                        .HasConstraintName("fk_ie_event_report_evidence_storage_objects_tenant_id_storage_object_id");
 
                     b.Navigation("CreatedByUser");
 
@@ -28036,7 +28695,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_event_report_external_links_tenants_tenant_id");
+                        .HasConstraintName("fk_ie_event_report_external_links_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.EventReport", "Report")
                         .WithMany("ExternalLinks")
@@ -28044,14 +28703,14 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.ClientNoAction)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_event_report_external_links_islamu_event_event_reports_tenant_id_report_id");
+                        .HasConstraintName("fk_ie_event_report_external_links_ie_event_reports_tenant_id_report_id");
 
                     b.HasOne("Explore.Domain.EventReportCase", "Case")
                         .WithMany()
                         .HasForeignKey("TenantId", "ReportId", "CaseId")
                         .HasPrincipalKey("TenantId", "ReportId", "Id")
                         .OnDelete(DeleteBehavior.ClientNoAction)
-                        .HasConstraintName("fk_islamu_event_event_report_external_links_islamu_event_event_report_cases_tenant_id_report_id_case_id");
+                        .HasConstraintName("fk_ie_event_report_external_links_ie_event_report_cases_tenant_id_report_id_case_id");
 
                     b.Navigation("Case");
 
@@ -28067,7 +28726,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_event_report_signals_tenants_tenant_id");
+                        .HasConstraintName("fk_ie_event_report_signals_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.Event", "Event")
                         .WithMany()
@@ -28075,14 +28734,14 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_event_report_signals_islamu_event_events_tenant_id_event_id");
+                        .HasConstraintName("fk_ie_event_report_signals_ie_events_tenant_id_event_id");
 
                     b.HasOne("Explore.Domain.EventReport", "Report")
                         .WithMany("Signals")
                         .HasForeignKey("TenantId", "EventId", "ReportId")
                         .HasPrincipalKey("TenantId", "EventId", "Id")
                         .OnDelete(DeleteBehavior.ClientNoAction)
-                        .HasConstraintName("fk_islamu_event_event_report_signals_islamu_event_event_reports_tenant_id_event_id_report_id");
+                        .HasConstraintName("fk_ie_event_report_signals_ie_event_reports_tenant_id_event_id_report_id");
 
                     b.Navigation("Event");
 
@@ -28098,7 +28757,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_event_report_targets_tenants_tenant_id");
+                        .HasConstraintName("fk_ie_event_report_targets_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.EventReport", "Report")
                         .WithMany("Targets")
@@ -28106,14 +28765,14 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.ClientNoAction)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_event_report_targets_islamu_event_event_reports_tenant_id_report_id");
+                        .HasConstraintName("fk_ie_event_report_targets_ie_event_reports_tenant_id_report_id");
 
                     b.HasOne("Explore.Domain.StorageObject", "StorageObject")
                         .WithMany()
                         .HasForeignKey("TenantId", "StorageObjectId")
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_islamu_event_event_report_targets_storage_objects_tenant_id_storage_object_id");
+                        .HasConstraintName("fk_ie_event_report_targets_storage_objects_tenant_id_storage_object_id");
 
                     b.Navigation("Report");
 
@@ -28129,21 +28788,21 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasForeignKey("RoleId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_event_role_assignments_roles_role_id");
+                        .HasConstraintName("fk_ie_event_role_assignments_roles_role_id");
 
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_event_role_assignments_tenants_tenant_id");
+                        .HasConstraintName("fk_ie_event_role_assignments_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.User", "User")
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_event_role_assignments_users_user_id");
+                        .HasConstraintName("fk_ie_event_role_assignments_users_user_id");
 
                     b.HasOne("Explore.Domain.Event", "Event")
                         .WithMany()
@@ -28151,7 +28810,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_event_role_assignments_islamu_event_events_tenant_id_event_id");
+                        .HasConstraintName("fk_ie_event_role_assignments_ie_events_tenant_id_event_id");
 
                     b.Navigation("Event");
 
@@ -28169,26 +28828,26 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasForeignKey("ActorId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_event_series_islamu_event_actors_actor_id");
+                        .HasConstraintName("fk_ie_event_series_ie_actors_actor_id");
 
                     b.HasOne("Explore.Domain.StorageObject", "FeaturedImage")
                         .WithMany()
                         .HasForeignKey("FeaturedImageId")
-                        .HasConstraintName("fk_islamu_event_event_series_storage_objects_featured_image_id");
+                        .HasConstraintName("fk_ie_event_series_storage_objects_featured_image_id");
 
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_event_series_tenants_tenant_id");
+                        .HasConstraintName("fk_ie_event_series_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.VisibilityType", "VisibilityType")
                         .WithMany()
                         .HasForeignKey("VisibilityTypeId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_event_series_visibility_types_visibility_type_id");
+                        .HasConstraintName("fk_ie_event_series_visibility_types_visibility_type_id");
 
                     b.Navigation("Actor");
 
@@ -28205,31 +28864,31 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .WithMany()
                         .HasForeignKey("EventSessionKindId")
                         .OnDelete(DeleteBehavior.SetNull)
-                        .HasConstraintName("fk_islamu_event_event_sessions_event_session_kinds_event_session_kind_id");
+                        .HasConstraintName("fk_ie_event_sessions_event_session_kinds_event_session_kind_id");
 
                     b.HasOne("Explore.Domain.EventSessionStatus", "EventSessionStatus")
                         .WithMany()
                         .HasForeignKey("EventSessionStatusId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_event_sessions_event_session_statuses_event_session_status_id");
+                        .HasConstraintName("fk_ie_event_sessions_event_session_statuses_event_session_status_id");
 
                     b.HasOne("Explore.Domain.StorageObject", "FeaturedImage")
                         .WithMany()
                         .HasForeignKey("FeaturedImageId")
-                        .HasConstraintName("fk_islamu_event_event_sessions_storage_objects_featured_image_id");
+                        .HasConstraintName("fk_ie_event_sessions_storage_objects_featured_image_id");
 
                     b.HasOne("Explore.Domain.RegistrationMode", "RegistrationMode")
                         .WithMany()
                         .HasForeignKey("RegistrationModeId")
-                        .HasConstraintName("fk_islamu_event_event_sessions_registration_modes_registration_mode_id");
+                        .HasConstraintName("fk_ie_event_sessions_registration_modes_registration_mode_id");
 
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_event_sessions_tenants_tenant_id");
+                        .HasConstraintName("fk_ie_event_sessions_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.Event", "Event")
                         .WithMany("Sessions")
@@ -28237,35 +28896,35 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_event_sessions_islamu_event_events_tenant_id_event_id");
+                        .HasConstraintName("fk_ie_event_sessions_ie_events_tenant_id_event_id");
 
                     b.HasOne("Explore.Domain.Location", "Location")
                         .WithMany()
                         .HasForeignKey("TenantId", "LocationId")
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_islamu_event_event_sessions_locations_tenant_id_location_id");
+                        .HasConstraintName("fk_ie_event_sessions_locations_tenant_id_location_id");
 
                     b.HasOne("Explore.Domain.EventDay", "EventDay")
                         .WithMany()
                         .HasForeignKey("TenantId", "EventId", "EventDayId")
                         .HasPrincipalKey("TenantId", "EventId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_islamu_event_event_sessions_islamu_event_event_days_tenant_id_event_id_event_day_id");
+                        .HasConstraintName("fk_ie_event_sessions_ie_event_days_tenant_id_event_id_event_day_id");
 
                     b.HasOne("Explore.Domain.EventLocation", "EventLocation")
                         .WithMany()
                         .HasForeignKey("TenantId", "EventId", "EventLocationId")
                         .HasPrincipalKey("TenantId", "EventId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_islamu_event_event_sessions_islamu_event_event_locations_tenant_id_event_id_event_location_id");
+                        .HasConstraintName("fk_ie_event_sessions_ie_event_locations_tenant_id_event_id_event_location_id");
 
                     b.HasOne("Explore.Domain.LocationRoom", "Room")
                         .WithMany()
                         .HasForeignKey("TenantId", "LocationId", "RoomId")
                         .HasPrincipalKey("TenantId", "LocationId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_islamu_event_event_sessions_location_rooms_tenant_id_location_id_room_id");
+                        .HasConstraintName("fk_ie_event_sessions_location_rooms_tenant_id_location_id_room_id");
 
                     b.Navigation("Event");
 
@@ -28295,14 +28954,14 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_event_session_agenda_items_tenants_tenant_id");
+                        .HasConstraintName("fk_ie_event_session_agenda_items_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.EventLocation", "EventLocation")
                         .WithMany()
                         .HasForeignKey("TenantId", "EventLocationId")
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_islamu_event_event_session_agenda_items_islamu_event_event_locations_tenant_id_event_location_id");
+                        .HasConstraintName("fk_ie_event_session_agenda_items_ie_event_locations_tenant_id_event_location_id");
 
                     b.HasOne("Explore.Domain.EventSession", "EventSession")
                         .WithMany()
@@ -28310,14 +28969,14 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_event_session_agenda_items_islamu_event_event_sessions_tenant_id_event_session_id");
+                        .HasConstraintName("fk_ie_event_session_agenda_items_ie_event_sessions_tenant_id_event_session_id");
 
                     b.HasOne("Explore.Domain.Location", "Location")
                         .WithMany()
                         .HasForeignKey("TenantId", "LocationId")
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_islamu_event_event_session_agenda_items_locations_tenant_id_location_id");
+                        .HasConstraintName("fk_ie_event_session_agenda_items_locations_tenant_id_location_id");
 
                     b.Navigation("EventLocation");
 
@@ -28335,7 +28994,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_event_session_categories_tenants_tenant_id");
+                        .HasConstraintName("fk_ie_event_session_categories_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.Category", "Category")
                         .WithMany()
@@ -28343,7 +29002,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_event_session_categories_islamu_event_categories_tenant_id_category_id");
+                        .HasConstraintName("fk_ie_event_session_categories_ie_categories_tenant_id_category_id");
 
                     b.HasOne("Explore.Domain.EventSession", "EventSession")
                         .WithMany()
@@ -28351,7 +29010,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_event_session_categories_islamu_event_event_sessions_tenant_id_event_session_id");
+                        .HasConstraintName("fk_ie_event_session_categories_ie_event_sessions_tenant_id_event_session_id");
 
                     b.Navigation("Category");
 
@@ -28366,27 +29025,27 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .WithMany()
                         .HasForeignKey("DefaultOptionId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_islamu_event_event_session_custom_property_definitions_event_session_custom_property_options_default_option_id");
+                        .HasConstraintName("fk_ie_event_session_custom_property_definitions_event_session_custom_property_options_default_option_id");
 
                     b.HasOne("Explore.Domain.EventSession", "EventSession")
                         .WithMany()
                         .HasForeignKey("EventSessionId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_event_session_custom_property_definitions_islamu_event_event_sessions_event_session_id");
+                        .HasConstraintName("fk_ie_event_session_custom_property_definitions_ie_event_sessions_event_session_id");
 
                     b.HasOne("Explore.Domain.EventSessionTemplate", "SourceTemplate")
                         .WithMany()
                         .HasForeignKey("SourceTemplateId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_islamu_event_event_session_custom_property_definitions_event_session_templates_source_template_id");
+                        .HasConstraintName("fk_ie_event_session_custom_property_definitions_event_session_templates_source_template_id");
 
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_event_session_custom_property_definitions_tenants_tenant_id");
+                        .HasConstraintName("fk_ie_event_session_custom_property_definitions_tenants_tenant_id");
 
                     b.Navigation("DefaultOption");
 
@@ -28424,34 +29083,34 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasForeignKey("EventSessionCustomPropertyDefinitionId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_event_session_custom_property_projections_islamu_event_event_session_custom_property_definitions_event_session_custom_property_definition_id");
+                        .HasConstraintName("fk_ie_event_session_custom_property_projections_ie_event_session_custom_property_definitions_event_session_custom_property_definition_id");
 
                     b.HasOne("Explore.Domain.EventSessionCustomPropertyValue", "Value")
                         .WithMany()
                         .HasForeignKey("EventSessionCustomPropertyValueId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_event_session_custom_property_projections_event_session_custom_property_values_event_session_custom_property_value_id");
+                        .HasConstraintName("fk_ie_event_session_custom_property_projections_event_session_custom_property_values_event_session_custom_property_value_id");
 
                     b.HasOne("Explore.Domain.EventSession", "EventSession")
                         .WithMany()
                         .HasForeignKey("EventSessionId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_event_session_custom_property_projections_islamu_event_event_sessions_event_session_id");
+                        .HasConstraintName("fk_ie_event_session_custom_property_projections_ie_event_sessions_event_session_id");
 
                     b.HasOne("Explore.Domain.EventSessionCustomPropertyOption", "Option")
                         .WithMany()
                         .HasForeignKey("OptionId")
                         .OnDelete(DeleteBehavior.SetNull)
-                        .HasConstraintName("fk_islamu_event_event_session_custom_property_projections_islamu_event_event_session_custom_property_options_option_id");
+                        .HasConstraintName("fk_ie_event_session_custom_property_projections_ie_event_session_custom_property_options_option_id");
 
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_event_session_custom_property_projections_tenants_tenant_id");
+                        .HasConstraintName("fk_ie_event_session_custom_property_projections_tenants_tenant_id");
 
                     b.Navigation("Definition");
 
@@ -28471,27 +29130,27 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasForeignKey("EventSessionCustomPropertyDefinitionId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_event_session_custom_property_values_islamu_event_event_session_custom_property_definitions_event_session_custom_property_definition_id");
+                        .HasConstraintName("fk_ie_event_session_custom_property_values_ie_event_session_custom_property_definitions_event_session_custom_property_definition_id");
 
                     b.HasOne("Explore.Domain.EventSession", "EventSession")
                         .WithMany()
                         .HasForeignKey("EventSessionId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_event_session_custom_property_values_islamu_event_event_sessions_event_session_id");
+                        .HasConstraintName("fk_ie_event_session_custom_property_values_ie_event_sessions_event_session_id");
 
                     b.HasOne("Explore.Domain.EventSessionCustomPropertyOption", "Option")
                         .WithMany()
                         .HasForeignKey("OptionId")
                         .OnDelete(DeleteBehavior.SetNull)
-                        .HasConstraintName("fk_islamu_event_event_session_custom_property_values_islamu_event_event_session_custom_property_options_option_id");
+                        .HasConstraintName("fk_ie_event_session_custom_property_values_ie_event_session_custom_property_options_option_id");
 
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_event_session_custom_property_values_tenants_tenant_id");
+                        .HasConstraintName("fk_ie_event_session_custom_property_values_tenants_tenant_id");
 
                     b.Navigation("Definition");
 
@@ -28509,7 +29168,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_event_session_groups_tenants_tenant_id");
+                        .HasConstraintName("fk_ie_event_session_groups_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.Event", "Event")
                         .WithMany("SessionGroups")
@@ -28517,28 +29176,28 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_event_session_groups_islamu_event_events_tenant_id_event_id");
+                        .HasConstraintName("fk_ie_event_session_groups_ie_events_tenant_id_event_id");
 
                     b.HasOne("Explore.Domain.Location", "Location")
                         .WithMany()
                         .HasForeignKey("TenantId", "LocationId")
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_islamu_event_event_session_groups_locations_tenant_id_location_id");
+                        .HasConstraintName("fk_ie_event_session_groups_locations_tenant_id_location_id");
 
                     b.HasOne("Explore.Domain.EventLocation", "EventLocation")
                         .WithMany()
                         .HasForeignKey("TenantId", "EventId", "EventLocationId")
                         .HasPrincipalKey("TenantId", "EventId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_islamu_event_event_session_groups_islamu_event_event_locations_tenant_id_event_id_event_location_id");
+                        .HasConstraintName("fk_ie_event_session_groups_ie_event_locations_tenant_id_event_id_event_location_id");
 
                     b.HasOne("Explore.Domain.LocationRoom", "Room")
                         .WithMany()
                         .HasForeignKey("TenantId", "LocationId", "RoomId")
                         .HasPrincipalKey("TenantId", "LocationId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_islamu_event_event_session_groups_location_rooms_tenant_id_location_id_room_id");
+                        .HasConstraintName("fk_ie_event_session_groups_location_rooms_tenant_id_location_id_room_id");
 
                     b.Navigation("Event");
 
@@ -28558,7 +29217,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_event_session_group_sessions_tenants_tenant_id");
+                        .HasConstraintName("fk_ie_event_session_group_sessions_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.Event", "Event")
                         .WithMany()
@@ -28566,7 +29225,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_event_session_group_sessions_islamu_event_events_tenant_id_event_id");
+                        .HasConstraintName("fk_ie_event_session_group_sessions_ie_events_tenant_id_event_id");
 
                     b.HasOne("Explore.Domain.EventSessionGroup", "EventSessionGroup")
                         .WithMany("Sessions")
@@ -28574,7 +29233,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasPrincipalKey("TenantId", "EventId", "Id")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_event_session_group_sessions_islamu_event_event_session_groups_tenant_id_event_id_event_session_group_id");
+                        .HasConstraintName("fk_ie_event_session_group_sessions_ie_event_session_groups_tenant_id_event_id_event_session_group_id");
 
                     b.HasOne("Explore.Domain.EventSession", "EventSession")
                         .WithMany("SessionGroups")
@@ -28582,7 +29241,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasPrincipalKey("TenantId", "EventId", "Id")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_event_session_group_sessions_islamu_event_event_sessions_tenant_id_event_id_event_session_id");
+                        .HasConstraintName("fk_ie_event_session_group_sessions_ie_event_sessions_tenant_id_event_id_event_session_id");
 
                     b.Navigation("Event");
 
@@ -28600,7 +29259,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasForeignKey("Explore.Domain.EventSessionIslamicAspect", "EventSessionId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_event_session_islamic_aspects_islamu_event_event_sessions_event_session_id");
+                        .HasConstraintName("fk_ie_event_session_islamic_aspects_ie_event_sessions_event_session_id");
 
                     b.Navigation("EventSession");
                 });
@@ -28612,14 +29271,14 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasForeignKey("LanguageId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_event_session_languages_languages_language_id");
+                        .HasConstraintName("fk_ie_event_session_languages_languages_language_id");
 
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_event_session_languages_tenants_tenant_id");
+                        .HasConstraintName("fk_ie_event_session_languages_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.EventSession", "EventSession")
                         .WithMany()
@@ -28627,7 +29286,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_event_session_languages_islamu_event_event_sessions_tenant_id_event_session_id");
+                        .HasConstraintName("fk_ie_event_session_languages_ie_event_sessions_tenant_id_event_session_id");
 
                     b.Navigation("EventSession");
 
@@ -28643,14 +29302,14 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasForeignKey("ActorId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_event_session_speakers_islamu_event_actors_actor_id");
+                        .HasConstraintName("fk_ie_event_session_speakers_ie_actors_actor_id");
 
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_event_session_speakers_tenants_tenant_id");
+                        .HasConstraintName("fk_ie_event_session_speakers_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.EventSession", "EventSession")
                         .WithMany()
@@ -28658,7 +29317,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_event_session_speakers_islamu_event_event_sessions_tenant_id_event_session_id");
+                        .HasConstraintName("fk_ie_event_session_speakers_ie_event_sessions_tenant_id_event_session_id");
 
                     b.Navigation("Actor");
 
@@ -28674,7 +29333,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_event_session_tags_tenants_tenant_id");
+                        .HasConstraintName("fk_ie_event_session_tags_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.EventSession", "EventSession")
                         .WithMany()
@@ -28682,7 +29341,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_event_session_tags_islamu_event_event_sessions_tenant_id_event_session_id");
+                        .HasConstraintName("fk_ie_event_session_tags_ie_event_sessions_tenant_id_event_session_id");
 
                     b.HasOne("Explore.Domain.Tag", "Tag")
                         .WithMany()
@@ -28690,7 +29349,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_event_session_tags_tags_tenant_id_tag_id");
+                        .HasConstraintName("fk_ie_event_session_tags_tags_tenant_id_tag_id");
 
                     b.Navigation("EventSession");
 
@@ -28706,14 +29365,14 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasForeignKey("EventTemplateId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_event_session_templates_event_templates_event_template_id");
+                        .HasConstraintName("fk_ie_event_session_templates_event_templates_event_template_id");
 
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_event_session_templates_tenants_tenant_id");
+                        .HasConstraintName("fk_ie_event_session_templates_tenants_tenant_id");
 
                     b.Navigation("EventTemplate");
 
@@ -28726,21 +29385,21 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .WithMany()
                         .HasForeignKey("DefaultOptionId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_islamu_event_event_session_template_custom_property_definitions_event_session_template_custom_property_options_default_option_id");
+                        .HasConstraintName("fk_ie_event_session_template_custom_property_definitions_event_session_template_custom_property_options_default_option_id");
 
                     b.HasOne("Explore.Domain.EventSessionTemplate", "EventSessionTemplate")
                         .WithMany("Definitions")
                         .HasForeignKey("EventSessionTemplateId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_event_session_template_custom_property_definitions_islamu_event_event_session_templates_event_session_template_id");
+                        .HasConstraintName("fk_ie_event_session_template_custom_property_definitions_ie_event_session_templates_event_session_template_id");
 
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_event_session_template_custom_property_definitions_tenants_tenant_id");
+                        .HasConstraintName("fk_ie_event_session_template_custom_property_definitions_tenants_tenant_id");
 
                     b.Navigation("DefaultOption");
 
@@ -28776,7 +29435,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_event_tags_tenants_tenant_id");
+                        .HasConstraintName("fk_ie_event_tags_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.Event", "Event")
                         .WithMany()
@@ -28784,7 +29443,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_event_tags_islamu_event_events_tenant_id_event_id");
+                        .HasConstraintName("fk_ie_event_tags_ie_events_tenant_id_event_id");
 
                     b.HasOne("Explore.Domain.Tag", "Tag")
                         .WithMany()
@@ -28792,7 +29451,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_event_tags_tags_tenant_id_tag_id");
+                        .HasConstraintName("fk_ie_event_tags_tags_tenant_id_tag_id");
 
                     b.Navigation("Event");
 
@@ -28808,7 +29467,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasForeignKey("Explore.Domain.EventTechAspect", "Id")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_event_tech_aspects_islamu_event_events_id");
+                        .HasConstraintName("fk_ie_event_tech_aspects_ie_events_id");
 
                     b.Navigation("Event");
                 });
@@ -28819,14 +29478,14 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .WithMany()
                         .HasForeignKey("EventTypeId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_islamu_event_event_templates_event_types_event_type_id");
+                        .HasConstraintName("fk_ie_event_templates_event_types_event_type_id");
 
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_event_templates_tenants_tenant_id");
+                        .HasConstraintName("fk_ie_event_templates_tenants_tenant_id");
 
                     b.Navigation("EventType");
 
@@ -28839,21 +29498,21 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .WithMany()
                         .HasForeignKey("DefaultOptionId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_islamu_event_event_template_custom_property_definitions_event_template_custom_property_options_default_option_id");
+                        .HasConstraintName("fk_ie_event_template_custom_property_definitions_event_template_custom_property_options_default_option_id");
 
                     b.HasOne("Explore.Domain.EventTemplate", "EventTemplate")
                         .WithMany("Definitions")
                         .HasForeignKey("EventTemplateId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_event_template_custom_property_definitions_islamu_event_event_templates_event_template_id");
+                        .HasConstraintName("fk_ie_event_template_custom_property_definitions_ie_event_templates_event_template_id");
 
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_event_template_custom_property_definitions_tenants_tenant_id");
+                        .HasConstraintName("fk_ie_event_template_custom_property_definitions_tenants_tenant_id");
 
                     b.Navigation("DefaultOption");
 
@@ -28889,14 +29548,14 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_event_ticket_catalog_versions_tenants_tenant_id");
+                        .HasConstraintName("fk_ie_event_ticket_catalog_versions_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.TicketCatalogStatus", "TicketCatalogStatus")
                         .WithMany()
                         .HasForeignKey("TicketCatalogStatusId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_event_ticket_catalog_versions_ticket_catalog_statuses_ticket_catalog_status_id");
+                        .HasConstraintName("fk_ie_event_ticket_catalog_versions_ticket_catalog_statuses_ticket_catalog_status_id");
 
                     b.HasOne("Explore.Domain.Event", null)
                         .WithMany("TicketCatalogVersions")
@@ -28904,7 +29563,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_event_ticket_catalog_versions_islamu_event_events_tenant_id_event_id");
+                        .HasConstraintName("fk_ie_event_ticket_catalog_versions_ie_events_tenant_id_event_id");
 
                     b.Navigation("TicketCatalogStatus");
                 });
@@ -28916,21 +29575,21 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasForeignKey("ParticipantDataCollectionModeId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_event_ticket_types_participant_data_collection_modes_participant_data_collection_mode_id");
+                        .HasConstraintName("fk_ie_event_ticket_types_participant_data_collection_modes_participant_data_collection_mode_id");
 
                     b.HasOne("Explore.Domain.TicketPricingMode", "TicketPricingMode")
                         .WithMany()
                         .HasForeignKey("TicketPricingModeId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_event_ticket_types_ticket_pricing_modes_ticket_pricing_mode_id");
+                        .HasConstraintName("fk_ie_event_ticket_types_ticket_pricing_modes_ticket_pricing_mode_id");
 
                     b.HasOne("Explore.Domain.EventCapacityPool", null)
                         .WithMany()
                         .HasForeignKey("TenantId", "CapacityPoolId")
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_islamu_event_event_ticket_types_islamu_event_event_capacity_pools_tenant_id_capacity_pool_id");
+                        .HasConstraintName("fk_ie_event_ticket_types_ie_event_capacity_pools_tenant_id_capacity_pool_id");
 
                     b.HasOne("Explore.Domain.EventTicketCatalogVersion", null)
                         .WithMany("TicketTypes")
@@ -28938,7 +29597,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_event_ticket_types_islamu_event_event_ticket_catalog_versions_tenant_id_catalog_id");
+                        .HasConstraintName("fk_ie_event_ticket_types_ie_event_ticket_catalog_versions_tenant_id_catalog_id");
 
                     b.Navigation("ParticipantDataCollectionMode");
 
@@ -28951,7 +29610,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_islamu_event_event_types_tenants_tenant_id");
+                        .HasConstraintName("fk_ie_event_types_tenants_tenant_id");
 
                     b.Navigation("Tenant");
                 });
@@ -28963,27 +29622,27 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasForeignKey("ExternalApiKeyCreditPeriodId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_external_api_keys_external_api_key_credit_periods_external_api_key_credit_period_id");
+                        .HasConstraintName("fk_ie_external_api_keys_external_api_key_credit_periods_external_api_key_credit_period_id");
 
                     b.HasOne("Explore.Domain.ExternalApiKeyOwnerTypeLookup", "ExternalApiKeyOwnerType")
                         .WithMany()
                         .HasForeignKey("ExternalApiKeyOwnerTypeId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_external_api_keys_external_api_key_owner_types_external_api_key_owner_type_id");
+                        .HasConstraintName("fk_ie_external_api_keys_external_api_key_owner_types_external_api_key_owner_type_id");
 
                     b.HasOne("Explore.Domain.ExternalApiKeyStatus", "ExternalApiKeyStatus")
                         .WithMany()
                         .HasForeignKey("ExternalApiKeyStatusId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_external_api_keys_external_api_key_statuses_external_api_key_status_id");
+                        .HasConstraintName("fk_ie_external_api_keys_external_api_key_statuses_external_api_key_status_id");
 
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_islamu_event_external_api_keys_tenants_tenant_id");
+                        .HasConstraintName("fk_ie_external_api_keys_tenants_tenant_id");
 
                     b.Navigation("ExternalApiKeyCreditPeriod");
 
@@ -29001,7 +29660,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasForeignKey("ExternalApiKeyId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_external_api_key_quotas_islamu_event_external_api_keys_external_api_key_id");
+                        .HasConstraintName("fk_ie_external_api_key_quotas_ie_external_api_keys_external_api_key_id");
 
                     b.Navigation("ExternalApiKey");
                 });
@@ -29012,7 +29671,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .WithMany()
                         .HasForeignKey("ScopeTenantId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_islamu_event_external_bindings_tenants_scope_tenant_id");
+                        .HasConstraintName("fk_ie_external_bindings_tenants_scope_tenant_id");
 
                     b.Navigation("ScopeTenant");
                 });
@@ -29024,7 +29683,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasForeignKey("Explore.Domain.Federation.AtprotoEventProjection", "AtprotoRecordId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_atproto_event_projections_islamu_event_atproto_records_atproto_record_id");
+                        .HasConstraintName("fk_ie_atproto_event_projections_ie_atproto_records_atproto_record_id");
 
                     b.Navigation("AtprotoRecord");
                 });
@@ -29036,7 +29695,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasForeignKey("ConsumerStateId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_atproto_jetstream_quarantines_islamu_event_atproto_jetstream_consumer_states_consumer_state_id");
+                        .HasConstraintName("fk_ie_atproto_jetstream_quarantines_ie_atproto_jetstream_consumer_states_consumer_state_id");
 
                     b.Navigation("ConsumerState");
                 });
@@ -29048,21 +29707,21 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasForeignKey("Explore.Domain.Federation.AtprotoOutboundRecordOwnership", "AtprotoRecordId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_atproto_outbound_record_ownerships_islamu_event_atproto_records_atproto_record_id");
+                        .HasConstraintName("fk_ie_atproto_outbound_record_ownerships_ie_atproto_records_atproto_record_id");
 
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_atproto_outbound_record_ownerships_tenants_tenant_id");
+                        .HasConstraintName("fk_ie_atproto_outbound_record_ownerships_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.User", "User")
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_atproto_outbound_record_ownerships_users_user_id");
+                        .HasConstraintName("fk_ie_atproto_outbound_record_ownerships_users_user_id");
 
                     b.HasOne("Explore.Domain.TenantUser", "TenantUser")
                         .WithMany()
@@ -29070,7 +29729,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasPrincipalKey("TenantId", "UserId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_atproto_outbound_record_ownerships_tenant_users_tenant_id_user_id");
+                        .HasConstraintName("fk_ie_atproto_outbound_record_ownerships_tenant_users_tenant_id_user_id");
 
                     b.Navigation("AtprotoRecord");
 
@@ -29088,14 +29747,14 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasForeignKey("AtprotoRecordId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_atproto_record_tenant_presentations_islamu_event_atproto_records_atproto_record_id");
+                        .HasConstraintName("fk_ie_atproto_record_tenant_presentations_ie_atproto_records_atproto_record_id");
 
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_atproto_record_tenant_presentations_tenants_tenant_id");
+                        .HasConstraintName("fk_ie_atproto_record_tenant_presentations_tenants_tenant_id");
 
                     b.Navigation("AtprotoRecord");
 
@@ -29108,33 +29767,33 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .WithMany()
                         .HasForeignKey("AtprotoRecordId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_islamu_event_pds_sync_outbox_islamu_event_atproto_records_atproto_record_id");
+                        .HasConstraintName("fk_ie_pds_sync_outbox_ie_atproto_records_atproto_record_id");
 
                     b.HasOne("Explore.Domain.AtprotoRecord", "DependsOnAtprotoRecord")
                         .WithMany()
                         .HasForeignKey("DependsOnAtprotoRecordId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_islamu_event_pds_sync_outbox_islamu_event_atproto_records_depends_on_atproto_record_id");
+                        .HasConstraintName("fk_ie_pds_sync_outbox_ie_atproto_records_depends_on_atproto_record_id");
 
                     b.HasOne("Explore.Domain.Federation.PdsSyncOutbox", "SupersededBy")
                         .WithMany()
                         .HasForeignKey("SupersededById")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_islamu_event_pds_sync_outbox_islamu_event_pds_sync_outbox_superseded_by_id");
+                        .HasConstraintName("fk_ie_pds_sync_outbox_ie_pds_sync_outbox_superseded_by_id");
 
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_pds_sync_outbox_tenants_tenant_id");
+                        .HasConstraintName("fk_ie_pds_sync_outbox_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.User", "User")
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_pds_sync_outbox_users_user_id");
+                        .HasConstraintName("fk_ie_pds_sync_outbox_users_user_id");
 
                     b.HasOne("Explore.Domain.TenantUser", "TenantUser")
                         .WithMany()
@@ -29142,7 +29801,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasPrincipalKey("TenantId", "UserId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_pds_sync_outbox_tenant_users_tenant_id_user_id");
+                        .HasConstraintName("fk_ie_pds_sync_outbox_tenant_users_tenant_id_user_id");
 
                     b.Navigation("AtprotoRecord");
 
@@ -29163,28 +29822,28 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .WithMany()
                         .HasForeignKey("GroupPositionId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_islamu_event_group_members_group_positions_group_position_id");
+                        .HasConstraintName("fk_ie_group_members_group_positions_group_position_id");
 
                     b.HasOne("Explore.Domain.Role", "Role")
                         .WithMany()
                         .HasForeignKey("RoleId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_group_members_roles_role_id");
+                        .HasConstraintName("fk_ie_group_members_roles_role_id");
 
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_group_members_tenants_tenant_id");
+                        .HasConstraintName("fk_ie_group_members_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.User", "User")
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_group_members_users_user_id");
+                        .HasConstraintName("fk_ie_group_members_users_user_id");
 
                     b.HasOne("Explore.Domain.GroupTenant", "GroupTenant")
                         .WithMany("Members")
@@ -29192,7 +29851,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_group_members_group_tenants_tenant_id_group_tenant_id");
+                        .HasConstraintName("fk_ie_group_members_group_tenants_tenant_id_group_tenant_id");
 
                     b.Navigation("GroupPosition");
 
@@ -29212,7 +29871,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_group_setting_overrides_tenants_tenant_id");
+                        .HasConstraintName("fk_ie_group_setting_overrides_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.GroupTenant", "GroupTenant")
                         .WithMany("Settings")
@@ -29220,7 +29879,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_group_setting_overrides_group_tenants_tenant_id_group_tenant_id");
+                        .HasConstraintName("fk_ie_group_setting_overrides_group_tenants_tenant_id_group_tenant_id");
 
                     b.Navigation("GroupTenant");
 
@@ -29234,53 +29893,53 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasForeignKey("ApprovalStatusId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_group_tenants_islamu_event_approval_statuses_approval_status_id");
+                        .HasConstraintName("fk_ie_group_tenants_ie_approval_statuses_approval_status_id");
 
                     b.HasOne("Explore.Domain.StorageObject", "BackgroundImage")
                         .WithMany()
                         .HasForeignKey("BackgroundImageId")
                         .OnDelete(DeleteBehavior.SetNull)
-                        .HasConstraintName("fk_islamu_event_group_tenants_storage_objects_background_image_id");
+                        .HasConstraintName("fk_ie_group_tenants_storage_objects_background_image_id");
 
                     b.HasOne("Explore.Domain.StorageObject", "BannerPicture")
                         .WithMany()
                         .HasForeignKey("BannerPictureId")
                         .OnDelete(DeleteBehavior.SetNull)
-                        .HasConstraintName("fk_islamu_event_group_tenants_storage_objects_banner_picture_id");
+                        .HasConstraintName("fk_ie_group_tenants_storage_objects_banner_picture_id");
 
                     b.HasOne("Explore.Domain.Group", "Group")
                         .WithMany("TenantParticipations")
                         .HasForeignKey("GroupId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_group_tenants_islamu_event_groups_group_id");
+                        .HasConstraintName("fk_ie_group_tenants_ie_groups_group_id");
 
                     b.HasOne("Explore.Domain.StorageObject", "ProfilePicture")
                         .WithMany()
                         .HasForeignKey("ProfilePictureId")
                         .OnDelete(DeleteBehavior.SetNull)
-                        .HasConstraintName("fk_islamu_event_group_tenants_storage_objects_profile_picture_id");
+                        .HasConstraintName("fk_ie_group_tenants_storage_objects_profile_picture_id");
 
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_group_tenants_tenants_tenant_id");
+                        .HasConstraintName("fk_ie_group_tenants_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.GroupTenant", "ParentGroupTenant")
                         .WithMany("ChildGroups")
                         .HasForeignKey("TenantId", "ParentGroupTenantId")
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_islamu_event_group_tenants_islamu_event_group_tenants_tenant_id_parent_group_tenant_id");
+                        .HasConstraintName("fk_ie_group_tenants_ie_group_tenants_tenant_id_parent_group_tenant_id");
 
                     b.HasOne("Explore.Domain.OrganizationTenant", "ParentOrganizationTenant")
                         .WithMany("ChildGroups")
                         .HasForeignKey("TenantId", "ParentOrganizationTenantId")
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_islamu_event_group_tenants_organization_tenants_tenant_id_parent_organization_tenant_id");
+                        .HasConstraintName("fk_ie_group_tenants_organization_tenants_tenant_id_parent_organization_tenant_id");
 
                     b.Navigation("ApprovalStatus");
 
@@ -29306,7 +29965,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_incoming_webhook_effect_outbox_tenants_tenant_id");
+                        .HasConstraintName("fk_ie_incoming_webhook_effect_outbox_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.IncomingWebhookMessage", "IncomingWebhookMessage")
                         .WithMany()
@@ -29314,7 +29973,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_incoming_webhook_effect_outbox_incoming_webhook_messages_tenant_id_incoming_webhook_message_id");
+                        .HasConstraintName("fk_ie_incoming_webhook_effect_outbox_incoming_webhook_messages_tenant_id_incoming_webhook_message_id");
 
                     b.Navigation("IncomingWebhookMessage");
 
@@ -29328,7 +29987,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_incoming_webhook_effect_receipts_tenants_tenant_id");
+                        .HasConstraintName("fk_ie_incoming_webhook_effect_receipts_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.IncomingWebhookMessage", "IncomingWebhookMessage")
                         .WithMany()
@@ -29336,7 +29995,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_incoming_webhook_effect_receipts_incoming_webhook_messages_tenant_id_incoming_webhook_message_id");
+                        .HasConstraintName("fk_ie_incoming_webhook_effect_receipts_incoming_webhook_messages_tenant_id_incoming_webhook_message_id");
 
                     b.Navigation("IncomingWebhookMessage");
 
@@ -29350,40 +30009,40 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasForeignKey("PayloadProvenanceId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_incoming_webhook_messages_webhook_payload_provenances_payload_provenance_id");
+                        .HasConstraintName("fk_ie_incoming_webhook_messages_webhook_payload_provenances_payload_provenance_id");
 
                     b.HasOne("Explore.Domain.IncomingWebhookSettlementSourceLookup", "SettlementSourceLookup")
                         .WithMany()
                         .HasForeignKey("SettlementSourceId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_islamu_event_incoming_webhook_messages_incoming_webhook_settlement_sources_settlement_source_id");
+                        .HasConstraintName("fk_ie_incoming_webhook_messages_incoming_webhook_settlement_sources_settlement_source_id");
 
                     b.HasOne("Explore.Domain.IncomingWebhookMessageStatusLookup", "StatusLookup")
                         .WithMany()
                         .HasForeignKey("StatusId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_incoming_webhook_messages_incoming_webhook_message_statuses_status_id");
+                        .HasConstraintName("fk_ie_incoming_webhook_messages_incoming_webhook_message_statuses_status_id");
 
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_incoming_webhook_messages_tenants_tenant_id");
+                        .HasConstraintName("fk_ie_incoming_webhook_messages_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.WebhookConsumerProviderBinding", "WebhookConsumerProviderBinding")
                         .WithMany()
                         .HasForeignKey("WebhookConsumerProviderBindingId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_islamu_event_incoming_webhook_messages_webhook_consumer_provider_bindings_webhook_consumer_provider_binding_id");
+                        .HasConstraintName("fk_ie_incoming_webhook_messages_webhook_consumer_provider_bindings_webhook_consumer_provider_binding_id");
 
                     b.HasOne("Explore.Domain.IncomingWebhookEffectReceipt", "SettledByEffectReceipt")
                         .WithMany()
                         .HasForeignKey("TenantId", "SettledByEffectReceiptId")
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_islamu_event_incoming_webhook_messages_islamu_event_incoming_webhook_effect_receipts_tenant_id_settled_by_effect_receipt_id");
+                        .HasConstraintName("fk_ie_incoming_webhook_messages_ie_incoming_webhook_effect_receipts_tenant_id_settled_by_effect_receipt_id");
 
                     b.Navigation("PayloadProvenanceLookup");
 
@@ -29405,14 +30064,14 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasForeignKey("OutcomeId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_incoming_webhook_processing_attempts_incoming_webhook_processing_attempt_outcomes_outcome_id");
+                        .HasConstraintName("fk_ie_incoming_webhook_processing_attempts_incoming_webhook_processing_attempt_outcomes_outcome_id");
 
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_incoming_webhook_processing_attempts_tenants_tenant_id");
+                        .HasConstraintName("fk_ie_incoming_webhook_processing_attempts_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.IncomingWebhookMessage", "IncomingWebhookMessage")
                         .WithMany("ProcessingAttempts")
@@ -29420,7 +30079,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_incoming_webhook_processing_attempts_islamu_event_incoming_webhook_messages_tenant_id_incoming_webhook_message_id");
+                        .HasConstraintName("fk_ie_incoming_webhook_processing_attempts_ie_incoming_webhook_messages_tenant_id_incoming_webhook_message_id");
 
                     b.Navigation("IncomingWebhookMessage");
 
@@ -29436,14 +30095,14 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasForeignKey("ResultId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_incoming_webhook_redrive_records_incoming_webhook_redrive_results_result_id");
+                        .HasConstraintName("fk_ie_incoming_webhook_redrive_records_incoming_webhook_redrive_results_result_id");
 
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_incoming_webhook_redrive_records_tenants_tenant_id");
+                        .HasConstraintName("fk_ie_incoming_webhook_redrive_records_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.IncomingWebhookMessage", "IncomingWebhookMessage")
                         .WithMany("RedriveRecords")
@@ -29451,7 +30110,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_incoming_webhook_redrive_records_islamu_event_incoming_webhook_messages_tenant_id_incoming_webhook_message_id");
+                        .HasConstraintName("fk_ie_incoming_webhook_redrive_records_ie_incoming_webhook_messages_tenant_id_incoming_webhook_message_id");
 
                     b.Navigation("IncomingWebhookMessage");
 
@@ -29466,27 +30125,27 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .WithMany()
                         .HasForeignKey("EventId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_islamu_event_integration_sync_outbox_islamu_event_events_event_id");
+                        .HasConstraintName("fk_ie_integration_sync_outbox_ie_events_event_id");
 
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_integration_sync_outbox_tenants_tenant_id");
+                        .HasConstraintName("fk_ie_integration_sync_outbox_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.User", "User")
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_islamu_event_integration_sync_outbox_users_user_id");
+                        .HasConstraintName("fk_ie_integration_sync_outbox_users_user_id");
 
                     b.HasOne("Explore.Domain.RegistrationOrder", "RegistrationOrder")
                         .WithMany()
                         .HasForeignKey("TenantId", "RegistrationOrderId")
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_islamu_event_integration_sync_outbox_registration_orders_tenant_id_registration_order_id");
+                        .HasConstraintName("fk_ie_integration_sync_outbox_registration_orders_tenant_id_registration_order_id");
 
                     b.Navigation("Event");
 
@@ -29504,27 +30163,27 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasForeignKey("LocationKindId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_locations_location_kinds_location_kind_id");
+                        .HasConstraintName("fk_ie_locations_location_kinds_location_kind_id");
 
                     b.HasOne("Explore.Domain.LocationPrivacyState", "LocationPrivacyState")
                         .WithMany()
                         .HasForeignKey("LocationPrivacyStateId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_locations_location_privacy_states_location_privacy_state_id");
+                        .HasConstraintName("fk_ie_locations_location_privacy_states_location_privacy_state_id");
 
                     b.HasOne("Explore.Domain.User", "OwnerUser")
                         .WithMany()
                         .HasForeignKey("OwnerUserId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_islamu_event_locations_users_owner_user_id");
+                        .HasConstraintName("fk_ie_locations_users_owner_user_id");
 
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_locations_tenants_tenant_id");
+                        .HasConstraintName("fk_ie_locations_tenants_tenant_id");
 
                     b.Navigation("LocationKind");
 
@@ -29542,7 +30201,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasForeignKey("Explore.Domain.LocationPii", "LocationId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_location_pii_islamu_event_locations_location_id");
+                        .HasConstraintName("fk_ie_location_pii_ie_locations_location_id");
 
                     b.Navigation("Location");
                 });
@@ -29554,14 +30213,14 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasForeignKey("LocationId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_location_rooms_islamu_event_locations_location_id");
+                        .HasConstraintName("fk_ie_location_rooms_ie_locations_location_id");
 
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_location_rooms_tenants_tenant_id");
+                        .HasConstraintName("fk_ie_location_rooms_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.Location", "Location")
                         .WithMany()
@@ -29569,7 +30228,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_location_rooms_islamu_event_locations_tenant_id_location_id");
+                        .HasConstraintName("fk_ie_location_rooms_ie_locations_tenant_id_location_id");
 
                     b.Navigation("Location");
 
@@ -29583,7 +30242,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasForeignKey("CredentialSecretBindingId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_managed_control_plane_registrations_secret_bindings_credential_secret_binding_id");
+                        .HasConstraintName("fk_ie_managed_control_plane_registrations_secret_bindings_credential_secret_binding_id");
                 });
 
             modelBuilder.Entity("Explore.Domain.Modules.TenantCapability", b =>
@@ -29593,14 +30252,14 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasForeignKey("ModuleId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_tenant_capabilities_islamu_event_module_definitions_module_id");
+                        .HasConstraintName("fk_ie_tenant_capabilities_ie_module_definitions_module_id");
 
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_tenant_capabilities_tenants_tenant_id");
+                        .HasConstraintName("fk_ie_tenant_capabilities_tenants_tenant_id");
 
                     b.Navigation("Module");
 
@@ -29613,53 +30272,53 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .WithMany()
                         .HasForeignKey("NotificationEntityTypeId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_islamu_event_notifications_notification_entity_types_notification_entity_type_id");
+                        .HasConstraintName("fk_ie_notifications_notification_entity_types_notification_entity_type_id");
 
                     b.HasOne("Explore.Domain.NotificationReason", "NotificationReason")
                         .WithMany()
                         .HasForeignKey("NotificationReasonId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_islamu_event_notifications_notification_reasons_notification_reason_id");
+                        .HasConstraintName("fk_ie_notifications_notification_reasons_notification_reason_id");
 
                     b.HasOne("Explore.Domain.NotificationScopeType", "NotificationScope")
                         .WithMany()
                         .HasForeignKey("NotificationScopeId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_notifications_notification_scope_types_notification_scope_id");
+                        .HasConstraintName("fk_ie_notifications_notification_scope_types_notification_scope_id");
 
                     b.HasOne("Explore.Domain.NotificationType", "NotificationType")
                         .WithMany()
                         .HasForeignKey("NotificationTypeId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_notifications_notification_types_notification_type_id");
+                        .HasConstraintName("fk_ie_notifications_notification_types_notification_type_id");
 
                     b.HasOne("Explore.Domain.Actor", "RecipientContextActor")
                         .WithMany()
                         .HasForeignKey("RecipientContextActorId")
                         .OnDelete(DeleteBehavior.SetNull)
-                        .HasConstraintName("fk_islamu_event_notifications_islamu_event_actors_recipient_context_actor_id");
+                        .HasConstraintName("fk_ie_notifications_ie_actors_recipient_context_actor_id");
 
                     b.HasOne("Explore.Domain.Actor", "SourceActor")
                         .WithMany()
                         .HasForeignKey("SourceActorId")
                         .OnDelete(DeleteBehavior.SetNull)
-                        .HasConstraintName("fk_islamu_event_notifications_islamu_event_actors_source_actor_id");
+                        .HasConstraintName("fk_ie_notifications_ie_actors_source_actor_id");
 
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_notifications_tenants_tenant_id");
+                        .HasConstraintName("fk_ie_notifications_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.User", "User")
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_notifications_users_user_id");
+                        .HasConstraintName("fk_ie_notifications_users_user_id");
 
                     b.HasOne("Explore.Domain.NotificationIntent", "NotificationIntent")
                         .WithMany()
@@ -29694,46 +30353,46 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasForeignKey("CategoryId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_notification_channel_preferences_notification_preference_categories_category_id");
+                        .HasConstraintName("fk_ie_notification_channel_preferences_notification_preference_categories_category_id");
 
                     b.HasOne("Explore.Domain.NotificationPreferenceChannel", "Channel")
                         .WithMany()
                         .HasForeignKey("ChannelId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_notification_channel_preferences_notification_preference_channels_channel_id");
+                        .HasConstraintName("fk_ie_notification_channel_preferences_notification_preference_channels_channel_id");
 
                     b.HasOne("Explore.Domain.Group", "Group")
                         .WithMany()
                         .HasForeignKey("GroupId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_islamu_event_notification_channel_preferences_islamu_event_groups_group_id");
+                        .HasConstraintName("fk_ie_notification_channel_preferences_ie_groups_group_id");
 
                     b.HasOne("Explore.Domain.Organization", "Organization")
                         .WithMany()
                         .HasForeignKey("OrganizationId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_islamu_event_notification_channel_preferences_organizations_organization_id");
+                        .HasConstraintName("fk_ie_notification_channel_preferences_organizations_organization_id");
 
                     b.HasOne("Explore.Domain.SettingScopeLookup", "Scope")
                         .WithMany()
                         .HasForeignKey("ScopeId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_notification_channel_preferences_setting_scopes_scope_id");
+                        .HasConstraintName("fk_ie_notification_channel_preferences_setting_scopes_scope_id");
 
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_notification_channel_preferences_tenants_tenant_id");
+                        .HasConstraintName("fk_ie_notification_channel_preferences_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.User", "User")
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_islamu_event_notification_channel_preferences_users_user_id");
+                        .HasConstraintName("fk_ie_notification_channel_preferences_users_user_id");
 
                     b.Navigation("Category");
 
@@ -29757,28 +30416,28 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasForeignKey("ChannelId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_notification_deliveries_notification_preference_channels_channel_id");
+                        .HasConstraintName("fk_ie_notification_deliveries_notification_preference_channels_channel_id");
 
                     b.HasOne("Explore.Domain.NotificationDeliveryPolicy", "DeliveryPolicy")
                         .WithMany()
                         .HasForeignKey("DeliveryPolicyId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_notification_deliveries_notification_delivery_policies_delivery_policy_id");
+                        .HasConstraintName("fk_ie_notification_deliveries_notification_delivery_policies_delivery_policy_id");
 
                     b.HasOne("Explore.Domain.NotificationDeliveryStatus", "Status")
                         .WithMany()
                         .HasForeignKey("StatusId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_notification_deliveries_notification_delivery_statuses_status_id");
+                        .HasConstraintName("fk_ie_notification_deliveries_notification_delivery_statuses_status_id");
 
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_notification_deliveries_tenants_tenant_id");
+                        .HasConstraintName("fk_ie_notification_deliveries_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.Notification", "Notification")
                         .WithMany()
@@ -29793,14 +30452,14 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_notification_deliveries_notification_intents_tenant_id_notification_intent_id");
+                        .HasConstraintName("fk_ie_notification_deliveries_notification_intents_tenant_id_notification_intent_id");
 
                     b.HasOne("Explore.Domain.EmailDispatchOutbox", "EmailDispatchOutbox")
                         .WithMany()
                         .HasForeignKey("TenantId", "EmailDispatchOutboxId", "NotificationIntentId", "RecipientAddressSource")
                         .HasPrincipalKey("TenantId", "Id", "NotificationIntentId", "RecipientAddressSource")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_islamu_event_notification_deliveries_islamu_event_email_dispatch_outbox_tenant_id_email_dispatch_outbox_id_notification_intent_id_recipient_address_source");
+                        .HasConstraintName("fk_ie_notification_deliveries_ie_email_dispatch_outbox_tenant_id_email_dispatch_outbox_id_notification_intent_id_recipient_address_source");
 
                     b.Navigation("Channel");
 
@@ -29823,47 +30482,47 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .WithMany()
                         .HasForeignKey("AccountAuthorityKindId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_islamu_event_notification_external_delegations_islamu_event_account_authority_kinds_account_authority_kind_id");
+                        .HasConstraintName("fk_ie_notification_external_delegations_ie_account_authority_kinds_account_authority_kind_id");
 
                     b.HasOne("Explore.Domain.ExternalWorkflowProviderKindLookup", "ProviderKind")
                         .WithMany()
                         .HasForeignKey("ProviderKindId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_notification_external_delegations_islamu_event_external_workflow_provider_kinds_provider_kind_id");
+                        .HasConstraintName("fk_ie_notification_external_delegations_ie_external_workflow_provider_kinds_provider_kind_id");
 
                     b.HasOne("Explore.Domain.NotificationRecipientKind", "RecipientKind")
                         .WithMany()
                         .HasForeignKey("RecipientKindId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_notification_external_delegations_notification_recipient_kinds_recipient_kind_id");
+                        .HasConstraintName("fk_ie_notification_external_delegations_notification_recipient_kinds_recipient_kind_id");
 
                     b.HasOne("Explore.Domain.EventReportDecision", "ReportDecision")
                         .WithMany()
                         .HasForeignKey("ReportDecisionId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_islamu_event_notification_external_delegations_islamu_event_event_report_decisions_report_decision_id");
+                        .HasConstraintName("fk_ie_notification_external_delegations_ie_event_report_decisions_report_decision_id");
 
                     b.HasOne("Explore.Domain.EventReport", "Report")
                         .WithMany()
                         .HasForeignKey("ReportId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_islamu_event_notification_external_delegations_islamu_event_event_reports_report_id");
+                        .HasConstraintName("fk_ie_notification_external_delegations_ie_event_reports_report_id");
 
                     b.HasOne("Explore.Domain.NotificationExternalDelegationStatus", "Status")
                         .WithMany()
                         .HasForeignKey("StatusId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_notification_external_delegations_notification_external_delegation_statuses_status_id");
+                        .HasConstraintName("fk_ie_notification_external_delegations_notification_external_delegation_statuses_status_id");
 
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_notification_external_delegations_tenants_tenant_id");
+                        .HasConstraintName("fk_ie_notification_external_delegations_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.NotificationIntent", "NotificationIntent")
                         .WithMany("ExternalDelegations")
@@ -29946,21 +30605,21 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasForeignKey("NotificationEntityTypeId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_notification_fanout_runs_islamu_event_notification_entity_types_notification_entity_type_id");
+                        .HasConstraintName("fk_ie_notification_fanout_runs_ie_notification_entity_types_notification_entity_type_id");
 
                     b.HasOne("Explore.Domain.Actor", "SourceActor")
                         .WithMany()
                         .HasForeignKey("SourceActorId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_notification_fanout_runs_islamu_event_actors_source_actor_id");
+                        .HasConstraintName("fk_ie_notification_fanout_runs_ie_actors_source_actor_id");
 
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_notification_fanout_runs_tenants_tenant_id");
+                        .HasConstraintName("fk_ie_notification_fanout_runs_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.NotificationFanoutOccurrence", "FanoutOccurrence")
                         .WithMany()
@@ -29985,53 +30644,53 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasForeignKey("CategoryId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_notification_intents_islamu_event_notification_categories_category_id");
+                        .HasConstraintName("fk_ie_notification_intents_ie_notification_categories_category_id");
 
                     b.HasOne("Explore.Domain.Event", "Event")
                         .WithMany()
                         .HasForeignKey("EventId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_islamu_event_notification_intents_islamu_event_events_event_id");
+                        .HasConstraintName("fk_ie_notification_intents_ie_events_event_id");
 
                     b.HasOne("Explore.Domain.NotificationOwnershipType", "OwnershipType")
                         .WithMany()
                         .HasForeignKey("OwnershipTypeId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_notification_intents_notification_ownership_types_ownership_type_id");
+                        .HasConstraintName("fk_ie_notification_intents_notification_ownership_types_ownership_type_id");
 
                     b.HasOne("Explore.Domain.NotificationRecipientKind", "RecipientKind")
                         .WithMany()
                         .HasForeignKey("RecipientKindId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_notification_intents_notification_recipient_kinds_recipient_kind_id");
+                        .HasConstraintName("fk_ie_notification_intents_notification_recipient_kinds_recipient_kind_id");
 
                     b.HasOne("Explore.Domain.EventReportDecision", "ReportDecision")
                         .WithMany()
                         .HasForeignKey("ReportDecisionId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_islamu_event_notification_intents_islamu_event_event_report_decisions_report_decision_id");
+                        .HasConstraintName("fk_ie_notification_intents_ie_event_report_decisions_report_decision_id");
 
                     b.HasOne("Explore.Domain.EventReport", "Report")
                         .WithMany()
                         .HasForeignKey("ReportId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_islamu_event_notification_intents_islamu_event_event_reports_report_id");
+                        .HasConstraintName("fk_ie_notification_intents_ie_event_reports_report_id");
 
                     b.HasOne("Explore.Domain.NotificationIntentStatus", "Status")
                         .WithMany()
                         .HasForeignKey("StatusId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_notification_intents_notification_intent_statuses_status_id");
+                        .HasConstraintName("fk_ie_notification_intents_notification_intent_statuses_status_id");
 
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_notification_intents_tenants_tenant_id");
+                        .HasConstraintName("fk_ie_notification_intents_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.NotificationFanoutOccurrence", "FanoutOccurrence")
                         .WithMany()
@@ -30046,7 +30705,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasPrincipalKey("TenantId", "UserId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_notification_intents_tenant_users_tenant_id_recipient_user_id");
+                        .HasConstraintName("fk_ie_notification_intents_tenant_users_tenant_id_recipient_user_id");
 
                     b.Navigation("Category");
 
@@ -30075,33 +30734,33 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .WithMany()
                         .HasForeignKey("GroupId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_islamu_event_notification_preference_profiles_islamu_event_groups_group_id");
+                        .HasConstraintName("fk_ie_notification_preference_profiles_ie_groups_group_id");
 
                     b.HasOne("Explore.Domain.Organization", "Organization")
                         .WithMany()
                         .HasForeignKey("OrganizationId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_islamu_event_notification_preference_profiles_organizations_organization_id");
+                        .HasConstraintName("fk_ie_notification_preference_profiles_organizations_organization_id");
 
                     b.HasOne("Explore.Domain.SettingScopeLookup", "Scope")
                         .WithMany()
                         .HasForeignKey("ScopeId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_notification_preference_profiles_setting_scopes_scope_id");
+                        .HasConstraintName("fk_ie_notification_preference_profiles_setting_scopes_scope_id");
 
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_notification_preference_profiles_tenants_tenant_id");
+                        .HasConstraintName("fk_ie_notification_preference_profiles_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.User", "User")
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_islamu_event_notification_preference_profiles_users_user_id");
+                        .HasConstraintName("fk_ie_notification_preference_profiles_users_user_id");
 
                     b.Navigation("Group");
 
@@ -30120,28 +30779,28 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .WithMany()
                         .HasForeignKey("OrganizationPositionId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_islamu_event_organization_members_organization_positions_organization_position_id");
+                        .HasConstraintName("fk_ie_organization_members_organization_positions_organization_position_id");
 
                     b.HasOne("Explore.Domain.Role", "Role")
                         .WithMany()
                         .HasForeignKey("RoleId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_organization_members_roles_role_id");
+                        .HasConstraintName("fk_ie_organization_members_roles_role_id");
 
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_organization_members_tenants_tenant_id");
+                        .HasConstraintName("fk_ie_organization_members_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.User", "User")
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_organization_members_users_user_id");
+                        .HasConstraintName("fk_ie_organization_members_users_user_id");
 
                     b.HasOne("Explore.Domain.OrganizationTenant", "OrganizationTenant")
                         .WithMany("Members")
@@ -30149,7 +30808,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_organization_members_organization_tenants_tenant_id_organization_tenant_id");
+                        .HasConstraintName("fk_ie_organization_members_organization_tenants_tenant_id_organization_tenant_id");
 
                     b.Navigation("OrganizationPosition");
 
@@ -30169,7 +30828,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasForeignKey("Explore.Domain.OrganizationPii", "OrganizationId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_organization_pii_islamu_event_organizations_organization_id");
+                        .HasConstraintName("fk_ie_organization_pii_ie_organizations_organization_id");
 
                     b.Navigation("Organization");
                 });
@@ -30181,27 +30840,27 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasForeignKey("EventId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_organization_reviews_islamu_event_events_event_id");
+                        .HasConstraintName("fk_ie_organization_reviews_ie_events_event_id");
 
                     b.HasOne("Explore.Domain.Organization", "Organization")
                         .WithMany()
                         .HasForeignKey("OrganizationId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_organization_reviews_islamu_event_organizations_organization_id");
+                        .HasConstraintName("fk_ie_organization_reviews_ie_organizations_organization_id");
 
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_organization_reviews_tenants_tenant_id");
+                        .HasConstraintName("fk_ie_organization_reviews_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.User", "User")
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_islamu_event_organization_reviews_users_user_id");
+                        .HasConstraintName("fk_ie_organization_reviews_users_user_id");
 
                     b.Navigation("Event");
 
@@ -30219,7 +30878,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_organization_setting_overrides_tenants_tenant_id");
+                        .HasConstraintName("fk_ie_organization_setting_overrides_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.OrganizationTenant", "OrganizationTenant")
                         .WithMany("Settings")
@@ -30227,7 +30886,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_organization_setting_overrides_organization_tenants_tenant_id_organization_tenant_id");
+                        .HasConstraintName("fk_ie_organization_setting_overrides_organization_tenants_tenant_id_organization_tenant_id");
 
                     b.Navigation("OrganizationTenant");
 
@@ -30241,39 +30900,39 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasForeignKey("ApprovalStatusId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_organization_tenants_islamu_event_approval_statuses_approval_status_id");
+                        .HasConstraintName("fk_ie_organization_tenants_ie_approval_statuses_approval_status_id");
 
                     b.HasOne("Explore.Domain.StorageObject", "BackgroundImage")
                         .WithMany()
                         .HasForeignKey("BackgroundImageId")
                         .OnDelete(DeleteBehavior.SetNull)
-                        .HasConstraintName("fk_islamu_event_organization_tenants_storage_objects_background_image_id");
+                        .HasConstraintName("fk_ie_organization_tenants_storage_objects_background_image_id");
 
                     b.HasOne("Explore.Domain.StorageObject", "BannerPicture")
                         .WithMany()
                         .HasForeignKey("BannerPictureId")
                         .OnDelete(DeleteBehavior.SetNull)
-                        .HasConstraintName("fk_islamu_event_organization_tenants_storage_objects_banner_picture_id");
+                        .HasConstraintName("fk_ie_organization_tenants_storage_objects_banner_picture_id");
 
                     b.HasOne("Explore.Domain.Organization", "Organization")
                         .WithMany("TenantParticipations")
                         .HasForeignKey("OrganizationId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_organization_tenants_islamu_event_organizations_organization_id");
+                        .HasConstraintName("fk_ie_organization_tenants_ie_organizations_organization_id");
 
                     b.HasOne("Explore.Domain.StorageObject", "ProfilePicture")
                         .WithMany()
                         .HasForeignKey("ProfilePictureId")
                         .OnDelete(DeleteBehavior.SetNull)
-                        .HasConstraintName("fk_islamu_event_organization_tenants_storage_objects_profile_picture_id");
+                        .HasConstraintName("fk_ie_organization_tenants_storage_objects_profile_picture_id");
 
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_organization_tenants_tenants_tenant_id");
+                        .HasConstraintName("fk_ie_organization_tenants_tenants_tenant_id");
 
                     b.Navigation("ApprovalStatus");
 
@@ -30295,20 +30954,20 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasForeignKey("ReviewStatusId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_organization_tenant_evidence_islamu_event_approval_statuses_review_status_id");
+                        .HasConstraintName("fk_ie_organization_tenant_evidence_ie_approval_statuses_review_status_id");
 
                     b.HasOne("Explore.Domain.User", "ReviewedByUser")
                         .WithMany()
                         .HasForeignKey("ReviewedByUserId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_islamu_event_organization_tenant_evidence_users_reviewed_by_user_id");
+                        .HasConstraintName("fk_ie_organization_tenant_evidence_users_reviewed_by_user_id");
 
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_organization_tenant_evidence_tenants_tenant_id");
+                        .HasConstraintName("fk_ie_organization_tenant_evidence_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.StorageObject", "DocumentStorageObject")
                         .WithMany()
@@ -30316,7 +30975,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_organization_tenant_evidence_storage_objects_tenant_id_document_storage_object_id");
+                        .HasConstraintName("fk_ie_organization_tenant_evidence_storage_objects_tenant_id_document_storage_object_id");
 
                     b.HasOne("Explore.Domain.OrganizationTenant", "OrganizationTenant")
                         .WithMany("LegitimacyEvidence")
@@ -30324,7 +30983,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_organization_tenant_evidence_islamu_event_organization_tenants_tenant_id_organization_tenant_id");
+                        .HasConstraintName("fk_ie_organization_tenant_evidence_ie_organization_tenants_tenant_id_organization_tenant_id");
 
                     b.Navigation("DocumentStorageObject");
 
@@ -30345,7 +31004,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_participation_requirement_attachments_islamu_event_event_participation_configurations_tenant_id_participation_configuration_id");
+                        .HasConstraintName("fk_ie_participation_requirement_attachments_ie_event_participation_configurations_tenant_id_participation_configuration_id");
 
                     b.HasOne("Explore.Domain.RegistrationWorkflow", null)
                         .WithMany()
@@ -30353,14 +31012,14 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasPrincipalKey("TenantId", "EventId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_participation_requirement_attachments_registration_workflows_tenant_id_event_id_registration_workflow_id");
+                        .HasConstraintName("fk_ie_participation_requirement_attachments_registration_workflows_tenant_id_event_id_registration_workflow_id");
 
                     b.HasOne("Explore.Domain.RegistrationFormVersion", "RegistrationFormVersion")
                         .WithMany()
                         .HasForeignKey("TenantId", "EventId", "RegistrationFormId", "RegistrationFormVersionId")
                         .HasPrincipalKey("TenantId", "EventId", "RegistrationFormId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_islamu_event_participation_requirement_attachments_registration_form_versions_tenant_id_event_id_registration_form_id_registration_form_version_id");
+                        .HasConstraintName("fk_ie_participation_requirement_attachments_registration_form_versions_tenant_id_event_id_registration_form_id_registration_form_version_id");
 
                     b.HasOne("Explore.Domain.RegistrationRequirement", "RegistrationRequirement")
                         .WithMany()
@@ -30368,7 +31027,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasPrincipalKey("TenantId", "EventId", "RegistrationWorkflowId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_participation_requirement_attachments_registration_requirements_tenant_id_event_id_registration_workflow_id_registration_requirement_id");
+                        .HasConstraintName("fk_ie_participation_requirement_attachments_registration_requirements_tenant_id_event_id_registration_workflow_id_registration_requirement_id");
 
                     b.Navigation("RegistrationFormVersion");
 
@@ -30382,7 +31041,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasForeignKey("RoleScopeId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_permissions_role_scopes_role_scope_id");
+                        .HasConstraintName("fk_ie_permissions_role_scopes_role_scope_id");
 
                     b.Navigation("RoleScope");
                 });
@@ -30393,7 +31052,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .WithMany("Options")
                         .HasForeignKey("PlatformContributionSettingId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_islamu_event_platform_contribution_options_platform_contribution_settings_platform_contribution_setting_id");
+                        .HasConstraintName("fk_ie_platform_contribution_options_platform_contribution_settings_platform_contribution_setting_id");
                 });
 
             modelBuilder.Entity("Explore.Domain.PlatformFeeFixedCharge", b =>
@@ -30402,7 +31061,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .WithMany("FixedCharges")
                         .HasForeignKey("PlatformFeePolicyId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_islamu_event_platform_fee_fixed_charges_platform_fee_policies_platform_fee_policy_id");
+                        .HasConstraintName("fk_ie_platform_fee_fixed_charges_platform_fee_policies_platform_fee_policy_id");
                 });
 
             modelBuilder.Entity("Explore.Domain.PlatformUserRole", b =>
@@ -30412,14 +31071,14 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasForeignKey("RoleId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_platform_user_roles_roles_role_id");
+                        .HasConstraintName("fk_ie_platform_user_roles_roles_role_id");
 
                     b.HasOne("Explore.Domain.User", "User")
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_platform_user_roles_users_user_id");
+                        .HasConstraintName("fk_ie_platform_user_roles_users_user_id");
 
                     b.Navigation("Role");
 
@@ -30435,13 +31094,13 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                                 .HasColumnName("id");
 
                             b1.HasKey("InstancePolicySetId")
-                                .HasName("pk_islamu_event_instance_policy_sets");
+                                .HasName("pk_ie_instance_policy_sets");
 
-                            b1.ToTable("islamu_event_instance_policy_sets");
+                            b1.ToTable("ie_instance_policy_sets");
 
                             b1.WithOwner()
                                 .HasForeignKey("InstancePolicySetId")
-                                .HasConstraintName("fk_islamu_event_instance_policy_sets_instance_policy_sets_id");
+                                .HasConstraintName("fk_ie_instance_policy_sets_instance_policy_sets_id");
 
                             b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "AllowTenantCustomDomains", b2 =>
                                 {
@@ -30459,7 +31118,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                                     b2.HasKey("DomainPolicyInstancePolicySetId");
 
-                                    b2.ToTable("islamu_event_instance_policy_sets");
+                                    b2.ToTable("ie_instance_policy_sets");
 
                                     b2.WithOwner()
                                         .HasForeignKey("DomainPolicyInstancePolicySetId")
@@ -30482,7 +31141,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                                     b2.HasKey("DomainPolicyInstancePolicySetId");
 
-                                    b2.ToTable("islamu_event_instance_policy_sets");
+                                    b2.ToTable("ie_instance_policy_sets");
 
                                     b2.WithOwner()
                                         .HasForeignKey("DomainPolicyInstancePolicySetId")
@@ -30505,7 +31164,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                                     b2.HasKey("DomainPolicyInstancePolicySetId");
 
-                                    b2.ToTable("islamu_event_instance_policy_sets");
+                                    b2.ToTable("ie_instance_policy_sets");
 
                                     b2.WithOwner()
                                         .HasForeignKey("DomainPolicyInstancePolicySetId")
@@ -30528,7 +31187,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                                     b2.HasKey("DomainPolicyInstancePolicySetId");
 
-                                    b2.ToTable("islamu_event_instance_policy_sets");
+                                    b2.ToTable("ie_instance_policy_sets");
 
                                     b2.WithOwner()
                                         .HasForeignKey("DomainPolicyInstancePolicySetId")
@@ -30556,7 +31215,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                             b1.HasKey("InstancePolicySetId");
 
-                            b1.ToTable("islamu_event_instance_policy_sets");
+                            b1.ToTable("ie_instance_policy_sets");
 
                             b1.WithOwner()
                                 .HasForeignKey("InstancePolicySetId")
@@ -30578,7 +31237,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                                     b2.HasKey("BrandingPolicyInstancePolicySetId");
 
-                                    b2.ToTable("islamu_event_instance_policy_sets");
+                                    b2.ToTable("ie_instance_policy_sets");
 
                                     b2.WithOwner()
                                         .HasForeignKey("BrandingPolicyInstancePolicySetId")
@@ -30601,7 +31260,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                                     b2.HasKey("BrandingPolicyInstancePolicySetId");
 
-                                    b2.ToTable("islamu_event_instance_policy_sets");
+                                    b2.ToTable("ie_instance_policy_sets");
 
                                     b2.WithOwner()
                                         .HasForeignKey("BrandingPolicyInstancePolicySetId")
@@ -30624,7 +31283,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                                     b2.HasKey("BrandingPolicyInstancePolicySetId");
 
-                                    b2.ToTable("islamu_event_instance_policy_sets");
+                                    b2.ToTable("ie_instance_policy_sets");
 
                                     b2.WithOwner()
                                         .HasForeignKey("BrandingPolicyInstancePolicySetId")
@@ -30647,7 +31306,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                                     b2.HasKey("BrandingPolicyInstancePolicySetId");
 
-                                    b2.ToTable("islamu_event_instance_policy_sets");
+                                    b2.ToTable("ie_instance_policy_sets");
 
                                     b2.WithOwner()
                                         .HasForeignKey("BrandingPolicyInstancePolicySetId")
@@ -30675,7 +31334,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                             b1.HasKey("InstancePolicySetId");
 
-                            b1.ToTable("islamu_event_instance_policy_sets");
+                            b1.ToTable("ie_instance_policy_sets");
 
                             b1.WithOwner()
                                 .HasForeignKey("InstancePolicySetId")
@@ -30697,7 +31356,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                                     b2.HasKey("EventPolicyInstancePolicySetId");
 
-                                    b2.ToTable("islamu_event_instance_policy_sets");
+                                    b2.ToTable("ie_instance_policy_sets");
 
                                     b2.WithOwner()
                                         .HasForeignKey("EventPolicyInstancePolicySetId")
@@ -30720,7 +31379,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                                     b2.HasKey("EventPolicyInstancePolicySetId");
 
-                                    b2.ToTable("islamu_event_instance_policy_sets");
+                                    b2.ToTable("ie_instance_policy_sets");
 
                                     b2.WithOwner()
                                         .HasForeignKey("EventPolicyInstancePolicySetId")
@@ -30743,7 +31402,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                                     b2.HasKey("EventPolicyInstancePolicySetId");
 
-                                    b2.ToTable("islamu_event_instance_policy_sets");
+                                    b2.ToTable("ie_instance_policy_sets");
 
                                     b2.WithOwner()
                                         .HasForeignKey("EventPolicyInstancePolicySetId")
@@ -30766,7 +31425,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                                     b2.HasKey("EventPolicyInstancePolicySetId");
 
-                                    b2.ToTable("islamu_event_instance_policy_sets");
+                                    b2.ToTable("ie_instance_policy_sets");
 
                                     b2.WithOwner()
                                         .HasForeignKey("EventPolicyInstancePolicySetId")
@@ -30794,7 +31453,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                             b1.HasKey("InstancePolicySetId");
 
-                            b1.ToTable("islamu_event_instance_policy_sets");
+                            b1.ToTable("ie_instance_policy_sets");
 
                             b1.WithOwner()
                                 .HasForeignKey("InstancePolicySetId")
@@ -30816,7 +31475,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                                     b2.HasKey("OrganizationPolicyInstancePolicySetId");
 
-                                    b2.ToTable("islamu_event_instance_policy_sets");
+                                    b2.ToTable("ie_instance_policy_sets");
 
                                     b2.WithOwner()
                                         .HasForeignKey("OrganizationPolicyInstancePolicySetId")
@@ -30839,7 +31498,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                                     b2.HasKey("OrganizationPolicyInstancePolicySetId");
 
-                                    b2.ToTable("islamu_event_instance_policy_sets");
+                                    b2.ToTable("ie_instance_policy_sets");
 
                                     b2.WithOwner()
                                         .HasForeignKey("OrganizationPolicyInstancePolicySetId")
@@ -30862,7 +31521,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                                     b2.HasKey("OrganizationPolicyInstancePolicySetId");
 
-                                    b2.ToTable("islamu_event_instance_policy_sets");
+                                    b2.ToTable("ie_instance_policy_sets");
 
                                     b2.WithOwner()
                                         .HasForeignKey("OrganizationPolicyInstancePolicySetId")
@@ -30885,7 +31544,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                                     b2.HasKey("OrganizationPolicyInstancePolicySetId");
 
-                                    b2.ToTable("islamu_event_instance_policy_sets");
+                                    b2.ToTable("ie_instance_policy_sets");
 
                                     b2.WithOwner()
                                         .HasForeignKey("OrganizationPolicyInstancePolicySetId")
@@ -30913,7 +31572,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                             b1.HasKey("InstancePolicySetId");
 
-                            b1.ToTable("islamu_event_instance_policy_sets");
+                            b1.ToTable("ie_instance_policy_sets");
 
                             b1.WithOwner()
                                 .HasForeignKey("InstancePolicySetId")
@@ -30935,7 +31594,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                                     b2.HasKey("RenderPolicyInstancePolicySetId");
 
-                                    b2.ToTable("islamu_event_instance_policy_sets");
+                                    b2.ToTable("ie_instance_policy_sets");
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyInstancePolicySetId")
@@ -30958,7 +31617,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                                     b2.HasKey("RenderPolicyInstancePolicySetId");
 
-                                    b2.ToTable("islamu_event_instance_policy_sets");
+                                    b2.ToTable("ie_instance_policy_sets");
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyInstancePolicySetId")
@@ -30981,7 +31640,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                                     b2.HasKey("RenderPolicyInstancePolicySetId");
 
-                                    b2.ToTable("islamu_event_instance_policy_sets");
+                                    b2.ToTable("ie_instance_policy_sets");
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyInstancePolicySetId")
@@ -30996,15 +31655,15 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                                     b2.Property<bool>("LocalValue")
                                         .HasColumnType("INTEGER")
-                                        .HasColumnName("render_policy_disallow_interactive_server_on_onboarding_local_value");
+                                        .HasColumnName("render_policy_disallow_interactive_onboarding_local_value");
 
                                     b2.Property<int>("OverrideMode")
                                         .HasColumnType("INTEGER")
-                                        .HasColumnName("render_policy_disallow_interactive_server_on_onboarding_override_mode");
+                                        .HasColumnName("render_policy_disallow_interactive_onboarding_override_mode");
 
                                     b2.HasKey("RenderPolicyInstancePolicySetId");
 
-                                    b2.ToTable("islamu_event_instance_policy_sets");
+                                    b2.ToTable("ie_instance_policy_sets");
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyInstancePolicySetId")
@@ -31027,7 +31686,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                                     b2.HasKey("RenderPolicyInstancePolicySetId");
 
-                                    b2.ToTable("islamu_event_instance_policy_sets");
+                                    b2.ToTable("ie_instance_policy_sets");
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyInstancePolicySetId")
@@ -31050,7 +31709,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                                     b2.HasKey("RenderPolicyInstancePolicySetId");
 
-                                    b2.ToTable("islamu_event_instance_policy_sets");
+                                    b2.ToTable("ie_instance_policy_sets");
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyInstancePolicySetId")
@@ -31073,7 +31732,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                                     b2.HasKey("RenderPolicyInstancePolicySetId");
 
-                                    b2.ToTable("islamu_event_instance_policy_sets");
+                                    b2.ToTable("ie_instance_policy_sets");
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyInstancePolicySetId")
@@ -31096,7 +31755,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                                     b2.HasKey("RenderPolicyInstancePolicySetId");
 
-                                    b2.ToTable("islamu_event_instance_policy_sets");
+                                    b2.ToTable("ie_instance_policy_sets");
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyInstancePolicySetId")
@@ -31119,7 +31778,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                                     b2.HasKey("RenderPolicyInstancePolicySetId");
 
-                                    b2.ToTable("islamu_event_instance_policy_sets");
+                                    b2.ToTable("ie_instance_policy_sets");
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyInstancePolicySetId")
@@ -31142,7 +31801,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                                     b2.HasKey("RenderPolicyInstancePolicySetId");
 
-                                    b2.ToTable("islamu_event_instance_policy_sets");
+                                    b2.ToTable("ie_instance_policy_sets");
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyInstancePolicySetId")
@@ -31165,7 +31824,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                                     b2.HasKey("RenderPolicyInstancePolicySetId");
 
-                                    b2.ToTable("islamu_event_instance_policy_sets");
+                                    b2.ToTable("ie_instance_policy_sets");
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyInstancePolicySetId")
@@ -31188,7 +31847,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                                     b2.HasKey("RenderPolicyInstancePolicySetId");
 
-                                    b2.ToTable("islamu_event_instance_policy_sets");
+                                    b2.ToTable("ie_instance_policy_sets");
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyInstancePolicySetId")
@@ -31211,7 +31870,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                                     b2.HasKey("RenderPolicyInstancePolicySetId");
 
-                                    b2.ToTable("islamu_event_instance_policy_sets");
+                                    b2.ToTable("ie_instance_policy_sets");
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyInstancePolicySetId")
@@ -31234,7 +31893,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                                     b2.HasKey("RenderPolicyInstancePolicySetId");
 
-                                    b2.ToTable("islamu_event_instance_policy_sets");
+                                    b2.ToTable("ie_instance_policy_sets");
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyInstancePolicySetId")
@@ -31257,7 +31916,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                                     b2.HasKey("RenderPolicyInstancePolicySetId");
 
-                                    b2.ToTable("islamu_event_instance_policy_sets");
+                                    b2.ToTable("ie_instance_policy_sets");
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyInstancePolicySetId")
@@ -31280,7 +31939,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                                     b2.HasKey("RenderPolicyInstancePolicySetId");
 
-                                    b2.ToTable("islamu_event_instance_policy_sets");
+                                    b2.ToTable("ie_instance_policy_sets");
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyInstancePolicySetId")
@@ -31303,7 +31962,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                                     b2.HasKey("RenderPolicyInstancePolicySetId");
 
-                                    b2.ToTable("islamu_event_instance_policy_sets");
+                                    b2.ToTable("ie_instance_policy_sets");
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyInstancePolicySetId")
@@ -31326,7 +31985,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                                     b2.HasKey("RenderPolicyInstancePolicySetId");
 
-                                    b2.ToTable("islamu_event_instance_policy_sets");
+                                    b2.ToTable("ie_instance_policy_sets");
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyInstancePolicySetId")
@@ -31396,7 +32055,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                             b1.HasKey("InstancePolicySetId");
 
-                            b1.ToTable("islamu_event_instance_policy_sets");
+                            b1.ToTable("ie_instance_policy_sets");
 
                             b1.WithOwner()
                                 .HasForeignKey("InstancePolicySetId")
@@ -31418,7 +32077,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                                     b2.HasKey("ModulePolicyInstancePolicySetId");
 
-                                    b2.ToTable("islamu_event_instance_policy_sets");
+                                    b2.ToTable("ie_instance_policy_sets");
 
                                     b2.WithOwner()
                                         .HasForeignKey("ModulePolicyInstancePolicySetId")
@@ -31441,7 +32100,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                                     b2.HasKey("ModulePolicyInstancePolicySetId");
 
-                                    b2.ToTable("islamu_event_instance_policy_sets");
+                                    b2.ToTable("ie_instance_policy_sets");
 
                                     b2.WithOwner()
                                         .HasForeignKey("ModulePolicyInstancePolicySetId")
@@ -31463,7 +32122,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                             b1.HasKey("InstancePolicySetId");
 
-                            b1.ToTable("islamu_event_instance_policy_sets");
+                            b1.ToTable("ie_instance_policy_sets");
 
                             b1.WithOwner()
                                 .HasForeignKey("InstancePolicySetId")
@@ -31485,7 +32144,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                                     b2.HasKey("TenantDelegationPolicyInstancePolicySetId");
 
-                                    b2.ToTable("islamu_event_instance_policy_sets");
+                                    b2.ToTable("ie_instance_policy_sets");
 
                                     b2.WithOwner()
                                         .HasForeignKey("TenantDelegationPolicyInstancePolicySetId")
@@ -31508,7 +32167,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                                     b2.HasKey("TenantDelegationPolicyInstancePolicySetId");
 
-                                    b2.ToTable("islamu_event_instance_policy_sets");
+                                    b2.ToTable("ie_instance_policy_sets");
 
                                     b2.WithOwner()
                                         .HasForeignKey("TenantDelegationPolicyInstancePolicySetId")
@@ -31531,7 +32190,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                                     b2.HasKey("TenantDelegationPolicyInstancePolicySetId");
 
-                                    b2.ToTable("islamu_event_instance_policy_sets");
+                                    b2.ToTable("ie_instance_policy_sets");
 
                                     b2.WithOwner()
                                         .HasForeignKey("TenantDelegationPolicyInstancePolicySetId")
@@ -31554,7 +32213,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                                     b2.HasKey("TenantDelegationPolicyInstancePolicySetId");
 
-                                    b2.ToTable("islamu_event_instance_policy_sets");
+                                    b2.ToTable("ie_instance_policy_sets");
 
                                     b2.WithOwner()
                                         .HasForeignKey("TenantDelegationPolicyInstancePolicySetId")
@@ -31577,7 +32236,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                                     b2.HasKey("TenantDelegationPolicyInstancePolicySetId");
 
-                                    b2.ToTable("islamu_event_instance_policy_sets");
+                                    b2.ToTable("ie_instance_policy_sets");
 
                                     b2.WithOwner()
                                         .HasForeignKey("TenantDelegationPolicyInstancePolicySetId")
@@ -31600,7 +32259,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                                     b2.HasKey("TenantDelegationPolicyInstancePolicySetId");
 
-                                    b2.ToTable("islamu_event_instance_policy_sets");
+                                    b2.ToTable("ie_instance_policy_sets");
 
                                     b2.WithOwner()
                                         .HasForeignKey("TenantDelegationPolicyInstancePolicySetId")
@@ -31623,7 +32282,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                                     b2.HasKey("TenantDelegationPolicyInstancePolicySetId");
 
-                                    b2.ToTable("islamu_event_instance_policy_sets");
+                                    b2.ToTable("ie_instance_policy_sets");
 
                                     b2.WithOwner()
                                         .HasForeignKey("TenantDelegationPolicyInstancePolicySetId")
@@ -31684,7 +32343,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                             b1.HasKey("OrganizationPolicySetId");
 
-                            b1.ToTable("islamu_event_organization_policy_sets");
+                            b1.ToTable("ie_organization_policy_sets");
 
                             b1.WithOwner()
                                 .HasForeignKey("OrganizationPolicySetId")
@@ -31706,7 +32365,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                                     b2.HasKey("EventPolicyOrganizationPolicySetId");
 
-                                    b2.ToTable("islamu_event_organization_policy_sets");
+                                    b2.ToTable("ie_organization_policy_sets");
 
                                     b2.WithOwner()
                                         .HasForeignKey("EventPolicyOrganizationPolicySetId")
@@ -31729,7 +32388,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                                     b2.HasKey("EventPolicyOrganizationPolicySetId");
 
-                                    b2.ToTable("islamu_event_organization_policy_sets");
+                                    b2.ToTable("ie_organization_policy_sets");
 
                                     b2.WithOwner()
                                         .HasForeignKey("EventPolicyOrganizationPolicySetId")
@@ -31752,7 +32411,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                                     b2.HasKey("EventPolicyOrganizationPolicySetId");
 
-                                    b2.ToTable("islamu_event_organization_policy_sets");
+                                    b2.ToTable("ie_organization_policy_sets");
 
                                     b2.WithOwner()
                                         .HasForeignKey("EventPolicyOrganizationPolicySetId")
@@ -31775,7 +32434,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                                     b2.HasKey("EventPolicyOrganizationPolicySetId");
 
-                                    b2.ToTable("islamu_event_organization_policy_sets");
+                                    b2.ToTable("ie_organization_policy_sets");
 
                                     b2.WithOwner()
                                         .HasForeignKey("EventPolicyOrganizationPolicySetId")
@@ -31809,7 +32468,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                             b1.HasKey("TenantPolicySetId");
 
-                            b1.ToTable("islamu_event_tenant_policy_sets");
+                            b1.ToTable("ie_tenant_policy_sets");
 
                             b1.WithOwner()
                                 .HasForeignKey("TenantPolicySetId")
@@ -31831,7 +32490,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                                     b2.HasKey("BrandingPolicyTenantPolicySetId");
 
-                                    b2.ToTable("islamu_event_tenant_policy_sets");
+                                    b2.ToTable("ie_tenant_policy_sets");
 
                                     b2.WithOwner()
                                         .HasForeignKey("BrandingPolicyTenantPolicySetId")
@@ -31854,7 +32513,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                                     b2.HasKey("BrandingPolicyTenantPolicySetId");
 
-                                    b2.ToTable("islamu_event_tenant_policy_sets");
+                                    b2.ToTable("ie_tenant_policy_sets");
 
                                     b2.WithOwner()
                                         .HasForeignKey("BrandingPolicyTenantPolicySetId")
@@ -31877,7 +32536,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                                     b2.HasKey("BrandingPolicyTenantPolicySetId");
 
-                                    b2.ToTable("islamu_event_tenant_policy_sets");
+                                    b2.ToTable("ie_tenant_policy_sets");
 
                                     b2.WithOwner()
                                         .HasForeignKey("BrandingPolicyTenantPolicySetId")
@@ -31900,7 +32559,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                                     b2.HasKey("BrandingPolicyTenantPolicySetId");
 
-                                    b2.ToTable("islamu_event_tenant_policy_sets");
+                                    b2.ToTable("ie_tenant_policy_sets");
 
                                     b2.WithOwner()
                                         .HasForeignKey("BrandingPolicyTenantPolicySetId")
@@ -31928,7 +32587,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                             b1.HasKey("TenantPolicySetId");
 
-                            b1.ToTable("islamu_event_tenant_policy_sets");
+                            b1.ToTable("ie_tenant_policy_sets");
 
                             b1.WithOwner()
                                 .HasForeignKey("TenantPolicySetId")
@@ -31950,7 +32609,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                                     b2.HasKey("EventPolicyTenantPolicySetId");
 
-                                    b2.ToTable("islamu_event_tenant_policy_sets");
+                                    b2.ToTable("ie_tenant_policy_sets");
 
                                     b2.WithOwner()
                                         .HasForeignKey("EventPolicyTenantPolicySetId")
@@ -31973,7 +32632,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                                     b2.HasKey("EventPolicyTenantPolicySetId");
 
-                                    b2.ToTable("islamu_event_tenant_policy_sets");
+                                    b2.ToTable("ie_tenant_policy_sets");
 
                                     b2.WithOwner()
                                         .HasForeignKey("EventPolicyTenantPolicySetId")
@@ -31996,7 +32655,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                                     b2.HasKey("EventPolicyTenantPolicySetId");
 
-                                    b2.ToTable("islamu_event_tenant_policy_sets");
+                                    b2.ToTable("ie_tenant_policy_sets");
 
                                     b2.WithOwner()
                                         .HasForeignKey("EventPolicyTenantPolicySetId")
@@ -32019,7 +32678,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                                     b2.HasKey("EventPolicyTenantPolicySetId");
 
-                                    b2.ToTable("islamu_event_tenant_policy_sets");
+                                    b2.ToTable("ie_tenant_policy_sets");
 
                                     b2.WithOwner()
                                         .HasForeignKey("EventPolicyTenantPolicySetId")
@@ -32047,7 +32706,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                             b1.HasKey("TenantPolicySetId");
 
-                            b1.ToTable("islamu_event_tenant_policy_sets");
+                            b1.ToTable("ie_tenant_policy_sets");
 
                             b1.WithOwner()
                                 .HasForeignKey("TenantPolicySetId")
@@ -32069,7 +32728,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                                     b2.HasKey("OrganizationPolicyTenantPolicySetId");
 
-                                    b2.ToTable("islamu_event_tenant_policy_sets");
+                                    b2.ToTable("ie_tenant_policy_sets");
 
                                     b2.WithOwner()
                                         .HasForeignKey("OrganizationPolicyTenantPolicySetId")
@@ -32092,7 +32751,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                                     b2.HasKey("OrganizationPolicyTenantPolicySetId");
 
-                                    b2.ToTable("islamu_event_tenant_policy_sets");
+                                    b2.ToTable("ie_tenant_policy_sets");
 
                                     b2.WithOwner()
                                         .HasForeignKey("OrganizationPolicyTenantPolicySetId")
@@ -32115,7 +32774,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                                     b2.HasKey("OrganizationPolicyTenantPolicySetId");
 
-                                    b2.ToTable("islamu_event_tenant_policy_sets");
+                                    b2.ToTable("ie_tenant_policy_sets");
 
                                     b2.WithOwner()
                                         .HasForeignKey("OrganizationPolicyTenantPolicySetId")
@@ -32138,7 +32797,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                                     b2.HasKey("OrganizationPolicyTenantPolicySetId");
 
-                                    b2.ToTable("islamu_event_tenant_policy_sets");
+                                    b2.ToTable("ie_tenant_policy_sets");
 
                                     b2.WithOwner()
                                         .HasForeignKey("OrganizationPolicyTenantPolicySetId")
@@ -32166,7 +32825,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                             b1.HasKey("TenantPolicySetId");
 
-                            b1.ToTable("islamu_event_tenant_policy_sets");
+                            b1.ToTable("ie_tenant_policy_sets");
 
                             b1.WithOwner()
                                 .HasForeignKey("TenantPolicySetId")
@@ -32188,7 +32847,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                                     b2.HasKey("RenderPolicyTenantPolicySetId");
 
-                                    b2.ToTable("islamu_event_tenant_policy_sets");
+                                    b2.ToTable("ie_tenant_policy_sets");
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyTenantPolicySetId")
@@ -32211,7 +32870,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                                     b2.HasKey("RenderPolicyTenantPolicySetId");
 
-                                    b2.ToTable("islamu_event_tenant_policy_sets");
+                                    b2.ToTable("ie_tenant_policy_sets");
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyTenantPolicySetId")
@@ -32234,7 +32893,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                                     b2.HasKey("RenderPolicyTenantPolicySetId");
 
-                                    b2.ToTable("islamu_event_tenant_policy_sets");
+                                    b2.ToTable("ie_tenant_policy_sets");
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyTenantPolicySetId")
@@ -32249,15 +32908,15 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                                     b2.Property<bool>("LocalValue")
                                         .HasColumnType("INTEGER")
-                                        .HasColumnName("render_policy_disallow_interactive_server_on_onboarding_local_value");
+                                        .HasColumnName("render_policy_disallow_interactive_onboarding_local_value");
 
                                     b2.Property<int>("OverrideMode")
                                         .HasColumnType("INTEGER")
-                                        .HasColumnName("render_policy_disallow_interactive_server_on_onboarding_override_mode");
+                                        .HasColumnName("render_policy_disallow_interactive_onboarding_override_mode");
 
                                     b2.HasKey("RenderPolicyTenantPolicySetId");
 
-                                    b2.ToTable("islamu_event_tenant_policy_sets");
+                                    b2.ToTable("ie_tenant_policy_sets");
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyTenantPolicySetId")
@@ -32280,7 +32939,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                                     b2.HasKey("RenderPolicyTenantPolicySetId");
 
-                                    b2.ToTable("islamu_event_tenant_policy_sets");
+                                    b2.ToTable("ie_tenant_policy_sets");
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyTenantPolicySetId")
@@ -32303,7 +32962,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                                     b2.HasKey("RenderPolicyTenantPolicySetId");
 
-                                    b2.ToTable("islamu_event_tenant_policy_sets");
+                                    b2.ToTable("ie_tenant_policy_sets");
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyTenantPolicySetId")
@@ -32326,7 +32985,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                                     b2.HasKey("RenderPolicyTenantPolicySetId");
 
-                                    b2.ToTable("islamu_event_tenant_policy_sets");
+                                    b2.ToTable("ie_tenant_policy_sets");
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyTenantPolicySetId")
@@ -32349,7 +33008,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                                     b2.HasKey("RenderPolicyTenantPolicySetId");
 
-                                    b2.ToTable("islamu_event_tenant_policy_sets");
+                                    b2.ToTable("ie_tenant_policy_sets");
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyTenantPolicySetId")
@@ -32372,7 +33031,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                                     b2.HasKey("RenderPolicyTenantPolicySetId");
 
-                                    b2.ToTable("islamu_event_tenant_policy_sets");
+                                    b2.ToTable("ie_tenant_policy_sets");
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyTenantPolicySetId")
@@ -32395,7 +33054,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                                     b2.HasKey("RenderPolicyTenantPolicySetId");
 
-                                    b2.ToTable("islamu_event_tenant_policy_sets");
+                                    b2.ToTable("ie_tenant_policy_sets");
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyTenantPolicySetId")
@@ -32418,7 +33077,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                                     b2.HasKey("RenderPolicyTenantPolicySetId");
 
-                                    b2.ToTable("islamu_event_tenant_policy_sets");
+                                    b2.ToTable("ie_tenant_policy_sets");
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyTenantPolicySetId")
@@ -32441,7 +33100,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                                     b2.HasKey("RenderPolicyTenantPolicySetId");
 
-                                    b2.ToTable("islamu_event_tenant_policy_sets");
+                                    b2.ToTable("ie_tenant_policy_sets");
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyTenantPolicySetId")
@@ -32464,7 +33123,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                                     b2.HasKey("RenderPolicyTenantPolicySetId");
 
-                                    b2.ToTable("islamu_event_tenant_policy_sets");
+                                    b2.ToTable("ie_tenant_policy_sets");
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyTenantPolicySetId")
@@ -32487,7 +33146,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                                     b2.HasKey("RenderPolicyTenantPolicySetId");
 
-                                    b2.ToTable("islamu_event_tenant_policy_sets");
+                                    b2.ToTable("ie_tenant_policy_sets");
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyTenantPolicySetId")
@@ -32510,7 +33169,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                                     b2.HasKey("RenderPolicyTenantPolicySetId");
 
-                                    b2.ToTable("islamu_event_tenant_policy_sets");
+                                    b2.ToTable("ie_tenant_policy_sets");
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyTenantPolicySetId")
@@ -32533,7 +33192,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                                     b2.HasKey("RenderPolicyTenantPolicySetId");
 
-                                    b2.ToTable("islamu_event_tenant_policy_sets");
+                                    b2.ToTable("ie_tenant_policy_sets");
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyTenantPolicySetId")
@@ -32556,7 +33215,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                                     b2.HasKey("RenderPolicyTenantPolicySetId");
 
-                                    b2.ToTable("islamu_event_tenant_policy_sets");
+                                    b2.ToTable("ie_tenant_policy_sets");
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyTenantPolicySetId")
@@ -32579,7 +33238,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                                     b2.HasKey("RenderPolicyTenantPolicySetId");
 
-                                    b2.ToTable("islamu_event_tenant_policy_sets");
+                                    b2.ToTable("ie_tenant_policy_sets");
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyTenantPolicySetId")
@@ -32661,7 +33320,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasForeignKey("IntentId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_privacy_erasure_provider_work_privacy_erasure_sagas_intent_id");
+                        .HasConstraintName("fk_ie_privacy_erasure_provider_work_privacy_erasure_sagas_intent_id");
                 });
 
             modelBuilder.Entity("Explore.Domain.PrivacyErasureReplayCheckpoint", b =>
@@ -32670,7 +33329,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .WithMany()
                         .HasForeignKey("PreviousCheckpointId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_islamu_event_privacy_erasure_replay_checkpoints_islamu_event_privacy_erasure_replay_checkpoints_previous_checkpoint_id");
+                        .HasConstraintName("fk_ie_privacy_erasure_replay_checkpoints_ie_privacy_erasure_replay_checkpoints_previous_checkpoint_id");
                 });
 
             modelBuilder.Entity("Explore.Domain.RegistrationAnswer", b =>
@@ -32680,14 +33339,14 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasForeignKey("AnswerSubjectTypeId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_registration_answers_registration_answer_subject_types_answer_subject_type_id");
+                        .HasConstraintName("fk_ie_registration_answers_registration_answer_subject_types_answer_subject_type_id");
 
                     b.HasOne("Explore.Domain.Tenant", null)
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_registration_answers_tenants_tenant_id");
+                        .HasConstraintName("fk_ie_registration_answers_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.Event", null)
                         .WithMany()
@@ -32695,35 +33354,35 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_registration_answers_islamu_event_events_tenant_id_event_id");
+                        .HasConstraintName("fk_ie_registration_answers_ie_events_tenant_id_event_id");
 
                     b.HasOne("Explore.Domain.RegistrationSensitiveAnswerValue", "SensitiveAnswerValue")
                         .WithOne()
                         .HasForeignKey("Explore.Domain.RegistrationAnswer", "TenantId", "SensitiveAnswerValueId")
                         .HasPrincipalKey("Explore.Domain.RegistrationSensitiveAnswerValue", "TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_islamu_event_registration_answers_registration_sensitive_answer_values_tenant_id_sensitive_answer_value_id");
+                        .HasConstraintName("fk_ie_registration_answers_registration_sensitive_answer_values_tenant_id_sensitive_answer_value_id");
 
                     b.HasOne("Explore.Domain.RegistrationParticipant", null)
                         .WithMany()
                         .HasForeignKey("TenantId", "RegistrationOrderId", "ParticipantSubjectId")
                         .HasPrincipalKey("TenantId", "RegistrationOrderId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_islamu_event_registration_answers_registration_participants_tenant_id_registration_order_id_participant_subject_id");
+                        .HasConstraintName("fk_ie_registration_answers_registration_participants_tenant_id_registration_order_id_participant_subject_id");
 
                     b.HasOne("Explore.Domain.RegistrationOrderLine", null)
                         .WithMany()
                         .HasForeignKey("TenantId", "RegistrationOrderId", "TicketAssignmentOrderLineId", "RequirementSubjectId")
                         .HasPrincipalKey("TenantId", "RegistrationOrderId", "Id", "TicketTypeId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_islamu_event_registration_answers_registration_order_lines_tenant_id_registration_order_id_ticket_assignment_order_line_id_requirement_subject_id");
+                        .HasConstraintName("fk_ie_registration_answers_registration_order_lines_tenant_id_registration_order_id_ticket_assignment_order_line_id_requirement_subject_id");
 
                     b.HasOne("Explore.Domain.RegistrationTicketAssignment", null)
                         .WithMany()
                         .HasForeignKey("TenantId", "RegistrationOrderId", "TicketAssignmentSubjectId", "TicketAssignmentOrderLineId")
                         .HasPrincipalKey("TenantId", "RegistrationOrderId", "Id", "RegistrationOrderLineId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_islamu_event_registration_answers_registration_ticket_assignments_tenant_id_registration_order_id_ticket_assignment_subject_id_ticket_assignment_order_line_id");
+                        .HasConstraintName("fk_ie_registration_answers_registration_ticket_assignments_tenant_id_registration_order_id_ticket_assignment_subject_id_ticket_assignment_order_line_id");
 
                     b.HasOne("Explore.Domain.RegistrationRequirement", null)
                         .WithMany()
@@ -32731,7 +33390,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasPrincipalKey("TenantId", "EventId", "RegistrationWorkflowId", "Id", "AppliesToSubjectTypeId", "AppliesToSubjectKey")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_registration_answers_registration_requirements_tenant_id_event_id_registration_workflow_id_registration_requirement_id_requirement_subject_type_id_requirement_subject_key");
+                        .HasConstraintName("fk_ie_registration_answers_registration_requirements_tenant_id_event_id_registration_workflow_id_registration_requirement_id_requirement_subject_type_id_requirement_subject_key");
 
                     b.HasOne("Explore.Domain.RegistrationFormField", null)
                         .WithMany()
@@ -32739,14 +33398,14 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasPrincipalKey("TenantId", "EventId", "RegistrationFormId", "RegistrationFormVersionId", "RegistrationFormSectionId", "Id", "FieldTypeId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_registration_answers_registration_form_fields_tenant_id_event_id_registration_form_id_registration_form_version_id_registration_form_section_id_registration_form_field_id_field_type_id");
+                        .HasConstraintName("fk_ie_registration_answers_registration_form_fields_tenant_id_event_id_registration_form_id_registration_form_version_id_registration_form_section_id_registration_form_field_id_field_type_id");
 
                     b.HasOne("Explore.Domain.RegistrationFormFieldOption", null)
                         .WithMany()
                         .HasForeignKey("TenantId", "EventId", "RegistrationFormId", "RegistrationFormVersionId", "RegistrationFormSectionId", "RegistrationFormFieldId", "SelectedOptionId")
                         .HasPrincipalKey("TenantId", "EventId", "RegistrationFormId", "RegistrationFormVersionId", "RegistrationFormSectionId", "RegistrationFormFieldId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_islamu_event_registration_answers_registration_form_field_options_tenant_id_event_id_registration_form_id_registration_form_version_id_registration_form_section_id_registration_form_field_id_selected_option_id");
+                        .HasConstraintName("fk_ie_registration_answers_registration_form_field_options_tenant_id_event_id_registration_form_id_registration_form_version_id_registration_form_section_id_registration_form_field_id_selected_option_id");
 
                     b.HasOne("Explore.Domain.RegistrationSubmission", null)
                         .WithMany()
@@ -32754,11 +33413,63 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasPrincipalKey("TenantId", "EventId", "RegistrationOrderId", "RegistrationWorkflowId", "RegistrationRequirementId", "RegistrationFormId", "RegistrationFormVersionId", "RegistrationAttemptId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_registration_answers_registration_submissions_tenant_id_event_id_registration_order_id_registration_workflow_id_registration_requirement_id_registration_form_id_registration_form_version_id_registration_attempt_id_registration_submission_id");
+                        .HasConstraintName("fk_ie_registration_answers_registration_submissions_tenant_id_event_id_registration_order_id_registration_workflow_id_registration_requirement_id_registration_form_id_registration_form_version_id_registration_attempt_id_registration_submission_id");
 
                     b.Navigation("AnswerSubjectType");
 
                     b.Navigation("SensitiveAnswerValue");
+                });
+
+            modelBuilder.Entity("Explore.Domain.RegistrationAnswerFile", b =>
+                {
+                    b.HasOne("Explore.Domain.Tenant", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_ie_registration_answer_files_tenants_tenant_id");
+
+                    b.HasOne("Explore.Domain.StorageObject", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "StorageObjectId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_ie_registration_answer_files_storage_objects_tenant_id_storage_object_id");
+
+                    b.HasOne("Explore.Domain.RegistrationSubmission", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "EventId", "RegistrationSubmissionId")
+                        .HasPrincipalKey("TenantId", "EventId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_ie_registration_answer_files_registration_submissions_tenant_id_event_id_registration_submission_id");
+
+                    b.HasOne("Explore.Domain.RegistrationFormField", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "EventId", "RegistrationFormId", "RegistrationFormVersionId", "RegistrationFormSectionId", "RegistrationFormFieldId", "FieldTypeId")
+                        .HasPrincipalKey("TenantId", "EventId", "RegistrationFormId", "RegistrationFormVersionId", "RegistrationFormSectionId", "Id", "FieldTypeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_ie_registration_answer_files_registration_form_fields_tenant_id_event_id_registration_form_id_registration_form_version_id_registration_form_section_id_registration_form_field_id_field_type_id");
+                });
+
+            modelBuilder.Entity("Explore.Domain.RegistrationAnswerFileRelease", b =>
+                {
+                    b.HasOne("Explore.Domain.Tenant", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_ie_registration_answer_file_releases_tenants_tenant_id");
+
+                    b.HasOne("Explore.Domain.RegistrationAnswerFile", null)
+                        .WithOne()
+                        .HasForeignKey("Explore.Domain.RegistrationAnswerFileRelease", "TenantId", "RegistrationAnswerFileId")
+                        .HasPrincipalKey("Explore.Domain.RegistrationAnswerFile", "TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_ie_registration_answer_file_releases_ie_registration_answer_files_tenant_id_registration_answer_file_id");
                 });
 
             modelBuilder.Entity("Explore.Domain.RegistrationAttempt", b =>
@@ -32768,14 +33479,14 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasForeignKey("StatusId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_registration_attempts_registration_attempt_statuses_status_id");
+                        .HasConstraintName("fk_ie_registration_attempts_registration_attempt_statuses_status_id");
 
                     b.HasOne("Explore.Domain.Tenant", null)
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_registration_attempts_tenants_tenant_id");
+                        .HasConstraintName("fk_ie_registration_attempts_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.Event", null)
                         .WithMany()
@@ -32783,7 +33494,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_registration_attempts_islamu_event_events_tenant_id_event_id");
+                        .HasConstraintName("fk_ie_registration_attempts_ie_events_tenant_id_event_id");
 
                     b.HasOne("Explore.Domain.RegistrationForm", null)
                         .WithMany()
@@ -32791,7 +33502,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasPrincipalKey("TenantId", "EventId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_registration_attempts_registration_forms_tenant_id_event_id_registration_form_id");
+                        .HasConstraintName("fk_ie_registration_attempts_registration_forms_tenant_id_event_id_registration_form_id");
 
                     b.HasOne("Explore.Domain.RegistrationWorkflow", null)
                         .WithMany()
@@ -32799,7 +33510,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasPrincipalKey("TenantId", "EventId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_registration_attempts_registration_workflows_tenant_id_event_id_registration_workflow_id");
+                        .HasConstraintName("fk_ie_registration_attempts_registration_workflows_tenant_id_event_id_registration_workflow_id");
 
                     b.HasOne("Explore.Domain.RegistrationFormVersion", null)
                         .WithMany()
@@ -32807,7 +33518,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasPrincipalKey("TenantId", "EventId", "RegistrationFormId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_registration_attempts_registration_form_versions_tenant_id_event_id_registration_form_id_registration_form_version_id");
+                        .HasConstraintName("fk_ie_registration_attempts_registration_form_versions_tenant_id_event_id_registration_form_id_registration_form_version_id");
 
                     b.HasOne("Explore.Domain.RegistrationOrder", null)
                         .WithMany()
@@ -32815,7 +33526,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasPrincipalKey("TenantId", "EventId", "RegistrationWorkflowVersionKey", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_registration_attempts_registration_orders_tenant_id_event_id_registration_workflow_id_registration_order_id");
+                        .HasConstraintName("fk_ie_registration_attempts_registration_orders_tenant_id_event_id_registration_workflow_id_registration_order_id");
 
                     b.HasOne("Explore.Domain.RegistrationRequirement", null)
                         .WithMany()
@@ -32823,7 +33534,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasPrincipalKey("TenantId", "EventId", "RegistrationWorkflowId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_registration_attempts_registration_requirements_tenant_id_event_id_registration_workflow_id_registration_requirement_id");
+                        .HasConstraintName("fk_ie_registration_attempts_registration_requirements_tenant_id_event_id_registration_workflow_id_registration_requirement_id");
 
                     b.HasOne("Explore.Domain.RegistrationChannel", null)
                         .WithMany()
@@ -32831,14 +33542,14 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasPrincipalKey("TenantId", "EventId", "RegistrationWorkflowId", "RegistrationRequirementId", "Id", "RegistrationProviderBindingKey")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_registration_attempts_registration_channels_tenant_id_event_id_registration_workflow_id_registration_requirement_id_registration_channel_id_registration_provider_binding_key");
+                        .HasConstraintName("fk_ie_registration_attempts_registration_channels_tenant_id_event_id_registration_workflow_id_registration_requirement_id_registration_channel_id_registration_provider_binding_key");
 
                     b.HasOne("Explore.Domain.RegistrationAttempt", null)
                         .WithMany()
                         .HasForeignKey("TenantId", "EventId", "RegistrationOrderId", "RegistrationWorkflowId", "RegistrationRequirementId", "RegistrationChannelId", "RegistrationFormId", "SupersededByRegistrationAttemptId")
                         .HasPrincipalKey("TenantId", "EventId", "RegistrationOrderId", "RegistrationWorkflowId", "RegistrationRequirementId", "RegistrationChannelId", "RegistrationFormId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_islamu_event_registration_attempts_islamu_event_registration_attempts_tenant_id_event_id_registration_order_id_registration_workflow_id_registration_requirement_id_registration_channel_id_registration_form_id_superseded_by_registration_attempt_id");
+                        .HasConstraintName("fk_ie_registration_attempts_ie_registration_attempts_tenant_id_event_id_registration_order_id_registration_workflow_id_registration_requirement_id_registration_channel_id_registration_form_id_superseded_by_registration_attempt_id");
 
                     b.Navigation("Status");
                 });
@@ -32850,7 +33561,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_registration_channels_tenants_tenant_id");
+                        .HasConstraintName("fk_ie_registration_channels_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.Event", null)
                         .WithMany()
@@ -32858,7 +33569,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_registration_channels_islamu_event_events_tenant_id_event_id");
+                        .HasConstraintName("fk_ie_registration_channels_ie_events_tenant_id_event_id");
 
                     b.HasOne("Explore.Domain.RegistrationRequirement", null)
                         .WithMany("Channels")
@@ -32866,7 +33577,97 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasPrincipalKey("TenantId", "EventId", "RegistrationWorkflowId", "Id")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_registration_channels_registration_requirements_tenant_id_event_id_registration_workflow_id_registration_requirement_id");
+                        .HasConstraintName("fk_ie_registration_channels_registration_requirements_tenant_id_event_id_registration_workflow_id_registration_requirement_id");
+                });
+
+            modelBuilder.Entity("Explore.Domain.RegistrationConsentRecord", b =>
+                {
+                    b.HasOne("Explore.Domain.RegistrationAnswerSubjectType", "AnswerSubjectType")
+                        .WithMany()
+                        .HasForeignKey("AnswerSubjectTypeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_ie_registration_consent_records_ie_registration_answer_subject_types_answer_subject_type_id");
+
+                    b.HasOne("Explore.Domain.Tenant", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_ie_registration_consent_records_tenants_tenant_id");
+
+                    b.HasOne("Explore.Domain.Event", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "EventId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_ie_registration_consent_records_ie_events_tenant_id_event_id");
+
+                    b.HasOne("Explore.Domain.RegistrationParticipant", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "RegistrationOrderId", "ParticipantSubjectId")
+                        .HasPrincipalKey("TenantId", "RegistrationOrderId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_ie_registration_consent_records_registration_participants_tenant_id_registration_order_id_participant_subject_id");
+
+                    b.HasOne("Explore.Domain.RegistrationOrderLine", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "RegistrationOrderId", "TicketAssignmentOrderLineId", "RequirementSubjectId")
+                        .HasPrincipalKey("TenantId", "RegistrationOrderId", "Id", "TicketTypeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_ie_registration_consent_records_registration_order_lines_tenant_id_registration_order_id_ticket_assignment_order_line_id_requirement_subject_id");
+
+                    b.HasOne("Explore.Domain.RegistrationTicketAssignment", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "RegistrationOrderId", "TicketAssignmentSubjectId", "TicketAssignmentOrderLineId")
+                        .HasPrincipalKey("TenantId", "RegistrationOrderId", "Id", "RegistrationOrderLineId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_ie_registration_consent_records_registration_ticket_assignments_tenant_id_registration_order_id_ticket_assignment_subject_id_ticket_assignment_order_line_id");
+
+                    b.HasOne("Explore.Domain.RegistrationRequirement", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "EventId", "RegistrationWorkflowId", "RegistrationRequirementId", "RequirementSubjectTypeId", "RequirementSubjectKey")
+                        .HasPrincipalKey("TenantId", "EventId", "RegistrationWorkflowId", "Id", "AppliesToSubjectTypeId", "AppliesToSubjectKey")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_ie_registration_consent_records_registration_requirements_tenant_id_event_id_registration_workflow_id_registration_requirement_id_requirement_subject_type_id_requirement_subject_key");
+
+                    b.HasOne("Explore.Domain.RegistrationFormField", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "EventId", "RegistrationFormId", "RegistrationFormVersionId", "RegistrationFormSectionId", "RegistrationFormFieldId", "FieldTypeId")
+                        .HasPrincipalKey("TenantId", "EventId", "RegistrationFormId", "RegistrationFormVersionId", "RegistrationFormSectionId", "Id", "FieldTypeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_ie_registration_consent_records_registration_form_fields_tenant_id_event_id_registration_form_id_registration_form_version_id_registration_form_section_id_registration_form_field_id_field_type_id");
+
+                    b.HasOne("Explore.Domain.RegistrationSubmission", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "EventId", "RegistrationOrderId", "RegistrationWorkflowId", "RegistrationRequirementId", "RegistrationFormId", "RegistrationFormVersionId", "RegistrationAttemptId", "RegistrationSubmissionId")
+                        .HasPrincipalKey("TenantId", "EventId", "RegistrationOrderId", "RegistrationWorkflowId", "RegistrationRequirementId", "RegistrationFormId", "RegistrationFormVersionId", "RegistrationAttemptId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_ie_registration_consent_records_registration_submissions_tenant_id_event_id_registration_order_id_registration_workflow_id_registration_requirement_id_registration_form_id_registration_form_version_id_registration_attempt_id_registration_submission_id");
+
+                    b.Navigation("AnswerSubjectType");
+                });
+
+            modelBuilder.Entity("Explore.Domain.RegistrationFinalizationEffect", b =>
+                {
+                    b.HasOne("Explore.Domain.Tenant", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_ie_registration_finalization_effects_tenants_tenant_id");
+
+                    b.HasOne("Explore.Domain.RegistrationOrder", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "EventId", "RegistrationOrderId")
+                        .HasPrincipalKey("TenantId", "EventId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_ie_registration_finalization_effects_registration_orders_tenant_id_event_id_registration_order_id");
                 });
 
             modelBuilder.Entity("Explore.Domain.RegistrationForm", b =>
@@ -32876,7 +33677,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_registration_forms_tenants_tenant_id");
+                        .HasConstraintName("fk_ie_registration_forms_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.Event", null)
                         .WithMany()
@@ -32884,7 +33685,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_registration_forms_islamu_event_events_tenant_id_event_id");
+                        .HasConstraintName("fk_ie_registration_forms_ie_events_tenant_id_event_id");
                 });
 
             modelBuilder.Entity("Explore.Domain.RegistrationFormField", b =>
@@ -32894,21 +33695,21 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasForeignKey("FieldTypeId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_registration_form_fields_islamu_event_registration_field_types_field_type_id");
+                        .HasConstraintName("fk_ie_registration_form_fields_ie_registration_field_types_field_type_id");
 
                     b.HasOne("Explore.Domain.RegistrationOrganizerVisibility", "OrganizerVisibility")
                         .WithMany()
                         .HasForeignKey("OrganizerVisibilityId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_registration_form_fields_registration_organizer_visibilities_organizer_visibility_id");
+                        .HasConstraintName("fk_ie_registration_form_fields_registration_organizer_visibilities_organizer_visibility_id");
 
                     b.HasOne("Explore.Domain.Tenant", null)
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_registration_form_fields_tenants_tenant_id");
+                        .HasConstraintName("fk_ie_registration_form_fields_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.RegistrationFormSection", null)
                         .WithMany("Fields")
@@ -32916,7 +33717,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasPrincipalKey("TenantId", "EventId", "RegistrationFormId", "RegistrationFormVersionId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_registration_form_fields_registration_form_sections_tenant_id_event_id_registration_form_id_registration_form_version_id_registration_form_section_id");
+                        .HasConstraintName("fk_ie_registration_form_fields_registration_form_sections_tenant_id_event_id_registration_form_id_registration_form_version_id_registration_form_section_id");
 
                     b.Navigation("FieldType");
 
@@ -32930,7 +33731,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_registration_form_field_options_tenants_tenant_id");
+                        .HasConstraintName("fk_ie_registration_form_field_options_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.RegistrationFormField", null)
                         .WithMany("Options")
@@ -32938,7 +33739,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasPrincipalKey("TenantId", "EventId", "RegistrationFormId", "RegistrationFormVersionId", "RegistrationFormSectionId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_registration_form_field_options_islamu_event_registration_form_fields_tenant_id_event_id_registration_form_id_registration_form_version_id_registration_form_section_id_registration_form_field_id");
+                        .HasConstraintName("fk_ie_registration_form_field_options_ie_registration_form_fields_tenant_id_event_id_registration_form_id_registration_form_version_id_registration_form_section_id_registration_form_field_id");
                 });
 
             modelBuilder.Entity("Explore.Domain.RegistrationFormRule", b =>
@@ -32948,7 +33749,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_registration_form_rules_tenants_tenant_id");
+                        .HasConstraintName("fk_ie_registration_form_rules_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.RegistrationFormVersion", null)
                         .WithMany("Rules")
@@ -32956,7 +33757,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasPrincipalKey("TenantId", "EventId", "RegistrationFormId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_registration_form_rules_registration_form_versions_tenant_id_event_id_registration_form_id_registration_form_version_id");
+                        .HasConstraintName("fk_ie_registration_form_rules_registration_form_versions_tenant_id_event_id_registration_form_id_registration_form_version_id");
                 });
 
             modelBuilder.Entity("Explore.Domain.RegistrationFormSection", b =>
@@ -32966,7 +33767,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_registration_form_sections_tenants_tenant_id");
+                        .HasConstraintName("fk_ie_registration_form_sections_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.RegistrationFormVersion", null)
                         .WithMany("Sections")
@@ -32974,7 +33775,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasPrincipalKey("TenantId", "EventId", "RegistrationFormId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_registration_form_sections_registration_form_versions_tenant_id_event_id_registration_form_id_registration_form_version_id");
+                        .HasConstraintName("fk_ie_registration_form_sections_registration_form_versions_tenant_id_event_id_registration_form_id_registration_form_version_id");
                 });
 
             modelBuilder.Entity("Explore.Domain.RegistrationFormVersion", b =>
@@ -32984,14 +33785,14 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasForeignKey("StatusId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_registration_form_versions_islamu_event_registration_form_statuses_status_id");
+                        .HasConstraintName("fk_ie_registration_form_versions_ie_registration_form_statuses_status_id");
 
                     b.HasOne("Explore.Domain.Tenant", null)
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_registration_form_versions_tenants_tenant_id");
+                        .HasConstraintName("fk_ie_registration_form_versions_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.Event", null)
                         .WithMany()
@@ -32999,7 +33800,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_registration_form_versions_islamu_event_events_tenant_id_event_id");
+                        .HasConstraintName("fk_ie_registration_form_versions_ie_events_tenant_id_event_id");
 
                     b.HasOne("Explore.Domain.RegistrationForm", null)
                         .WithMany("Versions")
@@ -33007,7 +33808,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasPrincipalKey("TenantId", "EventId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_registration_form_versions_islamu_event_registration_forms_tenant_id_event_id_registration_form_id");
+                        .HasConstraintName("fk_ie_registration_form_versions_ie_registration_forms_tenant_id_event_id_registration_form_id");
 
                     b.Navigation("Status");
                 });
@@ -33019,14 +33820,14 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasForeignKey("RegistrationInventoryHoldStatusId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_registration_inventory_holds_registration_inventory_hold_statuses_registration_inventory_hold_status_id");
+                        .HasConstraintName("fk_ie_registration_inventory_holds_registration_inventory_hold_statuses_registration_inventory_hold_status_id");
 
                     b.HasOne("Explore.Domain.Tenant", null)
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_registration_inventory_holds_tenants_tenant_id");
+                        .HasConstraintName("fk_ie_registration_inventory_holds_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.EventCapacityPool", null)
                         .WithMany()
@@ -33034,7 +33835,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_registration_inventory_holds_islamu_event_event_capacity_pools_tenant_id_capacity_pool_id");
+                        .HasConstraintName("fk_ie_registration_inventory_holds_ie_event_capacity_pools_tenant_id_capacity_pool_id");
 
                     b.HasOne("Explore.Domain.RegistrationOrder", null)
                         .WithMany()
@@ -33042,7 +33843,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_registration_inventory_holds_registration_orders_tenant_id_registration_order_id");
+                        .HasConstraintName("fk_ie_registration_inventory_holds_registration_orders_tenant_id_registration_order_id");
 
                     b.HasOne("Explore.Domain.EventTicketType", null)
                         .WithMany()
@@ -33050,7 +33851,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_registration_inventory_holds_islamu_event_event_ticket_types_tenant_id_ticket_type_id");
+                        .HasConstraintName("fk_ie_registration_inventory_holds_ie_event_ticket_types_tenant_id_ticket_type_id");
 
                     b.Navigation("RegistrationInventoryHoldStatus");
                 });
@@ -33062,21 +33863,21 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasForeignKey("BookingPartyTypeId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_registration_orders_islamu_event_booking_party_types_booking_party_type_id");
+                        .HasConstraintName("fk_ie_registration_orders_ie_booking_party_types_booking_party_type_id");
 
                     b.HasOne("Explore.Domain.RegistrationOrderStatus", "RegistrationOrderStatus")
                         .WithMany()
                         .HasForeignKey("RegistrationOrderStatusId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_registration_orders_registration_order_statuses_registration_order_status_id");
+                        .HasConstraintName("fk_ie_registration_orders_registration_order_statuses_registration_order_status_id");
 
                     b.HasOne("Explore.Domain.Tenant", null)
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_registration_orders_tenants_tenant_id");
+                        .HasConstraintName("fk_ie_registration_orders_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.Event", null)
                         .WithMany()
@@ -33084,7 +33885,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_registration_orders_islamu_event_events_tenant_id_event_id");
+                        .HasConstraintName("fk_ie_registration_orders_ie_events_tenant_id_event_id");
 
                     b.HasOne("Explore.Domain.EventTicketCatalogVersion", null)
                         .WithMany()
@@ -33092,7 +33893,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_registration_orders_islamu_event_event_ticket_catalog_versions_tenant_id_ticket_catalog_version_id");
+                        .HasConstraintName("fk_ie_registration_orders_ie_event_ticket_catalog_versions_tenant_id_ticket_catalog_version_id");
 
                     b.OwnsOne("Explore.Domain.RegistrationParticipationSnapshot", "ParticipationSnapshot", b1 =>
                         {
@@ -33122,7 +33923,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                             b1.HasKey("RegistrationOrderId");
 
-                            b1.ToTable("islamu_event_registration_orders");
+                            b1.ToTable("ie_registration_orders");
 
                             b1.WithOwner()
                                 .HasForeignKey("RegistrationOrderId")
@@ -33145,7 +33946,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_registration_order_lines_islamu_event_registration_orders_tenant_id_registration_order_id");
+                        .HasConstraintName("fk_ie_registration_order_lines_ie_registration_orders_tenant_id_registration_order_id");
 
                     b.HasOne("Explore.Domain.EventTicketCatalogVersion", null)
                         .WithMany()
@@ -33153,7 +33954,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_registration_order_lines_islamu_event_event_ticket_catalog_versions_tenant_id_ticket_catalog_version_id");
+                        .HasConstraintName("fk_ie_registration_order_lines_ie_event_ticket_catalog_versions_tenant_id_ticket_catalog_version_id");
 
                     b.HasOne("Explore.Domain.EventTicketType", null)
                         .WithMany()
@@ -33161,7 +33962,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_registration_order_lines_islamu_event_event_ticket_types_tenant_id_ticket_type_id");
+                        .HasConstraintName("fk_ie_registration_order_lines_ie_event_ticket_types_tenant_id_ticket_type_id");
                 });
 
             modelBuilder.Entity("Explore.Domain.RegistrationOrderPii", b =>
@@ -33172,7 +33973,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasPrincipalKey("Explore.Domain.RegistrationOrder", "TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_registration_order_pii_islamu_event_registration_orders_tenant_id_registration_order_id");
+                        .HasConstraintName("fk_ie_registration_order_pii_ie_registration_orders_tenant_id_registration_order_id");
 
                     b.Navigation("RegistrationOrder");
                 });
@@ -33185,7 +33986,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasPrincipalKey("Explore.Domain.RegistrationOrder", "TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_registration_order_platform_contributions_islamu_event_registration_orders_tenant_id_registration_order_id");
+                        .HasConstraintName("fk_ie_registration_order_platform_contributions_ie_registration_orders_tenant_id_registration_order_id");
                 });
 
             modelBuilder.Entity("Explore.Domain.RegistrationParticipant", b =>
@@ -33194,21 +33995,21 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .WithMany()
                         .HasForeignKey("LinkedUserId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_islamu_event_registration_participants_users_linked_user_id");
+                        .HasConstraintName("fk_ie_registration_participants_users_linked_user_id");
 
                     b.HasOne("Explore.Domain.ParticipantType", "ParticipantType")
                         .WithMany()
                         .HasForeignKey("ParticipantTypeId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_registration_participants_islamu_event_participant_types_participant_type_id");
+                        .HasConstraintName("fk_ie_registration_participants_ie_participant_types_participant_type_id");
 
                     b.HasOne("Explore.Domain.Tenant", null)
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_registration_participants_tenants_tenant_id");
+                        .HasConstraintName("fk_ie_registration_participants_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.RegistrationOrder", "RegistrationOrder")
                         .WithMany()
@@ -33216,14 +34017,14 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_registration_participants_islamu_event_registration_orders_tenant_id_registration_order_id");
+                        .HasConstraintName("fk_ie_registration_participants_ie_registration_orders_tenant_id_registration_order_id");
 
                     b.HasOne("Explore.Domain.RegistrationParticipant", "GuardianParticipant")
                         .WithMany()
                         .HasForeignKey("TenantId", "RegistrationOrderId", "GuardianParticipantId")
                         .HasPrincipalKey("TenantId", "RegistrationOrderId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_islamu_event_registration_participants_islamu_event_registration_participants_tenant_id_registration_order_id_guardian_participant_id");
+                        .HasConstraintName("fk_ie_registration_participants_ie_registration_participants_tenant_id_registration_order_id_guardian_participant_id");
 
                     b.Navigation("GuardianParticipant");
 
@@ -33241,7 +34042,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_registration_participant_pii_tenants_tenant_id");
+                        .HasConstraintName("fk_ie_registration_participant_pii_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.RegistrationParticipant", "RegistrationParticipant")
                         .WithOne("Pii")
@@ -33249,7 +34050,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasPrincipalKey("Explore.Domain.RegistrationParticipant", "TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_registration_participant_pii_islamu_event_registration_participants_tenant_id_registration_participant_id");
+                        .HasConstraintName("fk_ie_registration_participant_pii_ie_registration_participants_tenant_id_registration_participant_id");
 
                     b.Navigation("RegistrationParticipant");
                 });
@@ -33261,35 +34062,35 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasForeignKey("AnswerSyncModeId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_registration_requirements_islamu_event_registration_answer_sync_modes_answer_sync_mode_id");
+                        .HasConstraintName("fk_ie_registration_requirements_ie_registration_answer_sync_modes_answer_sync_mode_id");
 
                     b.HasOne("Explore.Domain.RegistrationRequirementSubjectType", null)
                         .WithMany()
                         .HasForeignKey("AppliesToSubjectTypeId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_registration_requirements_registration_requirement_subject_types_applies_to_subject_type_id");
+                        .HasConstraintName("fk_ie_registration_requirements_registration_requirement_subject_types_applies_to_subject_type_id");
 
                     b.HasOne("Explore.Domain.RegistrationRequirementCompletionEffect", null)
                         .WithMany()
                         .HasForeignKey("CompletionEffectId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_registration_requirements_registration_requirement_completion_effects_completion_effect_id");
+                        .HasConstraintName("fk_ie_registration_requirements_registration_requirement_completion_effects_completion_effect_id");
 
                     b.HasOne("Explore.Domain.RegistrationRequirementCriticality", null)
                         .WithMany()
                         .HasForeignKey("CriticalityId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_registration_requirements_registration_requirement_criticalities_criticality_id");
+                        .HasConstraintName("fk_ie_registration_requirements_registration_requirement_criticalities_criticality_id");
 
                     b.HasOne("Explore.Domain.Tenant", null)
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_registration_requirements_tenants_tenant_id");
+                        .HasConstraintName("fk_ie_registration_requirements_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.Event", null)
                         .WithMany()
@@ -33297,7 +34098,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_registration_requirements_islamu_event_events_tenant_id_event_id");
+                        .HasConstraintName("fk_ie_registration_requirements_ie_events_tenant_id_event_id");
 
                     b.HasOne("Explore.Domain.RegistrationWorkflow", null)
                         .WithMany("Requirements")
@@ -33305,7 +34106,47 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasPrincipalKey("TenantId", "EventId", "Id")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_registration_requirements_registration_workflows_tenant_id_event_id_registration_workflow_id");
+                        .HasConstraintName("fk_ie_registration_requirements_registration_workflows_tenant_id_event_id_registration_workflow_id");
+                });
+
+            modelBuilder.Entity("Explore.Domain.RegistrationRequirementFulfillment", b =>
+                {
+                    b.HasOne("Explore.Domain.RegistrationAnswerSubjectType", null)
+                        .WithMany()
+                        .HasForeignKey("SubjectTypeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_ie_registration_requirement_fulfillments_ie_registration_answer_subject_types_subject_type_id");
+
+                    b.HasOne("Explore.Domain.Tenant", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_ie_registration_requirement_fulfillments_tenants_tenant_id");
+
+                    b.HasOne("Explore.Domain.RegistrationOrder", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "EventId", "RegistrationOrderId")
+                        .HasPrincipalKey("TenantId", "EventId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_ie_registration_requirement_fulfillments_ie_registration_orders_tenant_id_event_id_registration_order_id");
+
+                    b.HasOne("Explore.Domain.RegistrationSubmission", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "EventId", "SourceRegistrationSubmissionId")
+                        .HasPrincipalKey("TenantId", "EventId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_ie_registration_requirement_fulfillments_registration_submissions_tenant_id_event_id_source_registration_submission_id");
+
+                    b.HasOne("Explore.Domain.RegistrationRequirement", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "EventId", "RegistrationWorkflowId", "RegistrationRequirementId")
+                        .HasPrincipalKey("TenantId", "EventId", "RegistrationWorkflowId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_ie_registration_requirement_fulfillments_ie_registration_requirements_tenant_id_event_id_registration_workflow_id_registration_requirement_id");
                 });
 
             modelBuilder.Entity("Explore.Domain.RegistrationSensitiveAnswerValue", b =>
@@ -33315,7 +34156,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_registration_sensitive_answer_values_tenants_tenant_id");
+                        .HasConstraintName("fk_ie_registration_sensitive_answer_values_tenants_tenant_id");
                 });
 
             modelBuilder.Entity("Explore.Domain.RegistrationSubmission", b =>
@@ -33325,21 +34166,21 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasForeignKey("AttemptStatusAtReceiptId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_registration_submissions_islamu_event_registration_attempt_statuses_attempt_status_at_receipt_id");
+                        .HasConstraintName("fk_ie_registration_submissions_ie_registration_attempt_statuses_attempt_status_at_receipt_id");
 
                     b.HasOne("Explore.Domain.RegistrationSubmissionStatus", "Status")
                         .WithMany()
                         .HasForeignKey("StatusId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_registration_submissions_registration_submission_statuses_status_id");
+                        .HasConstraintName("fk_ie_registration_submissions_registration_submission_statuses_status_id");
 
                     b.HasOne("Explore.Domain.Tenant", null)
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_registration_submissions_tenants_tenant_id");
+                        .HasConstraintName("fk_ie_registration_submissions_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.Event", null)
                         .WithMany()
@@ -33347,7 +34188,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_registration_submissions_islamu_event_events_tenant_id_event_id");
+                        .HasConstraintName("fk_ie_registration_submissions_ie_events_tenant_id_event_id");
 
                     b.HasOne("Explore.Domain.RegistrationAttempt", null)
                         .WithMany()
@@ -33355,9 +34196,27 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasPrincipalKey("TenantId", "EventId", "RegistrationOrderId", "RegistrationWorkflowId", "RegistrationRequirementId", "RegistrationChannelId", "RegistrationFormId", "RegistrationFormVersionId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_registration_submissions_islamu_event_registration_attempts_tenant_id_event_id_registration_order_id_registration_workflow_id_registration_requirement_id_registration_channel_id_registration_form_id_registration_form_version_id_registration_attempt_id");
+                        .HasConstraintName("fk_ie_registration_submissions_ie_registration_attempts_tenant_id_event_id_registration_order_id_registration_workflow_id_registration_requirement_id_registration_channel_id_registration_form_id_registration_form_version_id_registration_attempt_id");
 
                     b.Navigation("Status");
+                });
+
+            modelBuilder.Entity("Explore.Domain.RegistrationSubmissionIssue", b =>
+                {
+                    b.HasOne("Explore.Domain.Tenant", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_ie_registration_submission_issues_tenants_tenant_id");
+
+                    b.HasOne("Explore.Domain.RegistrationSubmission", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "EventId", "RegistrationSubmissionId")
+                        .HasPrincipalKey("TenantId", "EventId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_ie_registration_submission_issues_ie_registration_submissions_tenant_id_event_id_registration_submission_id");
                 });
 
             modelBuilder.Entity("Explore.Domain.RegistrationSubmissionRevision", b =>
@@ -33367,7 +34226,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_registration_submission_revisions_tenants_tenant_id");
+                        .HasConstraintName("fk_ie_registration_submission_revisions_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.RegistrationSubmission", null)
                         .WithMany("Revisions")
@@ -33375,7 +34234,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasPrincipalKey("TenantId", "EventId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_registration_submission_revisions_islamu_event_registration_submissions_tenant_id_event_id_registration_submission_id");
+                        .HasConstraintName("fk_ie_registration_submission_revisions_ie_registration_submissions_tenant_id_event_id_registration_submission_id");
                 });
 
             modelBuilder.Entity("Explore.Domain.RegistrationTicketAssignment", b =>
@@ -33385,14 +34244,14 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasForeignKey("AssignmentStatusId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_registration_ticket_assignments_islamu_event_assignment_statuses_assignment_status_id");
+                        .HasConstraintName("fk_ie_registration_ticket_assignments_ie_assignment_statuses_assignment_status_id");
 
                     b.HasOne("Explore.Domain.Tenant", null)
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_registration_ticket_assignments_tenants_tenant_id");
+                        .HasConstraintName("fk_ie_registration_ticket_assignments_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.RegistrationOrder", "RegistrationOrder")
                         .WithMany()
@@ -33400,14 +34259,14 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_registration_ticket_assignments_islamu_event_registration_orders_tenant_id_registration_order_id");
+                        .HasConstraintName("fk_ie_registration_ticket_assignments_ie_registration_orders_tenant_id_registration_order_id");
 
                     b.HasOne("Explore.Domain.RegistrationParticipant", "Participant")
                         .WithMany()
                         .HasForeignKey("TenantId", "RegistrationOrderId", "ParticipantId")
                         .HasPrincipalKey("TenantId", "RegistrationOrderId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_islamu_event_registration_ticket_assignments_islamu_event_registration_participants_tenant_id_registration_order_id_participant_id");
+                        .HasConstraintName("fk_ie_registration_ticket_assignments_ie_registration_participants_tenant_id_registration_order_id_participant_id");
 
                     b.HasOne("Explore.Domain.RegistrationOrderLine", "RegistrationOrderLine")
                         .WithMany()
@@ -33415,7 +34274,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasPrincipalKey("TenantId", "RegistrationOrderId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_registration_ticket_assignments_islamu_event_registration_order_lines_tenant_id_registration_order_id_registration_order_line_id");
+                        .HasConstraintName("fk_ie_registration_ticket_assignments_ie_registration_order_lines_tenant_id_registration_order_id_registration_order_line_id");
 
                     b.Navigation("AssignmentStatus");
 
@@ -33433,7 +34292,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_registration_workflows_tenants_tenant_id");
+                        .HasConstraintName("fk_ie_registration_workflows_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.Event", null)
                         .WithMany()
@@ -33441,7 +34300,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_registration_workflows_islamu_event_events_tenant_id_event_id");
+                        .HasConstraintName("fk_ie_registration_workflows_ie_events_tenant_id_event_id");
                 });
 
             modelBuilder.Entity("Explore.Domain.Role", b =>
@@ -33451,7 +34310,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasForeignKey("RoleScopeId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_roles_role_scopes_role_scope_id");
+                        .HasConstraintName("fk_ie_roles_role_scopes_role_scope_id");
 
                     b.Navigation("RoleScope");
                 });
@@ -33463,14 +34322,14 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasForeignKey("PermissionId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_role_permissions_islamu_event_permissions_permission_id");
+                        .HasConstraintName("fk_ie_role_permissions_ie_permissions_permission_id");
 
                     b.HasOne("Explore.Domain.Role", "Role")
                         .WithMany()
                         .HasForeignKey("RoleId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_role_permissions_islamu_event_roles_role_id");
+                        .HasConstraintName("fk_ie_role_permissions_ie_roles_role_id");
 
                     b.Navigation("Permission");
 
@@ -33484,21 +34343,21 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasForeignKey("SecretSourceTypeId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_secret_bindings_islamu_event_secret_source_types_secret_source_type_id");
+                        .HasConstraintName("fk_ie_secret_bindings_ie_secret_source_types_secret_source_type_id");
 
                     b.HasOne("Explore.Domain.SecretValidationStatus", "SecretValidationStatus")
                         .WithMany()
                         .HasForeignKey("SecretValidationStatusId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_secret_bindings_islamu_event_secret_validation_statuses_secret_validation_status_id");
+                        .HasConstraintName("fk_ie_secret_bindings_ie_secret_validation_statuses_secret_validation_status_id");
 
                     b.HasOne("Explore.Domain.SettingScopeLookup", "SettingScope")
                         .WithMany()
                         .HasForeignKey("SettingScopeId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_secret_bindings_setting_scopes_setting_scope_id");
+                        .HasConstraintName("fk_ie_secret_bindings_setting_scopes_setting_scope_id");
 
                     b.Navigation("SecretSourceType");
 
@@ -33514,7 +34373,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_tenant_settings_documents_tenants_tenant_id");
+                        .HasConstraintName("fk_ie_tenant_settings_documents_tenants_tenant_id");
 
                     b.Navigation("Tenant");
                 });
@@ -33525,21 +34384,21 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .WithMany()
                         .HasForeignKey("ActorId")
                         .OnDelete(DeleteBehavior.SetNull)
-                        .HasConstraintName("fk_islamu_event_storage_objects_islamu_event_actors_actor_id");
+                        .HasConstraintName("fk_ie_storage_objects_ie_actors_actor_id");
 
                     b.HasOne("Explore.Domain.FileType", "FileType")
                         .WithMany()
                         .HasForeignKey("FileTypeId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_storage_objects_islamu_event_file_types_file_type_id");
+                        .HasConstraintName("fk_ie_storage_objects_ie_file_types_file_type_id");
 
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_storage_objects_tenants_tenant_id");
+                        .HasConstraintName("fk_ie_storage_objects_tenants_tenant_id");
 
                     b.Navigation("Actor");
 
@@ -33554,20 +34413,20 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .WithMany()
                         .HasForeignKey("StorageObjectId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_islamu_event_storage_upload_sessions_islamu_event_storage_objects_storage_object_id");
+                        .HasConstraintName("fk_ie_storage_upload_sessions_ie_storage_objects_storage_object_id");
 
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_storage_upload_sessions_tenants_tenant_id");
+                        .HasConstraintName("fk_ie_storage_upload_sessions_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.User", "User")
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_islamu_event_storage_upload_sessions_users_user_id");
+                        .HasConstraintName("fk_ie_storage_upload_sessions_users_user_id");
 
                     b.Navigation("StorageObject");
 
@@ -33583,7 +34442,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_storage_usage_counters_tenants_tenant_id");
+                        .HasConstraintName("fk_ie_storage_usage_counters_tenants_tenant_id");
 
                     b.Navigation("Tenant");
                 });
@@ -33594,34 +34453,34 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .WithMany()
                         .HasForeignKey("ActorUserId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_islamu_event_support_access_audit_events_users_actor_user_id");
+                        .HasConstraintName("fk_ie_support_access_audit_events_users_actor_user_id");
 
                     b.HasOne("Explore.Domain.SupportAccessAuditEventType", "EventType")
                         .WithMany()
                         .HasForeignKey("EventTypeId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_support_access_audit_events_support_access_audit_event_types_event_type_id");
+                        .HasConstraintName("fk_ie_support_access_audit_events_support_access_audit_event_types_event_type_id");
 
                     b.HasOne("Explore.Domain.SupportAccessSession", "SupportAccessSession")
                         .WithMany()
                         .HasForeignKey("SupportAccessSessionId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_support_access_audit_events_support_access_sessions_support_access_session_id");
+                        .HasConstraintName("fk_ie_support_access_audit_events_support_access_sessions_support_access_session_id");
 
                     b.HasOne("Explore.Domain.Tenant", "TargetTenant")
                         .WithMany()
                         .HasForeignKey("TargetTenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_support_access_audit_events_tenants_target_tenant_id");
+                        .HasConstraintName("fk_ie_support_access_audit_events_tenants_target_tenant_id");
 
                     b.HasOne("Explore.Domain.TenantUser", "TargetTenantUser")
                         .WithMany()
                         .HasForeignKey("TargetTenantUserId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_islamu_event_support_access_audit_events_tenant_users_target_tenant_user_id");
+                        .HasConstraintName("fk_ie_support_access_audit_events_tenant_users_target_tenant_user_id");
 
                     b.Navigation("ActorUser");
 
@@ -33640,46 +34499,46 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .WithMany()
                         .HasForeignKey("ActorUserId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_islamu_event_support_access_sessions_users_actor_user_id");
+                        .HasConstraintName("fk_ie_support_access_sessions_users_actor_user_id");
 
                     b.HasOne("Explore.Domain.User", "ApprovedByUser")
                         .WithMany()
                         .HasForeignKey("ApprovedByUserId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_islamu_event_support_access_sessions_users_approved_by_user_id");
+                        .HasConstraintName("fk_ie_support_access_sessions_users_approved_by_user_id");
 
                     b.HasOne("Explore.Domain.SupportAccessEndReason", "EndReason")
                         .WithMany()
                         .HasForeignKey("EndReasonId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_islamu_event_support_access_sessions_islamu_event_support_access_end_reasons_end_reason_id");
+                        .HasConstraintName("fk_ie_support_access_sessions_ie_support_access_end_reasons_end_reason_id");
 
                     b.HasOne("Explore.Domain.SupportAccessMode", "Mode")
                         .WithMany()
                         .HasForeignKey("ModeId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_support_access_sessions_islamu_event_support_access_modes_mode_id");
+                        .HasConstraintName("fk_ie_support_access_sessions_ie_support_access_modes_mode_id");
 
                     b.HasOne("Explore.Domain.SupportAccessSessionStatus", "Status")
                         .WithMany()
                         .HasForeignKey("StatusId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_support_access_sessions_support_access_session_statuses_status_id");
+                        .HasConstraintName("fk_ie_support_access_sessions_support_access_session_statuses_status_id");
 
                     b.HasOne("Explore.Domain.Tenant", "TargetTenant")
                         .WithMany()
                         .HasForeignKey("TargetTenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_support_access_sessions_tenants_target_tenant_id");
+                        .HasConstraintName("fk_ie_support_access_sessions_tenants_target_tenant_id");
 
                     b.HasOne("Explore.Domain.TenantUser", "TargetTenantUser")
                         .WithMany()
                         .HasForeignKey("TargetTenantUserId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_islamu_event_support_access_sessions_tenant_users_target_tenant_user_id");
+                        .HasConstraintName("fk_ie_support_access_sessions_tenant_users_target_tenant_user_id");
 
                     b.Navigation("ActorUser");
 
@@ -33703,7 +34562,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasForeignKey("SettingValueTypeId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_system_settings_islamu_event_setting_value_types_setting_value_type_id");
+                        .HasConstraintName("fk_ie_system_settings_ie_setting_value_types_setting_value_type_id");
 
                     b.Navigation("SettingValueTypeLookup");
                 });
@@ -33715,7 +34574,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_tags_tenants_tenant_id");
+                        .HasConstraintName("fk_ie_tags_tenants_tenant_id");
 
                     b.Navigation("Tenant");
                 });
@@ -33727,21 +34586,21 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasForeignKey("TagId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_tag_type_tags_islamu_event_tags_tag_id");
+                        .HasConstraintName("fk_ie_tag_type_tags_ie_tags_tag_id");
 
                     b.HasOne("Explore.Domain.TagType", "TagType")
                         .WithMany()
                         .HasForeignKey("TagTypeId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_tag_type_tags_islamu_event_tag_types_tag_type_id");
+                        .HasConstraintName("fk_ie_tag_type_tags_ie_tag_types_tag_type_id");
 
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_tag_type_tags_tenants_tenant_id");
+                        .HasConstraintName("fk_ie_tag_type_tags_tenants_tenant_id");
 
                     b.Navigation("Tag");
 
@@ -33757,7 +34616,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasForeignKey("TenantStatusId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_tenants_tenant_statuses_tenant_status_id");
+                        .HasConstraintName("fk_ie_tenants_tenant_statuses_tenant_status_id");
 
                     b.Navigation("TenantStatus");
                 });
@@ -33769,7 +34628,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasForeignKey("FooterLinkGroupId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_tenant_footer_links_tenant_footer_link_groups_footer_link_group_id");
+                        .HasConstraintName("fk_ie_tenant_footer_links_tenant_footer_link_groups_footer_link_group_id");
 
                     b.Navigation("Group");
                 });
@@ -33780,7 +34639,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Cascade)
-                        .HasConstraintName("fk_islamu_event_tenant_footer_link_groups_islamu_event_tenants_tenant_id");
+                        .HasConstraintName("fk_ie_tenant_footer_link_groups_ie_tenants_tenant_id");
 
                     b.Navigation("Tenant");
                 });
@@ -33792,14 +34651,14 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasForeignKey("RoleId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_tenant_invitations_islamu_event_roles_role_id");
+                        .HasConstraintName("fk_ie_tenant_invitations_ie_roles_role_id");
 
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_tenant_invitations_islamu_event_tenants_tenant_id");
+                        .HasConstraintName("fk_ie_tenant_invitations_ie_tenants_tenant_id");
 
                     b.Navigation("Role");
 
@@ -33813,20 +34672,20 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasForeignKey("NewStatusId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_tenant_lifecycle_logs_tenant_statuses_new_status_id");
+                        .HasConstraintName("fk_ie_tenant_lifecycle_logs_tenant_statuses_new_status_id");
 
                     b.HasOne("Explore.Domain.TenantStatus", "OldStatus")
                         .WithMany()
                         .HasForeignKey("OldStatusId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_islamu_event_tenant_lifecycle_logs_tenant_statuses_old_status_id");
+                        .HasConstraintName("fk_ie_tenant_lifecycle_logs_tenant_statuses_old_status_id");
 
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_tenant_lifecycle_logs_islamu_event_tenants_tenant_id");
+                        .HasConstraintName("fk_ie_tenant_lifecycle_logs_ie_tenants_tenant_id");
 
                     b.Navigation("NewStatus");
 
@@ -33842,7 +34701,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_tenant_navigation_links_islamu_event_tenants_tenant_id");
+                        .HasConstraintName("fk_ie_tenant_navigation_links_ie_tenants_tenant_id");
 
                     b.Navigation("Tenant");
                 });
@@ -33854,7 +34713,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_tenant_onboarding_states_islamu_event_tenants_tenant_id");
+                        .HasConstraintName("fk_ie_tenant_onboarding_states_ie_tenants_tenant_id");
 
                     b.Navigation("Tenant");
                 });
@@ -33865,41 +34724,41 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .WithMany()
                         .HasForeignKey("PreviousTenantPlanVersionId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_islamu_event_tenant_plan_application_logs_tenant_plan_versions_previous_tenant_plan_version_id");
+                        .HasConstraintName("fk_ie_tenant_plan_application_logs_tenant_plan_versions_previous_tenant_plan_version_id");
 
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_tenant_plan_application_logs_islamu_event_tenants_tenant_id");
+                        .HasConstraintName("fk_ie_tenant_plan_application_logs_ie_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.TenantPlanApplicationStatus", "TenantPlanApplicationStatus")
                         .WithMany()
                         .HasForeignKey("TenantPlanApplicationStatusId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_tenant_plan_application_logs_tenant_plan_application_statuses_tenant_plan_application_status_id");
+                        .HasConstraintName("fk_ie_tenant_plan_application_logs_tenant_plan_application_statuses_tenant_plan_application_status_id");
 
                     b.HasOne("Explore.Domain.TenantPlanAssignment", "TenantPlanAssignment")
                         .WithMany("ApplicationLogs")
                         .HasForeignKey("TenantPlanAssignmentId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_islamu_event_tenant_plan_application_logs_tenant_plan_assignments_tenant_plan_assignment_id");
+                        .HasConstraintName("fk_ie_tenant_plan_application_logs_tenant_plan_assignments_tenant_plan_assignment_id");
 
                     b.HasOne("Explore.Domain.TenantPlan", "TenantPlan")
                         .WithMany()
                         .HasForeignKey("TenantPlanId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_tenant_plan_application_logs_islamu_event_tenant_plans_tenant_plan_id");
+                        .HasConstraintName("fk_ie_tenant_plan_application_logs_ie_tenant_plans_tenant_plan_id");
 
                     b.HasOne("Explore.Domain.TenantPlanVersion", "TenantPlanVersion")
                         .WithMany()
                         .HasForeignKey("TenantPlanVersionId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_tenant_plan_application_logs_tenant_plan_versions_tenant_plan_version_id");
+                        .HasConstraintName("fk_ie_tenant_plan_application_logs_tenant_plan_versions_tenant_plan_version_id");
 
                     b.Navigation("PreviousTenantPlanVersion");
 
@@ -33921,28 +34780,28 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_tenant_plan_assignments_islamu_event_tenants_tenant_id");
+                        .HasConstraintName("fk_ie_tenant_plan_assignments_ie_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.TenantPlanAssignmentStatus", "TenantPlanAssignmentStatus")
                         .WithMany()
                         .HasForeignKey("TenantPlanAssignmentStatusId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_tenant_plan_assignments_tenant_plan_assignment_statuses_tenant_plan_assignment_status_id");
+                        .HasConstraintName("fk_ie_tenant_plan_assignments_tenant_plan_assignment_statuses_tenant_plan_assignment_status_id");
 
                     b.HasOne("Explore.Domain.TenantPlan", "TenantPlan")
                         .WithMany("Assignments")
                         .HasForeignKey("TenantPlanId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_tenant_plan_assignments_islamu_event_tenant_plans_tenant_plan_id");
+                        .HasConstraintName("fk_ie_tenant_plan_assignments_ie_tenant_plans_tenant_plan_id");
 
                     b.HasOne("Explore.Domain.TenantPlanVersion", "TenantPlanVersion")
                         .WithMany("Assignments")
                         .HasForeignKey("TenantPlanVersionId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_tenant_plan_assignments_tenant_plan_versions_tenant_plan_version_id");
+                        .HasConstraintName("fk_ie_tenant_plan_assignments_tenant_plan_versions_tenant_plan_version_id");
 
                     b.Navigation("Tenant");
 
@@ -33960,14 +34819,14 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasForeignKey("TenantPlanId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_tenant_plan_versions_islamu_event_tenant_plans_tenant_plan_id");
+                        .HasConstraintName("fk_ie_tenant_plan_versions_ie_tenant_plans_tenant_plan_id");
 
                     b.HasOne("Explore.Domain.TenantPlanStatus", "TenantPlanStatus")
                         .WithMany()
                         .HasForeignKey("TenantPlanStatusId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_tenant_plan_versions_islamu_event_tenant_plan_statuses_tenant_plan_status_id");
+                        .HasConstraintName("fk_ie_tenant_plan_versions_ie_tenant_plan_statuses_tenant_plan_status_id");
 
                     b.Navigation("TenantPlan");
 
@@ -33981,7 +34840,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasForeignKey("TenantPlanVersionId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_tenant_plan_version_quotas_islamu_event_tenant_plan_versions_tenant_plan_version_id");
+                        .HasConstraintName("fk_ie_tenant_plan_version_quotas_ie_tenant_plan_versions_tenant_plan_version_id");
 
                     b.Navigation("TenantPlanVersion");
                 });
@@ -33993,7 +34852,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasForeignKey("TenantPlanVersionId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_tenant_plan_version_settings_islamu_event_tenant_plan_versions_tenant_plan_version_id");
+                        .HasConstraintName("fk_ie_tenant_plan_version_settings_ie_tenant_plan_versions_tenant_plan_version_id");
 
                     b.Navigation("TenantPlanVersion");
                 });
@@ -34005,7 +34864,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_tenant_setting_overrides_islamu_event_tenants_tenant_id");
+                        .HasConstraintName("fk_ie_tenant_setting_overrides_ie_tenants_tenant_id");
 
                     b.Navigation("Tenant");
                 });
@@ -34016,21 +34875,21 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .WithMany()
                         .HasForeignKey("ActorId")
                         .OnDelete(DeleteBehavior.SetNull)
-                        .HasConstraintName("fk_islamu_event_tenant_users_islamu_event_actors_actor_id");
+                        .HasConstraintName("fk_ie_tenant_users_ie_actors_actor_id");
 
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_tenant_users_islamu_event_tenants_tenant_id");
+                        .HasConstraintName("fk_ie_tenant_users_ie_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.User", "User")
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_tenant_users_users_user_id");
+                        .HasConstraintName("fk_ie_tenant_users_users_user_id");
 
                     b.Navigation("Actor");
 
@@ -34046,14 +34905,14 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_tenant_user_profiles_islamu_event_tenants_tenant_id");
+                        .HasConstraintName("fk_ie_tenant_user_profiles_ie_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.TenantUser", "TenantUser")
                         .WithOne("Profile")
                         .HasForeignKey("Explore.Domain.TenantUserProfile", "TenantUserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_tenant_user_profiles_islamu_event_tenant_users_tenant_user_id");
+                        .HasConstraintName("fk_ie_tenant_user_profiles_ie_tenant_users_tenant_user_id");
 
                     b.Navigation("Tenant");
 
@@ -34067,7 +34926,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_tenant_user_role_grants_islamu_event_tenants_tenant_id");
+                        .HasConstraintName("fk_ie_tenant_user_role_grants_ie_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.Role", "Role")
                         .WithMany()
@@ -34075,7 +34934,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasPrincipalKey("Id", "RoleScopeId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_tenant_user_role_grants_islamu_event_roles_role_id_role_scope_id");
+                        .HasConstraintName("fk_ie_tenant_user_role_grants_ie_roles_role_id_role_scope_id");
 
                     b.HasOne("Explore.Domain.TenantUser", "TenantUser")
                         .WithMany("RoleGrants")
@@ -34083,7 +34942,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_tenant_user_role_grants_islamu_event_tenant_users_tenant_id_tenant_user_id");
+                        .HasConstraintName("fk_ie_tenant_user_role_grants_ie_tenant_users_tenant_id_tenant_user_id");
 
                     b.Navigation("Role");
 
@@ -34099,14 +34958,14 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasForeignKey("EntitlementScopeTypeId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_ticket_type_entitlements_islamu_event_entitlement_scope_types_entitlement_scope_type_id");
+                        .HasConstraintName("fk_ie_ticket_type_entitlements_ie_entitlement_scope_types_entitlement_scope_type_id");
 
                     b.HasOne("Explore.Domain.EntitlementSelectionRule", "EntitlementSelectionRule")
                         .WithMany()
                         .HasForeignKey("EntitlementSelectionRuleId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_ticket_type_entitlements_islamu_event_entitlement_selection_rules_entitlement_selection_rule_id");
+                        .HasConstraintName("fk_ie_ticket_type_entitlements_ie_entitlement_selection_rules_entitlement_selection_rule_id");
 
                     b.HasOne("Explore.Domain.Event", null)
                         .WithMany()
@@ -34114,7 +34973,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_ticket_type_entitlements_islamu_event_events_tenant_id_target_event_id");
+                        .HasConstraintName("fk_ie_ticket_type_entitlements_ie_events_tenant_id_target_event_id");
 
                     b.HasOne("Explore.Domain.EventTicketType", null)
                         .WithMany("Entitlements")
@@ -34122,21 +34981,21 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_ticket_type_entitlements_islamu_event_event_ticket_types_tenant_id_ticket_type_id");
+                        .HasConstraintName("fk_ie_ticket_type_entitlements_ie_event_ticket_types_tenant_id_ticket_type_id");
 
                     b.HasOne("Explore.Domain.EventDay", null)
                         .WithMany()
                         .HasForeignKey("TenantId", "TargetEventId", "EventDayId")
                         .HasPrincipalKey("TenantId", "EventId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_islamu_event_ticket_type_entitlements_islamu_event_event_days_tenant_id_target_event_id_event_day_id");
+                        .HasConstraintName("fk_ie_ticket_type_entitlements_ie_event_days_tenant_id_target_event_id_event_day_id");
 
                     b.HasOne("Explore.Domain.EventSession", null)
                         .WithMany()
                         .HasForeignKey("TenantId", "TargetEventId", "EventSessionId")
                         .HasPrincipalKey("TenantId", "EventId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_islamu_event_ticket_type_entitlements_islamu_event_event_sessions_tenant_id_target_event_id_event_session_id");
+                        .HasConstraintName("fk_ie_ticket_type_entitlements_ie_event_sessions_tenant_id_target_event_id_event_session_id");
 
                     b.Navigation("EntitlementScopeType");
 
@@ -34149,7 +35008,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Cascade)
-                        .HasConstraintName("fk_islamu_event_ui_themes_islamu_event_tenants_tenant_id");
+                        .HasConstraintName("fk_ie_ui_themes_ie_tenants_tenant_id");
 
                     b.OwnsOne("Explore.Domain.ValueObjects.UiThemePalette", "DarkPalette", b1 =>
                         {
@@ -34274,7 +35133,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                             b1.HasKey("UiThemeId");
 
-                            b1.ToTable("islamu_event_ui_themes");
+                            b1.ToTable("ie_ui_themes");
 
                             b1.WithOwner()
                                 .HasForeignKey("UiThemeId")
@@ -34404,7 +35263,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                             b1.HasKey("UiThemeId");
 
-                            b1.ToTable("islamu_event_ui_themes");
+                            b1.ToTable("ie_ui_themes");
 
                             b1.WithOwner()
                                 .HasForeignKey("UiThemeId")
@@ -34426,7 +35285,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Cascade)
-                        .HasConstraintName("fk_islamu_event_ui_theme_presets_islamu_event_tenants_tenant_id");
+                        .HasConstraintName("fk_ie_ui_theme_presets_ie_tenants_tenant_id");
 
                     b.OwnsOne("Explore.Domain.ValueObjects.UiThemePalette", "DarkPalette", b1 =>
                         {
@@ -34551,7 +35410,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                             b1.HasKey("UiThemePresetId");
 
-                            b1.ToTable("islamu_event_ui_theme_presets");
+                            b1.ToTable("ie_ui_theme_presets");
 
                             b1.WithOwner()
                                 .HasForeignKey("UiThemePresetId")
@@ -34681,7 +35540,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                             b1.HasKey("UiThemePresetId");
 
-                            b1.ToTable("islamu_event_ui_theme_presets");
+                            b1.ToTable("ie_ui_theme_presets");
 
                             b1.WithOwner()
                                 .HasForeignKey("UiThemePresetId")
@@ -34704,7 +35563,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasForeignKey("ActiveProfileId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_user_appearance_preferences_user_appearance_profiles_active_profile_id");
+                        .HasConstraintName("fk_ie_user_appearance_preferences_user_appearance_profiles_active_profile_id");
 
                     b.Navigation("ActiveProfile");
                 });
@@ -34834,7 +35693,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                             b1.HasKey("UserAppearanceProfileId");
 
-                            b1.ToTable("islamu_event_user_appearance_profiles");
+                            b1.ToTable("ie_user_appearance_profiles");
 
                             b1.WithOwner()
                                 .HasForeignKey("UserAppearanceProfileId")
@@ -34964,7 +35823,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                             b1.HasKey("UserAppearanceProfileId");
 
-                            b1.ToTable("islamu_event_user_appearance_profiles");
+                            b1.ToTable("ie_user_appearance_profiles");
 
                             b1.WithOwner()
                                 .HasForeignKey("UserAppearanceProfileId")
@@ -34985,14 +35844,14 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_user_authentication_tokens_islamu_event_tenants_tenant_id");
+                        .HasConstraintName("fk_ie_user_authentication_tokens_ie_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.User", "User")
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_user_authentication_tokens_islamu_event_users_user_id");
+                        .HasConstraintName("fk_ie_user_authentication_tokens_ie_users_user_id");
 
                     b.Navigation("Tenant");
 
@@ -35006,14 +35865,14 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_user_external_logins_islamu_event_tenants_tenant_id");
+                        .HasConstraintName("fk_ie_user_external_logins_ie_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.User", "User")
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_user_external_logins_islamu_event_users_user_id");
+                        .HasConstraintName("fk_ie_user_external_logins_ie_users_user_id");
 
                     b.Navigation("Tenant");
 
@@ -35027,14 +35886,14 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_user_notification_preferences_islamu_event_tenants_tenant_id");
+                        .HasConstraintName("fk_ie_user_notification_preferences_ie_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.User", null)
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_user_notification_preferences_islamu_event_users_user_id");
+                        .HasConstraintName("fk_ie_user_notification_preferences_ie_users_user_id");
 
                     b.Navigation("Tenant");
                 });
@@ -35046,7 +35905,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasForeignKey("Explore.Domain.UserPii", "UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_user_pii_islamu_event_users_user_id");
+                        .HasConstraintName("fk_ie_user_pii_ie_users_user_id");
 
                     b.Navigation("User");
                 });
@@ -35058,7 +35917,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_user_preferences_islamu_event_tenants_tenant_id");
+                        .HasConstraintName("fk_ie_user_preferences_ie_tenants_tenant_id");
 
                     b.Navigation("Tenant");
                 });
@@ -35070,28 +35929,28 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasForeignKey("CategoryId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_web_push_dispatch_outbox_islamu_event_notification_preference_categories_category_id");
+                        .HasConstraintName("fk_ie_web_push_dispatch_outbox_ie_notification_preference_categories_category_id");
 
                     b.HasOne("Explore.Domain.WebPushSubscription", "Subscription")
                         .WithMany()
                         .HasForeignKey("SubscriptionId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_web_push_dispatch_outbox_web_push_subscriptions_subscription_id");
+                        .HasConstraintName("fk_ie_web_push_dispatch_outbox_web_push_subscriptions_subscription_id");
 
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_web_push_dispatch_outbox_islamu_event_tenants_tenant_id");
+                        .HasConstraintName("fk_ie_web_push_dispatch_outbox_ie_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.User", "User")
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_web_push_dispatch_outbox_islamu_event_users_user_id");
+                        .HasConstraintName("fk_ie_web_push_dispatch_outbox_ie_users_user_id");
 
                     b.Navigation("Category");
 
@@ -35109,14 +35968,14 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_web_push_subscriptions_islamu_event_tenants_tenant_id");
+                        .HasConstraintName("fk_ie_web_push_subscriptions_ie_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.User", "User")
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_web_push_subscriptions_islamu_event_users_user_id");
+                        .HasConstraintName("fk_ie_web_push_subscriptions_ie_users_user_id");
 
                     b.Navigation("Tenant");
 
@@ -35130,41 +35989,41 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasForeignKey("ActionId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_webhook_audit_events_islamu_event_webhook_audit_actions_action_id");
+                        .HasConstraintName("fk_ie_webhook_audit_events_ie_webhook_audit_actions_action_id");
 
                     b.HasOne("Explore.Domain.WebhookAuditScopeKindLookup", "EffectiveScopeKindLookup")
                         .WithMany()
                         .HasForeignKey("EffectiveScopeKindId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_webhook_audit_events_webhook_audit_scope_kinds_effective_scope_kind_id");
+                        .HasConstraintName("fk_ie_webhook_audit_events_webhook_audit_scope_kinds_effective_scope_kind_id");
 
                     b.HasOne("Explore.Domain.WebhookAuditOutcomeLookup", "OutcomeLookup")
                         .WithMany()
                         .HasForeignKey("OutcomeId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_webhook_audit_events_webhook_audit_outcomes_outcome_id");
+                        .HasConstraintName("fk_ie_webhook_audit_events_webhook_audit_outcomes_outcome_id");
 
                     b.HasOne("Explore.Domain.WebhookAuditPrincipalKindLookup", "PrincipalKindLookup")
                         .WithMany()
                         .HasForeignKey("PrincipalKindId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_webhook_audit_events_webhook_audit_principal_kinds_principal_kind_id");
+                        .HasConstraintName("fk_ie_webhook_audit_events_webhook_audit_principal_kinds_principal_kind_id");
 
                     b.HasOne("Explore.Domain.WebhookAuditTargetKindLookup", "TargetKindLookup")
                         .WithMany()
                         .HasForeignKey("TargetKindId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_webhook_audit_events_webhook_audit_target_kinds_target_kind_id");
+                        .HasConstraintName("fk_ie_webhook_audit_events_webhook_audit_target_kinds_target_kind_id");
 
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_islamu_event_webhook_audit_events_islamu_event_tenants_tenant_id");
+                        .HasConstraintName("fk_ie_webhook_audit_events_ie_tenants_tenant_id");
 
                     b.Navigation("ActionLookup");
 
@@ -35186,26 +36045,26 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasForeignKey("StatusId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_webhook_bulk_replay_operations_webhook_bulk_replay_statuses_status_id");
+                        .HasConstraintName("fk_ie_webhook_bulk_replay_operations_webhook_bulk_replay_statuses_status_id");
 
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_webhook_bulk_replay_operations_islamu_event_tenants_tenant_id");
+                        .HasConstraintName("fk_ie_webhook_bulk_replay_operations_ie_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.WebhookConsumer", "WebhookConsumer")
                         .WithMany()
                         .HasForeignKey("WebhookConsumerId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_islamu_event_webhook_bulk_replay_operations_webhook_consumers_webhook_consumer_id");
+                        .HasConstraintName("fk_ie_webhook_bulk_replay_operations_webhook_consumers_webhook_consumer_id");
 
                     b.HasOne("Explore.Domain.WebhookEndpoint", "WebhookEndpoint")
                         .WithMany()
                         .HasForeignKey("WebhookEndpointId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_islamu_event_webhook_bulk_replay_operations_webhook_endpoints_webhook_endpoint_id");
+                        .HasConstraintName("fk_ie_webhook_bulk_replay_operations_webhook_endpoints_webhook_endpoint_id");
 
                     b.Navigation("StatusLookup");
 
@@ -35223,54 +36082,54 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasForeignKey("ConsumerKindId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_webhook_consumers_webhook_consumer_kinds_consumer_kind_id");
+                        .HasConstraintName("fk_ie_webhook_consumers_webhook_consumer_kinds_consumer_kind_id");
 
                     b.HasOne("Explore.Domain.InstanceBootstrapState", "Instance")
                         .WithMany()
                         .HasForeignKey("InstanceId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_islamu_event_webhook_consumers_islamu_event_instance_bootstrap_states_instance_id");
+                        .HasConstraintName("fk_ie_webhook_consumers_ie_instance_bootstrap_states_instance_id");
 
                     b.HasOne("Explore.Domain.WebhookProviderModeLookup", "ProviderModeLookup")
                         .WithMany()
                         .HasForeignKey("ProviderModeId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_webhook_consumers_webhook_provider_modes_provider_mode_id");
+                        .HasConstraintName("fk_ie_webhook_consumers_webhook_provider_modes_provider_mode_id");
 
                     b.HasOne("Explore.Domain.WebhookConsumerStatusLookup", "StatusLookup")
                         .WithMany()
                         .HasForeignKey("StatusId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_webhook_consumers_webhook_consumer_statuses_status_id");
+                        .HasConstraintName("fk_ie_webhook_consumers_webhook_consumer_statuses_status_id");
 
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_islamu_event_webhook_consumers_islamu_event_tenants_tenant_id");
+                        .HasConstraintName("fk_ie_webhook_consumers_ie_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.GroupTenant", null)
                         .WithMany()
                         .HasForeignKey("TenantId", "GroupId")
                         .HasPrincipalKey("TenantId", "GroupId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_islamu_event_webhook_consumers_islamu_event_group_tenants_tenant_id_group_id");
+                        .HasConstraintName("fk_ie_webhook_consumers_ie_group_tenants_tenant_id_group_id");
 
                     b.HasOne("Explore.Domain.OrganizationTenant", null)
                         .WithMany()
                         .HasForeignKey("TenantId", "OrganizationId")
                         .HasPrincipalKey("TenantId", "OrganizationId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_islamu_event_webhook_consumers_islamu_event_organization_tenants_tenant_id_organization_id");
+                        .HasConstraintName("fk_ie_webhook_consumers_ie_organization_tenants_tenant_id_organization_id");
 
                     b.HasOne("Explore.Domain.TenantUser", "OwnerTenantUser")
                         .WithMany()
                         .HasForeignKey("TenantId", "OwnerUserId")
                         .HasPrincipalKey("TenantId", "UserId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_islamu_event_webhook_consumers_islamu_event_tenant_users_tenant_id_owner_user_id");
+                        .HasConstraintName("fk_ie_webhook_consumers_ie_tenant_users_tenant_id_owner_user_id");
 
                     b.Navigation("ConsumerKindLookup");
 
@@ -35292,20 +36151,20 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasForeignKey("ProviderKindId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_webhook_consumer_provider_bindings_webhook_provider_kinds_provider_kind_id");
+                        .HasConstraintName("fk_ie_webhook_consumer_provider_bindings_webhook_provider_kinds_provider_kind_id");
 
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_islamu_event_webhook_consumer_provider_bindings_islamu_event_tenants_tenant_id");
+                        .HasConstraintName("fk_ie_webhook_consumer_provider_bindings_ie_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.WebhookProviderBindingVerificationStateLookup", "VerificationStateLookup")
                         .WithMany()
                         .HasForeignKey("VerificationStateId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_webhook_consumer_provider_bindings_webhook_provider_binding_verification_states_verification_state_id");
+                        .HasConstraintName("fk_ie_webhook_consumer_provider_bindings_webhook_provider_binding_verification_states_verification_state_id");
 
                     b.HasOne("Explore.Domain.WebhookConsumer", "WebhookConsumer")
                         .WithMany("ProviderBindings")
@@ -35313,7 +36172,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasPrincipalKey("ConfigurationScopeId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_webhook_consumer_provider_bindings_islamu_event_webhook_consumers_configuration_scope_id_webhook_consumer_id");
+                        .HasConstraintName("fk_ie_webhook_consumer_provider_bindings_ie_webhook_consumers_configuration_scope_id_webhook_consumer_id");
 
                     b.Navigation("ProviderKindLookup");
 
@@ -35331,21 +36190,21 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasForeignKey("EndpointId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_webhook_delivery_attempts_webhook_endpoints_endpoint_id");
+                        .HasConstraintName("fk_ie_webhook_delivery_attempts_webhook_endpoints_endpoint_id");
 
                     b.HasOne("Explore.Domain.WebhookDeliveryAttemptOutcomeLookup", "OutcomeLookup")
                         .WithMany()
                         .HasForeignKey("OutcomeId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_webhook_delivery_attempts_webhook_delivery_attempt_outcomes_outcome_id");
+                        .HasConstraintName("fk_ie_webhook_delivery_attempts_webhook_delivery_attempt_outcomes_outcome_id");
 
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_webhook_delivery_attempts_islamu_event_tenants_tenant_id");
+                        .HasConstraintName("fk_ie_webhook_delivery_attempts_ie_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.WebhookMessage", "Message")
                         .WithMany()
@@ -35353,7 +36212,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_webhook_delivery_attempts_webhook_messages_tenant_id_message_id");
+                        .HasConstraintName("fk_ie_webhook_delivery_attempts_webhook_messages_tenant_id_message_id");
 
                     b.Navigation("Endpoint");
 
@@ -35371,21 +36230,21 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasForeignKey("ProviderModeId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_webhook_delivery_plan_snapshots_webhook_provider_modes_provider_mode_id");
+                        .HasConstraintName("fk_ie_webhook_delivery_plan_snapshots_webhook_provider_modes_provider_mode_id");
 
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_webhook_delivery_plan_snapshots_islamu_event_tenants_tenant_id");
+                        .HasConstraintName("fk_ie_webhook_delivery_plan_snapshots_ie_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.WebhookConsumer", "WebhookConsumer")
                         .WithMany()
                         .HasForeignKey("WebhookConsumerId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_webhook_delivery_plan_snapshots_islamu_event_webhook_consumers_webhook_consumer_id");
+                        .HasConstraintName("fk_ie_webhook_delivery_plan_snapshots_ie_webhook_consumers_webhook_consumer_id");
 
                     b.HasOne("Explore.Domain.WebhookMessage", "WebhookMessage")
                         .WithMany()
@@ -35393,7 +36252,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_webhook_delivery_plan_snapshots_webhook_messages_tenant_id_webhook_message_id");
+                        .HasConstraintName("fk_ie_webhook_delivery_plan_snapshots_webhook_messages_tenant_id_webhook_message_id");
 
                     b.Navigation("ProviderModeLookup");
 
@@ -35410,20 +36269,20 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .WithMany()
                         .HasForeignKey("InstanceId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_islamu_event_webhook_endpoints_islamu_event_instance_bootstrap_states_instance_id");
+                        .HasConstraintName("fk_ie_webhook_endpoints_ie_instance_bootstrap_states_instance_id");
 
                     b.HasOne("Explore.Domain.WebhookEndpointStatusLookup", "StatusLookup")
                         .WithMany()
                         .HasForeignKey("StatusId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_webhook_endpoints_webhook_endpoint_statuses_status_id");
+                        .HasConstraintName("fk_ie_webhook_endpoints_webhook_endpoint_statuses_status_id");
 
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_islamu_event_webhook_endpoints_islamu_event_tenants_tenant_id");
+                        .HasConstraintName("fk_ie_webhook_endpoints_ie_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.WebhookConsumer", "Consumer")
                         .WithMany()
@@ -35431,7 +36290,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasPrincipalKey("ConfigurationScopeId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_webhook_endpoints_islamu_event_webhook_consumers_configuration_scope_id_consumer_id");
+                        .HasConstraintName("fk_ie_webhook_endpoints_ie_webhook_consumers_configuration_scope_id_consumer_id");
 
                     b.Navigation("Consumer");
 
@@ -35449,19 +36308,19 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasForeignKey("EventTypeId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_webhook_endpoint_subscriptions_webhook_event_types_event_type_id");
+                        .HasConstraintName("fk_ie_webhook_endpoint_subscriptions_webhook_event_types_event_type_id");
 
                     b.HasOne("Explore.Domain.InstanceBootstrapState", "Instance")
                         .WithMany()
                         .HasForeignKey("InstanceId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_islamu_event_webhook_endpoint_subscriptions_islamu_event_instance_bootstrap_states_instance_id");
+                        .HasConstraintName("fk_ie_webhook_endpoint_subscriptions_ie_instance_bootstrap_states_instance_id");
 
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_islamu_event_webhook_endpoint_subscriptions_islamu_event_tenants_tenant_id");
+                        .HasConstraintName("fk_ie_webhook_endpoint_subscriptions_ie_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.WebhookEndpoint", "Endpoint")
                         .WithMany("Subscriptions")
@@ -35469,7 +36328,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasPrincipalKey("ConfigurationScopeId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_webhook_endpoint_subscriptions_islamu_event_webhook_endpoints_configuration_scope_id_endpoint_id");
+                        .HasConstraintName("fk_ie_webhook_endpoint_subscriptions_ie_webhook_endpoints_configuration_scope_id_endpoint_id");
 
                     b.Navigation("Endpoint");
 
@@ -35487,21 +36346,21 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasForeignKey("DeliveryStatusId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_webhook_local_target_snapshots_islamu_event_webhook_local_delivery_statuses_delivery_status_id");
+                        .HasConstraintName("fk_ie_webhook_local_target_snapshots_ie_webhook_local_delivery_statuses_delivery_status_id");
 
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_webhook_local_target_snapshots_islamu_event_tenants_tenant_id");
+                        .HasConstraintName("fk_ie_webhook_local_target_snapshots_ie_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.WebhookEndpoint", "WebhookEndpoint")
                         .WithMany()
                         .HasForeignKey("WebhookEndpointId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_webhook_local_target_snapshots_islamu_event_webhook_endpoints_webhook_endpoint_id");
+                        .HasConstraintName("fk_ie_webhook_local_target_snapshots_ie_webhook_endpoints_webhook_endpoint_id");
 
                     b.HasOne("Explore.Domain.WebhookDeliveryPlanSnapshot", "DeliveryPlanSnapshot")
                         .WithMany()
@@ -35509,7 +36368,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_webhook_local_target_snapshots_islamu_event_webhook_delivery_plan_snapshots_tenant_id_delivery_plan_snapshot_id");
+                        .HasConstraintName("fk_ie_webhook_local_target_snapshots_ie_webhook_delivery_plan_snapshots_tenant_id_delivery_plan_snapshot_id");
 
                     b.HasOne("Explore.Domain.WebhookMessage", "WebhookMessage")
                         .WithMany()
@@ -35517,7 +36376,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_webhook_local_target_snapshots_webhook_messages_tenant_id_webhook_message_id");
+                        .HasConstraintName("fk_ie_webhook_local_target_snapshots_webhook_messages_tenant_id_webhook_message_id");
 
                     b.Navigation("DeliveryPlanSnapshot");
 
@@ -35536,21 +36395,21 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .WithMany()
                         .HasForeignKey("ConsumerId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_islamu_event_webhook_messages_islamu_event_webhook_consumers_consumer_id");
+                        .HasConstraintName("fk_ie_webhook_messages_ie_webhook_consumers_consumer_id");
 
                     b.HasOne("Explore.Domain.WebhookPayloadProvenanceLookup", "PayloadProvenanceLookup")
                         .WithMany()
                         .HasForeignKey("PayloadProvenanceId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_webhook_messages_webhook_payload_provenances_payload_provenance_id");
+                        .HasConstraintName("fk_ie_webhook_messages_webhook_payload_provenances_payload_provenance_id");
 
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_webhook_messages_islamu_event_tenants_tenant_id");
+                        .HasConstraintName("fk_ie_webhook_messages_ie_tenants_tenant_id");
 
                     b.Navigation("Consumer");
 
@@ -35566,35 +36425,35 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasForeignKey("ModeSnapshotId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_webhook_provider_publications_islamu_event_webhook_provider_modes_mode_snapshot_id");
+                        .HasConstraintName("fk_ie_webhook_provider_publications_ie_webhook_provider_modes_mode_snapshot_id");
 
                     b.HasOne("Explore.Domain.WebhookConsumerProviderBinding", "ProviderBinding")
                         .WithMany()
                         .HasForeignKey("ProviderBindingId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_webhook_provider_publications_islamu_event_webhook_consumer_provider_bindings_provider_binding_id");
+                        .HasConstraintName("fk_ie_webhook_provider_publications_ie_webhook_consumer_provider_bindings_provider_binding_id");
 
                     b.HasOne("Explore.Domain.WebhookProviderKindLookup", "ProviderKindLookup")
                         .WithMany()
                         .HasForeignKey("ProviderKindId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_webhook_provider_publications_islamu_event_webhook_provider_kinds_provider_kind_id");
+                        .HasConstraintName("fk_ie_webhook_provider_publications_ie_webhook_provider_kinds_provider_kind_id");
 
                     b.HasOne("Explore.Domain.WebhookProviderPublicationStatusLookup", "StatusLookup")
                         .WithMany()
                         .HasForeignKey("StatusId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_webhook_provider_publications_webhook_provider_publication_statuses_status_id");
+                        .HasConstraintName("fk_ie_webhook_provider_publications_webhook_provider_publication_statuses_status_id");
 
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_webhook_provider_publications_islamu_event_tenants_tenant_id");
+                        .HasConstraintName("fk_ie_webhook_provider_publications_ie_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.WebhookDeliveryPlanSnapshot", "WebhookDeliveryPlanSnapshot")
                         .WithMany()
@@ -35602,7 +36461,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_webhook_provider_publications_islamu_event_webhook_delivery_plan_snapshots_tenant_id_webhook_delivery_plan_snapshot_id");
+                        .HasConstraintName("fk_ie_webhook_provider_publications_ie_webhook_delivery_plan_snapshots_tenant_id_webhook_delivery_plan_snapshot_id");
 
                     b.HasOne("Explore.Domain.WebhookMessage", "WebhookMessage")
                         .WithMany()
@@ -35610,7 +36469,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_webhook_provider_publications_islamu_event_webhook_messages_tenant_id_webhook_message_id");
+                        .HasConstraintName("fk_ie_webhook_provider_publications_ie_webhook_messages_tenant_id_webhook_message_id");
 
                     b.Navigation("ModeSnapshotLookup");
 
@@ -35634,14 +36493,14 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasForeignKey("OutcomeId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_webhook_provider_publication_attempts_webhook_provider_publication_attempt_outcomes_outcome_id");
+                        .HasConstraintName("fk_ie_webhook_provider_publication_attempts_webhook_provider_publication_attempt_outcomes_outcome_id");
 
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_webhook_provider_publication_attempts_islamu_event_tenants_tenant_id");
+                        .HasConstraintName("fk_ie_webhook_provider_publication_attempts_ie_tenants_tenant_id");
 
                     b.HasOne("Explore.Domain.WebhookProviderPublication", "WebhookProviderPublication")
                         .WithMany("Attempts")
@@ -35649,7 +36508,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_webhook_provider_publication_attempts_islamu_event_webhook_provider_publications_tenant_id_webhook_provider_publication_id");
+                        .HasConstraintName("fk_ie_webhook_provider_publication_attempts_ie_webhook_provider_publications_tenant_id_webhook_provider_publication_id");
 
                     b.Navigation("OutcomeLookup");
 
@@ -35665,14 +36524,14 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasForeignKey("SubjectKindId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_webhook_retention_holds_webhook_retention_subject_kinds_subject_kind_id");
+                        .HasConstraintName("fk_ie_webhook_retention_holds_webhook_retention_subject_kinds_subject_kind_id");
 
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_islamu_event_webhook_retention_holds_islamu_event_tenants_tenant_id");
+                        .HasConstraintName("fk_ie_webhook_retention_holds_ie_tenants_tenant_id");
 
                     b.Navigation("SubjectKindLookup");
 
