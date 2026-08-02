@@ -11,7 +11,7 @@ namespace Explore.Persistence.DataProtection.Migrations.Sqlite.Migrations
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.CreateTable(
-                name: "islamu_event_data_protection_keys",
+                name: "ie_data_protection_keys",
                 columns: table => new
                 {
                     id = table.Column<int>(type: "INTEGER", nullable: false)
@@ -21,7 +21,7 @@ namespace Explore.Persistence.DataProtection.Migrations.Sqlite.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("pk_islamu_event_data_protection_keys", x => x.id);
+                    table.PrimaryKey("pk_ie_data_protection_keys", x => x.id);
                 });
         }
 
@@ -29,7 +29,7 @@ namespace Explore.Persistence.DataProtection.Migrations.Sqlite.Migrations
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropTable(
-                name: "islamu_event_data_protection_keys");
+                name: "ie_data_protection_keys");
         }
     }
 }
