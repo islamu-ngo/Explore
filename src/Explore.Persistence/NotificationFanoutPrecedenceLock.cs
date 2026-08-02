@@ -1,37 +1,37 @@
-// ABOUTME: Centralizes the PostgreSQL advisory-lock identity for event fanout precedence decisions.
-// ABOUTME: Keeps occurrence coordination and SMTP provider admission on one deadlock-safe lock boundary.
+// ABOUTME: Centralizes the provider-neutral named-lock identity for event fanout precedence decisions.
+// ABOUTME: Keeps occurrence coordination and SMTP provider admission on one deadlock-safe transaction boundary.
 
+using Explore.Persistence.Database;
 using Microsoft.EntityFrameworkCore;
 
 namespace Explore.Persistence;
 
 internal static class NotificationFanoutPrecedenceLock
 {
-    public static async Task AcquireAsync(
+    public static Task<IAsyncDisposable> AcquireAsync(
         ExploreDbContext dbContext,
         Guid tenantId,
         Guid eventId,
         CancellationToken cancellationToken)
     {
-        EnsureActivePostgresTransaction(dbContext);
+        EnsureActiveTransaction(dbContext);
         if (tenantId == Guid.Empty || eventId == Guid.Empty)
         {
             throw new ArgumentException("Fanout precedence locking requires non-empty tenant and event identifiers.");
         }
 
-        string key = $"notification-fanout-precedence:{tenantId:N}:{eventId:N}";
-        await dbContext.Database.ExecuteSqlInterpolatedAsync(
-            $"SELECT pg_advisory_xact_lock(hashtextextended({key}, 0))",
+        return RelationalNamedLock.AcquireTransactionAsync(
+            dbContext,
+            $"notification-fanout-precedence:{tenantId:N}:{eventId:N}",
             cancellationToken);
     }
 
-    public static void EnsureActivePostgresTransaction(ExploreDbContext dbContext)
+    public static void EnsureActiveTransaction(ExploreDbContext dbContext)
     {
-        if (dbContext.Database.ProviderName != "Npgsql.EntityFrameworkCore.PostgreSQL"
-            || dbContext.Database.CurrentTransaction is null)
+        if (!dbContext.Database.IsRelational() || dbContext.Database.CurrentTransaction is null)
         {
             throw new InvalidOperationException(
-                "Fanout precedence operations require an active PostgreSQL unit-of-work transaction.");
+                "Fanout precedence operations require an active relational unit-of-work transaction.");
         }
     }
 }

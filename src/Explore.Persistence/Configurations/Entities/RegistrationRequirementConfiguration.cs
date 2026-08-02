@@ -3,6 +3,7 @@
 
 using Explore.Domain;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace Explore.Persistence.Configurations.Entities;
@@ -16,12 +17,29 @@ public sealed class RegistrationRequirementConfiguration : IEntityTypeConfigurat
         builder.Property(requirement => requirement.CreatedAt).IsRequired();
         builder.Property(requirement => requirement.IsDeleted).HasDefaultValue(false);
         builder.Property(requirement => requirement.ConcurrencyStamp).IsConcurrencyToken();
+        var appliesToSubjectKey = builder.Property(requirement => requirement.AppliesToSubjectKey)
+            .HasColumnType("uuid")
+            .HasComputedColumnSql(
+                "COALESCE(applies_to_subject_id, '00000000-0000-0000-0000-000000000000'::uuid)", stored: true)
+            .ValueGeneratedOnAdd()
+            .IsRequired();
+        appliesToSubjectKey.Metadata.SetBeforeSaveBehavior(PropertySaveBehavior.Ignore);
+        appliesToSubjectKey.Metadata.SetAfterSaveBehavior(PropertySaveBehavior.Throw);
         builder.HasAlternateKey(requirement => new
         {
             requirement.TenantId,
             requirement.EventId,
             requirement.RegistrationWorkflowId,
             requirement.Id
+        });
+        builder.HasAlternateKey(requirement => new
+        {
+            requirement.TenantId,
+            requirement.EventId,
+            requirement.RegistrationWorkflowId,
+            requirement.Id,
+            requirement.AppliesToSubjectTypeId,
+            requirement.AppliesToSubjectKey
         });
         builder.HasOne<Tenant>().WithMany().HasForeignKey(requirement => requirement.TenantId).OnDelete(DeleteBehavior.Restrict);
         builder.HasOne<Event>().WithMany()

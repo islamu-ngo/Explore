@@ -4,6 +4,7 @@
 using Explore.Domain;
 using Explore.Domain.ValueObjects;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace Explore.Persistence.Configurations.Entities;
@@ -12,8 +13,21 @@ public sealed class RegistrationOrderConfiguration : IEntityTypeConfiguration<Re
 {
     public void Configure(EntityTypeBuilder<RegistrationOrder> builder)
     {
-        builder.ToTable("registration_orders");
+        builder.ToTable("registration_orders", table => table.HasCheckConstraint(
+            "ck_registration_orders_workflow_key",
+            "(registration_workflow_version_id IS NULL AND registration_workflow_version_key = '00000000-0000-0000-0000-000000000000') OR " +
+            "registration_workflow_version_key = registration_workflow_version_id"));
         builder.Property(order => order.Id).ValueGeneratedNever();
+        var workflowVersionKey = builder.Property<Guid>("RegistrationWorkflowVersionKey");
+        workflowVersionKey
+            .HasColumnType("uuid")
+            .HasComputedColumnSql(
+                "COALESCE(registration_workflow_version_id, '00000000-0000-0000-0000-000000000000'::uuid)",
+                stored: true)
+            .ValueGeneratedOnAdd()
+            .IsRequired();
+        workflowVersionKey.Metadata.SetBeforeSaveBehavior(PropertySaveBehavior.Ignore);
+        workflowVersionKey.Metadata.SetAfterSaveBehavior(PropertySaveBehavior.Throw);
         builder.Property(order => order.CurrencyCode).IsRequired().HasMaxLength(3);
         builder.Property(order => order.GuestAccessTokenHash)
             .HasConversion(hash => hash!.Value, value => CapabilityTokenHash.Create(value))
@@ -27,6 +41,24 @@ public sealed class RegistrationOrderConfiguration : IEntityTypeConfiguration<Re
         builder.Property(order => order.IsDeleted).HasDefaultValue(false);
         builder.Property(order => order.ConcurrencyStamp).IsConcurrencyToken();
         builder.HasAlternateKey(order => new { order.TenantId, order.Id });
+        builder.HasAlternateKey(order => new { order.TenantId, order.EventId, order.Id });
+        builder.HasAlternateKey(
+            nameof(RegistrationOrder.TenantId),
+            nameof(RegistrationOrder.EventId),
+            "RegistrationWorkflowVersionKey",
+            nameof(RegistrationOrder.Id));
+        builder.HasMany<RegistrationAttempt>().WithOne()
+            .HasForeignKey(
+                nameof(RegistrationAttempt.TenantId),
+                nameof(RegistrationAttempt.EventId),
+                nameof(RegistrationAttempt.RegistrationWorkflowId),
+                nameof(RegistrationAttempt.RegistrationOrderId))
+            .HasPrincipalKey(
+                nameof(RegistrationOrder.TenantId),
+                nameof(RegistrationOrder.EventId),
+                "RegistrationWorkflowVersionKey",
+                nameof(RegistrationOrder.Id))
+            .OnDelete(DeleteBehavior.Restrict);
 
         builder.OwnsOne(order => order.ParticipationSnapshot, snapshot =>
         {

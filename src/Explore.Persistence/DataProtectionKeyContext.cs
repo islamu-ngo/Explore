@@ -5,6 +5,7 @@ using Explore.Persistence.Schema;
 using Microsoft.AspNetCore.DataProtection.EntityFrameworkCore;
 using Microsoft.AspNetCore.DataProtection.KeyManagement;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 
 namespace Explore.Persistence;
 
@@ -16,6 +17,9 @@ public sealed class DataProtectionKeyContext(DbContextOptions<DataProtectionKeyC
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
-        RelationalModelNamespace.Apply(modelBuilder, Database.ProviderName);
+        var schema = this.GetService<IDbContextOptions>()
+            .FindExtension<Database.RelationalNamespaceOptionsExtension>()?.ModelSchema
+            ?? RelationalModelNamespace.DefaultSchema;
+        RelationalModelNamespace.Apply(modelBuilder, Database.ProviderName, schema);
     }
 }

@@ -78,17 +78,17 @@ public sealed class ParticipationRequirementAttachmentConfiguration
             .OnDelete(DeleteBehavior.Restrict);
 
         builder.HasIndex(attachment => new
-            {
-                attachment.ParticipationConfigurationId,
-                attachment.RegistrationRequirementId
-            })
+        {
+            attachment.ParticipationConfigurationId,
+            attachment.RegistrationRequirementId
+        })
             .IsUnique()
             .HasFilter("is_deleted = false");
         builder.HasIndex(attachment => new
-            {
-                attachment.ParticipationConfigurationId,
-                attachment.IsStandaloneQuestionnaire
-            })
+        {
+            attachment.ParticipationConfigurationId,
+            attachment.IsStandaloneQuestionnaire
+        })
             .IsUnique()
             .HasFilter("is_deleted = false AND is_standalone_questionnaire = true");
         builder.HasIndex(attachment => new { attachment.TenantId, attachment.EventId });

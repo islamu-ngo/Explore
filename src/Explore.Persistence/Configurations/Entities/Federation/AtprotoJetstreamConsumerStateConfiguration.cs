@@ -14,7 +14,7 @@ public sealed class AtprotoJetstreamConsumerStateConfiguration
     {
         builder.ToTable("atproto_jetstream_consumer_states", table =>
         {
-            table.HasCheckConstraint("ck_atproto_jetstream_cursor", "cursor >= 0");
+            table.HasCheckConstraint("ck_atproto_jetstream_cursor", "jetstream_cursor >= 0");
             table.HasCheckConstraint("ck_atproto_jetstream_lease_fence", "lease_fence >= 0");
             table.HasCheckConstraint(
                 "ck_atproto_jetstream_lease_shape",
@@ -22,6 +22,7 @@ public sealed class AtprotoJetstreamConsumerStateConfiguration
                 "(lease_owner IS NOT NULL AND btrim(lease_owner) <> '' AND lease_token IS NOT NULL AND lease_expires_at IS NOT NULL)");
         });
         builder.Property(value => value.Id).HasDefaultValueSql("uuidv7()");
+        builder.Property(value => value.Cursor).HasColumnName("jetstream_cursor");
         builder.Property(value => value.Service).HasMaxLength(500).IsRequired();
         builder.Property(value => value.LeaseOwner).HasMaxLength(200);
         builder.Property(value => value.LeaseFence).IsConcurrencyToken();

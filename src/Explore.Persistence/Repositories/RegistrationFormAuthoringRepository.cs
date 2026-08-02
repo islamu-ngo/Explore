@@ -36,6 +36,26 @@ public sealed class RegistrationFormAuthoringRepository(ExploreDbContext dbConte
             .Include(form => form.Versions)
             .ToListAsync(cancellationToken);
 
+    public async Task<IReadOnlyList<RegistrationFormVersion>> GetPublishedVersionsAsync(
+        Guid eventId,
+        int limit,
+        CancellationToken cancellationToken)
+    {
+        if (limit <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(limit));
+        }
+
+        return await VersionGraph()
+            .AsNoTracking()
+            .Where(version => version.EventId == eventId && !version.IsDeleted &&
+                version.StatusId == (int)Explore.Domain.Enums.RegistrationFormStatusEnum.Published)
+            .OrderBy(version => version.RegistrationFormId)
+            .ThenBy(version => version.Version)
+            .Take(limit)
+            .ToListAsync(cancellationToken);
+    }
+
     public async Task<IReadOnlySet<Guid>> GetAttachedRequirementIdsAsync(
         Guid eventId,
         CancellationToken cancellationToken) =>

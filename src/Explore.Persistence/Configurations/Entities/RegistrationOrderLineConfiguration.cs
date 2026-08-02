@@ -24,6 +24,13 @@ public sealed class RegistrationOrderLineConfiguration : IEntityTypeConfiguratio
         builder.Property(line => line.ConcurrencyStamp).IsConcurrencyToken();
         builder.HasAlternateKey(line => new { line.TenantId, line.Id });
         builder.HasAlternateKey(line => new { line.TenantId, line.RegistrationOrderId, line.Id });
+        builder.HasAlternateKey(line => new
+        {
+            line.TenantId,
+            line.RegistrationOrderId,
+            line.Id,
+            line.TicketTypeId
+        });
         builder.HasOne<EventTicketCatalogVersion>().WithMany().HasForeignKey(line => new { line.TenantId, line.TicketCatalogVersionId })
             .HasPrincipalKey(catalog => new { catalog.TenantId, catalog.Id }).OnDelete(DeleteBehavior.Restrict);
         builder.HasOne<EventTicketType>().WithMany().HasForeignKey(line => new { line.TenantId, line.TicketTypeId })

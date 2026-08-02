@@ -75,6 +75,7 @@ public static class LookupTableSeeder
         await SeedRegistrationOrderLookupsAsync(context, cancellationToken);
         await SeedRegistrationWorkflowLookupsAsync(context, cancellationToken);
         await SeedRegistrationFormLookupsAsync(context, cancellationToken);
+        await SeedRegistrationRuntimeLookupsAsync(context, cancellationToken);
         await SeedPlatformMonetizationDefaultsAsync(context, cancellationToken);
         await SeedEventStatusesAsync(context, cancellationToken);
         await SeedEventSessionStatusesAsync(context, cancellationToken);
@@ -1663,6 +1664,33 @@ public static class LookupTableSeeder
         [
             new RegistrationOrganizerVisibility { Id = (int)RegistrationOrganizerVisibilityEnum.Hidden, MasterCode = "HIDDEN", FullName = "Hidden" },
             new RegistrationOrganizerVisibility { Id = (int)RegistrationOrganizerVisibilityEnum.AuthorizedOrganizers, MasterCode = "AUTHORIZED_ORGANIZERS", FullName = "Authorized organizers" }
+        ], row => row.Id, ct);
+    }
+
+    internal static async Task SeedRegistrationRuntimeLookupsAsync(ExploreDbContext context, CancellationToken ct)
+    {
+        await SeedMissingLookupRowsAsync(context,
+        [
+            new RegistrationAttemptStatus { Id = (int)RegistrationAttemptStatusEnum.Active, MasterCode = "ACTIVE", FullName = "Active" },
+            new RegistrationAttemptStatus { Id = (int)RegistrationAttemptStatusEnum.Consumed, MasterCode = "CONSUMED", FullName = "Consumed" },
+            new RegistrationAttemptStatus { Id = (int)RegistrationAttemptStatusEnum.Expired, MasterCode = "EXPIRED", FullName = "Expired" },
+            new RegistrationAttemptStatus { Id = (int)RegistrationAttemptStatusEnum.Superseded, MasterCode = "SUPERSEDED", FullName = "Superseded" }
+        ], row => row.Id, ct);
+
+        await SeedMissingLookupRowsAsync(context,
+        [
+            new RegistrationSubmissionStatus { Id = (int)RegistrationSubmissionStatusEnum.Received, MasterCode = "RECEIVED", FullName = "Received" },
+            new RegistrationSubmissionStatus { Id = (int)RegistrationSubmissionStatusEnum.Finalized, MasterCode = "FINALIZED", FullName = "Finalized" },
+            new RegistrationSubmissionStatus { Id = (int)RegistrationSubmissionStatusEnum.EvidenceOnly, MasterCode = "EVIDENCE_ONLY", FullName = "Evidence only" }
+        ], row => row.Id, ct);
+
+        await SeedMissingLookupRowsAsync(context,
+        [
+            new RegistrationAnswerSubjectType { Id = (int)RegistrationAnswerSubjectTypeEnum.RegistrationOrder, MasterCode = "REGISTRATION_ORDER", FullName = "Registration order" },
+            new RegistrationAnswerSubjectType { Id = (int)RegistrationAnswerSubjectTypeEnum.Purchaser, MasterCode = "PURCHASER", FullName = "Purchaser" },
+            new RegistrationAnswerSubjectType { Id = (int)RegistrationAnswerSubjectTypeEnum.Participant, MasterCode = "PARTICIPANT", FullName = "Participant" },
+            new RegistrationAnswerSubjectType { Id = (int)RegistrationAnswerSubjectTypeEnum.TicketAssignment, MasterCode = "TICKET_ASSIGNMENT", FullName = "Ticket assignment" },
+            new RegistrationAnswerSubjectType { Id = (int)RegistrationAnswerSubjectTypeEnum.SessionSelection, MasterCode = "SESSION_SELECTION", FullName = "Session selection" }
         ], row => row.Id, ct);
     }
 

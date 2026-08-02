@@ -13,14 +13,15 @@ public sealed class RegistrationFormFieldConfiguration : IEntityTypeConfiguratio
     {
         builder.ToTable("registration_form_fields", table => table.HasCheckConstraint(
             "ck_registration_form_fields_consent_metadata",
-            "(requires_explicit_consent AND consent_purpose_code IS NOT NULL AND consent_text_version IS NOT NULL " +
-            "AND length(btrim(consent_purpose_code)) > 0 AND length(btrim(consent_text_version)) > 0) OR " +
-            "(NOT requires_explicit_consent AND consent_purpose_code IS NULL AND consent_text_version IS NULL)"));
+            "(requires_explicit_consent AND consent_purpose_code IS NOT NULL AND consent_text IS NOT NULL AND consent_text_version IS NOT NULL " +
+            "AND length(btrim(consent_purpose_code)) > 0 AND length(btrim(consent_text)) > 0 AND length(btrim(consent_text_version)) > 0) OR " +
+            "(NOT requires_explicit_consent AND consent_purpose_code IS NULL AND consent_text IS NULL AND consent_text_version IS NULL)"));
         builder.Property(field => field.Id).ValueGeneratedNever();
         builder.Property(field => field.Namespace).IsRequired().HasMaxLength(100);
         builder.Property(field => field.Key).IsRequired().HasMaxLength(100);
         builder.Property(field => field.Label).IsRequired().HasMaxLength(500);
         builder.Property(field => field.ConsentPurposeCode).HasMaxLength(100);
+        builder.Property(field => field.ConsentText).HasMaxLength(4000);
         builder.Property(field => field.ConsentTextVersion).HasMaxLength(100);
         builder.Property(field => field.RegexPattern).HasMaxLength(1000);
         builder.Property(field => field.AllowedUrlSchemes).HasMaxLength(200);
@@ -35,6 +36,16 @@ public sealed class RegistrationFormFieldConfiguration : IEntityTypeConfiguratio
             field.RegistrationFormVersionId,
             field.RegistrationFormSectionId,
             field.Id
+        });
+        builder.HasAlternateKey(field => new
+        {
+            field.TenantId,
+            field.EventId,
+            field.RegistrationFormId,
+            field.RegistrationFormVersionId,
+            field.RegistrationFormSectionId,
+            field.Id,
+            field.FieldTypeId
         });
         builder.HasOne<Tenant>().WithMany().HasForeignKey(field => field.TenantId).OnDelete(DeleteBehavior.Restrict);
         builder.HasOne<RegistrationFormSection>().WithMany(section => section.Fields)

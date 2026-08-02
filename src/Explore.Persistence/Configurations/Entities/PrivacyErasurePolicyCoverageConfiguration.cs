@@ -24,10 +24,5 @@ public sealed class PrivacyErasurePolicyCoverageConfiguration
 
         builder.HasKey(item => new { item.IntentId, item.SubjectKind, item.PolicyVersion });
         builder.Property(item => item.SubjectKind).HasConversion<short>();
-        builder.HasOne<PrivacyErasureIntent>()
-            .WithMany()
-            .HasForeignKey(item => item.IntentId)
-            .HasPrincipalKey(item => item.IntentId)
-            .OnDelete(DeleteBehavior.Restrict);
     }
 }

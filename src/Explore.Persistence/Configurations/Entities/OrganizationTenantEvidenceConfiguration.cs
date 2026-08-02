@@ -49,11 +49,11 @@ public sealed class OrganizationTenantEvidenceConfiguration
             .OnDelete(DeleteBehavior.Restrict);
 
         builder.HasIndex(row => new
-            {
-                row.TenantId,
-                row.OrganizationTenantId,
-                row.DocumentStorageObjectId
-            })
+        {
+            row.TenantId,
+            row.OrganizationTenantId,
+            row.DocumentStorageObjectId
+        })
             .IsUnique();
         builder.HasIndex(row => new { row.TenantId, row.OrganizationTenantId, row.ReviewStatusId });
     }

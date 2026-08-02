@@ -65,7 +65,13 @@ public class TenantPolicySetConfiguration : IEntityTypeConfiguration<TenantPolic
             ConfigureSlot(rp, r => r.AdminPrerenderEnabled);
             ConfigureSlot(rp, r => r.OnboardingRenderMode);
             ConfigureSlot(rp, r => r.OnboardingPrerenderEnabled);
-            ConfigureSlot(rp, r => r.DisallowInteractiveServerOnOnboarding);
+            rp.OwnsOne(r => r.DisallowInteractiveServerOnOnboarding, slot =>
+            {
+                slot.Property(value => value.LocalValue)
+                    .HasColumnName("render_policy_disallow_interactive_onboarding_local_value");
+                slot.Property(value => value.OverrideMode)
+                    .HasColumnName("render_policy_disallow_interactive_onboarding_override_mode");
+            });
             ConfigureSlot(rp, r => r.AllowTenantOverride);
             ConfigureSlot(rp, r => r.LockTenantPublicSeo);
             ConfigureSlot(rp, r => r.LockTenantOperational);

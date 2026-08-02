@@ -1,10 +1,10 @@
 // ABOUTME: Verifies the Task 7.1 registration-workflow EF model, lookup seeding, and tenant isolation.
 // ABOUTME: Covers portable relational metadata and runtime behavior without inspecting private implementation details.
 
+using Event.Persistence.IntegrationTests.Fixtures;
+using Explore.Application.Contracts.Infrastructure;
 using Explore.Domain;
 using Explore.Domain.Enums;
-using Explore.Application.Contracts.Infrastructure;
-using Event.Persistence.IntegrationTests.Fixtures;
 using Explore.Persistence;
 using Explore.Persistence.QueryFilters;
 using Explore.Persistence.Seed;

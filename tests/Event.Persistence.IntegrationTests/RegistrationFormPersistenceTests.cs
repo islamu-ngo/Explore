@@ -53,8 +53,10 @@ public sealed class RegistrationFormPersistenceTests
         await Assert.That(version.FindProperty(nameof(RegistrationFormVersion.LanguageTag))!.GetMaxLength()).IsEqualTo(35);
         await Assert.That(version.FindProperty(nameof(RegistrationFormVersion.SchemaHash))!.GetMaxLength()).IsEqualTo(64);
         await Assert.That(field.FindProperty(nameof(RegistrationFormField.ConsentPurposeCode))!.GetMaxLength()).IsEqualTo(100);
+        await Assert.That(field.FindProperty(nameof(RegistrationFormField.ConsentText))!.GetMaxLength()).IsEqualTo(4000);
         await Assert.That(field.FindProperty(nameof(RegistrationFormField.ConsentTextVersion))!.GetMaxLength()).IsEqualTo(100);
         await Assert.That(field.FindProperty(nameof(RegistrationFormField.ConsentPurposeCode))!.IsNullable).IsTrue();
+        await Assert.That(field.FindProperty(nameof(RegistrationFormField.ConsentText))!.IsNullable).IsTrue();
         await Assert.That(field.FindProperty(nameof(RegistrationFormField.ConsentTextVersion))!.IsNullable).IsTrue();
         await Assert.That(field.GetCheckConstraints().Any(constraint =>
             constraint.Name == "ck_registration_form_fields_consent_metadata")).IsTrue();
@@ -213,6 +215,7 @@ public sealed class RegistrationFormPostgreSqlPersistenceTests(PostgreSqlContain
         {
             RegistrationFormField persistedField = await filtered.RegistrationFormFields.AsNoTracking().SingleAsync();
             await Assert.That(persistedField.ConsentPurposeCode).IsEqualTo("REGISTRATION.CONTACT");
+            await Assert.That(persistedField.ConsentText).IsEqualTo("I agree to share my registration contact details.");
             await Assert.That(persistedField.ConsentTextVersion).IsEqualTo("v1");
         }
 
@@ -287,7 +290,7 @@ public sealed class RegistrationFormPostgreSqlPersistenceTests(PostgreSqlContain
         RegistrationFormField field = RegistrationFormField.Create(Guid.CreateVersion7(), section, 1,
             "platform.registration", "email", "Email", RegistrationFieldTypeEnum.Email, 1,
             RegistrationOrganizerVisibilityEnum.AuthorizedOrganizers, true, true, now,
-            "registration.contact", "v1");
+            "registration.contact", "v1", "I agree to share my registration contact details.");
         version.AddSection(section);
         version.AddField(section, field);
         version.AddOption(field, RegistrationFormFieldOption.Create(Guid.CreateVersion7(), field, 1, "primary", "Primary", now));
@@ -306,9 +309,20 @@ public sealed class RegistrationFormPostgreSqlPersistenceTests(PostgreSqlContain
         await context.SaveChangesAsync();
         Explore.Domain.Event @event = new()
         {
-            Id = Guid.CreateVersion7(), Title = slug, ActorId = actor.Id, Actor = null!, TenantId = tenant.Id,
-            Tenant = null!, EventStatusId = 1, EventStatus = null!, EventFormatId = 1, EventFormat = null!,
-            EventProvenanceTypeId = 1, VisibilityTypeId = 1, VisibilityType = null!, ConcurrencyStamp = Guid.CreateVersion7()
+            Id = Guid.CreateVersion7(),
+            Title = slug,
+            ActorId = actor.Id,
+            Actor = null!,
+            TenantId = tenant.Id,
+            Tenant = null!,
+            EventStatusId = 1,
+            EventStatus = null!,
+            EventFormatId = 1,
+            EventFormat = null!,
+            EventProvenanceTypeId = 1,
+            VisibilityTypeId = 1,
+            VisibilityType = null!,
+            ConcurrencyStamp = Guid.CreateVersion7()
         };
         context.Events.Add(@event);
         await context.SaveChangesAsync();

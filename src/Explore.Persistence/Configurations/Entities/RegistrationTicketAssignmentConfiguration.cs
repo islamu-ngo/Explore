@@ -17,6 +17,14 @@ public sealed class RegistrationTicketAssignmentConfiguration : IEntityTypeConfi
         builder.Property(assignment => assignment.ConcurrencyStamp).IsConcurrencyToken();
         builder.Property<bool>("IsDeleted").HasColumnName("is_deleted").HasDefaultValue(false);
         builder.HasAlternateKey(assignment => new { assignment.TenantId, assignment.Id });
+        builder.HasAlternateKey(assignment => new { assignment.TenantId, assignment.RegistrationOrderId, assignment.Id });
+        builder.HasAlternateKey(assignment => new
+        {
+            assignment.TenantId,
+            assignment.RegistrationOrderId,
+            assignment.Id,
+            assignment.RegistrationOrderLineId
+        });
         builder.HasOne<Tenant>().WithMany().HasForeignKey(assignment => assignment.TenantId).OnDelete(DeleteBehavior.Restrict);
         builder.HasOne(assignment => assignment.RegistrationOrder).WithMany()
             .HasForeignKey(assignment => new { assignment.TenantId, assignment.RegistrationOrderId })

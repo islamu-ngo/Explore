@@ -174,9 +174,20 @@ public sealed class RegistrationFormRulePostgreSqlTests(PostgreSqlContainerFixtu
         await context.SaveChangesAsync();
         Explore.Domain.Event @event = new()
         {
-            Id = Guid.CreateVersion7(), Title = slug, ActorId = actor.Id, Actor = null!, TenantId = tenant.Id,
-            Tenant = null!, EventStatusId = 1, EventStatus = null!, EventFormatId = 1, EventFormat = null!,
-            EventProvenanceTypeId = 1, VisibilityTypeId = 1, VisibilityType = null!, ConcurrencyStamp = Guid.CreateVersion7()
+            Id = Guid.CreateVersion7(),
+            Title = slug,
+            ActorId = actor.Id,
+            Actor = null!,
+            TenantId = tenant.Id,
+            Tenant = null!,
+            EventStatusId = 1,
+            EventStatus = null!,
+            EventFormatId = 1,
+            EventFormat = null!,
+            EventProvenanceTypeId = 1,
+            VisibilityTypeId = 1,
+            VisibilityType = null!,
+            ConcurrencyStamp = Guid.CreateVersion7()
         };
         context.Events.Add(@event);
         await context.SaveChangesAsync();

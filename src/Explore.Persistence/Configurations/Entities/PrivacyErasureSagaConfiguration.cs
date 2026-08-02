@@ -44,10 +44,5 @@ public sealed class PrivacyErasureSagaConfiguration : IEntityTypeConfiguration<P
         builder.HasIndex(item => new { item.SubjectKind, item.SubjectId }).IsUnique();
         builder.HasIndex(item => new { item.IntentId, item.SubjectKind, item.PolicyVersion })
             .IsUnique();
-        builder.HasOne<PrivacyErasureIntent>()
-            .WithOne()
-            .HasForeignKey<PrivacyErasureSaga>(item => item.IntentId)
-            .HasPrincipalKey<PrivacyErasureIntent>(item => item.IntentId)
-            .OnDelete(DeleteBehavior.Restrict);
     }
 }

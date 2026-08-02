@@ -116,7 +116,13 @@ public class InstancePolicySetConfiguration : IEntityTypeConfiguration<InstanceP
             ConfigurePolicySlot(rp, r => r.AdminPrerenderEnabled);
             ConfigurePolicySlot(rp, r => r.OnboardingRenderMode);
             ConfigurePolicySlot(rp, r => r.OnboardingPrerenderEnabled);
-            ConfigurePolicySlot(rp, r => r.DisallowInteractiveServerOnOnboarding);
+            rp.OwnsOne(r => r.DisallowInteractiveServerOnOnboarding, slot =>
+            {
+                slot.Property(value => value.LocalValue)
+                    .HasColumnName("render_policy_disallow_interactive_onboarding_local_value");
+                slot.Property(value => value.OverrideMode)
+                    .HasColumnName("render_policy_disallow_interactive_onboarding_override_mode");
+            });
             ConfigurePolicySlot(rp, r => r.AllowTenantOverride);
             ConfigurePolicySlot(rp, r => r.LockTenantPublicSeo);
             ConfigurePolicySlot(rp, r => r.LockTenantOperational);

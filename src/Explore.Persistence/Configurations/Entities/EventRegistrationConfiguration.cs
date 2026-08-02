@@ -92,13 +92,13 @@ public class EventRegistrationConfiguration : IEntityTypeConfiguration<EventRegi
             .HasDatabaseName("ix_eventregistrations_session_participant");
 
         builder.HasIndex(e => new
-            {
-                e.TenantId,
-                e.RegistrationOrderLineId,
-                e.TicketTypeEntitlementId,
-                e.EventSessionId,
-                e.EntitlementOrdinal
-            })
+        {
+            e.TenantId,
+            e.RegistrationOrderLineId,
+            e.TicketTypeEntitlementId,
+            e.EventSessionId,
+            e.EntitlementOrdinal
+        })
             .IsUnique()
             .HasFilter("registration_order_line_id IS NOT NULL AND ticket_type_entitlement_id IS NOT NULL AND entitlement_ordinal IS NOT NULL AND is_deleted = false")
             .HasDatabaseName("ix_eventregistrations_order_admission");
