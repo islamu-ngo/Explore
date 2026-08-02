@@ -1,5 +1,5 @@
-// ABOUTME: Verifies Compose bootstrap variables follow the discrete PostgreSQL secret contract.
-// ABOUTME: Flags pre-built connection strings because BootstrapSecretLoader owns composition.
+// ABOUTME: Verifies Compose projects the structured database runtime and migrator contract.
+// ABOUTME: Flags raw default connection strings because runtime composition owns derived values.
 
 using Explore.Diagnostic.Doctor.Infrastructure;
 
@@ -7,16 +7,19 @@ namespace Explore.Diagnostic.Doctor.Checks;
 
 public sealed class BootstrapConfigurationDoctorCheck(IDoctorFileSystem fileSystem, string repositoryRoot) : IDoctorCheck
 {
-    private static readonly string[] RequiredBootstrapVariables =
+    private static readonly string[] RequiredDatabaseVariables =
     [
-        "POSTGRESQL_HOST",
-        "POSTGRESQL_PORT",
-        "POSTGRESQL_DATABASE",
-        "POSTGRESQL_USERNAME",
-        "POSTGRESQL_PASSWORD",
+        "Database__Provider",
+        "Database__Host",
+        "Database__Port",
+        "Database__Database",
+        "Database__Runtime__Username",
+        "Database__Runtime__Password",
+        "Database__Migrator__Username",
+        "Database__Migrator__Password",
     ];
 
-    public string Code => "bootstrap.postgres.discrete-env";
+    public string Code => "bootstrap.database.structured-env";
     public DoctorCheckCategory Category => DoctorCheckCategory.Bootstrap;
 
     public Task<DoctorCheckResult> RunAsync(CancellationToken cancellationToken)
@@ -41,14 +44,14 @@ public sealed class BootstrapConfigurationDoctorCheck(IDoctorFileSystem fileSyst
                 .Split('\n')
                 .Select(line => line.TrimStart())
                 .Where(line => !line.StartsWith('#')));
-        var missing = RequiredBootstrapVariables.Where(variable => !compose.Contains(variable, StringComparison.Ordinal)).ToList();
+        var missing = RequiredDatabaseVariables.Where(variable => !activeComposeLines.Contains(variable, StringComparison.Ordinal)).ToList();
         if (missing.Count > 0)
         {
             return Task.FromResult(DoctorCheckResult.Fail(
                 Code,
                 Category,
-                "Compose bootstrap configuration is missing required discrete PostgreSQL variables.",
-                $"Add the missing variables to the x-postgres-bootstrap-env block: {string.Join(", ", missing)}.",
+                "Compose database configuration is missing required structured runtime or migrator variables.",
+                $"Add the missing variables to the database environment block: {string.Join(", ", missing)}.",
                 "docs/SECRETS.md"));
         }
 
@@ -57,16 +60,16 @@ public sealed class BootstrapConfigurationDoctorCheck(IDoctorFileSystem fileSyst
             return Task.FromResult(DoctorCheckResult.Fail(
                 Code,
                 Category,
-                "Compose pre-builds ConnectionStrings__DefaultConnection instead of using discrete bootstrap values.",
-                "Remove the pre-built connection string and let BootstrapSecretLoader compose it from POSTGRESQL_* values.",
+                "Compose configures raw ConnectionStrings__DefaultConnection instead of structured database settings.",
+                "Remove the raw connection string and provide the Database__* runtime and migrator fields.",
                 "docs/SECRETS.md"));
         }
 
         return Task.FromResult(DoctorCheckResult.Pass(
             Code,
             Category,
-            "Compose uses the discrete PostgreSQL bootstrap contract expected by BootstrapSecretLoader.",
-            "Keep POSTGRESQL_* values discrete and never print their raw password value in diagnostics.",
+            "Compose uses the structured database contract expected by runtime and migration composition.",
+            "Keep Database__* values structured and never print credentials or derived connection strings in diagnostics.",
             "docs/SECRETS.md"));
     }
 }

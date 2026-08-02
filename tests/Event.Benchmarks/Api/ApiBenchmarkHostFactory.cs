@@ -31,7 +31,14 @@ internal sealed class ApiBenchmarkHostFactory : WebApplicationFactory<global::Pr
         {
             var benchmarkConfig = new Dictionary<string, string?>
             {
-                ["ConnectionStrings:DefaultConnection"] = "Host=localhost;Database=explore_benchmark_placeholder;Username=benchmark;Password=benchmark",
+                ["Database:Provider"] = "PostgreSql",
+                ["Database:Host"] = "localhost",
+                ["Database:Port"] = "5432",
+                ["Database:Database"] = "explore_benchmark_placeholder",
+                ["Database:Runtime:Username"] = "benchmark",
+                ["Database:Runtime:Password"] = "benchmark",
+                ["Database:Runtime:TlsMode"] = "Prefer",
+                ["Database:Runtime:TrustServerCertificate"] = "false",
                 ["Keycloak:Authority"] = "https://auth.benchmark.invalid",
                 ["Keycloak:Realm"] = "ISLAMU",
                 ["Keycloak:Audience"] = "islamu-event-api",

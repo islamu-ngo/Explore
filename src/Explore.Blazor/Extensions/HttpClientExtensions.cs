@@ -110,7 +110,9 @@ public static class HttpClientExtensions
                         return ValueTask.FromResult(false);
                     }
 
-                    if (args.Outcome.Exception is HttpRequestException or TimeoutRejectedException)
+                    if (args.Outcome.Exception is { } exception
+                        && (exception is HttpRequestException
+                            || exception.GetType().FullName == "Polly.Timeout.TimeoutRejectedException"))
                     {
                         // A transport timeout/exception may happen after an unsafe request reached
                         // the API. Retrying that POST can collide with the in-flight command and

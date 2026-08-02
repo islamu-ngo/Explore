@@ -32,7 +32,6 @@ internal sealed class PostgreSqlApiBenchmarkHostFactory(string connectionString)
         {
             var benchmarkConfig = new Dictionary<string, string?>
             {
-                ["ConnectionStrings:DefaultConnection"] = connectionString,
                 ["Keycloak:Authority"] = "https://auth.benchmark.invalid",
                 ["Keycloak:Realm"] = "ISLAMU",
                 ["Keycloak:Audience"] = "islamu-event-api",
@@ -54,6 +53,8 @@ internal sealed class PostgreSqlApiBenchmarkHostFactory(string connectionString)
                 ["Deployment:DefaultTenantId"] = PlatformDefaults.DefaultTenantId.ToString(),
                 ["PublicBaseUrl"] = "https://benchmark.event.local"
             };
+
+            BenchmarkDatabaseConfiguration.AddPostgreSql(benchmarkConfig, connectionString);
 
             config.AddInMemoryCollection(benchmarkConfig);
         });

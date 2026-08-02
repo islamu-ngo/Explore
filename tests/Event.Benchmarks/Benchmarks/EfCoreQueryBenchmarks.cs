@@ -2,6 +2,7 @@
 // ABOUTME: Uses real ExploreDbContext query shapes while isolating query construction and invocation cost.
 
 using BenchmarkDotNet.Attributes;
+using Event.Benchmarks.Api;
 using Event.Benchmarks.Configuration;
 using Explore.Persistence;
 using Microsoft.EntityFrameworkCore;
@@ -27,7 +28,12 @@ public class EfCoreQueryBenchmarks : IDisposable
     public void GlobalSetup()
     {
         var options = new DbContextOptionsBuilder<ExploreDbContext>()
-            .UseNpgsql("Host=localhost;Database=explore_benchmarks;Username=benchmark;Password=benchmark")
+            .UseNpgsql(BenchmarkDatabaseConfiguration.BuildPostgreSqlConnectionString(
+                host: "localhost",
+                port: 5432,
+                database: "explore_benchmarks",
+                username: "benchmark",
+                password: "benchmark"))
             .Options;
 
         _dbContext = new ExploreDbContext(options);

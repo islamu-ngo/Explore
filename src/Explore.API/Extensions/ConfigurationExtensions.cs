@@ -5,6 +5,8 @@ namespace Explore.API.Extensions;
 
 using Explore.Domain.Constants;
 using Explore.Domain.Secrets;
+using Explore.Secrets.Bootstrap;
+using Explore.Secrets.Database;
 using Explore.Secrets.Extensions;
 
 public static class ConfigurationExtensions
@@ -19,12 +21,17 @@ public static class ConfigurationExtensions
         configBuilder.AddInfisical(bootstrapConfig, source =>
         {
             source.Paths.Clear();
-            source.Paths.AddRange(["/keycloak", "/postgresql", "/api", "/blazor", "/cerbos", "/mcp", "/ai", "/storage", "/smtp", "/integrations/listmonk"]);
+            source.Paths.AddRange(["/keycloak", "/postgresql", "/privacy-erasure-authority", "/api", "/blazor", "/cerbos", "/mcp", "/ai", "/storage", "/smtp", "/integrations/listmonk"]);
             source.ThrowOnFirstLoadFailure = false;
         });
 
         var configWithSecrets = configBuilder.Build();
         ApplyMapping(configBuilder, configWithSecrets);
+        PrivacyErasureAuthorityDatabaseConfiguration.ProjectDiscreteConfiguration(configBuilder);
+        BootstrapSecretLoader.ProjectPostgresConfiguration(
+            configBuilder,
+            PrimaryDatabaseRole.Runtime,
+            infisicalAlreadyLoaded: true);
     }
 
     /// <summary>
@@ -256,8 +263,6 @@ public static class ConfigurationExtensions
         TrySet(mappedConfig, config, "Deployment:Mode", deploymentMode);
         TrySet(mappedConfig, config, "PrivacyErasure:Authority:Topology",
             ReadFirst(config, "PRIVACY_ERASURE_AUTHORITY_TOPOLOGY"));
-        TrySet(mappedConfig, config, "ConnectionStrings:PrivacyErasureAuthority",
-            ReadFirst(config, "PRIVACY_ERASURE_AUTHORITY_CONNECTION_STRING"));
         TrySet(mappedConfig, config, "ManagedControlPlane:Enabled", managedControlPlaneEnabled);
         TrySet(mappedConfig, config, "ManagedControlPlane:ControlPlaneUrl", managedControlPlaneUrl);
         TrySet(mappedConfig, config, "ManagedControlPlane:ManagedInstanceId", managedInstanceId);

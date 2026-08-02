@@ -34,4 +34,5 @@ public static class BffDataProtectionExtensions
 
         return services;
     }
+
 }

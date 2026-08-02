@@ -317,8 +317,8 @@ if (!isOpenApiGeneration)
     if (!builder.Environment.IsEnvironment("Testing"))
     {
         builder.Services.AddHostedService<NotificationFanoutProcessor>();
-builder.Services.AddHostedService<IdempotencyCleanupProcessor>();
-builder.Services.AddHostedService<InventoryHoldExpiryWorker>();
+        builder.Services.AddHostedService<IdempotencyCleanupProcessor>();
+        builder.Services.AddHostedService<InventoryHoldExpiryWorker>();
         builder.Services.AddHostedService<PrivacyErasureCredentialCleanupProcessor>();
         builder.Services.AddHostedService<EmailDispatchRetentionCleanupProcessor>();
         builder.Services.AddHostedService<AiRetentionCleanupProcessor>();
@@ -576,34 +576,40 @@ Console.CancelKeyPress += (sender, e) =>
 };
 
 
-// Apply database migrations before starting the application
-// EF Core 9+ has built-in locking for concurrent migration protection (safe for multiple replicas)
-// Migrations run before API accepts traffic - if they fail, the container doesn't start
+// Development retains API-owned application migration convenience.
+// Deployed application and Data Protection schemas are owned by Event.MigrationService.
 if (!builder.Environment.IsEnvironment("Testing") && !isOpenApiGeneration)
 {
     using var scope = app.Services.CreateScope();
     var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
-    var db = scope.ServiceProvider.GetRequiredService<ExploreDbContext>();
 
     try
     {
-        if (db.Database.IsRelational())
+        if (app.Environment.IsDevelopment())
         {
-            logger.LogInformation("Applying database migrations...");
-            await ExploreDatabaseMigrator.MigrateAsync(db, app.Configuration);
-            await PostgresModelConstraintApplier.ApplyAsync(db);
-            logger.LogInformation("Database migrations completed successfully.");
+            var db = scope.ServiceProvider.GetRequiredService<ExploreDbContext>();
+            if (db.Database.IsRelational())
+            {
+                logger.LogInformation("Applying database migrations...");
+                await ExploreDatabaseMigrator.MigrateAsync(db, app.Configuration);
+                await PostgresModelConstraintApplier.ApplyAsync(db);
+                logger.LogInformation("Database migrations completed successfully.");
+            }
+            else
+            {
+                logger.LogInformation(
+                    "Skipping database migrations because provider {ProviderName} is non-relational.",
+                    db.Database.ProviderName ?? "(unknown)");
+            }
+
+            var seedDevelopmentData = !app.Configuration.GetValue<bool>("Testing:DisableDevelopmentDataSeed");
+            await DatabaseSeeder.SeedAsync(db, app.Environment, seedDevelopmentData, app.Configuration);
+            logger.LogInformation("Database seeding completed.");
         }
         else
         {
-            logger.LogInformation(
-                "Skipping database migrations because provider {ProviderName} is non-relational.",
-                db.Database.ProviderName ?? "(unknown)");
+            logger.LogInformation("Application and Data Protection migrations are owned by Event.MigrationService outside Development.");
         }
-
-        var seedDevelopmentData = !app.Configuration.GetValue<bool>("Testing:DisableDevelopmentDataSeed");
-        await DatabaseSeeder.SeedAsync(db, app.Environment, seedDevelopmentData, app.Configuration);
-        logger.LogInformation("Database seeding completed.");
 
         if (useTickerQEmailDispatch)
         {
