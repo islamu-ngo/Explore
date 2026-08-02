@@ -4,14 +4,14 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Reflection;
+using Event.Api.IntegrationTests.Fixtures;
 using Explore.API.Controllers;
 using Explore.API.Hateoas.Policies;
+using Explore.Application.DTOs.CustomPropertyDefinition;
 using Explore.Application.Hateoas;
+using Explore.Domain.Enums;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Routing;
-using Event.Api.IntegrationTests.Fixtures;
-using Explore.Application.DTOs.CustomPropertyDefinition;
-using Explore.Domain.Enums;
 using TUnit.Assertions;
 using TUnit.Core;
 

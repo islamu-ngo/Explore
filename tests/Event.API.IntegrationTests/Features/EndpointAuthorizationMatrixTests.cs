@@ -1107,7 +1107,14 @@ public class EndpointAuthorizationMatrixTests : IAsyncDisposable
             {
                 var testConfig = new Dictionary<string, string?>
                 {
-                    ["ConnectionStrings:DefaultConnection"] = "Host=localhost;Database=test_matrix;Username=postgres;Password=postgres",
+                    ["Database:Provider"] = "PostgreSql",
+                    ["Database:Host"] = "localhost",
+                    ["Database:Port"] = "5432",
+                    ["Database:Database"] = "test_matrix",
+                    ["Database:Runtime:Username"] = "postgres",
+                    ["Database:Runtime:Password"] = "postgres",
+                    ["Database:Runtime:TlsMode"] = "Prefer",
+                    ["Database:Runtime:TrustServerCertificate"] = "false",
                     ["Keycloak:Authority"] = _keycloakAuthority,
                     ["Keycloak:Realm"] = KeycloakContainerFixture.RealmName,
                     ["Keycloak:Audience"] = "islamu-event-api",

@@ -4,13 +4,13 @@
 namespace Event.Api.IntegrationTests.Features.Hateoas;
 
 using System.Security.Claims;
+using Event.Api.IntegrationTests.Fixtures;
 using Explore.API.Hateoas;
 using Explore.API.Hateoas.Policies;
 using Explore.Application.Authorization;
 using Explore.Application.DTOs.Event;
 using Explore.Application.Hateoas;
 using Explore.Domain.Enums;
-using Event.Api.IntegrationTests.Fixtures;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
 using TUnit.Core;

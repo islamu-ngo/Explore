@@ -1,11 +1,9 @@
 // ABOUTME: API contract tests for event-session language update behavior.
 // ABOUTME: Verifies PATCH If-Match validation and route-ID command forwarding.
 
-using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.Routing;
 using System.Net;
 using System.Net.Http.Json;
+using System.Reflection;
 using Event.Api.IntegrationTests.Fixtures;
 using Event.Api.IntegrationTests.Helpers;
 using Explore.API.Controllers;
@@ -16,11 +14,13 @@ using Explore.Application.Features.EventSessionLanguages.Requests.Commands;
 using Explore.Application.Features.EventSessionLanguages.Requests.Queries;
 using Explore.Application.Responses;
 using MediatR;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Routing;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
-using System.Reflection;
 
 namespace Event.Api.IntegrationTests.Features;
 

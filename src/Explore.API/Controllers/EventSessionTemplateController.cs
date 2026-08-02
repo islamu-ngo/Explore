@@ -1,8 +1,8 @@
 // ABOUTME: REST API controller for event session template CRUD operations.
 // ABOUTME: Manages reusable session templates that define sets of custom property definitions for event session creation.
 
-using Asp.Versioning;
 using System.ComponentModel.DataAnnotations;
+using Asp.Versioning;
 using Explore.API.Attributes;
 using Explore.API.ExceptionHandling;
 using Explore.API.Hateoas;
