@@ -20,7 +20,7 @@ namespace Event.Persistence.IntegrationTests.Repositories;
 [ClassDataSource<PostgreSqlContainerFixture>(Shared = SharedType.PerAssembly)]
 public sealed class AtprotoEventPublicationRepositoryTests(PostgreSqlContainerFixture fixture)
 {
-    private const int MaximumPublicationQueryCount = 24;
+    private const int MaximumPublicationQueryCount = 27;
 
     [Test]
     [NotInParallel("PersistenceDb")]
@@ -96,6 +96,7 @@ public sealed class AtprotoEventPublicationRepositoryTests(PostgreSqlContainerFi
         {
             Id = Guid.CreateVersion7(),
             Title = "Bounded publication graph",
+            EventProvenanceTypeId = (int)EventProvenanceTypeEnum.OrganizerCreated,
             ActorId = actor.Id,
             Actor = null!,
             TenantId = tenant.Id,

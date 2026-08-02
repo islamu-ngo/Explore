@@ -3,6 +3,7 @@
 
 using Event.Persistence.IntegrationTests.Fixtures;
 using Explore.Domain;
+using Explore.Domain.Enums;
 using Explore.Persistence;
 using Explore.Persistence.Repositories;
 using TUnit.Assertions;
@@ -203,6 +204,7 @@ public class EventDayRepositoryTests
         {
             Id = Guid.NewGuid(),
             Title = "Day Test Event",
+            EventProvenanceTypeId = (int)EventProvenanceTypeEnum.OrganizerCreated,
             EventTypeId = 1,
             AudienceGenderId = 1,
             AudienceAgeId = 1,

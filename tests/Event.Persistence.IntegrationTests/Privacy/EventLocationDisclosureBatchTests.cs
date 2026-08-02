@@ -346,6 +346,7 @@ public sealed class EventLocationDisclosureBatchTests(RegistrationCoveragePostgr
             ActorId = actor.Id,
             Actor = null!,
             Title = $"Disclosure {suffix} event",
+            EventProvenanceTypeId = (int)EventProvenanceTypeEnum.OrganizerCreated,
             EventStatusId = (int)EventStatusEnum.Draft,
             EventStatus = null!,
             EventFormatId = (int)EventFormatEnum.Local,

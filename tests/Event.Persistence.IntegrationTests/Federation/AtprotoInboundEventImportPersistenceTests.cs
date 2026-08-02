@@ -2111,7 +2111,7 @@ public sealed class AtprotoInboundEventImportPersistenceTests(PostgreSqlContaine
     {
         await fixture.ResetAsync();
         ImportScope importedScope = await SeedScopeAsync("atproto-import-absence");
-        ImportScope localScope = await SeedScopeAsync("atproto-import-absence-local");
+        ImportScope localScope = await SeedScopeAsync("atproto-import-absence-local", includeAtprotoIdentity: false);
         await using ExploreDbContext context = fixture.CreateDbContext();
         var repository = new AtprotoJetstreamRepository(context);
         DateTime observedAt = CurrentUtc();
@@ -2156,6 +2156,8 @@ public sealed class AtprotoInboundEventImportPersistenceTests(PostgreSqlContaine
             ActorId = localScope.ActorId,
             Actor = null!,
             Title = "Unrelated local event",
+            PublicCode = Guid.CreateVersion7().ToString("N")[^12..],
+            EventProvenanceTypeId = (int)EventProvenanceTypeEnum.OrganizerCreated,
             VisibilityTypeId = (int)VisibilityTypeEnum.Public,
             VisibilityType = null!,
             EventStatusId = (int)EventStatusEnum.Published,
@@ -2236,11 +2238,20 @@ public sealed class AtprotoInboundEventImportPersistenceTests(PostgreSqlContaine
         await fixture.ResetAsync();
         ImportScope scope = await SeedScopeAsync("atproto-import-default-stamp");
         await using ExploreDbContext context = fixture.CreateDbContext();
+        var servicePrincipal = new ServicePrincipal
+        {
+            Id = Guid.CreateVersion7(),
+            Code = $"atproto-default-stamp-{Guid.CreateVersion7():N}",
+            DisplayName = "Default stamp actor",
+            ConcurrencyStamp = Guid.CreateVersion7()
+        };
         var actor = new Actor
         {
             Id = Guid.CreateVersion7(),
             ActorTypeId = (int)ActorTypeEnum.Bot,
             ActorType = null!,
+            ServicePrincipalId = servicePrincipal.Id,
+            ServicePrincipal = servicePrincipal,
             Pii = new ActorPii
             {
                 DisplayName = "Default stamp actor"
@@ -2270,7 +2281,7 @@ public sealed class AtprotoInboundEventImportPersistenceTests(PostgreSqlContaine
         await Assert.That(persisted).IsLessThanOrEqualTo(afterSave);
     }
 
-    private async Task<ImportScope> SeedScopeAsync(string slug)
+    private async Task<ImportScope> SeedScopeAsync(string slug, bool includeAtprotoIdentity = true)
     {
         await using ExploreDbContext context = fixture.CreateDbContext();
         DateTime now = Utc(9);
@@ -2328,11 +2339,17 @@ public sealed class AtprotoInboundEventImportPersistenceTests(PostgreSqlContaine
             Tenant = tenant,
             UserId = user.Id,
             User = user,
+            ActorId = actor.Id,
+            Actor = actor,
             StatusId = (int)TenantUserStatusEnum.Active,
             JoinedAt = now,
             CreatedAt = now
         };
-        context.AddRange(actor, identity, tenantUser);
+        context.AddRange(actor, tenantUser);
+        if (includeAtprotoIdentity)
+        {
+            context.Add(identity);
+        }
         await context.SaveChangesAsync();
         return new(tenant.Id, actor.Id);
     }

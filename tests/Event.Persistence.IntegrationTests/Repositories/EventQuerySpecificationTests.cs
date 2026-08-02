@@ -382,6 +382,16 @@ public class EventQuerySpecificationTests(PostgreSqlContainerFixture fixture)
             UserId = user.Id
         };
         context.Actors.Add(actor);
+        context.TenantUsers.Add(new TenantUser
+        {
+            TenantId = tenant.Id,
+            Tenant = tenant,
+            UserId = user.Id,
+            User = user,
+            ActorId = actor.Id,
+            Actor = actor,
+            StatusId = (int)TenantUserStatusEnum.Active
+        });
         await context.SaveChangesAsync();
 
         return (tenant.Id, actor.Id);
@@ -398,6 +408,8 @@ public class EventQuerySpecificationTests(PostgreSqlContainerFixture fixture)
         {
             Id = Guid.NewGuid(),
             Title = title,
+            PublicCode = Guid.CreateVersion7().ToString("N")[^12..],
+            EventProvenanceTypeId = (int)EventProvenanceTypeEnum.OrganizerCreated,
             ActorId = actorId,
             Actor = null!,
             TenantId = tenantId,

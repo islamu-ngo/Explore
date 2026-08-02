@@ -187,6 +187,7 @@ public sealed class EventRedactionConstraintTests(PostgreSqlContainerFixture fix
         {
             Id = eventId,
             Title = EventRedactionSentinelPolicy.DisplayText,
+            EventProvenanceTypeId = (int)EventProvenanceTypeEnum.OrganizerCreated,
             Subtitle = EventRedactionSentinelPolicy.DisplayText,
             Description = EventRedactionSentinelPolicy.DisplayText,
             Content = EventRedactionSentinelPolicy.DisplayText,

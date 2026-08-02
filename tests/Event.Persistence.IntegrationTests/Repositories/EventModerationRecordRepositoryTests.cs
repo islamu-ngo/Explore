@@ -267,6 +267,7 @@ public sealed class EventModerationRecordRepositoryTests(PostgreSqlContainerFixt
         {
             Id = Guid.NewGuid(),
             Title = "Moderation History Event",
+            EventProvenanceTypeId = (int)EventProvenanceTypeEnum.OrganizerCreated,
             ActorId = actor.Id,
             Actor = null!,
             TenantId = tenant.Id,

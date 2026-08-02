@@ -1,10 +1,8 @@
-// ABOUTME: Verifies deleted ownerless Actor tombstones and their fail-closed migration downgrade contract.
-// ABOUTME: Proves live ownership remains strict and downgrade never invents or deletes retained Actor owners.
+// ABOUTME: Verifies deleted ownerless Actor tombstones in the current PostgreSQL baseline.
+// ABOUTME: Proves live ownership remains strict without preserving obsolete migration stages.
 
 using Event.Persistence.IntegrationTests.Fixtures;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Infrastructure;
-using Microsoft.EntityFrameworkCore.Migrations;
 using Npgsql;
 
 namespace Event.Persistence.IntegrationTests.Migrations;
@@ -13,13 +11,8 @@ namespace Event.Persistence.IntegrationTests.Migrations;
 [NotInParallel("PersistenceDb")]
 public sealed class ActorPrivacyTombstoneMigrationTests(PostgreSqlContainerFixture fixture)
 {
-    private const string CurrentMigration =
-        "20260730204755_AllowOwnerlessDeletedActorTombstones";
-    private const string PreviousMigration =
-        "20260730200905_AddCapacityHoldPolicyLookup";
-
     [Test]
-    public async Task Downgrade_WithOwnerlessDeletedActor_FailsClosedWithoutChangingHistory()
+    public async Task CurrentBaseline_AllowsOwnerlessDeletedActorTombstone()
     {
         await fixture.ResetAsync();
         await ExecuteAsync(
@@ -31,39 +24,29 @@ public sealed class ActorPrivacyTombstoneMigrationTests(PostgreSqlContainerFixtu
             """,
             ("id", Guid.CreateVersion7()),
             ("stamp", Guid.CreateVersion7()));
-        await using var context = fixture.CreateDbContext();
 
-        var exception = await Assert.That(async () =>
-                await context.GetService<IMigrator>().MigrateAsync(PreviousMigration))
-            .Throws<PostgresException>();
-
-        await Assert.That(exception!.MessageText)
-            .IsEqualTo("Cannot downgrade while deleted ownerless Actor tombstones exist.");
-        await Assert.That(await context.Database.GetAppliedMigrationsAsync())
-            .Contains(CurrentMigration);
+        string definition = await ReadConstraintDefinitionAsync();
+        await Assert.That(definition).Contains("num_nonnulls");
+        await Assert.That(definition).Contains("is_deleted");
     }
 
     [Test]
-    public async Task Downgrade_WithoutOwnerlessDeletedActor_RestoresPriorConstraint()
+    public async Task CurrentBaseline_RejectsOwnerlessLiveActor()
     {
         await fixture.ResetAsync();
-        await using var context = fixture.CreateDbContext();
-        IMigrator migrator = context.GetService<IMigrator>();
+        var exception = await Assert.That(async () => await ExecuteAsync(
+                """
+                INSERT INTO actors
+                    (id, actor_type_id, is_suspended, created_at, is_deleted, concurrency_stamp)
+                VALUES
+                    (@id, 1, FALSE, NOW(), FALSE, @stamp)
+                """,
+                ("id", Guid.CreateVersion7()),
+                ("stamp", Guid.CreateVersion7())))
+            .Throws<PostgresException>();
 
-        try
-        {
-            await migrator.MigrateAsync(PreviousMigration);
-
-            string definition = await ReadConstraintDefinitionAsync();
-            await Assert.That(definition).Contains("num_nonnulls");
-            await Assert.That(definition).DoesNotContain("is_deleted");
-            await Assert.That(await context.Database.GetAppliedMigrationsAsync())
-                .DoesNotContain(CurrentMigration);
-        }
-        finally
-        {
-            await migrator.MigrateAsync(CurrentMigration);
-        }
+        await Assert.That(exception!.SqlState).IsEqualTo(PostgresErrorCodes.CheckViolation);
+        await Assert.That(exception.ConstraintName).IsEqualTo("ck_actors_exactly_one_owner");
     }
 
     private async Task<string> ReadConstraintDefinitionAsync()

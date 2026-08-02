@@ -241,7 +241,7 @@ public sealed class GlobalLocationPrivacyErasureTests(ExternalDatabasePrivacyEra
 
     [Test]
     [Timeout(240_000)]
-    public async Task AuthorityFirstRollback_SequenceZeroAndRestoredBehindReplay_AreIdempotent()
+    public async Task AuthorityFirstRollback_PersistsFenceAndRestoredBehindReplay_AreIdempotent()
     {
         ErasureGraph graph;
         await using (var seedContext = fixture.CreateDbContext())
@@ -326,9 +326,11 @@ public sealed class GlobalLocationPrivacyErasureTests(ExternalDatabasePrivacyEra
             await Assert.That(await rollbackContext.PrivacyErasureReplayCheckpoints.CountAsync())
                 .IsEqualTo(0);
             await Assert.That(await rollbackContext.PrivacyErasureIntents.CountAsync())
-                .IsEqualTo(0);
+                .IsEqualTo(1);
             await Assert.That(await rollbackContext.PrivacyErasureCounters.CountAsync())
-                .IsEqualTo(0);
+                .IsEqualTo(1);
+            await Assert.That(await rollbackContext.PrivacyErasureIntents
+                .AnyAsync(intent => intent.SubjectId == graph.OwnerUserId)).IsTrue();
             await Assert.That(await rollbackContext.OutboxMessages.CountAsync(message =>
                 message.EventType == LocationPrivacyOutboxMessageFactory.LocationPiiErasedEventType
                 || message.EventType == LocationPrivacyOutboxMessageFactory.LocationPrivacyCorrectionRequestedEventType))
@@ -554,7 +556,7 @@ public sealed class GlobalLocationPrivacyErasureTests(ExternalDatabasePrivacyEra
         long checkpointBeforeRestore;
         await using (var seedContext = fixture.CreateDbContext())
         {
-            restoredGraph = await SeedErasureGraphAsync(seedContext);
+            restoredGraph = await SeedErasureGraphAsync(seedContext, "restored");
             checkpointBeforeRestore = await seedContext.PrivacyErasureReplayCheckpoints
                 .MaxAsync(checkpoint => (long?)checkpoint.AuthoritySequence)
                 ?? 0;
@@ -665,7 +667,9 @@ public sealed class GlobalLocationPrivacyErasureTests(ExternalDatabasePrivacyEra
             cacheProvider);
     }
 
-    internal static async Task<ErasureGraph> SeedErasureGraphAsync(ExploreDbContext context)
+    internal static async Task<ErasureGraph> SeedErasureGraphAsync(
+        ExploreDbContext context,
+        string identitySuffix = "")
     {
         var tenantA = CreateTenant("workflow-a");
         var tenantB = CreateTenant("workflow-b");
@@ -692,8 +696,8 @@ public sealed class GlobalLocationPrivacyErasureTests(ExternalDatabasePrivacyEra
             Id = Guid.CreateVersion7(),
             ActorId = ownerActor.Id,
             Actor = ownerActor,
-            Did = "did:plc:actor-canary",
-            Handle = "actor-canary.example",
+            Did = $"did:plc:actor-canary{identitySuffix}",
+            Handle = $"actor-canary{identitySuffix}.example",
             PdsHost = "https://pds.example.invalid",
             IsActive = true,
             LastResolvedAt = DateTime.UtcNow,
@@ -729,8 +733,8 @@ public sealed class GlobalLocationPrivacyErasureTests(ExternalDatabasePrivacyEra
             Id = Guid.CreateVersion7(),
             ActorId = unrelatedActor.Id,
             Actor = unrelatedActor,
-            Did = "did:plc:unrelated",
-            Handle = "unrelated.example",
+            Did = $"did:plc:unrelated{identitySuffix}",
+            Handle = $"unrelated{identitySuffix}.example",
             PdsHost = "https://pds.example.invalid",
             IsActive = true,
             LastResolvedAt = DateTime.UtcNow,
@@ -745,12 +749,12 @@ public sealed class GlobalLocationPrivacyErasureTests(ExternalDatabasePrivacyEra
         await context.SaveChangesAsync();
 
         context.AddRange(
-            CreateAuthenticationToken(tenantA, owner, "did:plc:owner-a"),
-            CreateAuthenticationToken(tenantB, owner, "did:plc:owner-b"),
-            CreateAuthenticationToken(tenantA, unrelated, "did:plc:unrelated"),
-            CreateExternalLogin(tenantA, owner, "owner-a"),
-            CreateExternalLogin(tenantB, owner, "owner-b"),
-            CreateExternalLogin(tenantA, unrelated, "unrelated"),
+            CreateAuthenticationToken(tenantA, owner, $"did:plc:owner-a{identitySuffix}"),
+            CreateAuthenticationToken(tenantB, owner, $"did:plc:owner-b{identitySuffix}"),
+            CreateAuthenticationToken(tenantA, unrelated, $"did:plc:unrelated{identitySuffix}"),
+            CreateExternalLogin(tenantA, owner, $"owner-a{identitySuffix}"),
+            CreateExternalLogin(tenantB, owner, $"owner-b{identitySuffix}"),
+            CreateExternalLogin(tenantA, unrelated, $"unrelated{identitySuffix}"),
             CreateTenantUser(tenantA, owner, ownerActor, TenantUserStatusEnum.Active),
             CreateTenantUser(tenantB, owner, ownerActor, TenantUserStatusEnum.Removed),
             CreateTenantUser(tenantA, unrelated, unrelatedActor, TenantUserStatusEnum.Active),
@@ -1420,7 +1424,7 @@ public sealed class ExternalDatabasePrivacyErasureAuthorityTests(
                 }))
             .AppendAsync(request);
         IReadOnlyList<PrivacyErasureIntent> facts =
-            await repository.ReadAfterAsync(0, 10);
+            await repository.ReadAfterAsync(first.AuthoritySequence - 1, 1);
 
         await Assert.That(duplicate.AuthoritySequence).IsEqualTo(first.AuthoritySequence);
         await Assert.That(first.RetentionExpiresAtUtc - first.RecordedAtUtc)
@@ -1821,6 +1825,7 @@ public sealed class ExternalDatabasePrivacyErasurePostgreSqlFixture : IAsyncInit
         });
         await context.SaveChangesAsync();
         await LookupTableSeeder.SeedLocationPrivacyLookupsAsync(context, CancellationToken.None);
+        await LookupTableSeeder.SeedEventAuthorityLookupsAsync(context, CancellationToken.None);
     }
 
     public async ValueTask DisposeAsync()

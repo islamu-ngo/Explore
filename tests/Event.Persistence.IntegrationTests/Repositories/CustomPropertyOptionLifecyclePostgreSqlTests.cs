@@ -632,6 +632,7 @@ public sealed class CustomPropertyOptionLifecyclePostgreSqlTests(PostgreSqlConta
         {
             Id = Guid.NewGuid(),
             Title = "Option Lifecycle Event",
+            EventProvenanceTypeId = (int)EventProvenanceTypeEnum.OrganizerCreated,
             ActorId = actor.Id,
             Actor = null!,
             TenantId = tenant.Id,

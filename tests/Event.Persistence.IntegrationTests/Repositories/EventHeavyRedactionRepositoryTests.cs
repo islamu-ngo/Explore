@@ -121,7 +121,9 @@ public sealed class EventHeavyRedactionRepositoryTests(PostgreSqlContainerFixtur
             Collection = "app.bsky.feed.post",
             RecordKey = Guid.NewGuid().ToString("N"),
             Cid = "unsafe-cid",
-            Uri = "at://did:plc:heavyredaction/app.bsky.feed.post/unsafe"
+            Uri = "at://did:plc:heavyredaction/app.bsky.feed.post/unsafe",
+            Direction = AtprotoRecordDirection.Outbound,
+            Provenance = AtprotoRecordProvenance.LocalLifecycle
         };
         context.StorageObjects.Add(image);
         context.AtprotoRecords.Add(atprotoRecord);
@@ -132,6 +134,7 @@ public sealed class EventHeavyRedactionRepositoryTests(PostgreSqlContainerFixtur
         {
             Id = eventId,
             Title = "Illegal Event",
+            EventProvenanceTypeId = (int)EventProvenanceTypeEnum.OrganizerCreated,
             Subtitle = "Illegal Subtitle",
             Description = "Illegal Description",
             Content = "Illegal Content",

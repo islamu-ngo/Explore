@@ -85,6 +85,12 @@ public sealed class NotificationFanoutRunLeaseRepositoryTests(PostgreSqlContaine
         FanoutScenario scenario = await SeedOccurrenceAsync(
             "fanout-ensure-heavy-supersession-race",
             ensureRun: false);
+        Guid replacementId = await SeedAdditionalOccurrenceAsync(
+            scenario,
+            "heavy-replacement",
+            priority: 100,
+            occurredAt: Utc(2026, 8, 1, 12),
+            ensureRun: false);
 
         await using var heavyContext = fixture.CreateDbContext();
         await using var heavyTransaction = await heavyContext.Database.BeginTransactionAsync();
@@ -97,7 +103,7 @@ public sealed class NotificationFanoutRunLeaseRepositoryTests(PostgreSqlContaine
             .SingleAsync(item => item.TenantId == scenario.TenantId
                 && item.Id == scenario.OccurrenceId);
         occurrence.Supersede(
-            Guid.CreateVersion7(),
+            replacementId,
             "heavy_precedence",
             Utc(2026, 8, 1, 12));
         await heavyContext.SaveChangesAsync();
@@ -895,11 +901,20 @@ public sealed class NotificationFanoutRunLeaseRepositoryTests(PostgreSqlContaine
         context.Tenants.Add(tenant);
         await context.SaveChangesAsync();
 
+        var servicePrincipal = new ServicePrincipal
+        {
+            Id = Guid.CreateVersion7(),
+            Code = $"fanout-source-{Guid.CreateVersion7():N}",
+            DisplayName = "Fanout source",
+            ConcurrencyStamp = Guid.CreateVersion7()
+        };
         var actor = new Actor
         {
             Id = Guid.CreateVersion7(),
             ActorTypeId = (int)ActorTypeEnum.Bot,
             ActorType = null!,
+            ServicePrincipalId = servicePrincipal.Id,
+            ServicePrincipal = servicePrincipal,
             Pii = new ActorPii { DisplayName = "Fanout source" },
             ConcurrencyStamp = Guid.CreateVersion7(),
         };
@@ -910,6 +925,7 @@ public sealed class NotificationFanoutRunLeaseRepositoryTests(PostgreSqlContaine
         {
             Id = Guid.CreateVersion7(),
             Title = "Fanout lease event",
+            EventProvenanceTypeId = (int)EventProvenanceTypeEnum.OrganizerCreated,
             ActorId = actor.Id,
             Actor = null!,
             TenantId = tenant.Id,

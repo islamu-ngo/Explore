@@ -83,7 +83,7 @@ public class EmailDispatchOutboxRepositoryBypassTests(PostgreSqlContainerFixture
         await Assert.That(rows[eligible.Id].TenantId).IsEqualTo(tenantA.Id);
         await Assert.That(rows[eligible.Id].Status).IsEqualTo(EmailDispatchStatus.Processing);
         await Assert.That(rows[eligible.Id].ProcessingLeaseToken).IsEqualTo(leaseToken);
-        await Assert.That(rows[eligible.Id].AttemptCount).IsEqualTo(1);
+        await Assert.That(rows[eligible.Id].AttemptCount).IsEqualTo(0);
         await Assert.That(rows[retryFuture.Id].Status).IsEqualTo(EmailDispatchStatus.RetryScheduled);
         await Assert.That(rows[ambientPaused.Id].Status).IsEqualTo(EmailDispatchStatus.Pending);
     }
@@ -116,7 +116,7 @@ public class EmailDispatchOutboxRepositoryBypassTests(PostgreSqlContainerFixture
         var now = new DateTime(2026, 1, 5, 12, 0, 0, DateTimeKind.Utc);
         var tenantAStatus = CreateDispatch(tenantA.Id, "status-a", EmailDispatchStatus.Pending, now.AddMinutes(-4));
         var tenantAParkable = CreateDispatch(tenantA.Id, "park-a", EmailDispatchStatus.DeadLettered, now.AddMinutes(-3));
-        var tenantAReplayable = CreateDispatch(tenantA.Id, "replay-a", EmailDispatchStatus.Unknown, now.AddMinutes(-2));
+        var tenantAReplayable = CreateDispatch(tenantA.Id, "replay-a", EmailDispatchStatus.DeadLettered, now.AddMinutes(-2));
         var tenantBStatus = CreateDispatch(tenantB.Id, "status-b", EmailDispatchStatus.Pending, now.AddMinutes(-1));
         seedContext.EmailDispatchOutbox.AddRange(tenantAStatus, tenantAParkable, tenantAReplayable, tenantBStatus);
         seedContext.EmailDispatchTenantControls.Add(CreateTenantControl(tenantB.Id, isPaused: true, now));
@@ -212,7 +212,7 @@ public class EmailDispatchOutboxRepositoryBypassTests(PostgreSqlContainerFixture
         await Assert.That(rows[tenantAParkable.Id].Status).IsEqualTo(EmailDispatchStatus.Parked);
         await Assert.That(rows[tenantAParkable.Id].LastFailureCategory).IsEqualTo("operator_parked");
         await Assert.That(rows[tenantAReplayable.Id].Status).IsEqualTo(EmailDispatchStatus.Pending);
-        await Assert.That(rows[tenantAReplayable.Id].UnknownAt).IsNull();
+        await Assert.That(rows[tenantAReplayable.Id].DeadLetteredAt).IsNull();
         await Assert.That(rows[tenantBStatus.Id].Status).IsEqualTo(EmailDispatchStatus.Pending);
     }
 

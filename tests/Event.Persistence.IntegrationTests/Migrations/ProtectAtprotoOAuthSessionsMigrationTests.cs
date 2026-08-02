@@ -21,7 +21,7 @@ public sealed class AtprotoOAuthSessionBaselineTests(PostgreSqlContainerFixture 
         await using var context = fixture.CreateDbContext();
 
         await Assert.That(await context.Database.GetAppliedMigrationsAsync())
-            .Contains("20260720162943_init");
+            .Contains("20260801192258_init");
         string[] constraintNames = await ReadConstraintNamesAsync();
         await Assert.That(constraintNames).Contains("ck_user_authentication_tokens_ciphertext_not_empty");
         await Assert.That(constraintNames).Contains("ck_user_authentication_tokens_envelope_version");

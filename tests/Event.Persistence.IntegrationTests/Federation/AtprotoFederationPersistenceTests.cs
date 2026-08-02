@@ -241,6 +241,7 @@ public sealed class AtprotoFederationPersistenceTests(PostgreSqlContainerFixture
             {
                 Id = Guid.CreateVersion7(),
                 Title = "Visible event",
+                EventProvenanceTypeId = (int)EventProvenanceTypeEnum.Federated,
                 PublicCode = "ATPROTO",
                 ActorId = actor.Id,
                 Actor = actor,
@@ -906,6 +907,7 @@ public sealed class AtprotoFederationPersistenceTests(PostgreSqlContainerFixture
         {
             Id = Guid.CreateVersion7(),
             Title = "Committed before PDS delivery",
+            EventProvenanceTypeId = (int)EventProvenanceTypeEnum.OrganizerCreated,
             ActorId = actor.Id,
             Actor = actor,
             TenantId = scope.TenantId,
@@ -955,6 +957,7 @@ public sealed class AtprotoFederationPersistenceTests(PostgreSqlContainerFixture
         {
             Id = Guid.CreateVersion7(),
             Title = "Deleted local event with live remote record",
+            EventProvenanceTypeId = (int)EventProvenanceTypeEnum.OrganizerCreated,
             ActorId = actor.Id,
             Actor = actor,
             TenantId = scope.TenantId,

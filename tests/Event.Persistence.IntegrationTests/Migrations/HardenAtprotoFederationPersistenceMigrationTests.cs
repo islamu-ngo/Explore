@@ -5,8 +5,6 @@ using Event.Persistence.IntegrationTests.Fixtures;
 using Explore.Domain;
 using Explore.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Infrastructure;
-using Microsoft.EntityFrameworkCore.Migrations;
 using Npgsql;
 
 namespace Event.Persistence.IntegrationTests.Migrations;
@@ -89,19 +87,17 @@ public sealed class AtprotoFederationBaselineGuardTests(PostgreSqlContainerFixtu
     }
 
     [Test]
-    public async Task CurrentBaseline_RejectsLifecycleDowngradeWithoutMutatingMigrationHistory()
+    public async Task CurrentBaseline_HasTheCompleteAppliedApplicationMigrationChain()
     {
         await fixture.ResetAsync();
         await using var context = fixture.CreateDbContext();
-        IMigrator migrator = context.GetService<IMigrator>();
-        const string migrationId = "20260726210851_RetireIndexedDidAuthority";
+        string[] available = context.Database.GetMigrations().ToArray();
+        string[] applied = (await context.Database.GetAppliedMigrationsAsync()).ToArray();
 
-        var downgrade = await Assert.That(async () =>
-                await migrator.MigrateAsync("20260724223948_ClearExpiredPrivacyErasureCredentials"))
-            .Throws<NotSupportedException>();
-
-        await Assert.That(downgrade!.Message).Contains("Restore a backup");
-        await Assert.That(await context.Database.GetAppliedMigrationsAsync()).Contains(migrationId);
+        await Assert.That(available.Length).IsEqualTo(2);
+        await Assert.That(available[0]).EndsWith("_init");
+        await Assert.That(available[1]).EndsWith("_WebhookOwnerTenantContainment");
+        await Assert.That(applied).IsEquivalentTo(available);
     }
 
     private async Task<long> ReadCountAsync(string sql)

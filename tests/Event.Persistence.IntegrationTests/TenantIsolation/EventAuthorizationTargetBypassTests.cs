@@ -109,6 +109,7 @@ public class EventAuthorizationTargetBypassTests(PostgreSqlContainerFixture fixt
         {
             Id = Guid.CreateVersion7(),
             Title = title,
+            EventProvenanceTypeId = (int)EventProvenanceTypeEnum.OrganizerCreated,
             ActorId = actorId,
             Actor = null!,
             TenantId = tenantId,

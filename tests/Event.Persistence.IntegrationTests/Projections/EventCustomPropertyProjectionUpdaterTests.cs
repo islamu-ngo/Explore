@@ -410,6 +410,7 @@ public class EventCustomPropertyProjectionUpdaterTests
         {
             Id = Guid.NewGuid(),
             Title = "Proj Event",
+            EventProvenanceTypeId = (int)EventProvenanceTypeEnum.OrganizerCreated,
             ActorId = actor.Id,
             Actor = null!,
             TenantId = tenant.Id,

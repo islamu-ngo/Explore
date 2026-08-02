@@ -3,6 +3,7 @@
 
 using Event.Persistence.IntegrationTests.Fixtures;
 using Explore.Domain;
+using Explore.Domain.Enums;
 using Explore.Persistence;
 using Explore.Persistence.Repositories;
 using TUnit.Assertions;
@@ -59,6 +60,7 @@ public class EventRepositoryTests
         {
             Id = eventId,
             Title = "Integration Test Event",
+            EventProvenanceTypeId = (int)EventProvenanceTypeEnum.OrganizerCreated,
             Subtitle = "Integration Test Subtitle",
             Description = "Test Description",
             FirstSessionDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(1)),
@@ -135,6 +137,7 @@ public class EventRepositoryTests
         {
             Id = eventId,
             Title = "Detailed Event",
+            EventProvenanceTypeId = (int)EventProvenanceTypeEnum.OrganizerCreated,
             EventTypeId = 1,
             AudienceGenderId = 1,
             AudienceAgeId = 1,

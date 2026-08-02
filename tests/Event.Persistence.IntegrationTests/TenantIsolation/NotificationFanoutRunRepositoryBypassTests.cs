@@ -96,11 +96,20 @@ public class NotificationFanoutRunRepositoryBypassTests(PostgreSqlContainerFixtu
 
     private static Actor CreateActor(Guid tenantId, string displayName)
     {
+        var servicePrincipal = new ServicePrincipal
+        {
+            Id = Guid.CreateVersion7(),
+            Code = $"fanout-bypass-{tenantId:N}-{Guid.CreateVersion7():N}",
+            DisplayName = displayName,
+            ConcurrencyStamp = Guid.CreateVersion7()
+        };
         return new Actor
         {
             Id = Guid.CreateVersion7(),
             ActorTypeId = (int)ActorTypeEnum.Bot,
             ActorType = null!,
+            ServicePrincipalId = servicePrincipal.Id,
+            ServicePrincipal = servicePrincipal,
             Pii = new ActorPii { DisplayName = displayName },
             ConcurrencyStamp = Guid.CreateVersion7(),
         };

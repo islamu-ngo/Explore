@@ -1,5 +1,5 @@
-// ABOUTME: Verifies generated application/data-protection init artifacts and the retained authority chain.
-// ABOUTME: Pins runtime lookup/schema application, exact moderation linkage, rollback safety, and authority ACLs.
+// ABOUTME: Verifies generated application/data-protection migrations and the retained authority chain.
+// ABOUTME: Pins runtime lookup/schema application, receipt-linkage primitives, rollback safety, and authority ACLs.
 
 using Event.Persistence.IntegrationTests.Fixtures;
 using Explore.Application.Contracts.PrivacyErasure;
@@ -20,21 +20,23 @@ using Npgsql;
 namespace Event.Persistence.IntegrationTests.Migrations;
 
 [ClassDataSource<RecipientDeliveryMigrationContainerFixture>(Shared = SharedType.PerAssembly)]
-[NotInParallel("Task6GeneratedInitDb")]
+[NotInParallel("RecipientDeliveryMigrationDb")]
 public sealed class GeneratedInitMigrationBehaviorTests(
     RecipientDeliveryMigrationContainerFixture fixture)
 {
     [Test]
-    public async Task GeneratedCatalogs_ContainOneApplicationInitOneDataProtectionInitAndRetainedAuthorityChain()
+    public async Task GeneratedCatalogs_ContainApplicationChainDataProtectionInitAndRetainedAuthorityChain()
     {
         await using ExploreDbContext explore = CreateExploreContext();
         await using DataProtectionKeyContext dataProtection = CreateDataProtectionContext();
         await using PrivacyErasureAuthorityDbContext authority = CreateAuthorityContext();
 
-        await Assert.That(MigrationIds(explore)).HasSingleItem();
+        string[] exploreMigrations = MigrationIds(explore);
+        await Assert.That(exploreMigrations.Length).IsEqualTo(2);
         await Assert.That(MigrationIds(dataProtection)).HasSingleItem();
         await Assert.That(MigrationIds(authority).Length).IsEqualTo(2);
-        await Assert.That(MigrationIds(explore)[0]).EndsWith("_init");
+        await Assert.That(exploreMigrations[0]).EndsWith("_init");
+        await Assert.That(exploreMigrations[1]).EndsWith("_WebhookOwnerTenantContainment");
         await Assert.That(MigrationIds(dataProtection)[0]).EndsWith("_init");
         await Assert.That(MigrationIds(authority)[0]).EndsWith("_init");
         await Assert.That(MigrationIds(authority)[1]).EndsWith("_AddFiniteAuthorityRetention");
@@ -57,7 +59,7 @@ public sealed class GeneratedInitMigrationBehaviorTests(
         {
             await using ExploreDbContext context = CreateExploreContext();
             IMigrator migrator = context.GetService<IMigrator>();
-            string migrationId = MigrationIds(context).Single();
+            string migrationId = MigrationIds(context)[^1];
 
             await migrator.MigrateAsync(migrationId);
             await PostgresModelConstraintApplier.ApplyAsync(context);
@@ -95,21 +97,50 @@ public sealed class GeneratedInitMigrationBehaviorTests(
                 """)).IsEqualTo(0);
             await Assert.That(await ScalarIntAsync(
                 """
-                SELECT count(*)::integer
-                FROM pg_catalog.pg_constraint AS constraint_entry
-                JOIN pg_catalog.pg_class AS table_entry
-                  ON table_entry.oid = constraint_entry.conrelid
-                WHERE table_entry.relname = 'event_report_decision_executions'
-                  AND constraint_entry.contype = 'f'
-                  AND ARRAY(
-                        SELECT attribute_entry.attname
-                        FROM unnest(constraint_entry.conkey) WITH ORDINALITY AS key_entry(attnum, ordinal)
-                        JOIN pg_catalog.pg_attribute AS attribute_entry
-                          ON attribute_entry.attrelid = table_entry.oid
-                         AND attribute_entry.attnum = key_entry.attnum
-                        ORDER BY key_entry.ordinal)
-                      = ARRAY['tenant_id', 'report_id', 'decision_id', 'moderation_record_id']::name[]
-                """)).IsEqualTo(1);
+                SELECT
+                    (SELECT count(*)
+                     FROM pg_catalog.pg_constraint AS constraint_entry
+                     JOIN pg_catalog.pg_class AS table_entry
+                       ON table_entry.oid = constraint_entry.conrelid
+                     WHERE table_entry.relname = 'event_report_decision_executions'
+                       AND constraint_entry.contype = 'f'
+                       AND ARRAY(
+                             SELECT attribute_entry.attname
+                             FROM unnest(constraint_entry.conkey) WITH ORDINALITY AS key_entry(attnum, ordinal)
+                             JOIN pg_catalog.pg_attribute AS attribute_entry
+                               ON attribute_entry.attrelid = table_entry.oid
+                              AND attribute_entry.attnum = key_entry.attnum
+                             ORDER BY key_entry.ordinal)
+                           = ARRAY['tenant_id', 'report_id', 'decision_id']::name[])
+                  + (SELECT count(*)
+                     FROM pg_catalog.pg_constraint AS constraint_entry
+                     JOIN pg_catalog.pg_class AS table_entry
+                       ON table_entry.oid = constraint_entry.conrelid
+                     WHERE table_entry.relname = 'event_report_decision_executions'
+                       AND constraint_entry.contype = 'f'
+                       AND ARRAY(
+                             SELECT attribute_entry.attname
+                             FROM unnest(constraint_entry.conkey) WITH ORDINALITY AS key_entry(attnum, ordinal)
+                             JOIN pg_catalog.pg_attribute AS attribute_entry
+                               ON attribute_entry.attrelid = table_entry.oid
+                              AND attribute_entry.attnum = key_entry.attnum
+                             ORDER BY key_entry.ordinal)
+                           = ARRAY['tenant_id', 'moderation_record_id']::name[])
+                  + (SELECT count(*)
+                     FROM pg_catalog.pg_index AS index_entry
+                     JOIN pg_catalog.pg_class AS table_entry
+                       ON table_entry.oid = index_entry.indrelid
+                     WHERE table_entry.relname = 'event_moderation_records'
+                       AND index_entry.indisunique
+                       AND ARRAY(
+                             SELECT attribute_entry.attname
+                             FROM unnest(index_entry.indkey) WITH ORDINALITY AS key_entry(attnum, ordinal)
+                             JOIN pg_catalog.pg_attribute AS attribute_entry
+                               ON attribute_entry.attrelid = table_entry.oid
+                              AND attribute_entry.attnum = key_entry.attnum
+                             ORDER BY key_entry.ordinal)
+                           = ARRAY['tenant_id', 'source_report_id', 'source_report_decision_id', 'id']::name[])
+                """)).IsEqualTo(3);
             await Assert.That(await ScalarIntAsync(
                 """
                 SELECT count(*)::integer
@@ -121,6 +152,7 @@ public sealed class GeneratedInitMigrationBehaviorTests(
             await migrator.MigrateAsync(Migration.InitialDatabase);
             await migrator.MigrateAsync(migrationId);
             await PostgresModelConstraintApplier.ApplyAsync(context);
+            context.ChangeTracker.Clear();
             await LookupTableSeeder.SeedAsync(context);
             await Assert.That(await ScalarIntAsync(
                 "SELECT count(*)::integer FROM \"__EFMigrationsHistory\" WHERE migration_id = @id",
@@ -141,7 +173,7 @@ public sealed class GeneratedInitMigrationBehaviorTests(
         {
             await using ExploreDbContext context = CreateExploreContext();
             IMigrator migrator = context.GetService<IMigrator>();
-            await migrator.MigrateAsync(MigrationIds(context).Single());
+            await migrator.MigrateAsync(MigrationIds(context)[^1]);
 
             await Assert.That(await ScalarIntAsync(
                 "SELECT count(*)::integer FROM location_kinds")).IsEqualTo(0);
@@ -267,7 +299,7 @@ public sealed class GeneratedInitMigrationBehaviorTests(
         try
         {
             await using ExploreDbContext context = CreateExploreContext();
-            await context.GetService<IMigrator>().MigrateAsync(MigrationIds(context).Single());
+            await context.GetService<IMigrator>().MigrateAsync(MigrationIds(context)[^1]);
             await Assert.That(await ScalarIntAsync(
                 "SELECT count(*)::integer FROM information_schema.tables WHERE table_schema = 'privacy_erasure_authority'"))
                 .IsEqualTo(2);
@@ -351,31 +383,7 @@ public sealed class GeneratedInitMigrationBehaviorTests(
         return assembly.CreateMigration(item.Value, context.Database.ProviderName!);
     }
 
-    private async Task ResetDatabaseAsync()
-    {
-        await using var connection = new NpgsqlConnection(fixture.ConnectionString);
-        await connection.OpenAsync();
-        await using var command = new NpgsqlCommand(
-            """
-            DO $reset$
-            DECLARE schema_name text;
-            BEGIN
-                FOR schema_name IN
-                    SELECT nspname
-                    FROM pg_catalog.pg_namespace
-                    WHERE nspname NOT IN ('pg_catalog', 'information_schema', 'pg_toast')
-                      AND nspname NOT LIKE 'pg_temp_%'
-                      AND nspname NOT LIKE 'pg_toast_temp_%'
-                LOOP
-                    EXECUTE format('DROP SCHEMA %I CASCADE', schema_name);
-                END LOOP;
-                CREATE SCHEMA public;
-            END
-            $reset$;
-            """,
-            connection);
-        await command.ExecuteNonQueryAsync();
-    }
+    private Task ResetDatabaseAsync() => fixture.ResetAsync();
 
     private async Task ExecuteAsync(string sql)
     {

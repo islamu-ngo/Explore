@@ -15,6 +15,7 @@ public sealed class OrganizationTenantConfiguration : IEntityTypeConfiguration<O
     {
         builder.Property(e => e.Id).HasValueGenerator<GuidVersion7ValueGenerator>();
         builder.HasAlternateKey(e => new { e.TenantId, e.Id });
+        builder.HasAlternateKey(e => new { e.TenantId, e.OrganizationId });
         builder.Property(e => e.ApprovalStatusId).HasDefaultValue((int)ApprovalStatusEnum.Pending);
         builder.Property(e => e.DisplayNameOverride).HasMaxLength(500);
         builder.Property(e => e.DescriptionOverride).HasMaxLength(5000);
@@ -49,6 +50,7 @@ public sealed class GroupTenantConfiguration : IEntityTypeConfiguration<GroupTen
     {
         builder.Property(e => e.Id).HasValueGenerator<GuidVersion7ValueGenerator>();
         builder.HasAlternateKey(e => new { e.TenantId, e.Id });
+        builder.HasAlternateKey(e => new { e.TenantId, e.GroupId });
         builder.Property(e => e.ApprovalStatusId).HasDefaultValue((int)ApprovalStatusEnum.Pending);
         builder.Property(e => e.DisplayNameOverride).HasMaxLength(500);
         builder.Property(e => e.DescriptionOverride).HasMaxLength(5000);

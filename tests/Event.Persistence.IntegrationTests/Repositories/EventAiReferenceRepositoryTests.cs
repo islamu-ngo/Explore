@@ -144,6 +144,16 @@ public sealed class EventAiReferenceRepositoryTests(PostgreSqlContainerFixture f
             UserId = user.Id,
         };
         context.Actors.Add(actor);
+        context.TenantUsers.Add(new TenantUser
+        {
+            TenantId = tenant.Id,
+            Tenant = tenant,
+            UserId = user.Id,
+            User = user,
+            ActorId = actor.Id,
+            Actor = actor,
+            StatusId = (int)TenantUserStatusEnum.Active
+        });
         await context.SaveChangesAsync();
 
         return new EventReferenceScope(tenant.Id, actor.Id);
@@ -161,6 +171,8 @@ public sealed class EventAiReferenceRepositoryTests(PostgreSqlContainerFixture f
         {
             Id = Guid.CreateVersion7(),
             Title = title,
+            PublicCode = Guid.CreateVersion7().ToString("N")[^12..],
+            EventProvenanceTypeId = (int)EventProvenanceTypeEnum.OrganizerCreated,
             Subtitle = "AI reference card summary",
             Description = description,
             Content = "Full event content should not be needed for AI reference search.",

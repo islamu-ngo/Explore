@@ -4,6 +4,7 @@
 using Event.Persistence.IntegrationTests.Fixtures;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Domain;
+using Explore.Domain.Enums;
 using Explore.Persistence;
 using Explore.Persistence.QueryFilters;
 using Microsoft.EntityFrameworkCore;
@@ -101,6 +102,7 @@ public class TenantQueryFilterFailClosedTests(PostgreSqlContainerFixture fixture
         {
             Id = Guid.CreateVersion7(),
             Title = $"Tenant Filter Event {slugPrefix}",
+            EventProvenanceTypeId = (int)EventProvenanceTypeEnum.OrganizerCreated,
             ActorId = actor.Id,
             Actor = null!,
             TenantId = tenant.Id,

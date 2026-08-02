@@ -359,6 +359,7 @@ public sealed class AtprotoEventProjectionVisibilityInMemoryTests
         {
             Id = Guid.CreateVersion7(),
             Title = $"In-memory {key}",
+            EventProvenanceTypeId = (int)EventProvenanceTypeEnum.Federated,
             PublicCode = "ATPROTO",
             ActorId = eventActor.Id,
             Actor = eventActor,
@@ -420,6 +421,7 @@ public sealed class AtprotoEventProjectionVisibilityInMemoryTests
         {
             Id = Guid.CreateVersion7(),
             Title = $"Local echo {key}",
+            EventProvenanceTypeId = (int)EventProvenanceTypeEnum.OrganizerCreated,
             PublicCode = "ATPROTO",
             ActorId = actor.Id,
             Actor = actor,

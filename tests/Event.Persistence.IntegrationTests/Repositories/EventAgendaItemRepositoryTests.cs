@@ -3,6 +3,7 @@
 
 using Event.Persistence.IntegrationTests.Fixtures;
 using Explore.Domain;
+using Explore.Domain.Enums;
 using Explore.Domain.Services.Scheduling;
 using Explore.Persistence;
 using Explore.Persistence.Repositories;
@@ -233,6 +234,7 @@ public class EventAgendaItemRepositoryTests
         {
             Id = Guid.NewGuid(),
             Title = "Agenda Test Event",
+            EventProvenanceTypeId = (int)EventProvenanceTypeEnum.OrganizerCreated,
             EventTypeId = 1,
             AudienceGenderId = 1,
             AudienceAgeId = 1,

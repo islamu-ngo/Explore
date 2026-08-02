@@ -359,6 +359,7 @@ public sealed class EventReportPersistenceTests(PostgreSqlContainerFixture fixtu
         {
             Id = Guid.CreateVersion7(),
             Title = "Reporting Event " + slugPrefix,
+            EventProvenanceTypeId = (int)EventProvenanceTypeEnum.OrganizerCreated,
             ActorId = actor.Id,
             Actor = null!,
             TenantId = tenant.Id,

@@ -387,6 +387,7 @@ public sealed class EventReportRepositoryTests(PostgreSqlContainerFixture fixtur
         {
             Id = Guid.CreateVersion7(),
             Title = "Report Repository Event " + slugPrefix,
+            EventProvenanceTypeId = (int)EventProvenanceTypeEnum.OrganizerCreated,
             ActorId = actor.Id,
             Actor = null!,
             TenantId = tenant.Id,

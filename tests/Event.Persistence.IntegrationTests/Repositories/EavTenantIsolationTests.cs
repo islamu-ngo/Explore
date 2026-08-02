@@ -138,6 +138,7 @@ public class EavTenantIsolationTests(ProjectionTestContainerFixture fixture)
         {
             Id = Guid.NewGuid(),
             Title = $"EAV Isolation {slugPrefix}",
+            EventProvenanceTypeId = (int)EventProvenanceTypeEnum.OrganizerCreated,
             ActorId = actor.Id,
             Actor = null!,
             TenantId = tenant.Id,

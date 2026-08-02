@@ -278,6 +278,7 @@ public sealed class TemplateInstantiationPostgreSqlTests(PostgreSqlContainerFixt
         {
             Id = Guid.NewGuid(),
             Title = "Template Runtime Event",
+            EventProvenanceTypeId = (int)EventProvenanceTypeEnum.OrganizerCreated,
             ActorId = actor.Id,
             Actor = null!,
             TenantId = tenant.Id,

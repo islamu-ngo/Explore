@@ -18,7 +18,7 @@ namespace Event.Persistence.IntegrationTests.Federation;
 public sealed class AtprotoEventProjectionDiscoveryDeduplicationTests(PostgreSqlContainerFixture fixture)
 {
     [Test]
-    public async Task PublishedLinkedEventSuppressesProjection()
+    public async Task PublishedLinkedEventRemainsSuppressedWhenDetachedOrDeleted()
     {
         await fixture.ResetAsync();
         (Guid tenantId, Guid eventId, Guid recordId) =
@@ -40,8 +40,8 @@ public sealed class AtprotoEventProjectionDiscoveryDeduplicationTests(PostgreSql
 
         (items, totalCount) = await new AtprotoEventProjectionRepository(context)
             .GetPublicWindowAsync(PublicQuery(), CancellationToken.None);
-        await Assert.That(items).HasSingleItem();
-        await Assert.That(totalCount).IsEqualTo(1);
+        await Assert.That(items).IsEmpty();
+        await Assert.That(totalCount).IsEqualTo(0);
 
         linkedEvent.AtprotoRecordId = recordId;
         linkedEvent.IsDeleted = true;
@@ -49,8 +49,8 @@ public sealed class AtprotoEventProjectionDiscoveryDeduplicationTests(PostgreSql
 
         (items, totalCount) = await new AtprotoEventProjectionRepository(context)
             .GetPublicWindowAsync(PublicQuery(), CancellationToken.None);
-        await Assert.That(items).HasSingleItem();
-        await Assert.That(totalCount).IsEqualTo(1);
+        await Assert.That(items).IsEmpty();
+        await Assert.That(totalCount).IsEqualTo(0);
     }
 
     [Test]
@@ -77,6 +77,14 @@ public sealed class AtprotoEventProjectionDiscoveryDeduplicationTests(PostgreSql
         Guid tenantId = Guid.CreateVersion7();
         Guid actorId = Guid.CreateVersion7();
         Guid recordId = Guid.CreateVersion7();
+        var servicePrincipal = new ServicePrincipal
+        {
+            Id = Guid.CreateVersion7(),
+            Code = $"atproto-dedup-{eventStatus.ToString().ToLowerInvariant()}",
+            DisplayName = "Federated event importer",
+            CreatedAt = now,
+            ConcurrencyStamp = Guid.CreateVersion7()
+        };
         var tenant = new Tenant
         {
             Id = tenantId,
@@ -90,6 +98,8 @@ public sealed class AtprotoEventProjectionDiscoveryDeduplicationTests(PostgreSql
             Id = actorId,
             ActorTypeId = (int)ActorTypeEnum.Bot,
             ActorType = null!,
+            ServicePrincipalId = servicePrincipal.Id,
+            ServicePrincipal = servicePrincipal,
             Pii = new ActorPii { DisplayName = "Federated event importer" },
             CreatedAt = now,
             ConcurrencyStamp = Guid.CreateVersion7()
@@ -114,6 +124,7 @@ public sealed class AtprotoEventProjectionDiscoveryDeduplicationTests(PostgreSql
         {
             Id = Guid.CreateVersion7(),
             Title = $"{eventStatus} imported event",
+            EventProvenanceTypeId = (int)EventProvenanceTypeEnum.Federated,
             PublicCode = "ATPROTO",
             ActorId = actorId,
             Actor = actor,
@@ -132,6 +143,7 @@ public sealed class AtprotoEventProjectionDiscoveryDeduplicationTests(PostgreSql
         };
         context.AddRange(
             tenant,
+            servicePrincipal,
             actor,
             record,
             new AtprotoEventProjection

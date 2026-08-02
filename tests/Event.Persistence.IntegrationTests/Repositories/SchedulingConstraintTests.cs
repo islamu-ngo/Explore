@@ -3,6 +3,7 @@
 
 using Event.Persistence.IntegrationTests.Fixtures;
 using Explore.Domain;
+using Explore.Domain.Enums;
 using Explore.Domain.Services.Scheduling;
 using Explore.Persistence;
 using Explore.Persistence.QueryFilters;
@@ -67,6 +68,7 @@ public class SchedulingConstraintTests
         {
             Id = Guid.NewGuid(),
             Title = "Second Event",
+            EventProvenanceTypeId = (int)EventProvenanceTypeEnum.OrganizerCreated,
             EventTypeId = 1,
             AudienceGenderId = 1,
             AudienceAgeId = 1,
@@ -483,6 +485,7 @@ public class SchedulingConstraintTests
         {
             Id = Guid.NewGuid(),
             Title = "Constraint Test Event",
+            EventProvenanceTypeId = (int)EventProvenanceTypeEnum.OrganizerCreated,
             EventTypeId = 1,
             AudienceGenderId = 1,
             AudienceAgeId = 1,

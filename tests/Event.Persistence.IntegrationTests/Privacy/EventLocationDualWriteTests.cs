@@ -17,7 +17,7 @@ using TUnit.Core;
 namespace Event.Persistence.IntegrationTests.Privacy;
 
 [ClassDataSource<PostgreSqlContainerFixture>(Shared = SharedType.PerAssembly)]
-[NotInParallel("EventLocationDualWriteDb")]
+[NotInParallel("PersistenceDb")]
 [Category("EventLocationPrivacy")]
 public sealed class EventLocationDualWriteTests(PostgreSqlContainerFixture fixture)
 {
@@ -431,15 +431,22 @@ public sealed class EventLocationDualWriteTests(PostgreSqlContainerFixture fixtu
             ActorType = null!,
             Pii = new ActorPii { DisplayName = "ELP dual writer" }
         };
+        var group = new Group
+        {
+            Id = Guid.CreateVersion7(),
+            FullName = "ELP cross-tenant group",
+            ConcurrencyStamp = Guid.CreateVersion7()
+        };
         var otherActor = new Actor
         {
             Id = Guid.CreateVersion7(),
-            UserId = null,
+            GroupId = group.Id,
+            Group = group,
             ActorTypeId = (int)ActorTypeEnum.Group,
             ActorType = null!,
             Pii = new ActorPii { DisplayName = "ELP other actor" }
         };
-        context.AddRange(actor, otherActor);
+        context.AddRange(actor, group, otherActor);
         await context.SaveChangesAsync();
 
         var eventOne = CreateEvent(tenant.Id, actor.Id, "ELP event one");
@@ -484,6 +491,8 @@ public sealed class EventLocationDualWriteTests(PostgreSqlContainerFixture fixtu
         ActorId = actorId,
         Actor = null!,
         Title = title,
+        PublicCode = Guid.CreateVersion7().ToString("N")[^12..],
+        EventProvenanceTypeId = (int)EventProvenanceTypeEnum.OrganizerCreated,
         Description = "ELP dual-write PostgreSQL acceptance",
         EventStatusId = (int)EventStatusEnum.Draft,
         EventStatus = null!,

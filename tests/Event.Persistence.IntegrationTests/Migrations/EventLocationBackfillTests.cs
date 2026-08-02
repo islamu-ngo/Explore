@@ -12,7 +12,7 @@ using Npgsql;
 namespace Event.Persistence.IntegrationTests.Migrations;
 
 [ClassDataSource<RecipientDeliveryMigrationContainerFixture>(Shared = SharedType.PerAssembly)]
-[NotInParallel("PersistenceDb")]
+[NotInParallel("RecipientDeliveryMigrationDb")]
 [Property("Category", "EventLocationPrivacy")]
 public sealed class EventLocationBackfillTests(RecipientDeliveryMigrationContainerFixture fixture)
 {

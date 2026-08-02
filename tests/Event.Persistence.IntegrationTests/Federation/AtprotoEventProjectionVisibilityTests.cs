@@ -314,7 +314,8 @@ public sealed class AtprotoEventProjectionVisibilityTests(PostgreSqlContainerFix
         {
             Id = Guid.CreateVersion7(),
             Title = $"Visibility {key}",
-            PublicCode = "ATPROTO",
+            EventProvenanceTypeId = (int)EventProvenanceTypeEnum.Federated,
+            PublicCode = Guid.CreateVersion7().ToString("N")[^12..],
             ActorId = eventActor.Id,
             Actor = eventActor,
             TenantId = eventTenant.Id,
@@ -378,7 +379,8 @@ public sealed class AtprotoEventProjectionVisibilityTests(PostgreSqlContainerFix
         {
             Id = Guid.CreateVersion7(),
             Title = $"Local echo {key}",
-            PublicCode = "ATPROTO",
+            EventProvenanceTypeId = (int)EventProvenanceTypeEnum.OrganizerCreated,
+            PublicCode = Guid.CreateVersion7().ToString("N")[^12..],
             ActorId = actor.Id,
             Actor = actor,
             TenantId = tenant.Id,
@@ -443,20 +445,19 @@ public sealed class AtprotoEventProjectionVisibilityTests(PostgreSqlContainerFix
                 });
         }
 
-        if (hasActiveTenantUser)
+        context.TenantUsers.Add(new TenantUser
         {
-            context.TenantUsers.Add(new TenantUser
-            {
-                Id = Guid.CreateVersion7(),
-                TenantId = tenant.Id,
-                Tenant = tenant,
-                UserId = user.Id,
-                User = user,
-                ActorId = actor.Id,
-                Actor = actor,
-                StatusId = (int)TenantUserStatusEnum.Active
-            });
-        }
+            Id = Guid.CreateVersion7(),
+            TenantId = tenant.Id,
+            Tenant = tenant,
+            UserId = user.Id,
+            User = user,
+            ActorId = actor.Id,
+            Actor = actor,
+            StatusId = (int)(hasActiveTenantUser
+                ? TenantUserStatusEnum.Active
+                : TenantUserStatusEnum.Removed)
+        });
 
         return record.Id;
     }
@@ -473,7 +474,7 @@ public sealed class AtprotoEventProjectionVisibilityTests(PostgreSqlContainerFix
         return new()
         {
             Id = Guid.CreateVersion7(),
-            ActorTypeId = (int)ActorTypeEnum.Bot,
+            ActorTypeId = (int)ActorTypeEnum.ExternalUnclassified,
             ActorType = null!,
             ExternalActorSubjectId = externalSubject.Id,
             ExternalActorSubject = externalSubject,

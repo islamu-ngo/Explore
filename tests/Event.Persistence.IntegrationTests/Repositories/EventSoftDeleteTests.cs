@@ -3,6 +3,7 @@
 
 using Event.Persistence.IntegrationTests.Fixtures;
 using Explore.Domain;
+using Explore.Domain.Enums;
 using Explore.Persistence;
 using Microsoft.EntityFrameworkCore;
 using TUnit.Assertions;
@@ -78,6 +79,7 @@ public class EventSoftDeleteTests(PostgreSqlContainerFixture fixture)
         {
             Id = Guid.NewGuid(),
             Title = "Surviving Event",
+            EventProvenanceTypeId = (int)EventProvenanceTypeEnum.OrganizerCreated,
             ActorId = actorId,
             Actor = null!,
             TenantId = tenantId,
@@ -154,6 +156,7 @@ public class EventSoftDeleteTests(PostgreSqlContainerFixture fixture)
         {
             Id = Guid.NewGuid(),
             Title = eventTitle,
+            EventProvenanceTypeId = (int)EventProvenanceTypeEnum.OrganizerCreated,
             ActorId = actor.Id,
             Actor = null!,
             TenantId = tenant.Id,

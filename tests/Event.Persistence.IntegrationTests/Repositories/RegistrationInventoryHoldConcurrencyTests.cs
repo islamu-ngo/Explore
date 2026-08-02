@@ -35,7 +35,7 @@ public sealed class RegistrationInventoryHoldConcurrencyTests(PostgreSqlContaine
             "SELECT COUNT(*) FROM pg_constraint WHERE conname = 'fk_event_capacity_pools_capacity_hold_policies_capacity_hold_p' AND contype = 'f'"))
             .IsEqualTo(1L);
         await Assert.That(await ScalarAsync(
-            "SELECT COUNT(*) FROM \"__EFMigrationsHistory\" WHERE migration_id = '20260730200905_AddCapacityHoldPolicyLookup'"))
+            "SELECT COUNT(*) FROM \"__EFMigrationsHistory\" WHERE migration_id = '20260801192258_init'"))
             .IsEqualTo(1L);
     }
 

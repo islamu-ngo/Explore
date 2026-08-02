@@ -22,8 +22,8 @@ public sealed class ExternalActorClassificationMigrationTests(PostgreSqlContaine
             "SELECT COUNT(*) FROM pg_constraint WHERE conname = 'ck_actors_external_type_matches_owner'"))
             .IsEqualTo(1L);
         await Assert.That(await ScalarAsync(
-            "SELECT COUNT(*) FROM __ef_migrations_history WHERE migration_id = '20260728143000_ClassifyExternalUnclassifiedActors'"))
-            .IsEqualTo(1L);
+            "SELECT COUNT(*) FROM \"__EFMigrationsHistory\""))
+            .IsEqualTo(2L);
     }
 
     [Test]

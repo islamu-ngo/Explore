@@ -49,6 +49,7 @@ public sealed class EventSeriesRepositoryTests
         {
             Id = eventId,
             Title = "Ticketed Event",
+            EventProvenanceTypeId = (int)EventProvenanceTypeEnum.OrganizerCreated,
             ActorId = actor.Id,
             Actor = actor,
             TenantId = tenantId,

@@ -170,6 +170,7 @@ public sealed class EventLocationRegistrationAccessPersistenceTests(Registration
             ActorId = actor.Id,
             Actor = null!,
             Title = "Registration coverage event",
+            EventProvenanceTypeId = (int)EventProvenanceTypeEnum.OrganizerCreated,
             EventStatusId = (int)EventStatusEnum.Draft,
             EventStatus = null!,
             EventFormatId = (int)EventFormatEnum.Local,

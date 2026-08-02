@@ -600,36 +600,21 @@ public sealed class NotificationFanoutOccurrenceRepositoryTests(PostgreSqlContai
             scenario.EventId,
             at,
             sequence: 1));
-        NotificationFanoutOccurrence sessionUpdateA = CreatePersistedCandidate(CreateCoordinationCandidate(
+        NotificationFanoutOccurrence sessionUpdateA = CreatePersistedCandidate(WithSessionScope(CreateCoordinationCandidate(
             scenario.TenantId,
             scenario.EventId,
             at.AddMinutes(1),
-            sequence: 2) with
-        {
-            SessionId = sessionA,
-            TemplateKey = NotificationFanoutRecipientTemplateFactory.SessionUpdatedTemplateKey,
-            SourceId = sessionA
-        });
-        NotificationFanoutOccurrence sessionUpdateB = CreatePersistedCandidate(CreateCoordinationCandidate(
+            sequence: 2), sessionA, "Session A"));
+        NotificationFanoutOccurrence sessionUpdateB = CreatePersistedCandidate(WithSessionScope(CreateCoordinationCandidate(
             scenario.TenantId,
             scenario.EventId,
             at.AddMinutes(2),
-            sequence: 3) with
-        {
-            SessionId = sessionB,
-            TemplateKey = NotificationFanoutRecipientTemplateFactory.SessionUpdatedTemplateKey,
-            SourceId = sessionB
-        });
-        NotificationFanoutOccurrence sessionUpdateC = CreatePersistedCandidate(CreateCoordinationCandidate(
+            sequence: 3), sessionB, "Session B"));
+        NotificationFanoutOccurrence sessionUpdateC = CreatePersistedCandidate(WithSessionScope(CreateCoordinationCandidate(
             scenario.TenantId,
             scenario.EventId,
             at.AddMinutes(3),
-            sequence: 4) with
-        {
-            SessionId = sessionC,
-            TemplateKey = NotificationFanoutRecipientTemplateFactory.SessionUpdatedTemplateKey,
-            SourceId = sessionC
-        });
+            sequence: 4), sessionC, "Session C"));
         seedContext.NotificationFanoutOccurrences.AddRange(
             eventUpdate,
             sessionUpdateA,
@@ -1037,22 +1022,52 @@ public sealed class NotificationFanoutOccurrenceRepositoryTests(PostgreSqlContai
             notBefore);
     }
 
+    private static NotificationFanoutOccurrenceCandidate WithSessionScope(
+        NotificationFanoutOccurrenceCandidate candidate,
+        Guid sessionId,
+        string sessionTitle)
+    {
+        string before = NotificationFanoutTemplateJson.Serialize(new NotificationFanoutSnapshotV1(
+            "Concurrent event",
+            sessionTitle,
+            new DateTimeOffset(candidate.OccurredAt),
+            new DateTimeOffset(candidate.OccurredAt.AddHours(1)),
+            "UTC",
+            null));
+        string after = NotificationFanoutTemplateJson.Serialize(new NotificationFanoutSnapshotV1(
+            "Concurrent event",
+            sessionTitle,
+            new DateTimeOffset(candidate.OccurredAt.AddHours(1)),
+            new DateTimeOffset(candidate.OccurredAt.AddHours(2)),
+            "UTC",
+            null));
+
+        return candidate with
+        {
+            SessionId = sessionId,
+            SafeBeforeSnapshotJson = before,
+            SafeAfterSnapshotJson = after,
+            TemplateKey = NotificationFanoutRecipientTemplateFactory.SessionUpdatedTemplateKey,
+            SourceId = sessionId
+        };
+    }
+
     private static RunTerminalEvidence CaptureRunTerminalEvidence(NotificationFanoutRun run) => new(
         run.Status,
-        run.CursorFirstEligibleRegistrationCreatedAt,
+        AtPostgresPrecision(run.CursorFirstEligibleRegistrationCreatedAt),
         run.CursorUserId,
         run.ProcessingLeaseOwner,
         run.ProcessingLeaseToken,
-        run.ProcessingLeaseExpiresAt,
+        AtPostgresPrecision(run.ProcessingLeaseExpiresAt),
         run.ProcessingGeneration,
         run.ProcessingFence,
         run.ProcessedCount,
         run.CreatedNotificationCount,
-        run.StartedAt,
-        run.CompletedAt,
-        run.FailedAt,
+        AtPostgresPrecision(run.StartedAt),
+        AtPostgresPrecision(run.CompletedAt),
+        AtPostgresPrecision(run.FailedAt),
         run.LastError,
-        run.UpdatedAt,
+        AtPostgresPrecision(run.UpdatedAt),
         run.ConcurrencyStamp);
 
     private static async Task<Guid> CreateEventAsync(
@@ -1069,6 +1084,7 @@ public sealed class NotificationFanoutOccurrenceRepositoryTests(PostgreSqlContai
             TenantId = tenantId,
             Tenant = await context.Tenants.SingleAsync(value => value.Id == tenantId),
             Title = title,
+            EventProvenanceTypeId = (int)EventProvenanceTypeEnum.OrganizerCreated,
             ActorId = actorId,
             Actor = null!,
             EventFormatId = (int)EventFormatEnum.Local,
@@ -1352,6 +1368,9 @@ public sealed class NotificationFanoutOccurrenceRepositoryTests(PostgreSqlContai
     private static DateTime AtPostgresPrecision(DateTime value) =>
         new(value.Ticks - value.Ticks % TimeSpan.TicksPerMicrosecond, DateTimeKind.Utc);
 
+    private static DateTime? AtPostgresPrecision(DateTime? value) =>
+        value.HasValue ? AtPostgresPrecision(value.Value) : null;
+
     private static NotificationIntent CreateIntent(Scenario scenario, Guid occurrenceId, string deduplicationKey)
     {
         return new NotificationIntent
@@ -1387,11 +1406,20 @@ public sealed class NotificationFanoutOccurrenceRepositoryTests(PostgreSqlContai
         context.Tenants.Add(tenant);
         await context.SaveChangesAsync();
 
+        var servicePrincipal = new ServicePrincipal
+        {
+            Id = Guid.CreateVersion7(),
+            Code = $"fanout-source-{Guid.CreateVersion7():N}",
+            DisplayName = "Fanout source",
+            ConcurrencyStamp = Guid.CreateVersion7()
+        };
         var actor = new Actor
         {
             Id = Guid.CreateVersion7(),
             ActorTypeId = (int)ActorTypeEnum.Bot,
             ActorType = null!,
+            ServicePrincipalId = servicePrincipal.Id,
+            ServicePrincipal = servicePrincipal,
             Pii = new ActorPii { DisplayName = "Fanout source" },
             ConcurrencyStamp = Guid.CreateVersion7(),
         };
@@ -1402,6 +1430,7 @@ public sealed class NotificationFanoutOccurrenceRepositoryTests(PostgreSqlContai
         {
             Id = Guid.CreateVersion7(),
             Title = "Fanout event",
+            EventProvenanceTypeId = (int)EventProvenanceTypeEnum.OrganizerCreated,
             ActorId = actor.Id,
             Actor = null!,
             TenantId = tenant.Id,

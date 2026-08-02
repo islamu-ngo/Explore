@@ -316,6 +316,7 @@ public class EventSessionCustomPropertyProjectionUpdaterTests
         {
             Id = Guid.NewGuid(),
             Title = "Parent Event",
+            EventProvenanceTypeId = (int)EventProvenanceTypeEnum.OrganizerCreated,
             ActorId = actor.Id,
             Actor = null!,
             TenantId = tenant.Id,

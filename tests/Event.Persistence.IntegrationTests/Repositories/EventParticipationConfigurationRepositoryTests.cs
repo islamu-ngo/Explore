@@ -153,13 +153,26 @@ public sealed class EventParticipationConfigurationRepositoryTests
         Guid tenantId = Guid.CreateVersion7();
         Guid eventId = Guid.CreateVersion7();
         context.TenantContext = new TestTenantContext(tenantId);
+        var user = new User
+        {
+            Id = Guid.CreateVersion7(),
+            Pii = new UserPii
+            {
+                Email = "participation-standard-details@example.test",
+                FirstName = "Participation",
+                LastName = "Tester"
+            }
+        };
         var actor = new Actor
         {
             Id = Guid.CreateVersion7(),
             ActorTypeId = 1,
             ActorType = null!,
+            UserId = user.Id,
+            User = user,
             Pii = new ActorPii { DisplayName = "Participation test actor" }
         };
+        context.Users.Add(user);
         context.ActorTypes.Add(new ActorType { Id = 1, MasterCode = "USER", FullName = "User" });
         context.EventStatuses.Add(new EventStatus { Id = 1, MasterCode = "PUBLISHED", FullName = "Published" });
         context.EventFormats.Add(new EventFormat { Id = 1, MasterCode = "DIGITAL", FullName = "Digital" });

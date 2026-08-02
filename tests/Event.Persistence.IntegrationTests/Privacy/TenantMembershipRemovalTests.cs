@@ -10,6 +10,7 @@ using Explore.Domain.Enums;
 using Explore.Persistence;
 using Explore.Persistence.QueryFilters;
 using Explore.Persistence.Repositories;
+using Explore.Persistence.Seed;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Npgsql;
@@ -325,7 +326,7 @@ public sealed class TenantMembershipRemovalTests(TenantMembershipRemovalPostgreS
 
 public sealed class TenantMembershipRemovalPostgreSqlFixture : IAsyncInitializer, IAsyncDisposable
 {
-    private const string ExpandMigration = "20260719221539_init";
+    private const string ExpandMigration = "20260801192258_init";
     private readonly PostgreSqlContainer _container = new PostgreSqlBuilder("postgres:18-alpine")
         .WithDatabase("tenant_membership_removal_test")
         .WithUsername("postgres")
@@ -360,6 +361,7 @@ public sealed class TenantMembershipRemovalPostgreSqlFixture : IAsyncInitializer
             IsSystem = true,
         });
         await context.SaveChangesAsync();
+        await LookupTableSeeder.SeedLocationPrivacyLookupsAsync(context, CancellationToken.None);
     }
 
     public async ValueTask DisposeAsync()

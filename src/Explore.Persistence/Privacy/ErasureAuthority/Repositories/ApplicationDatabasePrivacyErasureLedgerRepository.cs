@@ -26,7 +26,7 @@ public sealed class ApplicationDatabasePrivacyErasureLedgerRepository(
             return existing;
         }
 
-        DateTime now = timeProvider.GetUtcNow().UtcDateTime;
+        DateTime now = AtPostgresPrecision(timeProvider.GetUtcNow().UtcDateTime);
         PrivacyErasureIntent fact = PrivacyErasureIntent.Record(
             intent.IntentId,
             counter.AllocateNext(),
@@ -151,4 +151,7 @@ public sealed class ApplicationDatabasePrivacyErasureLedgerRepository(
                 "The erasure IntentId is already recorded with a different normalized payload.");
         }
     }
+
+    private static DateTime AtPostgresPrecision(DateTime value) =>
+        new(value.Ticks - value.Ticks % TimeSpan.TicksPerMicrosecond, DateTimeKind.Utc);
 }

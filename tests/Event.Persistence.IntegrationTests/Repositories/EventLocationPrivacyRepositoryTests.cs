@@ -532,6 +532,7 @@ public sealed class EventLocationPrivacyRepositoryTests(ProjectionTestContainerF
             ActorId = actor.Id,
             Actor = null!,
             Title = $"ELP {suffix}",
+            EventProvenanceTypeId = (int)EventProvenanceTypeEnum.OrganizerCreated,
             Description = "Current-model persistence verification",
             EventStatusId = (int)EventStatusEnum.Draft,
             EventStatus = null!,
@@ -602,7 +603,7 @@ public sealed class EventLocationPrivacyRepositoryTests(ProjectionTestContainerF
             DELETE FROM event_sessions WHERE event_location_id IS NOT NULL;
             TRUNCATE TABLE event_location_disclosure_audits;
             TRUNCATE TABLE event_location_exact_read_audits;
-            TRUNCATE TABLE location_privacy_erasure_replay_checkpoints;
+            TRUNCATE TABLE privacy_erasure_replay_checkpoints;
             DELETE FROM event_locations;
             """);
 

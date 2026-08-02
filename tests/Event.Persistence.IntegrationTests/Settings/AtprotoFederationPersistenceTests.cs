@@ -86,6 +86,7 @@ public sealed class AtprotoFederationPersistenceTests(PostgreSqlContainerFixture
         {
             Id = eventId,
             Title = "Community minimum event",
+            EventProvenanceTypeId = (int)EventProvenanceTypeEnum.Federated,
             ActorId = actor.Id,
             Actor = null!,
             TenantId = tenant.Id,

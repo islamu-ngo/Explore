@@ -27,7 +27,7 @@ public sealed class NotificationFanoutOccurrenceMigrationTests(
 
         try
         {
-            await migrator.MigrateAsync("20260719221539_init");
+            await migrator.MigrateAsync("20260801192258_init");
             await Assert.That(ReadPendingModelOperations(context)).IsEmpty();
             await AssertSchemaAsync(expected: true);
         }
@@ -37,19 +37,7 @@ public sealed class NotificationFanoutOccurrenceMigrationTests(
         }
     }
 
-    private async Task ResetSharedMigrationDatabaseAsync()
-    {
-        var databaseIdentity = new NpgsqlConnectionStringBuilder(fixture.ConnectionString);
-        if (!databaseIdentity.Database.StartsWith("recipient_delivery_migration_", StringComparison.Ordinal))
-        {
-            throw new InvalidOperationException("Refusing to reset a non-test migration database.");
-        }
-
-        await using var connection = new NpgsqlConnection(fixture.ConnectionString);
-        await connection.OpenAsync();
-        await using var command = new NpgsqlCommand("DROP SCHEMA public CASCADE; CREATE SCHEMA public;", connection);
-        await command.ExecuteNonQueryAsync();
-    }
+    private Task ResetSharedMigrationDatabaseAsync() => fixture.ResetAsync();
 
     private ExploreDbContext CreateDbContext()
     {

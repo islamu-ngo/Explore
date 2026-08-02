@@ -26,7 +26,7 @@ public sealed class RecipientNotificationDeliveryMigrationTests(
 
         await ResetSharedMigrationDatabaseAsync();
         await using var context = CreateDbContext();
-        await context.GetService<IMigrator>().MigrateAsync("20260719221539_init");
+        await context.GetService<IMigrator>().MigrateAsync("20260801192258_init");
         await Assert.That(HasPendingModelChanges(context)).IsFalse();
 
         await using var connection = new NpgsqlConnection(fixture.ConnectionString);
@@ -55,13 +55,7 @@ public sealed class RecipientNotificationDeliveryMigrationTests(
         return new ExploreDbContext(options);
     }
 
-    private async Task ResetSharedMigrationDatabaseAsync()
-    {
-        await using var connection = new NpgsqlConnection(fixture.ConnectionString);
-        await connection.OpenAsync();
-        await using var command = new NpgsqlCommand("DROP SCHEMA public CASCADE; CREATE SCHEMA public;", connection);
-        await command.ExecuteNonQueryAsync();
-    }
+    private Task ResetSharedMigrationDatabaseAsync() => fixture.ResetAsync();
 
     private static bool HasPendingModelChanges(ExploreDbContext context)
     {

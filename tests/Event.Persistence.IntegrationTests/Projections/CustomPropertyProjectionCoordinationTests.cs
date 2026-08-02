@@ -333,6 +333,7 @@ public class CustomPropertyProjectionCoordinationTests
         {
             Id = Guid.NewGuid(),
             Title = "Drain Event",
+            EventProvenanceTypeId = (int)EventProvenanceTypeEnum.OrganizerCreated,
             ActorId = actor.Id,
             Actor = null!,
             TenantId = tenant.Id,

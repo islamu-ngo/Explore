@@ -252,6 +252,7 @@ public sealed class EventGraphTenantForeignKeyTests(PostgreSqlContainerFixture f
         {
             Id = Guid.NewGuid(),
             Title = title,
+            EventProvenanceTypeId = (int)EventProvenanceTypeEnum.OrganizerCreated,
             ActorId = scope.ActorId,
             Actor = null!,
             TenantId = scope.TenantId,

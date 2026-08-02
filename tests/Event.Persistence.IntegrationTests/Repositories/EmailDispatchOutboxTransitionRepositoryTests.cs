@@ -417,7 +417,7 @@ public sealed class EmailDispatchOutboxTransitionRepositoryTests(PostgreSqlConta
             {
                 Id = Guid.CreateVersion7(),
                 TenantId = tenant.Id,
-                Tenant = tenant,
+                Tenant = null!,
                 UserId = dispatch.RecipientUserId,
                 Category = NotificationPreferenceCategories.EventUpdates,
                 IsEnabled = false,
@@ -470,7 +470,7 @@ public sealed class EmailDispatchOutboxTransitionRepositoryTests(PostgreSqlConta
     {
         await fixture.ResetAsync();
         await using var context = fixture.CreateDbContext();
-        var utcNow = DateTime.UtcNow;
+        var utcNow = AtPostgresPrecision(DateTime.UtcNow);
         var settledAt = utcNow.AddDays(-181);
         var graph = await SeedAcceptedSettlementGraphAsync(context, "retention-sent", settledAt);
         var repository = new EmailDispatchOutboxRepository(context);
@@ -526,7 +526,7 @@ public sealed class EmailDispatchOutboxTransitionRepositoryTests(PostgreSqlConta
         var tenant = await SeedTenantAsync(context, "retention-resolution");
         var dispatch = await SeedDispatchAsync(context, tenant.Id, EmailDispatchStatus.DeadLettered);
         var repository = new EmailDispatchOutboxRepository(context);
-        var utcNow = DateTime.UtcNow;
+        var utcNow = AtPostgresPrecision(DateTime.UtcNow);
 
         var unresolvedCount = await repository.CountRetentionRedactionEligible(
             tenant.Id,
@@ -574,7 +574,7 @@ public sealed class EmailDispatchOutboxTransitionRepositoryTests(PostgreSqlConta
         tenant.TenantStatusId = (int)TenantStatusEnum.Purged;
         await context.SaveChangesAsync();
         var repository = new EmailDispatchOutboxRepository(context);
-        var utcNow = DateTime.UtcNow;
+        var utcNow = AtPostgresPrecision(DateTime.UtcNow);
 
         var redacted = await repository.SuppressAndRedactTenant(
             tenant.Id,
@@ -1092,7 +1092,7 @@ public sealed class EmailDispatchOutboxTransitionRepositoryTests(PostgreSqlConta
         var tenant = await SeedTenantAsync(context, "health");
         var otherTenant = await SeedTenantAsync(context, "health-other");
         var pausedTenant = await SeedTenantAsync(context, "health-paused");
-        var now = DateTime.UtcNow;
+        var now = AtPostgresPrecision(DateTime.UtcNow);
         var activePending = await SeedDispatchAsync(context, tenant.Id, EmailDispatchStatus.Pending);
         var dueRetry = await SeedDispatchAsync(context, tenant.Id, EmailDispatchStatus.RetryScheduled);
         var futureRetry = await SeedDispatchAsync(context, otherTenant.Id, EmailDispatchStatus.RetryScheduled);
@@ -2010,6 +2010,7 @@ public sealed class EmailDispatchOutboxTransitionRepositoryTests(PostgreSqlConta
         {
             Id = Guid.CreateVersion7(),
             Title = "Reported event",
+            EventProvenanceTypeId = (int)EventProvenanceTypeEnum.OrganizerCreated,
             ActorId = actor.Id,
             Actor = actor,
             TenantId = tenant.Id,
@@ -2097,7 +2098,7 @@ public sealed class EmailDispatchOutboxTransitionRepositoryTests(PostgreSqlConta
         graph.Dispatch.ProcessingLeaseToken = null;
         graph.Dispatch.ProcessingStartedAt = null;
         graph.Attempt.Outcome = EmailDispatchAttemptOutcome.Unknown;
-        graph.Attempt.CompletedAt = DateTime.UtcNow;
+        graph.Attempt.CompletedAt = null;
         graph.Receipt.Status = EmailDispatchReceiptStatus.Unknown;
         graph.Delivery.StatusId = (int)NotificationDeliveryStatusEnum.Unknown;
         await context.SaveChangesAsync();
@@ -2144,6 +2145,9 @@ public sealed class EmailDispatchOutboxTransitionRepositoryTests(PostgreSqlConta
             UpdatedAt = now
         };
     }
+
+    private static DateTime AtPostgresPrecision(DateTime value) =>
+        new(value.Ticks - value.Ticks % TimeSpan.TicksPerMicrosecond, DateTimeKind.Utc);
 
     private sealed record AcceptedSettlementGraph(
         EmailDispatchOutbox Dispatch,

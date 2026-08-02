@@ -377,6 +377,7 @@ public sealed class EventModerationConcurrencyTests(PostgreSqlContainerFixture f
         {
             Id = Guid.NewGuid(),
             Title = "Moderation Concurrency Event",
+            EventProvenanceTypeId = (int)EventProvenanceTypeEnum.OrganizerCreated,
             Subtitle = "Unsafe subtitle",
             Description = "Unsafe description",
             Content = "Unsafe content",

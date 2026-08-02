@@ -14,7 +14,7 @@ using Npgsql;
 namespace Event.Persistence.IntegrationTests.Migrations;
 
 [ClassDataSource<RecipientDeliveryMigrationContainerFixture>(Shared = SharedType.PerAssembly)]
-[NotInParallel("PersistenceDb")]
+[NotInParallel("RecipientDeliveryMigrationDb")]
 [Property("Category", "ExploreDatabaseMigrator")]
 public sealed class ExploreDatabaseMigratorTests(RecipientDeliveryMigrationContainerFixture fixture)
 {
