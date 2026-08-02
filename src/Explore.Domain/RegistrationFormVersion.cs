@@ -215,12 +215,13 @@ public sealed class RegistrationFormVersion : ITenantEntity, IAuditableEntity, I
         bool requiresExplicitConsent,
         bool isProviderTransferAllowed,
         string? consentPurposeCode = null,
-        string? consentTextVersion = null)
+        string? consentTextVersion = null,
+        string? consentText = null)
     {
         EnsureDraft();
         EnsureContains(field);
         field.UpdateGovernance(retentionPolicyId, organizerVisibility, requiresExplicitConsent, isProviderTransferAllowed,
-            consentPurposeCode, consentTextVersion);
+            consentPurposeCode, consentTextVersion, consentText);
         ConcurrencyStamp = Guid.CreateVersion7();
     }
 

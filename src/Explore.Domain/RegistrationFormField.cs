@@ -32,6 +32,7 @@ public sealed class RegistrationFormField : ITenantEntity, IAuditableEntity, ISo
     public RegistrationOrganizerVisibility? OrganizerVisibility { get; private set; }
     public bool RequiresExplicitConsent { get; private set; }
     public string? ConsentPurposeCode { get; private set; }
+    public string? ConsentText { get; private set; }
     public string? ConsentTextVersion { get; private set; }
     public bool IsProviderTransferAllowed { get; private set; }
     public bool IsRequired { get; private set; }
@@ -68,7 +69,8 @@ public sealed class RegistrationFormField : ITenantEntity, IAuditableEntity, ISo
         bool isProviderTransferAllowed,
         DateTime createdAt,
         string? consentPurposeCode = null,
-        string? consentTextVersion = null)
+        string? consentTextVersion = null,
+        string? consentText = null)
     {
         ArgumentNullException.ThrowIfNull(section);
         if (id == Guid.Empty)
@@ -84,8 +86,8 @@ public sealed class RegistrationFormField : ITenantEntity, IAuditableEntity, ISo
         ArgumentException.ThrowIfNullOrWhiteSpace(label);
         FormVersionRules.ValidateGovernance(fieldType, retentionPolicyId, organizerVisibility,
             requiresExplicitConsent, isProviderTransferAllowed);
-        (string? normalizedPurposeCode, string? normalizedTextVersion) = NormalizeConsentMetadata(
-            requiresExplicitConsent, consentPurposeCode, consentTextVersion);
+        (string? normalizedPurposeCode, string? normalizedConsentText, string? normalizedTextVersion) =
+            NormalizeConsentMetadata(requiresExplicitConsent, consentPurposeCode, consentTextVersion, consentText);
         FormVersionRules.RequireUtc(createdAt, nameof(createdAt));
         return new RegistrationFormField
         {
@@ -104,6 +106,7 @@ public sealed class RegistrationFormField : ITenantEntity, IAuditableEntity, ISo
             OrganizerVisibilityId = (int)organizerVisibility,
             RequiresExplicitConsent = requiresExplicitConsent,
             ConsentPurposeCode = normalizedPurposeCode,
+            ConsentText = normalizedConsentText,
             ConsentTextVersion = normalizedTextVersion,
             IsProviderTransferAllowed = isProviderTransferAllowed,
             CreatedAt = createdAt
@@ -116,16 +119,18 @@ public sealed class RegistrationFormField : ITenantEntity, IAuditableEntity, ISo
         bool requiresExplicitConsent,
         bool isProviderTransferAllowed,
         string? consentPurposeCode = null,
-        string? consentTextVersion = null)
+        string? consentTextVersion = null,
+        string? consentText = null)
     {
         FormVersionRules.ValidateGovernance((RegistrationFieldTypeEnum)FieldTypeId, retentionPolicyId,
             organizerVisibility, requiresExplicitConsent, isProviderTransferAllowed);
-        (string? normalizedPurposeCode, string? normalizedTextVersion) = NormalizeConsentMetadata(
-            requiresExplicitConsent, consentPurposeCode, consentTextVersion);
+        (string? normalizedPurposeCode, string? normalizedConsentText, string? normalizedTextVersion) =
+            NormalizeConsentMetadata(requiresExplicitConsent, consentPurposeCode, consentTextVersion, consentText);
         RetentionPolicyId = retentionPolicyId;
         OrganizerVisibilityId = (int)organizerVisibility;
         RequiresExplicitConsent = requiresExplicitConsent;
         ConsentPurposeCode = normalizedPurposeCode;
+        ConsentText = normalizedConsentText;
         ConsentTextVersion = normalizedTextVersion;
         IsProviderTransferAllowed = isProviderTransferAllowed;
     }
@@ -254,6 +259,7 @@ public sealed class RegistrationFormField : ITenantEntity, IAuditableEntity, ISo
             OrganizerVisibilityId = OrganizerVisibilityId,
             RequiresExplicitConsent = RequiresExplicitConsent,
             ConsentPurposeCode = ConsentPurposeCode,
+            ConsentText = ConsentText,
             ConsentTextVersion = ConsentTextVersion,
             IsProviderTransferAllowed = IsProviderTransferAllowed,
             IsRequired = IsRequired,
@@ -276,14 +282,16 @@ public sealed class RegistrationFormField : ITenantEntity, IAuditableEntity, ISo
         return clone;
     }
 
-    private static (string? PurposeCode, string? TextVersion) NormalizeConsentMetadata(
+    private static (string? PurposeCode, string? Text, string? TextVersion) NormalizeConsentMetadata(
         bool requiresExplicitConsent,
         string? consentPurposeCode,
-        string? consentTextVersion)
+        string? consentTextVersion,
+        string? consentText)
     {
         string? purposeCode = string.IsNullOrWhiteSpace(consentPurposeCode)
             ? null
             : consentPurposeCode.Trim().ToUpperInvariant();
+        string? text = string.IsNullOrWhiteSpace(consentText) ? null : consentText.Trim();
         string? textVersion = string.IsNullOrWhiteSpace(consentTextVersion) ? null : consentTextVersion.Trim();
         if (purposeCode?.Length > 100)
         {
@@ -295,14 +303,19 @@ public sealed class RegistrationFormField : ITenantEntity, IAuditableEntity, ISo
             throw new ArgumentOutOfRangeException(nameof(consentTextVersion));
         }
 
-        if (requiresExplicitConsent
-                ? purposeCode is null || textVersion is null
-                : purposeCode is not null || textVersion is not null)
+        if (text?.Length > 4000)
         {
-            throw new ArgumentException(
-                "Explicit-consent fields require both a purpose code and text version; other fields require neither.");
+            throw new ArgumentOutOfRangeException(nameof(consentText));
         }
 
-        return (purposeCode, textVersion);
+        if (requiresExplicitConsent
+                ? purposeCode is null || text is null || textVersion is null
+                : purposeCode is not null || text is not null || textVersion is not null)
+        {
+            throw new ArgumentException(
+                "Explicit-consent fields require a purpose code, text, and text version; other fields require none.");
+        }
+
+        return (purposeCode, text, textVersion);
     }
 }

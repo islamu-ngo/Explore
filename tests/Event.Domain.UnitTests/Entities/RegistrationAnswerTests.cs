@@ -168,7 +168,8 @@ public sealed class RegistrationAnswerTests
             RegistrationOrganizerVisibilityEnum.AuthorizedOrganizers, fieldType == RegistrationFieldTypeEnum.Consent,
             false, UtcNow,
             fieldType == RegistrationFieldTypeEnum.Consent ? "terms" : null,
-            fieldType == RegistrationFieldTypeEnum.Consent ? "v1" : null);
+            fieldType == RegistrationFieldTypeEnum.Consent ? "v1" : null,
+            fieldType == RegistrationFieldTypeEnum.Consent ? "I agree to the registration terms." : null);
         RegistrationAttempt attempt = RegistrationAttempt.Create(
             tenantId, eventId, orderId, workflow.Id, requirement.Id, channel.Id, form.Id, version.Id,
             CapabilityTokenHash.Create(Hash("capability")), null, null, UtcNow, UtcNow.AddMinutes(10));

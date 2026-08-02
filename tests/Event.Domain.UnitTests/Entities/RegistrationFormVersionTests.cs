@@ -1,10 +1,10 @@
 // ABOUTME: Specifies the immutable registration-form aggregate and its draft-clone behavior.
 // ABOUTME: Covers graph freezing, stable identities, provenance, ordinals, governance, and language tags.
 
+using System.Text.Json;
 using Explore.Domain;
 using Explore.Domain.Enums;
 using Explore.Domain.Services.Registration;
-using System.Text.Json;
 
 namespace Event.Domain.UnitTests.Entities;
 
@@ -108,6 +108,25 @@ public sealed class RegistrationFormVersionTests
     }
 
     [Test]
+    public async Task PublishedVersionClone_PreservesExactConsentText()
+    {
+        RegistrationFormVersion published = Version();
+        RegistrationFormSection section = RegistrationFormSection.Create(Id(50), published, 1, "Terms", Now);
+        RegistrationFormField consent = RegistrationFormField.Create(
+            Id(51), section, 1, "platform.registration", "event_terms", "Terms", RegistrationFieldTypeEnum.Consent,
+            1, RegistrationOrganizerVisibilityEnum.Hidden, true, false, Now, "EVENT_TERMS", "v1",
+            "I agree to the event terms and privacy notice.");
+        published.AddSection(section);
+        published.AddField(section, consent);
+        published.PinGeneratedSchemaBundle(SchemaBundle(published), Now.AddHours(1));
+
+        RegistrationFormVersion clone = published.CloneToDraft(2, Now.AddHours(2));
+
+        await Assert.That(clone.Sections.Single().Fields.Single().ConsentText)
+            .IsEqualTo("I agree to the event terms and privacy notice.");
+    }
+
+    [Test]
     public async Task Ordinals_MustBePositiveAndUniqueWithinEachOwner()
     {
         RegistrationFormVersion version = Version();
@@ -174,22 +193,27 @@ public sealed class RegistrationFormVersionTests
             RegistrationFieldTypeEnum.Consent, 1, RegistrationOrganizerVisibilityEnum.AuthorizedOrganizers,
             true, false, Now, "EVENT_TERMS", null)).Throws<ArgumentException>();
         await Assert.That(() => RegistrationFormField.Create(
-            Id(24), section, 1, "platform.registration", "email", "Email",
+            Id(24), section, 1, "platform.registration", "consent-text", "Consent",
+            RegistrationFieldTypeEnum.Consent, 1, RegistrationOrganizerVisibilityEnum.AuthorizedOrganizers,
+            true, false, Now, "EVENT_TERMS", "v1")).Throws<ArgumentException>();
+        await Assert.That(() => RegistrationFormField.Create(
+            Id(26), section, 1, "platform.registration", "email", "Email",
             RegistrationFieldTypeEnum.Email, 1, RegistrationOrganizerVisibilityEnum.AuthorizedOrganizers,
             false, true, Now, "EVENT_TERMS", "v1")).Throws<ArgumentException>();
         await Assert.That(() => RegistrationFormField.Create(
-            Id(24), section, 1, "platform.registration", "email", "Email",
+            Id(27), section, 1, "platform.registration", "email", "Email",
             RegistrationFieldTypeEnum.Email, 1, RegistrationOrganizerVisibilityEnum.AuthorizedOrganizers,
             false, true, Now, "EVENT_TERMS", null)).Throws<ArgumentException>();
 
         RegistrationFormField valid = RegistrationFormField.Create(
             Id(25), section, 1, "platform.registration", "consent", "Consent",
             RegistrationFieldTypeEnum.Consent, 1, RegistrationOrganizerVisibilityEnum.AuthorizedOrganizers,
-            true, false, Now, " event_terms ", " v1 ");
+            true, false, Now, " event_terms ", " v1 ", " I agree to the event terms. ");
         await Assert.That(valid.RequiresExplicitConsent).IsTrue();
         await Assert.That(valid.IsProviderTransferAllowed).IsFalse();
         await Assert.That(valid.ConsentPurposeCode).IsEqualTo("EVENT_TERMS");
         await Assert.That(valid.ConsentTextVersion).IsEqualTo("v1");
+        await Assert.That(valid.ConsentText).IsEqualTo("I agree to the event terms.");
 
         version.AddSection(section);
         version.AddField(section, valid);
@@ -197,9 +221,10 @@ public sealed class RegistrationFormVersionTests
             valid, 1, RegistrationOrganizerVisibilityEnum.AuthorizedOrganizers, true, false))
             .Throws<ArgumentException>();
         version.UpdateFieldGovernance(
-            valid, 1, RegistrationOrganizerVisibilityEnum.AuthorizedOrganizers, true, false, " updated_terms ", " v2 ");
-        await Assert.That((valid.ConsentPurposeCode, valid.ConsentTextVersion))
-            .IsEqualTo(("UPDATED_TERMS", "v2"));
+            valid, 1, RegistrationOrganizerVisibilityEnum.AuthorizedOrganizers, true, false, " updated_terms ", " v2 ",
+            " I agree to the updated terms. ");
+        await Assert.That((valid.ConsentPurposeCode, valid.ConsentTextVersion, valid.ConsentText))
+            .IsEqualTo(("UPDATED_TERMS", "v2", "I agree to the updated terms."));
     }
 
     [Test]
