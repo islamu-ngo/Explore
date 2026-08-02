@@ -1,303 +1,135 @@
-<!-- ABOUTME: Quick-resume context for the canonical platform User-erasure authority workstream. -->
-<!-- ABOUTME: Captures policy, topology, provider settlement, restore, enterprise operations, risks, and next action. -->
-
-# Platform Privacy Erasure Authority — Context
-
-Last Updated: 2026-08-01 Europe/Brussels
-
-## Progress Snapshot
-
-- Status: Phases 1, 2, 5, and 6 accepted. OREA-300, OREA-310 (local clearing, AI conversation graph hard delete, actor tombstones), OREA-420 (cache convergence outbox dispatcher, local producer fences for user updates, registrations, storage uploads, appearance/notification preference matrices, AI run processing, event fanout, web push drains, integration sync), OREA-500/510/520 (receipt status endpoint, receipt authentication scheme, OpenAPI security transformer, Blazor receipt reveal UI, readiness health check), OREA-600/610 (credential cleanup background processor `PrivacyErasureCredentialCleanupProcessor`, `PrivacyErasureCredentialCleanupService`, `ClearExpiredPrivacyErasureCredentials` migration, `AddFiniteAuthorityRetention` migration, `.env` & `.env.example` placeholders, AppHost orchestration) are implemented. OREA-700 OpenAPI parity and DBML schema contracts are accepted.
-- Active intent: `platform-privacy-erasure` now requires one authority-first workflow, `CoLocated` / `ExternalDatabase`, separate runtime/migrator credentials, and no Blazor authority secret.
-- Workstream: canonical owner of complete platform User erasure, authority topology, receipt/status, provider settlement, replay, retention, and restore behavior.
-- Supersedes: privacy-erasure implementation ownership in `.omo/plans/platform-wide-privacy-erasure-authority.md` and `dev/active/event-location-privacy/`.
-- Runtime changes: configuration exposes only `CoLocated` / `ExternalDatabase`, rejects the legacy mode key, isolates the external connection, and registers one authority-first workflow. `CoLocatedPrivacyErasureAuthorityRepository` appends through a short-lived `ExploreDbContext` and independently committed transaction while the application ledger remains the replay mirror/checkpoint. AI conversation data hard delete is integrated into `PrivacyErasureApplier` and `IAiConversationRepository`. Credential cleanup is scheduled via `PrivacyErasureCredentialCleanupProcessor` and `PrivacyErasureCredentialCleanupService`.
-- Verification: Phase 1, 2, 5, and 6 gates are accepted. Evidence includes provider-materialization characterization 8/8, capture-before-clear ordering 9/9, replay cache convergence 2/2, provider-work Domain lifecycle 10/10, locator protection 1/1, User-PII inventory/Clean Architecture 10/10, provider metadata 6/6, Actor lifecycle 18/18, Actor migration 2/2, provider-work repository 1/1 against PostgreSQL 18, durable outbox characterization 9/9, User read fence 2/2, dispatcher 18/18, readiness 4/4, UpdateUser producer fence 3/3, credential cleanup service 75/75, and OpenAPI parity. The root Release build for API compiles with 0 errors.
-
-## Quick Resume
-
-Start here:
-
-1. Read `optional-retained-erasure-authority-plan.md` Sections 1–5 and 13.
-2. Read the current `platform-privacy-erasure` intent in `.claude/contract/intents.yaml`.
-3. Treat the recorded baseline, Phase 1, 2, 5, and 6 gates as complete.
-4. Treat Phase 2 co-located, schema, and restore evidence records as complete.
-5. Continue specialized provider settlement execution under OREA-400 / OREA-410 for remote outboxes, and verify full Testcontainers suites under host Docker availability. Do not invent AI or Listmonk locators without explicit provider contracts.
+<!-- ABOUTME: Resumable context for a retained privacy-erasure authority that survives primary database restore. -->
+<!-- ABOUTME: Preserves completed erasure work while re-baselining authority storage to embedded SQLite or external PostgreSQL. -->
 
-The target is not “two durability modes.” It is one authority-first workflow with two authority-storage topologies:
+# Optional Retained Erasure Authority Context
 
-- `CoLocated`: authority ledger and application mirror reside in the application database.
-- `ExternalDatabase`: authority ledger resides in a separately connected database; the application mirror remains local.
-
-Only the second topology can protect against restoring a pre-erasure application backup, and only if the authority database is outside the application database’s restore operation.
-
-Topology is only one part of this workstream. The same plan owns the User fence, policy-versioned saga, complete PII disposition inventory, atomic local erasure, short-lived receipt/status API, specialized provider work, anti-resurrection checks, retention/legal hold, and enterprise recovery contract.
-
-## Key Files
-
-### Governance and planning
-
-- `.claude/contract/intents.yaml`
-- `.omo/plans/platform-wide-privacy-erasure-authority.md`
-- `dev/active/event-location-privacy/`
-- `dev/active/optional-retained-erasure-authority/`
-
-### Configuration and composition
-
-- `src/Explore.Application/Configuration/PrivacyErasureDurabilityOptions.cs`
-- `src/Explore.Application/ApplicationServicesRegistration.cs`
-- `src/Explore.Infrastructure/InfrastructureServicesRegistration.cs`
-- `src/Explore.Persistence/PersistenceServicesRegistration.cs`
-- `src/Explore.API/BackgroundServices/PrivacyErasureStartupGate.cs`
-
-### Workflow and persistence
-
-- `src/Explore.Application/Features/Users/Handlers/Commands/DeleteUserCommandHandler.cs`
-- `src/Explore.Application/Services/ApplicationDatabasePrivacyErasureWorkflow.cs`
-- `src/Explore.Application/Services/RetainedAuthorityPrivacyErasureWorkflow.cs`
-- `src/Explore.Application/Services/PrivacyErasureApplier.cs`
-- `src/Explore.Persistence/Privacy/ErasureAuthority/Repositories/ApplicationDatabasePrivacyErasureLedgerRepository.cs`
-- `src/Explore.Persistence/Privacy/ErasureAuthority/Repositories/EfCorePrivacyErasureAuthorityRepository.cs`
-- `src/Explore.Persistence/Privacy/ErasureAuthority/PrivacyErasureAuthorityDbContext.cs`
-- `src/Explore.Persistence/Migrations/`
-- `src/Explore.Persistence/Migrations/PrivacyErasureAuthority/`
-- `src/Explore.Domain/PrivacyErasureSaga.cs`
-- `src/Explore.Domain/PrivacyErasurePolicyCoverage.cs`
-- `src/Explore.Domain/PrivacyErasureIntent.cs`
-- `src/Explore.Domain/PrivacyErasureReplayCheckpoint.cs`
-- `tests/Event.Architecture.Tests/Privacy/UserPiiInventory.cs`
-- `tests/Event.Architecture.Tests/Privacy/UserPiiInventoryArchitectureTests.cs`
-
-### Hosting and operations
-
-- `src/Event.MigrationService/Program.cs`
-- `src/Event.MigrationService/Worker.cs`
-- `src/Explore.AppHost/AppHost.cs`
-- `docker-compose.yml`
-- `.env`
-- `.env.example`
-- `src/Explore.Secrets/Bootstrap/BootstrapSecretLoader.cs`
-
-### Tests
-
-- `tests/Event.Application.UnitTests/Configuration/PrivacyErasureDurabilityOptionsTests.cs`
-- `tests/Event.Application.UnitTests/Configuration/PrivacyErasureModelCompositionTests.cs`
-- `tests/Event.API.IntegrationTests/Privacy/PrivacyErasureStartupGateTests.cs`
-- `tests/Event.Persistence.IntegrationTests/Privacy/GlobalLocationPrivacyErasureTests.cs`
-- `tests/Event.Persistence.IntegrationTests/Privacy/PrivacyErasureAuthorityCompositionValidationTests.cs`
-- `tests/Event.Persistence.IntegrationTests/Privacy/PrivacyErasureAuthorityDbContextFactoryTests.cs`
-
-## Current-State Findings
-
-1. `PrivacyErasureDurabilityOptions` currently defines `ApplicationDatabase` and `RetainedAuthority`, with `ApplicationDatabase` as default.
-2. Application DI selects between two workflow implementations; infrastructure DI registers replay only in retained mode.
-3. The startup gate skips replay in application-database mode.
-4. The retained workflow already has the desired shape: commit authority fact, then replay/apply.
-5. `PrivacyErasureApplier` already writes the application-side mirror and checkpoint within the application transaction.
-6. The application and dedicated authority migrations both own `privacy_erasure_authority` tables. Applying both migration sets to one database would collide.
-7. The dedicated migration additionally owns PostgreSQL functions, roles, grants, and tamper-resistant access rules.
-8. `Event.MigrationService` currently does not migrate `PrivacyErasureAuthorityDbContext`.
-9. `.env` and `.env.example` mention the old mode, while Compose does not provide complete authority wiring.
-10. The bootstrap secret loader is specialized for the main application PostgreSQL settings. The lean plan keeps authority as a named connection string supplied separately to API and migration processes.
-11. Existing persistence integration infrastructure already starts two independent PostgreSQL containers. Extend it; do not create a competing fixture stack.
-12. Some test assertions still reference `location_privacy_authority`; confirm and replace stale generalized-schema names during the persistence phase.
-13. `tests/Event.Architecture.Tests/Privacy/UserPiiInventory.cs` classifies broad User-PII families across identity/authentication, tenancy/membership, registration/contact sharing, notifications/email/web-push, AI/webhook/report/audit/configuration, storage, federation, and external providers; completeness against current source must be re-proven.
-14. Generalized authority, applier, startup-gate, saga/policy-coverage, and inventory pieces exist, but code presence is not consolidated-plan acceptance evidence.
-15. Event Location contributes only a typed disposition adapter: exact subject/tenant predicates, owned Home/room tombstoning, affected `EventLocation` correction intents, stable idempotency, and integration tests. This workstream owns the platform orchestration.
-
-## OREA-310 Remaining Disposition Matrix
-
-Provider-independent dispositions implemented in the application transaction now cover `UserPii`, authentication tokens, actor identity links and key stores, owned Home/location data, memberships and roles, preferences, registrations, contact-share snapshots, local notifications, fanout cursors, idempotency responses, AI consent grants, user-owned external API keys, nullable report/moderation/audit references, and reporter-owned report evidence.
-
-Remaining local/provider gaps:
-
-| Family | Exact gap | Required next change |
-|---|---|---|
-| Provider-backed local copies | Implemented and PostgreSQL-proven for exact-subject ATProto ownership, two-tenant webhook snapshots, reporter-owned Osprey/Coop links, replay deduplication, and unrelated preservation; other listed families retain prior focused evidence | Continue broader rollback/former-membership convergence under OREA-320 and specialized execution under OREA-400/410 |
-| AI/Listmonk copies | Current schemas lack trustworthy provider context/subscriber identifiers | Add typed source fields only when provider contracts define authoritative remote locators; do not infer them |
-
-Resolved ownership/schema decisions:
-
-- `OrganizationPii`, `Organization.WebsiteUrl`, and `OrganizationSetting.Value` are organization-owned data. `Organization.ActorId` is a publishing identity association, not User ownership, and ordinary organization membership never transfers organization data into a User erasure.
-- Migration `20260723083304_AnonymizeRetainedAuditActors` permits exact-subject unlinking across retained audit families. Active support sessions are revoked before unlinking, shared review content uses the `Deleted user` label, and downgrade refuses to invent replacement User IDs after anonymization.
-
-External locator gaps:
-
-| Provider family | Current locator source | Why `PrivacyErasureProviderWork.TargetId` is insufficient |
-|---|---|---|
-| Keycloak | `UserExternalLogin.ProviderKey` | Provider key is a bounded string, not necessarily a GUID |
-| ATProto | `ActorPii.Did` plus actor/user ownership | DID is a string and is cleared during local anonymization |
-| Listmonk / SMTP | email-dispatch subscriber/delivery metadata | Subscriber address and provider message IDs are not GUID targets; SMTP recall is explicitly unsupported |
-| Web Push | subscription endpoint | Endpoint is a secret-bearing URL string |
-| Object storage | object key/provider URI | Remote delete requires the object key after local metadata is removed |
-| Svix / webhook | provider event/application/endpoint identifiers | Provider identifiers and credential references are bounded strings |
-| AI providers | provider conversation/response context | Current work row has no typed provider context reference |
-| Osprey / Coop | event-report provider identifiers | Report GUID can remain the local target, but provider reconciliation identifiers are strings |
-
-The minimal safe follow-up is an encrypted, short-lived typed locator owned by specialized provider work and destroyed after terminal settlement or expiry. Retaining ordinary source PII until remote completion would violate atomic local settlement.
-
-Current materialization boundary:
-
-- `UserLocationPrivacyErasureRepository.GetProviderCandidatesAsync` enumerates only sources with an exact User ownership path and a usable remote locator: Keycloak external logins, ATProto actors, Web Push subscriptions, actor-owned storage objects, SMTP provider messages, user-owned webhook endpoints, and Osprey/Coop report links.
-- `PrivacyErasureApplier` captures those candidates before local disposition methods run, protects locators with purpose-bound ASP.NET Core Data Protection, persists work in the caller's serializable transaction, and passes the real work count to `MarkLocalSettled`.
-- `TargetId` remains the stable local source UUIDv7. Remote string/URL identifiers live only in versioned, cryptographically time-limited ciphertext with configurable `ProviderLocatorLifetime`; success, reconciliation, or expiry clears ciphertext.
-- `PrivacyErasureProviderWorkRepository.AddMissingAsync` deduplicates the same semantic tuple enforced by the database unique index and returns the total represented work count to the saga, so replay does not depend on newly generated work IDs.
-- Expired rows transition to bounded `locator_expired` dead-letter state before claiming. Migration `20260723091627_ExpirePrivacyErasureProviderLocators` updates the lifecycle constraint to allow dead-letter evidence without retained ciphertext.
-- `PrivacyErasureApplier` flushes provider work before the dedicated adapter executes immediate local SQL. Local rows without usable remote locators are still erased: locator presence gates only provider-work creation, never local disposition.
-- Provider-backed local dispositions hard-delete external logins, Web Push rows, notification-delivery links, and email snapshots; tombstone actor-owned storage; archive/scrub webhook endpoint, target, and consumer metadata while severing User ownership; and clear reporter-owned external report-link metadata. Actors without an `ActorPii` row still lose User/PDS/custody links.
-- Final review kept phase boundaries explicit: the durable post-commit cache-convergence finding is resolved, while Keycloak platform-managed delete versus external unlink classification and provider adapters remain unresolved `OREA-410`. PostgreSQL acceptance now includes ATProto, Osprey/Coop, and webhook target-snapshot fixtures with exact-subject and unrelated-row assertions.
-- OREA-420 cache convergence now uses a payload-free generic outbox row committed with local erasure. Its dispatcher retries user and broad event cache invalidation, readiness degrades on incomplete/dead-lettered convergence, and `GetUserRequestHandler` checks the persisted fence before and after cache access so a failed invalidation cannot serve stale profile PII. Independent review corrected the old fail-closed replay test to the durable-convergence contract and added direct cache-race and dead-letter replay coverage. Other producer/worker/remote-dispatch fences and fresh-scope ownership reload remain open.
-- The first conflict-free local producer fence is implemented in `UpdateUserCommandHandler`: its transaction checks `IPrivacyErasureStateRepository` before loading or mutating the User, so fenced subjects cannot recreate names or profile-storage ownership and receive the existing non-disclosing not-found response. The regression test attempts both name recreation and actor/profile-storage relinking and proves all repositories remain untouched. Focused handler tests pass 3/3, the Application build is clean, Clean Architecture passes 15/15, the canonical root Release build passes with 0 errors, and independent scoped review passes. `SyncUserCommandHandler` remains untouched while the concurrent ATProto agent owns it.
-- Registration creation now checks persisted erasure state before validation, before returning any pre-transaction result, and inside the serializable registration transaction. This prevents fenced Users from receiving detailed validation/state responses or recreating registration, notification, provider-outbox, consent, and webhook state through the covered pre-write races. Focused tests pass 21/21 after repairing the first review's validation-disclosure finding; the final independent review passes with no blocking findings.
-- Storage upload-session creation now checks the captured authenticated User before validation/policy disclosure and again inside a serializable quota-reservation transaction. A fenced User cannot receive detailed early failures, replay an existing session, reserve quota, or persist filename/object metadata. Focused tests pass 28/28; `Explore.Application` builds with 0 warnings/0 errors, Clean Architecture passes 15/15, the canonical root Release build passes with 0 errors, and independent review passes with no blocking findings.
-- Appearance-preference updates now check persisted state before validation, mask detailed raced failures, use a cancellable no-tracking theme lookup, and recheck inside one serializable transaction containing every `UserPreference` create/update/remove. Cache invalidation occurs only after a successful commit, and the transaction uses one retry-stable timestamp. Focused tests pass 11/11, Persistence builds with 0 errors, and independent re-review passes with no blocking findings.
-- Current-user notification preference matrix updates now check persisted state before metadata/lock validation, make the final raced failure decision inside a serializable scope, and recheck before all user-scoped channel preference upserts. Focused tests pass 9/9, including two-cell serializable retry replay; independent re-review passes after repairing the original masking and retry-test findings. The Application build is clean and the architecture suite passes 301/302 with one documented skip; the latest root build is blocked only by concurrent ATProto tests referencing the absent `AtprotoThumbnailBlobGateway`, while the earlier integrated OREA root build passed.
-- Provider-work `Unknown` reconciliation now persists under the exact lease fence and atomically advances saga progress only for the first completed reconciliation. The real PostgreSQL selector passes and independent verification is confirmed; the specialized provider worker, retry/backoff owner, and adapters remain open.
-- Recipient materialization and legacy event fanout now fence before recipient PII reads and recheck inside their serializable graph/write boundaries. Skipped recipients advance cursors without creating notification, email, or Web Push rows. Focused and real persistence paths pass, with independent confirmation.
-- Local webhook sending now reloads the active tenant/target/lease/fence claim and endpoint before any payload, secret, SSRF, or HTTP work. The real archive-after-claim PostgreSQL canary and independent review pass.
-- AI run execution now fences the loaded conversation owner before provider work and the reloaded owner before provider-output persistence. The guard is independently confirmed, while AI local/provider disposition remains open.
-- Web Push active-claim and direct notification orchestration fences are implemented and focused-unit green; their PostgreSQL selectors still require a current independent rerun before acceptance.
-- Receipt OpenAPI parity is independently confirmed for the custom `ErasureReceipt` authorization scheme. The lifecycle-table schema artifact remains intentionally red because no canonical `schemas/islamu-event.md` generator exists; OREA-700 is still open.
-- Storage finalization requires a dedicated follow-up rather than a guard-only patch. The current provider write sits between local transactions and the resulting `StorageObject` has no Actor ownership link, while erasure candidate capture requires `StorageObject.Actor.UserId`. The finalizer must durably couple exact User ownership and cleanup intent to remote-write uncertainty before it can truthfully enforce the OREA-420 fence.
-
-## Decisions
-
-### Accepted
-
-- This directory is the sole active implementation workstream for platform User erasure and its authority.
-- `User` is the only executable subject kind; Organization and Tenant require separate typed policies and handlers.
-- A machine-checked inventory proves completeness but never drives runtime SQL or arbitrary instructions.
-- The DBML schema is maintained with its EF Core model or migration and guarded by the focused architecture contract; a partial snapshot parser is not a supported tool.
-- Fence before enumeration; apply complete local dispositions, mirror/checkpoint, provider work, cache authority, and receipt state in one serializable application transaction.
-- Return `202` with a once-revealed short-lived receipt; persist only its fixed-time-verifiable hash and serve status as `private, no-store`.
-- Provider cleanup is specialized, idempotent, fenced, retry/unknown/dead-letter aware, and always after local commit.
-- Delete only platform-managed upstream identities; revoke or unlink identities the platform does not own.
-- Remove production behavior-mode selection.
-- Introduce `PrivacyErasure:Authority:Topology` with `CoLocated` and `ExternalDatabase`.
-- Default to `CoLocated`, and show that choice explicitly in sample env files.
-- Reject a present legacy `PrivacyErasure:Durability:Mode` key with upgrade guidance.
-- Never infer external topology from a connection string.
-- Keep one authority-first workflow and run startup replay in both topologies.
-- Keep the application-side mirror/checkpoint in both topologies.
-- Use a separately committed, short-lived application context for the co-located authority append.
-- Keep dedicated authority migrations out of the application database.
-- Use different public runtime/migrator secret variables, each mapped to `ConnectionStrings__PrivacyErasureAuthority` only in its owning process.
-- In Aspire, create the distinct authority PostgreSQL resource in every local-data profile when `ExternalDatabase` is selected; profiles without local data use operator-provided infrastructure.
-- Test external restore safety with two independent PostgreSQL containers and a real pre-erasure application backup restore.
-- Report `restoreReplayProtection=false` for co-located storage.
-- Use a pre-v1 reset-only policy for the removed behavior-mode contract. Breaking compatibility is accepted; silent data loss and agent-driven deletion of operator resources are not.
-- Retain linkable authority identifiers only through the maximum resurrection-capable backup horizon plus the approved margin; pseudonymize legal-hold evidence and destroy expired credentials/receipts.
-- The approved retention baseline is 365 days plus a 30-day safety margin. Only an expired contiguous authority prefix may compact behind a metadata-only floor; counters never decrease and retained facts remain contiguous above the floor.
-- A restored application checkpoint below the compaction floor is unsupported and must fail readiness before API/BFF/MCP/workers start. No subject-bearing replay snapshot or pseudonymous denylist is introduced.
-- Legal holds preserve non-relinkable pseudonymized evidence under bounded reason codes with mandatory review/expiry; they do not extend the old-backup replay horizon. `ExternalDatabase` to `CoLocated` downgrade remains unsupported.
-
-### Rejected
-
-- Keeping `ApplicationDatabase` as a production workflow mode.
-- Auto-selecting external storage when a connection exists.
-- Applying the dedicated authority migration to the application database.
-- Giving API runtime credentials migration privileges.
-- Using a distributed transaction.
-- Claiming that a second database automatically means an independent restore domain.
-- Rebuilding Testcontainers infrastructure already present in the persistence integration project.
-- Generic provider plugins, arbitrary JSON/table/column erasure instructions, and reflection-driven destructive SQL.
-- Inline provider calls or synchronous claims that external deletion is complete.
-- Compatibility shims for the old behavior-mode configuration.
-
-## Configuration Target
-
-Public self-host variables:
-
-```dotenv
-PRIVACY_ERASURE_AUTHORITY_TOPOLOGY=CoLocated
-PRIVACY_ERASURE_AUTHORITY_RUNTIME_CONNECTION_STRING=
-PRIVACY_ERASURE_AUTHORITY_MIGRATOR_CONNECTION_STRING=
-```
-
-Process mapping:
-
-- API receives topology plus runtime authority connection.
-- Migration service receives topology plus migrator authority connection.
-- Blazor receives neither authority secret.
-- In `CoLocated`, neither authority connection is required or opened.
-- In `ExternalDatabase`, the process-specific connection is mandatory and errors must name only the missing configuration key.
-
-## Canonical Erasure Flow
-
-1. Authorize the request, append/reuse one typed policy-versioned authority fact, and fence the User before PII enumeration.
-2. Apply every classified local disposition in one serializable application transaction.
-3. In that transaction, confirm the application mirror/checkpoint, materialize specialized provider work and EventLocation corrections, invalidate cache authority, and persist receipt/status.
-4. Commit locally, return `202` with the once-revealed receipt, then let specialized fenced workers settle remote work.
-5. Keep `Unknown` provider outcomes reconcilable; never restore local PII or claim remote completion prematurely.
-6. Before traffic after startup/restore, replay every authority fact not covered by the current policy version and reject PII recreation for fenced/deleted users.
-
-## Invariants and Constraints
-
-- Authority facts contain bounded metadata only, never live PII, identifiers, selectors, or payloads.
-- Every durable User-PII copy and producer maps to exactly one compiled disposition/fence owner in the machine inventory.
-- The User is fenced before PII enumeration; shared write, worker, cache, and dispatch boundaries prevent recreation.
-- Append authority fact before application mutation; provider calls stay outside the application transaction.
-- Application dispositions, mirror, checkpoint, provider work, cache authority, EventLocation corrections, and receipt state remain atomic and serializable.
-- Replay is idempotent and monotonic.
-- Repositories return entities, not DTOs.
-- EF migrations are additive; never edit deployed migration history destructively.
-- External runtime access remains function-only; migrator credentials stay outside API/Blazor.
-- Logs, health, errors, examples, tests, and planning artifacts never expose credentials or PII.
-- Preserve unrelated dirty-worktree changes.
-- Every changed source file must retain the two-line `ABOUTME:` header requirement.
-- Every delivery and reconciliation opens a fresh scope and reloads persisted tenant/subject ownership; queued/caller identifiers are never authority.
-- Sensitive caches are `no-store` or partitioned by tenant/subject/policy version; failed invalidation cannot serve stale PII.
-
-## Restore Guarantee Boundary
-
-`CoLocated` protects against an application transaction failure after the authority append because the append commits separately. It does not protect against restoring the entire application database from a backup created before the erasure.
-
-`ExternalDatabase` protects against that restore only when the application database is restored without also rolling back the authority database. Two database names on the same PostgreSQL server are operationally valid, but a cluster/volume snapshot that restores both together defeats the guarantee.
-
-## Validation Baseline
-
-Planning evidence inspected:
-
-- options and DI selection;
-- workflow/applier/repository boundaries;
-- application and dedicated authority migrations;
-- migration-service registration;
-- env/Compose/AppHost/secrets surfaces;
-- unit, API integration, and persistence Testcontainers coverage;
-- canonical intent, rules, operations, testing, and implementation-plan guidance.
-
-Planning-session baseline:
-
-```bash
-dotnet build --configuration Release --verbosity quiet
-```
-
-Result: passed on 2026-07-22 with 26 projects, 0 errors, and 41 warnings. The warnings include pre-existing `NU1903` advisories for `System.Security.Cryptography.Xml` 10.0.7. Record a fresh result plus starting SHA/status in `optional-retained-erasure-authority-tasks.md` immediately before runtime edits.
-
-The Senior CTO planning hook is a known non-green baseline: 286 architecture tests, 282 passed, 3 unrelated existing failures, and 1 skipped. The failures concern repository naming, the organization-centric scope-file guardrail finding multiple matches, and explicit HATEOAS permission metadata in existing EventReport/EmailDispatch policies.
-
-## Risks to Watch
-
-- A co-located adapter accidentally sharing the applier transaction.
-- Authority/app migrations targeting the same physical database.
-- Old mode keys silently changing the deployment guarantee.
-- External secrets being passed to the wrong process.
-- A synthetic restore test that only deletes rows instead of exercising PostgreSQL restore behavior.
-- Active docs/plans retaining contradictory `ApplicationDatabase` guidance.
-- Existing deployments needing sequence/fact migration during co-located-to-external cutover.
-- An unclassified PII family or producer escaping erasure/fence coverage.
-- Provider `Unknown` being mistaken for success or blindly retried.
-- Receipt, health, or telemetry becoming a new identifier disclosure surface.
-- Authority loss/corruption, credential rotation, topology cutover, unsafe downgrade, or RPO/RTO procedures remaining untested.
-- The pre-v1 reset-only policy being documented ambiguously enough to cause operator data loss.
-
-## Handoff
-
-The OREA-310 provider-clearing canary is independently accepted. The first broader local-disposition checkbox now has repaired ATProto inventory paths, valid Actor fixture ownership, persisted authentication/tenant/Home assertions, the corrected six-argument external-authority call, and append-only EventLocation audit handling. Its focused inventory gate passes 1/1 and independent source review confirms the repair, but the 2026-07-31 post-reboot `docker info` probe still returns no Server because Docker Desktop's QEMU backend exits during startup. The mandatory repeated-failure reviewer rejects completion with `needs-human-review` at 0.99 confidence. Do not automate kill/reset/prune or dispatch another selector. Resume only after a human repairs Docker Desktop/QEMU and a bounded `docker info` returns a populated Server section, then require GlobalLocation 5/5 and external authority 3/3. `RegistrationOrderPii` remains the next-checkbox implementation gap and must not be falsely classified. AI/Listmonk locators remain intentionally uninferred.
-
-## Maintenance Contract
-
-- Keep progress and the next action at the top.
-- Add only evidence needed to resume; durable discoveries belong in `dev/_journal/journal.md`.
-- Synchronize terminology and status with the plan and tasks ledger after each phase.
-- Never store secret values, private connection details, or erased data here.
+**Status:** Re-baselined topology; prior erasure semantics retained
+
+**Default topology:** `EmbeddedSqlite`
+
+**Enterprise topology:** `ExternalDatabase` using PostgreSQL
+
+**Related workstream:** [Multi-Database Support](../multi-database-support/multi-database-support-plan.md)
+
+## Objective
+
+Prevent erased personal data from reappearing after a primary database restore. A retained authority records monotonic erasure intent outside the primary restore lifecycle. Before readiness, `PrivacyErasureStartupGate` replays authority state into the primary database and fails closed if safety cannot be established.
+
+The default authority is a dedicated SQLite file such as `/app/data/privacy_erasure_authority.db` on its own durable volume. Restoring the primary database must not restore, replace, or roll back that file. Enterprises may instead use a separately backed-up and restored PostgreSQL authority database.
+
+## Historical Implementation Evidence
+
+The preceding workstream delivered and accepted substantial behavior that remains valid:
+
+- Authority contracts, monotonic sequencing/floor semantics, and replay rules.
+- Privacy erasure orchestration and application flow.
+- `PrivacyErasureStartupGate` replay before readiness.
+- Erasure applier behavior and the primary transactional outbox used for ordinary post-commit convergence; the topology rebaseline must not use that outbox as the first durable copy of retained authority intent.
+- Startup, replay, compaction, security, and much of the operational evidence.
+- External PostgreSQL authority foundations, functions, ACL direction, and migration ownership through MigrationService.
+
+Completed task IDs retained as historical evidence: OREA-100, 110, 120, 200, 210, 220, 300, 420, 500, 510, 520, 600, 610, and 700. OREA-310 and 320 remain partially open. OREA-400/410, 620, 710, and 720 remain open or require revalidation.
+
+The old `CoLocated` PostgreSQL topology is no longer the target. Its code and tests are evidence of implemented semantics, not the desired storage boundary.
+
+## Verified Current State
+
+- Current authority topologies are `CoLocated` and `ExternalDatabase`.
+- Co-located authority writes append state in the primary PostgreSQL database but not in the erasure transaction itself.
+- External authority uses a dedicated PostgreSQL context plus PostgreSQL functions and ACLs.
+- External authority migrations are owned by `Event.MigrationService` only when that topology is selected.
+- `PrivacyErasureStartupGate` always replays before readiness.
+- `PrivacyErasureApplier` writes the normal erasure outbox in the same primary transaction as erasure. Current post-commit authority delivery is insufficient for restore safety because the primary could be lost before dispatch; the rebaseline must replace that durability ordering.
+- The primary database currently duplicates more authority intent than the re-baselined design permits.
+- There is no runtime SQLite authority implementation today.
+
+## Settled Topology
+
+### Embedded SQLite, default
+
+- Dedicated context and generated migration assembly.
+- Persisted file, defaulting to `/app/data/privacy_erasure_authority.db`.
+- Dedicated durable local volume excluded from primary database backup and restore.
+- One API writer/replica only; no network filesystem or shared-file multi-replica deployment.
+- WAL initialized once, bounded busy timeout, private cache, restrictive file and directory permissions.
+- Authority backup/restore, integrity checking, retention, and rollback detection are independent of the primary database.
+- File-backed tests cover append concurrency, restart, replay, compaction, backup/restore, corruption response, and rollback detection.
+
+### External PostgreSQL, enterprise
+
+- Dedicated server database with independent backup and restore.
+- PostgreSQL remains the initial provider because existing authority functions, ownership, and ACL contracts are PostgreSQL-specific.
+- Runtime append/read credentials and migrator/owner credentials remain separate.
+- Operators bind the same privacy-prefixed structured shape separately for runtime and migrator roles: provider, host, port, database, username, password, TLS mode/trust, and bounded settings. No raw connection string or free-form fragment is accepted.
+
+## Primary Database Boundary
+
+Authority-specific primary state is limited to the replay checkpoint needed to prove convergence. The retained authority ledger itself exists only in the embedded file or external authority database.
+
+Normal application records remain in the primary database when transaction ownership requires them, including erasure saga state, transactional outbox messages, dispatch receipts, and domain-side completion evidence. They must not become a second retained authority ledger.
+
+## Authority-First Durability
+
+The retained authority must hold an idempotent erasure intent before destructive primary erasure is acknowledged as successful. The flow uses a stable intent identifier:
+
+1. Append the intent durably to the selected retained authority.
+2. Apply primary erasure idempotently and advance the replay checkpoint.
+3. Report success only after primary convergence is committed.
+
+If authority append succeeds and primary erasure fails, retry or startup replay completes the primary erasure. This conservative ordering may retain an intent for work not yet applied, but it cannot acknowledge an erasure whose only durable intent can disappear with a primary restore. The primary outbox may continue to drive unrelated post-commit side effects; it is never the first durable authority copy.
+
+## Restore and Replay Invariants
+
+1. Authority sequence/counter/floor values are monotonic.
+2. Retained intent is durable before primary erasure is acknowledged.
+3. Primary restore alone leaves authority storage untouched.
+4. On startup, the gate compares the primary replay checkpoint with retained authority state.
+5. If primary is behind, replay reapplies retained erasure intent idempotently and advances the checkpoint.
+6. If primary checkpoint is ahead of authority state, readiness fails closed because authority rollback or replacement is possible.
+7. Authority corruption, unavailable storage, invalid permissions, or failed replay blocks readiness.
+8. Compaction cannot remove evidence needed to prevent resurrection at or below the retained floor.
+9. Authority restore is an explicit independent operation and must pass rollback/floor checks before service resumes.
+
+## Configuration Contract
+
+Embedded mode accepts a topology and a file path plus bounded SQLite operational settings owned by code. Server fields are invalid in embedded mode.
+
+External mode uses the same provider-neutral structured database model defined by the multi-database workstream, under privacy-erasure-specific keys. Only `PostgreSql` is valid initially. Runtime and migrator credential sets are distinct. Internally derived connection strings may be passed to provider APIs but are never operator inputs or logged values.
+
+## Migration Ownership
+
+- MigrationService is the only production migration owner.
+- Embedded SQLite authority migrations target only the authority file.
+- External PostgreSQL authority migrations target only the external authority database.
+- The primary provider's migrations retain only the replay checkpoint for authority state.
+- Generated migrations and model snapshots are never hand-edited.
+- Existing deployed co-located data needs an explicit generated transition/export strategy; do not silently discard retained intent.
+
+## Open Work
+
+- Finish durable provider contract settlement and replay boundary tests from OREA-310/320.
+- Replace `CoLocated` with `EmbeddedSqlite` in topology, DI, contexts, migrations, configuration, health/readiness, and operations.
+- Migrate or export existing co-located retained intent into the embedded file before removing the primary ledger.
+- Complete external PostgreSQL credential/migration settlement using structured fields.
+- Prove independent disaster recovery and failure-closed rollback detection.
+- Re-run completeness and release evidence after topology replacement.
+
+## Main Risks
+
+| Risk | Required control |
+|---|---|
+| Primary restore also restores authority file | Dedicated volume and separate runbook |
+| SQLite file rollback or replacement | Counter/floor comparison and failure-closed readiness |
+| Multi-replica file contention | One writer/replica validation; local filesystem only |
+| Primary retains a shadow ledger | Schema and flow review; only replay checkpoint is authority state |
+| Existing co-located intent is lost | Explicit export/cutover and rollback procedure |
+| External credentials gain schema ownership | Separate runtime and migrator roles plus ACL tests |
+| Outbox mistaken for authority | Restrict it to ordinary post-commit side effects and prove authority-first durability |
+
+## Handoff Guidance
+
+Resume from the new OREA-800 rebaseline phase in `optional-retained-erasure-authority-tasks.md`. Keep historical completed boxes checked. Reopen only tasks whose evidence depended on `CoLocated`. Coordinate configuration naming and SQLite package/version choices with the multi-database workstream, but do not merge the two DbContexts, files, migration assemblies, or restore lifecycles.
+
+## Verification Constraint
+
+This rebaseline began with a pre-existing red Release build containing 13 unrelated Infrastructure and Blazor Client compile errors. Runtime implementation must begin from a green baseline. At each implementation phase end, use the bounded build/test cadence from the implementation-plan workflow.
