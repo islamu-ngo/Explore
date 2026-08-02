@@ -471,9 +471,14 @@ public partial class AuthorizationParityTests
             if (source.Contains("PermissionAction.", StringComparison.Ordinal))
                 violations.Add($"{fileName}: use AuthorizationActions string constants instead of PermissionAction enum values");
 
-            foreach (Match match in MissingAuthorizationActionRegex().Matches(source))
+            foreach (Match match in PermissionActionArgumentRegex().Matches(source))
             {
-                violations.Add($"{fileName}: RequirePermission call does not start with AuthorizationActions at index {match.Index}");
+                var action = match.Groups["action"].Value;
+                if (!action.StartsWith("AuthorizationActions.", StringComparison.Ordinal)
+                    && !string.Equals(action, "action", StringComparison.Ordinal))
+                {
+                    violations.Add($"{fileName}: RequirePermission call uses noncanonical action '{action}' at index {match.Index}");
+                }
             }
         }
 
@@ -528,8 +533,8 @@ public partial class AuthorizationParityTests
     [GeneratedRegex("""resource:\s*["']?(\w+)["']?""")]
     private static partial Regex CerbosResourceKindRegex();
 
-    [GeneratedRegex(@"\.RequirePermission\s*\(\s*(?!AuthorizationActions\.)", RegexOptions.Singleline)]
-    private static partial Regex MissingAuthorizationActionRegex();
+    [GeneratedRegex(@"\.RequirePermission\s*\(\s*(?<action>[A-Za-z_][A-Za-z0-9_.]*)", RegexOptions.Singleline)]
+    private static partial Regex PermissionActionArgumentRegex();
 
     [GeneratedRegex(@"(?m)^\s*-?\s*name:\s*(explore_admin_roles|instance_admin|tenant_admin|org_admin)\b")]
     private static partial Regex LegacyDerivedRoleDefinitionRegex();

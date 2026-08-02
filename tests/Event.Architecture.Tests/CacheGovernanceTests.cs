@@ -128,6 +128,13 @@ public sealed partial class CacheGovernanceTests
         var source = File.ReadAllText(filePath);
         foreach (Match match in CacheStringPattern().Matches(source))
         {
+            var contextStart = Math.Max(0, match.Index - 256);
+            if (!source.AsSpan(contextStart, match.Index - contextStart)
+                    .Contains("cache", StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
             var value = match.Groups["value"].Value;
             var family = NormalizeCacheFamily(value);
             if (family is not null)

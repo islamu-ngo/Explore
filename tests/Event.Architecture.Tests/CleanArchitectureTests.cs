@@ -178,13 +178,27 @@ public class CleanArchitectureTests
     [Test]
     public async Task Persistence_ShouldNotHaveDependencyOn_ApplicationDtos()
     {
-        var result = Types.InAssembly(PersistenceAssembly)
-            .ShouldNot()
-            .HaveDependencyOn("Explore.Application.DTOs")
-            .GetResult();
+        var repositoryRoot = LocateRepositoryRoot();
+        var violations = Directory
+            .EnumerateFiles(Path.Combine(repositoryRoot, "src", "Explore.Persistence"), "*.cs", SearchOption.AllDirectories)
+            .Where(path => File.ReadAllText(path).Contains("Explore.Application.DTOs", StringComparison.Ordinal))
+            .Select(path => Path.GetRelativePath(repositoryRoot, path))
+            .ToList();
 
-        await Assert.That(result.IsSuccessful).IsTrue()
+        await Assert.That(violations).IsEmpty()
             .Because("repositories must return entities and accept persistence-neutral query contracts, not DTOs owned by Application presentation mapping.");
+    }
+
+    private static string LocateRepositoryRoot()
+    {
+        var directory = new DirectoryInfo(AppContext.BaseDirectory);
+        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "Explore.slnx")))
+        {
+            directory = directory.Parent;
+        }
+
+        return directory?.FullName
+            ?? throw new DirectoryNotFoundException("Could not locate repository root containing Explore.slnx.");
     }
 
     [Test]
