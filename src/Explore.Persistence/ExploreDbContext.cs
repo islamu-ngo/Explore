@@ -1,7 +1,8 @@
 // ABOUTME: Core DbContext for the Explore platform with pooled creation and property-injected scoped services.
-// ABOUTME: Split into partial classes: QueryFilters, SaveChanges, DbSets.
+// ABOUTME: Split into partial classes and excludes dedicated authority configurations from the primary model.
 
 using Explore.Application.Contracts.Infrastructure;
+using Explore.Persistence.Schema;
 using Microsoft.EntityFrameworkCore;
 
 namespace Explore.Persistence;
@@ -73,8 +74,30 @@ public partial class ExploreDbContext : DbContext
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
-        modelBuilder.HasPostgresExtension("btree_gist");
-        modelBuilder.ApplyConfigurationsFromAssembly(typeof(ExploreDbContext).Assembly);
+        modelBuilder.ApplyConfigurationsFromAssembly(
+            typeof(ExploreDbContext).Assembly,
+            configurationType => configurationType.Namespace
+                is not "Explore.Persistence.Privacy.ErasureAuthority.Configurations");
+        PortableRelationalModelPolicy.Apply(modelBuilder, Database.ProviderName);
+        RelationalModelNamespace.Apply(modelBuilder, Database.ProviderName);
+        if (Database.ProviderName == "Npgsql.EntityFrameworkCore.PostgreSQL")
+        {
+            modelBuilder.HasPostgresExtension("btree_gist");
+        }
+        else
+        {
+            foreach (var entityType in modelBuilder.Model.GetEntityTypes())
+            {
+                foreach (var annotation in entityType.GetAnnotations()
+                             .Where(annotation => PostgresExclusionConstraintExtensions.IsExclusionConstraintAnnotation(annotation.Name))
+                             .ToArray())
+                {
+                    entityType.RemoveAnnotation(annotation.Name);
+                }
+            }
+        }
+
+        MySqlModelIdentifierPolicy.Apply(modelBuilder, Database.ProviderName);
         ApplyGlobalQueryFilters(modelBuilder);
     }
 }

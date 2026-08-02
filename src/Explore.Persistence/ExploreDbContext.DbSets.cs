@@ -174,6 +174,12 @@ public partial class ExploreDbContext
     public DbSet<RegistrationFormField> RegistrationFormFields { get; set; }
     public DbSet<RegistrationFormFieldOption> RegistrationFormFieldOptions { get; set; }
     public DbSet<RegistrationFormRule> RegistrationFormRules { get; set; }
+    public DbSet<RegistrationAttempt> RegistrationAttempts { get; set; }
+    public DbSet<RegistrationSubmission> RegistrationSubmissions { get; set; }
+    public DbSet<RegistrationSubmissionRevision> RegistrationSubmissionRevisions { get; set; }
+    public DbSet<RegistrationAnswer> RegistrationAnswers { get; set; }
+    public DbSet<RegistrationSensitiveAnswerValue> RegistrationSensitiveAnswerValues { get; set; }
+    public DbSet<RegistrationAnswerSubjectType> RegistrationAnswerSubjectTypes { get; set; }
 
     // ===== Event Lookup Tables =====
     public DbSet<EventType> EventTypes { get; set; }
@@ -212,6 +218,8 @@ public partial class ExploreDbContext
     public DbSet<RegistrationFormStatus> RegistrationFormStatuses { get; set; }
     public DbSet<RegistrationFieldType> RegistrationFieldTypes { get; set; }
     public DbSet<RegistrationOrganizerVisibility> RegistrationOrganizerVisibilities { get; set; }
+    public DbSet<RegistrationAttemptStatus> RegistrationAttemptStatuses { get; set; }
+    public DbSet<RegistrationSubmissionStatus> RegistrationSubmissionStatuses { get; set; }
 
     // ===== Instance Monetization =====
     public DbSet<PlatformFeePolicy> PlatformFeePolicies { get; set; }
@@ -251,8 +259,6 @@ public partial class ExploreDbContext
     public DbSet<EventLocationDisclosureAudit> EventLocationDisclosureAudits { get; set; }
     public DbSet<EventLocationExactReadAudit> EventLocationExactReadAudits { get; set; }
     public DbSet<PrivacyErasureReplayCheckpoint> PrivacyErasureReplayCheckpoints { get; set; }
-    public DbSet<PrivacyErasureIntent> PrivacyErasureIntents { get; set; }
-    public DbSet<PrivacyErasureCounter> PrivacyErasureCounters { get; set; }
     public DbSet<PrivacyErasureSaga> PrivacyErasureSagas { get; set; }
     public DbSet<PrivacyErasurePolicyCoverage> PrivacyErasurePolicyCoverage { get; set; }
     public DbSet<PrivacyErasureProviderWork> PrivacyErasureProviderWork { get; set; }
