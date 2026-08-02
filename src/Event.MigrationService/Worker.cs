@@ -3,6 +3,7 @@
 
 using Explore.Application.Configuration;
 using Explore.Persistence;
+using Explore.Persistence.Database;
 using Explore.Persistence.Privacy.ErasureAuthority;
 using Explore.Persistence.Schema;
 using Explore.Persistence.Seed;
@@ -39,9 +40,14 @@ public sealed class Worker(IServiceProvider serviceProvider, IHostApplicationLif
         await ExploreDatabaseMigrator.MigrateAsync(db, configuration, stoppingToken);
         logger.LogInformation("Database migrations applied successfully.");
 
-        logger.LogInformation("Applying model-owned PostgreSQL constraints...");
-        await PostgresModelConstraintApplier.ApplyAsync(db, stoppingToken);
-        logger.LogInformation("Model-owned PostgreSQL constraints applied successfully.");
+        await SqliteDatabaseInitializer.InitializeAsync(db, stoppingToken);
+
+        if (db.Database.IsNpgsql())
+        {
+            logger.LogInformation("Applying model-owned PostgreSQL constraints...");
+            await PostgresModelConstraintApplier.ApplyAsync(db, stoppingToken);
+            logger.LogInformation("Model-owned PostgreSQL constraints applied successfully.");
+        }
 
         logger.LogInformation("Applying Data Protection key-ring migrations...");
         await dataProtectionDb.Database.MigrateAsync(stoppingToken);
@@ -53,6 +59,18 @@ public sealed class Worker(IServiceProvider serviceProvider, IHostApplicationLif
             var authorityDb = scope.ServiceProvider.GetRequiredService<PrivacyErasureAuthorityDbContext>();
             await authorityDb.Database.MigrateAsync(stoppingToken);
             logger.LogInformation("External privacy-erasure authority migrations applied successfully.");
+        }
+        else
+        {
+            logger.LogInformation("Applying embedded privacy-erasure authority migrations...");
+            var storage = scope.ServiceProvider.GetRequiredService<EmbeddedPrivacyErasureAuthorityStorage>();
+            await storage.EnsureReadyAsync(stoppingToken);
+            var authorityDb = scope.ServiceProvider
+                .GetRequiredService<EmbeddedPrivacyErasureAuthorityDbContext>();
+            await authorityDb.Database.MigrateAsync(stoppingToken);
+            storage.HardenCompanionFiles();
+            await storage.VerifyIntegrityAsync(stoppingToken);
+            logger.LogInformation("Embedded privacy-erasure authority migrations applied successfully.");
         }
 
         // Run async seeding for data that requires conditional logic
