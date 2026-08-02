@@ -27,7 +27,6 @@ using Explore.Application.DTOs.EventSeries;
 using Explore.Application.DTOs.EventSession;
 using Explore.Application.DTOs.EventSessionAgendaItem;
 using Explore.Application.DTOs.EventSessionCustomProperty;
-using Explore.Application.DTOs.Studio;
 using Explore.Application.DTOs.EventSessionGroup;
 using Explore.Application.DTOs.EventSessionLanguage;
 using Explore.Application.DTOs.EventSessionSpeaker;
@@ -42,15 +41,17 @@ using Explore.Application.DTOs.LocationRoom;
 using Explore.Application.DTOs.Notification;
 using Explore.Application.DTOs.Onboarding;
 using Explore.Application.DTOs.Organization;
-using Explore.Application.DTOs.OrganizationTenantEvidence;
 using Explore.Application.DTOs.OrganizationMember;
 using Explore.Application.DTOs.OrganizationReview;
+using Explore.Application.DTOs.OrganizationTenantEvidence;
 using Explore.Application.DTOs.PlatformMonetization;
 using Explore.Application.DTOs.PublicExperience;
-using Explore.Application.DTOs.RegistrationOrders;
+using Explore.Application.DTOs.Registration;
 using Explore.Application.DTOs.RegistrationForms;
+using Explore.Application.DTOs.RegistrationOrders;
 using Explore.Application.DTOs.Settings;
 using Explore.Application.DTOs.StorageObject;
+using Explore.Application.DTOs.Studio;
 using Explore.Application.DTOs.SupportAccess;
 using Explore.Application.DTOs.Tag;
 using Explore.Application.DTOs.Tenant;
@@ -273,6 +274,9 @@ public static class HateoasAssemblerRegistration
         services.AddScoped<ILinkPolicy<RegistrationOrderDto>, RegistrationOrderLinkPolicy>();
         services.AddScoped<ICollectionLinkPolicy<RegistrationOrderDto>, RegistrationOrderCollectionLinkPolicy>();
         services.AddScoped<IResourceAssembler<RegistrationOrderDto, RegistrationOrderDto>, RegistrationOrderResourceAssembler>();
+        services.AddScoped<ILinkPolicy<RegistrationAnswerFileDto>, RegistrationAnswerFileLinkPolicy>();
+        services.AddScoped<ICollectionLinkPolicy<RegistrationAnswerFileDto>, RegistrationAnswerFileCollectionLinkPolicy>();
+        services.AddScoped<IResourceAssembler<RegistrationAnswerFileDto, RegistrationAnswerFileDto>, RegistrationAnswerFileResourceAssembler>();
 
         // EventSessionAgendaItem
         services.AddScoped<ILinkPolicy<EventSessionAgendaItemDto>, EventSessionAgendaItemDetailLinkPolicy>();

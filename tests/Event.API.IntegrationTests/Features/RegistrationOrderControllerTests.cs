@@ -87,6 +87,15 @@ public sealed class RegistrationOrderControllerTests
     }
 
     [Test]
+    public async Task NativeSubmissionRoutes_ExposeAuthenticatedAndGuestTransactionalContracts()
+    {
+        await AssertNativeSubmissionRoute("LaunchAuthenticatedNativeAttempt", "{orderId:guid}/attempts", EndpointClass.Authenticated);
+        await AssertNativeSubmissionRoute("SubmitAuthenticatedNativeAttempt", "{orderId:guid}/attempts/{attemptId:guid}/submissions", EndpointClass.Authenticated);
+        await AssertNativeSubmissionRoute("LaunchGuestNativeAttempt", "guest/{orderId:guid}/attempts", EndpointClass.PublicTransactional);
+        await AssertNativeSubmissionRoute("SubmitGuestNativeAttempt", "guest/{orderId:guid}/attempts/{attemptId:guid}/submissions", EndpointClass.PublicTransactional);
+    }
+
+    [Test]
     public async Task GuestParticipantRoutes_KeepCapabilityInHeaderAndWritesTransactional()
     {
         await AssertRoute<RegistrationOrderController, HttpGetAttribute>(
@@ -349,6 +358,21 @@ public sealed class RegistrationOrderControllerTests
         Id = Guid.CreateVersion7(),
         EventId = Guid.CreateVersion7()
     };
+
+    private static async Task AssertNativeSubmissionRoute(
+        string actionName,
+        string routeTemplate,
+        EndpointClass endpointClass)
+    {
+        MethodInfo? action = typeof(RegistrationOrderController).GetMethod(actionName);
+        await Assert.That(action).IsNotNull();
+        var route = action!.GetCustomAttribute<HttpPostAttribute>();
+        await Assert.That(route?.Template).IsEqualTo(routeTemplate);
+        await Assert.That(action.GetCustomAttribute<EndpointClassificationAttribute>()?.Class).IsEqualTo(endpointClass);
+        await Assert.That(action.GetCustomAttribute<RequireIdempotencyKeyAttribute>()).IsNotNull();
+        await Assert.That(action.GetCustomAttribute<AuthorizeAttribute>() is not null)
+            .IsEqualTo(endpointClass == EndpointClass.Authenticated);
+    }
 
     private static StartRegistrationOrderRequest CreateStartRequest(int? platformContributionBasisPoints = null) => new()
     {
