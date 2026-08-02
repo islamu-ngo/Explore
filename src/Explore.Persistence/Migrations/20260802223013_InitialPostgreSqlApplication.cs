@@ -10574,6 +10574,7 @@ namespace Explore.Persistence.Migrations
                     organizer_visibility_id = table.Column<int>(type: "integer", nullable: false),
                     requires_explicit_consent = table.Column<bool>(type: "boolean", nullable: false),
                     consent_purpose_code = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
+                    consent_text = table.Column<string>(type: "character varying(4000)", maxLength: 4000, nullable: true),
                     consent_text_version = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
                     is_provider_transfer_allowed = table.Column<bool>(type: "boolean", nullable: false),
                     is_required = table.Column<bool>(type: "boolean", nullable: false),
@@ -10600,7 +10601,7 @@ namespace Explore.Persistence.Migrations
                     table.PrimaryKey("pk_registration_form_fields", x => x.id);
                     table.UniqueConstraint("ak_registration_form_fields_tenant_id_event_id_registration_fo", x => new { x.tenant_id, x.event_id, x.registration_form_id, x.registration_form_version_id, x.registration_form_section_id, x.id });
                     table.UniqueConstraint("ak_registration_form_fields_tenant_id_event_id_registration_fo1", x => new { x.tenant_id, x.event_id, x.registration_form_id, x.registration_form_version_id, x.registration_form_section_id, x.id, x.field_type_id });
-                    table.CheckConstraint("ck_registration_form_fields_consent_metadata", "(requires_explicit_consent AND consent_purpose_code IS NOT NULL AND consent_text_version IS NOT NULL AND length(btrim(consent_purpose_code)) > 0 AND length(btrim(consent_text_version)) > 0) OR (NOT requires_explicit_consent AND consent_purpose_code IS NULL AND consent_text_version IS NULL)");
+                    table.CheckConstraint("ck_registration_form_fields_consent_metadata", "(requires_explicit_consent AND consent_purpose_code IS NOT NULL AND consent_text IS NOT NULL AND consent_text_version IS NOT NULL AND length(btrim(consent_purpose_code)) > 0 AND length(btrim(consent_text)) > 0 AND length(btrim(consent_text_version)) > 0) OR (NOT requires_explicit_consent AND consent_purpose_code IS NULL AND consent_text IS NULL AND consent_text_version IS NULL)");
                     table.ForeignKey(
                         name: "fk_registration_form_fields_registration_field_types_field_typ",
                         column: x => x.field_type_id,

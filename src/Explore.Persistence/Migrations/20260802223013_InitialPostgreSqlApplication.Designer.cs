@@ -12,7 +12,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Explore.Persistence.Migrations
 {
     [DbContext(typeof(ExploreDbContext))]
-    [Migration("20260802214807_InitialPostgreSqlApplication")]
+    [Migration("20260802223013_InitialPostgreSqlApplication")]
     partial class InitialPostgreSqlApplication
     {
         /// <inheritdoc />
@@ -17741,6 +17741,11 @@ namespace Explore.Persistence.Migrations
                         .HasColumnType("character varying(100)")
                         .HasColumnName("consent_purpose_code");
 
+                    b.Property<string>("ConsentText")
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)")
+                        .HasColumnName("consent_text");
+
                     b.Property<string>("ConsentTextVersion")
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)")
@@ -17902,7 +17907,7 @@ namespace Explore.Persistence.Migrations
 
                     b.ToTable("registration_form_fields", "islamu_event", t =>
                         {
-                            t.HasCheckConstraint("ck_registration_form_fields_consent_metadata", "(requires_explicit_consent AND consent_purpose_code IS NOT NULL AND consent_text_version IS NOT NULL AND length(btrim(consent_purpose_code)) > 0 AND length(btrim(consent_text_version)) > 0) OR (NOT requires_explicit_consent AND consent_purpose_code IS NULL AND consent_text_version IS NULL)");
+                            t.HasCheckConstraint("ck_registration_form_fields_consent_metadata", "(requires_explicit_consent AND consent_purpose_code IS NOT NULL AND consent_text IS NOT NULL AND consent_text_version IS NOT NULL AND length(btrim(consent_purpose_code)) > 0 AND length(btrim(consent_text)) > 0 AND length(btrim(consent_text_version)) > 0) OR (NOT requires_explicit_consent AND consent_purpose_code IS NULL AND consent_text IS NULL AND consent_text_version IS NULL)");
                         });
                 });
 
