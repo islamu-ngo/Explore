@@ -6,9 +6,9 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Net.Sockets;
 using System.Text.Json.Serialization;
+using Explore.Secrets.Database;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
-using Npgsql;
 
 namespace Explore.Secrets.Bootstrap;
 
@@ -105,6 +105,72 @@ public static class BootstrapSecretLoader
     /// <summary>Default Postgres port when not supplied anywhere.</summary>
     public const int DefaultPort = 5432;
 
+    public static void ProjectPostgresConfiguration(
+        IConfigurationBuilder configBuilder,
+        PrimaryDatabaseRole role,
+        bool infisicalAlreadyLoaded = false)
+    {
+        ArgumentNullException.ThrowIfNull(configBuilder);
+
+        var configuration = configBuilder.Build();
+        var roleSection = role == PrimaryDatabaseRole.Runtime ? "Runtime" : "Migrator";
+        var roleProvider = configuration[$"Database:{roleSection}:Provider"];
+        var rootProvider = configuration["Database:Provider"];
+        var explicitProvider = string.IsNullOrWhiteSpace(roleProvider)
+            ? rootProvider
+            : roleProvider;
+        if (!string.IsNullOrWhiteSpace(explicitProvider)
+            && !string.Equals(
+                explicitProvider.Trim(),
+                nameof(PrimaryDatabaseProvider.PostgreSql),
+                StringComparison.OrdinalIgnoreCase))
+        {
+            return;
+        }
+
+        var infisicalSecrets = infisicalAlreadyLoaded
+            ? null
+            : TryLoadInfisicalPostgresFolder(configuration, logger: null);
+        var (host, _) = ResolveField(
+            infisicalSecrets, InfisicalKeyHost, EnvHost, ConfigHost, configuration, infisicalAlreadyLoaded);
+        var (port, _) = ResolveField(
+            infisicalSecrets, InfisicalKeyPort, EnvPort, ConfigPort, configuration, infisicalAlreadyLoaded);
+        var (database, _) = ResolveField(
+            infisicalSecrets, InfisicalKeyDatabase, EnvDatabase, ConfigDatabase, configuration, infisicalAlreadyLoaded);
+        var (username, _) = ResolveField(
+            infisicalSecrets, InfisicalKeyUsername, EnvUsername, ConfigUsername, configuration, infisicalAlreadyLoaded);
+        var (password, _) = ResolveField(
+            infisicalSecrets, InfisicalKeyPassword, EnvPassword, ConfigPassword, configuration, infisicalAlreadyLoaded);
+
+        if (string.IsNullOrWhiteSpace(host)
+            && string.IsNullOrWhiteSpace(port)
+            && string.IsNullOrWhiteSpace(database)
+            && string.IsNullOrWhiteSpace(username)
+            && string.IsNullOrWhiteSpace(password))
+        {
+            return;
+        }
+
+        var projected = new Dictionary<string, string?>();
+
+        if (string.IsNullOrWhiteSpace(roleProvider)
+            && string.IsNullOrWhiteSpace(rootProvider))
+        {
+            projected["Database:Provider"] = nameof(PrimaryDatabaseProvider.PostgreSql);
+        }
+
+        TryProject(projected, configuration, roleSection, "Host", host);
+        TryProject(projected, configuration, roleSection, "Port", port);
+        TryProject(projected, configuration, roleSection, "Database", database);
+        TryProject(projected, configuration, roleSection, "Username", username, roleScoped: true);
+        TryProject(projected, configuration, roleSection, "Password", password, roleScoped: true);
+
+        if (projected.Count > 0)
+        {
+            configBuilder.AddInMemoryCollection(projected);
+        }
+    }
+
     /// <summary>
     /// Resolves Postgres bootstrap credentials and returns a composed Npgsql connection string.
     /// </summary>
@@ -159,19 +225,21 @@ public static class BootstrapSecretLoader
 
         var port = ParsePort(portRaw, logger);
 
-        var builder = new NpgsqlConnectionStringBuilder
+        var winningSource = DescribeWinningSource(
+            hostSource, portSource, databaseSource, usernameSource, passwordSource);
+
+        var connectionResult = PrimaryDatabaseConfiguration.BuildConnectionString(new PrimaryDatabaseConnectionOptions
         {
+            Role = PrimaryDatabaseRole.Runtime,
+            Provider = PrimaryDatabaseProvider.PostgreSql,
             Host = host!,
             Port = port,
             Database = database!,
             Username = username!,
             Password = password!,
-            SslMode = SslMode.Prefer,
-            TrustServerCertificate = true,
-        };
-
-        var winningSource = DescribeWinningSource(
-            hostSource, portSource, databaseSource, usernameSource, passwordSource);
+            TlsMode = PrimaryDatabaseTlsMode.Prefer,
+            TrustServerCertificate = false,
+        });
 
         logger?.LogInformation(
             "Bootstrap Postgres credentials resolved from {Source} (host via {HostSource}, "
@@ -185,7 +253,7 @@ public static class BootstrapSecretLoader
             passwordSource);
 
         return new BootstrapPostgresCredentials(
-            builder.ConnectionString,
+            connectionResult.ConnectionString,
             winningSource,
             DateTimeOffset.UtcNow);
     }
@@ -223,7 +291,8 @@ public static class BootstrapSecretLoader
         string infisicalKey,
         string envKey,
         string configKey,
-        IConfiguration configuration)
+        IConfiguration configuration,
+        bool mappedConfigurationFirst = false)
     {
         if (infisicalSecrets is not null
             && infisicalSecrets.TryGetValue(infisicalKey, out var infisicalValue)
@@ -232,10 +301,23 @@ public static class BootstrapSecretLoader
             return (infisicalValue, $"Infisical:{InfisicalPath}/{infisicalKey}");
         }
 
-        var envValue = Environment.GetEnvironmentVariable(envKey);
-        if (!string.IsNullOrWhiteSpace(envValue))
+        var mappedEnvironmentValue = configuration[envKey];
+        if (mappedConfigurationFirst
+            && !string.IsNullOrWhiteSpace(mappedEnvironmentValue))
         {
-            return (envValue, $"EnvironmentVariable:{envKey}");
+            return (mappedEnvironmentValue, $"IConfiguration:{envKey}");
+        }
+
+        var environmentValue = Environment.GetEnvironmentVariable(envKey);
+        if (!string.IsNullOrWhiteSpace(environmentValue))
+        {
+            return (environmentValue, $"EnvironmentVariable:{envKey}");
+        }
+
+        if (!mappedConfigurationFirst
+            && !string.IsNullOrWhiteSpace(mappedEnvironmentValue))
+        {
+            return (mappedEnvironmentValue, $"IConfiguration:{envKey}");
         }
 
         var configValue = configuration[configKey];
@@ -245,6 +327,27 @@ public static class BootstrapSecretLoader
         }
 
         return (null, "<unresolved>");
+    }
+
+    private static void TryProject(
+        IDictionary<string, string?> projected,
+        IConfiguration configuration,
+        string roleSection,
+        string key,
+        string? value,
+        bool roleScoped = false)
+    {
+        if (string.IsNullOrWhiteSpace(value)
+            || !string.IsNullOrWhiteSpace(configuration[$"Database:{roleSection}:{key}"])
+            || !string.IsNullOrWhiteSpace(configuration[$"Database:{key}"]))
+        {
+            return;
+        }
+
+        var targetKey = roleScoped
+            ? $"Database:{roleSection}:{key}"
+            : $"Database:{key}";
+        projected[targetKey] = value;
     }
 
     /// <summary>

@@ -1,7 +1,8 @@
 // ABOUTME: Unit tests for BootstrapSecretLoader covering discrete POSTGRESQL_* resolution.
-// Verifies env-over-config precedence, NpgsqlConnectionStringBuilder composition, missing-field errors, and port parsing.
+// ABOUTME: Verifies source precedence, structured projection, validation errors, and native connection composition.
 
 using Explore.Secrets.Bootstrap;
+using Explore.Secrets.Database;
 using FluentAssertions;
 using Microsoft.Extensions.Configuration;
 using Npgsql;
@@ -67,9 +68,9 @@ public class BootstrapSecretLoaderTests
         parsed.Username.Should().Be("svc_events");
         parsed.Password.Should().Be("p@ss!word");
         parsed.SslMode.Should().Be(SslMode.Prefer);
-        parsed.TrustServerCertificate.Should().BeTrue();
 
         credentials.Source.Should().Contain("Config");
+        credentials.LoadedAt.Should().BeCloseTo(DateTimeOffset.UtcNow, TimeSpan.FromMinutes(1));
     }
 
     [Test]
@@ -107,6 +108,33 @@ public class BootstrapSecretLoaderTests
         var credentials = BootstrapSecretLoader.LoadPostgresConnectionString(config);
 
         new NpgsqlConnectionStringBuilder(credentials.ConnectionString).Port.Should().Be(5432);
+    }
+
+    [Test]
+    public void ProjectPostgresConfiguration_WithDiscreteFields_BindsMigratorRole()
+    {
+        ClearEnv();
+        var builder = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            [HostKey] = "migration-db.example.test",
+            [PortKey] = "6543",
+            [DbKey] = "event_db",
+            [UserKey] = "migrator_user",
+            [PassKey] = "migrator-secret",
+        });
+
+        BootstrapSecretLoader.ProjectPostgresConfiguration(
+            builder,
+            PrimaryDatabaseRole.Migrator,
+            infisicalAlreadyLoaded: true);
+        var options = PrimaryDatabaseConfiguration.BindMigrator(builder.Build());
+
+        options.Role.Should().Be(PrimaryDatabaseRole.Migrator);
+        options.Provider.Should().Be(PrimaryDatabaseProvider.PostgreSql);
+        options.Host.Should().Be("migration-db.example.test");
+        options.Port.Should().Be(6543);
+        options.Username.Should().Be("migrator_user");
+        options.Password.Should().Be("migrator-secret");
     }
 
     #endregion

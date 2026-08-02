@@ -251,17 +251,11 @@ public sealed class InfisicalConfigurationProvider : ConfigurationProvider, IDis
     ///
     /// Examples:
     /// - "/keycloak/KEYCLOAK_REALM" -> "Keycloak:Realm"
-    /// - "/postgresql/POSTGRESQL_PUBLIC_URL" -> "ConnectionStrings:DefaultConnection" (special case)
     /// - "/api/S3__ACCESS_KEY" -> "S3:AccessKey"
     /// </remarks>
     private static string ConvertToConfigurationKey(string secretKey, string path)
     {
         // Special mappings for common patterns
-        if (secretKey.Equals("POSTGRESQL_PUBLIC_URL", StringComparison.OrdinalIgnoreCase))
-        {
-            return "ConnectionStrings:DefaultConnection";
-        }
-
         if (secretKey.Equals("AI_TOOL_PROPOSALS_ENABLED", StringComparison.OrdinalIgnoreCase))
         {
             return "AiProvider:ToolProposalsEnabled";
