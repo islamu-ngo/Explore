@@ -24,7 +24,14 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
         {
             var inMemoryConfig = new Dictionary<string, string?>
             {
-                {"ConnectionStrings:DefaultConnection", "Host=localhost;Database=explore_db_test;Username=postgres;Password=postgres"},
+                {"Database:Provider", "PostgreSql"},
+                {"Database:Host", "localhost"},
+                {"Database:Port", "5432"},
+                {"Database:Database", "explore_db_test"},
+                {"Database:Runtime:Username", "postgres"},
+                {"Database:Runtime:Password", "postgres"},
+                {"Database:Runtime:TlsMode", "Prefer"},
+                {"Database:Runtime:TrustServerCertificate", "false"},
                 {"Keycloak:Authority", "https://auth.example.com"},
                 {"Keycloak:Realm", "ISLAMU"},
                 {"Keycloak:Audience", "islamu-event-api"},

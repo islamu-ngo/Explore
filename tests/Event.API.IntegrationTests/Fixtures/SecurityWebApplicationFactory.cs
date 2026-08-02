@@ -60,7 +60,14 @@ public class SecurityWebApplicationFactory : WebApplicationFactory<Program>
         {
             var testConfig = new Dictionary<string, string?>
             {
-                ["ConnectionStrings:DefaultConnection"] = "Host=localhost;Database=explore_db_test;Username=postgres;Password=postgres",
+                ["Database:Provider"] = "PostgreSql",
+                ["Database:Host"] = "localhost",
+                ["Database:Port"] = "5432",
+                ["Database:Database"] = "explore_db_test",
+                ["Database:Runtime:Username"] = "postgres",
+                ["Database:Runtime:Password"] = "postgres",
+                ["Database:Runtime:TlsMode"] = "Prefer",
+                ["Database:Runtime:TrustServerCertificate"] = "false",
                 ["Keycloak:Authority"] = _keycloakAuthority,
                 ["Keycloak:Realm"] = KeycloakContainerFixture.RealmName,
                 ["Keycloak:Audience"] = "islamu-event-api",

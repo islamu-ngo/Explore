@@ -3,6 +3,7 @@
 
 using Explore.API.Extensions;
 using Explore.Infrastructure.Services;
+using Explore.Secrets.Database;
 using Microsoft.Extensions.Configuration;
 
 namespace Event.Api.IntegrationTests.Features;
@@ -97,18 +98,91 @@ public sealed class ConfigurationExtensionsTests
     }
 
     [Test]
+    public async Task AddInfisicalCompatibility_DoesNotMapLegacyPostgresPublicUrlToDefaultConnection()
+    {
+        var configuration = BuildConfiguration(new Dictionary<string, string?>
+        {
+            ["POSTGRESQL_PUBLIC_URL"] = "postgres://user:secret@db:5432/event"
+        });
+
+        await Assert.That(configuration["ConnectionStrings:DefaultConnection"]).IsNull();
+    }
+
+    [Test]
+    public async Task AddInfisicalCompatibility_ProjectsDiscretePostgresIntoRuntimeDatabaseContract()
+    {
+        var configuration = BuildConfiguration(new Dictionary<string, string?>
+        {
+            ["POSTGRESQL_HOST"] = "pg.example.test",
+            ["POSTGRESQL_PORT"] = "6543",
+            ["POSTGRESQL_DATABASE"] = "event_db",
+            ["POSTGRESQL_USERNAME"] = "app_user",
+            ["POSTGRESQL_PASSWORD"] = "app-secret",
+        });
+
+        var options = PrimaryDatabaseConfiguration.BindRuntime(configuration);
+
+        await Assert.That(options.Provider).IsEqualTo(PrimaryDatabaseProvider.PostgreSql);
+        await Assert.That(options.Host).IsEqualTo("pg.example.test");
+        await Assert.That(options.Port).IsEqualTo(6543);
+        await Assert.That(options.Database).IsEqualTo("event_db");
+        await Assert.That(options.Username).IsEqualTo("app_user");
+        await Assert.That(options.Password).IsEqualTo("app-secret");
+    }
+
+    [Test]
+    public async Task AddInfisicalCompatibility_DoesNotOverrideExplicitStructuredDatabaseContract()
+    {
+        var configuration = BuildConfiguration(new Dictionary<string, string?>
+        {
+            ["POSTGRESQL_HOST"] = "projected-host",
+            ["POSTGRESQL_DATABASE"] = "projected_db",
+            ["POSTGRESQL_USERNAME"] = "projected_user",
+            ["POSTGRESQL_PASSWORD"] = "projected-secret",
+            ["Database:Provider"] = "PostgreSql",
+            ["Database:Host"] = "explicit-host",
+            ["Database:Database"] = "explicit_db",
+            ["Database:Runtime:Username"] = "explicit_user",
+            ["Database:Runtime:Password"] = "explicit-secret",
+            ["Database:Runtime:TlsMode"] = "Required",
+        });
+
+        var options = PrimaryDatabaseConfiguration.BindRuntime(configuration);
+
+        await Assert.That(options.Host).IsEqualTo("explicit-host");
+        await Assert.That(options.Database).IsEqualTo("explicit_db");
+        await Assert.That(options.Username).IsEqualTo("explicit_user");
+        await Assert.That(options.Password).IsEqualTo("explicit-secret");
+        await Assert.That(options.TlsMode).IsEqualTo(PrimaryDatabaseTlsMode.Required);
+    }
+
+    [Test]
     public async Task AddInfisicalCompatibility_MapsPrivacyErasureAuthorityKeys()
     {
         var configuration = BuildConfiguration(new Dictionary<string, string?>
         {
             ["PRIVACY_ERASURE_AUTHORITY_TOPOLOGY"] = "ExternalDatabase",
-            ["PRIVACY_ERASURE_AUTHORITY_CONNECTION_STRING"] = "Host=authority;Database=privacy;Username=runtime"
+            ["PRIVACY_ERASURE_AUTHORITY_HOST"] = "authority",
+            ["PRIVACY_ERASURE_AUTHORITY_PORT"] = "6543",
+            ["PRIVACY_ERASURE_AUTHORITY_DATABASE"] = "privacy",
+            ["PRIVACY_ERASURE_AUTHORITY_RUNTIME_USERNAME"] = "runtime",
+            ["PRIVACY_ERASURE_AUTHORITY_RUNTIME_PASSWORD"] = "runtime-secret",
+            ["PRIVACY_ERASURE_AUTHORITY_MIGRATOR_USERNAME"] = "migrator",
+            ["PRIVACY_ERASURE_AUTHORITY_MIGRATOR_PASSWORD"] = "migrator-secret",
+            ["PRIVACY_ERASURE_AUTHORITY_TLS_MODE"] = "Required",
+            ["PRIVACY_ERASURE_AUTHORITY_TRUST_SERVER_CERTIFICATE"] = "false"
         });
 
         await Assert.That(configuration["PrivacyErasure:Authority:Topology"])
             .IsEqualTo("ExternalDatabase");
-        await Assert.That(configuration["ConnectionStrings:PrivacyErasureAuthority"])
-            .IsEqualTo("Host=authority;Database=privacy;Username=runtime");
+        await Assert.That(configuration["PrivacyErasureAuthorityDatabase:Provider"])
+            .IsEqualTo("PostgreSql");
+        await Assert.That(configuration["PrivacyErasureAuthorityDatabase:Host"])
+            .IsEqualTo("authority");
+        await Assert.That(configuration["PrivacyErasureAuthorityDatabase:Runtime:Username"])
+            .IsEqualTo("runtime");
+        await Assert.That(configuration["PrivacyErasureAuthorityDatabase:Migrator:Username"])
+            .IsEqualTo("migrator");
     }
 
     [Test]
@@ -117,15 +191,19 @@ public sealed class ConfigurationExtensionsTests
         var configuration = BuildConfiguration(new Dictionary<string, string?>
         {
             ["PRIVACY_ERASURE_AUTHORITY_TOPOLOGY"] = "ExternalDatabase",
-            ["PRIVACY_ERASURE_AUTHORITY_CONNECTION_STRING"] = "Host=alias",
-            ["PrivacyErasure:Authority:Topology"] = "CoLocated",
-            ["ConnectionStrings:PrivacyErasureAuthority"] = "Host=canonical"
+            ["PRIVACY_ERASURE_AUTHORITY_HOST"] = "mapped-host",
+            ["PRIVACY_ERASURE_AUTHORITY_RUNTIME_USERNAME"] = "mapped-user",
+            ["PrivacyErasure:Authority:Topology"] = "EmbeddedSqlite",
+            ["PrivacyErasureAuthorityDatabase:Host"] = "explicit-host",
+            ["PrivacyErasureAuthorityDatabase:Runtime:Username"] = "explicit-user"
         });
 
         await Assert.That(configuration["PrivacyErasure:Authority:Topology"])
-            .IsEqualTo("CoLocated");
-        await Assert.That(configuration["ConnectionStrings:PrivacyErasureAuthority"])
-            .IsEqualTo("Host=canonical");
+            .IsEqualTo("EmbeddedSqlite");
+        await Assert.That(configuration["PrivacyErasureAuthorityDatabase:Host"])
+            .IsEqualTo("explicit-host");
+        await Assert.That(configuration["PrivacyErasureAuthorityDatabase:Runtime:Username"])
+            .IsEqualTo("explicit-user");
     }
 
     [Test]

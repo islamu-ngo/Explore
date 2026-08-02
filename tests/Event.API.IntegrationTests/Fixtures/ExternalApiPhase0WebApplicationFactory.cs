@@ -94,7 +94,14 @@ public sealed class ExternalApiPhase0WebApplicationFactory : WebApplicationFacto
         {
             var inMemoryConfig = new Dictionary<string, string?>
             {
-                ["ConnectionStrings:DefaultConnection"] = "Host=localhost;Database=explore_db_test;Username=postgres;Password=postgres",
+                ["Database:Provider"] = "PostgreSql",
+                ["Database:Host"] = "localhost",
+                ["Database:Port"] = "5432",
+                ["Database:Database"] = "explore_db_test",
+                ["Database:Runtime:Username"] = "postgres",
+                ["Database:Runtime:Password"] = "postgres",
+                ["Database:Runtime:TlsMode"] = "Prefer",
+                ["Database:Runtime:TrustServerCertificate"] = "false",
                 ["Keycloak:Authority"] = TestIssuer,
                 ["Keycloak:Realm"] = "ISLAMU",
                 ["Keycloak:Audience"] = "islamu-event-api",

@@ -1,6 +1,7 @@
 // ABOUTME: PostgreSQL-backed smoke tests for TickerQ scheduler operational persistence.
 // ABOUTME: Proves scheduler migrations use a separate schema and remain outside EmailDispatch business state.
 
+using Event.Api.IntegrationTests.Fixtures;
 using Explore.API.Configuration;
 using Explore.API.Extensions;
 using Explore.API.Scheduling;
@@ -19,6 +20,34 @@ namespace ApiIntegrationTests.Features;
 public sealed class TickerQSchedulerOperationalStoreTests
 {
     [Test]
+    public void AddApiTickerQScheduler_RejectsNonPostgreSqlWithoutLeakingCredentials()
+    {
+        const string password = "tickerq-provider-gate-password";
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                [$"{TickerQSchedulerOptions.SectionName}:Enabled"] = "true",
+                ["Database:Provider"] = "SqlServer",
+                ["Database:Host"] = "sql.example.test",
+                ["Database:Database"] = "tickerq_test",
+                ["Database:Runtime:Username"] = "tickerq_user",
+                ["Database:Runtime:Password"] = password
+            })
+            .Build();
+        var services = new ServiceCollection();
+
+        Action act = () => services.AddApiTickerQScheduler(
+            configuration,
+            new TestWebHostEnvironment(),
+            enabled: true);
+
+        var exception = act.Should().Throw<InvalidOperationException>().Which;
+        exception.Message.Should().Contain("Database:Provider=PostgreSql")
+            .And.Contain("EmailDispatchProcessor:Mode=HostedService")
+            .And.NotContain(password);
+    }
+
+    [Test]
     public async Task AddApiTickerQSchedulerUsesSeparatePostgreSqlSchemaForOperationalStore()
     {
         await using var container = new PostgreSqlBuilder("postgres:18-alpine")
@@ -28,16 +57,17 @@ public sealed class TickerQSchedulerOperationalStoreTests
             .Build();
         await container.StartAsync();
 
+        var databaseConfiguration = new Dictionary<string, string?>
+        {
+            [$"{TickerQSchedulerOptions.SectionName}:Enabled"] = "true",
+            [$"{TickerQSchedulerOptions.SectionName}:Schema"] = "ticker",
+            [$"{TickerQSchedulerOptions.SectionName}:DashboardEnabled"] = "false",
+            [$"{TickerQSchedulerOptions.SectionName}:MaxConcurrency"] = "1",
+            [$"{TickerQSchedulerOptions.SectionName}:NodeIdentifier"] = "tickerq-test-node"
+        };
+        TestDatabaseConfiguration.AddPostgreSql(databaseConfiguration, container.GetConnectionString());
         var configuration = new ConfigurationBuilder()
-            .AddInMemoryCollection(new Dictionary<string, string?>
-            {
-                ["ConnectionStrings:DefaultConnection"] = container.GetConnectionString(),
-                [$"{TickerQSchedulerOptions.SectionName}:Enabled"] = "true",
-                [$"{TickerQSchedulerOptions.SectionName}:Schema"] = "ticker",
-                [$"{TickerQSchedulerOptions.SectionName}:DashboardEnabled"] = "false",
-                [$"{TickerQSchedulerOptions.SectionName}:MaxConcurrency"] = "1",
-                [$"{TickerQSchedulerOptions.SectionName}:NodeIdentifier"] = "tickerq-test-node"
-            })
+            .AddInMemoryCollection(databaseConfiguration)
             .Build();
         var services = new ServiceCollection();
         services.AddLogging();

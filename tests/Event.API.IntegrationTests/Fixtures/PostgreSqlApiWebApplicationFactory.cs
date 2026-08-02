@@ -47,7 +47,6 @@ public class PostgreSqlApiWebApplicationFactory : WebApplicationFactory<Program>
         {
             var testConfig = new Dictionary<string, string?>
             {
-                ["ConnectionStrings:DefaultConnection"] = _connectionString,
                 ["Keycloak:Authority"] = "https://localhost:8443/realms/ISLAMU",
                 ["Keycloak:Realm"] = "ISLAMU",
                 ["Keycloak:Audience"] = "islamu-event-api",
@@ -63,6 +62,8 @@ public class PostgreSqlApiWebApplicationFactory : WebApplicationFactory<Program>
                 ["Testing:UseRealDatabase"] = "true",
                 ["Testing:ApplyMigrations"] = "true",
             };
+
+            TestDatabaseConfiguration.AddPostgreSql(testConfig, _connectionString);
 
             foreach (var kvp in _additionalConfig)
             {
