@@ -554,7 +554,7 @@ public sealed class CerbosPolicyPackageService : IPolicyPackageService
         return RestService.For<ICerbosAdminApi>(client, new RefitSettings
         {
             ContentSerializer = new SystemTextJsonContentSerializer(AdminApiJsonOptions),
-            ExceptionFactory = _ => Task.FromResult<Exception?>(null)
+            ExceptionFactory = _ => ValueTask.FromResult<Exception?>(null)
         });
     }
 
@@ -645,10 +645,19 @@ public sealed class CerbosPolicyPackageService : IPolicyPackageService
     {
         try
         {
-            var response = await requestAction();
-            return response ?? throw new CerbosAdminApiException(
-                PolicyPackageIssueCode.AdminApiUnavailable,
-                $"Cerbos Admin API {artifactKind} upload failed before a response was received.");
+            var response = await requestAction()
+                ?? throw new CerbosAdminApiException(
+                    PolicyPackageIssueCode.AdminApiUnavailable,
+                    $"Cerbos Admin API {artifactKind} upload failed before a response was received.");
+            if (response.HasRequestError(out _))
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                throw new CerbosAdminApiException(
+                    PolicyPackageIssueCode.AdminApiUnavailable,
+                    $"Cerbos Admin API {artifactKind} upload failed before a response was received.");
+            }
+
+            return response;
         }
         catch (ApiException ex)
         {
