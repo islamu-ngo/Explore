@@ -12,9 +12,6 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.EnsureSchema(
-                name: "privacy_erasure_authority");
-
             migrationBuilder.AlterDatabase()
                 .Annotation("MySql:CharSet", "utf8mb4");
 
@@ -269,7 +266,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                     category = table.Column<string>(type: "varchar(100)", maxLength: 100, nullable: true)
                         .Annotation("MySql:CharSet", "utf8mb4"),
                     value_type = table.Column<int>(type: "int", nullable: false),
-                    created_at = table.Column<DateTime>(type: "datetime(6)", nullable: false, defaultValueSql: "NOW()"),
+                    created_at = table.Column<DateTime>(type: "datetime(6)", nullable: false, defaultValueSql: "UTC_TIMESTAMP()"),
                     created_by = table.Column<Guid>(type: "char(36)", nullable: true, collation: "ascii_general_ci"),
                     updated_at = table.Column<DateTime>(type: "datetime(6)", nullable: true),
                     updated_by = table.Column<Guid>(type: "char(36)", nullable: true, collation: "ascii_general_ci"),
@@ -322,7 +319,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                 name: "islamu_event_atproto_jetstream_consumer_states",
                 columns: table => new
                 {
-                    id = table.Column<Guid>(type: "char(36)", nullable: false, defaultValueSql: "uuidv7()", collation: "ascii_general_ci"),
+                    id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     service = table.Column<string>(type: "varchar(500)", maxLength: 500, nullable: false)
                         .Annotation("MySql:CharSet", "utf8mb4"),
                     cursor = table.Column<long>(type: "bigint", nullable: false),
@@ -339,7 +336,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                     table.PrimaryKey("pk_islamu_event_atproto_jetstream_consumer_states", x => x.id);
                     table.CheckConstraint("ck_atproto_jetstream_cursor", "cursor >= 0");
                     table.CheckConstraint("ck_atproto_jetstream_lease_fence", "lease_fence >= 0");
-                    table.CheckConstraint("ck_atproto_jetstream_lease_shape", "(lease_owner IS NULL AND lease_token IS NULL AND lease_expires_at IS NULL) OR (lease_owner IS NOT NULL AND btrim(lease_owner) <> '' AND lease_token IS NOT NULL AND lease_expires_at IS NOT NULL)");
+                    table.CheckConstraint("ck_atproto_jetstream_lease_shape", "(lease_owner IS NULL AND lease_token IS NULL AND lease_expires_at IS NULL) OR (lease_owner IS NOT NULL AND trim(lease_owner) <> '' AND lease_token IS NOT NULL AND lease_expires_at IS NOT NULL)");
                 })
                 .Annotation("MySql:CharSet", "utf8mb4");
 
@@ -347,7 +344,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                 name: "islamu_event_atproto_records",
                 columns: table => new
                 {
-                    id = table.Column<Guid>(type: "char(36)", nullable: false, defaultValueSql: "uuidv7()", collation: "ascii_general_ci"),
+                    id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     did = table.Column<string>(type: "varchar(255)", maxLength: 255, nullable: false)
                         .Annotation("MySql:CharSet", "utf8mb4"),
                     collection = table.Column<string>(type: "varchar(255)", maxLength: 255, nullable: false)
@@ -362,7 +359,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                     provenance = table.Column<int>(type: "int", nullable: false),
                     source_version = table.Column<long>(type: "bigint", nullable: false),
                     source_cursor = table.Column<long>(type: "bigint", nullable: true),
-                    record_json = table.Column<string>(type: "jsonb", nullable: true)
+                    record_json = table.Column<string>(type: "longtext", nullable: true)
                         .Annotation("MySql:CharSet", "utf8mb4"),
                     record_hash = table.Column<string>(type: "varchar(64)", maxLength: 64, nullable: true)
                         .Annotation("MySql:CharSet", "utf8mb4"),
@@ -371,7 +368,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                     subject_cid = table.Column<string>(type: "varchar(255)", maxLength: 255, nullable: true)
                         .Annotation("MySql:CharSet", "utf8mb4"),
                     indexed_at = table.Column<DateTime>(type: "datetime(6)", nullable: true),
-                    updated_at = table.Column<DateTime>(type: "datetime(6)", nullable: false, defaultValueSql: "NOW()"),
+                    updated_at = table.Column<DateTime>(type: "datetime(6)", nullable: false, defaultValueSql: "UTC_TIMESTAMP()"),
                     tombstoned_at = table.Column<DateTime>(type: "datetime(6)", nullable: true)
                 },
                 constraints: table =>
@@ -379,7 +376,6 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                     table.PrimaryKey("pk_islamu_event_atproto_records", x => x.id);
                     table.CheckConstraint("ck_atproto_records_direction", "direction BETWEEN 1 AND 3");
                     table.CheckConstraint("ck_atproto_records_provenance", "provenance BETWEEN 1 AND 3");
-                    table.CheckConstraint("ck_atproto_records_record_hash", "record_hash IS NULL OR record_hash ~ '^[0-9a-f]{64}$'");
                     table.CheckConstraint("ck_atproto_records_source_version", "source_version >= 0");
                 })
                 .Annotation("MySql:CharSet", "utf8mb4");
@@ -419,22 +415,6 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("pk_islamu_event_audience_genders", x => x.id);
-                })
-                .Annotation("MySql:CharSet", "utf8mb4");
-
-            migrationBuilder.CreateTable(
-                name: "islamu_event_authority_counter",
-                schema: "privacy_erasure_authority",
-                columns: table => new
-                {
-                    singleton = table.Column<bool>(type: "tinyint(1)", nullable: false),
-                    last_sequence = table.Column<long>(type: "bigint", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("pk_islamu_event_authority_counter", x => x.singleton);
-                    table.CheckConstraint("ck_privacy_erasure_authority_counter_nonnegative", "last_sequence >= 0");
-                    table.CheckConstraint("ck_privacy_erasure_authority_counter_singleton", "singleton");
                 })
                 .Annotation("MySql:CharSet", "utf8mb4");
 
@@ -532,7 +512,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                 name: "islamu_event_email_dispatch_processor_states",
                 columns: table => new
                 {
-                    id = table.Column<Guid>(type: "char(36)", nullable: false, defaultValueSql: "uuidv7()", collation: "ascii_general_ci"),
+                    id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     processor_code = table.Column<string>(type: "varchar(32)", maxLength: 32, nullable: false)
                         .Annotation("MySql:CharSet", "utf8mb4"),
                     is_paused = table.Column<bool>(type: "tinyint(1)", nullable: false),
@@ -589,37 +569,6 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("pk_islamu_event_entitlement_selection_rules", x => x.id);
-                })
-                .Annotation("MySql:CharSet", "utf8mb4");
-
-            migrationBuilder.CreateTable(
-                name: "islamu_event_erasure_intents",
-                schema: "privacy_erasure_authority",
-                columns: table => new
-                {
-                    authority_sequence = table.Column<long>(type: "bigint", nullable: false),
-                    intent_id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
-                    subject_kind = table.Column<short>(type: "smallint", nullable: false),
-                    subject_id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
-                    reason_code = table.Column<short>(type: "smallint", nullable: false),
-                    policy_version = table.Column<int>(type: "int", nullable: false),
-                    requested_at_utc = table.Column<DateTime>(type: "datetime(6)", nullable: false),
-                    recorded_at_utc = table.Column<DateTime>(type: "datetime(6)", nullable: false),
-                    retention_expires_at_utc = table.Column<DateTime>(type: "datetime(6)", nullable: false, defaultValueSql: "'infinity'::timestamp with time zone")
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("pk_islamu_event_erasure_intents", x => x.authority_sequence);
-                    table.UniqueConstraint("ak_privacy_erasure_intents_intent_id", x => x.intent_id);
-                    table.CheckConstraint("ck_privacy_erasure_intents_intent_rfc4122_variant", "substring(intent_id::text, 20, 1) IN ('8', '9', 'a', 'b')");
-                    table.CheckConstraint("ck_privacy_erasure_intents_intent_uuid_v7", "substring(intent_id::text, 15, 1) = '7'");
-                    table.CheckConstraint("ck_privacy_erasure_intents_policy_version", "policy_version > 0");
-                    table.CheckConstraint("ck_privacy_erasure_intents_reason", "reason_code BETWEEN 1 AND 3");
-                    table.CheckConstraint("ck_privacy_erasure_intents_retention", "retention_expires_at_utc > recorded_at_utc");
-                    table.CheckConstraint("ck_privacy_erasure_intents_sequence", "authority_sequence > 0");
-                    table.CheckConstraint("ck_privacy_erasure_intents_server_time_order", "recorded_at_utc >= requested_at_utc");
-                    table.CheckConstraint("ck_privacy_erasure_intents_subject_kind", "subject_kind = 1");
-                    table.CheckConstraint("ck_privacy_erasure_intents_subject_nonempty", "subject_id <> '00000000-0000-0000-0000-000000000000'::uuid");
                 })
                 .Annotation("MySql:CharSet", "utf8mb4");
 
@@ -925,7 +874,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                         .Annotation("MySql:CharSet", "utf8mb4"),
                     description = table.Column<string>(type: "varchar(5000)", maxLength: 5000, nullable: true)
                         .Annotation("MySql:CharSet", "utf8mb4"),
-                    created_at = table.Column<DateTime>(type: "datetime(6)", nullable: false, defaultValueSql: "NOW()"),
+                    created_at = table.Column<DateTime>(type: "datetime(6)", nullable: false, defaultValueSql: "UTC_TIMESTAMP()"),
                     created_by = table.Column<Guid>(type: "char(36)", nullable: true, collation: "ascii_general_ci"),
                     updated_at = table.Column<DateTime>(type: "datetime(6)", nullable: true),
                     updated_by = table.Column<Guid>(type: "char(36)", nullable: true, collation: "ascii_general_ci"),
@@ -944,7 +893,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                 name: "islamu_event_idempotency_records",
                 columns: table => new
                 {
-                    id = table.Column<Guid>(type: "char(36)", nullable: false, defaultValueSql: "uuidv7()", collation: "ascii_general_ci"),
+                    id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     key = table.Column<string>(type: "varchar(128)", maxLength: 128, nullable: false)
                         .Annotation("MySql:CharSet", "utf8mb4"),
                     tenant_id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
@@ -1070,7 +1019,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                 {
                     id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     is_completed = table.Column<bool>(type: "tinyint(1)", nullable: false, defaultValue: false),
-                    created_at = table.Column<DateTime>(type: "datetime(6)", nullable: false, defaultValueSql: "NOW()"),
+                    created_at = table.Column<DateTime>(type: "datetime(6)", nullable: false, defaultValueSql: "UTC_TIMESTAMP()"),
                     completed_at = table.Column<DateTime>(type: "datetime(6)", nullable: true),
                     completed_by_user_id = table.Column<Guid>(type: "char(36)", nullable: true, collation: "ascii_general_ci"),
                     selected_deployment_mode = table.Column<string>(type: "varchar(32)", maxLength: 32, nullable: true)
@@ -1300,7 +1249,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                         .Annotation("MySql:CharSet", "utf8mb4"),
                     request_hash = table.Column<string>(type: "char(64)", fixedLength: true, maxLength: 64, nullable: false)
                         .Annotation("MySql:CharSet", "utf8mb4"),
-                    request_json = table.Column<string>(type: "jsonb", nullable: true)
+                    request_json = table.Column<string>(type: "longtext", nullable: true)
                         .Annotation("MySql:CharSet", "utf8mb4"),
                     tenant_slug = table.Column<string>(type: "varchar(100)", maxLength: 100, nullable: false)
                         .Annotation("MySql:CharSet", "utf8mb4"),
@@ -1328,7 +1277,6 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                     table.PrimaryKey("pk_islamu_event_managed_tenant_provisioning_operations", x => x.id);
                     table.CheckConstraint("ck_managed_tenant_provisioning_cancelled", "(status = 'Cancelled') = (cancelled_at IS NOT NULL)");
                     table.CheckConstraint("ck_managed_tenant_provisioning_failed", "(status = 'Failed') = (failure_code IS NOT NULL AND failed_at IS NOT NULL)");
-                    table.CheckConstraint("ck_managed_tenant_provisioning_outbox_pointer", "current_outbox_message_id <> '00000000-0000-0000-0000-000000000000'::uuid");
                     table.CheckConstraint("ck_managed_tenant_provisioning_request_snapshot", "(status IN ('Pending', 'Processing')) = (request_json IS NOT NULL)");
                     table.CheckConstraint("ck_managed_tenant_provisioning_terminal_result", "(status = 'Succeeded') = (tenant_id IS NOT NULL AND tenant_administrator_user_id IS NOT NULL AND completed_at IS NOT NULL)");
                 })
@@ -1338,7 +1286,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                 name: "islamu_event_module_definitions",
                 columns: table => new
                 {
-                    id = table.Column<Guid>(type: "char(36)", nullable: false, defaultValueSql: "uuidv7()", collation: "ascii_general_ci"),
+                    id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     module_key = table.Column<string>(type: "varchar(50)", maxLength: 50, nullable: false)
                         .Annotation("MySql:CharSet", "utf8mb4"),
                     name = table.Column<string>(type: "varchar(100)", maxLength: 100, nullable: false)
@@ -1456,7 +1404,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                 name: "islamu_event_notification_fanout_processor_states",
                 columns: table => new
                 {
-                    id = table.Column<Guid>(type: "char(36)", nullable: false, defaultValueSql: "uuidv7()", collation: "ascii_general_ci"),
+                    id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     processor_code = table.Column<string>(type: "varchar(32)", maxLength: 32, nullable: false)
                         .Annotation("MySql:CharSet", "utf8mb4"),
                     optional_reminders_deferred = table.Column<bool>(type: "tinyint(1)", nullable: false),
@@ -1670,7 +1618,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                     id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     website_url = table.Column<string>(type: "varchar(2048)", maxLength: 2048, nullable: true)
                         .Annotation("MySql:CharSet", "utf8mb4"),
-                    created_at = table.Column<DateTime>(type: "datetime(6)", nullable: false, defaultValueSql: "NOW()"),
+                    created_at = table.Column<DateTime>(type: "datetime(6)", nullable: false, defaultValueSql: "UTC_TIMESTAMP()"),
                     created_by = table.Column<Guid>(type: "char(36)", nullable: true, collation: "ascii_general_ci"),
                     updated_at = table.Column<DateTime>(type: "datetime(6)", nullable: true),
                     updated_by = table.Column<Guid>(type: "char(36)", nullable: true, collation: "ascii_general_ci"),
@@ -1689,13 +1637,13 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                 name: "islamu_event_outbox_messages",
                 columns: table => new
                 {
-                    id = table.Column<Guid>(type: "char(36)", nullable: false, defaultValueSql: "uuidv7()", collation: "ascii_general_ci"),
+                    id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     aggregate_type = table.Column<string>(type: "varchar(200)", maxLength: 200, nullable: false)
                         .Annotation("MySql:CharSet", "utf8mb4"),
                     aggregate_id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     event_type = table.Column<string>(type: "varchar(200)", maxLength: 200, nullable: false)
                         .Annotation("MySql:CharSet", "utf8mb4"),
-                    payload = table.Column<string>(type: "jsonb", nullable: true)
+                    payload = table.Column<string>(type: "longtext", nullable: true)
                         .Annotation("MySql:CharSet", "utf8mb4"),
                     status = table.Column<int>(type: "int", nullable: false),
                     created_at = table.Column<DateTime>(type: "datetime(6)", nullable: false),
@@ -1854,6 +1802,23 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                 .Annotation("MySql:CharSet", "utf8mb4");
 
             migrationBuilder.CreateTable(
+                name: "islamu_event_privacy_erasure_policy_coverage",
+                columns: table => new
+                {
+                    intent_id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
+                    subject_kind = table.Column<short>(type: "smallint", nullable: false),
+                    policy_version = table.Column<int>(type: "int", nullable: false),
+                    covered_at_utc = table.Column<DateTime>(type: "datetime(6)", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_islamu_event_privacy_erasure_policy_coverage_intent__AD424645", x => new { x.intent_id, x.subject_kind, x.policy_version });
+                    table.CheckConstraint("ck_privacy_erasure_policy_coverage_policy_version", "policy_version > 0");
+                    table.CheckConstraint("ck_privacy_erasure_policy_coverage_subject_kind", "subject_kind = 1");
+                })
+                .Annotation("MySql:CharSet", "utf8mb4");
+
+            migrationBuilder.CreateTable(
                 name: "islamu_event_privacy_erasure_replay_checkpoints",
                 columns: table => new
                 {
@@ -1870,7 +1835,6 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("pk_islamu_event_privacy_erasure_replay_checkpoints", x => x.id);
-                    table.CheckConstraint("ck_privacy_erasure_checkpoints_uuid_v7", "substring(id::text, 15, 1) = '7' AND substring(id::text, 20, 1) IN ('8', '9', 'a', 'b') AND substring(intent_id::text, 15, 1) = '7' AND substring(intent_id::text, 20, 1) IN ('8', '9', 'a', 'b')");
                     table.CheckConstraint("ck_privacy_erasure_replay_checkpoints_chain", "(authority_sequence = 1 AND previous_checkpoint_id IS NULL) OR (authority_sequence > 1 AND previous_checkpoint_id IS NOT NULL)");
                     table.CheckConstraint("ck_privacy_erasure_replay_checkpoints_sequence", "authority_sequence > 0");
                     table.ForeignKey(
@@ -1879,6 +1843,38 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                         principalTable: "islamu_event_privacy_erasure_replay_checkpoints",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Restrict);
+                })
+                .Annotation("MySql:CharSet", "utf8mb4");
+
+            migrationBuilder.CreateTable(
+                name: "islamu_event_privacy_erasure_sagas",
+                columns: table => new
+                {
+                    intent_id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
+                    subject_kind = table.Column<short>(type: "smallint", nullable: false),
+                    subject_id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
+                    policy_version = table.Column<int>(type: "int", nullable: false),
+                    fence_token = table.Column<long>(type: "bigint", nullable: false),
+                    receipt_hash = table.Column<byte[]>(type: "binary(32)", fixedLength: true, maxLength: 32, nullable: true),
+                    receipt_expires_at_utc = table.Column<DateTime>(type: "datetime(6)", nullable: false),
+                    fenced_at_utc = table.Column<DateTime>(type: "datetime(6)", nullable: false),
+                    concurrency_token = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
+                    status = table.Column<short>(type: "smallint", nullable: false),
+                    provider_work_count = table.Column<int>(type: "int", nullable: false),
+                    completed_provider_work_count = table.Column<int>(type: "int", nullable: false),
+                    local_settled_at_utc = table.Column<DateTime>(type: "datetime(6)", nullable: true),
+                    completed_at_utc = table.Column<DateTime>(type: "datetime(6)", nullable: true),
+                    updated_at_utc = table.Column<DateTime>(type: "datetime(6)", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_islamu_event_privacy_erasure_sagas", x => x.intent_id);
+                    table.CheckConstraint("ck_privacy_erasure_sagas_fence", "fence_token > 0");
+                    table.CheckConstraint("ck_privacy_erasure_sagas_policy_version", "policy_version > 0");
+                    table.CheckConstraint("ck_privacy_erasure_sagas_provider_counts", "provider_work_count >= 0 AND completed_provider_work_count >= 0 AND completed_provider_work_count <= provider_work_count");
+                    table.CheckConstraint("ck_privacy_erasure_sagas_receipt_window", "receipt_expires_at_utc > fenced_at_utc");
+                    table.CheckConstraint("ck_privacy_erasure_sagas_status", "status IN (1, 2, 3)");
+                    table.CheckConstraint("ck_privacy_erasure_sagas_subject_kind", "subject_kind = 1");
                 })
                 .Annotation("MySql:CharSet", "utf8mb4");
 
@@ -2604,7 +2600,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                 name: "islamu_event_user_appearance_profiles",
                 columns: table => new
                 {
-                    id = table.Column<Guid>(type: "char(36)", nullable: false, defaultValueSql: "uuidv7()", collation: "ascii_general_ci"),
+                    id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     user_id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     tenant_id = table.Column<Guid>(type: "char(36)", nullable: true, collation: "ascii_general_ci"),
                     name = table.Column<string>(type: "varchar(200)", maxLength: 200, nullable: false)
@@ -2695,7 +2691,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                     is_default = table.Column<bool>(type: "tinyint(1)", nullable: false, defaultValue: false),
                     is_archived = table.Column<bool>(type: "tinyint(1)", nullable: false, defaultValue: false),
                     cloned_at = table.Column<DateTimeOffset>(type: "datetime(6)", nullable: true),
-                    created_at = table.Column<DateTime>(type: "datetime(6)", nullable: false, defaultValueSql: "NOW()"),
+                    created_at = table.Column<DateTime>(type: "datetime(6)", nullable: false, defaultValueSql: "UTC_TIMESTAMP()"),
                     created_by = table.Column<Guid>(type: "char(36)", nullable: true, collation: "ascii_general_ci"),
                     updated_at = table.Column<DateTime>(type: "datetime(6)", nullable: true),
                     updated_by = table.Column<Guid>(type: "char(36)", nullable: true, collation: "ascii_general_ci")
@@ -2934,14 +2930,14 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                 name: "islamu_event_webhook_event_types",
                 columns: table => new
                 {
-                    id = table.Column<Guid>(type: "char(36)", nullable: false, defaultValueSql: "uuidv7()", collation: "ascii_general_ci"),
+                    id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     name = table.Column<string>(type: "varchar(200)", maxLength: 200, nullable: false)
                         .Annotation("MySql:CharSet", "utf8mb4"),
                     group_name = table.Column<string>(type: "varchar(100)", maxLength: 100, nullable: false)
                         .Annotation("MySql:CharSet", "utf8mb4"),
                     description = table.Column<string>(type: "varchar(1000)", maxLength: 1000, nullable: false)
                         .Annotation("MySql:CharSet", "utf8mb4"),
-                    schema_json = table.Column<string>(type: "jsonb", nullable: false)
+                    schema_json = table.Column<string>(type: "longtext", nullable: false)
                         .Annotation("MySql:CharSet", "utf8mb4"),
                     schema_version = table.Column<int>(type: "int", nullable: false),
                     is_public = table.Column<bool>(type: "tinyint(1)", nullable: false),
@@ -3142,7 +3138,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                 name: "islamu_event_atproto_jetstream_quarantines",
                 columns: table => new
                 {
-                    id = table.Column<Guid>(type: "char(36)", nullable: false, defaultValueSql: "uuidv7()", collation: "ascii_general_ci"),
+                    id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     consumer_state_id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     cursor = table.Column<long>(type: "bigint", nullable: false),
                     reason_code = table.Column<string>(type: "varchar(100)", maxLength: 100, nullable: false)
@@ -3158,8 +3154,6 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                 {
                     table.PrimaryKey("pk_islamu_event_atproto_jetstream_quarantines", x => x.id);
                     table.CheckConstraint("ck_atproto_jetstream_quarantine_cursor", "cursor >= 0");
-                    table.CheckConstraint("ck_atproto_jetstream_quarantine_envelope_hash", "envelope_hash ~ '^[0-9a-f]{64}$'");
-                    table.CheckConstraint("ck_atproto_jetstream_quarantine_identity_hash", "record_identity_hash IS NULL OR record_identity_hash ~ '^[0-9a-f]{64}$'");
                     table.ForeignKey(
                         name: "FK_islamu_event_atproto_jetstream_quarantines_islamu_ev_5F960F8A",
                         column: x => x.consumer_state_id,
@@ -3204,72 +3198,6 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                         principalTable: "islamu_event_atproto_records",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Cascade);
-                })
-                .Annotation("MySql:CharSet", "utf8mb4");
-
-            migrationBuilder.CreateTable(
-                name: "islamu_event_privacy_erasure_policy_coverage",
-                columns: table => new
-                {
-                    intent_id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
-                    subject_kind = table.Column<short>(type: "smallint", nullable: false),
-                    policy_version = table.Column<int>(type: "int", nullable: false),
-                    covered_at_utc = table.Column<DateTime>(type: "datetime(6)", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_islamu_event_privacy_erasure_policy_coverage_intent__AD424645", x => new { x.intent_id, x.subject_kind, x.policy_version });
-                    table.CheckConstraint("ck_privacy_erasure_policy_coverage_policy_version", "policy_version > 0");
-                    table.CheckConstraint("ck_privacy_erasure_policy_coverage_subject_kind", "subject_kind = 1");
-                    table.ForeignKey(
-                        name: "FK_islamu_event_privacy_erasure_policy_coverage_islamu__D110451A",
-                        column: x => x.intent_id,
-                        principalSchema: "privacy_erasure_authority",
-                        principalTable: "islamu_event_erasure_intents",
-                        principalColumn: "intent_id",
-                        onDelete: ReferentialAction.Restrict);
-                })
-                .Annotation("MySql:CharSet", "utf8mb4");
-
-            migrationBuilder.CreateTable(
-                name: "islamu_event_privacy_erasure_sagas",
-                columns: table => new
-                {
-                    intent_id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
-                    subject_kind = table.Column<short>(type: "smallint", nullable: false),
-                    subject_id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
-                    policy_version = table.Column<int>(type: "int", nullable: false),
-                    fence_token = table.Column<long>(type: "bigint", nullable: false),
-                    receipt_hash = table.Column<byte[]>(type: "binary(32)", fixedLength: true, maxLength: 32, nullable: true),
-                    receipt_expires_at_utc = table.Column<DateTime>(type: "datetime(6)", nullable: false),
-                    fenced_at_utc = table.Column<DateTime>(type: "datetime(6)", nullable: false),
-                    concurrency_token = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
-                    status = table.Column<short>(type: "smallint", nullable: false),
-                    provider_work_count = table.Column<int>(type: "int", nullable: false),
-                    completed_provider_work_count = table.Column<int>(type: "int", nullable: false),
-                    local_settled_at_utc = table.Column<DateTime>(type: "datetime(6)", nullable: true),
-                    completed_at_utc = table.Column<DateTime>(type: "datetime(6)", nullable: true),
-                    updated_at_utc = table.Column<DateTime>(type: "datetime(6)", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("pk_islamu_event_privacy_erasure_sagas", x => x.intent_id);
-                    table.CheckConstraint("ck_privacy_erasure_sagas_concurrency_uuid_v7", "substring(concurrency_token::text, 15, 1) = '7' AND substring(concurrency_token::text, 20, 1) IN ('8', '9', 'a', 'b')");
-                    table.CheckConstraint("ck_privacy_erasure_sagas_fence", "fence_token > 0");
-                    table.CheckConstraint("ck_privacy_erasure_sagas_policy_version", "policy_version > 0");
-                    table.CheckConstraint("ck_privacy_erasure_sagas_provider_counts", "provider_work_count >= 0 AND completed_provider_work_count >= 0 AND completed_provider_work_count <= provider_work_count");
-                    table.CheckConstraint("ck_privacy_erasure_sagas_receipt_hash", "receipt_hash IS NULL OR octet_length(receipt_hash) = 32");
-                    table.CheckConstraint("ck_privacy_erasure_sagas_receipt_window", "receipt_expires_at_utc > fenced_at_utc");
-                    table.CheckConstraint("ck_privacy_erasure_sagas_status", "status IN (1, 2, 3)");
-                    table.CheckConstraint("ck_privacy_erasure_sagas_subject_kind", "subject_kind = 1");
-                    table.CheckConstraint("ck_privacy_erasure_sagas_subject_nonempty", "subject_id <> '00000000-0000-0000-0000-000000000000'::uuid");
-                    table.ForeignKey(
-                        name: "FK_islamu_event_privacy_erasure_sagas_islamu_event_eras_B37D0C07",
-                        column: x => x.intent_id,
-                        principalSchema: "privacy_erasure_authority",
-                        principalTable: "islamu_event_erasure_intents",
-                        principalColumn: "intent_id",
-                        onDelete: ReferentialAction.Restrict);
                 })
                 .Annotation("MySql:CharSet", "utf8mb4");
 
@@ -3348,6 +3276,58 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                 .Annotation("MySql:CharSet", "utf8mb4");
 
             migrationBuilder.CreateTable(
+                name: "islamu_event_privacy_erasure_provider_work",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
+                    intent_id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
+                    subject_kind = table.Column<short>(type: "smallint", nullable: false),
+                    subject_id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
+                    provider_kind = table.Column<short>(type: "smallint", nullable: false),
+                    action = table.Column<short>(type: "smallint", nullable: false),
+                    tenant_id = table.Column<Guid>(type: "char(36)", nullable: true, collation: "ascii_general_ci"),
+                    target_id = table.Column<Guid>(type: "char(36)", nullable: true, collation: "ascii_general_ci"),
+                    locator_kind = table.Column<short>(type: "smallint", nullable: false),
+                    protected_locator = table.Column<string>(type: "varchar(8192)", maxLength: 8192, nullable: true)
+                        .Annotation("MySql:CharSet", "utf8mb4"),
+                    locator_protection_version = table.Column<int>(type: "int", nullable: false),
+                    locator_expires_at_utc = table.Column<DateTime>(type: "datetime(6)", nullable: false),
+                    status = table.Column<short>(type: "smallint", nullable: false),
+                    attempt_count = table.Column<int>(type: "int", nullable: false),
+                    next_attempt_at_utc = table.Column<DateTime>(type: "datetime(6)", nullable: true),
+                    lease_owner = table.Column<string>(type: "varchar(100)", maxLength: 100, nullable: true)
+                        .Annotation("MySql:CharSet", "utf8mb4"),
+                    lease_token = table.Column<Guid>(type: "char(36)", nullable: true, collation: "ascii_general_ci"),
+                    lease_fence = table.Column<long>(type: "bigint", nullable: false),
+                    lease_expires_at_utc = table.Column<DateTime>(type: "datetime(6)", nullable: true),
+                    last_failure_code = table.Column<string>(type: "varchar(100)", maxLength: 100, nullable: true)
+                        .Annotation("MySql:CharSet", "utf8mb4"),
+                    unknown_at_utc = table.Column<DateTime>(type: "datetime(6)", nullable: true),
+                    completed_at_utc = table.Column<DateTime>(type: "datetime(6)", nullable: true),
+                    dead_lettered_at_utc = table.Column<DateTime>(type: "datetime(6)", nullable: true),
+                    created_at_utc = table.Column<DateTime>(type: "datetime(6)", nullable: false),
+                    updated_at_utc = table.Column<DateTime>(type: "datetime(6)", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_islamu_event_privacy_erasure_provider_work", x => x.id);
+                    table.CheckConstraint("ck_privacy_erasure_provider_work_attempt_count", "attempt_count >= 0");
+                    table.CheckConstraint("ck_privacy_erasure_provider_work_lease_fence", "lease_fence >= 0");
+                    table.CheckConstraint("ck_privacy_erasure_provider_work_locator_expiry", "locator_expires_at_utc > created_at_utc");
+                    table.CheckConstraint("ck_privacy_erasure_provider_work_locator_kind", "locator_kind BETWEEN 1 AND 7");
+                    table.CheckConstraint("ck_privacy_erasure_provider_work_locator_lifecycle", "(status = 5 AND protected_locator IS NULL) OR status = 6 OR (status NOT IN (5, 6) AND protected_locator IS NOT NULL)");
+                    table.CheckConstraint("ck_privacy_erasure_provider_work_locator_version", "locator_protection_version >= 1");
+                    table.CheckConstraint("ck_privacy_erasure_provider_work_subject_kind", "subject_kind = 1");
+                    table.ForeignKey(
+                        name: "FK_islamu_event_privacy_erasure_provider_work_islamu_ev_0D9A3BB1",
+                        column: x => x.intent_id,
+                        principalTable: "islamu_event_privacy_erasure_sagas",
+                        principalColumn: "intent_id",
+                        onDelete: ReferentialAction.Restrict);
+                })
+                .Annotation("MySql:CharSet", "utf8mb4");
+
+            migrationBuilder.CreateTable(
                 name: "islamu_event_permissions",
                 columns: table => new
                 {
@@ -3371,7 +3351,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                     is_system = table.Column<bool>(type: "tinyint(1)", nullable: false, defaultValue: false),
                     is_filtered = table.Column<bool>(type: "tinyint(1)", nullable: false, defaultValue: false),
                     is_active = table.Column<bool>(type: "tinyint(1)", nullable: false, defaultValue: true),
-                    created_at = table.Column<DateTime>(type: "datetime(6)", nullable: false, defaultValueSql: "NOW()"),
+                    created_at = table.Column<DateTime>(type: "datetime(6)", nullable: false, defaultValueSql: "UTC_TIMESTAMP()"),
                     created_by = table.Column<Guid>(type: "char(36)", nullable: true, collation: "ascii_general_ci"),
                     updated_at = table.Column<DateTime>(type: "datetime(6)", nullable: true),
                     updated_by = table.Column<Guid>(type: "char(36)", nullable: true, collation: "ascii_general_ci")
@@ -3419,9 +3399,9 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                 name: "islamu_event_configuration_change_logs",
                 columns: table => new
                 {
-                    id = table.Column<Guid>(type: "char(36)", nullable: false, defaultValueSql: "uuidv7()", collation: "ascii_general_ci"),
+                    id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     user_id = table.Column<Guid>(type: "char(36)", nullable: true, collation: "ascii_general_ci"),
-                    timestamp = table.Column<DateTime>(type: "datetime(6)", nullable: false, defaultValueSql: "NOW()"),
+                    timestamp = table.Column<DateTime>(type: "datetime(6)", nullable: false, defaultValueSql: "UTC_TIMESTAMP()"),
                     setting_key = table.Column<string>(type: "varchar(256)", maxLength: 256, nullable: false)
                         .Annotation("MySql:CharSet", "utf8mb4"),
                     old_value = table.Column<string>(type: "text", nullable: true)
@@ -3432,7 +3412,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                     scope_id = table.Column<Guid>(type: "char(36)", nullable: true, collation: "ascii_general_ci"),
                     action_type = table.Column<string>(type: "varchar(50)", maxLength: 50, nullable: false)
                         .Annotation("MySql:CharSet", "utf8mb4"),
-                    created_at = table.Column<DateTime>(type: "datetime(6)", nullable: false, defaultValueSql: "NOW()"),
+                    created_at = table.Column<DateTime>(type: "datetime(6)", nullable: false, defaultValueSql: "UTC_TIMESTAMP()"),
                     created_by = table.Column<Guid>(type: "char(36)", nullable: true, collation: "ascii_general_ci"),
                     updated_at = table.Column<DateTime>(type: "datetime(6)", nullable: true),
                     updated_by = table.Column<Guid>(type: "char(36)", nullable: true, collation: "ascii_general_ci")
@@ -3475,7 +3455,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                         .Annotation("MySql:CharSet", "utf8mb4"),
                     last_validated_at = table.Column<DateTime>(type: "datetime(6)", nullable: true),
                     last_validated_by = table.Column<Guid>(type: "char(36)", nullable: true, collation: "ascii_general_ci"),
-                    created_at = table.Column<DateTime>(type: "datetime(6)", nullable: false, defaultValueSql: "NOW()"),
+                    created_at = table.Column<DateTime>(type: "datetime(6)", nullable: false, defaultValueSql: "UTC_TIMESTAMP()"),
                     created_by = table.Column<Guid>(type: "char(36)", nullable: true, collation: "ascii_general_ci"),
                     updated_at = table.Column<DateTime>(type: "datetime(6)", nullable: true),
                     updated_by = table.Column<Guid>(type: "char(36)", nullable: true, collation: "ascii_general_ci")
@@ -3510,21 +3490,21 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                 name: "islamu_event_system_settings",
                 columns: table => new
                 {
-                    id = table.Column<Guid>(type: "char(36)", nullable: false, defaultValueSql: "uuidv7()", collation: "ascii_general_ci"),
+                    id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     setting_key = table.Column<string>(type: "varchar(256)", maxLength: 256, nullable: false)
                         .Annotation("MySql:CharSet", "utf8mb4"),
                     value = table.Column<string>(type: "longtext", nullable: false)
                         .Annotation("MySql:CharSet", "utf8mb4"),
                     setting_value_type_id = table.Column<int>(type: "int", nullable: false),
                     is_locked = table.Column<bool>(type: "tinyint(1)", nullable: false, defaultValue: false),
-                    allowed_values = table.Column<string>(type: "jsonb", nullable: true)
+                    allowed_values = table.Column<string>(type: "longtext", nullable: true)
                         .Annotation("MySql:CharSet", "utf8mb4"),
                     description = table.Column<string>(type: "varchar(1000)", maxLength: 1000, nullable: true)
                         .Annotation("MySql:CharSet", "utf8mb4"),
                     category = table.Column<string>(type: "varchar(100)", maxLength: 100, nullable: true)
                         .Annotation("MySql:CharSet", "utf8mb4"),
                     display_order = table.Column<int>(type: "int", nullable: false, defaultValue: 0),
-                    created_at = table.Column<DateTime>(type: "datetime(6)", nullable: false, defaultValueSql: "NOW()"),
+                    created_at = table.Column<DateTime>(type: "datetime(6)", nullable: false, defaultValueSql: "UTC_TIMESTAMP()"),
                     created_by = table.Column<Guid>(type: "char(36)", nullable: true, collation: "ascii_general_ci"),
                     updated_at = table.Column<DateTime>(type: "datetime(6)", nullable: true),
                     updated_by = table.Column<Guid>(type: "char(36)", nullable: true, collation: "ascii_general_ci")
@@ -3611,7 +3591,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                 name: "islamu_event_user_appearance_preferences",
                 columns: table => new
                 {
-                    id = table.Column<Guid>(type: "char(36)", nullable: false, defaultValueSql: "uuidv7()", collation: "ascii_general_ci"),
+                    id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     user_id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     tenant_id = table.Column<Guid>(type: "char(36)", nullable: true, collation: "ascii_general_ci"),
                     active_profile_id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
@@ -3672,7 +3652,6 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("pk_islamu_event_actors", x => x.id);
-                    table.CheckConstraint("ck_actors_exactly_one_owner", "num_nonnulls(user_id, organization_id, group_id, external_actor_subject_id, service_principal_id) = 1 OR (is_deleted AND num_nonnulls(user_id, organization_id, group_id, external_actor_subject_id, service_principal_id) = 0)");
                     table.CheckConstraint("ck_actors_external_type_matches_owner", "(external_actor_subject_id IS NULL AND actor_type_id <> 6) OR (external_actor_subject_id IS NOT NULL AND actor_type_id = 6)");
                     table.ForeignKey(
                         name: "FK_islamu_event_actors_islamu_event_external_actor_subj_DD4E9FC8",
@@ -3738,65 +3717,13 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                 .Annotation("MySql:CharSet", "utf8mb4");
 
             migrationBuilder.CreateTable(
-                name: "islamu_event_privacy_erasure_provider_work",
-                columns: table => new
-                {
-                    id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
-                    intent_id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
-                    subject_kind = table.Column<short>(type: "smallint", nullable: false),
-                    subject_id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
-                    provider_kind = table.Column<short>(type: "smallint", nullable: false),
-                    action = table.Column<short>(type: "smallint", nullable: false),
-                    tenant_id = table.Column<Guid>(type: "char(36)", nullable: true, collation: "ascii_general_ci"),
-                    target_id = table.Column<Guid>(type: "char(36)", nullable: true, collation: "ascii_general_ci"),
-                    locator_kind = table.Column<short>(type: "smallint", nullable: false),
-                    protected_locator = table.Column<string>(type: "varchar(8192)", maxLength: 8192, nullable: true)
-                        .Annotation("MySql:CharSet", "utf8mb4"),
-                    locator_protection_version = table.Column<int>(type: "int", nullable: false),
-                    locator_expires_at_utc = table.Column<DateTime>(type: "datetime(6)", nullable: false),
-                    status = table.Column<short>(type: "smallint", nullable: false),
-                    attempt_count = table.Column<int>(type: "int", nullable: false),
-                    next_attempt_at_utc = table.Column<DateTime>(type: "datetime(6)", nullable: true),
-                    lease_owner = table.Column<string>(type: "varchar(100)", maxLength: 100, nullable: true)
-                        .Annotation("MySql:CharSet", "utf8mb4"),
-                    lease_token = table.Column<Guid>(type: "char(36)", nullable: true, collation: "ascii_general_ci"),
-                    lease_fence = table.Column<long>(type: "bigint", nullable: false),
-                    lease_expires_at_utc = table.Column<DateTime>(type: "datetime(6)", nullable: true),
-                    last_failure_code = table.Column<string>(type: "varchar(100)", maxLength: 100, nullable: true)
-                        .Annotation("MySql:CharSet", "utf8mb4"),
-                    unknown_at_utc = table.Column<DateTime>(type: "datetime(6)", nullable: true),
-                    completed_at_utc = table.Column<DateTime>(type: "datetime(6)", nullable: true),
-                    dead_lettered_at_utc = table.Column<DateTime>(type: "datetime(6)", nullable: true),
-                    created_at_utc = table.Column<DateTime>(type: "datetime(6)", nullable: false),
-                    updated_at_utc = table.Column<DateTime>(type: "datetime(6)", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("pk_islamu_event_privacy_erasure_provider_work", x => x.id);
-                    table.CheckConstraint("ck_privacy_erasure_provider_work_attempt_count", "attempt_count >= 0");
-                    table.CheckConstraint("ck_privacy_erasure_provider_work_lease_fence", "lease_fence >= 0");
-                    table.CheckConstraint("ck_privacy_erasure_provider_work_locator_expiry", "locator_expires_at_utc > created_at_utc");
-                    table.CheckConstraint("ck_privacy_erasure_provider_work_locator_kind", "locator_kind BETWEEN 1 AND 7");
-                    table.CheckConstraint("ck_privacy_erasure_provider_work_locator_lifecycle", "(status = 5 AND protected_locator IS NULL) OR status = 6 OR (status NOT IN (5, 6) AND protected_locator IS NOT NULL)");
-                    table.CheckConstraint("ck_privacy_erasure_provider_work_locator_version", "locator_protection_version >= 1");
-                    table.CheckConstraint("ck_privacy_erasure_provider_work_subject_kind", "subject_kind = 1");
-                    table.ForeignKey(
-                        name: "FK_islamu_event_privacy_erasure_provider_work_islamu_ev_0D9A3BB1",
-                        column: x => x.intent_id,
-                        principalTable: "islamu_event_privacy_erasure_sagas",
-                        principalColumn: "intent_id",
-                        onDelete: ReferentialAction.Restrict);
-                })
-                .Annotation("MySql:CharSet", "utf8mb4");
-
-            migrationBuilder.CreateTable(
                 name: "islamu_event_platform_user_roles",
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     user_id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     role_id = table.Column<int>(type: "int", nullable: false),
-                    granted_at = table.Column<DateTime>(type: "datetime(6)", nullable: false, defaultValueSql: "NOW()"),
+                    granted_at = table.Column<DateTime>(type: "datetime(6)", nullable: false, defaultValueSql: "UTC_TIMESTAMP()"),
                     granted_by = table.Column<Guid>(type: "char(36)", nullable: true, collation: "ascii_general_ci")
                 },
                 constraints: table =>
@@ -3823,7 +3750,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                 {
                     role_id = table.Column<int>(type: "int", nullable: false),
                     permission_id = table.Column<int>(type: "int", nullable: false),
-                    granted_at = table.Column<DateTime>(type: "datetime(6)", nullable: false, defaultValueSql: "NOW()"),
+                    granted_at = table.Column<DateTime>(type: "datetime(6)", nullable: false, defaultValueSql: "UTC_TIMESTAMP()"),
                     granted_by = table.Column<Guid>(type: "char(36)", nullable: true, collation: "ascii_general_ci")
                 },
                 constraints: table =>
@@ -3934,7 +3861,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                     tenant_plan_version_id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     setting_key = table.Column<string>(type: "varchar(200)", maxLength: 200, nullable: false)
                         .Annotation("MySql:CharSet", "utf8mb4"),
-                    json_value = table.Column<string>(type: "jsonb", nullable: false)
+                    json_value = table.Column<string>(type: "longtext", nullable: false)
                         .Annotation("MySql:CharSet", "utf8mb4"),
                     is_locked = table.Column<bool>(type: "tinyint(1)", nullable: false),
                     created_at = table.Column<DateTime>(type: "datetime(6)", nullable: false),
@@ -4032,21 +3959,21 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                 name: "islamu_event_audit_logs",
                 columns: table => new
                 {
-                    id = table.Column<Guid>(type: "char(36)", nullable: false, defaultValueSql: "uuidv7()", collation: "ascii_general_ci"),
+                    id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     entity_type = table.Column<string>(type: "varchar(200)", maxLength: 200, nullable: false)
                         .Annotation("MySql:CharSet", "utf8mb4"),
                     entity_id = table.Column<string>(type: "varchar(200)", maxLength: 200, nullable: false)
                         .Annotation("MySql:CharSet", "utf8mb4"),
                     action = table.Column<string>(type: "varchar(50)", maxLength: 50, nullable: false)
                         .Annotation("MySql:CharSet", "utf8mb4"),
-                    old_values = table.Column<string>(type: "jsonb", nullable: true)
+                    old_values = table.Column<string>(type: "longtext", nullable: true)
                         .Annotation("MySql:CharSet", "utf8mb4"),
-                    new_values = table.Column<string>(type: "jsonb", nullable: true)
+                    new_values = table.Column<string>(type: "longtext", nullable: true)
                         .Annotation("MySql:CharSet", "utf8mb4"),
-                    affected_columns = table.Column<string>(type: "jsonb", nullable: true)
+                    affected_columns = table.Column<string>(type: "longtext", nullable: true)
                         .Annotation("MySql:CharSet", "utf8mb4"),
                     actor_id = table.Column<Guid>(type: "char(36)", nullable: true, collation: "ascii_general_ci"),
-                    timestamp = table.Column<DateTime>(type: "datetime(6)", nullable: false, defaultValueSql: "NOW()"),
+                    timestamp = table.Column<DateTime>(type: "datetime(6)", nullable: false, defaultValueSql: "UTC_TIMESTAMP()"),
                     tenant_id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci")
                 },
                 constraints: table =>
@@ -4160,7 +4087,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                 name: "islamu_event_email_dispatch_tenant_controls",
                 columns: table => new
                 {
-                    id = table.Column<Guid>(type: "char(36)", nullable: false, defaultValueSql: "uuidv7()", collation: "ascii_general_ci"),
+                    id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     tenant_id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     is_paused = table.Column<bool>(type: "tinyint(1)", nullable: false),
                     pause_reason = table.Column<string>(type: "varchar(500)", maxLength: 500, nullable: true)
@@ -4293,10 +4220,10 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                     internal_id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     scope_tenant_id = table.Column<Guid>(type: "char(36)", nullable: true, collation: "ascii_general_ci"),
                     external_binding_status_id = table.Column<int>(type: "int", nullable: false, defaultValue: 1),
-                    metadata_json = table.Column<string>(type: "jsonb", nullable: true)
+                    metadata_json = table.Column<string>(type: "longtext", nullable: true)
                         .Annotation("MySql:CharSet", "utf8mb4"),
                     last_seen_at = table.Column<DateTime>(type: "datetime(6)", nullable: true),
-                    created_at = table.Column<DateTime>(type: "datetime(6)", nullable: false, defaultValueSql: "NOW()"),
+                    created_at = table.Column<DateTime>(type: "datetime(6)", nullable: false, defaultValueSql: "UTC_TIMESTAMP()"),
                     created_by = table.Column<Guid>(type: "char(36)", nullable: true, collation: "ascii_general_ci"),
                     updated_at = table.Column<DateTime>(type: "datetime(6)", nullable: true),
                     updated_by = table.Column<Guid>(type: "char(36)", nullable: true, collation: "ascii_general_ci")
@@ -4306,7 +4233,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                     table.PrimaryKey("pk_islamu_event_external_bindings", x => x.id);
                     table.CheckConstraint("ck_external_bindings_registered_pair_scope", "(external_type = 'customer-group' AND internal_type = 'Group' AND scope_tenant_id IS NOT NULL) OR (external_type = 'customer-group-actor' AND internal_type = 'Actor' AND scope_tenant_id IS NOT NULL) OR (external_type = 'customer-organization' AND internal_type = 'Organization' AND scope_tenant_id IS NOT NULL) OR (external_type = 'customer-organization-actor' AND internal_type = 'Actor' AND scope_tenant_id IS NOT NULL) OR (external_type = 'external-admin-tenant-user' AND internal_type = 'TenantUser' AND scope_tenant_id IS NOT NULL) OR (external_type = 'external-admin-tenant-user-profile' AND internal_type = 'TenantUserProfile' AND scope_tenant_id IS NOT NULL) OR (external_type = 'external-admin-user' AND internal_type = 'User' AND scope_tenant_id IS NOT NULL) OR (external_type = 'external-admin-user-actor' AND internal_type = 'Actor' AND scope_tenant_id IS NOT NULL) OR (external_type = 'external-admin-user-login' AND internal_type = 'UserExternalLogin' AND scope_tenant_id IS NOT NULL) OR (external_type = 'managed-tenant-provisioning-operation' AND internal_type = 'Tenant' AND scope_tenant_id IS NOT NULL) OR (external_type = 'provider-customer' AND internal_type = 'Tenant' AND scope_tenant_id IS NULL)");
                     table.CheckConstraint("ck_external_bindings_status", "external_binding_status_id IN (1, 2, 3)");
-                    table.CheckConstraint("ck_external_bindings_text_not_blank", "length(btrim(provider_key)) > 0 AND length(btrim(external_system)) > 0 AND length(btrim(external_type)) > 0 AND length(btrim(external_id)) > 0 AND length(btrim(internal_type)) > 0");
+                    table.CheckConstraint("ck_external_bindings_text_not_blank", "trim(provider_key) <> '' AND trim(external_system) <> '' AND trim(external_type) <> '' AND trim(external_id) <> '' AND trim(internal_type) <> ''");
                     table.ForeignKey(
                         name: "FK_islamu_event_external_bindings_islamu_event_tenants__52B69E7E",
                         column: x => x.scope_tenant_id,
@@ -4378,7 +4305,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                 name: "islamu_event_notification_channel_preferences",
                 columns: table => new
                 {
-                    id = table.Column<Guid>(type: "char(36)", nullable: false, defaultValueSql: "uuidv7()", collation: "ascii_general_ci"),
+                    id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     tenant_id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     scope_id = table.Column<int>(type: "int", nullable: false),
                     user_id = table.Column<Guid>(type: "char(36)", nullable: true, collation: "ascii_general_ci"),
@@ -4388,9 +4315,9 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                     channel_id = table.Column<int>(type: "int", nullable: false),
                     is_enabled = table.Column<bool>(type: "tinyint(1)", nullable: false),
                     is_locked = table.Column<bool>(type: "tinyint(1)", nullable: false),
-                    created_at = table.Column<DateTime>(type: "datetime(6)", nullable: false, defaultValueSql: "NOW()"),
+                    created_at = table.Column<DateTime>(type: "datetime(6)", nullable: false, defaultValueSql: "UTC_TIMESTAMP()"),
                     created_by = table.Column<Guid>(type: "char(36)", nullable: true, collation: "ascii_general_ci"),
-                    updated_at = table.Column<DateTime>(type: "datetime(6)", nullable: false, defaultValueSql: "NOW()"),
+                    updated_at = table.Column<DateTime>(type: "datetime(6)", nullable: false, defaultValueSql: "UTC_TIMESTAMP()"),
                     updated_by = table.Column<Guid>(type: "char(36)", nullable: true, collation: "ascii_general_ci"),
                     is_deleted = table.Column<bool>(type: "tinyint(1)", nullable: false),
                     deleted_at = table.Column<DateTime>(type: "datetime(6)", nullable: true),
@@ -4450,7 +4377,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                 name: "islamu_event_notification_preference_profiles",
                 columns: table => new
                 {
-                    id = table.Column<Guid>(type: "char(36)", nullable: false, defaultValueSql: "uuidv7()", collation: "ascii_general_ci"),
+                    id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     tenant_id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     scope_id = table.Column<int>(type: "int", nullable: false),
                     user_id = table.Column<Guid>(type: "char(36)", nullable: true, collation: "ascii_general_ci"),
@@ -4458,9 +4385,9 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                     group_id = table.Column<Guid>(type: "char(36)", nullable: true, collation: "ascii_general_ci"),
                     is_muted = table.Column<bool>(type: "tinyint(1)", nullable: false),
                     is_locked = table.Column<bool>(type: "tinyint(1)", nullable: false),
-                    created_at = table.Column<DateTime>(type: "datetime(6)", nullable: false, defaultValueSql: "NOW()"),
+                    created_at = table.Column<DateTime>(type: "datetime(6)", nullable: false, defaultValueSql: "UTC_TIMESTAMP()"),
                     created_by = table.Column<Guid>(type: "char(36)", nullable: true, collation: "ascii_general_ci"),
-                    updated_at = table.Column<DateTime>(type: "datetime(6)", nullable: false, defaultValueSql: "NOW()"),
+                    updated_at = table.Column<DateTime>(type: "datetime(6)", nullable: false, defaultValueSql: "UTC_TIMESTAMP()"),
                     updated_by = table.Column<Guid>(type: "char(36)", nullable: true, collation: "ascii_general_ci"),
                     is_deleted = table.Column<bool>(type: "tinyint(1)", nullable: false),
                     deleted_at = table.Column<DateTime>(type: "datetime(6)", nullable: true),
@@ -4525,7 +4452,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                 {
                     table.PrimaryKey("pk_islamu_event_registration_sensitive_answer_values", x => x.id);
                     table.UniqueConstraint("AK_islamu_event_registration_sensitive_answer_values_te_8C616EDD", x => new { x.tenant_id, x.id });
-                    table.CheckConstraint("ck_registration_sensitive_answer_values_shape", "key_version > 0 AND length(btrim(ciphertext)) > 0");
+                    table.CheckConstraint("ck_registration_sensitive_answer_values_shape", "key_version > 0 AND trim(ciphertext) <> ''");
                     table.ForeignKey(
                         name: "FK_islamu_event_registration_sensitive_answer_values_is_F24D1BBA",
                         column: x => x.tenant_id,
@@ -4539,7 +4466,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                 name: "islamu_event_storage_usage_counters",
                 columns: table => new
                 {
-                    id = table.Column<Guid>(type: "char(36)", nullable: false, defaultValueSql: "uuidv7()", collation: "ascii_general_ci"),
+                    id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     tenant_id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     provider = table.Column<string>(type: "varchar(50)", maxLength: 50, nullable: false)
                         .Annotation("MySql:CharSet", "utf8mb4"),
@@ -4599,13 +4526,13 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                 name: "islamu_event_tenant_capabilities",
                 columns: table => new
                 {
-                    id = table.Column<Guid>(type: "char(36)", nullable: false, defaultValueSql: "uuidv7()", collation: "ascii_general_ci"),
+                    id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     tenant_id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     module_id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     is_enabled = table.Column<bool>(type: "tinyint(1)", nullable: false),
                     enabled_at = table.Column<DateTime>(type: "datetime(6)", nullable: false),
                     enabled_by = table.Column<Guid>(type: "char(36)", nullable: true, collation: "ascii_general_ci"),
-                    configuration_json = table.Column<string>(type: "jsonb", nullable: true)
+                    configuration_json = table.Column<string>(type: "longtext", nullable: true)
                         .Annotation("MySql:CharSet", "utf8mb4"),
                     created_at = table.Column<DateTime>(type: "datetime(6)", nullable: false),
                     created_by = table.Column<Guid>(type: "char(36)", nullable: true, collation: "ascii_general_ci"),
@@ -4675,7 +4602,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                     invited_by_user_id = table.Column<Guid>(type: "char(36)", nullable: true, collation: "ascii_general_ci"),
                     allowed_domain = table.Column<string>(type: "varchar(255)", maxLength: 255, nullable: true)
                         .Annotation("MySql:CharSet", "utf8mb4"),
-                    created_at = table.Column<DateTime>(type: "datetime(6)", nullable: false, defaultValueSql: "NOW()"),
+                    created_at = table.Column<DateTime>(type: "datetime(6)", nullable: false, defaultValueSql: "UTC_TIMESTAMP()"),
                     created_by = table.Column<Guid>(type: "char(36)", nullable: true, collation: "ascii_general_ci"),
                     updated_at = table.Column<DateTime>(type: "datetime(6)", nullable: true),
                     updated_by = table.Column<Guid>(type: "char(36)", nullable: true, collation: "ascii_general_ci")
@@ -4709,8 +4636,8 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                     transitioned_by_user_id = table.Column<Guid>(type: "char(36)", nullable: true, collation: "ascii_general_ci"),
                     reason = table.Column<string>(type: "varchar(1000)", maxLength: 1000, nullable: true)
                         .Annotation("MySql:CharSet", "utf8mb4"),
-                    transitioned_at = table.Column<DateTime>(type: "datetime(6)", nullable: false, defaultValueSql: "NOW()"),
-                    created_at = table.Column<DateTime>(type: "datetime(6)", nullable: false, defaultValueSql: "NOW()"),
+                    transitioned_at = table.Column<DateTime>(type: "datetime(6)", nullable: false, defaultValueSql: "UTC_TIMESTAMP()"),
+                    created_at = table.Column<DateTime>(type: "datetime(6)", nullable: false, defaultValueSql: "UTC_TIMESTAMP()"),
                     created_by = table.Column<Guid>(type: "char(36)", nullable: true, collation: "ascii_general_ci"),
                     updated_at = table.Column<DateTime>(type: "datetime(6)", nullable: true),
                     updated_by = table.Column<Guid>(type: "char(36)", nullable: true, collation: "ascii_general_ci")
@@ -4783,9 +4710,9 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                     is_completed = table.Column<bool>(type: "tinyint(1)", nullable: false, defaultValue: false),
                     current_step = table.Column<int>(type: "int", nullable: false, defaultValue: 0),
                     total_steps = table.Column<int>(type: "int", nullable: false, defaultValue: 0),
-                    completed_steps_json = table.Column<string>(type: "jsonb", nullable: true)
+                    completed_steps_json = table.Column<string>(type: "longtext", nullable: true)
                         .Annotation("MySql:CharSet", "utf8mb4"),
-                    created_at = table.Column<DateTime>(type: "datetime(6)", nullable: false, defaultValueSql: "NOW()"),
+                    created_at = table.Column<DateTime>(type: "datetime(6)", nullable: false, defaultValueSql: "UTC_TIMESTAMP()"),
                     completed_at = table.Column<DateTime>(type: "datetime(6)", nullable: true),
                     completed_by_user_id = table.Column<Guid>(type: "char(36)", nullable: true, collation: "ascii_general_ci")
                 },
@@ -4859,7 +4786,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                     value = table.Column<string>(type: "longtext", nullable: false)
                         .Annotation("MySql:CharSet", "utf8mb4"),
                     is_locked = table.Column<bool>(type: "tinyint(1)", nullable: false, defaultValue: false),
-                    created_at = table.Column<DateTime>(type: "datetime(6)", nullable: false, defaultValueSql: "NOW()"),
+                    created_at = table.Column<DateTime>(type: "datetime(6)", nullable: false, defaultValueSql: "UTC_TIMESTAMP()"),
                     created_by = table.Column<Guid>(type: "char(36)", nullable: true, collation: "ascii_general_ci"),
                     updated_at = table.Column<DateTime>(type: "datetime(6)", nullable: true),
                     updated_by = table.Column<Guid>(type: "char(36)", nullable: true, collation: "ascii_general_ci")
@@ -4887,10 +4814,10 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                     schema_version = table.Column<int>(type: "int", nullable: false),
                     defaults_version = table.Column<string>(type: "varchar(64)", maxLength: 64, nullable: false)
                         .Annotation("MySql:CharSet", "utf8mb4"),
-                    payload_json = table.Column<string>(type: "jsonb", nullable: false)
+                    payload_json = table.Column<string>(type: "longtext", nullable: false)
                         .Annotation("MySql:CharSet", "utf8mb4"),
                     concurrency_stamp = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
-                    created_at = table.Column<DateTime>(type: "datetime(6)", nullable: false, defaultValueSql: "NOW()"),
+                    created_at = table.Column<DateTime>(type: "datetime(6)", nullable: false, defaultValueSql: "UTC_TIMESTAMP()"),
                     created_by = table.Column<Guid>(type: "char(36)", nullable: true, collation: "ascii_general_ci"),
                     updated_at = table.Column<DateTime>(type: "datetime(6)", nullable: true),
                     updated_by = table.Column<Guid>(type: "char(36)", nullable: true, collation: "ascii_general_ci")
@@ -4899,7 +4826,6 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                 {
                     table.PrimaryKey("pk_islamu_event_tenant_settings_documents", x => x.id);
                     table.CheckConstraint("ck_tenant_settings_documents_document_key_not_blank", "length(trim(document_key)) > 0");
-                    table.CheckConstraint("ck_tenant_settings_documents_payload_object", "jsonb_typeof(payload_json) = 'object'");
                     table.CheckConstraint("ck_tenant_settings_documents_schema_version_positive", "schema_version > 0");
                     table.ForeignKey(
                         name: "FK_islamu_event_tenant_settings_documents_islamu_event__860C80BF",
@@ -4914,7 +4840,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                 name: "islamu_event_ui_theme_presets",
                 columns: table => new
                 {
-                    id = table.Column<Guid>(type: "char(36)", nullable: false, defaultValueSql: "uuidv7()", collation: "ascii_general_ci"),
+                    id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     tenant_id = table.Column<Guid>(type: "char(36)", nullable: true, collation: "ascii_general_ci"),
                     theme_key = table.Column<string>(type: "varchar(128)", maxLength: 128, nullable: false)
                         .Annotation("MySql:CharSet", "utf8mb4"),
@@ -5006,7 +4932,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                     deleted_by = table.Column<Guid>(type: "char(36)", nullable: true, collation: "ascii_general_ci"),
                     is_deleted = table.Column<bool>(type: "tinyint(1)", nullable: false, defaultValue: false),
                     deprecated_at = table.Column<DateTimeOffset>(type: "datetime(6)", nullable: true),
-                    created_at = table.Column<DateTime>(type: "datetime(6)", nullable: false, defaultValueSql: "NOW()"),
+                    created_at = table.Column<DateTime>(type: "datetime(6)", nullable: false, defaultValueSql: "UTC_TIMESTAMP()"),
                     created_by = table.Column<Guid>(type: "char(36)", nullable: true, collation: "ascii_general_ci"),
                     updated_at = table.Column<DateTime>(type: "datetime(6)", nullable: true),
                     updated_by = table.Column<Guid>(type: "char(36)", nullable: true, collation: "ascii_general_ci")
@@ -5027,7 +4953,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                 name: "islamu_event_ui_themes",
                 columns: table => new
                 {
-                    id = table.Column<Guid>(type: "char(36)", nullable: false, defaultValueSql: "uuidv7()", collation: "ascii_general_ci"),
+                    id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     tenant_id = table.Column<Guid>(type: "char(36)", nullable: true, collation: "ascii_general_ci"),
                     theme_key = table.Column<string>(type: "varchar(128)", maxLength: 128, nullable: false)
                         .Annotation("MySql:CharSet", "utf8mb4"),
@@ -5114,7 +5040,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                         .Annotation("MySql:CharSet", "utf8mb4"),
                     dark_divider = table.Column<string>(type: "varchar(32)", maxLength: 32, nullable: false)
                         .Annotation("MySql:CharSet", "utf8mb4"),
-                    created_at = table.Column<DateTime>(type: "datetime(6)", nullable: false, defaultValueSql: "NOW()"),
+                    created_at = table.Column<DateTime>(type: "datetime(6)", nullable: false, defaultValueSql: "UTC_TIMESTAMP()"),
                     created_by = table.Column<Guid>(type: "char(36)", nullable: true, collation: "ascii_general_ci"),
                     updated_at = table.Column<DateTime>(type: "datetime(6)", nullable: true),
                     updated_by = table.Column<Guid>(type: "char(36)", nullable: true, collation: "ascii_general_ci"),
@@ -5143,7 +5069,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                         .Annotation("MySql:CharSet", "utf8mb4"),
                     subject_did = table.Column<string>(type: "varchar(2048)", maxLength: 2048, nullable: false)
                         .Annotation("MySql:CharSet", "utf8mb4"),
-                    session_ciphertext = table.Column<byte[]>(type: "bytea", nullable: false),
+                    session_ciphertext = table.Column<byte[]>(type: "longblob", nullable: false),
                     encryption_key_id = table.Column<string>(type: "varchar(128)", maxLength: 128, nullable: false)
                         .Annotation("MySql:CharSet", "utf8mb4"),
                     o_auth_client_key_id = table.Column<string>(type: "varchar(128)", maxLength: 128, nullable: false)
@@ -5161,9 +5087,8 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("pk_islamu_event_user_authentication_tokens", x => x.id);
-                    table.CheckConstraint("ck_user_authentication_tokens_ciphertext_not_empty", "octet_length(session_ciphertext) >= 29");
                     table.CheckConstraint("ck_user_authentication_tokens_envelope_version", "envelope_version = 1");
-                    table.CheckConstraint("ck_user_authentication_tokens_required_text", "length(btrim(provider)) > 0 AND length(btrim(subject_did)) > 0 AND length(btrim(encryption_key_id)) > 0 AND length(btrim(o_auth_client_key_id)) > 0");
+                    table.CheckConstraint("ck_user_authentication_tokens_required_text", "trim(provider) <> '' AND trim(subject_did) <> '' AND trim(encryption_key_id) <> '' AND trim(o_auth_client_key_id) <> ''");
                     table.ForeignKey(
                         name: "FK_islamu_event_user_authentication_tokens_islamu_event_0EC68D72",
                         column: x => x.user_id,
@@ -5225,9 +5150,9 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                     category = table.Column<string>(type: "varchar(128)", maxLength: 128, nullable: false)
                         .Annotation("MySql:CharSet", "utf8mb4"),
                     is_enabled = table.Column<bool>(type: "tinyint(1)", nullable: false, defaultValue: true),
-                    created_at = table.Column<DateTime>(type: "datetime(6)", nullable: false, defaultValueSql: "NOW()"),
+                    created_at = table.Column<DateTime>(type: "datetime(6)", nullable: false, defaultValueSql: "UTC_TIMESTAMP()"),
                     created_by = table.Column<Guid>(type: "char(36)", nullable: true, collation: "ascii_general_ci"),
-                    updated_at = table.Column<DateTime>(type: "datetime(6)", nullable: true, defaultValueSql: "NOW()"),
+                    updated_at = table.Column<DateTime>(type: "datetime(6)", nullable: true, defaultValueSql: "UTC_TIMESTAMP()"),
                     updated_by = table.Column<Guid>(type: "char(36)", nullable: true, collation: "ascii_general_ci")
                 },
                 constraints: table =>
@@ -5259,7 +5184,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                         .Annotation("MySql:CharSet", "utf8mb4"),
                     value = table.Column<string>(type: "longtext", nullable: false)
                         .Annotation("MySql:CharSet", "utf8mb4"),
-                    created_at = table.Column<DateTime>(type: "datetime(6)", nullable: false, defaultValueSql: "NOW()"),
+                    created_at = table.Column<DateTime>(type: "datetime(6)", nullable: false, defaultValueSql: "UTC_TIMESTAMP()"),
                     created_by = table.Column<Guid>(type: "char(36)", nullable: true, collation: "ascii_general_ci"),
                     updated_at = table.Column<DateTime>(type: "datetime(6)", nullable: true),
                     updated_by = table.Column<Guid>(type: "char(36)", nullable: true, collation: "ascii_general_ci")
@@ -5280,7 +5205,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                 name: "islamu_event_web_push_subscriptions",
                 columns: table => new
                 {
-                    id = table.Column<Guid>(type: "char(36)", nullable: false, defaultValueSql: "uuidv7()", collation: "ascii_general_ci"),
+                    id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     tenant_id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     user_id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     device_identifier = table.Column<string>(type: "varchar(200)", maxLength: 200, nullable: false)
@@ -5298,9 +5223,9 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                     deactivated_at = table.Column<DateTime>(type: "datetime(6)", nullable: true),
                     deactivation_reason = table.Column<string>(type: "varchar(100)", maxLength: 100, nullable: true)
                         .Annotation("MySql:CharSet", "utf8mb4"),
-                    created_at = table.Column<DateTime>(type: "datetime(6)", nullable: false, defaultValueSql: "NOW()"),
+                    created_at = table.Column<DateTime>(type: "datetime(6)", nullable: false, defaultValueSql: "UTC_TIMESTAMP()"),
                     created_by = table.Column<Guid>(type: "char(36)", nullable: true, collation: "ascii_general_ci"),
-                    updated_at = table.Column<DateTime>(type: "datetime(6)", nullable: true, defaultValueSql: "NOW()"),
+                    updated_at = table.Column<DateTime>(type: "datetime(6)", nullable: true, defaultValueSql: "UTC_TIMESTAMP()"),
                     updated_by = table.Column<Guid>(type: "char(36)", nullable: true, collation: "ascii_general_ci"),
                     is_deleted = table.Column<bool>(type: "tinyint(1)", nullable: false),
                     deleted_at = table.Column<DateTime>(type: "datetime(6)", nullable: true),
@@ -5329,7 +5254,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                 name: "islamu_event_webhook_audit_events",
                 columns: table => new
                 {
-                    id = table.Column<Guid>(type: "char(36)", nullable: false, defaultValueSql: "uuidv7()", collation: "ascii_general_ci"),
+                    id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     tenant_id = table.Column<Guid>(type: "char(36)", nullable: true, collation: "ascii_general_ci"),
                     principal_kind_id = table.Column<int>(type: "int", nullable: false),
                     principal_reference = table.Column<string>(type: "varchar(300)", maxLength: 300, nullable: false)
@@ -5339,9 +5264,9 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                     action_id = table.Column<int>(type: "int", nullable: false),
                     target_kind_id = table.Column<int>(type: "int", nullable: false),
                     target_id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
-                    safe_before_json = table.Column<string>(type: "jsonb", nullable: true)
+                    safe_before_json = table.Column<string>(type: "longtext", nullable: true)
                         .Annotation("MySql:CharSet", "utf8mb4"),
-                    safe_after_json = table.Column<string>(type: "jsonb", nullable: true)
+                    safe_after_json = table.Column<string>(type: "longtext", nullable: true)
                         .Annotation("MySql:CharSet", "utf8mb4"),
                     configuration_version = table.Column<string>(type: "varchar(200)", maxLength: 200, nullable: true)
                         .Annotation("MySql:CharSet", "utf8mb4"),
@@ -5350,17 +5275,15 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                     reason_code = table.Column<string>(type: "varchar(200)", maxLength: 200, nullable: false)
                         .Annotation("MySql:CharSet", "utf8mb4"),
                     outcome_id = table.Column<int>(type: "int", nullable: false),
-                    occurred_at = table.Column<DateTime>(type: "datetime(6)", nullable: false, defaultValueSql: "statement_timestamp()"),
+                    occurred_at = table.Column<DateTime>(type: "datetime(6)", nullable: false, defaultValueSql: "UTC_TIMESTAMP()"),
                     retention_policy_version = table.Column<string>(type: "varchar(200)", maxLength: 200, nullable: false, defaultValue: "legacy-retention-v1")
                         .Annotation("MySql:CharSet", "utf8mb4"),
-                    retention_until = table.Column<DateTime>(type: "datetime(6)", nullable: false, defaultValueSql: "statement_timestamp() + INTERVAL '365 days'")
+                    retention_until = table.Column<DateTime>(type: "datetime(6)", nullable: false, defaultValueSql: "TIMESTAMPADD(DAY, 365, UTC_TIMESTAMP())")
                 },
                 constraints: table =>
                 {
                     table.PrimaryKey("pk_islamu_event_webhook_audit_events", x => x.id);
                     table.CheckConstraint("ck_webhook_audit_events_effective_scope", "(effective_scope_kind_id = 2 AND tenant_id IS NULL AND effective_scope_id IS NOT NULL) OR (effective_scope_kind_id IN (1, 3, 4, 5) AND tenant_id IS NOT NULL AND effective_scope_id IS NOT NULL)");
-                    table.CheckConstraint("ck_webhook_audit_events_safe_after_object", "safe_after_json IS NULL OR jsonb_typeof(safe_after_json) = 'object'");
-                    table.CheckConstraint("ck_webhook_audit_events_safe_before_object", "safe_before_json IS NULL OR jsonb_typeof(safe_before_json) = 'object'");
                     table.CheckConstraint("ck_webhook_audit_events_tenant_scope", "effective_scope_kind_id <> 1 OR effective_scope_id = tenant_id");
                     table.ForeignKey(
                         name: "FK_islamu_event_webhook_audit_events_islamu_event_tenan_19E07A7D",
@@ -5405,7 +5328,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                 name: "islamu_event_webhook_retention_holds",
                 columns: table => new
                 {
-                    id = table.Column<Guid>(type: "char(36)", nullable: false, defaultValueSql: "uuidv7()", collation: "ascii_general_ci"),
+                    id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     tenant_id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     subject_kind_id = table.Column<int>(type: "int", nullable: false),
                     subject_id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
@@ -5444,7 +5367,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                 name: "islamu_event_actor_key_stores",
                 columns: table => new
                 {
-                    id = table.Column<Guid>(type: "char(36)", nullable: false, defaultValueSql: "uuidv7()", collation: "ascii_general_ci"),
+                    id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     actor_id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     tenant_id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     key_purpose = table.Column<string>(type: "varchar(50)", maxLength: 50, nullable: false)
@@ -5556,7 +5479,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                 name: "islamu_event_ai_conversations",
                 columns: table => new
                 {
-                    id = table.Column<Guid>(type: "char(36)", nullable: false, defaultValueSql: "uuidv7()", collation: "ascii_general_ci"),
+                    id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     tenant_id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     user_id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     actor_id = table.Column<Guid>(type: "char(36)", nullable: true, collation: "ascii_general_ci"),
@@ -5615,7 +5538,8 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
-                    did = table.Column<string>(type: "varchar(2048)", maxLength: 2048, nullable: false, collation: "C"),
+                    did = table.Column<string>(type: "varchar(2048)", maxLength: 2048, nullable: false)
+                        .Annotation("MySql:CharSet", "utf8mb4"),
                     actor_id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     did_custody_type_id = table.Column<int>(type: "int", nullable: true),
                     handle = table.Column<string>(type: "varchar(253)", maxLength: 253, nullable: true)
@@ -5663,7 +5587,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                 name: "islamu_event_storage_objects",
                 columns: table => new
                 {
-                    id = table.Column<Guid>(type: "char(36)", nullable: false, defaultValueSql: "uuidv7()", collation: "ascii_general_ci"),
+                    id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     file_type_id = table.Column<int>(type: "int", nullable: false),
                     uri = table.Column<string>(type: "varchar(1000)", maxLength: 1000, nullable: false)
                         .Annotation("MySql:CharSet", "utf8mb4"),
@@ -5740,7 +5664,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                 name: "islamu_event_tenant_users",
                 columns: table => new
                 {
-                    id = table.Column<Guid>(type: "char(36)", nullable: false, defaultValueSql: "uuidv7()", collation: "ascii_general_ci"),
+                    id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     tenant_id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     user_id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     actor_id = table.Column<Guid>(type: "char(36)", nullable: true, collation: "ascii_general_ci"),
@@ -5753,7 +5677,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                     removed_by = table.Column<Guid>(type: "char(36)", nullable: true, collation: "ascii_general_ci"),
                     moderation_note = table.Column<string>(type: "varchar(2000)", maxLength: 2000, nullable: true)
                         .Annotation("MySql:CharSet", "utf8mb4"),
-                    created_at = table.Column<DateTime>(type: "datetime(6)", nullable: false, defaultValueSql: "NOW()"),
+                    created_at = table.Column<DateTime>(type: "datetime(6)", nullable: false, defaultValueSql: "UTC_TIMESTAMP()"),
                     created_by = table.Column<Guid>(type: "char(36)", nullable: true, collation: "ascii_general_ci"),
                     updated_at = table.Column<DateTime>(type: "datetime(6)", nullable: true),
                     updated_by = table.Column<Guid>(type: "char(36)", nullable: true, collation: "ascii_general_ci"),
@@ -6045,9 +5969,9 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                     applied_by_user_id = table.Column<Guid>(type: "char(36)", nullable: true, collation: "ascii_general_ci"),
                     applied_at = table.Column<DateTime>(type: "datetime(6)", nullable: false),
                     previous_tenant_plan_version_id = table.Column<Guid>(type: "char(36)", nullable: true, collation: "ascii_general_ci"),
-                    changed_setting_keys_json = table.Column<string>(type: "jsonb", nullable: false)
+                    changed_setting_keys_json = table.Column<string>(type: "longtext", nullable: false)
                         .Annotation("MySql:CharSet", "utf8mb4"),
-                    changed_quota_keys_json = table.Column<string>(type: "jsonb", nullable: false)
+                    changed_quota_keys_json = table.Column<string>(type: "longtext", nullable: false)
                         .Annotation("MySql:CharSet", "utf8mb4"),
                     failure_reason = table.Column<string>(type: "varchar(1000)", maxLength: 1000, nullable: true)
                         .Annotation("MySql:CharSet", "utf8mb4"),
@@ -6102,13 +6026,13 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                 name: "islamu_event_web_push_dispatch_outbox",
                 columns: table => new
                 {
-                    id = table.Column<Guid>(type: "char(36)", nullable: false, defaultValueSql: "uuidv7()", collation: "ascii_general_ci"),
+                    id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     tenant_id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     notification_id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     category_id = table.Column<int>(type: "int", nullable: false),
                     subscription_id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     user_id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
-                    payload_json = table.Column<string>(type: "jsonb", nullable: false)
+                    payload_json = table.Column<string>(type: "longtext", nullable: false)
                         .Annotation("MySql:CharSet", "utf8mb4"),
                     status = table.Column<int>(type: "int", nullable: false),
                     attempt_count = table.Column<int>(type: "int", nullable: false),
@@ -6125,9 +6049,9 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                     last_error = table.Column<string>(type: "varchar(2000)", maxLength: 2000, nullable: true)
                         .Annotation("MySql:CharSet", "utf8mb4"),
                     last_failure_at = table.Column<DateTime>(type: "datetime(6)", nullable: true),
-                    created_at = table.Column<DateTime>(type: "datetime(6)", nullable: false, defaultValueSql: "NOW()"),
+                    created_at = table.Column<DateTime>(type: "datetime(6)", nullable: false, defaultValueSql: "UTC_TIMESTAMP()"),
                     created_by = table.Column<Guid>(type: "char(36)", nullable: true, collation: "ascii_general_ci"),
-                    updated_at = table.Column<DateTime>(type: "datetime(6)", nullable: true, defaultValueSql: "NOW()"),
+                    updated_at = table.Column<DateTime>(type: "datetime(6)", nullable: true, defaultValueSql: "UTC_TIMESTAMP()"),
                     updated_by = table.Column<Guid>(type: "char(36)", nullable: true, collation: "ascii_general_ci"),
                     is_deleted = table.Column<bool>(type: "tinyint(1)", nullable: false),
                     deleted_at = table.Column<DateTime>(type: "datetime(6)", nullable: true),
@@ -6167,7 +6091,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                 name: "islamu_event_ai_conversation_references",
                 columns: table => new
                 {
-                    id = table.Column<Guid>(type: "char(36)", nullable: false, defaultValueSql: "uuidv7()", collation: "ascii_general_ci"),
+                    id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     tenant_id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     conversation_id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     kind_id = table.Column<int>(type: "int", nullable: false),
@@ -6201,14 +6125,14 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                 name: "islamu_event_ai_messages",
                 columns: table => new
                 {
-                    id = table.Column<Guid>(type: "char(36)", nullable: false, defaultValueSql: "uuidv7()", collation: "ascii_general_ci"),
+                    id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     tenant_id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     conversation_id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     sequence = table.Column<long>(type: "bigint", nullable: false),
                     role_id = table.Column<int>(type: "int", nullable: false),
                     content = table.Column<string>(type: "varchar(16000)", maxLength: 16000, nullable: false)
                         .Annotation("MySql:CharSet", "utf8mb4"),
-                    image_attachments_json = table.Column<string>(type: "jsonb", nullable: true)
+                    image_attachments_json = table.Column<string>(type: "longtext", nullable: true)
                         .Annotation("MySql:CharSet", "utf8mb4"),
                     created_at = table.Column<DateTime>(type: "datetime(6)", nullable: false),
                     created_by = table.Column<Guid>(type: "char(36)", nullable: true, collation: "ascii_general_ci")
@@ -6236,7 +6160,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                 name: "islamu_event_ai_runs",
                 columns: table => new
                 {
-                    id = table.Column<Guid>(type: "char(36)", nullable: false, defaultValueSql: "uuidv7()", collation: "ascii_general_ci"),
+                    id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     tenant_id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     conversation_id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     status_id = table.Column<int>(type: "int", nullable: false, defaultValue: 1),
@@ -6444,7 +6368,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                 name: "islamu_event_storage_upload_sessions",
                 columns: table => new
                 {
-                    id = table.Column<Guid>(type: "char(36)", nullable: false, defaultValueSql: "uuidv7()", collation: "ascii_general_ci"),
+                    id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     tenant_id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     user_id = table.Column<Guid>(type: "char(36)", nullable: true, collation: "ascii_general_ci"),
                     provider = table.Column<string>(type: "varchar(50)", maxLength: 50, nullable: false)
@@ -6531,7 +6455,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                 name: "islamu_event_actor_subscriptions",
                 columns: table => new
                 {
-                    id = table.Column<Guid>(type: "char(36)", nullable: false, defaultValueSql: "uuidv7()", collation: "ascii_general_ci"),
+                    id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     tenant_id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     subscriber_tenant_user_id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     subscriber_user_id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
@@ -6539,9 +6463,9 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                     target_actor_type_id = table.Column<int>(type: "int", nullable: false),
                     status_id = table.Column<int>(type: "int", nullable: false, defaultValue: 1),
                     notification_level_id = table.Column<int>(type: "int", nullable: false, defaultValue: 2),
-                    subscribed_at = table.Column<DateTime>(type: "datetime(6)", nullable: false, defaultValueSql: "NOW()"),
+                    subscribed_at = table.Column<DateTime>(type: "datetime(6)", nullable: false, defaultValueSql: "UTC_TIMESTAMP()"),
                     unsubscribed_at = table.Column<DateTime>(type: "datetime(6)", nullable: true),
-                    created_at = table.Column<DateTime>(type: "datetime(6)", nullable: false, defaultValueSql: "NOW()"),
+                    created_at = table.Column<DateTime>(type: "datetime(6)", nullable: false, defaultValueSql: "UTC_TIMESTAMP()"),
                     created_by = table.Column<Guid>(type: "char(36)", nullable: true, collation: "ascii_general_ci"),
                     updated_at = table.Column<DateTime>(type: "datetime(6)", nullable: true),
                     updated_by = table.Column<Guid>(type: "char(36)", nullable: true, collation: "ascii_general_ci"),
@@ -6650,7 +6574,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                 name: "islamu_event_pds_sync_outbox",
                 columns: table => new
                 {
-                    id = table.Column<Guid>(type: "char(36)", nullable: false, defaultValueSql: "uuidv7()", collation: "ascii_general_ci"),
+                    id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     tenant_id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     user_id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     did = table.Column<string>(type: "varchar(255)", maxLength: 255, nullable: false)
@@ -6660,7 +6584,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                     record_key = table.Column<string>(type: "varchar(255)", maxLength: 255, nullable: false)
                         .Annotation("MySql:CharSet", "utf8mb4"),
                     operation = table.Column<int>(type: "int", nullable: false),
-                    payload = table.Column<string>(type: "jsonb", nullable: true)
+                    payload = table.Column<string>(type: "longtext", nullable: true)
                         .Annotation("MySql:CharSet", "utf8mb4"),
                     payload_hash = table.Column<string>(type: "varchar(64)", maxLength: 64, nullable: false)
                         .Annotation("MySql:CharSet", "utf8mb4"),
@@ -6704,9 +6628,8 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                     table.PrimaryKey("pk_islamu_event_pds_sync_outbox", x => x.id);
                     table.CheckConstraint("ck_pds_sync_outbox_completion_shape", "status <> 3 OR (processed_at IS NOT NULL AND settled_uri IS NOT NULL AND settled_cid IS NOT NULL)");
                     table.CheckConstraint("ck_pds_sync_outbox_lease_fence", "lease_fence >= 0");
-                    table.CheckConstraint("ck_pds_sync_outbox_lease_shape", "(status = 2 AND lease_owner IS NOT NULL AND btrim(lease_owner) <> '' AND lease_token IS NOT NULL AND lease_expires_at IS NOT NULL) OR (status <> 2 AND lease_owner IS NULL AND lease_token IS NULL AND lease_expires_at IS NULL)");
+                    table.CheckConstraint("ck_pds_sync_outbox_lease_shape", "(status = 2 AND lease_owner IS NOT NULL AND trim(lease_owner) <> '' AND lease_token IS NOT NULL AND lease_expires_at IS NOT NULL) OR (status <> 2 AND lease_owner IS NULL AND lease_token IS NULL AND lease_expires_at IS NULL)");
                     table.CheckConstraint("ck_pds_sync_outbox_operation", "operation BETWEEN 1 AND 3");
-                    table.CheckConstraint("ck_pds_sync_outbox_payload_hash", "payload_hash ~ '^[0-9a-f]{64}$'");
                     table.CheckConstraint("ck_pds_sync_outbox_payload_shape", "(operation = 3 AND payload IS NULL) OR (operation IN (1, 2) AND payload IS NOT NULL)");
                     table.CheckConstraint("ck_pds_sync_outbox_retry_count", "retry_count >= 0 AND max_retries > 0");
                     table.CheckConstraint("ck_pds_sync_outbox_status", "status BETWEEN 1 AND 6");
@@ -6834,7 +6757,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                 name: "islamu_event_tenant_user_profiles",
                 columns: table => new
                 {
-                    id = table.Column<Guid>(type: "char(36)", nullable: false, defaultValueSql: "uuidv7()", collation: "ascii_general_ci"),
+                    id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     tenant_id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     tenant_user_id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     display_name_override = table.Column<string>(type: "varchar(256)", maxLength: 256, nullable: true)
@@ -6845,13 +6768,13 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                         .Annotation("MySql:CharSet", "utf8mb4"),
                     time_zone = table.Column<string>(type: "varchar(128)", maxLength: 128, nullable: true)
                         .Annotation("MySql:CharSet", "utf8mb4"),
-                    preferences_json = table.Column<string>(type: "jsonb", nullable: true)
+                    preferences_json = table.Column<string>(type: "longtext", nullable: true)
                         .Annotation("MySql:CharSet", "utf8mb4"),
-                    consent_json = table.Column<string>(type: "jsonb", nullable: true)
+                    consent_json = table.Column<string>(type: "longtext", nullable: true)
                         .Annotation("MySql:CharSet", "utf8mb4"),
                     admin_note = table.Column<string>(type: "varchar(2000)", maxLength: 2000, nullable: true)
                         .Annotation("MySql:CharSet", "utf8mb4"),
-                    created_at = table.Column<DateTime>(type: "datetime(6)", nullable: false, defaultValueSql: "NOW()"),
+                    created_at = table.Column<DateTime>(type: "datetime(6)", nullable: false, defaultValueSql: "UTC_TIMESTAMP()"),
                     created_by = table.Column<Guid>(type: "char(36)", nullable: true, collation: "ascii_general_ci"),
                     updated_at = table.Column<DateTime>(type: "datetime(6)", nullable: true),
                     updated_by = table.Column<Guid>(type: "char(36)", nullable: true, collation: "ascii_general_ci")
@@ -6878,18 +6801,18 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                 name: "islamu_event_tenant_user_role_grants",
                 columns: table => new
                 {
-                    id = table.Column<Guid>(type: "char(36)", nullable: false, defaultValueSql: "uuidv7()", collation: "ascii_general_ci"),
+                    id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     tenant_id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     tenant_user_id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     role_id = table.Column<int>(type: "int", nullable: false),
                     role_scope_id = table.Column<int>(type: "int", nullable: false, defaultValue: 1),
-                    granted_at = table.Column<DateTime>(type: "datetime(6)", nullable: false, defaultValueSql: "NOW()"),
+                    granted_at = table.Column<DateTime>(type: "datetime(6)", nullable: false, defaultValueSql: "UTC_TIMESTAMP()"),
                     granted_by = table.Column<Guid>(type: "char(36)", nullable: true, collation: "ascii_general_ci"),
                     revoked_at = table.Column<DateTime>(type: "datetime(6)", nullable: true),
                     revoked_by = table.Column<Guid>(type: "char(36)", nullable: true, collation: "ascii_general_ci"),
                     revocation_reason = table.Column<string>(type: "varchar(1000)", maxLength: 1000, nullable: true)
                         .Annotation("MySql:CharSet", "utf8mb4"),
-                    created_at = table.Column<DateTime>(type: "datetime(6)", nullable: false, defaultValueSql: "NOW()"),
+                    created_at = table.Column<DateTime>(type: "datetime(6)", nullable: false, defaultValueSql: "UTC_TIMESTAMP()"),
                     created_by = table.Column<Guid>(type: "char(36)", nullable: true, collation: "ascii_general_ci"),
                     updated_at = table.Column<DateTime>(type: "datetime(6)", nullable: true),
                     updated_by = table.Column<Guid>(type: "char(36)", nullable: true, collation: "ascii_general_ci")
@@ -6967,14 +6890,14 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                 name: "islamu_event_ai_proposed_actions",
                 columns: table => new
                 {
-                    id = table.Column<Guid>(type: "char(36)", nullable: false, defaultValueSql: "uuidv7()", collation: "ascii_general_ci"),
+                    id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     tenant_id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     conversation_id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     message_id = table.Column<Guid>(type: "char(36)", nullable: true, collation: "ascii_general_ci"),
                     acting_actor_id = table.Column<Guid>(type: "char(36)", nullable: true, collation: "ascii_general_ci"),
                     kind_id = table.Column<int>(type: "int", nullable: false),
                     status_id = table.Column<int>(type: "int", nullable: false, defaultValue: 1),
-                    payload_json = table.Column<string>(type: "jsonb", nullable: false)
+                    payload_json = table.Column<string>(type: "longtext", nullable: false)
                         .Annotation("MySql:CharSet", "utf8mb4"),
                     confirmed_by = table.Column<Guid>(type: "char(36)", nullable: true, collation: "ascii_general_ci"),
                     confirmed_at = table.Column<DateTime>(type: "datetime(6)", nullable: true),
@@ -6991,7 +6914,6 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("pk_islamu_event_ai_proposed_actions", x => x.id);
-                    table.CheckConstraint("ck_ai_proposed_actions_payload_object", "jsonb_typeof(payload_json) = 'object'");
                     table.ForeignKey(
                         name: "FK_islamu_event_ai_proposed_actions_islamu_event_actors_E334CB58",
                         column: x => x.acting_actor_id,
@@ -7102,7 +7024,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                     table.UniqueConstraint("ak_events_tenant_id_id", x => new { x.tenant_id, x.id });
                     table.CheckConstraint("CK_Event_SessionDateRange", "first_session_date IS NULL OR last_session_date IS NULL OR first_session_date <= last_session_date");
                     table.CheckConstraint("CK_Event_SessionStartUtcRange", "first_session_start_utc IS NULL OR last_session_start_utc IS NULL OR first_session_start_utc <= last_session_start_utc");
-                    table.CheckConstraint("CK_Event_TimeZoneIdNotBlank", "event_time_zone_id IS NULL OR length(btrim(event_time_zone_id)) > 0");
+                    table.CheckConstraint("CK_Event_TimeZoneIdNotBlank", "event_time_zone_id IS NULL OR trim(event_time_zone_id) <> ''");
                     table.ForeignKey(
                         name: "FK_islamu_event_events_islamu_event_atproto_records_atp_32C172A4",
                         column: x => x.atproto_record_id,
@@ -7312,7 +7234,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                 name: "islamu_event_organization_members",
                 columns: table => new
                 {
-                    id = table.Column<Guid>(type: "char(36)", nullable: false, defaultValueSql: "uuidv7()", collation: "ascii_general_ci"),
+                    id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     organization_tenant_id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     user_id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     role_id = table.Column<int>(type: "int", nullable: false),
@@ -7373,7 +7295,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                         .Annotation("MySql:CharSet", "utf8mb4"),
                     value = table.Column<string>(type: "longtext", nullable: false)
                         .Annotation("MySql:CharSet", "utf8mb4"),
-                    created_at = table.Column<DateTime>(type: "datetime(6)", nullable: false, defaultValueSql: "NOW()"),
+                    created_at = table.Column<DateTime>(type: "datetime(6)", nullable: false, defaultValueSql: "UTC_TIMESTAMP()"),
                     created_by = table.Column<Guid>(type: "char(36)", nullable: true, collation: "ascii_general_ci"),
                     updated_at = table.Column<DateTime>(type: "datetime(6)", nullable: true),
                     updated_by = table.Column<Guid>(type: "char(36)", nullable: true, collation: "ascii_general_ci")
@@ -7480,7 +7402,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                         .Annotation("MySql:CharSet", "utf8mb4"),
                     trace_id = table.Column<string>(type: "varchar(100)", maxLength: 100, nullable: true)
                         .Annotation("MySql:CharSet", "utf8mb4"),
-                    sanitized_metadata_json = table.Column<string>(type: "jsonb", nullable: true)
+                    sanitized_metadata_json = table.Column<string>(type: "longtext", nullable: true)
                         .Annotation("MySql:CharSet", "utf8mb4")
                 },
                 constraints: table =>
@@ -7523,7 +7445,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                 name: "islamu_event_ai_tool_executions",
                 columns: table => new
                 {
-                    id = table.Column<Guid>(type: "char(36)", nullable: false, defaultValueSql: "uuidv7()", collation: "ascii_general_ci"),
+                    id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     tenant_id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     proposed_action_id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     tool_name = table.Column<string>(type: "varchar(200)", maxLength: 200, nullable: false)
@@ -7644,7 +7566,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                 name: "islamu_event_event_contact_share_exports",
                 columns: table => new
                 {
-                    id = table.Column<Guid>(type: "char(36)", nullable: false, defaultValueSql: "uuidv7()", collation: "ascii_general_ci"),
+                    id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     tenant_id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     recipient_actor_id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     event_id = table.Column<Guid>(type: "char(36)", nullable: true, collation: "ascii_general_ci"),
@@ -7812,7 +7734,6 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                     table.CheckConstraint("ck_event_locations_physical_or_tba", "(location_id IS NOT NULL AND is_to_be_announced = false) OR (location_id IS NULL AND is_to_be_announced = true)");
                     table.CheckConstraint("ck_event_locations_policy_version", "policy_version > 0");
                     table.CheckConstraint("ck_event_locations_tba_suppresses_fields", "is_to_be_announced = false OR (show_venue_name = false AND show_city = false AND show_country = false AND show_room_name = false AND show_street_address = false AND show_postcode = false AND show_coordinates = false)");
-                    table.CheckConstraint("ck_event_locations_uuid_v7", "substring(id::text, 15, 1) = '7' AND substring(id::text, 20, 1) IN ('8', '9', 'a', 'b')");
                     table.ForeignKey(
                         name: "FK_islamu_event_event_locations_islamu_event_events_ten_7514D3F1",
                         columns: x => new { x.tenant_id, x.event_id },
@@ -8060,15 +7981,15 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                     table.UniqueConstraint("ak_event_reports_tenant_id_id", x => new { x.tenant_id, x.id });
                     table.CheckConstraint("ck_event_reports_closed_at_terminal_status", "(closed_at IS NULL AND status NOT IN (4, 5, 6, 8)) OR (closed_at IS NOT NULL AND status IN (4, 5, 6, 8))");
                     table.CheckConstraint("ck_event_reports_priority", "priority BETWEEN 1 AND 4");
-                    table.CheckConstraint("ck_event_reports_reason_code_not_blank", "length(btrim(reason_code)) > 0");
-                    table.CheckConstraint("ck_event_reports_reporter_ip_hash_not_blank", "reporter_ip_hash IS NULL OR length(btrim(reporter_ip_hash)) > 0");
+                    table.CheckConstraint("ck_event_reports_reason_code_not_blank", "trim(reason_code) <> ''");
+                    table.CheckConstraint("ck_event_reports_reporter_ip_hash_not_blank", "reporter_ip_hash IS NULL OR trim(reporter_ip_hash) <> ''");
                     table.CheckConstraint("ck_event_reports_reporter_kind", "reporter_kind BETWEEN 1 AND 4");
-                    table.CheckConstraint("ck_event_reports_reporter_locale_not_blank", "reporter_locale IS NULL OR length(btrim(reporter_locale)) > 0");
-                    table.CheckConstraint("ck_event_reports_reporter_user_agent_hash_not_blank", "reporter_user_agent_hash IS NULL OR length(btrim(reporter_user_agent_hash)) > 0");
+                    table.CheckConstraint("ck_event_reports_reporter_locale_not_blank", "reporter_locale IS NULL OR trim(reporter_locale) <> ''");
+                    table.CheckConstraint("ck_event_reports_reporter_user_agent_hash_not_blank", "reporter_user_agent_hash IS NULL OR trim(reporter_user_agent_hash) <> ''");
                     table.CheckConstraint("ck_event_reports_severity_hint", "severity_hint IS NULL OR severity_hint BETWEEN 1 AND 4");
                     table.CheckConstraint("ck_event_reports_source_kind", "source_kind BETWEEN 1 AND 5");
                     table.CheckConstraint("ck_event_reports_status", "status BETWEEN 1 AND 8");
-                    table.CheckConstraint("ck_event_reports_subcategory_code_not_blank", "subcategory_code IS NULL OR length(btrim(subcategory_code)) > 0");
+                    table.CheckConstraint("ck_event_reports_subcategory_code_not_blank", "subcategory_code IS NULL OR trim(subcategory_code) <> ''");
                     table.ForeignKey(
                         name: "FK_islamu_event_event_reports_islamu_event_actors_repor_BC362839",
                         column: x => x.reporter_actor_id,
@@ -8265,7 +8186,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                 name: "islamu_event_organization_reviews",
                 columns: table => new
                 {
-                    id = table.Column<Guid>(type: "char(36)", nullable: false, defaultValueSql: "uuidv7()", collation: "ascii_general_ci"),
+                    id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     organization_id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     event_id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     user_id = table.Column<Guid>(type: "char(36)", nullable: true, collation: "ascii_general_ci"),
@@ -8401,7 +8322,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                     role_id = table.Column<int>(type: "int", nullable: false),
                     group_position_id = table.Column<int>(type: "int", nullable: true),
                     tenant_id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
-                    created_at = table.Column<DateTime>(type: "datetime(6)", nullable: false, defaultValueSql: "NOW()"),
+                    created_at = table.Column<DateTime>(type: "datetime(6)", nullable: false, defaultValueSql: "UTC_TIMESTAMP()"),
                     created_by = table.Column<Guid>(type: "char(36)", nullable: true, collation: "ascii_general_ci"),
                     updated_at = table.Column<DateTime>(type: "datetime(6)", nullable: true),
                     updated_by = table.Column<Guid>(type: "char(36)", nullable: true, collation: "ascii_general_ci"),
@@ -8456,7 +8377,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                         .Annotation("MySql:CharSet", "utf8mb4"),
                     value = table.Column<string>(type: "longtext", nullable: false)
                         .Annotation("MySql:CharSet", "utf8mb4"),
-                    created_at = table.Column<DateTime>(type: "datetime(6)", nullable: false, defaultValueSql: "NOW()"),
+                    created_at = table.Column<DateTime>(type: "datetime(6)", nullable: false, defaultValueSql: "UTC_TIMESTAMP()"),
                     created_by = table.Column<Guid>(type: "char(36)", nullable: true, collation: "ascii_general_ci"),
                     updated_at = table.Column<DateTime>(type: "datetime(6)", nullable: true),
                     updated_by = table.Column<Guid>(type: "char(36)", nullable: true, collation: "ascii_general_ci")
@@ -8483,7 +8404,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                 name: "islamu_event_webhook_consumers",
                 columns: table => new
                 {
-                    id = table.Column<Guid>(type: "char(36)", nullable: false, defaultValueSql: "uuidv7()", collation: "ascii_general_ci"),
+                    id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     tenant_id = table.Column<Guid>(type: "char(36)", nullable: true, collation: "ascii_general_ci"),
                     instance_id = table.Column<Guid>(type: "char(36)", nullable: true, collation: "ascii_general_ci"),
                     organization_id = table.Column<Guid>(type: "char(36)", nullable: true, collation: "ascii_general_ci"),
@@ -8599,9 +8520,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                 {
                     table.PrimaryKey("pk_islamu_event_event_agenda_items", x => x.id);
                     table.CheckConstraint("CK_EventAgendaItem_EndAfterStart", "end_time > start_time");
-                    table.CheckConstraint("CK_EventAgendaItem_LocalEndMinuteMatchesTime", "local_end_minute_of_day = ((EXTRACT(HOUR FROM local_end_time)::int * 60) + EXTRACT(MINUTE FROM local_end_time)::int)");
                     table.CheckConstraint("CK_EventAgendaItem_LocalEndMinuteRange", "local_end_minute_of_day BETWEEN 0 AND 1439");
-                    table.CheckConstraint("CK_EventAgendaItem_LocalStartMinuteMatchesTime", "local_start_minute_of_day = ((EXTRACT(HOUR FROM local_start_time)::int * 60) + EXTRACT(MINUTE FROM local_start_time)::int)");
                     table.CheckConstraint("CK_EventAgendaItem_LocalStartMinuteRange", "local_start_minute_of_day BETWEEN 0 AND 1439");
                     table.CheckConstraint("CK_EventAgendaItem_RoomRequiresLocation", "room_id IS NULL OR location_id IS NOT NULL");
                     table.ForeignKey(
@@ -8674,7 +8593,6 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                     table.CheckConstraint("ck_event_location_disclosure_audits_field_flags", "previous_fields BETWEEN 0 AND 127 AND new_fields BETWEEN 0 AND 127");
                     table.CheckConstraint("ck_event_location_disclosure_audits_policy_step", "previous_policy_version >= 0 AND new_policy_version = previous_policy_version + 1");
                     table.CheckConstraint("ck_event_location_disclosure_audits_reason", "reason BETWEEN 1 AND 5");
-                    table.CheckConstraint("ck_event_location_disclosure_audits_uuid_v7", "substring(id::text, 15, 1) = '7' AND substring(id::text, 20, 1) IN ('8', '9', 'a', 'b')");
                     table.ForeignKey(
                         name: "FK_islamu_event_event_location_disclosure_audits_islamu_23C4E11D",
                         column: x => x.tenant_id,
@@ -8721,7 +8639,6 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                     table.PrimaryKey("pk_islamu_event_event_location_exact_read_audits", x => x.id);
                     table.CheckConstraint("ck_event_location_exact_read_audits_purpose", "purpose BETWEEN 1 AND 4");
                     table.CheckConstraint("ck_event_location_exact_read_audits_trace", "correlation_id IS NOT NULL OR trace_id IS NOT NULL");
-                    table.CheckConstraint("ck_event_location_exact_read_audits_uuid_v7", "substring(id::text, 15, 1) = '7' AND substring(id::text, 20, 1) IN ('8', '9', 'a', 'b')");
                     table.ForeignKey(
                         name: "FK_islamu_event_event_location_exact_read_audits_islamu_1D86A1EF",
                         column: x => x.tenant_id,
@@ -8809,7 +8726,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                 name: "islamu_event_event_sessions",
                 columns: table => new
                 {
-                    id = table.Column<Guid>(type: "char(36)", nullable: false, defaultValueSql: "uuidv7()", collation: "ascii_general_ci"),
+                    id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     event_id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     event_day_id = table.Column<Guid>(type: "char(36)", nullable: true, collation: "ascii_general_ci"),
                     start_time = table.Column<DateTimeOffset>(type: "datetime(6)", nullable: true),
@@ -8860,9 +8777,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                     table.UniqueConstraint("ak_event_sessions_tenant_id_id", x => new { x.tenant_id, x.id });
                     table.CheckConstraint("CK_EventSession_EndAfterStart", "end_time IS NULL OR start_time IS NULL OR end_time > start_time");
                     table.CheckConstraint("CK_EventSession_EndTimeTypeState", "start_time IS NULL OR ((end_time_type = 0 AND end_time IS NOT NULL) OR (end_time_type = 1 AND end_time IS NULL) OR (end_time_type = 2))");
-                    table.CheckConstraint("CK_EventSession_LocalEndMinuteMatchesTime", "local_end_minute_of_day IS NULL OR local_end_time IS NULL OR local_end_minute_of_day = ((EXTRACT(HOUR FROM local_end_time)::int * 60) + EXTRACT(MINUTE FROM local_end_time)::int)");
                     table.CheckConstraint("CK_EventSession_LocalEndMinuteRange", "local_end_minute_of_day IS NULL OR local_end_minute_of_day BETWEEN 0 AND 1439");
-                    table.CheckConstraint("CK_EventSession_LocalStartMinuteMatchesTime", "local_start_minute_of_day IS NULL OR local_start_time IS NULL OR local_start_minute_of_day = ((EXTRACT(HOUR FROM local_start_time)::int * 60) + EXTRACT(MINUTE FROM local_start_time)::int)");
                     table.CheckConstraint("CK_EventSession_LocalStartMinuteRange", "local_start_minute_of_day IS NULL OR local_start_minute_of_day BETWEEN 0 AND 1439");
                     table.CheckConstraint("CK_EventSession_RoomRequiresLocation", "room_id IS NULL OR location_id IS NOT NULL");
                     table.ForeignKey(
@@ -8951,9 +8866,9 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                 {
                     table.PrimaryKey("pk_islamu_event_event_report_evidence", x => x.id);
                     table.CheckConstraint("ck_event_report_evidence_classification", "classification BETWEEN 1 AND 3");
-                    table.CheckConstraint("ck_event_report_evidence_content_hash_not_blank", "content_hash IS NULL OR length(btrim(content_hash)) > 0");
+                    table.CheckConstraint("ck_event_report_evidence_content_hash_not_blank", "content_hash IS NULL OR trim(content_hash) <> ''");
                     table.CheckConstraint("ck_event_report_evidence_kind", "evidence_kind BETWEEN 1 AND 5");
-                    table.CheckConstraint("ck_event_report_evidence_reporter_text_required", "evidence_kind <> 1 OR (text_body_encrypted IS NOT NULL AND length(btrim(text_body_encrypted)) > 0)");
+                    table.CheckConstraint("ck_event_report_evidence_reporter_text_required", "evidence_kind <> 1 OR (text_body_encrypted IS NOT NULL AND trim(text_body_encrypted) <> '')");
                     table.ForeignKey(
                         name: "FK_islamu_event_event_report_evidence_islamu_event_even_6224D53D",
                         columns: x => new { x.tenant_id, x.report_id },
@@ -9013,16 +8928,16 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("pk_islamu_event_event_report_signals", x => x.id);
-                    table.CheckConstraint("ck_event_report_signals_correlation_id_not_blank", "length(btrim(correlation_id)) > 0");
-                    table.CheckConstraint("ck_event_report_signals_external_signal_id_not_blank", "external_signal_id IS NULL OR length(btrim(external_signal_id)) > 0");
-                    table.CheckConstraint("ck_event_report_signals_policy_code_not_blank", "length(btrim(policy_code)) > 0");
+                    table.CheckConstraint("ck_event_report_signals_correlation_id_not_blank", "trim(correlation_id) <> ''");
+                    table.CheckConstraint("ck_event_report_signals_external_signal_id_not_blank", "external_signal_id IS NULL OR trim(external_signal_id) <> ''");
+                    table.CheckConstraint("ck_event_report_signals_policy_code_not_blank", "trim(policy_code) <> ''");
                     table.CheckConstraint("ck_event_report_signals_provider", "provider BETWEEN 1 AND 5");
-                    table.CheckConstraint("ck_event_report_signals_provider_target_id_not_blank", "length(btrim(provider_target_id)) > 0");
+                    table.CheckConstraint("ck_event_report_signals_provider_target_id_not_blank", "trim(provider_target_id) <> ''");
                     table.CheckConstraint("ck_event_report_signals_provider_target_scope", "provider_target_scope BETWEEN 1 AND 3");
                     table.CheckConstraint("ck_event_report_signals_recommended_action", "recommended_action IS NULL OR recommended_action BETWEEN 0 AND 4");
-                    table.CheckConstraint("ck_event_report_signals_safe_summary_not_blank", "safe_summary IS NULL OR length(btrim(safe_summary)) > 0");
+                    table.CheckConstraint("ck_event_report_signals_safe_summary_not_blank", "safe_summary IS NULL OR trim(safe_summary) <> ''");
                     table.CheckConstraint("ck_event_report_signals_score_range", "score IS NULL OR (score >= 0 AND score <= 1)");
-                    table.CheckConstraint("ck_event_report_signals_signal_type_not_blank", "length(btrim(signal_type)) > 0");
+                    table.CheckConstraint("ck_event_report_signals_signal_type_not_blank", "trim(signal_type) <> ''");
                     table.CheckConstraint("ck_event_report_signals_verdict", "verdict BETWEEN 1 AND 5");
                     table.ForeignKey(
                         name: "FK_islamu_event_event_report_signals_islamu_event_event_7AF7FBE1",
@@ -9060,7 +8975,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("pk_islamu_event_event_report_targets", x => x.id);
-                    table.CheckConstraint("ck_event_report_targets_field_path_not_blank", "field_path IS NULL OR length(btrim(field_path)) > 0");
+                    table.CheckConstraint("ck_event_report_targets_field_path_not_blank", "field_path IS NULL OR trim(field_path) <> ''");
                     table.CheckConstraint("ck_event_report_targets_target_kind", "target_kind BETWEEN 1 AND 6");
                     table.ForeignKey(
                         name: "FK_islamu_event_event_report_targets_islamu_event_event_ACBF8046",
@@ -9188,7 +9103,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                     is_deleted = table.Column<bool>(type: "tinyint(1)", nullable: false, defaultValue: false),
                     deleted_at = table.Column<DateTime>(type: "datetime(6)", nullable: true),
                     deleted_by = table.Column<Guid>(type: "char(36)", nullable: true, collation: "ascii_general_ci"),
-                    registration_workflow_version_key = table.Column<Guid>(type: "uuid(36)", nullable: false, computedColumnSql: "COALESCE(registration_workflow_version_id, '00000000-0000-0000-0000-000000000000'::uuid)", stored: true, collation: "ascii_general_ci")
+                    registration_workflow_version_key = table.Column<Guid>(type: "char(36)", nullable: false, computedColumnSql: "COALESCE(registration_workflow_version_id, '00000000-0000-0000-0000-000000000000')", stored: true, collation: "ascii_general_ci")
                 },
                 constraints: table =>
                 {
@@ -9311,7 +9226,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                     answer_sync_mode_id = table.Column<int>(type: "int", nullable: false),
                     applies_to_subject_type_id = table.Column<int>(type: "int", nullable: false),
                     applies_to_subject_id = table.Column<Guid>(type: "char(36)", nullable: true, collation: "ascii_general_ci"),
-                    applies_to_subject_key = table.Column<Guid>(type: "uuid(36)", nullable: false, computedColumnSql: "COALESCE(applies_to_subject_id, '00000000-0000-0000-0000-000000000000'::uuid)", stored: true, collation: "ascii_general_ci"),
+                    applies_to_subject_key = table.Column<Guid>(type: "char(36)", nullable: false, computedColumnSql: "COALESCE(applies_to_subject_id, '00000000-0000-0000-0000-000000000000')", stored: true, collation: "ascii_general_ci"),
                     can_skip = table.Column<bool>(type: "tinyint(1)", nullable: false),
                     created_at = table.Column<DateTime>(type: "datetime(6)", nullable: false),
                     created_by = table.Column<Guid>(type: "char(36)", nullable: true, collation: "ascii_general_ci"),
@@ -9376,7 +9291,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                 name: "islamu_event_webhook_consumer_provider_bindings",
                 columns: table => new
                 {
-                    id = table.Column<Guid>(type: "char(36)", nullable: false, defaultValueSql: "uuidv7()", collation: "ascii_general_ci"),
+                    id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     tenant_id = table.Column<Guid>(type: "char(36)", nullable: true, collation: "ascii_general_ci"),
                     configuration_scope_id = table.Column<Guid>(type: "char(36)", nullable: false, computedColumnSql: "COALESCE(tenant_id, instance_id)", stored: true, collation: "ascii_general_ci"),
                     webhook_consumer_id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
@@ -9453,7 +9368,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                 name: "islamu_event_webhook_endpoints",
                 columns: table => new
                 {
-                    id = table.Column<Guid>(type: "char(36)", nullable: false, defaultValueSql: "uuidv7()", collation: "ascii_general_ci"),
+                    id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     tenant_id = table.Column<Guid>(type: "char(36)", nullable: true, collation: "ascii_general_ci"),
                     instance_id = table.Column<Guid>(type: "char(36)", nullable: true, collation: "ascii_general_ci"),
                     configuration_scope_id = table.Column<Guid>(type: "char(36)", nullable: false, computedColumnSql: "COALESCE(tenant_id, instance_id)", stored: true, collation: "ascii_general_ci"),
@@ -9529,7 +9444,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                 name: "islamu_event_webhook_messages",
                 columns: table => new
                 {
-                    id = table.Column<Guid>(type: "char(36)", nullable: false, defaultValueSql: "uuidv7()", collation: "ascii_general_ci"),
+                    id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     tenant_id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     event_type = table.Column<string>(type: "varchar(200)", maxLength: 200, nullable: false)
                         .Annotation("MySql:CharSet", "utf8mb4"),
@@ -9555,14 +9470,13 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                     created_by = table.Column<Guid>(type: "char(36)", nullable: true, collation: "ascii_general_ci"),
                     updated_at = table.Column<DateTime>(type: "datetime(6)", nullable: true),
                     updated_by = table.Column<Guid>(type: "char(36)", nullable: true, collation: "ascii_general_ci"),
-                    payload_bytes = table.Column<byte[]>(type: "bytea", nullable: true)
+                    payload_bytes = table.Column<byte[]>(type: "longblob", nullable: true)
                 },
                 constraints: table =>
                 {
                     table.PrimaryKey("pk_islamu_event_webhook_messages", x => x.id);
                     table.UniqueConstraint("ak_webhook_messages_tenant_id_id", x => new { x.tenant_id, x.id });
                     table.CheckConstraint("ck_webhook_messages_payload_byte_length", "payload_byte_length > 0");
-                    table.CheckConstraint("ck_webhook_messages_payload_hash", "payload_hash ~ '^sha256:[0-9a-f]{64}$'");
                     table.CheckConstraint("ck_webhook_messages_payload_provenance", "payload_provenance_id > 0");
                     table.ForeignKey(
                         name: "FK_islamu_event_webhook_messages_islamu_event_webhook_c_54EEDE1C",
@@ -9589,7 +9503,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                 name: "islamu_event_event_session_agenda_items",
                 columns: table => new
                 {
-                    id = table.Column<Guid>(type: "char(36)", nullable: false, defaultValueSql: "uuidv7()", collation: "ascii_general_ci"),
+                    id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     event_session_id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     start_time = table.Column<DateTimeOffset>(type: "datetime(6)", nullable: false),
                     end_time = table.Column<DateTimeOffset>(type: "datetime(6)", nullable: false),
@@ -9728,7 +9642,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                     end_reference_prayer = table.Column<int>(type: "int", nullable: true),
                     end_offset_minutes = table.Column<int>(type: "int", nullable: true),
                     requires_wudu = table.Column<bool>(type: "tinyint(1)", nullable: false, defaultValue: false),
-                    ritual_requirements_json = table.Column<string>(type: "jsonb", nullable: true)
+                    ritual_requirements_json = table.Column<string>(type: "longtext", nullable: true)
                         .Annotation("MySql:CharSet", "utf8mb4")
                 },
                 constraints: table =>
@@ -9866,11 +9780,11 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                     occurred_at = table.Column<DateTime>(type: "datetime(6)", nullable: false),
                     audience_cutoff_at = table.Column<DateTime>(type: "datetime(6)", nullable: false),
                     aggregate_version = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
-                    change_set_json = table.Column<string>(type: "jsonb", nullable: false)
+                    change_set_json = table.Column<string>(type: "longtext", nullable: false)
                         .Annotation("MySql:CharSet", "utf8mb4"),
-                    safe_before_snapshot_json = table.Column<string>(type: "jsonb", nullable: false)
+                    safe_before_snapshot_json = table.Column<string>(type: "longtext", nullable: false)
                         .Annotation("MySql:CharSet", "utf8mb4"),
-                    safe_after_snapshot_json = table.Column<string>(type: "jsonb", nullable: false)
+                    safe_after_snapshot_json = table.Column<string>(type: "longtext", nullable: false)
                         .Annotation("MySql:CharSet", "utf8mb4"),
                     template_key = table.Column<string>(type: "varchar(160)", maxLength: 160, nullable: false)
                         .Annotation("MySql:CharSet", "utf8mb4"),
@@ -9992,7 +9906,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                 name: "islamu_event_event_contact_share_consents",
                 columns: table => new
                 {
-                    id = table.Column<Guid>(type: "char(36)", nullable: false, defaultValueSql: "uuidv7()", collation: "ascii_general_ci"),
+                    id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     tenant_id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     source_event_id = table.Column<Guid>(type: "char(36)", nullable: true, collation: "ascii_general_ci"),
                     user_id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
@@ -10056,7 +9970,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                 name: "islamu_event_integration_sync_outbox",
                 columns: table => new
                 {
-                    id = table.Column<Guid>(type: "char(36)", nullable: false, defaultValueSql: "uuidv7()", collation: "ascii_general_ci"),
+                    id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     tenant_id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     kind = table.Column<int>(type: "int", nullable: false),
                     source_type = table.Column<string>(type: "varchar(100)", maxLength: 100, nullable: false)
@@ -10069,7 +9983,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                         .Annotation("MySql:CharSet", "utf8mb4"),
                     subscriber_name = table.Column<string>(type: "varchar(320)", maxLength: 320, nullable: true)
                         .Annotation("MySql:CharSet", "utf8mb4"),
-                    subscriber_payload_json = table.Column<string>(type: "jsonb", nullable: false)
+                    subscriber_payload_json = table.Column<string>(type: "longtext", nullable: false)
                         .Annotation("MySql:CharSet", "utf8mb4"),
                     listmonk_list_id = table.Column<int>(type: "int", nullable: false),
                     preconfirm_subscriptions = table.Column<bool>(type: "tinyint(1)", nullable: false),
@@ -10214,6 +10128,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("pk_islamu_event_registration_order_lines", x => x.id);
+                    table.UniqueConstraint("AK_islamu_event_registration_order_lines_tenant_id_regi_A8FB18E6", x => new { x.tenant_id, x.registration_order_id, x.id, x.ticket_type_id });
                     table.UniqueConstraint("AK_islamu_event_registration_order_lines_tenant_id_regi_CB05F1C2", x => new { x.tenant_id, x.registration_order_id, x.id });
                     table.UniqueConstraint("ak_registration_order_lines_tenant_id_id", x => new { x.tenant_id, x.id });
                     table.ForeignKey(
@@ -10520,7 +10435,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                     deleted_at = table.Column<DateTime>(type: "datetime(6)", nullable: true),
                     deleted_by = table.Column<Guid>(type: "char(36)", nullable: true, collation: "ascii_general_ci"),
                     concurrency_stamp = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
-                    registration_provider_binding_key = table.Column<Guid>(type: "uuid(36)", nullable: false, computedColumnSql: "COALESCE(registration_provider_binding_id, '00000000-0000-0000-0000-000000000000'::uuid)", stored: true, collation: "ascii_general_ci")
+                    registration_provider_binding_key = table.Column<Guid>(type: "char(36)", nullable: false, computedColumnSql: "COALESCE(registration_provider_binding_id, '00000000-0000-0000-0000-000000000000')", stored: true, collation: "ascii_general_ci")
                 },
                 constraints: table =>
                 {
@@ -10553,7 +10468,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                 name: "islamu_event_webhook_bulk_replay_operations",
                 columns: table => new
                 {
-                    id = table.Column<Guid>(type: "char(36)", nullable: false, defaultValueSql: "uuidv7()", collation: "ascii_general_ci"),
+                    id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     tenant_id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     operation_key = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     request_hash = table.Column<string>(type: "varchar(71)", maxLength: 71, nullable: false)
@@ -10602,7 +10517,6 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                     table.CheckConstraint("ck_webhook_bulk_replay_operations_filter_window", "to_utc > from_utc");
                     table.CheckConstraint("ck_webhook_bulk_replay_operations_lifecycle", "(status_id = 1 AND started_at IS NULL AND completed_at IS NULL AND cancelled_at IS NULL AND failed_at IS NULL AND failure_code IS NULL) OR (status_id = 2 AND started_at IS NOT NULL AND completed_at IS NULL AND cancelled_at IS NULL AND failed_at IS NULL AND failure_code IS NULL) OR (status_id = 3 AND started_at IS NOT NULL AND completed_at IS NOT NULL AND cancelled_at IS NULL AND failed_at IS NULL AND failure_code IS NULL) OR (status_id = 4 AND started_at IS NULL AND completed_at IS NULL AND cancelled_at IS NOT NULL AND failed_at IS NULL AND failure_code IS NULL) OR (status_id = 5 AND started_at IS NOT NULL AND completed_at IS NULL AND cancelled_at IS NULL AND failed_at IS NOT NULL AND failure_code IS NOT NULL)");
                     table.CheckConstraint("ck_webhook_bulk_replay_operations_nonnegative_counts", "estimated_eligible_count >= 0 AND estimated_selected_count >= 0 AND excluded_held_count >= 0 AND excluded_payload_unavailable_count >= 0 AND excluded_endpoint_unavailable_count >= 0 AND excluded_ineligible_local_state_count >= 0 AND excluded_provider_conflict_count >= 0 AND excluded_provider_unknown_count >= 0 AND excluded_provider_manual_reconciliation_count >= 0 AND excluded_provider_ineligible_count >= 0 AND scheduled_count >= 0");
-                    table.CheckConstraint("ck_webhook_bulk_replay_operations_request_hash", "request_hash ~ '^sha256:[0-9a-f]{64}$'");
                     table.CheckConstraint("ck_webhook_bulk_replay_operations_requested_max", "requested_max_items BETWEEN 1 AND 1000");
                     table.CheckConstraint("ck_webhook_bulk_replay_operations_selected_bounds", "estimated_selected_count <= requested_max_items AND scheduled_count <= requested_max_items");
                     table.ForeignKey(
@@ -10636,7 +10550,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                 name: "islamu_event_webhook_endpoint_subscriptions",
                 columns: table => new
                 {
-                    id = table.Column<Guid>(type: "char(36)", nullable: false, defaultValueSql: "uuidv7()", collation: "ascii_general_ci"),
+                    id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     tenant_id = table.Column<Guid>(type: "char(36)", nullable: true, collation: "ascii_general_ci"),
                     instance_id = table.Column<Guid>(type: "char(36)", nullable: true, collation: "ascii_general_ci"),
                     configuration_scope_id = table.Column<Guid>(type: "char(36)", nullable: false, computedColumnSql: "COALESCE(tenant_id, instance_id)", stored: true, collation: "ascii_general_ci"),
@@ -10684,7 +10598,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                 name: "islamu_event_webhook_delivery_attempts",
                 columns: table => new
                 {
-                    id = table.Column<Guid>(type: "char(36)", nullable: false, defaultValueSql: "uuidv7()", collation: "ascii_general_ci"),
+                    id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     tenant_id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     message_id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     endpoint_id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
@@ -10742,7 +10656,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                 name: "islamu_event_webhook_delivery_plan_snapshots",
                 columns: table => new
                 {
-                    id = table.Column<Guid>(type: "char(36)", nullable: false, defaultValueSql: "uuidv7()", collation: "ascii_general_ci"),
+                    id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     tenant_id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     webhook_message_id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     webhook_consumer_id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
@@ -10756,10 +10670,10 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                     retention_policy_version = table.Column<string>(type: "varchar(200)", maxLength: 200, nullable: false)
                         .Annotation("MySql:CharSet", "utf8mb4"),
                     payload_retention_until_utc = table.Column<DateTimeOffset>(type: "datetime(6)", nullable: false),
-                    attempt_retention_until_utc = table.Column<DateTimeOffset>(type: "datetime(6)", nullable: false, defaultValueSql: "statement_timestamp() + INTERVAL '30 days'"),
-                    dead_letter_evidence_retention_until_utc = table.Column<DateTimeOffset>(type: "datetime(6)", nullable: false, defaultValueSql: "statement_timestamp() + INTERVAL '90 days'"),
-                    publication_retention_until_utc = table.Column<DateTimeOffset>(type: "datetime(6)", nullable: false, defaultValueSql: "statement_timestamp() + INTERVAL '90 days'"),
-                    operational_log_retention_until_utc = table.Column<DateTimeOffset>(type: "datetime(6)", nullable: false, defaultValueSql: "statement_timestamp() + INTERVAL '30 days'"),
+                    attempt_retention_until_utc = table.Column<DateTimeOffset>(type: "datetime(6)", nullable: false, defaultValueSql: "TIMESTAMPADD(DAY, 30, UTC_TIMESTAMP())"),
+                    dead_letter_evidence_retention_until_utc = table.Column<DateTimeOffset>(type: "datetime(6)", nullable: false, defaultValueSql: "TIMESTAMPADD(DAY, 90, UTC_TIMESTAMP())"),
+                    publication_retention_until_utc = table.Column<DateTimeOffset>(type: "datetime(6)", nullable: false, defaultValueSql: "TIMESTAMPADD(DAY, 90, UTC_TIMESTAMP())"),
+                    operational_log_retention_until_utc = table.Column<DateTimeOffset>(type: "datetime(6)", nullable: false, defaultValueSql: "TIMESTAMPADD(DAY, 30, UTC_TIMESTAMP())"),
                     materialized_at_utc = table.Column<DateTimeOffset>(type: "datetime(6)", nullable: false),
                     created_at = table.Column<DateTime>(type: "datetime(6)", nullable: false),
                     created_by = table.Column<Guid>(type: "char(36)", nullable: true, collation: "ascii_general_ci"),
@@ -10801,7 +10715,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                 name: "islamu_event_notification_fanout_runs",
                 columns: table => new
                 {
-                    id = table.Column<Guid>(type: "char(36)", nullable: false, defaultValueSql: "uuidv7()", collation: "ascii_general_ci"),
+                    id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     tenant_id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     fanout_kind = table.Column<string>(type: "varchar(100)", maxLength: 100, nullable: false)
                         .Annotation("MySql:CharSet", "utf8mb4"),
@@ -10828,7 +10742,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                     failed_at = table.Column<DateTime>(type: "datetime(6)", nullable: true),
                     last_error = table.Column<string>(type: "varchar(2000)", maxLength: 2000, nullable: true)
                         .Annotation("MySql:CharSet", "utf8mb4"),
-                    created_at = table.Column<DateTime>(type: "datetime(6)", nullable: false, defaultValueSql: "NOW()"),
+                    created_at = table.Column<DateTime>(type: "datetime(6)", nullable: false, defaultValueSql: "UTC_TIMESTAMP()"),
                     created_by = table.Column<Guid>(type: "char(36)", nullable: true, collation: "ascii_general_ci"),
                     updated_at = table.Column<DateTime>(type: "datetime(6)", nullable: true),
                     updated_by = table.Column<Guid>(type: "char(36)", nullable: true, collation: "ascii_general_ci"),
@@ -10840,7 +10754,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                     table.CheckConstraint("ck_notification_fanout_runs_created_count_nonnegative", "created_notification_count >= 0");
                     table.CheckConstraint("ck_notification_fanout_runs_cursor_pair", "(cursor_first_eligible_registration_created_at IS NULL) = (cursor_user_id IS NULL)");
                     table.CheckConstraint("ck_notification_fanout_runs_generation_nonnegative", "processing_generation >= 0 AND processing_fence >= 0");
-                    table.CheckConstraint("ck_notification_fanout_runs_occurrence_lease", "fanout_occurrence_id IS NULL OR (status = 'processing' AND processing_lease_owner IS NOT NULL AND btrim(processing_lease_owner) <> '' AND processing_lease_token IS NOT NULL AND processing_lease_expires_at IS NOT NULL) OR (status <> 'processing' AND processing_lease_owner IS NULL AND processing_lease_token IS NULL AND processing_lease_expires_at IS NULL)");
+                    table.CheckConstraint("ck_notification_fanout_runs_occurrence_lease", "fanout_occurrence_id IS NULL OR (status = 'processing' AND processing_lease_owner IS NOT NULL AND trim(processing_lease_owner) <> '' AND processing_lease_token IS NOT NULL AND processing_lease_expires_at IS NOT NULL) OR (status <> 'processing' AND processing_lease_owner IS NULL AND processing_lease_token IS NULL AND processing_lease_expires_at IS NULL)");
                     table.CheckConstraint("ck_notification_fanout_runs_processed_count_nonnegative", "processed_count >= 0");
                     table.CheckConstraint("ck_notification_fanout_runs_status", "status IN ('pending', 'processing', 'completed', 'failed')");
                     table.ForeignKey(
@@ -10901,12 +10815,12 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                 name: "islamu_event_event_registrations",
                 columns: table => new
                 {
-                    id = table.Column<Guid>(type: "char(36)", nullable: false, defaultValueSql: "uuidv7()", collation: "ascii_general_ci"),
+                    id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     concurrency_stamp = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     event_id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     linked_user_id = table.Column<Guid>(type: "char(36)", nullable: true, collation: "ascii_general_ci"),
                     event_session_id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
-                    coverage_established_at = table.Column<DateTime>(type: "datetime(6)", nullable: false, defaultValueSql: "NOW()"),
+                    coverage_established_at = table.Column<DateTime>(type: "datetime(6)", nullable: false, defaultValueSql: "UTC_TIMESTAMP()"),
                     registration_order_id = table.Column<Guid>(type: "char(36)", nullable: true, collation: "ascii_general_ci"),
                     registration_order_line_id = table.Column<Guid>(type: "char(36)", nullable: true, collation: "ascii_general_ci"),
                     ticket_type_entitlement_id = table.Column<Guid>(type: "char(36)", nullable: true, collation: "ascii_general_ci"),
@@ -11050,6 +10964,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                 {
                     table.PrimaryKey("pk_islamu_event_registration_ticket_assignments", x => x.id);
                     table.UniqueConstraint("AK_islamu_event_registration_ticket_assignments_tenant__38D6D87D", x => new { x.tenant_id, x.registration_order_id, x.id });
+                    table.UniqueConstraint("AK_islamu_event_registration_ticket_assignments_tenant__862D498C", x => new { x.tenant_id, x.registration_order_id, x.id, x.registration_order_line_id });
                     table.UniqueConstraint("ak_registration_ticket_assignments_tenant_id_id", x => new { x.tenant_id, x.id });
                     table.ForeignKey(
                         name: "FK_islamu_event_registration_ticket_assignments_islamu__251F5D17",
@@ -11136,7 +11051,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                     table.PrimaryKey("pk_islamu_event_registration_form_fields", x => x.id);
                     table.UniqueConstraint("AK_islamu_event_registration_form_fields_tenant_id_even_27B656ED", x => new { x.tenant_id, x.event_id, x.registration_form_id, x.registration_form_version_id, x.registration_form_section_id, x.id, x.field_type_id });
                     table.UniqueConstraint("AK_islamu_event_registration_form_fields_tenant_id_even_7C8DD17E", x => new { x.tenant_id, x.event_id, x.registration_form_id, x.registration_form_version_id, x.registration_form_section_id, x.id });
-                    table.CheckConstraint("ck_registration_form_fields_consent_metadata", "(requires_explicit_consent AND consent_purpose_code IS NOT NULL AND consent_text_version IS NOT NULL AND length(btrim(consent_purpose_code)) > 0 AND length(btrim(consent_text_version)) > 0) OR (NOT requires_explicit_consent AND consent_purpose_code IS NULL AND consent_text_version IS NULL)");
+                    table.CheckConstraint("ck_registration_form_fields_consent_metadata", "(requires_explicit_consent AND consent_purpose_code IS NOT NULL AND consent_text_version IS NOT NULL AND trim(consent_purpose_code) <> '' AND trim(consent_text_version) <> '') OR (NOT requires_explicit_consent AND consent_purpose_code IS NULL AND consent_text_version IS NULL)");
                     table.ForeignKey(
                         name: "FK_islamu_event_registration_form_fields_islamu_event_r_1627A4A4",
                         column: x => x.organizer_visibility_id,
@@ -11172,7 +11087,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                     tenant_id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     event_id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     registration_order_id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
-                    registration_workflow_id = table.Column<Guid>(type: "uuid(36)", nullable: false, collation: "ascii_general_ci"),
+                    registration_workflow_id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     registration_requirement_id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     registration_channel_id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     registration_form_id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
@@ -11198,7 +11113,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                     is_deleted = table.Column<bool>(type: "tinyint(1)", nullable: false, defaultValue: false),
                     deleted_at = table.Column<DateTime>(type: "datetime(6)", nullable: true),
                     deleted_by = table.Column<Guid>(type: "char(36)", nullable: true, collation: "ascii_general_ci"),
-                    registration_provider_binding_key = table.Column<Guid>(type: "uuid(36)", nullable: false, computedColumnSql: "COALESCE(registration_provider_binding_id, '00000000-0000-0000-0000-000000000000'::uuid)", stored: true, collation: "ascii_general_ci")
+                    registration_provider_binding_key = table.Column<Guid>(type: "char(36)", nullable: false, computedColumnSql: "COALESCE(registration_provider_binding_id, '00000000-0000-0000-0000-000000000000')", stored: true, collation: "ascii_general_ci")
                 },
                 constraints: table =>
                 {
@@ -11278,7 +11193,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                 name: "islamu_event_webhook_local_target_snapshots",
                 columns: table => new
                 {
-                    id = table.Column<Guid>(type: "char(36)", nullable: false, defaultValueSql: "uuidv7()", collation: "ascii_general_ci"),
+                    id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     tenant_id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     webhook_message_id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     delivery_plan_snapshot_id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
@@ -11355,7 +11270,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                 name: "islamu_event_webhook_provider_publications",
                 columns: table => new
                 {
-                    id = table.Column<Guid>(type: "char(36)", nullable: false, defaultValueSql: "uuidv7()", collation: "ascii_general_ci"),
+                    id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     tenant_id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     webhook_message_id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     webhook_delivery_plan_snapshot_id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
@@ -11424,7 +11339,6 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                     table.UniqueConstraint("ak_webhook_provider_publications_tenant_id_id", x => new { x.tenant_id, x.id });
                     table.CheckConstraint("ck_webhook_provider_publications_concurrency_version", "concurrency_version > 0");
                     table.CheckConstraint("ck_webhook_provider_publications_fence", "publication_fence >= 0");
-                    table.CheckConstraint("ck_webhook_provider_publications_request_hash", "request_hash ~ '^sha256:[0-9a-f]{64}$'");
                     table.ForeignKey(
                         name: "FK_islamu_event_webhook_provider_publications_islamu_ev_1C86C6FC",
                         column: x => x.provider_kind_id,
@@ -11523,7 +11437,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                     tenant_id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     event_id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     registration_order_id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
-                    registration_workflow_id = table.Column<Guid>(type: "uuid(36)", nullable: false, collation: "ascii_general_ci"),
+                    registration_workflow_id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     registration_requirement_id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     registration_channel_id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     registration_form_id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
@@ -11605,7 +11519,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                 name: "islamu_event_webhook_provider_publication_attempts",
                 columns: table => new
                 {
-                    id = table.Column<Guid>(type: "char(36)", nullable: false, defaultValueSql: "uuidv7()", collation: "ascii_general_ci"),
+                    id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     tenant_id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     webhook_provider_publication_id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     attempt_number = table.Column<int>(type: "int", nullable: false),
@@ -11659,7 +11573,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                     registration_order_id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     registration_attempt_id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     registration_submission_id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
-                    registration_workflow_id = table.Column<Guid>(type: "uuid(36)", nullable: false, collation: "ascii_general_ci"),
+                    registration_workflow_id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     registration_requirement_id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     registration_form_id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     registration_form_version_id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
@@ -11668,14 +11582,15 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                     field_type_id = table.Column<int>(type: "int", nullable: false),
                     requirement_subject_type_id = table.Column<int>(type: "int", nullable: false),
                     requirement_subject_id = table.Column<Guid>(type: "char(36)", nullable: true, collation: "ascii_general_ci"),
-                    requirement_subject_key = table.Column<Guid>(type: "uuid(36)", nullable: false, computedColumnSql: "COALESCE(requirement_subject_id, '00000000-0000-0000-0000-000000000000'::uuid)", stored: true, collation: "ascii_general_ci"),
+                    requirement_subject_key = table.Column<Guid>(type: "char(36)", nullable: false, computedColumnSql: "COALESCE(requirement_subject_id, '00000000-0000-0000-0000-000000000000')", stored: true, collation: "ascii_general_ci"),
                     answer_subject_type_id = table.Column<int>(type: "int", nullable: false),
                     order_subject_id = table.Column<Guid>(type: "char(36)", nullable: true, collation: "ascii_general_ci"),
                     purchaser_subject_id = table.Column<Guid>(type: "char(36)", nullable: true, collation: "ascii_general_ci"),
                     participant_subject_id = table.Column<Guid>(type: "char(36)", nullable: true, collation: "ascii_general_ci"),
                     ticket_assignment_subject_id = table.Column<Guid>(type: "char(36)", nullable: true, collation: "ascii_general_ci"),
+                    ticket_assignment_order_line_id = table.Column<Guid>(type: "char(36)", nullable: true, collation: "ascii_general_ci"),
                     session_selection_subject_id = table.Column<Guid>(type: "char(36)", nullable: true, collation: "ascii_general_ci"),
-                    effective_subject_identity = table.Column<Guid>(type: "uuid(36)", nullable: false, computedColumnSql: "COALESCE(order_subject_id, purchaser_subject_id, participant_subject_id, ticket_assignment_subject_id, session_selection_subject_id)", stored: true, collation: "ascii_general_ci"),
+                    effective_subject_identity = table.Column<Guid>(type: "char(36)", nullable: false, computedColumnSql: "COALESCE(order_subject_id, purchaser_subject_id, participant_subject_id, ticket_assignment_subject_id, session_selection_subject_id)", stored: true, collation: "ascii_general_ci"),
                     ordinal = table.Column<int>(type: "int", nullable: false),
                     text_value = table.Column<string>(type: "varchar(10000)", maxLength: 10000, nullable: true)
                         .Annotation("MySql:CharSet", "utf8mb4"),
@@ -11683,8 +11598,8 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                     decimal_value = table.Column<decimal>(type: "numeric(65,30)", nullable: true),
                     boolean_value = table.Column<bool>(type: "tinyint(1)", nullable: true),
                     date_value = table.Column<DateOnly>(type: "date", nullable: true),
-                    time_value = table.Column<TimeOnly>(type: "time without time zone(6)", nullable: true),
-                    instant_value = table.Column<DateTime>(type: "timestamp with time zone(6)", nullable: true),
+                    time_value = table.Column<TimeOnly>(type: "time(6)", nullable: true),
+                    instant_value = table.Column<DateTime>(type: "datetime(6)", nullable: true),
                     selected_option_id = table.Column<Guid>(type: "char(36)", nullable: true, collation: "ascii_general_ci"),
                     sensitive_answer_value_id = table.Column<Guid>(type: "char(36)", nullable: true, collation: "ascii_general_ci"),
                     created_at = table.Column<DateTime>(type: "datetime(6)", nullable: false),
@@ -11698,9 +11613,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("pk_islamu_event_registration_answers", x => x.id);
-                    table.CheckConstraint("ck_registration_answers_exactly_one_value", "num_nonnulls(text_value, integer_value, decimal_value, boolean_value, date_value, time_value, instant_value, selected_option_id, sensitive_answer_value_id) = 1");
                     table.CheckConstraint("ck_registration_answers_positive_ordinal", "ordinal > 0");
-                    table.CheckConstraint("ck_registration_answers_subject_shape", "num_nonnulls(order_subject_id, purchaser_subject_id, participant_subject_id, ticket_assignment_subject_id, session_selection_subject_id) = 1 AND ((answer_subject_type_id = 1 AND order_subject_id = registration_order_id AND requirement_subject_type_id = 1) OR (answer_subject_type_id = 2 AND purchaser_subject_id = registration_order_id AND requirement_subject_type_id IN (1, 4)) OR (answer_subject_type_id = 3 AND participant_subject_id IS NOT NULL AND requirement_subject_type_id IN (3, 5)) OR (answer_subject_type_id = 4 AND ticket_assignment_subject_id IS NOT NULL AND requirement_subject_type_id = 2) OR (answer_subject_type_id = 5 AND session_selection_subject_id = requirement_subject_id AND requirement_subject_type_id = 6))");
                     table.CheckConstraint("ck_registration_answers_value_matches_field_type", "(field_type_id IN (1, 2, 9, 10, 11, 12, 13) AND (text_value IS NOT NULL OR sensitive_answer_value_id IS NOT NULL)) OR (field_type_id IN (3, 16) AND (integer_value IS NOT NULL OR sensitive_answer_value_id IS NOT NULL)) OR (field_type_id = 4 AND (decimal_value IS NOT NULL OR sensitive_answer_value_id IS NOT NULL)) OR (field_type_id = 5 AND (boolean_value IS NOT NULL OR sensitive_answer_value_id IS NOT NULL)) OR (field_type_id = 6 AND (date_value IS NOT NULL OR sensitive_answer_value_id IS NOT NULL)) OR (field_type_id = 7 AND (time_value IS NOT NULL OR sensitive_answer_value_id IS NOT NULL)) OR (field_type_id = 8 AND (instant_value IS NOT NULL OR sensitive_answer_value_id IS NOT NULL)) OR (field_type_id IN (14, 15) AND selected_option_id IS NOT NULL)");
                     table.ForeignKey(
                         name: "FK_islamu_event_registration_answers_islamu_event_event_F9E32407",
@@ -11721,10 +11634,22 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                         principalColumns: new[] { "tenant_id", "event_id", "registration_workflow_id", "id", "applies_to_subject_type_id", "applies_to_subject_key" },
                         onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
+                        name: "FK_islamu_event_registration_answers_islamu_event_regis_7A93C329",
+                        columns: x => new { x.tenant_id, x.registration_order_id, x.ticket_assignment_subject_id, x.ticket_assignment_order_line_id },
+                        principalTable: "islamu_event_registration_ticket_assignments",
+                        principalColumns: new[] { "tenant_id", "registration_order_id", "id", "registration_order_line_id" },
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
                         name: "FK_islamu_event_registration_answers_islamu_event_regis_AA45F7DF",
                         columns: x => new { x.tenant_id, x.event_id, x.registration_form_id, x.registration_form_version_id, x.registration_form_section_id, x.registration_form_field_id, x.selected_option_id },
                         principalTable: "islamu_event_registration_form_field_options",
                         principalColumns: new[] { "tenant_id", "event_id", "registration_form_id", "registration_form_version_id", "registration_form_section_id", "registration_form_field_id", "id" },
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_islamu_event_registration_answers_islamu_event_regis_B47017EC",
+                        columns: x => new { x.tenant_id, x.registration_order_id, x.ticket_assignment_order_line_id, x.requirement_subject_id },
+                        principalTable: "islamu_event_registration_order_lines",
+                        principalColumns: new[] { "tenant_id", "registration_order_id", "id", "ticket_type_id" },
                         onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
                         name: "FK_islamu_event_registration_answers_islamu_event_regis_BD5397B6",
@@ -11736,12 +11661,6 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                         name: "FK_islamu_event_registration_answers_islamu_event_regis_D0713D60",
                         columns: x => new { x.tenant_id, x.registration_order_id, x.participant_subject_id },
                         principalTable: "islamu_event_registration_participants",
-                        principalColumns: new[] { "tenant_id", "registration_order_id", "id" },
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "FK_islamu_event_registration_answers_islamu_event_regis_D9F15FA3",
-                        columns: x => new { x.tenant_id, x.registration_order_id, x.ticket_assignment_subject_id },
-                        principalTable: "islamu_event_registration_ticket_assignments",
                         principalColumns: new[] { "tenant_id", "registration_order_id", "id" },
                         onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
@@ -11974,7 +11893,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                 name: "islamu_event_email_dispatch_attempts",
                 columns: table => new
                 {
-                    id = table.Column<Guid>(type: "char(36)", nullable: false, defaultValueSql: "uuidv7()", collation: "ascii_general_ci"),
+                    id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     tenant_id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     email_dispatch_outbox_id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     attempt_number = table.Column<int>(type: "int", nullable: false),
@@ -12015,7 +11934,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                 name: "islamu_event_email_dispatch_outbox",
                 columns: table => new
                 {
-                    id = table.Column<Guid>(type: "char(36)", nullable: false, defaultValueSql: "uuidv7()", collation: "ascii_general_ci"),
+                    id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     tenant_id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     publish_event_id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     kind = table.Column<int>(type: "int", nullable: false),
@@ -12119,7 +12038,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                 name: "islamu_event_email_dispatch_receipts",
                 columns: table => new
                 {
-                    id = table.Column<Guid>(type: "char(36)", nullable: false, defaultValueSql: "uuidv7()", collation: "ascii_general_ci"),
+                    id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     tenant_id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     publish_event_id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     email_dispatch_outbox_id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
@@ -12441,8 +12360,8 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                 {
                     table.PrimaryKey("pk_islamu_event_event_moderation_records", x => x.id);
                     table.UniqueConstraint("ak_event_moderation_records_tenant_id_id", x => new { x.tenant_id, x.id });
-                    table.CheckConstraint("ck_event_moderation_records_correlation_not_blank", "correlation_id IS NULL OR length(btrim(correlation_id)) > 0");
-                    table.CheckConstraint("ck_event_moderation_records_reason_code_not_blank", "length(btrim(reason_code)) > 0");
+                    table.CheckConstraint("ck_event_moderation_records_correlation_not_blank", "correlation_id IS NULL OR trim(correlation_id) <> ''");
+                    table.CheckConstraint("ck_event_moderation_records_reason_code_not_blank", "trim(reason_code) <> ''");
                     table.CheckConstraint("ck_event_moderation_records_source_decision_requires_report", "source_report_decision_id IS NULL OR source_report_id IS NOT NULL");
                     table.CheckConstraint("ck_event_moderation_records_status_transition", "previous_status_id <> resulting_status_id");
                     table.ForeignKey(
@@ -12498,7 +12417,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                     table.UniqueConstraint("ak_event_report_cases_tenant_id_id", x => new { x.tenant_id, x.id });
                     table.UniqueConstraint("ak_event_report_cases_tenant_id_report_id_id", x => new { x.tenant_id, x.report_id, x.id });
                     table.CheckConstraint("ck_event_report_cases_priority", "priority BETWEEN 1 AND 4");
-                    table.CheckConstraint("ck_event_report_cases_queue_code_not_blank", "length(btrim(queue_code)) > 0");
+                    table.CheckConstraint("ck_event_report_cases_queue_code_not_blank", "trim(queue_code) <> ''");
                     table.CheckConstraint("ck_event_report_cases_status", "status BETWEEN 1 AND 6");
                     table.ForeignKey(
                         name: "FK_islamu_event_event_report_cases_islamu_event_event_r_BE612001",
@@ -12552,13 +12471,13 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                     table.UniqueConstraint("ak_event_report_decisions_tenant_id_report_id_id", x => new { x.tenant_id, x.report_id, x.id });
                     table.UniqueConstraint("AK_islamu_event_event_report_decisions_tenant_id_report_205C7D60", x => new { x.tenant_id, x.report_id, x.case_id, x.id });
                     table.CheckConstraint("ck_event_report_decisions_duplicate_group_shape", "(decision_kind = 2 AND duplicate_group_id IS NOT NULL) OR (decision_kind <> 2 AND duplicate_group_id IS NULL)");
-                    table.CheckConstraint("ck_event_report_decisions_external_decision_id_not_blank", "external_decision_id IS NULL OR length(btrim(external_decision_id)) > 0");
+                    table.CheckConstraint("ck_event_report_decisions_external_decision_id_not_blank", "external_decision_id IS NULL OR trim(external_decision_id) <> ''");
                     table.CheckConstraint("ck_event_report_decisions_kind", "decision_kind BETWEEN 1 AND 7");
                     table.CheckConstraint("ck_event_report_decisions_local_moderator_required", "decision_source <> 1 OR moderator_user_id IS NOT NULL");
-                    table.CheckConstraint("ck_event_report_decisions_provider_target_id_not_blank", "length(btrim(provider_target_id)) > 0");
+                    table.CheckConstraint("ck_event_report_decisions_provider_target_id_not_blank", "trim(provider_target_id) <> ''");
                     table.CheckConstraint("ck_event_report_decisions_provider_target_scope", "provider_target_scope BETWEEN 1 AND 3");
-                    table.CheckConstraint("ck_event_report_decisions_reason_code_not_blank", "length(btrim(reason_code)) > 0");
-                    table.CheckConstraint("ck_event_report_decisions_safe_note_not_blank", "safe_note IS NULL OR length(btrim(safe_note)) > 0");
+                    table.CheckConstraint("ck_event_report_decisions_reason_code_not_blank", "trim(reason_code) <> ''");
+                    table.CheckConstraint("ck_event_report_decisions_safe_note_not_blank", "safe_note IS NULL OR trim(safe_note) <> ''");
                     table.CheckConstraint("ck_event_report_decisions_source", "decision_source BETWEEN 1 AND 4");
                     table.ForeignKey(
                         name: "FK_islamu_event_event_report_decisions_islamu_event_eve_99608BF2",
@@ -12618,14 +12537,14 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("pk_islamu_event_event_report_external_links", x => x.id);
-                    table.CheckConstraint("ck_event_report_external_links_correlation_id_not_blank", "length(btrim(correlation_id)) > 0");
-                    table.CheckConstraint("ck_event_report_external_links_last_error_category_not_blank", "last_error_category IS NULL OR length(btrim(last_error_category)) > 0");
+                    table.CheckConstraint("ck_event_report_external_links_correlation_id_not_blank", "trim(correlation_id) <> ''");
+                    table.CheckConstraint("ck_event_report_external_links_last_error_category_not_blank", "last_error_category IS NULL OR trim(last_error_category) <> ''");
                     table.CheckConstraint("ck_event_report_external_links_provider", "provider BETWEEN 1 AND 2");
-                    table.CheckConstraint("ck_event_report_external_links_provider_case_id_not_blank", "provider_case_id IS NULL OR length(btrim(provider_case_id)) > 0");
-                    table.CheckConstraint("ck_event_report_external_links_provider_signal_id_not_blank", "provider_signal_id IS NULL OR length(btrim(provider_signal_id)) > 0");
-                    table.CheckConstraint("ck_event_report_external_links_provider_target_id_not_blank", "length(btrim(provider_target_id)) > 0");
+                    table.CheckConstraint("ck_event_report_external_links_provider_case_id_not_blank", "provider_case_id IS NULL OR trim(provider_case_id) <> ''");
+                    table.CheckConstraint("ck_event_report_external_links_provider_signal_id_not_blank", "provider_signal_id IS NULL OR trim(provider_signal_id) <> ''");
+                    table.CheckConstraint("ck_event_report_external_links_provider_target_id_not_blank", "trim(provider_target_id) <> ''");
                     table.CheckConstraint("ck_event_report_external_links_provider_target_scope", "provider_target_scope BETWEEN 1 AND 3");
-                    table.CheckConstraint("ck_event_report_external_links_provider_url_not_blank", "provider_url IS NULL OR length(btrim(provider_url)) > 0");
+                    table.CheckConstraint("ck_event_report_external_links_provider_url_not_blank", "provider_url IS NULL OR trim(provider_url) <> ''");
                     table.CheckConstraint("ck_event_report_external_links_retry_count_nonnegative", "retry_count >= 0");
                     table.CheckConstraint("ck_event_report_external_links_sync_state", "sync_state BETWEEN 1 AND 5");
                     table.ForeignKey(
@@ -12675,7 +12594,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                 {
                     table.PrimaryKey("pk_islamu_event_event_report_decision_executions", x => x.id);
                     table.UniqueConstraint("ak_event_report_decision_executions_tenant_id_id", x => new { x.tenant_id, x.id });
-                    table.CheckConstraint("ck_event_report_decision_executions_failure_code_not_blank", "last_failure_code IS NULL OR length(btrim(last_failure_code)) > 0");
+                    table.CheckConstraint("ck_event_report_decision_executions_failure_code_not_blank", "last_failure_code IS NULL OR trim(last_failure_code) <> ''");
                     table.CheckConstraint("ck_event_report_decision_executions_lease_pair", "(processing_lease_token IS NULL) = (processing_lease_expires_at_utc IS NULL)");
                     table.CheckConstraint("ck_event_report_decision_executions_moderation_record_shape", "(enforcement_receipt_kind IN (2, 3) AND moderation_record_id IS NOT NULL AND moderation_record_id = enforcement_receipt_id) OR (enforcement_receipt_kind NOT IN (2, 3) AND moderation_record_id IS NULL)");
                     table.CheckConstraint("ck_event_report_decision_executions_receipt_id_shape", "(enforcement_receipt_kind IN (2, 3) AND enforcement_receipt_id IS NOT NULL) OR (enforcement_receipt_kind NOT IN (2, 3) AND enforcement_receipt_id IS NULL)");
@@ -12713,7 +12632,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                 name: "islamu_event_notification_intents",
                 columns: table => new
                 {
-                    id = table.Column<Guid>(type: "char(36)", nullable: false, defaultValueSql: "uuidv7()", collation: "ascii_general_ci"),
+                    id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     tenant_id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     category_id = table.Column<int>(type: "int", nullable: false),
                     ownership_type_id = table.Column<int>(type: "int", nullable: false),
@@ -12814,7 +12733,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                 name: "islamu_event_notification_external_delegations",
                 columns: table => new
                 {
-                    id = table.Column<Guid>(type: "char(36)", nullable: false, defaultValueSql: "uuidv7()", collation: "ascii_general_ci"),
+                    id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     tenant_id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     notification_intent_id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     provider_kind_id = table.Column<int>(type: "int", nullable: false),
@@ -12900,7 +12819,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                 name: "islamu_event_notifications",
                 columns: table => new
                 {
-                    id = table.Column<Guid>(type: "char(36)", nullable: false, defaultValueSql: "uuidv7()", collation: "ascii_general_ci"),
+                    id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     notification_intent_id = table.Column<Guid>(type: "char(36)", nullable: true, collation: "ascii_general_ci"),
                     user_id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     notification_type_id = table.Column<int>(type: "int", nullable: false),
@@ -12923,7 +12842,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                     archived_at = table.Column<DateTime>(type: "datetime(6)", nullable: true),
                     snoozed_until = table.Column<DateTime>(type: "datetime(6)", nullable: true),
                     tenant_id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
-                    created_at = table.Column<DateTime>(type: "datetime(6)", nullable: false, defaultValueSql: "NOW()"),
+                    created_at = table.Column<DateTime>(type: "datetime(6)", nullable: false, defaultValueSql: "UTC_TIMESTAMP()"),
                     created_by = table.Column<Guid>(type: "char(36)", nullable: true, collation: "ascii_general_ci"),
                     updated_at = table.Column<DateTime>(type: "datetime(6)", nullable: true),
                     updated_by = table.Column<Guid>(type: "char(36)", nullable: true, collation: "ascii_general_ci"),
@@ -12935,7 +12854,6 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                 {
                     table.PrimaryKey("pk_islamu_event_notifications", x => x.id);
                     table.UniqueConstraint("ak_notifications_tenant_id", x => new { x.tenant_id, x.id });
-                    table.CheckConstraint("ck_notifications_entity_reference_shape", "(notification_entity_type_id IS NULL AND entity_id IS NULL) OR (notification_entity_type_id IS NOT NULL AND entity_id ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$')");
                     table.ForeignKey(
                         name: "FK_islamu_event_notifications_islamu_event_actors_recip_C8DA9C24",
                         column: x => x.recipient_context_actor_id,
@@ -12997,7 +12915,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                 name: "islamu_event_notification_deliveries",
                 columns: table => new
                 {
-                    id = table.Column<Guid>(type: "char(36)", nullable: false, defaultValueSql: "uuidv7()", collation: "ascii_general_ci"),
+                    id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     tenant_id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     notification_intent_id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     channel_id = table.Column<int>(type: "int", nullable: false),
@@ -13582,7 +13500,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                 name: "islamu_event_incoming_webhook_effect_outbox",
                 columns: table => new
                 {
-                    id = table.Column<Guid>(type: "char(36)", nullable: false, defaultValueSql: "uuidv7()", collation: "ascii_general_ci"),
+                    id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     tenant_id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     incoming_webhook_message_id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     provider = table.Column<string>(type: "varchar(100)", maxLength: 100, nullable: false)
@@ -13619,8 +13537,6 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                     table.PrimaryKey("pk_islamu_event_incoming_webhook_effect_outbox", x => x.id);
                     table.UniqueConstraint("ak_incoming_webhook_effect_outbox_tenant_id", x => new { x.tenant_id, x.id });
                     table.CheckConstraint("ck_incoming_webhook_effect_outbox_attempt_count", "attempt_count >= 0");
-                    table.CheckConstraint("ck_incoming_webhook_effect_outbox_failure_category", "failure_category IS NULL OR failure_category ~ '^[a-z0-9_]+$'");
-                    table.CheckConstraint("ck_incoming_webhook_effect_outbox_payload_sha256", "payload_sha256 ~ '^sha256:[0-9a-f]{64}$'");
                     table.CheckConstraint("ck_incoming_webhook_effect_outbox_processing_fence", "processing_fence >= 0");
                     table.CheckConstraint("ck_incoming_webhook_effect_outbox_processing_generation", "processing_generation >= 1");
                     table.ForeignKey(
@@ -13636,7 +13552,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                 name: "islamu_event_incoming_webhook_effect_receipts",
                 columns: table => new
                 {
-                    id = table.Column<Guid>(type: "char(36)", nullable: false, defaultValueSql: "uuidv7()", collation: "ascii_general_ci"),
+                    id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     tenant_id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     incoming_webhook_message_id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     effect_kind = table.Column<string>(type: "varchar(200)", maxLength: 200, nullable: false)
@@ -13656,7 +13572,6 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                 {
                     table.PrimaryKey("pk_islamu_event_incoming_webhook_effect_receipts", x => x.id);
                     table.UniqueConstraint("ak_incoming_webhook_effect_receipts_tenant_id", x => new { x.tenant_id, x.id });
-                    table.CheckConstraint("ck_incoming_webhook_effect_receipts_payload_hash", "payload_hash ~ '^sha256:[0-9a-f]{64}$'");
                     table.CheckConstraint("ck_incoming_webhook_effect_receipts_processing_generation", "processing_generation >= 1");
                     table.ForeignKey(
                         name: "FK_islamu_event_incoming_webhook_effect_receipts_islamu_6FC8103F",
@@ -13671,7 +13586,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                 name: "islamu_event_incoming_webhook_messages",
                 columns: table => new
                 {
-                    id = table.Column<Guid>(type: "char(36)", nullable: false, defaultValueSql: "uuidv7()", collation: "ascii_general_ci"),
+                    id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     tenant_id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     webhook_consumer_provider_binding_id = table.Column<Guid>(type: "char(36)", nullable: true, collation: "ascii_general_ci"),
                     provider = table.Column<string>(type: "varchar(100)", maxLength: 100, nullable: false)
@@ -13682,7 +13597,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                         .Annotation("MySql:CharSet", "utf8mb4"),
                     event_type = table.Column<string>(type: "varchar(200)", maxLength: 200, nullable: true)
                         .Annotation("MySql:CharSet", "utf8mb4"),
-                    headers_json = table.Column<string>(type: "jsonb", nullable: true)
+                    headers_json = table.Column<string>(type: "longtext", nullable: true)
                         .Annotation("MySql:CharSet", "utf8mb4"),
                     payload_hash = table.Column<string>(type: "varchar(71)", maxLength: 71, nullable: false)
                         .Annotation("MySql:CharSet", "utf8mb4"),
@@ -13696,10 +13611,10 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                     payload_cleared_at = table.Column<DateTime>(type: "datetime(6)", nullable: true),
                     retention_policy_version = table.Column<string>(type: "varchar(200)", maxLength: 200, nullable: false, defaultValue: "legacy-retention-v1")
                         .Annotation("MySql:CharSet", "utf8mb4"),
-                    processing_attempt_retention_until = table.Column<DateTime>(type: "datetime(6)", nullable: false, defaultValueSql: "statement_timestamp() + INTERVAL '30 days'"),
-                    dead_letter_evidence_retention_until = table.Column<DateTime>(type: "datetime(6)", nullable: false, defaultValueSql: "statement_timestamp() + INTERVAL '90 days'"),
-                    replay_window_until = table.Column<DateTime>(type: "datetime(6)", nullable: false, defaultValueSql: "statement_timestamp() + INTERVAL '14 days'"),
-                    operational_log_retention_until = table.Column<DateTime>(type: "datetime(6)", nullable: false, defaultValueSql: "statement_timestamp() + INTERVAL '30 days'"),
+                    processing_attempt_retention_until = table.Column<DateTime>(type: "datetime(6)", nullable: false, defaultValueSql: "TIMESTAMPADD(DAY, 30, UTC_TIMESTAMP())"),
+                    dead_letter_evidence_retention_until = table.Column<DateTime>(type: "datetime(6)", nullable: false, defaultValueSql: "TIMESTAMPADD(DAY, 90, UTC_TIMESTAMP())"),
+                    replay_window_until = table.Column<DateTime>(type: "datetime(6)", nullable: false, defaultValueSql: "TIMESTAMPADD(DAY, 14, UTC_TIMESTAMP())"),
+                    operational_log_retention_until = table.Column<DateTime>(type: "datetime(6)", nullable: false, defaultValueSql: "TIMESTAMPADD(DAY, 30, UTC_TIMESTAMP())"),
                     status_id = table.Column<int>(type: "int", nullable: false),
                     processing_generation = table.Column<int>(type: "int", nullable: false),
                     processing_fence = table.Column<long>(type: "bigint", nullable: false),
@@ -13729,14 +13644,13 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                     created_by = table.Column<Guid>(type: "char(36)", nullable: true, collation: "ascii_general_ci"),
                     updated_at = table.Column<DateTime>(type: "datetime(6)", nullable: true),
                     updated_by = table.Column<Guid>(type: "char(36)", nullable: true, collation: "ascii_general_ci"),
-                    payload_bytes = table.Column<byte[]>(type: "bytea", nullable: true)
+                    payload_bytes = table.Column<byte[]>(type: "longblob", nullable: true)
                 },
                 constraints: table =>
                 {
                     table.PrimaryKey("pk_islamu_event_incoming_webhook_messages", x => x.id);
                     table.UniqueConstraint("ak_incoming_webhook_messages_tenant_id", x => new { x.tenant_id, x.id });
                     table.CheckConstraint("ck_incoming_webhook_messages_payload_byte_length", "payload_byte_length > 0");
-                    table.CheckConstraint("ck_incoming_webhook_messages_payload_hash", "payload_hash ~ '^sha256:[0-9a-f]{64}$'");
                     table.CheckConstraint("ck_incoming_webhook_messages_processing_fence", "processing_fence >= 0");
                     table.CheckConstraint("ck_incoming_webhook_messages_processing_generation", "processing_generation >= 1");
                     table.ForeignKey(
@@ -13782,7 +13696,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                 name: "islamu_event_incoming_webhook_processing_attempts",
                 columns: table => new
                 {
-                    id = table.Column<Guid>(type: "char(36)", nullable: false, defaultValueSql: "uuidv7()", collation: "ascii_general_ci"),
+                    id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     tenant_id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     incoming_webhook_message_id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     processing_generation = table.Column<int>(type: "int", nullable: false),
@@ -13832,7 +13746,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                 name: "islamu_event_incoming_webhook_redrive_records",
                 columns: table => new
                 {
-                    id = table.Column<Guid>(type: "char(36)", nullable: false, defaultValueSql: "uuidv7()", collation: "ascii_general_ci"),
+                    id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     tenant_id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     incoming_webhook_message_id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     actor_id = table.Column<string>(type: "varchar(200)", maxLength: 200, nullable: false)
@@ -14603,13 +14517,6 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                 name: "ix_islamu_event_entitlement_selection_rules_master_code",
                 table: "islamu_event_entitlement_selection_rules",
                 column: "master_code",
-                unique: true);
-
-            migrationBuilder.CreateIndex(
-                name: "IX_islamu_event_erasure_intents_intent_id_subject_kind__150BE8D9",
-                schema: "privacy_erasure_authority",
-                table: "islamu_event_erasure_intents",
-                columns: new[] { "intent_id", "subject_kind", "policy_version" },
                 unique: true);
 
             migrationBuilder.CreateIndex(
@@ -17283,6 +17190,11 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                 columns: new[] { "tenant_id", "event_id", "registration_form_id", "registration_form_version_id", "registration_form_section_id", "registration_form_field_id", "field_type_id" });
 
             migrationBuilder.CreateIndex(
+                name: "IX_islamu_event_registration_answers_tenant_id_registra_3EC9C6CE",
+                table: "islamu_event_registration_answers",
+                columns: new[] { "tenant_id", "registration_order_id", "ticket_assignment_subject_id", "ticket_assignment_order_line_id" });
+
+            migrationBuilder.CreateIndex(
                 name: "IX_islamu_event_registration_answers_tenant_id_registra_5810BAFD",
                 table: "islamu_event_registration_answers",
                 columns: new[] { "tenant_id", "registration_order_id" });
@@ -17294,9 +17206,9 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                 unique: true);
 
             migrationBuilder.CreateIndex(
-                name: "IX_islamu_event_registration_answers_tenant_id_registra_A6722D0D",
+                name: "IX_islamu_event_registration_answers_tenant_id_registra_A189B41A",
                 table: "islamu_event_registration_answers",
-                columns: new[] { "tenant_id", "registration_order_id", "ticket_assignment_subject_id" });
+                columns: new[] { "tenant_id", "registration_order_id", "ticket_assignment_order_line_id", "requirement_subject_id" });
 
             migrationBuilder.CreateIndex(
                 name: "IX_islamu_event_registration_answers_tenant_id_registra_E6F82C39",
@@ -19592,10 +19504,6 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                 name: "islamu_event_audit_logs");
 
             migrationBuilder.DropTable(
-                name: "islamu_event_authority_counter",
-                schema: "privacy_erasure_authority");
-
-            migrationBuilder.DropTable(
                 name: "islamu_event_category_type_categories");
 
             migrationBuilder.DropTable(
@@ -20061,13 +19969,13 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                 name: "islamu_event_privacy_erasure_sagas");
 
             migrationBuilder.DropTable(
+                name: "islamu_event_registration_ticket_assignments");
+
+            migrationBuilder.DropTable(
                 name: "islamu_event_registration_form_field_options");
 
             migrationBuilder.DropTable(
                 name: "islamu_event_registration_sensitive_answer_values");
-
-            migrationBuilder.DropTable(
-                name: "islamu_event_registration_ticket_assignments");
 
             migrationBuilder.DropTable(
                 name: "islamu_event_registration_answer_subject_types");
@@ -20223,13 +20131,6 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                 name: "islamu_event_participation_handling_modes");
 
             migrationBuilder.DropTable(
-                name: "islamu_event_erasure_intents",
-                schema: "privacy_erasure_authority");
-
-            migrationBuilder.DropTable(
-                name: "islamu_event_registration_form_fields");
-
-            migrationBuilder.DropTable(
                 name: "islamu_event_registration_participants");
 
             migrationBuilder.DropTable(
@@ -20237,6 +20138,9 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
 
             migrationBuilder.DropTable(
                 name: "islamu_event_assignment_statuses");
+
+            migrationBuilder.DropTable(
+                name: "islamu_event_registration_form_fields");
 
             migrationBuilder.DropTable(
                 name: "islamu_event_registration_submission_statuses");
@@ -20293,6 +20197,12 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                 name: "islamu_event_notification_intent_statuses");
 
             migrationBuilder.DropTable(
+                name: "islamu_event_participant_types");
+
+            migrationBuilder.DropTable(
+                name: "islamu_event_event_ticket_types");
+
+            migrationBuilder.DropTable(
                 name: "islamu_event_registration_organizer_visibilities");
 
             migrationBuilder.DropTable(
@@ -20300,12 +20210,6 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
 
             migrationBuilder.DropTable(
                 name: "islamu_event_registration_form_sections");
-
-            migrationBuilder.DropTable(
-                name: "islamu_event_participant_types");
-
-            migrationBuilder.DropTable(
-                name: "islamu_event_event_ticket_types");
 
             migrationBuilder.DropTable(
                 name: "islamu_event_registration_attempt_statuses");
@@ -20332,9 +20236,6 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                 name: "islamu_event_notification_delivery_policies");
 
             migrationBuilder.DropTable(
-                name: "islamu_event_registration_form_versions");
-
-            migrationBuilder.DropTable(
                 name: "islamu_event_event_capacity_pools");
 
             migrationBuilder.DropTable(
@@ -20342,6 +20243,9 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
 
             migrationBuilder.DropTable(
                 name: "islamu_event_ticket_pricing_modes");
+
+            migrationBuilder.DropTable(
+                name: "islamu_event_registration_form_versions");
 
             migrationBuilder.DropTable(
                 name: "islamu_event_booking_party_types");
@@ -20356,16 +20260,16 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                 name: "islamu_event_registration_requirements");
 
             migrationBuilder.DropTable(
-                name: "islamu_event_registration_form_statuses");
-
-            migrationBuilder.DropTable(
-                name: "islamu_event_registration_forms");
-
-            migrationBuilder.DropTable(
                 name: "islamu_event_capacity_hold_policies");
 
             migrationBuilder.DropTable(
                 name: "islamu_event_capacity_oversell_policies");
+
+            migrationBuilder.DropTable(
+                name: "islamu_event_registration_form_statuses");
+
+            migrationBuilder.DropTable(
+                name: "islamu_event_registration_forms");
 
             migrationBuilder.DropTable(
                 name: "islamu_event_ticket_catalog_statuses");
