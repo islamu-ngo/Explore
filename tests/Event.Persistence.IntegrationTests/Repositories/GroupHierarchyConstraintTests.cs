@@ -165,8 +165,8 @@ public class GroupHierarchyConstraintTests(PostgreSqlContainerFixture fixture)
         var repository = new GroupRepository(context);
 
         var wouldCreateCycle = await repository.WouldCreateHierarchyCycle(
-            root.Id,
-            child.Id,
+            root.GroupId,
+            child.GroupId,
             tenant.Id,
             CancellationToken.None);
 
@@ -179,18 +179,17 @@ public class GroupHierarchyConstraintTests(PostgreSqlContainerFixture fixture)
         await fixture.ResetAsync();
         using var context = fixture.CreateDbContext();
         var tenant = await SeedTenantAsync(context, "depth");
-        Guid? parentGroupId = null;
+        GroupTenant? parentGroup = null;
 
         for (var depth = 1; depth <= GroupHierarchyRules.MaxDepth; depth++)
         {
-            var group = await SeedGroupAsync(context, tenant, $"Depth {depth}", parentGroupId);
-            parentGroupId = group.Id;
+            parentGroup = await SeedGroupAsync(context, tenant, $"Depth {depth}", parentGroup?.Id);
         }
 
         var repository = new GroupRepository(context);
 
         var wouldExceedDepth = await repository.WouldExceedHierarchyDepth(
-            parentGroupId,
+            parentGroup?.GroupId,
             tenant.Id,
             GroupHierarchyRules.MaxDepth,
             CancellationToken.None);
@@ -204,18 +203,17 @@ public class GroupHierarchyConstraintTests(PostgreSqlContainerFixture fixture)
         await fixture.ResetAsync();
         using var context = fixture.CreateDbContext();
         var tenant = await SeedTenantAsync(context, "depth-allowed");
-        Guid? parentGroupId = null;
+        GroupTenant? parentGroup = null;
 
         for (var depth = 1; depth < GroupHierarchyRules.MaxDepth; depth++)
         {
-            var group = await SeedGroupAsync(context, tenant, $"Allowed Depth {depth}", parentGroupId);
-            parentGroupId = group.Id;
+            parentGroup = await SeedGroupAsync(context, tenant, $"Allowed Depth {depth}", parentGroup?.Id);
         }
 
         var repository = new GroupRepository(context);
 
         var wouldExceedDepth = await repository.WouldExceedHierarchyDepth(
-            parentGroupId,
+            parentGroup?.GroupId,
             tenant.Id,
             GroupHierarchyRules.MaxDepth,
             CancellationToken.None);
@@ -229,12 +227,15 @@ public class GroupHierarchyConstraintTests(PostgreSqlContainerFixture fixture)
         await fixture.ResetAsync();
         using var context = fixture.CreateDbContext();
         var tenant = await SeedTenantAsync(context, "move-depth");
-        Guid? deepParentGroupId = null;
+        GroupTenant? deepParentGroup = null;
 
         for (var depth = 1; depth < GroupHierarchyRules.MaxDepth; depth++)
         {
-            var group = await SeedGroupAsync(context, tenant, $"Deep Parent {depth}", deepParentGroupId);
-            deepParentGroupId = group.Id;
+            deepParentGroup = await SeedGroupAsync(
+                context,
+                tenant,
+                $"Deep Parent {depth}",
+                deepParentGroup?.Id);
         }
 
         var movingRoot = await SeedGroupAsync(context, tenant, "Moving Root");
@@ -242,8 +243,8 @@ public class GroupHierarchyConstraintTests(PostgreSqlContainerFixture fixture)
         var repository = new GroupRepository(context);
 
         var wouldExceedDepth = await repository.WouldExceedHierarchyDepthForMove(
-            movingRoot.Id,
-            deepParentGroupId,
+            movingRoot.GroupId,
+            deepParentGroup?.GroupId,
             tenant.Id,
             GroupHierarchyRules.MaxDepth,
             CancellationToken.None);

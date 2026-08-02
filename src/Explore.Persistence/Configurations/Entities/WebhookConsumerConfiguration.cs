@@ -59,14 +59,18 @@ public class WebhookConsumerConfiguration : IEntityTypeConfiguration<WebhookCons
             .HasForeignKey(e => e.InstanceId)
             .OnDelete(DeleteBehavior.Restrict);
 
-        builder.HasOne(e => e.Organization)
+        builder.Ignore(e => e.Organization);
+        builder.HasOne<OrganizationTenant>()
             .WithMany()
-            .HasForeignKey(e => e.OrganizationId)
+            .HasForeignKey(e => new { e.TenantId, e.OrganizationId })
+            .HasPrincipalKey(e => new { e.TenantId, e.OrganizationId })
             .OnDelete(DeleteBehavior.Restrict);
 
-        builder.HasOne(e => e.Group)
+        builder.Ignore(e => e.Group);
+        builder.HasOne<GroupTenant>()
             .WithMany()
-            .HasForeignKey(e => e.GroupId)
+            .HasForeignKey(e => new { e.TenantId, e.GroupId })
+            .HasPrincipalKey(e => new { e.TenantId, e.GroupId })
             .OnDelete(DeleteBehavior.Restrict);
 
         builder.HasOne(e => e.OwnerTenantUser)

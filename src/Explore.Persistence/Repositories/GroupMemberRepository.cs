@@ -1,3 +1,6 @@
+// ABOUTME: Persists group memberships and loads their user, role, group, and actor details.
+// ABOUTME: Keeps permission-scoped membership reads entity-based and tenant-filtered through ExploreDbContext.
+
 using Explore.Application.Contracts.Persistence;
 using Explore.Domain;
 using Explore.Domain.Enums;
@@ -37,6 +40,7 @@ public class GroupMemberRepository : GenericRepository<GroupMember, Guid>, IGrou
                 .ThenInclude(u => u!.Pii)
             .Include(m => m.GroupTenant)
                 .ThenInclude(p => p.Group)
+                    .ThenInclude(g => g.Actor)
             .Include(m => m.Role)
             .Include(m => m.GroupPosition)
             .FirstOrDefaultAsync(m => m.Id == id);
@@ -155,6 +159,7 @@ public class GroupMemberRepository : GenericRepository<GroupMember, Guid>, IGrou
                 .ThenInclude(p => p.ApprovalStatus)
             .Include(m => m.GroupTenant)
                 .ThenInclude(p => p.Group)
+                    .ThenInclude(g => g.Actor)
             .Include(m => m.Role)
             .Where(m => m.UserId == userId)
             .ToListAsync(cancellationToken);

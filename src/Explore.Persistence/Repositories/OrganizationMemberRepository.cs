@@ -1,3 +1,6 @@
+// ABOUTME: Persists organization memberships and loads their user, role, organization, and actor details.
+// ABOUTME: Keeps permission-scoped membership reads entity-based and tenant-filtered through ExploreDbContext.
+
 using System;
 using System.Collections.Generic;
 using System.Text;
@@ -42,6 +45,9 @@ public class OrganizationMemberRepository : GenericRepository<OrganizationMember
             .Include(m => m.OrganizationTenant)
                 .ThenInclude(p => p.Organization)
                     .ThenInclude(o => o.Pii)
+            .Include(m => m.OrganizationTenant)
+                .ThenInclude(p => p.Organization)
+                    .ThenInclude(o => o.Actor)
             .Include(m => m.Role)
             .Include(m => m.OrganizationPosition)
             .FirstOrDefaultAsync(m => m.Id == id);
@@ -97,6 +103,9 @@ public class OrganizationMemberRepository : GenericRepository<OrganizationMember
             .Include(m => m.OrganizationTenant)
                 .ThenInclude(p => p.Organization)
                     .ThenInclude(o => o.Pii)
+            .Include(m => m.OrganizationTenant)
+                .ThenInclude(p => p.Organization)
+                    .ThenInclude(o => o.Actor)
             .Include(m => m.Role)
             .Where(m => m.UserId == userId)
             .ToListAsync(cancellationToken);

@@ -154,21 +154,24 @@ public class GroupRepository : GenericRepository<Group, Guid>, IGroupRepository
             .SqlQueryRaw<bool>(
                 """
                 WITH RECURSIVE ancestors AS (
-                    SELECT id, parent_group_id, 1 AS depth
-                    FROM groups
-                    WHERE id = {0} AND tenant_id = {1}
+                    SELECT id, group_id, parent_group_tenant_id, 1 AS depth
+                    FROM group_tenants
+                    WHERE group_id = {0} AND tenant_id = {1} AND NOT is_deleted
 
                     UNION ALL
 
-                    SELECT g.id, g.parent_group_id, a.depth + 1
-                    FROM groups g
-                    INNER JOIN ancestors a ON g.id = a.parent_group_id
-                    WHERE g.tenant_id = {1} AND a.depth < {2}
+                    SELECT participation.id, participation.group_id,
+                           participation.parent_group_tenant_id, ancestors.depth + 1
+                    FROM group_tenants participation
+                    INNER JOIN ancestors ON participation.id = ancestors.parent_group_tenant_id
+                    WHERE participation.tenant_id = {1}
+                      AND NOT participation.is_deleted
+                      AND ancestors.depth < {2}
                 )
                 SELECT EXISTS (
                     SELECT 1
                     FROM ancestors
-                    WHERE id = {3}
+                    WHERE group_id = {3}
                 ) AS "Value"
                 """,
                 parentGroupId,
@@ -191,16 +194,19 @@ public class GroupRepository : GenericRepository<Group, Guid>, IGroupRepository
             .SqlQueryRaw<int>(
                 """
                 WITH RECURSIVE ancestors AS (
-                    SELECT id, parent_group_id, 1 AS depth
-                    FROM groups
-                    WHERE id = {0} AND tenant_id = {1}
+                    SELECT id, parent_group_tenant_id, 1 AS depth
+                    FROM group_tenants
+                    WHERE group_id = {0} AND tenant_id = {1} AND NOT is_deleted
 
                     UNION ALL
 
-                    SELECT g.id, g.parent_group_id, a.depth + 1
-                    FROM groups g
-                    INNER JOIN ancestors a ON g.id = a.parent_group_id
-                    WHERE g.tenant_id = {1} AND a.depth < {2}
+                    SELECT participation.id, participation.parent_group_tenant_id,
+                           ancestors.depth + 1
+                    FROM group_tenants participation
+                    INNER JOIN ancestors ON participation.id = ancestors.parent_group_tenant_id
+                    WHERE participation.tenant_id = {1}
+                      AND NOT participation.is_deleted
+                      AND ancestors.depth < {2}
                 )
                 SELECT COALESCE(MAX(depth), 0) AS "Value"
                 FROM ancestors
@@ -219,28 +225,33 @@ public class GroupRepository : GenericRepository<Group, Guid>, IGroupRepository
             .SqlQueryRaw<bool>(
                 """
                 WITH RECURSIVE ancestors AS (
-                    SELECT id, parent_group_id, 1 AS depth
-                    FROM groups
-                    WHERE id = {1} AND tenant_id = {2}
+                    SELECT id, parent_group_tenant_id, 1 AS depth
+                    FROM group_tenants
+                    WHERE group_id = {1} AND tenant_id = {2} AND NOT is_deleted
 
                     UNION ALL
 
-                    SELECT g.id, g.parent_group_id, a.depth + 1
-                    FROM groups g
-                    INNER JOIN ancestors a ON g.id = a.parent_group_id
-                    WHERE g.tenant_id = {2} AND a.depth < {4}
+                    SELECT participation.id, participation.parent_group_tenant_id,
+                           ancestors.depth + 1
+                    FROM group_tenants participation
+                    INNER JOIN ancestors ON participation.id = ancestors.parent_group_tenant_id
+                    WHERE participation.tenant_id = {2}
+                      AND NOT participation.is_deleted
+                      AND ancestors.depth < {4}
                 ),
                 descendants AS (
                     SELECT id, 1 AS depth
-                    FROM groups
-                    WHERE id = {0} AND tenant_id = {2}
+                    FROM group_tenants
+                    WHERE group_id = {0} AND tenant_id = {2} AND NOT is_deleted
 
                     UNION ALL
 
-                    SELECT g.id, d.depth + 1
-                    FROM groups g
-                    INNER JOIN descendants d ON g.parent_group_id = d.id
-                    WHERE g.tenant_id = {2} AND d.depth < {4}
+                    SELECT participation.id, descendants.depth + 1
+                    FROM group_tenants participation
+                    INNER JOIN descendants ON participation.parent_group_tenant_id = descendants.id
+                    WHERE participation.tenant_id = {2}
+                      AND NOT participation.is_deleted
+                      AND descendants.depth < {4}
                 ),
                 depth_summary AS (
                     SELECT

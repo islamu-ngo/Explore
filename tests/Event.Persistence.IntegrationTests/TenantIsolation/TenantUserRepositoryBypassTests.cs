@@ -27,20 +27,26 @@ public class TenantUserRepositoryBypassTests(PostgreSqlContainerFixture fixture)
         await seedContext.SaveChangesAsync();
 
         var primaryUser = CreateUser("tenant-user-primary");
+        var tenantBOnlyUser = CreateUser("tenant-user-b-only");
         var suspendedUser = CreateUser("tenant-user-suspended");
         var deletedUser = CreateUser("tenant-user-deleted");
-        seedContext.Users.AddRange(primaryUser, suspendedUser, deletedUser);
+        seedContext.Users.AddRange(primaryUser, tenantBOnlyUser, suspendedUser, deletedUser);
         await seedContext.SaveChangesAsync();
 
-        var tenantAActor = CreateActor(tenantA.Id, primaryUser.Id, "Tenant A Primary");
-        var tenantBActor = CreateActor(tenantB.Id, primaryUser.Id, "Tenant B Primary");
-        var suspendedActor = CreateActor(tenantA.Id, suspendedUser.Id, "Tenant A Suspended");
-        var deletedActor = CreateActor(tenantA.Id, deletedUser.Id, "Tenant A Deleted");
-        seedContext.Actors.AddRange(tenantAActor, tenantBActor, suspendedActor, deletedActor);
+        var primaryActor = CreateActor(primaryUser.Id, "Primary User");
+        var tenantBOnlyActor = CreateActor(tenantBOnlyUser.Id, "Tenant B Only");
+        var suspendedActor = CreateActor(suspendedUser.Id, "Tenant A Suspended");
+        var deletedActor = CreateActor(deletedUser.Id, "Tenant A Deleted");
+        seedContext.Actors.AddRange(primaryActor, tenantBOnlyActor, suspendedActor, deletedActor);
         await seedContext.SaveChangesAsync();
 
-        var tenantAUser = CreateTenantUser(tenantA.Id, primaryUser.Id, tenantAActor.Id, TenantUserStatusEnum.Active);
-        var tenantBUser = CreateTenantUser(tenantB.Id, primaryUser.Id, tenantBActor.Id, TenantUserStatusEnum.Active);
+        var tenantAUser = CreateTenantUser(tenantA.Id, primaryUser.Id, primaryActor.Id, TenantUserStatusEnum.Active);
+        var tenantBUser = CreateTenantUser(tenantB.Id, primaryUser.Id, primaryActor.Id, TenantUserStatusEnum.Active);
+        var tenantBOnlyTenantUser = CreateTenantUser(
+            tenantB.Id,
+            tenantBOnlyUser.Id,
+            tenantBOnlyActor.Id,
+            TenantUserStatusEnum.Active);
         var tenantASuspendedUser = CreateTenantUser(
             tenantA.Id,
             suspendedUser.Id,
@@ -54,7 +60,12 @@ public class TenantUserRepositoryBypassTests(PostgreSqlContainerFixture fixture)
         tenantADeletedUser.IsDeleted = true;
         tenantADeletedUser.DeletedAt = new DateTime(2026, 1, 5, 0, 0, 0, DateTimeKind.Utc);
 
-        seedContext.TenantUsers.AddRange(tenantAUser, tenantBUser, tenantASuspendedUser, tenantADeletedUser);
+        seedContext.TenantUsers.AddRange(
+            tenantAUser,
+            tenantBUser,
+            tenantBOnlyTenantUser,
+            tenantASuspendedUser,
+            tenantADeletedUser);
         await seedContext.SaveChangesAsync();
 
         await using var tenantBContext = fixture.CreateTenantFilteredDbContext(new TestTenantContext(tenantB.Id));
@@ -66,14 +77,14 @@ public class TenantUserRepositoryBypassTests(PostgreSqlContainerFixture fixture)
         var repository = new TenantUserRepository(tenantBContext);
 
         var tenantAByUser = await repository.GetByTenantAndUserAsync(tenantA.Id, primaryUser.Id);
-        var tenantAByActor = await repository.GetByTenantAndActorAsync(tenantA.Id, tenantAActor.Id);
-        var wrongTenantActorLookup = await repository.GetByTenantAndActorAsync(tenantA.Id, tenantBActor.Id);
+        var tenantAByActor = await repository.GetByTenantAndActorAsync(tenantA.Id, primaryActor.Id);
+        var wrongTenantActorLookup = await repository.GetByTenantAndActorAsync(tenantA.Id, tenantBOnlyActor.Id);
         var primaryIsActiveInTenantA = await repository.IsActiveTenantUserAsync(tenantA.Id, primaryUser.Id);
         var primaryIsActiveInTenantB = await repository.IsActiveTenantUserAsync(tenantB.Id, primaryUser.Id);
         var suspendedIsActiveInTenantA = await repository.IsActiveTenantUserAsync(tenantA.Id, suspendedUser.Id);
         var deletedIsActiveInTenantA = await repository.IsActiveTenantUserAsync(tenantA.Id, deletedUser.Id);
 
-        await Assert.That(visibleWithoutBypass).IsEquivalentTo([tenantBUser.Id]);
+        await Assert.That(visibleWithoutBypass).IsEquivalentTo([tenantBUser.Id, tenantBOnlyTenantUser.Id]);
 
         await Assert.That(tenantAByUser).IsNotNull();
         await Assert.That(tenantAByUser!.Id).IsEqualTo(tenantAUser.Id);
@@ -82,7 +93,7 @@ public class TenantUserRepositoryBypassTests(PostgreSqlContainerFixture fixture)
 
         await Assert.That(tenantAByActor).IsNotNull();
         await Assert.That(tenantAByActor!.Id).IsEqualTo(tenantAUser.Id);
-        await Assert.That(tenantAByActor.ActorId).IsEqualTo(tenantAActor.Id);
+        await Assert.That(tenantAByActor.ActorId).IsEqualTo(primaryActor.Id);
         await Assert.That(wrongTenantActorLookup).IsNull();
 
         await Assert.That(primaryIsActiveInTenantA).IsTrue();
@@ -119,7 +130,7 @@ public class TenantUserRepositoryBypassTests(PostgreSqlContainerFixture fixture)
         };
     }
 
-    private static Actor CreateActor(Guid tenantId, Guid userId, string displayName)
+    private static Actor CreateActor(Guid userId, string displayName)
     {
         return new Actor
         {

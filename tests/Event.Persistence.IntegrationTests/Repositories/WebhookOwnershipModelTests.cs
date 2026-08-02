@@ -34,9 +34,22 @@ public sealed class WebhookOwnershipModelTests
             .Select(foreignKey => foreignKey.PrincipalEntityType.ClrType)
             .ToArray();
         await Assert.That(principals).Contains(typeof(InstanceBootstrapState));
-        await Assert.That(principals).Contains(typeof(Organization));
-        await Assert.That(principals).Contains(typeof(Group));
+        await Assert.That(principals).Contains(typeof(OrganizationTenant));
+        await Assert.That(principals).Contains(typeof(GroupTenant));
         await Assert.That(principals).Contains(typeof(TenantUser));
+
+        var organizationOwner = consumer.GetForeignKeys()
+            .Single(foreignKey => foreignKey.PrincipalEntityType.ClrType == typeof(OrganizationTenant));
+        var groupOwner = consumer.GetForeignKeys()
+            .Single(foreignKey => foreignKey.PrincipalEntityType.ClrType == typeof(GroupTenant));
+        await Assert.That(organizationOwner.Properties.Select(property => property.Name))
+            .IsEquivalentTo([nameof(WebhookConsumer.TenantId), nameof(WebhookConsumer.OrganizationId)]);
+        await Assert.That(organizationOwner.PrincipalKey.Properties.Select(property => property.Name))
+            .IsEquivalentTo([nameof(OrganizationTenant.TenantId), nameof(OrganizationTenant.OrganizationId)]);
+        await Assert.That(groupOwner.Properties.Select(property => property.Name))
+            .IsEquivalentTo([nameof(WebhookConsumer.TenantId), nameof(WebhookConsumer.GroupId)]);
+        await Assert.That(groupOwner.PrincipalKey.Properties.Select(property => property.Name))
+            .IsEquivalentTo([nameof(GroupTenant.TenantId), nameof(GroupTenant.GroupId)]);
     }
 
     [Test]
