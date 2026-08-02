@@ -77,27 +77,29 @@ public sealed class SecretProviderHealthCheck : IHealthCheck
             if (healthInfo.ConsecutiveFailures >= 3)
             {
                 _logger.LogWarning(
-                    "Secret provider unhealthy: {ProviderType} has {FailureCount} consecutive failures. Error: {Error}",
+                    "Secret provider unhealthy: {ProviderType} has {FailureCount} consecutive failures.",
                     healthInfo.ProviderType,
-                    healthInfo.ConsecutiveFailures,
-                    healthInfo.ErrorMessage);
+                    healthInfo.ConsecutiveFailures);
 
                 return HealthCheckResult.Unhealthy(
-                    description: $"Secret provider '{healthInfo.ProviderType}' has {healthInfo.ConsecutiveFailures} consecutive failures: {healthInfo.ErrorMessage}",
+                    description: $"Secret provider '{healthInfo.ProviderType}' is unavailable after {healthInfo.ConsecutiveFailures} consecutive failures.",
                     data: data);
             }
 
             return HealthCheckResult.Degraded(
-                description: $"Secret provider '{healthInfo.ProviderType}' is degraded: {healthInfo.ErrorMessage}",
+                description: $"Secret provider '{healthInfo.ProviderType}' has transient resolution failures.",
                 data: data);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Health check failed for secret provider");
+            _logger.LogError("Health check failed for secret provider with {ExceptionType}.", ex.GetType().Name);
 
             return HealthCheckResult.Unhealthy(
-                description: $"Health check threw exception: {ex.Message}",
-                exception: ex,
+                description: "Secret provider health check failed.",
                 data: new Dictionary<string, object>
                 {
                     ["provider"] = _provider.ProviderType.ToString(),

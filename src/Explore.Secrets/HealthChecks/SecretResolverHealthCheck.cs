@@ -4,6 +4,8 @@
 namespace Explore.Secrets.HealthChecks;
 
 using Explore.Application.Contracts.Secrets;
+using Explore.Secrets.Database;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Logging;
 
@@ -21,19 +23,23 @@ public sealed class SecretResolverHealthCheck : IHealthCheck
 {
     private readonly ISecretResolver _resolver;
     private readonly IInfisicalClientFactory _infisicalFactory;
+    private readonly IConfiguration _configuration;
     private readonly ILogger<SecretResolverHealthCheck> _logger;
 
     public SecretResolverHealthCheck(
         ISecretResolver resolver,
         IInfisicalClientFactory infisicalFactory,
+        IConfiguration configuration,
         ILogger<SecretResolverHealthCheck> logger)
     {
         ArgumentNullException.ThrowIfNull(resolver);
         ArgumentNullException.ThrowIfNull(infisicalFactory);
+        ArgumentNullException.ThrowIfNull(configuration);
         ArgumentNullException.ThrowIfNull(logger);
 
         _resolver = resolver;
         _infisicalFactory = infisicalFactory;
+        _configuration = configuration;
         _logger = logger;
     }
 
@@ -43,6 +49,8 @@ public sealed class SecretResolverHealthCheck : IHealthCheck
     {
         try
         {
+            var database = PrimaryDatabaseConfiguration.BindRuntime(_configuration);
+
             // Probe Infisical initialization. A null client means either "not configured"
             // (healthy for minimal deployments) or "configured but auth failed" (degraded).
             // Both states share the null return; the factory's own logs disambiguate.
@@ -52,7 +60,9 @@ public sealed class SecretResolverHealthCheck : IHealthCheck
             // is enough. A deep probe against a known-bound key would be too intrusive.
             _ = _resolver;
 
-            return HealthCheckResult.Healthy("Secret resolver pipeline is available.");
+            return HealthCheckResult.Healthy(
+                "Secret resolver pipeline is available.",
+                new Dictionary<string, object> { ["databaseProvider"] = database.Provider.ToString() });
         }
         catch (OperationCanceledException)
         {
@@ -62,12 +72,10 @@ public sealed class SecretResolverHealthCheck : IHealthCheck
         catch (Exception ex)
 #pragma warning restore CA1031
         {
-            _logger.LogError(ex, "Secret resolver health probe failed.");
-            return HealthCheckResult.Degraded(
-                description: "Secret resolver probe encountered an error. " +
-                             "Resolution still returns null for unbound/unreachable secrets; " +
-                             "runtime consumers should treat absent secrets as disabled features.",
-                exception: ex);
+            _logger.LogError("Secret resolver health probe failed with {ExceptionType}.", ex.GetType().Name);
+            return HealthCheckResult.Unhealthy(
+                description: "Secret resolver configuration is unavailable.",
+                data: new Dictionary<string, object> { ["databaseConfiguration"] = "invalid" });
         }
     }
 }

@@ -28,6 +28,7 @@ public static class HealthCheckResponseWriter
         "body",
         "bucket",
         "connectionstring",
+        "connection",
         "credential",
         "endpoint",
         "eventtitle",
@@ -63,8 +64,12 @@ public static class HealthCheckResponseWriter
         "authorization:",
         "bearer ",
         "credential",
+        "data source=",
+        "database=",
+        "host=",
         "password",
         "secret",
+        "server=",
         "token"
     ];
 

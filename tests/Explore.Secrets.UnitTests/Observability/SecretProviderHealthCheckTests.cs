@@ -73,7 +73,8 @@ public class SecretProviderHealthCheckTests : IDisposable
 
         // Assert
         result.Status.Should().Be(HealthStatus.Degraded);
-        result.Description.Should().Contain("degraded");
+        result.Description.Should().Contain("transient resolution failures");
+        result.Description.Should().NotContain("Temporary connection issue");
     }
 
     [Test]
@@ -96,6 +97,7 @@ public class SecretProviderHealthCheckTests : IDisposable
         // Assert
         result.Status.Should().Be(HealthStatus.Unhealthy);
         result.Description.Should().Contain("5 consecutive failures");
+        result.Description.Should().NotContain("Authentication failed");
     }
 
     [Test]
@@ -112,8 +114,8 @@ public class SecretProviderHealthCheckTests : IDisposable
 
         // Assert
         result.Status.Should().Be(HealthStatus.Unhealthy);
-        result.Exception.Should().BeOfType<InvalidOperationException>();
-        result.Description.Should().Contain("exception");
+        result.Exception.Should().BeNull();
+        result.Description.Should().Be("Secret provider health check failed.");
     }
 
     [Test]

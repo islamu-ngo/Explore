@@ -153,6 +153,34 @@ public sealed class HealthCheckResponseWriterTests
         checkData["pendingCount"]!.GetValue<int>().Should().Be(9);
     }
 
+    [Test]
+    public async Task WriteAsync_WhenDescriptionOrDataContainDerivedConnectionStrings_RedactsThem()
+    {
+        var context = new DefaultHttpContext();
+        context.Response.Body = new MemoryStream();
+        const string connection = "Host=db.internal;Port=5432;Database=events;Username=runtime;Password=canary";
+        var report = new HealthReport(
+            new Dictionary<string, HealthReportEntry>
+            {
+                ["database"] = new(
+                    HealthStatus.Unhealthy,
+                    connection,
+                    TimeSpan.Zero,
+                    exception: null,
+                    data: new Dictionary<string, object> { ["runtimeConnection"] = connection })
+            },
+            TimeSpan.Zero);
+
+        await HealthCheckResponseWriter.WriteAsync(context, report);
+
+        var root = JsonNode.Parse(ReadResponseJson(context))!.AsObject();
+        var check = root["checks"]!.AsArray()[0]!.AsObject();
+        check["description"].Should().BeNull();
+        check["data"]!["runtimeConnection"]!.GetValue<string>().Should().Be(HealthCheckResponseWriter.RedactedValue);
+        root.ToJsonString().Should().NotContain("db.internal");
+        root.ToJsonString().Should().NotContain("canary");
+    }
+
     private static string ReadResponseJson(HttpContext context)
     {
         context.Response.Body.Position = 0;
