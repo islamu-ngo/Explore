@@ -5,6 +5,30 @@
 
 Last Updated: 2026-08-02 Europe/Brussels
 
+## PHASE 8.2 INTERRUPTED HANDOFF (2026-08-02 Europe/Brussels)
+
+### Verified State
+- Phase 8.1 Domain/Persistence remains independently confirmed and closed with generated migration `20260802165308_Phase81RegistrationAttemptPersistence`; the implementation-task ledger remains **43/88**.
+- Task 8.2 exploration is complete. The selected design is atomic relational `RegistrationAnswer` storage with split `RegistrationSensitiveAnswerValue`; normalized order/purchaser/participant/ticket-assignment/session-selection subjects; no JSON-only answer truth; row-local `num_nonnulls` and type/subject checks; composite lineage, option, and subject-containment foreign keys; durable null-safe answer identity; and no ordinary Consent/File/OpaqueExternal values. AES-GCM integration is deferred to Task 8.3.
+- Exploration sessions `ses_03c6b33e2ffeIrL7JSezt1PFHX` and `ses_03c6b337dffeXNTAR3Hd55e8ZU` completed.
+
+### Interrupted Implementation And Resume
+- Backend session `ses_03c5ef347ffeT0FEuYCnTmHROx` returned no `DoneClaim`: its first call timed out after 30 minutes and its continuation was aborted by the user. Phase 8.2-looking Domain, Persistence, migration, privacy-inventory, and test files are present in the dirty worktree, but their exact state is unknown. No Task 8.2 implementation or verification completion is claimed.
+- Resume by inspecting `git status --short` and all Phase 8.2-looking diffs, then query or continue the preserved backend session for `WORKING`, `BLOCKED`, or a valid `DoneClaim` before spawning another writer. Preserve unrelated dirty work and the detached Phase 8.1 worktree.
+- Independently verify every discovered change. Task 8.2 stays unchecked until failing-first evidence, a canonical isolated generated migration, real PostgreSQL assertion-level tests, architecture/privacy gates, a clean pending EF model, and independent verifier confirmation all exist.
+- Tasks 8.3–8.8, Phase 8 final verification, and final documentation remain pending. The unrelated `.claude/hooks/SkillTrigger.cs:21` CA1311/CA1304 warnings do not block this work and were not addressed.
+
+## PHASE 8.1 COMPLETE HANDOFF (2026-08-02 Europe/Brussels)
+
+### Completed
+- Phase 8.1 Domain and Persistence are independently technically confirmed. Attempts use hashed single-use capabilities; submission-consumption claims are durable and separate from EF concurrency and HTTP idempotency; opaque deduplication and evidence-only retention preserve late superseded or expired submissions.
+- Generated migration `20260802165308_Phase81RegistrationAttemptPersistence` is confirmed with a clean pending EF model. Characterization is 25/25, privacy is 12/12, architecture/naming/tenant-filter is 15/15, PostgreSQL assertion-level verification is 10/10, and Application/Persistence/API Release builds have 0 errors.
+- A no-`--connection` EF database update used the configured PostgreSQL connection supplied through Infisical. The user deleted and recreated that development database with the same name, confirmed no consequences, and closed the incident. Infisical itself was not migrated.
+
+### Boundaries And Next Step
+- The shared worktree still contains extensive unrelated changes. The detached Phase 8.1 worktree remains preserved for operator cleanup; do not reset, stash, clean, force-remove, or modify unrelated work.
+- Start Task 8.2 typed answer storage, CHECK constraints, subjects, and answer-identity uniqueness. Answer identity remains unchecked until Task 8.2 closes; Tasks 8.2–8.8 and Phase 8 verification remain open.
+
 ## PHASE 7 COMPLETE HANDOFF (2026-08-02 Europe/Brussels)
 
 ### ✅ COMPLETED THIS SESSION

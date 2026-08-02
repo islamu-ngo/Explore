@@ -3,7 +3,7 @@
 
 # Registration Data Collection & Participation Platform — Implementation Plan
 
-Last Updated: 2026-08-01 Europe/Brussels
+Last Updated: 2026-08-02 Europe/Brussels
 
 ---
 
@@ -1175,14 +1175,61 @@ From the repository contract (AGENTS.md §5, QUICK_REFERENCE, GOVERNANCE):
   - `dotnet test --project tests/Event.Application.UnitTests/Event.Application.UnitTests.csproj --configuration Release --verbosity quiet` *(repeat justified: the normalization/validation pipeline handlers are Application-owned and this is the fastest deterministic coverage)*
 - **Rollback / failure handling:** Native runtime is additive; finalization extends the Phase 5 transaction. If the answer CHECK constraints fight EF value conversions, resolve at configuration level (owned columns), never by weakening constraints; record in context.
 
+#### Session Handoff — 2026-08-02
+
+**Status:** Phase 8.1 Domain and Persistence are independently technically confirmed and closed. The generated migration is `20260802165308_Phase81RegistrationAttemptPersistence`. Phase 8 remains in progress, with Task 8.2 typed answer storage next. Answer identity belongs to Task 8.2 and remains open; the Task 8.1 answer-identity checkbox must close only with Task 8.2.
+
+**Architecture:** This is a dedicated runtime bounded context. Attempts use a hashed, single-use capability. `SubmissionConsumptionClaimId` is durable and separate from EF `ConcurrencyStamp` and HTTP idempotency. Native/provider deduplication is opaque. Late superseded or expired evidence is retained as `EvidenceOnly`. Atomic relational typed answers are planned in Task 8.2. Long-lived sensitive values use the existing versioned AES-256-GCM implementation, not ASP.NET Data Protection. Files are quarantined by default when no scanner is configured.
+
+**Sessions and evidence:** Domain executor `ses_03d4d2195ffeVnYOAG5K7pUCKr`; Domain verifier `ses_03d43984affewhTXdi8ouAhBHi`; Persistence executor `ses_03d1bf134ffe6ljjdIkHYXpD4R`; Persistence verifier `ses_03d051725ffenkwHDqkn3Gm2A9`. Evidence is recorded in `.tmp/registration-attempt-runtime-evidence.md` and `.omo/start-work/artifacts/registration-data-collection-phase8/DONE_CLAIM.md`.
+
+**Verified evidence:** Characterization is 25/25, privacy is 12/12, architecture/naming/tenant-filter is 15/15, and all 10 PostgreSQL scenarios execute assertion-level checks and pass. EF reports a clean pending model. Application, Persistence, and API Release builds complete with 0 errors.
+
+**Tool and migration state:** EF packages and local `dotnet-ef` are 10.0.10. Shared API/Persistence Release builds were GREEN before generation. The detached worktree is `/home/amir/ISLAMU/Github/Event-phase81-migration` at `52a410c7166ff0329b85bed8977c4f3cbd94aab3`. Four package-adaptation files were needed for isolation only:
+
+- `src/Explore.Infrastructure/Ai/AnthropicCompatibleChatProvider.cs`
+- `src/Explore.Infrastructure/Services/CerbosPolicyPackageService.cs`
+- `src/Explore.Infrastructure/Services/Keycloak/KeycloakBootstrapService.cs`
+- `src/Explore.Infrastructure/Services/Keycloak/KeycloakAccountAuthorityLifecycleEmailService.cs`
+
+Current shared status contains canonical `src/Explore.Persistence/Migrations/20260802165308_Phase81RegistrationAttemptPersistence.cs`, its matching Designer, and the generated snapshot. Shared/isolated SHA-256 values match and pre-existing migration hashes/diffs are unchanged. The detached worktree remains preserved for operator cleanup; no reset, stash, clean, or forced removal is authorized.
+
+**Resolved database disposition:** A `dotnet ef database update` without `--connection` accidentally applied pending migrations to the configured PostgreSQL development database using a connection string supplied through Infisical. The user disposed of that database by deleting and recreating the development database with the same name and confirmed there were no consequences. Infisical only supplied the connection string; Infisical itself was not migrated.
+
+**Preserve the shared worktree:** It contains many concurrent unrelated changes. Prior BOM-only diffs exist on `20260801192258_init.cs` and `20260802020111_WebhookOwnerTenantContainment.cs`. Unrelated work exists under `dev/active/event-standalone-combined-host/` and `dev/active/multi-database-support/`. Preserve the package-adaptation edits listed above. Never reset, stash, clean, or overwrite this worktree.
+
+**Resume sequence:**
+
+1. Start Task 8.2 typed answer storage, CHECK constraints, subjects, and answer-identity uniqueness.
+2. Keep Task 8.2 answer identity unchecked until its database constraint and focused tests pass.
+3. Leave the detached worktree for operator cleanup and preserve all unrelated shared-worktree changes.
+
+Tasks 8.2–8.8 and Phase 8 verification remain pending. No commit or PR was requested.
+
+#### Phase 8.2 Interruption Handoff — 2026-08-02 Europe/Brussels
+
+**Verified status:** Phase 8.1 Domain/Persistence remains independently confirmed and closed at the **43/88** implementation-task baseline, including generated migration `20260802165308_Phase81RegistrationAttemptPersistence`. Task 8.2 is interrupted and remains in progress. Its task and acceptance criteria are unchecked; no Task 8.2 code, test, migration, pending-model, or verification completion is claimed. Tasks 8.3–8.8, Phase 8 final verification, and final documentation remain pending.
+
+**Completed exploration:** The relational design uses one atomic `RegistrationAnswer` row per typed value and splits protected payloads into `RegistrationSensitiveAnswerValue`. A normalized subject lookup covers order, purchaser, participant, ticket assignment, and session selection. Answers are not JSON-only. The planned database defense uses row-local `num_nonnulls` plus type/subject checks, composite foreign keys for lineage, option, and subject containment, and a durable null-safe answer identity. Consent, File, and OpaqueExternal are excluded from ordinary value columns. AES-GCM integration is deferred to Task 8.3. Exploration sessions `ses_03c6b33e2ffeIrL7JSezt1PFHX` and `ses_03c6b337dffeXNTAR3Hd55e8ZU` completed.
+
+**Interrupted implementation:** Backend session `ses_03c5ef347ffeT0FEuYCnTmHROx` returned no `DoneClaim`; its first call timed out after 30 minutes and the continuation was aborted by the user. The shared worktree currently contains Phase 8.2-looking Domain, Persistence, migration, privacy-inventory, and test changes, but their ownership, completeness, and correctness are unknown until independently inspected. Do not infer implementation state from their presence.
+
+**Exact resume sequence:**
+
+1. Inspect `git status --short` and every Phase 8.2-looking diff before editing; preserve all unrelated dirty work and the detached Phase 8.1 worktree.
+2. Query or continue `ses_03c5ef347ffeT0FEuYCnTmHROx` for `WORKING`, `BLOCKED`, or a valid `DoneClaim` before spawning another writer.
+3. Independently verify every discovered change. Do not check Task 8.2 until evidence includes failing-first coverage, the canonical isolated generated migration, real PostgreSQL assertion-level tests, architecture/privacy gates, a clean pending EF model, and independent verifier confirmation.
+
+**Unrelated observed warnings:** The user-prompt hook reported CA1311 and CA1304 at `.claude/hooks/SkillTrigger.cs:21` for culture-sensitive `ToLower()`. They do not block Task 8.2 and were not addressed.
+
 #### Task 8.1: Attempt + submission + status machines
 - **Type:** create
 - **Layer:** Domain + Persistence
 - **Files:** entities above + configurations; uniqueness `(ProviderBindingId, ProviderResponseId, ProviderResponseRevision)` prepared (nullable binding for native); attempt-token hash single-use
 - **Acceptance Criteria:**
-  - [ ] Duplicate submission insert → acknowledged no-op (unique index test)
-  - [ ] Attempt supersession rules unit-tested (late superseded evidence retained, cannot finalize)
-  - [ ] Answer identity uniqueness constrained at DB level (one answer row set per submission/field/subject/ordinal — Hi.Events lacks this, report §4.7)
+  - [x] Duplicate submission insert → acknowledged no-op (unique index test)
+  - [x] Attempt supersession rules unit-tested (late superseded evidence retained, cannot finalize)
+  - [ ] Answer identity uniqueness constrained at DB level (one answer row set per submission/field/subject/ordinal — Hi.Events lacks this, report §4.7) — closes in Task 8.2, not the Phase 8.1 closeout
 - **Dependencies:** Phase 7
 - **Effort:** L
 

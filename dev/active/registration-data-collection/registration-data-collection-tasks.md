@@ -6,11 +6,11 @@
 Last Updated: 2026-08-02 Europe/Brussels
 
 ## Status Summary
-- **Overall status:** Phases 5 and 6 remain confirmed. Tasks 7.1–7.8 and Phase 7 verification are checked; Phase 7 is complete
-- **Checkbox count:** 42/88 implementation-task boxes are checked. This is not workstream completion
-- **Current priority:** Phase 8.1 — begin the next work slice after Phase 7 closeout
-- **Next recommended slice:** Phase 8
-- **Latest focused evidence:** Task 7.6 closeout is confirmed with 14/14 builder tests, 7/7 service tests, scoped Blazor client Release build, canonical Release build, and Domain 683/683; Phase 7 verification is confirmed with build/test exit 0 and no browser/Docker/Aspire/PostgreSQL runtime use
+- **Overall status:** Phases 5–7 and Phase 8.1 remain confirmed. Task 8.2 is interrupted/in progress; Phase 8 remains in progress
+- **Checkbox count:** 43/88 implementation-task boxes are checked. This is not workstream completion
+- **Current priority:** Phase 8.2 — inspect interrupted typed-answer work before any implementation continues
+- **Next recommended slice:** Inspect Phase 8.2-looking diffs and query/continue backend session `ses_03c5ef347ffeT0FEuYCnTmHROx` before spawning another writer
+- **Latest focused evidence:** Phase 8.1 remains confirmed with generated migration `20260802165308_Phase81RegistrationAttemptPersistence`. Task 8.2 exploration is complete, but its backend session returned no `DoneClaim`; no Task 8.2 implementation, migration, test, pending-model, or independent-verifier completion is claimed
 
 ## Handoff — 2026-08-01 Europe/Brussels: Task 7.5 Confirmed / Tasks 7.6–7.7 Current
 
@@ -245,9 +245,12 @@ Last Updated: 2026-08-02 Europe/Brussels
 - [x] `dotnet build --configuration Release --verbosity quiet`
 - [x] `dotnet test --project tests/Event.Domain.UnitTests/Event.Domain.UnitTests.csproj --configuration Release --verbosity quiet`
 
-## Phase 8: Native Collection Runtime ⏳ NOT STARTED
-- [ ] **8.1 Attempt + submission + status machines** — attempt/submission/revision entities + lookups; dedup uniqueness; token single-use — **Acceptance:** duplicate → no-op; supersession rules; answer-identity uniqueness constrained at DB level (Hi.Events §4.7 gap) — **Effort:** L — **Dependencies:** Phase 7
-- [ ] **8.2 Typed answer storage + CHECK constraints + subjects** — `RegistrationAnswer`, `RegistrationSensitiveAnswerValue` + raw-SQL checks — **Acceptance:** DB rejects two-column and wrong-type rows; subject-shape constraint (answer subject must match field applicability) — **Effort:** L — **Dependencies:** 8.1
+## Phase 8: Native Collection Runtime 🟡 IN PROGRESS
+- [x] **8.1 Attempt + submission + status machines** — attempt/submission/revision entities + lookups; dedup uniqueness; token single-use — **Acceptance:** duplicate → no-op; supersession rules — **Effort:** L — **Dependencies:** Phase 7
+  - **Evidence:** independently confirmed with characterization 25/25, privacy 12/12, architecture/naming/tenant-filter 15/15, PostgreSQL assertion-level verification 10/10, clean pending EF model, Application/Persistence/API Release builds with 0 errors, and generated migration `20260802165308_Phase81RegistrationAttemptPersistence`.
+  - **Database disposition:** a no-`--connection` EF update used the configured PostgreSQL connection supplied through Infisical; the user deleted and recreated that development database with the same name and confirmed no consequences. Infisical itself was not migrated.
+- [ ] **8.2 Typed answer storage + CHECK constraints + subjects — 🟡 INTERRUPTED / IN PROGRESS** — `RegistrationAnswer`, `RegistrationSensitiveAnswerValue` + raw-SQL checks — **Acceptance:** DB rejects two-column and wrong-type rows; subject-shape constraint (answer subject must match field applicability); answer-identity uniqueness constrained at DB level (Hi.Events §4.7 gap) — **Effort:** L — **Dependencies:** 8.1
+  - **Handoff:** Exploration sessions completed, but backend session `ses_03c5ef347ffeT0FEuYCnTmHROx` returned no `DoneClaim` after a 30-minute timeout and user-aborted continuation. Inspect all candidate diffs and continue/query that session before another writer; independently require failing-first, isolated generated-migration, real PostgreSQL, architecture/privacy, pending-model, and verifier evidence before checking this task.
 - [ ] **8.3 Normalization + validation pipeline** — submit handlers + Domain normalizers (NFC/E.164/ISO/BCP-47/URL/decimal/date) — **Acceptance:** 17-type matrix; encrypted sensitive round-trip; reject-not-coerce — **Effort:** XL — **Dependencies:** 8.2
 - [ ] **8.4 Consent evidence records** — `RegistrationConsentRecord` + pipeline handling — **Acceptance:** immutable evidence; Boolean-only consent impossible — **Effort:** M — **Dependencies:** 8.3
 - [ ] **8.5 Requirement fulfillment + idempotent finalization effect** — fulfillment + fenced `RegistrationFinalizationEffect` shared by all paths — **Acceptance:** duplicate effect executes once; optional never blocks — **Effort:** L — **Dependencies:** 8.3, Phase 5
