@@ -94,6 +94,7 @@ public sealed class PrivacyErasureReadinessHealthCheckTests
 
         await Assert.That(result.Status).IsEqualTo(HealthStatus.Unhealthy);
         await Assert.That(result.Description).IsEqualTo("privacy_erasure_authority_unavailable");
+        await Assert.That(result.Exception).IsNull();
         await Assert.That(result.Description).DoesNotContain("connection-canary");
     }
 
