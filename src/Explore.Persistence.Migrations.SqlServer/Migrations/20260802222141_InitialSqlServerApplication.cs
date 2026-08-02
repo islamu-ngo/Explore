@@ -272,7 +272,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                 {
                     id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
                     service = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: false),
-                    cursor = table.Column<long>(type: "bigint", nullable: false),
+                    jetstream_cursor = table.Column<long>(type: "bigint", nullable: false),
                     last_event_at = table.Column<DateTime>(type: "datetime2", nullable: true),
                     lease_owner = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: true),
                     lease_token = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
@@ -283,7 +283,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("pk_atproto_jetstream_consumer_states", x => x.id);
-                    table.CheckConstraint("ck_atproto_jetstream_cursor", "cursor >= 0");
+                    table.CheckConstraint("ck_atproto_jetstream_cursor", "jetstream_cursor >= 0");
                     table.CheckConstraint("ck_atproto_jetstream_lease_fence", "lease_fence >= 0");
                     table.CheckConstraint("ck_atproto_jetstream_lease_shape", "(lease_owner IS NULL AND lease_token IS NULL AND lease_expires_at IS NULL) OR (lease_owner IS NOT NULL AND trim(lease_owner) <> '' AND lease_token IS NOT NULL AND lease_expires_at IS NOT NULL)");
                 });
@@ -448,7 +448,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                 {
                     table.PrimaryKey("pk_email_dispatch_processor_states", x => x.id);
                     table.CheckConstraint("ck_email_dispatch_processor_states_global_rate_override", "global_smtp_rate_limit_per_minute_override IS NULL OR global_smtp_rate_limit_per_minute_override BETWEEN 1 AND 100000");
-                    table.CheckConstraint("ck_email_dispatch_processor_states_smtp_rate_pair", "(smtp_available_tokens IS NULL) = (smtp_refill_at IS NULL)");
+                    table.CheckConstraint("ck_email_dispatch_processor_states_smtp_rate_pair", "(CASE WHEN smtp_available_tokens IS NULL THEN 1 ELSE 0 END) = (CASE WHEN smtp_refill_at IS NULL THEN 1 ELSE 0 END)");
                     table.CheckConstraint("ck_email_dispatch_processor_states_smtp_tokens_nonnegative", "smtp_available_tokens IS NULL OR smtp_available_tokens >= 0");
                 });
 
@@ -767,7 +767,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                     request_body_hash = table.Column<string>(type: "nvarchar(64)", maxLength: 64, nullable: false),
                     principal_fingerprint = table.Column<string>(type: "nvarchar(64)", maxLength: 64, nullable: false),
                     status_code = table.Column<int>(type: "int", nullable: false),
-                    response_body = table.Column<string>(type: "text", nullable: true),
+                    response_body = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     content_type = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: true),
                     created_at = table.Column<DateTime>(type: "datetime2", nullable: false),
                     expires_at = table.Column<DateTime>(type: "datetime2", nullable: false)
@@ -951,8 +951,8 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                     render_policy_onboarding_render_mode_override_mode = table.Column<int>(type: "int", nullable: false),
                     render_policy_onboarding_prerender_enabled_local_value = table.Column<bool>(type: "bit", nullable: false),
                     render_policy_onboarding_prerender_enabled_override_mode = table.Column<int>(type: "int", nullable: false),
-                    render_policy_disallow_interactive_server_on_onboarding_local_value = table.Column<bool>(type: "bit", nullable: false),
-                    render_policy_disallow_interactive_server_on_onboarding_override_mode = table.Column<int>(type: "int", nullable: false),
+                    render_policy_disallow_interactive_onboarding_local_value = table.Column<bool>(type: "bit", nullable: false),
+                    render_policy_disallow_interactive_onboarding_override_mode = table.Column<int>(type: "int", nullable: false),
                     render_policy_allow_tenant_override_local_value = table.Column<bool>(type: "bit", nullable: false),
                     render_policy_allow_tenant_override_override_mode = table.Column<int>(type: "int", nullable: false),
                     render_policy_lock_tenant_public_seo_local_value = table.Column<bool>(type: "bit", nullable: false),
@@ -1078,10 +1078,10 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("pk_managed_tenant_provisioning_operations", x => x.id);
-                    table.CheckConstraint("ck_managed_tenant_provisioning_cancelled", "(status = 'Cancelled') = (cancelled_at IS NOT NULL)");
-                    table.CheckConstraint("ck_managed_tenant_provisioning_failed", "(status = 'Failed') = (failure_code IS NOT NULL AND failed_at IS NOT NULL)");
-                    table.CheckConstraint("ck_managed_tenant_provisioning_request_snapshot", "(status IN ('Pending', 'Processing')) = (request_json IS NOT NULL)");
-                    table.CheckConstraint("ck_managed_tenant_provisioning_terminal_result", "(status = 'Succeeded') = (tenant_id IS NOT NULL AND tenant_administrator_user_id IS NOT NULL AND completed_at IS NOT NULL)");
+                    table.CheckConstraint("ck_managed_tenant_provisioning_cancelled", "(CASE WHEN status = 'Cancelled' THEN 1 ELSE 0 END) = (CASE WHEN cancelled_at IS NOT NULL THEN 1 ELSE 0 END)");
+                    table.CheckConstraint("ck_managed_tenant_provisioning_failed", "(CASE WHEN status = 'Failed' THEN 1 ELSE 0 END) = (CASE WHEN failure_code IS NOT NULL AND failed_at IS NOT NULL THEN 1 ELSE 0 END)");
+                    table.CheckConstraint("ck_managed_tenant_provisioning_request_snapshot", "(CASE WHEN status IN ('Pending', 'Processing') THEN 1 ELSE 0 END) = (CASE WHEN request_json IS NOT NULL THEN 1 ELSE 0 END)");
+                    table.CheckConstraint("ck_managed_tenant_provisioning_terminal_result", "(CASE WHEN status = 'Succeeded' THEN 1 ELSE 0 END) = (CASE WHEN tenant_id IS NOT NULL AND tenant_administrator_user_id IS NOT NULL AND completed_at IS NOT NULL THEN 1 ELSE 0 END)");
                 });
 
             migrationBuilder.CreateTable(
@@ -1414,8 +1414,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                 schema: "islamu_event",
                 columns: table => new
                 {
-                    id = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
+                    id = table.Column<int>(type: "int", nullable: false),
                     master_code = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     full_name = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     description = table.Column<string>(type: "nvarchar(max)", nullable: true)
@@ -1616,8 +1615,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                 schema: "islamu_event",
                 columns: table => new
                 {
-                    id = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
+                    id = table.Column<int>(type: "int", nullable: false),
                     master_code = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     full_name = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     description = table.Column<string>(type: "nvarchar(max)", nullable: true)
@@ -2002,8 +2000,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                 schema: "islamu_event",
                 columns: table => new
                 {
-                    id = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
+                    id = table.Column<int>(type: "int", nullable: false),
                     service = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: false),
                     cursor = table.Column<long>(type: "bigint", nullable: false),
                     last_seq_time = table.Column<DateTime>(type: "datetime2", nullable: true),
@@ -2153,8 +2150,8 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                     render_policy_onboarding_render_mode_override_mode = table.Column<int>(type: "int", nullable: false),
                     render_policy_onboarding_prerender_enabled_local_value = table.Column<bool>(type: "bit", nullable: false),
                     render_policy_onboarding_prerender_enabled_override_mode = table.Column<int>(type: "int", nullable: false),
-                    render_policy_disallow_interactive_server_on_onboarding_local_value = table.Column<bool>(type: "bit", nullable: false),
-                    render_policy_disallow_interactive_server_on_onboarding_override_mode = table.Column<int>(type: "int", nullable: false),
+                    render_policy_disallow_interactive_onboarding_local_value = table.Column<bool>(type: "bit", nullable: false),
+                    render_policy_disallow_interactive_onboarding_override_mode = table.Column<int>(type: "int", nullable: false),
                     render_policy_allow_tenant_override_local_value = table.Column<bool>(type: "bit", nullable: false),
                     render_policy_allow_tenant_override_override_mode = table.Column<int>(type: "int", nullable: false),
                     render_policy_lock_tenant_public_seo_local_value = table.Column<bool>(type: "bit", nullable: false),
@@ -2655,7 +2652,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                 {
                     id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
                     consumer_state_id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    cursor = table.Column<long>(type: "bigint", nullable: false),
+                    jetstream_cursor = table.Column<long>(type: "bigint", nullable: false),
                     reason_code = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
                     envelope_hash = table.Column<string>(type: "nvarchar(64)", maxLength: 64, nullable: false),
                     record_identity_hash = table.Column<string>(type: "nvarchar(64)", maxLength: 64, nullable: true),
@@ -2665,14 +2662,13 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("pk_atproto_jetstream_quarantines", x => x.id);
-                    table.CheckConstraint("ck_atproto_jetstream_quarantine_cursor", "cursor >= 0");
+                    table.CheckConstraint("ck_atproto_jetstream_quarantine_cursor", "jetstream_cursor >= 0");
                     table.ForeignKey(
                         name: "fk_atproto_jetstream_quarantines_atproto_jetstream_consumer_states_consumer_state_id",
                         column: x => x.consumer_state_id,
                         principalSchema: "islamu_event",
                         principalTable: "atproto_jetstream_consumer_states",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumn: "id");
                 });
 
             migrationBuilder.CreateTable(
@@ -2704,8 +2700,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         column: x => x.atproto_record_id,
                         principalSchema: "islamu_event",
                         principalTable: "atproto_records",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumn: "id");
                 });
 
             migrationBuilder.CreateTable(
@@ -2729,8 +2724,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         column: x => x.organization_id,
                         principalSchema: "islamu_event",
                         principalTable: "organizations",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumn: "id");
                 });
 
             migrationBuilder.CreateTable(
@@ -2833,8 +2827,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                 schema: "islamu_event",
                 columns: table => new
                 {
-                    id = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
+                    id = table.Column<int>(type: "int", nullable: false),
                     resource_kind = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
                     action = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
                     field_scope = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
@@ -2897,8 +2890,8 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                     user_id = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
                     timestamp = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValueSql: "SYSUTCDATETIME()"),
                     setting_key = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: false),
-                    old_value = table.Column<string>(type: "text", nullable: true),
-                    new_value = table.Column<string>(type: "text", nullable: false),
+                    old_value = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    new_value = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     setting_scope_id = table.Column<int>(type: "int", nullable: false),
                     scope_id = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
                     action_type = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
@@ -3037,8 +3030,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         column: x => x.tenant_plan_id,
                         principalSchema: "islamu_event",
                         principalTable: "tenant_plans",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumn: "id");
                 });
 
             migrationBuilder.CreateTable(
@@ -3189,8 +3181,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         column: x => x.user_id,
                         principalSchema: "islamu_event",
                         principalTable: "users",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumn: "id");
                 });
 
             migrationBuilder.CreateTable(
@@ -3219,8 +3210,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         column: x => x.user_id,
                         principalSchema: "islamu_event",
                         principalTable: "users",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumn: "id");
                 });
 
             migrationBuilder.CreateTable(
@@ -3241,15 +3231,13 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         column: x => x.permission_id,
                         principalSchema: "islamu_event",
                         principalTable: "permissions",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumn: "id");
                     table.ForeignKey(
                         name: "fk_role_permissions_roles_role_id",
                         column: x => x.role_id,
                         principalSchema: "islamu_event",
                         principalTable: "roles",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumn: "id");
                 });
 
             migrationBuilder.CreateTable(
@@ -3287,8 +3275,8 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                 {
                     table.PrimaryKey("pk_managed_control_plane_registrations", x => x.id);
                     table.CheckConstraint("ck_managed_control_plane_registration_expiry", "event_to_control_plane_credential_expires_at > created_at AND control_plane_to_event_credential_expires_at > created_at");
-                    table.CheckConstraint("ck_managed_control_plane_registration_registered", "(status IN ('Registered', 'Revoked')) = (registered_at IS NOT NULL)");
-                    table.CheckConstraint("ck_managed_control_plane_registration_revoked", "(status = 'Revoked') = (revoked_at IS NOT NULL)");
+                    table.CheckConstraint("ck_managed_control_plane_registration_registered", "(CASE WHEN status IN ('Registered', 'Revoked') THEN 1 ELSE 0 END) = (CASE WHEN registered_at IS NOT NULL THEN 1 ELSE 0 END)");
+                    table.CheckConstraint("ck_managed_control_plane_registration_revoked", "(CASE WHEN status = 'Revoked' THEN 1 ELSE 0 END) = (CASE WHEN revoked_at IS NOT NULL THEN 1 ELSE 0 END)");
                     table.ForeignKey(
                         name: "fk_managed_control_plane_registrations_secret_bindings_credential_secret_binding_id",
                         column: x => x.credential_secret_binding_id,
@@ -3320,8 +3308,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         column: x => x.tenant_plan_version_id,
                         principalSchema: "islamu_event",
                         principalTable: "tenant_plan_versions",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumn: "id");
                 });
 
             migrationBuilder.CreateTable(
@@ -3347,8 +3334,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         column: x => x.tenant_plan_version_id,
                         principalSchema: "islamu_event",
                         principalTable: "tenant_plan_versions",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumn: "id");
                 });
 
             migrationBuilder.CreateTable(
@@ -3415,15 +3401,13 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         column: x => x.atproto_record_id,
                         principalSchema: "islamu_event",
                         principalTable: "atproto_records",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumn: "id");
                     table.ForeignKey(
                         name: "fk_atproto_record_tenant_presentations_tenants_tenant_id",
                         column: x => x.tenant_id,
                         principalSchema: "islamu_event",
                         principalTable: "tenants",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumn: "id");
                 });
 
             migrationBuilder.CreateTable(
@@ -3565,7 +3549,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("pk_email_dispatch_tenant_controls", x => x.id);
-                    table.CheckConstraint("ck_email_dispatch_tenant_controls_smtp_rate_pair", "(smtp_available_tokens IS NULL) = (smtp_refill_at IS NULL)");
+                    table.CheckConstraint("ck_email_dispatch_tenant_controls_smtp_rate_pair", "(CASE WHEN smtp_available_tokens IS NULL THEN 1 ELSE 0 END) = (CASE WHEN smtp_refill_at IS NULL THEN 1 ELSE 0 END)");
                     table.CheckConstraint("ck_email_dispatch_tenant_controls_smtp_tokens_nonnegative", "smtp_available_tokens IS NULL OR smtp_available_tokens >= 0");
                     table.ForeignKey(
                         name: "fk_email_dispatch_tenant_controls_tenants_tenant_id",
@@ -3581,8 +3565,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                 schema: "islamu_event",
                 columns: table => new
                 {
-                    id = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
+                    id = table.Column<int>(type: "int", nullable: false),
                     full_name = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: false),
                     master_code = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: false),
                     description = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: true),
@@ -4010,15 +3993,13 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         column: x => x.module_id,
                         principalSchema: "islamu_event",
                         principalTable: "module_definitions",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumn: "id");
                     table.ForeignKey(
                         name: "fk_tenant_capabilities_tenants_tenant_id",
                         column: x => x.tenant_id,
                         principalSchema: "islamu_event",
                         principalTable: "tenants",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumn: "id");
                 });
 
             migrationBuilder.CreateTable(
@@ -4044,8 +4025,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         column: x => x.tenant_id,
                         principalSchema: "islamu_event",
                         principalTable: "tenants",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumn: "id");
                 });
 
             migrationBuilder.CreateTable(
@@ -4084,8 +4064,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         column: x => x.tenant_id,
                         principalSchema: "islamu_event",
                         principalTable: "tenants",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumn: "id");
                 });
 
             migrationBuilder.CreateTable(
@@ -4127,8 +4106,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         column: x => x.tenant_id,
                         principalSchema: "islamu_event",
                         principalTable: "tenants",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumn: "id");
                 });
 
             migrationBuilder.CreateTable(
@@ -4160,8 +4138,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         column: x => x.tenant_id,
                         principalSchema: "islamu_event",
                         principalTable: "tenants",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumn: "id");
                 });
 
             migrationBuilder.CreateTable(
@@ -4187,8 +4164,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         column: x => x.tenant_id,
                         principalSchema: "islamu_event",
                         principalTable: "tenants",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumn: "id");
                 });
 
             migrationBuilder.CreateTable(
@@ -4238,8 +4214,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         column: x => x.tenant_id,
                         principalSchema: "islamu_event",
                         principalTable: "tenants",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumn: "id");
                 });
 
             migrationBuilder.CreateTable(
@@ -4265,8 +4240,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         column: x => x.tenant_id,
                         principalSchema: "islamu_event",
                         principalTable: "tenants",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumn: "id");
                 });
 
             migrationBuilder.CreateTable(
@@ -4289,15 +4263,14 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("pk_tenant_settings_documents", x => x.id);
-                    table.CheckConstraint("ck_tenant_settings_documents_document_key_not_blank", "length(trim(document_key)) > 0");
+                    table.CheckConstraint("ck_tenant_settings_documents_document_key_not_blank", "len(trim(document_key)) > 0");
                     table.CheckConstraint("ck_tenant_settings_documents_schema_version_positive", "schema_version > 0");
                     table.ForeignKey(
                         name: "fk_tenant_settings_documents_tenants_tenant_id",
                         column: x => x.tenant_id,
                         principalSchema: "islamu_event",
                         principalTable: "tenants",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumn: "id");
                 });
 
             migrationBuilder.CreateTable(
@@ -4369,8 +4342,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         column: x => x.tenant_id,
                         principalSchema: "islamu_event",
                         principalTable: "tenants",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumn: "id");
                 });
 
             migrationBuilder.CreateTable(
@@ -4438,8 +4410,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         column: x => x.tenant_id,
                         principalSchema: "islamu_event",
                         principalTable: "tenants",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumn: "id");
                 });
 
             migrationBuilder.CreateTable(
@@ -4481,8 +4452,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         column: x => x.user_id,
                         principalSchema: "islamu_event",
                         principalTable: "users",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumn: "id");
                 });
 
             migrationBuilder.CreateTable(
@@ -4516,8 +4486,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         column: x => x.user_id,
                         principalSchema: "islamu_event",
                         principalTable: "users",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumn: "id");
                 });
 
             migrationBuilder.CreateTable(
@@ -4550,8 +4519,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         column: x => x.user_id,
                         principalSchema: "islamu_event",
                         principalTable: "users",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumn: "id");
                 });
 
             migrationBuilder.CreateTable(
@@ -4577,8 +4545,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         column: x => x.tenant_id,
                         principalSchema: "islamu_event",
                         principalTable: "tenants",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumn: "id");
                 });
 
             migrationBuilder.CreateTable(
@@ -4762,8 +4729,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         column: x => x.actor_id,
                         principalSchema: "islamu_event",
                         principalTable: "actors",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumn: "id");
                     table.ForeignKey(
                         name: "fk_actor_key_stores_tenants_tenant_id",
                         column: x => x.tenant_id,
@@ -4847,8 +4813,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         column: x => x.actor_id,
                         principalSchema: "islamu_event",
                         principalTable: "actors",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumn: "id");
                 });
 
             migrationBuilder.CreateTable(
@@ -4884,8 +4849,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         column: x => x.actor_id,
                         principalSchema: "islamu_event",
                         principalTable: "actors",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.SetNull);
+                        principalColumn: "id");
                     table.ForeignKey(
                         name: "fk_ai_conversations_ai_conversation_statuses_status_id",
                         column: x => x.status_id,
@@ -5005,8 +4969,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         column: x => x.actor_id,
                         principalSchema: "islamu_event",
                         principalTable: "actors",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.SetNull);
+                        principalColumn: "id");
                     table.ForeignKey(
                         name: "fk_storage_objects_file_types_file_type_id",
                         column: x => x.file_type_id,
@@ -5059,22 +5022,19 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         column: x => x.actor_id,
                         principalSchema: "islamu_event",
                         principalTable: "actors",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.SetNull);
+                        principalColumn: "id");
                     table.ForeignKey(
                         name: "fk_tenant_users_tenants_tenant_id",
                         column: x => x.tenant_id,
                         principalSchema: "islamu_event",
                         principalTable: "tenants",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumn: "id");
                     table.ForeignKey(
                         name: "fk_tenant_users_users_user_id",
                         column: x => x.user_id,
                         principalSchema: "islamu_event",
                         principalTable: "users",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumn: "id");
                 });
 
             migrationBuilder.CreateTable(
@@ -5095,15 +5055,13 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         column: x => x.category_id,
                         principalSchema: "islamu_event",
                         principalTable: "categories",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumn: "id");
                     table.ForeignKey(
                         name: "fk_category_type_categories_category_types_category_type_id",
                         column: x => x.category_type_id,
                         principalSchema: "islamu_event",
                         principalTable: "category_types",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumn: "id");
                     table.ForeignKey(
                         name: "fk_category_type_categories_tenants_tenant_id",
                         column: x => x.tenant_id,
@@ -5182,8 +5140,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         column: x => x.external_api_key_id,
                         principalSchema: "islamu_event",
                         principalTable: "external_api_keys",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumn: "id");
                 });
 
             migrationBuilder.CreateTable(
@@ -5205,8 +5162,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         column: x => x.location_id,
                         principalSchema: "islamu_event",
                         principalTable: "locations",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumn: "id");
                 });
 
             migrationBuilder.CreateTable(
@@ -5242,15 +5198,13 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         column: x => x.location_id,
                         principalSchema: "islamu_event",
                         principalTable: "locations",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumn: "id");
                     table.ForeignKey(
                         name: "fk_location_rooms_locations_tenant_id_location_id",
                         columns: x => new { x.tenant_id, x.location_id },
                         principalSchema: "islamu_event",
                         principalTable: "locations",
-                        principalColumns: new[] { "tenant_id", "id" },
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumns: new[] { "tenant_id", "id" });
                     table.ForeignKey(
                         name: "fk_location_rooms_tenants_tenant_id",
                         column: x => x.tenant_id,
@@ -5278,15 +5232,13 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         column: x => x.tag_type_id,
                         principalSchema: "islamu_event",
                         principalTable: "tag_types",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumn: "id");
                     table.ForeignKey(
                         name: "fk_tag_type_tags_tags_tag_id",
                         column: x => x.tag_id,
                         principalSchema: "islamu_event",
                         principalTable: "tags",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumn: "id");
                     table.ForeignKey(
                         name: "fk_tag_type_tags_tenants_tenant_id",
                         column: x => x.tenant_id,
@@ -5321,8 +5273,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         column: x => x.footer_link_group_id,
                         principalSchema: "islamu_event",
                         principalTable: "tenant_footer_link_groups",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumn: "id");
                 });
 
             migrationBuilder.CreateTable(
@@ -5390,8 +5341,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         column: x => x.tenant_id,
                         principalSchema: "islamu_event",
                         principalTable: "tenants",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumn: "id");
                 });
 
             migrationBuilder.CreateTable(
@@ -5483,8 +5433,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         column: x => x.conversation_id,
                         principalSchema: "islamu_event",
                         principalTable: "ai_conversations",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumn: "id");
                     table.ForeignKey(
                         name: "fk_ai_conversation_references_ai_reference_kinds_kind_id",
                         column: x => x.kind_id,
@@ -5518,8 +5467,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         column: x => x.conversation_id,
                         principalSchema: "islamu_event",
                         principalTable: "ai_conversations",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumn: "id");
                     table.ForeignKey(
                         name: "fk_ai_messages_ai_message_roles_role_id",
                         column: x => x.role_id,
@@ -5554,8 +5502,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         column: x => x.conversation_id,
                         principalSchema: "islamu_event",
                         principalTable: "ai_conversations",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumn: "id");
                     table.ForeignKey(
                         name: "fk_ai_runs_ai_run_statuses_status_id",
                         column: x => x.status_id,
@@ -5636,15 +5583,13 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         column: x => x.tenant_id,
                         principalSchema: "islamu_event",
                         principalTable: "tenants",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumn: "id");
                     table.ForeignKey(
                         name: "fk_event_series_visibility_types_visibility_type_id",
                         column: x => x.visibility_type_id,
                         principalSchema: "islamu_event",
                         principalTable: "visibility_types",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumn: "id");
                 });
 
             migrationBuilder.CreateTable(
@@ -5708,22 +5653,19 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         column: x => x.background_image_id,
                         principalSchema: "islamu_event",
                         principalTable: "storage_objects",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.SetNull);
+                        principalColumn: "id");
                     table.ForeignKey(
                         name: "fk_organization_tenants_storage_objects_banner_picture_id",
                         column: x => x.banner_picture_id,
                         principalSchema: "islamu_event",
                         principalTable: "storage_objects",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.SetNull);
+                        principalColumn: "id");
                     table.ForeignKey(
                         name: "fk_organization_tenants_storage_objects_profile_picture_id",
                         column: x => x.profile_picture_id,
                         principalSchema: "islamu_event",
                         principalTable: "storage_objects",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.SetNull);
+                        principalColumn: "id");
                     table.ForeignKey(
                         name: "fk_organization_tenants_tenants_tenant_id",
                         column: x => x.tenant_id,
@@ -5911,8 +5853,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         column: x => x.atproto_record_id,
                         principalSchema: "islamu_event",
                         principalTable: "atproto_records",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumn: "id");
                     table.ForeignKey(
                         name: "fk_atproto_outbound_record_ownerships_tenant_users_tenant_id_user_id",
                         columns: x => new { x.tenant_id, x.user_id },
@@ -6061,7 +6002,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                 {
                     table.PrimaryKey("pk_support_access_sessions", x => x.id);
                     table.CheckConstraint("ck_support_access_sessions_end_after_start", "ended_at_utc IS NULL OR ended_at_utc >= started_at_utc");
-                    table.CheckConstraint("ck_support_access_sessions_terminal_reason", "(end_reason_id IS NULL) = (ended_at_utc IS NULL)");
+                    table.CheckConstraint("ck_support_access_sessions_terminal_reason", "(CASE WHEN end_reason_id IS NULL THEN 1 ELSE 0 END) = (CASE WHEN ended_at_utc IS NULL THEN 1 ELSE 0 END)");
                     table.CheckConstraint("ck_support_access_sessions_timebox", "expires_at_utc > started_at_utc");
                     table.ForeignKey(
                         name: "fk_support_access_sessions_support_access_end_reasons_end_reason_id",
@@ -6142,15 +6083,13 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         column: x => x.tenant_user_id,
                         principalSchema: "islamu_event",
                         principalTable: "tenant_users",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumn: "id");
                     table.ForeignKey(
                         name: "fk_tenant_user_profiles_tenants_tenant_id",
                         column: x => x.tenant_id,
                         principalSchema: "islamu_event",
                         principalTable: "tenants",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumn: "id");
                 });
 
             migrationBuilder.CreateTable(
@@ -6189,15 +6128,13 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         columns: x => new { x.tenant_id, x.tenant_user_id },
                         principalSchema: "islamu_event",
                         principalTable: "tenant_users",
-                        principalColumns: new[] { "tenant_id", "id" },
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumns: new[] { "tenant_id", "id" });
                     table.ForeignKey(
                         name: "fk_tenant_user_role_grants_tenants_tenant_id",
                         column: x => x.tenant_id,
                         principalSchema: "islamu_event",
                         principalTable: "tenants",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumn: "id");
                 });
 
             migrationBuilder.CreateTable(
@@ -6232,8 +6169,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         column: x => x.event_template_id,
                         principalSchema: "islamu_event",
                         principalTable: "event_templates",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumn: "id");
                     table.ForeignKey(
                         name: "fk_event_session_templates_tenants_tenant_id",
                         column: x => x.tenant_id,
@@ -6274,22 +6210,19 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         column: x => x.acting_actor_id,
                         principalSchema: "islamu_event",
                         principalTable: "actors",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.SetNull);
+                        principalColumn: "id");
                     table.ForeignKey(
                         name: "fk_ai_proposed_actions_ai_conversations_conversation_id",
                         column: x => x.conversation_id,
                         principalSchema: "islamu_event",
                         principalTable: "ai_conversations",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumn: "id");
                     table.ForeignKey(
                         name: "fk_ai_proposed_actions_ai_messages_message_id",
                         column: x => x.message_id,
                         principalSchema: "islamu_event",
                         principalTable: "ai_messages",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.SetNull);
+                        principalColumn: "id");
                     table.ForeignKey(
                         name: "fk_ai_proposed_actions_ai_proposed_action_kinds_kind_id",
                         column: x => x.kind_id,
@@ -6390,8 +6323,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         column: x => x.atproto_record_id,
                         principalSchema: "islamu_event",
                         principalTable: "atproto_records",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.SetNull);
+                        principalColumn: "id");
                     table.ForeignKey(
                         name: "fk_events_audience_ages_audience_age_id",
                         column: x => x.audience_age_id,
@@ -6459,8 +6391,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         column: x => x.background_image_id,
                         principalSchema: "islamu_event",
                         principalTable: "storage_objects",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.SetNull);
+                        principalColumn: "id");
                     table.ForeignKey(
                         name: "fk_events_storage_objects_featured_image_id",
                         column: x => x.featured_image_id,
@@ -6568,22 +6499,19 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         column: x => x.background_image_id,
                         principalSchema: "islamu_event",
                         principalTable: "storage_objects",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.SetNull);
+                        principalColumn: "id");
                     table.ForeignKey(
                         name: "fk_group_tenants_storage_objects_banner_picture_id",
                         column: x => x.banner_picture_id,
                         principalSchema: "islamu_event",
                         principalTable: "storage_objects",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.SetNull);
+                        principalColumn: "id");
                     table.ForeignKey(
                         name: "fk_group_tenants_storage_objects_profile_picture_id",
                         column: x => x.profile_picture_id,
                         principalSchema: "islamu_event",
                         principalTable: "storage_objects",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.SetNull);
+                        principalColumn: "id");
                     table.ForeignKey(
                         name: "fk_group_tenants_tenants_tenant_id",
                         column: x => x.tenant_id,
@@ -6627,8 +6555,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         columns: x => new { x.tenant_id, x.organization_tenant_id },
                         principalSchema: "islamu_event",
                         principalTable: "organization_tenants",
-                        principalColumns: new[] { "tenant_id", "id" },
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumns: new[] { "tenant_id", "id" });
                     table.ForeignKey(
                         name: "fk_organization_members_roles_role_id",
                         column: x => x.role_id,
@@ -6641,15 +6568,13 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         column: x => x.tenant_id,
                         principalSchema: "islamu_event",
                         principalTable: "tenants",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumn: "id");
                     table.ForeignKey(
                         name: "fk_organization_members_users_user_id",
                         column: x => x.user_id,
                         principalSchema: "islamu_event",
                         principalTable: "users",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumn: "id");
                 });
 
             migrationBuilder.CreateTable(
@@ -6675,15 +6600,13 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         columns: x => new { x.tenant_id, x.organization_tenant_id },
                         principalSchema: "islamu_event",
                         principalTable: "organization_tenants",
-                        principalColumns: new[] { "tenant_id", "id" },
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumns: new[] { "tenant_id", "id" });
                     table.ForeignKey(
                         name: "fk_organization_setting_overrides_tenants_tenant_id",
                         column: x => x.tenant_id,
                         principalSchema: "islamu_event",
                         principalTable: "tenants",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumn: "id");
                 });
 
             migrationBuilder.CreateTable(
@@ -6832,8 +6755,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         column: x => x.proposed_action_id,
                         principalSchema: "islamu_event",
                         principalTable: "ai_proposed_actions",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumn: "id");
                 });
 
             migrationBuilder.CreateTable(
@@ -6916,15 +6838,13 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         columns: x => new { x.tenant_id, x.category_id },
                         principalSchema: "islamu_event",
                         principalTable: "categories",
-                        principalColumns: new[] { "tenant_id", "id" },
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumns: new[] { "tenant_id", "id" });
                     table.ForeignKey(
                         name: "fk_event_categories_events_tenant_id_event_id",
                         columns: x => new { x.tenant_id, x.event_id },
                         principalSchema: "islamu_event",
                         principalTable: "events",
-                        principalColumns: new[] { "tenant_id", "id" },
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumns: new[] { "tenant_id", "id" });
                     table.ForeignKey(
                         name: "fk_event_categories_tenants_tenant_id",
                         column: x => x.tenant_id,
@@ -7016,15 +6936,13 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         columns: x => new { x.tenant_id, x.event_id },
                         principalSchema: "islamu_event",
                         principalTable: "events",
-                        principalColumns: new[] { "tenant_id", "id" },
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumns: new[] { "tenant_id", "id" });
                     table.ForeignKey(
                         name: "fk_event_days_storage_objects_banner_image_id",
                         column: x => x.banner_image_id,
                         principalSchema: "islamu_event",
                         principalTable: "storage_objects",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.SetNull);
+                        principalColumn: "id");
                     table.ForeignKey(
                         name: "fk_event_days_tenants_tenant_id",
                         column: x => x.tenant_id,
@@ -7055,22 +6973,19 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         column: x => x.id,
                         principalSchema: "islamu_event",
                         principalTable: "events",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumn: "id");
                     table.ForeignKey(
                         name: "fk_event_islamic_aspects_languages_primary_language_id",
                         column: x => x.primary_language_id,
                         principalSchema: "islamu_event",
                         principalTable: "languages",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.SetNull);
+                        principalColumn: "id");
                     table.ForeignKey(
                         name: "fk_event_islamic_aspects_madhabs_madhab_id",
                         column: x => x.madhab_id,
                         principalSchema: "islamu_event",
                         principalTable: "madhabs",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.SetNull);
+                        principalColumn: "id");
                 });
 
             migrationBuilder.CreateTable(
@@ -7118,8 +7033,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         columns: x => new { x.tenant_id, x.event_id },
                         principalSchema: "islamu_event",
                         principalTable: "events",
-                        principalColumns: new[] { "tenant_id", "id" },
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumns: new[] { "tenant_id", "id" });
                     table.ForeignKey(
                         name: "fk_event_locations_location_disclosure_audiences_full_details_audience_id",
                         column: x => x.full_details_audience_id,
@@ -7244,8 +7158,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         columns: x => new { x.tenant_id, x.id },
                         principalSchema: "islamu_event",
                         principalTable: "events",
-                        principalColumns: new[] { "tenant_id", "id" },
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumns: new[] { "tenant_id", "id" });
                     table.ForeignKey(
                         name: "fk_event_participation_configurations_identity_access_modes_identity_access_mode_id",
                         column: x => x.identity_access_mode_id,
@@ -7484,15 +7397,13 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         columns: x => new { x.tenant_id, x.event_id },
                         principalSchema: "islamu_event",
                         principalTable: "events",
-                        principalColumns: new[] { "tenant_id", "id" },
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumns: new[] { "tenant_id", "id" });
                     table.ForeignKey(
                         name: "fk_event_tags_tags_tenant_id_tag_id",
                         columns: x => new { x.tenant_id, x.tag_id },
                         principalSchema: "islamu_event",
                         principalTable: "tags",
-                        principalColumns: new[] { "tenant_id", "id" },
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumns: new[] { "tenant_id", "id" });
                     table.ForeignKey(
                         name: "fk_event_tags_tenants_tenant_id",
                         column: x => x.tenant_id,
@@ -7526,8 +7437,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         column: x => x.id,
                         principalSchema: "islamu_event",
                         principalTable: "events",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumn: "id");
                 });
 
             migrationBuilder.CreateTable(
@@ -7606,22 +7516,19 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         column: x => x.event_id,
                         principalSchema: "islamu_event",
                         principalTable: "events",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumn: "id");
                     table.ForeignKey(
                         name: "fk_organization_reviews_organizations_organization_id",
                         column: x => x.organization_id,
                         principalSchema: "islamu_event",
                         principalTable: "organizations",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumn: "id");
                     table.ForeignKey(
                         name: "fk_organization_reviews_tenants_tenant_id",
                         column: x => x.tenant_id,
                         principalSchema: "islamu_event",
                         principalTable: "tenants",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumn: "id");
                     table.ForeignKey(
                         name: "fk_organization_reviews_users_user_id",
                         column: x => x.user_id,
@@ -7743,8 +7650,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         columns: x => new { x.tenant_id, x.group_tenant_id },
                         principalSchema: "islamu_event",
                         principalTable: "group_tenants",
-                        principalColumns: new[] { "tenant_id", "id" },
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumns: new[] { "tenant_id", "id" });
                     table.ForeignKey(
                         name: "fk_group_members_roles_role_id",
                         column: x => x.role_id,
@@ -7764,8 +7670,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         column: x => x.user_id,
                         principalSchema: "islamu_event",
                         principalTable: "users",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumn: "id");
                 });
 
             migrationBuilder.CreateTable(
@@ -7791,15 +7696,13 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         columns: x => new { x.tenant_id, x.group_tenant_id },
                         principalSchema: "islamu_event",
                         principalTable: "group_tenants",
-                        principalColumns: new[] { "tenant_id", "id" },
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumns: new[] { "tenant_id", "id" });
                     table.ForeignKey(
                         name: "fk_group_setting_overrides_tenants_tenant_id",
                         column: x => x.tenant_id,
                         principalSchema: "islamu_event",
                         principalTable: "tenants",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumn: "id");
                 });
 
             migrationBuilder.CreateTable(
@@ -7949,8 +7852,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         columns: x => new { x.tenant_id, x.event_id },
                         principalSchema: "islamu_event",
                         principalTable: "events",
-                        principalColumns: new[] { "tenant_id", "id" },
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumns: new[] { "tenant_id", "id" });
                     table.ForeignKey(
                         name: "fk_event_agenda_items_location_rooms_tenant_id_location_id_room_id",
                         columns: x => new { x.tenant_id, x.location_id, x.room_id },
@@ -8117,8 +8019,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         columns: x => new { x.tenant_id, x.event_id },
                         principalSchema: "islamu_event",
                         principalTable: "events",
-                        principalColumns: new[] { "tenant_id", "id" },
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumns: new[] { "tenant_id", "id" });
                     table.ForeignKey(
                         name: "fk_event_session_groups_location_rooms_tenant_id_location_id_room_id",
                         columns: x => new { x.tenant_id, x.location_id, x.room_id },
@@ -8216,8 +8117,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         column: x => x.event_session_kind_id,
                         principalSchema: "islamu_event",
                         principalTable: "event_session_kinds",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.SetNull);
+                        principalColumn: "id");
                     table.ForeignKey(
                         name: "fk_event_sessions_event_session_statuses_event_session_status_id",
                         column: x => x.event_session_status_id,
@@ -8230,8 +8130,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         columns: x => new { x.tenant_id, x.event_id },
                         principalSchema: "islamu_event",
                         principalTable: "events",
-                        principalColumns: new[] { "tenant_id", "id" },
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumns: new[] { "tenant_id", "id" });
                     table.ForeignKey(
                         name: "fk_event_sessions_location_rooms_tenant_id_location_id_room_id",
                         columns: x => new { x.tenant_id, x.location_id, x.room_id },
@@ -8276,7 +8175,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                     tenant_id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
                     report_id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
                     evidence_kind = table.Column<int>(type: "int", nullable: false),
-                    text_body_encrypted = table.Column<string>(type: "text", nullable: true),
+                    text_body_encrypted = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     storage_object_id = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
                     content_hash = table.Column<string>(type: "nvarchar(128)", maxLength: 128, nullable: true),
                     classification = table.Column<int>(type: "int", nullable: false),
@@ -8590,10 +8489,10 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                     status_id = table.Column<int>(type: "int", nullable: false),
                     language_tag = table.Column<string>(type: "nvarchar(35)", maxLength: 35, nullable: false),
                     schema_hash = table.Column<string>(type: "nvarchar(64)", maxLength: 64, nullable: true),
-                    data_schema_artifact = table.Column<string>(type: "text", nullable: true),
-                    ui_schema_artifact = table.Column<string>(type: "text", nullable: true),
-                    logic_schema_artifact = table.Column<string>(type: "text", nullable: true),
-                    mapping_artifact = table.Column<string>(type: "text", nullable: true),
+                    data_schema_artifact = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    ui_schema_artifact = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    logic_schema_artifact = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    mapping_artifact = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     published_at = table.Column<DateTime>(type: "datetime2", nullable: true),
                     retired_at = table.Column<DateTime>(type: "datetime2", nullable: true),
                     source_template_form_id = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
@@ -8713,8 +8612,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         columns: x => new { x.tenant_id, x.event_id, x.registration_workflow_id },
                         principalSchema: "islamu_event",
                         principalTable: "registration_workflows",
-                        principalColumns: new[] { "tenant_id", "event_id", "id" },
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumns: new[] { "tenant_id", "event_id", "id" });
                     table.ForeignKey(
                         name: "fk_registration_requirements_tenants_tenant_id",
                         column: x => x.tenant_id,
@@ -8957,8 +8855,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         columns: x => new { x.tenant_id, x.event_session_id },
                         principalSchema: "islamu_event",
                         principalTable: "event_sessions",
-                        principalColumns: new[] { "tenant_id", "id" },
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumns: new[] { "tenant_id", "id" });
                     table.ForeignKey(
                         name: "fk_event_session_agenda_items_locations_tenant_id_location_id",
                         columns: x => new { x.tenant_id, x.location_id },
@@ -8997,15 +8894,13 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         columns: x => new { x.tenant_id, x.category_id },
                         principalSchema: "islamu_event",
                         principalTable: "categories",
-                        principalColumns: new[] { "tenant_id", "id" },
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumns: new[] { "tenant_id", "id" });
                     table.ForeignKey(
                         name: "fk_event_session_categories_event_sessions_tenant_id_event_session_id",
                         columns: x => new { x.tenant_id, x.event_session_id },
                         principalSchema: "islamu_event",
                         principalTable: "event_sessions",
-                        principalColumns: new[] { "tenant_id", "id" },
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumns: new[] { "tenant_id", "id" });
                     table.ForeignKey(
                         name: "fk_event_session_categories_tenants_tenant_id",
                         column: x => x.tenant_id,
@@ -9043,22 +8938,19 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         columns: x => new { x.tenant_id, x.event_id, x.event_session_group_id },
                         principalSchema: "islamu_event",
                         principalTable: "event_session_groups",
-                        principalColumns: new[] { "tenant_id", "event_id", "id" },
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumns: new[] { "tenant_id", "event_id", "id" });
                     table.ForeignKey(
                         name: "fk_event_session_group_sessions_event_sessions_tenant_id_event_id_event_session_id",
                         columns: x => new { x.tenant_id, x.event_id, x.event_session_id },
                         principalSchema: "islamu_event",
                         principalTable: "event_sessions",
-                        principalColumns: new[] { "tenant_id", "event_id", "id" },
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumns: new[] { "tenant_id", "event_id", "id" });
                     table.ForeignKey(
                         name: "fk_event_session_group_sessions_events_tenant_id_event_id",
                         columns: x => new { x.tenant_id, x.event_id },
                         principalSchema: "islamu_event",
                         principalTable: "events",
-                        principalColumns: new[] { "tenant_id", "id" },
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumns: new[] { "tenant_id", "id" });
                     table.ForeignKey(
                         name: "fk_event_session_group_sessions_tenants_tenant_id",
                         column: x => x.tenant_id,
@@ -9096,8 +8988,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         column: x => x.event_session_id,
                         principalSchema: "islamu_event",
                         principalTable: "event_sessions",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumn: "id");
                 });
 
             migrationBuilder.CreateTable(
@@ -9105,8 +8996,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                 schema: "islamu_event",
                 columns: table => new
                 {
-                    id = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
+                    id = table.Column<int>(type: "int", nullable: false),
                     concurrency_stamp = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
                     event_session_id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
                     language_id = table.Column<int>(type: "int", nullable: false),
@@ -9120,8 +9010,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         columns: x => new { x.tenant_id, x.event_session_id },
                         principalSchema: "islamu_event",
                         principalTable: "event_sessions",
-                        principalColumns: new[] { "tenant_id", "id" },
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumns: new[] { "tenant_id", "id" });
                     table.ForeignKey(
                         name: "fk_event_session_languages_languages_language_id",
                         column: x => x.language_id,
@@ -9157,15 +9046,13 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         column: x => x.actor_id,
                         principalSchema: "islamu_event",
                         principalTable: "actors",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumn: "id");
                     table.ForeignKey(
                         name: "fk_event_session_speakers_event_sessions_tenant_id_event_session_id",
                         columns: x => new { x.tenant_id, x.event_session_id },
                         principalSchema: "islamu_event",
                         principalTable: "event_sessions",
-                        principalColumns: new[] { "tenant_id", "id" },
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumns: new[] { "tenant_id", "id" });
                     table.ForeignKey(
                         name: "fk_event_session_speakers_tenants_tenant_id",
                         column: x => x.tenant_id,
@@ -9197,15 +9084,13 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         columns: x => new { x.tenant_id, x.event_session_id },
                         principalSchema: "islamu_event",
                         principalTable: "event_sessions",
-                        principalColumns: new[] { "tenant_id", "id" },
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumns: new[] { "tenant_id", "id" });
                     table.ForeignKey(
                         name: "fk_event_session_tags_tags_tenant_id_tag_id",
                         columns: x => new { x.tenant_id, x.tag_id },
                         principalSchema: "islamu_event",
                         principalTable: "tags",
-                        principalColumns: new[] { "tenant_id", "id" },
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumns: new[] { "tenant_id", "id" });
                     table.ForeignKey(
                         name: "fk_event_session_tags_tenants_tenant_id",
                         column: x => x.tenant_id,
@@ -9482,6 +9367,51 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         column: x => x.user_id,
                         principalSchema: "islamu_event",
                         principalTable: "users",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "registration_finalization_effects",
+                schema: "islamu_event",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    tenant_id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    event_id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    registration_order_id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    status = table.Column<int>(type: "int", nullable: false),
+                    attempt_count = table.Column<int>(type: "int", nullable: false),
+                    processing_fence = table.Column<long>(type: "bigint", nullable: false),
+                    processing_lease_owner = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: true),
+                    processing_lease_token = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
+                    processing_lease_expires_at = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    next_attempt_at = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    completed_at = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    created_at = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    created_by = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
+                    updated_at = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    updated_by = table.Column<Guid>(type: "uniqueidentifier", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_registration_finalization_effects", x => x.id);
+                    table.UniqueConstraint("ak_registration_finalization_effects_tenant_id_id", x => new { x.tenant_id, x.id });
+                    table.CheckConstraint("ck_registration_finalization_effects_attempt_count", "attempt_count >= 0");
+                    table.CheckConstraint("ck_registration_finalization_effects_processing_fence", "processing_fence >= 0");
+                    table.CheckConstraint("ck_registration_finalization_effects_state", "(status IN (1, 4) AND processing_lease_owner IS NULL AND processing_lease_token IS NULL AND processing_lease_expires_at IS NULL AND completed_at IS NULL) OR (status = 2 AND processing_lease_owner IS NOT NULL AND processing_lease_token IS NOT NULL AND processing_lease_expires_at IS NOT NULL AND completed_at IS NULL) OR (status = 3 AND processing_lease_owner IS NULL AND processing_lease_token IS NULL AND processing_lease_expires_at IS NULL AND completed_at IS NOT NULL)");
+                    table.ForeignKey(
+                        name: "fk_registration_finalization_effects_registration_orders_tenant_id_event_id_registration_order_id",
+                        columns: x => new { x.tenant_id, x.event_id, x.registration_order_id },
+                        principalSchema: "islamu_event",
+                        principalTable: "registration_orders",
+                        principalColumns: new[] { "tenant_id", "event_id", "id" },
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_registration_finalization_effects_tenants_tenant_id",
+                        column: x => x.tenant_id,
+                        principalSchema: "islamu_event",
+                        principalTable: "tenants",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Restrict);
                 });
@@ -9849,8 +9779,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         columns: x => new { x.tenant_id, x.participation_configuration_id },
                         principalSchema: "islamu_event",
                         principalTable: "event_participation_configurations",
-                        principalColumns: new[] { "tenant_id", "id" },
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumns: new[] { "tenant_id", "id" });
                     table.ForeignKey(
                         name: "fk_participation_requirement_attachments_registration_form_versions_tenant_id_event_id_registration_form_id_registration_form_v",
                         columns: x => new { x.tenant_id, x.event_id, x.registration_form_id, x.registration_form_version_id },
@@ -9915,8 +9844,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         columns: x => new { x.tenant_id, x.event_id, x.registration_workflow_id, x.registration_requirement_id },
                         principalSchema: "islamu_event",
                         principalTable: "registration_requirements",
-                        principalColumns: new[] { "tenant_id", "event_id", "registration_workflow_id", "id" },
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumns: new[] { "tenant_id", "event_id", "registration_workflow_id", "id" });
                     table.ForeignKey(
                         name: "fk_registration_channels_tenants_tenant_id",
                         column: x => x.tenant_id,
@@ -10217,7 +10145,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                 {
                     table.PrimaryKey("pk_notification_fanout_runs", x => x.id);
                     table.CheckConstraint("ck_notification_fanout_runs_created_count_nonnegative", "created_notification_count >= 0");
-                    table.CheckConstraint("ck_notification_fanout_runs_cursor_pair", "(cursor_first_eligible_registration_created_at IS NULL) = (cursor_user_id IS NULL)");
+                    table.CheckConstraint("ck_notification_fanout_runs_cursor_pair", "(CASE WHEN cursor_first_eligible_registration_created_at IS NULL THEN 1 ELSE 0 END) = (CASE WHEN cursor_user_id IS NULL THEN 1 ELSE 0 END)");
                     table.CheckConstraint("ck_notification_fanout_runs_generation_nonnegative", "processing_generation >= 0 AND processing_fence >= 0");
                     table.CheckConstraint("ck_notification_fanout_runs_occurrence_lease", "fanout_occurrence_id IS NULL OR (status = 'processing' AND processing_lease_owner IS NOT NULL AND trim(processing_lease_owner) <> '' AND processing_lease_token IS NOT NULL AND processing_lease_expires_at IS NOT NULL) OR (status <> 'processing' AND processing_lease_owner IS NULL AND processing_lease_token IS NULL AND processing_lease_expires_at IS NULL)");
                     table.CheckConstraint("ck_notification_fanout_runs_processed_count_nonnegative", "processed_count >= 0");
@@ -10276,8 +10204,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         column: x => x.export_id,
                         principalSchema: "islamu_event",
                         principalTable: "event_contact_share_exports",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumn: "id");
                 });
 
             migrationBuilder.CreateTable(
@@ -10322,22 +10249,19 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         column: x => x.atproto_record_id,
                         principalSchema: "islamu_event",
                         principalTable: "atproto_records",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.SetNull);
+                        principalColumn: "id");
                     table.ForeignKey(
                         name: "fk_event_registrations_event_sessions_tenant_id_event_id_event_session_id",
                         columns: x => new { x.tenant_id, x.event_id, x.event_session_id },
                         principalSchema: "islamu_event",
                         principalTable: "event_sessions",
-                        principalColumns: new[] { "tenant_id", "event_id", "id" },
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumns: new[] { "tenant_id", "event_id", "id" });
                     table.ForeignKey(
                         name: "fk_event_registrations_events_tenant_id_event_id",
                         columns: x => new { x.tenant_id, x.event_id },
                         principalSchema: "islamu_event",
                         principalTable: "events",
-                        principalColumns: new[] { "tenant_id", "id" },
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumns: new[] { "tenant_id", "id" });
                     table.ForeignKey(
                         name: "fk_event_registrations_registration_order_lines_tenant_id_registration_order_line_id",
                         columns: x => new { x.tenant_id, x.registration_order_line_id },
@@ -10501,6 +10425,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                     organizer_visibility_id = table.Column<int>(type: "int", nullable: false),
                     requires_explicit_consent = table.Column<bool>(type: "bit", nullable: false),
                     consent_purpose_code = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
+                    consent_text = table.Column<string>(type: "nvarchar(4000)", maxLength: 4000, nullable: true),
                     consent_text_version = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
                     is_provider_transfer_allowed = table.Column<bool>(type: "bit", nullable: false),
                     is_required = table.Column<bool>(type: "bit", nullable: false),
@@ -10527,7 +10452,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                     table.PrimaryKey("pk_registration_form_fields", x => x.id);
                     table.UniqueConstraint("ak_registration_form_fields_tenant_id_event_id_registration_form_id_registration_form_version_id_registration_form_section_id_i", x => new { x.tenant_id, x.event_id, x.registration_form_id, x.registration_form_version_id, x.registration_form_section_id, x.id, x.field_type_id });
                     table.UniqueConstraint("ak_registration_form_fields_tenant_id_event_id_registration_form_id_registration_form_version_id_registration_form_section_id_id", x => new { x.tenant_id, x.event_id, x.registration_form_id, x.registration_form_version_id, x.registration_form_section_id, x.id });
-                    table.CheckConstraint("ck_registration_form_fields_consent_metadata", "(requires_explicit_consent AND consent_purpose_code IS NOT NULL AND consent_text_version IS NOT NULL AND trim(consent_purpose_code) <> '' AND trim(consent_text_version) <> '') OR (NOT requires_explicit_consent AND consent_purpose_code IS NULL AND consent_text_version IS NULL)");
+                    table.CheckConstraint("ck_registration_form_fields_consent_metadata", "(requires_explicit_consent = 1 AND consent_purpose_code IS NOT NULL AND consent_text IS NOT NULL AND consent_text_version IS NOT NULL AND trim(consent_purpose_code) <> '' AND trim(consent_text) <> '' AND trim(consent_text_version) <> '') OR (requires_explicit_consent = 0 AND consent_purpose_code IS NULL AND consent_text IS NULL AND consent_text_version IS NULL)");
                     table.ForeignKey(
                         name: "fk_registration_form_fields_registration_field_types_field_type_id",
                         column: x => x.field_type_id,
@@ -10601,7 +10526,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                     table.CheckConstraint("ck_registration_attempts_consumption", "(status_id = 2 AND consumed_at IS NOT NULL) OR (status_id <> 2 AND consumed_at IS NULL AND submission_consumption_claim_id IS NULL)");
                     table.CheckConstraint("ck_registration_attempts_expiry", "expires_at > created_at");
                     table.CheckConstraint("ck_registration_attempts_provider_key", "(registration_provider_binding_id IS NULL AND registration_provider_binding_key = '00000000-0000-0000-0000-000000000000') OR (registration_provider_binding_id IS NOT NULL AND registration_provider_binding_key = registration_provider_binding_id)");
-                    table.CheckConstraint("ck_registration_attempts_provider_pair", "(registration_provider_binding_id IS NULL) = (provider_mapping_revision_hash IS NULL)");
+                    table.CheckConstraint("ck_registration_attempts_provider_pair", "(CASE WHEN registration_provider_binding_id IS NULL THEN 1 ELSE 0 END) = (CASE WHEN provider_mapping_revision_hash IS NULL THEN 1 ELSE 0 END)");
                     table.CheckConstraint("ck_registration_attempts_supersession", "(status_id = 4 AND superseded_at IS NOT NULL AND superseded_by_registration_attempt_id IS NOT NULL AND supersession_reason IS NOT NULL) OR (status_id <> 4 AND superseded_at IS NULL AND superseded_by_registration_attempt_id IS NULL AND supersession_reason IS NULL)");
                     table.ForeignKey(
                         name: "fk_registration_attempts_events_tenant_id_event_id",
@@ -11041,6 +10966,79 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "registration_answer_files",
+                schema: "islamu_event",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    tenant_id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    event_id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    registration_submission_id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    registration_form_id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    registration_form_version_id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    registration_form_section_id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    registration_form_field_id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    field_type_id = table.Column<int>(type: "int", nullable: false),
+                    storage_object_id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    safe_display_name = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: false),
+                    content_type = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: false),
+                    extension = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
+                    sha256checksum = table.Column<string>(type: "nvarchar(64)", maxLength: 64, nullable: true),
+                    size = table.Column<long>(type: "bigint", nullable: false),
+                    quarantine_state = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: false),
+                    scan_status = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: false),
+                    quarantined_at = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    released_at = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    released_by = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
+                    concurrency_stamp = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    created_at = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    created_by = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
+                    updated_at = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    updated_by = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
+                    is_deleted = table.Column<bool>(type: "bit", nullable: false, defaultValue: false),
+                    deleted_at = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    deleted_by = table.Column<Guid>(type: "uniqueidentifier", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_registration_answer_files", x => x.id);
+                    table.UniqueConstraint("ak_registration_answer_files_tenant_id_id", x => new { x.tenant_id, x.id });
+                    table.CheckConstraint("ck_registration_answer_files_field_type", "field_type_id = 18");
+                    table.CheckConstraint("ck_registration_answer_files_quarantine_state", "quarantine_state IN ('quarantined', 'released')");
+                    table.CheckConstraint("ck_registration_answer_files_release_shape", "(quarantine_state = 'quarantined' AND released_at IS NULL AND released_by IS NULL) OR (quarantine_state = 'released' AND released_at IS NOT NULL AND released_by IS NOT NULL)");
+                    table.CheckConstraint("ck_registration_answer_files_scan_status", "scan_status = 'not_scanned'");
+                    table.CheckConstraint("ck_registration_answer_files_size_nonnegative", "size >= 0");
+                    table.ForeignKey(
+                        name: "fk_registration_answer_files_registration_form_fields_tenant_id_event_id_registration_form_id_registration_form_version_id_regi",
+                        columns: x => new { x.tenant_id, x.event_id, x.registration_form_id, x.registration_form_version_id, x.registration_form_section_id, x.registration_form_field_id, x.field_type_id },
+                        principalSchema: "islamu_event",
+                        principalTable: "registration_form_fields",
+                        principalColumns: new[] { "tenant_id", "event_id", "registration_form_id", "registration_form_version_id", "registration_form_section_id", "id", "field_type_id" },
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_registration_answer_files_registration_submissions_tenant_id_event_id_registration_submission_id",
+                        columns: x => new { x.tenant_id, x.event_id, x.registration_submission_id },
+                        principalSchema: "islamu_event",
+                        principalTable: "registration_submissions",
+                        principalColumns: new[] { "tenant_id", "event_id", "id" },
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_registration_answer_files_storage_objects_tenant_id_storage_object_id",
+                        columns: x => new { x.tenant_id, x.storage_object_id },
+                        principalSchema: "islamu_event",
+                        principalTable: "storage_objects",
+                        principalColumns: new[] { "tenant_id", "id" },
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_registration_answer_files_tenants_tenant_id",
+                        column: x => x.tenant_id,
+                        principalSchema: "islamu_event",
+                        principalTable: "tenants",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "registration_answers",
                 schema: "islamu_event",
                 columns: table => new
@@ -11172,6 +11170,215 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "registration_consent_records",
+                schema: "islamu_event",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    tenant_id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    event_id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    registration_order_id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    registration_attempt_id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    registration_submission_id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    registration_workflow_id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    registration_requirement_id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    registration_form_id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    registration_form_version_id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    registration_form_version = table.Column<int>(type: "int", nullable: false),
+                    registration_form_section_id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    registration_form_field_id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    field_type_id = table.Column<int>(type: "int", nullable: false),
+                    requirement_subject_type_id = table.Column<int>(type: "int", nullable: false),
+                    requirement_subject_id = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
+                    requirement_subject_key = table.Column<Guid>(type: "uniqueidentifier", nullable: false, computedColumnSql: "COALESCE(requirement_subject_id, '00000000-0000-0000-0000-000000000000')", stored: true),
+                    purpose_code = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
+                    consent_text_snapshot = table.Column<string>(type: "nvarchar(4000)", maxLength: 4000, nullable: false),
+                    consent_text_version = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
+                    language_tag = table.Column<string>(type: "nvarchar(35)", maxLength: 35, nullable: false),
+                    answer_subject_type_id = table.Column<int>(type: "int", nullable: false),
+                    order_subject_id = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
+                    purchaser_subject_id = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
+                    participant_subject_id = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
+                    ticket_assignment_subject_id = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
+                    ticket_assignment_order_line_id = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
+                    session_selection_subject_id = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
+                    effective_subject_identity = table.Column<Guid>(type: "uniqueidentifier", nullable: false, computedColumnSql: "COALESCE(order_subject_id, purchaser_subject_id, participant_subject_id, ticket_assignment_subject_id, session_selection_subject_id)", stored: true),
+                    granted_at = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    withdrawn_at = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    created_at = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    created_by = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
+                    updated_at = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    updated_by = table.Column<Guid>(type: "uniqueidentifier", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_registration_consent_records", x => x.id);
+                    table.ForeignKey(
+                        name: "fk_registration_consent_records_events_tenant_id_event_id",
+                        columns: x => new { x.tenant_id, x.event_id },
+                        principalSchema: "islamu_event",
+                        principalTable: "events",
+                        principalColumns: new[] { "tenant_id", "id" },
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_registration_consent_records_registration_answer_subject_types_answer_subject_type_id",
+                        column: x => x.answer_subject_type_id,
+                        principalSchema: "islamu_event",
+                        principalTable: "registration_answer_subject_types",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_registration_consent_records_registration_form_fields_tenant_id_event_id_registration_form_id_registration_form_version_id_r",
+                        columns: x => new { x.tenant_id, x.event_id, x.registration_form_id, x.registration_form_version_id, x.registration_form_section_id, x.registration_form_field_id, x.field_type_id },
+                        principalSchema: "islamu_event",
+                        principalTable: "registration_form_fields",
+                        principalColumns: new[] { "tenant_id", "event_id", "registration_form_id", "registration_form_version_id", "registration_form_section_id", "id", "field_type_id" },
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_registration_consent_records_registration_order_lines_tenant_id_registration_order_id_ticket_assignment_order_line_id_requir",
+                        columns: x => new { x.tenant_id, x.registration_order_id, x.ticket_assignment_order_line_id, x.requirement_subject_id },
+                        principalSchema: "islamu_event",
+                        principalTable: "registration_order_lines",
+                        principalColumns: new[] { "tenant_id", "registration_order_id", "id", "ticket_type_id" },
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_registration_consent_records_registration_participants_tenant_id_registration_order_id_participant_subject_id",
+                        columns: x => new { x.tenant_id, x.registration_order_id, x.participant_subject_id },
+                        principalSchema: "islamu_event",
+                        principalTable: "registration_participants",
+                        principalColumns: new[] { "tenant_id", "registration_order_id", "id" },
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_registration_consent_records_registration_requirements_tenant_id_event_id_registration_workflow_id_registration_requirement_",
+                        columns: x => new { x.tenant_id, x.event_id, x.registration_workflow_id, x.registration_requirement_id, x.requirement_subject_type_id, x.requirement_subject_key },
+                        principalSchema: "islamu_event",
+                        principalTable: "registration_requirements",
+                        principalColumns: new[] { "tenant_id", "event_id", "registration_workflow_id", "id", "applies_to_subject_type_id", "applies_to_subject_key" },
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_registration_consent_records_registration_submissions_tenant_id_event_id_registration_order_id_registration_workflow_id_regi",
+                        columns: x => new { x.tenant_id, x.event_id, x.registration_order_id, x.registration_workflow_id, x.registration_requirement_id, x.registration_form_id, x.registration_form_version_id, x.registration_attempt_id, x.registration_submission_id },
+                        principalSchema: "islamu_event",
+                        principalTable: "registration_submissions",
+                        principalColumns: new[] { "tenant_id", "event_id", "registration_order_id", "registration_workflow_id", "registration_requirement_id", "registration_form_id", "registration_form_version_id", "registration_attempt_id", "id" },
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_registration_consent_records_registration_ticket_assignments_tenant_id_registration_order_id_ticket_assignment_subject_id_ti",
+                        columns: x => new { x.tenant_id, x.registration_order_id, x.ticket_assignment_subject_id, x.ticket_assignment_order_line_id },
+                        principalSchema: "islamu_event",
+                        principalTable: "registration_ticket_assignments",
+                        principalColumns: new[] { "tenant_id", "registration_order_id", "id", "registration_order_line_id" },
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_registration_consent_records_tenants_tenant_id",
+                        column: x => x.tenant_id,
+                        principalSchema: "islamu_event",
+                        principalTable: "tenants",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "registration_requirement_fulfillments",
+                schema: "islamu_event",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    tenant_id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    event_id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    registration_order_id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    registration_workflow_id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    registration_requirement_id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    subject_type_id = table.Column<int>(type: "int", nullable: false),
+                    subject_id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    source_registration_submission_id = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
+                    is_skipped = table.Column<bool>(type: "bit", nullable: false),
+                    recorded_at = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    created_at = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    created_by = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
+                    updated_at = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    updated_by = table.Column<Guid>(type: "uniqueidentifier", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_registration_requirement_fulfillments", x => x.id);
+                    table.UniqueConstraint("ak_registration_requirement_fulfillments_tenant_id_id", x => new { x.tenant_id, x.id });
+                    table.CheckConstraint("ck_registration_requirement_fulfillments_outcome", "(is_skipped = 1 AND source_registration_submission_id IS NULL) OR (is_skipped = 0 AND source_registration_submission_id IS NOT NULL)");
+                    table.ForeignKey(
+                        name: "fk_registration_requirement_fulfillments_registration_answer_subject_types_subject_type_id",
+                        column: x => x.subject_type_id,
+                        principalSchema: "islamu_event",
+                        principalTable: "registration_answer_subject_types",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_registration_requirement_fulfillments_registration_orders_tenant_id_event_id_registration_order_id",
+                        columns: x => new { x.tenant_id, x.event_id, x.registration_order_id },
+                        principalSchema: "islamu_event",
+                        principalTable: "registration_orders",
+                        principalColumns: new[] { "tenant_id", "event_id", "id" },
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_registration_requirement_fulfillments_registration_requirements_tenant_id_event_id_registration_workflow_id_registration_req",
+                        columns: x => new { x.tenant_id, x.event_id, x.registration_workflow_id, x.registration_requirement_id },
+                        principalSchema: "islamu_event",
+                        principalTable: "registration_requirements",
+                        principalColumns: new[] { "tenant_id", "event_id", "registration_workflow_id", "id" },
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_registration_requirement_fulfillments_registration_submissions_tenant_id_event_id_source_registration_submission_id",
+                        columns: x => new { x.tenant_id, x.event_id, x.source_registration_submission_id },
+                        principalSchema: "islamu_event",
+                        principalTable: "registration_submissions",
+                        principalColumns: new[] { "tenant_id", "event_id", "id" },
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_registration_requirement_fulfillments_tenants_tenant_id",
+                        column: x => x.tenant_id,
+                        principalSchema: "islamu_event",
+                        principalTable: "tenants",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "registration_submission_issues",
+                schema: "islamu_event",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    tenant_id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    event_id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    registration_attempt_id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    registration_submission_id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    registration_form_version_id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    registration_form_field_id = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
+                    code = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
+                    created_at = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    created_by = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
+                    updated_at = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    updated_by = table.Column<Guid>(type: "uniqueidentifier", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_registration_submission_issues", x => x.id);
+                    table.ForeignKey(
+                        name: "fk_registration_submission_issues_registration_submissions_tenant_id_event_id_registration_submission_id",
+                        columns: x => new { x.tenant_id, x.event_id, x.registration_submission_id },
+                        principalSchema: "islamu_event",
+                        principalTable: "registration_submissions",
+                        principalColumns: new[] { "tenant_id", "event_id", "id" },
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_registration_submission_issues_tenants_tenant_id",
+                        column: x => x.tenant_id,
+                        principalSchema: "islamu_event",
+                        principalTable: "tenants",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "registration_submission_revisions",
                 schema: "islamu_event",
                 columns: table => new
@@ -11206,6 +11413,40 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
                         name: "fk_registration_submission_revisions_tenants_tenant_id",
+                        column: x => x.tenant_id,
+                        principalSchema: "islamu_event",
+                        principalTable: "tenants",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "registration_answer_file_releases",
+                schema: "islamu_event",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    tenant_id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    registration_answer_file_id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    released_by = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    released_at = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    reason = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: false),
+                    previous_quarantine_state = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: false),
+                    new_quarantine_state = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_registration_answer_file_releases", x => x.id);
+                    table.CheckConstraint("ck_registration_answer_file_releases_transition", "previous_quarantine_state = 'quarantined' AND new_quarantine_state = 'released'");
+                    table.ForeignKey(
+                        name: "fk_registration_answer_file_releases_registration_answer_files_tenant_id_registration_answer_file_id",
+                        columns: x => new { x.tenant_id, x.registration_answer_file_id },
+                        principalSchema: "islamu_event",
+                        principalTable: "registration_answer_files",
+                        principalColumns: new[] { "tenant_id", "id" },
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_registration_answer_file_releases_tenants_tenant_id",
                         column: x => x.tenant_id,
                         principalSchema: "islamu_event",
                         principalTable: "tenants",
@@ -11305,15 +11546,13 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         column: x => x.custom_property_definition_id,
                         principalSchema: "islamu_event",
                         principalTable: "custom_property_definitions",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumn: "id");
                     table.ForeignKey(
                         name: "fk_custom_property_options_custom_property_options_parent_option_id",
                         column: x => x.parent_option_id,
                         principalSchema: "islamu_event",
                         principalTable: "custom_property_options",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.SetNull);
+                        principalColumn: "id");
                 });
 
             migrationBuilder.CreateTable(
@@ -11355,8 +11594,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         column: x => x.option_id,
                         principalSchema: "islamu_event",
                         principalTable: "custom_property_options",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.SetNull);
+                        principalColumn: "id");
                     table.ForeignKey(
                         name: "fk_custom_property_values_tenants_tenant_id",
                         column: x => x.tenant_id,
@@ -11421,8 +11659,8 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                     managed_tenant_provisioning_operation_id = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
                     recipient_email = table.Column<string>(type: "nvarchar(320)", maxLength: 320, nullable: false),
                     subject = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: false),
-                    plain_text_body = table.Column<string>(type: "text", nullable: true),
-                    html_body = table.Column<string>(type: "text", nullable: true),
+                    plain_text_body = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    html_body = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     reply_to = table.Column<string>(type: "nvarchar(320)", maxLength: 320, nullable: true),
                     status = table.Column<int>(type: "int", nullable: false),
                     attempt_count = table.Column<int>(type: "int", nullable: false),
@@ -11459,7 +11697,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                     table.UniqueConstraint("ak_email_dispatch_outbox_tenant_id_intent", x => new { x.tenant_id, x.id, x.notification_intent_id });
                     table.UniqueConstraint("ak_email_dispatch_outbox_tenant_id_intent_address_source", x => new { x.tenant_id, x.id, x.notification_intent_id, x.recipient_address_source });
                     table.UniqueConstraint("ak_email_dispatch_outbox_tenant_id_publish_event", x => new { x.tenant_id, x.id, x.publish_event_id });
-                    table.CheckConstraint("ck_email_dispatch_outbox_processing_fence", "(status = 2) = (processing_started_at IS NOT NULL AND processing_lease_token IS NOT NULL)");
+                    table.CheckConstraint("ck_email_dispatch_outbox_processing_fence", "(CASE WHEN status = 2 THEN 1 ELSE 0 END) = (CASE WHEN processing_started_at IS NOT NULL AND processing_lease_token IS NOT NULL THEN 1 ELSE 0 END)");
                     table.CheckConstraint("ck_email_dispatch_outbox_recipient_authority", "(recipient_address_source = 1 AND recipient_user_id IS NOT NULL AND managed_tenant_provisioning_operation_id IS NULL AND kind <> 8) OR (recipient_address_source = 2 AND recipient_user_id IS NOT NULL AND managed_tenant_provisioning_operation_id IS NOT NULL AND kind = 8 AND source_type = 'managed_tenant_provisioning' AND source_id = managed_tenant_provisioning_operation_id)");
                     table.CheckConstraint("ck_email_dispatch_outbox_redaction_fence", "content_redacted_at IS NULL OR (recipient_email = '' AND subject = '' AND plain_text_body IS NULL AND html_body IS NULL AND reply_to IS NULL AND last_error IS NULL AND provider_message_id IS NULL AND correlation_id IS NULL AND next_attempt_at IS NULL AND processing_started_at IS NULL AND processing_lease_token IS NULL)");
                     table.CheckConstraint("ck_email_dispatch_outbox_unknown_terminal", "status <> 7 OR (unknown_at IS NOT NULL AND next_attempt_at IS NULL AND processing_started_at IS NULL AND processing_lease_token IS NULL)");
@@ -11531,8 +11769,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         columns: x => new { x.tenant_id, x.email_dispatch_outbox_id, x.publish_event_id },
                         principalSchema: "islamu_event",
                         principalTable: "email_dispatch_outbox",
-                        principalColumns: new[] { "tenant_id", "id", "publish_event_id" },
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumns: new[] { "tenant_id", "id", "publish_event_id" });
                     table.ForeignKey(
                         name: "fk_email_dispatch_receipts_tenants_tenant_id",
                         column: x => x.tenant_id,
@@ -11609,8 +11846,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         column: x => x.event_id,
                         principalSchema: "islamu_event",
                         principalTable: "events",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumn: "id");
                     table.ForeignKey(
                         name: "fk_event_custom_property_definitions_tenants_tenant_id",
                         column: x => x.tenant_id,
@@ -11655,15 +11891,13 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         column: x => x.event_custom_property_definition_id,
                         principalSchema: "islamu_event",
                         principalTable: "event_custom_property_definitions",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumn: "id");
                     table.ForeignKey(
                         name: "fk_ecpo_parent_option",
                         column: x => x.parent_option_id,
                         principalSchema: "islamu_event",
                         principalTable: "event_custom_property_options",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.SetNull);
+                        principalColumn: "id");
                 });
 
             migrationBuilder.CreateTable(
@@ -11705,15 +11939,13 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         column: x => x.option_id,
                         principalSchema: "islamu_event",
                         principalTable: "event_custom_property_options",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.SetNull);
+                        principalColumn: "id");
                     table.ForeignKey(
                         name: "fk_event_custom_property_values_events_event_id",
                         column: x => x.event_id,
                         principalSchema: "islamu_event",
                         principalTable: "events",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumn: "id");
                     table.ForeignKey(
                         name: "fk_event_custom_property_values_tenants_tenant_id",
                         column: x => x.tenant_id,
@@ -11766,22 +11998,19 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         column: x => x.option_id,
                         principalSchema: "islamu_event",
                         principalTable: "event_custom_property_options",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.SetNull);
+                        principalColumn: "id");
                     table.ForeignKey(
                         name: "fk_event_custom_property_projections_event_custom_property_values_event_custom_property_value_id",
                         column: x => x.event_custom_property_value_id,
                         principalSchema: "islamu_event",
                         principalTable: "event_custom_property_values",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumn: "id");
                     table.ForeignKey(
                         name: "fk_event_custom_property_projections_events_event_id",
                         column: x => x.event_id,
                         principalSchema: "islamu_event",
                         principalTable: "events",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumn: "id");
                     table.ForeignKey(
                         name: "fk_event_custom_property_projections_tenants_tenant_id",
                         column: x => x.tenant_id,
@@ -12052,7 +12281,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                     table.PrimaryKey("pk_event_report_decision_executions", x => x.id);
                     table.UniqueConstraint("ak_event_report_decision_executions_tenant_id_id", x => new { x.tenant_id, x.id });
                     table.CheckConstraint("ck_event_report_decision_executions_failure_code_not_blank", "last_failure_code IS NULL OR trim(last_failure_code) <> ''");
-                    table.CheckConstraint("ck_event_report_decision_executions_lease_pair", "(processing_lease_token IS NULL) = (processing_lease_expires_at_utc IS NULL)");
+                    table.CheckConstraint("ck_event_report_decision_executions_lease_pair", "(CASE WHEN processing_lease_token IS NULL THEN 1 ELSE 0 END) = (CASE WHEN processing_lease_expires_at_utc IS NULL THEN 1 ELSE 0 END)");
                     table.CheckConstraint("ck_event_report_decision_executions_moderation_record_shape", "(enforcement_receipt_kind IN (2, 3) AND moderation_record_id IS NOT NULL AND moderation_record_id = enforcement_receipt_id) OR (enforcement_receipt_kind NOT IN (2, 3) AND moderation_record_id IS NULL)");
                     table.CheckConstraint("ck_event_report_decision_executions_receipt_id_shape", "(enforcement_receipt_kind IN (2, 3) AND enforcement_receipt_id IS NOT NULL) OR (enforcement_receipt_kind NOT IN (2, 3) AND enforcement_receipt_id IS NULL)");
                     table.CheckConstraint("ck_event_report_decision_executions_receipt_kind", "enforcement_receipt_kind BETWEEN 0 AND 5");
@@ -12323,15 +12552,13 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         column: x => x.recipient_context_actor_id,
                         principalSchema: "islamu_event",
                         principalTable: "actors",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.SetNull);
+                        principalColumn: "id");
                     table.ForeignKey(
                         name: "fk_notifications_actors_source_actor_id",
                         column: x => x.source_actor_id,
                         principalSchema: "islamu_event",
                         principalTable: "actors",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.SetNull);
+                        principalColumn: "id");
                     table.ForeignKey(
                         name: "fk_notifications_notification_entity_types_notification_entity_type_id",
                         column: x => x.notification_entity_type_id,
@@ -12379,8 +12606,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         column: x => x.user_id,
                         principalSchema: "islamu_event",
                         principalTable: "users",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumn: "id");
                 });
 
             migrationBuilder.CreateTable(
@@ -12540,8 +12766,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         column: x => x.event_session_id,
                         principalSchema: "islamu_event",
                         principalTable: "event_sessions",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumn: "id");
                     table.ForeignKey(
                         name: "fk_event_session_custom_property_definitions_tenants_tenant_id",
                         column: x => x.tenant_id,
@@ -12586,15 +12811,13 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         column: x => x.event_session_custom_property_definition_id,
                         principalSchema: "islamu_event",
                         principalTable: "event_session_custom_property_definitions",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumn: "id");
                     table.ForeignKey(
                         name: "fk_escpo_parent_option",
                         column: x => x.parent_option_id,
                         principalSchema: "islamu_event",
                         principalTable: "event_session_custom_property_options",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.SetNull);
+                        principalColumn: "id");
                 });
 
             migrationBuilder.CreateTable(
@@ -12636,15 +12859,13 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         column: x => x.option_id,
                         principalSchema: "islamu_event",
                         principalTable: "event_session_custom_property_options",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.SetNull);
+                        principalColumn: "id");
                     table.ForeignKey(
                         name: "fk_event_session_custom_property_values_event_sessions_event_session_id",
                         column: x => x.event_session_id,
                         principalSchema: "islamu_event",
                         principalTable: "event_sessions",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumn: "id");
                     table.ForeignKey(
                         name: "fk_event_session_custom_property_values_tenants_tenant_id",
                         column: x => x.tenant_id,
@@ -12697,22 +12918,19 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         column: x => x.option_id,
                         principalSchema: "islamu_event",
                         principalTable: "event_session_custom_property_options",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.SetNull);
+                        principalColumn: "id");
                     table.ForeignKey(
                         name: "fk_event_session_custom_property_projections_event_session_custom_property_values_event_session_custom_property_value_id",
                         column: x => x.event_session_custom_property_value_id,
                         principalSchema: "islamu_event",
                         principalTable: "event_session_custom_property_values",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumn: "id");
                     table.ForeignKey(
                         name: "fk_event_session_custom_property_projections_event_sessions_event_session_id",
                         column: x => x.event_session_id,
                         principalSchema: "islamu_event",
                         principalTable: "event_sessions",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumn: "id");
                     table.ForeignKey(
                         name: "fk_event_session_custom_property_projections_tenants_tenant_id",
                         column: x => x.tenant_id,
@@ -12776,8 +12994,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         column: x => x.event_session_template_id,
                         principalSchema: "islamu_event",
                         principalTable: "event_session_templates",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumn: "id");
                     table.ForeignKey(
                         name: "fk_event_session_template_custom_property_definitions_tenants_tenant_id",
                         column: x => x.tenant_id,
@@ -12820,15 +13037,13 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         column: x => x.event_session_template_custom_property_definition_id,
                         principalSchema: "islamu_event",
                         principalTable: "event_session_template_custom_property_definitions",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumn: "id");
                     table.ForeignKey(
                         name: "fk_estcpo_parent_option",
                         column: x => x.parent_option_id,
                         principalSchema: "islamu_event",
                         principalTable: "event_session_template_custom_property_options",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.SetNull);
+                        principalColumn: "id");
                 });
 
             migrationBuilder.CreateTable(
@@ -12885,8 +13100,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         column: x => x.event_template_id,
                         principalSchema: "islamu_event",
                         principalTable: "event_templates",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumn: "id");
                     table.ForeignKey(
                         name: "fk_event_template_custom_property_definitions_tenants_tenant_id",
                         column: x => x.tenant_id,
@@ -12929,15 +13143,13 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         column: x => x.event_template_custom_property_definition_id,
                         principalSchema: "islamu_event",
                         principalTable: "event_template_custom_property_definitions",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumn: "id");
                     table.ForeignKey(
                         name: "fk_etcpo_parent_option",
                         column: x => x.parent_option_id,
                         principalSchema: "islamu_event",
                         principalTable: "event_template_custom_property_options",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.SetNull);
+                        principalColumn: "id");
                 });
 
             migrationBuilder.CreateTable(
@@ -13689,7 +13901,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                 name: "ux_atproto_jetstream_quarantine_cursor",
                 schema: "islamu_event",
                 table: "atproto_jetstream_quarantines",
-                columns: new[] { "consumer_state_id", "cursor" },
+                columns: new[] { "consumer_state_id", "jetstream_cursor" },
                 unique: true);
 
             migrationBuilder.CreateIndex(
@@ -17219,6 +17431,45 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                 unique: true);
 
             migrationBuilder.CreateIndex(
+                name: "ix_registration_answer_file_releases_tenant_id_registration_answer_file_id",
+                schema: "islamu_event",
+                table: "registration_answer_file_releases",
+                columns: new[] { "tenant_id", "registration_answer_file_id" },
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "ix_registration_answer_files_tenant_id_event_id_registration_form_id_registration_form_version_id_registration_form_section_id_",
+                schema: "islamu_event",
+                table: "registration_answer_files",
+                columns: new[] { "tenant_id", "event_id", "registration_form_id", "registration_form_version_id", "registration_form_section_id", "registration_form_field_id", "field_type_id" });
+
+            migrationBuilder.CreateIndex(
+                name: "ix_registration_answer_files_tenant_id_event_id_registration_submission_id",
+                schema: "islamu_event",
+                table: "registration_answer_files",
+                columns: new[] { "tenant_id", "event_id", "registration_submission_id" });
+
+            migrationBuilder.CreateIndex(
+                name: "ix_registration_answer_files_tenant_id_registration_submission_id_registration_form_field_id_storage_object_id",
+                schema: "islamu_event",
+                table: "registration_answer_files",
+                columns: new[] { "tenant_id", "registration_submission_id", "registration_form_field_id", "storage_object_id" },
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "ix_registration_answer_files_tenant_id_storage_object_id",
+                schema: "islamu_event",
+                table: "registration_answer_files",
+                columns: new[] { "tenant_id", "storage_object_id" },
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "ix_registration_answer_files_tenant_id_storage_object_id_quarantine_state",
+                schema: "islamu_event",
+                table: "registration_answer_files",
+                columns: new[] { "tenant_id", "storage_object_id", "quarantine_state" });
+
+            migrationBuilder.CreateIndex(
                 name: "ix_registration_answer_sync_modes_master_code",
                 schema: "islamu_event",
                 table: "registration_answer_sync_modes",
@@ -17364,10 +17615,84 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                 columns: new[] { "tenant_id", "event_id" });
 
             migrationBuilder.CreateIndex(
+                name: "ix_registration_consent_records_answer_subject_type_id",
+                schema: "islamu_event",
+                table: "registration_consent_records",
+                column: "answer_subject_type_id");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_registration_consent_records_subject",
+                schema: "islamu_event",
+                table: "registration_consent_records",
+                columns: new[] { "tenant_id", "answer_subject_type_id", "effective_subject_identity", "withdrawn_at" });
+
+            migrationBuilder.CreateIndex(
+                name: "ix_registration_consent_records_tenant_id_event_id_registration_form_id_registration_form_version_id_registration_form_section_",
+                schema: "islamu_event",
+                table: "registration_consent_records",
+                columns: new[] { "tenant_id", "event_id", "registration_form_id", "registration_form_version_id", "registration_form_section_id", "registration_form_field_id", "field_type_id" });
+
+            migrationBuilder.CreateIndex(
+                name: "ix_registration_consent_records_tenant_id_event_id_registration_order_id_registration_workflow_id_registration_requirement_id_r",
+                schema: "islamu_event",
+                table: "registration_consent_records",
+                columns: new[] { "tenant_id", "event_id", "registration_order_id", "registration_workflow_id", "registration_requirement_id", "registration_form_id", "registration_form_version_id", "registration_attempt_id", "registration_submission_id" });
+
+            migrationBuilder.CreateIndex(
+                name: "ix_registration_consent_records_tenant_id_event_id_registration_workflow_id_registration_requirement_id_requirement_subject_typ",
+                schema: "islamu_event",
+                table: "registration_consent_records",
+                columns: new[] { "tenant_id", "event_id", "registration_workflow_id", "registration_requirement_id", "requirement_subject_type_id", "requirement_subject_key" });
+
+            migrationBuilder.CreateIndex(
+                name: "ix_registration_consent_records_tenant_id_registration_order_id_participant_subject_id",
+                schema: "islamu_event",
+                table: "registration_consent_records",
+                columns: new[] { "tenant_id", "registration_order_id", "participant_subject_id" });
+
+            migrationBuilder.CreateIndex(
+                name: "ix_registration_consent_records_tenant_id_registration_order_id_ticket_assignment_order_line_id_requirement_subject_id",
+                schema: "islamu_event",
+                table: "registration_consent_records",
+                columns: new[] { "tenant_id", "registration_order_id", "ticket_assignment_order_line_id", "requirement_subject_id" });
+
+            migrationBuilder.CreateIndex(
+                name: "ix_registration_consent_records_tenant_id_registration_order_id_ticket_assignment_subject_id_ticket_assignment_order_line_id",
+                schema: "islamu_event",
+                table: "registration_consent_records",
+                columns: new[] { "tenant_id", "registration_order_id", "ticket_assignment_subject_id", "ticket_assignment_order_line_id" });
+
+            migrationBuilder.CreateIndex(
+                name: "ux_registration_consent_records_evidence",
+                schema: "islamu_event",
+                table: "registration_consent_records",
+                columns: new[] { "tenant_id", "registration_submission_id", "registration_form_field_id", "answer_subject_type_id", "effective_subject_identity" },
+                unique: true);
+
+            migrationBuilder.CreateIndex(
                 name: "ix_registration_field_types_master_code",
                 schema: "islamu_event",
                 table: "registration_field_types",
                 column: "master_code",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "ix_registration_finalization_effects_tenant_id_event_id_registration_order_id",
+                schema: "islamu_event",
+                table: "registration_finalization_effects",
+                columns: new[] { "tenant_id", "event_id", "registration_order_id" });
+
+            migrationBuilder.CreateIndex(
+                name: "ix_registration_finalization_effects_worker_poll",
+                schema: "islamu_event",
+                table: "registration_finalization_effects",
+                columns: new[] { "status", "next_attempt_at", "created_at" });
+
+            migrationBuilder.CreateIndex(
+                name: "ux_registration_finalization_effects_order",
+                schema: "islamu_event",
+                table: "registration_finalization_effects",
+                columns: new[] { "tenant_id", "registration_order_id" },
                 unique: true);
 
             migrationBuilder.CreateIndex(
@@ -17641,6 +17966,37 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                 unique: true);
 
             migrationBuilder.CreateIndex(
+                name: "ix_registration_requirement_fulfillments_subject_type_id",
+                schema: "islamu_event",
+                table: "registration_requirement_fulfillments",
+                column: "subject_type_id");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_registration_requirement_fulfillments_tenant_id_event_id_registration_order_id",
+                schema: "islamu_event",
+                table: "registration_requirement_fulfillments",
+                columns: new[] { "tenant_id", "event_id", "registration_order_id" });
+
+            migrationBuilder.CreateIndex(
+                name: "ix_registration_requirement_fulfillments_tenant_id_event_id_registration_workflow_id_registration_requirement_id",
+                schema: "islamu_event",
+                table: "registration_requirement_fulfillments",
+                columns: new[] { "tenant_id", "event_id", "registration_workflow_id", "registration_requirement_id" });
+
+            migrationBuilder.CreateIndex(
+                name: "ix_registration_requirement_fulfillments_tenant_id_event_id_source_registration_submission_id",
+                schema: "islamu_event",
+                table: "registration_requirement_fulfillments",
+                columns: new[] { "tenant_id", "event_id", "source_registration_submission_id" });
+
+            migrationBuilder.CreateIndex(
+                name: "ux_registration_requirement_fulfillments_identity",
+                schema: "islamu_event",
+                table: "registration_requirement_fulfillments",
+                columns: new[] { "tenant_id", "registration_order_id", "registration_requirement_id", "subject_type_id", "subject_id", "is_skipped" },
+                unique: true);
+
+            migrationBuilder.CreateIndex(
                 name: "ix_registration_requirement_subject_types_master_code",
                 schema: "islamu_event",
                 table: "registration_requirement_subject_types",
@@ -17696,6 +18052,18 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                 schema: "islamu_event",
                 table: "registration_sensitive_answer_values",
                 columns: new[] { "tenant_id", "key_version" });
+
+            migrationBuilder.CreateIndex(
+                name: "ix_registration_submission_issues_tenant_id_event_id_registration_submission_id",
+                schema: "islamu_event",
+                table: "registration_submission_issues",
+                columns: new[] { "tenant_id", "event_id", "registration_submission_id" });
+
+            migrationBuilder.CreateIndex(
+                name: "ix_registration_submission_issues_tenant_id_registration_submission_id",
+                schema: "islamu_event",
+                table: "registration_submission_issues",
+                columns: new[] { "tenant_id", "registration_submission_id" });
 
             migrationBuilder.CreateIndex(
                 name: "ix_registration_submission_revisions_tenant_id_event_id_registration_submission_id",
@@ -19468,8 +19836,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                 columns: new[] { "tenant_id", "email_dispatch_outbox_id" },
                 principalSchema: "islamu_event",
                 principalTable: "email_dispatch_outbox",
-                principalColumns: new[] { "tenant_id", "id" },
-                onDelete: ReferentialAction.Cascade);
+                principalColumns: new[] { "tenant_id", "id" });
 
             migrationBuilder.AddForeignKey(
                 name: "fk_email_dispatch_outbox_recipient_matches_intent",
@@ -20278,7 +20645,19 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                 schema: "islamu_event");
 
             migrationBuilder.DropTable(
+                name: "registration_answer_file_releases",
+                schema: "islamu_event");
+
+            migrationBuilder.DropTable(
                 name: "registration_answers",
+                schema: "islamu_event");
+
+            migrationBuilder.DropTable(
+                name: "registration_consent_records",
+                schema: "islamu_event");
+
+            migrationBuilder.DropTable(
+                name: "registration_finalization_effects",
                 schema: "islamu_event");
 
             migrationBuilder.DropTable(
@@ -20302,7 +20681,15 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                 schema: "islamu_event");
 
             migrationBuilder.DropTable(
+                name: "registration_requirement_fulfillments",
+                schema: "islamu_event");
+
+            migrationBuilder.DropTable(
                 name: "registration_scopes",
+                schema: "islamu_event");
+
+            migrationBuilder.DropTable(
+                name: "registration_submission_issues",
                 schema: "islamu_event");
 
             migrationBuilder.DropTable(
@@ -20618,7 +21005,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                 schema: "islamu_event");
 
             migrationBuilder.DropTable(
-                name: "registration_answer_subject_types",
+                name: "registration_answer_files",
                 schema: "islamu_event");
 
             migrationBuilder.DropTable(
@@ -20638,7 +21025,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                 schema: "islamu_event");
 
             migrationBuilder.DropTable(
-                name: "registration_submissions",
+                name: "registration_answer_subject_types",
                 schema: "islamu_event");
 
             migrationBuilder.DropTable(
@@ -20834,6 +21221,10 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                 schema: "islamu_event");
 
             migrationBuilder.DropTable(
+                name: "registration_submissions",
+                schema: "islamu_event");
+
+            migrationBuilder.DropTable(
                 name: "registration_form_fields",
                 schema: "islamu_event");
 
@@ -20847,14 +21238,6 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
 
             migrationBuilder.DropTable(
                 name: "registration_participants",
-                schema: "islamu_event");
-
-            migrationBuilder.DropTable(
-                name: "registration_attempts",
-                schema: "islamu_event");
-
-            migrationBuilder.DropTable(
-                name: "registration_submission_statuses",
                 schema: "islamu_event");
 
             migrationBuilder.DropTable(
@@ -20922,6 +21305,14 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                 schema: "islamu_event");
 
             migrationBuilder.DropTable(
+                name: "registration_attempts",
+                schema: "islamu_event");
+
+            migrationBuilder.DropTable(
+                name: "registration_submission_statuses",
+                schema: "islamu_event");
+
+            migrationBuilder.DropTable(
                 name: "registration_field_types",
                 schema: "islamu_event");
 
@@ -20942,18 +21333,6 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                 schema: "islamu_event");
 
             migrationBuilder.DropTable(
-                name: "registration_attempt_statuses",
-                schema: "islamu_event");
-
-            migrationBuilder.DropTable(
-                name: "registration_channels",
-                schema: "islamu_event");
-
-            migrationBuilder.DropTable(
-                name: "registration_orders",
-                schema: "islamu_event");
-
-            migrationBuilder.DropTable(
                 name: "tenant_plan_statuses",
                 schema: "islamu_event");
 
@@ -20971,6 +21350,18 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
 
             migrationBuilder.DropTable(
                 name: "notification_delivery_policies",
+                schema: "islamu_event");
+
+            migrationBuilder.DropTable(
+                name: "registration_attempt_statuses",
+                schema: "islamu_event");
+
+            migrationBuilder.DropTable(
+                name: "registration_channels",
+                schema: "islamu_event");
+
+            migrationBuilder.DropTable(
+                name: "registration_orders",
                 schema: "islamu_event");
 
             migrationBuilder.DropTable(
