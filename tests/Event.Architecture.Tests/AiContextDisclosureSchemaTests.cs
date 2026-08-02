@@ -1,5 +1,5 @@
 // ABOUTME: TUnit architecture tests for the AI Context Disclosure registry and policy.
-// ABOUTME: Enforces that every *Pii property is classified and registry semantics are honored.
+// ABOUTME: Enforces that every persisted disclosure field is classified and registry semantics are honored.
 
 using System.Collections.Generic;
 using System.Linq;
@@ -28,6 +28,12 @@ public class AiContextDisclosureSchemaTests
         typeof(Location)
     };
 
+    private static readonly HashSet<string> ExplicitNonPiiKeys = new(StringComparer.Ordinal)
+    {
+        AiContextDisclosureEntry.BuildKey(nameof(AtprotoIdentity), nameof(AtprotoIdentity.Did)),
+        AiContextDisclosureEntry.BuildKey(nameof(AtprotoIdentity), nameof(AtprotoIdentity.Handle))
+    };
+
     private static readonly AiProviderTrustTierEnum[] AllProviderTrustTiers =
     {
         AiProviderTrustTierEnum.LocalInProcessOrSameNetworkModel,
@@ -41,6 +47,16 @@ public class AiContextDisclosureSchemaTests
         piiType
             .GetProperties(BindingFlags.Public | BindingFlags.Instance)
             .Where(p => !ExcludedNavigationTypes.Contains(p.PropertyType));
+
+    private static HashSet<string> GetExpectedKeys()
+    {
+        var keys = PiiEntityTypes
+            .SelectMany(type => EnumerateClassifiedProperties(type)
+                .Select(property => AiContextDisclosureEntry.BuildKey(type.Name, property.Name)))
+            .ToHashSet(StringComparer.Ordinal);
+        keys.UnionWith(ExplicitNonPiiKeys);
+        return keys;
+    }
 
     [Test]
     public async Task CreateDefault_DoesNotThrowAndProducesRegistry()
@@ -86,24 +102,17 @@ public class AiContextDisclosureSchemaTests
     public async Task RegistryEntryCountMatchesPiiPropertySurface()
     {
         var registry = AiContextDisclosureRegistry.CreateDefault();
-        var expected = PiiEntityTypes.Sum(t => EnumerateClassifiedProperties(t).Count());
+        var expected = GetExpectedKeys().Count;
 
         await Assert.That(registry.Count).IsEqualTo(expected)
-            .Because("registry must classify every *Pii property and exclude every navigation property");
+            .Because("registry must classify the complete persisted disclosure surface and exclude navigation properties");
     }
 
     [Test]
     public async Task RegistryHasNoExtraEntriesBeyondPiiProperties()
     {
         var registry = AiContextDisclosureRegistry.CreateDefault();
-        var validKeys = new HashSet<string>(StringComparer.Ordinal);
-        foreach (var piiType in PiiEntityTypes)
-        {
-            foreach (var property in EnumerateClassifiedProperties(piiType))
-            {
-                validKeys.Add(AiContextDisclosureEntry.BuildKey(piiType.Name, property.Name));
-            }
-        }
+        var validKeys = GetExpectedKeys();
 
         var extras = registry.Entries
             .Where(e => !validKeys.Contains(e.Key))
@@ -111,7 +120,7 @@ public class AiContextDisclosureSchemaTests
             .ToList();
 
         await Assert.That(extras).IsEmpty()
-            .Because("registry must not carry orphan entries that do not map to a real *Pii property");
+            .Because("registry must not carry entries outside the persisted disclosure surface");
     }
 
     [Test]
