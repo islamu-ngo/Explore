@@ -58,6 +58,7 @@ public partial class ExploreDbContext
     private void PrepareTrackedEntities()
     {
         ValidateEventLocationCarrierConsistency();
+        PopulateMySqlPortableComputedValues();
         var userId = GetCurrentUserId();
         var now = DateTime.UtcNow;
 
@@ -133,6 +134,60 @@ public partial class ExploreDbContext
             }
         }
 
+    }
+
+    private void PopulateMySqlPortableComputedValues()
+    {
+        if (!StringComparer.Ordinal.Equals(Database.ProviderName, "Microting.EntityFrameworkCore.MySql"))
+        {
+            return;
+        }
+
+        foreach (var entry in ChangeTracker.Entries().Where(item => item.State == EntityState.Added))
+        {
+            switch (entry.Entity)
+            {
+                case WebhookConsumer consumer:
+                    entry.Property(nameof(WebhookConsumer.ConfigurationScopeId)).CurrentValue =
+                        consumer.TenantId ?? consumer.InstanceId ?? Guid.Empty;
+                    break;
+                case WebhookEndpoint endpoint:
+                    entry.Property(nameof(WebhookEndpoint.ConfigurationScopeId)).CurrentValue =
+                        endpoint.TenantId ?? endpoint.InstanceId ?? Guid.Empty;
+                    break;
+                case WebhookEndpointSubscription subscription:
+                    entry.Property(nameof(WebhookEndpointSubscription.ConfigurationScopeId)).CurrentValue =
+                        subscription.TenantId ?? subscription.InstanceId ?? Guid.Empty;
+                    break;
+                case WebhookConsumerProviderBinding binding:
+                    entry.Property(nameof(WebhookConsumerProviderBinding.ConfigurationScopeId)).CurrentValue =
+                        binding.TenantId ?? binding.InstanceId;
+                    break;
+                case RegistrationOrder order:
+                    entry.Property("RegistrationWorkflowVersionKey").CurrentValue =
+                        order.RegistrationWorkflowVersionId ?? Guid.Empty;
+                    break;
+                case RegistrationAttempt attempt:
+                    entry.Property("RegistrationProviderBindingKey").CurrentValue =
+                        attempt.RegistrationProviderBindingId ?? Guid.Empty;
+                    break;
+                case RegistrationChannel channel:
+                    entry.Property("RegistrationProviderBindingKey").CurrentValue =
+                        channel.RegistrationProviderBindingId ?? Guid.Empty;
+                    break;
+                case RegistrationRequirement requirement:
+                    entry.Property(nameof(RegistrationRequirement.AppliesToSubjectKey)).CurrentValue =
+                        requirement.AppliesToSubjectId ?? Guid.Empty;
+                    break;
+                case RegistrationAnswer answer:
+                    entry.Property(nameof(RegistrationAnswer.RequirementSubjectKey)).CurrentValue =
+                        answer.RequirementSubjectId ?? Guid.Empty;
+                    entry.Property(nameof(RegistrationAnswer.EffectiveSubjectIdentity)).CurrentValue =
+                        answer.OrderSubjectId ?? answer.PurchaserSubjectId ?? answer.ParticipantSubjectId ??
+                        answer.TicketAssignmentSubjectId ?? answer.SessionSelectionSubjectId ?? Guid.Empty;
+                    break;
+            }
+        }
     }
 
     private void ValidateEventLocationCarrierConsistency()

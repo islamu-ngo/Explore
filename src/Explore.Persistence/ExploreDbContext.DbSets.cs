@@ -177,8 +177,14 @@ public partial class ExploreDbContext
     public DbSet<RegistrationAttempt> RegistrationAttempts { get; set; }
     public DbSet<RegistrationSubmission> RegistrationSubmissions { get; set; }
     public DbSet<RegistrationSubmissionRevision> RegistrationSubmissionRevisions { get; set; }
+    public DbSet<RegistrationSubmissionIssue> RegistrationSubmissionIssues { get; set; }
     public DbSet<RegistrationAnswer> RegistrationAnswers { get; set; }
+    public DbSet<RegistrationConsentRecord> RegistrationConsentRecords { get; set; }
+    public DbSet<RegistrationAnswerFile> RegistrationAnswerFiles { get; set; }
+    public DbSet<RegistrationAnswerFileRelease> RegistrationAnswerFileReleases { get; set; }
     public DbSet<RegistrationSensitiveAnswerValue> RegistrationSensitiveAnswerValues { get; set; }
+    public DbSet<RegistrationRequirementFulfillment> RegistrationRequirementFulfillments { get; set; }
+    public DbSet<RegistrationFinalizationEffect> RegistrationFinalizationEffects { get; set; }
     public DbSet<RegistrationAnswerSubjectType> RegistrationAnswerSubjectTypes { get; set; }
 
     // ===== Event Lookup Tables =====

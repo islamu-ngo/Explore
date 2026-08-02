@@ -13,14 +13,36 @@ namespace Explore.Persistence.Repositories;
 public sealed class RegistrationSubmissionRepository(ExploreDbContext dbContext)
     : IRegistrationSubmissionRepository
 {
-    public async Task<RegistrationSubmissionPersistenceResult> PersistAcceptedAsync(
+    public async Task PersistAttemptAsync(
+        RegistrationAttempt attempt,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(attempt);
+        await dbContext.RegistrationAttempts.AddAsync(attempt, cancellationToken);
+        await dbContext.SaveChangesAsync(cancellationToken);
+    }
+
+    public Task<RegistrationSubmissionPersistenceResult> PersistAcceptedAsync(
         RegistrationAttempt attempt,
         RegistrationSubmission submission,
         Guid expectedAttemptConcurrencyStamp,
+        CancellationToken cancellationToken) => PersistAcceptedWithNormalizationAsync(
+        attempt, submission, expectedAttemptConcurrencyStamp, [], [], [], cancellationToken);
+
+    public async Task<RegistrationSubmissionPersistenceResult> PersistAcceptedWithNormalizationAsync(
+        RegistrationAttempt attempt,
+        RegistrationSubmission submission,
+        Guid expectedAttemptConcurrencyStamp,
+        IReadOnlyCollection<RegistrationAnswer> answers,
+        IReadOnlyCollection<RegistrationConsentRecord> consentRecords,
+        IReadOnlyCollection<RegistrationSubmissionIssue> issues,
         CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(attempt);
         ArgumentNullException.ThrowIfNull(submission);
+        ArgumentNullException.ThrowIfNull(answers);
+        ArgumentNullException.ThrowIfNull(consentRecords);
+        ArgumentNullException.ThrowIfNull(issues);
         if (expectedAttemptConcurrencyStamp == Guid.Empty ||
             submission.AttemptConsumptionClaimId is null ||
             submission.AttemptConsumptionClaimId != attempt.SubmissionConsumptionClaimId ||
@@ -29,6 +51,8 @@ public sealed class RegistrationSubmissionRepository(ExploreDbContext dbContext)
         {
             throw new ArgumentException("Accepted submission state is incomplete.", nameof(submission));
         }
+
+        ValidateNormalizationGraph(submission, answers, consentRecords, issues);
 
         RegistrationSubmission? existing = await FindExistingAsync(submission, cancellationToken);
         if (existing is not null)
@@ -69,6 +93,21 @@ public sealed class RegistrationSubmissionRepository(ExploreDbContext dbContext)
                 }
 
                 await dbContext.RegistrationSubmissions.AddAsync(submission, cancellationToken);
+                if (answers.Count > 0)
+                {
+                    await dbContext.RegistrationAnswers.AddRangeAsync(answers, cancellationToken);
+                }
+
+                if (consentRecords.Count > 0)
+                {
+                    await dbContext.RegistrationConsentRecords.AddRangeAsync(consentRecords, cancellationToken);
+                }
+
+                if (issues.Count > 0)
+                {
+                    await dbContext.RegistrationSubmissionIssues.AddRangeAsync(issues, cancellationToken);
+                }
+
                 await dbContext.SaveChangesAsync(cancellationToken);
                 await transaction.CommitAsync(cancellationToken);
                 return new(RegistrationSubmissionPersistenceOutcome.Inserted, submission);
@@ -131,6 +170,39 @@ public sealed class RegistrationSubmissionRepository(ExploreDbContext dbContext)
         .AsNoTracking()
         .Include(submission => submission.Revisions)
         .SingleOrDefaultAsync(submission => submission.TenantId == tenantId && submission.Id == submissionId, cancellationToken);
+
+    public Task<RegistrationRequirement?> GetRequirementAsync(
+        Guid tenantId,
+        Guid requirementId,
+        CancellationToken cancellationToken) => dbContext.RegistrationRequirements
+        .AsNoTracking()
+        .SingleOrDefaultAsync(requirement => requirement.TenantId == tenantId && requirement.Id == requirementId, cancellationToken);
+
+    public async Task PersistNormalizationAsync(
+        IReadOnlyCollection<RegistrationAnswer> answers,
+        IReadOnlyCollection<RegistrationConsentRecord> consentRecords,
+        IReadOnlyCollection<RegistrationSubmissionIssue> issues,
+        CancellationToken cancellationToken)
+    {
+        await using var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
+        if (answers.Count > 0)
+        {
+            await dbContext.RegistrationAnswers.AddRangeAsync(answers, cancellationToken);
+        }
+
+        if (consentRecords.Count > 0)
+        {
+            await dbContext.RegistrationConsentRecords.AddRangeAsync(consentRecords, cancellationToken);
+        }
+
+        if (issues.Count > 0)
+        {
+            await dbContext.RegistrationSubmissionIssues.AddRangeAsync(issues, cancellationToken);
+        }
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
+    }
 
     public async Task<bool> PersistRevisionAsync(
         RegistrationSubmission submission,
@@ -226,6 +298,24 @@ public sealed class RegistrationSubmissionRepository(ExploreDbContext dbContext)
                 candidate.ProviderSubmissionId == submission.ProviderSubmissionId &&
                 candidate.ProviderResponseRevision == submission.ProviderResponseRevision);
         return query.SingleOrDefaultAsync(cancellationToken);
+    }
+
+    private static void ValidateNormalizationGraph(
+        RegistrationSubmission submission,
+        IReadOnlyCollection<RegistrationAnswer> answers,
+        IReadOnlyCollection<RegistrationConsentRecord> consentRecords,
+        IReadOnlyCollection<RegistrationSubmissionIssue> issues)
+    {
+        bool mismatched = answers.Any(answer => answer.TenantId != submission.TenantId ||
+                                                answer.RegistrationSubmissionId != submission.Id) ||
+                          consentRecords.Any(record => record.TenantId != submission.TenantId ||
+                                                       record.RegistrationSubmissionId != submission.Id) ||
+                          issues.Any(issue => issue.TenantId != submission.TenantId ||
+                                              issue.RegistrationSubmissionId != submission.Id);
+        if (mismatched)
+        {
+            throw new ArgumentException("Normalization evidence must belong to the accepted submission.");
+        }
     }
 
     private Task<bool?> ClassifyCommittedRevisionAsync(

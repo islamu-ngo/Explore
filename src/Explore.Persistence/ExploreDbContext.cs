@@ -4,6 +4,7 @@
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Persistence.Schema;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 
 namespace Explore.Persistence;
 
@@ -79,7 +80,10 @@ public partial class ExploreDbContext : DbContext
             configurationType => configurationType.Namespace
                 is not "Explore.Persistence.Privacy.ErasureAuthority.Configurations");
         PortableRelationalModelPolicy.Apply(modelBuilder, Database.ProviderName);
-        RelationalModelNamespace.Apply(modelBuilder, Database.ProviderName);
+        var schema = this.GetService<IDbContextOptions>()
+            .FindExtension<Database.RelationalNamespaceOptionsExtension>()?.ModelSchema
+            ?? RelationalModelNamespace.DefaultSchema;
+        RelationalModelNamespace.Apply(modelBuilder, Database.ProviderName, schema);
         if (Database.ProviderName == "Npgsql.EntityFrameworkCore.PostgreSQL")
         {
             modelBuilder.HasPostgresExtension("btree_gist");
