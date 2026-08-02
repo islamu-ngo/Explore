@@ -52046,6 +52046,252 @@
         "x-output-cache-policy": "PublicHomeDiscovery"
       }
     },
+    "/api/registration-answer-files/{id}": {
+      "get": {
+        "tags": [
+          "RegistrationAnswerFiles"
+        ],
+        "operationId": "GetRegistrationAnswerFile",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/HalResourceOfRegistrationAnswerFileDto"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/HalResourceOfRegistrationAnswerFileDto"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          }
+        },
+        "x-endpoint-class": "Admin"
+      }
+    },
+    "/api/registration-answer-files/{id}/release": {
+      "post": {
+        "tags": [
+          "RegistrationAnswerFiles"
+        ],
+        "operationId": "ReleaseRegistrationAnswerFile",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/RegistrationAnswerFileReleaseInput"
+              }
+            },
+            "text/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/RegistrationAnswerFileReleaseInput"
+              }
+            },
+            "application/*+json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/RegistrationAnswerFileReleaseInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/HalResourceOfRegistrationAnswerFileDto"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/HalResourceOfRegistrationAnswerFileDto"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          }
+        },
+        "x-endpoint-class": "Admin",
+        "x-rate-limit-policy": "Write"
+      }
+    },
     "/api/events/{eventId}/registration-workflows": {
       "get": {
         "tags": [
@@ -57512,6 +57758,537 @@
         "x-idempotency-key-required": true
       }
     },
+    "/api/events/{eventId}/registration-orders/guest/{orderId}/attempts": {
+      "post": {
+        "tags": [
+          "RegistrationOrder"
+        ],
+        "summary": "Launch guest native registration attempt",
+        "operationId": "LaunchGuestNativeRegistrationAttempt",
+        "parameters": [
+          {
+            "name": "eventId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "orderId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "X-Registration-Order-Capability",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/LaunchNativeRegistrationAttemptRequest"
+              }
+            },
+            "text/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/LaunchNativeRegistrationAttemptRequest"
+              }
+            },
+            "application/*+json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/LaunchNativeRegistrationAttemptRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/HalResourceOfNativeRegistrationAttemptDto"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/HalResourceOfNativeRegistrationAttemptDto"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/HalResourceOfNativeRegistrationAttemptDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "x-endpoint-class": "PublicTransactional",
+        "x-rate-limit-policy": "public_transactional",
+        "x-idempotency-key-required": true
+      }
+    },
+    "/api/events/{eventId}/registration-orders/guest/{orderId}/requirement-progress": {
+      "get": {
+        "tags": [
+          "RegistrationOrder"
+        ],
+        "summary": "Get guest native registration requirement progress",
+        "operationId": "GetGuestNativeRegistrationRequirementProgress",
+        "parameters": [
+          {
+            "name": "eventId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "orderId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "X-Registration-Order-Capability",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/HalResourceOfNativeRegistrationRequirementProgressCollectionDto"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/HalResourceOfNativeRegistrationRequirementProgressCollectionDto"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/HalResourceOfNativeRegistrationRequirementProgressCollectionDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "x-endpoint-class": "Public"
+      }
+    },
+    "/api/events/{eventId}/registration-orders/guest/{orderId}/attempts/{attemptId}/skip": {
+      "post": {
+        "tags": [
+          "RegistrationOrder"
+        ],
+        "summary": "Skip guest optional native registration requirement",
+        "operationId": "SkipGuestNativeRegistrationRequirement",
+        "parameters": [
+          {
+            "name": "eventId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "orderId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "attemptId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "X-Registration-Order-Capability",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Registration-Attempt-Capability",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/SkipNativeRegistrationRequirementRequest"
+              }
+            },
+            "text/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/SkipNativeRegistrationRequirementRequest"
+              }
+            },
+            "application/*+json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/SkipNativeRegistrationRequirementRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/NativeRegistrationSkipDto"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/NativeRegistrationSkipDto"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/NativeRegistrationSkipDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "x-endpoint-class": "PublicTransactional",
+        "x-rate-limit-policy": "public_transactional",
+        "x-idempotency-key-required": true
+      }
+    },
+    "/api/events/{eventId}/registration-orders/guest/{orderId}/attempts/{attemptId}/submissions": {
+      "post": {
+        "tags": [
+          "RegistrationOrder"
+        ],
+        "summary": "Submit guest native registration answers",
+        "operationId": "SubmitGuestNativeRegistrationAttempt",
+        "parameters": [
+          {
+            "name": "eventId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "orderId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "attemptId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "X-Registration-Order-Capability",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Registration-Attempt-Capability",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/SubmitNativeRegistrationAttemptRequest"
+              }
+            },
+            "text/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/SubmitNativeRegistrationAttemptRequest"
+              }
+            },
+            "application/*+json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/SubmitNativeRegistrationAttemptRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/NativeRegistrationSubmissionDto"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/NativeRegistrationSubmissionDto"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/NativeRegistrationSubmissionDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "x-endpoint-class": "PublicTransactional",
+        "x-rate-limit-policy": "public_transactional",
+        "x-idempotency-key-required": true
+      }
+    },
     "/api/events/{eventId}/registration-orders/guest/{orderId}": {
       "get": {
         "tags": [
@@ -59073,6 +59850,589 @@
         },
         "x-endpoint-class": "PublicTransactional",
         "x-rate-limit-policy": "public_transactional",
+        "x-idempotency-key-required": true
+      }
+    },
+    "/api/events/{eventId}/registration-orders/{orderId}/attempts": {
+      "post": {
+        "tags": [
+          "RegistrationOrder"
+        ],
+        "summary": "Launch authenticated native registration attempt",
+        "operationId": "LaunchAuthenticatedNativeRegistrationAttempt",
+        "parameters": [
+          {
+            "name": "eventId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "orderId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/LaunchNativeRegistrationAttemptRequest"
+              }
+            },
+            "text/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/LaunchNativeRegistrationAttemptRequest"
+              }
+            },
+            "application/*+json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/LaunchNativeRegistrationAttemptRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/HalResourceOfNativeRegistrationAttemptDto"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/HalResourceOfNativeRegistrationAttemptDto"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/HalResourceOfNativeRegistrationAttemptDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "x-endpoint-class": "Authenticated",
+        "x-rate-limit-policy": "Write",
+        "x-idempotency-key-required": true
+      }
+    },
+    "/api/events/{eventId}/registration-orders/{orderId}/requirement-progress": {
+      "get": {
+        "tags": [
+          "RegistrationOrder"
+        ],
+        "summary": "Get authenticated native registration requirement progress",
+        "operationId": "GetAuthenticatedNativeRegistrationRequirementProgress",
+        "parameters": [
+          {
+            "name": "eventId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "orderId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/HalResourceOfNativeRegistrationRequirementProgressCollectionDto"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/HalResourceOfNativeRegistrationRequirementProgressCollectionDto"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/HalResourceOfNativeRegistrationRequirementProgressCollectionDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "x-endpoint-class": "Authenticated"
+      }
+    },
+    "/api/events/{eventId}/registration-orders/{orderId}/attempts/{attemptId}/skip": {
+      "post": {
+        "tags": [
+          "RegistrationOrder"
+        ],
+        "summary": "Skip authenticated optional native registration requirement",
+        "operationId": "SkipAuthenticatedNativeRegistrationRequirement",
+        "parameters": [
+          {
+            "name": "eventId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "orderId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "attemptId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "X-Registration-Attempt-Capability",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/SkipNativeRegistrationRequirementRequest"
+              }
+            },
+            "text/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/SkipNativeRegistrationRequirementRequest"
+              }
+            },
+            "application/*+json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/SkipNativeRegistrationRequirementRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/NativeRegistrationSkipDto"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/NativeRegistrationSkipDto"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/NativeRegistrationSkipDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "x-endpoint-class": "Authenticated",
+        "x-rate-limit-policy": "Write",
+        "x-idempotency-key-required": true
+      }
+    },
+    "/api/events/{eventId}/registration-orders/{orderId}/attempts/{attemptId}/submissions": {
+      "post": {
+        "tags": [
+          "RegistrationOrder"
+        ],
+        "summary": "Submit authenticated native registration answers",
+        "operationId": "SubmitAuthenticatedNativeRegistrationAttempt",
+        "parameters": [
+          {
+            "name": "eventId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "orderId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "attemptId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "X-Registration-Attempt-Capability",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/SubmitNativeRegistrationAttemptRequest"
+              }
+            },
+            "text/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/SubmitNativeRegistrationAttemptRequest"
+              }
+            },
+            "application/*+json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/SubmitNativeRegistrationAttemptRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/NativeRegistrationSubmissionDto"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/NativeRegistrationSubmissionDto"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/NativeRegistrationSubmissionDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "x-endpoint-class": "Authenticated",
+        "x-rate-limit-policy": "Write",
         "x-idempotency-key-required": true
       }
     },
@@ -103538,6 +104898,1158 @@
           }
         }
       },
+      "HalResourceOfNativeRegistrationAttemptDto": {
+        "required": [
+          "attemptId",
+          "requirementId",
+          "channelId",
+          "formId",
+          "formVersionId",
+          "expiresAt",
+          "attemptCapabilityToken",
+          "form",
+          "subjects",
+          "progress"
+        ],
+        "type": "object",
+        "properties": {
+          "attemptId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "requirementId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "channelId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "formId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "formVersionId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "attemptCapabilityToken": {
+            "type": "string"
+          },
+          "form": {
+            "required": [
+              "formVersionId",
+              "version",
+              "languageTag",
+              "schemaHash",
+              "sections",
+              "rules"
+            ],
+            "type": "object",
+            "properties": {
+              "formVersionId": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "version": {
+                "pattern": "^-?(?:0|[1-9]\\d*)$",
+                "type": [
+                  "integer",
+                  "string"
+                ],
+                "format": "int32"
+              },
+              "languageTag": {
+                "type": "string"
+              },
+              "schemaHash": {
+                "type": [
+                  "null",
+                  "string"
+                ]
+              },
+              "sections": {
+                "type": "array",
+                "items": {
+                  "required": [
+                    "id",
+                    "ordinal",
+                    "title",
+                    "fields"
+                  ],
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "ordinal": {
+                      "pattern": "^-?(?:0|[1-9]\\d*)$",
+                      "type": [
+                        "integer",
+                        "string"
+                      ],
+                      "format": "int32"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "fields": {
+                      "type": "array",
+                      "items": {
+                        "required": [
+                          "id",
+                          "ordinal",
+                          "namespace",
+                          "key",
+                          "label",
+                          "fieldTypeId",
+                          "fieldTypeCode",
+                          "fieldTypeName",
+                          "requiresExplicitConsent",
+                          "consentPurposeCode",
+                          "consentTextVersion",
+                          "consentText",
+                          "isRequired",
+                          "isMulti",
+                          "minLength",
+                          "maxLength",
+                          "regexPattern",
+                          "minNumber",
+                          "maxNumber",
+                          "minDateTime",
+                          "maxDateTime",
+                          "allowedUrlSchemes",
+                          "options"
+                        ],
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "format": "uuid"
+                          },
+                          "ordinal": {
+                            "pattern": "^-?(?:0|[1-9]\\d*)$",
+                            "type": [
+                              "integer",
+                              "string"
+                            ],
+                            "format": "int32"
+                          },
+                          "namespace": {
+                            "type": "string"
+                          },
+                          "key": {
+                            "type": "string"
+                          },
+                          "label": {
+                            "type": "string"
+                          },
+                          "fieldTypeId": {
+                            "pattern": "^-?(?:0|[1-9]\\d*)$",
+                            "type": [
+                              "integer",
+                              "string"
+                            ],
+                            "format": "int32"
+                          },
+                          "fieldTypeCode": {
+                            "type": "string"
+                          },
+                          "fieldTypeName": {
+                            "type": "string"
+                          },
+                          "requiresExplicitConsent": {
+                            "type": "boolean"
+                          },
+                          "consentPurposeCode": {
+                            "type": [
+                              "null",
+                              "string"
+                            ]
+                          },
+                          "consentTextVersion": {
+                            "type": [
+                              "null",
+                              "string"
+                            ]
+                          },
+                          "consentText": {
+                            "type": [
+                              "null",
+                              "string"
+                            ]
+                          },
+                          "isRequired": {
+                            "type": "boolean"
+                          },
+                          "isMulti": {
+                            "type": "boolean"
+                          },
+                          "minLength": {
+                            "pattern": "^-?(?:0|[1-9]\\d*)$",
+                            "type": [
+                              "null",
+                              "integer",
+                              "string"
+                            ],
+                            "format": "int32"
+                          },
+                          "maxLength": {
+                            "pattern": "^-?(?:0|[1-9]\\d*)$",
+                            "type": [
+                              "null",
+                              "integer",
+                              "string"
+                            ],
+                            "format": "int32"
+                          },
+                          "regexPattern": {
+                            "type": [
+                              "null",
+                              "string"
+                            ]
+                          },
+                          "minNumber": {
+                            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+                            "type": [
+                              "null",
+                              "number",
+                              "string"
+                            ],
+                            "format": "double"
+                          },
+                          "maxNumber": {
+                            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+                            "type": [
+                              "null",
+                              "number",
+                              "string"
+                            ],
+                            "format": "double"
+                          },
+                          "minDateTime": {
+                            "type": [
+                              "null",
+                              "string"
+                            ],
+                            "format": "date-time"
+                          },
+                          "maxDateTime": {
+                            "type": [
+                              "null",
+                              "string"
+                            ],
+                            "format": "date-time"
+                          },
+                          "allowedUrlSchemes": {
+                            "type": [
+                              "null",
+                              "string"
+                            ]
+                          },
+                          "options": {
+                            "type": "array",
+                            "items": {
+                              "required": [
+                                "id",
+                                "ordinal",
+                                "key",
+                                "label",
+                                "isRetired"
+                              ],
+                              "type": "object",
+                              "properties": {
+                                "id": {
+                                  "type": "string",
+                                  "format": "uuid"
+                                },
+                                "ordinal": {
+                                  "pattern": "^-?(?:0|[1-9]\\d*)$",
+                                  "type": [
+                                    "integer",
+                                    "string"
+                                  ],
+                                  "format": "int32"
+                                },
+                                "key": {
+                                  "type": "string"
+                                },
+                                "label": {
+                                  "type": "string"
+                                },
+                                "isRetired": {
+                                  "type": "boolean"
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              "rules": {
+                "type": "array",
+                "items": {
+                  "required": [
+                    "id",
+                    "ordinal",
+                    "targetNamespace",
+                    "targetKey",
+                    "effect",
+                    "condition"
+                  ],
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "ordinal": {
+                      "pattern": "^-?(?:0|[1-9]\\d*)$",
+                      "type": [
+                        "integer",
+                        "string"
+                      ],
+                      "format": "int32"
+                    },
+                    "targetNamespace": {
+                      "type": "string"
+                    },
+                    "targetKey": {
+                      "type": "string"
+                    },
+                    "effect": {
+                      "pattern": "^-?(?:0|[1-9]\\d*)$",
+                      "type": [
+                        "integer",
+                        "string"
+                      ],
+                      "format": "int32"
+                    },
+                    "condition": {
+                      "required": [
+                        "operator"
+                      ],
+                      "type": "object",
+                      "properties": {
+                        "operator": {
+                          "type": "string"
+                        },
+                        "fieldNamespace": {
+                          "type": [
+                            "null",
+                            "string"
+                          ]
+                        },
+                        "fieldKey": {
+                          "type": [
+                            "null",
+                            "string"
+                          ]
+                        },
+                        "comparison": {
+                          "type": [
+                            "null",
+                            "string"
+                          ]
+                        },
+                        "value": {
+                          "required": [
+                            "type"
+                          ],
+                          "type": "object",
+                          "properties": {
+                            "type": {
+                              "type": "string"
+                            },
+                            "textValue": {
+                              "type": [
+                                "null",
+                                "string"
+                              ]
+                            },
+                            "booleanValue": {
+                              "type": [
+                                "null",
+                                "boolean"
+                              ]
+                            },
+                            "numberValue": {
+                              "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+                              "type": [
+                                "null",
+                                "number",
+                                "string"
+                              ],
+                              "format": "double"
+                            },
+                            "dateValue": {
+                              "type": [
+                                "null",
+                                "string"
+                              ],
+                              "format": "date"
+                            }
+                          }
+                        },
+                        "values": {
+                          "type": [
+                            "null",
+                            "array"
+                          ],
+                          "items": {
+                            "required": [
+                              "type"
+                            ],
+                            "type": "object",
+                            "properties": {
+                              "type": {
+                                "type": "string"
+                              },
+                              "textValue": {
+                                "type": [
+                                  "null",
+                                  "string"
+                                ]
+                              },
+                              "booleanValue": {
+                                "type": [
+                                  "null",
+                                  "boolean"
+                                ]
+                              },
+                              "numberValue": {
+                                "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+                                "type": [
+                                  "null",
+                                  "number",
+                                  "string"
+                                ],
+                                "format": "double"
+                              },
+                              "dateValue": {
+                                "type": [
+                                  "null",
+                                  "string"
+                                ],
+                                "format": "date"
+                              }
+                            }
+                          }
+                        },
+                        "conditions": {
+                          "type": [
+                            "null",
+                            "array"
+                          ],
+                          "items": {
+                            "required": [
+                              "operator"
+                            ],
+                            "type": "object",
+                            "properties": {
+                              "operator": {
+                                "type": "string"
+                              },
+                              "fieldNamespace": {
+                                "type": [
+                                  "null",
+                                  "string"
+                                ]
+                              },
+                              "fieldKey": {
+                                "type": [
+                                  "null",
+                                  "string"
+                                ]
+                              },
+                              "comparison": {
+                                "type": [
+                                  "null",
+                                  "string"
+                                ]
+                              },
+                              "value": {
+                                "required": [
+                                  "type"
+                                ],
+                                "type": "object",
+                                "properties": {
+                                  "type": {
+                                    "type": "string"
+                                  },
+                                  "textValue": {
+                                    "type": [
+                                      "null",
+                                      "string"
+                                    ]
+                                  },
+                                  "booleanValue": {
+                                    "type": [
+                                      "null",
+                                      "boolean"
+                                    ]
+                                  },
+                                  "numberValue": {
+                                    "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+                                    "type": [
+                                      "null",
+                                      "number",
+                                      "string"
+                                    ],
+                                    "format": "double"
+                                  },
+                                  "dateValue": {
+                                    "type": [
+                                      "null",
+                                      "string"
+                                    ],
+                                    "format": "date"
+                                  }
+                                }
+                              },
+                              "values": {
+                                "type": [
+                                  "null",
+                                  "array"
+                                ],
+                                "items": {
+                                  "required": [
+                                    "type"
+                                  ],
+                                  "type": "object",
+                                  "properties": {
+                                    "type": {
+                                      "type": "string"
+                                    },
+                                    "textValue": {
+                                      "type": [
+                                        "null",
+                                        "string"
+                                      ]
+                                    },
+                                    "booleanValue": {
+                                      "type": [
+                                        "null",
+                                        "boolean"
+                                      ]
+                                    },
+                                    "numberValue": {
+                                      "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+                                      "type": [
+                                        "null",
+                                        "number",
+                                        "string"
+                                      ],
+                                      "format": "double"
+                                    },
+                                    "dateValue": {
+                                      "type": [
+                                        "null",
+                                        "string"
+                                      ],
+                                      "format": "date"
+                                    }
+                                  }
+                                }
+                              },
+                              "conditions": {
+                                "type": [
+                                  "null",
+                                  "array"
+                                ],
+                                "items": {
+                                  "required": [
+                                    "operator"
+                                  ],
+                                  "type": "object",
+                                  "properties": {
+                                    "operator": {
+                                      "type": "string"
+                                    },
+                                    "fieldNamespace": {
+                                      "type": [
+                                        "null",
+                                        "string"
+                                      ]
+                                    },
+                                    "fieldKey": {
+                                      "type": [
+                                        "null",
+                                        "string"
+                                      ]
+                                    },
+                                    "comparison": {
+                                      "type": [
+                                        "null",
+                                        "string"
+                                      ]
+                                    },
+                                    "value": { },
+                                    "values": { },
+                                    "conditions": { },
+                                    "condition": {
+                                      "required": [
+                                        "operator"
+                                      ],
+                                      "type": "object",
+                                      "properties": {
+                                        "operator": {
+                                          "type": "string"
+                                        },
+                                        "fieldNamespace": {
+                                          "type": [
+                                            "null",
+                                            "string"
+                                          ]
+                                        },
+                                        "fieldKey": {
+                                          "type": [
+                                            "null",
+                                            "string"
+                                          ]
+                                        },
+                                        "comparison": {
+                                          "type": [
+                                            "null",
+                                            "string"
+                                          ]
+                                        },
+                                        "value": { },
+                                        "values": { },
+                                        "conditions": { },
+                                        "condition": { }
+                                      }
+                                    }
+                                  }
+                                }
+                              },
+                              "condition": {
+                                "required": [
+                                  "operator"
+                                ],
+                                "type": "object",
+                                "properties": {
+                                  "operator": {
+                                    "type": "string"
+                                  },
+                                  "fieldNamespace": {
+                                    "type": [
+                                      "null",
+                                      "string"
+                                    ]
+                                  },
+                                  "fieldKey": {
+                                    "type": [
+                                      "null",
+                                      "string"
+                                    ]
+                                  },
+                                  "comparison": {
+                                    "type": [
+                                      "null",
+                                      "string"
+                                    ]
+                                  },
+                                  "value": {
+                                    "required": [
+                                      "type"
+                                    ],
+                                    "type": "object",
+                                    "properties": {
+                                      "type": {
+                                        "type": "string"
+                                      },
+                                      "textValue": {
+                                        "type": [
+                                          "null",
+                                          "string"
+                                        ]
+                                      },
+                                      "booleanValue": {
+                                        "type": [
+                                          "null",
+                                          "boolean"
+                                        ]
+                                      },
+                                      "numberValue": {
+                                        "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+                                        "type": [
+                                          "null",
+                                          "number",
+                                          "string"
+                                        ],
+                                        "format": "double"
+                                      },
+                                      "dateValue": {
+                                        "type": [
+                                          "null",
+                                          "string"
+                                        ],
+                                        "format": "date"
+                                      }
+                                    }
+                                  },
+                                  "values": {
+                                    "type": [
+                                      "null",
+                                      "array"
+                                    ],
+                                    "items": {
+                                      "required": [
+                                        "type"
+                                      ],
+                                      "type": "object",
+                                      "properties": {
+                                        "type": {
+                                          "type": "string"
+                                        },
+                                        "textValue": {
+                                          "type": [
+                                            "null",
+                                            "string"
+                                          ]
+                                        },
+                                        "booleanValue": {
+                                          "type": [
+                                            "null",
+                                            "boolean"
+                                          ]
+                                        },
+                                        "numberValue": {
+                                          "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+                                          "type": [
+                                            "null",
+                                            "number",
+                                            "string"
+                                          ],
+                                          "format": "double"
+                                        },
+                                        "dateValue": {
+                                          "type": [
+                                            "null",
+                                            "string"
+                                          ],
+                                          "format": "date"
+                                        }
+                                      }
+                                    }
+                                  },
+                                  "conditions": {
+                                    "type": [
+                                      "null",
+                                      "array"
+                                    ],
+                                    "items": {
+                                      "required": [
+                                        "operator"
+                                      ],
+                                      "type": "object",
+                                      "properties": {
+                                        "operator": {
+                                          "type": "string"
+                                        },
+                                        "fieldNamespace": {
+                                          "type": [
+                                            "null",
+                                            "string"
+                                          ]
+                                        },
+                                        "fieldKey": {
+                                          "type": [
+                                            "null",
+                                            "string"
+                                          ]
+                                        },
+                                        "comparison": {
+                                          "type": [
+                                            "null",
+                                            "string"
+                                          ]
+                                        },
+                                        "value": { },
+                                        "values": { },
+                                        "conditions": { },
+                                        "condition": {
+                                          "required": [
+                                            "operator"
+                                          ],
+                                          "type": "object",
+                                          "properties": {
+                                            "operator": {
+                                              "type": "string"
+                                            },
+                                            "fieldNamespace": {
+                                              "type": [
+                                                "null",
+                                                "string"
+                                              ]
+                                            },
+                                            "fieldKey": {
+                                              "type": [
+                                                "null",
+                                                "string"
+                                              ]
+                                            },
+                                            "comparison": {
+                                              "type": [
+                                                "null",
+                                                "string"
+                                              ]
+                                            },
+                                            "value": { },
+                                            "values": { },
+                                            "conditions": { },
+                                            "condition": { }
+                                          }
+                                        }
+                                      }
+                                    }
+                                  },
+                                  "condition": {
+                                    "required": [
+                                      "operator"
+                                    ],
+                                    "type": "object",
+                                    "properties": {
+                                      "operator": {
+                                        "type": "string"
+                                      },
+                                      "fieldNamespace": {
+                                        "type": [
+                                          "null",
+                                          "string"
+                                        ]
+                                      },
+                                      "fieldKey": {
+                                        "type": [
+                                          "null",
+                                          "string"
+                                        ]
+                                      },
+                                      "comparison": {
+                                        "type": [
+                                          "null",
+                                          "string"
+                                        ]
+                                      },
+                                      "value": { },
+                                      "values": { },
+                                      "conditions": { },
+                                      "condition": { }
+                                    }
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        },
+                        "condition": {
+                          "required": [
+                            "operator"
+                          ],
+                          "type": "object",
+                          "properties": {
+                            "operator": {
+                              "type": "string"
+                            },
+                            "fieldNamespace": {
+                              "type": [
+                                "null",
+                                "string"
+                              ]
+                            },
+                            "fieldKey": {
+                              "type": [
+                                "null",
+                                "string"
+                              ]
+                            },
+                            "comparison": {
+                              "type": [
+                                "null",
+                                "string"
+                              ]
+                            },
+                            "value": { },
+                            "values": { },
+                            "conditions": { },
+                            "condition": { }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "subjects": {
+            "type": "array",
+            "items": {
+              "required": [
+                "subjectType",
+                "subjectTypeCode",
+                "subjectId",
+                "subjectKey",
+                "ticketAssignmentOrderLineId",
+                "isCompleted",
+                "isSkipped"
+              ],
+              "type": "object",
+              "properties": {
+                "subjectType": {
+                  "type": "integer"
+                },
+                "subjectTypeCode": {
+                  "type": "string"
+                },
+                "subjectId": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "subjectKey": {
+                  "type": "string"
+                },
+                "ticketAssignmentOrderLineId": {
+                  "type": [
+                    "null",
+                    "string"
+                  ],
+                  "format": "uuid"
+                },
+                "isCompleted": {
+                  "type": "boolean"
+                },
+                "isSkipped": {
+                  "type": "boolean"
+                }
+              }
+            }
+          },
+          "progress": {
+            "required": [
+              "subjectCount",
+              "completedSubjectCount",
+              "skippedSubjectCount",
+              "pendingSubjectCount",
+              "isComplete"
+            ],
+            "type": "object",
+            "properties": {
+              "subjectCount": {
+                "pattern": "^-?(?:0|[1-9]\\d*)$",
+                "type": [
+                  "integer",
+                  "string"
+                ],
+                "format": "int32"
+              },
+              "completedSubjectCount": {
+                "pattern": "^-?(?:0|[1-9]\\d*)$",
+                "type": [
+                  "integer",
+                  "string"
+                ],
+                "format": "int32"
+              },
+              "skippedSubjectCount": {
+                "pattern": "^-?(?:0|[1-9]\\d*)$",
+                "type": [
+                  "integer",
+                  "string"
+                ],
+                "format": "int32"
+              },
+              "pendingSubjectCount": {
+                "pattern": "^-?(?:0|[1-9]\\d*)$",
+                "type": [
+                  "integer",
+                  "string"
+                ],
+                "format": "int32"
+              },
+              "isComplete": {
+                "type": "boolean"
+              }
+            }
+          },
+          "_links": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/HalLink"
+            },
+            "description": "HAL hypermedia links"
+          },
+          "_embedded": {
+            "type": [
+              "null",
+              "object"
+            ],
+            "description": "Embedded related resources"
+          }
+        }
+      },
+      "HalResourceOfNativeRegistrationRequirementProgressCollectionDto": {
+        "required": [
+          "registrationOrderId",
+          "requirements"
+        ],
+        "type": "object",
+        "properties": {
+          "registrationOrderId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "requirements": {
+            "type": "array",
+            "items": {
+              "required": [
+                "requirementId",
+                "channelId",
+                "formId",
+                "formVersionId",
+                "canSkip",
+                "subjects",
+                "progress"
+              ],
+              "type": "object",
+              "properties": {
+                "requirementId": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "channelId": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "formId": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "formVersionId": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "canSkip": {
+                  "type": "boolean"
+                },
+                "subjects": {
+                  "type": "array",
+                  "items": {
+                    "required": [
+                      "subjectType",
+                      "subjectTypeCode",
+                      "subjectId",
+                      "subjectKey",
+                      "ticketAssignmentOrderLineId",
+                      "isCompleted",
+                      "isSkipped"
+                    ],
+                    "type": "object",
+                    "properties": {
+                      "subjectType": {
+                        "type": "integer"
+                      },
+                      "subjectTypeCode": {
+                        "type": "string"
+                      },
+                      "subjectId": {
+                        "type": "string",
+                        "format": "uuid"
+                      },
+                      "subjectKey": {
+                        "type": "string"
+                      },
+                      "ticketAssignmentOrderLineId": {
+                        "type": [
+                          "null",
+                          "string"
+                        ],
+                        "format": "uuid"
+                      },
+                      "isCompleted": {
+                        "type": "boolean"
+                      },
+                      "isSkipped": {
+                        "type": "boolean"
+                      }
+                    }
+                  }
+                },
+                "progress": {
+                  "required": [
+                    "subjectCount",
+                    "completedSubjectCount",
+                    "skippedSubjectCount",
+                    "pendingSubjectCount",
+                    "isComplete"
+                  ],
+                  "type": "object",
+                  "properties": {
+                    "subjectCount": {
+                      "pattern": "^-?(?:0|[1-9]\\d*)$",
+                      "type": [
+                        "integer",
+                        "string"
+                      ],
+                      "format": "int32"
+                    },
+                    "completedSubjectCount": {
+                      "pattern": "^-?(?:0|[1-9]\\d*)$",
+                      "type": [
+                        "integer",
+                        "string"
+                      ],
+                      "format": "int32"
+                    },
+                    "skippedSubjectCount": {
+                      "pattern": "^-?(?:0|[1-9]\\d*)$",
+                      "type": [
+                        "integer",
+                        "string"
+                      ],
+                      "format": "int32"
+                    },
+                    "pendingSubjectCount": {
+                      "pattern": "^-?(?:0|[1-9]\\d*)$",
+                      "type": [
+                        "integer",
+                        "string"
+                      ],
+                      "format": "int32"
+                    },
+                    "isComplete": {
+                      "type": "boolean"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "_links": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/HalLink"
+            },
+            "description": "HAL hypermedia links"
+          },
+          "_embedded": {
+            "type": [
+              "null",
+              "object"
+            ],
+            "description": "Embedded related resources"
+          }
+        }
+      },
       "HalResourceOfNotificationPreferenceMatrixDto": {
         "type": "object",
         "properties": {
@@ -104600,6 +107112,104 @@
           },
           "recommendedAction": {
             "type": "string"
+          },
+          "_links": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/HalLink"
+            },
+            "description": "HAL hypermedia links"
+          },
+          "_embedded": {
+            "type": [
+              "null",
+              "object"
+            ],
+            "description": "Embedded related resources"
+          }
+        }
+      },
+      "HalResourceOfRegistrationAnswerFileDto": {
+        "required": [
+          "id",
+          "registrationSubmissionId",
+          "registrationFormFieldId",
+          "storageObjectId",
+          "safeDisplayName",
+          "contentType",
+          "extension",
+          "size",
+          "quarantineState",
+          "scanStatus",
+          "quarantinedAt",
+          "releasedBy",
+          "releasedAt",
+          "releaseReason"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "registrationSubmissionId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "registrationFormFieldId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "storageObjectId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "safeDisplayName": {
+            "type": "string"
+          },
+          "contentType": {
+            "type": "string"
+          },
+          "extension": {
+            "type": "string"
+          },
+          "size": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "quarantineState": {
+            "type": "string"
+          },
+          "scanStatus": {
+            "type": "string"
+          },
+          "quarantinedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "releasedBy": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "releasedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "releaseReason": {
+            "type": [
+              "null",
+              "string"
+            ]
           },
           "_links": {
             "type": "object",
@@ -109663,6 +112273,33 @@
           }
         }
       },
+      "LaunchNativeRegistrationAttemptRequest": {
+        "required": [
+          "requirementId",
+          "channelId",
+          "formId",
+          "formVersionId"
+        ],
+        "type": "object",
+        "properties": {
+          "requirementId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "channelId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "formId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "formVersionId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      },
       "ListmonkBehaviorUpdateDto": {
         "type": "object",
         "properties": {
@@ -112769,6 +115406,1235 @@
             "type": "boolean"
           },
           "reportFollowUpContactConsent": {
+            "type": "boolean"
+          }
+        }
+      },
+      "NativeRegistrationAttemptDto": {
+        "required": [
+          "attemptId",
+          "requirementId",
+          "channelId",
+          "formId",
+          "formVersionId",
+          "expiresAt",
+          "attemptCapabilityToken",
+          "form",
+          "subjects",
+          "progress"
+        ],
+        "type": "object",
+        "properties": {
+          "attemptId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "requirementId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "channelId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "formId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "formVersionId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "attemptCapabilityToken": {
+            "type": "string"
+          },
+          "form": {
+            "required": [
+              "formVersionId",
+              "version",
+              "languageTag",
+              "schemaHash",
+              "sections",
+              "rules"
+            ],
+            "type": "object",
+            "properties": {
+              "formVersionId": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "version": {
+                "pattern": "^-?(?:0|[1-9]\\d*)$",
+                "type": [
+                  "integer",
+                  "string"
+                ],
+                "format": "int32"
+              },
+              "languageTag": {
+                "type": "string"
+              },
+              "schemaHash": {
+                "type": [
+                  "null",
+                  "string"
+                ]
+              },
+              "sections": {
+                "type": "array",
+                "items": {
+                  "required": [
+                    "id",
+                    "ordinal",
+                    "title",
+                    "fields"
+                  ],
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "ordinal": {
+                      "pattern": "^-?(?:0|[1-9]\\d*)$",
+                      "type": [
+                        "integer",
+                        "string"
+                      ],
+                      "format": "int32"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "fields": {
+                      "type": "array",
+                      "items": {
+                        "required": [
+                          "id",
+                          "ordinal",
+                          "namespace",
+                          "key",
+                          "label",
+                          "fieldTypeId",
+                          "fieldTypeCode",
+                          "fieldTypeName",
+                          "requiresExplicitConsent",
+                          "consentPurposeCode",
+                          "consentTextVersion",
+                          "consentText",
+                          "isRequired",
+                          "isMulti",
+                          "minLength",
+                          "maxLength",
+                          "regexPattern",
+                          "minNumber",
+                          "maxNumber",
+                          "minDateTime",
+                          "maxDateTime",
+                          "allowedUrlSchemes",
+                          "options"
+                        ],
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "format": "uuid"
+                          },
+                          "ordinal": {
+                            "pattern": "^-?(?:0|[1-9]\\d*)$",
+                            "type": [
+                              "integer",
+                              "string"
+                            ],
+                            "format": "int32"
+                          },
+                          "namespace": {
+                            "type": "string"
+                          },
+                          "key": {
+                            "type": "string"
+                          },
+                          "label": {
+                            "type": "string"
+                          },
+                          "fieldTypeId": {
+                            "pattern": "^-?(?:0|[1-9]\\d*)$",
+                            "type": [
+                              "integer",
+                              "string"
+                            ],
+                            "format": "int32"
+                          },
+                          "fieldTypeCode": {
+                            "type": "string"
+                          },
+                          "fieldTypeName": {
+                            "type": "string"
+                          },
+                          "requiresExplicitConsent": {
+                            "type": "boolean"
+                          },
+                          "consentPurposeCode": {
+                            "type": [
+                              "null",
+                              "string"
+                            ]
+                          },
+                          "consentTextVersion": {
+                            "type": [
+                              "null",
+                              "string"
+                            ]
+                          },
+                          "consentText": {
+                            "type": [
+                              "null",
+                              "string"
+                            ]
+                          },
+                          "isRequired": {
+                            "type": "boolean"
+                          },
+                          "isMulti": {
+                            "type": "boolean"
+                          },
+                          "minLength": {
+                            "pattern": "^-?(?:0|[1-9]\\d*)$",
+                            "type": [
+                              "null",
+                              "integer",
+                              "string"
+                            ],
+                            "format": "int32"
+                          },
+                          "maxLength": {
+                            "pattern": "^-?(?:0|[1-9]\\d*)$",
+                            "type": [
+                              "null",
+                              "integer",
+                              "string"
+                            ],
+                            "format": "int32"
+                          },
+                          "regexPattern": {
+                            "type": [
+                              "null",
+                              "string"
+                            ]
+                          },
+                          "minNumber": {
+                            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+                            "type": [
+                              "null",
+                              "number",
+                              "string"
+                            ],
+                            "format": "double"
+                          },
+                          "maxNumber": {
+                            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+                            "type": [
+                              "null",
+                              "number",
+                              "string"
+                            ],
+                            "format": "double"
+                          },
+                          "minDateTime": {
+                            "type": [
+                              "null",
+                              "string"
+                            ],
+                            "format": "date-time"
+                          },
+                          "maxDateTime": {
+                            "type": [
+                              "null",
+                              "string"
+                            ],
+                            "format": "date-time"
+                          },
+                          "allowedUrlSchemes": {
+                            "type": [
+                              "null",
+                              "string"
+                            ]
+                          },
+                          "options": {
+                            "type": "array",
+                            "items": {
+                              "required": [
+                                "id",
+                                "ordinal",
+                                "key",
+                                "label",
+                                "isRetired"
+                              ],
+                              "type": "object",
+                              "properties": {
+                                "id": {
+                                  "type": "string",
+                                  "format": "uuid"
+                                },
+                                "ordinal": {
+                                  "pattern": "^-?(?:0|[1-9]\\d*)$",
+                                  "type": [
+                                    "integer",
+                                    "string"
+                                  ],
+                                  "format": "int32"
+                                },
+                                "key": {
+                                  "type": "string"
+                                },
+                                "label": {
+                                  "type": "string"
+                                },
+                                "isRetired": {
+                                  "type": "boolean"
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              "rules": {
+                "type": "array",
+                "items": {
+                  "required": [
+                    "id",
+                    "ordinal",
+                    "targetNamespace",
+                    "targetKey",
+                    "effect",
+                    "condition"
+                  ],
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "ordinal": {
+                      "pattern": "^-?(?:0|[1-9]\\d*)$",
+                      "type": [
+                        "integer",
+                        "string"
+                      ],
+                      "format": "int32"
+                    },
+                    "targetNamespace": {
+                      "type": "string"
+                    },
+                    "targetKey": {
+                      "type": "string"
+                    },
+                    "effect": {
+                      "pattern": "^-?(?:0|[1-9]\\d*)$",
+                      "type": [
+                        "integer",
+                        "string"
+                      ],
+                      "format": "int32"
+                    },
+                    "condition": {
+                      "required": [
+                        "operator"
+                      ],
+                      "type": "object",
+                      "properties": {
+                        "operator": {
+                          "type": "string"
+                        },
+                        "fieldNamespace": {
+                          "type": [
+                            "null",
+                            "string"
+                          ]
+                        },
+                        "fieldKey": {
+                          "type": [
+                            "null",
+                            "string"
+                          ]
+                        },
+                        "comparison": {
+                          "type": [
+                            "null",
+                            "string"
+                          ]
+                        },
+                        "value": {
+                          "required": [
+                            "type"
+                          ],
+                          "type": "object",
+                          "properties": {
+                            "type": {
+                              "type": "string"
+                            },
+                            "textValue": {
+                              "type": [
+                                "null",
+                                "string"
+                              ]
+                            },
+                            "booleanValue": {
+                              "type": [
+                                "null",
+                                "boolean"
+                              ]
+                            },
+                            "numberValue": {
+                              "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+                              "type": [
+                                "null",
+                                "number",
+                                "string"
+                              ],
+                              "format": "double"
+                            },
+                            "dateValue": {
+                              "type": [
+                                "null",
+                                "string"
+                              ],
+                              "format": "date"
+                            }
+                          }
+                        },
+                        "values": {
+                          "type": [
+                            "null",
+                            "array"
+                          ],
+                          "items": {
+                            "required": [
+                              "type"
+                            ],
+                            "type": "object",
+                            "properties": {
+                              "type": {
+                                "type": "string"
+                              },
+                              "textValue": {
+                                "type": [
+                                  "null",
+                                  "string"
+                                ]
+                              },
+                              "booleanValue": {
+                                "type": [
+                                  "null",
+                                  "boolean"
+                                ]
+                              },
+                              "numberValue": {
+                                "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+                                "type": [
+                                  "null",
+                                  "number",
+                                  "string"
+                                ],
+                                "format": "double"
+                              },
+                              "dateValue": {
+                                "type": [
+                                  "null",
+                                  "string"
+                                ],
+                                "format": "date"
+                              }
+                            }
+                          }
+                        },
+                        "conditions": {
+                          "type": [
+                            "null",
+                            "array"
+                          ],
+                          "items": {
+                            "required": [
+                              "operator"
+                            ],
+                            "type": "object",
+                            "properties": {
+                              "operator": {
+                                "type": "string"
+                              },
+                              "fieldNamespace": {
+                                "type": [
+                                  "null",
+                                  "string"
+                                ]
+                              },
+                              "fieldKey": {
+                                "type": [
+                                  "null",
+                                  "string"
+                                ]
+                              },
+                              "comparison": {
+                                "type": [
+                                  "null",
+                                  "string"
+                                ]
+                              },
+                              "value": {
+                                "required": [
+                                  "type"
+                                ],
+                                "type": "object",
+                                "properties": {
+                                  "type": {
+                                    "type": "string"
+                                  },
+                                  "textValue": {
+                                    "type": [
+                                      "null",
+                                      "string"
+                                    ]
+                                  },
+                                  "booleanValue": {
+                                    "type": [
+                                      "null",
+                                      "boolean"
+                                    ]
+                                  },
+                                  "numberValue": {
+                                    "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+                                    "type": [
+                                      "null",
+                                      "number",
+                                      "string"
+                                    ],
+                                    "format": "double"
+                                  },
+                                  "dateValue": {
+                                    "type": [
+                                      "null",
+                                      "string"
+                                    ],
+                                    "format": "date"
+                                  }
+                                }
+                              },
+                              "values": {
+                                "type": [
+                                  "null",
+                                  "array"
+                                ],
+                                "items": {
+                                  "required": [
+                                    "type"
+                                  ],
+                                  "type": "object",
+                                  "properties": {
+                                    "type": {
+                                      "type": "string"
+                                    },
+                                    "textValue": {
+                                      "type": [
+                                        "null",
+                                        "string"
+                                      ]
+                                    },
+                                    "booleanValue": {
+                                      "type": [
+                                        "null",
+                                        "boolean"
+                                      ]
+                                    },
+                                    "numberValue": {
+                                      "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+                                      "type": [
+                                        "null",
+                                        "number",
+                                        "string"
+                                      ],
+                                      "format": "double"
+                                    },
+                                    "dateValue": {
+                                      "type": [
+                                        "null",
+                                        "string"
+                                      ],
+                                      "format": "date"
+                                    }
+                                  }
+                                }
+                              },
+                              "conditions": {
+                                "type": [
+                                  "null",
+                                  "array"
+                                ],
+                                "items": {
+                                  "required": [
+                                    "operator"
+                                  ],
+                                  "type": "object",
+                                  "properties": {
+                                    "operator": {
+                                      "type": "string"
+                                    },
+                                    "fieldNamespace": {
+                                      "type": [
+                                        "null",
+                                        "string"
+                                      ]
+                                    },
+                                    "fieldKey": {
+                                      "type": [
+                                        "null",
+                                        "string"
+                                      ]
+                                    },
+                                    "comparison": {
+                                      "type": [
+                                        "null",
+                                        "string"
+                                      ]
+                                    },
+                                    "value": { },
+                                    "values": { },
+                                    "conditions": { },
+                                    "condition": {
+                                      "required": [
+                                        "operator"
+                                      ],
+                                      "type": "object",
+                                      "properties": {
+                                        "operator": {
+                                          "type": "string"
+                                        },
+                                        "fieldNamespace": {
+                                          "type": [
+                                            "null",
+                                            "string"
+                                          ]
+                                        },
+                                        "fieldKey": {
+                                          "type": [
+                                            "null",
+                                            "string"
+                                          ]
+                                        },
+                                        "comparison": {
+                                          "type": [
+                                            "null",
+                                            "string"
+                                          ]
+                                        },
+                                        "value": { },
+                                        "values": { },
+                                        "conditions": { },
+                                        "condition": { }
+                                      }
+                                    }
+                                  }
+                                }
+                              },
+                              "condition": {
+                                "required": [
+                                  "operator"
+                                ],
+                                "type": "object",
+                                "properties": {
+                                  "operator": {
+                                    "type": "string"
+                                  },
+                                  "fieldNamespace": {
+                                    "type": [
+                                      "null",
+                                      "string"
+                                    ]
+                                  },
+                                  "fieldKey": {
+                                    "type": [
+                                      "null",
+                                      "string"
+                                    ]
+                                  },
+                                  "comparison": {
+                                    "type": [
+                                      "null",
+                                      "string"
+                                    ]
+                                  },
+                                  "value": {
+                                    "required": [
+                                      "type"
+                                    ],
+                                    "type": "object",
+                                    "properties": {
+                                      "type": {
+                                        "type": "string"
+                                      },
+                                      "textValue": {
+                                        "type": [
+                                          "null",
+                                          "string"
+                                        ]
+                                      },
+                                      "booleanValue": {
+                                        "type": [
+                                          "null",
+                                          "boolean"
+                                        ]
+                                      },
+                                      "numberValue": {
+                                        "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+                                        "type": [
+                                          "null",
+                                          "number",
+                                          "string"
+                                        ],
+                                        "format": "double"
+                                      },
+                                      "dateValue": {
+                                        "type": [
+                                          "null",
+                                          "string"
+                                        ],
+                                        "format": "date"
+                                      }
+                                    }
+                                  },
+                                  "values": {
+                                    "type": [
+                                      "null",
+                                      "array"
+                                    ],
+                                    "items": {
+                                      "required": [
+                                        "type"
+                                      ],
+                                      "type": "object",
+                                      "properties": {
+                                        "type": {
+                                          "type": "string"
+                                        },
+                                        "textValue": {
+                                          "type": [
+                                            "null",
+                                            "string"
+                                          ]
+                                        },
+                                        "booleanValue": {
+                                          "type": [
+                                            "null",
+                                            "boolean"
+                                          ]
+                                        },
+                                        "numberValue": {
+                                          "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+                                          "type": [
+                                            "null",
+                                            "number",
+                                            "string"
+                                          ],
+                                          "format": "double"
+                                        },
+                                        "dateValue": {
+                                          "type": [
+                                            "null",
+                                            "string"
+                                          ],
+                                          "format": "date"
+                                        }
+                                      }
+                                    }
+                                  },
+                                  "conditions": {
+                                    "type": [
+                                      "null",
+                                      "array"
+                                    ],
+                                    "items": {
+                                      "required": [
+                                        "operator"
+                                      ],
+                                      "type": "object",
+                                      "properties": {
+                                        "operator": {
+                                          "type": "string"
+                                        },
+                                        "fieldNamespace": {
+                                          "type": [
+                                            "null",
+                                            "string"
+                                          ]
+                                        },
+                                        "fieldKey": {
+                                          "type": [
+                                            "null",
+                                            "string"
+                                          ]
+                                        },
+                                        "comparison": {
+                                          "type": [
+                                            "null",
+                                            "string"
+                                          ]
+                                        },
+                                        "value": { },
+                                        "values": { },
+                                        "conditions": { },
+                                        "condition": {
+                                          "required": [
+                                            "operator"
+                                          ],
+                                          "type": "object",
+                                          "properties": {
+                                            "operator": {
+                                              "type": "string"
+                                            },
+                                            "fieldNamespace": {
+                                              "type": [
+                                                "null",
+                                                "string"
+                                              ]
+                                            },
+                                            "fieldKey": {
+                                              "type": [
+                                                "null",
+                                                "string"
+                                              ]
+                                            },
+                                            "comparison": {
+                                              "type": [
+                                                "null",
+                                                "string"
+                                              ]
+                                            },
+                                            "value": { },
+                                            "values": { },
+                                            "conditions": { },
+                                            "condition": { }
+                                          }
+                                        }
+                                      }
+                                    }
+                                  },
+                                  "condition": {
+                                    "required": [
+                                      "operator"
+                                    ],
+                                    "type": "object",
+                                    "properties": {
+                                      "operator": {
+                                        "type": "string"
+                                      },
+                                      "fieldNamespace": {
+                                        "type": [
+                                          "null",
+                                          "string"
+                                        ]
+                                      },
+                                      "fieldKey": {
+                                        "type": [
+                                          "null",
+                                          "string"
+                                        ]
+                                      },
+                                      "comparison": {
+                                        "type": [
+                                          "null",
+                                          "string"
+                                        ]
+                                      },
+                                      "value": { },
+                                      "values": { },
+                                      "conditions": { },
+                                      "condition": { }
+                                    }
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        },
+                        "condition": {
+                          "required": [
+                            "operator"
+                          ],
+                          "type": "object",
+                          "properties": {
+                            "operator": {
+                              "type": "string"
+                            },
+                            "fieldNamespace": {
+                              "type": [
+                                "null",
+                                "string"
+                              ]
+                            },
+                            "fieldKey": {
+                              "type": [
+                                "null",
+                                "string"
+                              ]
+                            },
+                            "comparison": {
+                              "type": [
+                                "null",
+                                "string"
+                              ]
+                            },
+                            "value": { },
+                            "values": { },
+                            "conditions": { },
+                            "condition": { }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "subjects": {
+            "type": "array",
+            "items": {
+              "required": [
+                "subjectType",
+                "subjectTypeCode",
+                "subjectId",
+                "subjectKey",
+                "ticketAssignmentOrderLineId",
+                "isCompleted",
+                "isSkipped"
+              ],
+              "type": "object",
+              "properties": {
+                "subjectType": {
+                  "type": "integer"
+                },
+                "subjectTypeCode": {
+                  "type": "string"
+                },
+                "subjectId": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "subjectKey": {
+                  "type": "string"
+                },
+                "ticketAssignmentOrderLineId": {
+                  "type": [
+                    "null",
+                    "string"
+                  ],
+                  "format": "uuid"
+                },
+                "isCompleted": {
+                  "type": "boolean"
+                },
+                "isSkipped": {
+                  "type": "boolean"
+                }
+              }
+            }
+          },
+          "progress": {
+            "required": [
+              "subjectCount",
+              "completedSubjectCount",
+              "skippedSubjectCount",
+              "pendingSubjectCount",
+              "isComplete"
+            ],
+            "type": "object",
+            "properties": {
+              "subjectCount": {
+                "pattern": "^-?(?:0|[1-9]\\d*)$",
+                "type": [
+                  "integer",
+                  "string"
+                ],
+                "format": "int32"
+              },
+              "completedSubjectCount": {
+                "pattern": "^-?(?:0|[1-9]\\d*)$",
+                "type": [
+                  "integer",
+                  "string"
+                ],
+                "format": "int32"
+              },
+              "skippedSubjectCount": {
+                "pattern": "^-?(?:0|[1-9]\\d*)$",
+                "type": [
+                  "integer",
+                  "string"
+                ],
+                "format": "int32"
+              },
+              "pendingSubjectCount": {
+                "pattern": "^-?(?:0|[1-9]\\d*)$",
+                "type": [
+                  "integer",
+                  "string"
+                ],
+                "format": "int32"
+              },
+              "isComplete": {
+                "type": "boolean"
+              }
+            }
+          }
+        }
+      },
+      "NativeRegistrationRequirementProgressCollectionDto": {
+        "required": [
+          "registrationOrderId",
+          "requirements"
+        ],
+        "type": "object",
+        "properties": {
+          "registrationOrderId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "requirements": {
+            "type": "array",
+            "items": {
+              "required": [
+                "requirementId",
+                "channelId",
+                "formId",
+                "formVersionId",
+                "canSkip",
+                "subjects",
+                "progress"
+              ],
+              "type": "object",
+              "properties": {
+                "requirementId": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "channelId": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "formId": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "formVersionId": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "canSkip": {
+                  "type": "boolean"
+                },
+                "subjects": {
+                  "type": "array",
+                  "items": {
+                    "required": [
+                      "subjectType",
+                      "subjectTypeCode",
+                      "subjectId",
+                      "subjectKey",
+                      "ticketAssignmentOrderLineId",
+                      "isCompleted",
+                      "isSkipped"
+                    ],
+                    "type": "object",
+                    "properties": {
+                      "subjectType": {
+                        "type": "integer"
+                      },
+                      "subjectTypeCode": {
+                        "type": "string"
+                      },
+                      "subjectId": {
+                        "type": "string",
+                        "format": "uuid"
+                      },
+                      "subjectKey": {
+                        "type": "string"
+                      },
+                      "ticketAssignmentOrderLineId": {
+                        "type": [
+                          "null",
+                          "string"
+                        ],
+                        "format": "uuid"
+                      },
+                      "isCompleted": {
+                        "type": "boolean"
+                      },
+                      "isSkipped": {
+                        "type": "boolean"
+                      }
+                    }
+                  }
+                },
+                "progress": {
+                  "required": [
+                    "subjectCount",
+                    "completedSubjectCount",
+                    "skippedSubjectCount",
+                    "pendingSubjectCount",
+                    "isComplete"
+                  ],
+                  "type": "object",
+                  "properties": {
+                    "subjectCount": {
+                      "pattern": "^-?(?:0|[1-9]\\d*)$",
+                      "type": [
+                        "integer",
+                        "string"
+                      ],
+                      "format": "int32"
+                    },
+                    "completedSubjectCount": {
+                      "pattern": "^-?(?:0|[1-9]\\d*)$",
+                      "type": [
+                        "integer",
+                        "string"
+                      ],
+                      "format": "int32"
+                    },
+                    "skippedSubjectCount": {
+                      "pattern": "^-?(?:0|[1-9]\\d*)$",
+                      "type": [
+                        "integer",
+                        "string"
+                      ],
+                      "format": "int32"
+                    },
+                    "pendingSubjectCount": {
+                      "pattern": "^-?(?:0|[1-9]\\d*)$",
+                      "type": [
+                        "integer",
+                        "string"
+                      ],
+                      "format": "int32"
+                    },
+                    "isComplete": {
+                      "type": "boolean"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "NativeRegistrationRequirementProgressDto": {
+        "required": [
+          "subjectCount",
+          "completedSubjectCount",
+          "skippedSubjectCount",
+          "pendingSubjectCount",
+          "isComplete"
+        ],
+        "type": "object",
+        "properties": {
+          "subjectCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "completedSubjectCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "skippedSubjectCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "pendingSubjectCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "isComplete": {
+            "type": "boolean"
+          }
+        }
+      },
+      "NativeRegistrationSkipDto": {
+        "required": [
+          "progress"
+        ],
+        "type": "object",
+        "properties": {
+          "progress": {
+            "$ref": "#/components/schemas/NativeRegistrationRequirementProgressDto"
+          }
+        }
+      },
+      "NativeRegistrationSubmissionAnswerRequest": {
+        "required": [
+          "fieldId",
+          "subjectType",
+          "subjectId",
+          "ticketAssignmentOrderLineId",
+          "value"
+        ],
+        "type": "object",
+        "properties": {
+          "fieldId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "subjectType": {
+            "$ref": "#/components/schemas/RegistrationAnswerSubjectTypeEnum"
+          },
+          "subjectId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "ticketAssignmentOrderLineId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "value": { }
+        }
+      },
+      "NativeRegistrationSubmissionDto": {
+        "required": [
+          "submissionId",
+          "accepted"
+        ],
+        "type": "object",
+        "properties": {
+          "submissionId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "accepted": {
             "type": "boolean"
           }
         }
@@ -116830,6 +120696,104 @@
           }
         }
       },
+      "RegistrationAnswerFileDto": {
+        "required": [
+          "id",
+          "registrationSubmissionId",
+          "registrationFormFieldId",
+          "storageObjectId",
+          "safeDisplayName",
+          "contentType",
+          "extension",
+          "size",
+          "quarantineState",
+          "scanStatus",
+          "quarantinedAt",
+          "releasedBy",
+          "releasedAt",
+          "releaseReason"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "registrationSubmissionId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "registrationFormFieldId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "storageObjectId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "safeDisplayName": {
+            "type": "string"
+          },
+          "contentType": {
+            "type": "string"
+          },
+          "extension": {
+            "type": "string"
+          },
+          "size": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "quarantineState": {
+            "type": "string"
+          },
+          "scanStatus": {
+            "type": "string"
+          },
+          "quarantinedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "releasedBy": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "releasedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "releaseReason": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "RegistrationAnswerFileReleaseInput": {
+        "required": [
+          "reason"
+        ],
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string"
+          }
+        }
+      },
+      "RegistrationAnswerSubjectTypeEnum": {
+        "type": "integer"
+      },
       "RegistrationChannelDto": {
         "required": [
           "id",
@@ -117104,7 +121068,8 @@
           "requiresExplicitConsent",
           "isProviderTransferAllowed",
           "consentPurposeCode",
-          "consentTextVersion"
+          "consentTextVersion",
+          "consentText"
         ],
         "type": "object",
         "properties": {
@@ -117166,6 +121131,12 @@
               "null",
               "string"
             ]
+          },
+          "consentText": {
+            "type": [
+              "null",
+              "string"
+            ]
           }
         }
       },
@@ -117187,6 +121158,7 @@
           "isProviderTransferAllowed",
           "consentPurposeCode",
           "consentTextVersion",
+          "consentText",
           "isRequired",
           "isMulti",
           "minLength",
@@ -117272,6 +121244,12 @@
             ]
           },
           "consentTextVersion": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "consentText": {
             "type": [
               "null",
               "string"
@@ -117409,6 +121387,7 @@
           "isProviderTransferAllowed",
           "consentPurposeCode",
           "consentTextVersion",
+          "consentText",
           "isRequired",
           "isMulti",
           "minLength",
@@ -117462,6 +121441,12 @@
             ]
           },
           "consentTextVersion": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "consentText": {
             "type": [
               "null",
               "string"
@@ -120780,6 +124765,18 @@
         ],
         "type": "string"
       },
+      "SkipNativeRegistrationRequirementRequest": {
+        "required": [
+          "requirementId"
+        ],
+        "type": "object",
+        "properties": {
+          "requirementId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      },
       "SmtpConnectionTestResultDto": {
         "required": [
           "success",
@@ -121488,6 +125485,25 @@
               "null",
               "string"
             ]
+          }
+        }
+      },
+      "SubmitNativeRegistrationAttemptRequest": {
+        "required": [
+          "requirementId",
+          "answers"
+        ],
+        "type": "object",
+        "properties": {
+          "requirementId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "answers": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NativeRegistrationSubmissionAnswerRequest"
+            }
           }
         }
       },
@@ -129836,6 +133852,9 @@
     },
     {
       "name": "PublicExperience"
+    },
+    {
+      "name": "RegistrationAnswerFiles"
     },
     {
       "name": "RegistrationForms"

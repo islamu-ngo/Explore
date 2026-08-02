@@ -4986,6 +4986,16 @@ namespace Explore.Blazor.Client.Clients
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
+        System.Threading.Tasks.Task<HalResourceOfRegistrationAnswerFileDto> GetRegistrationAnswerFileAsync(System.Guid id, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        System.Threading.Tasks.Task<HalResourceOfRegistrationAnswerFileDto> ReleaseRegistrationAnswerFileAsync(System.Guid id, RegistrationAnswerFileReleaseInput body, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<HalResourceOfRegistrationWorkflowDto> GetRegistrationWorkflowAsync(System.Guid eventId, string? purpose = null, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
@@ -5159,6 +5169,38 @@ namespace Explore.Blazor.Client.Clients
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <summary>
+        /// Launch guest native registration attempt
+        /// </summary>
+        /// <returns>Created</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        System.Threading.Tasks.Task<HalResourceOfNativeRegistrationAttemptDto> LaunchGuestNativeRegistrationAttemptAsync(System.Guid eventId, System.Guid orderId, LaunchNativeRegistrationAttemptRequest body, string? x_Registration_Order_Capability = null, string? idempotency_Key = null, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Get guest native registration requirement progress
+        /// </summary>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        System.Threading.Tasks.Task<HalResourceOfNativeRegistrationRequirementProgressCollectionDto> GetGuestNativeRegistrationRequirementProgressAsync(System.Guid eventId, System.Guid orderId, string? x_Registration_Order_Capability = null, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Skip guest optional native registration requirement
+        /// </summary>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        System.Threading.Tasks.Task<NativeRegistrationSkipDto> SkipGuestNativeRegistrationRequirementAsync(System.Guid eventId, System.Guid orderId, System.Guid attemptId, SkipNativeRegistrationRequirementRequest body, string? x_Registration_Order_Capability = null, string? x_Registration_Attempt_Capability = null, string? idempotency_Key = null, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Submit guest native registration answers
+        /// </summary>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        System.Threading.Tasks.Task<NativeRegistrationSubmissionDto> SubmitGuestNativeRegistrationAttemptAsync(System.Guid eventId, System.Guid orderId, System.Guid attemptId, SubmitNativeRegistrationAttemptRequest body, string? x_Registration_Order_Capability = null, string? x_Registration_Attempt_Capability = null, string? idempotency_Key = null, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
         /// Get guest registration order
         /// </summary>
         /// <remarks>
@@ -5262,6 +5304,38 @@ namespace Explore.Blazor.Client.Clients
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<GuestRegistrationOrderLifecycleResponseDto> FinalizeGuestRegistrationOrderAsync(System.Guid eventId, System.Guid orderId, string? x_Registration_Order_Capability = null, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Launch authenticated native registration attempt
+        /// </summary>
+        /// <returns>Created</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        System.Threading.Tasks.Task<HalResourceOfNativeRegistrationAttemptDto> LaunchAuthenticatedNativeRegistrationAttemptAsync(System.Guid eventId, System.Guid orderId, LaunchNativeRegistrationAttemptRequest body, string? idempotency_Key = null, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Get authenticated native registration requirement progress
+        /// </summary>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        System.Threading.Tasks.Task<HalResourceOfNativeRegistrationRequirementProgressCollectionDto> GetAuthenticatedNativeRegistrationRequirementProgressAsync(System.Guid eventId, System.Guid orderId, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Skip authenticated optional native registration requirement
+        /// </summary>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        System.Threading.Tasks.Task<NativeRegistrationSkipDto> SkipAuthenticatedNativeRegistrationRequirementAsync(System.Guid eventId, System.Guid orderId, System.Guid attemptId, SkipNativeRegistrationRequirementRequest body, string? x_Registration_Attempt_Capability = null, string? idempotency_Key = null, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Submit authenticated native registration answers
+        /// </summary>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        System.Threading.Tasks.Task<NativeRegistrationSubmissionDto> SubmitAuthenticatedNativeRegistrationAttemptAsync(System.Guid eventId, System.Guid orderId, System.Guid attemptId, SubmitNativeRegistrationAttemptRequest body, string? x_Registration_Attempt_Capability = null, string? idempotency_Key = null, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <summary>
@@ -64408,6 +64482,252 @@ namespace Explore.Blazor.Client.Clients
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
+        public virtual async System.Threading.Tasks.Task<HalResourceOfRegistrationAnswerFileDto> GetRegistrationAnswerFileAsync(System.Guid id, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        {
+            if (id == null)
+                throw new System.ArgumentNullException("id");
+
+            var client_ = _httpClient;
+            var disposeClient_ = false;
+            try
+            {
+                using (var request_ = new System.Net.Http.HttpRequestMessage())
+                {
+
+                    if (x_Api_Version != null)
+                        request_.Headers.TryAddWithoutValidation("X-Api-Version", ConvertToString(x_Api_Version, System.Globalization.CultureInfo.InvariantCulture));
+                    request_.Method = new System.Net.Http.HttpMethod("GET");
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
+
+                    var urlBuilder_ = new System.Text.StringBuilder();
+
+                    // Operation Path: "api/registration-answer-files/{id}"
+                    urlBuilder_.Append("api/registration-answer-files/");
+                    urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
+                    urlBuilder_.Append('?');
+                    if (api_version != null)
+                    {
+                        urlBuilder_.Append(System.Uri.EscapeDataString("api-version")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(api_version, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                    }
+                    urlBuilder_.Length--;
+
+                    PrepareRequest(client_, request_, urlBuilder_);
+
+                    var url_ = urlBuilder_.ToString();
+                    request_.RequestUri = new System.Uri(url_, System.UriKind.RelativeOrAbsolute);
+
+                    PrepareRequest(client_, request_, url_);
+
+                    var response_ = await client_.SendAsync(request_, System.Net.Http.HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+                    var disposeResponse_ = true;
+                    try
+                    {
+                        var headers_ = new System.Collections.Generic.Dictionary<string, System.Collections.Generic.IEnumerable<string>>();
+                        foreach (var item_ in response_.Headers)
+                            headers_[item_.Key] = item_.Value;
+                        if (response_.Content != null && response_.Content.Headers != null)
+                        {
+                            foreach (var item_ in response_.Content.Headers)
+                                headers_[item_.Key] = item_.Value;
+                        }
+
+                        ProcessResponse(client_, response_);
+
+                        var status_ = (int)response_.StatusCode;
+                        if (status_ == 200)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<HalResourceOfRegistrationAnswerFileDto>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            return objectResponse_.Object;
+                        }
+                        else
+                        if (status_ == 401)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Unauthorized", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 403)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Forbidden", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 404)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Not Found", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        {
+                            var responseData_ = response_.Content == null ? null : await ReadAsStringAsync(response_.Content, cancellationToken).ConfigureAwait(false);
+                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                        }
+                    }
+                    finally
+                    {
+                        if (disposeResponse_)
+                            response_.Dispose();
+                    }
+                }
+            }
+            finally
+            {
+                if (disposeClient_)
+                    client_.Dispose();
+            }
+        }
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        public virtual async System.Threading.Tasks.Task<HalResourceOfRegistrationAnswerFileDto> ReleaseRegistrationAnswerFileAsync(System.Guid id, RegistrationAnswerFileReleaseInput body, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        {
+            if (id == null)
+                throw new System.ArgumentNullException("id");
+
+            if (body == null)
+                throw new System.ArgumentNullException("body");
+
+            var client_ = _httpClient;
+            var disposeClient_ = false;
+            try
+            {
+                using (var request_ = new System.Net.Http.HttpRequestMessage())
+                {
+
+                    if (x_Api_Version != null)
+                        request_.Headers.TryAddWithoutValidation("X-Api-Version", ConvertToString(x_Api_Version, System.Globalization.CultureInfo.InvariantCulture));
+                    var json_ = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(body, JsonSerializerSettings);
+                    var content_ = new System.Net.Http.ByteArrayContent(json_);
+                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json; v=0.1");
+                    request_.Content = content_;
+                    request_.Method = new System.Net.Http.HttpMethod("POST");
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
+
+                    var urlBuilder_ = new System.Text.StringBuilder();
+
+                    // Operation Path: "api/registration-answer-files/{id}/release"
+                    urlBuilder_.Append("api/registration-answer-files/");
+                    urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
+                    urlBuilder_.Append("/release");
+                    urlBuilder_.Append('?');
+                    if (api_version != null)
+                    {
+                        urlBuilder_.Append(System.Uri.EscapeDataString("api-version")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(api_version, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                    }
+                    urlBuilder_.Length--;
+
+                    PrepareRequest(client_, request_, urlBuilder_);
+
+                    var url_ = urlBuilder_.ToString();
+                    request_.RequestUri = new System.Uri(url_, System.UriKind.RelativeOrAbsolute);
+
+                    PrepareRequest(client_, request_, url_);
+
+                    var response_ = await client_.SendAsync(request_, System.Net.Http.HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+                    var disposeResponse_ = true;
+                    try
+                    {
+                        var headers_ = new System.Collections.Generic.Dictionary<string, System.Collections.Generic.IEnumerable<string>>();
+                        foreach (var item_ in response_.Headers)
+                            headers_[item_.Key] = item_.Value;
+                        if (response_.Content != null && response_.Content.Headers != null)
+                        {
+                            foreach (var item_ in response_.Content.Headers)
+                                headers_[item_.Key] = item_.Value;
+                        }
+
+                        ProcessResponse(client_, response_);
+
+                        var status_ = (int)response_.StatusCode;
+                        if (status_ == 200)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<HalResourceOfRegistrationAnswerFileDto>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            return objectResponse_.Object;
+                        }
+                        else
+                        if (status_ == 400)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ValidationProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ValidationProblemDetails>("Bad Request", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 401)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Unauthorized", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 403)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Forbidden", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 404)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Not Found", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        {
+                            var responseData_ = response_.Content == null ? null : await ReadAsStringAsync(response_.Content, cancellationToken).ConfigureAwait(false);
+                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                        }
+                    }
+                    finally
+                    {
+                        if (disposeResponse_)
+                            response_.Dispose();
+                    }
+                }
+            }
+            finally
+            {
+                if (disposeClient_)
+                    client_.Dispose();
+            }
+        }
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
         public virtual async System.Threading.Tasks.Task<HalResourceOfRegistrationWorkflowDto> GetRegistrationWorkflowAsync(System.Guid eventId, string? purpose = null, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
         {
             if (eventId == null)
@@ -68817,6 +69137,496 @@ namespace Explore.Blazor.Client.Clients
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <summary>
+        /// Launch guest native registration attempt
+        /// </summary>
+        /// <returns>Created</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        public virtual async System.Threading.Tasks.Task<HalResourceOfNativeRegistrationAttemptDto> LaunchGuestNativeRegistrationAttemptAsync(System.Guid eventId, System.Guid orderId, LaunchNativeRegistrationAttemptRequest body, string? x_Registration_Order_Capability = null, string? idempotency_Key = null, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        {
+            if (eventId == null)
+                throw new System.ArgumentNullException("eventId");
+
+            if (orderId == null)
+                throw new System.ArgumentNullException("orderId");
+
+            if (body == null)
+                throw new System.ArgumentNullException("body");
+
+            var client_ = _httpClient;
+            var disposeClient_ = false;
+            try
+            {
+                using (var request_ = new System.Net.Http.HttpRequestMessage())
+                {
+
+                    if (x_Registration_Order_Capability != null)
+                        request_.Headers.TryAddWithoutValidation("X-Registration-Order-Capability", ConvertToString(x_Registration_Order_Capability, System.Globalization.CultureInfo.InvariantCulture));
+
+                    if (idempotency_Key != null)
+                        request_.Headers.TryAddWithoutValidation("Idempotency-Key", ConvertToString(idempotency_Key, System.Globalization.CultureInfo.InvariantCulture));
+
+                    if (x_Api_Version != null)
+                        request_.Headers.TryAddWithoutValidation("X-Api-Version", ConvertToString(x_Api_Version, System.Globalization.CultureInfo.InvariantCulture));
+                    var json_ = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(body, JsonSerializerSettings);
+                    var content_ = new System.Net.Http.ByteArrayContent(json_);
+                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json; v=0.1");
+                    request_.Content = content_;
+                    request_.Method = new System.Net.Http.HttpMethod("POST");
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
+
+                    var urlBuilder_ = new System.Text.StringBuilder();
+
+                    // Operation Path: "api/events/{eventId}/registration-orders/guest/{orderId}/attempts"
+                    urlBuilder_.Append("api/events/");
+                    urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(eventId, System.Globalization.CultureInfo.InvariantCulture)));
+                    urlBuilder_.Append("/registration-orders/guest/");
+                    urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(orderId, System.Globalization.CultureInfo.InvariantCulture)));
+                    urlBuilder_.Append("/attempts");
+                    urlBuilder_.Append('?');
+                    if (api_version != null)
+                    {
+                        urlBuilder_.Append(System.Uri.EscapeDataString("api-version")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(api_version, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                    }
+                    urlBuilder_.Length--;
+
+                    PrepareRequest(client_, request_, urlBuilder_);
+
+                    var url_ = urlBuilder_.ToString();
+                    request_.RequestUri = new System.Uri(url_, System.UriKind.RelativeOrAbsolute);
+
+                    PrepareRequest(client_, request_, url_);
+
+                    var response_ = await client_.SendAsync(request_, System.Net.Http.HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+                    var disposeResponse_ = true;
+                    try
+                    {
+                        var headers_ = new System.Collections.Generic.Dictionary<string, System.Collections.Generic.IEnumerable<string>>();
+                        foreach (var item_ in response_.Headers)
+                            headers_[item_.Key] = item_.Value;
+                        if (response_.Content != null && response_.Content.Headers != null)
+                        {
+                            foreach (var item_ in response_.Content.Headers)
+                                headers_[item_.Key] = item_.Value;
+                        }
+
+                        ProcessResponse(client_, response_);
+
+                        var status_ = (int)response_.StatusCode;
+                        if (status_ == 201)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<HalResourceOfNativeRegistrationAttemptDto>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            return objectResponse_.Object;
+                        }
+                        else
+                        if (status_ == 400)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ValidationProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ValidationProblemDetails>("Bad Request", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 404)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Not Found", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        {
+                            var responseData_ = response_.Content == null ? null : await ReadAsStringAsync(response_.Content, cancellationToken).ConfigureAwait(false);
+                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                        }
+                    }
+                    finally
+                    {
+                        if (disposeResponse_)
+                            response_.Dispose();
+                    }
+                }
+            }
+            finally
+            {
+                if (disposeClient_)
+                    client_.Dispose();
+            }
+        }
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Get guest native registration requirement progress
+        /// </summary>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        public virtual async System.Threading.Tasks.Task<HalResourceOfNativeRegistrationRequirementProgressCollectionDto> GetGuestNativeRegistrationRequirementProgressAsync(System.Guid eventId, System.Guid orderId, string? x_Registration_Order_Capability = null, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        {
+            if (eventId == null)
+                throw new System.ArgumentNullException("eventId");
+
+            if (orderId == null)
+                throw new System.ArgumentNullException("orderId");
+
+            var client_ = _httpClient;
+            var disposeClient_ = false;
+            try
+            {
+                using (var request_ = new System.Net.Http.HttpRequestMessage())
+                {
+
+                    if (x_Registration_Order_Capability != null)
+                        request_.Headers.TryAddWithoutValidation("X-Registration-Order-Capability", ConvertToString(x_Registration_Order_Capability, System.Globalization.CultureInfo.InvariantCulture));
+
+                    if (x_Api_Version != null)
+                        request_.Headers.TryAddWithoutValidation("X-Api-Version", ConvertToString(x_Api_Version, System.Globalization.CultureInfo.InvariantCulture));
+                    request_.Method = new System.Net.Http.HttpMethod("GET");
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
+
+                    var urlBuilder_ = new System.Text.StringBuilder();
+
+                    // Operation Path: "api/events/{eventId}/registration-orders/guest/{orderId}/requirement-progress"
+                    urlBuilder_.Append("api/events/");
+                    urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(eventId, System.Globalization.CultureInfo.InvariantCulture)));
+                    urlBuilder_.Append("/registration-orders/guest/");
+                    urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(orderId, System.Globalization.CultureInfo.InvariantCulture)));
+                    urlBuilder_.Append("/requirement-progress");
+                    urlBuilder_.Append('?');
+                    if (api_version != null)
+                    {
+                        urlBuilder_.Append(System.Uri.EscapeDataString("api-version")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(api_version, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                    }
+                    urlBuilder_.Length--;
+
+                    PrepareRequest(client_, request_, urlBuilder_);
+
+                    var url_ = urlBuilder_.ToString();
+                    request_.RequestUri = new System.Uri(url_, System.UriKind.RelativeOrAbsolute);
+
+                    PrepareRequest(client_, request_, url_);
+
+                    var response_ = await client_.SendAsync(request_, System.Net.Http.HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+                    var disposeResponse_ = true;
+                    try
+                    {
+                        var headers_ = new System.Collections.Generic.Dictionary<string, System.Collections.Generic.IEnumerable<string>>();
+                        foreach (var item_ in response_.Headers)
+                            headers_[item_.Key] = item_.Value;
+                        if (response_.Content != null && response_.Content.Headers != null)
+                        {
+                            foreach (var item_ in response_.Content.Headers)
+                                headers_[item_.Key] = item_.Value;
+                        }
+
+                        ProcessResponse(client_, response_);
+
+                        var status_ = (int)response_.StatusCode;
+                        if (status_ == 200)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<HalResourceOfNativeRegistrationRequirementProgressCollectionDto>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            return objectResponse_.Object;
+                        }
+                        else
+                        if (status_ == 404)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Not Found", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        {
+                            var responseData_ = response_.Content == null ? null : await ReadAsStringAsync(response_.Content, cancellationToken).ConfigureAwait(false);
+                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                        }
+                    }
+                    finally
+                    {
+                        if (disposeResponse_)
+                            response_.Dispose();
+                    }
+                }
+            }
+            finally
+            {
+                if (disposeClient_)
+                    client_.Dispose();
+            }
+        }
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Skip guest optional native registration requirement
+        /// </summary>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        public virtual async System.Threading.Tasks.Task<NativeRegistrationSkipDto> SkipGuestNativeRegistrationRequirementAsync(System.Guid eventId, System.Guid orderId, System.Guid attemptId, SkipNativeRegistrationRequirementRequest body, string? x_Registration_Order_Capability = null, string? x_Registration_Attempt_Capability = null, string? idempotency_Key = null, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        {
+            if (eventId == null)
+                throw new System.ArgumentNullException("eventId");
+
+            if (orderId == null)
+                throw new System.ArgumentNullException("orderId");
+
+            if (attemptId == null)
+                throw new System.ArgumentNullException("attemptId");
+
+            if (body == null)
+                throw new System.ArgumentNullException("body");
+
+            var client_ = _httpClient;
+            var disposeClient_ = false;
+            try
+            {
+                using (var request_ = new System.Net.Http.HttpRequestMessage())
+                {
+
+                    if (x_Registration_Order_Capability != null)
+                        request_.Headers.TryAddWithoutValidation("X-Registration-Order-Capability", ConvertToString(x_Registration_Order_Capability, System.Globalization.CultureInfo.InvariantCulture));
+
+                    if (x_Registration_Attempt_Capability != null)
+                        request_.Headers.TryAddWithoutValidation("X-Registration-Attempt-Capability", ConvertToString(x_Registration_Attempt_Capability, System.Globalization.CultureInfo.InvariantCulture));
+
+                    if (idempotency_Key != null)
+                        request_.Headers.TryAddWithoutValidation("Idempotency-Key", ConvertToString(idempotency_Key, System.Globalization.CultureInfo.InvariantCulture));
+
+                    if (x_Api_Version != null)
+                        request_.Headers.TryAddWithoutValidation("X-Api-Version", ConvertToString(x_Api_Version, System.Globalization.CultureInfo.InvariantCulture));
+                    var json_ = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(body, JsonSerializerSettings);
+                    var content_ = new System.Net.Http.ByteArrayContent(json_);
+                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json; v=0.1");
+                    request_.Content = content_;
+                    request_.Method = new System.Net.Http.HttpMethod("POST");
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
+
+                    var urlBuilder_ = new System.Text.StringBuilder();
+
+                    // Operation Path: "api/events/{eventId}/registration-orders/guest/{orderId}/attempts/{attemptId}/skip"
+                    urlBuilder_.Append("api/events/");
+                    urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(eventId, System.Globalization.CultureInfo.InvariantCulture)));
+                    urlBuilder_.Append("/registration-orders/guest/");
+                    urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(orderId, System.Globalization.CultureInfo.InvariantCulture)));
+                    urlBuilder_.Append("/attempts/");
+                    urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(attemptId, System.Globalization.CultureInfo.InvariantCulture)));
+                    urlBuilder_.Append("/skip");
+                    urlBuilder_.Append('?');
+                    if (api_version != null)
+                    {
+                        urlBuilder_.Append(System.Uri.EscapeDataString("api-version")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(api_version, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                    }
+                    urlBuilder_.Length--;
+
+                    PrepareRequest(client_, request_, urlBuilder_);
+
+                    var url_ = urlBuilder_.ToString();
+                    request_.RequestUri = new System.Uri(url_, System.UriKind.RelativeOrAbsolute);
+
+                    PrepareRequest(client_, request_, url_);
+
+                    var response_ = await client_.SendAsync(request_, System.Net.Http.HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+                    var disposeResponse_ = true;
+                    try
+                    {
+                        var headers_ = new System.Collections.Generic.Dictionary<string, System.Collections.Generic.IEnumerable<string>>();
+                        foreach (var item_ in response_.Headers)
+                            headers_[item_.Key] = item_.Value;
+                        if (response_.Content != null && response_.Content.Headers != null)
+                        {
+                            foreach (var item_ in response_.Content.Headers)
+                                headers_[item_.Key] = item_.Value;
+                        }
+
+                        ProcessResponse(client_, response_);
+
+                        var status_ = (int)response_.StatusCode;
+                        if (status_ == 200)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<NativeRegistrationSkipDto>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            return objectResponse_.Object;
+                        }
+                        else
+                        if (status_ == 404)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Not Found", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        {
+                            var responseData_ = response_.Content == null ? null : await ReadAsStringAsync(response_.Content, cancellationToken).ConfigureAwait(false);
+                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                        }
+                    }
+                    finally
+                    {
+                        if (disposeResponse_)
+                            response_.Dispose();
+                    }
+                }
+            }
+            finally
+            {
+                if (disposeClient_)
+                    client_.Dispose();
+            }
+        }
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Submit guest native registration answers
+        /// </summary>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        public virtual async System.Threading.Tasks.Task<NativeRegistrationSubmissionDto> SubmitGuestNativeRegistrationAttemptAsync(System.Guid eventId, System.Guid orderId, System.Guid attemptId, SubmitNativeRegistrationAttemptRequest body, string? x_Registration_Order_Capability = null, string? x_Registration_Attempt_Capability = null, string? idempotency_Key = null, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        {
+            if (eventId == null)
+                throw new System.ArgumentNullException("eventId");
+
+            if (orderId == null)
+                throw new System.ArgumentNullException("orderId");
+
+            if (attemptId == null)
+                throw new System.ArgumentNullException("attemptId");
+
+            if (body == null)
+                throw new System.ArgumentNullException("body");
+
+            var client_ = _httpClient;
+            var disposeClient_ = false;
+            try
+            {
+                using (var request_ = new System.Net.Http.HttpRequestMessage())
+                {
+
+                    if (x_Registration_Order_Capability != null)
+                        request_.Headers.TryAddWithoutValidation("X-Registration-Order-Capability", ConvertToString(x_Registration_Order_Capability, System.Globalization.CultureInfo.InvariantCulture));
+
+                    if (x_Registration_Attempt_Capability != null)
+                        request_.Headers.TryAddWithoutValidation("X-Registration-Attempt-Capability", ConvertToString(x_Registration_Attempt_Capability, System.Globalization.CultureInfo.InvariantCulture));
+
+                    if (idempotency_Key != null)
+                        request_.Headers.TryAddWithoutValidation("Idempotency-Key", ConvertToString(idempotency_Key, System.Globalization.CultureInfo.InvariantCulture));
+
+                    if (x_Api_Version != null)
+                        request_.Headers.TryAddWithoutValidation("X-Api-Version", ConvertToString(x_Api_Version, System.Globalization.CultureInfo.InvariantCulture));
+                    var json_ = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(body, JsonSerializerSettings);
+                    var content_ = new System.Net.Http.ByteArrayContent(json_);
+                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json; v=0.1");
+                    request_.Content = content_;
+                    request_.Method = new System.Net.Http.HttpMethod("POST");
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
+
+                    var urlBuilder_ = new System.Text.StringBuilder();
+
+                    // Operation Path: "api/events/{eventId}/registration-orders/guest/{orderId}/attempts/{attemptId}/submissions"
+                    urlBuilder_.Append("api/events/");
+                    urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(eventId, System.Globalization.CultureInfo.InvariantCulture)));
+                    urlBuilder_.Append("/registration-orders/guest/");
+                    urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(orderId, System.Globalization.CultureInfo.InvariantCulture)));
+                    urlBuilder_.Append("/attempts/");
+                    urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(attemptId, System.Globalization.CultureInfo.InvariantCulture)));
+                    urlBuilder_.Append("/submissions");
+                    urlBuilder_.Append('?');
+                    if (api_version != null)
+                    {
+                        urlBuilder_.Append(System.Uri.EscapeDataString("api-version")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(api_version, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                    }
+                    urlBuilder_.Length--;
+
+                    PrepareRequest(client_, request_, urlBuilder_);
+
+                    var url_ = urlBuilder_.ToString();
+                    request_.RequestUri = new System.Uri(url_, System.UriKind.RelativeOrAbsolute);
+
+                    PrepareRequest(client_, request_, url_);
+
+                    var response_ = await client_.SendAsync(request_, System.Net.Http.HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+                    var disposeResponse_ = true;
+                    try
+                    {
+                        var headers_ = new System.Collections.Generic.Dictionary<string, System.Collections.Generic.IEnumerable<string>>();
+                        foreach (var item_ in response_.Headers)
+                            headers_[item_.Key] = item_.Value;
+                        if (response_.Content != null && response_.Content.Headers != null)
+                        {
+                            foreach (var item_ in response_.Content.Headers)
+                                headers_[item_.Key] = item_.Value;
+                        }
+
+                        ProcessResponse(client_, response_);
+
+                        var status_ = (int)response_.StatusCode;
+                        if (status_ == 200)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<NativeRegistrationSubmissionDto>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            return objectResponse_.Object;
+                        }
+                        else
+                        if (status_ == 400)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ValidationProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ValidationProblemDetails>("Bad Request", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 404)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Not Found", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        {
+                            var responseData_ = response_.Content == null ? null : await ReadAsStringAsync(response_.Content, cancellationToken).ConfigureAwait(false);
+                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                        }
+                    }
+                    finally
+                    {
+                        if (disposeResponse_)
+                            response_.Dispose();
+                    }
+                }
+            }
+            finally
+            {
+                if (disposeClient_)
+                    client_.Dispose();
+            }
+        }
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
         /// Get guest registration order
         /// </summary>
         /// <remarks>
@@ -70201,6 +71011,524 @@ namespace Explore.Blazor.Client.Clients
                                 throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
                             }
                             throw new ApiException<ProblemDetails>("Service Unavailable", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        {
+                            var responseData_ = response_.Content == null ? null : await ReadAsStringAsync(response_.Content, cancellationToken).ConfigureAwait(false);
+                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                        }
+                    }
+                    finally
+                    {
+                        if (disposeResponse_)
+                            response_.Dispose();
+                    }
+                }
+            }
+            finally
+            {
+                if (disposeClient_)
+                    client_.Dispose();
+            }
+        }
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Launch authenticated native registration attempt
+        /// </summary>
+        /// <returns>Created</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        public virtual async System.Threading.Tasks.Task<HalResourceOfNativeRegistrationAttemptDto> LaunchAuthenticatedNativeRegistrationAttemptAsync(System.Guid eventId, System.Guid orderId, LaunchNativeRegistrationAttemptRequest body, string? idempotency_Key = null, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        {
+            if (eventId == null)
+                throw new System.ArgumentNullException("eventId");
+
+            if (orderId == null)
+                throw new System.ArgumentNullException("orderId");
+
+            if (body == null)
+                throw new System.ArgumentNullException("body");
+
+            var client_ = _httpClient;
+            var disposeClient_ = false;
+            try
+            {
+                using (var request_ = new System.Net.Http.HttpRequestMessage())
+                {
+
+                    if (idempotency_Key != null)
+                        request_.Headers.TryAddWithoutValidation("Idempotency-Key", ConvertToString(idempotency_Key, System.Globalization.CultureInfo.InvariantCulture));
+
+                    if (x_Api_Version != null)
+                        request_.Headers.TryAddWithoutValidation("X-Api-Version", ConvertToString(x_Api_Version, System.Globalization.CultureInfo.InvariantCulture));
+                    var json_ = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(body, JsonSerializerSettings);
+                    var content_ = new System.Net.Http.ByteArrayContent(json_);
+                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json; v=0.1");
+                    request_.Content = content_;
+                    request_.Method = new System.Net.Http.HttpMethod("POST");
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
+
+                    var urlBuilder_ = new System.Text.StringBuilder();
+
+                    // Operation Path: "api/events/{eventId}/registration-orders/{orderId}/attempts"
+                    urlBuilder_.Append("api/events/");
+                    urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(eventId, System.Globalization.CultureInfo.InvariantCulture)));
+                    urlBuilder_.Append("/registration-orders/");
+                    urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(orderId, System.Globalization.CultureInfo.InvariantCulture)));
+                    urlBuilder_.Append("/attempts");
+                    urlBuilder_.Append('?');
+                    if (api_version != null)
+                    {
+                        urlBuilder_.Append(System.Uri.EscapeDataString("api-version")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(api_version, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                    }
+                    urlBuilder_.Length--;
+
+                    PrepareRequest(client_, request_, urlBuilder_);
+
+                    var url_ = urlBuilder_.ToString();
+                    request_.RequestUri = new System.Uri(url_, System.UriKind.RelativeOrAbsolute);
+
+                    PrepareRequest(client_, request_, url_);
+
+                    var response_ = await client_.SendAsync(request_, System.Net.Http.HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+                    var disposeResponse_ = true;
+                    try
+                    {
+                        var headers_ = new System.Collections.Generic.Dictionary<string, System.Collections.Generic.IEnumerable<string>>();
+                        foreach (var item_ in response_.Headers)
+                            headers_[item_.Key] = item_.Value;
+                        if (response_.Content != null && response_.Content.Headers != null)
+                        {
+                            foreach (var item_ in response_.Content.Headers)
+                                headers_[item_.Key] = item_.Value;
+                        }
+
+                        ProcessResponse(client_, response_);
+
+                        var status_ = (int)response_.StatusCode;
+                        if (status_ == 201)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<HalResourceOfNativeRegistrationAttemptDto>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            return objectResponse_.Object;
+                        }
+                        else
+                        if (status_ == 400)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ValidationProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ValidationProblemDetails>("Bad Request", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 401)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Unauthorized", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 404)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Not Found", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        {
+                            var responseData_ = response_.Content == null ? null : await ReadAsStringAsync(response_.Content, cancellationToken).ConfigureAwait(false);
+                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                        }
+                    }
+                    finally
+                    {
+                        if (disposeResponse_)
+                            response_.Dispose();
+                    }
+                }
+            }
+            finally
+            {
+                if (disposeClient_)
+                    client_.Dispose();
+            }
+        }
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Get authenticated native registration requirement progress
+        /// </summary>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        public virtual async System.Threading.Tasks.Task<HalResourceOfNativeRegistrationRequirementProgressCollectionDto> GetAuthenticatedNativeRegistrationRequirementProgressAsync(System.Guid eventId, System.Guid orderId, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        {
+            if (eventId == null)
+                throw new System.ArgumentNullException("eventId");
+
+            if (orderId == null)
+                throw new System.ArgumentNullException("orderId");
+
+            var client_ = _httpClient;
+            var disposeClient_ = false;
+            try
+            {
+                using (var request_ = new System.Net.Http.HttpRequestMessage())
+                {
+
+                    if (x_Api_Version != null)
+                        request_.Headers.TryAddWithoutValidation("X-Api-Version", ConvertToString(x_Api_Version, System.Globalization.CultureInfo.InvariantCulture));
+                    request_.Method = new System.Net.Http.HttpMethod("GET");
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
+
+                    var urlBuilder_ = new System.Text.StringBuilder();
+
+                    // Operation Path: "api/events/{eventId}/registration-orders/{orderId}/requirement-progress"
+                    urlBuilder_.Append("api/events/");
+                    urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(eventId, System.Globalization.CultureInfo.InvariantCulture)));
+                    urlBuilder_.Append("/registration-orders/");
+                    urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(orderId, System.Globalization.CultureInfo.InvariantCulture)));
+                    urlBuilder_.Append("/requirement-progress");
+                    urlBuilder_.Append('?');
+                    if (api_version != null)
+                    {
+                        urlBuilder_.Append(System.Uri.EscapeDataString("api-version")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(api_version, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                    }
+                    urlBuilder_.Length--;
+
+                    PrepareRequest(client_, request_, urlBuilder_);
+
+                    var url_ = urlBuilder_.ToString();
+                    request_.RequestUri = new System.Uri(url_, System.UriKind.RelativeOrAbsolute);
+
+                    PrepareRequest(client_, request_, url_);
+
+                    var response_ = await client_.SendAsync(request_, System.Net.Http.HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+                    var disposeResponse_ = true;
+                    try
+                    {
+                        var headers_ = new System.Collections.Generic.Dictionary<string, System.Collections.Generic.IEnumerable<string>>();
+                        foreach (var item_ in response_.Headers)
+                            headers_[item_.Key] = item_.Value;
+                        if (response_.Content != null && response_.Content.Headers != null)
+                        {
+                            foreach (var item_ in response_.Content.Headers)
+                                headers_[item_.Key] = item_.Value;
+                        }
+
+                        ProcessResponse(client_, response_);
+
+                        var status_ = (int)response_.StatusCode;
+                        if (status_ == 200)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<HalResourceOfNativeRegistrationRequirementProgressCollectionDto>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            return objectResponse_.Object;
+                        }
+                        else
+                        if (status_ == 401)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Unauthorized", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 404)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Not Found", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        {
+                            var responseData_ = response_.Content == null ? null : await ReadAsStringAsync(response_.Content, cancellationToken).ConfigureAwait(false);
+                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                        }
+                    }
+                    finally
+                    {
+                        if (disposeResponse_)
+                            response_.Dispose();
+                    }
+                }
+            }
+            finally
+            {
+                if (disposeClient_)
+                    client_.Dispose();
+            }
+        }
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Skip authenticated optional native registration requirement
+        /// </summary>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        public virtual async System.Threading.Tasks.Task<NativeRegistrationSkipDto> SkipAuthenticatedNativeRegistrationRequirementAsync(System.Guid eventId, System.Guid orderId, System.Guid attemptId, SkipNativeRegistrationRequirementRequest body, string? x_Registration_Attempt_Capability = null, string? idempotency_Key = null, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        {
+            if (eventId == null)
+                throw new System.ArgumentNullException("eventId");
+
+            if (orderId == null)
+                throw new System.ArgumentNullException("orderId");
+
+            if (attemptId == null)
+                throw new System.ArgumentNullException("attemptId");
+
+            if (body == null)
+                throw new System.ArgumentNullException("body");
+
+            var client_ = _httpClient;
+            var disposeClient_ = false;
+            try
+            {
+                using (var request_ = new System.Net.Http.HttpRequestMessage())
+                {
+
+                    if (x_Registration_Attempt_Capability != null)
+                        request_.Headers.TryAddWithoutValidation("X-Registration-Attempt-Capability", ConvertToString(x_Registration_Attempt_Capability, System.Globalization.CultureInfo.InvariantCulture));
+
+                    if (idempotency_Key != null)
+                        request_.Headers.TryAddWithoutValidation("Idempotency-Key", ConvertToString(idempotency_Key, System.Globalization.CultureInfo.InvariantCulture));
+
+                    if (x_Api_Version != null)
+                        request_.Headers.TryAddWithoutValidation("X-Api-Version", ConvertToString(x_Api_Version, System.Globalization.CultureInfo.InvariantCulture));
+                    var json_ = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(body, JsonSerializerSettings);
+                    var content_ = new System.Net.Http.ByteArrayContent(json_);
+                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json; v=0.1");
+                    request_.Content = content_;
+                    request_.Method = new System.Net.Http.HttpMethod("POST");
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
+
+                    var urlBuilder_ = new System.Text.StringBuilder();
+
+                    // Operation Path: "api/events/{eventId}/registration-orders/{orderId}/attempts/{attemptId}/skip"
+                    urlBuilder_.Append("api/events/");
+                    urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(eventId, System.Globalization.CultureInfo.InvariantCulture)));
+                    urlBuilder_.Append("/registration-orders/");
+                    urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(orderId, System.Globalization.CultureInfo.InvariantCulture)));
+                    urlBuilder_.Append("/attempts/");
+                    urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(attemptId, System.Globalization.CultureInfo.InvariantCulture)));
+                    urlBuilder_.Append("/skip");
+                    urlBuilder_.Append('?');
+                    if (api_version != null)
+                    {
+                        urlBuilder_.Append(System.Uri.EscapeDataString("api-version")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(api_version, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                    }
+                    urlBuilder_.Length--;
+
+                    PrepareRequest(client_, request_, urlBuilder_);
+
+                    var url_ = urlBuilder_.ToString();
+                    request_.RequestUri = new System.Uri(url_, System.UriKind.RelativeOrAbsolute);
+
+                    PrepareRequest(client_, request_, url_);
+
+                    var response_ = await client_.SendAsync(request_, System.Net.Http.HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+                    var disposeResponse_ = true;
+                    try
+                    {
+                        var headers_ = new System.Collections.Generic.Dictionary<string, System.Collections.Generic.IEnumerable<string>>();
+                        foreach (var item_ in response_.Headers)
+                            headers_[item_.Key] = item_.Value;
+                        if (response_.Content != null && response_.Content.Headers != null)
+                        {
+                            foreach (var item_ in response_.Content.Headers)
+                                headers_[item_.Key] = item_.Value;
+                        }
+
+                        ProcessResponse(client_, response_);
+
+                        var status_ = (int)response_.StatusCode;
+                        if (status_ == 200)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<NativeRegistrationSkipDto>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            return objectResponse_.Object;
+                        }
+                        else
+                        if (status_ == 401)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Unauthorized", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 404)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Not Found", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        {
+                            var responseData_ = response_.Content == null ? null : await ReadAsStringAsync(response_.Content, cancellationToken).ConfigureAwait(false);
+                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                        }
+                    }
+                    finally
+                    {
+                        if (disposeResponse_)
+                            response_.Dispose();
+                    }
+                }
+            }
+            finally
+            {
+                if (disposeClient_)
+                    client_.Dispose();
+            }
+        }
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Submit authenticated native registration answers
+        /// </summary>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        public virtual async System.Threading.Tasks.Task<NativeRegistrationSubmissionDto> SubmitAuthenticatedNativeRegistrationAttemptAsync(System.Guid eventId, System.Guid orderId, System.Guid attemptId, SubmitNativeRegistrationAttemptRequest body, string? x_Registration_Attempt_Capability = null, string? idempotency_Key = null, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        {
+            if (eventId == null)
+                throw new System.ArgumentNullException("eventId");
+
+            if (orderId == null)
+                throw new System.ArgumentNullException("orderId");
+
+            if (attemptId == null)
+                throw new System.ArgumentNullException("attemptId");
+
+            if (body == null)
+                throw new System.ArgumentNullException("body");
+
+            var client_ = _httpClient;
+            var disposeClient_ = false;
+            try
+            {
+                using (var request_ = new System.Net.Http.HttpRequestMessage())
+                {
+
+                    if (x_Registration_Attempt_Capability != null)
+                        request_.Headers.TryAddWithoutValidation("X-Registration-Attempt-Capability", ConvertToString(x_Registration_Attempt_Capability, System.Globalization.CultureInfo.InvariantCulture));
+
+                    if (idempotency_Key != null)
+                        request_.Headers.TryAddWithoutValidation("Idempotency-Key", ConvertToString(idempotency_Key, System.Globalization.CultureInfo.InvariantCulture));
+
+                    if (x_Api_Version != null)
+                        request_.Headers.TryAddWithoutValidation("X-Api-Version", ConvertToString(x_Api_Version, System.Globalization.CultureInfo.InvariantCulture));
+                    var json_ = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(body, JsonSerializerSettings);
+                    var content_ = new System.Net.Http.ByteArrayContent(json_);
+                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json; v=0.1");
+                    request_.Content = content_;
+                    request_.Method = new System.Net.Http.HttpMethod("POST");
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
+
+                    var urlBuilder_ = new System.Text.StringBuilder();
+
+                    // Operation Path: "api/events/{eventId}/registration-orders/{orderId}/attempts/{attemptId}/submissions"
+                    urlBuilder_.Append("api/events/");
+                    urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(eventId, System.Globalization.CultureInfo.InvariantCulture)));
+                    urlBuilder_.Append("/registration-orders/");
+                    urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(orderId, System.Globalization.CultureInfo.InvariantCulture)));
+                    urlBuilder_.Append("/attempts/");
+                    urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(attemptId, System.Globalization.CultureInfo.InvariantCulture)));
+                    urlBuilder_.Append("/submissions");
+                    urlBuilder_.Append('?');
+                    if (api_version != null)
+                    {
+                        urlBuilder_.Append(System.Uri.EscapeDataString("api-version")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(api_version, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                    }
+                    urlBuilder_.Length--;
+
+                    PrepareRequest(client_, request_, urlBuilder_);
+
+                    var url_ = urlBuilder_.ToString();
+                    request_.RequestUri = new System.Uri(url_, System.UriKind.RelativeOrAbsolute);
+
+                    PrepareRequest(client_, request_, url_);
+
+                    var response_ = await client_.SendAsync(request_, System.Net.Http.HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+                    var disposeResponse_ = true;
+                    try
+                    {
+                        var headers_ = new System.Collections.Generic.Dictionary<string, System.Collections.Generic.IEnumerable<string>>();
+                        foreach (var item_ in response_.Headers)
+                            headers_[item_.Key] = item_.Value;
+                        if (response_.Content != null && response_.Content.Headers != null)
+                        {
+                            foreach (var item_ in response_.Content.Headers)
+                                headers_[item_.Key] = item_.Value;
+                        }
+
+                        ProcessResponse(client_, response_);
+
+                        var status_ = (int)response_.StatusCode;
+                        if (status_ == 200)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<NativeRegistrationSubmissionDto>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            return objectResponse_.Object;
+                        }
+                        else
+                        if (status_ == 400)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ValidationProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ValidationProblemDetails>("Bad Request", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 401)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Unauthorized", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 404)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Not Found", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
                         }
                         else
                         {
@@ -107791,6 +109119,108 @@ namespace Explore.Blazor.Client.Clients
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class HalResourceOfNativeRegistrationAttemptDto
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("attemptId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.Guid AttemptId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("requirementId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.Guid RequirementId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("channelId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.Guid ChannelId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("formId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.Guid FormId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("formVersionId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.Guid FormVersionId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("expiresAt")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.DateTimeOffset ExpiresAt { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("attemptCapabilityToken")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string AttemptCapabilityToken { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("form")]
+        [System.ComponentModel.DataAnnotations.Required]
+        public Form Form { get; set; } = new Form();
+
+        [System.Text.Json.Serialization.JsonPropertyName("subjects")]
+        [System.ComponentModel.DataAnnotations.Required]
+        public System.Collections.Generic.ICollection<Subjects> Subjects { get; set; } = new System.Collections.Generic.List<Subjects>();
+
+        [System.Text.Json.Serialization.JsonPropertyName("progress")]
+        [System.ComponentModel.DataAnnotations.Required]
+        public Progress Progress { get; set; } = new Progress();
+
+        /// <summary>
+        /// HAL hypermedia links
+        /// </summary>
+        [System.Text.Json.Serialization.JsonPropertyName("_links")]
+        public System.Collections.Generic.IDictionary<string, HalLink>? _links { get; set; } = default!;
+
+        /// <summary>
+        /// Embedded related resources
+        /// </summary>
+        [System.Text.Json.Serialization.JsonPropertyName("_embedded")]
+        public object? _embedded { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class HalResourceOfNativeRegistrationRequirementProgressCollectionDto
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("registrationOrderId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.Guid RegistrationOrderId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("requirements")]
+        [System.ComponentModel.DataAnnotations.Required]
+        public System.Collections.Generic.ICollection<Requirements> Requirements { get; set; } = new System.Collections.Generic.List<Requirements>();
+
+        /// <summary>
+        /// HAL hypermedia links
+        /// </summary>
+        [System.Text.Json.Serialization.JsonPropertyName("_links")]
+        public System.Collections.Generic.IDictionary<string, HalLink>? _links { get; set; } = default!;
+
+        /// <summary>
+        /// Embedded related resources
+        /// </summary>
+        [System.Text.Json.Serialization.JsonPropertyName("_embedded")]
+        public object? _embedded { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class HalResourceOfNotificationPreferenceMatrixDto
     {
 
@@ -108492,6 +109922,87 @@ namespace Explore.Blazor.Client.Clients
 
         [System.Text.Json.Serialization.JsonPropertyName("recommendedAction")]
         public string? RecommendedAction { get; set; } = default!;
+
+        /// <summary>
+        /// HAL hypermedia links
+        /// </summary>
+        [System.Text.Json.Serialization.JsonPropertyName("_links")]
+        public System.Collections.Generic.IDictionary<string, HalLink>? _links { get; set; } = default!;
+
+        /// <summary>
+        /// Embedded related resources
+        /// </summary>
+        [System.Text.Json.Serialization.JsonPropertyName("_embedded")]
+        public object? _embedded { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class HalResourceOfRegistrationAnswerFileDto
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("id")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.Guid Id { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("registrationSubmissionId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.Guid RegistrationSubmissionId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("registrationFormFieldId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.Guid RegistrationFormFieldId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("storageObjectId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.Guid StorageObjectId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("safeDisplayName")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string SafeDisplayName { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("contentType")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string ContentType { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("extension")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string Extension { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("size")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public long Size { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("quarantineState")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string QuarantineState { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("scanStatus")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string ScanStatus { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("quarantinedAt")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.DateTimeOffset QuarantinedAt { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("releasedBy")]
+        public System.Guid? ReleasedBy { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("releasedAt")]
+        public System.DateTimeOffset? ReleasedAt { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("releaseReason")]
+        public string? ReleaseReason { get; set; } = default!;
 
         /// <summary>
         /// HAL hypermedia links
@@ -112142,6 +113653,37 @@ namespace Explore.Blazor.Client.Clients
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class LaunchNativeRegistrationAttemptRequest
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("requirementId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.Guid RequirementId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("channelId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.Guid ChannelId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("formId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.Guid FormId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("formVersionId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.Guid FormVersionId { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class ListmonkBehaviorUpdateDto
     {
 
@@ -114274,6 +115816,196 @@ namespace Explore.Blazor.Client.Clients
 
         [System.Text.Json.Serialization.JsonPropertyName("reportFollowUpContactConsent")]
         public bool ReportFollowUpContactConsent { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class NativeRegistrationAttemptDto
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("attemptId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.Guid AttemptId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("requirementId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.Guid RequirementId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("channelId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.Guid ChannelId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("formId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.Guid FormId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("formVersionId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.Guid FormVersionId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("expiresAt")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.DateTimeOffset ExpiresAt { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("attemptCapabilityToken")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string AttemptCapabilityToken { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("form")]
+        [System.ComponentModel.DataAnnotations.Required]
+        public Form2 Form { get; set; } = new Form2();
+
+        [System.Text.Json.Serialization.JsonPropertyName("subjects")]
+        [System.ComponentModel.DataAnnotations.Required]
+        public System.Collections.Generic.ICollection<Subjects2> Subjects { get; set; } = new System.Collections.Generic.List<Subjects2>();
+
+        [System.Text.Json.Serialization.JsonPropertyName("progress")]
+        [System.ComponentModel.DataAnnotations.Required]
+        public Progress2 Progress { get; set; } = new Progress2();
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class NativeRegistrationRequirementProgressCollectionDto
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("registrationOrderId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.Guid RegistrationOrderId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("requirements")]
+        [System.ComponentModel.DataAnnotations.Required]
+        public System.Collections.Generic.ICollection<Requirements2> Requirements { get; set; } = new System.Collections.Generic.List<Requirements2>();
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class NativeRegistrationRequirementProgressDto
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("subjectCount")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int SubjectCount { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("completedSubjectCount")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int CompletedSubjectCount { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("skippedSubjectCount")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int SkippedSubjectCount { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("pendingSubjectCount")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int PendingSubjectCount { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("isComplete")]
+        public bool IsComplete { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class NativeRegistrationSkipDto
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("progress")]
+        [System.ComponentModel.DataAnnotations.Required]
+        public NativeRegistrationRequirementProgressDto Progress { get; set; } = new NativeRegistrationRequirementProgressDto();
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class NativeRegistrationSubmissionAnswerRequest
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("fieldId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.Guid FieldId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("subjectType")]
+        public int SubjectType { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("subjectId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.Guid SubjectId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("ticketAssignmentOrderLineId")]
+        public System.Guid? TicketAssignmentOrderLineId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("value")]
+        [System.ComponentModel.DataAnnotations.Required]
+        public object Value { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class NativeRegistrationSubmissionDto
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("submissionId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.Guid SubmissionId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("accepted")]
+        public bool Accepted { get; set; } = default!;
 
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
@@ -118434,6 +120166,94 @@ namespace Explore.Blazor.Client.Clients
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class RegistrationAnswerFileDto
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("id")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.Guid Id { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("registrationSubmissionId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.Guid RegistrationSubmissionId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("registrationFormFieldId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.Guid RegistrationFormFieldId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("storageObjectId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.Guid StorageObjectId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("safeDisplayName")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string SafeDisplayName { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("contentType")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string ContentType { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("extension")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string Extension { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("size")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public long Size { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("quarantineState")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string QuarantineState { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("scanStatus")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string ScanStatus { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("quarantinedAt")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.DateTimeOffset QuarantinedAt { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("releasedBy")]
+        public System.Guid? ReleasedBy { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("releasedAt")]
+        public System.DateTimeOffset? ReleasedAt { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("releaseReason")]
+        public string? ReleaseReason { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class RegistrationAnswerFileReleaseInput
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("reason")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string Reason { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class RegistrationChannelDto
     {
 
@@ -118699,6 +120519,9 @@ namespace Explore.Blazor.Client.Clients
         [System.Text.Json.Serialization.JsonPropertyName("consentTextVersion")]
         public string? ConsentTextVersion { get; set; } = default!;
 
+        [System.Text.Json.Serialization.JsonPropertyName("consentText")]
+        public string? ConsentText { get; set; } = default!;
+
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
         [System.Text.Json.Serialization.JsonExtensionData]
@@ -118777,6 +120600,9 @@ namespace Explore.Blazor.Client.Clients
 
         [System.Text.Json.Serialization.JsonPropertyName("consentTextVersion")]
         public string? ConsentTextVersion { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("consentText")]
+        public string? ConsentText { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("isRequired")]
         public bool IsRequired { get; set; } = default!;
@@ -118904,6 +120730,9 @@ namespace Explore.Blazor.Client.Clients
 
         [System.Text.Json.Serialization.JsonPropertyName("consentTextVersion")]
         public string? ConsentTextVersion { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("consentText")]
+        public string? ConsentText { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("isRequired")]
         public bool IsRequired { get; set; } = default!;
@@ -121546,6 +123375,25 @@ namespace Explore.Blazor.Client.Clients
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class SkipNativeRegistrationRequirementRequest
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("requirementId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.Guid RequirementId { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class SmtpConnectionTestResultDto
     {
 
@@ -122168,6 +124016,29 @@ namespace Explore.Blazor.Client.Clients
 
         [System.Text.Json.Serialization.JsonPropertyName("reporterLocale")]
         public string? ReporterLocale { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class SubmitNativeRegistrationAttemptRequest
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("requirementId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.Guid RequirementId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("answers")]
+        [System.ComponentModel.DataAnnotations.Required]
+        public System.Collections.Generic.ICollection<NativeRegistrationSubmissionAnswerRequest> Answers { get; set; } = new System.Collections.Generic.List<NativeRegistrationSubmissionAnswerRequest>();
 
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
@@ -133195,6 +135066,164 @@ namespace Explore.Blazor.Client.Clients
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class Form
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("formVersionId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.Guid FormVersionId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("version")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int Version { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("languageTag")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string LanguageTag { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("schemaHash")]
+        public string? SchemaHash { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("sections")]
+        [System.ComponentModel.DataAnnotations.Required]
+        public System.Collections.Generic.ICollection<Sections> Sections { get; set; } = new System.Collections.Generic.List<Sections>();
+
+        [System.Text.Json.Serialization.JsonPropertyName("rules")]
+        [System.ComponentModel.DataAnnotations.Required]
+        public System.Collections.Generic.ICollection<Rules> Rules { get; set; } = new System.Collections.Generic.List<Rules>();
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class Subjects
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("subjectType")]
+        public int SubjectType { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("subjectTypeCode")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string SubjectTypeCode { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("subjectId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.Guid SubjectId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("subjectKey")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string SubjectKey { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("ticketAssignmentOrderLineId")]
+        public System.Guid? TicketAssignmentOrderLineId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("isCompleted")]
+        public bool IsCompleted { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("isSkipped")]
+        public bool IsSkipped { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class Progress
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("subjectCount")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int SubjectCount { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("completedSubjectCount")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int CompletedSubjectCount { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("skippedSubjectCount")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int SkippedSubjectCount { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("pendingSubjectCount")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int PendingSubjectCount { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("isComplete")]
+        public bool IsComplete { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class Requirements
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("requirementId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.Guid RequirementId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("channelId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.Guid ChannelId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("formId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.Guid FormId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("formVersionId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.Guid FormVersionId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("canSkip")]
+        public bool CanSkip { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("subjects")]
+        [System.ComponentModel.DataAnnotations.Required]
+        public System.Collections.Generic.ICollection<Subjects3> Subjects { get; set; } = new System.Collections.Generic.List<Subjects3>();
+
+        [System.Text.Json.Serialization.JsonPropertyName("progress")]
+        [System.ComponentModel.DataAnnotations.Required]
+        public Progress3 Progress { get; set; } = new Progress3();
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class Categories
     {
 
@@ -134458,6 +136487,164 @@ namespace Explore.Blazor.Client.Clients
 
         [System.Text.Json.Serialization.JsonPropertyName("concurrencyStamp")]
         public System.Guid? ConcurrencyStamp { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class Form2
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("formVersionId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.Guid FormVersionId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("version")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int Version { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("languageTag")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string LanguageTag { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("schemaHash")]
+        public string? SchemaHash { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("sections")]
+        [System.ComponentModel.DataAnnotations.Required]
+        public System.Collections.Generic.ICollection<Sections2> Sections { get; set; } = new System.Collections.Generic.List<Sections2>();
+
+        [System.Text.Json.Serialization.JsonPropertyName("rules")]
+        [System.ComponentModel.DataAnnotations.Required]
+        public System.Collections.Generic.ICollection<Rules2> Rules { get; set; } = new System.Collections.Generic.List<Rules2>();
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class Subjects2
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("subjectType")]
+        public int SubjectType { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("subjectTypeCode")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string SubjectTypeCode { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("subjectId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.Guid SubjectId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("subjectKey")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string SubjectKey { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("ticketAssignmentOrderLineId")]
+        public System.Guid? TicketAssignmentOrderLineId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("isCompleted")]
+        public bool IsCompleted { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("isSkipped")]
+        public bool IsSkipped { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class Progress2
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("subjectCount")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int SubjectCount { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("completedSubjectCount")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int CompletedSubjectCount { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("skippedSubjectCount")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int SkippedSubjectCount { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("pendingSubjectCount")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int PendingSubjectCount { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("isComplete")]
+        public bool IsComplete { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class Requirements2
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("requirementId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.Guid RequirementId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("channelId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.Guid ChannelId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("formId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.Guid FormId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("formVersionId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.Guid FormVersionId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("canSkip")]
+        public bool CanSkip { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("subjects")]
+        [System.ComponentModel.DataAnnotations.Required]
+        public System.Collections.Generic.ICollection<Subjects4> Subjects { get; set; } = new System.Collections.Generic.List<Subjects4>();
+
+        [System.Text.Json.Serialization.JsonPropertyName("progress")]
+        [System.ComponentModel.DataAnnotations.Required]
+        public Progress4 Progress { get; set; } = new Progress4();
 
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
@@ -136122,6 +138309,156 @@ namespace Explore.Blazor.Client.Clients
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class Sections
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("id")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.Guid Id { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("ordinal")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int Ordinal { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("title")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string Title { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("fields")]
+        [System.ComponentModel.DataAnnotations.Required]
+        public System.Collections.Generic.ICollection<Fields15> Fields { get; set; } = new System.Collections.Generic.List<Fields15>();
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class Rules
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("id")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.Guid Id { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("ordinal")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int Ordinal { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("targetNamespace")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string TargetNamespace { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("targetKey")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string TargetKey { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("effect")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int Effect { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("condition")]
+        [System.ComponentModel.DataAnnotations.Required]
+        public Condition2 Condition { get; set; } = new Condition2();
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class Subjects3
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("subjectType")]
+        public int SubjectType { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("subjectTypeCode")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string SubjectTypeCode { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("subjectId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.Guid SubjectId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("subjectKey")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string SubjectKey { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("ticketAssignmentOrderLineId")]
+        public System.Guid? TicketAssignmentOrderLineId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("isCompleted")]
+        public bool IsCompleted { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("isSkipped")]
+        public bool IsSkipped { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class Progress3
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("subjectCount")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int SubjectCount { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("completedSubjectCount")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int CompletedSubjectCount { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("skippedSubjectCount")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int SkippedSubjectCount { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("pendingSubjectCount")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int PendingSubjectCount { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("isComplete")]
+        public bool IsComplete { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class Options12
     {
 
@@ -136286,6 +138623,156 @@ namespace Explore.Blazor.Client.Clients
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class Sections2
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("id")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.Guid Id { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("ordinal")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int Ordinal { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("title")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string Title { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("fields")]
+        [System.ComponentModel.DataAnnotations.Required]
+        public System.Collections.Generic.ICollection<Fields16> Fields { get; set; } = new System.Collections.Generic.List<Fields16>();
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class Rules2
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("id")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.Guid Id { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("ordinal")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int Ordinal { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("targetNamespace")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string TargetNamespace { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("targetKey")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string TargetKey { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("effect")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int Effect { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("condition")]
+        [System.ComponentModel.DataAnnotations.Required]
+        public Condition3 Condition { get; set; } = new Condition3();
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class Subjects4
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("subjectType")]
+        public int SubjectType { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("subjectTypeCode")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string SubjectTypeCode { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("subjectId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.Guid SubjectId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("subjectKey")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string SubjectKey { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("ticketAssignmentOrderLineId")]
+        public System.Guid? TicketAssignmentOrderLineId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("isCompleted")]
+        public bool IsCompleted { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("isSkipped")]
+        public bool IsSkipped { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class Progress4
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("subjectCount")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int SubjectCount { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("completedSubjectCount")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int CompletedSubjectCount { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("skippedSubjectCount")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int SkippedSubjectCount { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("pendingSubjectCount")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int PendingSubjectCount { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("isComplete")]
+        public bool IsComplete { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class Value
     {
 
@@ -136378,7 +138865,7 @@ namespace Explore.Blazor.Client.Clients
         public System.Collections.Generic.ICollection<Conditions2>? Conditions1 { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("condition")]
-        public Condition2? Condition { get; set; } = default!;
+        public Condition4? Condition { get; set; } = default!;
 
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
@@ -136522,6 +139009,145 @@ namespace Explore.Blazor.Client.Clients
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class Fields15
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("id")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.Guid Id { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("ordinal")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int Ordinal { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("namespace")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string Namespace { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("key")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string Key { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("label")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string Label { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("fieldTypeId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int FieldTypeId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("fieldTypeCode")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string FieldTypeCode { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("fieldTypeName")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string FieldTypeName { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("requiresExplicitConsent")]
+        public bool RequiresExplicitConsent { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("consentPurposeCode")]
+        public string? ConsentPurposeCode { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("consentTextVersion")]
+        public string? ConsentTextVersion { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("consentText")]
+        public string? ConsentText { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("isRequired")]
+        public bool IsRequired { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("isMulti")]
+        public bool IsMulti { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("minLength")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? MinLength { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("maxLength")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? MaxLength { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("regexPattern")]
+        public string? RegexPattern { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("minNumber")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)(?:\.\d+)?$")]
+        public double? MinNumber { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("maxNumber")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)(?:\.\d+)?$")]
+        public double? MaxNumber { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("minDateTime")]
+        public System.DateTimeOffset? MinDateTime { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("maxDateTime")]
+        public System.DateTimeOffset? MaxDateTime { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("allowedUrlSchemes")]
+        public string? AllowedUrlSchemes { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("options")]
+        [System.ComponentModel.DataAnnotations.Required]
+        public System.Collections.Generic.ICollection<Options14> Options { get; set; } = new System.Collections.Generic.List<Options14>();
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class Condition2
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("operator")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string Operator { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("fieldNamespace")]
+        public string? FieldNamespace { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("fieldKey")]
+        public string? FieldKey { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("comparison")]
+        public string? Comparison { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("value")]
+        public Value3? Value { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("values")]
+        public System.Collections.Generic.ICollection<Values3>? Values { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("conditions")]
+        public System.Collections.Generic.ICollection<Conditions3>? Conditions { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("condition")]
+        public Condition5? Condition { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class Steps2
     {
 
@@ -136539,6 +139165,145 @@ namespace Explore.Blazor.Client.Clients
 
         [System.Text.Json.Serialization.JsonPropertyName("detail")]
         public string? Detail { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class Fields16
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("id")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.Guid Id { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("ordinal")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int Ordinal { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("namespace")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string Namespace { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("key")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string Key { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("label")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string Label { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("fieldTypeId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int FieldTypeId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("fieldTypeCode")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string FieldTypeCode { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("fieldTypeName")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string FieldTypeName { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("requiresExplicitConsent")]
+        public bool RequiresExplicitConsent { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("consentPurposeCode")]
+        public string? ConsentPurposeCode { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("consentTextVersion")]
+        public string? ConsentTextVersion { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("consentText")]
+        public string? ConsentText { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("isRequired")]
+        public bool IsRequired { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("isMulti")]
+        public bool IsMulti { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("minLength")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? MinLength { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("maxLength")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? MaxLength { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("regexPattern")]
+        public string? RegexPattern { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("minNumber")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)(?:\.\d+)?$")]
+        public double? MinNumber { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("maxNumber")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)(?:\.\d+)?$")]
+        public double? MaxNumber { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("minDateTime")]
+        public System.DateTimeOffset? MinDateTime { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("maxDateTime")]
+        public System.DateTimeOffset? MaxDateTime { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("allowedUrlSchemes")]
+        public string? AllowedUrlSchemes { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("options")]
+        [System.ComponentModel.DataAnnotations.Required]
+        public System.Collections.Generic.ICollection<Options15> Options { get; set; } = new System.Collections.Generic.List<Options15>();
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class Condition3
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("operator")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string Operator { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("fieldNamespace")]
+        public string? FieldNamespace { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("fieldKey")]
+        public string? FieldKey { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("comparison")]
+        public string? Comparison { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("value")]
+        public Value4? Value { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("values")]
+        public System.Collections.Generic.ICollection<Values4>? Values { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("conditions")]
+        public System.Collections.Generic.ICollection<Conditions4>? Conditions { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("condition")]
+        public Condition6? Condition { get; set; } = default!;
 
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
@@ -136644,7 +139409,7 @@ namespace Explore.Blazor.Client.Clients
         public object? Conditions { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("condition")]
-        public Condition3? Condition { get; set; } = default!;
+        public Condition7? Condition { get; set; } = default!;
 
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
@@ -136658,7 +139423,7 @@ namespace Explore.Blazor.Client.Clients
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class Condition2
+    public partial class Condition4
     {
 
         [System.Text.Json.Serialization.JsonPropertyName("operator")]
@@ -136675,16 +139440,16 @@ namespace Explore.Blazor.Client.Clients
         public string? Comparison { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("value")]
-        public Value3? Value { get; set; } = default!;
+        public Value5? Value { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("values")]
-        public System.Collections.Generic.ICollection<Values3>? Values { get; set; } = default!;
+        public System.Collections.Generic.ICollection<Values5>? Values { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("conditions")]
-        public System.Collections.Generic.ICollection<Conditions3>? Conditions { get; set; } = default!;
+        public System.Collections.Generic.ICollection<Conditions5>? Conditions { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("condition")]
-        public Condition4? Condition { get; set; } = default!;
+        public Condition8? Condition { get; set; } = default!;
 
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
@@ -136698,33 +139463,28 @@ namespace Explore.Blazor.Client.Clients
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class Condition3
+    public partial class Options14
     {
 
-        [System.Text.Json.Serialization.JsonPropertyName("operator")]
+        [System.Text.Json.Serialization.JsonPropertyName("id")]
         [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
-        public string Operator { get; set; } = default!;
+        public System.Guid Id { get; set; } = default!;
 
-        [System.Text.Json.Serialization.JsonPropertyName("fieldNamespace")]
-        public string? FieldNamespace { get; set; } = default!;
+        [System.Text.Json.Serialization.JsonPropertyName("ordinal")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int Ordinal { get; set; } = default!;
 
-        [System.Text.Json.Serialization.JsonPropertyName("fieldKey")]
-        public string? FieldKey { get; set; } = default!;
+        [System.Text.Json.Serialization.JsonPropertyName("key")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string Key { get; set; } = default!;
 
-        [System.Text.Json.Serialization.JsonPropertyName("comparison")]
-        public string? Comparison { get; set; } = default!;
+        [System.Text.Json.Serialization.JsonPropertyName("label")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string Label { get; set; } = default!;
 
-        [System.Text.Json.Serialization.JsonPropertyName("value")]
-        public object? Value { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("values")]
-        public object? Values { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("conditions")]
-        public object? Conditions { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("condition")]
-        public object? Condition { get; set; } = default!;
+        [System.Text.Json.Serialization.JsonPropertyName("isRetired")]
+        public bool IsRetired { get; set; } = default!;
 
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
@@ -136821,16 +139581,16 @@ namespace Explore.Blazor.Client.Clients
         public string? Comparison { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("value")]
-        public object? Value { get; set; } = default!;
+        public Value6? Value { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("values")]
-        public object? Values { get; set; } = default!;
+        public System.Collections.Generic.ICollection<Values6>? Values { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("conditions")]
-        public object? Conditions { get; set; } = default!;
+        public System.Collections.Generic.ICollection<Conditions6>? Conditions { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("condition")]
-        public Condition5? Condition { get; set; } = default!;
+        public Condition9? Condition { get; set; } = default!;
 
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
@@ -136844,7 +139604,7 @@ namespace Explore.Blazor.Client.Clients
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class Condition4
+    public partial class Condition5
     {
 
         [System.Text.Json.Serialization.JsonPropertyName("operator")]
@@ -136884,7 +139644,1118 @@ namespace Explore.Blazor.Client.Clients
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class Condition5
+    public partial class Options15
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("id")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.Guid Id { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("ordinal")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int Ordinal { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("key")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string Key { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("label")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string Label { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("isRetired")]
+        public bool IsRetired { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class Value4
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("type")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string Type { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("textValue")]
+        public string? TextValue { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("booleanValue")]
+        public bool? BooleanValue { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("numberValue")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)(?:\.\d+)?$")]
+        public double? NumberValue { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("dateValue")]
+        [System.Text.Json.Serialization.JsonConverter(typeof(DateFormatConverter))]
+        public System.DateTimeOffset? DateValue { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class Values4
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("type")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string Type { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("textValue")]
+        public string? TextValue { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("booleanValue")]
+        public bool? BooleanValue { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("numberValue")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)(?:\.\d+)?$")]
+        public double? NumberValue { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("dateValue")]
+        [System.Text.Json.Serialization.JsonConverter(typeof(DateFormatConverter))]
+        public System.DateTimeOffset? DateValue { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class Conditions4
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("operator")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string Operator { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("fieldNamespace")]
+        public string? FieldNamespace { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("fieldKey")]
+        public string? FieldKey { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("comparison")]
+        public string? Comparison { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("value")]
+        public Value7? Value { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("values")]
+        public System.Collections.Generic.ICollection<Values7>? Values { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("conditions")]
+        public System.Collections.Generic.ICollection<Conditions7>? Conditions { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("condition")]
+        public Condition10? Condition { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class Condition6
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("operator")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string Operator { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("fieldNamespace")]
+        public string? FieldNamespace { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("fieldKey")]
+        public string? FieldKey { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("comparison")]
+        public string? Comparison { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("value")]
+        public object? Value { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("values")]
+        public object? Values { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("conditions")]
+        public object? Conditions { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("condition")]
+        public object? Condition { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class Condition7
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("operator")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string Operator { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("fieldNamespace")]
+        public string? FieldNamespace { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("fieldKey")]
+        public string? FieldKey { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("comparison")]
+        public string? Comparison { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("value")]
+        public object? Value { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("values")]
+        public object? Values { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("conditions")]
+        public object? Conditions { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("condition")]
+        public object? Condition { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class Value5
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("type")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string Type { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("textValue")]
+        public string? TextValue { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("booleanValue")]
+        public bool? BooleanValue { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("numberValue")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)(?:\.\d+)?$")]
+        public double? NumberValue { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("dateValue")]
+        [System.Text.Json.Serialization.JsonConverter(typeof(DateFormatConverter))]
+        public System.DateTimeOffset? DateValue { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class Values5
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("type")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string Type { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("textValue")]
+        public string? TextValue { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("booleanValue")]
+        public bool? BooleanValue { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("numberValue")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)(?:\.\d+)?$")]
+        public double? NumberValue { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("dateValue")]
+        [System.Text.Json.Serialization.JsonConverter(typeof(DateFormatConverter))]
+        public System.DateTimeOffset? DateValue { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class Conditions5
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("operator")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string Operator { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("fieldNamespace")]
+        public string? FieldNamespace { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("fieldKey")]
+        public string? FieldKey { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("comparison")]
+        public string? Comparison { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("value")]
+        public object? Value { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("values")]
+        public object? Values { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("conditions")]
+        public object? Conditions { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("condition")]
+        public Condition11? Condition { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class Condition8
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("operator")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string Operator { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("fieldNamespace")]
+        public string? FieldNamespace { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("fieldKey")]
+        public string? FieldKey { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("comparison")]
+        public string? Comparison { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("value")]
+        public object? Value { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("values")]
+        public object? Values { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("conditions")]
+        public object? Conditions { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("condition")]
+        public object? Condition { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class Value6
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("type")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string Type { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("textValue")]
+        public string? TextValue { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("booleanValue")]
+        public bool? BooleanValue { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("numberValue")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)(?:\.\d+)?$")]
+        public double? NumberValue { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("dateValue")]
+        [System.Text.Json.Serialization.JsonConverter(typeof(DateFormatConverter))]
+        public System.DateTimeOffset? DateValue { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class Values6
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("type")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string Type { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("textValue")]
+        public string? TextValue { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("booleanValue")]
+        public bool? BooleanValue { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("numberValue")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)(?:\.\d+)?$")]
+        public double? NumberValue { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("dateValue")]
+        [System.Text.Json.Serialization.JsonConverter(typeof(DateFormatConverter))]
+        public System.DateTimeOffset? DateValue { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class Conditions6
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("operator")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string Operator { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("fieldNamespace")]
+        public string? FieldNamespace { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("fieldKey")]
+        public string? FieldKey { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("comparison")]
+        public string? Comparison { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("value")]
+        public object? Value { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("values")]
+        public object? Values { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("conditions")]
+        public object? Conditions { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("condition")]
+        public Condition12? Condition { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class Condition9
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("operator")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string Operator { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("fieldNamespace")]
+        public string? FieldNamespace { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("fieldKey")]
+        public string? FieldKey { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("comparison")]
+        public string? Comparison { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("value")]
+        public Value8? Value { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("values")]
+        public System.Collections.Generic.ICollection<Values8>? Values { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("conditions")]
+        public System.Collections.Generic.ICollection<Conditions8>? Conditions { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("condition")]
+        public Condition13? Condition { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class Value7
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("type")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string Type { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("textValue")]
+        public string? TextValue { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("booleanValue")]
+        public bool? BooleanValue { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("numberValue")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)(?:\.\d+)?$")]
+        public double? NumberValue { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("dateValue")]
+        [System.Text.Json.Serialization.JsonConverter(typeof(DateFormatConverter))]
+        public System.DateTimeOffset? DateValue { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class Values7
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("type")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string Type { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("textValue")]
+        public string? TextValue { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("booleanValue")]
+        public bool? BooleanValue { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("numberValue")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)(?:\.\d+)?$")]
+        public double? NumberValue { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("dateValue")]
+        [System.Text.Json.Serialization.JsonConverter(typeof(DateFormatConverter))]
+        public System.DateTimeOffset? DateValue { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class Conditions7
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("operator")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string Operator { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("fieldNamespace")]
+        public string? FieldNamespace { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("fieldKey")]
+        public string? FieldKey { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("comparison")]
+        public string? Comparison { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("value")]
+        public object? Value { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("values")]
+        public object? Values { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("conditions")]
+        public object? Conditions { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("condition")]
+        public Condition14? Condition { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class Condition10
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("operator")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string Operator { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("fieldNamespace")]
+        public string? FieldNamespace { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("fieldKey")]
+        public string? FieldKey { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("comparison")]
+        public string? Comparison { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("value")]
+        public Value9? Value { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("values")]
+        public System.Collections.Generic.ICollection<Values9>? Values { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("conditions")]
+        public System.Collections.Generic.ICollection<Conditions9>? Conditions { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("condition")]
+        public Condition15? Condition { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class Condition11
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("operator")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string Operator { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("fieldNamespace")]
+        public string? FieldNamespace { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("fieldKey")]
+        public string? FieldKey { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("comparison")]
+        public string? Comparison { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("value")]
+        public object? Value { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("values")]
+        public object? Values { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("conditions")]
+        public object? Conditions { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("condition")]
+        public object? Condition { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class Condition12
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("operator")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string Operator { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("fieldNamespace")]
+        public string? FieldNamespace { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("fieldKey")]
+        public string? FieldKey { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("comparison")]
+        public string? Comparison { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("value")]
+        public object? Value { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("values")]
+        public object? Values { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("conditions")]
+        public object? Conditions { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("condition")]
+        public object? Condition { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class Value8
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("type")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string Type { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("textValue")]
+        public string? TextValue { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("booleanValue")]
+        public bool? BooleanValue { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("numberValue")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)(?:\.\d+)?$")]
+        public double? NumberValue { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("dateValue")]
+        [System.Text.Json.Serialization.JsonConverter(typeof(DateFormatConverter))]
+        public System.DateTimeOffset? DateValue { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class Values8
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("type")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string Type { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("textValue")]
+        public string? TextValue { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("booleanValue")]
+        public bool? BooleanValue { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("numberValue")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)(?:\.\d+)?$")]
+        public double? NumberValue { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("dateValue")]
+        [System.Text.Json.Serialization.JsonConverter(typeof(DateFormatConverter))]
+        public System.DateTimeOffset? DateValue { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class Conditions8
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("operator")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string Operator { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("fieldNamespace")]
+        public string? FieldNamespace { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("fieldKey")]
+        public string? FieldKey { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("comparison")]
+        public string? Comparison { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("value")]
+        public object? Value { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("values")]
+        public object? Values { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("conditions")]
+        public object? Conditions { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("condition")]
+        public Condition16? Condition { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class Condition13
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("operator")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string Operator { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("fieldNamespace")]
+        public string? FieldNamespace { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("fieldKey")]
+        public string? FieldKey { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("comparison")]
+        public string? Comparison { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("value")]
+        public object? Value { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("values")]
+        public object? Values { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("conditions")]
+        public object? Conditions { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("condition")]
+        public object? Condition { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class Condition14
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("operator")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string Operator { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("fieldNamespace")]
+        public string? FieldNamespace { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("fieldKey")]
+        public string? FieldKey { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("comparison")]
+        public string? Comparison { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("value")]
+        public object? Value { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("values")]
+        public object? Values { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("conditions")]
+        public object? Conditions { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("condition")]
+        public object? Condition { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class Value9
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("type")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string Type { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("textValue")]
+        public string? TextValue { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("booleanValue")]
+        public bool? BooleanValue { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("numberValue")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)(?:\.\d+)?$")]
+        public double? NumberValue { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("dateValue")]
+        [System.Text.Json.Serialization.JsonConverter(typeof(DateFormatConverter))]
+        public System.DateTimeOffset? DateValue { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class Values9
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("type")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string Type { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("textValue")]
+        public string? TextValue { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("booleanValue")]
+        public bool? BooleanValue { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("numberValue")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)(?:\.\d+)?$")]
+        public double? NumberValue { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("dateValue")]
+        [System.Text.Json.Serialization.JsonConverter(typeof(DateFormatConverter))]
+        public System.DateTimeOffset? DateValue { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class Conditions9
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("operator")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string Operator { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("fieldNamespace")]
+        public string? FieldNamespace { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("fieldKey")]
+        public string? FieldKey { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("comparison")]
+        public string? Comparison { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("value")]
+        public object? Value { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("values")]
+        public object? Values { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("conditions")]
+        public object? Conditions { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("condition")]
+        public Condition17? Condition { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class Condition15
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("operator")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string Operator { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("fieldNamespace")]
+        public string? FieldNamespace { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("fieldKey")]
+        public string? FieldKey { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("comparison")]
+        public string? Comparison { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("value")]
+        public object? Value { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("values")]
+        public object? Values { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("conditions")]
+        public object? Conditions { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("condition")]
+        public object? Condition { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class Condition16
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("operator")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string Operator { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("fieldNamespace")]
+        public string? FieldNamespace { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("fieldKey")]
+        public string? FieldKey { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("comparison")]
+        public string? Comparison { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("value")]
+        public object? Value { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("values")]
+        public object? Values { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("conditions")]
+        public object? Conditions { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("condition")]
+        public object? Condition { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class Condition17
     {
 
         [System.Text.Json.Serialization.JsonPropertyName("operator")]
