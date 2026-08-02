@@ -10,6 +10,7 @@ using Explore.Domain;
 using Explore.Domain.Constants;
 using Explore.Domain.Enums;
 using Explore.Domain.Services.Scheduling;
+using Explore.Persistence.Database;
 using Explore.Persistence.QueryFilters;
 using Microsoft.EntityFrameworkCore;
 
@@ -24,6 +25,8 @@ public sealed class EmailDispatchEligibilityEvaluator(
     private const string ProviderHandoffMessage = "SMTP provider handoff started; automatic resend is suppressed until the attempt is durably settled.";
     private const string SkipMessage = "Email delivery was suppressed by current dispatch eligibility before provider handoff.";
     private const string SmtpProcessorCode = "smtp";
+    // ponytail: one non-PostgreSQL eligibility writer; shard only if measured dispatch throughput requires it.
+    private const string EligibilityLockName = "email-dispatch-eligibility";
     private const string SmtpRateDeferred = "smtp_rate_deferred";
     private const string SmtpRateDeferredMessage = "SMTP dispatch was deferred by the persisted rate policy before provider handoff.";
 
@@ -46,30 +49,29 @@ public sealed class EmailDispatchEligibilityEvaluator(
         FanoutAuthorityHint? fanoutAuthorityHint,
         CancellationToken cancellationToken)
     {
+        bool isPostgreSql = dbContext.Database.ProviderName == RelationalNamedLock.PostgreSqlProvider;
         await using var transaction = await dbContext.Database.BeginTransactionAsync(
-            IsolationLevel.ReadCommitted,
+            isPostgreSql ? IsolationLevel.ReadCommitted : IsolationLevel.Serializable,
             cancellationToken);
 
-        if (fanoutAuthorityHint is { EventId: { } lockEventId } authorityHint
-            && (authorityHint.OccurrenceId.HasValue || authorityHint.Kind == EmailDispatchKind.EventReminder))
-        {
-            await NotificationFanoutPrecedenceLock.AcquireAsync(
+        await using IAsyncDisposable? eligibilityLease = isPostgreSql
+            ? null
+            : await RelationalNamedLock.AcquireTransactionAsync(
+                dbContext,
+                EligibilityLockName,
+                cancellationToken);
+
+        await using IAsyncDisposable? eventPrecedenceLease =
+            fanoutAuthorityHint is { EventId: { } lockEventId } authorityHint
+            && (authorityHint.OccurrenceId.HasValue || authorityHint.Kind == EmailDispatchKind.EventReminder)
+            ? await NotificationFanoutPrecedenceLock.AcquireAsync(
                 dbContext,
                 request.TenantId,
                 lockEventId,
-                cancellationToken);
-        }
+                cancellationToken)
+            : null;
 
-        var dispatch = await dbContext.EmailDispatchOutbox
-            .FromSqlInterpolated($$"""
-                SELECT *
-                FROM email_dispatch_outbox
-                WHERE tenant_id = {{request.TenantId}}
-                  AND id = {{request.OutboxId}}
-                FOR UPDATE
-                """)
-            .IgnoreTenantFilter(TenantFilterBypassReasons.EmailDispatchWorkerCrossTenantQueue)
-            .SingleOrDefaultAsync(cancellationToken);
+        var dispatch = await LoadClaimedDispatchAsync(request, isPostgreSql, cancellationToken);
 
         if (dispatch is null
             || dispatch.ContentRedactedAt is not null
@@ -277,9 +279,7 @@ public sealed class EmailDispatchEligibilityEvaluator(
                     cancellationToken);
             }
 
-            DateTime authorityAtUtc = await dbContext.Database
-                .SqlQueryRaw<DateTime>("SELECT clock_timestamp() AS \"Value\"")
-                .SingleAsync(cancellationToken);
+            DateTime authorityAtUtc = await GetDatabaseUtcNowAsync(cancellationToken);
             bool effectiveOwner = await dbContext.EventRoleAssignments
                 .IgnoreTenantFilter(TenantFilterBypassReasons.EmailDispatchWorkerCrossTenantQueue)
                 .AsNoTracking()
@@ -449,30 +449,108 @@ public sealed class EmailDispatchEligibilityEvaluator(
             dispatch.AttemptCount);
     }
 
+    private Task<EmailDispatchOutbox?> LoadClaimedDispatchAsync(
+        EmailDispatchEligibilityRequest request,
+        bool isPostgreSql,
+        CancellationToken cancellationToken)
+    {
+        if (isPostgreSql)
+        {
+            return dbContext.EmailDispatchOutbox
+                .FromSqlInterpolated($$"""
+                    SELECT *
+                    FROM email_dispatch_outbox
+                    WHERE tenant_id = {{request.TenantId}}
+                      AND id = {{request.OutboxId}}
+                    FOR UPDATE
+                    """)
+                .IgnoreTenantFilter(TenantFilterBypassReasons.EmailDispatchWorkerCrossTenantQueue)
+                .SingleOrDefaultAsync(cancellationToken);
+        }
+
+        return dbContext.EmailDispatchOutbox
+            .IgnoreTenantFilter(TenantFilterBypassReasons.EmailDispatchWorkerCrossTenantQueue)
+            .SingleOrDefaultAsync(value =>
+                value.TenantId == request.TenantId && value.Id == request.OutboxId,
+                cancellationToken);
+    }
+
     private async Task<SmtpRateAdmission> TryReserveSmtpRateAsync(
         EmailDispatchOutbox dispatch,
         EmailDispatchEligibilityRequest request,
         CancellationToken cancellationToken)
     {
-        await dbContext.Database.ExecuteSqlRawAsync(
-            "SELECT pg_advisory_xact_lock(hashtext('email-dispatch-smtp-rate'))",
+        await using IAsyncDisposable smtpRateLease = await RelationalNamedLock.AcquireTransactionAsync(
+            dbContext,
+            "email-dispatch-smtp-rate",
             cancellationToken);
-        var databaseNow = await dbContext.Database
-            .SqlQueryRaw<DateTime>("SELECT clock_timestamp() AS \"Value\"")
-            .SingleAsync(cancellationToken);
+        DateTime databaseNow = await GetDatabaseUtcNowAsync(cancellationToken);
+        EmailDispatchProcessorState processorState;
+        EmailDispatchTenantControl tenantControl;
 
-        await dbContext.Database.ExecuteSqlInterpolatedAsync($$"""
-            INSERT INTO email_dispatch_processor_states (id, processor_code, is_paused, optional_reminders_deferred, updated_at)
-            VALUES ({{Guid.CreateVersion7()}}, {{SmtpProcessorCode}}, FALSE, FALSE, {{databaseNow}})
-            ON CONFLICT (processor_code) DO NOTHING
-            """, cancellationToken);
-        var processorState = await dbContext.EmailDispatchProcessorStates
-            .FromSqlInterpolated($$"""
-                SELECT * FROM email_dispatch_processor_states
-                WHERE processor_code = {{SmtpProcessorCode}}
-                FOR UPDATE
-                """)
-            .SingleAsync(cancellationToken);
+        if (dbContext.Database.ProviderName == RelationalNamedLock.PostgreSqlProvider)
+        {
+            await dbContext.Database.ExecuteSqlInterpolatedAsync($$"""
+                INSERT INTO email_dispatch_processor_states (id, processor_code, is_paused, optional_reminders_deferred, updated_at)
+                VALUES ({{Guid.CreateVersion7()}}, {{SmtpProcessorCode}}, FALSE, FALSE, {{databaseNow}})
+                ON CONFLICT (processor_code) DO NOTHING
+                """, cancellationToken);
+            processorState = await dbContext.EmailDispatchProcessorStates
+                .FromSqlInterpolated($$"""
+                    SELECT * FROM email_dispatch_processor_states
+                    WHERE processor_code = {{SmtpProcessorCode}}
+                    FOR UPDATE
+                    """)
+                .SingleAsync(cancellationToken);
+
+            await dbContext.Database.ExecuteSqlInterpolatedAsync($$"""
+                INSERT INTO email_dispatch_tenant_controls (id, tenant_id, is_paused, created_at, updated_at)
+                VALUES ({{Guid.CreateVersion7()}}, {{dispatch.TenantId}}, FALSE, {{databaseNow}}, {{databaseNow}})
+                ON CONFLICT (tenant_id) DO NOTHING
+                """, cancellationToken);
+            tenantControl = await dbContext.EmailDispatchTenantControls
+                .FromSqlInterpolated($$"""
+                    SELECT * FROM email_dispatch_tenant_controls
+                    WHERE tenant_id = {{dispatch.TenantId}}
+                    FOR UPDATE
+                    """)
+                .IgnoreTenantFilter(TenantFilterBypassReasons.EmailDispatchWorkerCrossTenantQueue)
+                .SingleAsync(cancellationToken);
+        }
+        else
+        {
+            processorState = await dbContext.EmailDispatchProcessorStates
+                .SingleOrDefaultAsync(
+                    state => state.ProcessorCode == SmtpProcessorCode,
+                    cancellationToken)
+                ?? new EmailDispatchProcessorState
+                {
+                    Id = Guid.CreateVersion7(),
+                    ProcessorCode = SmtpProcessorCode,
+                    UpdatedAt = databaseNow
+                };
+            if (dbContext.Entry(processorState).State == EntityState.Detached)
+            {
+                dbContext.EmailDispatchProcessorStates.Add(processorState);
+            }
+
+            tenantControl = await dbContext.EmailDispatchTenantControls
+                .IgnoreTenantFilter(TenantFilterBypassReasons.EmailDispatchWorkerCrossTenantQueue)
+                .SingleOrDefaultAsync(
+                    control => control.TenantId == dispatch.TenantId,
+                    cancellationToken)
+                ?? new EmailDispatchTenantControl
+                {
+                    Id = Guid.CreateVersion7(),
+                    TenantId = dispatch.TenantId,
+                    CreatedAt = databaseNow,
+                    UpdatedAt = databaseNow
+                };
+            if (dbContext.Entry(tenantControl).State == EntityState.Detached)
+            {
+                dbContext.EmailDispatchTenantControls.Add(tenantControl);
+            }
+        }
 
         if (processorState.IsPaused)
         {
@@ -482,20 +560,6 @@ public sealed class EmailDispatchEligibilityEvaluator(
             dispatch.UpdatedAt = databaseNow;
             return new SmtpRateAdmission(false, databaseNow, null, ProcessorPaused: true);
         }
-
-        await dbContext.Database.ExecuteSqlInterpolatedAsync($$"""
-            INSERT INTO email_dispatch_tenant_controls (id, tenant_id, is_paused, created_at, updated_at)
-            VALUES ({{Guid.CreateVersion7()}}, {{dispatch.TenantId}}, FALSE, {{databaseNow}}, {{databaseNow}})
-            ON CONFLICT (tenant_id) DO NOTHING
-            """, cancellationToken);
-        var tenantControl = await dbContext.EmailDispatchTenantControls
-            .FromSqlInterpolated($$"""
-                SELECT * FROM email_dispatch_tenant_controls
-                WHERE tenant_id = {{dispatch.TenantId}}
-                FOR UPDATE
-                """)
-            .IgnoreTenantFilter(TenantFilterBypassReasons.EmailDispatchWorkerCrossTenantQueue)
-            .SingleAsync(cancellationToken);
 
         if (tenantControl.IsPaused)
         {
@@ -547,6 +611,31 @@ public sealed class EmailDispatchEligibilityEvaluator(
         dispatch.UpdatedAt = databaseNow;
         return new SmtpRateAdmission(false, databaseNow, retryAt, ProcessorPaused: false);
     }
+
+    private async Task<DateTime> GetDatabaseUtcNowAsync(CancellationToken cancellationToken)
+    {
+        string sql = SelectDatabaseUtcNowSql(dbContext.Database.ProviderName);
+        DateTime value = await dbContext.Database
+            .SqlQueryRaw<DateTime>(sql)
+            .SingleAsync(cancellationToken);
+        return value.Kind switch
+        {
+            DateTimeKind.Utc => value,
+            DateTimeKind.Local => value.ToUniversalTime(),
+            _ => DateTime.SpecifyKind(value, DateTimeKind.Utc)
+        };
+    }
+
+    internal static string SelectDatabaseUtcNowSql(string? providerName) => providerName switch
+    {
+        RelationalNamedLock.PostgreSqlProvider => "SELECT clock_timestamp() AS \"Value\"",
+        RelationalNamedLock.SqliteProvider => "SELECT CURRENT_TIMESTAMP AS \"Value\"",
+        RelationalNamedLock.SqlServerProvider => "SELECT SYSUTCDATETIME() AS [Value]",
+        RelationalNamedLock.MySqlProvider => "SELECT UTC_TIMESTAMP(6) AS `Value`",
+        string provider => throw new InvalidOperationException(
+            $"Unsupported email dispatch database provider '{provider}'."),
+        _ => throw new InvalidOperationException("The email dispatch database provider is unavailable.")
+    };
 
     private static SmtpTokenBucket RefillBucket(
         int? availableTokens,

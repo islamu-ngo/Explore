@@ -5,6 +5,8 @@ using System.Data;
 using Explore.Application.Contracts.Persistence;
 using Explore.Domain;
 using Explore.Domain.Enums;
+using Explore.Persistence.Database;
+using Explore.Persistence.QueryFilters;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
 
@@ -21,7 +23,7 @@ public sealed class NotificationFanoutEmailSuppressionRepository(ExploreDbContex
         DateTime suppressedAt,
         CancellationToken cancellationToken = default)
     {
-        NotificationFanoutPrecedenceLock.EnsureActivePostgresTransaction(dbContext);
+        NotificationFanoutPrecedenceLock.EnsureActiveTransaction(dbContext);
         if (tenantId == Guid.Empty || occurrenceId == Guid.Empty)
         {
             throw new ArgumentException("Fanout email suppression requires non-empty tenant and occurrence identifiers.");
@@ -30,6 +32,15 @@ public sealed class NotificationFanoutEmailSuppressionRepository(ExploreDbContex
         if (suppressedAt.Kind != DateTimeKind.Utc)
         {
             throw new ArgumentException("Fanout email suppression time must be UTC.", nameof(suppressedAt));
+        }
+
+        if (dbContext.Database.ProviderName != RelationalNamedLock.PostgreSqlProvider)
+        {
+            return await SuppressPreHandoffPortableAsync(
+                tenantId,
+                occurrenceId,
+                suppressedAt,
+                cancellationToken);
         }
 
         await using var command = dbContext.Database.GetDbConnection().CreateCommand();
@@ -161,6 +172,139 @@ public sealed class NotificationFanoutEmailSuppressionRepository(ExploreDbContex
             reader.GetInt32(1),
             reader.GetInt32(2),
             reader.GetInt32(3));
+    }
+
+    private async Task<NotificationFanoutEmailSuppressionResult> SuppressPreHandoffPortableAsync(
+        Guid tenantId,
+        Guid occurrenceId,
+        DateTime suppressedAt,
+        CancellationToken cancellationToken)
+    {
+        await using IAsyncDisposable suppressionLease = await RelationalNamedLock.AcquireTransactionAsync(
+            dbContext,
+            $"notification-fanout-email-suppression:{tenantId:N}:{occurrenceId:N}",
+            cancellationToken);
+
+        Guid[] intentIds = await dbContext.NotificationIntents
+            .IgnoreTenantFilter(TenantFilterBypassReasons.EmailDispatchTenantOperation)
+            .AsNoTracking()
+            .Where(intent => intent.TenantId == tenantId
+                && intent.FanoutOccurrenceId == occurrenceId
+                && !intent.IsDeleted)
+            .Select(intent => intent.Id)
+            .ToArrayAsync(cancellationToken);
+        if (intentIds.Length == 0)
+        {
+            return new NotificationFanoutEmailSuppressionResult(0, 0);
+        }
+
+        Guid[] outboxIds = await dbContext.EmailDispatchOutbox
+            .IgnoreTenantFilter(TenantFilterBypassReasons.EmailDispatchTenantOperation)
+            .AsNoTracking()
+            .Where(outbox => outbox.TenantId == tenantId
+                && intentIds.Contains(outbox.NotificationIntentId)
+                && !outbox.IsDeleted
+                && outbox.ContentRedactedAt == null
+                && (outbox.Status == EmailDispatchStatus.Pending
+                    || outbox.Status == EmailDispatchStatus.RetryScheduled
+                    || outbox.Status == EmailDispatchStatus.Processing)
+                && (outbox.Status != EmailDispatchStatus.Processing
+                    || (!dbContext.EmailDispatchAttempts
+                            .IgnoreTenantFilter(TenantFilterBypassReasons.EmailDispatchTenantOperation)
+                            .Any(attempt => attempt.TenantId == outbox.TenantId
+                                && attempt.EmailDispatchOutboxId == outbox.Id
+                                && attempt.AttemptNumber == outbox.AttemptCount
+                                && attempt.FailureCategory == ProviderHandoffStarted)
+                        && !dbContext.EmailDispatchReceipts
+                            .IgnoreTenantFilter(TenantFilterBypassReasons.EmailDispatchTenantOperation)
+                            .Any(receipt => receipt.TenantId == outbox.TenantId
+                                && receipt.EmailDispatchOutboxId == outbox.Id
+                                && receipt.Status == EmailDispatchReceiptStatus.Processing))))
+            .Select(outbox => outbox.Id)
+            .ToArrayAsync(cancellationToken);
+
+        int outboxRowsSkipped = outboxIds.Length == 0
+            ? 0
+            : await dbContext.EmailDispatchOutbox
+                .IgnoreTenantFilter(TenantFilterBypassReasons.EmailDispatchTenantOperation)
+                .Where(outbox => outbox.TenantId == tenantId
+                    && outboxIds.Contains(outbox.Id)
+                    && (outbox.Status == EmailDispatchStatus.Pending
+                        || outbox.Status == EmailDispatchStatus.RetryScheduled
+                        || outbox.Status == EmailDispatchStatus.Processing))
+                .ExecuteUpdateAsync(setters => setters
+                    .SetProperty(outbox => outbox.Status, EmailDispatchStatus.Skipped)
+                    .SetProperty(outbox => outbox.NextAttemptAt, (DateTime?)null)
+                    .SetProperty(outbox => outbox.ProcessingStartedAt, (DateTime?)null)
+                    .SetProperty(outbox => outbox.ProcessingLeaseToken, (Guid?)null)
+                    .SetProperty(outbox => outbox.LastFailureCategory, NotificationFanoutEmailSuppressionReason.Code)
+                    .SetProperty(outbox => outbox.LastError, NotificationFanoutEmailSuppressionReason.Message)
+                    .SetProperty(outbox => outbox.LastFailureAt, suppressedAt)
+                    .SetProperty(outbox => outbox.UpdatedAt, suppressedAt), cancellationToken);
+
+        int deliveryRowsSuperseded = outboxIds.Length == 0
+            ? 0
+            : await dbContext.NotificationDeliveries
+                .IgnoreTenantFilter(TenantFilterBypassReasons.EmailDispatchTenantOperation)
+                .Where(delivery => delivery.TenantId == tenantId
+                    && delivery.EmailDispatchOutboxId != null
+                    && outboxIds.Contains(delivery.EmailDispatchOutboxId.Value)
+                    && delivery.ChannelId == (int)NotificationPreferenceChannelEnum.Email
+                    && (delivery.StatusId == (int)NotificationDeliveryStatusEnum.Pending
+                        || delivery.StatusId == (int)NotificationDeliveryStatusEnum.Queued))
+                .ExecuteUpdateAsync(setters => setters
+                    .SetProperty(delivery => delivery.StatusId, (int)NotificationDeliveryStatusEnum.Superseded)
+                    .SetProperty(delivery => delivery.ProviderStatus, NotificationFanoutEmailSuppressionReason.ProviderStatus)
+                    .SetProperty(delivery => delivery.FailureCategory, NotificationFanoutEmailSuppressionReason.Code)
+                    .SetProperty(delivery => delivery.CompletedAt, suppressedAt)
+                    .SetProperty(delivery => delivery.UpdatedAt, suppressedAt), cancellationToken);
+
+        Guid[] notificationIds = await dbContext.NotificationDeliveries
+            .IgnoreTenantFilter(TenantFilterBypassReasons.EmailDispatchTenantOperation)
+            .AsNoTracking()
+            .Where(delivery => delivery.TenantId == tenantId
+                && intentIds.Contains(delivery.NotificationIntentId)
+                && delivery.ChannelId == (int)NotificationPreferenceChannelEnum.InApp
+                && delivery.NotificationId != null
+                && (delivery.StatusId == (int)NotificationDeliveryStatusEnum.Pending
+                    || delivery.StatusId == (int)NotificationDeliveryStatusEnum.Delivered))
+            .Select(delivery => delivery.NotificationId!.Value)
+            .Distinct()
+            .ToArrayAsync(cancellationToken);
+
+        int notificationsSuppressed = notificationIds.Length == 0
+            ? 0
+            : await dbContext.Notifications
+                .IgnoreTenantFilter(TenantFilterBypassReasons.EmailDispatchTenantOperation)
+                .Where(notification => notification.TenantId == tenantId
+                    && notificationIds.Contains(notification.Id)
+                    && !notification.IsDeleted)
+                .ExecuteUpdateAsync(setters => setters
+                    .SetProperty(notification => notification.IsDeleted, true)
+                    .SetProperty(notification => notification.DeletedAt, suppressedAt)
+                    .SetProperty(notification => notification.UpdatedAt, suppressedAt), cancellationToken);
+
+        int inAppDeliveryRowsSuperseded = notificationIds.Length == 0
+            ? 0
+            : await dbContext.NotificationDeliveries
+                .IgnoreTenantFilter(TenantFilterBypassReasons.EmailDispatchTenantOperation)
+                .Where(delivery => delivery.TenantId == tenantId
+                    && delivery.NotificationId != null
+                    && notificationIds.Contains(delivery.NotificationId.Value)
+                    && delivery.ChannelId == (int)NotificationPreferenceChannelEnum.InApp
+                    && delivery.StatusId == (int)NotificationDeliveryStatusEnum.Pending)
+                .ExecuteUpdateAsync(setters => setters
+                    .SetProperty(delivery => delivery.StatusId, (int)NotificationDeliveryStatusEnum.Superseded)
+                    .SetProperty(delivery => delivery.ProviderStatus, NotificationFanoutEmailSuppressionReason.ProviderStatus)
+                    .SetProperty(delivery => delivery.FailureCategory, NotificationFanoutEmailSuppressionReason.Code)
+                    .SetProperty(delivery => delivery.CompletedAt, suppressedAt)
+                    .SetProperty(delivery => delivery.UpdatedAt, suppressedAt), cancellationToken);
+
+        return new NotificationFanoutEmailSuppressionResult(
+            outboxRowsSkipped,
+            deliveryRowsSuperseded,
+            notificationsSuppressed,
+            inAppDeliveryRowsSuperseded);
     }
 
     private static void AddParameter(

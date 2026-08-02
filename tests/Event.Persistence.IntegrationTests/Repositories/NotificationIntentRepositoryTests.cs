@@ -92,11 +92,10 @@ public class NotificationIntentRepositoryTests(PostgreSqlContainerFixture fixtur
 
         Tenant tenant = CreateTenant("fenced-orchestration");
         (User User, TenantUser TenantUser) recipient = CreateTenantRecipient(tenant, "fenced-orchestration");
-        FencedErasureState erasureState = CreateFencedErasureState(recipient.User.Id);
+        PrivacyErasureSaga erasureState = CreateFencedErasureState(recipient.User.Id);
         context.Tenants.Add(tenant);
         context.TenantUsers.Add(recipient.TenantUser);
-        context.PrivacyErasureIntents.Add(erasureState.Intent);
-        context.PrivacyErasureSagas.Add(erasureState.Saga);
+        context.PrivacyErasureSagas.Add(erasureState);
         await context.SaveChangesAsync();
 
         var orchestrator = CreateOrchestrator(
@@ -423,7 +422,7 @@ public class NotificationIntentRepositoryTests(PostgreSqlContainerFixture fixtur
         await Assert.That(delegations).IsEqualTo(0);
     }
 
-    private static FencedErasureState CreateFencedErasureState(Guid userId)
+    private static PrivacyErasureSaga CreateFencedErasureState(Guid userId)
     {
         DateTime nowUtc = DateTime.UtcNow;
         PrivacyErasureIntent intent = PrivacyErasureIntent.Record(
@@ -435,9 +434,7 @@ public class NotificationIntentRepositoryTests(PostgreSqlContainerFixture fixtur
             1,
             nowUtc,
             nowUtc);
-        return new FencedErasureState(
-            intent,
-            PrivacyErasureSaga.Start(intent, 1, new byte[32], nowUtc.AddMinutes(5), nowUtc));
+        return PrivacyErasureSaga.Start(intent, 1, new byte[32], nowUtc.AddMinutes(5), nowUtc);
     }
 
     private sealed class FixedNotificationOwnershipResolver(NotificationOwnershipDecision decision)
@@ -457,15 +454,12 @@ public class NotificationIntentRepositoryTests(PostgreSqlContainerFixture fixtur
             NotificationIntentDraft draft,
             CancellationToken cancellationToken = default)
         {
-            FencedErasureState erasureState = CreateFencedErasureState(recipientUserId);
-            context.PrivacyErasureIntents.Add(erasureState.Intent);
-            context.PrivacyErasureSagas.Add(erasureState.Saga);
+            PrivacyErasureSaga erasureState = CreateFencedErasureState(recipientUserId);
+            context.PrivacyErasureSagas.Add(erasureState);
             await context.SaveChangesAsync(cancellationToken);
             return decision;
         }
     }
-
-    private sealed record FencedErasureState(PrivacyErasureIntent Intent, PrivacyErasureSaga Saga);
 
     private sealed record TestTenantContext(Guid TenantId) : ITenantContext;
 }

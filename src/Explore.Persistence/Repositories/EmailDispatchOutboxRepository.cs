@@ -6,6 +6,7 @@ using System.Data.Common;
 using Explore.Application.Contracts.Persistence;
 using Explore.Domain;
 using Explore.Domain.Enums;
+using Explore.Persistence.Database;
 using Explore.Persistence.QueryFilters;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
@@ -266,6 +267,7 @@ public class EmailDispatchOutboxRepository : IEmailDispatchOutboxRepository
             request.OptionalReminderBacklogHighWatermark,
             request.OptionalReminderBacklogLowWatermark,
             command => ExecuteBatchClaimAsync(command, request, cancellationToken),
+            () => ExecuteBatchClaimPortableAsync(request, cancellationToken),
             cancellationToken);
 
         return await LoadClaimedRowsAsync(claimedIds, cancellationToken);
@@ -282,6 +284,7 @@ public class EmailDispatchOutboxRepository : IEmailDispatchOutboxRepository
             request.OptionalReminderBacklogHighWatermark,
             request.OptionalReminderBacklogLowWatermark,
             command => ExecuteSpecificClaimAsync(command, request, cancellationToken),
+            () => ExecuteSpecificClaimPortableAsync(request, cancellationToken),
             cancellationToken,
             request.TenantId,
             request.PublishEventId);
@@ -298,7 +301,7 @@ public class EmailDispatchOutboxRepository : IEmailDispatchOutboxRepository
         EventReminderSupersessionRequest request,
         CancellationToken cancellationToken)
     {
-        NotificationFanoutPrecedenceLock.EnsureActivePostgresTransaction(_dbContext);
+        NotificationFanoutPrecedenceLock.EnsureActiveTransaction(_dbContext);
         if (request.TenantId == Guid.Empty
             || request.EventId == Guid.Empty
             || request.SupersededAt.Kind != DateTimeKind.Utc
@@ -308,11 +311,16 @@ public class EmailDispatchOutboxRepository : IEmailDispatchOutboxRepository
             throw new ArgumentException("Reminder supersession requires exact tenant/event authority, a UTC time, and a bounded reason.", nameof(request));
         }
 
-        await NotificationFanoutPrecedenceLock.AcquireAsync(
+        await using IAsyncDisposable eventPrecedenceLease = await NotificationFanoutPrecedenceLock.AcquireAsync(
             _dbContext,
             request.TenantId,
             request.EventId,
             cancellationToken);
+
+        if (_dbContext.Database.ProviderName != RelationalNamedLock.PostgreSqlProvider)
+        {
+            return await SuppressEventRemindersPortableAsync(request, cancellationToken);
+        }
 
         string? sessionSuffix = request.SessionId.HasValue ? $":session:{request.SessionId.Value:N}" : null;
         await using DbCommand command = CreateReminderCommand(
@@ -440,7 +448,7 @@ public class EmailDispatchOutboxRepository : IEmailDispatchOutboxRepository
         EventReminderRescheduleRequest request,
         CancellationToken cancellationToken)
     {
-        NotificationFanoutPrecedenceLock.EnsureActivePostgresTransaction(_dbContext);
+        NotificationFanoutPrecedenceLock.EnsureActiveTransaction(_dbContext);
         if (request.TenantId == Guid.Empty
             || request.EventId == Guid.Empty
             || request.ChangedAt.Kind != DateTimeKind.Utc
@@ -449,7 +457,16 @@ public class EmailDispatchOutboxRepository : IEmailDispatchOutboxRepository
             throw new ArgumentException("Reminder rescheduling requires exact tenant/event authority, positive lead time, and a UTC time.", nameof(request));
         }
 
-        await NotificationFanoutPrecedenceLock.AcquireAsync(_dbContext, request.TenantId, request.EventId, cancellationToken);
+        await using IAsyncDisposable eventPrecedenceLease = await NotificationFanoutPrecedenceLock.AcquireAsync(
+            _dbContext,
+            request.TenantId,
+            request.EventId,
+            cancellationToken);
+        if (_dbContext.Database.ProviderName != RelationalNamedLock.PostgreSqlProvider)
+        {
+            return await RescheduleEventRemindersPortableAsync(request, cancellationToken);
+        }
+
         string title = string.IsNullOrWhiteSpace(request.EventTitle) ? "the event" : request.EventTitle.Trim();
         string htmlTitle = System.Net.WebUtility.HtmlEncode(title);
         string timeZoneId = Explore.Domain.Services.Scheduling.ScheduleTimeZoneResolver.NormalizeOrUtc(
@@ -605,26 +622,57 @@ public class EmailDispatchOutboxRepository : IEmailDispatchOutboxRepository
         {
             _dbContext.ChangeTracker.Clear();
             await using var transaction = await _dbContext.Database.BeginTransactionAsync(cancellationToken);
-            await AcquireClaimLockAsync(transaction.GetDbTransaction(), cancellationToken);
+            await using IAsyncDisposable claimLease = await AcquireClaimLockAsync(cancellationToken);
 
             var storedReason = isPaused ? Truncate(pauseReason, 500) : null;
             var pausedAt = isPaused ? changedAt : (DateTime?)null;
             var pausedBy = isPaused ? changedBy : null;
-            await _dbContext.Database.ExecuteSqlInterpolatedAsync($$"""
-                INSERT INTO email_dispatch_processor_states (
-                    id, processor_code, is_paused, pause_reason, paused_at, paused_by,
-                    optional_reminders_deferred, updated_at, updated_by)
-                VALUES (
-                    {{Guid.CreateVersion7()}}, {{SmtpProcessorCode}}, {{isPaused}}, {{storedReason}}, {{pausedAt}}, {{pausedBy}},
-                    FALSE, {{changedAt}}, {{changedBy}})
-                ON CONFLICT (processor_code) DO UPDATE
-                SET is_paused = EXCLUDED.is_paused,
-                    pause_reason = EXCLUDED.pause_reason,
-                    paused_at = EXCLUDED.paused_at,
-                    paused_by = EXCLUDED.paused_by,
-                    updated_at = EXCLUDED.updated_at,
-                    updated_by = EXCLUDED.updated_by
-                """, cancellationToken);
+            if (_dbContext.Database.ProviderName == RelationalNamedLock.PostgreSqlProvider)
+            {
+                await _dbContext.Database.ExecuteSqlInterpolatedAsync($$"""
+                    INSERT INTO email_dispatch_processor_states (
+                        id, processor_code, is_paused, pause_reason, paused_at, paused_by,
+                        optional_reminders_deferred, updated_at, updated_by)
+                    VALUES (
+                        {{Guid.CreateVersion7()}}, {{SmtpProcessorCode}}, {{isPaused}}, {{storedReason}}, {{pausedAt}}, {{pausedBy}},
+                        FALSE, {{changedAt}}, {{changedBy}})
+                    ON CONFLICT (processor_code) DO UPDATE
+                    SET is_paused = EXCLUDED.is_paused,
+                        pause_reason = EXCLUDED.pause_reason,
+                        paused_at = EXCLUDED.paused_at,
+                        paused_by = EXCLUDED.paused_by,
+                        updated_at = EXCLUDED.updated_at,
+                        updated_by = EXCLUDED.updated_by
+                    """, cancellationToken);
+            }
+            else
+            {
+                int updated = await _dbContext.EmailDispatchProcessorStates
+                    .Where(state => state.ProcessorCode == SmtpProcessorCode)
+                    .ExecuteUpdateAsync(setters => setters
+                        .SetProperty(state => state.IsPaused, isPaused)
+                        .SetProperty(state => state.PauseReason, storedReason)
+                        .SetProperty(state => state.PausedAt, pausedAt)
+                        .SetProperty(state => state.PausedBy, pausedBy)
+                        .SetProperty(state => state.UpdatedAt, changedAt)
+                        .SetProperty(state => state.UpdatedBy, changedBy), cancellationToken);
+                if (updated == 0)
+                {
+                    _dbContext.EmailDispatchProcessorStates.Add(new EmailDispatchProcessorState
+                    {
+                        Id = Guid.CreateVersion7(),
+                        ProcessorCode = SmtpProcessorCode,
+                        IsPaused = isPaused,
+                        PauseReason = storedReason,
+                        PausedAt = pausedAt,
+                        PausedBy = pausedBy,
+                        OptionalRemindersDeferred = false,
+                        UpdatedAt = changedAt,
+                        UpdatedBy = changedBy
+                    });
+                    await _dbContext.SaveChangesAsync(cancellationToken);
+                }
+            }
 
             var state = await _dbContext.EmailDispatchProcessorStates
                 .AsNoTracking()
@@ -645,6 +693,15 @@ public class EmailDispatchOutboxRepository : IEmailDispatchOutboxRepository
             throw new ArgumentOutOfRangeException(nameof(rateLimitPerMinute));
         }
 
+        if (_dbContext.Database.ProviderName != RelationalNamedLock.PostgreSqlProvider)
+        {
+            return await SetGlobalSmtpRateLimitOverridePortableAsync(
+                rateLimitPerMinute,
+                changedBy,
+                changedAt,
+                cancellationToken);
+        }
+
         await _dbContext.Database.ExecuteSqlInterpolatedAsync($$"""
             INSERT INTO email_dispatch_processor_states (
                 id, processor_code, is_paused, global_smtp_rate_limit_per_minute_override,
@@ -663,6 +720,51 @@ public class EmailDispatchOutboxRepository : IEmailDispatchOutboxRepository
         return await _dbContext.EmailDispatchProcessorStates
             .AsNoTracking()
             .SingleAsync(state => state.ProcessorCode == SmtpProcessorCode, cancellationToken);
+    }
+
+    private async Task<EmailDispatchProcessorState> SetGlobalSmtpRateLimitOverridePortableAsync(
+        int? rateLimitPerMinute,
+        Guid? changedBy,
+        DateTime changedAt,
+        CancellationToken cancellationToken)
+    {
+        var strategy = _dbContext.Database.CreateExecutionStrategy();
+        return await strategy.ExecuteAsync(async () =>
+        {
+            _dbContext.ChangeTracker.Clear();
+            await using var transaction = await _dbContext.Database.BeginTransactionAsync(
+                IsolationLevel.Serializable,
+                cancellationToken);
+            await using IAsyncDisposable claimLease = await AcquireClaimLockAsync(cancellationToken);
+            int updated = await _dbContext.EmailDispatchProcessorStates
+                .Where(state => state.ProcessorCode == SmtpProcessorCode)
+                .ExecuteUpdateAsync(setters => setters
+                    .SetProperty(state => state.GlobalSmtpRateLimitPerMinuteOverride, rateLimitPerMinute)
+                    .SetProperty(state => state.SmtpAvailableTokens, (int?)null)
+                    .SetProperty(state => state.SmtpRefillAt, (DateTime?)null)
+                    .SetProperty(state => state.UpdatedAt, changedAt)
+                    .SetProperty(state => state.UpdatedBy, changedBy), cancellationToken);
+            if (updated == 0)
+            {
+                _dbContext.EmailDispatchProcessorStates.Add(new EmailDispatchProcessorState
+                {
+                    Id = Guid.CreateVersion7(),
+                    ProcessorCode = SmtpProcessorCode,
+                    IsPaused = false,
+                    GlobalSmtpRateLimitPerMinuteOverride = rateLimitPerMinute,
+                    OptionalRemindersDeferred = false,
+                    UpdatedAt = changedAt,
+                    UpdatedBy = changedBy
+                });
+                await _dbContext.SaveChangesAsync(cancellationToken);
+            }
+
+            EmailDispatchProcessorState state = await _dbContext.EmailDispatchProcessorStates
+                .AsNoTracking()
+                .SingleAsync(value => value.ProcessorCode == SmtpProcessorCode, cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
+            return state;
+        });
     }
 
     private IQueryable<EmailDispatchOutbox> ActiveDispatchRows()
@@ -732,6 +834,17 @@ public class EmailDispatchOutboxRepository : IEmailDispatchOutboxRepository
         DateTime changedAt,
         CancellationToken cancellationToken)
     {
+        if (_dbContext.Database.ProviderName != RelationalNamedLock.PostgreSqlProvider)
+        {
+            return await SetTenantPauseStatePortableAsync(
+                tenantId,
+                isPaused,
+                pauseReason,
+                changedBy,
+                changedAt,
+                cancellationToken);
+        }
+
         var storedReason = isPaused ? Truncate(pauseReason, 500) : null;
         var pausedAt = isPaused ? changedAt : (DateTime?)null;
         var pausedBy = isPaused ? changedBy : null;
@@ -755,6 +868,62 @@ public class EmailDispatchOutboxRepository : IEmailDispatchOutboxRepository
             .IgnoreTenantFilter(TenantFilterBypassReasons.EmailDispatchTenantOperation)
             .AsNoTracking()
             .SingleAsync(control => control.TenantId == tenantId, cancellationToken);
+    }
+
+    private async Task<EmailDispatchTenantControl> SetTenantPauseStatePortableAsync(
+        Guid tenantId,
+        bool isPaused,
+        string? pauseReason,
+        Guid? changedBy,
+        DateTime changedAt,
+        CancellationToken cancellationToken)
+    {
+        var strategy = _dbContext.Database.CreateExecutionStrategy();
+        return await strategy.ExecuteAsync(async () =>
+        {
+            _dbContext.ChangeTracker.Clear();
+            await using var transaction = await _dbContext.Database.BeginTransactionAsync(
+                IsolationLevel.Serializable,
+                cancellationToken);
+            await using IAsyncDisposable claimLease = await AcquireClaimLockAsync(cancellationToken);
+            string? storedReason = isPaused ? Truncate(pauseReason, 500) : null;
+            DateTime? pausedAt = isPaused ? changedAt : null;
+            Guid? pausedBy = isPaused ? changedBy : null;
+            int updated = await _dbContext.EmailDispatchTenantControls
+                .IgnoreTenantFilter(TenantFilterBypassReasons.EmailDispatchTenantOperation)
+                .Where(control => control.TenantId == tenantId)
+                .ExecuteUpdateAsync(setters => setters
+                    .SetProperty(control => control.IsPaused, isPaused)
+                    .SetProperty(control => control.PauseReason, storedReason)
+                    .SetProperty(control => control.PausedAt, pausedAt)
+                    .SetProperty(control => control.PausedBy, pausedBy)
+                    .SetProperty(control => control.UpdatedAt, changedAt)
+                    .SetProperty(control => control.UpdatedBy, changedBy), cancellationToken);
+            if (updated == 0)
+            {
+                _dbContext.EmailDispatchTenantControls.Add(new EmailDispatchTenantControl
+                {
+                    Id = Guid.CreateVersion7(),
+                    TenantId = tenantId,
+                    IsPaused = isPaused,
+                    PauseReason = storedReason,
+                    PausedAt = pausedAt,
+                    PausedBy = pausedBy,
+                    CreatedAt = changedAt,
+                    CreatedBy = changedBy,
+                    UpdatedAt = changedAt,
+                    UpdatedBy = changedBy
+                });
+                await _dbContext.SaveChangesAsync(cancellationToken);
+            }
+
+            EmailDispatchTenantControl control = await _dbContext.EmailDispatchTenantControls
+                .IgnoreTenantFilter(TenantFilterBypassReasons.EmailDispatchTenantOperation)
+                .AsNoTracking()
+                .SingleAsync(value => value.TenantId == tenantId, cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
+            return control;
+        });
     }
 
     public async Task<bool> TryParkForOperator(
@@ -1247,7 +1416,8 @@ public class EmailDispatchOutboxRepository : IEmailDispatchOutboxRepository
         DateTime claimedAt,
         int highWatermark,
         int lowWatermark,
-        Func<DbTransaction, Task<IReadOnlyList<Guid>>> executeClaim,
+        Func<DbTransaction, Task<IReadOnlyList<Guid>>> executePostgreSqlClaim,
+        Func<Task<IReadOnlyList<Guid>>> executePortableClaim,
         CancellationToken cancellationToken,
         Guid? tenantId = null,
         Guid? publishEventId = null)
@@ -1255,50 +1425,82 @@ public class EmailDispatchOutboxRepository : IEmailDispatchOutboxRepository
         var strategy = _dbContext.Database.CreateExecutionStrategy();
         return await strategy.ExecuteAsync(async () =>
         {
-            await using var transaction = await _dbContext.Database.BeginTransactionAsync(cancellationToken);
+            _dbContext.ChangeTracker.Clear();
+            bool isPostgreSql = _dbContext.Database.ProviderName == RelationalNamedLock.PostgreSqlProvider;
+            await using var transaction = isPostgreSql
+                ? await _dbContext.Database.BeginTransactionAsync(cancellationToken)
+                : await _dbContext.Database.BeginTransactionAsync(IsolationLevel.Serializable, cancellationToken);
             var dbTransaction = transaction.GetDbTransaction();
-            await AcquireClaimLockAsync(dbTransaction, cancellationToken);
-            await EnsureProcessorStateAsync(dbTransaction, claimedAt, cancellationToken);
-            if (await IsProcessorPausedAsync(dbTransaction, cancellationToken))
+            await using IAsyncDisposable claimLease = await AcquireClaimLockAsync(cancellationToken);
+            if (isPostgreSql)
+            {
+                await EnsureProcessorStateAsync(dbTransaction, claimedAt, cancellationToken);
+            }
+            else
+            {
+                await EnsureProcessorStatePortableAsync(claimedAt, cancellationToken);
+            }
+
+            bool isPaused = isPostgreSql
+                ? await IsProcessorPausedAsync(dbTransaction, cancellationToken)
+                : await _dbContext.EmailDispatchProcessorStates
+                    .AsNoTracking()
+                    .AnyAsync(state => state.ProcessorCode == SmtpProcessorCode && state.IsPaused, cancellationToken);
+            if (isPaused)
             {
                 await transaction.CommitAsync(cancellationToken);
                 return [];
             }
 
-            var previousClaim = await FindExistingClaimAsync(
-                dbTransaction,
-                leaseToken,
-                tenantId,
-                publishEventId,
-                cancellationToken);
+            IReadOnlyList<Guid> previousClaim = isPostgreSql
+                ? await FindExistingClaimAsync(
+                    dbTransaction,
+                    leaseToken,
+                    tenantId,
+                    publishEventId,
+                    cancellationToken)
+                : await FindExistingClaimPortableAsync(
+                    leaseToken,
+                    tenantId,
+                    publishEventId,
+                    cancellationToken);
             if (previousClaim.Count > 0)
             {
                 await transaction.CommitAsync(cancellationToken);
                 return previousClaim;
             }
 
-            await UpdateOptionalReminderHysteresisAsync(
-                dbTransaction,
-                claimedAt,
-                highWatermark,
-                lowWatermark,
-                cancellationToken);
-            var claimedIds = await executeClaim(dbTransaction);
+            if (isPostgreSql)
+            {
+                await UpdateOptionalReminderHysteresisAsync(
+                    dbTransaction,
+                    claimedAt,
+                    highWatermark,
+                    lowWatermark,
+                    cancellationToken);
+            }
+            else
+            {
+                await UpdateOptionalReminderHysteresisPortableAsync(
+                    claimedAt,
+                    highWatermark,
+                    lowWatermark,
+                    cancellationToken);
+            }
+
+            IReadOnlyList<Guid> claimedIds = isPostgreSql
+                ? await executePostgreSqlClaim(dbTransaction)
+                : await executePortableClaim();
             await transaction.CommitAsync(cancellationToken);
             return claimedIds;
         });
     }
 
-    private static async Task AcquireClaimLockAsync(
-        DbTransaction transaction,
-        CancellationToken cancellationToken)
-    {
-        await using var command = CreateCommand(
-            transaction,
-            "SELECT pg_advisory_xact_lock(hashtext(@lock_name));");
-        AddParameter(command, "lock_name", ClaimAdvisoryLockName, DbType.String);
-        await command.ExecuteNonQueryAsync(cancellationToken);
-    }
+    private Task<IAsyncDisposable> AcquireClaimLockAsync(CancellationToken cancellationToken) =>
+        RelationalNamedLock.AcquireTransactionAsync(
+            _dbContext,
+            ClaimAdvisoryLockName,
+            cancellationToken);
 
     private static async Task EnsureProcessorStateAsync(
         DbTransaction transaction,
@@ -1572,6 +1774,280 @@ public class EmailDispatchOutboxRepository : IEmailDispatchOutboxRepository
         return await ReadIdsAsync(command, cancellationToken);
     }
 
+    private async Task EnsureProcessorStatePortableAsync(
+        DateTime updatedAt,
+        CancellationToken cancellationToken)
+    {
+        bool exists = await _dbContext.EmailDispatchProcessorStates
+            .AsNoTracking()
+            .AnyAsync(state => state.ProcessorCode == SmtpProcessorCode, cancellationToken);
+        if (exists)
+        {
+            return;
+        }
+
+        _dbContext.EmailDispatchProcessorStates.Add(new EmailDispatchProcessorState
+        {
+            Id = Guid.CreateVersion7(),
+            ProcessorCode = SmtpProcessorCode,
+            IsPaused = false,
+            OptionalRemindersDeferred = false,
+            UpdatedAt = updatedAt
+        });
+        await _dbContext.SaveChangesAsync(cancellationToken);
+    }
+
+    private async Task<IReadOnlyList<Guid>> FindExistingClaimPortableAsync(
+        Guid leaseToken,
+        Guid? tenantId,
+        Guid? publishEventId,
+        CancellationToken cancellationToken)
+    {
+        IQueryable<EmailDispatchOutbox> query = _dbContext.EmailDispatchOutbox
+            .IgnoreTenantFilter(TenantFilterBypassReasons.EmailDispatchWorkerCrossTenantQueue)
+            .AsNoTracking()
+            .Where(outbox => outbox.Status == EmailDispatchStatus.Processing
+                && outbox.ProcessingLeaseToken == leaseToken);
+        if (tenantId.HasValue)
+        {
+            query = query.Where(outbox => outbox.TenantId == tenantId.Value
+                && outbox.PublishEventId == publishEventId!.Value);
+        }
+
+        return await query.OrderBy(outbox => outbox.Id)
+            .Select(outbox => outbox.Id)
+            .ToArrayAsync(cancellationToken);
+    }
+
+    private async Task UpdateOptionalReminderHysteresisPortableAsync(
+        DateTime claimedAt,
+        int highWatermark,
+        int lowWatermark,
+        CancellationToken cancellationToken)
+    {
+        int coreBacklog = await _dbContext.EmailDispatchOutbox
+            .IgnoreTenantFilter(TenantFilterBypassReasons.EmailDispatchWorkerCrossTenantQueue)
+            .AsNoTracking()
+            .CountAsync(outbox => outbox.ContentRedactedAt == null
+                && !outbox.IsDeleted
+                && (outbox.Status == EmailDispatchStatus.Pending
+                    || outbox.Status == EmailDispatchStatus.RetryScheduled)
+                && (outbox.NextAttemptAt == null || outbox.NextAttemptAt <= claimedAt)
+                && (outbox.Kind != EmailDispatchKind.EventReminder
+                    || _dbContext.NotificationDeliveries
+                        .IgnoreTenantFilter(TenantFilterBypassReasons.EmailDispatchWorkerCrossTenantQueue)
+                        .Any(delivery => delivery.TenantId == outbox.TenantId
+                            && delivery.EmailDispatchOutboxId == outbox.Id
+                            && delivery.IsRequired))
+                && !_dbContext.EmailDispatchTenantControls
+                    .IgnoreTenantFilter(TenantFilterBypassReasons.EmailDispatchWorkerCrossTenantQueue)
+                    .Any(control => control.TenantId == outbox.TenantId && control.IsPaused),
+                cancellationToken);
+
+        if (coreBacklog >= highWatermark)
+        {
+            await _dbContext.EmailDispatchProcessorStates
+                .Where(state => state.ProcessorCode == SmtpProcessorCode)
+                .ExecuteUpdateAsync(setters => setters
+                    .SetProperty(state => state.OptionalRemindersDeferred, true)
+                    .SetProperty(state => state.UpdatedAt, claimedAt), cancellationToken);
+        }
+        else if (coreBacklog <= lowWatermark)
+        {
+            await _dbContext.EmailDispatchProcessorStates
+                .Where(state => state.ProcessorCode == SmtpProcessorCode)
+                .ExecuteUpdateAsync(setters => setters
+                    .SetProperty(state => state.OptionalRemindersDeferred, false)
+                    .SetProperty(state => state.UpdatedAt, claimedAt), cancellationToken);
+        }
+        else
+        {
+            await _dbContext.EmailDispatchProcessorStates
+                .Where(state => state.ProcessorCode == SmtpProcessorCode)
+                .ExecuteUpdateAsync(setters => setters
+                    .SetProperty(state => state.UpdatedAt, claimedAt), cancellationToken);
+        }
+    }
+
+    private async Task<IReadOnlyList<Guid>> ExecuteBatchClaimPortableAsync(
+        EmailDispatchBatchClaimRequest request,
+        CancellationToken cancellationToken)
+    {
+        bool optionalRemindersDeferred = await _dbContext.EmailDispatchProcessorStates
+            .AsNoTracking()
+            .Where(state => state.ProcessorCode == SmtpProcessorCode)
+            .Select(state => state.OptionalRemindersDeferred)
+            .SingleAsync(cancellationToken);
+        Dictionary<Guid, int> activeByTenant = await _dbContext.EmailDispatchOutbox
+            .IgnoreTenantFilter(TenantFilterBypassReasons.EmailDispatchWorkerCrossTenantQueue)
+            .AsNoTracking()
+            .Where(outbox => outbox.Status == EmailDispatchStatus.Processing)
+            .GroupBy(outbox => outbox.TenantId)
+            .Select(group => new { TenantId = group.Key, Count = group.Count() })
+            .ToDictionaryAsync(value => value.TenantId, value => value.Count, cancellationToken);
+        int globallyActive = activeByTenant.Values.Sum();
+        int globallyAvailable = Math.Max(
+            Math.Min(request.BatchSize, request.GlobalProcessingLimit - globallyActive),
+            0);
+        if (globallyAvailable == 0)
+        {
+            return [];
+        }
+
+        PortableClaimCandidate[] candidates = await _dbContext.EmailDispatchOutbox
+            .IgnoreTenantFilter(TenantFilterBypassReasons.EmailDispatchWorkerCrossTenantQueue)
+            .AsNoTracking()
+            .Where(outbox => outbox.ContentRedactedAt == null
+                && !outbox.IsDeleted
+                && (outbox.Status == EmailDispatchStatus.Pending
+                    || outbox.Status == EmailDispatchStatus.RetryScheduled)
+                && (outbox.NextAttemptAt == null || outbox.NextAttemptAt <= request.ClaimedAt)
+                && !_dbContext.EmailDispatchTenantControls
+                    .IgnoreTenantFilter(TenantFilterBypassReasons.EmailDispatchWorkerCrossTenantQueue)
+                    .Any(control => control.TenantId == outbox.TenantId && control.IsPaused))
+            .Select(outbox => new PortableClaimCandidate(
+                outbox.Id,
+                outbox.TenantId,
+                outbox.CreatedAt,
+                outbox.Kind,
+                _dbContext.NotificationDeliveries
+                    .IgnoreTenantFilter(TenantFilterBypassReasons.EmailDispatchWorkerCrossTenantQueue)
+                    .Any(delivery => delivery.TenantId == outbox.TenantId
+                        && delivery.EmailDispatchOutboxId == outbox.Id
+                        && delivery.IsRequired)))
+            .ToArrayAsync(cancellationToken);
+
+        var ranked = new List<PortableRankedClaim>(candidates.Length);
+        foreach (IGrouping<Guid, PortableClaimCandidate> tenantCandidates in candidates.GroupBy(value => value.TenantId))
+        {
+            int tenantAvailable = Math.Max(
+                Math.Min(
+                    request.MaxRowsPerTenant,
+                    request.TenantProcessingLimit - activeByTenant.GetValueOrDefault(tenantCandidates.Key)),
+                0);
+            int rank = 0;
+            foreach (PortableClaimCandidate candidate in tenantCandidates
+                .Where(candidate => !optionalRemindersDeferred
+                    || candidate.Kind != EmailDispatchKind.EventReminder
+                    || candidate.IsRequired)
+                .OrderBy(ClaimPriority)
+                .ThenBy(candidate => candidate.CreatedAt)
+                .ThenBy(candidate => candidate.Id)
+                .Take(tenantAvailable))
+            {
+                ranked.Add(new PortableRankedClaim(candidate, ++rank));
+            }
+        }
+
+        Guid[] selectedIds = ranked
+            .OrderBy(value => ClaimPriority(value.Candidate))
+            .ThenBy(value => value.TenantRank)
+            .ThenBy(value => value.Candidate.CreatedAt)
+            .ThenBy(value => value.Candidate.Id)
+            .Take(globallyAvailable)
+            .Select(value => value.Candidate.Id)
+            .ToArray();
+        if (selectedIds.Length == 0)
+        {
+            return [];
+        }
+
+        await _dbContext.EmailDispatchOutbox
+            .IgnoreTenantFilter(TenantFilterBypassReasons.EmailDispatchWorkerCrossTenantQueue)
+            .Where(outbox => selectedIds.Contains(outbox.Id)
+                && (outbox.Status == EmailDispatchStatus.Pending
+                    || outbox.Status == EmailDispatchStatus.RetryScheduled))
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(outbox => outbox.Status, EmailDispatchStatus.Processing)
+                .SetProperty(outbox => outbox.ProcessingStartedAt, request.ClaimedAt)
+                .SetProperty(outbox => outbox.ProcessingLeaseToken, request.LeaseToken)
+                .SetProperty(outbox => outbox.UpdatedAt, request.ClaimedAt), cancellationToken);
+        return await FindExistingClaimPortableAsync(
+            request.LeaseToken,
+            tenantId: null,
+            publishEventId: null,
+            cancellationToken: cancellationToken);
+    }
+
+    private async Task<IReadOnlyList<Guid>> ExecuteSpecificClaimPortableAsync(
+        EmailDispatchSpecificClaimRequest request,
+        CancellationToken cancellationToken)
+    {
+        int globallyActive = await _dbContext.EmailDispatchOutbox
+            .IgnoreTenantFilter(TenantFilterBypassReasons.EmailDispatchWorkerCrossTenantQueue)
+            .AsNoTracking()
+            .CountAsync(outbox => outbox.Status == EmailDispatchStatus.Processing, cancellationToken);
+        int tenantActive = await _dbContext.EmailDispatchOutbox
+            .IgnoreTenantFilter(TenantFilterBypassReasons.EmailDispatchWorkerCrossTenantQueue)
+            .AsNoTracking()
+            .CountAsync(outbox => outbox.TenantId == request.TenantId
+                && outbox.Status == EmailDispatchStatus.Processing, cancellationToken);
+        if (globallyActive >= request.GlobalProcessingLimit || tenantActive >= request.TenantProcessingLimit)
+        {
+            return [];
+        }
+
+        bool optionalRemindersDeferred = await _dbContext.EmailDispatchProcessorStates
+            .AsNoTracking()
+            .Where(state => state.ProcessorCode == SmtpProcessorCode)
+            .Select(state => state.OptionalRemindersDeferred)
+            .SingleAsync(cancellationToken);
+        Guid? candidateId = await _dbContext.EmailDispatchOutbox
+            .IgnoreTenantFilter(TenantFilterBypassReasons.EmailDispatchWorkerCrossTenantQueue)
+            .AsNoTracking()
+            .Where(outbox => outbox.TenantId == request.TenantId
+                && outbox.PublishEventId == request.PublishEventId
+                && outbox.ContentRedactedAt == null
+                && !outbox.IsDeleted
+                && (outbox.Status == EmailDispatchStatus.Pending
+                    || outbox.Status == EmailDispatchStatus.RetryScheduled)
+                && (outbox.NextAttemptAt == null || outbox.NextAttemptAt <= request.ClaimedAt)
+                && !_dbContext.EmailDispatchTenantControls
+                    .IgnoreTenantFilter(TenantFilterBypassReasons.EmailDispatchWorkerCrossTenantQueue)
+                    .Any(control => control.TenantId == outbox.TenantId && control.IsPaused)
+                && (!optionalRemindersDeferred
+                    || outbox.Kind != EmailDispatchKind.EventReminder
+                    || _dbContext.NotificationDeliveries
+                        .IgnoreTenantFilter(TenantFilterBypassReasons.EmailDispatchWorkerCrossTenantQueue)
+                        .Any(delivery => delivery.TenantId == outbox.TenantId
+                            && delivery.EmailDispatchOutboxId == outbox.Id
+                            && delivery.IsRequired)))
+            .Select(outbox => (Guid?)outbox.Id)
+            .SingleOrDefaultAsync(cancellationToken);
+        if (!candidateId.HasValue)
+        {
+            return [];
+        }
+
+        int claimed = await _dbContext.EmailDispatchOutbox
+            .IgnoreTenantFilter(TenantFilterBypassReasons.EmailDispatchWorkerCrossTenantQueue)
+            .Where(outbox => outbox.TenantId == request.TenantId
+                && outbox.Id == candidateId.Value
+                && (outbox.Status == EmailDispatchStatus.Pending
+                    || outbox.Status == EmailDispatchStatus.RetryScheduled))
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(outbox => outbox.Status, EmailDispatchStatus.Processing)
+                .SetProperty(outbox => outbox.ProcessingStartedAt, request.ClaimedAt)
+                .SetProperty(outbox => outbox.ProcessingLeaseToken, request.LeaseToken)
+                .SetProperty(outbox => outbox.UpdatedAt, request.ClaimedAt), cancellationToken);
+        return claimed == 1 ? [candidateId.Value] : [];
+    }
+
+    private static int ClaimPriority(PortableClaimCandidate candidate) => candidate.IsRequired
+        ? 0
+        : candidate.Kind == EmailDispatchKind.EventReminder
+            ? 2
+            : 1;
+
+    private sealed record PortableClaimCandidate(
+        Guid Id,
+        Guid TenantId,
+        DateTime CreatedAt,
+        EmailDispatchKind Kind,
+        bool IsRequired);
+
+    private sealed record PortableRankedClaim(PortableClaimCandidate Candidate, int TenantRank);
+
     private async Task<IReadOnlyList<EmailDispatchOutbox>> LoadClaimedRowsAsync(
         IReadOnlyList<Guid> claimedIds,
         CancellationToken cancellationToken)
@@ -1602,9 +2078,500 @@ public class EmailDispatchOutboxRepository : IEmailDispatchOutboxRepository
         return ids;
     }
 
+    private async Task<EventReminderStateChangeResult> SuppressEventRemindersPortableAsync(
+        EventReminderSupersessionRequest request,
+        CancellationToken cancellationToken)
+    {
+        ReminderIntentReference[] reminders = await LoadReminderIntentReferencesAsync(
+            request.TenantId,
+            request.EventId,
+            cancellationToken);
+        reminders = reminders
+            .Where(reminder => (!request.RegistrationOrderId.HasValue
+                    || reminder.RegistrationOrderId == request.RegistrationOrderId.Value)
+                && (!request.SessionId.HasValue || reminder.SessionId == request.SessionId.Value))
+            .ToArray();
+        Guid[] intentIds = reminders.Select(reminder => reminder.IntentId).ToArray();
+        if (intentIds.Length == 0)
+        {
+            return new EventReminderStateChangeResult(0, 0, 0, 0);
+        }
+
+        Guid[] outboxIds = await LoadSuppressibleReminderOutboxIdsAsync(
+            request.TenantId,
+            request.EventId,
+            intentIds,
+            cancellationToken);
+        int outboxRowsChanged = outboxIds.Length == 0
+            ? 0
+            : await _dbContext.EmailDispatchOutbox
+                .IgnoreTenantFilter(TenantFilterBypassReasons.EmailDispatchTenantOperation)
+                .Where(outbox => outbox.TenantId == request.TenantId
+                    && outboxIds.Contains(outbox.Id)
+                    && (outbox.Status == EmailDispatchStatus.Pending
+                        || outbox.Status == EmailDispatchStatus.RetryScheduled
+                        || outbox.Status == EmailDispatchStatus.Processing))
+                .ExecuteUpdateAsync(setters => setters
+                    .SetProperty(outbox => outbox.Status, EmailDispatchStatus.Skipped)
+                    .SetProperty(outbox => outbox.NextAttemptAt, (DateTime?)null)
+                    .SetProperty(outbox => outbox.ProcessingStartedAt, (DateTime?)null)
+                    .SetProperty(outbox => outbox.ProcessingLeaseToken, (Guid?)null)
+                    .SetProperty(outbox => outbox.LastFailureCategory, request.ReasonCode)
+                    .SetProperty(outbox => outbox.LastError, ReminderSupersededMessage)
+                    .SetProperty(outbox => outbox.LastFailureAt, request.SupersededAt)
+                    .SetProperty(outbox => outbox.UpdatedAt, request.SupersededAt), cancellationToken);
+
+        await _dbContext.NotificationIntents
+            .IgnoreTenantFilter(TenantFilterBypassReasons.EmailDispatchTenantOperation)
+            .Where(intent => intent.TenantId == request.TenantId && intentIds.Contains(intent.Id))
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(intent => intent.StatusId, (int)NotificationIntentStatusEnum.Resolved)
+                .SetProperty(intent => intent.UpdatedAt, request.SupersededAt), cancellationToken);
+
+        int deliveryRowsChanged = outboxIds.Length == 0
+            ? 0
+            : await _dbContext.NotificationDeliveries
+                .IgnoreTenantFilter(TenantFilterBypassReasons.EmailDispatchTenantOperation)
+                .Where(delivery => delivery.TenantId == request.TenantId
+                    && delivery.EmailDispatchOutboxId != null
+                    && outboxIds.Contains(delivery.EmailDispatchOutboxId.Value)
+                    && delivery.ChannelId == (int)NotificationPreferenceChannelEnum.Email
+                    && (delivery.StatusId == (int)NotificationDeliveryStatusEnum.Pending
+                        || delivery.StatusId == (int)NotificationDeliveryStatusEnum.Queued))
+                .ExecuteUpdateAsync(setters => setters
+                    .SetProperty(delivery => delivery.StatusId, (int)NotificationDeliveryStatusEnum.Superseded)
+                    .SetProperty(delivery => delivery.ProviderStatus, ReminderSupersededProviderStatus)
+                    .SetProperty(delivery => delivery.FailureCategory, request.ReasonCode)
+                    .SetProperty(delivery => delivery.CompletedAt, request.SupersededAt)
+                    .SetProperty(delivery => delivery.UpdatedAt, request.SupersededAt), cancellationToken);
+
+        Guid[] notificationIds = await _dbContext.NotificationDeliveries
+            .IgnoreTenantFilter(TenantFilterBypassReasons.EmailDispatchTenantOperation)
+            .AsNoTracking()
+            .Where(delivery => delivery.TenantId == request.TenantId
+                && intentIds.Contains(delivery.NotificationIntentId)
+                && delivery.ChannelId == (int)NotificationPreferenceChannelEnum.InApp
+                && delivery.NotificationId != null)
+            .Select(delivery => delivery.NotificationId!.Value)
+            .Distinct()
+            .ToArrayAsync(cancellationToken);
+        int notificationRowsChanged = notificationIds.Length == 0
+            ? 0
+            : await _dbContext.Notifications
+                .IgnoreTenantFilter(TenantFilterBypassReasons.EmailDispatchTenantOperation)
+                .Where(notification => notification.TenantId == request.TenantId
+                    && notificationIds.Contains(notification.Id)
+                    && !notification.IsDeleted)
+                .ExecuteUpdateAsync(setters => setters
+                    .SetProperty(notification => notification.IsDeleted, true)
+                    .SetProperty(notification => notification.DeletedAt, request.SupersededAt)
+                    .SetProperty(notification => notification.UpdatedAt, request.SupersededAt), cancellationToken);
+        int inAppDeliveryRowsChanged = notificationIds.Length == 0
+            ? 0
+            : await _dbContext.NotificationDeliveries
+                .IgnoreTenantFilter(TenantFilterBypassReasons.EmailDispatchTenantOperation)
+                .Where(delivery => delivery.TenantId == request.TenantId
+                    && delivery.NotificationId != null
+                    && notificationIds.Contains(delivery.NotificationId.Value)
+                    && delivery.ChannelId == (int)NotificationPreferenceChannelEnum.InApp
+                    && (delivery.StatusId == (int)NotificationDeliveryStatusEnum.Pending
+                        || delivery.StatusId == (int)NotificationDeliveryStatusEnum.Queued))
+                .ExecuteUpdateAsync(setters => setters
+                    .SetProperty(delivery => delivery.StatusId, (int)NotificationDeliveryStatusEnum.Superseded)
+                    .SetProperty(delivery => delivery.ProviderStatus, ReminderSupersededProviderStatus)
+                    .SetProperty(delivery => delivery.FailureCategory, request.ReasonCode)
+                    .SetProperty(delivery => delivery.CompletedAt, request.SupersededAt)
+                    .SetProperty(delivery => delivery.UpdatedAt, request.SupersededAt), cancellationToken);
+
+        return new EventReminderStateChangeResult(
+            outboxRowsChanged,
+            deliveryRowsChanged,
+            notificationRowsChanged,
+            inAppDeliveryRowsChanged);
+    }
+
+    private async Task<EventReminderStateChangeResult> RescheduleEventRemindersPortableAsync(
+        EventReminderRescheduleRequest request,
+        CancellationToken cancellationToken)
+    {
+        ReminderIntentReference[] reminders = await LoadReminderIntentReferencesAsync(
+            request.TenantId,
+            request.EventId,
+            cancellationToken);
+        reminders = reminders
+            .Where(reminder => !request.RegistrationOrderId.HasValue
+                || reminder.RegistrationOrderId == request.RegistrationOrderId.Value)
+            .ToArray();
+        if (request.SessionId.HasValue)
+        {
+            Guid requestedSessionId = request.SessionId.Value;
+            Guid[] affectedOrderIds = await _dbContext.EventRegistrations
+                .IgnoreTenantFilter(TenantFilterBypassReasons.EmailDispatchTenantOperation)
+                .AsNoTracking()
+                .Where(registration => registration.TenantId == request.TenantId
+                    && registration.EventId == request.EventId
+                    && registration.EventSessionId == requestedSessionId
+                    && registration.RegistrationOrderId != null
+                    && registration.ApprovalStatusId == (int)ApprovalStatusEnum.Approved
+                    && !registration.IsDeleted)
+                .Select(registration => registration.RegistrationOrderId!.Value)
+                .Distinct()
+                .ToArrayAsync(cancellationToken);
+            reminders = reminders
+                .Where(reminder => reminder.SessionId == requestedSessionId
+                    || affectedOrderIds.Contains(reminder.RegistrationOrderId))
+                .ToArray();
+        }
+
+        if (reminders.Length == 0)
+        {
+            return new EventReminderStateChangeResult(0, 0, 0, 0);
+        }
+
+        string title = string.IsNullOrWhiteSpace(request.EventTitle) ? "the event" : request.EventTitle.Trim();
+        string htmlTitle = System.Net.WebUtility.HtmlEncode(title);
+        string timeZoneId = Explore.Domain.Services.Scheduling.ScheduleTimeZoneResolver.NormalizeOrUtc(
+            request.EventTimeZoneId);
+        string htmlTimeZoneId = System.Net.WebUtility.HtmlEncode(timeZoneId);
+        var changedAtOffset = new DateTimeOffset(request.ChangedAt, TimeSpan.Zero);
+        int outboxRowsChanged = 0;
+        int deliveryRowsChanged = 0;
+        int notificationRowsChanged = 0;
+        int inAppDeliveryRowsChanged = 0;
+
+        foreach (ReminderIntentReference reminder in reminders)
+        {
+            var sessions = await (
+                from parent in _dbContext.RegistrationOrders
+                    .IgnoreTenantFilter(TenantFilterBypassReasons.EmailDispatchTenantOperation)
+                    .AsNoTracking()
+                join child in _dbContext.EventRegistrations
+                    .IgnoreTenantFilter(TenantFilterBypassReasons.EmailDispatchTenantOperation)
+                    .AsNoTracking()
+                    on new { parent.TenantId, OrderId = parent.Id }
+                    equals new { child.TenantId, OrderId = child.RegistrationOrderId!.Value }
+                join session in _dbContext.EventSessions
+                    .IgnoreTenantFilter(TenantFilterBypassReasons.EmailDispatchTenantOperation)
+                    .AsNoTracking()
+                    on new { child.TenantId, child.EventId, SessionId = child.EventSessionId }
+                    equals new { session.TenantId, session.EventId, SessionId = session.Id }
+                join eventRow in _dbContext.Events
+                    .IgnoreTenantFilter(TenantFilterBypassReasons.EmailDispatchTenantOperation)
+                    .AsNoTracking()
+                    on new { parent.TenantId, parent.EventId }
+                    equals new { eventRow.TenantId, EventId = eventRow.Id }
+                where parent.TenantId == request.TenantId
+                    && parent.Id == reminder.RegistrationOrderId
+                    && parent.EventId == request.EventId
+                    && parent.AccountUserId == reminder.RecipientUserId
+                    && !parent.IsDeleted
+                    && parent.RegistrationOrderStatusId == (int)RegistrationOrderStatusEnum.Confirmed
+                    && child.LinkedUserId == parent.AccountUserId
+                    && child.EventId == parent.EventId
+                    && !child.IsDeleted
+                    && child.ApprovalStatusId == (int)ApprovalStatusEnum.Approved
+                    && !session.IsDeleted
+                    && session.EventSessionStatusId == (int)EventSessionStatusEnum.Published
+                    && session.StartTime != null
+                    && session.LocalStartDate != null
+                    && session.LocalStartTime != null
+                    && session.StartTime > changedAtOffset
+                    && !eventRow.IsDeleted
+                    && eventRow.EventStatusId == (int)EventStatusEnum.Published
+                orderby session.StartTime, session.Id
+                select new
+                {
+                    session.Id,
+                    session.StartTime,
+                    session.LocalStartDate,
+                    session.LocalStartTime,
+                    eventRow.EventTimeZoneId,
+                    eventRow.Timezone
+                })
+                .ToArrayAsync(cancellationToken);
+            var eligible = sessions.FirstOrDefault(session =>
+                Explore.Domain.Services.Scheduling.ScheduleTimeZoneResolver.NormalizeOrUtc(
+                    session.EventTimeZoneId ?? session.Timezone) == timeZoneId);
+
+            EmailDispatchOutbox? outbox = await _dbContext.EmailDispatchOutbox
+                .IgnoreTenantFilter(TenantFilterBypassReasons.EmailDispatchTenantOperation)
+                .AsNoTracking()
+                .Where(value => value.TenantId == request.TenantId
+                    && value.EventId == request.EventId
+                    && value.NotificationIntentId == reminder.IntentId
+                    && value.Kind == EmailDispatchKind.EventReminder
+                    && !value.IsDeleted
+                    && value.ContentRedactedAt == null
+                    && (value.Status == EmailDispatchStatus.Pending
+                        || value.Status == EmailDispatchStatus.RetryScheduled
+                        || value.Status == EmailDispatchStatus.Processing)
+                    && (value.Status != EmailDispatchStatus.Processing
+                        || (!_dbContext.EmailDispatchAttempts
+                                .IgnoreTenantFilter(TenantFilterBypassReasons.EmailDispatchTenantOperation)
+                                .Any(attempt => attempt.TenantId == value.TenantId
+                                    && attempt.EmailDispatchOutboxId == value.Id
+                                    && attempt.AttemptNumber == value.AttemptCount
+                                    && attempt.FailureCategory == ProviderHandoffStarted)
+                            && !_dbContext.EmailDispatchReceipts
+                                .IgnoreTenantFilter(TenantFilterBypassReasons.EmailDispatchTenantOperation)
+                                .Any(receipt => receipt.TenantId == value.TenantId
+                                    && receipt.EmailDispatchOutboxId == value.Id
+                                    && receipt.Status == EmailDispatchReceiptStatus.Processing))))
+                .SingleOrDefaultAsync(cancellationToken);
+
+            bool hasEligibleSession = eligible is not null;
+            if (outbox is not null)
+            {
+                string? plainTextBody = outbox.PlainTextBody;
+                string? htmlBody = outbox.HtmlBody;
+                string subject = outbox.Subject;
+                string? correlationId = outbox.CorrelationId;
+                DateTime? nextAttemptAt = null;
+                if (eligible is not null)
+                {
+                    DateTime startUtc = eligible.StartTime!.Value.UtcDateTime;
+                    string localStart = $"{eligible.LocalStartDate:yyyy-MM-dd} {eligible.LocalStartTime:HH\\:mm}";
+                    string instant = startUtc.ToString(
+                        "yyyy-MM-dd'T'HH:mm:ss.ffffff'Z'",
+                        System.Globalization.CultureInfo.InvariantCulture);
+                    subject = $"Reminder: {title}";
+                    plainTextBody = $"Assalamu alaykum,\n\nThis is a reminder that {title} starts at {localStart} [{timeZoneId}] ({instant}).\n\nEvent Platform";
+                    htmlBody = $"<p>Assalamu alaykum,</p><p>This is a reminder that <strong>{htmlTitle}</strong> starts at {localStart} [{htmlTimeZoneId}] ({instant}).</p><p>Event Platform</p>";
+                    correlationId = $"event-reminder:v2:{eligible.Id:N}:{startUtc.Ticks}:{timeZoneId}";
+                    DateTime scheduledAt = startUtc.Subtract(request.LeadTime);
+                    nextAttemptAt = scheduledAt > request.ChangedAt ? scheduledAt : request.ChangedAt;
+                }
+
+                int changed = await _dbContext.EmailDispatchOutbox
+                    .IgnoreTenantFilter(TenantFilterBypassReasons.EmailDispatchTenantOperation)
+                    .Where(value => value.TenantId == request.TenantId
+                        && value.Id == outbox.Id
+                        && (value.Status == EmailDispatchStatus.Pending
+                            || value.Status == EmailDispatchStatus.RetryScheduled
+                            || value.Status == EmailDispatchStatus.Processing))
+                    .ExecuteUpdateAsync(setters => setters
+                        .SetProperty(value => value.Status, hasEligibleSession
+                            ? EmailDispatchStatus.Pending
+                            : EmailDispatchStatus.Skipped)
+                        .SetProperty(value => value.NextAttemptAt, nextAttemptAt)
+                        .SetProperty(value => value.ProcessingStartedAt, (DateTime?)null)
+                        .SetProperty(value => value.ProcessingLeaseToken, (Guid?)null)
+                        .SetProperty(value => value.Subject, subject)
+                        .SetProperty(value => value.PlainTextBody, plainTextBody)
+                        .SetProperty(value => value.HtmlBody, htmlBody)
+                        .SetProperty(value => value.CorrelationId, correlationId)
+                        .SetProperty(value => value.LastFailureCategory, hasEligibleSession
+                            ? null
+                            : "event_reminder_schedule_changed")
+                        .SetProperty(value => value.LastError, hasEligibleSession ? null : ReminderSupersededMessage)
+                        .SetProperty(value => value.LastFailureAt, hasEligibleSession ? null : request.ChangedAt)
+                        .SetProperty(value => value.UpdatedAt, request.ChangedAt), cancellationToken);
+                outboxRowsChanged += changed;
+
+                deliveryRowsChanged += await _dbContext.NotificationDeliveries
+                    .IgnoreTenantFilter(TenantFilterBypassReasons.EmailDispatchTenantOperation)
+                    .Where(delivery => delivery.TenantId == request.TenantId
+                        && delivery.EmailDispatchOutboxId == outbox.Id
+                        && delivery.ChannelId == (int)NotificationPreferenceChannelEnum.Email
+                        && (delivery.StatusId == (int)NotificationDeliveryStatusEnum.Pending
+                            || delivery.StatusId == (int)NotificationDeliveryStatusEnum.Queued))
+                    .ExecuteUpdateAsync(setters => setters
+                        .SetProperty(delivery => delivery.StatusId, hasEligibleSession
+                            ? (int)NotificationDeliveryStatusEnum.Queued
+                            : (int)NotificationDeliveryStatusEnum.Superseded)
+                        .SetProperty(delivery => delivery.ProviderStatus, hasEligibleSession
+                            ? null
+                            : ReminderSupersededProviderStatus)
+                        .SetProperty(delivery => delivery.FailureCategory, hasEligibleSession
+                            ? null
+                            : "event_reminder_schedule_changed")
+                        .SetProperty(delivery => delivery.CompletedAt, hasEligibleSession ? null : request.ChangedAt)
+                        .SetProperty(delivery => delivery.UpdatedAt, request.ChangedAt), cancellationToken);
+            }
+
+            if (hasEligibleSession)
+            {
+                await _dbContext.NotificationIntents
+                    .IgnoreTenantFilter(TenantFilterBypassReasons.EmailDispatchTenantOperation)
+                    .Where(intent => intent.TenantId == request.TenantId && intent.Id == reminder.IntentId)
+                    .ExecuteUpdateAsync(setters => setters
+                        .SetProperty(intent => intent.SafePayloadReference,
+                            $"registration-order:{reminder.RegistrationOrderId:N}:session:{eligible!.Id:N}")
+                        .SetProperty(intent => intent.UpdatedAt, request.ChangedAt), cancellationToken);
+                if (outbox is not null)
+                {
+                    await _dbContext.NotificationIntents
+                        .IgnoreTenantFilter(TenantFilterBypassReasons.EmailDispatchTenantOperation)
+                        .Where(intent => intent.TenantId == request.TenantId && intent.Id == reminder.IntentId)
+                        .ExecuteUpdateAsync(setters => setters
+                            .SetProperty(intent => intent.StatusId, (int)NotificationIntentStatusEnum.DispatchQueued),
+                            cancellationToken);
+                }
+            }
+            else
+            {
+                await _dbContext.NotificationIntents
+                    .IgnoreTenantFilter(TenantFilterBypassReasons.EmailDispatchTenantOperation)
+                    .Where(intent => intent.TenantId == request.TenantId && intent.Id == reminder.IntentId)
+                    .ExecuteUpdateAsync(setters => setters
+                        .SetProperty(intent => intent.StatusId, (int)NotificationIntentStatusEnum.Resolved)
+                        .SetProperty(intent => intent.UpdatedAt, request.ChangedAt), cancellationToken);
+            }
+
+            Guid[] notificationIds = await _dbContext.NotificationDeliveries
+                .IgnoreTenantFilter(TenantFilterBypassReasons.EmailDispatchTenantOperation)
+                .AsNoTracking()
+                .Where(delivery => delivery.TenantId == request.TenantId
+                    && delivery.NotificationIntentId == reminder.IntentId
+                    && delivery.ChannelId == (int)NotificationPreferenceChannelEnum.InApp
+                    && delivery.NotificationId != null)
+                .Select(delivery => delivery.NotificationId!.Value)
+                .Distinct()
+                .ToArrayAsync(cancellationToken);
+            if (notificationIds.Length > 0)
+            {
+                string? body = eligible is null
+                    ? null
+                    : $"{title} starts at {eligible.LocalStartDate:yyyy-MM-dd} {eligible.LocalStartTime:HH\\:mm} [{timeZoneId}] ({eligible.StartTime!.Value.UtcDateTime:yyyy-MM-dd'T'HH:mm:ss.ffffff'Z'}).";
+                IQueryable<Notification> notificationQuery = _dbContext.Notifications
+                    .IgnoreTenantFilter(TenantFilterBypassReasons.EmailDispatchTenantOperation)
+                    .Where(notification => notification.TenantId == request.TenantId
+                        && notificationIds.Contains(notification.Id)
+                        && !notification.IsDeleted);
+                if (hasEligibleSession)
+                {
+                    notificationRowsChanged += await notificationQuery.ExecuteUpdateAsync(setters => setters
+                        .SetProperty(notification => notification.Title, $"Reminder: {title}")
+                        .SetProperty(notification => notification.Body, body)
+                        .SetProperty(notification => notification.EntityId, eligible!.Id.ToString())
+                        .SetProperty(notification => notification.UpdatedAt, request.ChangedAt), cancellationToken);
+                }
+                else
+                {
+                    notificationRowsChanged += await notificationQuery.ExecuteUpdateAsync(setters => setters
+                        .SetProperty(notification => notification.IsDeleted, true)
+                        .SetProperty(notification => notification.DeletedAt, request.ChangedAt)
+                        .SetProperty(notification => notification.UpdatedAt, request.ChangedAt), cancellationToken);
+                    inAppDeliveryRowsChanged += await _dbContext.NotificationDeliveries
+                        .IgnoreTenantFilter(TenantFilterBypassReasons.EmailDispatchTenantOperation)
+                        .Where(delivery => delivery.TenantId == request.TenantId
+                            && delivery.NotificationId != null
+                            && notificationIds.Contains(delivery.NotificationId.Value)
+                            && delivery.ChannelId == (int)NotificationPreferenceChannelEnum.InApp
+                            && (delivery.StatusId == (int)NotificationDeliveryStatusEnum.Pending
+                                || delivery.StatusId == (int)NotificationDeliveryStatusEnum.Queued))
+                        .ExecuteUpdateAsync(setters => setters
+                            .SetProperty(delivery => delivery.StatusId, (int)NotificationDeliveryStatusEnum.Superseded)
+                            .SetProperty(delivery => delivery.ProviderStatus, ReminderSupersededProviderStatus)
+                            .SetProperty(delivery => delivery.FailureCategory, "event_reminder_schedule_changed")
+                            .SetProperty(delivery => delivery.CompletedAt, request.ChangedAt)
+                            .SetProperty(delivery => delivery.UpdatedAt, request.ChangedAt), cancellationToken);
+                }
+            }
+        }
+
+        return new EventReminderStateChangeResult(
+            outboxRowsChanged,
+            deliveryRowsChanged,
+            notificationRowsChanged,
+            inAppDeliveryRowsChanged);
+    }
+
+    private async Task<ReminderIntentReference[]> LoadReminderIntentReferencesAsync(
+        Guid tenantId,
+        Guid eventId,
+        CancellationToken cancellationToken)
+    {
+        var intents = await _dbContext.NotificationIntents
+            .IgnoreTenantFilter(TenantFilterBypassReasons.EmailDispatchTenantOperation)
+            .AsNoTracking()
+            .Where(intent => intent.TenantId == tenantId
+                && intent.EventId == eventId
+                && intent.TemplateKey == "event.reminder"
+                && !intent.IsDeleted
+                && intent.SafePayloadReference != null)
+            .Select(intent => new
+            {
+                intent.Id,
+                intent.RecipientUserId,
+                intent.SafePayloadReference
+            })
+            .ToArrayAsync(cancellationToken);
+
+        var reminders = new List<ReminderIntentReference>(intents.Length);
+        foreach (var intent in intents)
+        {
+            if (TryParseReminderReference(intent.SafePayloadReference!, out Guid registrationOrderId, out Guid sessionId))
+            {
+                reminders.Add(new ReminderIntentReference(
+                    intent.Id,
+                    intent.RecipientUserId,
+                    registrationOrderId,
+                    sessionId));
+            }
+        }
+
+        return reminders.ToArray();
+    }
+
+    private async Task<Guid[]> LoadSuppressibleReminderOutboxIdsAsync(
+        Guid tenantId,
+        Guid eventId,
+        Guid[] intentIds,
+        CancellationToken cancellationToken)
+    {
+        return await _dbContext.EmailDispatchOutbox
+            .IgnoreTenantFilter(TenantFilterBypassReasons.EmailDispatchTenantOperation)
+            .AsNoTracking()
+            .Where(outbox => outbox.TenantId == tenantId
+                && outbox.EventId == eventId
+                && intentIds.Contains(outbox.NotificationIntentId)
+                && outbox.Kind == EmailDispatchKind.EventReminder
+                && !outbox.IsDeleted
+                && outbox.ContentRedactedAt == null
+                && (outbox.Status == EmailDispatchStatus.Pending
+                    || outbox.Status == EmailDispatchStatus.RetryScheduled
+                    || outbox.Status == EmailDispatchStatus.Processing)
+                && (outbox.Status != EmailDispatchStatus.Processing
+                    || (!_dbContext.EmailDispatchAttempts
+                            .IgnoreTenantFilter(TenantFilterBypassReasons.EmailDispatchTenantOperation)
+                            .Any(attempt => attempt.TenantId == outbox.TenantId
+                                && attempt.EmailDispatchOutboxId == outbox.Id
+                                && attempt.AttemptNumber == outbox.AttemptCount
+                                && attempt.FailureCategory == ProviderHandoffStarted)
+                        && !_dbContext.EmailDispatchReceipts
+                            .IgnoreTenantFilter(TenantFilterBypassReasons.EmailDispatchTenantOperation)
+                            .Any(receipt => receipt.TenantId == outbox.TenantId
+                                && receipt.EmailDispatchOutboxId == outbox.Id
+                                && receipt.Status == EmailDispatchReceiptStatus.Processing))))
+            .Select(outbox => outbox.Id)
+            .ToArrayAsync(cancellationToken);
+    }
+
+    private static bool TryParseReminderReference(
+        string value,
+        out Guid registrationOrderId,
+        out Guid sessionId)
+    {
+        registrationOrderId = Guid.Empty;
+        sessionId = Guid.Empty;
+        string[] segments = value.Split(':', StringSplitOptions.None);
+        return segments.Length == 4
+            && segments[0] == "registration-order"
+            && segments[2] == "session"
+            && Guid.TryParseExact(segments[1], "N", out registrationOrderId)
+            && Guid.TryParseExact(segments[3], "N", out sessionId);
+    }
+
+    private sealed record ReminderIntentReference(
+        Guid IntentId,
+        Guid? RecipientUserId,
+        Guid RegistrationOrderId,
+        Guid SessionId);
+
     private DbCommand CreateReminderCommand(string commandText)
     {
-        NotificationFanoutPrecedenceLock.EnsureActivePostgresTransaction(_dbContext);
+        NotificationFanoutPrecedenceLock.EnsureActiveTransaction(_dbContext);
         return CreateCommand(_dbContext.Database.CurrentTransaction!.GetDbTransaction(), commandText);
     }
 
@@ -1776,6 +2743,11 @@ public class EmailDispatchOutboxRepository : IEmailDispatchOutboxRepository
         EmailDispatchStaleRecoveryRequest request,
         CancellationToken cancellationToken)
     {
+        if (_dbContext.Database.ProviderName != RelationalNamedLock.PostgreSqlProvider)
+        {
+            return await RecoverStaleProcessingPortableAsync(request, cancellationToken);
+        }
+
         await using var transaction = await _dbContext.Database.BeginTransactionAsync(cancellationToken);
         var stale = await _dbContext.EmailDispatchOutbox
             .FromSqlInterpolated($$"""
@@ -1895,6 +2867,126 @@ public class EmailDispatchOutboxRepository : IEmailDispatchOutboxRepository
 
         await transaction.CommitAsync(cancellationToken);
         return new EmailDispatchStaleRecoveryResult(retryScheduled, unknown);
+    }
+
+    private async Task<EmailDispatchStaleRecoveryResult> RecoverStaleProcessingPortableAsync(
+        EmailDispatchStaleRecoveryRequest request,
+        CancellationToken cancellationToken)
+    {
+        await using var transaction = await _dbContext.Database.BeginTransactionAsync(
+            IsolationLevel.Serializable,
+            cancellationToken);
+        await using IAsyncDisposable claimLease = await AcquireClaimLockAsync(cancellationToken);
+        EmailDispatchOutbox[] stale = await _dbContext.EmailDispatchOutbox
+            .IgnoreTenantFilter(TenantFilterBypassReasons.EmailDispatchWorkerCrossTenantQueue)
+            .AsNoTracking()
+            .Where(outbox => outbox.Status == EmailDispatchStatus.Processing
+                && outbox.ProcessingStartedAt != null
+                && outbox.ProcessingStartedAt <= request.ProcessingStartedBefore)
+            .OrderBy(outbox => outbox.ProcessingStartedAt)
+            .ThenBy(outbox => outbox.Id)
+            .Take(request.BatchSize)
+            .ToArrayAsync(cancellationToken);
+
+        int retryScheduled = 0;
+        var unknownDispatches = new List<EmailDispatchOutbox>();
+        foreach (EmailDispatchOutbox outbox in stale)
+        {
+            bool providerFenced = await _dbContext.EmailDispatchAttempts
+                .IgnoreTenantFilter(TenantFilterBypassReasons.EmailDispatchWorkerCrossTenantQueue)
+                .AsNoTracking()
+                .AnyAsync(attempt => attempt.TenantId == outbox.TenantId
+                    && attempt.EmailDispatchOutboxId == outbox.Id
+                    && attempt.AttemptNumber == outbox.AttemptCount
+                    && attempt.FailureCategory == ProviderHandoffStarted, cancellationToken)
+                || await _dbContext.EmailDispatchReceipts
+                    .IgnoreTenantFilter(TenantFilterBypassReasons.EmailDispatchWorkerCrossTenantQueue)
+                    .AsNoTracking()
+                    .AnyAsync(receipt => receipt.TenantId == outbox.TenantId
+                        && receipt.EmailDispatchOutboxId == outbox.Id
+                        && receipt.Status == EmailDispatchReceiptStatus.Processing, cancellationToken);
+
+            IQueryable<EmailDispatchOutbox> fencedOutbox = _dbContext.EmailDispatchOutbox
+                .IgnoreTenantFilter(TenantFilterBypassReasons.EmailDispatchWorkerCrossTenantQueue)
+                .Where(value => value.TenantId == outbox.TenantId
+                    && value.Id == outbox.Id
+                    && value.Status == EmailDispatchStatus.Processing
+                    && value.ProcessingLeaseToken == outbox.ProcessingLeaseToken
+                    && value.AttemptCount == outbox.AttemptCount);
+            int changed;
+            if (providerFenced)
+            {
+                changed = await fencedOutbox.ExecuteUpdateAsync(setters => setters
+                    .SetProperty(value => value.Status, EmailDispatchStatus.Unknown)
+                    .SetProperty(value => value.UnknownAt, request.RecoveredAt)
+                    .SetProperty(value => value.NextAttemptAt, (DateTime?)null)
+                    .SetProperty(value => value.ProcessingStartedAt, (DateTime?)null)
+                    .SetProperty(value => value.ProcessingLeaseToken, (Guid?)null)
+                    .SetProperty(value => value.LastFailureCategory, Truncate(request.UnknownFailureCategory, 100))
+                    .SetProperty(value => value.LastError, Truncate(request.UnknownErrorMessage, MaxErrorLength))
+                    .SetProperty(value => value.LastFailureAt, request.RecoveredAt)
+                    .SetProperty(value => value.UpdatedAt, request.RecoveredAt), cancellationToken);
+                if (changed == 1)
+                {
+                    unknownDispatches.Add(outbox);
+                }
+            }
+            else
+            {
+                changed = await fencedOutbox.ExecuteUpdateAsync(setters => setters
+                    .SetProperty(value => value.Status, EmailDispatchStatus.RetryScheduled)
+                    .SetProperty(value => value.NextAttemptAt, request.RecoveredAt)
+                    .SetProperty(value => value.ProcessingStartedAt, (DateTime?)null)
+                    .SetProperty(value => value.ProcessingLeaseToken, (Guid?)null)
+                    .SetProperty(value => value.LastFailureCategory, Truncate(request.RetryFailureCategory, 100))
+                    .SetProperty(value => value.LastError, Truncate(request.RetryErrorMessage, MaxErrorLength))
+                    .SetProperty(value => value.LastFailureAt, request.RecoveredAt)
+                    .SetProperty(value => value.UpdatedAt, request.RecoveredAt), cancellationToken);
+                retryScheduled += changed;
+            }
+        }
+
+        foreach (EmailDispatchOutbox outbox in unknownDispatches)
+        {
+            await _dbContext.EmailDispatchAttempts
+                .IgnoreTenantFilter(TenantFilterBypassReasons.EmailDispatchWorkerCrossTenantQueue)
+                .Where(attempt => attempt.TenantId == outbox.TenantId
+                    && attempt.EmailDispatchOutboxId == outbox.Id
+                    && attempt.AttemptNumber == outbox.AttemptCount)
+                .ExecuteUpdateAsync(setters => setters
+                    .SetProperty(attempt => attempt.Outcome, EmailDispatchAttemptOutcome.Unknown)
+                    .SetProperty(attempt => attempt.CompletedAt, request.RecoveredAt)
+                    .SetProperty(attempt => attempt.FailureCategory, Truncate(request.UnknownFailureCategory, 100))
+                    .SetProperty(attempt => attempt.SanitizedErrorMessage, Truncate(request.UnknownErrorMessage, MaxErrorLength))
+                    .SetProperty(attempt => attempt.ProviderMessageId, (string?)null)
+                    .SetProperty(attempt => attempt.UpdatedAt, request.RecoveredAt), cancellationToken);
+            await _dbContext.EmailDispatchReceipts
+                .IgnoreTenantFilter(TenantFilterBypassReasons.EmailDispatchWorkerCrossTenantQueue)
+                .Where(receipt => receipt.TenantId == outbox.TenantId
+                    && receipt.EmailDispatchOutboxId == outbox.Id
+                    && receipt.Status == EmailDispatchReceiptStatus.Processing)
+                .ExecuteUpdateAsync(setters => setters
+                    .SetProperty(receipt => receipt.Status, EmailDispatchReceiptStatus.Unknown)
+                    .SetProperty(receipt => receipt.FailedAt, request.RecoveredAt)
+                    .SetProperty(receipt => receipt.FailureCode, Truncate(request.UnknownFailureCategory, 100))
+                    .SetProperty(receipt => receipt.FailureMessage, Truncate(request.UnknownErrorMessage, MaxReceiptFailureLength))
+                    .SetProperty(receipt => receipt.UpdatedAt, request.RecoveredAt), cancellationToken);
+            await _dbContext.NotificationDeliveries
+                .IgnoreTenantFilter(TenantFilterBypassReasons.EmailDispatchWorkerCrossTenantQueue)
+                .Where(delivery => delivery.TenantId == outbox.TenantId
+                    && delivery.EmailDispatchOutboxId == outbox.Id
+                    && delivery.ChannelId == (int)NotificationPreferenceChannelEnum.Email)
+                .ExecuteUpdateAsync(setters => setters
+                    .SetProperty(delivery => delivery.StatusId, (int)NotificationDeliveryStatusEnum.Unknown)
+                    .SetProperty(delivery => delivery.ProviderMessageId, (string?)null)
+                    .SetProperty(delivery => delivery.ProviderStatus, "unknown")
+                    .SetProperty(delivery => delivery.FailureCategory, Truncate(request.UnknownFailureCategory, 100))
+                    .SetProperty(delivery => delivery.CompletedAt, request.RecoveredAt)
+                    .SetProperty(delivery => delivery.UpdatedAt, request.RecoveredAt), cancellationToken);
+        }
+
+        await transaction.CommitAsync(cancellationToken);
+        return new EmailDispatchStaleRecoveryResult(retryScheduled, unknownDispatches.Count);
     }
 
     public async Task<EmailDispatchPreHandoffReleaseOutcome> ReleaseClaimBeforeProviderHandoff(

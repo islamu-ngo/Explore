@@ -5,6 +5,7 @@ using Explore.Application.Contracts.Persistence;
 using Explore.Application.Models.InternalEvents;
 using Explore.Domain;
 using Explore.Domain.Enums;
+using Explore.Persistence.Database;
 using Explore.Persistence.QueryFilters;
 using Microsoft.EntityFrameworkCore;
 
@@ -26,7 +27,11 @@ public sealed class NotificationFanoutOccurrenceRepository
         CancellationToken cancellationToken = default)
     {
         EnsureCoordinationTransaction();
-        await NotificationFanoutPrecedenceLock.AcquireAsync(dbContext, tenantId, eventId, cancellationToken);
+        await using IAsyncDisposable eventPrecedenceLease = await NotificationFanoutPrecedenceLock.AcquireAsync(
+            dbContext,
+            tenantId,
+            eventId,
+            cancellationToken);
         return await dbContext.EventModerationRecords
             .IgnoreTenantFilter(TenantFilterBypassReasons.TenantScopedRepositoryExactTenantPredicate)
             .AsNoTracking()
@@ -57,16 +62,16 @@ public sealed class NotificationFanoutOccurrenceRepository
 
         string normalizedSourceType = sourceType.Trim();
         string sourceKey = $"notification-fanout-source-identity:{tenantId:N}:{normalizedSourceType.Length}:{normalizedSourceType}:{sourceId:N}:{aggregateVersion:N}";
-        await AcquireTransactionLockAsync(sourceKey, cancellationToken);
-        await NotificationFanoutPrecedenceLock.AcquireAsync(dbContext, tenantId, eventId, cancellationToken);
-    }
-
-    private async Task AcquireTransactionLockAsync(string key, CancellationToken cancellationToken)
-    {
-        await dbContext.Database.ExecuteSqlInterpolatedAsync(
-            $"SELECT pg_advisory_xact_lock(hashtextextended({key}, 0))",
+        await using IAsyncDisposable sourceLease = await AcquireTransactionLockAsync(sourceKey, cancellationToken);
+        await using IAsyncDisposable eventPrecedenceLease = await NotificationFanoutPrecedenceLock.AcquireAsync(
+            dbContext,
+            tenantId,
+            eventId,
             cancellationToken);
     }
+
+    private Task<IAsyncDisposable> AcquireTransactionLockAsync(string key, CancellationToken cancellationToken) =>
+        RelationalNamedLock.AcquireTransactionAsync(dbContext, key, cancellationToken);
 
     public async Task<NotificationFanoutOccurrence?> GetBySourceIdentityForCoordinationAsync(
         Guid tenantId,
@@ -241,6 +246,6 @@ public sealed class NotificationFanoutOccurrenceRepository
 
     private void EnsureCoordinationTransaction()
     {
-        NotificationFanoutPrecedenceLock.EnsureActivePostgresTransaction(dbContext);
+        NotificationFanoutPrecedenceLock.EnsureActiveTransaction(dbContext);
     }
 }

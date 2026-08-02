@@ -6,8 +6,11 @@ using System.Data.Common;
 using Explore.Application.Contracts.Persistence;
 using Explore.Domain;
 using Explore.Domain.Enums;
+using Explore.Persistence.Database;
 using Explore.Persistence.QueryFilters;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Storage;
 
 namespace Explore.Persistence.Repositories;
@@ -114,13 +117,16 @@ public class NotificationFanoutRunRepository : GenericRepository<NotificationFan
                 }
 
                 await using var transaction = await _dbContext.Database.BeginTransactionAsync(cancellationToken);
-                await AcquireGlobalClaimLockAsync(cancellationToken);
-                await NotificationFanoutPrecedenceLock.AcquireAsync(
+                await using IAsyncDisposable globalClaimLease = await AcquireGlobalClaimLockAsync(cancellationToken);
+                await using IAsyncDisposable eventPrecedenceLease = await NotificationFanoutPrecedenceLock.AcquireAsync(
                     _dbContext,
                     tenantId,
                     eventId.Value,
                     cancellationToken);
-                await AcquireOccurrenceLockAsync(tenantId, occurrenceId, cancellationToken);
+                await using IAsyncDisposable occurrenceLease = await AcquireOccurrenceLockAsync(
+                    tenantId,
+                    occurrenceId,
+                    cancellationToken);
 
                 var occurrence = await LoadPendingOccurrenceSourceAsync(
                     tenantId,
@@ -233,13 +239,15 @@ public class NotificationFanoutRunRepository : GenericRepository<NotificationFan
             try
             {
                 await using var transaction = await _dbContext.Database.BeginTransactionAsync(cancellationToken);
-                await AcquireGlobalClaimLockAsync(cancellationToken);
+                await using IAsyncDisposable globalClaimLease = await AcquireGlobalClaimLockAsync(cancellationToken);
                 bool optionalRemindersDeferred = await UpdateOptionalReminderHysteresisAsync(
                     claimedAt,
                     optionalReminderBacklogHighWatermark,
                     optionalReminderBacklogLowWatermark,
                     cancellationToken);
-                await AcquireTenantClaimLockAsync(tenantId, cancellationToken);
+                await using IAsyncDisposable tenantClaimLease = await AcquireTenantClaimLockAsync(
+                    tenantId,
+                    cancellationToken);
                 Guid? eventId = await LoadOccurrenceEventIdHintAsync(
                     tenantId,
                     occurrenceId,
@@ -250,12 +258,15 @@ public class NotificationFanoutRunRepository : GenericRepository<NotificationFan
                     return ClaimAttempt.Unavailable;
                 }
 
-                await NotificationFanoutPrecedenceLock.AcquireAsync(
+                await using IAsyncDisposable eventPrecedenceLease = await NotificationFanoutPrecedenceLock.AcquireAsync(
                     _dbContext,
                     tenantId,
                     eventId.Value,
                     cancellationToken);
-                await AcquireOccurrenceLockAsync(tenantId, occurrenceId, cancellationToken);
+                await using IAsyncDisposable occurrenceLease = await AcquireOccurrenceLockAsync(
+                    tenantId,
+                    occurrenceId,
+                    cancellationToken);
 
                 var occurrence = await LoadPendingOccurrenceSourceAsync(
                     tenantId,
@@ -626,41 +637,28 @@ public class NotificationFanoutRunRepository : GenericRepository<NotificationFan
                 && run.ProcessingGeneration == claim.Generation
                 && run.ProcessingLeaseExpiresAt > observedAt);
 
-    private async Task AcquireOccurrenceLockAsync(
+    private Task<IAsyncDisposable> AcquireOccurrenceLockAsync(
         Guid tenantId,
         Guid occurrenceId,
         CancellationToken cancellationToken)
-    {
-        if (_dbContext.Database.ProviderName == "Npgsql.EntityFrameworkCore.PostgreSQL")
-        {
-            await _dbContext.Database.ExecuteSqlRawAsync(
-                "SELECT pg_advisory_xact_lock(hashtext({0}))",
-                [$"notification-fanout:{tenantId:N}:{occurrenceId:N}"],
-                cancellationToken);
-        }
-    }
+        => RelationalNamedLock.AcquireTransactionAsync(
+            _dbContext,
+            $"notification-fanout:{tenantId:N}:{occurrenceId:N}",
+            cancellationToken);
 
-    private async Task AcquireGlobalClaimLockAsync(CancellationToken cancellationToken)
-    {
-        if (_dbContext.Database.ProviderName == "Npgsql.EntityFrameworkCore.PostgreSQL")
-        {
-            await _dbContext.Database.ExecuteSqlRawAsync(
-                "SELECT pg_advisory_xact_lock(hashtext('notification-fanout-global-claim'))",
-                cancellationToken);
-        }
-    }
+    private Task<IAsyncDisposable> AcquireGlobalClaimLockAsync(CancellationToken cancellationToken) =>
+        RelationalNamedLock.AcquireTransactionAsync(
+            _dbContext,
+            "notification-fanout-global-claim",
+            cancellationToken);
 
-    private async Task AcquireTenantClaimLockAsync(
+    private Task<IAsyncDisposable> AcquireTenantClaimLockAsync(
         Guid tenantId,
         CancellationToken cancellationToken)
-    {
-        if (_dbContext.Database.ProviderName == "Npgsql.EntityFrameworkCore.PostgreSQL")
-        {
-            await _dbContext.Database.ExecuteSqlInterpolatedAsync(
-                $"SELECT pg_advisory_xact_lock(hashtextextended({$"notification-fanout-tenant-claim:{tenantId:N}"}, 0))",
-                cancellationToken);
-        }
-    }
+        => RelationalNamedLock.AcquireTransactionAsync(
+            _dbContext,
+            $"notification-fanout-tenant-claim:{tenantId:N}",
+            cancellationToken);
 
     private async Task<RunnableRound> LoadRunnableRoundAsync(
         DateTime claimedAt,
@@ -677,7 +675,7 @@ public class NotificationFanoutRunRepository : GenericRepository<NotificationFan
             try
             {
                 await using var transaction = await _dbContext.Database.BeginTransactionAsync(cancellationToken);
-                await AcquireGlobalClaimLockAsync(cancellationToken);
+                await using IAsyncDisposable globalClaimLease = await AcquireGlobalClaimLockAsync(cancellationToken);
                 bool optionalRemindersDeferred = await UpdateOptionalReminderHysteresisAsync(
                     claimedAt,
                     optionalReminderBacklogHighWatermark,
@@ -757,17 +755,19 @@ public class NotificationFanoutRunRepository : GenericRepository<NotificationFan
         bool deferOptionalReminders,
         CancellationToken cancellationToken)
     {
-        const string sql = """
+        string runsTable = GetTableIdentifier<NotificationFanoutRun>();
+        string occurrencesTable = GetTableIdentifier<NotificationFanoutOccurrence>();
+        string sql = $$"""
             WITH active_global AS (
                 SELECT COUNT(*)::integer AS active_count
-                FROM notification_fanout_runs
+                FROM {{runsTable}}
                 WHERE fanout_occurrence_id IS NOT NULL
                   AND status = 'processing'
                   AND processing_lease_expires_at > @claimed_at
             ),
             active_by_tenant AS (
                 SELECT tenant_id, COUNT(*)::integer AS active_count
-                FROM notification_fanout_runs
+                FROM {{runsTable}}
                 WHERE fanout_occurrence_id IS NOT NULL
                   AND status = 'processing'
                   AND processing_lease_expires_at > @claimed_at
@@ -783,8 +783,8 @@ public class NotificationFanoutRunRepository : GenericRepository<NotificationFan
                            ORDER BY occurrence.priority DESC,
                                     occurrence.occurred_at,
                                     occurrence.id) AS tenant_rank
-                FROM notification_fanout_occurrences AS occurrence
-                INNER JOIN notification_fanout_runs AS run
+                FROM {{occurrencesTable}} AS occurrence
+                INNER JOIN {{runsTable}} AS run
                    ON run.tenant_id = occurrence.tenant_id
                   AND run.fanout_occurrence_id = occurrence.id
                 LEFT JOIN active_by_tenant AS active
@@ -835,6 +835,16 @@ public class NotificationFanoutRunRepository : GenericRepository<NotificationFan
         }
 
         return candidates;
+    }
+
+    private string GetTableIdentifier<TEntity>()
+    {
+        IEntityType entityType = _dbContext.Model.FindEntityType(typeof(TEntity))
+            ?? throw new InvalidOperationException($"The {typeof(TEntity).Name} mapping is unavailable.");
+        string tableName = entityType.GetTableName()
+            ?? throw new InvalidOperationException($"The {typeof(TEntity).Name} table mapping is unavailable.");
+        string? schema = entityType.GetSchema() ?? entityType.Model.GetDefaultSchema();
+        return _dbContext.GetService<ISqlGenerationHelper>().DelimitIdentifier(tableName, schema);
     }
 
     private static void AddParameter(DbCommand command, string name, object value, DbType dbType)

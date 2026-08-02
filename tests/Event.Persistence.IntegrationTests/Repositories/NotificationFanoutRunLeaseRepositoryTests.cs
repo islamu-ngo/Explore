@@ -5,6 +5,7 @@ using Event.Persistence.IntegrationTests.Fixtures;
 using Explore.Application.Contracts.Persistence;
 using Explore.Domain;
 using Explore.Domain.Enums;
+using Explore.Persistence.Database;
 using Explore.Persistence.Repositories;
 using Microsoft.EntityFrameworkCore;
 using TUnit.Core;
@@ -493,8 +494,10 @@ public sealed class NotificationFanoutRunLeaseRepositoryTests(PostgreSqlContaine
         await using var blockingContext = fixture.CreateDbContext();
         await using var blockingTransaction = await blockingContext.Database.BeginTransactionAsync();
         string lockKey = $"notification-fanout-precedence:{scenario.TenantId:N}:{scenario.EventId:N}";
-        await blockingContext.Database.ExecuteSqlInterpolatedAsync(
-            $"SELECT pg_advisory_xact_lock(hashtextextended({lockKey}, 0))");
+        await using IAsyncDisposable blockingLease = await RelationalNamedLock.AcquireTransactionAsync(
+            blockingContext,
+            lockKey,
+            CancellationToken.None);
         NotificationFanoutOccurrence occurrence = await blockingContext.NotificationFanoutOccurrences
             .SingleAsync(item => item.TenantId == scenario.TenantId
                 && item.Id == scenario.OccurrenceId);

@@ -196,8 +196,8 @@ public sealed class NotificationIntentRepository : GenericRepository<Notificatio
             throw new NotificationFanoutOccurrenceUnavailableException();
         }
 
-        NotificationFanoutPrecedenceLock.EnsureActivePostgresTransaction(_dbContext);
-        await NotificationFanoutPrecedenceLock.AcquireAsync(
+        NotificationFanoutPrecedenceLock.EnsureActiveTransaction(_dbContext);
+        await using IAsyncDisposable eventPrecedenceLease = await NotificationFanoutPrecedenceLock.AcquireAsync(
             _dbContext,
             intent.TenantId,
             eventId,
