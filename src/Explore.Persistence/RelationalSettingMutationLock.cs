@@ -1,18 +1,12 @@
-// ABOUTME: PostgreSQL implementation of per-setting transaction-scoped mutation locking.
-// ABOUTME: Uses stable advisory keys and reuses an active unit-of-work transaction when present.
+// ABOUTME: Implements per-setting transaction-scoped mutation locking for every supported relational provider.
+// ABOUTME: Orders canonical keys deterministically and delegates cross-instance locking to the database provider.
+
+using Explore.Application.Contracts.Persistence;
+using Explore.Persistence.Database;
 
 namespace Explore.Persistence;
 
-using System.Buffers.Binary;
-using System.Data;
-using System.Data.Common;
-using System.Security.Cryptography;
-using System.Text;
-using Explore.Application.Contracts.Persistence;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Storage;
-
-public sealed class PostgresSettingMutationLock(
+public sealed class RelationalSettingMutationLock(
     ExploreDbContext dbContext,
     IUnitOfWork unitOfWork) : ISettingMutationLock
 {
@@ -22,7 +16,6 @@ public sealed class PostgresSettingMutationLock(
         CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(canonicalSettingKey);
-
         return ExecuteManyAsync([canonicalSettingKey], operation, cancellationToken);
     }
 
@@ -50,45 +43,30 @@ public sealed class PostgresSettingMutationLock(
         Func<CancellationToken, Task<T>> operation,
         CancellationToken cancellationToken)
     {
-        if (dbContext.Database.ProviderName == "Npgsql.EntityFrameworkCore.PostgreSQL")
+        var leases = new List<IAsyncDisposable>(canonicalSettingKeys.Count);
+        try
         {
             foreach (string canonicalSettingKey in canonicalSettingKeys)
             {
-                await AcquirePostgresLockAsync(canonicalSettingKey, cancellationToken);
+                leases.Add(await RelationalNamedLock.AcquireTransactionAsync(
+                    dbContext,
+                    $"explore:setting-mutation:{canonicalSettingKey}",
+                    cancellationToken));
+            }
+
+            return await operation(cancellationToken);
+        }
+        finally
+        {
+            for (int index = leases.Count - 1; index >= 0; index--)
+            {
+                await leases[index].DisposeAsync();
             }
         }
-
-        return await operation(cancellationToken);
     }
 
-    private async Task AcquirePostgresLockAsync(string canonicalSettingKey, CancellationToken cancellationToken)
-    {
-        DbConnection connection = dbContext.Database.GetDbConnection();
-        if (connection.State != ConnectionState.Open)
-        {
-            await connection.OpenAsync(cancellationToken);
-        }
-
-        await using DbCommand command = connection.CreateCommand();
-        command.CommandText = "SELECT pg_advisory_xact_lock(@key)";
-        command.Transaction = dbContext.Database.CurrentTransaction?.GetDbTransaction()
-            ?? throw new InvalidOperationException("A PostgreSQL setting mutation lock requires an active transaction.");
-
-        DbParameter parameter = command.CreateParameter();
-        parameter.ParameterName = "key";
-        parameter.Value = ComputeStableLockKey(canonicalSettingKey);
-        command.Parameters.Add(parameter);
-
-        await command.ExecuteNonQueryAsync(cancellationToken);
-    }
-
-    internal static long ComputeStableLockKey(string canonicalSettingKey)
-    {
-        string normalized = canonicalSettingKey.Trim().ToLowerInvariant();
-        byte[] bytes = Encoding.UTF8.GetBytes($"explore:setting-mutation:{normalized}");
-        byte[] hash = SHA256.HashData(bytes);
-        return BinaryPrimitives.ReadInt64BigEndian(hash);
-    }
+    internal static long ComputeStableLockKey(string canonicalSettingKey) =>
+        RelationalNamedLock.ComputeStableKey($"explore:setting-mutation:{canonicalSettingKey.Trim().ToLowerInvariant()}");
 
     internal static string[] NormalizeCanonicalKeys(IEnumerable<string> canonicalSettingKeys)
     {
