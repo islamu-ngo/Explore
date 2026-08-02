@@ -1,7 +1,6 @@
 // ABOUTME: Controller contract tests for anonymous capability-scoped and authenticated registration-order APIs.
 // ABOUTME: Verifies canonical routes, PublicTransactional safeguards, and token-safe HTTP transport.
 
-using Microsoft.AspNetCore.Mvc.Routing;
 using System.Reflection;
 using System.Text.Json;
 using Explore.API.Attributes;
@@ -22,6 +21,7 @@ using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Routing;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.OpenApi;
 using NSubstitute;

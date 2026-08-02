@@ -38,128 +38,274 @@ public sealed class RegistrationFormsController(
     private static readonly ApiNotFoundProblemDescriptor NotFoundProblem = new(
         "Registration authoring resource not found", "The requested registration authoring resource was not found.");
 
-    [HttpGet("registration-workflows", Name = RouteNames.GetRegistrationWorkflow)] [PrivateNoStore]
-    [ProducesResponseType(typeof(HalResource<RegistrationWorkflowDto>), StatusCodes.Status200OK)] [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)] [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)] [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)] [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [HttpGet("registration-workflows", Name = RouteNames.GetRegistrationWorkflow)]
+    [PrivateNoStore]
+    [ProducesResponseType(typeof(HalResource<RegistrationWorkflowDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<HalResource<RegistrationWorkflowDto>>> GetWorkflow(Guid eventId, [FromQuery] string purpose, CancellationToken ct)
         => await ToResource(await mediator.Send(new GetRegistrationWorkflowQuery(eventId, purpose), ct), workflowAssembler);
 
-    [HttpPost("registration-workflows", Name = RouteNames.CreateRegistrationWorkflow)] [EnableRateLimiting(RateLimitingExtensions.WritePolicy)]
-    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status201Created)] [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)] [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)] [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)] [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)] [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    [HttpPost("registration-workflows", Name = RouteNames.CreateRegistrationWorkflow)]
+    [EnableRateLimiting(RateLimitingExtensions.WritePolicy)]
+    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
     public Task<ActionResult<BaseCommandResponse<Guid>>> CreateWorkflow(Guid eventId, RegistrationWorkflowInput input, [FromHeader(Name = "If-Match"), Required] string? ifMatch, CancellationToken ct)
         => Send(ifMatch, stamp => new CreateRegistrationWorkflowCommand(eventId, input.Purpose, stamp), RouteNames.GetRegistrationWorkflow, _ => new { eventId, purpose = input.Purpose }, ct);
 
-    [HttpPatch("registration-workflows/{workflowId:guid}", Name = RouteNames.UpdateRegistrationWorkflow)] [EnableRateLimiting(RateLimitingExtensions.WritePolicy)]
-    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)] [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)] [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)] [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)] [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)] [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    [HttpPatch("registration-workflows/{workflowId:guid}", Name = RouteNames.UpdateRegistrationWorkflow)]
+    [EnableRateLimiting(RateLimitingExtensions.WritePolicy)]
+    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
     public Task<ActionResult<BaseCommandResponse<Guid>>> UpdateWorkflow(Guid eventId, Guid workflowId, RegistrationWorkflowInput input, [FromHeader(Name = "If-Match"), Required] string? ifMatch, CancellationToken ct)
         => Send(ifMatch, stamp => new UpdateRegistrationWorkflowCommand(eventId, workflowId, input.Purpose, stamp), null, null, ct);
 
-    [HttpPost("registration-workflows/{workflowId:guid}/requirements", Name = RouteNames.CreateRegistrationRequirement)] [EnableRateLimiting(RateLimitingExtensions.WritePolicy)]
-    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status201Created)] [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)] [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)] [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)] [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)] [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    [HttpPost("registration-workflows/{workflowId:guid}/requirements", Name = RouteNames.CreateRegistrationRequirement)]
+    [EnableRateLimiting(RateLimitingExtensions.WritePolicy)]
+    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
     public Task<ActionResult<BaseCommandResponse<Guid>>> CreateRequirement(Guid eventId, Guid workflowId, RegistrationRequirementInput input, [FromHeader(Name = "If-Match"), Required] string? ifMatch, CancellationToken ct)
         => Send(ifMatch, stamp => new CreateRegistrationRequirementCommand(eventId, workflowId, input.Ordinal, input.CriticalityId, input.CanSkip, input.CompletionEffectId, input.AnswerSyncModeId, input.AppliesToSubjectTypeId, input.AppliesToSubjectId, stamp), RouteNames.GetRegistrationWorkflow, _ => new { eventId, purpose = "registration" }, ct);
 
-    [HttpPatch("registration-workflows/{workflowId:guid}/requirements/{requirementId:guid}", Name = RouteNames.UpdateRegistrationRequirement)] [EnableRateLimiting(RateLimitingExtensions.WritePolicy)]
-    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)] [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)] [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)] [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)] [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)] [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    [HttpPatch("registration-workflows/{workflowId:guid}/requirements/{requirementId:guid}", Name = RouteNames.UpdateRegistrationRequirement)]
+    [EnableRateLimiting(RateLimitingExtensions.WritePolicy)]
+    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
     public Task<ActionResult<BaseCommandResponse<Guid>>> UpdateRequirement(Guid eventId, Guid workflowId, Guid requirementId, RegistrationRequirementInput input, [FromHeader(Name = "If-Match"), Required] string? ifMatch, CancellationToken ct)
         => Send(ifMatch, stamp => new UpdateRegistrationRequirementCommand(eventId, workflowId, requirementId, input.Ordinal, input.CriticalityId, input.CanSkip, input.CompletionEffectId, input.AnswerSyncModeId, input.AppliesToSubjectTypeId, input.AppliesToSubjectId, stamp), null, null, ct);
 
-    [HttpDelete("registration-workflows/{workflowId:guid}/requirements/{requirementId:guid}", Name = RouteNames.DeleteRegistrationRequirement)] [EnableRateLimiting(RateLimitingExtensions.WritePolicy)]
-    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)] [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)] [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)] [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)] [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)] [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    [HttpDelete("registration-workflows/{workflowId:guid}/requirements/{requirementId:guid}", Name = RouteNames.DeleteRegistrationRequirement)]
+    [EnableRateLimiting(RateLimitingExtensions.WritePolicy)]
+    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
     public Task<ActionResult<BaseCommandResponse<Guid>>> DeleteRequirement(Guid eventId, Guid workflowId, Guid requirementId, [FromHeader(Name = "If-Match"), Required] string? ifMatch, CancellationToken ct)
         => Send(ifMatch, stamp => new DeleteRegistrationRequirementCommand(eventId, workflowId, requirementId, stamp), null, null, ct);
 
-    [HttpGet("registration-forms/{formId:guid}", Name = RouteNames.GetRegistrationForm)] [PrivateNoStore]
-    [ProducesResponseType(typeof(HalResource<RegistrationFormDto>), StatusCodes.Status200OK)] [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)] [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)] [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)] [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [HttpGet("registration-forms/{formId:guid}", Name = RouteNames.GetRegistrationForm)]
+    [PrivateNoStore]
+    [ProducesResponseType(typeof(HalResource<RegistrationFormDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<HalResource<RegistrationFormDto>>> GetForm(Guid eventId, Guid formId, CancellationToken ct)
         => await ToResource(await mediator.Send(new GetRegistrationFormQuery(eventId, formId), ct), formAssembler);
 
-    [HttpPost("registration-workflows/{workflowId:guid}/forms", Name = RouteNames.CreateRegistrationForm)] [EnableRateLimiting(RateLimitingExtensions.WritePolicy)]
-    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status201Created)] [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)] [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)] [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)] [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)] [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    [HttpPost("registration-workflows/{workflowId:guid}/forms", Name = RouteNames.CreateRegistrationForm)]
+    [EnableRateLimiting(RateLimitingExtensions.WritePolicy)]
+    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
     public Task<ActionResult<BaseCommandResponse<Guid>>> CreateForm(Guid eventId, Guid workflowId, RegistrationFormInput input, [FromHeader(Name = "If-Match"), Required] string? ifMatch, CancellationToken ct)
         => Send(ifMatch, stamp => new CreateRegistrationFormCommand(eventId, workflowId, input.Namespace, input.Key, input.Name, input.LanguageTag, stamp), RouteNames.GetRegistrationForm, id => new { eventId, formId = id }, ct);
 
-    [HttpGet("registration-forms/{formId:guid}/versions/{versionId:guid}", Name = RouteNames.GetRegistrationFormVersion)] [PrivateNoStore]
-    [ProducesResponseType(typeof(HalResource<RegistrationFormVersionDto>), StatusCodes.Status200OK)] [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)] [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)] [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)] [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [HttpGet("registration-forms/{formId:guid}/versions/{versionId:guid}", Name = RouteNames.GetRegistrationFormVersion)]
+    [PrivateNoStore]
+    [ProducesResponseType(typeof(HalResource<RegistrationFormVersionDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<HalResource<RegistrationFormVersionDto>>> GetVersion(Guid eventId, Guid formId, Guid versionId, CancellationToken ct)
         => await ToResource(await mediator.Send(new GetRegistrationFormVersionQuery(eventId, formId, versionId), ct), versionAssembler);
 
-    [HttpPost("registration-forms/{formId:guid}/versions", Name = RouteNames.CreateRegistrationFormVersion)] [EnableRateLimiting(RateLimitingExtensions.WritePolicy)]
-    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status201Created)] [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)] [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)] [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)] [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)] [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    [HttpPost("registration-forms/{formId:guid}/versions", Name = RouteNames.CreateRegistrationFormVersion)]
+    [EnableRateLimiting(RateLimitingExtensions.WritePolicy)]
+    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
     public Task<ActionResult<BaseCommandResponse<Guid>>> CreateVersion(Guid eventId, Guid formId, RegistrationFormVersionInput input, [FromHeader(Name = "If-Match"), Required] string? ifMatch, CancellationToken ct)
         => Send(ifMatch, stamp => new CreateRegistrationFormVersionCommand(eventId, formId, input.CloneFromVersionId, input.LanguageTag, stamp), RouteNames.GetRegistrationFormVersion, id => new { eventId, formId, versionId = id }, ct);
 
-    [HttpPost("registration-forms/{formId:guid}/versions/{versionId:guid}/sections", Name = RouteNames.AddRegistrationFormSection)] [EnableRateLimiting(RateLimitingExtensions.WritePolicy)]
-    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status201Created)] [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)] [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)] [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)] [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)] [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    [HttpPost("registration-forms/{formId:guid}/versions/{versionId:guid}/sections", Name = RouteNames.AddRegistrationFormSection)]
+    [EnableRateLimiting(RateLimitingExtensions.WritePolicy)]
+    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
     public Task<ActionResult<BaseCommandResponse<Guid>>> AddSection(Guid eventId, Guid formId, Guid versionId, RegistrationFormSectionInput input, [FromHeader(Name = "If-Match"), Required] string? ifMatch, CancellationToken ct)
         => Send(ifMatch, stamp => new AddRegistrationFormSectionCommand(eventId, formId, versionId, input.Ordinal, input.Title, stamp), RouteNames.GetRegistrationFormVersion, _ => new { eventId, formId, versionId }, ct);
 
-    [HttpPatch("registration-forms/{formId:guid}/versions/{versionId:guid}/sections/{sectionId:guid}", Name = RouteNames.UpdateRegistrationFormSection)] [EnableRateLimiting(RateLimitingExtensions.WritePolicy)]
-    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)] [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)] [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)] [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)] [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)] [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    [HttpPatch("registration-forms/{formId:guid}/versions/{versionId:guid}/sections/{sectionId:guid}", Name = RouteNames.UpdateRegistrationFormSection)]
+    [EnableRateLimiting(RateLimitingExtensions.WritePolicy)]
+    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
     public Task<ActionResult<BaseCommandResponse<Guid>>> UpdateSection(Guid eventId, Guid formId, Guid versionId, Guid sectionId, RegistrationFormSectionInput input, [FromHeader(Name = "If-Match"), Required] string? ifMatch, CancellationToken ct)
         => Send(ifMatch, stamp => new UpdateRegistrationFormSectionCommand(eventId, formId, versionId, sectionId, input.Ordinal, input.Title, stamp), null, null, ct);
 
-    [HttpPut("registration-forms/{formId:guid}/versions/{versionId:guid}/sections/reorder", Name = RouteNames.ReorderRegistrationFormSections)] [EnableRateLimiting(RateLimitingExtensions.WritePolicy)]
-    [ProducesResponseType(typeof(HalResource<RegistrationFormVersionDto>), StatusCodes.Status200OK)] [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)] [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)] [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)] [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)] [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    [HttpPut("registration-forms/{formId:guid}/versions/{versionId:guid}/sections/reorder", Name = RouteNames.ReorderRegistrationFormSections)]
+    [EnableRateLimiting(RateLimitingExtensions.WritePolicy)]
+    [ProducesResponseType(typeof(HalResource<RegistrationFormVersionDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
     public Task<ActionResult<HalResource<RegistrationFormVersionDto>>> ReorderSections(Guid eventId, Guid formId, Guid versionId, RegistrationFormReorderInput input, [FromHeader(Name = "If-Match"), Required] string? ifMatch, CancellationToken ct)
         => Reorder(ifMatch, stamp => new ReorderRegistrationFormSectionsCommand(eventId, formId, versionId, input.OrderedIds, stamp), eventId, formId, versionId, ct);
 
-    [HttpDelete("registration-forms/{formId:guid}/versions/{versionId:guid}/sections/{sectionId:guid}", Name = RouteNames.DeleteRegistrationFormSection)] [EnableRateLimiting(RateLimitingExtensions.WritePolicy)]
-    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)] [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)] [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)] [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)] [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)] [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    [HttpDelete("registration-forms/{formId:guid}/versions/{versionId:guid}/sections/{sectionId:guid}", Name = RouteNames.DeleteRegistrationFormSection)]
+    [EnableRateLimiting(RateLimitingExtensions.WritePolicy)]
+    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
     public Task<ActionResult<BaseCommandResponse<Guid>>> DeleteSection(Guid eventId, Guid formId, Guid versionId, Guid sectionId, [FromHeader(Name = "If-Match"), Required] string? ifMatch, CancellationToken ct)
         => Send(ifMatch, stamp => new DeleteRegistrationFormSectionCommand(eventId, formId, versionId, sectionId, stamp), null, null, ct);
 
-    [HttpPost("registration-forms/{formId:guid}/versions/{versionId:guid}/sections/{sectionId:guid}/fields", Name = RouteNames.AddRegistrationFormField)] [EnableRateLimiting(RateLimitingExtensions.WritePolicy)]
-    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status201Created)] [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)] [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)] [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)] [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)] [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    [HttpPost("registration-forms/{formId:guid}/versions/{versionId:guid}/sections/{sectionId:guid}/fields", Name = RouteNames.AddRegistrationFormField)]
+    [EnableRateLimiting(RateLimitingExtensions.WritePolicy)]
+    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
     public Task<ActionResult<BaseCommandResponse<Guid>>> AddField(Guid eventId, Guid formId, Guid versionId, Guid sectionId, RegistrationFormFieldCreateInput input, [FromHeader(Name = "If-Match"), Required] string? ifMatch, CancellationToken ct)
         => Send(ifMatch, stamp => new AddRegistrationFormFieldCommand(eventId, formId, versionId, sectionId, input.Ordinal, input.Namespace, input.Key, input.Label, input.FieldTypeId, input.RetentionPolicyId, input.OrganizerVisibilityId, input.RequiresExplicitConsent, input.IsProviderTransferAllowed, input.ConsentPurposeCode, input.ConsentTextVersion, stamp), RouteNames.GetRegistrationFormVersion, _ => new { eventId, formId, versionId }, ct);
 
-    [HttpPatch("registration-forms/{formId:guid}/versions/{versionId:guid}/sections/{sectionId:guid}/fields/{fieldId:guid}", Name = RouteNames.UpdateRegistrationFormField)] [EnableRateLimiting(RateLimitingExtensions.WritePolicy)]
-    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)] [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)] [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)] [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)] [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)] [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    [HttpPatch("registration-forms/{formId:guid}/versions/{versionId:guid}/sections/{sectionId:guid}/fields/{fieldId:guid}", Name = RouteNames.UpdateRegistrationFormField)]
+    [EnableRateLimiting(RateLimitingExtensions.WritePolicy)]
+    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
     public Task<ActionResult<BaseCommandResponse<Guid>>> UpdateField(Guid eventId, Guid formId, Guid versionId, Guid sectionId, Guid fieldId, RegistrationFormFieldUpdateInput input, [FromHeader(Name = "If-Match"), Required] string? ifMatch, CancellationToken ct)
         => Send(ifMatch, stamp => new UpdateRegistrationFormFieldCommand(eventId, formId, versionId, sectionId, fieldId, input.Ordinal, input.Label, input.RetentionPolicyId, input.OrganizerVisibilityId, input.RequiresExplicitConsent, input.IsProviderTransferAllowed, input.ConsentPurposeCode, input.ConsentTextVersion, input.IsRequired, input.IsMulti, input.MinLength, input.MaxLength, input.RegexPattern, input.MinNumber, input.MaxNumber, input.MinDateTime, input.MaxDateTime, input.AllowedUrlSchemes, stamp), null, null, ct);
 
-    [HttpPut("registration-forms/{formId:guid}/versions/{versionId:guid}/sections/{sectionId:guid}/fields/reorder", Name = RouteNames.ReorderRegistrationFormFields)] [EnableRateLimiting(RateLimitingExtensions.WritePolicy)]
-    [ProducesResponseType(typeof(HalResource<RegistrationFormVersionDto>), StatusCodes.Status200OK)] [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)] [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)] [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)] [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)] [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    [HttpPut("registration-forms/{formId:guid}/versions/{versionId:guid}/sections/{sectionId:guid}/fields/reorder", Name = RouteNames.ReorderRegistrationFormFields)]
+    [EnableRateLimiting(RateLimitingExtensions.WritePolicy)]
+    [ProducesResponseType(typeof(HalResource<RegistrationFormVersionDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
     public Task<ActionResult<HalResource<RegistrationFormVersionDto>>> ReorderFields(Guid eventId, Guid formId, Guid versionId, Guid sectionId, RegistrationFormReorderInput input, [FromHeader(Name = "If-Match"), Required] string? ifMatch, CancellationToken ct)
         => Reorder(ifMatch, stamp => new ReorderRegistrationFormFieldsCommand(eventId, formId, versionId, sectionId, input.OrderedIds, stamp), eventId, formId, versionId, ct);
 
-    [HttpDelete("registration-forms/{formId:guid}/versions/{versionId:guid}/sections/{sectionId:guid}/fields/{fieldId:guid}", Name = RouteNames.DeleteRegistrationFormField)] [EnableRateLimiting(RateLimitingExtensions.WritePolicy)]
-    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)] [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)] [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)] [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)] [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)] [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    [HttpDelete("registration-forms/{formId:guid}/versions/{versionId:guid}/sections/{sectionId:guid}/fields/{fieldId:guid}", Name = RouteNames.DeleteRegistrationFormField)]
+    [EnableRateLimiting(RateLimitingExtensions.WritePolicy)]
+    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
     public Task<ActionResult<BaseCommandResponse<Guid>>> DeleteField(Guid eventId, Guid formId, Guid versionId, Guid sectionId, Guid fieldId, [FromHeader(Name = "If-Match"), Required] string? ifMatch, CancellationToken ct)
         => Send(ifMatch, stamp => new DeleteRegistrationFormFieldCommand(eventId, formId, versionId, sectionId, fieldId, stamp), null, null, ct);
 
-    [HttpPost("registration-forms/{formId:guid}/versions/{versionId:guid}/sections/{sectionId:guid}/fields/{fieldId:guid}/options", Name = RouteNames.AddRegistrationFormFieldOption)] [EnableRateLimiting(RateLimitingExtensions.WritePolicy)]
-    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status201Created)] [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)] [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)] [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)] [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)] [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    [HttpPost("registration-forms/{formId:guid}/versions/{versionId:guid}/sections/{sectionId:guid}/fields/{fieldId:guid}/options", Name = RouteNames.AddRegistrationFormFieldOption)]
+    [EnableRateLimiting(RateLimitingExtensions.WritePolicy)]
+    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
     public Task<ActionResult<BaseCommandResponse<Guid>>> AddOption(Guid eventId, Guid formId, Guid versionId, Guid sectionId, Guid fieldId, RegistrationFormOptionInput input, [FromHeader(Name = "If-Match"), Required] string? ifMatch, CancellationToken ct)
         => Send(ifMatch, stamp => new AddRegistrationFormFieldOptionCommand(eventId, formId, versionId, sectionId, fieldId, input.Ordinal, input.Key, input.Label, stamp), RouteNames.GetRegistrationFormVersion, _ => new { eventId, formId, versionId }, ct);
 
-    [HttpPatch("registration-forms/{formId:guid}/versions/{versionId:guid}/sections/{sectionId:guid}/fields/{fieldId:guid}/options/{optionId:guid}", Name = RouteNames.UpdateRegistrationFormFieldOption)] [EnableRateLimiting(RateLimitingExtensions.WritePolicy)]
-    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)] [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)] [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)] [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)] [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)] [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    [HttpPatch("registration-forms/{formId:guid}/versions/{versionId:guid}/sections/{sectionId:guid}/fields/{fieldId:guid}/options/{optionId:guid}", Name = RouteNames.UpdateRegistrationFormFieldOption)]
+    [EnableRateLimiting(RateLimitingExtensions.WritePolicy)]
+    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
     public Task<ActionResult<BaseCommandResponse<Guid>>> UpdateOption(Guid eventId, Guid formId, Guid versionId, Guid sectionId, Guid fieldId, Guid optionId, RegistrationFormOptionInput input, [FromHeader(Name = "If-Match"), Required] string? ifMatch, CancellationToken ct)
         => Send(ifMatch, stamp => new UpdateRegistrationFormFieldOptionCommand(eventId, formId, versionId, sectionId, fieldId, optionId, input.Ordinal, input.Key, input.Label, stamp), null, null, ct);
 
-    [HttpDelete("registration-forms/{formId:guid}/versions/{versionId:guid}/sections/{sectionId:guid}/fields/{fieldId:guid}/options/{optionId:guid}", Name = RouteNames.RetireRegistrationFormFieldOption)] [EnableRateLimiting(RateLimitingExtensions.WritePolicy)]
-    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)] [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)] [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)] [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)] [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)] [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    [HttpDelete("registration-forms/{formId:guid}/versions/{versionId:guid}/sections/{sectionId:guid}/fields/{fieldId:guid}/options/{optionId:guid}", Name = RouteNames.RetireRegistrationFormFieldOption)]
+    [EnableRateLimiting(RateLimitingExtensions.WritePolicy)]
+    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
     public Task<ActionResult<BaseCommandResponse<Guid>>> RetireOption(Guid eventId, Guid formId, Guid versionId, Guid sectionId, Guid fieldId, Guid optionId, [FromHeader(Name = "If-Match"), Required] string? ifMatch, CancellationToken ct)
         => Send(ifMatch, stamp => new RetireRegistrationFormFieldOptionCommand(eventId, formId, versionId, sectionId, fieldId, optionId, stamp), null, null, ct);
 
-    [HttpPost("registration-forms/{formId:guid}/versions/{versionId:guid}/rules", Name = RouteNames.AddRegistrationFormRule)] [EnableRateLimiting(RateLimitingExtensions.WritePolicy)]
-    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status201Created)] [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)] [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)] [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)] [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)] [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    [HttpPost("registration-forms/{formId:guid}/versions/{versionId:guid}/rules", Name = RouteNames.AddRegistrationFormRule)]
+    [EnableRateLimiting(RateLimitingExtensions.WritePolicy)]
+    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
     public Task<ActionResult<BaseCommandResponse<Guid>>> AddRule(Guid eventId, Guid formId, Guid versionId, RegistrationFormRuleInput input, [FromHeader(Name = "If-Match"), Required] string? ifMatch, CancellationToken ct)
         => Send(ifMatch, stamp => new AddRegistrationFormRuleCommand(eventId, formId, versionId, input.Ordinal, input.TargetNamespace, input.TargetKey, input.Effect, input.Condition, stamp), RouteNames.GetRegistrationFormVersion, _ => new { eventId, formId, versionId }, ct);
 
-    [HttpPatch("registration-forms/{formId:guid}/versions/{versionId:guid}/rules/{ruleId:guid}", Name = RouteNames.UpdateRegistrationFormRule)] [EnableRateLimiting(RateLimitingExtensions.WritePolicy)]
-    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)] [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)] [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)] [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)] [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)] [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    [HttpPatch("registration-forms/{formId:guid}/versions/{versionId:guid}/rules/{ruleId:guid}", Name = RouteNames.UpdateRegistrationFormRule)]
+    [EnableRateLimiting(RateLimitingExtensions.WritePolicy)]
+    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
     public Task<ActionResult<BaseCommandResponse<Guid>>> UpdateRule(Guid eventId, Guid formId, Guid versionId, Guid ruleId, RegistrationFormRuleInput input, [FromHeader(Name = "If-Match"), Required] string? ifMatch, CancellationToken ct)
         => Send(ifMatch, stamp => new UpdateRegistrationFormRuleCommand(eventId, formId, versionId, ruleId, input.Ordinal, input.TargetNamespace, input.TargetKey, input.Effect, input.Condition, stamp), null, null, ct);
 
-    [HttpDelete("registration-forms/{formId:guid}/versions/{versionId:guid}/rules/{ruleId:guid}", Name = RouteNames.DeleteRegistrationFormRule)] [EnableRateLimiting(RateLimitingExtensions.WritePolicy)]
-    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)] [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)] [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)] [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)] [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)] [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    [HttpDelete("registration-forms/{formId:guid}/versions/{versionId:guid}/rules/{ruleId:guid}", Name = RouteNames.DeleteRegistrationFormRule)]
+    [EnableRateLimiting(RateLimitingExtensions.WritePolicy)]
+    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
     public Task<ActionResult<BaseCommandResponse<Guid>>> DeleteRule(Guid eventId, Guid formId, Guid versionId, Guid ruleId, [FromHeader(Name = "If-Match"), Required] string? ifMatch, CancellationToken ct)
         => Send(ifMatch, stamp => new DeleteRegistrationFormRuleCommand(eventId, formId, versionId, ruleId, stamp), null, null, ct);
 
-    [HttpPost("registration-forms/{formId:guid}/versions/{versionId:guid}/preflight", Name = RouteNames.GetRegistrationFormPublishPreflight)] [PrivateNoStore]
-    [ProducesResponseType(typeof(HalResource<RegistrationFormPublishPreflightDto>), StatusCodes.Status200OK)] [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)] [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)] [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)] [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [HttpPost("registration-forms/{formId:guid}/versions/{versionId:guid}/preflight", Name = RouteNames.GetRegistrationFormPublishPreflight)]
+    [PrivateNoStore]
+    [ProducesResponseType(typeof(HalResource<RegistrationFormPublishPreflightDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<HalResource<RegistrationFormPublishPreflightDto>>> Preflight(Guid eventId, Guid formId, Guid versionId, CancellationToken ct)
     {
         RegistrationFormPublishPreflightDto? preflight = await mediator.Send(new GetRegistrationFormPublishPreflightQuery(eventId, formId, versionId), ct);
@@ -170,8 +316,14 @@ public sealed class RegistrationFormsController(
         return await ToResource(preflight, preflightAssembler);
     }
 
-    [HttpPost("registration-forms/{formId:guid}/versions/{versionId:guid}/publish", Name = RouteNames.PublishRegistrationFormVersion)] [EnableRateLimiting(RateLimitingExtensions.WritePolicy)]
-    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)] [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)] [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)] [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)] [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)] [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    [HttpPost("registration-forms/{formId:guid}/versions/{versionId:guid}/publish", Name = RouteNames.PublishRegistrationFormVersion)]
+    [EnableRateLimiting(RateLimitingExtensions.WritePolicy)]
+    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
     public Task<ActionResult<BaseCommandResponse<Guid>>> Publish(Guid eventId, Guid formId, Guid versionId, [FromHeader(Name = "If-Match"), Required] string? ifMatch, CancellationToken ct)
         => Send(ifMatch, stamp => new PublishRegistrationFormVersionCommand(eventId, formId, versionId, stamp), null, null, ct);
 
