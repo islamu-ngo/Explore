@@ -5,6 +5,8 @@ namespace Explore.Secrets.Database;
 
 public sealed record PrimaryDatabaseConnectionOptions
 {
+    public const string DefaultSchema = "islamu_event";
+
     public required PrimaryDatabaseRole Role { get; init; }
 
     public required PrimaryDatabaseProvider Provider { get; init; }
@@ -14,6 +16,8 @@ public sealed record PrimaryDatabaseConnectionOptions
     public int? Port { get; init; }
 
     public string? Database { get; init; }
+
+    public string Schema { get; init; } = DefaultSchema;
 
     public string? Username { get; init; }
 

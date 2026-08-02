@@ -19,6 +19,7 @@ public static partial class PrimaryDatabaseConfiguration
     private const string RuntimeSectionName = "Runtime";
     private const string MigratorSectionName = "Migrator";
     private const string PrivacyErasureAuthorityDatabaseFileName = "privacy_erasure_authority.db";
+    private const string SchemaEnvironmentAlias = "DATABASE_SCHEMA";
 
     public static PrimaryDatabaseConnectionOptions BindRuntime(IConfiguration configuration)
         => Bind(configuration, PrimaryDatabaseRole.Runtime);
@@ -52,6 +53,7 @@ public static partial class PrimaryDatabaseConfiguration
             Host = ReadOptional(root, roleSection, "Host"),
             Port = ReadOptionalInt(root, roleSection, "Port"),
             Database = ReadOptional(root, roleSection, "Database"),
+            Schema = ReadSchema(configuration, root),
             Username = ReadOptional(root, roleSection, "Username"),
             Password = ReadOptional(root, roleSection, "Password"),
             TlsMode = ReadOptionalEnum(
@@ -81,6 +83,11 @@ public static partial class PrimaryDatabaseConfiguration
         var hasPassword = !string.IsNullOrWhiteSpace(options.Password);
         var hasFlavor = options.ServerFlavor is not null;
         var hasVersion = options.ServerVersion is not null;
+
+        if (string.IsNullOrWhiteSpace(options.Schema) || !PortableSchemaName().IsMatch(options.Schema))
+        {
+            errors.Add("Database:Schema must start with a letter or underscore, contain only ASCII letters, digits, or underscores, and be at most 63 characters.");
+        }
 
         switch (options.Provider)
         {
@@ -440,6 +447,20 @@ public static partial class PrimaryDatabaseConfiguration
         return string.IsNullOrWhiteSpace(rootValue) ? null : rootValue.Trim();
     }
 
+    private static string ReadSchema(IConfiguration configuration, IConfiguration root)
+    {
+        var structured = root[nameof(PrimaryDatabaseConnectionOptions.Schema)];
+        if (!string.IsNullOrWhiteSpace(structured))
+        {
+            return structured.Trim();
+        }
+
+        var alias = configuration[SchemaEnvironmentAlias];
+        return string.IsNullOrWhiteSpace(alias)
+            ? PrimaryDatabaseConnectionOptions.DefaultSchema
+            : alias.Trim();
+    }
+
     private static int? ReadOptionalInt(IConfiguration root, IConfiguration role, string key)
     {
         var value = ReadOptional(root, role, key);
@@ -514,4 +535,7 @@ public static partial class PrimaryDatabaseConfiguration
 
     [GeneratedRegex("(?i)(password|pwd|secret)=([^;]*)")]
     private static partial Regex PasswordRegex();
+
+    [GeneratedRegex("^[A-Za-z_][A-Za-z0-9_]{0,62}$", RegexOptions.CultureInvariant)]
+    private static partial Regex PortableSchemaName();
 }
