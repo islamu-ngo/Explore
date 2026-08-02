@@ -162,6 +162,21 @@ public class EventPublishedNotificationFanoutIntegrationTests(AuthenticatedApiTe
         }
         await context.SaveChangesAsync();
 
+        var sourceOrganizationId = Guid.CreateVersion7();
+        var sourceOrganization = new Organization
+        {
+            Id = sourceOrganizationId,
+            Pii = new OrganizationPii
+            {
+                OrganizationId = sourceOrganizationId,
+                FullName = "Fanout Source Organization"
+            },
+            CreatedAt = DateTime.UtcNow,
+            ConcurrencyStamp = Guid.CreateVersion7()
+        };
+        context.Organizations.Add(sourceOrganization);
+        await context.SaveChangesAsync();
+
         var subscriberActor = new ActorBuilder()
             .WithUserId(subscriber.Id)
             .WithDisplayName("Fanout Subscriber")
@@ -170,6 +185,7 @@ public class EventPublishedNotificationFanoutIntegrationTests(AuthenticatedApiTe
             .WithActorType(ActorTypeEnum.Organization)
             .WithDisplayName("Fanout Source Organization")
             .Build();
+        sourceActor.OrganizationId = sourceOrganization.Id;
         Actor? fencedSubscriberActor = fencedSubscriber is null
             ? null
             : new ActorBuilder()
@@ -214,6 +230,20 @@ public class EventPublishedNotificationFanoutIntegrationTests(AuthenticatedApiTe
             NotificationLevelId = (int)ActorSubscriptionNotificationLevelEnum.All,
             NotificationLevel = null!,
             SubscribedAt = DateTime.UtcNow
+        };
+        var sourceParticipation = new OrganizationTenant
+        {
+            Id = Guid.CreateVersion7(),
+            TenantId = tenant.Id,
+            Tenant = tenant,
+            OrganizationId = sourceOrganization.Id,
+            Organization = sourceOrganization,
+            ApprovalStatusId = (int)ApprovalStatusEnum.Approved,
+            ApprovalStatus = null!,
+            IsVisible = true,
+            IsOrganizerEligible = true,
+            ApprovedAt = DateTime.UtcNow,
+            ConcurrencyStamp = Guid.CreateVersion7()
         };
         TenantUser? fencedTenantUser = fencedSubscriber is null || fencedSubscriberActor is null
             ? null
@@ -263,6 +293,7 @@ public class EventPublishedNotificationFanoutIntegrationTests(AuthenticatedApiTe
         @event.LastSessionStartUtc = endDate;
 
         context.TenantUsers.Add(tenantUser);
+        context.OrganizationTenants.Add(sourceParticipation);
         context.ActorSubscriptions.Add(subscription);
         context.WebPushSubscriptions.Add(WebPushSubscription.Create(
             tenant.Id,

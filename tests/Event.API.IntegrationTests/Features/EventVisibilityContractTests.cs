@@ -115,6 +115,8 @@ public class EventVisibilityContractTests(ContractApiFixture fixture)
                 .WithDisplayName("Actor Filter Owner")
                 .Build();
             context.Actors.Add(actor);
+            var tenant = await context.Tenants.SingleAsync(candidate => candidate.Id == seed.TenantId);
+            AddActiveTenantUser(context, tenant, user, actor);
             await context.SaveChangesAsync();
             actorId = actor.Id;
 
@@ -132,6 +134,7 @@ public class EventVisibilityContractTests(ContractApiFixture fixture)
                 .WithDisplayName("Cross Tenant Actor Filter Owner")
                 .Build();
             context.Actors.Add(crossTenantActor);
+            AddActiveTenantUser(context, crossTenant, crossTenantUser, crossTenantActor);
             await context.SaveChangesAsync();
             crossTenantActorId = crossTenantActor.Id;
 
@@ -198,6 +201,8 @@ public class EventVisibilityContractTests(ContractApiFixture fixture)
                 .WithDisplayName("Managed Profile Actor")
                 .Build();
             context.Actors.Add(actor);
+            var tenant = await context.Tenants.SingleAsync(candidate => candidate.Id == seed.TenantId);
+            AddActiveTenantUser(context, tenant, owner, actor);
             await context.SaveChangesAsync();
             actorId = actor.Id;
 
@@ -519,4 +524,21 @@ public class EventVisibilityContractTests(ContractApiFixture fixture)
     }
 
     private sealed record DefaultTenantSeed(Guid TenantId, Guid ActorId);
+
+    private static void AddActiveTenantUser(ExploreDbContext context, Tenant tenant, User user, Actor actor)
+    {
+        context.TenantUsers.Add(new TenantUser
+        {
+            Id = Guid.CreateVersion7(),
+            TenantId = tenant.Id,
+            Tenant = tenant,
+            UserId = user.Id,
+            User = user,
+            ActorId = actor.Id,
+            Actor = actor,
+            StatusId = (int)TenantUserStatusEnum.Active,
+            JoinedAt = DateTime.UtcNow,
+            CreatedAt = DateTime.UtcNow
+        });
+    }
 }

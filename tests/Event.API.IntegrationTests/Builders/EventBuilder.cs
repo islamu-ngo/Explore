@@ -24,6 +24,7 @@ public sealed class EventBuilder
     private int _eventStatusId = (int)EventStatusEnum.Draft;
     private int _visibilityTypeId = (int)VisibilityTypeEnum.Public;
     private int _eventFormatId = (int)EventFormatEnum.Local;
+    private int _eventProvenanceTypeId = (int)EventProvenanceTypeEnum.OrganizerCreated;
     private int? _audienceGenderId;
     private int? _audienceAgeId;
     private DateOnly? _firstSessionDate;
@@ -40,6 +41,8 @@ public sealed class EventBuilder
     public EventBuilder WithStatus(EventStatusEnum status) { _eventStatusId = (int)status; return this; }
     public EventBuilder WithVisibility(VisibilityTypeEnum visibility) { _visibilityTypeId = (int)visibility; return this; }
     public EventBuilder WithFormat(EventFormatEnum format) { _eventFormatId = (int)format; return this; }
+    public EventBuilder WithProvenance(EventProvenanceTypeEnum provenance) { _eventProvenanceTypeId = (int)provenance; return this; }
+    public EventBuilder WithProvenance(int provenanceTypeId) { _eventProvenanceTypeId = provenanceTypeId; return this; }
 
     public EventBuilder WithSessionDates(DateOnly first, DateOnly last)
     {
@@ -59,6 +62,7 @@ public sealed class EventBuilder
         Actor = null!,
         TenantId = _tenantId,
         Tenant = null!,
+        EventProvenanceTypeId = _eventProvenanceTypeId,
         EventTypeId = _eventTypeId,
         EventStatusId = _eventStatusId,
         EventStatus = null!,

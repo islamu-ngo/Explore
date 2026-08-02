@@ -104,6 +104,8 @@ public static class TenantScenarioSeed
             Organization = organization,
             ApprovalStatusId = (int)ApprovalStatusEnum.Approved,
             ApprovalStatus = null!,
+            IsVisible = true,
+            IsOrganizerEligible = true,
             ApprovedAt = DateTime.UtcNow,
             ConcurrencyStamp = Guid.CreateVersion7()
         };
