@@ -1284,7 +1284,7 @@ Tasks 8.2–8.8 and Phase 8 verification remain pending. No commit or PR was req
 - **Dependencies:** 8.5
 - **Effort:** M
 
-**Completion evidence (2026-08-03):** Authenticated and guest launch/submit HTTP scenarios pass 5/5, including a real MediatR + EF repository flow that reads exact progress descriptors, persists only the attempt capability hash, records an optional skip, and fails closed on wrong channel lineage. Native OpenAPI invariants pass 2/2, the broader OpenAPI parity suite passes 11/11, inventory generation passes 1/1, the generated client and canonical 36-project Release build are green, and LSP reports zero errors. Receipt: `.omo/evidence/phase86-DONE_CLAIM.md`.
+**Completion evidence (2026-08-03):** Authenticated and guest launch/submit HTTP scenarios pass 6/6, including a real MediatR + EF repository flow that reads exact progress descriptors, persists only the attempt capability hash, records an optional skip, fails closed on wrong channel lineage, and proves that two published forms yield neither a progress descriptor nor a directly launchable form. A real PostgreSQL two-consumer race passes 1/1 and proves exactly one atomic skip success, consumed attempt, fulfillment, and finalization effect. Native OpenAPI invariants pass 2/2, the broader OpenAPI parity suite passes 11/11, inventory generation passes 1/1, the generated client and canonical 37-project Release build are green, and LSP reports zero errors. Receipt: `.omo/evidence/phase86-DONE_CLAIM.md`.
 
 #### Task 8.7: Native Blazor form renderer
 - **Type:** create
