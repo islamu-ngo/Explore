@@ -110,11 +110,22 @@ public sealed class KeycloakAccountAuthorityLifecycleEmailService(
                 [GetRequiredAction(action)],
                 cancellationToken);
 
+            if (response.HasRequestError(out var requestError))
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                return CreateProviderFailure(
+                    action,
+                    orchestration,
+                    requestError.InnerException is OperationCanceledException
+                        ? "keycloak_lifecycle_timeout"
+                        : "keycloak_lifecycle_unreachable");
+            }
+
             if (!response.IsSuccessStatusCode)
             {
                 logger.LogWarning(
                     "Keycloak lifecycle email request failed with status {StatusCode} for action {Action}. Tenant: {TenantId}, UserId: {UserId}",
-                    (int)response.StatusCode,
+                    (int?)response.StatusCode,
                     action,
                     request.TenantId,
                     request.UserId);
@@ -142,6 +153,16 @@ public sealed class KeycloakAccountAuthorityLifecycleEmailService(
         {
             return CreateProviderFailure(action, orchestration, "keycloak_lifecycle_unreachable");
         }
+        catch (ApiRequestException ex)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            return CreateProviderFailure(
+                action,
+                orchestration,
+                ex.InnerException is OperationCanceledException
+                    ? "keycloak_lifecycle_timeout"
+                    : "keycloak_lifecycle_unreachable");
+        }
         catch (JsonException)
         {
             return CreateProviderFailure(action, orchestration, "keycloak_lifecycle_invalid_response");
@@ -157,7 +178,7 @@ public sealed class KeycloakAccountAuthorityLifecycleEmailService(
             new RefitSettings
             {
                 ContentSerializer = new SystemTextJsonContentSerializer(JsonOptions),
-                ExceptionFactory = _ => Task.FromResult<Exception?>(null)
+                ExceptionFactory = _ => ValueTask.FromResult<Exception?>(null)
             });
     }
 

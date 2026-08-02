@@ -128,6 +128,47 @@ public sealed class KeycloakAccountAuthorityLifecycleEmailServiceTests
         await Assert.That(serializedResult).DoesNotContain("provider raw failure");
     }
 
+    [Test]
+    public async Task RequestEmailVerificationAsync_WhenEmailRequestTransportFails_ReturnsUnreachableFailure()
+    {
+        var handler = new OrderedMessageHandler(
+            Expect(HttpMethod.Post, "/auth/realms/master/protocol/openid-connect/token", _ => JsonResponse("""
+                { "access_token": "admin-token" }
+                """)),
+            Expect(HttpMethod.Put, "/auth/admin/realms/ISLAMU/users/keycloak-user-123/execute-actions-email", _ =>
+                throw new HttpRequestException("runtime-admin-secret transport failure")));
+        var orchestrator = new CapturingNotificationOrchestrator();
+        var service = CreateService(handler, orchestrator);
+
+        var result = await service.RequestEmailVerificationAsync(CreateRequest());
+
+        await Assert.That(result.Status).IsEqualTo(AccountAuthorityLifecycleEmailStatus.ProviderRequestFailed);
+        await Assert.That(result.ReasonCode).IsEqualTo("keycloak_lifecycle_unreachable");
+        await Assert.That(result.NotificationIntentId).IsEqualTo(orchestrator.LastIntentId);
+        await Assert.That(result.LocalDelegationId).IsEqualTo(orchestrator.LastDelegationId);
+        await Assert.That(JsonSerializer.Serialize(result)).DoesNotContain("runtime-admin-secret");
+        await Assert.That(handler.Requests.Count).IsEqualTo(2);
+    }
+
+    [Test]
+    public async Task RequestEmailVerificationAsync_WhenAdminTokenTransportFails_ReturnsUnreachableFailure()
+    {
+        var handler = new OrderedMessageHandler(
+            Expect(HttpMethod.Post, "/auth/realms/master/protocol/openid-connect/token", _ =>
+                throw new HttpRequestException("runtime-admin-secret token transport failure")));
+        var orchestrator = new CapturingNotificationOrchestrator();
+        var service = CreateService(handler, orchestrator);
+
+        var result = await service.RequestEmailVerificationAsync(CreateRequest());
+
+        await Assert.That(result.Status).IsEqualTo(AccountAuthorityLifecycleEmailStatus.ProviderRequestFailed);
+        await Assert.That(result.ReasonCode).IsEqualTo("keycloak_lifecycle_unreachable");
+        await Assert.That(result.NotificationIntentId).IsEqualTo(orchestrator.LastIntentId);
+        await Assert.That(result.LocalDelegationId).IsEqualTo(orchestrator.LastDelegationId);
+        await Assert.That(JsonSerializer.Serialize(result)).DoesNotContain("runtime-admin-secret");
+        await Assert.That(handler.Requests.Count).IsEqualTo(1);
+    }
+
     private static KeycloakAccountAuthorityLifecycleEmailService CreateService(
         OrderedMessageHandler handler,
         CapturingNotificationOrchestrator orchestrator,

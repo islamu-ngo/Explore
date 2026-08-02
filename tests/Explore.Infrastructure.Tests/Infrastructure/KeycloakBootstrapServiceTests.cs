@@ -282,6 +282,45 @@ public sealed class KeycloakBootstrapServiceTests
         await Assert.That(result.Message).DoesNotContain(request.BootstrapAdminPassword);
     }
 
+    [Test]
+    public async Task BootstrapAsync_WhenRealmLookupTransportFails_ReturnsUnreachableFailure()
+    {
+        var request = CreateRequest();
+        var handler = new OrderedMessageHandler(
+            Expect(HttpMethod.Post, "/auth/realms/master/protocol/openid-connect/token", _ => JsonResponse("""
+                { "access_token": "admin-token" }
+                """)),
+            Expect(HttpMethod.Get, "/auth/admin/realms/ISLAMU", _ =>
+                throw new HttpRequestException("one-time-admin-secret transport failure")));
+        var service = CreateService(handler);
+
+        var result = await service.BootstrapAsync(request, CancellationToken.None);
+
+        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.FailureCode).IsEqualTo("keycloak_unreachable");
+        await Assert.That(result.Message).IsEqualTo("Keycloak Admin API was unreachable during bootstrap.");
+        await Assert.That(JsonSerializer.Serialize(result)).DoesNotContain(request.BootstrapAdminPassword);
+        await Assert.That(handler.Requests.Count).IsEqualTo(2);
+    }
+
+    [Test]
+    public async Task BootstrapAsync_WhenAdminTokenTransportFails_ReturnsUnreachableFailure()
+    {
+        var request = CreateRequest();
+        var handler = new OrderedMessageHandler(
+            Expect(HttpMethod.Post, "/auth/realms/master/protocol/openid-connect/token", _ =>
+                throw new HttpRequestException("one-time-admin-secret token transport failure")));
+        var service = CreateService(handler);
+
+        var result = await service.BootstrapAsync(request, CancellationToken.None);
+
+        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.FailureCode).IsEqualTo("keycloak_unreachable");
+        await Assert.That(result.Message).IsEqualTo("Keycloak Admin API was unreachable during bootstrap.");
+        await Assert.That(JsonSerializer.Serialize(result)).DoesNotContain(request.BootstrapAdminPassword);
+        await Assert.That(handler.Requests.Count).IsEqualTo(1);
+    }
+
     [Arguments("http://127.0.0.1:8080")]
     [Arguments("https://localhost:8443")]
     [Arguments("ftp://keycloak.example.com")]
