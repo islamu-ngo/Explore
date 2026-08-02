@@ -281,6 +281,8 @@ public static class LinkRelations
 
     public const string Complete = "complete";
 
+    public const string Release = "release";
+
     /// <summary>
     /// Reversible administrative moderation action for hiding policy-violating events without deleting content.
     /// </summary>
@@ -354,6 +356,10 @@ public static class LinkRelations
     public const string ExternalEventPage = "external-event-page";
     public const string ExternalRegistration = "external-registration";
     public const string OptionalQuestionnaire = "optional-questionnaire";
+    public const string RequirementProgress = "requirement-progress";
+    public const string Submit = "submit";
+    public const string Skip = "skip";
+    public const string LaunchAttempt = "launch-attempt";
     public const string Attach = "attach";
     public const string Detach = "detach";
     public const string Livestream = "livestream";

@@ -368,11 +368,16 @@ public class UpdateCustomPropertyDefinitionCommandHandlerTests
         {
             Metadata = new UpdateCustomPropertyDefinitionMetadataDto
             {
-                Namespace = "Tenant Community", Key = "Prayer Notes", DisplayName = displayName,
-                ExposureLevel = ExposureLevel.OrganizerOnly, IsActive = true
+                Namespace = "Tenant Community",
+                Key = "Prayer Notes",
+                DisplayName = displayName,
+                ExposureLevel = ExposureLevel.OrganizerOnly,
+                IsActive = true
             },
             Validation = new UpdateCustomPropertyDefinitionValidationDto { PropertyType = PropertyType.Option },
-            Options = new UpdateCustomPropertyDefinitionOptionsDto { Items =
+            Options = new UpdateCustomPropertyDefinitionOptionsDto
+            {
+                Items =
             [
                 new CreateCustomPropertyOptionDto
                 {
@@ -391,7 +396,8 @@ public class UpdateCustomPropertyDefinitionCommandHandlerTests
                     Value = "stream",
                     IsActive = true,
                 }
-            ] }
+            ]
+            }
         };
     }
 

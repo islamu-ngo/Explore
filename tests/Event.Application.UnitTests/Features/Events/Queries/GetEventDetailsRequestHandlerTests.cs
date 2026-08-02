@@ -1,14 +1,14 @@
 // ABOUTME: Unit tests for public event detail query visibility behavior.
 // ABOUTME: Verifies moderated/hidden events are not exposed through the public detail handler.
 
+using Explore.Application.Caching;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.Event;
-using Explore.Application.Caching;
+using Explore.Application.DTOs.RegistrationForms;
 using Explore.Application.Features.Events.Handlers.Queries;
 using Explore.Application.Features.Events.Requests.Queries;
 using Explore.Application.Features.RegistrationForms.Requests.Queries;
-using Explore.Application.DTOs.RegistrationForms;
 using Explore.Domain.Enums;
 using MediatR;
 using Microsoft.Extensions.Caching.Hybrid;

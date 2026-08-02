@@ -14,16 +14,16 @@ internal static class InstanceOnboardingProfileSettingHelpers
     internal static SelfHostOnboardingProfileDto Normalize(
         SelfHostOnboardingProfileDto profile,
         string? fallbackSiteName = null) => new()
-    {
-        SiteName = string.IsNullOrWhiteSpace(profile.SiteName)
+        {
+            SiteName = string.IsNullOrWhiteSpace(profile.SiteName)
             ? fallbackSiteName?.Trim() ?? string.Empty
             : profile.SiteName.Trim(),
-        SupportEmail = string.IsNullOrWhiteSpace(profile.SupportEmail) ? null : profile.SupportEmail.Trim(),
-        CanonicalUrl = string.IsNullOrWhiteSpace(profile.CanonicalUrl) ? null : profile.CanonicalUrl.Trim(),
-        Locale = string.IsNullOrWhiteSpace(profile.Locale) ? "en" : profile.Locale.Trim(),
-        TimeZone = string.IsNullOrWhiteSpace(profile.TimeZone) ? "UTC" : profile.TimeZone.Trim(),
-        Purpose = string.IsNullOrWhiteSpace(profile.Purpose) ? null : profile.Purpose.Trim()
-    };
+            SupportEmail = string.IsNullOrWhiteSpace(profile.SupportEmail) ? null : profile.SupportEmail.Trim(),
+            CanonicalUrl = string.IsNullOrWhiteSpace(profile.CanonicalUrl) ? null : profile.CanonicalUrl.Trim(),
+            Locale = string.IsNullOrWhiteSpace(profile.Locale) ? "en" : profile.Locale.Trim(),
+            TimeZone = string.IsNullOrWhiteSpace(profile.TimeZone) ? "UTC" : profile.TimeZone.Trim(),
+            Purpose = string.IsNullOrWhiteSpace(profile.Purpose) ? null : profile.Purpose.Trim()
+        };
 
     internal static async Task PersistAsync(
         ISystemSettingRepository systemSettingRepository,

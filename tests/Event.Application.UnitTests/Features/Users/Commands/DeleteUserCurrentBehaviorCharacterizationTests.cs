@@ -251,8 +251,6 @@ public sealed class DeleteUserCurrentBehaviorCharacterizationTests
         IAiConversationRepository aiConversationRepository = Substitute.For<IAiConversationRepository>();
         IPrivacyErasureReplayCheckpointRepository checkpointRepository =
             Substitute.For<IPrivacyErasureReplayCheckpointRepository>();
-        IPrivacyErasureLedgerRepository ledgerRepository =
-            Substitute.For<IPrivacyErasureLedgerRepository>();
         IOutboxRepository outboxRepository = Substitute.For<IOutboxRepository>();
         IPrivacyErasureProviderWorkRepository providerWorkRepository =
             Substitute.For<IPrivacyErasureProviderWorkRepository>();
@@ -292,7 +290,6 @@ public sealed class DeleteUserCurrentBehaviorCharacterizationTests
             currentCheckpointAhead ? laterCheckpoint : null);
         checkpointRepository.AppendAsync(Arg.Any<PrivacyErasureReplayCheckpoint>(), Arg.Any<CancellationToken>())
             .Returns(checkpoint);
-        ledgerRepository.AppendAsync(intent, Arg.Any<CancellationToken>()).Returns(intent);
         IPrivacyErasureStateRepository stateRepository = Substitute.For<IPrivacyErasureStateRepository>();
         PrivacyErasureSaga saga = PrivacyErasureSaga.Start(
             intent,
@@ -307,7 +304,7 @@ public sealed class DeleteUserCurrentBehaviorCharacterizationTests
 
         var applier = new PrivacyErasureApplier(
             userRepository, userPiiRepository, tokenRepository, erasureRepository, privacyErasureRepository,
-            aiConversationRepository, providerWorkRepository, providerLocatorProtector, checkpointRepository, ledgerRepository, stateRepository,
+            aiConversationRepository, providerWorkRepository, providerLocatorProtector, checkpointRepository, stateRepository,
             outboxRepository, cache, TimeProvider.System,
             Substitute.For<ILogger<PrivacyErasureApplier>>(), Options.Create(new PrivacyErasureOptions()));
         var prepared = new PrivacyErasureApplier.PreparedErasure(

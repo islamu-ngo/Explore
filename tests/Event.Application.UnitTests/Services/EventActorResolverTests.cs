@@ -270,19 +270,19 @@ public sealed class EventActorResolverTests
         bool organizerEligible,
         bool suspended,
         bool deleted) => new()
-    {
-        Id = Guid.CreateVersion7(),
-        TenantId = Guid.CreateVersion7(),
-        Tenant = null!,
-        OrganizationId = organizationId,
-        Organization = null!,
-        ApprovalStatusId = (int)approvalStatus,
-        ApprovalStatus = null!,
-        IsVisible = false,
-        IsOrganizerEligible = organizerEligible,
-        IsSuspended = suspended,
-        IsDeleted = deleted
-    };
+        {
+            Id = Guid.CreateVersion7(),
+            TenantId = Guid.CreateVersion7(),
+            Tenant = null!,
+            OrganizationId = organizationId,
+            Organization = null!,
+            ApprovalStatusId = (int)approvalStatus,
+            ApprovalStatus = null!,
+            IsVisible = false,
+            IsOrganizerEligible = organizerEligible,
+            IsSuspended = suspended,
+            IsDeleted = deleted
+        };
 
     private static GroupTenant GroupParticipation(
         Guid groupId,
@@ -290,19 +290,19 @@ public sealed class EventActorResolverTests
         bool organizerEligible,
         bool suspended,
         bool deleted) => new()
-    {
-        Id = Guid.CreateVersion7(),
-        TenantId = Guid.CreateVersion7(),
-        Tenant = null!,
-        GroupId = groupId,
-        Group = null!,
-        ApprovalStatusId = (int)approvalStatus,
-        ApprovalStatus = null!,
-        IsVisible = false,
-        IsOrganizerEligible = organizerEligible,
-        IsSuspended = suspended,
-        IsDeleted = deleted
-    };
+        {
+            Id = Guid.CreateVersion7(),
+            TenantId = Guid.CreateVersion7(),
+            Tenant = null!,
+            GroupId = groupId,
+            Group = null!,
+            ApprovalStatusId = (int)approvalStatus,
+            ApprovalStatus = null!,
+            IsVisible = false,
+            IsOrganizerEligible = organizerEligible,
+            IsSuspended = suspended,
+            IsDeleted = deleted
+        };
 
     private enum ActorResolutionPath
     {

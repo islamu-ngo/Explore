@@ -1,10 +1,10 @@
 // ABOUTME: Applies event-level reminder suppression and reprojection for registration orders.
 // ABOUTME: Delegates durable state mutation to the email outbox repository inside the caller transaction.
 
+using Explore.Application.Configuration;
 using Explore.Application.Contracts.Notifications;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
-using Explore.Application.Configuration;
 using Microsoft.Extensions.Options;
 
 namespace Explore.Application.Services;

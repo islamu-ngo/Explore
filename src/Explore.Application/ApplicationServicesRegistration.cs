@@ -115,6 +115,8 @@ public static class ApplicationServicesRegistration
                 options => EventReminderOptions.IsValidLeadTimeHours(options.EventReminderLeadTimeHours),
                 $"EmailDispatch:EventReminderLeadTimeHours must be between {EventReminderOptions.MinLeadTimeHours} and {EventReminderOptions.MaxLeadTimeHours} hours.")
             .ValidateOnStart();
+        services.AddOptions<RegistrationFileAnswerOptions>()
+            .Bind(configuration.GetSection(RegistrationFileAnswerOptions.SectionName));
         services.Configure<NotificationRoutingOptions>(configuration.GetSection(NotificationRoutingOptions.SectionName));
         services.Configure<AccountAuthorityLifecycleEmailOptions>(configuration.GetSection(AccountAuthorityLifecycleEmailOptions.SectionName));
         services.AddSingleton<IAiToolContractRegistry>(_ => AiToolContractRegistry.CreateDefault());
@@ -148,7 +150,8 @@ public static class ApplicationServicesRegistration
         services.AddSingleton<IEventLocationRegistrationAccessService, EventLocationRegistrationAccessService>();
         services.AddSingleton<IFormSchemaArtifactGenerator, FormSchemaArtifactGenerator>();
         services.AddSingleton<FormSchemaArtifactPublicationService>();
-        services.AddSingleton<RegistrationFormPublishPreflightService>();
+        services.AddSingleton(provider => new RegistrationFormPublishPreflightService(
+            provider.GetRequiredService<Microsoft.Extensions.Options.IOptions<RegistrationFileAnswerOptions>>().Value));
         services.AddScoped<RegistrationFormAuthoringCommandService>();
         services.AddScoped<IEventLocationExactReadAuditService, EventLocationExactReadAuditService>();
         services.AddScoped<IEventLocationManagementAuthorizationService, EventLocationManagementAuthorizationService>();

@@ -153,6 +153,66 @@ public sealed class GlobalLocationPrivacyErasurePendingSpecs
     }
 
     [Test]
+    public async Task PrimaryFailureAfterAuthorityAppend_RetryReusesIntentAndConverges()
+    {
+        var userId = Guid.CreateVersion7();
+        bool authorityAppended = false;
+        var primaryAttempts = 0;
+        var unitOfWork = new FailFirstSerializableUnitOfWork(() =>
+        {
+            if (!authorityAppended)
+            {
+                throw new InvalidOperationException("The primary transaction started before authority append.");
+            }
+
+            primaryAttempts++;
+        });
+        await using DeletionHarness harness = CreateHarness(userId, unitOfWork);
+        var requests = new List<PrivacyErasureRequest>();
+        PrivacyErasureIntent? retained = null;
+        harness.Authority
+            .AppendAsync(Arg.Any<PrivacyErasureRequest>(), Arg.Any<CancellationToken>())
+            .Returns(call =>
+            {
+                PrivacyErasureRequest request = call.Arg<PrivacyErasureRequest>();
+                requests.Add(request);
+                authorityAppended = true;
+                retained ??= PrivacyErasureIntent.Record(
+                    request.IntentId,
+                    1,
+                    request.SubjectKind,
+                    request.SubjectId,
+                    request.ReasonCode,
+                    request.PolicyVersion,
+                    DateTime.UtcNow,
+                    DateTime.UtcNow);
+                return retained;
+            });
+        harness.Authority
+            .ReadAfterAsync(Arg.Any<long>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns(call => call.ArgAt<long>(0) < 1 && retained is not null
+                ? [retained]
+                : []);
+        var command = new DeleteUserCommand
+        {
+            UserId = userId,
+            IntentId = Guid.CreateVersion7(),
+        };
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            harness.Handler.Handle(command, CancellationToken.None));
+        await Assert.That(harness.User.IsDeleted).IsFalse();
+
+        await harness.Handler.Handle(command, CancellationToken.None);
+
+        await Assert.That(requests.Count).IsEqualTo(2);
+        await Assert.That(requests.All(request => request.IntentId == command.IntentId)).IsTrue();
+        await Assert.That(requests.Select(request => request.IntentId).Distinct().Count()).IsEqualTo(1);
+        await Assert.That(primaryAttempts).IsGreaterThanOrEqualTo(2);
+        await Assert.That(harness.User.IsDeleted).IsTrue();
+    }
+
+    [Test]
     public async Task PreCanceledDeletion_DoesNotReadUserAppendAuthorityOrMutateApplicationState()
     {
         var userId = Guid.CreateVersion7();
@@ -252,11 +312,6 @@ public sealed class GlobalLocationPrivacyErasurePendingSpecs
         outboxRepository
             .CreateRange(Arg.Any<IReadOnlyCollection<OutboxMessage>>(), Arg.Any<CancellationToken>())
             .Returns(call => call.Arg<IReadOnlyCollection<OutboxMessage>>().ToArray());
-        IPrivacyErasureLedgerRepository ledgerRepository =
-            Substitute.For<IPrivacyErasureLedgerRepository>();
-        ledgerRepository
-            .AppendAsync(Arg.Any<PrivacyErasureIntent>(), Arg.Any<CancellationToken>())
-            .Returns(call => call.Arg<PrivacyErasureIntent>());
         IPrivacyErasureStateRepository stateRepository = Substitute.For<IPrivacyErasureStateRepository>();
         PrivacyErasureSaga? saga = null;
         stateRepository.GetBySubjectAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(_ => saga);
@@ -277,7 +332,6 @@ public sealed class GlobalLocationPrivacyErasurePendingSpecs
             Substitute.For<IPrivacyErasureProviderWorkRepository>(),
             Substitute.For<IPrivacyErasureProviderLocatorProtector>(),
             checkpointRepository,
-            ledgerRepository,
             stateRepository,
             outboxRepository,
             cache,
@@ -287,7 +341,6 @@ public sealed class GlobalLocationPrivacyErasurePendingSpecs
 
         IPrivacyErasureService service = new RetainedAuthorityPrivacyErasureWorkflow(
             checkpointRepository,
-            ledgerRepository,
             stateRepository,
             authority,
             unitOfWork,
@@ -371,5 +424,31 @@ public sealed class GlobalLocationPrivacyErasurePendingSpecs
         public Task<T> ExecuteSerializableAsync<T>(
             Func<CancellationToken, Task<T>> operation,
             CancellationToken ct = default) => operation(ct);
+    }
+
+    private sealed class FailFirstSerializableUnitOfWork(Action onAttempt) : IUnitOfWork
+    {
+        private int _attempts;
+
+        public Task ExecuteInTransactionAsync(
+            Func<CancellationToken, Task> operation,
+            CancellationToken ct = default) => operation(ct);
+
+        public Task<T> ExecuteInTransactionAsync<T>(
+            Func<CancellationToken, Task<T>> operation,
+            CancellationToken ct = default) => operation(ct);
+
+        public Task<T> ExecuteSerializableAsync<T>(
+            Func<CancellationToken, Task<T>> operation,
+            CancellationToken ct = default)
+        {
+            onAttempt();
+            if (Interlocked.Increment(ref _attempts) == 1)
+            {
+                throw new InvalidOperationException("The primary transaction failed after authority append.");
+            }
+
+            return operation(ct);
+        }
     }
 }

@@ -1,8 +1,8 @@
 // ABOUTME: Focused tests for grouped Listmonk integration settings PATCH handling.
 // ABOUTME: Verifies omitted connection settings are preserved while behavior settings update.
 
-using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Identity;
+using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.DTOs.Integrations;
 using Explore.Application.Features.Integrations.Listmonk.Handlers.Commands;
 using Explore.Application.Features.Integrations.Listmonk.Requests.Commands;

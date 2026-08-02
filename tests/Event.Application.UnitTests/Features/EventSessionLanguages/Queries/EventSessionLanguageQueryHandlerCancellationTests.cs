@@ -1,8 +1,8 @@
 // ABOUTME: Unit tests for event-session language query cancellation propagation.
 // ABOUTME: Proves handlers pass MediatR cancellation tokens into repository reads.
 
-using Event.Application.UnitTests.Common;
 using AutoMapper;
+using Event.Application.UnitTests.Common;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.EventSessionLanguage;
 using Explore.Application.Features.EventSessionLanguages.Handlers.Queries;

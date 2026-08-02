@@ -98,11 +98,6 @@ public class DeleteUserCommandHandlerTests
         outboxRepository
             .CreateRange(Arg.Any<IReadOnlyCollection<OutboxMessage>>(), Arg.Any<CancellationToken>())
             .Returns(call => call.Arg<IReadOnlyCollection<OutboxMessage>>().ToArray());
-        IPrivacyErasureLedgerRepository ledgerRepository =
-            Substitute.For<IPrivacyErasureLedgerRepository>();
-        ledgerRepository
-            .AppendAsync(Arg.Any<PrivacyErasureIntent>(), Arg.Any<CancellationToken>())
-            .Returns(call => call.Arg<PrivacyErasureIntent>());
         IPrivacyErasureStateRepository stateRepository = Substitute.For<IPrivacyErasureStateRepository>();
         PrivacyErasureSaga? saga = null;
         stateRepository.GetBySubjectAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(_ => saga);
@@ -123,7 +118,6 @@ public class DeleteUserCommandHandlerTests
             Substitute.For<IPrivacyErasureProviderWorkRepository>(),
             Substitute.For<IPrivacyErasureProviderLocatorProtector>(),
             checkpointRepository,
-            ledgerRepository,
             stateRepository,
             outboxRepository,
             _cache,
@@ -133,7 +127,6 @@ public class DeleteUserCommandHandlerTests
 
         IPrivacyErasureService service = new RetainedAuthorityPrivacyErasureWorkflow(
             checkpointRepository,
-            ledgerRepository,
             stateRepository,
             authority,
             _unitOfWork,

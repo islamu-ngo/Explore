@@ -3,6 +3,7 @@
 
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using System.Text.Json;
 using Explore.Application.Contracts.Identity;
 using Explore.Application.Contracts.Persistence;
@@ -17,7 +18,6 @@ using Explore.Domain.Constants;
 using Explore.Domain.Enums;
 using Microsoft.Extensions.Logging;
 using NSubstitute;
-using System.Reflection;
 
 namespace Event.Application.UnitTests.Features.InstanceOnboarding.Commands;
 

@@ -196,26 +196,26 @@ public sealed class EventTicketPriceSummaryMapperTests
         EventTicketCatalogVersion catalog = EventTicketCatalogVersion.Create(@event.TenantId, @event.Id, currencyCode, 1);
         foreach ((TicketPricingModeEnum mode, long? fixedPriceMinor, long? minimumPriceMinor, long? suggestedPriceMinor) in pricing)
         {
-        EventTicketType ticketType = EventTicketType.Create(
-            Guid.CreateVersion7(),
-                catalog.TenantId,
-                catalog.Id,
-                "General admission",
-                currencyCode,
-                mode,
-                fixedPriceMinor,
-                minimumPriceMinor,
-                suggestedPriceMinor,
-                ParticipantDataCollectionModeEnum.None,
-                null,
-                null,
-                null,
-                false,
-                false,
-                null,
-                null,
-                null,
-                null);
+            EventTicketType ticketType = EventTicketType.Create(
+                Guid.CreateVersion7(),
+                    catalog.TenantId,
+                    catalog.Id,
+                    "General admission",
+                    currencyCode,
+                    mode,
+                    fixedPriceMinor,
+                    minimumPriceMinor,
+                    suggestedPriceMinor,
+                    ParticipantDataCollectionModeEnum.None,
+                    null,
+                    null,
+                    null,
+                    false,
+                    false,
+                    null,
+                    null,
+                    null,
+                    null);
             catalog.AddTicketType(ticketType, null);
             catalog.AddEntitlement(ticketType, TicketTypeEntitlement.CreateForEvent(ticketType.Id, catalog.TenantId, catalog.EventId, 1));
         }

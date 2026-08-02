@@ -1,6 +1,7 @@
 // ABOUTME: Verifies event public-action creation enforces participation legality, review state, and primary uniqueness.
 // ABOUTME: Covers fail-closed modes, normalized destination disclosure, and authenticated tenant ownership checks.
 
+using System.Collections.Concurrent;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.EventPublicAction;
@@ -10,7 +11,6 @@ using Explore.Application.Responses;
 using Explore.Domain;
 using Explore.Domain.Enums;
 using NSubstitute;
-using System.Collections.Concurrent;
 using TUnit.Assertions;
 using TUnit.Core;
 

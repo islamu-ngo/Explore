@@ -97,11 +97,35 @@ public class UpdateCustomPropertyDefinitionCommandHandler : IRequestHandler<Upda
 
         var candidate = new CreateCustomPropertyDefinitionDto
         {
-            EntityTypeName = definition.EntityTypeName, Namespace = definition.Namespace, Key = definition.Key, DisplayName = definition.DisplayName, Description = definition.Description, PropertyType = definition.PropertyType,
-            IsRequired = definition.IsRequired, IsMulti = definition.IsMulti, IsActive = definition.IsActive, SortOrder = definition.SortOrder, ExposureLevel = definition.ExposureLevel,
-            IsSearchable = definition.IsSearchable, IsFilterable = definition.IsFilterable, IsExportable = definition.IsExportable, IsModerationRelevant = definition.IsModerationRelevant, IsAnalyticsRelevant = definition.IsAnalyticsRelevant, IsSystemOwned = definition.IsSystemOwned,
-            DefaultTextValue = definition.DefaultTextValue, DefaultNumberValue = definition.DefaultNumberValue, DefaultBooleanValue = definition.DefaultBooleanValue, DefaultDateTimeValue = definition.DefaultDateTimeValue,
-            MinLength = definition.MinLength, MaxLength = definition.MaxLength, RegexPattern = definition.RegexPattern, MinNumber = definition.MinNumber, MaxNumber = definition.MaxNumber, MinDateTime = definition.MinDateTime, MaxDateTime = definition.MaxDateTime, AllowedUrlSchemes = definition.AllowedUrlSchemes
+            EntityTypeName = definition.EntityTypeName,
+            Namespace = definition.Namespace,
+            Key = definition.Key,
+            DisplayName = definition.DisplayName,
+            Description = definition.Description,
+            PropertyType = definition.PropertyType,
+            IsRequired = definition.IsRequired,
+            IsMulti = definition.IsMulti,
+            IsActive = definition.IsActive,
+            SortOrder = definition.SortOrder,
+            ExposureLevel = definition.ExposureLevel,
+            IsSearchable = definition.IsSearchable,
+            IsFilterable = definition.IsFilterable,
+            IsExportable = definition.IsExportable,
+            IsModerationRelevant = definition.IsModerationRelevant,
+            IsAnalyticsRelevant = definition.IsAnalyticsRelevant,
+            IsSystemOwned = definition.IsSystemOwned,
+            DefaultTextValue = definition.DefaultTextValue,
+            DefaultNumberValue = definition.DefaultNumberValue,
+            DefaultBooleanValue = definition.DefaultBooleanValue,
+            DefaultDateTimeValue = definition.DefaultDateTimeValue,
+            MinLength = definition.MinLength,
+            MaxLength = definition.MaxLength,
+            RegexPattern = definition.RegexPattern,
+            MinNumber = definition.MinNumber,
+            MaxNumber = definition.MaxNumber,
+            MinDateTime = definition.MinDateTime,
+            MaxDateTime = definition.MaxDateTime,
+            AllowedUrlSchemes = definition.AllowedUrlSchemes
         };
         candidate.Options = definition.Options.Select(option => new CreateCustomPropertyOptionDto { Namespace = option.Namespace, Key = option.Key, DisplayName = option.DisplayName, Description = option.Description, Value = option.Value, IsDefault = option.IsDefault, IsActive = option.IsActive, SortOrder = option.SortOrder }).ToList();
         ApplyPatch(candidate, request.DefinitionDto);

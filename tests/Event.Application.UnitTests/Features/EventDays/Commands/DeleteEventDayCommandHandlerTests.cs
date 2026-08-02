@@ -1,7 +1,7 @@
+using Event.Application.UnitTests.Features.EventTicketing;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Features.EventDays.Handlers.Commands;
 using Explore.Application.Features.EventDays.Requests.Commands;
-using Event.Application.UnitTests.Features.EventTicketing;
 using Explore.Domain;
 using Explore.Domain.Enums;
 using NSubstitute;

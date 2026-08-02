@@ -224,16 +224,16 @@ public sealed class OrganizationTenantEvidenceCommandHandlerTests
     private ReviewOrganizationTenantEvidenceCommand CreateReviewCommand(
         Guid evidenceId,
         Guid concurrencyStamp) => new()
-    {
-        OrganizationId = _organizationId,
-        EvidenceId = evidenceId,
-        Review = new ReviewOrganizationTenantEvidenceDto
         {
-            Decision = OrganizationTenantEvidenceReviewDecisionDto.Approve,
-            ExpectedConcurrencyStamp = concurrencyStamp,
-            Notes = "verified"
-        }
-    };
+            OrganizationId = _organizationId,
+            EvidenceId = evidenceId,
+            Review = new ReviewOrganizationTenantEvidenceDto
+            {
+                Decision = OrganizationTenantEvidenceReviewDecisionDto.Approve,
+                ExpectedConcurrencyStamp = concurrencyStamp,
+                Notes = "verified"
+            }
+        };
 
     private OrganizationTenant CreateParticipation()
     {

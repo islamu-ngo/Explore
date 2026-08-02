@@ -76,9 +76,9 @@ public sealed class CreateOrganizationTenantEvidenceUploadSessionCommandHandler(
     private static BaseCommandResponse<StorageUploadSessionDto> Failure(
         string message,
         IEnumerable<string> errors) => new()
-    {
-        Success = false,
-        Message = message,
-        Errors = errors.ToList()
-    };
+        {
+            Success = false,
+            Message = message,
+            Errors = errors.ToList()
+        };
 }

@@ -146,6 +146,7 @@ public sealed class RegistrationParticipantCommandHandlerTests
         private readonly IEventSessionRepository _sessions = Substitute.For<IEventSessionRepository>();
         private readonly IPlatformContributionSettingRepository _contributions = Substitute.For<IPlatformContributionSettingRepository>();
         private readonly IOutboxRepository _outbox = Substitute.For<IOutboxRepository>();
+        private readonly IRegistrationFinalizationRepository _finalization = Substitute.For<IRegistrationFinalizationRepository>();
         private readonly InlineUnitOfWork _unitOfWork = new();
 
         public HandlerFixture(
@@ -197,7 +198,8 @@ public sealed class RegistrationParticipantCommandHandlerTests
             Defer = new DeferRegistrationTicketCommandHandler(commandService);
             BulkDefer = new BulkDeferRegistrationTicketsCommandHandler(commandService);
             Lifecycle = new RegistrationOrderLifecycleService(
-                _inventory, _participants, _catalogs, _contributions, _sessions, _outbox, _unitOfWork, new FixedTimeProvider(UtcNow));
+                _inventory, _participants, _catalogs, _contributions, _sessions, _outbox, _unitOfWork, _finalization,
+                new FixedTimeProvider(UtcNow));
         }
 
         public Guid TenantId { get; }
