@@ -24,6 +24,7 @@ public sealed class RegistrationRequirement : ITenantEntity, IAuditableEntity, I
     public int AnswerSyncModeId { get; private set; }
     public int AppliesToSubjectTypeId { get; private set; }
     public Guid? AppliesToSubjectId { get; private set; }
+    public Guid AppliesToSubjectKey { get; private set; }
     public bool CanSkip { get; private set; }
     public IReadOnlyList<RegistrationChannel> Channels => _channels;
     public DateTime CreatedAt { get; set; }
