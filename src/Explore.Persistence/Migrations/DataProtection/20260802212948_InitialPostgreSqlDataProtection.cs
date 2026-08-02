@@ -1,4 +1,4 @@
-using Microsoft.EntityFrameworkCore.Migrations;
+﻿using Microsoft.EntityFrameworkCore.Migrations;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 #nullable disable
@@ -6,13 +6,17 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Explore.Persistence.Migrations.DataProtection
 {
     /// <inheritdoc />
-    public partial class init : Migration
+    public partial class InitialPostgreSqlDataProtection : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
+            migrationBuilder.EnsureSchema(
+                name: "islamu_event");
+
             migrationBuilder.CreateTable(
                 name: "data_protection_keys",
+                schema: "islamu_event",
                 columns: table => new
                 {
                     id = table.Column<int>(type: "integer", nullable: false)
@@ -30,7 +34,8 @@ namespace Explore.Persistence.Migrations.DataProtection
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropTable(
-                name: "data_protection_keys");
+                name: "data_protection_keys",
+                schema: "islamu_event");
         }
     }
 }

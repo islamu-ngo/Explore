@@ -16,7 +16,8 @@ namespace Explore.Persistence.Migrations.DataProtection
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "10.0.8")
+                .HasDefaultSchema("islamu_event")
+                .HasAnnotation("ProductVersion", "10.0.10")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -41,7 +42,7 @@ namespace Explore.Persistence.Migrations.DataProtection
                     b.HasKey("Id")
                         .HasName("pk_data_protection_keys");
 
-                    b.ToTable("data_protection_keys", (string)null);
+                    b.ToTable("data_protection_keys", "islamu_event");
                 });
 #pragma warning restore 612, 618
         }
