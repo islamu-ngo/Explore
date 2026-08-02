@@ -12,14 +12,15 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Explore.Persistence.Migrations
 {
     [DbContext(typeof(ExploreDbContext))]
-    [Migration("20260802195639_Phase82TypedRegistrationAnswers")]
-    partial class Phase82TypedRegistrationAnswers
+    [Migration("20260802201020_Phase82TypedRegistrationAnswersAndDatabaseNamespaceCutover")]
+    partial class Phase82TypedRegistrationAnswersAndDatabaseNamespaceCutover
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
+                .HasDefaultSchema("islamu_event")
                 .HasAnnotation("ProductVersion", "10.0.10")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
@@ -56,7 +57,7 @@ namespace Explore.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ux_account_authority_kinds_master_code");
 
-                    b.ToTable("account_authority_kinds", (string)null);
+                    b.ToTable("account_authority_kinds", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.Actor", b =>
@@ -195,7 +196,7 @@ namespace Explore.Persistence.Migrations
                         .HasDatabaseName("ix_actors_user_id")
                         .HasFilter("user_id IS NOT NULL");
 
-                    b.ToTable("actors", null, t =>
+                    b.ToTable("actors", "islamu_event", t =>
                         {
                             t.HasCheckConstraint("ck_actors_exactly_one_owner", "num_nonnulls(user_id, organization_id, group_id, external_actor_subject_id, service_principal_id) = 1 OR (is_deleted AND num_nonnulls(user_id, organization_id, group_id, external_actor_subject_id, service_principal_id) = 0)");
 
@@ -253,7 +254,7 @@ namespace Explore.Persistence.Migrations
                     b.HasIndex("TenantId")
                         .HasDatabaseName("ix_actor_key_stores_tenant_id");
 
-                    b.ToTable("actor_key_stores", (string)null);
+                    b.ToTable("actor_key_stores", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.ActorMerge", b =>
@@ -299,7 +300,7 @@ namespace Explore.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_actor_merges_source_actor_id");
 
-                    b.ToTable("actor_merges", null, t =>
+                    b.ToTable("actor_merges", "islamu_event", t =>
                         {
                             t.HasCheckConstraint("ck_actor_merges_distinct_actors", "source_actor_id <> canonical_actor_id");
                         });
@@ -340,7 +341,7 @@ namespace Explore.Persistence.Migrations
                     b.HasIndex("ActorId")
                         .HasDatabaseName("ix_actor_moderation_records_actor_id");
 
-                    b.ToTable("actor_moderation_records", (string)null);
+                    b.ToTable("actor_moderation_records", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.ActorPii", b =>
@@ -363,7 +364,7 @@ namespace Explore.Persistence.Migrations
                     b.HasKey("ActorId")
                         .HasName("pk_actor_pii");
 
-                    b.ToTable("actor_pii", (string)null);
+                    b.ToTable("actor_pii", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.ActorSubscription", b =>
@@ -480,7 +481,7 @@ namespace Explore.Persistence.Migrations
                     b.HasIndex("TenantId", "TargetActorId", "StatusId", "NotificationLevelId")
                         .HasDatabaseName("ix_actor_subscriptions_fanout_scan");
 
-                    b.ToTable("actor_subscriptions", null, t =>
+                    b.ToTable("actor_subscriptions", "islamu_event", t =>
                         {
                             t.HasCheckConstraint("ck_actor_subscriptions_notification_level", "notification_level_id IN (1, 2, 3)");
 
@@ -522,7 +523,7 @@ namespace Explore.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ux_actor_subscription_notification_levels_master_code");
 
-                    b.ToTable("actor_subscription_notification_levels", (string)null);
+                    b.ToTable("actor_subscription_notification_levels", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.ActorSubscriptionStatus", b =>
@@ -555,7 +556,7 @@ namespace Explore.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ux_actor_subscription_statuses_master_code");
 
-                    b.ToTable("actor_subscription_statuses", (string)null);
+                    b.ToTable("actor_subscription_statuses", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.ActorType", b =>
@@ -584,7 +585,7 @@ namespace Explore.Persistence.Migrations
                     b.HasKey("Id")
                         .HasName("pk_actor_types");
 
-                    b.ToTable("actor_types", (string)null);
+                    b.ToTable("actor_types", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.AdvanceRegistrationObligation", b =>
@@ -617,7 +618,7 @@ namespace Explore.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_advance_registration_obligations_master_code");
 
-                    b.ToTable("advance_registration_obligations", (string)null);
+                    b.ToTable("advance_registration_obligations", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.Ai.AiConversation", b =>
@@ -724,7 +725,7 @@ namespace Explore.Persistence.Migrations
                         .IsDescending(false, false, false, true)
                         .HasDatabaseName("ix_ai_conversations_tenant_user_status_updated_at");
 
-                    b.ToTable("ai_conversations", null, t =>
+                    b.ToTable("ai_conversations", "islamu_event", t =>
                         {
                             t.HasCheckConstraint("ck_ai_conversations_last_message_sequence_nonnegative", "last_message_sequence >= 0");
                         });
@@ -786,7 +787,7 @@ namespace Explore.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ux_ai_conversation_references_identity");
 
-                    b.ToTable("ai_conversation_references", (string)null);
+                    b.ToTable("ai_conversation_references", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.Ai.AiConversationStatusLookup", b =>
@@ -819,7 +820,7 @@ namespace Explore.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ux_ai_conversation_statuses_master_code");
 
-                    b.ToTable("ai_conversation_statuses", (string)null);
+                    b.ToTable("ai_conversation_statuses", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.Ai.AiMessage", b =>
@@ -880,7 +881,7 @@ namespace Explore.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ux_ai_messages_tenant_conversation_sequence");
 
-                    b.ToTable("ai_messages", null, t =>
+                    b.ToTable("ai_messages", "islamu_event", t =>
                         {
                             t.HasCheckConstraint("ck_ai_messages_sequence_positive", "sequence > 0");
                         });
@@ -916,7 +917,7 @@ namespace Explore.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ux_ai_message_roles_master_code");
 
-                    b.ToTable("ai_message_roles", (string)null);
+                    b.ToTable("ai_message_roles", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.Ai.AiProposedAction", b =>
@@ -1025,7 +1026,7 @@ namespace Explore.Persistence.Migrations
                     b.HasIndex("TenantId", "StatusId", "KindId", "CreatedAt")
                         .HasDatabaseName("ix_ai_proposed_actions_tenant_status_kind_created_at");
 
-                    b.ToTable("ai_proposed_actions", null, t =>
+                    b.ToTable("ai_proposed_actions", "islamu_event", t =>
                         {
                             t.HasCheckConstraint("ck_ai_proposed_actions_payload_object", "jsonb_typeof(payload_json) = 'object'");
                         });
@@ -1061,7 +1062,7 @@ namespace Explore.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ux_ai_proposed_action_kinds_master_code");
 
-                    b.ToTable("ai_proposed_action_kinds", (string)null);
+                    b.ToTable("ai_proposed_action_kinds", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.Ai.AiProposedActionStatusLookup", b =>
@@ -1094,7 +1095,7 @@ namespace Explore.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ux_ai_proposed_action_statuses_master_code");
 
-                    b.ToTable("ai_proposed_action_statuses", (string)null);
+                    b.ToTable("ai_proposed_action_statuses", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.Ai.AiProviderKindLookup", b =>
@@ -1127,7 +1128,7 @@ namespace Explore.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ux_ai_provider_kinds_master_code");
 
-                    b.ToTable("ai_provider_kinds", (string)null);
+                    b.ToTable("ai_provider_kinds", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.Ai.AiReferenceKindLookup", b =>
@@ -1160,7 +1161,7 @@ namespace Explore.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ux_ai_reference_kinds_master_code");
 
-                    b.ToTable("ai_reference_kinds", (string)null);
+                    b.ToTable("ai_reference_kinds", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.Ai.AiRun", b =>
@@ -1234,7 +1235,7 @@ namespace Explore.Persistence.Migrations
                     b.HasIndex("TenantId", "StatusId", "QueuedAt")
                         .HasDatabaseName("ix_ai_runs_tenant_status_queued_at");
 
-                    b.ToTable("ai_runs", (string)null);
+                    b.ToTable("ai_runs", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.Ai.AiRunStatusLookup", b =>
@@ -1267,7 +1268,7 @@ namespace Explore.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ux_ai_run_statuses_master_code");
 
-                    b.ToTable("ai_run_statuses", (string)null);
+                    b.ToTable("ai_run_statuses", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.Ai.AiToolExecution", b =>
@@ -1326,7 +1327,7 @@ namespace Explore.Persistence.Migrations
                     b.HasIndex("TenantId", "ToolName", "StartedAt")
                         .HasDatabaseName("ix_ai_tool_executions_tenant_tool_started_at");
 
-                    b.ToTable("ai_tool_executions", (string)null);
+                    b.ToTable("ai_tool_executions", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.AiConsentGrant", b =>
@@ -1423,7 +1424,7 @@ namespace Explore.Persistence.Migrations
                     b.HasIndex("SubjectUserId", "EntityName", "FieldName", "ProviderTrustTierId")
                         .HasDatabaseName("IX_AiConsentGrants_Subject_Entity_Field_Tier");
 
-                    b.ToTable("ai_consent_grants", (string)null);
+                    b.ToTable("ai_consent_grants", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.AnalyticsProvider", b =>
@@ -1452,7 +1453,7 @@ namespace Explore.Persistence.Migrations
                     b.HasKey("Id")
                         .HasName("pk_analytics_providers");
 
-                    b.ToTable("analytics_providers", (string)null);
+                    b.ToTable("analytics_providers", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.AppSetting", b =>
@@ -1536,7 +1537,7 @@ namespace Explore.Persistence.Migrations
                     b.HasIndex("KeyVersion")
                         .HasDatabaseName("ix_app_settings_key_version");
 
-                    b.ToTable("app_settings", null, t =>
+                    b.ToTable("app_settings", "islamu_event", t =>
                         {
                             t.HasCheckConstraint("CK_AppSettings_NoHighValueSecrets", "config_key NOT LIKE 'Database:%' AND config_key NOT LIKE 'Security:MasterKey%' AND config_key NOT LIKE 'ConnectionStrings:%'");
                         });
@@ -1568,7 +1569,7 @@ namespace Explore.Persistence.Migrations
                     b.HasKey("Id")
                         .HasName("pk_approval_statuses");
 
-                    b.ToTable("approval_statuses", (string)null);
+                    b.ToTable("approval_statuses", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.AssignmentStatus", b =>
@@ -1600,7 +1601,7 @@ namespace Explore.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_assignment_statuses_master_code");
 
-                    b.ToTable("assignment_statuses", (string)null);
+                    b.ToTable("assignment_statuses", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.AtprotoIdentity", b =>
@@ -1716,7 +1717,7 @@ namespace Explore.Persistence.Migrations
                     b.HasIndex("DidCustodyTypeId")
                         .HasDatabaseName("ix_atproto_identities_did_custody_type_id");
 
-                    b.ToTable("atproto_identities", (string)null);
+                    b.ToTable("atproto_identities", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.AtprotoIdentityModerationRecord", b =>
@@ -1754,7 +1755,7 @@ namespace Explore.Persistence.Migrations
                     b.HasIndex("AtprotoIdentityId")
                         .HasDatabaseName("ix_atproto_identity_moderation_records_atproto_identity_id");
 
-                    b.ToTable("atproto_identity_moderation_records", (string)null);
+                    b.ToTable("atproto_identity_moderation_records", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.AtprotoRecord", b =>
@@ -1858,7 +1859,7 @@ namespace Explore.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ux_atproto_records_identity");
 
-                    b.ToTable("atproto_records", null, t =>
+                    b.ToTable("atproto_records", "islamu_event", t =>
                         {
                             t.HasCheckConstraint("ck_atproto_records_direction", "direction BETWEEN 1 AND 3");
 
@@ -1901,7 +1902,7 @@ namespace Explore.Persistence.Migrations
                     b.HasKey("Id")
                         .HasName("pk_audience_ages");
 
-                    b.ToTable("audience_ages", (string)null);
+                    b.ToTable("audience_ages", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.AudienceGender", b =>
@@ -1927,7 +1928,7 @@ namespace Explore.Persistence.Migrations
                     b.HasKey("Id")
                         .HasName("pk_audience_genders");
 
-                    b.ToTable("audience_genders", (string)null);
+                    b.ToTable("audience_genders", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.AuditLog", b =>
@@ -1996,7 +1997,7 @@ namespace Explore.Persistence.Migrations
                     b.HasIndex("TenantId", "EntityType", "EntityId")
                         .HasDatabaseName("ix_auditlogs_tenant_entity");
 
-                    b.ToTable("audit_logs", (string)null);
+                    b.ToTable("audit_logs", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.BookingPartyType", b =>
@@ -2029,7 +2030,7 @@ namespace Explore.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_booking_party_types_master_code");
 
-                    b.ToTable("booking_party_types", (string)null);
+                    b.ToTable("booking_party_types", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.CapacityHoldPolicy", b =>
@@ -2062,7 +2063,7 @@ namespace Explore.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_capacity_hold_policies_master_code");
 
-                    b.ToTable("capacity_hold_policies", (string)null);
+                    b.ToTable("capacity_hold_policies", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.CapacityOversellPolicy", b =>
@@ -2095,7 +2096,7 @@ namespace Explore.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_capacity_oversell_policies_master_code");
 
-                    b.ToTable("capacity_oversell_policies", (string)null);
+                    b.ToTable("capacity_oversell_policies", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.Category", b =>
@@ -2143,7 +2144,7 @@ namespace Explore.Persistence.Migrations
                     b.HasIndex("TenantId", "ParentId")
                         .HasDatabaseName("ix_categories_tenant_id_parent_id");
 
-                    b.ToTable("categories", (string)null);
+                    b.ToTable("categories", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.CategoryType", b =>
@@ -2172,7 +2173,7 @@ namespace Explore.Persistence.Migrations
                     b.HasKey("Id")
                         .HasName("pk_category_types");
 
-                    b.ToTable("category_types", (string)null);
+                    b.ToTable("category_types", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.CategoryTypeCategories", b =>
@@ -2207,7 +2208,7 @@ namespace Explore.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_category_type_categories_tenant_id_category_id_category_typ");
 
-                    b.ToTable("category_type_categories", (string)null);
+                    b.ToTable("category_type_categories", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.ConfigurationChangeLog", b =>
@@ -2290,7 +2291,7 @@ namespace Explore.Persistence.Migrations
                     b.HasIndex("SettingScopeId", "ScopeId")
                         .HasDatabaseName("ix_configuration_change_logs_setting_scope_id_scope_id");
 
-                    b.ToTable("configuration_change_logs", (string)null);
+                    b.ToTable("configuration_change_logs", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.CustomPropertyDefinition", b =>
@@ -2492,7 +2493,7 @@ namespace Explore.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_cpd_tenant_entity_namespace_key");
 
-                    b.ToTable("custom_property_definitions", null, t =>
+                    b.ToTable("custom_property_definitions", "islamu_event", t =>
                         {
                             t.HasCheckConstraint("ck_custom_property_definitions_shared_entity_type", "entity_type_name IN ('Organization', 'Group')");
                         });
@@ -2600,7 +2601,7 @@ namespace Explore.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_cpo_definition_namespace_key");
 
-                    b.ToTable("custom_property_options", (string)null);
+                    b.ToTable("custom_property_options", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.CustomPropertyProjectionDirtyScope", b =>
@@ -2668,7 +2669,7 @@ namespace Explore.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_dirty_scope_unique");
 
-                    b.ToTable("custom_property_projection_dirty_scope", (string)null);
+                    b.ToTable("custom_property_projection_dirty_scope", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.CustomPropertyProjectionStatus", b =>
@@ -2729,7 +2730,7 @@ namespace Explore.Persistence.Migrations
                     b.HasIndex("TenantId")
                         .HasDatabaseName("ix_custom_property_projection_status_tenant_id");
 
-                    b.ToTable("custom_property_projection_status", (string)null);
+                    b.ToTable("custom_property_projection_status", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.CustomPropertyValue", b =>
@@ -2828,7 +2829,7 @@ namespace Explore.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_cpv_definition_entity_ordinal");
 
-                    b.ToTable("custom_property_values", (string)null);
+                    b.ToTable("custom_property_values", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.DidCustodyType", b =>
@@ -2857,7 +2858,7 @@ namespace Explore.Persistence.Migrations
                     b.HasKey("Id")
                         .HasName("pk_did_custody_types");
 
-                    b.ToTable("did_custody_types", (string)null);
+                    b.ToTable("did_custody_types", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.EmailDispatchAttempt", b =>
@@ -2952,7 +2953,7 @@ namespace Explore.Persistence.Migrations
                     b.HasIndex("TenantId", "StartedAt")
                         .HasDatabaseName("ix_email_dispatch_attempts_tenant_started");
 
-                    b.ToTable("email_dispatch_attempts", null, t =>
+                    b.ToTable("email_dispatch_attempts", "islamu_event", t =>
                         {
                             t.HasCheckConstraint("ck_email_dispatch_attempts_provider_handoff_fence", "failure_category <> 'provider_handoff_started' OR (outcome = 3 AND completed_at IS NULL AND provider_message_id IS NULL)");
                         });
@@ -3202,7 +3203,7 @@ namespace Explore.Persistence.Migrations
                     b.HasIndex("TenantId", "ContentRedactedAt", "Status", "SentAt", "LastFailureAt", "CreatedAt")
                         .HasDatabaseName("ix_email_dispatch_outbox_retention");
 
-                    b.ToTable("email_dispatch_outbox", null, t =>
+                    b.ToTable("email_dispatch_outbox", "islamu_event", t =>
                         {
                             t.HasCheckConstraint("ck_email_dispatch_outbox_processing_fence", "(status = 2) = (processing_started_at IS NOT NULL AND processing_lease_token IS NOT NULL)");
 
@@ -3276,7 +3277,7 @@ namespace Explore.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ux_email_dispatch_processor_states_processor_code");
 
-                    b.ToTable("email_dispatch_processor_states", null, t =>
+                    b.ToTable("email_dispatch_processor_states", "islamu_event", t =>
                         {
                             t.HasCheckConstraint("ck_email_dispatch_processor_states_global_rate_override", "global_smtp_rate_limit_per_minute_override IS NULL OR global_smtp_rate_limit_per_minute_override BETWEEN 1 AND 100000");
 
@@ -3379,7 +3380,7 @@ namespace Explore.Persistence.Migrations
                     b.HasIndex("TenantId", "EmailDispatchOutboxId", "PublishEventId")
                         .HasDatabaseName("ix_email_dispatch_receipts_tenant_id_email_dispatch_outbox_id_");
 
-                    b.ToTable("email_dispatch_receipts", (string)null);
+                    b.ToTable("email_dispatch_receipts", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.EmailDispatchTenantControl", b =>
@@ -3445,7 +3446,7 @@ namespace Explore.Persistence.Migrations
                     b.HasIndex("IsPaused", "UpdatedAt")
                         .HasDatabaseName("ix_email_dispatch_tenant_controls_pause_state");
 
-                    b.ToTable("email_dispatch_tenant_controls", null, t =>
+                    b.ToTable("email_dispatch_tenant_controls", "islamu_event", t =>
                         {
                             t.HasCheckConstraint("ck_email_dispatch_tenant_controls_smtp_rate_pair", "(smtp_available_tokens IS NULL) = (smtp_refill_at IS NULL)");
 
@@ -3483,7 +3484,7 @@ namespace Explore.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_entitlement_scope_types_master_code");
 
-                    b.ToTable("entitlement_scope_types", (string)null);
+                    b.ToTable("entitlement_scope_types", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.EntitlementSelectionRule", b =>
@@ -3516,7 +3517,7 @@ namespace Explore.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_entitlement_selection_rules_master_code");
 
-                    b.ToTable("entitlement_selection_rules", (string)null);
+                    b.ToTable("entitlement_selection_rules", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.Event", b =>
@@ -3822,7 +3823,7 @@ namespace Explore.Persistence.Migrations
                     b.HasIndex("TenantId", "IsDeleted", "EventStatusId")
                         .HasDatabaseName("ix_events_tenant_active_status");
 
-                    b.ToTable("events", null, t =>
+                    b.ToTable("events", "islamu_event", t =>
                         {
                             t.HasCheckConstraint("CK_Event_SessionDateRange", "first_session_date IS NULL OR last_session_date IS NULL OR first_session_date <= last_session_date");
 
@@ -3970,7 +3971,7 @@ namespace Explore.Persistence.Migrations
                     b.HasIndex("TenantId", "EventId", "LocalStartDate", "LocalStartMinuteOfDay")
                         .HasDatabaseName("ix_event_agenda_items_tenant_event_local_start");
 
-                    b.ToTable("event_agenda_items", null, t =>
+                    b.ToTable("event_agenda_items", "islamu_event", t =>
                         {
                             t.HasCheckConstraint("CK_EventAgendaItem_EndAfterStart", "end_time > start_time");
 
@@ -4080,7 +4081,7 @@ namespace Explore.Persistence.Migrations
                         .HasDatabaseName("ix_event_capacity_pools_tenant_id_event_id_name")
                         .HasFilter("is_deleted = false");
 
-                    b.ToTable("event_capacity_pools", (string)null);
+                    b.ToTable("event_capacity_pools", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.EventCategories", b =>
@@ -4133,7 +4134,7 @@ namespace Explore.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_event_categories_tenant_event_category");
 
-                    b.ToTable("event_categories", (string)null);
+                    b.ToTable("event_categories", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.EventContactShareConsent", b =>
@@ -4246,7 +4247,7 @@ namespace Explore.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_eventcontactshareconsents_scope_unique");
 
-                    b.ToTable("event_contact_share_consents", (string)null);
+                    b.ToTable("event_contact_share_consents", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.EventContactShareExport", b =>
@@ -4302,7 +4303,7 @@ namespace Explore.Persistence.Migrations
                     b.HasIndex("TenantId", "RecipientActorId", "CreatedAt")
                         .HasDatabaseName("ix_eventcontactshareexports_recipient_date");
 
-                    b.ToTable("event_contact_share_exports", (string)null);
+                    b.ToTable("event_contact_share_exports", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.EventContactShareExportItem", b =>
@@ -4327,7 +4328,7 @@ namespace Explore.Persistence.Migrations
                     b.HasIndex("ConsentId")
                         .HasDatabaseName("ix_event_contact_share_export_items_consent_id");
 
-                    b.ToTable("event_contact_share_export_items", (string)null);
+                    b.ToTable("event_contact_share_export_items", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.EventCustomPropertyDefinition", b =>
@@ -4552,7 +4553,7 @@ namespace Explore.Persistence.Migrations
                     b.HasIndex("TenantId", "EventId", "IsSearchable", "IsFilterable")
                         .HasDatabaseName("ix_ecpd_tenant_event_search_filter");
 
-                    b.ToTable("event_custom_property_definitions", (string)null);
+                    b.ToTable("event_custom_property_definitions", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.EventCustomPropertyOption", b =>
@@ -4665,7 +4666,7 @@ namespace Explore.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_ecpo_definition_namespace_key");
 
-                    b.ToTable("event_custom_property_options", (string)null);
+                    b.ToTable("event_custom_property_options", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.EventCustomPropertyProjection", b =>
@@ -4797,7 +4798,7 @@ namespace Explore.Persistence.Migrations
                     b.HasIndex("TenantId", "EventId", "Namespace", "Key", "Ordinal")
                         .HasDatabaseName("ix_ecpp_tenant_event_namespace_key_ordinal");
 
-                    b.ToTable("event_custom_property_projections", (string)null);
+                    b.ToTable("event_custom_property_projections", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.EventCustomPropertyValue", b =>
@@ -4896,7 +4897,7 @@ namespace Explore.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_ecpv_definition_event_ordinal");
 
-                    b.ToTable("event_custom_property_values", (string)null);
+                    b.ToTable("event_custom_property_values", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.EventDay", b =>
@@ -5004,7 +5005,7 @@ namespace Explore.Persistence.Migrations
                     b.HasIndex("TenantId", "EventId", "SortOrder")
                         .HasDatabaseName("ix_event_days_tenant_event_sort");
 
-                    b.ToTable("event_days", (string)null);
+                    b.ToTable("event_days", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.EventFormat", b =>
@@ -5033,7 +5034,7 @@ namespace Explore.Persistence.Migrations
                     b.HasKey("Id")
                         .HasName("pk_event_formats");
 
-                    b.ToTable("event_formats", (string)null);
+                    b.ToTable("event_formats", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.EventIslamicAspect", b =>
@@ -5079,7 +5080,7 @@ namespace Explore.Persistence.Migrations
                     b.HasIndex("PrimaryLanguageId")
                         .HasDatabaseName("ix_event_islamic_aspects_primary_language_id");
 
-                    b.ToTable("event_islamic_aspects", (string)null);
+                    b.ToTable("event_islamic_aspects", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.EventLocation", b =>
@@ -5218,7 +5219,7 @@ namespace Explore.Persistence.Migrations
                         .HasDatabaseName("ux_event_locations_active_physical")
                         .HasFilter("is_deleted = false AND is_to_be_announced = false AND location_id IS NOT NULL");
 
-                    b.ToTable("event_locations", null, t =>
+                    b.ToTable("event_locations", "islamu_event", t =>
                         {
                             t.HasCheckConstraint("ck_event_locations_physical_or_tba", "(location_id IS NOT NULL AND is_to_be_announced = false) OR (location_id IS NULL AND is_to_be_announced = true)");
 
@@ -5305,7 +5306,7 @@ namespace Explore.Persistence.Migrations
                     b.HasIndex("TenantId", "EventLocationId", "OccurredAtUtc")
                         .HasDatabaseName("ix_event_location_disclosure_audits_history");
 
-                    b.ToTable("event_location_disclosure_audits", null, t =>
+                    b.ToTable("event_location_disclosure_audits", "islamu_event", t =>
                         {
                             t.HasCheckConstraint("ck_event_location_disclosure_audits_field_flags", "previous_fields BETWEEN 0 AND 127 AND new_fields BETWEEN 0 AND 127");
 
@@ -5365,7 +5366,7 @@ namespace Explore.Persistence.Migrations
                     b.HasIndex("TenantId", "RequesterUserId", "OccurredAtUtc")
                         .HasDatabaseName("ix_event_location_exact_read_audits_requester");
 
-                    b.ToTable("event_location_exact_read_audits", null, t =>
+                    b.ToTable("event_location_exact_read_audits", "islamu_event", t =>
                         {
                             t.HasCheckConstraint("ck_event_location_exact_read_audits_purpose", "purpose BETWEEN 1 AND 4");
 
@@ -5476,7 +5477,7 @@ namespace Explore.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ux_event_moderation_records_exact_receipt_fk");
 
-                    b.ToTable("event_moderation_records", null, t =>
+                    b.ToTable("event_moderation_records", "islamu_event", t =>
                         {
                             t.HasCheckConstraint("ck_event_moderation_records_correlation_not_blank", "correlation_id IS NULL OR length(btrim(correlation_id)) > 0");
 
@@ -5589,7 +5590,7 @@ namespace Explore.Persistence.Migrations
                     b.HasIndex("TenantId", "EventId")
                         .HasDatabaseName("ix_event_organizer_claims_tenant_id_event_id");
 
-                    b.ToTable("event_organizer_claims", (string)null);
+                    b.ToTable("event_organizer_claims", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.EventOrganizerClaimStatus", b =>
@@ -5622,7 +5623,7 @@ namespace Explore.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_event_organizer_claim_statuses_master_code");
 
-                    b.ToTable("event_organizer_claim_statuses", (string)null);
+                    b.ToTable("event_organizer_claim_statuses", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.EventParticipationConfiguration", b =>
@@ -5701,7 +5702,7 @@ namespace Explore.Persistence.Migrations
                     b.HasIndex("ParticipationHandlingModeId")
                         .HasDatabaseName("ix_event_participation_configurations_participation_handling_m");
 
-                    b.ToTable("event_participation_configurations", (string)null);
+                    b.ToTable("event_participation_configurations", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.EventProvenanceType", b =>
@@ -5734,7 +5735,7 @@ namespace Explore.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_event_provenance_types_master_code");
 
-                    b.ToTable("event_provenance_types", (string)null);
+                    b.ToTable("event_provenance_types", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.EventPublicAction", b =>
@@ -5835,7 +5836,7 @@ namespace Explore.Persistence.Migrations
                     b.HasIndex("TenantId", "EventId")
                         .HasDatabaseName("ix_event_public_actions_tenant_event");
 
-                    b.ToTable("event_public_actions", (string)null);
+                    b.ToTable("event_public_actions", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.EventPublicActionHealthState", b =>
@@ -5868,7 +5869,7 @@ namespace Explore.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_event_public_action_health_states_master_code");
 
-                    b.ToTable("event_public_action_health_states", (string)null);
+                    b.ToTable("event_public_action_health_states", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.EventPublicActionKind", b =>
@@ -5901,7 +5902,7 @@ namespace Explore.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_event_public_action_kinds_master_code");
 
-                    b.ToTable("event_public_action_kinds", (string)null);
+                    b.ToTable("event_public_action_kinds", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.EventRegistration", b =>
@@ -6027,7 +6028,7 @@ namespace Explore.Persistence.Migrations
                         .HasDatabaseName("ix_eventregistrations_order_admission")
                         .HasFilter("registration_order_line_id IS NOT NULL AND ticket_type_entitlement_id IS NOT NULL AND entitlement_ordinal IS NOT NULL AND is_deleted = false");
 
-                    b.ToTable("event_registrations", (string)null);
+                    b.ToTable("event_registrations", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.EventRegistrationPolicy", b =>
@@ -6060,7 +6061,7 @@ namespace Explore.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_event_registration_policies_master_code");
 
-                    b.ToTable("event_registration_policies", (string)null);
+                    b.ToTable("event_registration_policies", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.EventReport", b =>
@@ -6215,7 +6216,7 @@ namespace Explore.Persistence.Migrations
                         .HasDatabaseName("ix_event_reports_tenant_reporter_event_reason_created")
                         .HasFilter("reporter_user_id IS NOT NULL");
 
-                    b.ToTable("event_reports", null, t =>
+                    b.ToTable("event_reports", "islamu_event", t =>
                         {
                             t.HasCheckConstraint("ck_event_reports_closed_at_terminal_status", "(closed_at IS NULL AND status NOT IN (4, 5, 6, 8)) OR (closed_at IS NOT NULL AND status IN (4, 5, 6, 8))");
 
@@ -6331,7 +6332,7 @@ namespace Explore.Persistence.Migrations
                         .IsDescending(false, false, false, false, true)
                         .HasDatabaseName("ix_event_report_cases_tenant_queue_status_priority_created");
 
-                    b.ToTable("event_report_cases", null, t =>
+                    b.ToTable("event_report_cases", "islamu_event", t =>
                         {
                             t.HasCheckConstraint("ck_event_report_cases_priority", "priority BETWEEN 1 AND 4");
 
@@ -6443,7 +6444,7 @@ namespace Explore.Persistence.Migrations
                         .HasDatabaseName("ux_event_report_decisions_tenant_source_target_external")
                         .HasFilter("external_decision_id IS NOT NULL");
 
-                    b.ToTable("event_report_decisions", null, t =>
+                    b.ToTable("event_report_decisions", "islamu_event", t =>
                         {
                             t.HasCheckConstraint("ck_event_report_decisions_duplicate_group_shape", "(decision_kind = 2 AND duplicate_group_id IS NOT NULL) OR (decision_kind <> 2 AND duplicate_group_id IS NULL)");
 
@@ -6562,7 +6563,7 @@ namespace Explore.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ux_event_report_decision_executions_tenant_report_decision");
 
-                    b.ToTable("event_report_decision_executions", null, t =>
+                    b.ToTable("event_report_decision_executions", "islamu_event", t =>
                         {
                             t.HasCheckConstraint("ck_event_report_decision_executions_failure_code_not_blank", "last_failure_code IS NULL OR length(btrim(last_failure_code)) > 0");
 
@@ -6661,7 +6662,7 @@ namespace Explore.Persistence.Migrations
                         .IsDescending(false, false, false, true)
                         .HasDatabaseName("ix_event_report_evidence_tenant_report_kind_created");
 
-                    b.ToTable("event_report_evidence", null, t =>
+                    b.ToTable("event_report_evidence", "islamu_event", t =>
                         {
                             t.HasCheckConstraint("ck_event_report_evidence_classification", "classification BETWEEN 1 AND 3");
 
@@ -6784,7 +6785,7 @@ namespace Explore.Persistence.Migrations
                         .IsDescending(false, false, false, false, false, true)
                         .HasDatabaseName("ix_event_report_external_links_tenant_provider_target_state_created");
 
-                    b.ToTable("event_report_external_links", null, t =>
+                    b.ToTable("event_report_external_links", "islamu_event", t =>
                         {
                             t.HasCheckConstraint("ck_event_report_external_links_correlation_id_not_blank", "length(btrim(correlation_id)) > 0");
 
@@ -6922,7 +6923,7 @@ namespace Explore.Persistence.Migrations
                         .HasDatabaseName("ix_event_report_signals_tenant_report_provider_target_created")
                         .HasFilter("report_id IS NOT NULL");
 
-                    b.ToTable("event_report_signals", null, t =>
+                    b.ToTable("event_report_signals", "islamu_event", t =>
                         {
                             t.HasCheckConstraint("ck_event_report_signals_correlation_id_not_blank", "length(btrim(correlation_id)) > 0");
 
@@ -6992,7 +6993,7 @@ namespace Explore.Persistence.Migrations
                     b.HasIndex("TenantId", "ReportId", "TargetKind", "TargetId")
                         .HasDatabaseName("ix_event_report_targets_tenant_report_target");
 
-                    b.ToTable("event_report_targets", null, t =>
+                    b.ToTable("event_report_targets", "islamu_event", t =>
                         {
                             t.HasCheckConstraint("ck_event_report_targets_field_path_not_blank", "field_path IS NULL OR length(btrim(field_path)) > 0");
 
@@ -7087,7 +7088,7 @@ namespace Explore.Persistence.Migrations
                     b.HasIndex("TenantId", "UserId", "EventId", "Status")
                         .HasDatabaseName("ix_event_role_assignments_tenant_user_event_status");
 
-                    b.ToTable("event_role_assignments", null, t =>
+                    b.ToTable("event_role_assignments", "islamu_event", t =>
                         {
                             t.HasCheckConstraint("ck_event_role_assignments_validity_window", "expires_at_utc IS NULL OR expires_at_utc > starts_at_utc");
                         });
@@ -7203,7 +7204,7 @@ namespace Explore.Persistence.Migrations
                     b.HasIndex("TenantId", "TotalViews")
                         .HasDatabaseName("ix_event_series_tenant_id_total_views");
 
-                    b.ToTable("event_series", (string)null);
+                    b.ToTable("event_series", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.EventSession", b =>
@@ -7408,7 +7409,7 @@ namespace Explore.Persistence.Migrations
                     b.HasIndex("TenantId", "LocationId", "RoomId", "StartTime", "EndTime")
                         .HasDatabaseName("ix_event_sessions_tenant_location_room_time");
 
-                    b.ToTable("event_sessions", null, t =>
+                    b.ToTable("event_sessions", "islamu_event", t =>
                         {
                             t.HasCheckConstraint("CK_EventSession_EndAfterStart", "end_time IS NULL OR start_time IS NULL OR end_time > start_time");
 
@@ -7485,7 +7486,7 @@ namespace Explore.Persistence.Migrations
                     b.HasIndex("TenantId", "EventSessionId", "EventLocationId", "LocationId")
                         .HasDatabaseName("ix_event_session_agenda_items_elp_consistency");
 
-                    b.ToTable("event_session_agenda_items", (string)null);
+                    b.ToTable("event_session_agenda_items", "islamu_event");
 
                     b.HasAnnotation("EventLocationPrivacy:ConsistencyTrigger", "event_session_agenda_items:tenant_id,event_session_id,event_location_id,location_id");
                 });
@@ -7535,7 +7536,7 @@ namespace Explore.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_event_session_categories_tenant_session_category");
 
-                    b.ToTable("event_session_categories", (string)null);
+                    b.ToTable("event_session_categories", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.EventSessionCustomPropertyDefinition", b =>
@@ -7760,7 +7761,7 @@ namespace Explore.Persistence.Migrations
                     b.HasIndex("TenantId", "EventSessionId", "IsSearchable", "IsFilterable")
                         .HasDatabaseName("ix_escpd_tenant_session_search_filter");
 
-                    b.ToTable("event_session_custom_property_definitions", (string)null);
+                    b.ToTable("event_session_custom_property_definitions", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.EventSessionCustomPropertyOption", b =>
@@ -7873,7 +7874,7 @@ namespace Explore.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_escpo_definition_namespace_key");
 
-                    b.ToTable("event_session_custom_property_options", (string)null);
+                    b.ToTable("event_session_custom_property_options", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.EventSessionCustomPropertyProjection", b =>
@@ -8005,7 +8006,7 @@ namespace Explore.Persistence.Migrations
                     b.HasIndex("TenantId", "EventSessionId", "Namespace", "Key", "Ordinal")
                         .HasDatabaseName("ix_escpp_tenant_session_namespace_key_ordinal");
 
-                    b.ToTable("event_session_custom_property_projections", (string)null);
+                    b.ToTable("event_session_custom_property_projections", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.EventSessionCustomPropertyValue", b =>
@@ -8104,7 +8105,7 @@ namespace Explore.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_escpv_definition_session_ordinal");
 
-                    b.ToTable("event_session_custom_property_values", (string)null);
+                    b.ToTable("event_session_custom_property_values", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.EventSessionGroup", b =>
@@ -8219,7 +8220,7 @@ namespace Explore.Persistence.Migrations
                     b.HasIndex("TenantId", "EventId", "EventLocationId", "LocationId")
                         .HasDatabaseName("ix_event_session_groups_elp_consistency");
 
-                    b.ToTable("event_session_groups", null, t =>
+                    b.ToTable("event_session_groups", "islamu_event", t =>
                         {
                             t.HasCheckConstraint("CK_EventSessionGroup_RoomRequiresLocation", "room_id IS NULL OR location_id IS NOT NULL");
                         });
@@ -8304,7 +8305,7 @@ namespace Explore.Persistence.Migrations
                         .HasDatabaseName("ix_event_session_group_sessions_tenant_event_session_primary")
                         .HasFilter("is_primary = true AND is_deleted = false");
 
-                    b.ToTable("event_session_group_sessions", (string)null);
+                    b.ToTable("event_session_group_sessions", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.EventSessionIslamicAspect", b =>
@@ -8346,7 +8347,7 @@ namespace Explore.Persistence.Migrations
                     b.HasKey("EventSessionId")
                         .HasName("pk_event_session_islamic_aspects");
 
-                    b.ToTable("event_session_islamic_aspects", null, t =>
+                    b.ToTable("event_session_islamic_aspects", "islamu_event", t =>
                         {
                             t.HasCheckConstraint("CK_EventSessionIslamicAspect_EndOffsetRange", "end_offset_minutes IS NULL OR end_offset_minutes BETWEEN -180 AND 180");
 
@@ -8392,7 +8393,7 @@ namespace Explore.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_event_session_kinds_master_code");
 
-                    b.ToTable("event_session_kinds", (string)null);
+                    b.ToTable("event_session_kinds", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.EventSessionLanguage", b =>
@@ -8431,7 +8432,7 @@ namespace Explore.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_eventsessionlanguages_session_language");
 
-                    b.ToTable("event_session_languages", (string)null);
+                    b.ToTable("event_session_languages", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.EventSessionSpeaker", b =>
@@ -8468,7 +8469,7 @@ namespace Explore.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_event_session_speakers_tenant_session_actor");
 
-                    b.ToTable("event_session_speakers", (string)null);
+                    b.ToTable("event_session_speakers", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.EventSessionStatus", b =>
@@ -8497,7 +8498,7 @@ namespace Explore.Persistence.Migrations
                     b.HasKey("Id")
                         .HasName("pk_event_session_statuses");
 
-                    b.ToTable("event_session_statuses", (string)null);
+                    b.ToTable("event_session_statuses", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.EventSessionTag", b =>
@@ -8545,7 +8546,7 @@ namespace Explore.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_event_session_tags_tenant_session_tag");
 
-                    b.ToTable("event_session_tags", (string)null);
+                    b.ToTable("event_session_tags", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.EventSessionTemplate", b =>
@@ -8639,7 +8640,7 @@ namespace Explore.Persistence.Migrations
                     b.HasIndex("TenantId", "IsPublished", "IsActive")
                         .HasDatabaseName("ix_est_tenant_published_active");
 
-                    b.ToTable("event_session_templates", (string)null);
+                    b.ToTable("event_session_templates", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.EventSessionTemplateCustomPropertyDefinition", b =>
@@ -8836,7 +8837,7 @@ namespace Explore.Persistence.Migrations
                     b.HasIndex("TenantId", "IsSearchable", "IsFilterable")
                         .HasDatabaseName("ix_estcpd_tenant_search_filter");
 
-                    b.ToTable("event_session_template_custom_property_definitions", (string)null);
+                    b.ToTable("event_session_template_custom_property_definitions", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.EventSessionTemplateCustomPropertyOption", b =>
@@ -8941,7 +8942,7 @@ namespace Explore.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_estcpo_definition_namespace_key");
 
-                    b.ToTable("event_session_template_custom_property_options", (string)null);
+                    b.ToTable("event_session_template_custom_property_options", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.EventStatus", b =>
@@ -8970,7 +8971,7 @@ namespace Explore.Persistence.Migrations
                     b.HasKey("Id")
                         .HasName("pk_event_statuses");
 
-                    b.ToTable("event_statuses", (string)null);
+                    b.ToTable("event_statuses", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.EventTags", b =>
@@ -9023,7 +9024,7 @@ namespace Explore.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_event_tags_tenant_event_tag");
 
-                    b.ToTable("event_tags", (string)null);
+                    b.ToTable("event_tags", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.EventTechAspect", b =>
@@ -9082,7 +9083,7 @@ namespace Explore.Persistence.Migrations
                     b.HasKey("Id")
                         .HasName("pk_event_tech_aspects");
 
-                    b.ToTable("event_tech_aspects", (string)null);
+                    b.ToTable("event_tech_aspects", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.EventTemplate", b =>
@@ -9179,7 +9180,7 @@ namespace Explore.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_event_templates_tenant_key_version");
 
-                    b.ToTable("event_templates", (string)null);
+                    b.ToTable("event_templates", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.EventTemplateCustomPropertyDefinition", b =>
@@ -9376,7 +9377,7 @@ namespace Explore.Persistence.Migrations
                     b.HasIndex("TenantId", "IsSearchable", "IsFilterable")
                         .HasDatabaseName("ix_etcpd_tenant_search_filter");
 
-                    b.ToTable("event_template_custom_property_definitions", (string)null);
+                    b.ToTable("event_template_custom_property_definitions", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.EventTemplateCustomPropertyOption", b =>
@@ -9481,7 +9482,7 @@ namespace Explore.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_etcpo_definition_namespace_key");
 
-                    b.ToTable("event_template_custom_property_options", (string)null);
+                    b.ToTable("event_template_custom_property_options", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.EventTicketCatalogVersion", b =>
@@ -9566,7 +9567,7 @@ namespace Explore.Persistence.Migrations
                         .HasDatabaseName("ix_event_ticket_catalog_versions_tenant_id_event_id_version_nu")
                         .HasFilter("is_deleted = false");
 
-                    b.ToTable("event_ticket_catalog_versions", (string)null);
+                    b.ToTable("event_ticket_catalog_versions", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.EventTicketType", b =>
@@ -9704,7 +9705,7 @@ namespace Explore.Persistence.Migrations
                     b.HasIndex("TenantId", "CatalogId")
                         .HasDatabaseName("ix_event_ticket_types_tenant_id_catalog_id");
 
-                    b.ToTable("event_ticket_types", (string)null);
+                    b.ToTable("event_ticket_types", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.EventType", b =>
@@ -9750,7 +9751,7 @@ namespace Explore.Persistence.Migrations
                         .HasDatabaseName("ix_event_types_tenant_master_code")
                         .HasFilter("tenant_id IS NOT NULL");
 
-                    b.ToTable("event_types", (string)null);
+                    b.ToTable("event_types", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.ExternalActorSubject", b =>
@@ -9804,7 +9805,7 @@ namespace Explore.Persistence.Migrations
                     b.HasKey("Id")
                         .HasName("pk_external_actor_subjects");
 
-                    b.ToTable("external_actor_subjects", (string)null);
+                    b.ToTable("external_actor_subjects", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.ExternalApiKey", b =>
@@ -9926,7 +9927,7 @@ namespace Explore.Persistence.Migrations
                     b.HasIndex("TenantId", "ExternalApiKeyOwnerTypeId", "OwnerId")
                         .HasDatabaseName("ix_external_api_keys_tenant_id_external_api_key_owner_type_id_");
 
-                    b.ToTable("external_api_keys", (string)null);
+                    b.ToTable("external_api_keys", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.ExternalApiKeyCreditPeriod", b =>
@@ -9955,7 +9956,7 @@ namespace Explore.Persistence.Migrations
                     b.HasKey("Id")
                         .HasName("pk_external_api_key_credit_periods");
 
-                    b.ToTable("external_api_key_credit_periods", (string)null);
+                    b.ToTable("external_api_key_credit_periods", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.ExternalApiKeyOwnerTypeLookup", b =>
@@ -9988,7 +9989,7 @@ namespace Explore.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_external_api_key_owner_types_master_code");
 
-                    b.ToTable("external_api_key_owner_types", (string)null);
+                    b.ToTable("external_api_key_owner_types", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.ExternalApiKeyQuota", b =>
@@ -10049,7 +10050,7 @@ namespace Explore.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_external_api_key_quotas_external_api_key_id_period_start");
 
-                    b.ToTable("external_api_key_quotas", (string)null);
+                    b.ToTable("external_api_key_quotas", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.ExternalApiKeyStatus", b =>
@@ -10082,7 +10083,7 @@ namespace Explore.Persistence.Migrations
                     b.HasKey("Id")
                         .HasName("pk_external_api_key_statuses");
 
-                    b.ToTable("external_api_key_statuses", (string)null);
+                    b.ToTable("external_api_key_statuses", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.ExternalBinding", b =>
@@ -10188,7 +10189,7 @@ namespace Explore.Persistence.Migrations
                         .HasDatabaseName("ix_external_bindings_internal_tenant_unique")
                         .HasFilter("scope_tenant_id IS NOT NULL");
 
-                    b.ToTable("external_bindings", null, t =>
+                    b.ToTable("external_bindings", "islamu_event", t =>
                         {
                             t.HasCheckConstraint("ck_external_bindings_registered_pair_scope", "(external_type = 'customer-group' AND internal_type = 'Group' AND scope_tenant_id IS NOT NULL) OR (external_type = 'customer-group-actor' AND internal_type = 'Actor' AND scope_tenant_id IS NOT NULL) OR (external_type = 'customer-organization' AND internal_type = 'Organization' AND scope_tenant_id IS NOT NULL) OR (external_type = 'customer-organization-actor' AND internal_type = 'Actor' AND scope_tenant_id IS NOT NULL) OR (external_type = 'external-admin-tenant-user' AND internal_type = 'TenantUser' AND scope_tenant_id IS NOT NULL) OR (external_type = 'external-admin-tenant-user-profile' AND internal_type = 'TenantUserProfile' AND scope_tenant_id IS NOT NULL) OR (external_type = 'external-admin-user' AND internal_type = 'User' AND scope_tenant_id IS NOT NULL) OR (external_type = 'external-admin-user-actor' AND internal_type = 'Actor' AND scope_tenant_id IS NOT NULL) OR (external_type = 'external-admin-user-login' AND internal_type = 'UserExternalLogin' AND scope_tenant_id IS NOT NULL) OR (external_type = 'managed-tenant-provisioning-operation' AND internal_type = 'Tenant' AND scope_tenant_id IS NOT NULL) OR (external_type = 'provider-customer' AND internal_type = 'Tenant' AND scope_tenant_id IS NULL)");
 
@@ -10228,7 +10229,7 @@ namespace Explore.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ux_external_workflow_provider_kinds_master_code");
 
-                    b.ToTable("external_workflow_provider_kinds", (string)null);
+                    b.ToTable("external_workflow_provider_kinds", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.Federation.AtprotoEventProjection", b =>
@@ -10304,7 +10305,7 @@ namespace Explore.Persistence.Migrations
                     b.HasIndex("StartsAt", "AtprotoRecordId")
                         .HasDatabaseName("ix_atproto_event_projections_starts_at");
 
-                    b.ToTable("atproto_event_projections", null, t =>
+                    b.ToTable("atproto_event_projections", "islamu_event", t =>
                         {
                             t.HasCheckConstraint("ck_atproto_event_projections_source_version", "source_version >= 0");
 
@@ -10363,7 +10364,7 @@ namespace Explore.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ux_atproto_jetstream_consumer_service");
 
-                    b.ToTable("atproto_jetstream_consumer_states", null, t =>
+                    b.ToTable("atproto_jetstream_consumer_states", "islamu_event", t =>
                         {
                             t.HasCheckConstraint("ck_atproto_jetstream_cursor", "cursor >= 0");
 
@@ -10424,7 +10425,7 @@ namespace Explore.Persistence.Migrations
                     b.HasIndex("ReasonCode", "QuarantinedAt")
                         .HasDatabaseName("ix_atproto_jetstream_quarantine_reason");
 
-                    b.ToTable("atproto_jetstream_quarantines", null, t =>
+                    b.ToTable("atproto_jetstream_quarantines", "islamu_event", t =>
                         {
                             t.HasCheckConstraint("ck_atproto_jetstream_quarantine_cursor", "cursor >= 0");
 
@@ -10483,7 +10484,7 @@ namespace Explore.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ux_atproto_outbound_ownership_source");
 
-                    b.ToTable("atproto_outbound_record_ownerships", (string)null);
+                    b.ToTable("atproto_outbound_record_ownerships", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.Federation.AtprotoRecordTenantPresentation", b =>
@@ -10517,7 +10518,7 @@ namespace Explore.Persistence.Migrations
                     b.HasIndex("TenantId", "IsVisible", "EvaluatedAt")
                         .HasDatabaseName("ix_atproto_record_presentations_visible");
 
-                    b.ToTable("atproto_record_tenant_presentations", null, t =>
+                    b.ToTable("atproto_record_tenant_presentations", "islamu_event", t =>
                         {
                             t.HasCheckConstraint("ck_atproto_record_tenant_presentations_source_version", "source_version >= 0");
                         });
@@ -10720,7 +10721,7 @@ namespace Explore.Persistence.Migrations
                         .HasDatabaseName("ux_pds_sync_outbox_source_version")
                         .HasFilter("status IN (1, 2) AND superseded_at IS NULL");
 
-                    b.ToTable("pds_sync_outbox", null, t =>
+                    b.ToTable("pds_sync_outbox", "islamu_event", t =>
                         {
                             t.HasCheckConstraint("ck_pds_sync_outbox_completion_shape", "status <> 3 OR (processed_at IS NOT NULL AND settled_uri IS NOT NULL AND settled_cid IS NOT NULL)");
 
@@ -10768,7 +10769,7 @@ namespace Explore.Persistence.Migrations
                     b.HasKey("Id")
                         .HasName("pk_file_types");
 
-                    b.ToTable("file_types", (string)null);
+                    b.ToTable("file_types", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.Group", b =>
@@ -10827,7 +10828,7 @@ namespace Explore.Persistence.Migrations
                     b.HasKey("Id")
                         .HasName("pk_groups");
 
-                    b.ToTable("groups", (string)null);
+                    b.ToTable("groups", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.GroupMember", b =>
@@ -10909,7 +10910,7 @@ namespace Explore.Persistence.Migrations
                     b.HasIndex("TenantId", "UserId")
                         .HasDatabaseName("ix_group_members_tenant_user");
 
-                    b.ToTable("group_members", (string)null);
+                    b.ToTable("group_members", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.GroupPosition", b =>
@@ -10938,7 +10939,7 @@ namespace Explore.Persistence.Migrations
                     b.HasKey("Id")
                         .HasName("pk_group_positions");
 
-                    b.ToTable("group_positions", (string)null);
+                    b.ToTable("group_positions", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.GroupSetting", b =>
@@ -10995,7 +10996,7 @@ namespace Explore.Persistence.Migrations
                     b.HasIndex("TenantId", "GroupTenantId")
                         .HasDatabaseName("ix_group_setting_overrides_tenant_id_group_tenant_id");
 
-                    b.ToTable("group_setting_overrides", (string)null);
+                    b.ToTable("group_setting_overrides", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.GroupTenant", b =>
@@ -11172,7 +11173,7 @@ namespace Explore.Persistence.Migrations
                     b.HasIndex("TenantId", "IsDeleted", "ApprovalStatusId")
                         .HasDatabaseName("ix_group_tenants_tenant_id_is_deleted_approval_status_id");
 
-                    b.ToTable("group_tenants", null, t =>
+                    b.ToTable("group_tenants", "islamu_event", t =>
                         {
                             t.HasCheckConstraint("ck_group_tenants_no_self_parent", "parent_group_tenant_id IS NULL OR parent_group_tenant_id <> id");
 
@@ -11263,7 +11264,7 @@ namespace Explore.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("IX_IdempotencyRecords_Key_TenantId");
 
-                    b.ToTable("idempotency_records", (string)null);
+                    b.ToTable("idempotency_records", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.IdentityAccessMode", b =>
@@ -11296,7 +11297,7 @@ namespace Explore.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_identity_access_modes_master_code");
 
-                    b.ToTable("identity_access_modes", (string)null);
+                    b.ToTable("identity_access_modes", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.IncomingWebhookEffectOutbox", b =>
@@ -11429,7 +11430,7 @@ namespace Explore.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ux_incoming_webhook_effect_outbox_provider_decision");
 
-                    b.ToTable("incoming_webhook_effect_outbox", null, t =>
+                    b.ToTable("incoming_webhook_effect_outbox", "islamu_event", t =>
                         {
                             t.HasCheckConstraint("ck_incoming_webhook_effect_outbox_attempt_count", "attempt_count >= 0");
 
@@ -11513,7 +11514,7 @@ namespace Explore.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ux_incoming_webhook_effect_receipts_identity");
 
-                    b.ToTable("incoming_webhook_effect_receipts", null, t =>
+                    b.ToTable("incoming_webhook_effect_receipts", "islamu_event", t =>
                         {
                             t.HasCheckConstraint("ck_incoming_webhook_effect_receipts_payload_hash", "payload_hash ~ '^sha256:[0-9a-f]{64}$'");
 
@@ -11787,7 +11788,7 @@ namespace Explore.Persistence.Migrations
                     b.HasIndex("TenantId", "StatusId", "NextAttemptAt", "ProcessingLeaseExpiresAt")
                         .HasDatabaseName("ix_incoming_webhook_messages_claim_due");
 
-                    b.ToTable("incoming_webhook_messages", null, t =>
+                    b.ToTable("incoming_webhook_messages", "islamu_event", t =>
                         {
                             t.HasCheckConstraint("ck_incoming_webhook_messages_payload_byte_length", "payload_byte_length > 0");
 
@@ -11829,7 +11830,7 @@ namespace Explore.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ux_incoming_webhook_message_statuses_master_code");
 
-                    b.ToTable("incoming_webhook_message_statuses", (string)null);
+                    b.ToTable("incoming_webhook_message_statuses", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.IncomingWebhookProcessingAttempt", b =>
@@ -11914,7 +11915,7 @@ namespace Explore.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ux_incoming_webhook_processing_attempts_evidence");
 
-                    b.ToTable("incoming_webhook_processing_attempts", null, t =>
+                    b.ToTable("incoming_webhook_processing_attempts", "islamu_event", t =>
                         {
                             t.HasCheckConstraint("ck_incoming_webhook_processing_attempts_fence", "processing_fence >= 0");
 
@@ -11954,7 +11955,7 @@ namespace Explore.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ux_incoming_webhook_processing_attempt_outcomes_master_code");
 
-                    b.ToTable("incoming_webhook_processing_attempt_outcomes", (string)null);
+                    b.ToTable("incoming_webhook_processing_attempt_outcomes", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.IncomingWebhookRedriveRecord", b =>
@@ -12030,7 +12031,7 @@ namespace Explore.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ux_incoming_webhook_redrive_records_target_generation");
 
-                    b.ToTable("incoming_webhook_redrive_records", null, t =>
+                    b.ToTable("incoming_webhook_redrive_records", "islamu_event", t =>
                         {
                             t.HasCheckConstraint("ck_incoming_webhook_redrive_records_generation_order", "target_processing_generation > source_processing_generation AND source_processing_generation >= 1");
                         });
@@ -12066,7 +12067,7 @@ namespace Explore.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ux_incoming_webhook_redrive_results_master_code");
 
-                    b.ToTable("incoming_webhook_redrive_results", (string)null);
+                    b.ToTable("incoming_webhook_redrive_results", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.IncomingWebhookSettlementSourceLookup", b =>
@@ -12099,7 +12100,7 @@ namespace Explore.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ux_incoming_webhook_settlement_sources_master_code");
 
-                    b.ToTable("incoming_webhook_settlement_sources", (string)null);
+                    b.ToTable("incoming_webhook_settlement_sources", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.InstanceBootstrapState", b =>
@@ -12142,7 +12143,7 @@ namespace Explore.Persistence.Migrations
                         .HasDatabaseName("ix_instance_bootstrap_state_completed_unique")
                         .HasFilter("\"is_completed\" = true");
 
-                    b.ToTable("instance_bootstrap_states", (string)null);
+                    b.ToTable("instance_bootstrap_states", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.IntegrationSyncOutbox", b =>
@@ -12306,7 +12307,7 @@ namespace Explore.Persistence.Migrations
                         .HasDatabaseName("ux_integration_sync_outbox_tenant_source_kind")
                         .HasFilter("is_deleted = false");
 
-                    b.ToTable("integration_sync_outbox", (string)null);
+                    b.ToTable("integration_sync_outbox", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.Language", b =>
@@ -12335,7 +12336,7 @@ namespace Explore.Persistence.Migrations
                     b.HasKey("Id")
                         .HasName("pk_languages");
 
-                    b.ToTable("languages", (string)null);
+                    b.ToTable("languages", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.Location", b =>
@@ -12438,7 +12439,7 @@ namespace Explore.Persistence.Migrations
                     b.HasIndex("TenantId", "Country")
                         .HasDatabaseName("ix_locations_tenant_country");
 
-                    b.ToTable("locations", null, t =>
+                    b.ToTable("locations", "islamu_event", t =>
                         {
                             t.HasCheckConstraint("ck_locations_erasure_state", "(location_privacy_state_id = 3 AND owner_user_id IS NULL AND pii_erased_at_utc IS NOT NULL AND pii_erasure_reason IS NOT NULL) OR (location_privacy_state_id <> 3 AND pii_erased_at_utc IS NULL AND pii_erasure_reason IS NULL)");
 
@@ -12476,7 +12477,7 @@ namespace Explore.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_location_disclosure_audiences_master_code");
 
-                    b.ToTable("location_disclosure_audiences", (string)null);
+                    b.ToTable("location_disclosure_audiences", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.LocationKind", b =>
@@ -12509,7 +12510,7 @@ namespace Explore.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_location_kinds_master_code");
 
-                    b.ToTable("location_kinds", (string)null);
+                    b.ToTable("location_kinds", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.LocationPii", b =>
@@ -12541,7 +12542,7 @@ namespace Explore.Persistence.Migrations
                     b.HasKey("LocationId")
                         .HasName("pk_location_pii");
 
-                    b.ToTable("location_pii", (string)null);
+                    b.ToTable("location_pii", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.LocationPrivacyState", b =>
@@ -12574,7 +12575,7 @@ namespace Explore.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_location_privacy_states_master_code");
 
-                    b.ToTable("location_privacy_states", (string)null);
+                    b.ToTable("location_privacy_states", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.LocationRoom", b =>
@@ -12668,7 +12669,7 @@ namespace Explore.Persistence.Migrations
                     b.HasIndex("TenantId", "LocationId", "SortOrder")
                         .HasDatabaseName("ix_location_rooms_tenant_location_sort");
 
-                    b.ToTable("location_rooms", null, t =>
+                    b.ToTable("location_rooms", "islamu_event", t =>
                         {
                             t.HasCheckConstraint("CK_LocationRoom_NonNegativeCapacity", "capacity IS NULL OR capacity >= 0");
                         });
@@ -12700,7 +12701,7 @@ namespace Explore.Persistence.Migrations
                     b.HasKey("Id")
                         .HasName("pk_madhabs");
 
-                    b.ToTable("madhabs", (string)null);
+                    b.ToTable("madhabs", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.ManagedControlPlaneRegistration", b =>
@@ -12852,7 +12853,7 @@ namespace Explore.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_managed_control_plane_registrations_managed_instance_id");
 
-                    b.ToTable("managed_control_plane_registrations", null, t =>
+                    b.ToTable("managed_control_plane_registrations", "islamu_event", t =>
                         {
                             t.HasCheckConstraint("ck_managed_control_plane_registration_expiry", "event_to_control_plane_credential_expires_at > created_at AND control_plane_to_event_credential_expires_at > created_at");
 
@@ -12989,7 +12990,7 @@ namespace Explore.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ux_managed_tenant_provisioning_operations_tenant_id");
 
-                    b.ToTable("managed_tenant_provisioning_operations", null, t =>
+                    b.ToTable("managed_tenant_provisioning_operations", "islamu_event", t =>
                         {
                             t.HasCheckConstraint("ck_managed_tenant_provisioning_cancelled", "(status = 'Cancelled') = (cancelled_at IS NOT NULL)");
 
@@ -13069,7 +13070,7 @@ namespace Explore.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_module_definitions_module_key");
 
-                    b.ToTable("module_definitions", (string)null);
+                    b.ToTable("module_definitions", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.Modules.TenantCapability", b =>
@@ -13130,7 +13131,7 @@ namespace Explore.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_tenant_capabilities_tenant_id_module_id");
 
-                    b.ToTable("tenant_capabilities", (string)null);
+                    b.ToTable("tenant_capabilities", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.Notification", b =>
@@ -13308,7 +13309,7 @@ namespace Explore.Persistence.Migrations
                         .IsDescending(false, false, false, true)
                         .HasDatabaseName("ix_notifications_tenant_user_unread");
 
-                    b.ToTable("notifications", null, t =>
+                    b.ToTable("notifications", "islamu_event", t =>
                         {
                             t.HasCheckConstraint("ck_notifications_entity_reference_shape", "(notification_entity_type_id IS NULL AND entity_id IS NULL) OR (notification_entity_type_id IS NOT NULL AND entity_id ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$')");
                         });
@@ -13344,7 +13345,7 @@ namespace Explore.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ux_notification_categories_master_code");
 
-                    b.ToTable("notification_categories", (string)null);
+                    b.ToTable("notification_categories", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.NotificationChannelPreference", b =>
@@ -13472,7 +13473,7 @@ namespace Explore.Persistence.Migrations
                         .HasDatabaseName("ux_notification_channel_preferences_user")
                         .HasFilter("is_deleted = false AND user_id IS NOT NULL");
 
-                    b.ToTable("notification_channel_preferences", null, t =>
+                    b.ToTable("notification_channel_preferences", "islamu_event", t =>
                         {
                             t.HasCheckConstraint("ck_notification_channel_preferences_scope_target", "(scope_id IN (0, 1, 2) AND user_id IS NULL AND organization_id IS NULL AND group_id IS NULL) OR (scope_id = 3 AND organization_id IS NOT NULL AND user_id IS NULL AND group_id IS NULL) OR (scope_id = 4 AND group_id IS NOT NULL AND user_id IS NULL AND organization_id IS NULL) OR (scope_id = 5 AND user_id IS NOT NULL AND organization_id IS NULL AND group_id IS NULL)");
                         });
@@ -13638,7 +13639,7 @@ namespace Explore.Persistence.Migrations
                     b.HasIndex("TenantId", "EmailDispatchOutboxId", "NotificationIntentId", "RecipientAddressSource")
                         .HasDatabaseName("ix_notification_deliveries_tenant_id_email_dispatch_outbox_id_");
 
-                    b.ToTable("notification_deliveries", null, t =>
+                    b.ToTable("notification_deliveries", "islamu_event", t =>
                         {
                             t.HasCheckConstraint("ck_notification_deliveries_channel_link", "NOT (email_dispatch_outbox_id IS NOT NULL AND notification_id IS NOT NULL) AND (email_dispatch_outbox_id IS NULL OR (channel_id = 1 AND recipient_address_source IS NOT NULL)) AND (notification_id IS NULL OR channel_id = 2) AND (channel_id <> 2 OR recipient_address_source IS NULL) AND (email_dispatch_outbox_id IS NOT NULL OR recipient_address_source IS NULL)");
                         });
@@ -13674,7 +13675,7 @@ namespace Explore.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ux_notification_delivery_policies_master_code");
 
-                    b.ToTable("notification_delivery_policies", (string)null);
+                    b.ToTable("notification_delivery_policies", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.NotificationDeliveryStatus", b =>
@@ -13707,7 +13708,7 @@ namespace Explore.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ux_notification_delivery_statuses_master_code");
 
-                    b.ToTable("notification_delivery_statuses", (string)null);
+                    b.ToTable("notification_delivery_statuses", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.NotificationEntityType", b =>
@@ -13736,7 +13737,7 @@ namespace Explore.Persistence.Migrations
                     b.HasKey("Id")
                         .HasName("pk_notification_entity_types");
 
-                    b.ToTable("notification_entity_types", (string)null);
+                    b.ToTable("notification_entity_types", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.NotificationExternalDelegation", b =>
@@ -13867,7 +13868,7 @@ namespace Explore.Persistence.Migrations
                     b.HasIndex("TenantId", "ProviderKindId", "StatusId", "CreatedAt")
                         .HasDatabaseName("ix_notification_external_delegations_tenant_provider_status");
 
-                    b.ToTable("notification_external_delegations", (string)null);
+                    b.ToTable("notification_external_delegations", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.NotificationExternalDelegationStatus", b =>
@@ -13900,7 +13901,7 @@ namespace Explore.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ux_notification_external_delegation_statuses_master_code");
 
-                    b.ToTable("notification_external_delegation_statuses", (string)null);
+                    b.ToTable("notification_external_delegation_statuses", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.NotificationFanoutOccurrence", b =>
@@ -14043,7 +14044,7 @@ namespace Explore.Persistence.Migrations
                         .HasDatabaseName("ix_notification_fanout_occurrences_global_runnable")
                         .HasFilter("state = 1");
 
-                    b.ToTable("notification_fanout_occurrences", null, t =>
+                    b.ToTable("notification_fanout_occurrences", "islamu_event", t =>
                         {
                             t.HasCheckConstraint("ck_notification_fanout_occurrences_state", "state IN (1, 2)");
 
@@ -14082,7 +14083,7 @@ namespace Explore.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ux_notification_fanout_processor_states_processor_code");
 
-                    b.ToTable("notification_fanout_processor_states", (string)null);
+                    b.ToTable("notification_fanout_processor_states", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.NotificationFanoutRun", b =>
@@ -14233,7 +14234,7 @@ namespace Explore.Persistence.Migrations
                         .HasDatabaseName("ux_notification_fanout_runs_source")
                         .HasFilter("fanout_occurrence_id IS NULL");
 
-                    b.ToTable("notification_fanout_runs", null, t =>
+                    b.ToTable("notification_fanout_runs", "islamu_event", t =>
                         {
                             t.HasCheckConstraint("ck_notification_fanout_runs_created_count_nonnegative", "created_notification_count >= 0");
 
@@ -14403,7 +14404,7 @@ namespace Explore.Persistence.Migrations
                     b.HasIndex("TenantId", "StatusId", "CreatedAt")
                         .HasDatabaseName("ix_notification_intents_tenant_status_created");
 
-                    b.ToTable("notification_intents", (string)null);
+                    b.ToTable("notification_intents", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.NotificationIntentStatus", b =>
@@ -14436,7 +14437,7 @@ namespace Explore.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ux_notification_intent_statuses_master_code");
 
-                    b.ToTable("notification_intent_statuses", (string)null);
+                    b.ToTable("notification_intent_statuses", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.NotificationOwnershipType", b =>
@@ -14469,7 +14470,7 @@ namespace Explore.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ux_notification_ownership_types_master_code");
 
-                    b.ToTable("notification_ownership_types", (string)null);
+                    b.ToTable("notification_ownership_types", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.NotificationPreferenceCategory", b =>
@@ -14524,7 +14525,7 @@ namespace Explore.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ux_notification_preference_categories_master_code");
 
-                    b.ToTable("notification_preference_categories", (string)null);
+                    b.ToTable("notification_preference_categories", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.NotificationPreferenceChannel", b =>
@@ -14561,7 +14562,7 @@ namespace Explore.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ux_notification_preference_channels_master_code");
 
-                    b.ToTable("notification_preference_channels", (string)null);
+                    b.ToTable("notification_preference_channels", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.NotificationPreferenceProfile", b =>
@@ -14672,7 +14673,7 @@ namespace Explore.Persistence.Migrations
                         .HasDatabaseName("ux_notification_preference_profiles_user")
                         .HasFilter("is_deleted = false AND user_id IS NOT NULL");
 
-                    b.ToTable("notification_preference_profiles", null, t =>
+                    b.ToTable("notification_preference_profiles", "islamu_event", t =>
                         {
                             t.HasCheckConstraint("ck_notification_preference_profiles_scope_target", "(scope_id IN (0, 1, 2) AND user_id IS NULL AND organization_id IS NULL AND group_id IS NULL) OR (scope_id = 3 AND organization_id IS NOT NULL AND user_id IS NULL AND group_id IS NULL) OR (scope_id = 4 AND group_id IS NOT NULL AND user_id IS NULL AND organization_id IS NULL) OR (scope_id = 5 AND user_id IS NOT NULL AND organization_id IS NULL AND group_id IS NULL)");
                         });
@@ -14704,7 +14705,7 @@ namespace Explore.Persistence.Migrations
                     b.HasKey("Id")
                         .HasName("pk_notification_reasons");
 
-                    b.ToTable("notification_reasons", (string)null);
+                    b.ToTable("notification_reasons", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.NotificationRecipientKind", b =>
@@ -14737,7 +14738,7 @@ namespace Explore.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ux_notification_recipient_kinds_master_code");
 
-                    b.ToTable("notification_recipient_kinds", (string)null);
+                    b.ToTable("notification_recipient_kinds", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.NotificationScopeType", b =>
@@ -14770,7 +14771,7 @@ namespace Explore.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_notification_scope_types_master_code");
 
-                    b.ToTable("notification_scope_types", (string)null);
+                    b.ToTable("notification_scope_types", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.NotificationType", b =>
@@ -14799,7 +14800,7 @@ namespace Explore.Persistence.Migrations
                     b.HasKey("Id")
                         .HasName("pk_notification_types");
 
-                    b.ToTable("notification_types", (string)null);
+                    b.ToTable("notification_types", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.Organization", b =>
@@ -14852,7 +14853,7 @@ namespace Explore.Persistence.Migrations
                     b.HasKey("Id")
                         .HasName("pk_organizations");
 
-                    b.ToTable("organizations", (string)null);
+                    b.ToTable("organizations", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.OrganizationMember", b =>
@@ -14930,7 +14931,7 @@ namespace Explore.Persistence.Migrations
                     b.HasIndex("TenantId", "OrganizationTenantId")
                         .HasDatabaseName("ix_organization_members_tenant_id_organization_tenant_id");
 
-                    b.ToTable("organization_members", (string)null);
+                    b.ToTable("organization_members", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.OrganizationPii", b =>
@@ -14976,7 +14977,7 @@ namespace Explore.Persistence.Migrations
                     b.HasIndex("FullName")
                         .HasDatabaseName("ix_organization_pii_name");
 
-                    b.ToTable("organization_pii", (string)null);
+                    b.ToTable("organization_pii", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.OrganizationPosition", b =>
@@ -15005,7 +15006,7 @@ namespace Explore.Persistence.Migrations
                     b.HasKey("Id")
                         .HasName("pk_organization_positions");
 
-                    b.ToTable("organization_positions", (string)null);
+                    b.ToTable("organization_positions", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.OrganizationReview", b =>
@@ -15090,7 +15091,7 @@ namespace Explore.Persistence.Migrations
                     b.HasIndex("UserId")
                         .HasDatabaseName("ix_organization_reviews_user_id");
 
-                    b.ToTable("organization_reviews", (string)null);
+                    b.ToTable("organization_reviews", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.OrganizationSetting", b =>
@@ -15147,7 +15148,7 @@ namespace Explore.Persistence.Migrations
                     b.HasIndex("TenantId", "OrganizationTenantId")
                         .HasDatabaseName("ix_organization_setting_overrides_tenant_id_organization_tenan");
 
-                    b.ToTable("organization_setting_overrides", (string)null);
+                    b.ToTable("organization_setting_overrides", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.OrganizationTenant", b =>
@@ -15320,7 +15321,7 @@ namespace Explore.Persistence.Migrations
                     b.HasIndex("TenantId", "IsDeleted", "ApprovalStatusId")
                         .HasDatabaseName("ix_organization_tenants_tenant_id_is_deleted_approval_status_id");
 
-                    b.ToTable("organization_tenants", (string)null);
+                    b.ToTable("organization_tenants", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.OrganizationTenantEvidence", b =>
@@ -15404,7 +15405,7 @@ namespace Explore.Persistence.Migrations
                     b.HasIndex("TenantId", "OrganizationTenantId", "ReviewStatusId")
                         .HasDatabaseName("ix_organization_tenant_evidence_tenant_id_organization_tenant_1");
 
-                    b.ToTable("organization_tenant_evidence", (string)null);
+                    b.ToTable("organization_tenant_evidence", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.OutboxMessage", b =>
@@ -15482,7 +15483,7 @@ namespace Explore.Persistence.Migrations
                     b.HasIndex("AggregateType", "AggregateId", "EventType", "CreatedAt")
                         .HasDatabaseName("IX_OutboxMessages_Dedup");
 
-                    b.ToTable("outbox_messages", (string)null);
+                    b.ToTable("outbox_messages", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.OwnerType", b =>
@@ -15511,7 +15512,7 @@ namespace Explore.Persistence.Migrations
                     b.HasKey("Id")
                         .HasName("pk_owner_types");
 
-                    b.ToTable("owner_types", (string)null);
+                    b.ToTable("owner_types", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.ParticipantDataCollectionMode", b =>
@@ -15544,7 +15545,7 @@ namespace Explore.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_participant_data_collection_modes_master_code");
 
-                    b.ToTable("participant_data_collection_modes", (string)null);
+                    b.ToTable("participant_data_collection_modes", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.ParticipantType", b =>
@@ -15576,7 +15577,7 @@ namespace Explore.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_participant_types_master_code");
 
-                    b.ToTable("participant_types", (string)null);
+                    b.ToTable("participant_types", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.ParticipationHandlingMode", b =>
@@ -15609,7 +15610,7 @@ namespace Explore.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_participation_handling_modes_master_code");
 
-                    b.ToTable("participation_handling_modes", (string)null);
+                    b.ToTable("participation_handling_modes", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.ParticipationRequirementAttachment", b =>
@@ -15710,7 +15711,7 @@ namespace Explore.Persistence.Migrations
                     b.HasIndex("TenantId", "EventId", "RegistrationWorkflowId", "RegistrationRequirementId")
                         .HasDatabaseName("ix_participation_requirement_attachments_tenant_id_event_id_re1");
 
-                    b.ToTable("participation_requirement_attachments", null, t =>
+                    b.ToTable("participation_requirement_attachments", "islamu_event", t =>
                         {
                             t.HasCheckConstraint("ck_participation_requirement_attachments_configuration_event", "event_id = participation_configuration_id");
 
@@ -15820,7 +15821,7 @@ namespace Explore.Persistence.Migrations
                     b.HasIndex("ResourceKind", "Action")
                         .HasDatabaseName("ix_permissions_resource_action");
 
-                    b.ToTable("permissions", (string)null);
+                    b.ToTable("permissions", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.PlatformContributionOption", b =>
@@ -15856,7 +15857,7 @@ namespace Explore.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_platform_contribution_options_platform_contribution_setting1");
 
-                    b.ToTable("platform_contribution_options", (string)null);
+                    b.ToTable("platform_contribution_options", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.PlatformContributionSetting", b =>
@@ -15917,7 +15918,7 @@ namespace Explore.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_platform_contribution_settings_version_number");
 
-                    b.ToTable("platform_contribution_settings", (string)null);
+                    b.ToTable("platform_contribution_settings", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.PlatformFeeFixedCharge", b =>
@@ -15947,7 +15948,7 @@ namespace Explore.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_platform_fee_fixed_charges_platform_fee_policy_id_currency_");
 
-                    b.ToTable("platform_fee_fixed_charges", (string)null);
+                    b.ToTable("platform_fee_fixed_charges", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.PlatformFeePolicy", b =>
@@ -16000,7 +16001,7 @@ namespace Explore.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_platform_fee_policies_version_number");
 
-                    b.ToTable("platform_fee_policies", (string)null);
+                    b.ToTable("platform_fee_policies", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.PlatformUserRole", b =>
@@ -16041,7 +16042,7 @@ namespace Explore.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_platform_user_roles_user_id_role_id");
 
-                    b.ToTable("platform_user_roles", (string)null);
+                    b.ToTable("platform_user_roles", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.Policies.InstancePolicySet", b =>
@@ -16076,7 +16077,7 @@ namespace Explore.Persistence.Migrations
                     b.HasKey("Id")
                         .HasName("pk_instance_policy_sets");
 
-                    b.ToTable("instance_policy_sets", (string)null);
+                    b.ToTable("instance_policy_sets", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.Policies.OrganizationPolicySet", b =>
@@ -16123,7 +16124,7 @@ namespace Explore.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_organization_policy_sets_organization_id");
 
-                    b.ToTable("organization_policy_sets", (string)null);
+                    b.ToTable("organization_policy_sets", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.Policies.PolicyChangeOutbox", b =>
@@ -16181,7 +16182,7 @@ namespace Explore.Persistence.Migrations
                     b.HasIndex("Status", "NextRetryAt")
                         .HasDatabaseName("ix_policy_change_outbox_status_retry");
 
-                    b.ToTable("policy_change_outbox", (string)null);
+                    b.ToTable("policy_change_outbox", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.Policies.TenantPolicySet", b =>
@@ -16224,100 +16225,7 @@ namespace Explore.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_tenant_policy_sets_tenant_id");
 
-                    b.ToTable("tenant_policy_sets", (string)null);
-                });
-
-            modelBuilder.Entity("Explore.Domain.PrivacyErasureCounter", b =>
-                {
-                    b.Property<bool>("Singleton")
-                        .HasColumnType("boolean")
-                        .HasColumnName("singleton");
-
-                    b.Property<long>("LastSequence")
-                        .HasColumnType("bigint")
-                        .HasColumnName("last_sequence");
-
-                    b.HasKey("Singleton")
-                        .HasName("pk_authority_counter");
-
-                    b.ToTable("authority_counter", "privacy_erasure_authority", t =>
-                        {
-                            t.HasCheckConstraint("ck_privacy_erasure_authority_counter_nonnegative", "last_sequence >= 0");
-
-                            t.HasCheckConstraint("ck_privacy_erasure_authority_counter_singleton", "singleton");
-                        });
-                });
-
-            modelBuilder.Entity("Explore.Domain.PrivacyErasureIntent", b =>
-                {
-                    b.Property<long>("AuthoritySequence")
-                        .HasColumnType("bigint")
-                        .HasColumnName("authority_sequence");
-
-                    b.Property<Guid>("IntentId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("intent_id");
-
-                    b.Property<int>("PolicyVersion")
-                        .HasColumnType("integer")
-                        .HasColumnName("policy_version");
-
-                    b.Property<short>("ReasonCode")
-                        .HasColumnType("smallint")
-                        .HasColumnName("reason_code");
-
-                    b.Property<DateTime>("RecordedAtUtc")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("recorded_at_utc");
-
-                    b.Property<DateTime>("RequestedAtUtc")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("requested_at_utc");
-
-                    b.Property<DateTime>("RetentionExpiresAtUtc")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("retention_expires_at_utc")
-                        .HasDefaultValueSql("'infinity'::timestamp with time zone");
-
-                    b.Property<Guid>("SubjectId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("subject_id");
-
-                    b.Property<short>("SubjectKind")
-                        .HasColumnType("smallint")
-                        .HasColumnName("subject_kind");
-
-                    b.HasKey("AuthoritySequence")
-                        .HasName("pk_erasure_intents");
-
-                    b.HasAlternateKey("IntentId")
-                        .HasName("ak_privacy_erasure_intents_intent_id");
-
-                    b.HasIndex("IntentId", "SubjectKind", "PolicyVersion")
-                        .IsUnique()
-                        .HasDatabaseName("ix_erasure_intents_intent_id_subject_kind_policy_version");
-
-                    b.ToTable("erasure_intents", "privacy_erasure_authority", t =>
-                        {
-                            t.HasCheckConstraint("ck_privacy_erasure_intents_intent_rfc4122_variant", "substring(intent_id::text, 20, 1) IN ('8', '9', 'a', 'b')");
-
-                            t.HasCheckConstraint("ck_privacy_erasure_intents_intent_uuid_v7", "substring(intent_id::text, 15, 1) = '7'");
-
-                            t.HasCheckConstraint("ck_privacy_erasure_intents_policy_version", "policy_version > 0");
-
-                            t.HasCheckConstraint("ck_privacy_erasure_intents_reason", "reason_code BETWEEN 1 AND 3");
-
-                            t.HasCheckConstraint("ck_privacy_erasure_intents_retention", "retention_expires_at_utc > recorded_at_utc");
-
-                            t.HasCheckConstraint("ck_privacy_erasure_intents_sequence", "authority_sequence > 0");
-
-                            t.HasCheckConstraint("ck_privacy_erasure_intents_server_time_order", "recorded_at_utc >= requested_at_utc");
-
-                            t.HasCheckConstraint("ck_privacy_erasure_intents_subject_kind", "subject_kind = 1");
-
-                            t.HasCheckConstraint("ck_privacy_erasure_intents_subject_nonempty", "subject_id <> '00000000-0000-0000-0000-000000000000'::uuid");
-                        });
+                    b.ToTable("tenant_policy_sets", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.PrivacyErasurePolicyCoverage", b =>
@@ -16341,7 +16249,7 @@ namespace Explore.Persistence.Migrations
                     b.HasKey("IntentId", "SubjectKind", "PolicyVersion")
                         .HasName("pk_privacy_erasure_policy_coverage");
 
-                    b.ToTable("privacy_erasure_policy_coverage", null, t =>
+                    b.ToTable("privacy_erasure_policy_coverage", "islamu_event", t =>
                         {
                             t.HasCheckConstraint("ck_privacy_erasure_policy_coverage_policy_version", "policy_version > 0");
 
@@ -16465,7 +16373,7 @@ namespace Explore.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_privacy_erasure_provider_work_intent_id_provider_kind_actio");
 
-                    b.ToTable("privacy_erasure_provider_work", null, t =>
+                    b.ToTable("privacy_erasure_provider_work", "islamu_event", t =>
                         {
                             t.HasCheckConstraint("ck_privacy_erasure_provider_work_attempt_count", "attempt_count >= 0");
 
@@ -16537,7 +16445,7 @@ namespace Explore.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ux_privacy_erasure_checkpoints_previous");
 
-                    b.ToTable("privacy_erasure_replay_checkpoints", null, t =>
+                    b.ToTable("privacy_erasure_replay_checkpoints", "islamu_event", t =>
                         {
                             t.HasCheckConstraint("ck_privacy_erasure_checkpoints_uuid_v7", "substring(id::text, 15, 1) = '7' AND substring(id::text, 20, 1) IN ('8', '9', 'a', 'b') AND substring(intent_id::text, 15, 1) = '7' AND substring(intent_id::text, 20, 1) IN ('8', '9', 'a', 'b')");
 
@@ -16550,6 +16458,7 @@ namespace Explore.Persistence.Migrations
             modelBuilder.Entity("Explore.Domain.PrivacyErasureSaga", b =>
                 {
                     b.Property<Guid>("IntentId")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
                         .HasColumnName("intent_id");
 
@@ -16627,7 +16536,7 @@ namespace Explore.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_privacy_erasure_sagas_intent_id_subject_kind_policy_version");
 
-                    b.ToTable("privacy_erasure_sagas", null, t =>
+                    b.ToTable("privacy_erasure_sagas", "islamu_event", t =>
                         {
                             t.HasCheckConstraint("ck_privacy_erasure_sagas_concurrency_uuid_v7", "substring(concurrency_token::text, 15, 1) = '7' AND substring(concurrency_token::text, 20, 1) IN ('8', '9', 'a', 'b')");
 
@@ -16860,7 +16769,7 @@ namespace Explore.Persistence.Migrations
                     b.HasIndex("TenantId", "EventId", "RegistrationOrderId", "RegistrationWorkflowId", "RegistrationRequirementId", "RegistrationFormId", "RegistrationFormVersionId", "RegistrationAttemptId", "RegistrationSubmissionId")
                         .HasDatabaseName("ix_registration_answers_tenant_id_event_id_registration_order_");
 
-                    b.ToTable("registration_answers", null, t =>
+                    b.ToTable("registration_answers", "islamu_event", t =>
                         {
                             t.HasCheckConstraint("ck_registration_answers_exactly_one_value", "num_nonnulls(text_value, integer_value, decimal_value, boolean_value, date_value, time_value, instant_value, selected_option_id, sensitive_answer_value_id) = 1");
 
@@ -16898,7 +16807,7 @@ namespace Explore.Persistence.Migrations
                     b.HasKey("Id")
                         .HasName("pk_registration_answer_subject_types");
 
-                    b.ToTable("registration_answer_subject_types", (string)null);
+                    b.ToTable("registration_answer_subject_types", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.RegistrationAnswerSyncMode", b =>
@@ -16931,7 +16840,7 @@ namespace Explore.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_registration_answer_sync_modes_master_code");
 
-                    b.ToTable("registration_answer_sync_modes", (string)null);
+                    b.ToTable("registration_answer_sync_modes", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.RegistrationAttempt", b =>
@@ -17091,7 +17000,7 @@ namespace Explore.Persistence.Migrations
                     b.HasIndex("TenantId", "EventId", "RegistrationOrderId", "RegistrationWorkflowId", "RegistrationRequirementId", "RegistrationChannelId", "RegistrationFormId", "SupersededByRegistrationAttemptId")
                         .HasDatabaseName("ix_registration_attempts_tenant_id_event_id_registration_order");
 
-                    b.ToTable("registration_attempts", null, t =>
+                    b.ToTable("registration_attempts", "islamu_event", t =>
                         {
                             t.HasCheckConstraint("ck_registration_attempts_consumption", "(status_id = 2 AND consumed_at IS NOT NULL) OR (status_id <> 2 AND consumed_at IS NULL AND submission_consumption_claim_id IS NULL)");
 
@@ -17135,7 +17044,7 @@ namespace Explore.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_registration_attempt_statuses_master_code");
 
-                    b.ToTable("registration_attempt_statuses", (string)null);
+                    b.ToTable("registration_attempt_statuses", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.RegistrationChannel", b =>
@@ -17232,7 +17141,7 @@ namespace Explore.Persistence.Migrations
                     b.HasIndex("TenantId", "EventId")
                         .HasDatabaseName("ix_registration_channels_tenant_id_event_id");
 
-                    b.ToTable("registration_channels", null, t =>
+                    b.ToTable("registration_channels", "islamu_event", t =>
                         {
                             t.HasCheckConstraint("ck_registration_channels_provider_shape", "(is_native = true AND registration_provider_binding_id IS NULL AND registration_provider_binding_key = '00000000-0000-0000-0000-000000000000') OR (is_native = false AND registration_provider_binding_id IS NOT NULL AND registration_provider_binding_key = registration_provider_binding_id)");
                         });
@@ -17268,7 +17177,7 @@ namespace Explore.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_registration_field_types_master_code");
 
-                    b.ToTable("registration_field_types", (string)null);
+                    b.ToTable("registration_field_types", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.RegistrationForm", b =>
@@ -17349,7 +17258,7 @@ namespace Explore.Persistence.Migrations
                         .HasDatabaseName("ix_registration_forms_tenant_id_event_id_namespace_key")
                         .HasFilter("is_deleted = false");
 
-                    b.ToTable("registration_forms", (string)null);
+                    b.ToTable("registration_forms", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.RegistrationFormField", b =>
@@ -17532,7 +17441,7 @@ namespace Explore.Persistence.Migrations
                         .HasDatabaseName("ix_registration_form_fields_tenant_id_event_id_registration_fo1")
                         .HasFilter("is_deleted = false");
 
-                    b.ToTable("registration_form_fields", null, t =>
+                    b.ToTable("registration_form_fields", "islamu_event", t =>
                         {
                             t.HasCheckConstraint("ck_registration_form_fields_consent_metadata", "(requires_explicit_consent AND consent_purpose_code IS NOT NULL AND consent_text_version IS NOT NULL AND length(btrim(consent_purpose_code)) > 0 AND length(btrim(consent_text_version)) > 0) OR (NOT requires_explicit_consent AND consent_purpose_code IS NULL AND consent_text_version IS NULL)");
                         });
@@ -17639,7 +17548,7 @@ namespace Explore.Persistence.Migrations
                         .HasDatabaseName("ix_registration_form_field_options_tenant_id_event_id_registra1")
                         .HasFilter("is_deleted = false");
 
-                    b.ToTable("registration_form_field_options", (string)null);
+                    b.ToTable("registration_form_field_options", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.RegistrationFormRule", b =>
@@ -17738,7 +17647,7 @@ namespace Explore.Persistence.Migrations
                     b.HasIndex("TenantId", "EventId", "RegistrationFormVersionId", "TargetNamespace", "TargetKey")
                         .HasDatabaseName("ix_registration_form_rules_tenant_id_event_id_registration_for1");
 
-                    b.ToTable("registration_form_rules", null, t =>
+                    b.ToTable("registration_form_rules", "islamu_event", t =>
                         {
                             t.HasCheckConstraint("ck_registration_form_rules_effect", "effect BETWEEN 1 AND 4");
 
@@ -17824,7 +17733,7 @@ namespace Explore.Persistence.Migrations
                         .HasDatabaseName("ix_registration_form_sections_tenant_id_event_id_registration_")
                         .HasFilter("is_deleted = false");
 
-                    b.ToTable("registration_form_sections", (string)null);
+                    b.ToTable("registration_form_sections", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.RegistrationFormStatus", b =>
@@ -17857,7 +17766,7 @@ namespace Explore.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_registration_form_statuses_master_code");
 
-                    b.ToTable("registration_form_statuses", (string)null);
+                    b.ToTable("registration_form_statuses", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.RegistrationFormVersion", b =>
@@ -17981,7 +17890,7 @@ namespace Explore.Persistence.Migrations
                     b.HasIndex("TenantId", "EventId", "RegistrationFormId", "StatusId", "LanguageTag")
                         .HasDatabaseName("ix_registration_form_versions_tenant_id_event_id_registration_1");
 
-                    b.ToTable("registration_form_versions", null, t =>
+                    b.ToTable("registration_form_versions", "islamu_event", t =>
                         {
                             t.HasCheckConstraint("ck_registration_form_versions_schema_artifacts", "(status_id = 1 AND schema_hash IS NULL AND data_schema_artifact IS NULL AND ui_schema_artifact IS NULL AND logic_schema_artifact IS NULL AND mapping_artifact IS NULL) OR (status_id IN (2, 3) AND schema_hash IS NOT NULL AND data_schema_artifact IS NOT NULL AND ui_schema_artifact IS NOT NULL AND logic_schema_artifact IS NOT NULL AND mapping_artifact IS NOT NULL)");
                         });
@@ -18085,7 +17994,7 @@ namespace Explore.Persistence.Migrations
                     b.HasIndex("TenantId", "RegistrationInventoryHoldStatusId", "ExpiresAt")
                         .HasDatabaseName("ix_registration_inventory_holds_tenant_id_registration_invento");
 
-                    b.ToTable("registration_inventory_holds", (string)null);
+                    b.ToTable("registration_inventory_holds", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.RegistrationInventoryHoldStatus", b =>
@@ -18118,7 +18027,7 @@ namespace Explore.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_registration_inventory_hold_statuses_master_code");
 
-                    b.ToTable("registration_inventory_hold_statuses", (string)null);
+                    b.ToTable("registration_inventory_hold_statuses", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.RegistrationMode", b =>
@@ -18147,7 +18056,7 @@ namespace Explore.Persistence.Migrations
                     b.HasKey("Id")
                         .HasName("pk_registration_modes");
 
-                    b.ToTable("registration_modes", (string)null);
+                    b.ToTable("registration_modes", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.RegistrationOrder", b =>
@@ -18311,7 +18220,7 @@ namespace Explore.Persistence.Migrations
                     b.HasIndex("TenantId", "EventId", "RegistrationOrderStatusId")
                         .HasDatabaseName("ix_registration_orders_tenant_id_event_id_registration_order_s");
 
-                    b.ToTable("registration_orders", null, t =>
+                    b.ToTable("registration_orders", "islamu_event", t =>
                         {
                             t.HasCheckConstraint("ck_registration_orders_workflow_key", "(registration_workflow_version_id IS NULL AND registration_workflow_version_key = '00000000-0000-0000-0000-000000000000') OR registration_workflow_version_key = registration_workflow_version_id");
 
@@ -18429,7 +18338,7 @@ namespace Explore.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_registration_order_lines_tenant_id_registration_order_id_ti");
 
-                    b.ToTable("registration_order_lines", (string)null);
+                    b.ToTable("registration_order_lines", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.RegistrationOrderPii", b =>
@@ -18492,7 +18401,7 @@ namespace Explore.Persistence.Migrations
                     b.HasIndex("TenantId", "NormalizedEmail")
                         .HasDatabaseName("ix_registration_order_pii_tenant_id_normalized_email");
 
-                    b.ToTable("registration_order_pii", (string)null);
+                    b.ToTable("registration_order_pii", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.RegistrationOrderPlatformContribution", b =>
@@ -18557,7 +18466,7 @@ namespace Explore.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_registration_order_platform_contributions_tenant_id_registr");
 
-                    b.ToTable("registration_order_platform_contributions", (string)null);
+                    b.ToTable("registration_order_platform_contributions", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.RegistrationOrderStatus", b =>
@@ -18590,7 +18499,7 @@ namespace Explore.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_registration_order_statuses_master_code");
 
-                    b.ToTable("registration_order_statuses", (string)null);
+                    b.ToTable("registration_order_statuses", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.RegistrationOrganizerVisibility", b =>
@@ -18623,7 +18532,7 @@ namespace Explore.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_registration_organizer_visibilities_master_code");
 
-                    b.ToTable("registration_organizer_visibilities", (string)null);
+                    b.ToTable("registration_organizer_visibilities", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.RegistrationParticipant", b =>
@@ -18714,7 +18623,7 @@ namespace Explore.Persistence.Migrations
                     b.HasIndex("TenantId", "RegistrationOrderId", "GuardianParticipantId")
                         .HasDatabaseName("ix_registration_participants_tenant_id_registration_order_id_g");
 
-                    b.ToTable("registration_participants", (string)null);
+                    b.ToTable("registration_participants", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.RegistrationParticipantPii", b =>
@@ -18772,7 +18681,7 @@ namespace Explore.Persistence.Migrations
                     b.HasIndex("TenantId", "NormalizedEmail")
                         .HasDatabaseName("ix_registration_participant_pii_tenant_id_normalized_email");
 
-                    b.ToTable("registration_participant_pii", (string)null);
+                    b.ToTable("registration_participant_pii", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.RegistrationRequirement", b =>
@@ -18890,7 +18799,7 @@ namespace Explore.Persistence.Migrations
                     b.HasIndex("TenantId", "EventId")
                         .HasDatabaseName("ix_registration_requirements_tenant_id_event_id");
 
-                    b.ToTable("registration_requirements", (string)null);
+                    b.ToTable("registration_requirements", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.RegistrationRequirementCompletionEffect", b =>
@@ -18923,7 +18832,7 @@ namespace Explore.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_registration_requirement_completion_effects_master_code");
 
-                    b.ToTable("registration_requirement_completion_effects", (string)null);
+                    b.ToTable("registration_requirement_completion_effects", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.RegistrationRequirementCriticality", b =>
@@ -18956,7 +18865,7 @@ namespace Explore.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_registration_requirement_criticalities_master_code");
 
-                    b.ToTable("registration_requirement_criticalities", (string)null);
+                    b.ToTable("registration_requirement_criticalities", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.RegistrationRequirementSubjectType", b =>
@@ -18989,7 +18898,7 @@ namespace Explore.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_registration_requirement_subject_types_master_code");
 
-                    b.ToTable("registration_requirement_subject_types", (string)null);
+                    b.ToTable("registration_requirement_subject_types", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.RegistrationScope", b =>
@@ -19022,7 +18931,7 @@ namespace Explore.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_registration_scopes_master_code");
 
-                    b.ToTable("registration_scopes", (string)null);
+                    b.ToTable("registration_scopes", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.RegistrationSensitiveAnswerValue", b =>
@@ -19084,7 +18993,7 @@ namespace Explore.Persistence.Migrations
                     b.HasIndex("TenantId", "KeyVersion")
                         .HasDatabaseName("ix_registration_sensitive_answer_values_tenant_id_key_version");
 
-                    b.ToTable("registration_sensitive_answer_values", null, t =>
+                    b.ToTable("registration_sensitive_answer_values", "islamu_event", t =>
                         {
                             t.HasCheckConstraint("ck_registration_sensitive_answer_values_shape", "key_version > 0 AND length(btrim(ciphertext)) > 0");
                         });
@@ -19271,7 +19180,7 @@ namespace Explore.Persistence.Migrations
                     b.HasIndex("TenantId", "EventId", "RegistrationOrderId", "RegistrationWorkflowId", "RegistrationRequirementId", "RegistrationChannelId", "RegistrationFormId", "RegistrationFormVersionId", "RegistrationAttemptId")
                         .HasDatabaseName("ix_registration_submissions_tenant_id_event_id_registration_or");
 
-                    b.ToTable("registration_submissions", null, t =>
+                    b.ToTable("registration_submissions", "islamu_event", t =>
                         {
                             t.HasCheckConstraint("ck_registration_submissions_finalization_shape", "(status_id = 3 AND is_finalizable = false AND attempt_consumption_claim_id IS NULL AND finalized_at IS NULL) OR (status_id = 1 AND is_finalizable = true AND attempt_consumption_claim_id IS NOT NULL AND finalized_at IS NULL) OR (status_id = 2 AND is_finalizable = true AND attempt_consumption_claim_id IS NOT NULL AND finalized_at IS NOT NULL)");
 
@@ -19361,7 +19270,7 @@ namespace Explore.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ux_registration_submission_revisions_submission_revision_number");
 
-                    b.ToTable("registration_submission_revisions", null, t =>
+                    b.ToTable("registration_submission_revisions", "islamu_event", t =>
                         {
                             t.HasCheckConstraint("ck_registration_submission_revisions_number", "revision_number > 0");
                         });
@@ -19397,7 +19306,7 @@ namespace Explore.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_registration_submission_statuses_master_code");
 
-                    b.ToTable("registration_submission_statuses", (string)null);
+                    b.ToTable("registration_submission_statuses", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.RegistrationTicketAssignment", b =>
@@ -19492,7 +19401,7 @@ namespace Explore.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_registration_ticket_assignments_tenant_id_registration_orde3");
 
-                    b.ToTable("registration_ticket_assignments", (string)null);
+                    b.ToTable("registration_ticket_assignments", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.RegistrationWorkflow", b =>
@@ -19560,7 +19469,7 @@ namespace Explore.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_registration_workflows_tenant_id_event_id_purpose");
 
-                    b.ToTable("registration_workflows", (string)null);
+                    b.ToTable("registration_workflows", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.Role", b =>
@@ -19609,7 +19518,7 @@ namespace Explore.Persistence.Migrations
                     b.HasIndex("RoleScopeId")
                         .HasDatabaseName("ix_roles_role_scope_id");
 
-                    b.ToTable("roles", (string)null);
+                    b.ToTable("roles", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.RolePermission", b =>
@@ -19641,7 +19550,7 @@ namespace Explore.Persistence.Migrations
                     b.HasIndex("RoleId")
                         .HasDatabaseName("ix_rolepermissions_role");
 
-                    b.ToTable("role_permissions", (string)null);
+                    b.ToTable("role_permissions", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.RoleScope", b =>
@@ -19674,7 +19583,7 @@ namespace Explore.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_role_scopes_master_code");
 
-                    b.ToTable("role_scopes", (string)null);
+                    b.ToTable("role_scopes", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.ScheduleItemKind", b =>
@@ -19707,7 +19616,7 @@ namespace Explore.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_schedule_item_kinds_master_code");
 
-                    b.ToTable("schedule_item_kinds", (string)null);
+                    b.ToTable("schedule_item_kinds", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.SecretSourceTypeLookup", b =>
@@ -19740,7 +19649,7 @@ namespace Explore.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_secret_source_types_master_code");
 
-                    b.ToTable("secret_source_types", (string)null);
+                    b.ToTable("secret_source_types", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.SecretValidationStatus", b =>
@@ -19773,7 +19682,7 @@ namespace Explore.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_secret_validation_statuses_master_code");
 
-                    b.ToTable("secret_validation_statuses", (string)null);
+                    b.ToTable("secret_validation_statuses", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.Secrets.SecretBinding", b =>
@@ -19894,7 +19803,7 @@ namespace Explore.Persistence.Migrations
                     b.HasIndex("SettingScopeId", "ScopeId")
                         .HasDatabaseName("ix_secret_bindings_setting_scope_id_scope_id");
 
-                    b.ToTable("secret_bindings", null, t =>
+                    b.ToTable("secret_bindings", "islamu_event", t =>
                         {
                             t.HasCheckConstraint("ck_secret_bindings_setting_scope_scope_id", "(setting_scope_id = 1 AND scope_id IS NULL) OR (setting_scope_id = 2 AND scope_id IS NOT NULL)");
 
@@ -19961,7 +19870,7 @@ namespace Explore.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_service_principals_code");
 
-                    b.ToTable("service_principals", (string)null);
+                    b.ToTable("service_principals", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.SettingScopeLookup", b =>
@@ -19994,7 +19903,7 @@ namespace Explore.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_setting_scopes_master_code");
 
-                    b.ToTable("setting_scopes", (string)null);
+                    b.ToTable("setting_scopes", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.SettingValueTypeLookup", b =>
@@ -20027,7 +19936,7 @@ namespace Explore.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_setting_value_types_master_code");
 
-                    b.ToTable("setting_value_types", (string)null);
+                    b.ToTable("setting_value_types", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.Settings.Documents.TenantSettingsDocument", b =>
@@ -20095,7 +20004,7 @@ namespace Explore.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_tenant_settings_documents_tenant_id_document_key");
 
-                    b.ToTable("tenant_settings_documents", null, t =>
+                    b.ToTable("tenant_settings_documents", "islamu_event", t =>
                         {
                             t.HasCheckConstraint("ck_tenant_settings_documents_document_key_not_blank", "length(trim(document_key)) > 0");
 
@@ -20274,7 +20183,7 @@ namespace Explore.Persistence.Migrations
                     b.HasIndex("TenantId", "Visibility", "Purpose")
                         .HasDatabaseName("ix_storage_objects_tenant_visibility_purpose");
 
-                    b.ToTable("storage_objects", null, t =>
+                    b.ToTable("storage_objects", "islamu_event", t =>
                         {
                             t.HasCheckConstraint("ck_storage_objects_lifecycle_state", "lifecycle_state IN ('pending', 'active', 'quarantined', 'delete_requested', 'deleted')");
 
@@ -20477,7 +20386,7 @@ namespace Explore.Persistence.Migrations
                     b.HasIndex("TenantId", "Status", "ExpiresAt")
                         .HasDatabaseName("ix_storage_upload_sessions_tenant_status_expires_at");
 
-                    b.ToTable("storage_upload_sessions", null, t =>
+                    b.ToTable("storage_upload_sessions", "islamu_event", t =>
                         {
                             t.HasCheckConstraint("ck_storage_upload_sessions_expected_size_nonnegative", "expected_size_bytes >= 0");
 
@@ -20563,7 +20472,7 @@ namespace Explore.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ux_storage_usage_counters_tenant_provider");
 
-                    b.ToTable("storage_usage_counters", null, t =>
+                    b.ToTable("storage_usage_counters", "islamu_event", t =>
                         {
                             t.HasCheckConstraint("ck_storage_usage_counters_object_count_nonnegative", "object_count >= 0");
 
@@ -20678,7 +20587,7 @@ namespace Explore.Persistence.Migrations
                         .IsDescending(false, true)
                         .HasDatabaseName("ix_support_access_audit_events_tenant_occurred");
 
-                    b.ToTable("support_access_audit_events", (string)null);
+                    b.ToTable("support_access_audit_events", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.SupportAccessAuditEventType", b =>
@@ -20715,7 +20624,7 @@ namespace Explore.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_support_access_audit_event_types_master_code");
 
-                    b.ToTable("support_access_audit_event_types", (string)null);
+                    b.ToTable("support_access_audit_event_types", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.SupportAccessEndReason", b =>
@@ -20748,7 +20657,7 @@ namespace Explore.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_support_access_end_reasons_master_code");
 
-                    b.ToTable("support_access_end_reasons", (string)null);
+                    b.ToTable("support_access_end_reasons", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.SupportAccessMode", b =>
@@ -20785,7 +20694,7 @@ namespace Explore.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_support_access_modes_master_code");
 
-                    b.ToTable("support_access_modes", (string)null);
+                    b.ToTable("support_access_modes", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.SupportAccessSession", b =>
@@ -20913,7 +20822,7 @@ namespace Explore.Persistence.Migrations
                     b.HasIndex("Id", "ActorUserId", "StatusId")
                         .HasDatabaseName("ix_support_access_sessions_id_actor_status");
 
-                    b.ToTable("support_access_sessions", null, t =>
+                    b.ToTable("support_access_sessions", "islamu_event", t =>
                         {
                             t.HasCheckConstraint("ck_support_access_sessions_end_after_start", "ended_at_utc IS NULL OR ended_at_utc >= started_at_utc");
 
@@ -20957,7 +20866,7 @@ namespace Explore.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_support_access_session_statuses_master_code");
 
-                    b.ToTable("support_access_session_statuses", (string)null);
+                    b.ToTable("support_access_session_statuses", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.SyncState", b =>
@@ -20994,7 +20903,7 @@ namespace Explore.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_sync_states_service");
 
-                    b.ToTable("sync_states", (string)null);
+                    b.ToTable("sync_states", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.SystemSetting", b =>
@@ -21074,7 +20983,7 @@ namespace Explore.Persistence.Migrations
                     b.HasIndex("SettingValueTypeId")
                         .HasDatabaseName("ix_system_settings_setting_value_type_id");
 
-                    b.ToTable("system_settings", (string)null);
+                    b.ToTable("system_settings", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.Tag", b =>
@@ -21110,7 +21019,7 @@ namespace Explore.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_tags_tenant_master_code");
 
-                    b.ToTable("tags", (string)null);
+                    b.ToTable("tags", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.TagType", b =>
@@ -21139,7 +21048,7 @@ namespace Explore.Persistence.Migrations
                     b.HasKey("Id")
                         .HasName("pk_tag_types");
 
-                    b.ToTable("tag_types", (string)null);
+                    b.ToTable("tag_types", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.TagTypeTags", b =>
@@ -21174,7 +21083,7 @@ namespace Explore.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_tag_type_tags_tenant_id_tag_id_tag_type_id");
 
-                    b.ToTable("tag_type_tags", (string)null);
+                    b.ToTable("tag_type_tags", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.Tenant", b =>
@@ -21231,7 +21140,7 @@ namespace Explore.Persistence.Migrations
                     b.HasIndex("TenantStatusId")
                         .HasDatabaseName("ix_tenants_tenant_status_id");
 
-                    b.ToTable("tenants", (string)null);
+                    b.ToTable("tenants", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.TenantFooterLink", b =>
@@ -21297,7 +21206,7 @@ namespace Explore.Persistence.Migrations
                     b.HasIndex("FooterLinkGroupId", "Order")
                         .HasDatabaseName("ix_tenant_footer_links_footer_link_group_id_order");
 
-                    b.ToTable("tenant_footer_links", (string)null);
+                    b.ToTable("tenant_footer_links", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.TenantFooterLinkGroup", b =>
@@ -21354,7 +21263,7 @@ namespace Explore.Persistence.Migrations
                     b.HasIndex("TenantId", "Order")
                         .HasDatabaseName("ix_tenant_footer_link_groups_tenant_id_order");
 
-                    b.ToTable("tenant_footer_link_groups", (string)null);
+                    b.ToTable("tenant_footer_link_groups", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.TenantInvitation", b =>
@@ -21442,7 +21351,7 @@ namespace Explore.Persistence.Migrations
                     b.HasIndex("TenantId", "Email")
                         .HasDatabaseName("ix_tenant_invitations_tenant_id_email");
 
-                    b.ToTable("tenant_invitations", (string)null);
+                    b.ToTable("tenant_invitations", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.TenantLifecycleLog", b =>
@@ -21512,7 +21421,7 @@ namespace Explore.Persistence.Migrations
                     b.HasIndex("TenantId", "TransitionedAt")
                         .HasDatabaseName("ix_tenant_lifecycle_logs_tenant_id_transitioned_at");
 
-                    b.ToTable("tenant_lifecycle_logs", (string)null);
+                    b.ToTable("tenant_lifecycle_logs", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.TenantNavigationLink", b =>
@@ -21598,7 +21507,7 @@ namespace Explore.Persistence.Migrations
                     b.HasIndex("TenantId", "Order")
                         .HasDatabaseName("ix_tenant_navigation_links_tenant_id_order");
 
-                    b.ToTable("tenant_navigation_links", (string)null);
+                    b.ToTable("tenant_navigation_links", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.TenantOnboardingState", b =>
@@ -21655,7 +21564,7 @@ namespace Explore.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_tenant_onboarding_states_tenant_id");
 
-                    b.ToTable("tenant_onboarding_states", (string)null);
+                    b.ToTable("tenant_onboarding_states", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.TenantPlan", b =>
@@ -21705,7 +21614,7 @@ namespace Explore.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_tenant_plans_key");
 
-                    b.ToTable("tenant_plans", (string)null);
+                    b.ToTable("tenant_plans", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.TenantPlanApplicationLog", b =>
@@ -21803,7 +21712,7 @@ namespace Explore.Persistence.Migrations
                         .IsDescending(false, true)
                         .HasDatabaseName("ix_tenant_plan_application_logs_tenant_id_applied_at");
 
-                    b.ToTable("tenant_plan_application_logs", (string)null);
+                    b.ToTable("tenant_plan_application_logs", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.TenantPlanApplicationStatus", b =>
@@ -21840,7 +21749,7 @@ namespace Explore.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_tenant_plan_application_statuses_master_code");
 
-                    b.ToTable("tenant_plan_application_statuses", (string)null);
+                    b.ToTable("tenant_plan_application_statuses", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.TenantPlanAssignment", b =>
@@ -21911,7 +21820,7 @@ namespace Explore.Persistence.Migrations
                     b.HasIndex("TenantPlanVersionId", "TenantPlanAssignmentStatusId")
                         .HasDatabaseName("ix_tenant_plan_assignments_tenant_plan_version_id_tenant_plan_");
 
-                    b.ToTable("tenant_plan_assignments", (string)null);
+                    b.ToTable("tenant_plan_assignments", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.TenantPlanAssignmentStatus", b =>
@@ -21948,7 +21857,7 @@ namespace Explore.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_tenant_plan_assignment_statuses_master_code");
 
-                    b.ToTable("tenant_plan_assignment_statuses", (string)null);
+                    b.ToTable("tenant_plan_assignment_statuses", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.TenantPlanStatus", b =>
@@ -21985,7 +21894,7 @@ namespace Explore.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_tenant_plan_statuses_master_code");
 
-                    b.ToTable("tenant_plan_statuses", (string)null);
+                    b.ToTable("tenant_plan_statuses", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.TenantPlanVersion", b =>
@@ -22054,7 +21963,7 @@ namespace Explore.Persistence.Migrations
                     b.HasIndex("TenantPlanStatusId", "IsActiveForProvisioning")
                         .HasDatabaseName("ix_tenant_plan_versions_tenant_plan_status_id_is_active_for_pr");
 
-                    b.ToTable("tenant_plan_versions", (string)null);
+                    b.ToTable("tenant_plan_versions", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.TenantPlanVersionQuota", b =>
@@ -22101,7 +22010,7 @@ namespace Explore.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_tenant_plan_version_quotas_tenant_plan_version_id_quota_key");
 
-                    b.ToTable("tenant_plan_version_quotas", (string)null);
+                    b.ToTable("tenant_plan_version_quotas", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.TenantPlanVersionSetting", b =>
@@ -22153,7 +22062,7 @@ namespace Explore.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_tenant_plan_version_settings_tenant_plan_version_id_setting");
 
-                    b.ToTable("tenant_plan_version_settings", (string)null);
+                    b.ToTable("tenant_plan_version_settings", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.TenantSetting", b =>
@@ -22209,7 +22118,7 @@ namespace Explore.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_tenant_setting_overrides_tenant_id_setting_key");
 
-                    b.ToTable("tenant_setting_overrides", (string)null);
+                    b.ToTable("tenant_setting_overrides", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.TenantStatus", b =>
@@ -22242,7 +22151,7 @@ namespace Explore.Persistence.Migrations
                     b.HasKey("Id")
                         .HasName("pk_tenant_statuses");
 
-                    b.ToTable("tenant_statuses", (string)null);
+                    b.ToTable("tenant_statuses", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.TenantUser", b =>
@@ -22350,7 +22259,7 @@ namespace Explore.Persistence.Migrations
                         .HasDatabaseName("ix_tenantusers_tenant_actor")
                         .HasFilter("actor_id IS NOT NULL");
 
-                    b.ToTable("tenant_users", null, t =>
+                    b.ToTable("tenant_users", "islamu_event", t =>
                         {
                             t.HasCheckConstraint("ck_tenant_users_status", "status_id IN (1, 2, 3, 4)");
                         });
@@ -22434,7 +22343,7 @@ namespace Explore.Persistence.Migrations
                         .HasDatabaseName("ix_tenantuserprofiles_tenant_contact_email")
                         .HasFilter("contact_email_override IS NOT NULL");
 
-                    b.ToTable("tenant_user_profiles", (string)null);
+                    b.ToTable("tenant_user_profiles", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.TenantUserRoleGrant", b =>
@@ -22518,7 +22427,7 @@ namespace Explore.Persistence.Migrations
                         .HasDatabaseName("ix_tenant_user_role_grants_active_tenant_user_role")
                         .HasFilter("revoked_at IS NULL");
 
-                    b.ToTable("tenant_user_role_grants", null, t =>
+                    b.ToTable("tenant_user_role_grants", "islamu_event", t =>
                         {
                             t.HasCheckConstraint("ck_tenant_user_role_grants_role_scope", "role_scope_id = 1");
                         });
@@ -22554,7 +22463,7 @@ namespace Explore.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_ticket_catalog_statuses_master_code");
 
-                    b.ToTable("ticket_catalog_statuses", (string)null);
+                    b.ToTable("ticket_catalog_statuses", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.TicketPricingMode", b =>
@@ -22587,7 +22496,7 @@ namespace Explore.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_ticket_pricing_modes_master_code");
 
-                    b.ToTable("ticket_pricing_modes", (string)null);
+                    b.ToTable("ticket_pricing_modes", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.TicketTypeEntitlement", b =>
@@ -22649,7 +22558,7 @@ namespace Explore.Persistence.Migrations
                     b.HasIndex("TenantId", "TargetEventId", "EventSessionId")
                         .HasDatabaseName("ix_ticket_type_entitlements_tenant_id_target_event_id_event_se");
 
-                    b.ToTable("ticket_type_entitlements", (string)null);
+                    b.ToTable("ticket_type_entitlements", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.UiTheme", b =>
@@ -22746,7 +22655,7 @@ namespace Explore.Persistence.Migrations
                         .HasDatabaseName("ix_ui_themes_tenant_id_theme_key")
                         .HasFilter("tenant_id IS NOT NULL");
 
-                    b.ToTable("ui_themes", (string)null);
+                    b.ToTable("ui_themes", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.UiThemePreset", b =>
@@ -22854,7 +22763,7 @@ namespace Explore.Persistence.Migrations
                         .HasDatabaseName("ix_ui_theme_presets_tenant_id_theme_key")
                         .HasFilter("tenant_id IS NOT NULL AND is_deleted = false");
 
-                    b.ToTable("ui_theme_presets", (string)null);
+                    b.ToTable("ui_theme_presets", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.User", b =>
@@ -22918,7 +22827,7 @@ namespace Explore.Persistence.Migrations
                     b.HasKey("Id")
                         .HasName("pk_users");
 
-                    b.ToTable("users", (string)null);
+                    b.ToTable("users", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.UserAppearancePreference", b =>
@@ -22975,7 +22884,7 @@ namespace Explore.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_user_appearance_preferences_user_id_tenant_id");
 
-                    b.ToTable("user_appearance_preferences", (string)null);
+                    b.ToTable("user_appearance_preferences", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.UserAppearanceProfile", b =>
@@ -23076,7 +22985,7 @@ namespace Explore.Persistence.Migrations
                     b.HasIndex("UserId", "TenantId", "Name")
                         .HasDatabaseName("ix_user_appearance_profiles_user_id_tenant_id_name");
 
-                    b.ToTable("user_appearance_profiles", (string)null);
+                    b.ToTable("user_appearance_profiles", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.UserAuthenticationToken", b =>
@@ -23169,7 +23078,7 @@ namespace Explore.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ux_user_authentication_tokens_tenant_provider_subject_did");
 
-                    b.ToTable("user_authentication_tokens", null, t =>
+                    b.ToTable("user_authentication_tokens", "islamu_event", t =>
                         {
                             t.HasCheckConstraint("ck_user_authentication_tokens_ciphertext_not_empty", "octet_length(session_ciphertext) >= 29");
 
@@ -23239,7 +23148,7 @@ namespace Explore.Persistence.Migrations
                         .HasDatabaseName("ix_user_external_logins_provider_provider_key")
                         .HasFilter("provider IS NOT NULL AND provider_key IS NOT NULL");
 
-                    b.ToTable("user_external_logins", (string)null);
+                    b.ToTable("user_external_logins", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.UserNotificationPreference", b =>
@@ -23299,7 +23208,7 @@ namespace Explore.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_user_notification_preferences_tenant_id_user_id_category");
 
-                    b.ToTable("user_notification_preferences", (string)null);
+                    b.ToTable("user_notification_preferences", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.UserPii", b =>
@@ -23333,7 +23242,7 @@ namespace Explore.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_user_pii_email");
 
-                    b.ToTable("user_pii", (string)null);
+                    b.ToTable("user_pii", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.UserPreference", b =>
@@ -23387,7 +23296,7 @@ namespace Explore.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_user_preferences_tenant_id_user_id_setting_key");
 
-                    b.ToTable("user_preferences", (string)null);
+                    b.ToTable("user_preferences", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.Views.EventWithSessionsView", b =>
@@ -23508,7 +23417,7 @@ namespace Explore.Persistence.Migrations
 
                     b.ToTable((string)null);
 
-                    b.ToView("vw_event_with_sessions", (string)null);
+                    b.ToView("vw_event_with_sessions", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.VisibilityType", b =>
@@ -23537,7 +23446,7 @@ namespace Explore.Persistence.Migrations
                     b.HasKey("Id")
                         .HasName("pk_visibility_types");
 
-                    b.ToTable("visibility_types", (string)null);
+                    b.ToTable("visibility_types", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.WebPushDispatchOutbox", b =>
@@ -23684,7 +23593,7 @@ namespace Explore.Persistence.Migrations
                     b.HasIndex("TenantId", "Status", "LastFailureAt")
                         .HasDatabaseName("ix_web_push_dispatch_outbox_tenant_status");
 
-                    b.ToTable("web_push_dispatch_outbox", (string)null);
+                    b.ToTable("web_push_dispatch_outbox", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.WebPushSubscription", b =>
@@ -23808,7 +23717,7 @@ namespace Explore.Persistence.Migrations
                     b.HasIndex("TenantId", "UserId", "IsActive")
                         .HasDatabaseName("ix_web_push_subscriptions_tenant_user_active");
 
-                    b.ToTable("web_push_subscriptions", (string)null);
+                    b.ToTable("web_push_subscriptions", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.WebhookAuditActionLookup", b =>
@@ -23841,7 +23750,7 @@ namespace Explore.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ux_webhook_audit_actions_master_code");
 
-                    b.ToTable("webhook_audit_actions", (string)null);
+                    b.ToTable("webhook_audit_actions", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.WebhookAuditEvent", b =>
@@ -23967,7 +23876,7 @@ namespace Explore.Persistence.Migrations
                         .IsDescending(false, false, false, true)
                         .HasDatabaseName("ix_webhook_audit_events_tenant_target_occurred");
 
-                    b.ToTable("webhook_audit_events", null, t =>
+                    b.ToTable("webhook_audit_events", "islamu_event", t =>
                         {
                             t.HasCheckConstraint("ck_webhook_audit_events_effective_scope", "(effective_scope_kind_id = 2 AND tenant_id IS NULL AND effective_scope_id IS NOT NULL) OR (effective_scope_kind_id IN (1, 3, 4, 5) AND tenant_id IS NOT NULL AND effective_scope_id IS NOT NULL)");
 
@@ -24009,7 +23918,7 @@ namespace Explore.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ux_webhook_audit_outcomes_master_code");
 
-                    b.ToTable("webhook_audit_outcomes", (string)null);
+                    b.ToTable("webhook_audit_outcomes", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.WebhookAuditPrincipalKindLookup", b =>
@@ -24042,7 +23951,7 @@ namespace Explore.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ux_webhook_audit_principal_kinds_master_code");
 
-                    b.ToTable("webhook_audit_principal_kinds", (string)null);
+                    b.ToTable("webhook_audit_principal_kinds", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.WebhookAuditScopeKindLookup", b =>
@@ -24075,7 +23984,7 @@ namespace Explore.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ux_webhook_audit_scope_kinds_master_code");
 
-                    b.ToTable("webhook_audit_scope_kinds", (string)null);
+                    b.ToTable("webhook_audit_scope_kinds", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.WebhookAuditTargetKindLookup", b =>
@@ -24108,7 +24017,7 @@ namespace Explore.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ux_webhook_audit_target_kinds_master_code");
 
-                    b.ToTable("webhook_audit_target_kinds", (string)null);
+                    b.ToTable("webhook_audit_target_kinds", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.WebhookBulkReplayOperation", b =>
@@ -24288,7 +24197,7 @@ namespace Explore.Persistence.Migrations
                     b.HasIndex("TenantId", "StatusId", "QueuedAt")
                         .HasDatabaseName("ix_webhook_bulk_replay_operations_tenant_status_queue");
 
-                    b.ToTable("webhook_bulk_replay_operations", null, t =>
+                    b.ToTable("webhook_bulk_replay_operations", "islamu_event", t =>
                         {
                             t.HasCheckConstraint("ck_webhook_bulk_replay_operations_concurrency_version", "concurrency_version > 0");
 
@@ -24336,7 +24245,7 @@ namespace Explore.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ux_webhook_bulk_replay_statuses_master_code");
 
-                    b.ToTable("webhook_bulk_replay_statuses", (string)null);
+                    b.ToTable("webhook_bulk_replay_statuses", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.WebhookConsumer", b =>
@@ -24471,7 +24380,7 @@ namespace Explore.Persistence.Migrations
                     b.HasIndex("TenantId", "StatusId", "ProviderModeId")
                         .HasDatabaseName("ix_webhook_consumers_tenant_status_provider");
 
-                    b.ToTable("webhook_consumers", null, t =>
+                    b.ToTable("webhook_consumers", "islamu_event", t =>
                         {
                             t.HasCheckConstraint("ck_webhook_consumers_configuration_scope", "configuration_scope_id = COALESCE(tenant_id, instance_id)");
 
@@ -24511,7 +24420,7 @@ namespace Explore.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ux_webhook_consumer_kinds_master_code");
 
-                    b.ToTable("webhook_consumer_kinds", (string)null);
+                    b.ToTable("webhook_consumer_kinds", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.WebhookConsumerProviderBinding", b =>
@@ -24677,7 +24586,7 @@ namespace Explore.Persistence.Migrations
                         .HasDatabaseName("ux_webhook_provider_bindings_provider_application_identity")
                         .HasFilter("normalized_external_application_id IS NOT NULL");
 
-                    b.ToTable("webhook_consumer_provider_bindings", null, t =>
+                    b.ToTable("webhook_consumer_provider_bindings", "islamu_event", t =>
                         {
                             t.HasCheckConstraint("ck_webhook_consumer_provider_bindings_capabilities_known", "capabilities >= 0 AND capabilities <= 4095");
 
@@ -24723,7 +24632,7 @@ namespace Explore.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ux_webhook_consumer_statuses_master_code");
 
-                    b.ToTable("webhook_consumer_statuses", (string)null);
+                    b.ToTable("webhook_consumer_statuses", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.WebhookDeliveryAttempt", b =>
@@ -24841,7 +24750,7 @@ namespace Explore.Persistence.Migrations
                     b.HasIndex("TenantId", "OutcomeId", "ScheduledAt", "CreatedAt")
                         .HasDatabaseName("ix_webhook_delivery_attempts_worker_poll");
 
-                    b.ToTable("webhook_delivery_attempts", (string)null);
+                    b.ToTable("webhook_delivery_attempts", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.WebhookDeliveryAttemptOutcomeLookup", b =>
@@ -24874,7 +24783,7 @@ namespace Explore.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ux_webhook_delivery_attempt_outcomes_master_code");
 
-                    b.ToTable("webhook_delivery_attempt_outcomes", (string)null);
+                    b.ToTable("webhook_delivery_attempt_outcomes", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.WebhookDeliveryPlanSnapshot", b =>
@@ -25004,7 +24913,7 @@ namespace Explore.Persistence.Migrations
                     b.HasIndex("TenantId", "WebhookConsumerId", "MaterializedAtUtc")
                         .HasDatabaseName("ix_webhook_delivery_plan_snapshots_tenant_consumer_materialized");
 
-                    b.ToTable("webhook_delivery_plan_snapshots", (string)null);
+                    b.ToTable("webhook_delivery_plan_snapshots", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.WebhookEndpoint", b =>
@@ -25193,7 +25102,7 @@ namespace Explore.Persistence.Migrations
                     b.HasIndex("TenantId", "StatusId", "Id")
                         .HasDatabaseName("ix_webhook_endpoints_status_tenant_id");
 
-                    b.ToTable("webhook_endpoints", null, t =>
+                    b.ToTable("webhook_endpoints", "islamu_event", t =>
                         {
                             t.HasCheckConstraint("ck_webhook_endpoints_configuration_scope", "(tenant_id IS NOT NULL AND instance_id IS NULL) OR (tenant_id IS NULL AND instance_id IS NOT NULL)");
 
@@ -25233,7 +25142,7 @@ namespace Explore.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ux_webhook_endpoint_statuses_master_code");
 
-                    b.ToTable("webhook_endpoint_statuses", (string)null);
+                    b.ToTable("webhook_endpoint_statuses", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.WebhookEndpointSubscription", b =>
@@ -25314,7 +25223,7 @@ namespace Explore.Persistence.Migrations
                     b.HasIndex("TenantId", "EventTypeId", "IsEnabled")
                         .HasDatabaseName("ix_webhook_endpoint_subscriptions_tenant_event_type");
 
-                    b.ToTable("webhook_endpoint_subscriptions", null, t =>
+                    b.ToTable("webhook_endpoint_subscriptions", "islamu_event", t =>
                         {
                             t.HasCheckConstraint("ck_webhook_endpoint_subscriptions_configuration_scope", "(tenant_id IS NOT NULL AND instance_id IS NULL) OR (tenant_id IS NULL AND instance_id IS NOT NULL)");
 
@@ -25397,7 +25306,7 @@ namespace Explore.Persistence.Migrations
                     b.HasIndex("GroupName", "IsEnabled", "IsPublic")
                         .HasDatabaseName("ix_webhook_event_types_group_enabled_public");
 
-                    b.ToTable("webhook_event_types", (string)null);
+                    b.ToTable("webhook_event_types", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.WebhookLocalDeliveryStatusLookup", b =>
@@ -25430,7 +25339,7 @@ namespace Explore.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ux_webhook_local_delivery_statuses_master_code");
 
-                    b.ToTable("webhook_local_delivery_statuses", (string)null);
+                    b.ToTable("webhook_local_delivery_statuses", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.WebhookLocalTargetSnapshot", b =>
@@ -25569,7 +25478,7 @@ namespace Explore.Persistence.Migrations
                     b.HasIndex("TenantId", "DeliveryStatusId", "NextActionAtUtc", "ProcessingLeaseExpiresAtUtc")
                         .HasDatabaseName("ix_webhook_local_targets_tenant_claim_due");
 
-                    b.ToTable("webhook_local_target_snapshots", null, t =>
+                    b.ToTable("webhook_local_target_snapshots", "islamu_event", t =>
                         {
                             t.HasCheckConstraint("ck_webhook_local_targets_concurrency_version", "concurrency_version > 0");
 
@@ -25711,7 +25620,7 @@ namespace Explore.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ux_webhook_messages_tenant_event");
 
-                    b.ToTable("webhook_messages", null, t =>
+                    b.ToTable("webhook_messages", "islamu_event", t =>
                         {
                             t.HasCheckConstraint("ck_webhook_messages_payload_byte_length", "payload_byte_length > 0");
 
@@ -25751,7 +25660,7 @@ namespace Explore.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ux_webhook_payload_provenances_master_code");
 
-                    b.ToTable("webhook_payload_provenances", (string)null);
+                    b.ToTable("webhook_payload_provenances", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.WebhookPendingWorkDecisionLookup", b =>
@@ -25784,7 +25693,7 @@ namespace Explore.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ux_webhook_pending_work_decisions_master_code");
 
-                    b.ToTable("webhook_pending_work_decisions", (string)null);
+                    b.ToTable("webhook_pending_work_decisions", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.WebhookProviderBindingVerificationStateLookup", b =>
@@ -25817,7 +25726,7 @@ namespace Explore.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ux_webhook_provider_binding_verification_states_master_code");
 
-                    b.ToTable("webhook_provider_binding_verification_states", (string)null);
+                    b.ToTable("webhook_provider_binding_verification_states", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.WebhookProviderCapabilityLookup", b =>
@@ -25850,7 +25759,7 @@ namespace Explore.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ux_webhook_provider_capabilities_master_code");
 
-                    b.ToTable("webhook_provider_capabilities", (string)null);
+                    b.ToTable("webhook_provider_capabilities", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.WebhookProviderKindLookup", b =>
@@ -25883,7 +25792,7 @@ namespace Explore.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ux_webhook_provider_kinds_master_code");
 
-                    b.ToTable("webhook_provider_kinds", (string)null);
+                    b.ToTable("webhook_provider_kinds", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.WebhookProviderModeLookup", b =>
@@ -25916,7 +25825,7 @@ namespace Explore.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ux_webhook_provider_modes_master_code");
 
-                    b.ToTable("webhook_provider_modes", (string)null);
+                    b.ToTable("webhook_provider_modes", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.WebhookProviderPublication", b =>
@@ -26172,7 +26081,7 @@ namespace Explore.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ux_webhook_provider_publications_tenant_message_provider_binding");
 
-                    b.ToTable("webhook_provider_publications", null, t =>
+                    b.ToTable("webhook_provider_publications", "islamu_event", t =>
                         {
                             t.HasCheckConstraint("ck_webhook_provider_publications_concurrency_version", "concurrency_version > 0");
 
@@ -26268,7 +26177,7 @@ namespace Explore.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ux_webhook_provider_publication_attempts_tenant_publication_attempt");
 
-                    b.ToTable("webhook_provider_publication_attempts", (string)null);
+                    b.ToTable("webhook_provider_publication_attempts", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.WebhookProviderPublicationAttemptOutcomeLookup", b =>
@@ -26301,7 +26210,7 @@ namespace Explore.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ux_webhook_provider_publication_attempt_outcomes_master_code");
 
-                    b.ToTable("webhook_provider_publication_attempt_outcomes", (string)null);
+                    b.ToTable("webhook_provider_publication_attempt_outcomes", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.WebhookProviderPublicationStatusLookup", b =>
@@ -26334,7 +26243,7 @@ namespace Explore.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ux_webhook_provider_publication_statuses_master_code");
 
-                    b.ToTable("webhook_provider_publication_statuses", (string)null);
+                    b.ToTable("webhook_provider_publication_statuses", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.WebhookRetentionHold", b =>
@@ -26403,7 +26312,7 @@ namespace Explore.Persistence.Migrations
                     b.HasIndex("TenantId", "SubjectKindId", "SubjectId", "ReleasedAt", "ExpiresAt")
                         .HasDatabaseName("ix_webhook_retention_holds_tenant_subject_active");
 
-                    b.ToTable("webhook_retention_holds", null, t =>
+                    b.ToTable("webhook_retention_holds", "islamu_event", t =>
                         {
                             t.HasCheckConstraint("ck_webhook_retention_holds_expiry", "expires_at IS NULL OR expires_at > placed_at");
 
@@ -26441,7 +26350,7 @@ namespace Explore.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ux_webhook_retention_subject_kinds_master_code");
 
-                    b.ToTable("webhook_retention_subject_kinds", (string)null);
+                    b.ToTable("webhook_retention_subject_kinds", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.Actor", b =>
@@ -30686,7 +30595,7 @@ namespace Explore.Persistence.Migrations
 
                             b1.HasKey("InstancePolicySetId");
 
-                            b1.ToTable("instance_policy_sets");
+                            b1.ToTable("instance_policy_sets", "islamu_event");
 
                             b1.WithOwner()
                                 .HasForeignKey("InstancePolicySetId")
@@ -30708,7 +30617,7 @@ namespace Explore.Persistence.Migrations
 
                                     b2.HasKey("DomainPolicyInstancePolicySetId");
 
-                                    b2.ToTable("instance_policy_sets");
+                                    b2.ToTable("instance_policy_sets", "islamu_event");
 
                                     b2.WithOwner()
                                         .HasForeignKey("DomainPolicyInstancePolicySetId")
@@ -30731,7 +30640,7 @@ namespace Explore.Persistence.Migrations
 
                                     b2.HasKey("DomainPolicyInstancePolicySetId");
 
-                                    b2.ToTable("instance_policy_sets");
+                                    b2.ToTable("instance_policy_sets", "islamu_event");
 
                                     b2.WithOwner()
                                         .HasForeignKey("DomainPolicyInstancePolicySetId")
@@ -30754,7 +30663,7 @@ namespace Explore.Persistence.Migrations
 
                                     b2.HasKey("DomainPolicyInstancePolicySetId");
 
-                                    b2.ToTable("instance_policy_sets");
+                                    b2.ToTable("instance_policy_sets", "islamu_event");
 
                                     b2.WithOwner()
                                         .HasForeignKey("DomainPolicyInstancePolicySetId")
@@ -30777,7 +30686,7 @@ namespace Explore.Persistence.Migrations
 
                                     b2.HasKey("DomainPolicyInstancePolicySetId");
 
-                                    b2.ToTable("instance_policy_sets");
+                                    b2.ToTable("instance_policy_sets", "islamu_event");
 
                                     b2.WithOwner()
                                         .HasForeignKey("DomainPolicyInstancePolicySetId")
@@ -30805,7 +30714,7 @@ namespace Explore.Persistence.Migrations
 
                             b1.HasKey("InstancePolicySetId");
 
-                            b1.ToTable("instance_policy_sets");
+                            b1.ToTable("instance_policy_sets", "islamu_event");
 
                             b1.WithOwner()
                                 .HasForeignKey("InstancePolicySetId")
@@ -30827,7 +30736,7 @@ namespace Explore.Persistence.Migrations
 
                                     b2.HasKey("BrandingPolicyInstancePolicySetId");
 
-                                    b2.ToTable("instance_policy_sets");
+                                    b2.ToTable("instance_policy_sets", "islamu_event");
 
                                     b2.WithOwner()
                                         .HasForeignKey("BrandingPolicyInstancePolicySetId")
@@ -30850,7 +30759,7 @@ namespace Explore.Persistence.Migrations
 
                                     b2.HasKey("BrandingPolicyInstancePolicySetId");
 
-                                    b2.ToTable("instance_policy_sets");
+                                    b2.ToTable("instance_policy_sets", "islamu_event");
 
                                     b2.WithOwner()
                                         .HasForeignKey("BrandingPolicyInstancePolicySetId")
@@ -30873,7 +30782,7 @@ namespace Explore.Persistence.Migrations
 
                                     b2.HasKey("BrandingPolicyInstancePolicySetId");
 
-                                    b2.ToTable("instance_policy_sets");
+                                    b2.ToTable("instance_policy_sets", "islamu_event");
 
                                     b2.WithOwner()
                                         .HasForeignKey("BrandingPolicyInstancePolicySetId")
@@ -30896,7 +30805,7 @@ namespace Explore.Persistence.Migrations
 
                                     b2.HasKey("BrandingPolicyInstancePolicySetId");
 
-                                    b2.ToTable("instance_policy_sets");
+                                    b2.ToTable("instance_policy_sets", "islamu_event");
 
                                     b2.WithOwner()
                                         .HasForeignKey("BrandingPolicyInstancePolicySetId")
@@ -30924,7 +30833,7 @@ namespace Explore.Persistence.Migrations
 
                             b1.HasKey("InstancePolicySetId");
 
-                            b1.ToTable("instance_policy_sets");
+                            b1.ToTable("instance_policy_sets", "islamu_event");
 
                             b1.WithOwner()
                                 .HasForeignKey("InstancePolicySetId")
@@ -30946,7 +30855,7 @@ namespace Explore.Persistence.Migrations
 
                                     b2.HasKey("EventPolicyInstancePolicySetId");
 
-                                    b2.ToTable("instance_policy_sets");
+                                    b2.ToTable("instance_policy_sets", "islamu_event");
 
                                     b2.WithOwner()
                                         .HasForeignKey("EventPolicyInstancePolicySetId")
@@ -30969,7 +30878,7 @@ namespace Explore.Persistence.Migrations
 
                                     b2.HasKey("EventPolicyInstancePolicySetId");
 
-                                    b2.ToTable("instance_policy_sets");
+                                    b2.ToTable("instance_policy_sets", "islamu_event");
 
                                     b2.WithOwner()
                                         .HasForeignKey("EventPolicyInstancePolicySetId")
@@ -30992,7 +30901,7 @@ namespace Explore.Persistence.Migrations
 
                                     b2.HasKey("EventPolicyInstancePolicySetId");
 
-                                    b2.ToTable("instance_policy_sets");
+                                    b2.ToTable("instance_policy_sets", "islamu_event");
 
                                     b2.WithOwner()
                                         .HasForeignKey("EventPolicyInstancePolicySetId")
@@ -31015,7 +30924,7 @@ namespace Explore.Persistence.Migrations
 
                                     b2.HasKey("EventPolicyInstancePolicySetId");
 
-                                    b2.ToTable("instance_policy_sets");
+                                    b2.ToTable("instance_policy_sets", "islamu_event");
 
                                     b2.WithOwner()
                                         .HasForeignKey("EventPolicyInstancePolicySetId")
@@ -31043,7 +30952,7 @@ namespace Explore.Persistence.Migrations
 
                             b1.HasKey("InstancePolicySetId");
 
-                            b1.ToTable("instance_policy_sets");
+                            b1.ToTable("instance_policy_sets", "islamu_event");
 
                             b1.WithOwner()
                                 .HasForeignKey("InstancePolicySetId")
@@ -31065,7 +30974,7 @@ namespace Explore.Persistence.Migrations
 
                                     b2.HasKey("OrganizationPolicyInstancePolicySetId");
 
-                                    b2.ToTable("instance_policy_sets");
+                                    b2.ToTable("instance_policy_sets", "islamu_event");
 
                                     b2.WithOwner()
                                         .HasForeignKey("OrganizationPolicyInstancePolicySetId")
@@ -31088,7 +30997,7 @@ namespace Explore.Persistence.Migrations
 
                                     b2.HasKey("OrganizationPolicyInstancePolicySetId");
 
-                                    b2.ToTable("instance_policy_sets");
+                                    b2.ToTable("instance_policy_sets", "islamu_event");
 
                                     b2.WithOwner()
                                         .HasForeignKey("OrganizationPolicyInstancePolicySetId")
@@ -31111,7 +31020,7 @@ namespace Explore.Persistence.Migrations
 
                                     b2.HasKey("OrganizationPolicyInstancePolicySetId");
 
-                                    b2.ToTable("instance_policy_sets");
+                                    b2.ToTable("instance_policy_sets", "islamu_event");
 
                                     b2.WithOwner()
                                         .HasForeignKey("OrganizationPolicyInstancePolicySetId")
@@ -31134,7 +31043,7 @@ namespace Explore.Persistence.Migrations
 
                                     b2.HasKey("OrganizationPolicyInstancePolicySetId");
 
-                                    b2.ToTable("instance_policy_sets");
+                                    b2.ToTable("instance_policy_sets", "islamu_event");
 
                                     b2.WithOwner()
                                         .HasForeignKey("OrganizationPolicyInstancePolicySetId")
@@ -31162,7 +31071,7 @@ namespace Explore.Persistence.Migrations
 
                             b1.HasKey("InstancePolicySetId");
 
-                            b1.ToTable("instance_policy_sets");
+                            b1.ToTable("instance_policy_sets", "islamu_event");
 
                             b1.WithOwner()
                                 .HasForeignKey("InstancePolicySetId")
@@ -31184,7 +31093,7 @@ namespace Explore.Persistence.Migrations
 
                                     b2.HasKey("RenderPolicyInstancePolicySetId");
 
-                                    b2.ToTable("instance_policy_sets");
+                                    b2.ToTable("instance_policy_sets", "islamu_event");
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyInstancePolicySetId")
@@ -31207,7 +31116,7 @@ namespace Explore.Persistence.Migrations
 
                                     b2.HasKey("RenderPolicyInstancePolicySetId");
 
-                                    b2.ToTable("instance_policy_sets");
+                                    b2.ToTable("instance_policy_sets", "islamu_event");
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyInstancePolicySetId")
@@ -31230,7 +31139,7 @@ namespace Explore.Persistence.Migrations
 
                                     b2.HasKey("RenderPolicyInstancePolicySetId");
 
-                                    b2.ToTable("instance_policy_sets");
+                                    b2.ToTable("instance_policy_sets", "islamu_event");
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyInstancePolicySetId")
@@ -31253,7 +31162,7 @@ namespace Explore.Persistence.Migrations
 
                                     b2.HasKey("RenderPolicyInstancePolicySetId");
 
-                                    b2.ToTable("instance_policy_sets");
+                                    b2.ToTable("instance_policy_sets", "islamu_event");
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyInstancePolicySetId")
@@ -31276,7 +31185,7 @@ namespace Explore.Persistence.Migrations
 
                                     b2.HasKey("RenderPolicyInstancePolicySetId");
 
-                                    b2.ToTable("instance_policy_sets");
+                                    b2.ToTable("instance_policy_sets", "islamu_event");
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyInstancePolicySetId")
@@ -31299,7 +31208,7 @@ namespace Explore.Persistence.Migrations
 
                                     b2.HasKey("RenderPolicyInstancePolicySetId");
 
-                                    b2.ToTable("instance_policy_sets");
+                                    b2.ToTable("instance_policy_sets", "islamu_event");
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyInstancePolicySetId")
@@ -31322,7 +31231,7 @@ namespace Explore.Persistence.Migrations
 
                                     b2.HasKey("RenderPolicyInstancePolicySetId");
 
-                                    b2.ToTable("instance_policy_sets");
+                                    b2.ToTable("instance_policy_sets", "islamu_event");
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyInstancePolicySetId")
@@ -31345,7 +31254,7 @@ namespace Explore.Persistence.Migrations
 
                                     b2.HasKey("RenderPolicyInstancePolicySetId");
 
-                                    b2.ToTable("instance_policy_sets");
+                                    b2.ToTable("instance_policy_sets", "islamu_event");
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyInstancePolicySetId")
@@ -31368,7 +31277,7 @@ namespace Explore.Persistence.Migrations
 
                                     b2.HasKey("RenderPolicyInstancePolicySetId");
 
-                                    b2.ToTable("instance_policy_sets");
+                                    b2.ToTable("instance_policy_sets", "islamu_event");
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyInstancePolicySetId")
@@ -31391,7 +31300,7 @@ namespace Explore.Persistence.Migrations
 
                                     b2.HasKey("RenderPolicyInstancePolicySetId");
 
-                                    b2.ToTable("instance_policy_sets");
+                                    b2.ToTable("instance_policy_sets", "islamu_event");
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyInstancePolicySetId")
@@ -31414,7 +31323,7 @@ namespace Explore.Persistence.Migrations
 
                                     b2.HasKey("RenderPolicyInstancePolicySetId");
 
-                                    b2.ToTable("instance_policy_sets");
+                                    b2.ToTable("instance_policy_sets", "islamu_event");
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyInstancePolicySetId")
@@ -31437,7 +31346,7 @@ namespace Explore.Persistence.Migrations
 
                                     b2.HasKey("RenderPolicyInstancePolicySetId");
 
-                                    b2.ToTable("instance_policy_sets");
+                                    b2.ToTable("instance_policy_sets", "islamu_event");
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyInstancePolicySetId")
@@ -31460,7 +31369,7 @@ namespace Explore.Persistence.Migrations
 
                                     b2.HasKey("RenderPolicyInstancePolicySetId");
 
-                                    b2.ToTable("instance_policy_sets");
+                                    b2.ToTable("instance_policy_sets", "islamu_event");
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyInstancePolicySetId")
@@ -31483,7 +31392,7 @@ namespace Explore.Persistence.Migrations
 
                                     b2.HasKey("RenderPolicyInstancePolicySetId");
 
-                                    b2.ToTable("instance_policy_sets");
+                                    b2.ToTable("instance_policy_sets", "islamu_event");
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyInstancePolicySetId")
@@ -31506,7 +31415,7 @@ namespace Explore.Persistence.Migrations
 
                                     b2.HasKey("RenderPolicyInstancePolicySetId");
 
-                                    b2.ToTable("instance_policy_sets");
+                                    b2.ToTable("instance_policy_sets", "islamu_event");
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyInstancePolicySetId")
@@ -31529,7 +31438,7 @@ namespace Explore.Persistence.Migrations
 
                                     b2.HasKey("RenderPolicyInstancePolicySetId");
 
-                                    b2.ToTable("instance_policy_sets");
+                                    b2.ToTable("instance_policy_sets", "islamu_event");
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyInstancePolicySetId")
@@ -31552,7 +31461,7 @@ namespace Explore.Persistence.Migrations
 
                                     b2.HasKey("RenderPolicyInstancePolicySetId");
 
-                                    b2.ToTable("instance_policy_sets");
+                                    b2.ToTable("instance_policy_sets", "islamu_event");
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyInstancePolicySetId")
@@ -31575,7 +31484,7 @@ namespace Explore.Persistence.Migrations
 
                                     b2.HasKey("RenderPolicyInstancePolicySetId");
 
-                                    b2.ToTable("instance_policy_sets");
+                                    b2.ToTable("instance_policy_sets", "islamu_event");
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyInstancePolicySetId")
@@ -31645,7 +31554,7 @@ namespace Explore.Persistence.Migrations
 
                             b1.HasKey("InstancePolicySetId");
 
-                            b1.ToTable("instance_policy_sets");
+                            b1.ToTable("instance_policy_sets", "islamu_event");
 
                             b1.WithOwner()
                                 .HasForeignKey("InstancePolicySetId")
@@ -31667,7 +31576,7 @@ namespace Explore.Persistence.Migrations
 
                                     b2.HasKey("ModulePolicyInstancePolicySetId");
 
-                                    b2.ToTable("instance_policy_sets");
+                                    b2.ToTable("instance_policy_sets", "islamu_event");
 
                                     b2.WithOwner()
                                         .HasForeignKey("ModulePolicyInstancePolicySetId")
@@ -31690,7 +31599,7 @@ namespace Explore.Persistence.Migrations
 
                                     b2.HasKey("ModulePolicyInstancePolicySetId");
 
-                                    b2.ToTable("instance_policy_sets");
+                                    b2.ToTable("instance_policy_sets", "islamu_event");
 
                                     b2.WithOwner()
                                         .HasForeignKey("ModulePolicyInstancePolicySetId")
@@ -31712,7 +31621,7 @@ namespace Explore.Persistence.Migrations
 
                             b1.HasKey("InstancePolicySetId");
 
-                            b1.ToTable("instance_policy_sets");
+                            b1.ToTable("instance_policy_sets", "islamu_event");
 
                             b1.WithOwner()
                                 .HasForeignKey("InstancePolicySetId")
@@ -31734,7 +31643,7 @@ namespace Explore.Persistence.Migrations
 
                                     b2.HasKey("TenantDelegationPolicyInstancePolicySetId");
 
-                                    b2.ToTable("instance_policy_sets");
+                                    b2.ToTable("instance_policy_sets", "islamu_event");
 
                                     b2.WithOwner()
                                         .HasForeignKey("TenantDelegationPolicyInstancePolicySetId")
@@ -31757,7 +31666,7 @@ namespace Explore.Persistence.Migrations
 
                                     b2.HasKey("TenantDelegationPolicyInstancePolicySetId");
 
-                                    b2.ToTable("instance_policy_sets");
+                                    b2.ToTable("instance_policy_sets", "islamu_event");
 
                                     b2.WithOwner()
                                         .HasForeignKey("TenantDelegationPolicyInstancePolicySetId")
@@ -31780,7 +31689,7 @@ namespace Explore.Persistence.Migrations
 
                                     b2.HasKey("TenantDelegationPolicyInstancePolicySetId");
 
-                                    b2.ToTable("instance_policy_sets");
+                                    b2.ToTable("instance_policy_sets", "islamu_event");
 
                                     b2.WithOwner()
                                         .HasForeignKey("TenantDelegationPolicyInstancePolicySetId")
@@ -31803,7 +31712,7 @@ namespace Explore.Persistence.Migrations
 
                                     b2.HasKey("TenantDelegationPolicyInstancePolicySetId");
 
-                                    b2.ToTable("instance_policy_sets");
+                                    b2.ToTable("instance_policy_sets", "islamu_event");
 
                                     b2.WithOwner()
                                         .HasForeignKey("TenantDelegationPolicyInstancePolicySetId")
@@ -31826,7 +31735,7 @@ namespace Explore.Persistence.Migrations
 
                                     b2.HasKey("TenantDelegationPolicyInstancePolicySetId");
 
-                                    b2.ToTable("instance_policy_sets");
+                                    b2.ToTable("instance_policy_sets", "islamu_event");
 
                                     b2.WithOwner()
                                         .HasForeignKey("TenantDelegationPolicyInstancePolicySetId")
@@ -31849,7 +31758,7 @@ namespace Explore.Persistence.Migrations
 
                                     b2.HasKey("TenantDelegationPolicyInstancePolicySetId");
 
-                                    b2.ToTable("instance_policy_sets");
+                                    b2.ToTable("instance_policy_sets", "islamu_event");
 
                                     b2.WithOwner()
                                         .HasForeignKey("TenantDelegationPolicyInstancePolicySetId")
@@ -31872,7 +31781,7 @@ namespace Explore.Persistence.Migrations
 
                                     b2.HasKey("TenantDelegationPolicyInstancePolicySetId");
 
-                                    b2.ToTable("instance_policy_sets");
+                                    b2.ToTable("instance_policy_sets", "islamu_event");
 
                                     b2.WithOwner()
                                         .HasForeignKey("TenantDelegationPolicyInstancePolicySetId")
@@ -31933,7 +31842,7 @@ namespace Explore.Persistence.Migrations
 
                             b1.HasKey("OrganizationPolicySetId");
 
-                            b1.ToTable("organization_policy_sets");
+                            b1.ToTable("organization_policy_sets", "islamu_event");
 
                             b1.WithOwner()
                                 .HasForeignKey("OrganizationPolicySetId")
@@ -31955,7 +31864,7 @@ namespace Explore.Persistence.Migrations
 
                                     b2.HasKey("EventPolicyOrganizationPolicySetId");
 
-                                    b2.ToTable("organization_policy_sets");
+                                    b2.ToTable("organization_policy_sets", "islamu_event");
 
                                     b2.WithOwner()
                                         .HasForeignKey("EventPolicyOrganizationPolicySetId")
@@ -31978,7 +31887,7 @@ namespace Explore.Persistence.Migrations
 
                                     b2.HasKey("EventPolicyOrganizationPolicySetId");
 
-                                    b2.ToTable("organization_policy_sets");
+                                    b2.ToTable("organization_policy_sets", "islamu_event");
 
                                     b2.WithOwner()
                                         .HasForeignKey("EventPolicyOrganizationPolicySetId")
@@ -32001,7 +31910,7 @@ namespace Explore.Persistence.Migrations
 
                                     b2.HasKey("EventPolicyOrganizationPolicySetId");
 
-                                    b2.ToTable("organization_policy_sets");
+                                    b2.ToTable("organization_policy_sets", "islamu_event");
 
                                     b2.WithOwner()
                                         .HasForeignKey("EventPolicyOrganizationPolicySetId")
@@ -32024,7 +31933,7 @@ namespace Explore.Persistence.Migrations
 
                                     b2.HasKey("EventPolicyOrganizationPolicySetId");
 
-                                    b2.ToTable("organization_policy_sets");
+                                    b2.ToTable("organization_policy_sets", "islamu_event");
 
                                     b2.WithOwner()
                                         .HasForeignKey("EventPolicyOrganizationPolicySetId")
@@ -32058,7 +31967,7 @@ namespace Explore.Persistence.Migrations
 
                             b1.HasKey("TenantPolicySetId");
 
-                            b1.ToTable("tenant_policy_sets");
+                            b1.ToTable("tenant_policy_sets", "islamu_event");
 
                             b1.WithOwner()
                                 .HasForeignKey("TenantPolicySetId")
@@ -32080,7 +31989,7 @@ namespace Explore.Persistence.Migrations
 
                                     b2.HasKey("BrandingPolicyTenantPolicySetId");
 
-                                    b2.ToTable("tenant_policy_sets");
+                                    b2.ToTable("tenant_policy_sets", "islamu_event");
 
                                     b2.WithOwner()
                                         .HasForeignKey("BrandingPolicyTenantPolicySetId")
@@ -32103,7 +32012,7 @@ namespace Explore.Persistence.Migrations
 
                                     b2.HasKey("BrandingPolicyTenantPolicySetId");
 
-                                    b2.ToTable("tenant_policy_sets");
+                                    b2.ToTable("tenant_policy_sets", "islamu_event");
 
                                     b2.WithOwner()
                                         .HasForeignKey("BrandingPolicyTenantPolicySetId")
@@ -32126,7 +32035,7 @@ namespace Explore.Persistence.Migrations
 
                                     b2.HasKey("BrandingPolicyTenantPolicySetId");
 
-                                    b2.ToTable("tenant_policy_sets");
+                                    b2.ToTable("tenant_policy_sets", "islamu_event");
 
                                     b2.WithOwner()
                                         .HasForeignKey("BrandingPolicyTenantPolicySetId")
@@ -32149,7 +32058,7 @@ namespace Explore.Persistence.Migrations
 
                                     b2.HasKey("BrandingPolicyTenantPolicySetId");
 
-                                    b2.ToTable("tenant_policy_sets");
+                                    b2.ToTable("tenant_policy_sets", "islamu_event");
 
                                     b2.WithOwner()
                                         .HasForeignKey("BrandingPolicyTenantPolicySetId")
@@ -32177,7 +32086,7 @@ namespace Explore.Persistence.Migrations
 
                             b1.HasKey("TenantPolicySetId");
 
-                            b1.ToTable("tenant_policy_sets");
+                            b1.ToTable("tenant_policy_sets", "islamu_event");
 
                             b1.WithOwner()
                                 .HasForeignKey("TenantPolicySetId")
@@ -32199,7 +32108,7 @@ namespace Explore.Persistence.Migrations
 
                                     b2.HasKey("EventPolicyTenantPolicySetId");
 
-                                    b2.ToTable("tenant_policy_sets");
+                                    b2.ToTable("tenant_policy_sets", "islamu_event");
 
                                     b2.WithOwner()
                                         .HasForeignKey("EventPolicyTenantPolicySetId")
@@ -32222,7 +32131,7 @@ namespace Explore.Persistence.Migrations
 
                                     b2.HasKey("EventPolicyTenantPolicySetId");
 
-                                    b2.ToTable("tenant_policy_sets");
+                                    b2.ToTable("tenant_policy_sets", "islamu_event");
 
                                     b2.WithOwner()
                                         .HasForeignKey("EventPolicyTenantPolicySetId")
@@ -32245,7 +32154,7 @@ namespace Explore.Persistence.Migrations
 
                                     b2.HasKey("EventPolicyTenantPolicySetId");
 
-                                    b2.ToTable("tenant_policy_sets");
+                                    b2.ToTable("tenant_policy_sets", "islamu_event");
 
                                     b2.WithOwner()
                                         .HasForeignKey("EventPolicyTenantPolicySetId")
@@ -32268,7 +32177,7 @@ namespace Explore.Persistence.Migrations
 
                                     b2.HasKey("EventPolicyTenantPolicySetId");
 
-                                    b2.ToTable("tenant_policy_sets");
+                                    b2.ToTable("tenant_policy_sets", "islamu_event");
 
                                     b2.WithOwner()
                                         .HasForeignKey("EventPolicyTenantPolicySetId")
@@ -32296,7 +32205,7 @@ namespace Explore.Persistence.Migrations
 
                             b1.HasKey("TenantPolicySetId");
 
-                            b1.ToTable("tenant_policy_sets");
+                            b1.ToTable("tenant_policy_sets", "islamu_event");
 
                             b1.WithOwner()
                                 .HasForeignKey("TenantPolicySetId")
@@ -32318,7 +32227,7 @@ namespace Explore.Persistence.Migrations
 
                                     b2.HasKey("OrganizationPolicyTenantPolicySetId");
 
-                                    b2.ToTable("tenant_policy_sets");
+                                    b2.ToTable("tenant_policy_sets", "islamu_event");
 
                                     b2.WithOwner()
                                         .HasForeignKey("OrganizationPolicyTenantPolicySetId")
@@ -32341,7 +32250,7 @@ namespace Explore.Persistence.Migrations
 
                                     b2.HasKey("OrganizationPolicyTenantPolicySetId");
 
-                                    b2.ToTable("tenant_policy_sets");
+                                    b2.ToTable("tenant_policy_sets", "islamu_event");
 
                                     b2.WithOwner()
                                         .HasForeignKey("OrganizationPolicyTenantPolicySetId")
@@ -32364,7 +32273,7 @@ namespace Explore.Persistence.Migrations
 
                                     b2.HasKey("OrganizationPolicyTenantPolicySetId");
 
-                                    b2.ToTable("tenant_policy_sets");
+                                    b2.ToTable("tenant_policy_sets", "islamu_event");
 
                                     b2.WithOwner()
                                         .HasForeignKey("OrganizationPolicyTenantPolicySetId")
@@ -32387,7 +32296,7 @@ namespace Explore.Persistence.Migrations
 
                                     b2.HasKey("OrganizationPolicyTenantPolicySetId");
 
-                                    b2.ToTable("tenant_policy_sets");
+                                    b2.ToTable("tenant_policy_sets", "islamu_event");
 
                                     b2.WithOwner()
                                         .HasForeignKey("OrganizationPolicyTenantPolicySetId")
@@ -32415,7 +32324,7 @@ namespace Explore.Persistence.Migrations
 
                             b1.HasKey("TenantPolicySetId");
 
-                            b1.ToTable("tenant_policy_sets");
+                            b1.ToTable("tenant_policy_sets", "islamu_event");
 
                             b1.WithOwner()
                                 .HasForeignKey("TenantPolicySetId")
@@ -32437,7 +32346,7 @@ namespace Explore.Persistence.Migrations
 
                                     b2.HasKey("RenderPolicyTenantPolicySetId");
 
-                                    b2.ToTable("tenant_policy_sets");
+                                    b2.ToTable("tenant_policy_sets", "islamu_event");
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyTenantPolicySetId")
@@ -32460,7 +32369,7 @@ namespace Explore.Persistence.Migrations
 
                                     b2.HasKey("RenderPolicyTenantPolicySetId");
 
-                                    b2.ToTable("tenant_policy_sets");
+                                    b2.ToTable("tenant_policy_sets", "islamu_event");
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyTenantPolicySetId")
@@ -32483,7 +32392,7 @@ namespace Explore.Persistence.Migrations
 
                                     b2.HasKey("RenderPolicyTenantPolicySetId");
 
-                                    b2.ToTable("tenant_policy_sets");
+                                    b2.ToTable("tenant_policy_sets", "islamu_event");
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyTenantPolicySetId")
@@ -32506,7 +32415,7 @@ namespace Explore.Persistence.Migrations
 
                                     b2.HasKey("RenderPolicyTenantPolicySetId");
 
-                                    b2.ToTable("tenant_policy_sets");
+                                    b2.ToTable("tenant_policy_sets", "islamu_event");
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyTenantPolicySetId")
@@ -32529,7 +32438,7 @@ namespace Explore.Persistence.Migrations
 
                                     b2.HasKey("RenderPolicyTenantPolicySetId");
 
-                                    b2.ToTable("tenant_policy_sets");
+                                    b2.ToTable("tenant_policy_sets", "islamu_event");
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyTenantPolicySetId")
@@ -32552,7 +32461,7 @@ namespace Explore.Persistence.Migrations
 
                                     b2.HasKey("RenderPolicyTenantPolicySetId");
 
-                                    b2.ToTable("tenant_policy_sets");
+                                    b2.ToTable("tenant_policy_sets", "islamu_event");
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyTenantPolicySetId")
@@ -32575,7 +32484,7 @@ namespace Explore.Persistence.Migrations
 
                                     b2.HasKey("RenderPolicyTenantPolicySetId");
 
-                                    b2.ToTable("tenant_policy_sets");
+                                    b2.ToTable("tenant_policy_sets", "islamu_event");
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyTenantPolicySetId")
@@ -32598,7 +32507,7 @@ namespace Explore.Persistence.Migrations
 
                                     b2.HasKey("RenderPolicyTenantPolicySetId");
 
-                                    b2.ToTable("tenant_policy_sets");
+                                    b2.ToTable("tenant_policy_sets", "islamu_event");
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyTenantPolicySetId")
@@ -32621,7 +32530,7 @@ namespace Explore.Persistence.Migrations
 
                                     b2.HasKey("RenderPolicyTenantPolicySetId");
 
-                                    b2.ToTable("tenant_policy_sets");
+                                    b2.ToTable("tenant_policy_sets", "islamu_event");
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyTenantPolicySetId")
@@ -32644,7 +32553,7 @@ namespace Explore.Persistence.Migrations
 
                                     b2.HasKey("RenderPolicyTenantPolicySetId");
 
-                                    b2.ToTable("tenant_policy_sets");
+                                    b2.ToTable("tenant_policy_sets", "islamu_event");
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyTenantPolicySetId")
@@ -32667,7 +32576,7 @@ namespace Explore.Persistence.Migrations
 
                                     b2.HasKey("RenderPolicyTenantPolicySetId");
 
-                                    b2.ToTable("tenant_policy_sets");
+                                    b2.ToTable("tenant_policy_sets", "islamu_event");
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyTenantPolicySetId")
@@ -32690,7 +32599,7 @@ namespace Explore.Persistence.Migrations
 
                                     b2.HasKey("RenderPolicyTenantPolicySetId");
 
-                                    b2.ToTable("tenant_policy_sets");
+                                    b2.ToTable("tenant_policy_sets", "islamu_event");
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyTenantPolicySetId")
@@ -32713,7 +32622,7 @@ namespace Explore.Persistence.Migrations
 
                                     b2.HasKey("RenderPolicyTenantPolicySetId");
 
-                                    b2.ToTable("tenant_policy_sets");
+                                    b2.ToTable("tenant_policy_sets", "islamu_event");
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyTenantPolicySetId")
@@ -32736,7 +32645,7 @@ namespace Explore.Persistence.Migrations
 
                                     b2.HasKey("RenderPolicyTenantPolicySetId");
 
-                                    b2.ToTable("tenant_policy_sets");
+                                    b2.ToTable("tenant_policy_sets", "islamu_event");
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyTenantPolicySetId")
@@ -32759,7 +32668,7 @@ namespace Explore.Persistence.Migrations
 
                                     b2.HasKey("RenderPolicyTenantPolicySetId");
 
-                                    b2.ToTable("tenant_policy_sets");
+                                    b2.ToTable("tenant_policy_sets", "islamu_event");
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyTenantPolicySetId")
@@ -32782,7 +32691,7 @@ namespace Explore.Persistence.Migrations
 
                                     b2.HasKey("RenderPolicyTenantPolicySetId");
 
-                                    b2.ToTable("tenant_policy_sets");
+                                    b2.ToTable("tenant_policy_sets", "islamu_event");
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyTenantPolicySetId")
@@ -32805,7 +32714,7 @@ namespace Explore.Persistence.Migrations
 
                                     b2.HasKey("RenderPolicyTenantPolicySetId");
 
-                                    b2.ToTable("tenant_policy_sets");
+                                    b2.ToTable("tenant_policy_sets", "islamu_event");
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyTenantPolicySetId")
@@ -32828,7 +32737,7 @@ namespace Explore.Persistence.Migrations
 
                                     b2.HasKey("RenderPolicyTenantPolicySetId");
 
-                                    b2.ToTable("tenant_policy_sets");
+                                    b2.ToTable("tenant_policy_sets", "islamu_event");
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyTenantPolicySetId")
@@ -32903,17 +32812,6 @@ namespace Explore.Persistence.Migrations
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("Explore.Domain.PrivacyErasurePolicyCoverage", b =>
-                {
-                    b.HasOne("Explore.Domain.PrivacyErasureIntent", null)
-                        .WithMany()
-                        .HasForeignKey("IntentId")
-                        .HasPrincipalKey("IntentId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired()
-                        .HasConstraintName("fk_privacy_erasure_policy_coverage_privacy_erasure_intents_int");
-                });
-
             modelBuilder.Entity("Explore.Domain.PrivacyErasureProviderWork", b =>
                 {
                     b.HasOne("Explore.Domain.PrivacyErasureSaga", null)
@@ -32931,17 +32829,6 @@ namespace Explore.Persistence.Migrations
                         .HasForeignKey("PreviousCheckpointId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .HasConstraintName("fk_privacy_erasure_replay_checkpoints_privacy_erasure_replay_c");
-                });
-
-            modelBuilder.Entity("Explore.Domain.PrivacyErasureSaga", b =>
-                {
-                    b.HasOne("Explore.Domain.PrivacyErasureIntent", null)
-                        .WithOne()
-                        .HasForeignKey("Explore.Domain.PrivacyErasureSaga", "IntentId")
-                        .HasPrincipalKey("Explore.Domain.PrivacyErasureIntent", "IntentId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired()
-                        .HasConstraintName("fk_privacy_erasure_sagas_privacy_erasure_intents_intent_id");
                 });
 
             modelBuilder.Entity("Explore.Domain.RegistrationAnswer", b =>
@@ -33393,7 +33280,7 @@ namespace Explore.Persistence.Migrations
 
                             b1.HasKey("RegistrationOrderId");
 
-                            b1.ToTable("registration_orders");
+                            b1.ToTable("registration_orders", "islamu_event");
 
                             b1.WithOwner()
                                 .HasForeignKey("RegistrationOrderId")
@@ -34545,7 +34432,7 @@ namespace Explore.Persistence.Migrations
 
                             b1.HasKey("UiThemeId");
 
-                            b1.ToTable("ui_themes");
+                            b1.ToTable("ui_themes", "islamu_event");
 
                             b1.WithOwner()
                                 .HasForeignKey("UiThemeId")
@@ -34675,7 +34562,7 @@ namespace Explore.Persistence.Migrations
 
                             b1.HasKey("UiThemeId");
 
-                            b1.ToTable("ui_themes");
+                            b1.ToTable("ui_themes", "islamu_event");
 
                             b1.WithOwner()
                                 .HasForeignKey("UiThemeId")
@@ -34822,7 +34709,7 @@ namespace Explore.Persistence.Migrations
 
                             b1.HasKey("UiThemePresetId");
 
-                            b1.ToTable("ui_theme_presets");
+                            b1.ToTable("ui_theme_presets", "islamu_event");
 
                             b1.WithOwner()
                                 .HasForeignKey("UiThemePresetId")
@@ -34952,7 +34839,7 @@ namespace Explore.Persistence.Migrations
 
                             b1.HasKey("UiThemePresetId");
 
-                            b1.ToTable("ui_theme_presets");
+                            b1.ToTable("ui_theme_presets", "islamu_event");
 
                             b1.WithOwner()
                                 .HasForeignKey("UiThemePresetId")
@@ -35105,7 +34992,7 @@ namespace Explore.Persistence.Migrations
 
                             b1.HasKey("UserAppearanceProfileId");
 
-                            b1.ToTable("user_appearance_profiles");
+                            b1.ToTable("user_appearance_profiles", "islamu_event");
 
                             b1.WithOwner()
                                 .HasForeignKey("UserAppearanceProfileId")
@@ -35235,7 +35122,7 @@ namespace Explore.Persistence.Migrations
 
                             b1.HasKey("UserAppearanceProfileId");
 
-                            b1.ToTable("user_appearance_profiles");
+                            b1.ToTable("user_appearance_profiles", "islamu_event");
 
                             b1.WithOwner()
                                 .HasForeignKey("UserAppearanceProfileId")
