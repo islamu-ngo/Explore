@@ -1,0 +1,132 @@
+@* ABOUTME: Selects the focused native renderer family for each of the seventeen portable field contracts. *@
+@* ABOUTME: Rejects file and opaque-provider values instead of inventing unsupported browser behavior. *@
+
+@switch (Field.FieldTypeCode)
+{
+    case "SHORT_TEXT":
+        <TextEntryField @attributes="ShortTextParameters" />
+        break;
+    case "LONG_TEXT":
+        <LongTextField ControlId="@ControlId" FieldKey="@FieldKey" Label="@Field.Label" Required="@Required"
+                       MinLength="@Field.MinLength" MaxLength="@Field.MaxLength" Value="@TextValue" Issues="@Issues"
+                       ValueChanged="@ValueChanged" />
+        break;
+    case "INTEGER":
+        <NumberEntryField ControlId="@ControlId" FieldKey="@FieldKey" FieldTypeCode="INTEGER" Label="@Field.Label"
+                          Required="@Required" Min="@Field.MinNumber" Max="@Field.MaxNumber" Step="1" Value="@Value"
+                          Issues="@Issues" ValueChanged="@ValueChanged" />
+        break;
+    case "DECIMAL":
+        <NumberEntryField ControlId="@ControlId" FieldKey="@FieldKey" FieldTypeCode="DECIMAL" Label="@Field.Label"
+                          Required="@Required" Min="@Field.MinNumber" Max="@Field.MaxNumber" Step="any" Value="@Value"
+                          Issues="@Issues" ValueChanged="@ValueChanged" />
+        break;
+    case "BOOLEAN":
+        <BooleanField ControlId="@ControlId" FieldKey="@FieldKey" Label="@Field.Label" Required="@Required"
+                      Value="@Value" Issues="@Issues" ValueChanged="@ValueChanged" />
+        break;
+    case "DATE":
+        <TemporalEntryField @attributes="DateParameters" />
+        break;
+    case "TIME":
+        <TemporalEntryField @attributes="TimeParameters" />
+        break;
+    case "INSTANT":
+        <TemporalEntryField @attributes="InstantParameters" />
+        break;
+    case "EMAIL":
+        <TextEntryField @attributes="EmailParameters" />
+        break;
+    case "PHONE":
+        <TextEntryField @attributes="PhoneParameters" />
+        break;
+    case "URL":
+        <TextEntryField @attributes="UrlParameters" />
+        break;
+    case "COUNTRY_CODE":
+        <TextEntryField @attributes="CountryParameters" />
+        break;
+    case "LANGUAGE_TAG":
+        <TextEntryField @attributes="LanguageParameters" />
+        break;
+    case "SINGLE_CHOICE":
+        <ChoiceField ControlId="@ControlId" Label="@Field.Label" Required="@Required" Options="@Field.Options.ToArray()"
+                     Value="@Value" Issues="@Issues" ValueChanged="@ValueChanged" />
+        break;
+    case "MULTIPLE_CHOICE":
+        <ChoiceField ControlId="@ControlId" Label="@Field.Label" Required="@Required" Multiple="true"
+                     Options="@Field.Options.ToArray()" Value="@Value" Issues="@Issues" ValueChanged="@ValueChanged" />
+        break;
+    case "RATING":
+        <RatingField ControlId="@ControlId" FieldKey="@FieldKey" Label="@Field.Label" Required="@Required"
+                     Minimum="@RatingMinimum" Maximum="@RatingMaximum" Value="@Value" Issues="@Issues"
+                     ValueChanged="@ValueChanged" />
+        break;
+    case "CONSENT":
+        <ConsentField ControlId="@ControlId" FieldKey="@FieldKey" Label="@Field.Label" Required="@Required"
+                      ConsentText="@(Field.ConsentText!)" ConsentTextVersion="@Field.ConsentTextVersion" Value="@Value"
+                      Issues="@Issues" ValueChanged="@ValueChanged" />
+        break;
+}
+
+@code {
+    [Parameter, EditorRequired] public RegistrationFieldView Field { get; set; } = default!;
+    [Parameter] public bool Required { get; set; }
+    [Parameter] public object? Value { get; set; }
+    [Parameter] public IReadOnlyList<string> Issues { get; set; } = [];
+    [Parameter] public EventCallback<object?> ValueChanged { get; set; }
+    private string ControlId => $"registration-field-{Field.Id:N}";
+    private string FieldKey => $"{Field.Namespace}.{Field.Key}";
+    private string? TextValue => Convert.ToString(Value, System.Globalization.CultureInfo.InvariantCulture);
+    private int RatingMinimum => Field.MinNumber is { } min ? Convert.ToInt32(min) : 1;
+    private int RatingMaximum => Field.MaxNumber is { } max ? Convert.ToInt32(max) : 5;
+    private Dictionary<string, object> ShortTextParameters => TextParameters("text", null, null);
+    private Dictionary<string, object> EmailParameters => TextParameters("email", "email", "email");
+    private Dictionary<string, object> PhoneParameters => TextParameters("tel", "tel", "tel");
+    private Dictionary<string, object> UrlParameters => TextParameters("url", "url", "url");
+    private Dictionary<string, object> CountryParameters => TextParameters("text", "country", null);
+    private Dictionary<string, object> LanguageParameters => TextParameters("text", "language", null);
+    private Dictionary<string, object> DateParameters => TemporalParameters("date");
+    private Dictionary<string, object> TimeParameters => TemporalParameters("time");
+    private Dictionary<string, object> InstantParameters => TemporalParameters("datetime-local");
+
+    private Dictionary<string, object> TextParameters(string type, string? autocomplete, string? inputMode) => new()
+    {
+        [nameof(TextEntryField.ControlId)] = ControlId,
+        [nameof(TextEntryField.FieldKey)] = FieldKey,
+        [nameof(TextEntryField.FieldTypeCode)] = Field.FieldTypeCode,
+        [nameof(TextEntryField.Label)] = Field.Label,
+        [nameof(TextEntryField.InputType)] = type,
+        [nameof(TextEntryField.Autocomplete)] = autocomplete!,
+        [nameof(TextEntryField.InputMode)] = inputMode!,
+        [nameof(TextEntryField.Pattern)] = Field.RegexPattern!,
+        [nameof(TextEntryField.MinLength)] = Field.MinLength!,
+        [nameof(TextEntryField.MaxLength)] = Field.MaxLength!,
+        [nameof(TextEntryField.Required)] = Required,
+        [nameof(TextEntryField.Value)] = TextValue!,
+        [nameof(TextEntryField.Issues)] = Issues,
+        [nameof(TextEntryField.ValueChanged)] = ValueChanged
+    };
+
+    private Dictionary<string, object> TemporalParameters(string type) => new()
+    {
+        [nameof(TemporalEntryField.ControlId)] = ControlId,
+        [nameof(TemporalEntryField.FieldKey)] = FieldKey,
+        [nameof(TemporalEntryField.FieldTypeCode)] = Field.FieldTypeCode,
+        [nameof(TemporalEntryField.Label)] = Field.Label,
+        [nameof(TemporalEntryField.InputType)] = type,
+        [nameof(TemporalEntryField.Min)] = FormatTemporal(Field.MinDateTime, type)!,
+        [nameof(TemporalEntryField.Max)] = FormatTemporal(Field.MaxDateTime, type)!,
+        [nameof(TemporalEntryField.Required)] = Required,
+        [nameof(TemporalEntryField.Value)] = TextValue!,
+        [nameof(TemporalEntryField.Issues)] = Issues,
+        [nameof(TemporalEntryField.ValueChanged)] = ValueChanged
+    };
+
+    private static string? FormatTemporal(DateTimeOffset? value, string type) => type switch
+    {
+        "date" => value?.ToString("yyyy-MM-dd"),
+        "time" => value?.ToString("HH:mm"),
+        _ => value?.ToString("yyyy-MM-ddTHH:mm")
+    };
+}

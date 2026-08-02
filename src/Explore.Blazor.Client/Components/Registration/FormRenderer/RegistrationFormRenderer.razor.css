@@ -1,0 +1,29 @@
+/* ABOUTME: Tokenized responsive layout for the pinned native registration form renderer. */
+/* ABOUTME: Keeps progress, fields, actions, and status readable across direction, contrast, and zoom preferences. */
+
+.registration-form { container-type: inline-size; display: grid; gap: var(--isl-space-6); color: var(--isl-color-text); }
+.registration-form__header { display: grid; gap: var(--isl-space-2); padding-block-end: var(--isl-space-4); border-block-end: 1px solid var(--isl-color-border); }
+.registration-form__header h2 { margin: 0; }
+.registration-form__subject { margin-block: var(--isl-space-1) 0; color: var(--isl-color-text-secondary); }
+.registration-form__optional { display: inline-block; color: var(--isl-color-text-secondary); margin-block-start: var(--isl-space-1); }
+.registration-form__progress-label { color: var(--isl-color-text-secondary); }
+.registration-form__header progress { inline-size: 100%; accent-color: var(--isl-color-primary); }
+.registration-form__form,
+.registration-form__section { display: grid; gap: var(--isl-space-5); }
+.registration-form__section { padding-block: var(--isl-space-4); }
+.registration-form__section h3 { margin: 0; }
+.registration-form__actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: var(--isl-space-3); padding-block-start: var(--isl-space-4); border-block-start: 1px solid var(--isl-color-border); }
+.registration-form__status { margin: 0; padding: var(--isl-space-4); border: 1px solid currentColor; border-radius: var(--isl-radius-card); }
+.registration-form__status--success { color: var(--isl-color-success); }
+
+@container (max-width: 30rem) {
+    .registration-form__actions { display: grid; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .registration-form * { scroll-behavior: auto; }
+}
+
+@media (forced-colors: active) {
+    .registration-form__status { border-color: CanvasText; }
+}

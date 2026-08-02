@@ -1,0 +1,176 @@
+@* ABOUTME: Renders one pinned native registration form with HAL-gated submit and skip actions. *@
+@* ABOUTME: Owns ephemeral answers, conditional visibility, progress, server issues, and announced submission states. *@
+
+@inject Explore.Blazor.Client.Contracts.Services.Accessibility.IAccessibilityAnnouncerService Announcer
+@inject Explore.Blazor.Client.Contracts.Services.Accessibility.IAccessibilityFocusService Focus
+
+<section class="registration-form" aria-labelledby="registration-form-title" lang="@LanguageTag">
+    <header class="registration-form__header">
+        <div>
+            <h2 id="registration-form-title">Registration details</h2>
+            @if (!string.IsNullOrWhiteSpace(SubjectLabel))
+            {
+                <p class="registration-form__subject">@SubjectLabel</p>
+            }
+            @if (SkipLink is not null) { <span class="registration-form__optional">Optional</span> }
+        </div>
+        @if (RequirementProgress is not null)
+        {
+            <label class="registration-form__progress-label" for="registration-requirement-progress">
+                @RequirementProgress.CompletedSubjectCount of @RequirementProgress.SubjectCount people completed
+            </label>
+            <progress id="registration-requirement-progress"
+                      value="@RequirementProgress.CompletedSubjectCount"
+                      max="@Math.Max(RequirementProgress.SubjectCount, 1)"></progress>
+        }
+        <label class="registration-form__progress-label" for="registration-form-progress">@CompletedCount of @VisibleFields.Count completed</label>
+        <progress id="registration-form-progress" value="@CompletedCount" max="@Math.Max(VisibleFields.Count, 1)"></progress>
+    </header>
+
+    @if (_submitState.IsSuccess)
+    {
+        <p class="registration-form__status registration-form__status--success" role="status" tabindex="-1" id="registration-form-success">
+            @SuccessMessage
+        </p>
+    }
+
+    <FormSubmissionGuard State="@_submitState">
+        <form class="registration-form__form" @onsubmit="SubmitAsync" @onsubmit:preventDefault>
+            @foreach (RegistrationSectionView section in Sections.OrderBy(item => item.Ordinal))
+            {
+                RegistrationFieldView[] fields = VisibleFields.Where(item => section.Fields.Any(candidate => candidate.Id == item.Id)).ToArray();
+                @if (fields.Length > 0)
+                {
+                    <section class="registration-form__section" aria-labelledby="@SectionHeadingId(section)">
+                        <h3 id="@SectionHeadingId(section)">@section.Title</h3>
+                        @foreach (RegistrationFieldView item in fields)
+                        {
+                            <PortableFormField Field="@item" Required="@IsRequired(item)" Value="@State.Get(item.Id)"
+                                               Issues="@State.Issues(item.Id)" ValueChanged="@(value => SetAnswerAsync(item, value))" />
+                        }
+                    </section>
+                }
+            }
+            <div class="registration-form__actions">
+                @if (SkipLink is not null)
+                {
+                    <AppButton Variant="Variant.Text" Disabled="@_submitState.IsSubmitting" OnClick="SkipAsync">Skip and continue</AppButton>
+                }
+                @if (SubmitLink is not null)
+                {
+                    <AppButton ButtonType="ButtonType.Submit" Disabled="@_submitState.IsSubmitting">
+                        @(_submitState.IsSubmitting ? "Processing…" : "Continue")
+                    </AppButton>
+                }
+            </div>
+        </form>
+    </FormSubmissionGuard>
+</section>
+
+@code {
+    private readonly FormSubmitState _submitState = new();
+    private string? _lastAnnouncement;
+
+    [Parameter, EditorRequired] public IReadOnlyList<RegistrationSectionView> Sections { get; set; } = [];
+    [Parameter] public IReadOnlyList<RegistrationRuleView> Rules { get; set; } = [];
+    [Parameter] public IReadOnlyDictionary<string, HalLink> Links { get; set; } = new Dictionary<string, HalLink>();
+    [Parameter] public RegistrationFormAnswerState State { get; set; } = new();
+    [Parameter] public string LanguageTag { get; set; } = "en";
+    [Parameter] public string? SubjectLabel { get; set; }
+    [Parameter] public RegistrationRequirementProgressView? RequirementProgress { get; set; }
+    [Parameter] public string SuccessMessage { get; set; } = "Registration details saved.";
+    [Parameter] public EventCallback<RegistrationFormSubmission> OnSubmit { get; set; }
+    [Parameter] public EventCallback OnSkip { get; set; }
+
+    private HalLink? SubmitLink => Links.GetValueOrDefault("submit");
+    private HalLink? SkipLink => Links.GetValueOrDefault("skip");
+    private IReadOnlyList<RegistrationFieldView> AllFields => Sections.SelectMany(section => section.Fields).ToArray();
+    private IReadOnlyDictionary<string, object?> AnswersByKey => AllFields.ToDictionary(
+        item => $"{item.Namespace}.{item.Key}", item => State.Get(item.Id), StringComparer.Ordinal);
+    private IReadOnlyList<RegistrationFieldView> VisibleFields => AllFields.Where(IsVisible).ToArray();
+    private int CompletedCount => VisibleFields.Count(item => RegistrationFormValue.IsAnswered(State.Get(item.Id)));
+
+    private bool IsVisible(RegistrationFieldView item)
+    {
+        RegistrationRuleView[] rules = FieldRules(item).Where(rule => rule.Effect is 1 or 2).ToArray();
+        bool visible = rules.All(rule => rule.Effect != 1);
+        foreach (RegistrationRuleView rule in rules.OrderBy(rule => rule.Ordinal))
+        {
+            bool matches = RegistrationFormConditionEvaluator.Evaluate(rule.Condition, AnswersByKey);
+            if (rule.Effect == 1 && matches) visible = true;
+            if (rule.Effect == 2 && matches) visible = false;
+        }
+        return visible;
+    }
+
+    private bool IsRequired(RegistrationFieldView item)
+    {
+        bool required = item.IsRequired;
+        foreach (RegistrationRuleView rule in FieldRules(item).Where(rule => rule.Effect is 3 or 4).OrderBy(rule => rule.Ordinal))
+        {
+            if (!RegistrationFormConditionEvaluator.Evaluate(rule.Condition, AnswersByKey)) continue;
+            required = rule.Effect == 3;
+        }
+        return required;
+    }
+
+    private IEnumerable<RegistrationRuleView> FieldRules(RegistrationFieldView item) => Rules.Where(rule =>
+        string.Equals(rule.TargetNamespace, item.Namespace, StringComparison.Ordinal) &&
+        string.Equals(rule.TargetKey, item.Key, StringComparison.Ordinal));
+
+    private async Task SetAnswerAsync(RegistrationFieldView item, object? value)
+    {
+        State.Set(item.Id, value);
+        foreach (RegistrationFieldView hidden in AllFields.Where(candidate => !IsVisible(candidate))) State.Clear(hidden.Id);
+        await AnnounceOnceAsync($"{CompletedCount} of {VisibleFields.Count} fields completed.");
+    }
+
+    private async Task SubmitAsync()
+    {
+        if (SubmitLink is null || _submitState.IsSubmitting) return;
+        _submitState.Start();
+        await AnnounceOnceAsync("Processing registration details.");
+        try
+        {
+            Dictionary<Guid, object?> answers = VisibleFields
+                .Where(item => RegistrationFormValue.IsAnswered(State.Get(item.Id)))
+                .ToDictionary(item => item.Id, item => State.Get(item.Id));
+            await OnSubmit.InvokeAsync(new RegistrationFormSubmission(answers));
+            _submitState.Complete();
+            await AnnounceOnceAsync(SuccessMessage);
+            await Focus.FocusByIdAsync("registration-form-success", true);
+        }
+        catch
+        {
+            _submitState.Fail("We could not save these details. Review the highlighted fields and try again.");
+            await AnnounceOnceAsync(_submitState.ErrorMessage!);
+        }
+    }
+
+    private async Task SkipAsync()
+    {
+        if (SkipLink is null || _submitState.IsSubmitting) return;
+        _submitState.Start();
+        await AnnounceOnceAsync("Skipping optional registration details.");
+        try
+        {
+            await OnSkip.InvokeAsync();
+            _submitState.Complete();
+            await AnnounceOnceAsync("Optional registration details skipped.");
+        }
+        catch
+        {
+            _submitState.Fail("We could not skip these details. Try again.");
+            await AnnounceOnceAsync(_submitState.ErrorMessage!);
+        }
+    }
+
+    private Task AnnounceOnceAsync(string message)
+    {
+        if (string.Equals(_lastAnnouncement, message, StringComparison.Ordinal)) return Task.CompletedTask;
+        _lastAnnouncement = message;
+        return Announcer.AnnouncePoliteAsync(message);
+    }
+
+    private static string SectionHeadingId(RegistrationSectionView section) => $"registration-section-{section.Id:N}";
+}

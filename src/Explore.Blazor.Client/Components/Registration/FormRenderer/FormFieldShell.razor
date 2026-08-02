@@ -1,0 +1,45 @@
+@* ABOUTME: Provides one semantic label, instruction, optional marker, and server issue region for a portable field. *@
+@* ABOUTME: Gives every native control stable accessible relationships without duplicating shell markup. *@
+
+<div class="form-field" data-field-key="@FieldKey" data-field-type="@FieldTypeCode">
+    <label class="form-field__label" for="@ControlId">
+        @Label
+        @if (!Required)
+        {
+            <span class="form-field__optional">Optional</span>
+        }
+    </label>
+    @if (!string.IsNullOrWhiteSpace(Description))
+    {
+        <p id="@DescriptionId" class="form-field__description">@Description</p>
+    }
+    @ChildContent
+    @if (Issues.Count > 0)
+    {
+        <ul id="@ErrorId" class="form-field__errors" role="alert">
+            @foreach (string issue in Issues)
+            {
+                <li>@issue</li>
+            }
+        </ul>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public string ControlId { get; set; } = string.Empty;
+    [Parameter, EditorRequired] public string FieldKey { get; set; } = string.Empty;
+    [Parameter, EditorRequired] public string FieldTypeCode { get; set; } = string.Empty;
+    [Parameter, EditorRequired] public string Label { get; set; } = string.Empty;
+    [Parameter] public bool Required { get; set; }
+    [Parameter] public string? Description { get; set; }
+    [Parameter] public IReadOnlyList<string> Issues { get; set; } = [];
+    [Parameter, EditorRequired] public RenderFragment? ChildContent { get; set; }
+
+    public string DescriptionId => $"{ControlId}-description";
+    public string ErrorId => $"{ControlId}-errors";
+    public string DescribedBy => string.Join(' ', new[]
+    {
+        string.IsNullOrWhiteSpace(Description) ? null : DescriptionId,
+        Issues.Count == 0 ? null : ErrorId
+    }.Where(value => value is not null));
+}

@@ -1,0 +1,23 @@
+/* ABOUTME: Tokenized semantic layout for native registration field labels, help, and server issues. */
+/* ABOUTME: Uses logical properties so one field shell remains correct in LTR and RTL. */
+
+.form-field { display: grid; gap: var(--isl-space-2); }
+.form-field__label { color: var(--isl-color-text); font-weight: 600; }
+.form-field__optional { color: var(--isl-color-text-secondary); font-size: var(--mud-typography-caption-size); margin-inline-start: var(--isl-space-2); font-weight: 400; }
+.form-field__description { color: var(--isl-color-text-secondary); margin: 0; }
+.form-field__errors { color: var(--isl-color-error); margin-block: 0; padding-inline-start: var(--isl-space-5); }
+
+::deep input,
+::deep textarea,
+::deep select { inline-size: 100%; min-block-size: var(--isl-target-min); padding: var(--isl-space-3); border: 1px solid var(--isl-color-border); border-radius: var(--isl-radius-input); color: var(--isl-color-text); background: var(--isl-color-surface); font: inherit; }
+::deep input[type="checkbox"],
+::deep input[type="radio"] { inline-size: var(--isl-target-min); block-size: var(--isl-target-min); padding: 0; }
+::deep input[aria-invalid="true"],
+::deep textarea[aria-invalid="true"],
+::deep select[aria-invalid="true"] { border-color: var(--isl-color-error); }
+
+@media (forced-colors: active) {
+    ::deep input,
+    ::deep textarea,
+    ::deep select { border: 1px solid CanvasText; }
+}
