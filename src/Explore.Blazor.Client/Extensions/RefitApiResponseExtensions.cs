@@ -1,3 +1,6 @@
+// ABOUTME: Converts Refit response wrappers into the client application's typed API result model.
+// ABOUTME: Preserves response ProblemDetails while handling request failures and response-less errors safely.
+
 using Explore.Blazor.Client.Exceptions;
 using Explore.Blazor.Client.Services.Http;
 using Refit;
@@ -17,20 +20,32 @@ public static class RefitApiResponseExtensions
             return ApiResult<T>.Success(response.Content);
         }
 
+        if (response.HasResponseError(out var responseError))
+        {
+            var problemException = ApiProblemException.FromRefitException(responseError, serviceName);
+            return ApiResult<T>.Failure(problemException);
+        }
+
+        if (response.HasRequestError(out var requestError))
+        {
+            return ApiResult<T>.Failure(requestError);
+        }
+
         if (response.Error is not null)
         {
-            var problemException = ApiProblemException.FromRefitException(response.Error, serviceName);
-            return ApiResult<T>.Failure(problemException);
+            return ApiResult<T>.Failure(response.Error);
+        }
+
+        if (response.StatusCode is not { } statusCode)
+        {
+            return ApiResult<T>.Failure(new HttpRequestException(response.ReasonPhrase ?? "API request failed before a response was received."));
         }
 
         // Fallback for non-success without an ApiException (rare in Refit unless configured differently)
         var fallbackProblem = new ApiProblemException(
-            response.StatusCode,
+            statusCode,
             response.ReasonPhrase ?? "API Request Failed",
-            null,
-            null,
-            serviceName
-        );
+            serviceName: serviceName);
 
         return ApiResult<T>.Failure(fallbackProblem);
     }
@@ -45,19 +60,31 @@ public static class RefitApiResponseExtensions
             return ApiResult.Success();
         }
 
-        if (response.Error is not null)
+        if (response.HasResponseError(out var responseError))
         {
-            var problemException = ApiProblemException.FromRefitException(response.Error, serviceName);
+            var problemException = ApiProblemException.FromRefitException(responseError, serviceName);
             return ApiResult.Failure(problemException);
         }
 
+        if (response.HasRequestError(out var requestError))
+        {
+            return ApiResult.Failure(requestError);
+        }
+
+        if (response.Error is not null)
+        {
+            return ApiResult.Failure(response.Error);
+        }
+
+        if (response.StatusCode is not { } statusCode)
+        {
+            return ApiResult.Failure(new HttpRequestException(response.ReasonPhrase ?? "API request failed before a response was received."));
+        }
+
         var fallbackProblem = new ApiProblemException(
-            response.StatusCode,
+            statusCode,
             response.ReasonPhrase ?? "API Request Failed",
-            null,
-            null,
-            serviceName
-        );
+            serviceName: serviceName);
 
         return ApiResult.Failure(fallbackProblem);
     }

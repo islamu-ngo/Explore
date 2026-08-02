@@ -3,8 +3,8 @@
 
 using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Client.Helpers;
-using Explore.Blazor.Client.Models.Events;
 using Explore.Blazor.Client.Models;
+using Explore.Blazor.Client.Models.Events;
 
 namespace Explore.Blazor.Client.Services;
 
