@@ -116,7 +116,14 @@ public class AuthorizationProductionGuardrailTests
             {
                 var testConfig = new Dictionary<string, string?>
                 {
-                    ["ConnectionStrings:DefaultConnection"] = "Host=localhost;Database=test_guardrails;Username=postgres;Password=postgres",
+                    ["Database:Provider"] = "PostgreSql",
+                    ["Database:Host"] = "localhost",
+                    ["Database:Port"] = "5432",
+                    ["Database:Database"] = "test_guardrails",
+                    ["Database:Runtime:Username"] = "postgres",
+                    ["Database:Runtime:Password"] = "postgres",
+                    ["Database:Runtime:TlsMode"] = "Prefer",
+                    ["Database:Runtime:TrustServerCertificate"] = "false",
                     ["S3Settings:Region"] = "us-east-1",
                     ["S3Settings:BucketName"] = "test-bucket",
                     ["S3Settings:AccessKeyId"] = "test-key",
@@ -179,7 +186,14 @@ public class AuthorizationProductionGuardrailTests
             {
                 var testConfig = new Dictionary<string, string?>
                 {
-                    ["ConnectionStrings:DefaultConnection"] = "Host=localhost;Database=test_no_auth;Username=postgres;Password=postgres",
+                    ["Database:Provider"] = "PostgreSql",
+                    ["Database:Host"] = "localhost",
+                    ["Database:Port"] = "5432",
+                    ["Database:Database"] = "test_no_auth",
+                    ["Database:Runtime:Username"] = "postgres",
+                    ["Database:Runtime:Password"] = "postgres",
+                    ["Database:Runtime:TlsMode"] = "Prefer",
+                    ["Database:Runtime:TrustServerCertificate"] = "false",
                     ["S3Settings:Region"] = "us-east-1",
                     ["S3Settings:BucketName"] = "test-bucket",
                     ["S3Settings:AccessKeyId"] = "test-key",
@@ -229,7 +243,14 @@ public class AuthorizationProductionGuardrailTests
 
     private static void ConfigureEarlyHostSettings(IWebHostBuilder builder)
     {
-        builder.UseSetting("ConnectionStrings:DefaultConnection", "Host=localhost;Database=guardrail;Username=postgres;Password=postgres");
+        builder.UseSetting("Database:Provider", "PostgreSql");
+        builder.UseSetting("Database:Host", "localhost");
+        builder.UseSetting("Database:Port", "5432");
+        builder.UseSetting("Database:Database", "guardrail");
+        builder.UseSetting("Database:Runtime:Username", "postgres");
+        builder.UseSetting("Database:Runtime:Password", "postgres");
+        builder.UseSetting("Database:Runtime:TlsMode", "Prefer");
+        builder.UseSetting("Database:Runtime:TrustServerCertificate", "false");
         builder.UseSetting("EmailDispatchProcessor:Enabled", "false");
         builder.UseSetting("Scheduler:TickerQ:Enabled", "false");
         builder.UseSetting("WebhookDeliveryProcessor:Enabled", "false");

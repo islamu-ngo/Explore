@@ -37,7 +37,7 @@ public class CerbosPolicyCompilationTests : IDisposable
     {
         var response = await _cerbos.HealthAsync();
 
-        response.Should().BeSuccessful("the Cerbos container must report healthy after startup");
+        response.IsSuccessStatusCode.Should().BeTrue("the Cerbos container must report healthy after startup");
     }
 
     [Test]
@@ -45,7 +45,7 @@ public class CerbosPolicyCompilationTests : IDisposable
     {
         var response = await _cerbos.GetSchemaAsync();
 
-        response.Should().BeSuccessful("the Cerbos HTTP API must be serving the schema endpoint");
+        response.IsSuccessStatusCode.Should().BeTrue("the Cerbos HTTP API must be serving the schema endpoint");
     }
 
     #endregion

@@ -432,7 +432,14 @@ public class LocalRbacAuthorizationTests : IAsyncDisposable
             {
                 var testConfig = new Dictionary<string, string?>
                 {
-                    ["ConnectionStrings:DefaultConnection"] = "Host=localhost;Database=test_local_rbac;Username=postgres;Password=postgres",
+                    ["Database:Provider"] = "PostgreSql",
+                    ["Database:Host"] = "localhost",
+                    ["Database:Port"] = "5432",
+                    ["Database:Database"] = "test_local_rbac",
+                    ["Database:Runtime:Username"] = "postgres",
+                    ["Database:Runtime:Password"] = "postgres",
+                    ["Database:Runtime:TlsMode"] = "Prefer",
+                    ["Database:Runtime:TrustServerCertificate"] = "false",
                     ["Keycloak:Authority"] = _keycloakAuthority,
                     ["Keycloak:Realm"] = KeycloakContainerFixture.RealmName,
                     ["Keycloak:Audience"] = "islamu-event-api",
