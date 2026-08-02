@@ -90,7 +90,7 @@ namespace Explore.Persistence.PrivacyErasureAuthority.Migrations.Sqlite.Migratio
                         {
                             t.HasCheckConstraint("ck_erasure_intents_intent_uuid_v7", "substr(intent_id, 15, 1) = '7'");
 
-                            t.HasCheckConstraint("ck_erasure_intents_intent_variant", "substr(intent_id, 20, 1) IN ('8', '9', 'a', 'b')");
+                            t.HasCheckConstraint("ck_erasure_intents_intent_variant", "lower(substr(intent_id, 20, 1)) IN ('8', '9', 'a', 'b')");
 
                             t.HasCheckConstraint("ck_erasure_intents_policy_version", "policy_version > 0");
 

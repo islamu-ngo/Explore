@@ -44,7 +44,7 @@ namespace Explore.Persistence.PrivacyErasureAuthority.Migrations.Sqlite.Migratio
                     table.PrimaryKey("pk_erasure_intents", x => x.authority_sequence);
                     table.UniqueConstraint("ak_erasure_intents_intent_id", x => x.intent_id);
                     table.CheckConstraint("ck_erasure_intents_intent_uuid_v7", "substr(intent_id, 15, 1) = '7'");
-                    table.CheckConstraint("ck_erasure_intents_intent_variant", "substr(intent_id, 20, 1) IN ('8', '9', 'a', 'b')");
+                    table.CheckConstraint("ck_erasure_intents_intent_variant", "lower(substr(intent_id, 20, 1)) IN ('8', '9', 'a', 'b')");
                     table.CheckConstraint("ck_erasure_intents_policy_version", "policy_version > 0");
                     table.CheckConstraint("ck_erasure_intents_reason", "reason_code BETWEEN 1 AND 3");
                     table.CheckConstraint("ck_erasure_intents_retention", "retention_expires_at_utc > recorded_at_utc");
