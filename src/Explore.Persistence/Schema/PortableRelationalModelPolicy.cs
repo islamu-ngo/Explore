@@ -1,7 +1,8 @@
 // ABOUTME: Normalizes PostgreSQL-oriented relational annotations for the other supported database providers.
-// ABOUTME: Preserves the PostgreSQL model while emitting native types, defaults, and portable constraint SQL elsewhere.
+// ABOUTME: Preserves PostgreSQL types while emitting portable defaults and constraint SQL for every provider.
 
 using System.Text.RegularExpressions;
+using Explore.Persistence.ValueGenerators;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata;
 
@@ -12,6 +13,7 @@ internal static partial class PortableRelationalModelPolicy
     private const string PostgreSqlProvider = "Npgsql.EntityFrameworkCore.PostgreSQL";
     private const string SqlServerProvider = "Microsoft.EntityFrameworkCore.SqlServer";
     private const string MySqlProvider = "Microting.EntityFrameworkCore.MySql";
+    private const int MySqlLookupIndexPrefixLength = 512;
 
     private static readonly HashSet<string> PostgreSqlColumnTypes = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -34,7 +36,7 @@ internal static partial class PortableRelationalModelPolicy
 
     public static void Apply(ModelBuilder modelBuilder, string? providerName)
     {
-        if (providerName is null or PostgreSqlProvider)
+        if (providerName is null)
         {
             return;
         }
@@ -42,6 +44,15 @@ internal static partial class PortableRelationalModelPolicy
         foreach (var entityType in modelBuilder.Model.GetEntityTypes())
         {
             NormalizeProperties(entityType, providerName);
+            if (providerName == SqlServerProvider)
+            {
+                NormalizeSqlServerDeleteBehaviors(entityType);
+            }
+            if (providerName == PostgreSqlProvider)
+            {
+                continue;
+            }
+
             NormalizeCheckConstraints(entityType, providerName);
             NormalizeIndexFilters(entityType, providerName);
         }
@@ -51,18 +62,41 @@ internal static partial class PortableRelationalModelPolicy
     {
         foreach (var property in entityType.GetProperties())
         {
-            if (property.GetCollation() is not null)
+            if (providerName == SqlServerProvider &&
+                property.ClrType == typeof(int) &&
+                property.IsPrimaryKey())
+            {
+                property.ValueGenerated = ValueGenerated.Never;
+            }
+
+            if (providerName != PostgreSqlProvider && property.GetCollation() is not null)
             {
                 property.SetCollation(null);
             }
 
-            if (PostgreSqlColumnTypes.Contains(property.GetColumnType() ?? string.Empty))
+            if (providerName != PostgreSqlProvider &&
+                PostgreSqlColumnTypes.Contains(property.GetColumnType() ?? string.Empty))
+            {
+                property.SetColumnType(null);
+            }
+
+            if (providerName == SqlServerProvider &&
+                string.Equals(property.GetColumnType(), "text", StringComparison.OrdinalIgnoreCase))
             {
                 property.SetColumnType(null);
             }
 
             var computedSql = property.GetComputedColumnSql();
-            if (computedSql is not null)
+            if (providerName == MySqlProvider &&
+                computedSql?.Contains("COALESCE(", StringComparison.OrdinalIgnoreCase) == true)
+            {
+                property.SetComputedColumnSql(null);
+                property.ValueGenerated = ValueGenerated.Never;
+                property.SetBeforeSaveBehavior(PropertySaveBehavior.Save);
+                computedSql = null;
+            }
+
+            if (providerName != PostgreSqlProvider && computedSql is not null)
             {
                 property.SetComputedColumnSql(computedSql.Replace("::uuid", string.Empty, StringComparison.OrdinalIgnoreCase));
             }
@@ -76,10 +110,14 @@ internal static partial class PortableRelationalModelPolicy
             if (defaultSql.Equals("uuidv7()", StringComparison.OrdinalIgnoreCase))
             {
                 property.SetDefaultValueSql(null);
+                property.SetValueGeneratorFactory((_, _) => new GuidVersion7ValueGenerator());
                 continue;
             }
 
-            property.SetDefaultValueSql(NormalizeTimestampDefault(defaultSql, providerName));
+            if (providerName != PostgreSqlProvider)
+            {
+                property.SetDefaultValueSql(NormalizeTimestampDefault(defaultSql, providerName));
+            }
         }
     }
 
@@ -92,7 +130,7 @@ internal static partial class PortableRelationalModelPolicy
             return providerName switch
             {
                 SqlServerProvider => $"DATEADD(day, {days}, SYSUTCDATETIME())",
-                MySqlProvider => $"TIMESTAMPADD(DAY, {days}, UTC_TIMESTAMP())",
+                MySqlProvider => $"(TIMESTAMPADD(DAY, {days}, UTC_TIMESTAMP()))",
                 _ => $"datetime('now', '+{days} days')"
             };
         }
@@ -102,7 +140,7 @@ internal static partial class PortableRelationalModelPolicy
             return providerName switch
             {
                 SqlServerProvider => "CONVERT(datetimeoffset, '9999-12-31T23:59:59.9999999+00:00', 127)",
-                MySqlProvider => "CAST('9999-12-31 23:59:59.999999' AS DATETIME(6))",
+                MySqlProvider => "(CAST('9999-12-31 23:59:59.999999' AS DATETIME(6)))",
                 _ => "'9999-12-31 23:59:59.9999999+00:00'"
             };
         }
@@ -113,7 +151,7 @@ internal static partial class PortableRelationalModelPolicy
             return providerName switch
             {
                 SqlServerProvider => "SYSUTCDATETIME()",
-                MySqlProvider => "UTC_TIMESTAMP()",
+                MySqlProvider => "(UTC_TIMESTAMP())",
                 _ => "CURRENT_TIMESTAMP"
             };
         }
@@ -134,10 +172,28 @@ internal static partial class PortableRelationalModelPolicy
             var sql = NonBlankBtrim().Replace(constraint.Sql, "trim(${column}) <> ''")
                 .Replace("btrim(", "trim(", StringComparison.OrdinalIgnoreCase);
 
+            if (providerName == MySqlProvider)
+            {
+                sql = IsNotDistinctFrom().Replace(sql, "${left} <=> ${right}");
+            }
+
             if (UnsupportedCheckSqlTokens.Any(token => sql.Contains(token, StringComparison.OrdinalIgnoreCase)))
             {
                 entityType.RemoveCheckConstraint(constraintName);
                 continue;
+            }
+
+            if (providerName == SqlServerProvider)
+            {
+                sql = sql.Replace("length(", "len(", StringComparison.OrdinalIgnoreCase);
+                sql = NormalizeSqlServerBooleanPredicates(entityType, sql);
+
+                var equivalence = PredicateEquivalence().Match(sql);
+                if (equivalence.Success)
+                {
+                    sql = $"(CASE WHEN {equivalence.Groups["left"].Value} THEN 1 ELSE 0 END) = " +
+                          $"(CASE WHEN {equivalence.Groups["right"].Value} THEN 1 ELSE 0 END)";
+                }
             }
 
             var normalizedSql = NormalizeBooleanLiterals(sql, providerName);
@@ -153,6 +209,20 @@ internal static partial class PortableRelationalModelPolicy
     {
         foreach (var index in entityType.GetIndexes())
         {
+            if (providerName == MySqlProvider && !index.IsUnique)
+            {
+                var prefixLengths = index.Properties
+                    .Select(property => property.ClrType == typeof(string) &&
+                                        property.GetMaxLength() is > MySqlLookupIndexPrefixLength
+                        ? MySqlLookupIndexPrefixLength
+                        : 0)
+                    .ToArray();
+                if (prefixLengths.Any(length => length > 0))
+                {
+                    index.SetPrefixLength(prefixLengths);
+                }
+            }
+
             var filter = index.GetFilter();
             if (filter is not null)
             {
@@ -161,10 +231,49 @@ internal static partial class PortableRelationalModelPolicy
         }
     }
 
+    private static void NormalizeSqlServerDeleteBehaviors(IMutableEntityType entityType)
+    {
+        foreach (var foreignKey in entityType.GetForeignKeys()
+                     .Where(foreignKey => foreignKey.DeleteBehavior is
+                         DeleteBehavior.Cascade or DeleteBehavior.SetNull))
+        {
+            foreignKey.DeleteBehavior = DeleteBehavior.NoAction;
+        }
+    }
+
     private static string NormalizeBooleanLiterals(string sql, string providerName) =>
         providerName == SqlServerProvider
             ? TrueLiteral().Replace(FalseLiteral().Replace(sql, "0"), "1")
             : sql;
+
+    private static string NormalizeSqlServerBooleanPredicates(
+        IMutableEntityType entityType,
+        string sql)
+    {
+        foreach (var property in entityType.GetProperties()
+                     .Where(property => property.ClrType == typeof(bool)))
+        {
+            var columnName = property.GetColumnName();
+            if (string.IsNullOrWhiteSpace(columnName))
+            {
+                continue;
+            }
+
+            var escapedColumn = Regex.Escape(columnName);
+            sql = Regex.Replace(
+                sql,
+                $@"\bNOT\s+{escapedColumn}\b",
+                $"{columnName} = 0",
+                RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+            sql = Regex.Replace(
+                sql,
+                $@"\b{escapedColumn}\b(?=\s+(?:AND|OR)|\s*\))",
+                $"{columnName} = 1",
+                RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+        }
+
+        return sql;
+    }
 
     [GeneratedRegex(@"length\(btrim\((?<column>[a-z0-9_]+)\)\)\s*>\s*0", RegexOptions.IgnoreCase)]
     private static partial Regex NonBlankBtrim();
@@ -177,4 +286,10 @@ internal static partial class PortableRelationalModelPolicy
 
     [GeneratedRegex(@"\btrue\b", RegexOptions.IgnoreCase)]
     private static partial Regex TrueLiteral();
+
+    [GeneratedRegex(@"^\((?<left>.+)\)\s*=\s*\((?<right>.+)\)$", RegexOptions.Singleline)]
+    private static partial Regex PredicateEquivalence();
+
+    [GeneratedRegex(@"(?<left>[a-z0-9_]+)\s+IS\s+NOT\s+DISTINCT\s+FROM\s+(?<right>[a-z0-9_]+)", RegexOptions.IgnoreCase)]
+    private static partial Regex IsNotDistinctFrom();
 }

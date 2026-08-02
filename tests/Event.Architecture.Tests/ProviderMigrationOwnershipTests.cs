@@ -1,10 +1,15 @@
-// ABOUTME: Verifies provider migration ownership through configured EF Core relational options.
-// ABOUTME: Locks application and Data Protection assemblies and history tables without parsing source files.
+// ABOUTME: Verifies provider migration ownership and portable identifiers through configured EF Core models.
+// ABOUTME: Locks application and Data Protection assemblies, history tables, and Jetstream cursor mappings.
 
+using Explore.Domain.Federation;
+using Explore.Domain;
+using Explore.Persistence;
 using Explore.Persistence.Database;
+using Explore.Persistence.ValueGenerators;
 using Explore.Secrets.Database;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Metadata;
 
 namespace Event.Architecture.Tests;
 
@@ -73,9 +78,9 @@ public sealed class ProviderMigrationOwnershipTests
             else
             {
                 await Assert.That(application.MigrationsHistoryTableName)
-                    .StartsWith("islamu_event_", StringComparison.Ordinal);
+                    .StartsWith("ie_", StringComparison.Ordinal);
                 await Assert.That(dataProtection.MigrationsHistoryTableName)
-                    .StartsWith("islamu_event_", StringComparison.Ordinal);
+                    .StartsWith("ie_", StringComparison.Ordinal);
                 prefixedProviders.Add(provider);
             }
         }
@@ -88,6 +93,106 @@ public sealed class ProviderMigrationOwnershipTests
                 PrimaryDatabaseProvider.MariaDb,
                 PrimaryDatabaseProvider.MySql,
             ]);
+    }
+
+    [Test]
+    public async Task ProviderModelsUsePortableJetstreamCursorColumnNames()
+    {
+        foreach (var provider in Enum.GetValues<PrimaryDatabaseProvider>())
+        {
+            var builder = new DbContextOptionsBuilder<ExploreDbContext>();
+            PrimaryDatabaseProviderComposition.ConfigureApplication(builder, CreateOptions(provider));
+            await using var db = new ExploreDbContext(builder.Options);
+
+            await AssertPortableCursorMapping<AtprotoJetstreamConsumerState>(
+                db,
+                nameof(AtprotoJetstreamConsumerState.Cursor),
+                "ck_atproto_jetstream_cursor");
+            await AssertPortableCursorMapping<AtprotoJetstreamQuarantine>(
+                db,
+                nameof(AtprotoJetstreamQuarantine.Cursor),
+                "ck_atproto_jetstream_quarantine_cursor");
+        }
+    }
+
+    [Test]
+    public async Task ProviderModelsUseClientUuidV7AndPortableMySqlDefaults()
+    {
+        foreach (var provider in Enum.GetValues<PrimaryDatabaseProvider>())
+        {
+            var builder = new DbContextOptionsBuilder<ExploreDbContext>();
+            PrimaryDatabaseProviderComposition.ConfigureApplication(builder, CreateOptions(provider));
+            await using var db = new ExploreDbContext(builder.Options);
+            IModel model = db.GetService<IDesignTimeModel>().Model;
+
+            string[] defaultSql = model.GetEntityTypes()
+                .SelectMany(entityType => entityType.GetProperties())
+                .Select(property => property.GetDefaultValueSql())
+                .Where(sql => sql is not null)
+                .Cast<string>()
+                .ToArray();
+            await Assert.That(defaultSql.Any(sql =>
+                sql.Contains("uuidv7()", StringComparison.OrdinalIgnoreCase))).IsFalse();
+
+            IProperty idProperty = model.FindEntityType(typeof(AtprotoJetstreamConsumerState))!
+                .FindProperty(nameof(AtprotoJetstreamConsumerState.Id))!;
+            Type? generatorType = idProperty.GetValueGeneratorFactory()?
+                .Invoke(idProperty, idProperty.DeclaringType)
+                .GetType();
+            await Assert.That(generatorType).IsEqualTo(typeof(GuidVersion7ValueGenerator));
+
+            if (provider is PrimaryDatabaseProvider.MariaDb or PrimaryDatabaseProvider.MySql)
+            {
+                string[] unparenthesizedExpressions = defaultSql
+                    .Where(sql => sql.Contains("UTC_TIMESTAMP()", StringComparison.OrdinalIgnoreCase))
+                    .Where(sql => !sql.StartsWith('(') || !sql.EndsWith(')'))
+                    .ToArray();
+                await Assert.That(unparenthesizedExpressions).IsEmpty();
+
+                string[] overlongColumnNames = model.GetEntityTypes()
+                    .SelectMany(entityType => entityType.GetProperties())
+                    .Select(property => property.GetColumnName())
+                    .Where(columnName => columnName is not null && columnName.Length > 64)
+                    .Cast<string>()
+                    .ToArray();
+                await Assert.That(overlongColumnNames).IsEmpty();
+
+                IProperty[] portableCoalesceProperties = model.GetEntityTypes()
+                    .SelectMany(entityType => entityType.GetProperties())
+                    .Where(property => property.Name is
+                        nameof(WebhookConsumer.ConfigurationScopeId) or
+                        "RegistrationWorkflowVersionKey" or
+                        "RegistrationProviderBindingKey" or
+                        nameof(RegistrationRequirement.AppliesToSubjectKey) or
+                        nameof(RegistrationAnswer.RequirementSubjectKey) or
+                        nameof(RegistrationAnswer.EffectiveSubjectIdentity))
+                    .ToArray();
+                await Assert.That(portableCoalesceProperties).IsNotEmpty();
+                await Assert.That(portableCoalesceProperties)
+                    .All(property => property.GetComputedColumnSql() is null);
+                await Assert.That(portableCoalesceProperties)
+                    .All(property => property.ValueGenerated == ValueGenerated.Never);
+                await Assert.That(portableCoalesceProperties)
+                    .All(property => property.GetBeforeSaveBehavior() == PropertySaveBehavior.Save);
+            }
+        }
+    }
+
+    private static async Task AssertPortableCursorMapping<TEntity>(
+        ExploreDbContext db,
+        string propertyName,
+        string constraintName)
+    {
+        IModel model = db.GetService<IDesignTimeModel>().Model;
+        IEntityType entityType = model.FindEntityType(typeof(TEntity))!;
+        var table = StoreObjectIdentifier.Table(entityType.GetTableName()!, entityType.GetSchema());
+        string? columnName = entityType.FindProperty(propertyName)!.GetColumnName(table);
+        string? constraintSql = entityType.GetCheckConstraints()
+            .Single(constraint => constraint.Name == constraintName)
+            .Sql;
+
+        await Assert.That(columnName).IsEqualTo("jetstream_cursor");
+        await Assert.That(constraintSql).IsEqualTo("jetstream_cursor >= 0");
     }
 
     private static RelationalOptionsExtension Configure(

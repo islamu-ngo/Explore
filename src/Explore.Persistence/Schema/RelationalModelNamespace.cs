@@ -1,5 +1,5 @@
-// ABOUTME: Applies the fixed relational namespace to the shared Explore EF Core model.
-// ABOUTME: Uses schemas where supported and a deterministic table prefix otherwise.
+// ABOUTME: Applies the configured schema or fixed short prefix to the shared Explore EF Core model.
+// ABOUTME: Uses operator schemas only where supported and deterministic ie_ names elsewhere.
 
 using Microsoft.EntityFrameworkCore;
 
@@ -7,14 +7,15 @@ namespace Explore.Persistence.Schema;
 
 internal static class RelationalModelNamespace
 {
-    internal const string Name = "islamu_event";
-    internal const string Prefix = Name + "_";
+    internal const string DefaultSchema = "islamu_event";
+    internal const string Name = DefaultSchema;
+    internal const string Prefix = "ie_";
 
-    public static void Apply(ModelBuilder modelBuilder, string? providerName)
+    public static void Apply(ModelBuilder modelBuilder, string? providerName, string schema)
     {
         if (SupportsSchemas(providerName))
         {
-            modelBuilder.HasDefaultSchema(Name);
+            modelBuilder.HasDefaultSchema(schema);
             return;
         }
 

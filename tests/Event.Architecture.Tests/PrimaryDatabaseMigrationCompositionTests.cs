@@ -40,7 +40,7 @@ public sealed class PrimaryDatabaseMigrationCompositionTests
             else
             {
                 await Assert.That(tableNames)
-                    .All(tableName => tableName.StartsWith("islamu_event_", StringComparison.Ordinal));
+                    .All(tableName => tableName.StartsWith("ie_", StringComparison.Ordinal));
                 prefixedProviders.Add(provider);
             }
 
@@ -65,6 +65,23 @@ public sealed class PrimaryDatabaseMigrationCompositionTests
             ]);
         await Assert.That(postgresConstraintProviders)
             .IsEquivalentTo([PrimaryDatabaseProvider.PostgreSql]);
+    }
+
+    [Test]
+    [Arguments(PrimaryDatabaseProvider.PostgreSql)]
+    [Arguments(PrimaryDatabaseProvider.SqlServer)]
+    public async Task RuntimeSchemaCapableModelsUseConfiguredSchema(PrimaryDatabaseProvider provider)
+    {
+        var builder = new DbContextOptionsBuilder<ExploreDbContext>();
+        var options = CreateOptions(provider) with
+        {
+            Role = PrimaryDatabaseRole.Runtime,
+            Schema = "operator_event",
+        };
+        PrimaryDatabaseProviderComposition.ConfigureApplication(builder, options);
+        await using var context = new ExploreDbContext(builder.Options);
+
+        await Assert.That(context.Model.GetDefaultSchema()).IsEqualTo("operator_event");
     }
 
     [Test]

@@ -31,24 +31,24 @@ internal static class RegistrationUniqueConflictClassifier
     private static readonly string[][] SubmissionIdentitySqliteColumns =
     [
         [
-            "islamu_event_registration_submissions.tenant_id",
-            "islamu_event_registration_submissions.registration_attempt_id",
-            "islamu_event_registration_submissions.business_deduplication_key",
+            "ie_registration_submissions.tenant_id",
+            "ie_registration_submissions.registration_attempt_id",
+            "ie_registration_submissions.business_deduplication_key",
         ],
         [
-            "islamu_event_registration_submissions.tenant_id",
-            "islamu_event_registration_submissions.registration_provider_binding_id",
-            "islamu_event_registration_submissions.provider_submission_id",
-            "islamu_event_registration_submissions.provider_response_revision",
+            "ie_registration_submissions.tenant_id",
+            "ie_registration_submissions.registration_provider_binding_id",
+            "ie_registration_submissions.provider_submission_id",
+            "ie_registration_submissions.provider_response_revision",
         ],
     ];
 
     private static readonly string[][] RevisionIdentitySqliteColumns =
     [
         [
-            "islamu_event_registration_submission_revisions.tenant_id",
-            "islamu_event_registration_submission_revisions.registration_submission_id",
-            "islamu_event_registration_submission_revisions.revision_number",
+            "ie_registration_submission_revisions.tenant_id",
+            "ie_registration_submission_revisions.registration_submission_id",
+            "ie_registration_submission_revisions.revision_number",
         ],
     ];
 

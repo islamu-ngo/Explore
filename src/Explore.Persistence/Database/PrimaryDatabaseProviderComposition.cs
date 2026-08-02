@@ -4,6 +4,8 @@
 using Explore.Persistence.Schema;
 using Explore.Secrets.Database;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 
 namespace Explore.Persistence.Database;
 
@@ -57,7 +59,12 @@ public static class PrimaryDatabaseProviderComposition
 
         var database = PrimaryDatabaseConfiguration.BuildConnectionString(options);
         var migrationsAssembly = GetMigrationsAssemblyName(options.Provider, target);
-        var migrationsHistory = GetMigrationsHistoryTable(options.Provider, target);
+        var migrationsHistory = GetMigrationsHistoryTable(options.Provider, target, options.Schema);
+        var modelSchema = options.Role == PrimaryDatabaseRole.Migrator
+            ? PrimaryDatabaseConnectionOptions.DefaultSchema
+            : options.Schema;
+        ((IDbContextOptionsBuilderInfrastructure)optionsBuilder)
+            .AddOrUpdateExtension(new RelationalNamespaceOptionsExtension(modelSchema, options.Schema));
 
         switch (options.Provider)
         {
@@ -76,6 +83,7 @@ public static class PrimaryDatabaseProviderComposition
                         providerOptions.UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery);
                     }
                 });
+                optionsBuilder.ReplaceService<IMigrationsSqlGenerator, ConfigurableNpgsqlMigrationsSqlGenerator>();
                 break;
 
             case PrimaryDatabaseProvider.Sqlite:
@@ -96,6 +104,7 @@ public static class PrimaryDatabaseProviderComposition
                         providerOptions.MigrationsAssembly(migrationsAssembly);
                         providerOptions.MigrationsHistoryTable(migrationsHistory.Table, migrationsHistory.Schema);
                     });
+                optionsBuilder.ReplaceService<IMigrationsSqlGenerator, ConfigurableSqlServerMigrationsSqlGenerator>();
                 break;
 
             case PrimaryDatabaseProvider.MariaDb:
@@ -130,14 +139,15 @@ public static class PrimaryDatabaseProviderComposition
 
     internal static (string Table, string? Schema) GetMigrationsHistoryTable(
         PrimaryDatabaseProvider provider,
-        PrimaryDatabaseMigrationTarget target)
+        PrimaryDatabaseMigrationTarget target,
+        string schema = PrimaryDatabaseConnectionOptions.DefaultSchema)
     {
         var table = target == PrimaryDatabaseMigrationTarget.Application
             ? ApplicationMigrationsHistoryTable
             : DataProtectionMigrationsHistoryTable;
 
         return provider is PrimaryDatabaseProvider.PostgreSql or PrimaryDatabaseProvider.SqlServer
-            ? (table, RelationalModelNamespace.Name)
+            ? (table, schema)
             : (RelationalModelNamespace.Prefix + table, null);
     }
 }
