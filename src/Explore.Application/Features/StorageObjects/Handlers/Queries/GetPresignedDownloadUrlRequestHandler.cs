@@ -64,6 +64,14 @@ public class GetPresignedDownloadUrlRequestHandler : IRequestHandler<GetPresigne
             return null;
         }
 
+        if (await _storageObjectRepository.IsRegistrationAnswerFileQuarantinedAsync(request.Id, cancellationToken))
+        {
+            _logger.LogWarning(
+                "Rejected presigned download request for quarantined registration file. StorageObjectId={StorageObjectId}",
+                request.Id);
+            return null;
+        }
+
         if (!CanRead(storageObject))
         {
             _logger.LogWarning(

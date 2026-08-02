@@ -51,6 +51,12 @@ public sealed class StorageObjectContentReader : IStorageObjectContentReader
             return null;
         }
 
+        if (await _storageObjectRepository.IsRegistrationAnswerFileQuarantinedAsync(storageObjectId, cancellationToken))
+        {
+            _metrics.RecordStorageRead(storageObject.Provider, "failed", "registration_file_quarantined", storageObject.Visibility);
+            return null;
+        }
+
         if (!CanRead(storageObject, publicImagesOnly))
         {
             _metrics.RecordStorageRead(
