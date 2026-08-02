@@ -1,9 +1,8 @@
 // ABOUTME: Tests the instance-admin platform monetization controller and HAL affordance contract.
 // ABOUTME: Covers protected routes, MediatR dispatch, RFC 7807 metadata, and permission-bound edit omission.
 
-using Microsoft.AspNetCore.Mvc.Routing;
-using System.Reflection;
 using System.Net;
+using System.Reflection;
 using System.Text;
 using System.Text.Json;
 using Event.Api.IntegrationTests.Fixtures;
@@ -28,6 +27,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Routing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -111,9 +111,9 @@ public sealed class PlatformMonetizationSettingsApiTests
     private static PlatformMonetizationSettingsController CreateController(
         IMediator mediator,
         IResourceAssembler<PlatformMonetizationSettingsDto, PlatformMonetizationSettingsDto> assembler) => new(mediator, assembler)
-    {
-        ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() }
-    };
+        {
+            ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() }
+        };
 
     private static PlatformMonetizationSettingsDto CreateSettings() => new()
     {

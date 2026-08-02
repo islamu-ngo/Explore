@@ -3,6 +3,7 @@
 
 using System.Net;
 using System.Text.Encodings.Web;
+using Event.Api.IntegrationTests.Fixtures;
 using Explore.API.Configuration;
 using Explore.API.Extensions;
 using Explore.API.Scheduling;
@@ -56,9 +57,8 @@ public sealed class TickerQDashboardRouteTests
             EnvironmentName = "Development"
         });
         builder.WebHost.UseTestServer();
-        builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
+        var databaseConfiguration = new Dictionary<string, string?>
         {
-            ["ConnectionStrings:DefaultConnection"] = container.GetConnectionString(),
             [$"{TickerQSchedulerOptions.SectionName}:Enabled"] = "true",
             [$"{TickerQSchedulerOptions.SectionName}:Schema"] = "ticker",
             [$"{TickerQSchedulerOptions.SectionName}:DashboardEnabled"] = dashboardEnabled.ToString(),
@@ -67,7 +67,9 @@ public sealed class TickerQDashboardRouteTests
             [$"{TickerQSchedulerOptions.SectionName}:DashboardPath"] = "/admin/scheduler",
             [$"{TickerQSchedulerOptions.SectionName}:MaxConcurrency"] = "1",
             [$"{TickerQSchedulerOptions.SectionName}:NodeIdentifier"] = "tickerq-dashboard-test-node"
-        });
+        };
+        TestDatabaseConfiguration.AddPostgreSql(databaseConfiguration, container.GetConnectionString());
+        builder.Configuration.AddInMemoryCollection(databaseConfiguration);
 
         builder.Services.AddRouting();
         builder.Services

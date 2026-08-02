@@ -39,7 +39,7 @@ public class KeycloakDiscoveryTests : IDisposable
     {
         var response = await _httpClient.GetAsync(_infra.KeycloakMetadataAddress);
 
-        response.Should().BeSuccessful("the OIDC metadata endpoint must be reachable");
+        response.IsSuccessStatusCode.Should().BeTrue("the OIDC metadata endpoint must be reachable");
 
         var json = await response.Content.ReadAsStringAsync();
         var doc = JsonDocument.Parse(json);
@@ -105,7 +105,7 @@ public class KeycloakDiscoveryTests : IDisposable
         jwksUri.Should().NotBeNullOrEmpty();
 
         var response = await _httpClient.GetAsync(jwksUri!);
-        response.Should().BeSuccessful();
+        response.IsSuccessStatusCode.Should().BeTrue();
 
         var json = await response.Content.ReadAsStringAsync();
         var doc = JsonDocument.Parse(json);
@@ -204,7 +204,7 @@ public class KeycloakDiscoveryTests : IDisposable
     {
         var response = await _httpClient.GetAsync(_infra.KeycloakMetadataAddress);
 
-        response.Should().BeSuccessful();
+        response.IsSuccessStatusCode.Should().BeTrue();
 
         var json = await response.Content.ReadAsStringAsync();
         var doc = JsonDocument.Parse(json);

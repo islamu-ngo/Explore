@@ -16,9 +16,9 @@ using Explore.Domain.Enums;
 using Explore.Persistence;
 using MediatR;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
-using Microsoft.AspNetCore.TestHost;
 using NSubstitute;
 using TUnit.Assertions;
 using TUnit.Core;
@@ -216,6 +216,79 @@ public class StorageObjectControllerTests
             Arg.Is<string>(value => value.Contains(storageObjectId.ToString("N"), StringComparison.Ordinal)),
             "Report.pdf",
             15);
+    }
+
+    [Test]
+    public async Task RegistrationFileQuarantine_BlocksEveryReadSurfaceUntilExplicitRelease()
+    {
+        Guid storageObjectId = Guid.CreateVersion7();
+        Guid userId = Guid.CreateVersion7();
+        var storageObject = new StorageObject
+        {
+            Id = storageObjectId,
+            TenantId = PlatformDefaults.DefaultTenantId,
+            FileTypeId = (int)FileTypeEnum.Image,
+            FileType = null!,
+            Tenant = null!,
+            Uri = $"{BaseUrl}/{storageObjectId}/content",
+            ObjectKey = $"tenants/{PlatformDefaults.DefaultTenantId:N}/{storageObjectId:N}.png",
+            Provider = StorageProviders.Local,
+            FullName = "quarantined.png",
+            SafeDisplayName = "quarantined.png",
+            Extension = "png",
+            ContentType = "image/png",
+            Sha256Checksum = new string('a', 64),
+            Size = 8,
+            Visibility = StorageObjectVisibilities.PublicImage,
+            Purpose = StorageObjectPurposes.EventImage,
+            LifecycleState = StorageObjectLifecycleStates.Active,
+            CreatedBy = userId
+        };
+        var repository = Substitute.For<IStorageObjectRepository>();
+        repository.GetById(storageObjectId).Returns(storageObject);
+        repository.IsRegistrationAnswerFileQuarantinedAsync(storageObjectId, Arg.Any<CancellationToken>())
+            .Returns(true);
+        var resolver = CreateProviderResolver([1, 2, 3, 4, 5, 6, 7, 8]);
+        var provider = resolver.GetRequired(StorageProviders.Local);
+        provider.ClearReceivedCalls();
+        var objectStorageService = Substitute.For<IObjectStorageService>();
+        objectStorageService.GeneratePresignedDownloadUrl(
+                Arg.Any<string>(), Arg.Any<string>(), Arg.Any<int>())
+            .Returns("https://storage.example.test/released");
+        await using var factory = new QuarantinedRegistrationFileWebApplicationFactory(
+            repository,
+            resolver,
+            objectStorageService)
+        {
+            AuthorizationProviderOverride = new StubAuthorizationProvider { AllowAll = true }
+        };
+        using var client = factory.CreateClient();
+
+        using var content = await client.SendAsync(CreateAuthenticatedGetRequest(
+            $"{BaseUrl}/{storageObjectId}/content", userId));
+        using var publicImage = await client.GetAsync($"{BaseUrl}/{storageObjectId}/public");
+        using var presigned = await client.SendAsync(CreateAuthenticatedGetRequest(
+            $"{BaseUrl}/{storageObjectId}/presigned-url", userId));
+
+        await Assert.That(content.StatusCode).IsEqualTo(HttpStatusCode.NotFound);
+        await Assert.That(publicImage.StatusCode).IsEqualTo(HttpStatusCode.NotFound);
+        await Assert.That(presigned.StatusCode).IsEqualTo(HttpStatusCode.NotFound);
+        await provider.DidNotReceive().OpenReadAsync(
+            Arg.Any<FileStorageReadInput>(), Arg.Any<CancellationToken>());
+        await objectStorageService.DidNotReceive().GeneratePresignedDownloadUrl(
+            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<int>());
+
+        repository.IsRegistrationAnswerFileQuarantinedAsync(storageObjectId, Arg.Any<CancellationToken>())
+            .Returns(false);
+        using var releasedContent = await client.SendAsync(CreateAuthenticatedGetRequest(
+            $"{BaseUrl}/{storageObjectId}/content", userId));
+        using var releasedPublicImage = await client.GetAsync($"{BaseUrl}/{storageObjectId}/public");
+        using var releasedPresigned = await client.SendAsync(CreateAuthenticatedGetRequest(
+            $"{BaseUrl}/{storageObjectId}/presigned-url", userId));
+
+        await Assert.That(releasedContent.StatusCode).IsEqualTo(HttpStatusCode.OK);
+        await Assert.That(releasedPublicImage.StatusCode).IsEqualTo(HttpStatusCode.OK);
+        await Assert.That(releasedPresigned.StatusCode).IsEqualTo(HttpStatusCode.OK);
     }
 
     [Test]
@@ -715,6 +788,26 @@ public class StorageObjectControllerTests
                     services.RemoveAll<IObjectStorageService>();
                     services.AddSingleton(objectStorageService);
                 }
+            });
+        }
+    }
+
+    private sealed class QuarantinedRegistrationFileWebApplicationFactory(
+        IStorageObjectRepository repository,
+        IFileStorageProviderResolver resolver,
+        IObjectStorageService objectStorageService) : AuthenticatedWebApplicationFactory
+    {
+        protected override void ConfigureWebHost(IWebHostBuilder builder)
+        {
+            base.ConfigureWebHost(builder);
+            builder.ConfigureTestServices(services =>
+            {
+                services.RemoveAll<IStorageObjectRepository>();
+                services.AddSingleton(repository);
+                services.RemoveAll<IFileStorageProviderResolver>();
+                services.AddSingleton(resolver);
+                services.RemoveAll<IObjectStorageService>();
+                services.AddSingleton(objectStorageService);
             });
         }
     }

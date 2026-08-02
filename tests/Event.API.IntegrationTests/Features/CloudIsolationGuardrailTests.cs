@@ -39,7 +39,7 @@ public class CloudIsolationGuardrailTests
     [
         "Keycloak:Authority",
         "Keycloak:MetadataAddress",
-        "ConnectionStrings:DefaultConnection",
+        "Database:Host",
         "S3Settings:Endpoint",
     ];
 

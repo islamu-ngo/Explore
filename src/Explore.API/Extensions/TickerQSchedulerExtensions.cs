@@ -1,13 +1,14 @@
 // ABOUTME: Registers TickerQ as the API host scheduler and operations surface.
-// ABOUTME: Uses PostgreSQL-backed scheduler state while keeping business outbox truth in Explore.Persistence.
+// ABOUTME: Keeps TickerQ as an explicit PostgreSQL-only scheduler capability.
 
 using Explore.API.Configuration;
 using Explore.API.Scheduling;
 using Explore.Application.Contracts.Infrastructure;
-using Explore.Secrets.Bootstrap;
+using Explore.Secrets.Database;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Options;
 using TickerQ.Dashboard.DependencyInjection;
@@ -43,7 +44,15 @@ public static class TickerQSchedulerExtensions
             return services;
         }
 
-        var connectionString = ResolvePostgresConnectionString(configuration);
+        var runtimeDatabase = PrimaryDatabaseConfiguration.BindRuntime(configuration);
+        if (runtimeDatabase.Provider != PrimaryDatabaseProvider.PostgreSql)
+        {
+            throw new InvalidOperationException(
+                $"TickerQ requires Database:Provider=PostgreSql, but '{runtimeDatabase.Provider}' is selected. " +
+                "Set EmailDispatchProcessor:Mode=HostedService for portable email dispatch.");
+        }
+
+        var connectionString = PrimaryDatabaseConfiguration.BuildConnectionString(runtimeDatabase).ConnectionString;
 
         services.RemoveAll<IScheduledEmailDispatchTrigger>();
         services.AddScoped<IScheduledEmailDispatchTrigger, TickerQScheduledEmailDispatchTrigger>();
@@ -69,6 +78,8 @@ public static class TickerQSchedulerExtensions
                             ApiTickerQDbContext.MigrationsHistoryTable,
                             ApiTickerQDbContext.Schema);
                     });
+                    dbOptions.ConfigureWarnings(warnings =>
+                        warnings.Ignore(RelationalEventId.PendingModelChangesWarning));
                 });
             });
 
@@ -147,6 +158,14 @@ public static class TickerQSchedulerExtensions
             return;
         }
 
+        var runtimeDatabase = PrimaryDatabaseConfiguration.BindRuntime(app.Configuration);
+        if (runtimeDatabase.Provider != PrimaryDatabaseProvider.PostgreSql)
+        {
+            throw new InvalidOperationException(
+                $"TickerQ requires Database:Provider=PostgreSql, but '{runtimeDatabase.Provider}' is selected. " +
+                "Set EmailDispatchProcessor:Mode=HostedService for portable email dispatch.");
+        }
+
         await using var scope = app.Services.CreateAsyncScope();
         var dbFactory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<ApiTickerQDbContext>>();
         await using var db = await dbFactory.CreateDbContextAsync();
@@ -167,13 +186,5 @@ public static class TickerQSchedulerExtensions
         var schedulerOptions = configuration.GetSection(TickerQSchedulerOptions.SectionName).Get<TickerQSchedulerOptions>()
             ?? new TickerQSchedulerOptions();
         return schedulerOptions.Enabled;
-    }
-
-    private static string ResolvePostgresConnectionString(IConfiguration configuration)
-    {
-        var connectionString = configuration["ConnectionStrings:DefaultConnection"];
-        return string.IsNullOrWhiteSpace(connectionString)
-            ? BootstrapSecretLoader.LoadPostgresConnectionString(configuration).ConnectionString
-            : connectionString;
     }
 }

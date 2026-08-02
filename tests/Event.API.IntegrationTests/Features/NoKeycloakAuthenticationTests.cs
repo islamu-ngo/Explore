@@ -171,7 +171,14 @@ public class NoKeycloakAuthenticationTests : IAsyncDisposable
             {
                 var testConfig = new Dictionary<string, string?>
                 {
-                    ["ConnectionStrings:DefaultConnection"] = "Host=localhost;Database=test_no_keycloak;Username=postgres;Password=postgres",
+                    ["Database:Provider"] = "PostgreSql",
+                    ["Database:Host"] = "localhost",
+                    ["Database:Port"] = "5432",
+                    ["Database:Database"] = "test_no_keycloak",
+                    ["Database:Runtime:Username"] = "postgres",
+                    ["Database:Runtime:Password"] = "postgres",
+                    ["Database:Runtime:TlsMode"] = "Prefer",
+                    ["Database:Runtime:TrustServerCertificate"] = "false",
                     ["S3Settings:Region"] = "us-east-1",
                     ["S3Settings:BucketName"] = "test-bucket",
                     ["S3Settings:AccessKeyId"] = "test-key",

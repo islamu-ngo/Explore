@@ -3,8 +3,8 @@
 
 using System.Net;
 using System.Net.Http.Json;
-using System.Security.Claims;
 using System.Reflection;
+using System.Security.Claims;
 using System.Text;
 using System.Text.Json;
 using Event.Api.IntegrationTests.Fixtures;

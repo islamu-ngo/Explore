@@ -446,7 +446,14 @@ public class CrossTenantIsolationTests : IAsyncDisposable
             {
                 var testConfig = new Dictionary<string, string?>
                 {
-                    ["ConnectionStrings:DefaultConnection"] = "Host=localhost;Database=test_isolation;Username=postgres;Password=postgres",
+                    ["Database:Provider"] = "PostgreSql",
+                    ["Database:Host"] = "localhost",
+                    ["Database:Port"] = "5432",
+                    ["Database:Database"] = "test_isolation",
+                    ["Database:Runtime:Username"] = "postgres",
+                    ["Database:Runtime:Password"] = "postgres",
+                    ["Database:Runtime:TlsMode"] = "Prefer",
+                    ["Database:Runtime:TrustServerCertificate"] = "false",
                     ["Keycloak:Authority"] = _keycloakAuthority,
                     ["Keycloak:Realm"] = KeycloakContainerFixture.RealmName,
                     ["Keycloak:Audience"] = "islamu-event-api",
