@@ -12,7 +12,6 @@ using Explore.Domain;
 using Explore.Domain.Enums;
 using Explore.Infrastructure.Services;
 using Explore.Persistence;
-using Explore.Persistence.Schema;
 using Explore.Persistence.Seed;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -345,6 +344,16 @@ public sealed class CalendarRouteRuntimeFixture : IAsyncInitializer, IAsyncDispo
     public async Task InitializeAsync()
     {
         await _container.StartAsync();
+        var options = new DbContextOptionsBuilder<ExploreDbContext>()
+            .UseNpgsql(_container.GetConnectionString())
+            .UseSnakeCaseNamingConvention()
+            .Options;
+        await using (var context = new ExploreDbContext(options))
+        {
+            await context.Database.MigrateAsync();
+            await LookupTableSeeder.SeedAsync(context);
+        }
+
         Factory = new PostgreSqlApiWebApplicationFactory(
             _container.GetConnectionString(),
             new Dictionary<string, string?>
@@ -361,12 +370,6 @@ public sealed class CalendarRouteRuntimeFixture : IAsyncInitializer, IAsyncDispo
             });
         Factory.UseKestrel(0);
         Client = Factory.CreateClient();
-
-        await using AsyncServiceScope scope = Factory.Services.CreateAsyncScope();
-        ExploreDbContext context = scope.ServiceProvider.GetRequiredService<ExploreDbContext>();
-        await context.Database.EnsureCreatedAsync();
-        await PostgresModelConstraintApplier.ApplyAsync(context);
-        await LookupTableSeeder.SeedAsync(context);
     }
 
     public HttpRequestMessage CreateAuthenticatedRequest(string route, Guid userId)

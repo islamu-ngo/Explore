@@ -19,8 +19,17 @@ public sealed class GetManagedEventSessionDetailsRequestHandler(
         CancellationToken cancellationToken)
     {
         var session = await eventSessionRepository.GetSessionWithDetails(request.Id);
-        return session?.EventId == request.EventId
-            ? mapper.Map<EventSessionDto>(session)
-            : null;
+        if (session?.EventId != request.EventId)
+            return null;
+
+        var dto = mapper.Map<EventSessionDto>(session);
+        dto.LocationId = session.LocationId;
+        dto.LocationFullName = session.Location?.FullName;
+        dto.LocationAddress = session.Location?.Address;
+        dto.LocationCity = session.Location?.City;
+        dto.LocationCountry = session.Location?.Country;
+        dto.RoomId = session.RoomId;
+        dto.RoomName = session.Room?.Name;
+        return dto;
     }
 }

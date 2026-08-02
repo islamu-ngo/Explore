@@ -24,6 +24,10 @@ public sealed class GetManagedAgendaItemsBySessionRequestHandler(
             return null;
 
         var items = await agendaItemRepository.GetBySession(request.EventSessionId, cancellationToken);
-        return mapper.Map<List<EventSessionAgendaItemListDto>>(items);
+        var dtos = mapper.Map<List<EventSessionAgendaItemListDto>>(items);
+        for (var index = 0; index < dtos.Count; index++)
+            dtos[index].LocationFullName = items[index].Location?.FullName;
+
+        return dtos;
     }
 }

@@ -82,10 +82,10 @@ public sealed class EventSessionGroupLocationPrivacyHandlerTests
             new GetManagedEventSessionGroupsByEventRequest { EventId = eventId },
             CancellationToken.None);
 
-        await Assert.That(result.Single().LocationId).IsEqualTo(dto.LocationId);
-        await Assert.That(result.Single().LocationName).IsEqualTo("Private venue");
-        await Assert.That(result.Single().RoomId).IsEqualTo(dto.RoomId);
-        await Assert.That(result.Single().RoomName).IsEqualTo("Private room");
+        await Assert.That(result.Single().LocationId).IsEqualTo(entity.LocationId);
+        await Assert.That(result.Single().LocationName).IsEqualTo(entity.Location!.FullName);
+        await Assert.That(result.Single().RoomId).IsEqualTo(entity.RoomId);
+        await Assert.That(result.Single().RoomName).IsEqualTo(entity.Room!.Name);
     }
 
     [Test]
@@ -104,20 +104,44 @@ public sealed class EventSessionGroupLocationPrivacyHandlerTests
             new GetManagedEventSessionGroupDetailRequest { EventId = eventId, Id = entity.Id },
             CancellationToken.None);
 
-        await Assert.That(result!.LocationId).IsEqualTo(dto.LocationId);
-        await Assert.That(result.LocationName).IsEqualTo("Private venue");
-        await Assert.That(result.RoomId).IsEqualTo(dto.RoomId);
-        await Assert.That(result.RoomName).IsEqualTo("Private room");
+        await Assert.That(result!.LocationId).IsEqualTo(entity.LocationId);
+        await Assert.That(result.LocationName).IsEqualTo(entity.Location!.FullName);
+        await Assert.That(result.RoomId).IsEqualTo(entity.RoomId);
+        await Assert.That(result.RoomName).IsEqualTo(entity.Room!.Name);
     }
 
-    private static EventSessionGroup CreateEntity(Guid eventId) => new()
+    private static EventSessionGroup CreateEntity(Guid eventId)
     {
-        Id = Guid.NewGuid(),
-        EventId = eventId,
-        Event = null!,
-        Name = "Group",
-        Tenant = null!
-    };
+        var location = new Location
+        {
+            Id = Guid.NewGuid(),
+            FullName = "Private venue",
+            Country = "Belgium",
+            City = "Brussels",
+            Tenant = null!
+        };
+        var room = new LocationRoom
+        {
+            Id = Guid.NewGuid(),
+            LocationId = location.Id,
+            Location = location,
+            Name = "Private room",
+            Tenant = null!
+        };
+
+        return new EventSessionGroup
+        {
+            Id = Guid.NewGuid(),
+            EventId = eventId,
+            Event = null!,
+            Name = "Group",
+            LocationId = location.Id,
+            Location = location,
+            RoomId = room.Id,
+            Room = room,
+            Tenant = null!
+        };
+    }
 
     private static EventSessionGroupListDto CreateListDto(Guid eventId) => new()
     {

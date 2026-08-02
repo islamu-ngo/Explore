@@ -38,11 +38,7 @@ public sealed class GetManagedSessionsByEventRequestHandlerTests
                 Id = session.Id,
                 EventId = session.EventId,
                 EventTitle = string.Empty,
-                Title = session.Title,
-                LocationId = Guid.NewGuid(),
-                LocationFullName = "Managed venue",
-                RoomId = Guid.NewGuid(),
-                RoomName = "Managed room"
+                Title = session.Title
             })
             .ToList();
 
@@ -54,7 +50,10 @@ public sealed class GetManagedSessionsByEventRequestHandlerTests
             CancellationToken.None);
 
         await Assert.That(result).IsEquivalentTo(expectedDtos);
-        await Assert.That(result.All(dto => dto.LocationId.HasValue && dto.RoomId.HasValue)).IsTrue();
+        await Assert.That(result.Select(dto => dto.LocationId)).IsEquivalentTo(sessions.Select(session => session.LocationId));
+        await Assert.That(result.Select(dto => dto.LocationFullName)).IsEquivalentTo(sessions.Select(session => session.Location!.FullName));
+        await Assert.That(result.Select(dto => dto.RoomId)).IsEquivalentTo(sessions.Select(session => session.RoomId));
+        await Assert.That(result.Select(dto => dto.RoomName)).IsEquivalentTo(sessions.Select(session => session.Room!.Name));
         await _eventSessionRepository.Received(1).GetSessionsByEvent(eventId);
         await _eventSessionRepository.DidNotReceive()
             .GetPublicSessionsByEventAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
@@ -62,13 +61,34 @@ public sealed class GetManagedSessionsByEventRequestHandlerTests
 
     private static EventSession CreateSession(Guid eventId, string title)
     {
+        var location = new Location
+        {
+            Id = Guid.NewGuid(),
+            FullName = $"{title} venue",
+            Country = "Belgium",
+            City = "Brussels",
+            Tenant = null!
+        };
+        var room = new LocationRoom
+        {
+            Id = Guid.NewGuid(),
+            LocationId = location.Id,
+            Location = location,
+            Name = $"{title} room",
+            Tenant = null!
+        };
+
         return new EventSession
         {
             Id = Guid.NewGuid(),
             EventId = eventId,
             Event = null!,
             Tenant = null!,
-            Title = title
+            Title = title,
+            LocationId = location.Id,
+            Location = location,
+            RoomId = room.Id,
+            Room = room
         };
     }
 }

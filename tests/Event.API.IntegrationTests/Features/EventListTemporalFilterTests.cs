@@ -180,6 +180,20 @@ public class EventListTemporalFilterTests : IAsyncDisposable
             UserId = user.Id
         };
         dbContext.Actors.Add(actor);
+        var tenant = await dbContext.Tenants.SingleAsync(candidate => candidate.Id == _tenantId);
+        dbContext.TenantUsers.Add(new TenantUser
+        {
+            Id = Guid.CreateVersion7(),
+            TenantId = tenant.Id,
+            Tenant = tenant,
+            UserId = user.Id,
+            User = user,
+            ActorId = actor.Id,
+            Actor = actor,
+            StatusId = (int)TenantUserStatusEnum.Active,
+            JoinedAt = DateTime.UtcNow,
+            CreatedAt = DateTime.UtcNow
+        });
         await dbContext.SaveChangesAsync();
 
         foreach (var session in sessions)
@@ -219,7 +233,7 @@ public class EventListTemporalFilterTests : IAsyncDisposable
             .GetProperty("_embedded")
             .GetProperty("items")
             .EnumerateArray()
-            .Select(item => item.GetProperty("title").GetString() ?? string.Empty)
+            .Select(item => item.GetProperty("event").GetProperty("title").GetString() ?? string.Empty)
             .ToList();
     }
 

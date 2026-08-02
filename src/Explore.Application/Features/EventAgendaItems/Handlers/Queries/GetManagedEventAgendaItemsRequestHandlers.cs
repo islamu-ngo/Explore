@@ -33,8 +33,12 @@ public sealed class GetManagedEventAgendaItemDetailRequestHandler(
         CancellationToken cancellationToken)
     {
         var item = await repository.GetById(request.Id);
-        return item?.EventId == request.EventId
-            ? mapper.Map<EventAgendaItemDto>(item)
-            : null;
+        if (item?.EventId != request.EventId)
+            return null;
+
+        var dto = mapper.Map<EventAgendaItemDto>(item);
+        dto.LocationId = item.LocationId;
+        dto.RoomId = item.RoomId;
+        return dto;
     }
 }

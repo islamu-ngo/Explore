@@ -18,7 +18,7 @@ internal static class PublicEventEligibilityQueryExtensions
             && @event.Actor != null
             && !@event.Actor.IsDeleted
             && !@event.Actor.IsSuspended
-            && (@event.AtprotoRecordId == null
+            && ((@event.AtprotoRecordId == null
                 || dbContext.AtprotoOutboundRecordOwnerships.Any(ownership =>
                     ownership.TenantId == @event.TenantId
                     && ownership.AtprotoRecordId == @event.AtprotoRecordId
@@ -62,7 +62,7 @@ internal static class PublicEventEligibilityQueryExtensions
                         && identity.Did == @event.AtprotoRecord.Did
                         && identity.IsActive
                         && !identity.IsSuspended
-                        && !identity.IsDeleted)));
+                        && !identity.IsDeleted))));
 
     internal static IQueryable<EventSession> WherePubliclyEligible(
         this IQueryable<EventSession> query,

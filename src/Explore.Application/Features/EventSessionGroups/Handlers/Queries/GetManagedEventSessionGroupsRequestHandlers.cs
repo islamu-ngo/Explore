@@ -19,7 +19,18 @@ public sealed class GetManagedEventSessionGroupsByEventRequestHandler(
         CancellationToken cancellationToken)
     {
         var groups = await repository.GetActiveByEventAsync(request.EventId, cancellationToken);
-        return mapper.Map<List<EventSessionGroupListDto>>(groups);
+        var dtos = mapper.Map<List<EventSessionGroupListDto>>(groups);
+        for (var index = 0; index < dtos.Count; index++)
+        {
+            var group = groups[index];
+            var dto = dtos[index];
+            dto.LocationId = group.LocationId;
+            dto.LocationName = group.Location?.FullName;
+            dto.RoomId = group.RoomId;
+            dto.RoomName = group.Room?.Name;
+        }
+
+        return dtos;
     }
 }
 
@@ -33,8 +44,14 @@ public sealed class GetManagedEventSessionGroupDetailRequestHandler(
         CancellationToken cancellationToken)
     {
         var group = await repository.GetWithDetailsAsync(request.Id, cancellationToken);
-        return group?.EventId == request.EventId
-            ? mapper.Map<EventSessionGroupDto>(group)
-            : null;
+        if (group?.EventId != request.EventId)
+            return null;
+
+        var dto = mapper.Map<EventSessionGroupDto>(group);
+        dto.LocationId = group.LocationId;
+        dto.LocationName = group.Location?.FullName;
+        dto.RoomId = group.RoomId;
+        dto.RoomName = group.Room?.Name;
+        return dto;
     }
 }

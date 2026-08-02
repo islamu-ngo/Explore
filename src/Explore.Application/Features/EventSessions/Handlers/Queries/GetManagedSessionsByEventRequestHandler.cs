@@ -27,6 +27,18 @@ public class GetManagedSessionsByEventRequestHandler : IRequestHandler<GetManage
         CancellationToken cancellationToken)
     {
         var eventSessions = await _eventSessionRepository.GetSessionsByEvent(request.EventId);
-        return _mapper.Map<List<EventSessionListDto>>(eventSessions);
+        var dtos = _mapper.Map<List<EventSessionListDto>>(eventSessions);
+        for (var index = 0; index < dtos.Count; index++)
+        {
+            var session = eventSessions[index];
+            var dto = dtos[index];
+            dto.LocationId = session.LocationId;
+            dto.LocationFullName = session.Location?.FullName;
+            dto.LocationCity = session.Location?.City;
+            dto.RoomId = session.RoomId;
+            dto.RoomName = session.Room?.Name;
+        }
+
+        return dtos;
     }
 }
