@@ -104,7 +104,7 @@ public sealed class AspireLocalInfrastructureArchitectureTests
     }
 
     [Test]
-    public async Task ExternalPrivacyErasureDatabase_IsManagedWheneverAspireUsesLocalData()
+    public async Task PrivacyErasureAuthority_UsesTopologySpecificManagedResources()
     {
         string appHost = await File.ReadAllTextAsync(
             Path.Combine(RepoRoot, "src", "Explore.AppHost", "AppHost.cs"));
@@ -112,10 +112,17 @@ public sealed class AspireLocalInfrastructureArchitectureTests
         await Assert.That(appHost).Contains("if (usesExternalPrivacyErasureAuthority)");
         await Assert.That(appHost).DoesNotContain(
             "usesExternalPrivacyErasureAuthority && runMode == AspireRunMode.FullLocal");
+        await Assert.That(appHost).Contains("PrivacyErasureAuthorityTopology.EmbeddedSqlite");
+        await Assert.That(appHost).Contains("WithEmbeddedPrivacyErasureAuthority");
+        await Assert.That(appHost).Contains("/app/data/privacy_erasure_authority.db");
+        await Assert.That(appHost).Contains("islamu-event-privacy-erasure-authority-data");
+        await Assert.That(appHost).Contains("WithLocalPrivacyErasureAuthorityDatabase");
+        await Assert.That(appHost).Contains("WithExternalPrivacyErasureAuthorityDatabase");
         await Assert.That(appHost).Contains(
-            ".WithReference(privacyErasureDatabase, connectionName: \"PrivacyErasureAuthorityMigrator\")");
-        await Assert.That(appHost).Contains(
-            ".WithReference(privacyErasureDatabase, connectionName: \"PrivacyErasureAuthority\")");
+            "var credentialPrefix = $\"PrivacyErasureAuthorityDatabase__{role}__\";");
+        await Assert.That(appHost).Contains("PrimaryDatabaseRole.Migrator");
+        await Assert.That(appHost).Contains("PrimaryDatabaseRole.Runtime");
+        await Assert.That(appHost).DoesNotContain("connectionName: \"PrivacyErasureAuthority");
 
         int blazorIndex = appHost.IndexOf("var exploreBlazor =", StringComparison.Ordinal);
         string blazorComposition = appHost[blazorIndex..];

@@ -28,6 +28,20 @@ public sealed class SettingMutationBoundaryArchitectureTests
     }
 
     [Test]
+    public async Task PersistenceLockImplementations_ShouldRemainProviderNeutral()
+    {
+        Type[] lockContracts = [typeof(ISettingMutationLock), typeof(IAtprotoSessionRefreshLock)];
+        string[] violations = typeof(RelationalSettingMutationLock).Assembly.GetTypes()
+            .Where(type => lockContracts.Any(contract => contract.IsAssignableFrom(type))
+                && !type.IsInterface
+                && type.Name.Contains("Postgres", StringComparison.OrdinalIgnoreCase))
+            .Select(type => type.FullName!)
+            .ToArray();
+
+        await Assert.That(violations).IsEmpty();
+    }
+
+    [Test]
     public async Task SettingRepositoryContracts_ShouldNotInheritGenericCrud()
     {
         Type genericRepository = typeof(IGenericRepository<,>);

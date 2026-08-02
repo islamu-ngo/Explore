@@ -16,8 +16,8 @@ public sealed class DurableSideEffectBoundaryTests
         @"TickerQ|TickerFunction|AddTickerQ|UseTickerQ|ITicker|TimeTicker|CronTicker",
         RegexOptions.Compiled);
     private static readonly Regex SchedulerPayloadSensitivePattern = new(
-        @"EmailMessage|Recipient|RecipientEmail|ToAddress|Subject|Body|HtmlBody|TextBody|Smtp|ProviderMessageId|RawError|ExceptionMessage|AccessToken|Secret",
-        RegexOptions.Compiled | RegexOptions.IgnoreCase);
+        @"(?:(?<![A-Za-z0-9])|(?<=[a-z0-9]))(?i:EmailMessage|Recipient|RecipientEmail|ToAddress|Subject|Body|HtmlBody|TextBody|Smtp|ProviderMessageId|RawError|ExceptionMessage|AccessToken|Secret)(?![a-z0-9])|(?<!User)(?:(?<![A-Za-z0-9])|(?<=[a-z0-9]))(?i:Secrets)(?![a-z0-9])",
+        RegexOptions.Compiled);
 
     [Test]
     public async Task ApplicationHandlersShouldNotSendEmailOrPublishBrokerMessagesDirectly()
@@ -120,11 +120,43 @@ public sealed class DurableSideEffectBoundaryTests
         foreach (string file in EnumerateSourceFiles(schedulerRoot, "*.cs"))
         {
             string content = await File.ReadAllTextAsync(file);
-            AddForbiddenMatches(violations, file, content, SchedulerPayloadSensitivePattern, "scheduler payload or sensitive email field");
+            AddForbiddenMatchesIgnoringSyntacticallyIrrelevantLines(
+                violations,
+                file,
+                content,
+                SchedulerPayloadSensitivePattern,
+                "scheduler payload or sensitive email field");
         }
 
         await Assert.That(violations).IsEmpty()
             .Because("TickerQ jobs must trigger pointer-only or payload-free work; email body, recipients, subjects, provider IDs, raw errors, and secrets stay out of scheduler state.");
+    }
+
+    [Test]
+    public async Task TickerQPayloadScannerShouldIgnoreUsingDirectivesButFlagSensitiveDeclarations()
+    {
+        const string content = """
+            using Explore.Secrets.Database;
+
+            public sealed class SchedulerState
+            {
+                public string Secret { get; init; } = string.Empty;
+                public string SchedulerSecretPayload { get; init; } = string.Empty;
+                var configuration = new ConfigurationBuilder().AddUserSecrets<SchedulerState>();
+            }
+            """;
+        var violations = new List<string>();
+
+        AddForbiddenMatchesIgnoringSyntacticallyIrrelevantLines(
+            violations,
+            Path.Combine(FindRepoRoot(), "tests", "Event.Architecture.Tests", "DurableSideEffectBoundaryTests.cs"),
+            content,
+            SchedulerPayloadSensitivePattern,
+            "scheduler payload or sensitive email field");
+
+        await Assert.That(violations.Count).IsEqualTo(2);
+        await Assert.That(violations[0]).Contains(":5 contains scheduler payload or sensitive email field: 'Secret'");
+        await Assert.That(violations[1]).Contains(":6 contains scheduler payload or sensitive email field: 'Secret'");
     }
 
     private static IEnumerable<string> EnumerateHandlerSourceFiles(string root)
@@ -160,6 +192,58 @@ public sealed class DurableSideEffectBoundaryTests
         {
             violations.Add($"{GetRelativePath(FindRepoRoot(), file)}:{GetLineNumber(content, match.Index)} contains {description}: '{match.Value.Trim()}'.");
         }
+    }
+
+    private static void AddForbiddenMatchesIgnoringSyntacticallyIrrelevantLines(
+        ICollection<string> violations,
+        string file,
+        string content,
+        Regex pattern,
+        string description)
+    {
+        string maskedContent = MaskSyntacticallyIrrelevantLines(content);
+
+        foreach (Match match in pattern.Matches(maskedContent))
+        {
+            string matchedValue = content.Substring(match.Index, match.Length);
+            violations.Add($"{GetRelativePath(FindRepoRoot(), file)}:{GetLineNumber(content, match.Index)} contains {description}: '{matchedValue.Trim()}'.");
+        }
+    }
+
+    private static string MaskSyntacticallyIrrelevantLines(string content)
+    {
+        string[] lines = content.Split('\n');
+        bool inBlockComment = false;
+
+        for (int index = 0; index < lines.Length; index++)
+        {
+            string line = lines[index];
+            string trimmed = line.TrimStart();
+            bool masksLine = inBlockComment
+                || string.IsNullOrWhiteSpace(line)
+                || trimmed.StartsWith("using ", StringComparison.Ordinal)
+                || trimmed.StartsWith("global using ", StringComparison.Ordinal)
+                || trimmed.StartsWith("//", StringComparison.Ordinal)
+                || trimmed.StartsWith('#')
+                || trimmed.StartsWith("/*", StringComparison.Ordinal)
+                || trimmed.StartsWith('*');
+
+            if (masksLine)
+            {
+                lines[index] = new string(' ', line.Length);
+            }
+
+            if (inBlockComment && trimmed.Contains("*/", StringComparison.Ordinal))
+            {
+                inBlockComment = false;
+            }
+            else if (!inBlockComment && trimmed.StartsWith("/*", StringComparison.Ordinal) && !trimmed.Contains("*/", StringComparison.Ordinal))
+            {
+                inBlockComment = true;
+            }
+        }
+
+        return string.Join('\n', lines);
     }
 
     private static bool ReferencesEmailTransport(string content)
