@@ -172,6 +172,17 @@ public class StorageObjectRepository : GenericRepository<StorageObject, Guid>, I
             .AnyAsync(evidence => evidence.DocumentStorageObjectId == id, cancellationToken);
     }
 
+    public Task<bool> IsRegistrationAnswerFileQuarantinedAsync(Guid id, CancellationToken cancellationToken)
+    {
+        return _dbContext.RegistrationAnswerFiles
+            .IgnoreQueryFilters([QueryFilterNames.SoftDelete])
+            .AsNoTracking()
+            .AnyAsync(file =>
+                file.StorageObjectId == id &&
+                file.QuarantineState != RegistrationAnswerFileQuarantineStates.Released,
+                cancellationToken);
+    }
+
     private IQueryable<StorageObject> BaseReconciliationQuery()
     {
         return _dbContext.StorageObjects

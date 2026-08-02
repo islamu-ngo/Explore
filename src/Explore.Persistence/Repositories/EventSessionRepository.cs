@@ -498,7 +498,7 @@ public class EventSessionRepository : GenericRepository<EventSession, Guid>, IEv
     private IQueryable<EventSession> ApplyTextSearchFilter(IQueryable<EventSession> query, EventSessionCustomPropertyProjectionFilter filter)
     {
         var (ns, key, searchTerm) = ((string, string, string))filter.Value;
-        var pattern = $"%{searchTerm}%";
+        var pattern = $"%{searchTerm.ToLowerInvariant()}%";
         var visibleExposureLevels = CustomPropertyExposureScope.VisibleAtOrBelow(filter.ExposureCeiling);
         return query.Where(s => _dbContext.EventSessionCustomPropertyProjections.Any(p =>
             p.EventSessionId == s.Id &&
@@ -507,20 +507,20 @@ public class EventSessionRepository : GenericRepository<EventSession, Guid>, IEv
             visibleExposureLevels.Contains(p.ExposureLevel) &&
             p.IsSearchable &&
             p.NormalizedValue != null &&
-            EF.Functions.ILike(p.NormalizedValue, pattern)));
+            EF.Functions.Like(p.NormalizedValue, pattern)));
     }
 
     private IQueryable<EventSession> ApplyGlobalTextSearchFilter(IQueryable<EventSession> query, EventSessionCustomPropertyProjectionFilter filter)
     {
         var searchTerm = (string)filter.Value;
-        var pattern = $"%{searchTerm}%";
+        var pattern = $"%{searchTerm.ToLowerInvariant()}%";
         var visibleExposureLevels = CustomPropertyExposureScope.VisibleAtOrBelow(filter.ExposureCeiling);
         return query.Where(s => _dbContext.EventSessionCustomPropertyProjections.Any(p =>
             p.EventSessionId == s.Id &&
             visibleExposureLevels.Contains(p.ExposureLevel) &&
             p.IsSearchable &&
             p.NormalizedValue != null &&
-            EF.Functions.ILike(p.NormalizedValue, pattern)));
+            EF.Functions.Like(p.NormalizedValue, pattern)));
     }
 
     private IQueryable<EventSession> ApplyExistsFilter(IQueryable<EventSession> query, EventSessionCustomPropertyProjectionFilter filter)

@@ -3,6 +3,7 @@
 
 using Explore.Application.Contracts.Persistence;
 using Explore.Domain;
+using Explore.Persistence.Database;
 using Microsoft.EntityFrameworkCore;
 
 namespace Explore.Persistence.Repositories;
@@ -150,37 +151,25 @@ public class GroupRepository : GenericRepository<Group, Guid>, IGroupRepository
 
     public async Task<bool> WouldCreateHierarchyCycle(Guid groupId, Guid parentGroupId, Guid tenantId, CancellationToken cancellationToken)
     {
-        var result = await _dbContext.Database
-            .SqlQueryRaw<bool>(
-                """
-                WITH RECURSIVE ancestors AS (
-                    SELECT id, group_id, parent_group_tenant_id, 1 AS depth
-                    FROM group_tenants
-                    WHERE group_id = {0} AND tenant_id = {1} AND NOT is_deleted
+        var current = await FindByGroupId(parentGroupId, tenantId, cancellationToken);
+        var visited = new HashSet<Guid>();
 
-                    UNION ALL
+        for (var depth = 0; current is not null && depth <= GroupHierarchyRules.MaxDepth; depth++)
+        {
+            if (current.GroupId == groupId)
+            {
+                return true;
+            }
 
-                    SELECT participation.id, participation.group_id,
-                           participation.parent_group_tenant_id, ancestors.depth + 1
-                    FROM group_tenants participation
-                    INNER JOIN ancestors ON participation.id = ancestors.parent_group_tenant_id
-                    WHERE participation.tenant_id = {1}
-                      AND NOT participation.is_deleted
-                      AND ancestors.depth < {2}
-                )
-                SELECT EXISTS (
-                    SELECT 1
-                    FROM ancestors
-                    WHERE group_id = {3}
-                ) AS "Value"
-                """,
-                parentGroupId,
-                tenantId,
-                GroupHierarchyRules.MaxDepth + 1,
-                groupId)
-            .SingleAsync(cancellationToken);
+            if (!visited.Add(current.Id) || current.ParentGroupTenantId is not { } parentId)
+            {
+                return false;
+            }
 
-        return result;
+            current = await FindById(parentId, tenantId, cancellationToken);
+        }
+
+        return false;
     }
 
     public async Task<bool> WouldExceedHierarchyDepth(Guid? parentGroupId, Guid tenantId, int maxDepth, CancellationToken cancellationToken)
@@ -190,86 +179,110 @@ public class GroupRepository : GenericRepository<Group, Guid>, IGroupRepository
             return false;
         }
 
-        var depth = await _dbContext.Database
-            .SqlQueryRaw<int>(
-                """
-                WITH RECURSIVE ancestors AS (
-                    SELECT id, parent_group_tenant_id, 1 AS depth
-                    FROM group_tenants
-                    WHERE group_id = {0} AND tenant_id = {1} AND NOT is_deleted
-
-                    UNION ALL
-
-                    SELECT participation.id, participation.parent_group_tenant_id,
-                           ancestors.depth + 1
-                    FROM group_tenants participation
-                    INNER JOIN ancestors ON participation.id = ancestors.parent_group_tenant_id
-                    WHERE participation.tenant_id = {1}
-                      AND NOT participation.is_deleted
-                      AND ancestors.depth < {2}
-                )
-                SELECT COALESCE(MAX(depth), 0) AS "Value"
-                FROM ancestors
-                """,
-                parentGroupId.Value,
-                tenantId,
-                maxDepth + 1)
-            .SingleAsync(cancellationToken);
-
-        return depth >= maxDepth;
+        return await GetAncestorDepth(parentGroupId.Value, tenantId, maxDepth, cancellationToken) >= maxDepth;
     }
 
     public async Task<bool> WouldExceedHierarchyDepthForMove(Guid groupId, Guid? parentGroupId, Guid tenantId, int maxDepth, CancellationToken cancellationToken)
     {
-        var wouldExceedDepth = await _dbContext.Database
-            .SqlQueryRaw<bool>(
-                """
-                WITH RECURSIVE ancestors AS (
-                    SELECT id, parent_group_tenant_id, 1 AS depth
-                    FROM group_tenants
-                    WHERE group_id = {1} AND tenant_id = {2} AND NOT is_deleted
+        var parentDepth = parentGroupId.HasValue
+            ? await GetAncestorDepth(parentGroupId.Value, tenantId, maxDepth + 1, cancellationToken)
+            : 0;
+        var subtreeDepth = await GetSubtreeDepth(groupId, tenantId, maxDepth + 1, cancellationToken);
 
-                    UNION ALL
-
-                    SELECT participation.id, participation.parent_group_tenant_id,
-                           ancestors.depth + 1
-                    FROM group_tenants participation
-                    INNER JOIN ancestors ON participation.id = ancestors.parent_group_tenant_id
-                    WHERE participation.tenant_id = {2}
-                      AND NOT participation.is_deleted
-                      AND ancestors.depth < {4}
-                ),
-                descendants AS (
-                    SELECT id, 1 AS depth
-                    FROM group_tenants
-                    WHERE group_id = {0} AND tenant_id = {2} AND NOT is_deleted
-
-                    UNION ALL
-
-                    SELECT participation.id, descendants.depth + 1
-                    FROM group_tenants participation
-                    INNER JOIN descendants ON participation.parent_group_tenant_id = descendants.id
-                    WHERE participation.tenant_id = {2}
-                      AND NOT participation.is_deleted
-                      AND descendants.depth < {4}
-                ),
-                depth_summary AS (
-                    SELECT
-                        CASE WHEN {1} IS NULL THEN 0 ELSE COALESCE((SELECT MAX(depth) FROM ancestors), 0) END AS parent_depth,
-                        COALESCE((SELECT MAX(depth) FROM descendants), 1) AS subtree_depth
-                )
-                SELECT (parent_depth + subtree_depth) > {3} AS "Value"
-                FROM depth_summary
-                """,
-                groupId,
-                parentGroupId,
-                tenantId,
-                maxDepth,
-                maxDepth + 1)
-            .SingleAsync(cancellationToken);
-
-        return wouldExceedDepth;
+        return parentDepth + subtreeDepth > maxDepth;
     }
+
+    // ponytail: the domain caps hierarchy depth at eight; switch to provider-specific recursive SQL only if that ceiling grows measurably.
+    private async Task<int> GetAncestorDepth(Guid groupId, Guid tenantId, int depthLimit, CancellationToken cancellationToken)
+    {
+        var current = await FindByGroupId(groupId, tenantId, cancellationToken);
+        var visited = new HashSet<Guid>();
+        var depth = 0;
+
+        while (current is not null && depth < depthLimit)
+        {
+            depth++;
+            if (!visited.Add(current.Id))
+            {
+                return depthLimit;
+            }
+
+            if (current.ParentGroupTenantId is not { } parentId)
+            {
+                return depth;
+            }
+
+            current = await FindById(parentId, tenantId, cancellationToken);
+        }
+
+        return depth;
+    }
+
+    private async Task<int> GetSubtreeDepth(Guid groupId, Guid tenantId, int depthLimit, CancellationToken cancellationToken)
+    {
+        var root = await FindByGroupId(groupId, tenantId, cancellationToken);
+        if (root is null)
+        {
+            return 1;
+        }
+
+        var visited = new HashSet<Guid> { root.Id };
+        Guid[] frontier = [root.Id];
+        var depth = 1;
+
+        while (frontier.Length > 0 && depth < depthLimit)
+        {
+            var children = await _dbContext.GroupTenants
+                .AsNoTracking()
+                .Where(participation =>
+                    participation.TenantId == tenantId &&
+                    participation.ParentGroupTenantId.HasValue &&
+                    frontier.Contains(participation.ParentGroupTenantId.Value))
+                .Select(participation => participation.Id)
+                .ToArrayAsync(cancellationToken);
+
+            if (children.Length == 0)
+            {
+                break;
+            }
+
+            if (children.Any(childId => !visited.Add(childId)))
+            {
+                return depthLimit;
+            }
+
+            frontier = children;
+            depth++;
+        }
+
+        return depth;
+    }
+
+    private Task<HierarchyNode?> FindByGroupId(Guid groupId, Guid tenantId, CancellationToken cancellationToken)
+    {
+        return _dbContext.GroupTenants
+            .AsNoTracking()
+            .Where(participation => participation.TenantId == tenantId && participation.GroupId == groupId)
+            .Select(participation => new HierarchyNode(
+                participation.Id,
+                participation.GroupId,
+                participation.ParentGroupTenantId))
+            .SingleOrDefaultAsync(cancellationToken);
+    }
+
+    private Task<HierarchyNode?> FindById(Guid id, Guid tenantId, CancellationToken cancellationToken)
+    {
+        return _dbContext.GroupTenants
+            .AsNoTracking()
+            .Where(participation => participation.TenantId == tenantId && participation.Id == id)
+            .Select(participation => new HierarchyNode(
+                participation.Id,
+                participation.GroupId,
+                participation.ParentGroupTenantId))
+            .SingleOrDefaultAsync(cancellationToken);
+    }
+
+    private sealed record HierarchyNode(Guid Id, Guid GroupId, Guid? ParentGroupTenantId);
 
     public async Task<T> ExecuteWithHierarchyMutationLock<T>(Guid tenantId, Func<CancellationToken, Task<T>> operation, CancellationToken cancellationToken)
     {
@@ -279,10 +292,9 @@ public class GroupRepository : GenericRepository<Group, Guid>, IGroupRepository
             try
             {
                 await using var transaction = await _dbContext.Database.BeginTransactionAsync(cancellationToken);
-
-                await _dbContext.Database.ExecuteSqlRawAsync(
-                    "SELECT pg_advisory_xact_lock(hashtext({0}))",
-                    [$"group-hierarchy:{tenantId}"],
+                await using IAsyncDisposable hierarchyLease = await RelationalNamedLock.AcquireTransactionAsync(
+                    _dbContext,
+                    $"group-hierarchy:{tenantId}",
                     cancellationToken);
 
                 var result = await operation(cancellationToken);

@@ -76,8 +76,8 @@ public sealed class EventAggregateViewRepository : IEventAggregateViewRepository
     {
         if (!string.IsNullOrWhiteSpace(filter.Title))
         {
-            var title = $"%{filter.Title.Trim()}%";
-            query = query.Where(x => EF.Functions.ILike(x.Title, title));
+            var title = $"%{filter.Title.Trim().ToLowerInvariant()}%";
+            query = query.Where(x => EF.Functions.Like(x.Title.ToLower(), title));
         }
 
         if (filter.StartAtFrom.HasValue)
@@ -88,14 +88,14 @@ public sealed class EventAggregateViewRepository : IEventAggregateViewRepository
 
         if (!string.IsNullOrWhiteSpace(filter.Status))
         {
-            var status = filter.Status.Trim();
-            query = query.Where(x => EF.Functions.ILike(x.Status, status));
+            var status = filter.Status.Trim().ToLowerInvariant();
+            query = query.Where(x => EF.Functions.Like(x.Status.ToLower(), status));
         }
 
         if (!string.IsNullOrWhiteSpace(filter.Visibility))
         {
-            var visibility = filter.Visibility.Trim();
-            query = query.Where(x => EF.Functions.ILike(x.Visibility, visibility));
+            var visibility = filter.Visibility.Trim().ToLowerInvariant();
+            query = query.Where(x => EF.Functions.Like(x.Visibility.ToLower(), visibility));
         }
 
         return query;

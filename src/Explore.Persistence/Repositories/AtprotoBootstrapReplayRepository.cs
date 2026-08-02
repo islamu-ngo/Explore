@@ -1,9 +1,8 @@
 // ABOUTME: Atomically records consumed ATProto bootstrap jtis in the shared idempotency table.
-// ABOUTME: Uses PostgreSQL conflict handling so concurrent API instances permit exactly one winner.
+// ABOUTME: Reuses provider-portable idempotency claims so concurrent API instances permit one winner.
 
 using Explore.Application.Contracts.Persistence;
 using Explore.Domain;
-using Microsoft.EntityFrameworkCore;
 
 namespace Explore.Persistence.Repositories;
 
@@ -29,32 +28,10 @@ public sealed class AtprotoBootstrapReplayRepository(ExploreDbContext dbContext)
             return false;
         }
 
-        if (!dbContext.Database.IsRelational())
-        {
-            if (await dbContext.IdempotencyRecords.AnyAsync(
-                    record => record.Key == key && record.TenantId == tenantId,
-                    cancellationToken).ConfigureAwait(false))
-            {
-                return false;
-            }
-
-            dbContext.IdempotencyRecords.Add(CreateRecord(key, tenantId, now, expiresAt.UtcDateTime));
-            await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-            return true;
-        }
-
-        var id = Guid.CreateVersion7();
-        var expiresAtUtc = expiresAt.UtcDateTime;
-        var inserted = await dbContext.Database.ExecuteSqlInterpolatedAsync($"""
-            INSERT INTO idempotency_records
-                (id, key, tenant_id, request_method, request_target, request_body_hash,
-                 principal_fingerprint, status_code, created_at, expires_at)
-            VALUES
-                ({id}, {key}, {tenantId}, {"POST"}, {"/api/auth/atproto/session"}, {string.Empty},
-                 {string.Empty}, {0}, {now}, {expiresAtUtc})
-            ON CONFLICT (key, tenant_id) DO NOTHING
-            """, cancellationToken).ConfigureAwait(false);
-        return inserted == 1;
+        var claim = await new IdempotencyRepository(dbContext).TryClaimAsync(
+            CreateRecord(key, tenantId, now, expiresAt.UtcDateTime),
+            cancellationToken).ConfigureAwait(false);
+        return claim.IsOwner;
     }
 
     private static IdempotencyRecord CreateRecord(

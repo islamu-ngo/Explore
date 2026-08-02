@@ -1,8 +1,10 @@
 // ABOUTME: EF Core repository for per-period API key credit quota tracking with race-safe atomic operations.
-// ABOUTME: Uses raw SQL for atomic credit decrement and INSERT ON CONFLICT for lazy period provisioning.
+// ABOUTME: Uses provider-aware EF mutations and named locks for portable lazy period provisioning.
 
+using System.Data;
 using Explore.Application.Contracts.Persistence;
 using Explore.Domain;
+using Explore.Persistence.Database;
 using Explore.Persistence.QueryFilters;
 using Microsoft.EntityFrameworkCore;
 
@@ -37,49 +39,76 @@ public class ExternalApiKeyQuotaRepository : GenericRepository<ExternalApiKeyQuo
         int rolloverCredits,
         CancellationToken cancellationToken = default)
     {
-        var now = DateTime.UtcNow;
-        var newId = Guid.CreateVersion7();
+        if (!_dbContext.Database.IsRelational())
+        {
+            return await FindOrCreatePeriodAsync(
+                externalApiKeyId,
+                periodStart,
+                periodEnd,
+                creditLimit,
+                rolloverCredits,
+                cancellationToken);
+        }
 
-        // INSERT ON CONFLICT DO NOTHING — race-safe idempotent provisioning
-        await _dbContext.Database.ExecuteSqlInterpolatedAsync(
-            $@"INSERT INTO ""ExternalApiKeyQuotas"" (""Id"", ""ExternalApiKeyId"", ""PeriodStart"", ""PeriodEnd"", ""CreditLimit"", ""CreditsUsed"", ""RolloverCredits"", ""RequestCount"", ""CreatedAt"")
-               VALUES ({newId}, {externalApiKeyId}, {periodStart}, {periodEnd}, {creditLimit}, {0}, {rolloverCredits}, {0}, {now})
-               ON CONFLICT (""ExternalApiKeyId"", ""PeriodStart"") DO NOTHING",
-            cancellationToken);
+        if (_dbContext.Database.CurrentTransaction is not null)
+        {
+            await using IAsyncDisposable provisionLease = await AcquireProvisionTransactionLeaseAsync(
+                externalApiKeyId,
+                periodStart,
+                cancellationToken);
+            return await FindOrCreatePeriodAsync(
+                externalApiKeyId,
+                periodStart,
+                periodEnd,
+                creditLimit,
+                rolloverCredits,
+                cancellationToken);
+        }
 
-        // Return the existing or newly created row
-        var quota = await _dbContext.ExternalApiKeyQuotas
-            .Where(q => q.ExternalApiKeyId == externalApiKeyId && q.PeriodStart == periodStart)
-            .FirstAsync(cancellationToken);
-
-        return quota;
+        var strategy = _dbContext.Database.CreateExecutionStrategy();
+        return await strategy.ExecuteAsync(async () =>
+        {
+            await using var transaction = await _dbContext.Database.BeginTransactionAsync(
+                IsolationLevel.Serializable,
+                cancellationToken);
+            await using IAsyncDisposable provisionLease = await RelationalNamedLock.AcquireSessionAsync(
+                _dbContext,
+                $"external-api-key-quota:{externalApiKeyId:N}:{periodStart:yyyyMMdd}",
+                cancellationToken);
+            var quota = await FindOrCreatePeriodAsync(
+                externalApiKeyId,
+                periodStart,
+                periodEnd,
+                creditLimit,
+                rolloverCredits,
+                cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
+            return quota;
+        });
     }
 
     public async Task<bool> TryConsumeCredits(Guid quotaId, int amount, CancellationToken cancellationToken = default)
     {
-        // Atomic conditional UPDATE — race-safe credit enforcement + request counting
-        // Only succeeds if credits_used + amount <= credit_limit + rollover_credits
-        var rowsAffected = await _dbContext.Database.ExecuteSqlInterpolatedAsync(
-            $@"UPDATE ""ExternalApiKeyQuotas""
-               SET ""CreditsUsed"" = ""CreditsUsed"" + {amount},
-                   ""RequestCount"" = ""RequestCount"" + 1,
-                   ""UpdatedAt"" = {DateTime.UtcNow}
-               WHERE ""Id"" = {quotaId}
-                 AND ""CreditsUsed"" + {amount} <= ""CreditLimit"" + ""RolloverCredits""",
-            cancellationToken);
+        // Atomic conditional UPDATE — race-safe credit enforcement + request counting.
+        var rowsAffected = await _dbContext.ExternalApiKeyQuotas
+            .Where(quota => quota.Id == quotaId
+                            && quota.CreditsUsed + amount <= quota.CreditLimit + quota.RolloverCredits)
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(quota => quota.CreditsUsed, quota => quota.CreditsUsed + amount)
+                .SetProperty(quota => quota.RequestCount, quota => quota.RequestCount + 1)
+                .SetProperty(quota => quota.UpdatedAt, DateTime.UtcNow), cancellationToken);
 
         return rowsAffected > 0;
     }
 
     public async Task IncrementRequestCount(Guid quotaId, CancellationToken cancellationToken = default)
     {
-        // Atomic request count increment without credit consumption — for unlimited keys
-        await _dbContext.Database.ExecuteSqlInterpolatedAsync(
-            $@"UPDATE ""ExternalApiKeyQuotas""
-               SET ""RequestCount"" = ""RequestCount"" + 1,
-                   ""UpdatedAt"" = {DateTime.UtcNow}
-               WHERE ""Id"" = {quotaId}",
-            cancellationToken);
+        // Atomic request count increment without credit consumption — for unlimited keys.
+        await _dbContext.ExternalApiKeyQuotas
+            .Where(quota => quota.Id == quotaId)
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(quota => quota.RequestCount, quota => quota.RequestCount + 1)
+                .SetProperty(quota => quota.UpdatedAt, DateTime.UtcNow), cancellationToken);
     }
 
     public async Task<IReadOnlyList<ExternalApiKeyQuota>> GetQuotaHistory(Guid externalApiKeyId, CancellationToken cancellationToken = default)
@@ -148,5 +177,46 @@ public class ExternalApiKeyQuotaRepository : GenericRepository<ExternalApiKeyQuo
                 g.Sum(q => q.CreditsUsed),
                 g.Key.CreditLimit ?? 0))
             .ToListAsync(cancellationToken);
+    }
+
+    private Task<IAsyncDisposable> AcquireProvisionTransactionLeaseAsync(
+        Guid externalApiKeyId,
+        DateOnly periodStart,
+        CancellationToken cancellationToken) =>
+        RelationalNamedLock.AcquireTransactionAsync(
+            _dbContext,
+            $"external-api-key-quota:{externalApiKeyId:N}:{periodStart:yyyyMMdd}",
+            cancellationToken);
+
+    private async Task<ExternalApiKeyQuota> FindOrCreatePeriodAsync(
+        Guid externalApiKeyId,
+        DateOnly periodStart,
+        DateOnly periodEnd,
+        int creditLimit,
+        int rolloverCredits,
+        CancellationToken cancellationToken)
+    {
+        var quota = await _dbContext.ExternalApiKeyQuotas.SingleOrDefaultAsync(
+            current => current.ExternalApiKeyId == externalApiKeyId && current.PeriodStart == periodStart,
+            cancellationToken);
+        if (quota is not null)
+        {
+            return quota;
+        }
+
+        quota = new ExternalApiKeyQuota
+        {
+            Id = Guid.CreateVersion7(),
+            ExternalApiKeyId = externalApiKeyId,
+            ExternalApiKey = null!,
+            PeriodStart = periodStart,
+            PeriodEnd = periodEnd,
+            CreditLimit = creditLimit,
+            RolloverCredits = rolloverCredits,
+            CreatedAt = DateTime.UtcNow,
+        };
+        await _dbContext.ExternalApiKeyQuotas.AddAsync(quota, cancellationToken);
+        await _dbContext.SaveChangesAsync(cancellationToken);
+        return quota;
     }
 }

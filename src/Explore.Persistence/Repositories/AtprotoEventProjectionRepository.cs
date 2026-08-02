@@ -21,10 +21,10 @@ public sealed class AtprotoEventProjectionRepository(ExploreDbContext dbContext)
 
         if (!string.IsNullOrWhiteSpace(query.SearchTerm))
         {
-            string term = query.SearchTerm.Trim();
+            string pattern = $"%{query.SearchTerm.Trim().ToLowerInvariant()}%";
             filtered = filtered.Where(value =>
-                EF.Functions.ILike(value.Name, $"%{term}%")
-                || (value.Description != null && EF.Functions.ILike(value.Description, $"%{term}%")));
+                EF.Functions.Like(value.Name.ToLower(), pattern)
+                || (value.Description != null && EF.Functions.Like(value.Description.ToLower(), pattern)));
         }
 
         if (query.DateFrom.HasValue)

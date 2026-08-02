@@ -234,7 +234,7 @@ public class ActorRepository : GenericRepository<Actor, Guid>, IActorRepository
             return [];
         }
 
-        string pattern = $"%{trimmedTerm}%";
+        string pattern = $"%{trimmedTerm.ToLowerInvariant()}%";
 
         return await _dbContext.Actors
             .AsNoTracking()
@@ -244,10 +244,10 @@ public class ActorRepository : GenericRepository<Actor, Guid>, IActorRepository
             .Where(actor => actor.ActorTypeId == (int)ActorTypeEnum.User
                 || actor.ActorTypeId == (int)ActorTypeEnum.Organization)
             .Where(actor => actor.Pii != null
-                && (EF.Functions.ILike(actor.Pii.DisplayName, pattern)
+                && (EF.Functions.Like(actor.Pii.DisplayName.ToLower(), pattern)
                     || actor.AtprotoIdentities.Any(identity =>
-                        identity.Handle != null && EF.Functions.ILike(identity.Handle, pattern))
-                    || (actor.Description != null && EF.Functions.ILike(actor.Description, pattern))))
+                        identity.Handle != null && EF.Functions.Like(identity.Handle.ToLower(), pattern))
+                    || (actor.Description != null && EF.Functions.Like(actor.Description.ToLower(), pattern))))
             .OrderBy(actor => actor.Pii.DisplayName)
             .ThenBy(actor => actor.Id)
             .Take(limit)

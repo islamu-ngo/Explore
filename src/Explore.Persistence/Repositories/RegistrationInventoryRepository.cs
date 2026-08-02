@@ -1,12 +1,17 @@
 // ABOUTME: EF Core repository for ordered capacity-pool locks and registration inventory hold persistence.
 // ABOUTME: Counts active and consumed reservations together so capacity cannot be reallocated after checkout.
 
+using System.Data;
 using Explore.Application.Contracts.Persistence;
 using Explore.Domain;
 using Explore.Domain.Enums;
 using Explore.Domain.Services.Registration;
+using Explore.Persistence.Database;
 using Explore.Persistence.QueryFilters;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Storage;
 
 namespace Explore.Persistence.Repositories;
 
@@ -316,30 +321,139 @@ public sealed class RegistrationInventoryRepository(ExploreDbContext dbContext) 
             (int)RegistrationOrderStatusEnum.Waitlisted,
             (int)RegistrationOrderStatusEnum.NeedsReconciliation
         ];
-        int affected = await dbContext.Database.ExecuteSqlInterpolatedAsync($"""
+
+        string providerName = dbContext.Database.ProviderName
+            ?? throw new InvalidOperationException("Registration inventory requires a relational database provider.");
+        if (providerName == RelationalNamedLock.PostgreSqlProvider)
+        {
+            int affected = await dbContext.Database.ExecuteSqlRawAsync(
+                BuildPostgreSqlHoldExpiryCommand(dbContext),
+                [
+                    (int)RegistrationInventoryHoldStatusEnum.Expired,
+                    utcNow,
+                    Guid.CreateVersion7(),
+                    holdId,
+                    (int)RegistrationInventoryHoldStatusEnum.Active,
+                    (int)RegistrationOrderStatusEnum.NeedsReconciliation,
+                    Guid.CreateVersion7(),
+                    recoverableOrderStatusIds
+                ],
+                cancellationToken);
+            return affected == 1;
+        }
+
+        if (providerName is not (RelationalNamedLock.SqliteProvider or
+            RelationalNamedLock.SqlServerProvider or
+            RelationalNamedLock.MySqlProvider))
+        {
+            throw new InvalidOperationException($"Unsupported registration inventory provider '{providerName}'.");
+        }
+
+        await using var transaction = dbContext.Database.CurrentTransaction is null
+            ? await dbContext.Database.BeginTransactionAsync(IsolationLevel.Serializable, cancellationToken)
+            : null;
+        await using IAsyncDisposable expiryLease = await RelationalNamedLock.AcquireTransactionAsync(
+            dbContext,
+            $"registration-inventory-hold-expiry:{holdId:N}",
+            cancellationToken);
+        Guid holdStamp = Guid.CreateVersion7();
+        int expired = await dbContext.RegistrationInventoryHolds
+            .IgnoreQueryFilters([QueryFilterNames.Tenant])
+            .Where(hold => hold.Id == holdId
+                && hold.RegistrationInventoryHoldStatusId == (int)RegistrationInventoryHoldStatusEnum.Active
+                && hold.ExpiresAt <= utcNow
+                && !hold.IsDeleted)
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(hold => hold.RegistrationInventoryHoldStatusId, (int)RegistrationInventoryHoldStatusEnum.Expired)
+                .SetProperty(hold => hold.ReleasedAt, utcNow)
+                .SetProperty(hold => hold.UpdatedAt, utcNow)
+                .SetProperty(hold => hold.ConcurrencyStamp, holdStamp), cancellationToken);
+        if (expired != 1)
+        {
+            return false;
+        }
+
+        var owner = await dbContext.RegistrationInventoryHolds
+            .IgnoreQueryFilters([QueryFilterNames.Tenant])
+            .AsNoTracking()
+            .Where(hold => hold.Id == holdId && hold.ConcurrencyStamp == holdStamp)
+            .Select(hold => new { hold.TenantId, hold.RegistrationOrderId })
+            .SingleAsync(cancellationToken);
+        int affectedOrder = await dbContext.RegistrationOrders
+            .IgnoreQueryFilters([QueryFilterNames.Tenant])
+            .Where(order => order.TenantId == owner.TenantId
+                && order.Id == owner.RegistrationOrderId
+                && recoverableOrderStatusIds.Contains(order.RegistrationOrderStatusId)
+                && !order.IsDeleted)
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(order => order.RegistrationOrderStatusId, (int)RegistrationOrderStatusEnum.NeedsReconciliation)
+                .SetProperty(order => order.UpdatedAt, utcNow)
+                .SetProperty(order => order.ConcurrencyStamp, Guid.CreateVersion7()), cancellationToken);
+
+        if (transaction is not null)
+        {
+            await transaction.CommitAsync(cancellationToken);
+        }
+
+        return affectedOrder == 1;
+    }
+
+    internal static string BuildPostgreSqlHoldExpiryCommand(ExploreDbContext context)
+    {
+        ArgumentNullException.ThrowIfNull(context);
+        ISqlGenerationHelper sql = context.GetService<ISqlGenerationHelper>();
+        IEntityType hold = context.Model.FindEntityType(typeof(RegistrationInventoryHold))
+            ?? throw new InvalidOperationException("Registration inventory hold metadata is unavailable.");
+        IEntityType order = context.Model.FindEntityType(typeof(RegistrationOrder))
+            ?? throw new InvalidOperationException("Registration order metadata is unavailable.");
+        string holds = sql.DelimitIdentifier(hold.GetTableName()!, hold.GetSchema());
+        string orders = sql.DelimitIdentifier(order.GetTableName()!, order.GetSchema());
+        var holdStore = StoreObjectIdentifier.Table(hold.GetTableName()!, hold.GetSchema());
+        var orderStore = StoreObjectIdentifier.Table(order.GetTableName()!, order.GetSchema());
+        string HoldColumn(string propertyName) =>
+            sql.DelimitIdentifier(hold.FindProperty(propertyName)!.GetColumnName(holdStore)!);
+        string OrderColumn(string propertyName) =>
+            sql.DelimitIdentifier(order.FindProperty(propertyName)!.GetColumnName(orderStore)!);
+
+        string holdStatus = HoldColumn(nameof(RegistrationInventoryHold.RegistrationInventoryHoldStatusId));
+        string holdReleasedAt = HoldColumn(nameof(RegistrationInventoryHold.ReleasedAt));
+        string holdUpdatedAt = HoldColumn(nameof(RegistrationInventoryHold.UpdatedAt));
+        string holdStamp = HoldColumn(nameof(RegistrationInventoryHold.ConcurrencyStamp));
+        string holdId = HoldColumn(nameof(RegistrationInventoryHold.Id));
+        string holdExpiresAt = HoldColumn(nameof(RegistrationInventoryHold.ExpiresAt));
+        string holdDeleted = HoldColumn(nameof(RegistrationInventoryHold.IsDeleted));
+        string holdTenant = HoldColumn(nameof(RegistrationInventoryHold.TenantId));
+        string holdOrder = HoldColumn(nameof(RegistrationInventoryHold.RegistrationOrderId));
+        string orderStatus = OrderColumn(nameof(RegistrationOrder.RegistrationOrderStatusId));
+        string orderUpdatedAt = OrderColumn(nameof(RegistrationOrder.UpdatedAt));
+        string orderStamp = OrderColumn(nameof(RegistrationOrder.ConcurrencyStamp));
+        string orderTenant = OrderColumn(nameof(RegistrationOrder.TenantId));
+        string orderId = OrderColumn(nameof(RegistrationOrder.Id));
+        string orderDeleted = OrderColumn(nameof(RegistrationOrder.IsDeleted));
+
+        return $$"""
             WITH expired_hold AS (
-                UPDATE registration_inventory_holds
-                SET registration_inventory_hold_status_id = {(int)RegistrationInventoryHoldStatusEnum.Expired},
-                    released_at = {utcNow},
-                    updated_at = {utcNow},
-                    concurrency_stamp = {Guid.CreateVersion7()}
-                WHERE id = {holdId}
-                  AND registration_inventory_hold_status_id = {(int)RegistrationInventoryHoldStatusEnum.Active}
-                  AND expires_at <= {utcNow}
-                  AND is_deleted = false
-                RETURNING tenant_id, registration_order_id
+                UPDATE {{holds}}
+                SET {{holdStatus}} = {0},
+                    {{holdReleasedAt}} = {1},
+                    {{holdUpdatedAt}} = {1},
+                    {{holdStamp}} = {2}
+                WHERE {{holdId}} = {3}
+                  AND {{holdStatus}} = {4}
+                  AND {{holdExpiresAt}} <= {1}
+                  AND {{holdDeleted}} = false
+                RETURNING {{holdTenant}}, {{holdOrder}}
             )
-            UPDATE registration_orders AS registration_order
-            SET registration_order_status_id = {(int)RegistrationOrderStatusEnum.NeedsReconciliation},
-                updated_at = {utcNow},
-                concurrency_stamp = {Guid.CreateVersion7()}
+            UPDATE {{orders}} AS registration_order
+            SET {{orderStatus}} = {5},
+                {{orderUpdatedAt}} = {1},
+                {{orderStamp}} = {6}
             FROM expired_hold
-            WHERE registration_order.tenant_id = expired_hold.tenant_id
-              AND registration_order.id = expired_hold.registration_order_id
-              AND registration_order.registration_order_status_id = ANY({recoverableOrderStatusIds})
-              AND registration_order.is_deleted = false
-            """, cancellationToken);
-        return affected == 1;
+            WHERE registration_order.{{orderTenant}} = expired_hold.{{holdTenant}}
+              AND registration_order.{{orderId}} = expired_hold.{{holdOrder}}
+              AND registration_order.{{orderStatus}} = ANY({7})
+              AND registration_order.{{orderDeleted}} = false
+            """;
     }
 
     public async Task<bool> TryConsumeActiveHoldAsync(Guid holdId, DateTime utcNow, CancellationToken cancellationToken)
