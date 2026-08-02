@@ -15,7 +15,7 @@ namespace Explore.Persistence.DataProtection.Migrations.MariaDb.Migrations
                 .Annotation("MySql:CharSet", "utf8mb4");
 
             migrationBuilder.CreateTable(
-                name: "islamu_event_data_protection_keys",
+                name: "ie_data_protection_keys",
                 columns: table => new
                 {
                     id = table.Column<int>(type: "int", nullable: false)
@@ -27,7 +27,7 @@ namespace Explore.Persistence.DataProtection.Migrations.MariaDb.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("pk_islamu_event_data_protection_keys", x => x.id);
+                    table.PrimaryKey("pk_ie_data_protection_keys", x => x.id);
                 })
                 .Annotation("MySql:CharSet", "utf8mb4");
         }
@@ -36,7 +36,7 @@ namespace Explore.Persistence.DataProtection.Migrations.MariaDb.Migrations
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropTable(
-                name: "islamu_event_data_protection_keys");
+                name: "ie_data_protection_keys");
         }
     }
 }

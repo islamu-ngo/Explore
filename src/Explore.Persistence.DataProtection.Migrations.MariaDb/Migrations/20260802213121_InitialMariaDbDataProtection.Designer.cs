@@ -11,7 +11,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Explore.Persistence.DataProtection.Migrations.MariaDb.Migrations
 {
     [DbContext(typeof(DataProtectionKeyContext))]
-    [Migration("20260802192234_InitialMariaDbDataProtection")]
+    [Migration("20260802213121_InitialMariaDbDataProtection")]
     partial class InitialMariaDbDataProtection
     {
         /// <inheritdoc />
@@ -42,9 +42,9 @@ namespace Explore.Persistence.DataProtection.Migrations.MariaDb.Migrations
                         .HasColumnName("xml");
 
                     b.HasKey("Id")
-                        .HasName("pk_islamu_event_data_protection_keys");
+                        .HasName("pk_ie_data_protection_keys");
 
-                    b.ToTable("islamu_event_data_protection_keys", (string)null);
+                    b.ToTable("ie_data_protection_keys", (string)null);
                 });
 #pragma warning restore 612, 618
         }
