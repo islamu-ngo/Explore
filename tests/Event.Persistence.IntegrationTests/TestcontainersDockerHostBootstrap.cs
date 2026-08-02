@@ -22,11 +22,20 @@ internal static class TestcontainersDockerHostBootstrap
         }
 
         var dockerDesktopSocket = Path.Combine(userProfile, ".docker", "desktop", "docker.sock");
-        if (!File.Exists(dockerDesktopSocket))
+        if (File.Exists(dockerDesktopSocket))
         {
+            Environment.SetEnvironmentVariable("DOCKER_HOST", $"unix://{dockerDesktopSocket}");
             return;
         }
 
-        Environment.SetEnvironmentVariable("DOCKER_HOST", $"unix://{dockerDesktopSocket}");
+        var runtimeDirectory = Environment.GetEnvironmentVariable("XDG_RUNTIME_DIR");
+        if (!string.IsNullOrWhiteSpace(runtimeDirectory))
+        {
+            var podmanSocket = Path.Combine(runtimeDirectory, "podman", "podman.sock");
+            if (File.Exists(podmanSocket))
+            {
+                Environment.SetEnvironmentVariable("DOCKER_HOST", $"unix://{podmanSocket}");
+            }
+        }
     }
 }

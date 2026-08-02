@@ -40,6 +40,8 @@ public class PostgreSqlApiWebApplicationFactory : WebApplicationFactory<Program>
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Testing");
+        foreach (var (key, value) in _additionalConfig)
+            builder.UseSetting(key, value);
 
         builder.ConfigureAppConfiguration((_, config) =>
         {

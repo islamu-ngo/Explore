@@ -3,6 +3,7 @@
 
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Domain;
+using Explore.Domain.Enums;
 using Explore.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
@@ -50,6 +51,12 @@ public class ProjectionTestContainerFixture : IAsyncInitializer, IAsyncDisposabl
             new TenantStatus { Id = 1, MasterCode = "PENDING", FullName = "Pending" },
             new TenantStatus { Id = 2, MasterCode = "ACTIVE", FullName = "Active" });
         context.Set<EventStatus>().Add(new EventStatus { Id = 1, MasterCode = "DRAFT", FullName = "Draft" });
+        context.Set<EventProvenanceType>().Add(new EventProvenanceType
+        {
+            Id = (int)EventProvenanceTypeEnum.OrganizerCreated,
+            MasterCode = "ORGANIZER_CREATED",
+            FullName = "Organizer created"
+        });
         context.Set<EventSessionStatus>().Add(new EventSessionStatus { Id = 1, MasterCode = "DRAFT", FullName = "Draft" });
         context.Set<EventFormat>().Add(new EventFormat { Id = 1, MasterCode = "LOCAL", FullName = "Local" });
         context.Set<VisibilityType>().Add(new VisibilityType { Id = 1, MasterCode = "PUBLIC", FullName = "Public" });

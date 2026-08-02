@@ -1,5 +1,5 @@
 // ABOUTME: Abstract base fixture managing PostgreSQL container lifecycle, migrations, seeding, and Respawn reset.
-// Subclassed by RealRuntimeApiFixture and StressApiFixture with profile-specific configuration.
+// ABOUTME: Subclassed by RealRuntimeApiFixture and StressApiFixture with profile-specific configuration.
 
 using System.Threading.Channels;
 using Explore.Persistence;
@@ -28,8 +28,7 @@ public abstract class PostgreSqlApiFixtureBase : IAsyncInitializer, IAsyncDispos
 
     protected PostgreSqlApiFixtureBase()
     {
-        _container = new PostgreSqlBuilder()
-            .WithImage("postgres:18-alpine")
+        _container = new PostgreSqlBuilder("postgres:18-alpine")
             .WithDatabase("explore_db_test")
             .WithUsername("postgres")
             .WithPassword("postgres")
@@ -59,13 +58,15 @@ public abstract class PostgreSqlApiFixtureBase : IAsyncInitializer, IAsyncDispos
     public async Task InitializeAsync()
     {
         await _container.StartAsync();
-        RecreateHost();
-
-        await using var scope = Factory.Services.CreateAsyncScope();
-        var dbContext = scope.ServiceProvider.GetRequiredService<ExploreDbContext>();
+        var options = new DbContextOptionsBuilder<ExploreDbContext>()
+            .UseNpgsql(_container.GetConnectionString())
+            .UseSnakeCaseNamingConvention()
+            .Options;
+        await using var dbContext = new ExploreDbContext(options);
         await dbContext.Database.MigrateAsync();
         await LookupTableSeeder.SeedAsync(dbContext);
 
+        RecreateHost();
         DatabaseReset = await TestDatabaseReset.CreateAsync(_container.GetConnectionString());
     }
 
