@@ -29,7 +29,7 @@ Each project has a specific role. Run individually — never use solution-level 
 | `Event.Architecture.Tests` | Cross-cutting | Convention enforcement via reflection | No |
 | `Explore.Secrets.UnitTests` | Infrastructure | Secret provider logic, encryption, restart-based credential rotation | No |
 | `Explore.Infrastructure.Tests` | Infrastructure | Provider adapters, configuration resolvers, authorization fallback behavior, and focused provider runtime checks | No for `Category!=Runtime`; Docker/Mailpit/RabbitMQ for runtime lanes |
-| `Event.Persistence.IntegrationTests` | Persistence | EF Core queries, repository behavior, migrations | PostgreSQL |
+| `Event.Persistence.IntegrationTests` | Persistence | EF Core queries, repository behavior, provider migrations | PostgreSQL plus the real-engine provider matrix |
 | `Event.API.IntegrationTests` | API | HTTP endpoints, middleware, auth flows | Full stack |
 | `Explore.Blazor.IntegrationTests` | BFF | Middleware pipeline, auth endpoints, delegating handlers | No |
 | `Explore.Blazor.Client.Tests` | UI | Component rendering, service behavior | No |
@@ -112,10 +112,10 @@ Use TUnit metadata to route tests into the smallest lane that proves the behavio
 | Architecture | project-level architecture suite | `Event.Architecture.Tests` | Clean Architecture, naming, accessibility structure, authorization parity, and test-suite governance | Every PR |
 | Component | `[Category("Component")]` or project-level UI suite | `Explore.Blazor.Client.Tests` | bUnit component, service, accessibility, wrapper, and design-system behavior | Every PR |
 | API Contract | `[Category(TestCategories.Fast)]`, `[Category(TestCategories.Security)]`, `[Category(TestCategories.PolicyContract)]` | `Event.API.IntegrationTests` | HTTP serialization, HAL, ProblemDetails, auth matrix, Cerbos contract, and API surface rules | Every PR where possible |
-| Real Runtime | `[NotInParallel("RealRuntimeDb")]` / PostgreSQL fixtures | `Event.Persistence.IntegrationTests`, real-runtime API tests | Provider-specific EF Core, migrations, query filters, tenant isolation, and repository behavior | Merge/nightly |
+| Real Runtime | `[NotInParallel("RealRuntimeDb")]` / provider fixtures | `Event.Persistence.IntegrationTests`, real-runtime API tests | Provider-specific EF Core, migrations, query filters, tenant isolation, and repository behavior | Merge/nightly |
 | Email | `[Category("Email")]` | `Explore.Infrastructure.Tests`, `Event.API.IntegrationTests` | SMTP config, EmailDispatch outbox drain, Mailpit delivery, and operator replay | Deterministic tests in PR; full runtime in nightly/manual |
 | RabbitMQ | `[Category("RabbitMQ")]` | `Explore.Infrastructure.Tests`, targeted runtime tests | Optional EmailDispatch pointer transport, topology, publish confirms, consumer settlement, DLQ replay/parking, and broker fixture readiness | Nightly/manual until reliability is proven |
-| Runtime | `[Category("Runtime")]` | Provider-backed integration tests | Tests requiring Docker, PostgreSQL, broker, Mailpit, or Keycloak | Merge/nightly/manual by cost |
+| Runtime | `[Category("Runtime")]` | Provider-backed integration tests | Tests requiring Docker, a relational engine, broker, Mailpit, or Keycloak | Merge/nightly/manual by cost |
 | Stress | stress fixture/category | `Event.API.IntegrationTests` | Rate limiting, retry headers, timeout, and high-volume middleware behavior | Nightly/manual |
 | BFF Integration | BFF integration suite/categories | `Explore.Blazor.IntegrationTests` | Cookie auth, token refresh, YARP forwarding, tenant hints, and BFF middleware | Every PR for no-infra tests; explicit runtime lane for Keycloak/Redis-backed tests |
 | Manual | `[Category("Manual")]` | Runtime and visual suites | Expensive, operator-reviewed, or artifact-heavy checks that should not block the normal PR lane | Manual/approved baseline lane |
@@ -130,13 +130,45 @@ dotnet test --project tests/Explore.Infrastructure.Tests/Explore.Infrastructure.
 dotnet test --project tests/Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity quiet -- --treenode-filter "/*/*/*/*[Category=Email]" --minimum-expected-tests 1
 ```
 
-### Privacy-erasure PostgreSQL topology and restore lane
+### Multi-provider database verification
 
-`CoLocatedPrivacyErasureAuthorityTests` uses the existing single PostgreSQL 18
-container fixture. It proves the authority append commits outside the failing
-application transaction, replay converges once, concurrent appends allocate a
-contiguous sequence from fresh contexts, and
-`RestoreReplayProtection == false`. It does not prove whole-database restore replay protection, and it does not claim any benefit if both databases are restored together.
+The CI database matrix uses real engines for migration/runtime evidence; the
+provider-model tests alone are not portability proof.
+
+| Provider lane | CI-tested engine | CI database TLS | Required structured extras |
+|---|---|---|---|
+| PostgreSQL | 16.14 | `Disabled`, trust false (isolated CI only) | none |
+| SQLite | runner-local persisted file | transport-neutral | single instance, local file, WAL, 30-second busy timeout |
+| SQL Server | 2022 CU21 on Ubuntu 22.04 | `Required`, trust true (ephemeral CI certificate only) | none |
+| MariaDB | 11.4.12 | `Disabled`, trust false (isolated CI only) | `ServerFlavor=MariaDb`, `ServerVersion=11.4.12` |
+| MySQL | 8.4.6 | `Disabled`, trust false (isolated CI only) | `ServerFlavor=MySql`, `ServerVersion=8.4.6` |
+
+These are CI-tested baselines, not a promise that every patch/minor engine
+version is supported. Production server deployments use verified TLS; the CI
+trust bypass/disabled settings are limited to ephemeral isolated services.
+
+Every lane must:
+
+1. start with a clean database/file and run `Event.MigrationService`;
+2. run it again and prove migration/seeding idempotency;
+3. exercise the shared provider behavioral contract for CRUD, tenant filters,
+   soft delete, transactions, optimistic concurrency, outbox/idempotency,
+   paging, provider locks/conflict classification, and Data Protection;
+4. start the minimal runtime surface with `Database:Runtime` credentials;
+5. use `HostedService` email dispatch on every non-PostgreSQL provider; and
+6. retain provider-specific failure logs without connection strings or secrets.
+
+Architecture tests also prove each non-PostgreSQL application/Data Protection
+migration project owns generated migrations and the expected provider package.
+Generated files are never patched to make a matrix lane pass.
+
+### Privacy-erasure authority and restore lane
+
+`EmbeddedPrivacyErasureRecoveryTests` uses a dedicated temporary local file,
+not the primary database. It proves private-cache/WAL/busy-timeout storage
+policy, restrictive permissions and symlink rejection, authority-first commit,
+primary-only restore replay convergence, and idempotent restart. Configuration
+tests separately prove the one-writer and local-path bounds.
 
 `ExternalDatabasePrivacyErasureAuthorityTests` and
 `ExternalDatabasePrivacyErasureRestoreTests` use an explicit application
@@ -151,11 +183,14 @@ repeat idempotency, and an exact-field-equivalent authority fact snapshot.
 The fixture disposes only its own Testcontainers; it never drops an operator or
 user database, volume, container, or backup. This is the proven external application-only restore drill, and the authority database remains untouched throughout it.
 
-Run the three nonzero selectors explicitly:
+The `ExternalDatabase` lane uses distinct primary and authority PostgreSQL
+containers and preserves the existing function-only ACL and application-only
+restore proof. Run all three focused selectors with a nonzero count; topology
+tests remain serialized because they share restore fixtures:
 
 ```bash
-dotnet test --project tests/Event.Persistence.IntegrationTests/Event.Persistence.IntegrationTests.csproj --configuration Release -- --treenode-filter "/*/*/CoLocatedPrivacyErasureAuthorityTests/*" --minimum-expected-tests 2 --maximum-parallel-tests 1
-dotnet test --project tests/Event.Persistence.IntegrationTests/Event.Persistence.IntegrationTests.csproj --configuration Release -- --treenode-filter "/*/*/ExternalDatabasePrivacyErasureAuthorityTests/*" --minimum-expected-tests 2 --maximum-parallel-tests 1
+dotnet test --project tests/Event.Persistence.IntegrationTests/Event.Persistence.IntegrationTests.csproj --configuration Release -- --treenode-filter "/*/*/EmbeddedPrivacyErasureRecoveryTests/*" --minimum-expected-tests 1 --maximum-parallel-tests 1
+dotnet test --project tests/Event.Persistence.IntegrationTests/Event.Persistence.IntegrationTests.csproj --configuration Release -- --treenode-filter "/*/*/ExternalDatabasePrivacyErasureAuthorityTests/*" --minimum-expected-tests 1 --maximum-parallel-tests 1
 dotnet test --project tests/Event.Persistence.IntegrationTests/Event.Persistence.IntegrationTests.csproj --configuration Release -- --treenode-filter "/*/*/ExternalDatabasePrivacyErasureRestoreTests/*" --minimum-expected-tests 1 --maximum-parallel-tests 1
 ```
 
@@ -187,7 +222,7 @@ Skip reason requirements:
 | Infrastructure provider/config drift | `Explore.Infrastructure.Tests`, `Event.Architecture.Tests` | Provider adapters, deployment-mode settings, configuration resolvers, fallback authorization behavior, and governance keys |
 | BFF token/header boundary failure | `Explore.Blazor.IntegrationTests` | Server-side token forwarding, setup-secret stripping/replacement, and trusted tenant hint forwarding |
 | HAL/UI action mismatch | `Event.API.IntegrationTests`, `Explore.Blazor.Client.Tests` | HATEOAS link policies, response contracts, UI affordances gated by `_links` |
-| Relational persistence regression | `Event.Persistence.IntegrationTests` | PostgreSQL migrations, query translation, constraints, soft delete, tenant filters, Respawn reset |
+| Relational persistence regression | `Event.Persistence.IntegrationTests` | Provider-specific migrations, query translation, constraints, soft delete, tenant filters, and clean reset |
 | Rate limiting/timeout/idempotency regressions | `Event.API.IntegrationTests` | Stress host policies, Retry-After metadata, ProblemDetails, idempotency and request-timeout middleware behavior |
 | Accessibility/design-system drift | `Explore.Blazor.Client.Tests`, `Event.Architecture.Tests` | bUnit semantic component checks, structural accessibility guardrails, wrapper behavior |
 

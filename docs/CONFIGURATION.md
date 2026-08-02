@@ -6,7 +6,7 @@ ABOUTME: Focuses on non-inferable key names, mapping behavior, and settings casc
 > **Audience:** Operators | Contributors | AI agents
 > **Status:** Implemented
 > **Owner:** Platform/Ops
-> **Last Verified:** 2026-07-29
+> **Last Verified:** 2026-08-02
 > **Source Anchors:** `Explore.API/Extensions/ConfigurationExtensions.cs`, `Explore.API/Controllers/ListmonkIntegrationSettingsController.cs`, `Explore.API/Controllers/PlatformMonetizationSettingsController.cs`, `Explore.Application/DTOs/Integrations/ListmonkIntegrationSettingsDto.cs`, `Explore.Application/Features/PlatformMonetization/`, `Explore.Infrastructure/Integrations/Listmonk/ListmonkSyncService.cs`, `Explore.Blazor/Extensions/ConfigurationExtension.cs`, `Explore.Blazor/Extensions/YarpProxyExtensions.cs`, `Event.Web.BffHosting/Authentication/EventBffKeycloakAuthenticationOptions.cs`, `Event.Web.BffHosting/Proxy/EventApiBaseAddressResolver.cs`, `Explore.Application/Features/EventReporting/EventReportSubmissionOptions.cs`, `Explore.Application/Services/AccountAuthorityLifecycleEmailOptions.cs`, `Explore.Application/Notifications/AccountAuthorityKind.cs`, `Explore.Application/Notifications/NotificationRoutingOptions.cs`, `Explore.Infrastructure/Configuration/ModerationProviderOptions.cs`, `Explore.Infrastructure/Configuration/OspreyProviderOptions.cs`, `Explore.Infrastructure/Configuration/CoopProviderOptions.cs`, `Explore.API/Services/CoopWebhookSignatureValidator.cs`, `Explore.Infrastructure/Services/HierarchicalSettingsResolver.cs`, `Explore.Infrastructure/Services/Keycloak/KeycloakLifecycleEmailOptions.cs`, `Explore.Infrastructure/Services/Keycloak/KeycloakAccountAuthorityLifecycleEmailService.cs`, `Explore.Infrastructure/Storage/LocalFileStorageProvider.cs`, `Explore.Infrastructure/Storage/S3ConfigResolver.cs`, `Explore.Infrastructure/StorageReconciliationSettings.cs`, `Explore.Infrastructure/Mail/SmtpConfigResolver.cs`, `Explore.Infrastructure/Services/SetupSecretProvider.cs`, `Explore.Domain/Constants/GovernanceSettingKeys.cs`, `Explore.Domain/Constants/InfrastructureSecretSettingKeys.cs`, `Explore.Domain/Secrets/SecretDefinitionRegistry.cs`, `docs/SECRETS.md`
 
 ## Runtime Configuration Sources
@@ -68,7 +68,7 @@ Commonly consumed sections in code:
 - `AccountAuthorityLifecycleEmail:*` (Application-level identity-email delegation switch)
 - `KeycloakLifecycleEmail:*` (Keycloak Admin REST required-action email adapter)
 - `Bff:Authentication:*` (explicit browser-BFF authority, metadata, client ID/secret, callback paths, and cookie policy overrides)
-- `ConnectionStrings:DefaultConnection`
+- `Database:*` (structured primary database selection and role credentials)
 - `Cors:AllowedOrigins`
 - `ForwardedHeadersTrust:*`
 - `RateLimiting:*`
@@ -97,19 +97,111 @@ Commonly consumed sections in code:
 
 ### Persistence Configuration
 
+The primary database is configured only through the structured `Database`
+section. Raw application connection strings are not a supported deployment
+input. Connection strings are constructed inside the process with the native
+Npgsql, Microsoft.Data.Sqlite, Microsoft.Data.SqlClient, or MySqlConnector
+builder after validation.
+
+Shared endpoint fields live at the section root; credentials are separated by
+process role:
+
+```json
+{
+  "Database": {
+    "Provider": "PostgreSql",
+    "Host": "db.example.internal",
+    "Port": 5432,
+    "Database": "islamu_event",
+    "TlsMode": "Required",
+    "TrustServerCertificate": false,
+    "Runtime": {
+      "Username": "islamu_runtime",
+      "Password": "deployment-secret"
+    },
+    "Migrator": {
+      "Username": "islamu_migrator",
+      "Password": "deployment-secret"
+    }
+  }
+}
+```
+
+`Explore.API` and normal application data access bind the `Runtime` role.
+`Event.MigrationService` binds the `Migrator` role and is the deployed owner of
+application and Data Protection migrations. Do not put migrator credentials in
+the API or Blazor containers.
+
+| Provider | Required shape | Default port / namespace | Operational boundary |
+|---|---|---|---|
+| `PostgreSql` | Host, database, and role credentials; `ServerFlavor`/`ServerVersion` forbidden | `5432`; schema `islamu_event` | Full primary support; only provider supported by TickerQ and the external erasure authority. |
+| `Sqlite` | `Database` is a persisted local file path; host, port, credentials, flavor, and version forbidden | no port; table prefix `islamu_event_` | Single application instance only. In-memory, URI, and network paths are rejected. |
+| `SqlServer` | Host, database, and role credentials; `ServerFlavor`/`ServerVersion` forbidden | `1433`; schema `islamu_event` | Full primary support; use `HostedService` email dispatch because TickerQ is unavailable. |
+| `MariaDb` | Host, database, role credentials, `ServerFlavor=MariaDb`, and explicit `ServerVersion` | `3306`; table prefix `islamu_event_` | Full primary support; explicit version selects the EF SQL dialect. |
+| `MySql` | Host, database, role credentials, `ServerFlavor=MySql`, and explicit `ServerVersion` | `3306`; table prefix `islamu_event_` | Full primary support; explicit version selects the EF SQL dialect. |
+
+Supported TLS values are named values only: `Prefer`, `Required`, or
+`Disabled`. Server providers default to `Required`. With
+`TrustServerCertificate=false`, required TLS performs certificate and host
+verification. Setting `TrustServerCertificate=true` is accepted only with
+`TlsMode=Required` and deliberately bypasses certificate validation; reserve it
+for controlled development environments. SQLite requires its transport-neutral
+default (`TlsMode=Prefer`, trust disabled).
+
+| Provider family | `Disabled` | `Prefer` | `Required`, trust false | `Required`, trust true |
+|---|---|---|---|---|
+| PostgreSQL | Npgsql `Disable` | Npgsql `Prefer` | Npgsql `VerifyFull` | Npgsql `Require` |
+| SQL Server | `Encrypt=false` | `Encrypt=true`, certificate validated | `Encrypt=true`, certificate validated | `Encrypt=true`, certificate trusted without validation |
+| MariaDB / MySQL | MySqlConnector `None` | MySqlConnector `VerifyFull` | MySqlConnector `VerifyFull` | MySqlConnector `Required` |
+
+The checked-in local Compose defaults use PostgreSQL `Prefer`; production
+operators should select `Required` with a trusted CA/hostname. The CI matrix's
+disabled or trusted-ephemeral-certificate settings are test-lane exceptions,
+not production guidance.
+
+Environment variables use normal .NET double-underscore mapping. Docker
+Compose exposes equivalent `DATABASE_*` interpolation values:
+
+| .NET environment key | Compose `.env` key |
+|---|---|
+| `Database__Provider` | `DATABASE_PROVIDER` |
+| `Database__Host`, `Database__Port`, `Database__Database` | `DATABASE_HOST`, `DATABASE_PORT`, `DATABASE_DATABASE` |
+| `Database__TlsMode`, `Database__TrustServerCertificate` | `DATABASE_TLS_MODE`, `DATABASE_TRUST_SERVER_CERTIFICATE` |
+| `Database__ServerFlavor`, `Database__ServerVersion` | `DATABASE_SERVER_FLAVOR`, `DATABASE_SERVER_VERSION` |
+| `Database__Runtime__Username`, `Database__Runtime__Password` | `DATABASE_RUNTIME_USERNAME`, `DATABASE_RUNTIME_PASSWORD` |
+| `Database__Migrator__Username`, `Database__Migrator__Password` | `DATABASE_MIGRATOR_USERNAME`, `DATABASE_MIGRATOR_PASSWORD` |
+
+Provider-specific migrations are intentionally separate. PostgreSQL
+application and Data Protection migrations live in `Explore.Persistence`;
+other providers use `Explore.Persistence.Migrations.{Provider}` and
+`Explore.Persistence.DataProtection.Migrations.{Provider}`. The histories are
+`__EFMigrationsHistory` and `__EFDataProtectionMigrationsHistory` in the fixed
+schema, or the corresponding `islamu_event_`-prefixed tables where schemas are
+not supported. Generated migrations and snapshots are never hand-edited.
+
+SQLite adds three non-negotiable deployment rules: use durable local storage,
+mount the file into both migration and API processes at the same path, and run
+one application instance. Startup sets a 30-second busy timeout through the
+native connection builder; MigrationService enables WAL after applying the
+application migration. The primary file must not be named
+`privacy_erasure_authority.db`.
+
 | Key | Default | Description |
 |---|---:|---|
-| `Persistence:EnableRlsTenantSession` | `false` | Registers the PostgreSQL tenant-session interceptor that sets `app.current_tenant_id` when EF Core opens a connection. This does not enable RLS policies by itself; keep disabled outside prototype environments until runtime app-role, migration-role, admin/system-path, and table-policy rollout work is complete. |
+| `Persistence:EnableRlsTenantSession` | `false` | PostgreSQL-only tenant-session interceptor. It is not registered for other providers and does not enable RLS policies by itself. |
 
 ### Privacy-erasure authority topology
 
-`PrivacyErasure:Authority:Topology` accepts only `CoLocated` (the default) or
-`ExternalDatabase`. `CoLocated` uses the application migration's
-`privacy_erasure_authority` tables. `ExternalDatabase` uses the dedicated
-authority migration against a different physical PostgreSQL database; startup
-rejects an authority target that resolves to the application database even when
-the two connection strings differ in key order or credentials. The application
-mirror remains in the application database in both topologies.
+`PrivacyErasure:Authority:Topology` accepts only `EmbeddedSqlite` (the default)
+or `ExternalDatabase`. `EmbeddedSqlite` stores authority facts in the dedicated
+`/app/data/privacy_erasure_authority.db` file; it never shares the primary
+database or primary SQLite file. The file uses a private cache, WAL, a bounded
+busy timeout, one writer, restrictive permissions, and a separately mounted
+durable volume. `ExternalDatabase` uses the dedicated authority migration
+against a different physical PostgreSQL database; startup rejects an authority
+target that resolves to the application database even when endpoint identity is
+obscured by different credentials. The application mirror remains in the
+primary database in both topologies.
 
 | Key | Default | Description |
 |---|---:|---|
@@ -117,24 +209,33 @@ mirror remains in the application database in both topologies.
 | `PrivacyErasure:ReceiptLifetime` | `7.00:00:00` | Short-lived status-receipt lifetime; must be greater than zero and no more than 30 days. |
 | `PrivacyErasure:MaximumBackupHorizon` | `365.00:00:00` | Longest supported application-backup horizon used to derive retained-authority lifecycle requirements. |
 | `PrivacyErasure:AuthorityRetentionSafetyMargin` | `30.00:00:00` | Additional authority-retention margin beyond the maximum backup horizon. |
-| `ConnectionStrings:PrivacyErasureAuthority` | none | External authority runtime credential. Required only by API when topology is `ExternalDatabase`; it must have function-only access. |
-| `ConnectionStrings:PrivacyErasureAuthorityMigrator` | none | External authority migrator credential. Required only by `Event.MigrationService` for `ExternalDatabase`; never pass it to API or Blazor. |
+| `PrivacyErasureAuthorityEmbedded:Path` | `/app/data/privacy_erasure_authority.db` | Absolute local authority file used only by `EmbeddedSqlite`; URI and network paths are rejected. |
+| `PrivacyErasureAuthorityEmbedded:WriterReplicaCount` | `1` | Must be exactly `1`; startup rejects multi-writer embedded deployments. |
+| `PrivacyErasureAuthorityEmbedded:BusyTimeoutSeconds` | `30` | SQLite busy timeout; valid range `1..300`. |
+| `PrivacyErasureAuthorityDatabase:Provider` | none | Must be `PostgreSql` for `ExternalDatabase`. Other providers fail validation. |
+| `PrivacyErasureAuthorityDatabase:Host`, `Port`, `Database`, `TlsMode`, `TrustServerCertificate` | none | Structured external authority endpoint and TLS policy. |
+| `PrivacyErasureAuthorityDatabase:Runtime:Username`, `Password` | none | API-only function-execution credential for `ExternalDatabase`. |
+| `PrivacyErasureAuthorityDatabase:Migrator:Username`, `Password` | none | MigrationService-only schema/grant credential for `ExternalDatabase`. |
 
 Compose maps `PRIVACY_ERASURE_AUTHORITY_TOPOLOGY`,
-`PRIVACY_ERASURE_AUTHORITY_RUNTIME_CONNECTION_STRING`, and
-`PRIVACY_ERASURE_AUTHORITY_MIGRATOR_CONNECTION_STRING` to these .NET keys.
+`PRIVACY_ERASURE_AUTHORITY_EMBEDDED_PATH`,
+`PRIVACY_ERASURE_AUTHORITY_WRITER_REPLICA_COUNT`, and
+`PRIVACY_ERASURE_AUTHORITY_BUSY_TIMEOUT_SECONDS` to the embedded .NET keys.
+For the external topology it maps `PRIVACY_ERASURE_AUTHORITY_HOST`, `PORT`,
+`DATABASE`, `TLS_MODE`, `TRUST_SERVER_CERTIFICATE`, and the `RUNTIME_*` /
+`MIGRATOR_*` credential families. External fields are ignored by
+`EmbeddedSqlite`; back up its dedicated file/volume independently from the
+primary database.
 Aspire creates a distinct local authority PostgreSQL resource whenever
 `ExternalDatabase` is selected in a profile that uses local data. Profiles
 without local data use operator-provided external infrastructure.
 
-`PrivacyErasure:Durability:Mode` is removed and is never translated. If that
-legacy key is present, startup fails with reset-only guidance. A reset is
-eligible only for a pre-v1 development deployment whose operator explicitly
-accepts rebuilding its database. Before resetting, the operator must create and
-verify a backup or export for every value that must be retained. If either
-condition is not met, keep the database and backups intact and stop for a
-forward-migration decision. Application code and implementation agents never
-delete databases, containers, volumes, or backups.
+`CoLocated`, `PrivacyErasure:Durability:Mode`, and raw authority connection
+strings are removed and are never translated. This repository is pre-v1 and in
+development mode: reset affected development data after taking any required
+export, then select `EmbeddedSqlite` or `ExternalDatabase`. There is no legacy
+co-located fact-copy or compatibility cutover. Application code and
+implementation agents never delete databases, containers, volumes, or backups.
 
 ### Localization Configuration
 
@@ -577,14 +678,20 @@ Endpoint and secret safety rules:
 
 ### Email Dispatch Scheduler Configuration
 
-Basic Dispatch Mode uses PostgreSQL as the durable source of truth and the existing SMTP abstraction as the transport. It does **not** require RabbitMQ. Registration confirmation currently creates an `EmailDispatchOutbox` row in the registration transaction; the default TickerQ `email-dispatch-drain` cron job triggers the drain service, which claims due rows, reserves shared SMTP capacity, rebinds tenant context, calls `IEmailService`, and atomically advances the outbox/attempt/receipt/delivery graph.
+Basic Dispatch Mode uses the selected primary database as the durable source of
+truth and the existing SMTP abstraction as the transport. It does **not**
+require RabbitMQ. Registration confirmation creates an `EmailDispatchOutbox`
+row in the registration transaction. TickerQ can trigger the shared drain only
+when `Database:Provider=PostgreSql`; for SQLite, SQL Server, MariaDB, and MySQL,
+set `EmailDispatchProcessor:Mode=HostedService`. Both triggers call the same
+drain service and preserve the same outbox, retry, and idempotency semantics.
 
 Static dispatch settings bind from `EmailDispatchProcessor` and are validated at startup with `ValidateOnStart`:
 
 | Key | Default | Description |
 |---|---:|---|
 | `Enabled` | `true` | Enables Basic Dispatch Mode. When disabled, the `email-dispatch` readiness check reports `Degraded` intentionally. |
-| `Mode` | `TickerQ` | Selects the trigger mechanism: `TickerQ`, `HostedService`, or `Disabled`. `TickerQ` is the default scheduler; `HostedService` is a fallback timer wrapper over the same drain service. |
+| `Mode` | `TickerQ` | Selects `TickerQ`, `HostedService`, or `Disabled`. `TickerQ` is PostgreSQL-only and fails startup on every other primary provider; `HostedService` is the portable timer wrapper over the same drain. |
 | `PollingIntervalSeconds` | `5` | Delay between polling loops. Must be greater than zero. |
 | `BatchSize` | `50` | Maximum rows claimed per loop. Valid range `1..1000`. |
 | `MaxRowsPerTenantPerBatch` | `5` | Fair-round cap for one tenant in a batch. Valid range `1..BatchSize`, up to `1000`. |

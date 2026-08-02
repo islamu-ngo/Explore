@@ -1,12 +1,12 @@
 ABOUTME: Operator runbook for backups, restores, upgrades, and rollback decisions.
-ABOUTME: Grounds release operations in Docker Compose, PostgreSQL, Keycloak, object storage, and migration behavior.
+ABOUTME: Grounds release operations in provider-native database tools, authority isolation, object storage, and migration behavior.
 
 # Backup, Restore, And Upgrade
 
 > **Audience:** Operators
 > **Status:** Implemented
 > **Owner:** Platform/Ops
-> **Last Verified:** 2026-07-23
+> **Last Verified:** 2026-08-02
 > **Source Anchors:** `docker-compose.yml`, `Event.MigrationService/Worker.cs`, `Explore.API/Program.cs`, `PrivacyErasureStartupGate.cs`, `PrivacyErasureReplayService.cs`, `GlobalLocationPrivacyErasureTests.cs`, `docs/SELF_HOSTING.md`, `docs/CONFIGURATION.md`, `docs/SECRETS.md`
 
 This runbook covers self-hosted deployments using the repository Docker Compose topology. Treat every upgrade as a data operation first and an image rollout second.
@@ -20,12 +20,11 @@ and only when all of the following are true:
 
 1. The deployment is explicitly confirmed to be pre-v1 and reset-eligible.
 2. The operator accepts rebuilding the application database from the current
-   generated application migration and, for `ExternalDatabase`, the dedicated
-   authority migration in a different physical PostgreSQL database.
+   generated provider-specific migrations and the dedicated authority storage.
 3. A backup or export exists for every value the operator must retain, and the
    operator has verified that the retained artifacts are readable or restorable.
 4. The legacy key is removed and
-   `PrivacyErasure:Authority:Topology=CoLocated|ExternalDatabase` is selected
+   `PrivacyErasure:Authority:Topology=EmbeddedSqlite|ExternalDatabase` is selected
    explicitly.
 
 If any prerequisite is false or unknown, stop and preserve the database,
@@ -40,8 +39,8 @@ functions and function-only runtime grants before starting the API.
 
 | Asset | Compose Anchor | Why It Matters |
 |---|---|---|
-| Application PostgreSQL data | `postgres` volume `postgres_data` | Tenants, events, users, settings, outbox, and data-protection keys when stored through EF contexts. |
-| Privacy-erasure authority PostgreSQL data | `CoLocated`: application database; `ExternalDatabase`: independently operated database configured by `ConnectionStrings:PrivacyErasureAuthority` | Typed immutable erasure facts and the monotonic authority counter drive replay. Only an external authority excluded from the application restore operation protects against an older application restore. |
+| Primary application data | Provider database or primary SQLite volume/file | Tenants, events, users, settings, outbox, and Data Protection keys. |
+| Privacy-erasure authority | `EmbeddedSqlite`: dedicated `/app/data/privacy_erasure_authority.db` volume/file; `ExternalDatabase`: independently operated structured PostgreSQL target | Typed immutable erasure facts and monotonic counter drive replay. It must be excluded from the primary restore operation. |
 | Keycloak PostgreSQL data | `keycloak-db` volume `keycloak_data` | Realms, clients, roles, users, and login configuration. |
 | Object storage | API volume `local_storage_data`; optional `minio` volume `minio_data` or external S3 bucket when selected | Uploaded files, images, and storage-backed assets. |
 | Secrets and environment | `.env`, secret-provider project, Keycloak client secrets | Required to recreate the same runtime identity and storage bindings. |
@@ -57,18 +56,26 @@ Do not treat Docker image tags alone as a backup. Database schema and secret-pro
    - `docker compose config --services` output;
    - current `.env` key names without printing secret values;
    - active `DEPLOYMENT_MODE` and optional profiles (`storage`, `authz`).
-3. Create PostgreSQL backups for the application and Keycloak databases:
+3. Back up the primary with its provider-native, consistency-safe mechanism:
 
-   ```bash
-   docker compose exec postgres sh -c 'pg_dump -U "$POSTGRES_USER" "$POSTGRES_DB"' > backup-explore.sql
-   docker compose exec keycloak-db sh -c 'pg_dump -U "$POSTGRES_USER" "$POSTGRES_DB"' > backup-keycloak.sql
-   ```
+   | Provider | Backup / restore mechanism |
+   |---|---|
+   | PostgreSQL | `pg_dump --format=custom` / `pg_restore --exit-on-error` |
+   | SQLite | Stop the single writer and use SQLite online `.backup` (or a volume snapshot that includes WAL/SHM consistently); never copy only the live main file. |
+   | SQL Server | `BACKUP DATABASE` / `RESTORE DATABASE` to operator-managed backup storage. |
+   | MariaDB | `mariadb-dump --single-transaction` / `mariadb` restore. |
+   | MySQL | `mysqldump --single-transaction` / `mysql` restore. |
 
-4. Back up the retained erasure authority independently, preferably from a separate physical cluster and into a separate backup repository. Use its backup role, not the function-only runtime role, and use a custom-format dump so restore can be rehearsed:
+   Include the EF migration history and Data Protection tables. Verify the
+   artifact with the provider's restore/validation command, not only a file
+   existence check. Back up the separate Keycloak database when self-hosted.
 
-   ```bash
-   pg_dump --format=custom --file=backup-privacy-erasure-authority.dump "$REDACTED_AUTHORITY_ADMIN_DSN"
-   ```
+4. Back up the retained erasure authority independently. For
+   `EmbeddedSqlite`, stop its only writer and use SQLite `.backup` against
+   `/app/data/privacy_erasure_authority.db`, storing the artifact outside both
+   the primary and authority volumes. Preserve restrictive permissions on
+   restore. For `ExternalDatabase`, use an authority backup role and a
+   PostgreSQL custom-format dump, never the function-only runtime role.
 
    Record the authority watermark, application watermark, backup timestamp, dump SHA-256, and restore drill identifier in the release manifest. Never record the DSN or opaque owner/location/intent IDs.
 
@@ -78,18 +85,19 @@ Do not treat Docker image tags alone as a backup. Database schema and secret-pro
    - for local MinIO/S3-compatible mode, copy the `minio_data` volume or use an S3-compatible sync tool;
    - for external S3, use provider-native versioning or bucket replication.
 6. Export secret-provider configuration or capture the exact secret paths and key names used by the release.
-7. Store backups outside the host running Docker Compose. Keep the erasure-authority dump independent from application backup retention and for at least as long as any restorable application backup exists.
+7. Store backups outside the host running Docker Compose. Keep the authority
+   artifact independent from primary backup retention and for at least as long
+   as any restorable primary backup exists.
 8. Verify both restores and the authority-over-application replay in a non-production environment before relying on the backups for an upgrade.
 
 ## Restore Procedure
 
 Choose the contract before restoring:
 
-- `CoLocated` has `restoreReplayProtection=false`. Back up and restore the
-  application and co-located authority together. Its authority-first commit
-  protects application-transaction rollback, not a whole-database restore to
-  pre-erasure state. Do not claim that replay can recover authority facts that
-  the same restore removed.
+- `EmbeddedSqlite` has `restoreReplayProtection=true` only when its dedicated
+  file/volume remains outside the primary restore. Never overwrite the
+  authority file with a primary backup or embed it inside a primary SQLite
+  volume snapshot.
 - `ExternalDatabase` has `restoreReplayProtection=true` as a capability flag,
   conditional on the authority database being outside the application restore
   operation. If both databases or their shared storage snapshot are restored
@@ -102,14 +110,21 @@ Choose the contract before restoring:
    ```
 
 2. Restore and verify the retained erasure-authority database first. Never overwrite it with application backup content and never “repair” it by deleting or renumbering intents.
-3. Restore application PostgreSQL data into a clean volume or clean database. It may legitimately contain no checkpoint or a checkpoint behind the authority watermark.
+3. Restore the selected primary provider into a clean volume/database using its
+   native restore path. It may legitimately contain no checkpoint or a
+   checkpoint behind the authority watermark.
 4. Restore Keycloak data before starting Keycloak-dependent application services.
 5. Restore object storage before user-facing traffic resumes. For local-first Compose, restore `local_storage_data` or the configured `Storage:Local:RootPath`; for S3-compatible mode, restore `minio_data` or the external bucket.
-6. Restore the matching `.env` and secret-provider values, including the retained-authority connection secret.
-7. Start dependencies first, then the API. Do not start or expose the BFF until the API replay gate has succeeded:
+6. Restore matching structured `Database:*` values and role credentials. For
+   `EmbeddedSqlite`, restore the authority file with its restrictive
+   permissions; for `ExternalDatabase`, restore its structured PostgreSQL
+   settings and credentials.
+7. Start dependencies, run `Event.MigrationService` to completion, then start
+   the API. Do not start or expose the BFF until the API replay gate succeeds:
 
    ```bash
    docker compose up -d postgres redis keycloak-db keycloak
+   docker compose run --rm event-migrationservice
    docker compose up -d islamu-event-api
    ```
 
@@ -133,7 +148,9 @@ If startup replay fails:
 5. For application replay failure, restore the application backup into a clean database and overlay the unchanged authority again. The per-intent application transaction is atomic, so restart resumes from the last committed checkpoint without duplicate tombstones or outbox rows.
 6. After replay succeeds, verify tombstones, cache invalidation, checkpoint equality, correction rows, and dead letters before starting the BFF or admitting traffic.
 
-Prompt injection is not applicable to this recovery path: startup consumes typed PostgreSQL facts and configuration, not natural-language or model-provided instructions.
+Prompt injection is not applicable to this recovery path: startup consumes
+typed authority facts and configuration, not natural-language or model-provided
+instructions.
 
 ## Upgrade Procedure
 
@@ -141,9 +158,12 @@ Prompt injection is not applicable to this recovery path: startup consumes typed
 2. Take and verify backups before pulling or building new images.
 3. Pull or build the target images.
 4. Start in a non-production environment with production-like secrets and data shape.
-5. Apply migrations through the deployment path:
-   - Aspire/local-dev uses `Event.MigrationService` before API/Blazor start.
-   - Docker Compose does not lack `Event.MigrationService`: the `privacy-erasure-external` profile includes the one-shot service for `PRIVACY_ERASURE_AUTHORITY_TOPOLOGY=ExternalDatabase`; otherwise `Explore.API` applies application migrations on startup outside `Testing`.
+5. Run `Event.MigrationService` with migrator credentials and require exit code
+   zero. It selects the provider-specific application and Data Protection
+   migration assemblies, migrates configured authority storage, enables SQLite
+   WAL where applicable, and seeds. Run the service a second time in the
+   rehearsal environment to prove idempotency. Do not start deployed API
+   replicas until it succeeds.
 6. Start the upgraded stack:
 
    ```bash
@@ -195,11 +215,12 @@ If release notes do not explicitly state that a rollback is image-only safe, ass
 
 ## Verification Checklist
 
-- [ ] Backups exist for application DB, Keycloak DB, object storage, and secrets.
+- [ ] Backups exist for the selected primary provider, authority storage, Keycloak DB, object storage, and secrets.
 - [ ] Restore was tested in non-production.
 - [ ] The retained erasure authority was backed up and restored independently, and its watermark/hash are recorded without identifiers or connection details.
-- [ ] For `ExternalDatabase`, API startup replay advanced the application checkpoint to the untouched authority watermark; restored PII canaries are absent and outbox evidence is present once before BFF startup.
-- [ ] For `CoLocated`, the restore record states `restoreReplayProtection=false` and makes no old-backup replay claim.
+- [ ] For either authority topology, API startup replay advanced the application checkpoint to the untouched authority watermark; restored PII canaries are absent and outbox evidence is present once before BFF startup.
+- [ ] `EmbeddedSqlite` restore evidence proves the dedicated authority file was not overwritten by the primary restore and writer replica count remained one.
+- [ ] `Event.MigrationService` completed twice against the restored provider before API/BFF startup.
 - [ ] `docker compose ps` shows required services running.
 - [ ] API `/alive` and `/health` return expected status.
 - [ ] Blazor loads and can proxy API requests.

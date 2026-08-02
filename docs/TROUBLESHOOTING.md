@@ -6,7 +6,7 @@ ABOUTME: Prioritizes repeat incidents and non-obvious checks over generic .NET a
 > **Audience:** Operators | Contributors | Admins
 > **Status:** Implemented
 > **Owner:** Platform/Ops
-> **Last Verified:** 2026-07-04
+> **Last Verified:** 2026-08-02
 > **Source Anchors:** `Explore.API/Program.cs`, `Explore.Blazor/`, `Explore.Infrastructure/Services/Keycloak/KeycloakBootstrapService.cs`, `Explore.Infrastructure/StorageObjectDeletionService.cs`, `docs/SELF_HOSTING.md`, `docs/OPERATIONS.md`, `docs/BACKUP_RESTORE_UPGRADE.md`, `docs/CONFIGURATION.md`, `docs/SECRETS.md`
 
 Use this page when you have a symptom. For planned work, installation, backup, restore, upgrade, or rollback procedures, use the linked runbooks instead of copying procedures into this file.
@@ -25,13 +25,35 @@ Use this page when you have a symptom. For planned work, installation, backup, r
 ## Quick Triage Order
 
 1. Run the read-only doctor when diagnosing local or self-hosting setup drift:
-   `dotnet run --project Explore.Diagnostic/Explore.Diagnostic.csproj -- --root .`
+   `dotnet run --project src/Explore.Diagnostic/Explore.Diagnostic.csproj -- --root .`
 2. Check `https://localhost:7039/health` and `/alive`.
-3. Check API startup logs for migration/seed failures.
+3. Check MigrationService logs for application, Data Protection, authority, and seed failures; check API logs separately for runtime-provider validation.
 4. Verify deployment mode and tenant resolution behavior.
 5. Verify auth session (`/auth/status`) and token forwarding through BFF.
 6. Check rate limiting (`429`) and request timeout (`504`) before deeper debugging.
 7. If the issue followed an upgrade or restore, stop and verify [BACKUP_RESTORE_UPGRADE.md](BACKUP_RESTORE_UPGRADE.md) rollback and validation steps before changing data.
+
+## Database Startup, Migration, Or Provider Failures
+
+Inspect the bounded startup error without copying credentials or raw provider
+exception text into support artifacts.
+
+| Symptom | Cause | Safe correction |
+|---|---|---|
+| Missing `Database` section or invalid/numeric provider | Raw connection string or unrecognized provider input | Configure named `Database:Provider` plus structured fields; accepted names are `PostgreSql`, `Sqlite`, `SqlServer`, `MariaDb`, and `MySql`. |
+| Runtime works but MigrationService fails authentication | Runtime credentials were reused or migrator role is missing | Supply `Database:Migrator:Username/Password` only to MigrationService; keep `Database:Runtime:*` in API/runtime. |
+| TLS validation fails | Certificate hostname/chain mismatch or unsafe trust combination | Use `TlsMode=Required` with a trusted CA and matching host. `TrustServerCertificate=true` is a controlled-development bypass and is invalid unless TLS is required. |
+| MariaDB/MySQL fails before connecting | Missing or mismatched dialect metadata | Set the exact `ServerFlavor` and positive `ServerVersion` matching the engine. |
+| SQLite configuration is rejected | In-memory, URI, network, or reserved authority path | Use a persisted absolute/local file, mount it into MigrationService and API, and keep it separate from `/app/data/privacy_erasure_authority.db`. |
+| SQLite reports busy/readonly/not-a-database | Multiple writers, wrong mount permissions, inconsistent file copy, or network filesystem | Stop traffic, verify one replica, local durable storage, writable ownership, and WAL-aware restore, then rerun MigrationService. Do not delete the file as a repair. |
+| MigrationService succeeds once but fails on repeat | Generated migration ownership/history drift or non-idempotent seed/model SQL | Stop rollout. Verify provider-specific application/Data Protection assemblies and history tables; fix the EF model/generator and regenerate only unapplied migrations. Never patch generated files. |
+| TickerQ says the provider is unsupported | TickerQ is PostgreSQL-only | Set `EmailDispatchProcessor:Mode=HostedService` for SQLite, SQL Server, MariaDB, or MySQL. The durable outbox and drain semantics remain unchanged. |
+| Embedded authority rejects startup | Non-local/symlink path, unsafe permissions, writer count not one, busy timeout outside `1..300`, or failed SQLite integrity/WAL check | Restore the dedicated authority file/volume and permissions; keep `WriterReplicaCount=1`. Never replace it with a primary backup. |
+| External authority fails validation | Non-PostgreSQL provider, same physical target as primary, or incomplete structured role fields | Configure a distinct PostgreSQL target under `PrivacyErasureAuthorityDatabase:*` with separate runtime/migrator roles. |
+
+For a clean install or upgrade, run `Event.MigrationService` before API start
+and run it a second time in rehearsal. A deployed API does not own application
+or Data Protection migration recovery.
 
 ## Build And Test Failures
 
@@ -372,6 +394,8 @@ Checks:
 3. If `replayCaughtUp` is false, the retained authority checkpoint is behind the replay fence; allow replay to finish before retrying the request. The API should still return bounded status, not raw replay detail.
 4. If `providerUnknown` is non-zero, use the provider-work reconciliation path; `Unknown` is the expected ambiguous-ack state. `providerDeadLettered` and `providerDue` indicate operator action or worker lag, not user-visible failure detail.
 5. If `cacheConvergenceIncomplete` or `cacheConvergenceDeadLettered` is non-zero, the erased user may still be visible through stale cache until the outbox-backed cache invalidation work catches up; do not republish subject data to force it.
+6. For the default `EmbeddedSqlite` topology, verify the absolute local `PrivacyErasureAuthorityEmbedded:Path`, its dedicated volume, `WriterReplicaCount=1`, and `BusyTimeoutSeconds` in `1..300`. A network filesystem, symlink, missing WAL companion during restore, failed `quick_check`, or permissions broader than directory `0700` / files `0600` is an authority-storage incident; stop the writer and restore the authority backup independently of the primary database.
+7. For `ExternalDatabase`, verify the distinct structured PostgreSQL endpoint and runtime/migrator roles under `PrivacyErasureAuthorityDatabase:*`. Do not substitute a raw connection string or point it at the primary physical database.
 
 ## Email Dispatch Issues
 
@@ -436,7 +460,7 @@ Checks:
 3. For Infisical: verify `ClientId`, `ClientSecret`, `ProjectId`, and `Environment` are set.
 4. Check health endpoint: `/health` includes the `secret_provider` check — `Degraded` after 1-2 failures, `Unhealthy` after 3+.
 5. If refresh is enabled, check `secrets_refresh_failures_total` Prometheus metric for recurring failures.
-6. Key mapping: Infisical/domain secret names use `SCREAMING_SNAKE_CASE`, while .NET environment overrides use double-underscore keys such as `S3Settings__Endpoint`. PostgreSQL bootstrap values are discrete `POSTGRESQL_*` values, not a single URL-form connection string; see [SECRETS.md](SECRETS.md).
+6. Key mapping: Infisical/domain secret names use `SCREAMING_SNAKE_CASE`, while .NET environment overrides use double-underscore keys such as `S3Settings__Endpoint`. Primary and external-authority database credentials are discrete structured role values such as `DATABASE_RUNTIME_USERNAME` / `DATABASE_RUNTIME_PASSWORD`, not URL-form connection strings; see [SECRETS.md](SECRETS.md).
 
 ## Storage Readiness Or Upload Failures
 
@@ -461,7 +485,7 @@ Symptoms:
 
 Checks:
 1. `StorageReconciliation:DryRun` defaults to `true`; dry-run reports drift without mutation.
-2. Before enabling mutations, confirm backups include application PostgreSQL plus `local_storage_data` or the selected S3-compatible object store from the same release manifest.
+2. Before enabling mutations, confirm backups include the selected primary database plus `local_storage_data` or the selected S3-compatible object store from the same release manifest. Back up the privacy-erasure authority independently.
 3. To quarantine missing metadata/object mismatches, set `StorageReconciliation:DryRun=false` and only the needed quarantine flag.
 4. To physically delete delete-eligible objects, also set `StorageReconciliation:DeleteQuarantinedObjects=true`; provider delete is idempotent, but metadata is soft-deleted afterward.
 5. If mutations ran against the wrong environment, stop write traffic, turn dry-run back on, restore database and object-storage backups together, then rerun dry-run reconciliation.
@@ -490,9 +514,9 @@ Symptoms:
 Checks:
 1. Stop write traffic before repeated restore attempts.
 2. Compare the release manifest, database dump timestamp, object storage snapshot, and secret/config snapshot from [BACKUP_RESTORE_UPGRADE.md](BACKUP_RESTORE_UPGRADE.md).
-3. Verify application PostgreSQL and Keycloak PostgreSQL were restored from the intended snapshots.
+3. Verify the configured application primary database, the independent privacy-erasure authority, and Keycloak PostgreSQL were restored from their intended snapshots. For embedded authority SQLite, restore the database together with its WAL state while all writers are stopped; never replace it with the primary SQLite file.
 4. Verify `Storage:Local:RootPath` points to the restored local storage data, or that `S3Settings:*` values point to the restored bucket or compatible object store when S3-compatible mode is selected.
-5. If migrations already ran, do not manually edit migration history tables; decide rollback vs corrective migration using the rollback matrix in [BACKUP_RESTORE_UPGRADE.md](BACKUP_RESTORE_UPGRADE.md).
+5. If MigrationService already ran, do not manually edit provider-specific migration files, snapshots, or history tables; decide rollback vs corrective migration using the rollback matrix in [BACKUP_RESTORE_UPGRADE.md](BACKUP_RESTORE_UPGRADE.md).
 
 ## Local URLs
 

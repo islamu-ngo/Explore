@@ -69,7 +69,7 @@ Current checks cover:
 - Docker and Docker Compose availability;
 - Aspire CLI availability;
 - Compose service topology and BFF `API_ENDPOINT` alignment;
-- discrete PostgreSQL bootstrap variables expected by `BootstrapSecretLoader`;
+- structured primary/authority database roots and role-separated credentials;
 - presence of operator remediation docs;
 - review-first AI tool readiness artifacts, generated inventories, registry tests, and agent hardening docs.
 
@@ -145,10 +145,14 @@ To reset only the local app database while keeping the persistent Postgres conta
 Secret and connection priority:
 
 - `local-full` forces `SecretProvider__Provider=None` for child projects, clears Infisical bootstrap identifiers, and supplies local Keycloak, Cerbos, MinIO, Svix, Coop, Mailpit SMTP, storage, and database settings. Contributors should not need Infisical credentials.
-- `ConnectionStrings:DefaultConnection` has first priority for EF Core; Aspire `WithReference` supplies it in `local-full` and `local-core`.
+- AppHost injects structured `Database__*` fields and only the credential role
+  required by each process. Raw application connection strings are not a
+  deployment input.
 - Mailpit SMTP is local in every Aspire profile. Non-isolated runs use the configured development Mailpit ports; isolated runs use Aspire-assigned dynamic ports. Development database seeding uses `MAIL_SMTP_*` values, then `SMTP_*` aliases, then local defaults when `email.smtp_host` is empty or still set to the retired `mailpit.openislamu.org` default. In `ISLAMU_ASPIRE_MODE=FullLocal`, seeding refreshes those Development SMTP rows on each run so persistent local database volumes follow the current isolated Mailpit port.
 - Self-hosted local Keycloak may also be configured to use Mailpit or shared SMTP for Keycloak realm email. That is Keycloak realm SMTP plumbing, not product Basic Dispatch configuration: identity lifecycle emails still come from Keycloak and do not create `EmailDispatchOutbox` rows.
-- When no connection string is supplied, `BootstrapSecretLoader` resolves PostgreSQL fields from Infisical `/postgresql`, then `POSTGRESQL_*` environment variables, then `Postgresql:*` configuration.
+- Explicit structured `Database:*` values are authoritative. The PostgreSQL
+  compatibility bootstrap projects Infisical `/postgresql`, `POSTGRESQL_*`, or
+  `Postgresql:*` values only when the structured fields are absent.
 - `local-core` and `local-lite` are maintainer modes. If Infisical bootstrap credentials are present in user secrets or environment variables, raw Infisical bootstrap values can outrank local `POSTGRESQL_*` fallback values. Blank the Infisical bootstrap keys for env-only local debugging.
 
 Keycloak local infrastructure imports the repository realm export from `docker/keycloak/realm-export.json`. Aspire mounts that file into `/opt/keycloak/data/import/realm-export.json` and starts Keycloak with `--import-realm`; Docker Compose mounts the same file and then runs `keycloak-init` to synchronize the confidential Blazor client secret plus managed realm/client security settings. The export contains no client secret. Aspire sets `KC_HTTP_RELATIVE_PATH=/auth`, so its management readiness probe is `/auth/health/ready`. Keycloak skips startup import when the realm already exists in the persistent database; `keycloak-init` repairs the managed policy/client fields, while a disposable database reset is still required for unrelated export-only changes.
@@ -157,7 +161,9 @@ Startup dependencies are explicit:
 
 1. Local data profiles create PostgreSQL and Redis first.
 2. `local-full` creates platform infrastructure, including CockroachDB before Phase Two Keycloak and Cerbos PostgreSQL before Cerbos.
-3. `Event.MigrationService` runs in every profile. Local data profiles provide PostgreSQL through Aspire `WithReference(database, "EventMigrationService")` and `WithReference(database, "DefaultConnection")`; `local-lite` resolves the external database from Infisical/config.
+3. `Event.MigrationService` runs in every profile. Local data profiles inject
+   structured PostgreSQL migrator fields; `local-lite` resolves the selected
+   provider from structured external configuration.
 4. `Explore.API` waits for migration completion, local data/cache, and `local-full` platform resources when those resources exist.
 5. `Explore.Blazor` waits for API readiness and receives API service discovery through Aspire.
 6. Dedicated admin hosts use the same `Explore.Blazor` process and generated API client boundary.
@@ -184,12 +190,32 @@ See [WEBHOOKS.md](WEBHOOKS.md) and [INTEGRATIONS.md](INTEGRATIONS.md) for provid
 
 ## API Startup Behavior
 
-On startup (except `Testing` environment), API performs:
+In deployed environments, `Event.MigrationService` owns the primary application
+and Data Protection schemas. It binds `Database:Migrator`, selects the closed
+provider switch, applies pending migrations, enables SQLite WAL when selected,
+applies PostgreSQL-only model constraints when selected, migrates configured
+privacy-erasure authority storage, runs idempotent seeding, and exits. A nonzero
+exit blocks API rollout. Run it twice in deployment rehearsal to prove there is
+no pending work on the second pass.
 
-1. `db.Database.Migrate()`
-2. `DatabaseSeeder.SeedAsync(...)`
+The API binds `Database:Runtime`. Development retains application migration and
+seed convenience; production/staging do not. The API owns only its TickerQ
+operational schema migration, which is enabled exclusively for PostgreSQL.
+Select `EmailDispatchProcessor:Mode=HostedService` on SQLite, SQL Server,
+MariaDB, and MySQL.
 
-If migration fails, startup fails (application does not continue).
+| Provider | Application migrations | Data Protection migrations | Namespace/history |
+|---|---|---|---|
+| PostgreSQL | `Explore.Persistence` | `Explore.Persistence` | `islamu_event.__EFMigrationsHistory` and `islamu_event.__EFDataProtectionMigrationsHistory` |
+| SQLite | `Explore.Persistence.Migrations.Sqlite` | `Explore.Persistence.DataProtection.Migrations.Sqlite` | `islamu_event_` table prefix and prefixed histories |
+| SQL Server | `Explore.Persistence.Migrations.SqlServer` | `Explore.Persistence.DataProtection.Migrations.SqlServer` | `islamu_event` schema and separate histories |
+| MariaDB | `Explore.Persistence.Migrations.MariaDb` | `Explore.Persistence.DataProtection.Migrations.MariaDb` | `islamu_event_` table prefix and prefixed histories |
+| MySQL | `Explore.Persistence.Migrations.MySql` | `Explore.Persistence.DataProtection.Migrations.MySql` | `islamu_event_` table prefix and prefixed histories |
+
+`EmbeddedSqlite` authority uses its dedicated local file and authority schema
+owner. `ExternalDatabase` uses the authority context's PostgreSQL migrations
+and `__EFPrivacyErasureAuthorityMigrationsHistory`. Neither authority topology
+shares the primary database.
 
 Development catalog reseeding is provider-aware. Relational providers use
 set-based cleanup such as `ExecuteDeleteAsync` and bounded SQL where needed;
@@ -197,16 +223,16 @@ non-relational test providers materialize and remove tracked rows because EF
 Core's in-memory provider cannot translate relational set-based delete
 operations. Do not copy the in-memory fallback into production cleanup jobs.
 
-When creating EF Core migrations from scratch in the repository, run the commands from the repo root in this order:
+When creating EF Core migrations, target the provider's owning migration
+project. Generate Data Protection and application migrations separately.
 
 Migration files and model snapshots are generated artifacts. Never patch them manually. If generated output is incorrect, fix the entity/configuration, `DbContext`, lookup seeding, or migration-generation extension; remove the unapplied development migration and run `dotnet ef migrations add` again. Applied or merged migrations remain immutable and require a newly generated corrective migration.
 
-```bash
-dotnet ef migrations add init --context DataProtectionKeyContext --project Explore.Persistence --startup-project Explore.API --output-dir Migrations/DataProtection
-dotnet ef migrations add init --context ExploreDbContext --project Explore.Persistence --startup-project Explore.API
-```
-
-This preserves the dedicated data-protection migration path before the primary `ExploreDbContext` bootstrap migration.
+PostgreSQL remains in `Explore.Persistence`; the other four providers use the
+projects listed above. Use the matching design-time factory, remove only an
+unapplied development migration with `dotnet ef migrations remove`, then
+regenerate with `dotnet ef migrations add`. Never patch generated migration,
+designer, or snapshot files.
 
 Data Protection key persistence is launch-critical for the Blazor BFF. `Explore.Blazor`
 stores authentication cookies, setup-secret cookies, antiforgery state, and other
@@ -263,7 +289,7 @@ Readiness interpretation:
 | Check | Host | Healthy | Degraded | Unhealthy |
 |---|---|---|---|---|
 | `shutdown` | API, Blazor, Control Plane BFF | Process is accepting traffic | Not used | Graceful shutdown is active; remove from load balancer |
-| `database` | API, Blazor | EF Core can reach PostgreSQL | Not used | Database unavailable or migration/runtime connectivity failed |
+| `database` | API, Blazor | EF Core can reach the configured primary provider | Not used | Database unavailable or migration/runtime connectivity failed |
 | `data-protection-keys` | Blazor | Persisted ASP.NET Core Data Protection key table is reachable | Not used | BFF key-ring table or backing database is unavailable; existing cookies may fail after restart |
 | `distributed-cache` | API, Blazor, Control Plane BFF | Effective cache round-trip works | Configured Redis fell back to in-memory cache | Effective cache round-trip failed |
 | `oidc-discovery` | API, Blazor, Control Plane BFF | OIDC metadata valid, or OIDC is not configured | Not used | Configured OIDC metadata endpoint is unreachable or invalid |
@@ -650,10 +676,10 @@ No additional configuration keys were added for SSE refresh hints in this implem
 
 Registration confirmation email is handled as a durable side effect:
 
-1. The registration command creates an `EmailDispatchOutbox` row in the same PostgreSQL transaction as the registration state.
-2. TickerQ `email-dispatch-drain` triggers the shared drain service. In fallback mode, `EmailDispatchProcessor` triggers the same service with a hosted timer.
-3. Batch, TickerQ, hosted-service, and RabbitMQ pointer paths enter the same atomic claim operation. PostgreSQL applies the instance drain pause, fair tenant rounds, required-work priority, paused-tenant exclusion, and global/per-tenant `Processing` ceilings without incrementing `AttemptCount`. Dispatch-time eligibility rechecks the instance pause to close the claim-to-provider race.
-4. The conditional eligibility transition rechecks current authorization, consent, preference, and verified address, then reserves both persisted SMTP buckets using PostgreSQL `clock_timestamp()`. Rate deferral releases the lease without creating an attempt, receipt, or provider fence.
+1. The registration command creates an `EmailDispatchOutbox` row in the same primary-database transaction as registration state.
+2. With PostgreSQL, TickerQ `email-dispatch-drain` triggers the shared drain service. SQLite, SQL Server, MariaDB, and MySQL must use `EmailDispatchProcessor:Mode=HostedService`, whose hosted timer calls the same service.
+3. Batch, TickerQ, hosted-service, and RabbitMQ pointer paths enter the same atomic claim operation. Provider-specific database locking applies the instance drain pause, fair tenant rounds, required-work priority, paused-tenant exclusion, and global/per-tenant `Processing` ceilings without incrementing `AttemptCount`. Dispatch-time eligibility rechecks the instance pause to close the claim-to-provider race.
+4. The conditional eligibility transition rechecks current authorization, consent, preference, and verified address, then reserves both persisted SMTP buckets against the database clock. Rate deferral releases the lease without creating an attempt, receipt, or provider fence.
 5. An admitted transition atomically decrements the global and tenant buckets, increments `AttemptCount`, and creates the processing receipt plus `provider_handoff_started` attempt fence before SMTP I/O.
 6. SMTP is called through `IEmailService`; handlers and controllers do not send SMTP, publish RabbitMQ, or schedule TickerQ jobs directly.
 7. Provider acceptance, provider failure, and acceptance reconciliation use tenant/outbox/lease/attempt-fenced transactions to align `EmailDispatchOutbox`, `EmailDispatchAttempt`, `EmailDispatchReceipt`, and `NotificationDelivery`.
@@ -693,7 +719,7 @@ Planned-only jobs are `general-outbox-drain`, `pds-sync-drain`, `dead-letter-sum
 
 ### Lifecycle-Email Operations
 
-PostgreSQL remains the email delivery ledger. Parent-aware content retention is implemented by `EmailDispatchRetentionCleanupProcessor`: it runs bounded transactional passes, supports dry-run, and records only counts and cutoff timestamps in logs.
+The selected primary database remains the email delivery ledger. Parent-aware content retention is implemented by `EmailDispatchRetentionCleanupProcessor`: it runs bounded transactional passes, supports dry-run, and records only counts and cutoff timestamps in logs.
 
 - Sent and skipped content redacts after the configured 180-day default; attempt and receipt free text/provider IDs follow the selected parent in the same transaction.
 - Dead-lettered, `Unknown`, and parked replay material remains until its explicit resolution timestamp, then follows the same retention clock. `ContentRedactedAt` permanently removes replay authority.
@@ -710,7 +736,7 @@ Eligibility and the occurrence/version fence are checked in the conditional prov
 
 ### Optional RabbitMQ Dispatch Operations
 
-RabbitMQ Dispatch Mode is optional transport infrastructure over the same PostgreSQL-owned `EmailDispatchOutbox` state machine. It declares RabbitMQ topology, publishes pointer-only `EmailDispatchPointer` messages with mandatory routing and publisher confirmations, exposes `email-dispatch-rabbitmq` readiness, wires the local Aspire `messaging` resource, and can run manual-ack dispatch and DLQ replay workers when explicitly enabled. It does **not** replace Basic Dispatch Mode; API + PostgreSQL + SMTP remains sufficient when RabbitMQ is disabled.
+RabbitMQ Dispatch Mode is optional transport infrastructure over the same primary-database-owned `EmailDispatchOutbox` state machine. It declares RabbitMQ topology, publishes pointer-only `EmailDispatchPointer` messages with mandatory routing and publisher confirmations, exposes `email-dispatch-rabbitmq` readiness, wires the local Aspire `messaging` resource, and can run manual-ack dispatch and DLQ replay workers when explicitly enabled. It does **not** replace Basic Dispatch Mode; API + the selected primary database + SMTP remains sufficient when RabbitMQ is disabled.
 
 Operator signals:
 
@@ -1083,7 +1109,7 @@ For delayed or failed publication, keep the local event authoritative. Inspect t
 ## Incident Triage Quick Checks
 
 1. Check `/health` and `/alive`.
-2. Check API logs for migration/seeding failures.
+2. Check MigrationService logs for primary, Data Protection, authority, or seeding failures; check API logs for runtime-provider validation and TickerQ-only schema failures.
 3. Check rate-limit/timeouts if clients receive `429` or `504`.
 4. Check tenant resolution and deployment mode (`deployment.mode`) if tenant-scoped behavior is wrong.
 5. Check setup-secret mode if onboarding is blocked.

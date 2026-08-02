@@ -6,7 +6,7 @@ ABOUTME: Provides the release documentation contract for self-hostable operators
 > **Audience:** Contributors | Operators | AI agents
 > **Status:** Implemented
 > **Owner:** Platform/Ops
-> **Last Verified:** 2026-05-06
+> **Last Verified:** 2026-08-02
 > **Source Anchors:** `docs/BACKUP_RESTORE_UPGRADE.md`, `docs/CONTRIBUTING.md`, `docs/TESTING.md`, `.github/workflows/test.yml`
 
 Use this checklist before tagging or publishing a release. A release is not ready until operators can understand what changed, how to upgrade, how to verify, and how to roll back.
@@ -74,6 +74,9 @@ Use `Not applicable` only when the change has no release-impact category. If the
 ## Migration And Data Contract
 
 - [ ] New EF migrations are named, reviewed, and tied to the feature/release.
+- [ ] Clean-database migration and a second idempotent MigrationService run pass for PostgreSQL, SQLite, SQL Server, MariaDB, and MySQL on the release matrix.
+- [ ] Provider-specific application and Data Protection migration assemblies are present, generated from the model, and use their governed history tables; generated migrations and snapshots were not hand-edited.
+- [ ] TickerQ operational-schema ownership remains in the API and is enabled only for PostgreSQL; non-PostgreSQL release lanes prove `EmailDispatchProcessor:Mode=HostedService` with equivalent durable outbox/drain behavior.
 - [ ] Migration impact is documented: additive, data backfill, destructive, or rollback-sensitive. Do not claim below-floor compaction or DR rehearsal coverage, or any RPO/RTO number, until it is shipped and linked in evidence.
 - [ ] Data-protection/key storage impact is documented if changed.
 - [ ] Seed data or lookup table changes are documented.
@@ -83,6 +86,8 @@ Use `Not applicable` only when the change has no release-impact category. If the
 
 - [ ] New or changed environment keys are documented in `CONFIGURATION.md` or `SECRETS.md`.
 - [ ] Removed keys are listed with replacements.
+- [ ] `Database:*` provider, endpoint, TLS, and runtime/migrator role inputs are documented without raw connection-string secrets; MariaDB/MySQL release inputs pin matching server flavor and version.
+- [ ] The default `EmbeddedSqlite` privacy-erasure authority uses a dedicated local volume, one writer, independently rehearsed backup/restore, and no primary-database credential. Any `ExternalDatabase` topology uses a distinct structured PostgreSQL target and separate roles.
 - [ ] Secret-provider paths and key names are documented.
 - [ ] Keycloak realm/client/role changes are documented.
 - [ ] Optional profiles (`storage`, `authz`) and dependencies are documented.
@@ -92,7 +97,7 @@ Use `Not applicable` only when the change has no release-impact category. If the
 - [ ] Authentication/authorization changes are documented in `SECURITY.md` or `AUTHORIZATION_PATTERNS.md`.
 - [ ] Rate-limit, timeout, forwarded-header, CORS, or proxy changes are documented.
 - [ ] Health-check, metrics, logging, or tracing changes are documented in `OPERATIONS.md`.
-- [ ] Backup/restore impact is documented in `BACKUP_RESTORE_UPGRADE.md` when data shape changes. The doc must preserve the CoLocated limitation, the external application-only custom-format restore proof, and the restore-both-databases caveat.
+- [ ] Backup/restore impact is documented in `BACKUP_RESTORE_UPGRADE.md` when data shape changes. The runbook must preserve the authority independently from the primary database, cover embedded SQLite file/WAL handling or the external PostgreSQL target as selected, and require restore rehearsal plus MigrationService idempotency proof.
 - [ ] Known vulnerabilities or dependency warnings are triaged.
 - [ ] Secret scanning, push protection, Dependabot security updates, dependency graph, and CodeQL alerts are enabled or explicitly waived at repository/organization level. Current credential rotation status is documented as restart-based when that is the proven behavior; do not imply live reload or zero-downtime rotation unless it is separately proven.
 

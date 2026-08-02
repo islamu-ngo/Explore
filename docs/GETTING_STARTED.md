@@ -6,7 +6,7 @@ ABOUTME: Links deeper docs instead of duplicating self-hosting, testing, and con
 > **Audience:** Contributors | Evaluators | AI agents
 > **Status:** Implemented
 > **Owner:** Contributor Experience
-> **Last Verified:** 2026-07-03
+> **Last Verified:** 2026-08-02
 > **Source Anchors:** `global.json`, `Explore.AppHost/AppHost.cs`, `docker-compose.yml`, `docs/SELF_HOSTING.md`, `docs/TESTING.md`
 
 Use this page for the shortest safe local path. For production-style hosting, start with [SELF_HOSTING.md](SELF_HOSTING.md) instead.
@@ -121,7 +121,11 @@ dotnet run --project Explore.AppHost/Explore.AppHost.csproj --launch-profile loc
 
 All four launch profiles expose API at `https://localhost:7039` and Blazor at `https://localhost:7177`. Prefer `aspire run --apphost Explore.AppHost/Explore.AppHost.csproj` for the contributor path because it is shorter and works from a clean checkout.
 
-Priority rule: `ConnectionStrings:DefaultConnection` wins first, so Aspire `WithReference` owns the local database connection in `FullLocal` and `LocalDataExternalPlatform`. When no connection string is supplied, the bootstrap chain is Infisical `/postgresql` first, then `POSTGRESQL_*` environment variables, then `Postgresql:*` configuration. If Infisical bootstrap credentials exist and you want env-only local behavior, remove or blank those credentials for that shell/profile.
+AppHost injects structured `Database__*` fields and the correct runtime or
+migrator role into each process. Explicit `Database:*` values win. The legacy
+PostgreSQL compatibility projection uses Infisical `/postgresql`, then
+`POSTGRESQL_*`, then `Postgresql:*` only when structured fields are absent. Raw
+application connection strings are not a deployment input.
 
 ## Option B: Run The Compose Stack
 
@@ -130,8 +134,17 @@ Use Compose when you want the self-hosting topology locally:
 ```bash
 cp .env.example .env
 docker compose config
-docker compose up -d postgres redis mailpit keycloak-db keycloak keycloak-init islamu-event-api islamu-event-ui
+docker compose up -d postgres redis mailpit keycloak-db keycloak keycloak-init
+docker compose run --rm event-migrationservice
+docker compose up -d islamu-event-api islamu-event-ui
 ```
+
+The repository Compose default is PostgreSQL. For SQLite, SQL Server, MariaDB,
+or MySQL, set the structured `DATABASE_*` fields described in
+[CONFIGURATION.md](CONFIGURATION.md#persistence-configuration), provide the
+selected engine/file, and require MigrationService to finish before API start.
+Use `EmailDispatchProcessor:Mode=HostedService` for every non-PostgreSQL
+provider.
 
 Default Compose endpoints:
 

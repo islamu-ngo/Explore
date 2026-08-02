@@ -70,26 +70,54 @@ The repository root `.env.example` mirrors the supported Infisical folder layout
 
 Docker Compose uses `.env` for interpolation before starting containers. The Compose file then passes explicit `environment:` entries into each service. Do not rely on a broad `env_file: .env` import because it would place unrelated secrets into containers that do not need them.
 
+### Primary database credentials
+
+The database contract is structured; do not store or inject a raw connection
+string. Endpoint metadata uses `DATABASE_PROVIDER`, `DATABASE_HOST`,
+`DATABASE_PORT`, `DATABASE_DATABASE`, `DATABASE_TLS_MODE`, and
+`DATABASE_TRUST_SERVER_CERTIFICATE`. MariaDB/MySQL additionally require
+`DATABASE_SERVER_FLAVOR` and `DATABASE_SERVER_VERSION`.
+
+| Compose key | Direct .NET key | Consumer |
+|---|---|---|
+| `DATABASE_RUNTIME_USERNAME`, `DATABASE_RUNTIME_PASSWORD` | `Database:Runtime:Username`, `Database:Runtime:Password` | API/runtime processes only |
+| `DATABASE_MIGRATOR_USERNAME`, `DATABASE_MIGRATOR_PASSWORD` | `Database:Migrator:Username`, `Database:Migrator:Password` | `Event.MigrationService` only |
+
+SQLite has no database credentials. Its `DATABASE_DATABASE` value is a
+persisted local file path and is deployment configuration, not a secret. Do not
+give runtime services the migrator role, and never expose either role to the
+Blazor client.
+
 ### Privacy-erasure authority credentials
 
 | Compose key | Direct .NET key | Consumer |
 |---|---|---|
-| `PRIVACY_ERASURE_AUTHORITY_RUNTIME_CONNECTION_STRING` | `ConnectionStrings:PrivacyErasureAuthority` | API only, and only for `ExternalDatabase` |
-| `PRIVACY_ERASURE_AUTHORITY_MIGRATOR_CONNECTION_STRING` | `ConnectionStrings:PrivacyErasureAuthorityMigrator` | `Event.MigrationService` only |
+| `PRIVACY_ERASURE_AUTHORITY_RUNTIME_USERNAME`, `PRIVACY_ERASURE_AUTHORITY_RUNTIME_PASSWORD` | `PrivacyErasureAuthorityDatabase:Runtime:Username`, `PrivacyErasureAuthorityDatabase:Runtime:Password` | API only, and only for `ExternalDatabase` |
+| `PRIVACY_ERASURE_AUTHORITY_MIGRATOR_USERNAME`, `PRIVACY_ERASURE_AUTHORITY_MIGRATOR_PASSWORD` | `PrivacyErasureAuthorityDatabase:Migrator:Username`, `PrivacyErasureAuthorityDatabase:Migrator:Password` | `Event.MigrationService` only |
 
-Keep both values blank for `CoLocated`. For `ExternalDatabase`, use separate
-PostgreSQL roles: the runtime role receives only authority append/read function
-execution, while the migrator owns schema and grants. Never pass either
-authority connection to `Explore.Blazor` or `Explore.Blazor.Client`. Rotate the
-migrator credential after migration completion independently of the runtime
-credential.
+For `ExternalDatabase`, endpoint metadata is supplied separately through
+`PRIVACY_ERASURE_AUTHORITY_HOST`, `PORT`, `DATABASE`, `TLS_MODE`, and
+`TRUST_SERVER_CERTIFICATE`; the provider is fixed to PostgreSQL. Use separate
+roles: runtime receives only authority append/read function execution, while
+migrator owns schema and grants. Never pass either authority credential to
+`Explore.Blazor` or `Explore.Blazor.Client`. Rotate the migrator credential
+independently of runtime. These values are unused in `EmbeddedSqlite` topology;
+that mode has no database username/password and protects its dedicated local
+file with filesystem permissions. Its nonsecret deployment fields are
+`PrivacyErasureAuthorityEmbedded:Path` (default
+`/app/data/privacy_erasure_authority.db`), `WriterReplicaCount=1`, and
+`BusyTimeoutSeconds=30`.
 
 There are two Infisical paths through the application:
 
 - `SecretProvider:Provider=Infisical` controls the `ISecretResolver` provider used by settings/secret-binding resolution.
 - Non-empty bare `Infisical:*` bootstrap values enable the startup compatibility loaders that fetch Infisical paths directly into `IConfiguration`.
 
-For full local runs, keep `SECRET_PROVIDER=None` and leave `INFISICAL_*` blank so local `POSTGRESQL_*`, Keycloak, Cerbos, and storage values remain authoritative. If `INFISICAL_*` is populated, the PostgreSQL bootstrap loader can read `/postgresql` before local environment variables by design.
+For full local runs, keep `SECRET_PROVIDER=None` and leave `INFISICAL_*` blank
+so local structured `DATABASE_*`, Keycloak, Cerbos, and storage values remain
+authoritative. The legacy PostgreSQL bootstrap loader still projects
+`/postgresql` and discrete `POSTGRESQL_*` inputs when a structured `Database`
+section is absent; new deployments should use `Database__*` / `DATABASE_*`.
 
 ### SecretRefresh Section
 
@@ -190,7 +218,7 @@ Infisical uses `SCREAMING_SNAKE_CASE` with path-based sections. The provider map
 | `/api/VAPID_PRIVATE_KEY` | `WebPush:VapidPrivateKey` |
 | raw process environment + `STORAGE_S3_*` | consumed directly by the S3 resolver as a compatibility fallback |
 
-The three ATProto rows use the same uppercase name as their default environment-variable name as well as their Infisical key. Environment variable format otherwise uses double-underscore separators for .NET keys, for example `S3Settings__Endpoint`. Storage also accepts raw `STORAGE_S3_*` variables for deployment compatibility. PostgreSQL bootstrap intentionally uses discrete `POSTGRESQL_*` values rather than a single URL-form connection string. SMTP secret-provider defaults use the user-facing `MAIL_SMTP_*` names; local Compose also exports older `SMTP_*` aliases for compatibility with development seeding.
+The three ATProto rows use the same uppercase name as their default environment-variable name as well as their Infisical key. Environment variable format otherwise uses double-underscore separators for .NET keys, for example `S3Settings__Endpoint`. Storage also accepts raw `STORAGE_S3_*` variables for deployment compatibility. Primary database bootstrap uses discrete structured fields rather than a single URL-form connection string; the PostgreSQL-only compatibility loader remains a fallback for older development inputs. SMTP secret-provider defaults use the user-facing `MAIL_SMTP_*` names; local Compose also exports older `SMTP_*` aliases for compatibility with development seeding.
 
 Compose Keycloak bootstrap consumes `KEYCLOAK_ADMIN` and `KEYCLOAK_ADMIN_PASSWORD` only inside the one-shot `keycloak-init` container. Those credentials are not application runtime secrets and must not be stored in governance settings or copied into support artifacts. The init logs redact client secret values.
 

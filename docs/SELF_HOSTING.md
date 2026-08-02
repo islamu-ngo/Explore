@@ -6,23 +6,30 @@ ABOUTME: Covers minimum viable stack, optional services, setup, migrations, heal
 > **Audience:** Operators and DevOps engineers  
 > **Status:** Implemented  
 > **Owner:** Platform/Ops  
-> **Last Verified:** 2026-08-01  
+> **Last Verified:** 2026-08-02  
 > **Source Anchors:** `docker-compose.yml`, `Explore.AppHost/AppHost.cs`, `Explore.API/Program.cs`, `Explore.Blazor/Extensions/YarpProxyExtensions.cs`
 
 ---
 
 ## Overview
 
-ISLAMU Event is designed for easy self-hosting. At its core, the platform requires only **three services** to run a fully functional instance:
+ISLAMU Event is designed for easy self-hosting. At its core, the platform
+requires the API, Blazor BFF, the one-shot `Event.MigrationService`, and one
+supported primary database:
 
 | Service | What It Does |
 |---|---|
-| **PostgreSQL** | Single application database — stores all data |
-| **API** (`islamu-event-api`) | REST API, runs EF Core migrations on startup, health checks, metrics |
+| **Primary database** | PostgreSQL, SQLite, SQL Server, MariaDB, or MySQL |
+| **Migration Service** (`event-migrationservice`) | Applies the provider-specific application, Data Protection, and authority migrations before deployment |
+| **API** (`islamu-event-api`) | REST API, workers, health checks, metrics |
 | **Blazor BFF** (`islamu-event-ui`) | Web UI, embedded admin shell, and YARP reverse proxy to the API |
 
 > [!IMPORTANT]
-> **Database migrations are built into the API container.** The API runs EF Core migrations automatically on startup (outside `Testing` environment). You do **not** need a separate migration service for standard deployments.
+> **Deployed migrations belong to `Event.MigrationService`.** Run it to
+> successful completion before starting or upgrading the API. Development keeps
+> an API-owned application-migration convenience path; do not rely on that in a
+> deployed environment. The API separately owns TickerQ operational migrations,
+> and TickerQ is PostgreSQL-only.
 
 Everything else — Redis, Keycloak, Cerbos, MinIO, Svix, Coop, AI, federation — is **optional** and can be added when your deployment needs it.
 
@@ -85,13 +92,16 @@ SETUP_SECRET=my-secure-setup-secret
 docker compose config
 ```
 
-**5. Start the core stack:**
+**5. Migrate, then start the core stack:**
 
 ```bash
+docker compose run --rm event-migrationservice
 docker compose up -d
 ```
 
-This starts all default services: PostgreSQL, Keycloak, Mailpit (local email capture), the API, and the Blazor UI.
+The one-shot migration process must exit successfully before the API starts.
+The default Compose database is PostgreSQL; select another provider through the
+structured `DATABASE_*` inputs and its deployment-specific database service.
 
 **6. Open the application:**
 
@@ -138,8 +148,8 @@ This starts all default services: PostgreSQL, Keycloak, Mailpit (local email cap
                     └──────┬──────────────────────┬────────────────┘
                            │                      │
                   ┌────────▼────────┐    ┌────────▼────────────────┐
-                  │   PostgreSQL    │    │   Optional Services     │
-                  │  (single DB)    │    │  Redis, Keycloak,       │
+                  │ Primary DB      │    │   Optional Services     │
+                  │  (selected)     │    │  Redis, Keycloak,       │
                   │                 │    │  Cerbos, MinIO, Svix…   │
                   └─────────────────┘    └─────────────────────────┘
 ```
@@ -148,7 +158,12 @@ This starts all default services: PostgreSQL, Keycloak, Mailpit (local email cap
 
 - **Browsers talk only to the Blazor BFF.** The BFF proxies API calls via YARP; clients should not need direct API access.
 - **The API is the single composition root** for Domain, Application, Persistence, and Infrastructure layers.
-- **PostgreSQL is the only required datastore.** All application data, outbox state, privacy-erasure authority (colocated mode), and data-protection keys live in one database.
+- **The primary datastore is selected explicitly.** PostgreSQL, SQLite, SQL
+  Server, MariaDB, and MySQL share the application model but use separate
+  generated migration sets.
+- **Privacy-erasure authority storage is always separate from the primary.**
+  `EmbeddedSqlite` uses `/app/data/privacy_erasure_authority.db` on its own
+  durable volume; `ExternalDatabase` uses a separate PostgreSQL database.
 
 ---
 
@@ -156,12 +171,13 @@ This starts all default services: PostgreSQL, Keycloak, Mailpit (local email cap
 
 ### Required Services
 
-These three services are the minimum to run ISLAMU Event:
+These services are the minimum to run ISLAMU Event:
 
 | Service | Compose Name | Purpose | Default Port |
 |---|---|---|---|
-| PostgreSQL | `postgres` | Application database | internal `5432` |
-| API | `islamu-event-api` | REST API, migrations, workers, health, metrics | `7039:8080` |
+| Selected primary database | `postgres` in the default Compose topology | Application, outbox, and Data Protection state | provider-specific |
+| Migration Service | `event-migrationservice` | One-shot provider-specific schema migration and seed | — |
+| API | `islamu-event-api` | REST API, workers, health, metrics | `7039:8080` |
 | Blazor BFF | `islamu-event-ui` | Web UI, admin shell, YARP proxy to API | `7002:8080` |
 
 ### Default Services (started without profiles)
@@ -187,7 +203,7 @@ Enable these only when needed. Each has its own Compose profile:
 | `webhooks` | `svix-db`, `svix` | Outgoing webhook provider |
 | `moderation` | `coop-db`, `coop-migrations`, `coop`, `coop-client` | Content moderation review queue |
 | `osprey` | `osprey` | Roost Osprey coordinator for signal evaluation |
-| `privacy-erasure-external` | `privacy-erasure-db`, `event-migrationservice` | External DB topology for privacy-erasure authority |
+| `privacy-erasure-external` | `privacy-erasure-db` | External PostgreSQL topology for privacy-erasure authority |
 
 ```bash
 # Example: add S3 storage
@@ -212,7 +228,8 @@ Choose the tier that matches your needs. The same application runs at every tier
 
 | Component | Required? |
 |---|---|
-| PostgreSQL | ✅ Yes |
+| Supported primary database | ✅ Yes |
+| `Event.MigrationService` before API | ✅ Yes |
 | API | ✅ Yes |
 | Blazor BFF | ✅ Yes |
 | Keycloak | Recommended (or use external OIDC provider) |
@@ -222,7 +239,9 @@ Choose the tier that matches your needs. The same application runs at every tier
 
 ```bash
 # Minimal start — just the core + Keycloak for auth
-docker compose up -d postgres keycloak-db keycloak keycloak-init islamu-event-api islamu-event-ui
+docker compose up -d postgres keycloak-db keycloak keycloak-init
+docker compose run --rm event-migrationservice
+docker compose up -d islamu-event-api islamu-event-ui
 ```
 
 - **Deployment mode:** Single-tenant (default, `DEPLOYMENT_MODE` unset).
@@ -247,7 +266,8 @@ docker compose up -d postgres keycloak-db keycloak keycloak-init islamu-event-ap
 
 - Everything from Tier 2, **plus:**
 - Cerbos HA cluster behind a dedicated load balancer
-- Separated database clusters for application data, identity (Keycloak), and policy storage
+- Separated database clusters for application data, external erasure authority,
+  identity (Keycloak), and policy storage
 - Centralized observability stack (Prometheus, Loki)
 - Multi-replica API and Blazor with shared Redis
 
@@ -271,15 +291,19 @@ The `.env` file is used by Docker Compose for variable interpolation. It is `.gi
 
 ### Required Variables
 
-These must be set for the application to start:
+The primary database uses one closed structured contract:
 
 | Variable | Default | Purpose |
 |---|---|---|
-| `POSTGRESQL_HOST` | `postgres` | Database host |
-| `POSTGRESQL_PORT` | `5432` | Database port |
-| `POSTGRESQL_DATABASE` | `islamu_event_db` | Database name |
-| `POSTGRESQL_USERNAME` | `explore` | Database username |
-| `POSTGRESQL_PASSWORD` | `explore` | Database password |
+| `DATABASE_PROVIDER` | `PostgreSql` | `PostgreSql`, `Sqlite`, `SqlServer`, `MariaDb`, or `MySql` |
+| `DATABASE_HOST` | `postgres` | Required for server providers; omit for SQLite |
+| `DATABASE_PORT` | provider default | Optional server port (`5432`, `1433`, or `3306`) |
+| `DATABASE_DATABASE` | `islamu_event_db` | Server database name, or persisted local SQLite file path |
+| `DATABASE_TLS_MODE` | `Prefer` in local Compose | `Prefer`, `Required`, or `Disabled`; production server deployments should use `Required` |
+| `DATABASE_TRUST_SERVER_CERTIFICATE` | `false` | Certificate bypass accepted only with required TLS; development only |
+| `DATABASE_RUNTIME_USERNAME`, `DATABASE_RUNTIME_PASSWORD` | `explore` locally | Runtime role; forbidden for SQLite |
+| `DATABASE_MIGRATOR_USERNAME`, `DATABASE_MIGRATOR_PASSWORD` | `explore` locally | Migration role; forbidden for SQLite and kept out of API/Blazor |
+| `DATABASE_SERVER_FLAVOR`, `DATABASE_SERVER_VERSION` | blank | Required only for MariaDB/MySQL and must match the selected engine |
 | `KEYCLOAK_BLAZOR_CLIENT_SECRET` | *(none — must generate)* | OIDC confidential client secret |
 | `KEYCLOAK_ENDPOINT` | `http://keycloak.localhost:8080` | Keycloak base URL |
 | `KEYCLOAK_REALM` | `ISLAMU` | Keycloak realm name |
@@ -287,7 +311,15 @@ These must be set for the application to start:
 > [!IMPORTANT]
 > `KEYCLOAK_BLAZOR_CLIENT_SECRET` has no default. Generate it with `openssl rand -hex 32` and add it to your `.env` before starting.
 
-The API reads PostgreSQL credentials as discrete variables via `BootstrapSecretLoader`. Do **not** pre-construct a single `ConnectionStrings:DefaultConnection` URL-form string.
+The API and MigrationService construct native connection strings from these
+validated fields. Do not pre-construct or inject a raw application connection
+string.
+
+SQLite requires additional deployment discipline: use a local durable path,
+mount the same primary file into MigrationService and API, never use a network
+filesystem or in-memory URI, and run exactly one API instance. The connection
+uses a 30-second busy timeout and MigrationService enables WAL after migration.
+The primary file must not be `/app/data/privacy_erasure_authority.db`.
 
 ### Recommended Variables
 
@@ -524,13 +556,18 @@ Federation is **disabled by default** (`federation.atproto_events_enabled=false`
 
 - AT Protocol OAuth keys (`ATPROTO_OAUTH_CLIENT_PRIVATE_JWKS`, `ATPROTO_SESSION_ENCRYPTION_KEYRING`, `ATPROTO_SESSION_JWT_PRIVATE_JWKS`)
 - Public HTTPS origin (`Atproto:PublicUrl`)
-- PostgreSQL schema migrations for ATProto records
+- Current provider-specific application migrations for ATProto records
 
 For full details, see [FEDERATION.md](FEDERATION.md) and [CONFIGURATION.md](CONFIGURATION.md#at-protocol-events-governance-and-workers).
 
-### Privacy Erasure External Topology
+### Privacy Erasure Authority Topology
 
-**Default behavior:** Colocated mode — the privacy-erasure authority ledger runs in the main PostgreSQL database with zero extra infrastructure.
+**Default behavior:** `EmbeddedSqlite` stores the authority ledger at the fixed
+path `/app/data/privacy_erasure_authority.db`. Mount `/app/data` as a dedicated
+durable local volume, restrict filesystem access to the application identity,
+and include the file in a separate backup job. It uses private cache, WAL, a
+bounded busy timeout, and a single writer. It must never be the primary SQLite
+file or share the primary database's restore lifecycle.
 
 For external database topology:
 
@@ -539,7 +576,11 @@ PRIVACY_ERASURE_AUTHORITY_TOPOLOGY=ExternalDatabase \
 docker compose --profile privacy-erasure-external up -d
 ```
 
-This starts a separate authority PostgreSQL and the `event-migrationservice`. Supply separate runtime and migrator connection strings. See [PRIVACY_ERASURE.md](PRIVACY_ERASURE.md) for guidance.
+This starts a separate authority PostgreSQL. Supply structured endpoint fields
+and separate runtime/migrator roles, then run `event-migrationservice` before
+the API. `CoLocated` and raw authority connection strings are not supported;
+this pre-v1 development repository provides no compatibility cutover. See
+[PRIVACY_ERASURE.md](PRIVACY_ERASURE.md) for guidance.
 
 ---
 
@@ -638,7 +679,11 @@ The API uses a PostgreSQL-based outbox pattern for email dispatch. Configure the
 > [!TIP]
 > Before testing external SMTP, use Mailpit first: send one product dispatch, confirm the outbox settles, then inspect the captured message at `http://localhost:8025`.
 
-**RabbitMQ dispatch** is optional transport infrastructure. The default PostgreSQL-only dispatch mode requires no message broker. Enable RabbitMQ only if you have an operator-provided broker and set `EmailDispatchRabbitMq:Enabled=true`.
+**RabbitMQ dispatch** is optional transport infrastructure. Basic dispatch
+requires no broker. TickerQ is available only with PostgreSQL; set
+`EmailDispatchProcessor:Mode=HostedService` for SQLite, SQL Server, MariaDB, or
+MySQL. Enable RabbitMQ only if you have an operator-provided broker and set
+`EmailDispatchRabbitMq:Enabled=true`.
 
 ---
 
@@ -682,40 +727,35 @@ Admin support access is off by default (`support_access.enabled=false`). Enable 
 
 Before every upgrade:
 
-1. ✅ Back up application PostgreSQL data
-2. ✅ Back up Keycloak PostgreSQL data (if using local Keycloak)
-3. ✅ Back up object storage — `local_storage_data` volume, `minio_data`, or S3 bucket
-4. ✅ Record image tags, commit SHA, enabled Compose profiles, and secret-provider key names
-5. ✅ Read release notes for migrations, config changes, and rollback constraints
+1. ✅ Back up the selected primary database with its provider-native tool
+2. ✅ Back up `/app/data/privacy_erasure_authority.db`, or the independently managed external authority PostgreSQL database
+3. ✅ Back up Keycloak PostgreSQL data (if using local Keycloak)
+4. ✅ Back up object storage — `local_storage_data` volume, `minio_data`, or S3 bucket
+5. ✅ Record image tags, commit SHA, enabled Compose profiles, and secret-provider key names
+6. ✅ Read release notes for migrations, config changes, and rollback constraints
 
 ### Migrations
 
 | Path | When Used | Behavior |
 |---|---|---|
-| API startup | Docker Compose / direct hosting | Runs EF Core migrations and seeding automatically on startup |
-| `Event.MigrationService` | Aspire / local dev orchestration | Applies migrations and seeds, then exits before API/Blazor start |
+| API startup in Development | Contributor convenience | Applies the application migration and seed; not a deployment contract |
+| `Event.MigrationService` | Every deployed provider | Applies application, Data Protection, and configured authority migrations, enables SQLite WAL, seeds, then exits before API/Blazor start |
 
 > [!NOTE]
-> The API handles migrations automatically. You do **not** need `Event.MigrationService` for standard Docker Compose deployments. It is only needed for the `privacy-erasure-external` Compose profile.
+> Run `Event.MigrationService` for every deployed provider and require exit code
+> zero before starting API replicas. Running it again is the supported
+> idempotency check: EF applies only pending migrations and seeding repairs only
+> missing rows.
 
 ### Creating Migrations from Scratch
 
-If bootstrapping from a clean repository:
-
-```bash
-# 1. Data-protection migration first
-dotnet ef migrations add init \
-  --context DataProtectionKeyContext \
-  --project Explore.Persistence \
-  --startup-project Explore.API \
-  --output-dir Migrations/DataProtection
-
-# 2. Primary application schema
-dotnet ef migrations add init \
-  --context ExploreDbContext \
-  --project Explore.Persistence \
-  --startup-project Explore.API
-```
+Migration and snapshot files are generated artifacts. PostgreSQL uses the
+`Explore.Persistence` assembly; SQLite, SQL Server, MariaDB, and MySQL use the
+matching `Explore.Persistence.Migrations.{Provider}` and
+`Explore.Persistence.DataProtection.Migrations.{Provider}` projects. Generate
+or remove an unapplied migration only with `dotnet ef`; never edit its C# or
+snapshot output. See [OPERATIONS.md](OPERATIONS.md#api-startup-behavior) for the
+provider-specific ownership contract.
 
 For the full backup and restore runbook, see [BACKUP_RESTORE_UPGRADE.md](BACKUP_RESTORE_UPGRADE.md).  
 For the release checklist, see [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md).
