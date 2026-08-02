@@ -9,6 +9,7 @@ using Event.Api.IntegrationTests.Seeds;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Infrastructure.Ai;
 using Explore.Application.DTOs.Ai;
+using Explore.Application.Features.AiAssistant.Actors;
 using Explore.Application.Responses;
 using Explore.Application.Settings;
 using Explore.Application.Settings.Groups;
@@ -109,7 +110,10 @@ public sealed class AiAssistantDbBackedApiFlowTests(AiAssistantDbBackedApiFixtur
     public async Task ConfirmProposedCreateEventDraft_CreatesExactlyOneDraftEventWithPostgreSqlPersistence()
     {
         var seeded = await ResetAndSeedAsync();
-        var conversationId = await CreateConversationAsync(seeded.UserId, "Confirm draft planning", seeded.OrganizationActorId);
+        var conversationId = await CreateConversationAsync(
+            seeded.UserId,
+            "Confirm draft planning",
+            seeded.OrganizationActorId);
         var eventCountBeforeSend = await CountEventsAsync();
 
         await SendMessageAsync(seeded.UserId, conversationId, "db-confirm-proposal", "Draft an event.");
@@ -132,9 +136,23 @@ public sealed class AiAssistantDbBackedApiFlowTests(AiAssistantDbBackedApiFixtur
     private async Task<TenantScenarioSeed.TenantOrganizationScenarioResult> ResetAndSeedAsync()
     {
         await _fixture.ResetDatabaseAsync();
-        await using var scope = _fixture.Factory.Services.CreateAsyncScope();
-        var db = scope.ServiceProvider.GetRequiredService<ExploreDbContext>();
-        var seeded = await TenantScenarioSeed.SeedActiveTenantWithOrganizationPublisherAsync(db);
+        TenantScenarioSeed.TenantOrganizationScenarioResult seeded;
+        await using (var scope = _fixture.Factory.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<ExploreDbContext>();
+            seeded = await TenantScenarioSeed.SeedActiveTenantWithOrganizationPublisherAsync(db);
+        }
+
+        await using (var scope = _fixture.Factory.Services.CreateAsyncScope())
+        {
+            var actorContexts = await scope.ServiceProvider
+                .GetRequiredService<IAiAssistantActorContextService>()
+                .ListAuthorizedActorContextsAsync(seeded.TenantId, seeded.UserId, CancellationToken.None);
+            await Assert.That(actorContexts.Any(context => context.ActorId == seeded.OrganizationActorId))
+                .IsTrue()
+                .Because("the seeded organization publisher must be selectable as an explicit AI actor context");
+        }
+
         _fixture.SetProposedOrganizationId(seeded.OrganizationId);
         return seeded;
     }
@@ -145,9 +163,12 @@ public sealed class AiAssistantDbBackedApiFlowTests(AiAssistantDbBackedApiFixtur
         request.Content = JsonContent.Create(new CreateAiConversationRequestDto { Title = title, ActorId = actorId });
 
         var response = await _fixture.Client.SendAsync(request);
+        var content = await response.Content.ReadAsStringAsync();
 
-        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Created);
-        var body = await response.Content.ReadFromJsonAsync<BaseCommandResponse<Guid>>();
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Created).Because(content);
+        var body = JsonSerializer.Deserialize<BaseCommandResponse<Guid>>(
+            content,
+            new JsonSerializerOptions(JsonSerializerDefaults.Web));
         await Assert.That(body).IsNotNull();
         await Assert.That(body!.Success).IsTrue();
         return body.Id;
@@ -178,16 +199,18 @@ public sealed class AiAssistantDbBackedApiFlowTests(AiAssistantDbBackedApiFixtur
         Guid runId,
         string expectedStatus)
     {
-        for (var attempt = 0; attempt < 40; attempt++)
+        string? lastResponse = null;
+        for (var attempt = 0; attempt < 120; attempt++)
         {
             using var request = _fixture.CreateAuthenticatedRequest(
                 HttpMethod.Get,
                 $"/api/ai/assistant/conversations/{conversationId}/runs/{runId}",
                 userId);
             var response = await _fixture.Client.SendAsync(request);
+            lastResponse = await response.Content.ReadAsStringAsync();
             if (response.StatusCode == HttpStatusCode.OK)
             {
-                using var json = await JsonDocument.ParseAsync(await response.Content.ReadAsStreamAsync());
+                using var json = JsonDocument.Parse(lastResponse);
                 var root = json.RootElement.Clone();
                 if (string.Equals(root.GetProperty("status").GetString(), expectedStatus, StringComparison.Ordinal))
                 {
@@ -195,10 +218,11 @@ public sealed class AiAssistantDbBackedApiFlowTests(AiAssistantDbBackedApiFixtur
                 }
             }
 
-            await Task.Delay(50);
+            await Task.Delay(100);
         }
 
-        throw new TimeoutException($"AI run {runId} did not reach status {expectedStatus}.");
+        throw new TimeoutException(
+            $"AI run {runId} did not reach status {expectedStatus}. Last response: {lastResponse}");
     }
 
     private async Task<Guid> ConfirmProposedActionAsync(
@@ -420,9 +444,14 @@ public sealed class AiAssistantDbBackedApiFixture : RealRuntimeApiFixture
                 {
                     title = "Fake AI event draft",
                     description = "Generated by the deterministic fake AI provider.",
-                    organizationId
+                    organizationId,
+                    participationConfiguration = new
+                    {
+                        participationHandlingModeId = 1,
+                        advanceRegistrationObligationId = 1
+                    }
                 })
-                : "{\"title\":\"Fake AI event draft\",\"description\":\"Generated by the deterministic fake AI provider.\"}";
+                : "{\"title\":\"Fake AI event draft\",\"description\":\"Generated by the deterministic fake AI provider.\",\"participationConfiguration\":{\"participationHandlingModeId\":1,\"advanceRegistrationObligationId\":1}}";
 
             return
             [

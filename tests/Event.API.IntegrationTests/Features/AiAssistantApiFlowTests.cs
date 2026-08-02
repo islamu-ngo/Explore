@@ -246,6 +246,7 @@ public sealed class AiAssistantApiFlowTests
         string expectedStatus,
         Guid? tenantId = null)
     {
+        string? lastStatus = null;
         for (var attempt = 0; attempt < 40; attempt++)
         {
             using var request = CreateAuthenticatedRequest(
@@ -258,16 +259,23 @@ public sealed class AiAssistantApiFlowTests
             {
                 using var json = await JsonDocument.ParseAsync(await response.Content.ReadAsStreamAsync());
                 var root = json.RootElement.Clone();
-                if (string.Equals(root.GetProperty("status").GetString(), expectedStatus, StringComparison.Ordinal))
+                lastStatus = root.GetProperty("status").GetString();
+                if (string.Equals(lastStatus, expectedStatus, StringComparison.Ordinal))
                 {
                     return root;
+                }
+                if (string.Equals(lastStatus, "Failed", StringComparison.Ordinal))
+                {
+                    throw new InvalidOperationException(
+                        $"AI run {runId} failed with code {root.GetProperty("failureCode").GetString()} while waiting for {expectedStatus}.");
                 }
             }
 
             await Task.Delay(50);
         }
 
-        throw new TimeoutException($"AI run {runId} did not reach status {expectedStatus}.");
+        throw new TimeoutException(
+            $"AI run {runId} did not reach status {expectedStatus}; last observed status was {lastStatus ?? "unavailable"}.");
     }
 
     private static HttpRequestMessage CreateAuthenticatedRequest(
