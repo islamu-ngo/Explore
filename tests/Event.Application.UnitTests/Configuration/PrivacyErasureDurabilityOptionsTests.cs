@@ -1,5 +1,5 @@
 // ABOUTME: Verifies the explicit privacy-erasure authority topology configuration contract.
-// ABOUTME: Defaults to CoLocated, rejects legacy mode keys, and requires secrets only for ExternalDatabase.
+// ABOUTME: Defaults to EmbeddedSqlite and rejects legacy mode keys without owning database credentials.
 
 using Explore.Application.Configuration;
 using Microsoft.Extensions.Configuration;
@@ -11,18 +11,18 @@ namespace Event.Application.UnitTests.Configuration;
 public sealed class PrivacyErasureDurabilityOptionsTests
 {
     [Test]
-    public async Task AbsentConfiguration_DefaultsToCoLocated()
+    public async Task AbsentConfiguration_DefaultsToEmbeddedSqlite()
     {
         PrivacyErasureDurabilityOptions options = Resolve(
             new Dictionary<string, string?>());
 
         await Assert.That(options.Topology)
-            .IsEqualTo(PrivacyErasureAuthorityTopology.CoLocated);
+            .IsEqualTo(PrivacyErasureAuthorityTopology.EmbeddedSqlite);
     }
 
     [Test]
-    [Arguments("CoLocated", PrivacyErasureAuthorityTopology.CoLocated)]
-    [Arguments("colocated", PrivacyErasureAuthorityTopology.CoLocated)]
+    [Arguments("EmbeddedSqlite", PrivacyErasureAuthorityTopology.EmbeddedSqlite)]
+    [Arguments("embeddedsqlite", PrivacyErasureAuthorityTopology.EmbeddedSqlite)]
     [Arguments("ExternalDatabase", PrivacyErasureAuthorityTopology.ExternalDatabase)]
     [Arguments("externaldatabase", PrivacyErasureAuthorityTopology.ExternalDatabase)]
     public async Task SupportedTopologyName_IsAccepted(
@@ -33,11 +33,6 @@ public sealed class PrivacyErasureDurabilityOptionsTests
         {
             ["PrivacyErasure:Authority:Topology"] = configured
         };
-        if (expected == PrivacyErasureAuthorityTopology.ExternalDatabase)
-        {
-            values["ConnectionStrings:PrivacyErasureAuthority"] =
-                "Host=unused;Database=unused;Username=unused";
-        }
 
         await Assert.That(Resolve(values).Topology).IsEqualTo(expected);
     }
@@ -50,6 +45,7 @@ public sealed class PrivacyErasureDurabilityOptionsTests
     [Arguments("1")]
     [Arguments("ApplicationDatabase")]
     [Arguments("RetainedAuthority")]
+    [Arguments("CoLocated")]
     public async Task UnsupportedTopologyName_FailsValidation(string configured)
     {
         await Assert.ThrowsAsync<OptionsValidationException>(() =>
@@ -70,7 +66,7 @@ public sealed class PrivacyErasureDurabilityOptionsTests
             Task.FromResult(Resolve(new Dictionary<string, string?>
             {
                 ["PrivacyErasure:Durability:Mode"] = legacyMode,
-                ["PrivacyErasure:Authority:Topology"] = "CoLocated"
+                ["PrivacyErasure:Authority:Topology"] = "EmbeddedSqlite"
             })));
 
         await Assert.That(exception!.Failures.Single())
@@ -94,72 +90,19 @@ public sealed class PrivacyErasureDurabilityOptionsTests
     }
 
     [Test]
-    [Arguments(null)]
-    [Arguments("")]
-    [Arguments(" ")]
-    [Arguments("Host=only")]
-    [Arguments("not-a-connection-string")]
-    public async Task ExternalDatabase_InvalidConnection_FailsValidation(string? connectionString)
-    {
-        await Assert.ThrowsAsync<OptionsValidationException>(() =>
-            Task.FromResult(Resolve(new Dictionary<string, string?>
-            {
-                ["PrivacyErasure:Authority:Topology"] = "ExternalDatabase",
-                ["ConnectionStrings:PrivacyErasureAuthority"] = connectionString
-            })));
-    }
-
-    [Test]
-    public async Task CoLocated_StrayAuthorityConnectionDoesNotChangeTopology()
-    {
-        PrivacyErasureDurabilityOptions options = Resolve(new Dictionary<string, string?>
-        {
-            ["PrivacyErasure:Authority:Topology"] = "CoLocated",
-            ["ConnectionStrings:PrivacyErasureAuthority"] =
-                "Host=unused;Database=unused;Username=unused"
-        });
-
-        await Assert.That(options.Topology)
-            .IsEqualTo(PrivacyErasureAuthorityTopology.CoLocated);
-    }
-
-    [Test]
     public async Task Topology_DerivesRestoreReplayProtectionCapability()
     {
-        PrivacyErasureDurabilityOptions coLocated = Resolve(new Dictionary<string, string?>
+        PrivacyErasureDurabilityOptions embedded = Resolve(new Dictionary<string, string?>
         {
-            ["PrivacyErasure:Authority:Topology"] = "CoLocated"
+            ["PrivacyErasure:Authority:Topology"] = "EmbeddedSqlite"
         });
         PrivacyErasureDurabilityOptions external = Resolve(new Dictionary<string, string?>
         {
-            ["PrivacyErasure:Authority:Topology"] = "ExternalDatabase",
-            ["ConnectionStrings:PrivacyErasureAuthority"] =
-                "Host=unused;Database=authority;Username=runtime"
+            ["PrivacyErasure:Authority:Topology"] = "ExternalDatabase"
         });
 
-        await Assert.That(coLocated.RestoreReplayProtection).IsFalse();
+        await Assert.That(embedded.RestoreReplayProtection).IsTrue();
         await Assert.That(external.RestoreReplayProtection).IsTrue();
-    }
-
-    [Test]
-    public async Task MigrationTopology_UsesOnlyMigratorConnection()
-    {
-        IConfiguration configuration = new ConfigurationBuilder().AddInMemoryCollection(
-            new Dictionary<string, string?>
-            {
-                ["PrivacyErasure:Authority:Topology"] = "ExternalDatabase",
-                ["ConnectionStrings:PrivacyErasureAuthorityMigrator"] =
-                    "Host=unused;Database=authority;Username=migrator"
-            }).Build();
-
-        PrivacyErasureAuthorityTopology topology = PrivacyErasureDurabilityOptions.GetTopology(configuration);
-        string connection = PrivacyErasureDurabilityOptions
-            .GetExternalDatabaseMigratorConnectionString(configuration);
-
-        await Assert.That(topology).IsEqualTo(PrivacyErasureAuthorityTopology.ExternalDatabase);
-        await Assert.That(connection).Contains("Username=migrator");
-        await Assert.ThrowsAsync<OptionsValidationException>(() =>
-            Task.FromResult(PrivacyErasureDurabilityOptions.GetExternalDatabaseConnectionString(configuration)));
     }
 
     private static PrivacyErasureDurabilityOptions Resolve(

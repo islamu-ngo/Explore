@@ -14,6 +14,7 @@ using Explore.Application.Contracts.PrivacyErasure;
 using Explore.Application.Contracts.Services;
 using Explore.Domain;
 using Explore.Persistence.Caching;
+using Explore.Persistence.Database;
 using Explore.Persistence.Extensions;
 using Explore.Persistence.Privacy.ErasureAuthority;
 using Explore.Persistence.Privacy.ErasureAuthority.Repositories;
@@ -21,11 +22,12 @@ using Explore.Persistence.Repositories;
 using Explore.Persistence.Security;
 using Explore.Persistence.Services;
 using Explore.Secrets.Bootstrap;
+using Explore.Secrets.Database;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Options;
 using Npgsql;
 
@@ -48,52 +50,33 @@ public static class PersistenceServicesRegistration
     {
         PrivacyErasureDurabilityOptions erasureDurability =
             PrivacyErasureDurabilityOptions.FromConfiguration(configuration);
-        string? applicationConnectionString =
-            configuration.GetConnectionString("DefaultConnection");
+
+        string? applicationConnectionString = null;
+        PrimaryDatabaseProvider? applicationProvider = null;
 
         // Skip DbContext registration when running integration tests (they register their own)
         if (!skipDbContextRegistration)
         {
-            // Precedence: explicit ConnectionStrings:DefaultConnection (tests / overrides)
-            // -> BootstrapSecretLoader (Infisical -> POSTGRESQL_* env -> Postgresql:* config). No URL form.
-            var connectionString = applicationConnectionString;
-            if (string.IsNullOrEmpty(connectionString))
-            {
-                using var bootstrapLoggerFactory = LoggerFactory.Create(static builder =>
-                {
-                    builder.AddSimpleConsole(static options =>
-                    {
-                        options.SingleLine = true;
-                        options.TimestampFormat = "HH:mm:ss.fff ";
-                    });
-                    builder.SetMinimumLevel(LogLevel.Information);
-                });
-                var bootstrapLogger = bootstrapLoggerFactory.CreateLogger("Explore.Persistence.Bootstrap");
-
-                var credentials = BootstrapSecretLoader.LoadPostgresConnectionString(configuration, bootstrapLogger);
-                connectionString = credentials.ConnectionString;
-            }
-
-            applicationConnectionString = connectionString;
+            var runtimeDatabaseOptions = PrimaryDatabaseConfiguration.BindRuntime(configuration);
+            var runtimeDatabase = PrimaryDatabaseConfiguration.BuildConnectionString(runtimeDatabaseOptions);
+            applicationConnectionString = runtimeDatabase.ConnectionString;
+            applicationProvider = runtimeDatabase.Provider;
 
             // Use pooled DbContext factory for performance (EF Core recommended pattern)
             // The scoped ExploreDbContext registration below handles scoped dependency injection
             services.AddPooledDbContextFactory<ExploreDbContext>(options =>
             {
-                options.UseNpgsql(connectionString, npgsqlOptions =>
-                    {
-                        npgsqlOptions.EnableRetryOnFailure(
-                            maxRetryCount: 3,
-                            maxRetryDelay: TimeSpan.FromSeconds(5),
-                            errorCodesToAdd: null);
-                        npgsqlOptions.CommandTimeout(30);
-                        npgsqlOptions.UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery);
-                    })
-                    .UseSnakeCaseNamingConvention();
+                PrimaryDatabaseProviderComposition.ConfigureApplication(options, runtimeDatabaseOptions);
 
-                if (IsEnabled(configuration["Persistence:EnableRlsTenantSession"]))
+                if (runtimeDatabase.Provider == PrimaryDatabaseProvider.PostgreSql
+                    && IsEnabled(configuration["Persistence:EnableRlsTenantSession"]))
                 {
                     options.AddInterceptors(PostgresTenantSessionInterceptor.Instance);
+                }
+
+                if (runtimeDatabase.Provider is PrimaryDatabaseProvider.MariaDb or PrimaryDatabaseProvider.MySql)
+                {
+                    options.AddInterceptors(MySqlNamedLockTransactionInterceptor.Instance);
                 }
 
                 var runtimeEnvironmentName = environmentName
@@ -126,8 +109,8 @@ public static class PersistenceServicesRegistration
 
         // Unit of Work (wraps EF Core transactions)
         services.AddScoped<IUnitOfWork, EfCoreUnitOfWork>();
-        services.AddScoped<ISettingMutationLock, PostgresSettingMutationLock>();
-        services.AddScoped<IAtprotoSessionRefreshLock, PostgresAtprotoSessionRefreshLock>();
+        services.AddScoped<ISettingMutationLock, RelationalSettingMutationLock>();
+        services.AddScoped<IAtprotoSessionRefreshLock, RelationalAtprotoSessionRefreshLock>();
 
         services.AddScoped<IGenericRepository<EventReportDecision, Guid>, GenericRepository<EventReportDecision, Guid>>();
         services.AddScoped<IGenericRepository<EventReportTarget, Guid>, GenericRepository<EventReportTarget, Guid>>();
@@ -225,6 +208,9 @@ public static class PersistenceServicesRegistration
         services.AddScoped<IEventTicketCatalogRepository, EventTicketCatalogRepository>();
         services.AddScoped<IRegistrationInventoryRepository, RegistrationInventoryRepository>();
         services.AddScoped<IRegistrationParticipantRepository, RegistrationParticipantRepository>();
+        services.AddScoped<IRegistrationSubmissionRepository, RegistrationSubmissionRepository>();
+        services.AddScoped<IRegistrationAnswerFileRepository, RegistrationAnswerFileRepository>();
+        services.AddScoped<IRegistrationFinalizationRepository, RegistrationFinalizationRepository>();
         services.AddScoped<IPlatformFeePolicyRepository, PlatformFeePolicyRepository>();
         services.AddScoped<IPlatformContributionSettingRepository, PlatformContributionSettingRepository>();
         services.AddScoped<IEventPublicActionRepository, EventPublicActionRepository>();
@@ -284,32 +270,15 @@ public static class PersistenceServicesRegistration
         services.AddScoped<IPrivacyErasureProviderWorkRepository, PrivacyErasureProviderWorkRepository>();
         services.AddScoped<IUserLocationPrivacyErasureRepository, UserLocationPrivacyErasureRepository>();
         services.AddScoped<IUserPrivacyErasureRepository, UserLocationPrivacyErasureRepository>();
-        services.AddScoped<IPrivacyErasureLedgerRepository>(provider =>
-            new ApplicationDatabasePrivacyErasureLedgerRepository(
-                provider.GetRequiredService<ExploreDbContext>(),
-                provider.GetRequiredService<TimeProvider>(),
-                provider.GetRequiredService<IOptions<PrivacyErasureOptions>>().Value.AuthorityRetention));
         if (erasureDurability.Topology == PrivacyErasureAuthorityTopology.ExternalDatabase)
         {
-            string connectionString =
-                PrivacyErasureDurabilityOptions.GetExternalDatabaseConnectionString(configuration);
-            try
-            {
-                var builder = new NpgsqlConnectionStringBuilder(connectionString);
-                if (string.IsNullOrWhiteSpace(builder.Host)
-                    || string.IsNullOrWhiteSpace(builder.Database)
-                    || string.IsNullOrWhiteSpace(builder.Username))
-                {
-                    throw InvalidExternalAuthorityConnection();
-                }
-            }
-            catch (ArgumentException)
-            {
-                throw InvalidExternalAuthorityConnection();
-            }
+            var authorityDatabase = PrivacyErasureAuthorityDatabaseConfiguration
+                .ResolveRuntimeConnectionString(configuration);
 
             if (!string.IsNullOrWhiteSpace(applicationConnectionString)
-                && TargetsSamePhysicalDatabase(applicationConnectionString, connectionString))
+                && TargetsSamePhysicalDatabase(
+                    applicationConnectionString,
+                    authorityDatabase.ConnectionString))
             {
                 throw new OptionsValidationException(
                     nameof(PrivacyErasureDurabilityOptions),
@@ -318,13 +287,29 @@ public static class PersistenceServicesRegistration
             }
 
             services.AddDbContext<PrivacyErasureAuthorityDbContext>(options =>
-                options.UseNpgsql(connectionString)
+                options.UseNpgsql(
+                        authorityDatabase.ConnectionString,
+                        npgsql => npgsql
+                            .MigrationsAssembly(typeof(PrivacyErasureAuthorityDbContext).Assembly.FullName)
+                            .MigrationsHistoryTable(
+                                PrivacyErasureAuthorityDatabaseConfiguration.MigrationsHistoryTable))
                     .UseSnakeCaseNamingConvention());
             services.AddScoped<IPrivacyErasureAuthority, EfCorePrivacyErasureAuthorityRepository>();
         }
         else
         {
-            services.AddScoped<IPrivacyErasureAuthority, CoLocatedPrivacyErasureAuthorityRepository>();
+            EmbeddedPrivacyErasureAuthorityOptions embedded =
+                EmbeddedPrivacyErasureAuthorityOptions.Bind(configuration);
+            if (applicationProvider == PrimaryDatabaseProvider.Sqlite)
+            {
+                EnsureDedicatedEmbeddedAuthorityFile(applicationConnectionString!, embedded.Path);
+            }
+            services.AddSingleton(embedded);
+            services.AddSingleton<EmbeddedPrivacyErasureAuthorityStorage>();
+            services.AddDbContextFactory<EmbeddedPrivacyErasureAuthorityDbContext>(options =>
+                EmbeddedPrivacyErasureAuthorityDbContextFactory.Configure(options, embedded));
+            services.TryAddSingleton<TimeProvider>(TimeProvider.System);
+            services.AddSingleton<IPrivacyErasureAuthority, EmbeddedPrivacyErasureAuthorityRepository>();
         }
 
         // Storage Repository
@@ -429,16 +414,32 @@ public static class PersistenceServicesRegistration
         return services;
     }
 
+    private static void EnsureDedicatedEmbeddedAuthorityFile(
+        string? applicationConnectionString,
+        string authorityPath)
+    {
+        if (string.IsNullOrWhiteSpace(applicationConnectionString))
+        {
+            return;
+        }
+
+        var application = new Microsoft.Data.Sqlite.SqliteConnectionStringBuilder(
+            applicationConnectionString);
+        if (!string.IsNullOrWhiteSpace(application.DataSource)
+            && Path.GetFullPath(application.DataSource)
+                .Equals(Path.GetFullPath(authorityPath), StringComparison.Ordinal))
+        {
+            throw new OptionsValidationException(
+                nameof(PrivacyErasureDurabilityOptions),
+                typeof(PrivacyErasureDurabilityOptions),
+                ["EmbeddedSqlite requires a dedicated file distinct from the application database."]);
+        }
+    }
+
     private static bool IsEnabled(string? value)
     {
         return bool.TryParse(value, out var enabled) && enabled;
     }
-
-    private static OptionsValidationException InvalidExternalAuthorityConnection() =>
-        new(
-            nameof(PrivacyErasureDurabilityOptions),
-            typeof(PrivacyErasureDurabilityOptions),
-            [$"ConnectionStrings:{PrivacyErasureDurabilityOptions.ConnectionStringName} must be a valid Npgsql Host/Database/Username connection string when {PrivacyErasureDurabilityOptions.SectionName}:Topology is ExternalDatabase."]);
 
     private static bool TargetsSamePhysicalDatabase(
         string applicationConnectionString,
@@ -450,8 +451,8 @@ public static class PersistenceServicesRegistration
             var authority = new NpgsqlConnectionStringBuilder(authorityConnectionString);
             return application.Port == authority.Port
                 && string.Equals(
-                    NormalizeHost(application.Host),
-                    NormalizeHost(authority.Host),
+                    NormalizeHost(application.Host ?? string.Empty),
+                    NormalizeHost(authority.Host ?? string.Empty),
                     StringComparison.OrdinalIgnoreCase)
                 && string.Equals(
                     application.Database,

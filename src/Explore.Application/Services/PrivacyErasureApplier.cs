@@ -1,5 +1,5 @@
 // ABOUTME: Applies one typed platform privacy-erasure fact inside an existing application transaction.
-// ABOUTME: Shares User and location mutation, checkpoint, outbox, mirror, and cache behavior across durability modes.
+// ABOUTME: Shares User and location mutation, checkpoint, outbox, and cache behavior across authority topologies.
 
 using Explore.Application.Caching;
 using Explore.Application.Configuration;
@@ -23,7 +23,6 @@ public sealed class PrivacyErasureApplier(
     IPrivacyErasureProviderWorkRepository providerWorkRepository,
     IPrivacyErasureProviderLocatorProtector providerLocatorProtector,
     IPrivacyErasureReplayCheckpointRepository checkpointRepository,
-    IPrivacyErasureLedgerRepository ledgerRepository,
     IPrivacyErasureStateRepository stateRepository,
     IOutboxRepository outboxRepository,
     HybridCache cache,
@@ -73,7 +72,6 @@ public sealed class PrivacyErasureApplier(
             return AppliedErasure.None;
         }
 
-        await ledgerRepository.AppendAsync(intent, cancellationToken);
         if (current?.AuthoritySequence == intent.AuthoritySequence && !current.Matches(intent))
         {
             throw new InvalidOperationException(

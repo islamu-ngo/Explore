@@ -1,5 +1,5 @@
 // ABOUTME: Verifies topology-neutral privacy-erasure workflow registration and secret isolation.
-// ABOUTME: Proves only persistence selects the authority adapter and CoLocated never reads an external connection.
+// ABOUTME: Proves only persistence selects the authority adapter and EmbeddedSqlite never reads external settings.
 
 using Explore.Application;
 using Explore.Application.Configuration;
@@ -13,7 +13,7 @@ namespace Event.Application.UnitTests.Configuration;
 public sealed class PrivacyErasureModelCompositionTests
 {
     [Test]
-    public async Task CoLocatedComposition_PoisonExternalConnectionProviderIsNeverRead()
+    public async Task EmbeddedSqliteComposition_PoisonExternalConnectionProviderIsNeverRead()
     {
         var provider = new PoisonExternalConnectionConfigurationProvider();
         using var configuration = new ConfigurationRoot([provider]);
@@ -24,12 +24,12 @@ public sealed class PrivacyErasureModelCompositionTests
             PrivacyErasureDurabilityOptions.FromConfiguration(configuration);
 
         await Assert.That(options.Topology)
-            .IsEqualTo(PrivacyErasureAuthorityTopology.CoLocated);
+            .IsEqualTo(PrivacyErasureAuthorityTopology.EmbeddedSqlite);
         await Assert.That(provider.ExternalConnectionReadCount).IsEqualTo(0);
     }
 
     [Test]
-    [Arguments("CoLocated")]
+    [Arguments("EmbeddedSqlite")]
     [Arguments("ExternalDatabase")]
     public async Task BothTopologies_RegisterExactlyOneAuthorityFirstWorkflow(string topology)
     {
@@ -55,12 +55,12 @@ public sealed class PrivacyErasureModelCompositionTests
     }
 
     [Test]
-    public async Task CoLocatedComposition_DoesNotRegisterFallbackAuthorityAdapter()
+    public async Task EmbeddedSqliteComposition_DoesNotRegisterFallbackAuthorityAdapter()
     {
         var services = new ServiceCollection();
         services.ConfigureApplicationServices(Build(new Dictionary<string, string?>
         {
-            ["PrivacyErasure:Authority:Topology"] = "CoLocated"
+            ["PrivacyErasure:Authority:Topology"] = "EmbeddedSqlite"
         }));
 
         await Assert.That(services.Any(descriptor =>
@@ -112,7 +112,7 @@ public sealed class PrivacyErasureModelCompositionTests
             value = key.Equals(
                 "PrivacyErasure:Authority:Topology",
                 StringComparison.OrdinalIgnoreCase)
-                ? "CoLocated"
+                ? "EmbeddedSqlite"
                 : null;
             return value is not null;
         }
@@ -135,7 +135,7 @@ public sealed class PrivacyErasureModelCompositionTests
             }
 
             Interlocked.Increment(ref _externalConnectionReadCount);
-            throw new InvalidOperationException("CoLocated composition read the external authority connection.");
+            throw new InvalidOperationException("EmbeddedSqlite composition read the external authority connection.");
         }
     }
 }

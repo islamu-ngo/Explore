@@ -16,7 +16,6 @@ namespace Explore.Application.Services;
 
 public sealed class RetainedAuthorityPrivacyErasureWorkflow(
     IPrivacyErasureReplayCheckpointRepository checkpointRepository,
-    IPrivacyErasureLedgerRepository ledgerRepository,
     IPrivacyErasureStateRepository stateRepository,
     IPrivacyErasureAuthority authority,
     IUnitOfWork unitOfWork,
@@ -61,7 +60,6 @@ public sealed class RetainedAuthorityPrivacyErasureWorkflow(
         DateTime fencedAtUtc = LaterOf(timeProvider.GetUtcNow().UtcDateTime, fact.RecordedAtUtc);
         bool created = await unitOfWork.ExecuteSerializableAsync(async ct =>
         {
-            await ledgerRepository.AppendAsync(fact, ct);
             PrivacyErasureSaga? concurrent = await stateRepository.GetBySubjectAsync(userId, ct);
             if (concurrent is not null)
             {
@@ -205,7 +203,6 @@ public sealed class RetainedAuthorityPrivacyErasureWorkflow(
         DateTime fencedAtUtc = intent.RecordedAtUtc;
         await unitOfWork.ExecuteSerializableAsync(async ct =>
         {
-            await ledgerRepository.AppendAsync(intent, ct);
             if (await stateRepository.GetByIntentAsync(intent.IntentId, ct) is null)
             {
                 PrivacyErasureSaga saga = PrivacyErasureSaga.Start(
