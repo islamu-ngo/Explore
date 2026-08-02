@@ -77,7 +77,7 @@ It is built as a **white-label platform engine**: the hosted ISLAMU instance foc
 
 This platform is designed to be flexible and self-hostable for any organization.
 
-- **Single-Instance Mode**: One organization or community per deployment
+- **Single-Tenant Mode**: One organization or community per deployment
 - **Multi-Tenant SaaS Mode**: Multiple isolated tenants with custom domains and branding
 
 See [Operations Guide][operations-doc] for full deployment details and examples.
@@ -270,20 +270,19 @@ I am deeply grateful to all our amazing contributors.
 
 ## 🌱 Sustainability
 
-ISLAMU is a passion project built by one person — **Amir Akrari** — entirely on personal free time and personal funds. Every line of code, every decision, and every euro spent comes from a genuine belief that Muslim communities deserve dignified, privacy-respecting, community-owned software.
+ISLAMU is built by one person — **Amir Akrari** — entirely on personal free time and personal funds.
 
 **ISLAMU ASBL** (Association Sans But Lucratif — a non-profit association) is being established in Belgium. Once registered, ISLAMU ASBL will become the legal steward of all ISLAMU open-source projects and charitable activities.
 
 ### How ISLAMU sustains itself
 
-ISLAMU will never offer its open-source software as a hosted SaaS. Instead, sustainability is built on:
+ISLAMU will not offer its open-source software as a hosted SaaS. Instead, sustainability is built on:
 
 - **Fundraising & Grants:** Crowdfunding campaigns, foundation grants, and public-interest funding for open-source digital infrastructure
 - **Sponsorships:** Ranked sponsorship tiers — sponsors receive recognition and visibility; every euro goes back into the non-profit
 - **Official Partnerships:** Organizations that want to offer ISLAMU software as a hosted service can become **Official ISLAMU Partners**. Partners are vetted, listed on the ISLAMU website, and actively recommended and marketed by ISLAMU. ISLAMU does not compete with its partners; we redirect and endorse them
-- **Commercial Activity:** ISLAMU conducts limited commercial activity with the sole purpose of returning all proceeds to the non-profit:
-  - **ISLAMU Event Control Plane** — a commercial fleet-management product for multi-instance operators (see above)
-  - **Consultation & Support** — professional consulting around ISLAMU software deployment, customization, and integration
+- **ISLAMU Event Control Plane** — a commercial fleet-management product for multi-instance operators (see above)
+- **Consultation & Support** — professional consulting around ISLAMU software deployment, customization, and integration
 
 If you are a company or institution that wants to support this work, reach out at [contact@openislamu.org][contact-email] or start a conversation in our [Discord][discord-link].
 
