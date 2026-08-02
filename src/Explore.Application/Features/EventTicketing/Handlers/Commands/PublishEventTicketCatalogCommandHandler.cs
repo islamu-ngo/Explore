@@ -4,8 +4,8 @@
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Exceptions;
-using Explore.Application.Responses;
 using Explore.Application.Features.EventTicketing.Requests.Commands;
+using Explore.Application.Responses;
 using Explore.Domain;
 using Explore.Domain.Enums;
 using MediatR;

@@ -140,7 +140,7 @@ public sealed class CreateEventTicketTypeCommandHandlerTests
             new CreateEventTicketTypeCommand
             {
                 EventId = _eventId,
-            TicketType = new ManageEventTicketTypeDto { Name = string.Empty, Entitlements = [] }
+                TicketType = new ManageEventTicketTypeDto { Name = string.Empty, Entitlements = [] }
             },
             CancellationToken.None);
 

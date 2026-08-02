@@ -4,10 +4,10 @@
 using System.Reflection;
 using Event.Api.IntegrationTests.Fixtures;
 using Explore.API.Controllers;
-using Explore.API.Hateoas;
 using Explore.API.Filters;
-using Explore.Application.Hateoas;
+using Explore.API.Hateoas;
 using Explore.Application.DTOs.EventTicketing;
+using Explore.Application.Hateoas;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Routing;

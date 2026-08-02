@@ -318,9 +318,28 @@ public sealed class EventTicketingRowLockScenarioRunner(PostgreSqlContainerFixtu
         DateTime now = DateTime.UtcNow;
         var eventTarget = new DomainEvent
         {
-            Id = eventId, Title = "Ticket lock event", Subtitle = "", Description = "", FirstSessionDate = DateOnly.FromDateTime(now.AddDays(1)), LastSessionDate = DateOnly.FromDateTime(now.AddDays(1)),
-            EventTypeId = 1, AudienceGenderId = 1, AudienceAgeId = 1, ActorId = actor.Id, Actor = null!, OrganizerActorId = actor.Id,
-            TenantId = tenant.Id, Tenant = tenant, VisibilityTypeId = 1, VisibilityType = null!, EventStatusId = 1, EventStatus = null!, EventFormatId = 1, EventFormat = null!, EventProvenanceTypeId = (int)EventProvenanceTypeEnum.OrganizerCreated, TotalViews = 0
+            Id = eventId,
+            Title = "Ticket lock event",
+            Subtitle = "",
+            Description = "",
+            FirstSessionDate = DateOnly.FromDateTime(now.AddDays(1)),
+            LastSessionDate = DateOnly.FromDateTime(now.AddDays(1)),
+            EventTypeId = 1,
+            AudienceGenderId = 1,
+            AudienceAgeId = 1,
+            ActorId = actor.Id,
+            Actor = null!,
+            OrganizerActorId = actor.Id,
+            TenantId = tenant.Id,
+            Tenant = tenant,
+            VisibilityTypeId = 1,
+            VisibilityType = null!,
+            EventStatusId = 1,
+            EventStatus = null!,
+            EventFormatId = 1,
+            EventFormat = null!,
+            EventProvenanceTypeId = (int)EventProvenanceTypeEnum.OrganizerCreated,
+            TotalViews = 0
         };
         eventTarget.ParticipationConfiguration = EventParticipationConfiguration.Create(
             eventId, tenant.Id, (int)ParticipationHandlingModeEnum.PlatformManaged,

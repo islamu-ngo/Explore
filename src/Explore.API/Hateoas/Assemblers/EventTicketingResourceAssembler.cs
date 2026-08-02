@@ -1,8 +1,8 @@
 // ABOUTME: Builds HAL ticket catalog management resources with embedded ticket and pool affordances.
 // ABOUTME: Uses one authorization batch for all embedded ticketing actions and honors minimal responses.
 
-using Explore.Application.Contracts.Hateoas;
 using Explore.API.Hateoas.Policies;
+using Explore.Application.Contracts.Hateoas;
 using Explore.Application.DTOs.EventTicketing;
 using Explore.Application.Hateoas;
 

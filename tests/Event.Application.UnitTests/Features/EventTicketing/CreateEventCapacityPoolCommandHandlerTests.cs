@@ -67,7 +67,7 @@ public sealed class CreateEventCapacityPoolCommandHandlerTests
             new CreateEventCapacityPoolCommand
             {
                 EventId = _eventId,
-            CapacityPool = new ManageEventCapacityPoolDto { Name = string.Empty, HoldDurationSeconds = 0 }
+                CapacityPool = new ManageEventCapacityPoolDto { Name = string.Empty, HoldDurationSeconds = 0 }
             },
             CancellationToken.None);
 

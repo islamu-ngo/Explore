@@ -63,9 +63,9 @@ public sealed class GetEventTicketCatalogManagementQueryHandler(
             CatalogId = catalog.Id,
             VersionNumber = catalog.VersionNumber,
             CurrencyCode = catalog.CurrencyCode,
-             StatusId = catalog.TicketCatalogStatusId,
-             StatusCode = catalog.TicketCatalogStatus?.MasterCode,
-             StatusName = catalog.TicketCatalogStatus?.FullName,
+            StatusId = catalog.TicketCatalogStatusId,
+            StatusCode = catalog.TicketCatalogStatus?.MasterCode,
+            StatusName = catalog.TicketCatalogStatus?.FullName,
             TicketTypes = catalog.TicketTypes
                 .Where(ticketType => !ticketType.IsDeleted)
                 .Select(Map)
@@ -91,15 +91,15 @@ public sealed class GetEventTicketCatalogManagementQueryHandler(
     {
         Id = ticketType.Id,
         Name = ticketType.Name,
-         TicketPricingModeId = ticketType.TicketPricingModeId,
-         TicketPricingModeCode = ticketType.TicketPricingMode?.MasterCode,
-         TicketPricingModeName = ticketType.TicketPricingMode?.FullName,
+        TicketPricingModeId = ticketType.TicketPricingModeId,
+        TicketPricingModeCode = ticketType.TicketPricingMode?.MasterCode,
+        TicketPricingModeName = ticketType.TicketPricingMode?.FullName,
         FixedPriceMinor = ticketType.FixedPriceMinor,
         MinimumPriceMinor = ticketType.MinimumPriceMinor,
         SuggestedPriceMinor = ticketType.SuggestedPriceMinor,
-         ParticipantDataCollectionModeId = ticketType.ParticipantDataCollectionModeId,
-         ParticipantDataCollectionModeCode = ticketType.ParticipantDataCollectionMode?.MasterCode,
-         ParticipantDataCollectionModeName = ticketType.ParticipantDataCollectionMode?.FullName,
+        ParticipantDataCollectionModeId = ticketType.ParticipantDataCollectionModeId,
+        ParticipantDataCollectionModeCode = ticketType.ParticipantDataCollectionMode?.MasterCode,
+        ParticipantDataCollectionModeName = ticketType.ParticipantDataCollectionMode?.FullName,
         CapacityPoolId = ticketType.CapacityPoolId,
         MinimumAge = ticketType.MinimumAge,
         MaximumAge = ticketType.MaximumAge,
@@ -133,8 +133,8 @@ public sealed class GetEventTicketCatalogManagementQueryHandler(
         CapacityHoldPolicyCode = pool.CapacityHoldPolicy?.MasterCode,
         CapacityHoldPolicyName = pool.CapacityHoldPolicy?.FullName,
         CapacityOversellPolicyId = pool.CapacityOversellPolicyId,
-         CapacityOversellPolicyCode = pool.CapacityOversellPolicy?.MasterCode,
-         CapacityOversellPolicyName = pool.CapacityOversellPolicy?.FullName,
+        CapacityOversellPolicyCode = pool.CapacityOversellPolicy?.MasterCode,
+        CapacityOversellPolicyName = pool.CapacityOversellPolicy?.FullName,
         IsActive = pool.IsActive
     };
 }

@@ -104,7 +104,7 @@ public sealed class UpdateEventCapacityPoolCommandHandlerTests
             {
                 EventId = _eventId,
                 CapacityPoolId = pool.Id,
-            CapacityPool = new ManageEventCapacityPoolDto { Name = string.Empty, HoldDurationSeconds = 0 }
+                CapacityPool = new ManageEventCapacityPoolDto { Name = string.Empty, HoldDurationSeconds = 0 }
             },
             CancellationToken.None);
 
