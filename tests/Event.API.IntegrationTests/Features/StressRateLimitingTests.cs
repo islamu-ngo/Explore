@@ -60,32 +60,22 @@ public class StressRateLimitingTests(StressApiFixture fixture)
     {
         await _fixture.ResetDatabaseAsync();
 
-        await using var scope = _fixture.Factory.Services.CreateAsyncScope();
-        var db = scope.ServiceProvider.GetRequiredService<ExploreDbContext>();
-        var tenant = await TenantScenarioSeed.SeedActiveTenantWithUserAsync(db);
-
-        var userId = Guid.NewGuid();
-        HttpResponseMessage? rateLimitedResponse = null;
-
-        var url = $"/api/admin/custom-property-projections/status?tenantId={tenant.TenantId}";
-
-        for (var i = 0; i < 10; i++)
+        for (var index = 0; index < 3; index++)
         {
-            var request = _fixture.CreateAuthenticatedRequest(HttpMethod.Get, url, userId);
-
-            var response = await _fixture.Client.SendAsync(request);
-
-            if (response.StatusCode == HttpStatusCode.TooManyRequests)
+            using var request = new HttpRequestMessage(HttpMethod.Post, "/api/instanceonboarding/validate-secret")
             {
-                rateLimitedResponse = response;
-                break;
-            }
-        }
+                Content = new StringContent("{\"secret\":\"invalid-setup-secret\"}", Encoding.UTF8, "application/json")
+            };
+            using var response = await _fixture.Client.SendAsync(request);
 
-        if (rateLimitedResponse is not null)
-        {
-            var hasRetryAfter = rateLimitedResponse.Headers.Contains("Retry-After");
-            await Assert.That(hasRetryAfter).IsTrue();
+            if (index < 2)
+            {
+                await Assert.That(response.StatusCode).IsNotEqualTo(HttpStatusCode.TooManyRequests);
+                continue;
+            }
+
+            await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.TooManyRequests);
+            await Assert.That(response.Headers.Contains("Retry-After")).IsTrue();
         }
     }
 

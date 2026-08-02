@@ -2,6 +2,7 @@
 // ABOUTME: Verifies setup-mode checks, header secret validation, and action execution gating outcomes.
 
 using Explore.API.Filters;
+using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
 using Explore.Application.Onboarding;
 using Microsoft.AspNetCore.Http;
@@ -185,7 +186,12 @@ public class SetupSecretRequiredFilterTests
     {
         var attribute = new SetupSecretRequiredAttribute();
         var filterType = attribute.ImplementationType;
-        return (IAsyncActionFilter)Activator.CreateInstance(filterType, setupSecretProvider, auditLogger)!;
+        return (IAsyncActionFilter)Activator.CreateInstance(
+            filterType,
+            setupSecretProvider,
+            Substitute.For<IInstanceBootstrapStateRepository>(),
+            auditLogger,
+            false)!;
     }
 
     private static ActionExecutingContext CreateExecutingContext(string? setupSecretHeader = null)
