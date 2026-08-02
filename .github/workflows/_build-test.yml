@@ -177,10 +177,14 @@ jobs:
     timeout-minutes: 30
     env:
       DOTNET_CONFIGURATION: ${{ inputs.configuration }}
+      PrivacyErasure__Authority__Topology: EmbeddedSqlite
+      PrivacyErasureAuthorityEmbedded__Path: artifacts/database/integration/privacy-erasure-authority.db
+      PrivacyErasureAuthorityEmbedded__WriterReplicaCount: "1"
+      PrivacyErasureAuthorityEmbedded__BusyTimeoutSeconds: "30"
 
     services:
       postgres:
-        image: postgres:16
+        image: postgres:16.14@sha256:da8cf245a60506e50a0a8cbb0f39c559ca622d92490605b67fcadc74ca1ea8e4
         env:
           POSTGRES_PASSWORD: password
           POSTGRES_DB: event_test
@@ -221,13 +225,27 @@ jobs:
         id: test_persistence_integration
         run: dotnet test --project tests/Event.Persistence.IntegrationTests/Event.Persistence.IntegrationTests.csproj --configuration "$DOTNET_CONFIGURATION" --no-build --verbosity minimal -- --report-trx --report-trx-filename Event.Persistence.IntegrationTests.trx
         env:
-          ConnectionStrings__DefaultConnection: "Host=localhost;Port=5432;Database=event_test;Username=postgres;Password=password"
+          Database__Provider: PostgreSql
+          Database__Host: localhost
+          Database__Port: "5432"
+          Database__Database: event_test
+          Database__TlsMode: Disabled
+          Database__TrustServerCertificate: "false"
+          Database__Runtime__Username: postgres
+          Database__Runtime__Password: password
 
       - name: API Integration Tests
         id: test_api_integration
         run: dotnet test --project tests/Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration "$DOTNET_CONFIGURATION" --no-build --verbosity minimal -- --report-trx --report-trx-filename Event.API.IntegrationTests.trx
         env:
-          ConnectionStrings__DefaultConnection: "Host=localhost;Port=5432;Database=event_test;Username=postgres;Password=password"
+          Database__Provider: PostgreSql
+          Database__Host: localhost
+          Database__Port: "5432"
+          Database__Database: event_test
+          Database__TlsMode: Disabled
+          Database__TrustServerCertificate: "false"
+          Database__Runtime__Username: postgres
+          Database__Runtime__Password: password
 
       - name: Infrastructure Email Runtime Tests
         id: test_infrastructure_email
@@ -295,4 +313,259 @@ jobs:
             echo "| Explore.Infrastructure.Tests RabbitMQ | ${INFRASTRUCTURE_RABBITMQ_OUTCOME:-not-run} |"
             echo
             echo "Inspect the uploaded \`test-results-integration\` artifact for project-specific TRX files, runtime command logs, container diagnostics, and build/analyzer warning output."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  database-provider-matrix:
+    name: Database Provider (${{ matrix.provider }})
+    if: ${{ inputs.run-fast-tests && inputs.run-integration-tests }}
+    needs: build-and-test
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - provider: PostgreSql
+            engine_image: postgres:16.14@sha256:da8cf245a60506e50a0a8cbb0f39c559ca622d92490605b67fcadc74ca1ea8e4
+            database: event_mdb
+            port: "5432"
+            username: event
+            password: EventCi2026_Strong
+            tls_mode: Disabled
+            trust_server_certificate: "false"
+            server_flavor: ""
+            server_version: ""
+            email_dispatch_mode: TickerQ
+            health_options: >-
+              --health-cmd "pg_isready -U event -d event_mdb"
+              --health-interval 5s
+              --health-timeout 5s
+              --health-retries 20
+          - provider: Sqlite
+            engine_image: host file-backed SQLite
+            database: artifacts/database/Sqlite/event-mdb.sqlite3
+            port: ""
+            username: ""
+            password: ""
+            tls_mode: Prefer
+            trust_server_certificate: "false"
+            server_flavor: ""
+            server_version: ""
+            email_dispatch_mode: HostedService
+            health_options: ""
+          - provider: SqlServer
+            engine_image: mcr.microsoft.com/mssql/server:2022-CU21-ubuntu-22.04@sha256:b1395aa51b4ec39981883560f1379ea9eba2a1c0719bf8e6477902769316bb79
+            database: event_mdb
+            port: "1433"
+            username: sa
+            password: EventCi2026_Strong
+            tls_mode: Required
+            trust_server_certificate: "true"
+            server_flavor: ""
+            server_version: ""
+            email_dispatch_mode: HostedService
+            health_options: >-
+              --health-cmd "/opt/mssql-tools18/bin/sqlcmd -C -S localhost -U sa -P EventCi2026_Strong -Q 'SELECT 1' -b -o /dev/null"
+              --health-interval 5s
+              --health-timeout 5s
+              --health-retries 30
+              --health-start-period 20s
+          - provider: MariaDb
+            engine_image: mariadb:11.4.12@sha256:a6ee0e234c527de59d6a1924703e5512e7a762c74616a443ec9c729b3a9c5154
+            database: event_mdb
+            port: "3306"
+            username: event
+            password: EventCi2026_Strong
+            tls_mode: Disabled
+            trust_server_certificate: "false"
+            server_flavor: MariaDb
+            server_version: 11.4.12
+            email_dispatch_mode: HostedService
+            health_options: >-
+              --health-cmd "healthcheck.sh --connect --innodb_initialized"
+              --health-interval 5s
+              --health-timeout 5s
+              --health-retries 20
+          - provider: MySql
+            engine_image: mysql:8.4.6@sha256:c296d65ee6ab3ce2f608c1d1b2bdd3c08b087a5834101d76a6db2e00875216cc
+            database: event_mdb
+            port: "3306"
+            username: event
+            password: EventCi2026_Strong
+            tls_mode: Disabled
+            trust_server_certificate: "false"
+            server_flavor: MySql
+            server_version: 8.4.6
+            email_dispatch_mode: HostedService
+            health_options: >-
+              --health-cmd "healthcheck.sh --connect --innodb_initialized"
+              --health-interval 5s
+              --health-timeout 5s
+              --health-retries 20
+
+    env:
+      DOTNET_CONFIGURATION: ${{ inputs.configuration }}
+      DOTNET_ENVIRONMENT: Production
+      Database__Provider: ${{ matrix.provider }}
+      Database__Host: ${{ matrix.provider != 'Sqlite' && 'localhost' || '' }}
+      Database__Port: ${{ matrix.port }}
+      Database__Database: ${{ matrix.database }}
+      Database__TlsMode: ${{ matrix.tls_mode }}
+      Database__TrustServerCertificate: ${{ matrix.trust_server_certificate }}
+      Database__ServerFlavor: ${{ matrix.server_flavor }}
+      Database__ServerVersion: ${{ matrix.server_version }}
+      Database__Runtime__Username: ${{ matrix.username }}
+      Database__Runtime__Password: ${{ matrix.password }}
+      Database__Migrator__Username: ${{ matrix.username }}
+      Database__Migrator__Password: ${{ matrix.password }}
+      PrivacyErasure__Authority__Topology: EmbeddedSqlite
+      PrivacyErasureAuthorityEmbedded__WriterReplicaCount: "1"
+      PrivacyErasureAuthorityEmbedded__BusyTimeoutSeconds: "30"
+      EmailDispatchProcessor__Mode: ${{ matrix.email_dispatch_mode }}
+
+    services:
+      database:
+        image: ${{ matrix.provider == 'PostgreSql' && 'postgres:16.14@sha256:da8cf245a60506e50a0a8cbb0f39c559ca622d92490605b67fcadc74ca1ea8e4' || matrix.provider == 'SqlServer' && 'mcr.microsoft.com/mssql/server:2022-CU21-ubuntu-22.04@sha256:b1395aa51b4ec39981883560f1379ea9eba2a1c0719bf8e6477902769316bb79' || matrix.provider == 'MariaDb' && 'mariadb:11.4.12@sha256:a6ee0e234c527de59d6a1924703e5512e7a762c74616a443ec9c729b3a9c5154' || matrix.provider == 'MySql' && 'mysql:8.4.6@sha256:c296d65ee6ab3ce2f608c1d1b2bdd3c08b087a5834101d76a6db2e00875216cc' || '' }}
+        env:
+          POSTGRES_USER: ${{ matrix.username }}
+          POSTGRES_PASSWORD: ${{ matrix.password }}
+          POSTGRES_DB: ${{ matrix.database }}
+          ACCEPT_EULA: Y
+          MSSQL_PID: Developer
+          MSSQL_SA_PASSWORD: ${{ matrix.password }}
+          MARIADB_DATABASE: ${{ matrix.database }}
+          MARIADB_USER: ${{ matrix.username }}
+          MARIADB_PASSWORD: ${{ matrix.password }}
+          MARIADB_ROOT_PASSWORD: ${{ matrix.password }}
+          MYSQL_DATABASE: ${{ matrix.database }}
+          MYSQL_USER: ${{ matrix.username }}
+          MYSQL_PASSWORD: ${{ matrix.password }}
+          MYSQL_ROOT_PASSWORD: ${{ matrix.password }}
+        ports:
+          - 5432:5432
+          - 1433:1433
+          - 3306:3306
+        options: ${{ matrix.health_options }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          global-json-file: global.json
+          cache: true
+          cache-dependency-path: '**/packages.lock.json'
+
+      - name: Configure Isolated SQLite Files
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "PrivacyErasureAuthorityEmbedded__Path=${RUNNER_TEMP}/privacy-erasure-authority.db" >> "$GITHUB_ENV"
+          if [ "${{ matrix.provider }}" = "Sqlite" ]; then
+            echo "Database__Database=${RUNNER_TEMP}/event-mdb.sqlite3" >> "$GITHUB_ENV"
+          fi
+
+      - name: Restore
+        run: dotnet restore --locked-mode
+
+      - name: Build Migration And Behavior Projects
+        run: |
+          dotnet build src/Event.MigrationService/Event.MigrationService.csproj --configuration "$DOTNET_CONFIGURATION" --no-restore --verbosity minimal
+          dotnet build tests/Event.Persistence.IntegrationTests/Event.Persistence.IntegrationTests.csproj --configuration "$DOTNET_CONFIGURATION" --no-restore --verbosity minimal
+
+      - name: Create SQL Server Database
+        if: ${{ matrix.provider == 'SqlServer' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker exec "${{ job.services.database.id }}" /opt/mssql-tools18/bin/sqlcmd \
+            -C -S localhost -U sa -P "$Database__Migrator__Password" \
+            -Q "IF DB_ID(N'event_mdb') IS NULL CREATE DATABASE [event_mdb]" -b
+
+      - name: Apply Clean And Idempotent Migrations
+        id: migrations
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "artifacts/database/${{ matrix.provider }}"
+          dotnet run --project src/Event.MigrationService/Event.MigrationService.csproj \
+            --configuration "$DOTNET_CONFIGURATION" --no-build --no-launch-profile \
+            2>&1 | tee "artifacts/database/${{ matrix.provider }}/migration-clean.log"
+          dotnet run --project src/Event.MigrationService/Event.MigrationService.csproj \
+            --configuration "$DOTNET_CONFIGURATION" --no-build --no-launch-profile \
+            2>&1 | tee "artifacts/database/${{ matrix.provider }}/migration-idempotent.log"
+
+      - name: Verify Embedded Authority File Isolation
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s "$PrivacyErasureAuthorityEmbedded__Path"
+          stat --printf='authority-bytes=%s\n' "$PrivacyErasureAuthorityEmbedded__Path" \
+            > "artifacts/database/${{ matrix.provider }}/sqlite-files.txt"
+          if [ "${{ matrix.provider }}" = "Sqlite" ]; then
+            test -s "$Database__Database"
+            test "$Database__Database" != "$PrivacyErasureAuthorityEmbedded__Path"
+            stat --printf='primary-bytes=%s\n' "$Database__Database" \
+              >> "artifacts/database/${{ matrix.provider }}/sqlite-files.txt"
+          fi
+
+      - name: Run Provider Runtime Smoke
+        id: runtime_smoke
+        run: >-
+          dotnet test --project tests/Event.Persistence.IntegrationTests/Event.Persistence.IntegrationTests.csproj
+          --configuration "$DOTNET_CONFIGURATION" --no-build --verbosity minimal --
+          --treenode-filter "/*/*/PrimaryDatabaseRuntimeSmokeTests/*"
+          --minimum-expected-tests 1 --no-progress --maximum-parallel-tests 1
+          --report-trx --report-trx-filename Event.Persistence.IntegrationTests.${{ matrix.provider }}.Smoke.trx
+
+      - name: Run Provider Behavior Contract
+        id: behavior_contract
+        run: >-
+          dotnet test --project tests/Event.Persistence.IntegrationTests/Event.Persistence.IntegrationTests.csproj
+          --configuration "$DOTNET_CONFIGURATION" --no-build --verbosity minimal --
+          --treenode-filter "/*/*/PrimaryDatabaseProviderBehaviorContractTests/*"
+          --minimum-expected-tests 2 --no-progress --maximum-parallel-tests 1
+          --report-trx --report-trx-filename Event.Persistence.IntegrationTests.${{ matrix.provider }}.Behavior.trx
+
+      - name: Capture Database Service Diagnostics
+        if: ${{ always() && matrix.provider != 'Sqlite' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "artifacts/database/${{ matrix.provider }}"
+          docker ps -a > "artifacts/database/${{ matrix.provider }}/containers.txt" || true
+          docker logs "${{ job.services.database.id }}" > "artifacts/database/${{ matrix.provider }}/service.log" 2>&1 || true
+
+      - name: Upload Provider Evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: database-provider-${{ matrix.provider }}
+          path: |
+            '**/TestResults/**/*.trx'
+            artifacts/database/${{ matrix.provider }}/**
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Write Provider Evidence Summary
+        if: always()
+        env:
+          MIGRATION_OUTCOME: ${{ steps.migrations.outcome }}
+          RUNTIME_SMOKE_OUTCOME: ${{ steps.runtime_smoke.outcome }}
+          BEHAVIOR_OUTCOME: ${{ steps.behavior_contract.outcome }}
+        run: |
+          {
+            echo "## Database Provider: ${{ matrix.provider }}"
+            echo
+            echo "- Engine image: \`${{ matrix.engine_image }}\`"
+            echo "- TLS mode: \`${{ matrix.tls_mode }}\`; trust server certificate: \`${{ matrix.trust_server_certificate }}\`"
+            echo "- Email dispatch mode: \`${{ matrix.email_dispatch_mode }}\`"
+            echo "- Clean + idempotent migrations: \`${MIGRATION_OUTCOME:-not-run}\`"
+            echo "- Runtime smoke: \`${RUNTIME_SMOKE_OUTCOME:-not-run}\`"
+            echo "- Behavior contract: \`${BEHAVIOR_OUTCOME:-not-run}\`"
+            echo "- Evidence artifact: \`database-provider-${{ matrix.provider }}\`"
           } >> "$GITHUB_STEP_SUMMARY"
