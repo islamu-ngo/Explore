@@ -156,6 +156,16 @@ internal static partial class PortableRelationalModelPolicy
             };
         }
 
+        if (sql.Equals("CURRENT_TIMESTAMP", StringComparison.OrdinalIgnoreCase))
+        {
+            return providerName switch
+            {
+                SqlServerProvider => "SYSUTCDATETIME()",
+                MySqlProvider => "CURRENT_TIMESTAMP(6)",
+                _ => "CURRENT_TIMESTAMP"
+            };
+        }
+
         return sql;
     }
 
