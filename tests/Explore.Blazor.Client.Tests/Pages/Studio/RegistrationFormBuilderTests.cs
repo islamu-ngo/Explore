@@ -323,6 +323,38 @@ public sealed class RegistrationFormBuilderTests : IDisposable
     }
 
     [Test]
+    public async Task ConsentEditorRequiresExactConsentTextAndSendsItThroughAuthoringInput()
+    {
+        const string consentText = "I agree to receive event updates by email.";
+        var model = new RegistrationFormFieldEditModel
+        {
+            Ordinal = 1,
+            Namespace = "person",
+            Key = "updates-consent",
+            Label = "Receive event updates",
+            FieldTypeId = 17,
+            RetentionPolicyId = 1,
+            OrganizerVisibilityId = 2,
+            RequiresExplicitConsent = true,
+            ConsentPurposeCode = "EVENT_UPDATES",
+            ConsentTextVersion = "2026-08",
+            ConsentText = consentText
+        };
+
+        var cut = _ctx.RenderMudComponent<RegistrationFormFieldEditor>(parameters => parameters
+            .Add(component => component.Model, model));
+
+        var consentTextArea = cut.Find("textarea");
+        await Assert.That(consentTextArea.GetAttribute("maxlength")).IsEqualTo("4000");
+        await Assert.That(consentTextArea.HasAttribute("required")).IsTrue();
+        await Assert.That(cut.Find("[data-testid='save-registration-form-field']").HasAttribute("disabled")).IsFalse();
+        await Assert.That(model.ToCreateInput().ConsentText).IsEqualTo(consentText);
+
+        model.ConsentText = " ";
+        await Assert.That(model.IsValid).IsFalse();
+    }
+
+    [Test]
     public async Task ExactNestedCrudRelationsRenderCompleteAuthoringSurface()
     {
         (Guid eventId, HalResourceOfRegistrationWorkflowDto workflow, HalResourceOfRegistrationFormDto form) = FormGraph("DRAFT");

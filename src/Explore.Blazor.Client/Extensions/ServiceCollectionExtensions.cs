@@ -65,6 +65,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<ITenantShellSettingsService, TenantShellSettingsService>();
         services.AddScoped<IEventService, EventService>();
         services.AddScoped<IRegistrationOrderService, RegistrationOrderService>();
+        services.AddScoped<INativeRegistrationFormService, NativeRegistrationFormService>();
         services.AddScoped<IGuestRegistrationOrderCapabilityStore, GuestRegistrationOrderCapabilityStore>();
         services.AddScoped<IEventTicketingService, EventTicketingService>();
         services.AddScoped<IRegistrationFormAuthoringService, RegistrationFormAuthoringService>();

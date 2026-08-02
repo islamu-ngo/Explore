@@ -3,6 +3,7 @@
 @page "/registration/events/{EventId:guid}/orders/{OrderId:guid}"
 @using Microsoft.AspNetCore.Authorization
 @using Explore.Blazor.Client.Helpers
+@using Explore.Blazor.Client.Components.Registration.FormRenderer
 @attribute [Authorize]
 @rendermode InteractiveServer
 @inject IRegistrationOrderService RegistrationOrderService
@@ -56,6 +57,11 @@
         @if (_order._links?.ContainsKey("view-participants") == true)
         {
             <RegistrationParticipantEditor EventId="EventId" OrderId="OrderId" />
+        }
+
+        @if (_order._links?.ContainsKey("requirement-progress") == true)
+        {
+            <NativeRegistrationRequirementJourney EventId="EventId" OrderId="OrderId" />
         }
 
         <div class="registration-order-recovery__actions">

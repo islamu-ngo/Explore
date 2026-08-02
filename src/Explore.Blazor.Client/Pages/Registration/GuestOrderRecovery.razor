@@ -2,6 +2,7 @@
 @* ABOUTME: Uses server lifecycle responses and DTO contribution options without locally calculating amounts. *@
 @page "/registration/guest/events/{EventId:guid}/orders/{OrderId:guid}"
 @using Explore.Blazor.Client.Helpers
+@using Explore.Blazor.Client.Components.Registration.FormRenderer
 @rendermode InteractiveServer
 @inject IRegistrationOrderService RegistrationOrderService
 @inject IGuestRegistrationOrderCapabilityStore CapabilityStore
@@ -56,6 +57,13 @@
         <RegistrationParticipantEditor EventId="EventId"
                                        OrderId="OrderId"
                                        GuestCapability="_capability" />
+
+        @if (_order._links?.ContainsKey("requirement-progress") == true)
+        {
+            <NativeRegistrationRequirementJourney EventId="EventId"
+                                                  OrderId="OrderId"
+                                                  GuestCapability="_capability" />
+        }
 
         <div class="guest-order-recovery__actions">
             @if (CanContinue)

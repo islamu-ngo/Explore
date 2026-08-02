@@ -2,6 +2,7 @@
 // ABOUTME: Verifies HAL-only authenticated cancellation and fail-closed guest capability handling.
 
 using Explore.Blazor.Client.Clients;
+using Explore.Blazor.Client.Components.Registration.FormRenderer;
 using Explore.Blazor.Client.Contracts.Services;
 using Explore.Blazor.Client.Helpers;
 using Explore.Blazor.Client.Pages.Registration;
@@ -13,11 +14,13 @@ public sealed class OrderRecoveryTests : IDisposable
 {
     private readonly BlazorTestContext _ctx = new();
     private readonly IRegistrationOrderService _service;
+    private readonly INativeRegistrationFormService _nativeForms;
     private readonly IGuestRegistrationOrderCapabilityStore _capabilityStore;
 
     public OrderRecoveryTests()
     {
         _service = _ctx.AddMockService<IRegistrationOrderService>();
+        _nativeForms = _ctx.AddMockService<INativeRegistrationFormService>();
         _capabilityStore = _ctx.AddMockService<IGuestRegistrationOrderCapabilityStore>();
     }
 
@@ -52,6 +55,24 @@ public sealed class OrderRecoveryTests : IDisposable
 
         cut.WaitForAssertion(() => cut.Markup.Contains("Cancel registration order", StringComparison.Ordinal));
         await Assert.That(cut.Markup).Contains("This registration is waiting for organizer approval.");
+    }
+
+    [Test]
+    public async Task AuthenticatedRecovery_RendersNativeJourneyOnlyFromRequirementProgressRelation()
+    {
+        var order = CreateOrder("AWAITING_REQUIREMENTS", "Awaiting requirements", "requirement-progress");
+        _service.GetCurrentAsync(order.EventId!.Value, order.Id!.Value, Arg.Any<CancellationToken>()).Returns(order);
+        _nativeForms.GetRequirementsAsync(order.EventId.Value, order.Id.Value, null, Arg.Any<CancellationToken>())
+            .Returns(new NativeRegistrationRequirementCollectionView(
+                [], new Dictionary<string, HalLink> { ["launch-attempt"] = new() { Href = "/launch", Method = "POST" } }));
+
+        var cut = _ctx.RenderMudComponent<OrderRecovery>(parameters => parameters
+            .Add(component => component.EventId, order.EventId.Value)
+            .Add(component => component.OrderId, order.Id.Value));
+
+        cut.WaitForAssertion(() => Assert.That(cut.Markup).Contains("All registration details are complete."));
+        await _nativeForms.Received(1).GetRequirementsAsync(
+            order.EventId.Value, order.Id.Value, null, Arg.Any<CancellationToken>());
     }
 
     [Test]

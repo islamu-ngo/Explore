@@ -78,6 +78,7 @@
             <div class="registration-form-field-editor__grid">
                 <AppTextField T="string" Label="@T("field.consent_purpose", "Consent purpose code")" @bind-Value="Model.ConsentPurposeCode" Required="true" Disabled="IsSaving" />
                 <AppTextField T="string" Label="@T("field.consent_version", "Consent text version")" @bind-Value="Model.ConsentTextVersion" Required="true" Disabled="IsSaving" />
+                <AppTextField T="string" Label="@T("field.consent_text", "Consent text")" @bind-Value="Model.ConsentText" Lines="4" MaxLength="4000" Required="true" Disabled="IsSaving" />
             </div>
         </fieldset>
     }

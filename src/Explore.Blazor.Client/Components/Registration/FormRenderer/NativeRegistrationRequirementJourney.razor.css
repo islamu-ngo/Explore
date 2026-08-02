@@ -1,0 +1,13 @@
+/* ABOUTME: Provides a quiet responsive shell for the attendee native registration requirement journey. */
+/* ABOUTME: Uses design tokens and logical sizing so progress and recovery states remain readable in RTL. */
+
+.native-registration-journey {
+    display: grid;
+    gap: var(--isl-space-4);
+    margin-block: var(--isl-space-6);
+    padding-block: var(--isl-space-5);
+    border-block: 1px solid var(--isl-color-border);
+}
+
+.native-registration-journey h2,
+.native-registration-journey p { margin: 0; }

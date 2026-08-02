@@ -47,7 +47,7 @@ public static class RefitClientRegistrationExtensions
         this IServiceCollection services,
         Action<IServiceProvider, HttpClient>? configureClient = null) where TInterface : class
     {
-        var builder = services.AddRefitClient<TInterface>(CreateDefaultRefitSettings());
+        var builder = services.AddRefitGeneratedClient<TInterface>(CreateDefaultRefitSettings());
 
         builder.ConfigureHttpClient((sp, client) =>
         {

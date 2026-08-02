@@ -1,0 +1,140 @@
+@* ABOUTME: Drives the attendee's HAL-gated native requirement journey from progress through submission. *@
+@* ABOUTME: Keeps answers and attempt capabilities in component memory and advances one server subject at a time. *@
+
+@inject INativeRegistrationFormService NativeForms
+
+<section class="native-registration-journey" aria-label="Native registration requirement">
+    @if (_loading)
+    {
+        <p role="status">Loading registration details…</p>
+    }
+    else if (_error is not null)
+    {
+        <p role="alert">@_error</p>
+    }
+    else if (_attempt is not null && ActiveSubject is not null)
+    {
+        <RegistrationFormRenderer Sections="@_attempt.Sections"
+                                  Rules="@_attempt.Rules"
+                                  Links="@_attempt.Links"
+                                  State="@_answers"
+                                  LanguageTag="@_attempt.LanguageTag"
+                                  SubjectLabel="@SubjectLabel"
+                                  RequirementProgress="@_attempt.Progress"
+                                  OnSubmit="SubmitAsync"
+                                  OnSkip="SkipAsync" />
+    }
+    else
+    {
+        <h2 id="native-registration-journey-title">Registration details</h2>
+        @if (PendingRequirement is null)
+        {
+            <p role="status">All registration details are complete.</p>
+        }
+        else
+        {
+            <p>@PendingRequirement.Progress.CompletedSubjectCount of @PendingRequirement.Progress.SubjectCount people completed</p>
+            @if (CanLaunch)
+            {
+                <AppButton OnClick="LaunchAsync">Continue registration details</AppButton>
+            }
+        }
+    }
+</section>
+
+@code {
+    [Parameter] public Guid EventId { get; set; }
+    [Parameter] public Guid OrderId { get; set; }
+    [Parameter] public GuestRegistrationOrderCapability? GuestCapability { get; set; }
+
+    private NativeRegistrationRequirementCollectionView? _requirements;
+    private NativeRegistrationAttemptView? _attempt;
+    private RegistrationFormAnswerState _answers = new();
+    private bool _loading = true;
+    private string? _error;
+    private string? _launchIdempotencyKey;
+    private string? _submitIdempotencyKey;
+    private string? _skipIdempotencyKey;
+
+    private NativeRegistrationLaunchDescriptorView? PendingRequirement =>
+        _requirements?.Requirements.FirstOrDefault(requirement => !requirement.Progress.IsComplete);
+    private RegistrationSubjectView? ActiveSubject =>
+        _attempt?.Subjects.FirstOrDefault(subject => !subject.IsCompleted && !subject.IsSkipped);
+    private bool CanLaunch => PendingRequirement is not null &&
+                              _requirements?.Links.ContainsKey("launch-attempt") == true;
+    private string SubjectLabel
+    {
+        get
+        {
+            if (_attempt is null || ActiveSubject is null) return string.Empty;
+            int ordinal = _attempt.Subjects.Select((subject, index) => (subject, index))
+                .First(item => item.subject == ActiveSubject).index + 1;
+            return $"Person {ordinal} of {_attempt.Subjects.Count}";
+        }
+    }
+
+    protected override async Task OnParametersSetAsync() => await LoadRequirementsAsync();
+
+    private async Task LoadRequirementsAsync()
+    {
+        _loading = true;
+        _error = null;
+        _requirements = await NativeForms.GetRequirementsAsync(EventId, OrderId, GuestCapability);
+        _loading = false;
+        if (_requirements is null) _error = "Registration details are unavailable right now.";
+    }
+
+    private async Task LaunchAsync()
+    {
+        if (!CanLaunch || PendingRequirement is null) return;
+        _launchIdempotencyKey ??= Guid.CreateVersion7().ToString("N");
+        _attempt = await NativeForms.LaunchAsync(
+            EventId, OrderId, PendingRequirement, GuestCapability, _launchIdempotencyKey);
+        if (_attempt is null)
+        {
+            _error = "Registration details could not be opened. Try again.";
+            return;
+        }
+
+        _answers = new RegistrationFormAnswerState();
+        _submitIdempotencyKey = Guid.CreateVersion7().ToString("N");
+        _skipIdempotencyKey = Guid.CreateVersion7().ToString("N");
+    }
+
+    private async Task SubmitAsync(RegistrationFormSubmission submission)
+    {
+        if (_attempt is null || ActiveSubject is null || _submitIdempotencyKey is null) return;
+        NativeRegistrationActionResult result = await NativeForms.SubmitAsync(
+            EventId, OrderId, _attempt, ActiveSubject, submission,
+            GuestCapability, _submitIdempotencyKey);
+        if (!result.Success)
+        {
+            _answers.SetIssues(result.FieldIssues);
+            if (result.FieldIssues.Count > 0)
+                _submitIdempotencyKey = Guid.CreateVersion7().ToString("N");
+            throw new InvalidOperationException("Native registration submission was rejected.");
+        }
+
+        ResetAttempt();
+        await LoadRequirementsAsync();
+    }
+
+    private async Task SkipAsync()
+    {
+        if (_attempt is null || _skipIdempotencyKey is null) return;
+        if (!await NativeForms.SkipAsync(EventId, OrderId, _attempt, GuestCapability, _skipIdempotencyKey))
+            throw new InvalidOperationException("Native registration requirement could not be skipped.");
+
+        ResetAttempt();
+        await LoadRequirementsAsync();
+    }
+
+    private void ResetAttempt()
+    {
+        _attempt = null;
+        _launchIdempotencyKey = null;
+        _submitIdempotencyKey = null;
+        _skipIdempotencyKey = null;
+        _answers = new RegistrationFormAnswerState();
+    }
+}

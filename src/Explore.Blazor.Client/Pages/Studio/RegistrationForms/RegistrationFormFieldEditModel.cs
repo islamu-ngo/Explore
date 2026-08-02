@@ -32,6 +32,7 @@ public sealed class RegistrationFormFieldEditModel
     public bool IsProviderTransferAllowed { get; set; }
     public string? ConsentPurposeCode { get; set; }
     public string? ConsentTextVersion { get; set; }
+    public string? ConsentText { get; set; }
     public bool IsRequired { get; set; }
     public bool IsMulti { get; set; }
     public int? MinLength { get; set; }
@@ -54,7 +55,7 @@ public sealed class RegistrationFormFieldEditModel
         && (MinNumber is null || MaxNumber is null || MinNumber <= MaxNumber)
         && (MinDateTime is null || MaxDateTime is null || MinDateTime <= MaxDateTime)
         && (!IsConsent || RequiresExplicitConsent && !string.IsNullOrWhiteSpace(ConsentPurposeCode)
-            && !string.IsNullOrWhiteSpace(ConsentTextVersion));
+            && !string.IsNullOrWhiteSpace(ConsentTextVersion) && !string.IsNullOrWhiteSpace(ConsentText));
 
     public static RegistrationFormFieldEditModel Create(int ordinal) => new() { Ordinal = ordinal };
 
@@ -72,6 +73,7 @@ public sealed class RegistrationFormFieldEditModel
         IsProviderTransferAllowed = field.IsProviderTransferAllowed,
         ConsentPurposeCode = field.ConsentPurposeCode,
         ConsentTextVersion = field.ConsentTextVersion,
+        ConsentText = field.ConsentText,
         IsRequired = field.IsRequired,
         IsMulti = field.IsMulti,
         MinLength = field.MinLength,
@@ -105,7 +107,8 @@ public sealed class RegistrationFormFieldEditModel
         RequiresExplicitConsent = RequiresExplicitConsent,
         IsProviderTransferAllowed = IsProviderTransferAllowed,
         ConsentPurposeCode = Clean(ConsentPurposeCode),
-        ConsentTextVersion = Clean(ConsentTextVersion)
+        ConsentTextVersion = Clean(ConsentTextVersion),
+        ConsentText = Clean(ConsentText)
     };
 
     public RegistrationFormFieldUpdateInput ToUpdateInput() => new()
@@ -118,6 +121,7 @@ public sealed class RegistrationFormFieldEditModel
         IsProviderTransferAllowed = IsProviderTransferAllowed,
         ConsentPurposeCode = Clean(ConsentPurposeCode),
         ConsentTextVersion = Clean(ConsentTextVersion),
+        ConsentText = Clean(ConsentText),
         IsRequired = IsRequired,
         IsMulti = IsMulti,
         MinLength = MinLength,
