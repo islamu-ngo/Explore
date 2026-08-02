@@ -107,6 +107,7 @@ public sealed record RegistrationFormFieldDto(
     bool IsProviderTransferAllowed,
     string? ConsentPurposeCode,
     string? ConsentTextVersion,
+    string? ConsentText,
     bool IsRequired,
     bool IsMulti,
     int? MinLength,

@@ -26,11 +26,13 @@ public sealed class RegistrationFormPublishPreflightServiceTests
             RegistrationOrganizerVisibilityEnum.AuthorizedOrganizers, false, false, Now);
         RegistrationFormField consent = RegistrationFormField.Create(Guid.CreateVersion7(), section, 3,
             "platform.registration", "consent", "Consent", RegistrationFieldTypeEnum.Consent, 1,
-            RegistrationOrganizerVisibilityEnum.AuthorizedOrganizers, true, false, Now, "TERMS", "v1");
+            RegistrationOrganizerVisibilityEnum.AuthorizedOrganizers, true, false, Now, "TERMS", "v1",
+            "I agree to the terms.");
         version.AddField(section, source);
         version.AddField(section, choice);
         version.AddField(section, consent);
         Set(consent, nameof(RegistrationFormField.ConsentPurposeCode), null);
+        Set(consent, nameof(RegistrationFormField.ConsentText), null);
         Set(consent, nameof(RegistrationFormField.ConsentTextVersion), null);
 
         RegistrationFormRule forward = RegistrationFormRule.Create(Guid.CreateVersion7(), version, 1,
@@ -56,7 +58,8 @@ public sealed class RegistrationFormPublishPreflightServiceTests
             RegistrationOrganizerVisibilityEnum.AuthorizedOrganizers, false, false, Now);
         RegistrationFormField consent = RegistrationFormField.Create(Guid.CreateVersion7(), section, 2,
             "platform.registration", "consent", "Consent", RegistrationFieldTypeEnum.Consent, 1,
-            RegistrationOrganizerVisibilityEnum.AuthorizedOrganizers, true, false, Now, "TERMS", "v1");
+            RegistrationOrganizerVisibilityEnum.AuthorizedOrganizers, true, false, Now, "TERMS", "v1",
+            "I agree to the terms.");
         version.AddField(section, source);
         version.AddField(section, consent);
         version.AddRule(RegistrationFormRule.Create(Guid.CreateVersion7(), version, 1,

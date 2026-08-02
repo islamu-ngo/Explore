@@ -76,9 +76,13 @@ public sealed class RegistrationFormAuthoringCommandValidator<TCommand> : Abstra
         ReorderRegistrationFormSectionsCommand command => ValidOrder(command.OrderedIds),
         AddRegistrationFormFieldCommand command => command.Ordinal > 0 && command.FieldTypeId > 0 &&
             command.RetentionPolicyId > 0 && command.OrganizerVisibilityId > 0 &&
-            Present(command.Namespace, command.Key, command.Label),
+            Present(command.Namespace, command.Key, command.Label) &&
+            ValidConsent(command.RequiresExplicitConsent, command.ConsentPurposeCode, command.ConsentTextVersion,
+                command.ConsentText),
         UpdateRegistrationFormFieldCommand command => command.Ordinal > 0 && command.RetentionPolicyId > 0 &&
-            command.OrganizerVisibilityId > 0 && Present(command.Label),
+            command.OrganizerVisibilityId > 0 && Present(command.Label) &&
+            ValidConsent(command.RequiresExplicitConsent, command.ConsentPurposeCode, command.ConsentTextVersion,
+                command.ConsentText),
         ReorderRegistrationFormFieldsCommand command => ValidOrder(command.OrderedIds),
         AddRegistrationFormFieldOptionCommand command => command.Ordinal > 0 && Present(command.Key, command.Label),
         UpdateRegistrationFormFieldOptionCommand command => command.Ordinal > 0 && Present(command.Key, command.Label),
@@ -96,6 +100,11 @@ public sealed class RegistrationFormAuthoringCommandValidator<TCommand> : Abstra
     private static bool Valid(params Guid[] values) => values.All(value => value != Guid.Empty);
 
     private static bool Present(params string?[] values) => values.All(value => !string.IsNullOrWhiteSpace(value));
+
+    private static bool ValidConsent(bool requiresExplicitConsent, string? purposeCode, string? textVersion,
+        string? text) => requiresExplicitConsent
+        ? Present(purposeCode, textVersion, text)
+        : !Present(purposeCode) && !Present(textVersion) && !Present(text);
 
     private static bool ValidOrder(IReadOnlyList<Guid>? ids) =>
         ids is { Count: > 0 and <= 200 } && ids.All(id => id != Guid.Empty) && ids.Distinct().Count() == ids.Count;

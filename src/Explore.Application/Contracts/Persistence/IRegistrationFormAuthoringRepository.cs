@@ -21,6 +21,11 @@ public interface IRegistrationFormAuthoringRepository
         Guid eventId,
         CancellationToken cancellationToken);
 
+    Task<IReadOnlyList<RegistrationFormVersion>> GetPublishedVersionsAsync(
+        Guid eventId,
+        int limit,
+        CancellationToken cancellationToken);
+
     Task<IReadOnlySet<Guid>> GetAttachedRequirementIdsAsync(
         Guid eventId,
         CancellationToken cancellationToken);

@@ -2,6 +2,7 @@
 // ABOUTME: Rejects incomplete choice fields, broken condition references, and missing consent metadata.
 
 using Explore.Application.DTOs.RegistrationForms;
+using Explore.Application.Configuration;
 using Explore.Domain;
 using Explore.Domain.Enums;
 using Explore.Domain.Services.Registration;
@@ -10,6 +11,17 @@ namespace Explore.Application.Services.Registration;
 
 public sealed class RegistrationFormPublishPreflightService
 {
+    private readonly RegistrationFileAnswerOptions _fileAnswers;
+
+    public RegistrationFormPublishPreflightService() : this(new RegistrationFileAnswerOptions())
+    {
+    }
+
+    public RegistrationFormPublishPreflightService(RegistrationFileAnswerOptions fileAnswers)
+    {
+        _fileAnswers = fileAnswers;
+    }
+
     public RegistrationFormPublishPreflightDto Check(RegistrationFormVersion version)
     {
         ArgumentNullException.ThrowIfNull(version);
@@ -42,9 +54,16 @@ public sealed class RegistrationFormPublishPreflightService
             }
 
             if (field.RequiresExplicitConsent &&
-                (string.IsNullOrWhiteSpace(field.ConsentPurposeCode) || string.IsNullOrWhiteSpace(field.ConsentTextVersion)))
+                (string.IsNullOrWhiteSpace(field.ConsentPurposeCode) || string.IsNullOrWhiteSpace(field.ConsentText) ||
+                 string.IsNullOrWhiteSpace(field.ConsentTextVersion)))
             {
-                issues.Add(new("field.consent_incomplete", "Consent fields require a purpose code and text version.", field.Id));
+                issues.Add(new("field.consent_incomplete", "Consent fields require a purpose code, text, and text version.", field.Id));
+            }
+
+            if ((RegistrationFieldTypeEnum)field.FieldTypeId == RegistrationFieldTypeEnum.File && !_fileAnswers.Enabled)
+            {
+                issues.Add(new("field.file_pipeline_disabled",
+                    "File fields require the deployment file-answer pipeline to be enabled.", field.Id));
             }
         }
 

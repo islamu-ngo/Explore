@@ -169,6 +169,7 @@ public sealed record AddRegistrationFormFieldCommand(
     bool IsProviderTransferAllowed,
     string? ConsentPurposeCode,
     string? ConsentTextVersion,
+    string? ConsentText,
     Guid ExpectedConcurrencyStamp) : IRegistrationFormVersionScopedCommand;
 
 [AuthorizeResource(ResourceKinds.RegistrationForm, AuthorizationActions.RegistrationForms.Update)]
@@ -186,6 +187,7 @@ public sealed record UpdateRegistrationFormFieldCommand(
     bool IsProviderTransferAllowed,
     string? ConsentPurposeCode,
     string? ConsentTextVersion,
+    string? ConsentText,
     bool IsRequired,
     bool IsMulti,
     int? MinLength,

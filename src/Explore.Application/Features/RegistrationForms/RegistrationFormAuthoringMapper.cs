@@ -160,6 +160,7 @@ internal static class RegistrationFormAuthoringMapper
             value.IsProviderTransferAllowed,
             value.ConsentPurposeCode,
             value.ConsentTextVersion,
+            value.ConsentText,
             value.IsRequired,
             value.IsMulti,
             value.MinLength,

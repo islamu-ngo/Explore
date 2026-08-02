@@ -14,7 +14,7 @@ namespace Event.Application.UnitTests.Services;
 
 public sealed class FormSchemaArtifactGeneratorTests
 {
-    private const string GoldenHash = "6c0a581adfd6a320d872a18845830a8143948016699c113290ac1170953777f5";
+    private const string GoldenHash = "b56f180c1115886d07216877e76a91344ac7c4b2745b4047ad58cec9d86a8baa";
     private static readonly DateTime Now = new(2026, 8, 1, 10, 0, 0, DateTimeKind.Utc);
     private static readonly IFormSchemaArtifactGenerator Generator = new FormSchemaArtifactGenerator();
 
@@ -99,6 +99,7 @@ public sealed class FormSchemaArtifactGeneratorTests
     [Arguments("field-retention-policy")]
     [Arguments("field-organizer-visibility")]
     [Arguments("field-explicit-consent")]
+    [Arguments("consent-text")]
     [Arguments("field-provider-transfer")]
     [Arguments("field-required")]
     [Arguments("field-multi")]
@@ -148,6 +149,17 @@ public sealed class FormSchemaArtifactGeneratorTests
         await Assert.That(changed.SchemaHash).IsNotEqualTo(baseline.SchemaHash);
     }
 
+    [Test]
+    public async Task Generate_ConsentTextIsPinnedInCanonicalBundleAndHash()
+    {
+        FormSchemaArtifactBundle baseline = Generator.Generate(Build());
+        FormSchemaArtifactBundle changed = Generator.Generate(Build(mutation: "consent-text"));
+
+        await Assert.That(changed.CanonicalBundleJson)
+            .Contains("\"x-consentText\":\"I agree to the updated event terms.\"");
+        await Assert.That(changed.SchemaHash).IsNotEqualTo(baseline.SchemaHash);
+    }
+
     private static RegistrationFormVersion Build(bool reverseConstruction = false, string? mutation = null)
     {
         RegistrationForm form = RegistrationForm.Create(Id(1), Id(2), Id(3), "platform.registration", "attendee",
@@ -173,7 +185,8 @@ public sealed class FormSchemaArtifactGeneratorTests
             mutation == "field-organizer-visibility" ? RegistrationOrganizerVisibilityEnum.Hidden : RegistrationOrganizerVisibilityEnum.AuthorizedOrganizers,
             mutation == "field-explicit-consent", mutation == "field-provider-transfer", Now,
             mutation == "field-explicit-consent" ? "EVENT_TERMS" : null,
-            mutation == "field-explicit-consent" ? "v1" : null);
+            mutation == "field-explicit-consent" ? "v1" : null,
+            mutation == "field-explicit-consent" ? "I agree to the event terms." : null);
         RegistrationFormField age = RegistrationFormField.Create(
             Id(21), first, mutation == "field-ordinal" ? 1 : 2, "platform.registration", "age", "Age",
             RegistrationFieldTypeEnum.Decimal, 1, RegistrationOrganizerVisibilityEnum.AuthorizedOrganizers,
@@ -183,7 +196,8 @@ public sealed class FormSchemaArtifactGeneratorTests
             RegistrationFieldTypeEnum.Consent, 1, RegistrationOrganizerVisibilityEnum.AuthorizedOrganizers,
             true, false, Now,
             mutation == "consent-purpose-code" ? " contact_updates " : "EVENT_TERMS",
-            mutation == "consent-text-version" ? " v2 " : "v1");
+            mutation == "consent-text-version" ? " v2 " : "v1",
+            mutation == "consent-text" ? " I agree to the updated event terms. " : "I agree to the event terms.");
         foreach ((RegistrationFormSection section, RegistrationFormField field) pair in
                  reverseConstruction ? new[] { (first, age), (first, email), (second, consent) } :
                      new[] { (second, consent), (first, email), (first, age) })

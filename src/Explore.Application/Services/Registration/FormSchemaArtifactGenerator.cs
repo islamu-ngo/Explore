@@ -140,6 +140,7 @@ public sealed class FormSchemaArtifactGenerator : IFormSchemaArtifactGenerator
         schema["x-providerTransferAllowed"] = field.IsProviderTransferAllowed;
         AddIfPresent(schema, "x-consentPurposeCode", field.ConsentPurposeCode);
         AddIfPresent(schema, "x-consentTextVersion", field.ConsentTextVersion);
+        AddIfPresent(schema, "x-consentText", field.ConsentText);
         schema["x-options"] = Options(field.Options);
         return schema;
     }
