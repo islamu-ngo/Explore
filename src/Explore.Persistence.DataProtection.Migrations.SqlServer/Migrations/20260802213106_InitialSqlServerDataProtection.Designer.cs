@@ -11,7 +11,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Explore.Persistence.DataProtection.Migrations.SqlServer.Migrations
 {
     [DbContext(typeof(DataProtectionKeyContext))]
-    [Migration("20260802191644_InitialSqlServerDataProtection")]
+    [Migration("20260802213106_InitialSqlServerDataProtection")]
     partial class InitialSqlServerDataProtection
     {
         /// <inheritdoc />
