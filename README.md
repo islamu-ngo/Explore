@@ -26,9 +26,7 @@ ISLAMU Event powers ISLAMU’s Islamic events instance, but the software itself 
 
 ISLAMU Event is a **self-hostable event discovery and management platform** for publishing, discovering, and operating events across one organization or many isolated tenants.
 
-The public ISLAMU instance is Islamic-focused, but the software itself is purpose-agnostic and designed to be rebranded for any event ecosystem.
-
-It is built as a **white-label platform engine**: the hosted ISLAMU instance focuses on Islamic events, while the software is purpose-agnostic and designed to be rebranded for any event ecosystem.
+The public ISLAMU instance is Islamic-focused, but the software itself is **purpose-agnostic, white-label, and designed to be rebranded for any event ecosystem**.
 
 ![Event List Screenshot][event-list-image]
 
@@ -56,9 +54,11 @@ It is built as a **white-label platform engine**: the hosted ISLAMU instance foc
 - **🎟️ Ticketing & Pricing:** Create versioned ticket catalogs with multiple ticket types, capacity pools, and minor-unit pricing. Publish a catalog to attach structured pricing to an event; ticket price summaries appear in public discovery automatically. Draft, clone, and iterate before publishing
 - **📬 Mailing List Integration (Listmonk):** Optionally connect a self-hosted [Listmonk][listmonk-link] instance to automatically sync attendee registrations as newsletter subscribers, with pre-confirmation support and per-tenant configuration
 - **🤖 AI Assistant (when enabled):** Ask the assistant to draft event listings, suggest categories/tags, and propose schedule improvements; every AI-proposed change is reviewed and explicitly confirmed before any side effect
+- **🌍 Decentralization / Federation:** Depending on if event federation support is enabled, publish once and have your event appear on all the event platforms that support federation. Depenging on if atproto authentication is enabled, Records are on your pds -> full ownership, no vendor lock-in.
 
 ### Platform Owners & Self-Hosters
 
+- **🆓 100% Free & Open Source:** Licensed under AGPL-3.0-or-later. Fully Open Source, not open core !
 - **🐳 Deployment:** Docker ready; .NET Aspire for local development
 - **💼 Multi-Tenancy:** Switch between single-tenant and SaaS modes at runtime without code changes — the most important adoption decision for self-hosters
 - **🛠️ White-Label Control:** Custom branding, domains, logos, navigation links, and policies per tenant
@@ -66,12 +66,13 @@ It is built as a **white-label platform engine**: the hosted ISLAMU instance foc
 - **🛡️ Built-in Moderation & Verification:** Moderation queues, organizer verification workflows, and structured appeal paths — see [Governance][governance-doc] and [Authorization][authorization-doc]
 - **🔌 Model Context Protocol (MCP) Server:** The API hosts a stateless MCP adapter at `/mcp` so AI agents, IDEs (VS Code, Copilot, Inspector), and external integrations can discover public events and *propose* actions through the normal confirmation flow — mutations never bypass authorization. See [MCP Debugging][mcp-debugging-doc]
 - **🧠 AI-Ready Foundation:** Provider-neutral AI Assistant, RAG ingestion contracts, and proposal-first tooling are wired through the same Cerbos-authorized, HAL-affordance-driven surface as the rest of the platform
-- **🌍 Federation Foundation:** ATProto-oriented models and outbound sync plumbing exist, while public ActivityPub and ATProto server endpoints remain roadmap work — see [Federation][federation-doc]
+- **🌍 Decentralization / Federation:** Optional AT-Protocol Authentication and event federation support !
 - **🗄️ Privacy Erasure Authority:** GDPR-compliant user data erasure with two topology options: **Co-located** (default — erasure authority shares the main database, simplest to operate) or **External Database** (a dedicated isolated PostgreSQL instance for stricter compliance separation). Operators choose topology at deployment time; the runtime erasure receipt flow and provider-work reconciliation behave identically in both modes.
 - **📬 Mailing List Integration (Listmonk):** Integrate with a self-hosted [Listmonk][listmonk-link] instance to sync attendee registrations as mailing-list subscribers. Connection, behavior, and privacy-erasure authority settings are independently configurable per tenant via grouped settings patches.
 - **📚 Comprehensive Docs:** Architecture, deployment, configuration, troubleshooting, and API reference
 - **🔐 Enterprise Security:** BFF pattern, Cerbos authorization, Infisical secrets, and HATEOAS REST API
-- **🎛️ ISLAMU Event Control Plane *(optional, commercial)*:** A separate commercial product for managed multi-instance operators. The Control Plane provides centralized fleet orchestration, automated instance provisioning, cross-instance telemetry, tenant quota management, and billing integration. ISLAMU Event itself remains fully self-hostable and open-source without it; the Control Plane is an add-on for operators running many instances at scale.
+- **🛡️ Absolute Data Sovereignty:** Self-host on your own infrastructure (Docker, Coolify, Aspire, On-Prem) with total control over user and attendee data.
+- **🎛️ ISLAMU Event Control Plane *(optional, commercial)*:** A separate commercial product for managed multi-instance operators. The Control Plane provides centralized fleet orchestration, automated instance provisioning, cross-instance telemetry, tenant quota management, and billing integration. ISLAMU Event itself remains fully self-hostable and open-source without it; the Control Plane is an add-on for operators running many instances at scale. (Still in development ! Not yet available)
 
 ## Deployment & Hosting Options
 
@@ -144,7 +145,7 @@ There are many ways you can contribute to ISLAMU Event:
 
 ## Quick Start
 
-For local contribution, use the full-local Aspire loop:
+For local contribution, use the local-default Aspire loop:
 
 ```bash
 git clone https://github.com/islamu-ngo/Event.git
@@ -249,12 +250,15 @@ I am deeply grateful to all our amazing contributors.
 
 - [Keycloak][keycloak-link]: An Open Source Identity and Access Management Provider.
 - [Cerbos][cerbos-link]: An Open Source Policy Decision Point.
-- [Svix][svix-link]: An Open Source Webhooks Service.
 - [Infisical][infisical-link]: An Open Source Secret Management Platform.
 - [MudBlazor][mudblazor-link]: An Open Source Blazor UI library that simplifies the creation of beautiful websites and webapps.
+- [ROOST Coop][roost-coop-link]: An Open Source Review and Moderation Platform.
+- [ROOST Osprey][roost-osprey-link]: An Open Source Investigation and Rules Engine.
+- [Svix][svix-link]: An Open Source Webhooks Service.
 - [Penpot][penpot-link]: An Open Source Design Tool.
 - [Plane][plane-link]: An Open Source Project Management Platform that unifies projects, knowledge and agents with all-in-one workspace: projects, wiki, and AI.
 - [Coolify][coolify-link]: An Open Source Platform as a Service, alternative to Vercel, Heroku, Netlify, and Railway for easy deploying to your own servers.
+- [Weblate][weblate-link]: An Open Source Translation Management Platform.
 - [Kener][kener-link]: An Open Source Status Page.
 
 ## Inspiration (UI/...)
@@ -262,6 +266,7 @@ I am deeply grateful to all our amazing contributors.
 - [Luma][luma-link]: A Modern Event Management & Discovery Platform
 - [Smoke Signals][smoke-signals-link]: An Event & RSVP Management and Discovery Web Application built on top of ATProtocol.
 - [Mangadex][mangadex-link]: A Manga Discovery Platform with advanced filtering and multi-language support.
+- [Plane][plane-link]: An Open Source Project Management Platform that unifies projects, knowledge and agents with all-in-one workspace: projects, wiki, and AI.
 
 ## ISLAMU Solutions
 
@@ -281,7 +286,7 @@ ISLAMU will not offer its open-source software as a hosted SaaS. Instead, sustai
 - **Fundraising & Grants:** Crowdfunding campaigns, foundation grants, and public-interest funding for open-source digital infrastructure
 - **Sponsorships:** Ranked sponsorship tiers — sponsors receive recognition and visibility; every euro goes back into the non-profit
 - **Official Partnerships:** Organizations that want to offer ISLAMU software as a hosted service can become **Official ISLAMU Partners**. Partners are vetted, listed on the ISLAMU website, and actively recommended and marketed by ISLAMU. ISLAMU does not compete with its partners; we redirect and endorse them
-- **ISLAMU Event Control Plane** — a commercial fleet-management product for multi-instance operators (see above)
+- **ISLAMU Event Control Plane** — a commercial fleet-management product for multi-instance operators still in development (see above)
 - **Consultation & Support** — professional consulting around ISLAMU software deployment, customization, and integration
 
 If you are a company or institution that wants to support this work, reach out at [contact@openislamu.org][contact-email] or start a conversation in our [Discord][discord-link].
@@ -374,11 +379,14 @@ The CLA is versioned. The current version and full legal text live in [`legal/CL
 
 [keycloak-link]: https://www.keycloak.org/
 [cerbos-link]: https://www.cerbos.dev/
-[svix-link]: https://www.svix.com/
 [webhooks-doc]: docs/WEBHOOKS.md
 [infisical-link]: https://infisical.com/
+[roost-coop-link]: https://roost.tools/coop
+[roost-osprey-link]: https://roost.tools/osprey
+[svix-link]: https://www.svix.com/
 [listmonk-link]: https://listmonk.app/
 [mudblazor-link]: https://www.mudblazor.com/
+[weblate-link]: https://weblate.org/
 [penpot-link]: https://penpot.app/
 [plane-link]: https://plane.so/
 [coolify-link]: https://coolify.io/
