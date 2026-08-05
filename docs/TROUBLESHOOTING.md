@@ -26,12 +26,33 @@ Use this page when you have a symptom. For planned work, installation, backup, r
 
 1. Run the read-only doctor when diagnosing local or self-hosting setup drift:
    `dotnet run --project src/Explore.Diagnostic/Explore.Diagnostic.csproj -- --root .`
-2. Check `https://localhost:7039/health` and `/alive`.
+2. Check the selected topology endpoint: Split API `https://localhost:7039/health` and `/alive`, or Standalone `https://localhost:7180/health` and `/alive`.
 3. Check MigrationService logs for application, Data Protection, authority, and seed failures; check API logs separately for runtime-provider validation.
 4. Verify deployment mode and tenant resolution behavior.
 5. Verify auth session (`/auth/status`) and token forwarding through BFF.
 6. Check rate limiting (`429`) and request timeout (`504`) before deeper debugging.
 7. If the issue followed an upgrade or restore, stop and verify [BACKUP_RESTORE_UPGRADE.md](BACKUP_RESTORE_UPGRADE.md) rollback and validation steps before changing data.
+
+## Aspire Split Or Standalone Topology
+
+Symptoms:
+
+- Aspire starts the unexpected API/BFF pair or omits the combined host.
+- `https://localhost:7180` is unavailable after requesting Standalone.
+- OIDC reports a callback/origin mismatch after a topology switch.
+
+Checks:
+
+1. `Hosting:Topology` accepts only `Split` and `Standalone`; the omitted value is `Split`. Use `Hosting__Topology=Standalone` before `aspire run` for the combined host. An unknown value is a deliberate AppHost startup failure, not a fallback.
+2. In Split, inspect `explore-api` at `https://localhost:7039` and `explore-blazor` at `https://localhost:7177`. In Standalone, inspect only `event-standalone` at `https://localhost:7180` (AppHost HTTP via `WithHttpEndpoint(name: "http")` is dynamic); UI and `/api/*` share it. A direct `Event.Standalone` launch profile reserves `http://localhost:5180`.
+3. Standalone waits for `Event.MigrationService` completion and the selected shared dependencies. It owns API workers, readiness, shutdown, and BFF/UI startup once. If it is unhealthy, read its one process log and the migration-service result; do not look for an API-to-BFF YARP hop.
+4. Confirm `CONTROL_PLANE_PUBLIC_ORIGIN` is the exact browser-facing admin origin. AppHost forwards it as `Bff__AdminHosts__0`; an admin host outside AppHost must configure that value explicitly. Refresh Keycloak's exact callback/web-origin/logout registration after changing the browser endpoint.
+5. To roll back the local topology selection, stop the current AppHost run and relaunch with `Hosting__Topology=Split` (or omit it). This does not undo schema/data changes: preserve the database, run normal readiness checks, and use [BACKUP_RESTORE_UPGRADE.md](BACKUP_RESTORE_UPGRADE.md) for an actual database rollback.
+6. `docker-compose.yml` is Split-only. There is no standalone Compose runtime and no automatic SQLite default in this release; do not diagnose missing `Event.Standalone` containers or change database provider settings as a topology repair.
+
+AppHost assigns the optional Standalone HTTP endpoint dynamically through `WithHttpEndpoint(name: "http")`; it remains internal/non-guaranteed, while HTTPS is `https://localhost:7180`. If running `Event.Standalone` directly, use its launch profile's reserved `http://localhost:5180` HTTP endpoint (or its `https://localhost:7180` HTTPS profile).
+
+These checks cover the three application composition roots (`Explore.API`, `Explore.Blazor`, and `Event.Standalone`): AppHost selects the Split default or explicit Standalone, while the latter keeps browser `/api/*` traffic in-process after cookie antiforgery and trusted-header reconstruction. Keep canonical API paths as `/api/...` with non-URL API versioning (`Accept`, `?api-version=`, or `X-Api-Version`), never `/api/v1/...` (see [the support matrix](ARCHITECTURE.md#hosting-topology)).
 
 ## Database Startup, Migration, Or Provider Failures
 

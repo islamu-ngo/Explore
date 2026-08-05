@@ -9,14 +9,44 @@ ABOUTME: Captures key runtime patterns and boundaries that are not obvious from 
 - API host: `Explore.API`.
 - BFF host: `Explore.Blazor`.
 - Interactive UI client: `Explore.Blazor.Client`.
+- Optional combined host: `Event.Standalone`.
 - Data: PostgreSQL via EF Core.
+
+## Hosting: Topology
+
+There are three application composition roots: `Explore.API` owns the Split API host, `Explore.Blazor` owns the Split BFF host, and `Event.Standalone` owns the optional Combined host. `Explore.AppHost` is the local Aspire orchestrator that selects and wires those hosts.
+
+`Hosting:Topology` selects the AppHost deployment topology. `Split` is the default when the setting is omitted; `Standalone` is an explicit optional mode, and invalid values fail at startup.
+
+| Topology | Processes and localhost endpoint | Startup and readiness ownership |
+|---|---|---|
+| Split default | `Explore.API` at `https://localhost:7039` and `Explore.Blazor` at `https://localhost:7177` | AppHost waits for migrations before both hosts and makes the BFF wait for API readiness. Each host owns its own process startup. |
+| Standalone / Combined | one `Event.Standalone` process at `https://localhost:7180`; AppHost also publishes a dynamic internal HTTP endpoint | The combined root starts API initialization before Blazor initialization and owns API workers, migration/seeding gates, shared service defaults, health, and shutdown exactly once. The Combined BFF profile does not register YARP or remote-API readiness. |
+
+AppHost exposes the optional Standalone HTTP endpoint through
+`WithHttpEndpoint(name: "http")` (dynamic/non-guaranteed internal HTTP), with HTTPS canonical on
+`https://localhost:7180`. Direct `Event.Standalone` launch profiles reserve
+`http://localhost:5180` (and `https://localhost:7180` for the HTTPS profile).
+
+In the Combined topology, browser `/api/*` requests stay in one process. The BFF classifies its cookie session only to enforce antiforgery, obtains the server-held access token, strips untrusted privileged headers, and dispatches through the in-process API transport. API `MultiAuth` revalidates the bearer token and remains the sole controller principal; no loopback or YARP self-proxy is used. Requests without a valid BFF session keep the existing external bearer/API-key API flow.
+
+To roll back a topology change, relaunch AppHost with `Hosting:Topology=Split` (or omit it); this does not roll back data or migrations. Standalone deliberately does not select SQLite or add a standalone `docker-compose.yml` deployment. Canonical controller paths remain `/api/...`; version negotiation uses media type, `?api-version=`, or `X-Api-Version`, never `/api/v1/...`.
+
+Split/Standalone is a process-composition choice only: it changes where BFF and API execute, not API contracts, authorization policy, token semantics, or versioning. The API keeps canonical `/api/*` versioning through non-URL headers and query values (`Accept: application/json;v=...`, `api-version`, `X-Api-Version`), and Standalone never adds route-based version segments.
+
+| API versioning input | Support | Notes |
+|---|---|---|
+| `/api/...` plus `Accept` media-type parameter, `?api-version=`, or `X-Api-Version` | Supported | The same API pipeline parses these in Split and Standalone. |
+| `/api/v1/...`, `/api/v0.1/...`, or any topology-specific versioned route | Unsupported | URL version segments are never added; routes and HAL links remain canonical. |
+
+Local-only Compose exclusions are operationally explicit. The current repository `docker-compose.yml` remains Split deployment only; AppHost is the local topology selector, while direct `Event.Standalone` launch profiles are also available for development. Selecting Standalone does not automatically change `DATABASE_PROVIDER` to SQLite, and SQLite remains an explicit structured provider contract.
 
 ## Layer Boundaries
 1. `Explore.Domain`: entities, enums, domain rules, no infrastructure concerns.
 2. `Explore.Application`: requests/handlers, DTOs, validators, contracts.
 3. `Explore.Persistence` + `Explore.Infrastructure`: data + external service implementations.
-4. `Explore.API`: the only composition root for Domain, Application, Persistence, and Infrastructure.
-5. `Explore.Blazor` and `Explore.Blazor.Client`: isolated presentation/BFF projects that consume generated `IEventApiClient` contracts only.
+4. `Explore.API`: the API host composition root for Domain, Application, Persistence, and Infrastructure.
+5. `Explore.Blazor` and `Explore.Blazor.Client`: isolated presentation/BFF projects that consume generated `IEventApiClient` contracts only; `Event.Standalone` reuses their host modules without giving the client implementation-layer dependencies.
 
 The API dependency direction is inward: API -> Infrastructure/Persistence -> Application -> Domain. Blazor has no project or source dependency on those layers; its backend boundary is the generated API client.
 
@@ -190,8 +220,9 @@ See [OUTBOX_PATTERN.md](OUTBOX_PATTERN.md) for full entity model, configuration,
 These background services and scheduler triggers use optimistic locking or durable claim semantics for multi-worker safety and are availability-gated where dependent services are required.
 
 ## Local Runtime Endpoints
-- API dev: `https://localhost:7039`
-- Blazor dev: `https://localhost:7177`
+- Split default API: `https://localhost:7039`
+- Split default Blazor: `https://localhost:7177`
+- Standalone Combined host: `https://localhost:7180`
 - Docker API: `http://localhost:7039`
 - Docker Blazor: `http://localhost:7002`
 

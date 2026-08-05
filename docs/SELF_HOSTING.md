@@ -24,6 +24,16 @@ supported primary database:
 | **API** (`islamu-event-api`) | REST API, workers, health checks, metrics |
 | **Blazor BFF** (`islamu-event-ui`) | Web UI, embedded admin shell, and YARP reverse proxy to the API |
 
+### Why Self-Host? (Data Sovereignty & Strategic Value)
+
+Commercial event SaaS platforms lock your community's data inside third-party databases, impose mandatory per-ticket fees, enforce vendor-controlled privacy policies, and restrict customization.
+
+Self-hosting ISLAMU Event delivers a superior alternative:
+* **Zero Platform Tax:** Eliminate recurring per-ticket commission fees or monthly registration volume penalties.
+* **Complete Data Sovereignty:** You own your PostgreSQL/database infrastructure, attendee identities, and contact lists entirely.
+* **Flexible Compliance & Privacy:** Built-in GDPR Privacy Erasure Authority allows either co-located or isolated compliance database topologies.
+* **Full White-Label Independence:** Customize tenant domains, logos, navigation, and governance without third-party vendor watermarks.
+
 > [!IMPORTANT]
 > **Deployed migrations belong to `Event.MigrationService`.** Run it to
 > successful completion before starting or upgrading the API. Development keeps
@@ -32,6 +42,48 @@ supported primary database:
 > and TickerQ is PostgreSQL-only.
 
 Everything else — Redis, Keycloak, Cerbos, MinIO, Svix, Coop, AI, federation — is **optional** and can be added when your deployment needs it.
+
+### Current host topology support
+
+The supported Docker Compose deployment is `Split`: one migration process, an
+API on `http://localhost:7039`, and a Blazor BFF on
+`http://localhost:7002`. It remains the default deployment topology.
+
+Local Aspire also supports an opt-in one-process `Standalone` topology. Set
+`Hosting:Topology=Standalone` (environment form `Hosting__Topology=Standalone`);
+it exposes both the UI and `/api/*` on
+`https://localhost:7180` (HTTP via `WithHttpEndpoint(name: "http")`, dynamically assigned), waits for the migration
+service and selected local infrastructure itself, and registers Keycloak
+callbacks against that combined browser endpoint. The default omitted value is
+`Split`, which keeps API `https://localhost:7039` and BFF
+`https://localhost:7177` as separate local development endpoints.
+
+AppHost's Standalone HTTP endpoint is dynamic/non-guaranteed internal HTTP through
+`WithHttpEndpoint(name: "http")`; HTTPS is explicitly `https://localhost:7180`.
+When launching `Event.Standalone` directly with its checked-in launch profiles,
+HTTP is `http://localhost:5180` and the HTTPS profile also binds
+`https://localhost:7180`.
+
+`Event.Standalone` owns API startup, workers, readiness, and graceful shutdown
+once. Its `/api/*` bridge is the Combined BFF/API trust boundary: it converts
+the BFF cookie session only into a server-held bearer request after antiforgery
+and header sanitation; it does not register YARP or create a loopback/self-
+proxy, and API authentication remains the controller authority.
+
+`CONTROL_PLANE_PUBLIC_ORIGIN` must be the browser-facing control-plane origin.
+In Aspire it is forwarded to the selected host and becomes
+`Bff__AdminHosts__0`; when starting a host outside Aspire, configure both the
+public origin and the exact BFF admin host yourself. The origin is not derived
+from a container or service-discovery address.
+
+> [!IMPORTANT]
+> `docker-compose.yml` does not launch `Event.Standalone`, and this repository
+> does not yet provide a standalone Dockerfile or Compose file. Likewise,
+> selecting `Standalone` does not automatically choose SQLite. Keep using the
+> explicit `DATABASE_*` provider contract and the SQLite single-writer rules
+> where SQLite is deliberately selected.
+
+The three application composition roots (`Explore.API`, `Explore.Blazor`, and `Event.Standalone`) preserve one API contract: use `/api/...` with non-URL API versioning (`Accept`, `?api-version=`, or `X-Api-Version`), never `/api/v1/...` (see [the support matrix](ARCHITECTURE.md#hosting-topology)). To return from the opt-in one-process host, restart AppHost in its Split default; this topology rollback does not alter persisted data.
 
 ---
 
@@ -102,6 +154,9 @@ docker compose up -d
 The one-shot migration process must exit successfully before the API starts.
 The default Compose database is PostgreSQL; select another provider through the
 structured `DATABASE_*` inputs and its deployment-specific database service.
+This Compose procedure is intentionally Split-only; do not set
+`Hosting__Topology=Standalone` expecting the existing Compose services to
+combine.
 
 **6. Open the application:**
 
@@ -157,7 +212,7 @@ structured `DATABASE_*` inputs and its deployment-specific database service.
 **Key design principles:**
 
 - **Browsers talk only to the Blazor BFF.** The BFF proxies API calls via YARP; clients should not need direct API access.
-- **The API is the single composition root** for Domain, Application, Persistence, and Infrastructure layers.
+- **The API is the API-host composition root** for Domain, Application, Persistence, and Infrastructure layers; `Event.Standalone` reuses that host module when Aspire selects the optional one-process topology.
 - **The primary datastore is selected explicitly.** PostgreSQL, SQLite, SQL
   Server, MariaDB, and MySQL share the application model but use separate
   generated migration sets.
@@ -299,6 +354,7 @@ The primary database uses one closed structured contract:
 | `DATABASE_HOST` | `postgres` | Required for server providers; omit for SQLite |
 | `DATABASE_PORT` | provider default | Optional server port (`5432`, `1433`, or `3306`) |
 | `DATABASE_DATABASE` | `islamu_event_db` | Server database name, or persisted local SQLite file path |
+| `DATABASE_SCHEMA` | `islamu_event` | PostgreSQL or SQL Server schema; schema-less providers always use the fixed `ie_` table prefix (no `DATABASE_PREFIX`/`Database:Prefix` override is supported) |
 | `DATABASE_TLS_MODE` | `Prefer` in local Compose | `Prefer`, `Required`, or `Disabled`; production server deployments should use `Required` |
 | `DATABASE_TRUST_SERVER_CERTIFICATE` | `false` | Certificate bypass accepted only with required TLS; development only |
 | `DATABASE_RUNTIME_USERNAME`, `DATABASE_RUNTIME_PASSWORD` | `explore` locally | Runtime role; forbidden for SQLite |
@@ -328,6 +384,8 @@ The primary file must not be `/app/data/privacy_erasure_authority.db`.
 | `SETUP_SECRET` | *(internal random fallback)* | Operator secret for first-run onboarding at `/setup` |
 | `DEPLOYMENT_MODE` | *(blank = single-tenant)* | Set `multi_tenant` before first launch for multi-tenant |
 | `CONTROL_PLANE_PUBLIC_ORIGIN` | — | Control-plane admin host for BFF admin-host registration |
+| `Hosting__Topology` | `Split` when running Aspire | AppHost-only local composition selector: `Split` or opt-in `Standalone`; ignored by the current Compose topology |
+| `Bff__AdminHosts__0` | AppHost derives it from `CONTROL_PLANE_PUBLIC_ORIGIN` | Exact standalone/BFF admin host when starting the process without AppHost |
 
 ### Optional Variables
 

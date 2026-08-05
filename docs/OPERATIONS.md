@@ -79,7 +79,7 @@ Sensitive values are redacted before output. Do not add checks that print raw co
 
 ## Local Startup Topology (Aspire)
 
-`Explore.AppHost/AppHost.cs` selects topology from `ISLAMU_ASPIRE_MODE`, normally through `Explore.AppHost/Properties/launchSettings.json`:
+`Explore.AppHost/AppHost.cs` selects local infrastructure from `ISLAMU_ASPIRE_MODE`, normally through `Explore.AppHost/Properties/launchSettings.json`; `Hosting:Topology` separately selects the web-process topology:
 
 | Launch profile | Mode | Started by Aspire |
 |---|---|---|
@@ -102,6 +102,33 @@ curl -sSL https://aspire.dev/install.sh | bash
 ```
 
 `AspireRunModeExtensions.Parse` defaults a missing `ISLAMU_ASPIRE_MODE` to `DefaultLocal`, so the contributor path does not require a launch-profile name. `aspire run` is interactive and exits when you press `Ctrl+C`.
+
+### Hosting topology selection
+
+`Hosting:Topology` selects the web-process shape independently of
+`ISLAMU_ASPIRE_MODE` (which selects local infrastructure). It accepts only
+`Split` and `Standalone`; a missing value is `Split`, and any other value
+fails AppHost startup. Use the environment-variable form when launching
+Aspire:
+
+```bash
+Hosting__Topology=Standalone aspire run --apphost src/Explore.AppHost/Explore.AppHost.csproj
+```
+
+| `Hosting:Topology` | AppHost web resources | Local browser URLs | Callback and API wiring |
+|---|---|---|---|
+| `Split` (default) | `Explore.API` and `Explore.Blazor` | API `https://localhost:7039`; BFF `https://localhost:7177` | Blazor references and waits for API readiness; Keycloak callbacks target the BFF endpoint. |
+| `Standalone` (opt-in) | `Event.Standalone` only | Combined UI and `/api/*`: `https://localhost:7180`; HTTP via `WithHttpEndpoint(name: "http")` (dynamic/non-guaranteed) | The combined host waits for migrations and shared infrastructure directly; Keycloak callbacks target its one browser endpoint and `/api/*` uses the in-process bridge, not YARP. |
+
+The three application composition roots are `Explore.API`, `Explore.Blazor`, and `Event.Standalone`; AppHost orchestrates the selected set. `/api/*` contract behavior remains unchanged between topologies. API routes, HAL boundaries, rate limits, and version parsing remain API-owned and stable; Standalone only swaps transport from out-of-process YARP forwarding to in-process bridge forwarding.
+
+AppHost publishes dynamic/non-guaranteed internal HTTP via `WithHttpEndpoint(name: "http")`; HTTPS remains `https://localhost:7180`. Direct `Event.Standalone` launch profiles reserve `http://localhost:5180` (and `https://localhost:7180` for the HTTPS profile).
+
+`CONTROL_PLANE_PUBLIC_ORIGIN` remains the public admin-host input in both
+topologies. AppHost forwards it to the API/combined host and sets
+`Bff__AdminHosts__0` on the selected BFF surface. Set it to the browser-facing
+admin origin when testing an explicit admin host; it is not inferred from an
+Aspire endpoint.
 
 Foreground isolated run for repeatable infrastructure launch proof:
 
@@ -136,7 +163,7 @@ dotnet run --project src/Explore.AppHost/Explore.AppHost.csproj --launch-profile
 dotnet run --project src/Explore.AppHost/Explore.AppHost.csproj --launch-profile local-lite
 ```
 
-`local-full` uses persistent container lifetimes and named volumes for heavy stateful resources so local database, Keycloak, MinIO, RabbitMQ, PgAdmin, and observability state survive AppHost restarts. Every non-isolated named profile publishes API HTTPS on `https://localhost:7039` and Blazor HTTPS on `https://localhost:7177`; internal HTTP endpoints remain dynamically allocated for Aspire service discovery. Isolated runs publish dynamic localhost ports, so use `aspire describe <resource> --format Table` instead of hardcoding resource endpoints. Local Keycloak initialization derives exact login, web-origin, and logout values from the allocated Blazor HTTP/HTTPS ports, so OIDC remains usable in isolated runs without wildcard callbacks.
+`local-full` uses persistent container lifetimes and named volumes for heavy stateful resources so local database, Keycloak, MinIO, RabbitMQ, PgAdmin, and observability state survive AppHost restarts. Non-isolated `Split` publishes API HTTPS on `https://localhost:7039` and Blazor HTTPS on `https://localhost:7177`; non-isolated `Standalone` publishes its combined HTTPS endpoint on `https://localhost:7180`. Internal HTTP endpoints remain dynamically allocated for Aspire service discovery. Isolated runs publish dynamic localhost ports, so use `aspire describe <resource> --format Table` instead of hardcoding resource endpoints. Local Keycloak initialization derives exact login, web-origin, and logout values from the selected BFF or combined-host HTTP/HTTPS ports, so OIDC remains usable without wildcard callbacks.
 
 PgAdmin is available as the `pgadmin` browser resource in `local-full`. AppHost injects its local access configuration; inspect the running resource when troubleshooting authentication. It imports the PostgreSQL servers from `Explore.AppHost/Config/pgadmin/servers.json`; inside PgAdmin, use container-network hosts `postgres`, `cerbos-db`, `svix-postgres`, and `coop-postgres` on port `5432`, not Aspire dashboard endpoint strings such as `tcp://localhost:35305`. The Cerbos, Svix, and Coop server entries use `Explore.AppHost/Config/pgadmin/pgpass`; the app `postgres` server may require its Aspire-generated connection details.
 
@@ -164,9 +191,25 @@ Startup dependencies are explicit:
 3. `Event.MigrationService` runs in every profile. Local data profiles inject
    structured PostgreSQL migrator fields; `local-lite` resolves the selected
    provider from structured external configuration.
-4. `Explore.API` waits for migration completion, local data/cache, and `local-full` platform resources when those resources exist.
-5. `Explore.Blazor` waits for API readiness and receives API service discovery through Aspire.
-6. Dedicated admin hosts use the same `Explore.Blazor` process and generated API client boundary.
+4. In `Split`, `Explore.API` waits for migration completion, local data/cache, and `local-full` platform resources when those resources exist.
+5. In `Split`, `Explore.Blazor` waits for API readiness and receives API service discovery through Aspire.
+6. In `Standalone`, `Event.Standalone` waits directly for migration completion and the same selected infrastructure; it owns API startup, workers, health endpoints, shutdown state, and the BFF/UI endpoint once.
+7. Dedicated admin hosts use the selected BFF surface and generated API client boundary.
+
+Topology selection changes only local AppHost resource composition; it does not
+roll back schemas or data. To return to the supported default, stop the
+Standalone AppHost run, relaunch without `Hosting__Topology` (or set
+`Hosting__Topology=Split`), then verify the selected `/health` endpoint and
+Keycloak callback origin before accepting traffic. Do not run provider or
+migration rollback as a topology-switch shortcut.
+
+Current limitation: this is an Aspire development topology. The repository
+`docker-compose.yml` remains the Split API + BFF deployment, and there is no
+standalone Compose descriptor or packaged one-container runtime yet. SQLite is
+not automatically selected by this topology; keep the explicit structured
+database provider configuration and the existing SQLite single-writer rules.
+
+The three application composition roots keep one route contract: API calls use `/api/...` and non-URL API versioning (`Accept`, `?api-version=`, or `X-Api-Version`), never `/api/v1/...` (see [the support matrix](ARCHITECTURE.md#hosting-topology)). This applies equally after a topology rollback to the Split default.
 
 The Blazor BFF resolves the API through Aspire service discovery (`services__explore-api__https__0` / `services__explore-api__http__0`) or `ExploreApi:BaseUrl`. Compose uses `API_ENDPOINT`, defaulting to the internal `islamu-event-api:8080` service. Do not hardcode the Compose/API host port into AppHost documentation.
 
@@ -206,11 +249,11 @@ MariaDB, and MySQL.
 
 | Provider | Application migrations | Data Protection migrations | Namespace/history |
 |---|---|---|---|
-| PostgreSQL | `Explore.Persistence` | `Explore.Persistence` | `islamu_event.__EFMigrationsHistory` and `islamu_event.__EFDataProtectionMigrationsHistory` |
-| SQLite | `Explore.Persistence.Migrations.Sqlite` | `Explore.Persistence.DataProtection.Migrations.Sqlite` | `islamu_event_` table prefix and prefixed histories |
-| SQL Server | `Explore.Persistence.Migrations.SqlServer` | `Explore.Persistence.DataProtection.Migrations.SqlServer` | `islamu_event` schema and separate histories |
-| MariaDB | `Explore.Persistence.Migrations.MariaDb` | `Explore.Persistence.DataProtection.Migrations.MariaDb` | `islamu_event_` table prefix and prefixed histories |
-| MySQL | `Explore.Persistence.Migrations.MySql` | `Explore.Persistence.DataProtection.Migrations.MySql` | `islamu_event_` table prefix and prefixed histories |
+| PostgreSQL | `Explore.Persistence` | `Explore.Persistence` | Configured schema (default `islamu_event`) with separate histories |
+| SQLite | `Explore.Persistence.Migrations.Sqlite` | `Explore.Persistence.DataProtection.Migrations.Sqlite` | Fixed `ie_` table prefix and prefixed histories |
+| SQL Server | `Explore.Persistence.Migrations.SqlServer` | `Explore.Persistence.DataProtection.Migrations.SqlServer` | Configured schema (default `islamu_event`) with separate histories |
+| MariaDB | `Explore.Persistence.Migrations.MariaDb` | `Explore.Persistence.DataProtection.Migrations.MariaDb` | Fixed `ie_` table prefix and prefixed histories |
+| MySQL | `Explore.Persistence.Migrations.MySql` | `Explore.Persistence.DataProtection.Migrations.MySql` | Fixed `ie_` table prefix and prefixed histories |
 
 `EmbeddedSqlite` authority uses its dedicated local file and authority schema
 owner. `ExternalDatabase` uses the authority context's PostgreSQL migrations

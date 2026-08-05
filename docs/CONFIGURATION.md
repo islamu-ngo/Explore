@@ -25,6 +25,42 @@ Secrets have an additional ownership contract that applies across the platform:
 
 Do not treat environment variables as absolute authority forever. In application-managed mode the precedence is: explicit saved application/database setting, then deployment bootstrap value, then default. In deployment-managed mode the selected external source is authoritative and application-managed DB values for that field are ignored.
 
+## Aspire Hosting Topology
+
+`Hosting:Topology` is an AppHost-only setting for local Aspire composition; it
+does not change a deployed application's configuration source or migrate data.
+Its environment form is `Hosting__Topology`.
+
+| Key / environment variable | Values and default | Effect |
+|---|---|---|
+| `Hosting:Topology` / `Hosting__Topology` | `Split` (default) or `Standalone` | `Split` registers API plus Blazor; `Standalone` registers only `Event.Standalone`. Unknown values fail AppHost startup. |
+| `CONTROL_PLANE_PUBLIC_ORIGIN` | Exact browser-facing admin origin; AppHost fallback `http://admin.localhost:7002` | Forwarded to the API or combined host for admin-link generation and used as the selected BFF admin-host value. |
+| `Bff:AdminHosts:0` / `Bff__AdminHosts__0` | Same exact public admin origin | AppHost injects this onto the selected BFF surface. Set it explicitly only when running the BFF/combined host outside AppHost. |
+| `ASPNETCORE_URLS` | Host binding chosen by the launch profile unless overridden | AppHost uses `WithHttpEndpoint(name: "http")` for dynamic internal HTTP and explicit HTTPS `https://localhost:7180`; direct `Event.Standalone` launch profiles reserve `http://localhost:5180` (and `https://localhost:7180` for the HTTPS profile). |
+
+For an explicit local combined run, set the topology and an admin origin that
+matches the browser-facing endpoint:
+
+```bash
+Hosting__Topology=Standalone \
+CONTROL_PLANE_PUBLIC_ORIGIN=https://admin.localhost:7180 \
+aspire run --apphost src/Explore.AppHost/Explore.AppHost.csproj
+```
+
+In `Split`, AppHost wires Blazor to API service discovery and waits for API
+readiness. In `Standalone`, the one host owns API and BFF/UI startup once and
+uses the in-process API bridge; that bridge remains the BFF/API trust boundary,
+so no `API_ENDPOINT` or loopback URL is needed for it. Keycloak callback,
+web-origin, and logout registration target the selected BFF/combined resource.
+
+AppHost assigns standalone HTTP dynamically through `WithHttpEndpoint(name: "http")`; HTTPS remains explicitly `https://localhost:7180` for the combined endpoint. Direct `Event.Standalone` launch profiles reserve `http://localhost:5180`.
+
+This configuration does not make SQLite the standalone default and does not
+enable a standalone Docker Compose deployment. Those remain explicit provider
+and packaging work; `docker-compose.yml` continues to use the Split services.
+
+The three application composition roots (`Explore.API`, `Explore.Blazor`, and `Event.Standalone`) therefore share one API route convention: `/api/...` is canonical and API versioning uses `Accept`, `?api-version=`, or `X-Api-Version`, never `/api/v1/...` (see [the support matrix](ARCHITECTURE.md#hosting-topology)). Switching back to the Split default changes only AppHost composition; it is not a data rollback.
+
 ### Keycloak onboarding metadata
 
 The API compatibility layer maps `KEYCLOAK_CLIENT_ID` and `KEYCLOAK_BLAZOR_CLIENT_ID` to `Keycloak:ClientId`. It maps the server-only `KEYCLOAK_BLAZOR_CLIENT_SECRET` or `Keycloak:BlazorClientSecret` value to `Keycloak:ClientSecret`. Existing canonical `Keycloak:*` values retain precedence because compatibility aliases only fill missing keys. `Keycloak:Audience` identifies the API audience and is never used as the browser client ID.
@@ -113,6 +149,7 @@ process role:
     "Host": "db.example.internal",
     "Port": 5432,
     "Database": "islamu_event",
+    "Schema": "islamu_event",
     "TlsMode": "Required",
     "TrustServerCertificate": false,
     "Runtime": {
@@ -134,11 +171,11 @@ the API or Blazor containers.
 
 | Provider | Required shape | Default port / namespace | Operational boundary |
 |---|---|---|---|
-| `PostgreSql` | Host, database, and role credentials; `ServerFlavor`/`ServerVersion` forbidden | `5432`; schema `islamu_event` | Full primary support; only provider supported by TickerQ and the external erasure authority. |
-| `Sqlite` | `Database` is a persisted local file path; host, port, credentials, flavor, and version forbidden | no port; table prefix `islamu_event_` | Single application instance only. In-memory, URI, and network paths are rejected. |
-| `SqlServer` | Host, database, and role credentials; `ServerFlavor`/`ServerVersion` forbidden | `1433`; schema `islamu_event` | Full primary support; use `HostedService` email dispatch because TickerQ is unavailable. |
-| `MariaDb` | Host, database, role credentials, `ServerFlavor=MariaDb`, and explicit `ServerVersion` | `3306`; table prefix `islamu_event_` | Full primary support; explicit version selects the EF SQL dialect. |
-| `MySql` | Host, database, role credentials, `ServerFlavor=MySql`, and explicit `ServerVersion` | `3306`; table prefix `islamu_event_` | Full primary support; explicit version selects the EF SQL dialect. |
+| `PostgreSql` | Host, database, and role credentials; `ServerFlavor`/`ServerVersion` forbidden | `5432`; configurable schema, default `islamu_event` | Full primary support; only provider supported by TickerQ and the external erasure authority. |
+| `Sqlite` | `Database` is a persisted local file path; host, port, credentials, flavor, and version forbidden | no port; fixed table prefix `ie_` | Single application instance only. In-memory, URI, and network paths are rejected. |
+| `SqlServer` | Host, database, and role credentials; `ServerFlavor`/`ServerVersion` forbidden | `1433`; configurable schema, default `islamu_event` | Full primary support; use `HostedService` email dispatch because TickerQ is unavailable. |
+| `MariaDb` | Host, database, role credentials, `ServerFlavor=MariaDb`, and explicit `ServerVersion` | `3306`; fixed table prefix `ie_` | Full primary support; explicit version selects the EF SQL dialect. |
+| `MySql` | Host, database, role credentials, `ServerFlavor=MySql`, and explicit `ServerVersion` | `3306`; fixed table prefix `ie_` | Full primary support; explicit version selects the EF SQL dialect. |
 
 Supported TLS values are named values only: `Prefer`, `Required`, or
 `Disabled`. Server providers default to `Required`. With
@@ -166,6 +203,7 @@ Compose exposes equivalent `DATABASE_*` interpolation values:
 |---|---|
 | `Database__Provider` | `DATABASE_PROVIDER` |
 | `Database__Host`, `Database__Port`, `Database__Database` | `DATABASE_HOST`, `DATABASE_PORT`, `DATABASE_DATABASE` |
+| `Database__Schema` | `DATABASE_SCHEMA` |
 | `Database__TlsMode`, `Database__TrustServerCertificate` | `DATABASE_TLS_MODE`, `DATABASE_TRUST_SERVER_CERTIFICATE` |
 | `Database__ServerFlavor`, `Database__ServerVersion` | `DATABASE_SERVER_FLAVOR`, `DATABASE_SERVER_VERSION` |
 | `Database__Runtime__Username`, `Database__Runtime__Password` | `DATABASE_RUNTIME_USERNAME`, `DATABASE_RUNTIME_PASSWORD` |
@@ -175,9 +213,13 @@ Provider-specific migrations are intentionally separate. PostgreSQL
 application and Data Protection migrations live in `Explore.Persistence`;
 other providers use `Explore.Persistence.Migrations.{Provider}` and
 `Explore.Persistence.DataProtection.Migrations.{Provider}`. The histories are
-`__EFMigrationsHistory` and `__EFDataProtectionMigrationsHistory` in the fixed
-schema, or the corresponding `islamu_event_`-prefixed tables where schemas are
-not supported. Generated migrations and snapshots are never hand-edited.
+`__EFMigrationsHistory` and `__EFDataProtectionMigrationsHistory` in the
+configured schema (default `islamu_event`), or the corresponding fixed
+`ie_`-prefixed tables where schemas are not supported. The prefix is deliberately
+not configurable (`DATABASE_PREFIX` and `Database:Prefix` are rejected), so an
+operator-supplied value cannot exceed provider identifier
+limits when combined with long table names. Generated migrations and snapshots
+are never hand-edited.
 
 SQLite adds three non-negotiable deployment rules: use durable local storage,
 mount the file into both migration and API processes at the same path, and run

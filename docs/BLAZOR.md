@@ -6,8 +6,8 @@ ABOUTME: Keeps token handling, proxying, render policy, service state, and clien
 > **Audience:** Contributors | Frontend | AI agents
 > **Status:** Implemented
 > **Owner:** Frontend
-> **Last Verified:** 2026-07-29
-> **Source Anchors:** `Explore.Blazor/Program.cs`, `Explore.Blazor/Extensions/`, `Explore.Blazor/Components/ControlPlane/`, `Explore.Blazor.Client/Explore.Blazor.Client.csproj`, `Explore.Blazor.Client/Components/Discovery/`, `Explore.Blazor.Client/Services/`, `Explore.Blazor.Client/Layout/`, `Explore.Blazor.Client/Pages/Studio/`, `Explore.Blazor.Client/Pages/Admin/Instance/`, `docs/RENDER_POLICIES.md`, `docs/DESIGN_SYSTEM.md`
+> **Last Verified:** 2026-08-05
+> **Source Anchors:** `Explore.Blazor/Program.cs`, `Explore.Blazor/Hosting/`, `Explore.Blazor/Extensions/`, `Explore.Blazor/Services/InProcessEventApiTransport.cs`, `Event.Standalone/Program.cs`, `Event.Standalone/Middleware/CombinedApiBridgeMiddleware.cs`, `Event.Web.BffHosting/Security/EventBffRequestEnricher.cs`, `Explore.Blazor/Components/ControlPlane/`, `Explore.Blazor.Client/Explore.Blazor.Client.csproj`, `Explore.Blazor.Client/Components/Discovery/`, `Explore.Blazor.Client/Services/`, `Explore.Blazor.Client/Layout/`, `Explore.Blazor.Client/Pages/Studio/`, `Explore.Blazor.Client/Pages/Admin/Instance/`, `docs/RENDER_POLICIES.md`, `docs/DESIGN_SYSTEM.md`
 
 ## Scope
 
@@ -29,10 +29,46 @@ Use the specialized docs for deep detail:
 
 | Project | Role | Must not own |
 |---|---|---|
-| `Explore.Blazor` | Server/BFF host: OIDC login, HttpOnly cookie session, YARP proxy, BFF endpoints, token forwarding, antiforgery, rate limiting. | Raw domain logic or browser token storage. |
+| `Explore.Blazor` | Server/BFF host: OIDC login, HttpOnly cookie session, Split YARP proxy or Standalone in-process bridge, BFF endpoints, token forwarding, antiforgery, rate limiting. | Raw domain logic or browser token storage. |
 | `Explore.Blazor.Client` | Razor UI, pages/components, embedded control-plane pages, scoped UI state, typed service layer, generated API DTO consumption. | API authorization decisions, raw access-token persistence, direct controller logic, or backend contract mirrors. |
 
 The browser never owns access tokens. Interactive UI calls go through the BFF or generated client services; API remains the hard authorization boundary.
+
+## Hosting Topology: Split and Standalone
+
+`Explore.API`, `Explore.Blazor`, and `Event.Standalone` are the three application composition roots. AppHost defaults `Hosting:Topology` to `Split`; `Hosting:Topology=Standalone` is an explicit opt-in that starts `Event.Standalone`, not a different API contract or authorization model.
+
+| Topology | Composition | Browser `/api/*` path | BFF-to-API typed clients |
+|---|---|---|---|
+| Split | `Explore.Blazor` and `Explore.API` run as separate hosts. | YARP forwards the request to the API host. | Normal outbound HTTP transport. |
+| Standalone | `Event.Standalone` composes the reusable API and Blazor host modules in one process and on one listener. | The Combined bridge dispatches into the existing API pipeline in-process; YARP is not registered and there is no loopback/self-proxy. | `InProcessEventApiHttpMessageHandler` dispatches a synthetic request through the API pipeline. |
+
+The Standalone topology keeps one API endpoint graph: controller routes, API versioning, authentication schemes, authorization, rate limits, and API middleware remain API-owned. The Blazor `Combined` profile omits only Split transport concerns (YARP and remote-API readiness); it retains the BFF, OIDC session, Razor/static assets, SignalR, render policy, antiforgery issuance, and BFF endpoint graph.
+
+Version and boundary invariants stay fixed across both topologies: `Explore.API` continues to own `/api/*` behavior, including route policy, header/`api-version` negotiation, and versioned contract stability. Standalone does not add URL-version segments or alternate API policy.
+
+Operationally, AppHost selects Standalone for local topology runs; direct `Event.Standalone` launch profiles remain available for development. `docker-compose.yml` remains Split-only, and no standalone Docker descriptor exists yet; a Standalone topology selection does not set the primary provider to SQLite.
+
+### One-process bridge and cookie-to-API token flow
+
+An authenticated browser request to `/api/*` in Standalone crosses an explicit in-process trust boundary:
+
+1. `CombinedApiBridgeMiddleware` classifies the BFF cookie session. A request without that session continues to the normal API `MultiAuth` selection, so external bearer-token and API-key clients keep their existing behavior.
+2. For a valid BFF session, the bridge validates antiforgery for unsafe requests before it forwards anything. It resolves the server-held access token, trusted tenant hint, setup secret, and support-access session through `EventBffRequestEnricher`.
+3. Browser-supplied `Authorization`, API-key, setup-secret, tenant, support-access, cookie, and unsafe correlation headers are removed. The bridge adds only the trusted server-derived values.
+4. The cookie principal is cleared before the API pipeline runs. The API authenticates the reconstructed bearer token through `MultiAuth`; the BFF cookie is never the API principal.
+
+This cookie-to-API token conversion fails closed: a valid BFF cookie without a usable server-held access token receives `401` (apart from the documented anonymous onboarding/setup paths), rather than falling through as the cookie identity or an attacker-supplied credential.
+
+`InProcessEventApiHttpMessageHandler` is the separate server-side bridge used by generated `IEventApiClient` services in the Combined profile. It creates an isolated HTTP context and service scope, copies HTTP semantics and permitted headers, but does not copy browser cookies, `Host`, or an ambient principal. It is an in-process transport implementation, not permission to bypass API authentication or Application authorization.
+
+### Antiforgery boundaries and Standalone limits
+
+Both Topology modes issue `XSRF-TOKEN` from the BFF and require unsafe browser API requests to send it as `X-CSRF-TOKEN`. Split performs this check at the BFF proxy boundary; Standalone performs the same check in the Combined bridge before entering the API pipeline. Direct API bearer-token or API-key callers do not have a browser cookie boundary and are not subject to BFF antiforgery.
+
+Standalone couples UI and API availability, deployment, and scaling to one process. Choose Split when independent host scaling, independently deployed failure domains, or a network boundary between BFF and API is required. Combined removes the network hop and YARP proxy diagnostics; it does not relax token secrecy, header sanitation, API authorization, HAL affordance gating, or the requirement to keep browser tokens out of client storage.
+
+The three application composition roots use the same contract: AppHost defaults to Split, while explicit Standalone uses `WithHttpEndpoint(name: "http")` for dynamic/non-guaranteed internal HTTP and explicit HTTPS `https://localhost:7180`; direct `Event.Standalone` launch profiles reserve `http://localhost:5180`. It owns Combined startup/readiness once. Revert by selecting Split again; this does not roll back data. Standalone neither changes the SQLite provider choice nor adds `docker-compose.yml`; API routes remain `/api/...` with non-URL API versioning, never `/api/v1/...` (see [the support matrix](ARCHITECTURE.md#hosting-topology)).
 
 ## Render Mode Boundary
 
@@ -74,11 +110,11 @@ BFF endpoints are split by concern in `Explore.Blazor/Extensions/` and wired thr
 
 Keep new BFF endpoints in the smallest matching extension file. `BffEndpointExtensions.cs` should remain the facade/orchestrator, not a dumping ground for endpoint logic. `AntiforgeryEndpointExtensions.cs` provides `ValidateAntiforgery()` request-token validation filters for state-changing BFF endpoints. The manifest endpoint resolves public-experience branding through the server-side API client and falls back to generic install metadata when branding cannot be read; do not reintroduce a static tenant-branded manifest file.
 
-## Proxy And Token Forwarding
+## Proxy, Bridge, And Token Forwarding
 
 There are two related but separate transport paths:
 
-1. **Browser-to-API proxy path** — `YarpProxyExtensions.cs` proxies `/api/*` calls and applies security-sensitive transforms:
+1. **Browser-to-API path** — in Split, `YarpProxyExtensions.cs` proxies `/api/*` calls; in Standalone, `CombinedApiBridgeMiddleware` applies the same enrichment in-process. Both paths:
    - forwards the server-side access token as `Authorization: Bearer ...`,
    - forwards trusted tenant context when route context is available,
    - strips any browser-supplied `X-Setup-Secret` value and forwards only the value returned by `ISetupSecretResolver`,

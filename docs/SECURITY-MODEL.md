@@ -6,8 +6,8 @@ ABOUTME: Focuses on enforced behavior in code (BFF, MediatR authorization, and f
 > **Audience:** Operators | Contributors | AI agents
 > **Status:** Mixed
 > **Owner:** Security
-> **Last Verified:** 2026-07-25
-> **Source Anchors:** `Explore.API/BackgroundServices/PrivacyErasureStartupGate.cs`, `Explore.API/BackgroundServices/PrivacyErasureCredentialCleanupProcessor.cs`, `Explore.API/Controllers/PrivacyErasureController.cs`, `Explore.API/HealthChecks/PrivacyErasureReadinessHealthCheck.cs`, `Explore.Application/Services/RetainedAuthorityPrivacyErasureWorkflow.cs`, `Explore.Infrastructure/PrivacyErasureCredentialCleanupService.cs`, `Explore.Infrastructure/Services/Privacy/PrivacyErasureReplayService.cs`, `Explore.Persistence/Repositories/PrivacyErasureProviderWorkRepository.cs`, `Explore.Domain/PrivacyErasure*.cs`, `docs/AUTHORIZATION.md`
+> **Last Verified:** 2026-08-05
+> **Source Anchors:** `Event.Standalone/Program.cs`, `Event.Standalone/Middleware/CombinedApiBridgeMiddleware.cs`, `Explore.Blazor/Hosting/`, `Explore.Blazor/Services/InProcessEventApiTransport.cs`, `Event.Web.BffHosting/Security/EventBffRequestEnricher.cs`, `Event.Web.BffHosting/Security/BffProxyHeaderSanitizer.cs`, `Explore.API/BackgroundServices/PrivacyErasureStartupGate.cs`, `Explore.API/BackgroundServices/PrivacyErasureCredentialCleanupProcessor.cs`, `Explore.API/Controllers/PrivacyErasureController.cs`, `Explore.API/HealthChecks/PrivacyErasureReadinessHealthCheck.cs`, `Explore.Application/Services/RetainedAuthorityPrivacyErasureWorkflow.cs`, `Explore.Infrastructure/PrivacyErasureCredentialCleanupService.cs`, `Explore.Infrastructure/Services/Privacy/PrivacyErasureReplayService.cs`, `Explore.Persistence/Repositories/PrivacyErasureProviderWorkRepository.cs`, `Explore.Domain/PrivacyErasure*.cs`, `docs/AUTHORIZATION.md`
 
 ## Security Model
 
@@ -17,6 +17,41 @@ The platform uses a BFF model:
 - Dedicated admin hosts use the embedded control-plane shell inside `Explore.Blazor` and the same server-owned OIDC session boundary.
 - `Explore.Blazor.Client` (WASM) does not directly manage access tokens.
 - `Explore.API` authorizes bearer-token requests and applies resource-level checks in Application layer.
+
+## BFF/API Topology and Trust Boundary
+
+`Hosting:Topology=Split` is the default composition: `Explore.Blazor` and `Explore.API` run as separate hosts, and the BFF uses YARP for `/api/*`. `Hosting:Topology=Standalone` explicitly starts `Event.Standalone`, which composes those same host modules in one process. The Standalone `Combined` profile does not register YARP or create a loopback proxy; the one-process bridge routes browser `/api/*` requests into the existing API pipeline in-process.
+
+Topology is a local composition choice, not a deployment packaging or storage-default switch. Standalone does not imply a standalone container profile in `docker-compose.yml`, and it never changes `DATABASE_PROVIDER`; SQLite must still be selected through the explicit structured provider settings when intended.
+
+The process boundary changes, but the trust boundary does not. The bridge is responsible only for translating a BFF session into an API request; API `MultiAuth`, endpoint authorization, MediatR resource authorization, tenant filters, rate limits, and HAL link filtering remain authoritative.
+
+### Cookie-to-API token conversion
+
+For an authenticated BFF browser request in either Topology, the flow is:
+
+1. The browser sends an HttpOnly BFF cookie to the BFF; it never receives the access token.
+2. The BFF resolves the server-held access token and trusted tenant, setup-secret, and support-access context.
+3. It strips browser-controlled authorization, API-key, setup-secret, tenant, support-access, cookie, and unsafe correlation headers, then adds only server-derived values.
+4. The API validates the reconstructed bearer token and creates the API principal. The BFF cookie principal is not forwarded as API identity.
+
+In Split, YARP carries the sanitized request to the API host. In Standalone, `CombinedApiBridgeMiddleware` applies the same rules in-process and clears the cookie principal before the API middleware runs. A valid cookie with no usable server-held token fails `401`; it cannot fall through as cookie authority or as a browser-provided bearer/API key. Requests without a valid BFF cookie preserve normal external bearer-token and API-key behavior.
+
+The `InProcessEventApiHttpMessageHandler` used by server-side generated API clients is an isolated in-process API/BFF bridge: it creates a fresh service scope and HTTP context and deliberately excludes browser cookies, `Host`, and ambient principals. It preserves HTTP request/response semantics, not ambient authority.
+
+### Antiforgery boundaries
+
+Unsafe browser `/api/*` requests require the BFF antiforgery token: the BFF issues `XSRF-TOKEN` and the client returns it as `X-CSRF-TOKEN`. In Split, the BFF proxy validates this before YARP forwarding. In Standalone, the Combined bridge validates it before API dispatch. Direct API bearer-token and API-key clients do not traverse a browser-cookie boundary and are not subject to BFF antiforgery.
+
+The documented onboarding/setup exceptions remain narrow: they use their existing setup credentials, server-owned state, authorization where applicable, and rate limiting. Do not make new exceptions for the one-process topology.
+
+### Standalone limitations
+
+Standalone reduces deployment and operational isolation: UI and API availability, deployment cadence, process resources, and scaling are coupled. It also removes the YARP network-hop/proxy diagnostic surface. Use Split when independently scaled hosts, separate deployment failure domains, or a network boundary between BFF and API is required. Do not treat one process as an authorization shortcut: token secrecy, privileged-header sanitation, API authorization, tenant isolation, and antiforgery remain mandatory.
+
+Across the three application composition roots (`Explore.API`, `Explore.Blazor`, and `Event.Standalone`), AppHost defaults to Split and explicit Standalone uses `WithHttpEndpoint(name: "http")` for a dynamic/non-guaranteed internal HTTP endpoint plus explicit HTTPS `https://localhost:7180`; direct `Event.Standalone` launch profiles reserve `http://localhost:5180`. Returning to Split changes topology only, not data. Standalone does not select SQLite or provide `docker-compose.yml`. The canonical protected surface is `/api/...` with non-URL API versioning, never `/api/v1/...` (see [the support matrix](ARCHITECTURE.md#hosting-topology)).
+
+Topology rollback is process-level only: `Hosting:Topology` controls how local AppHost composes processes and does not reverse migrations or data commits. For schema/data rollback after topologies are switched, use the migration backup/restore workflow.
 
 ## Privacy-erasure Authority Boundary
 
@@ -79,8 +114,8 @@ Current security gates:
 
 1. User authenticates through a browser BFF OpenID Connect flow.
 2. The BFF stores the auth session in an HttpOnly cookie.
-3. Calls to `/api/*` are proxied by YARP from the BFF to the API.
-4. The BFF adds the server-held bearer token to proxied API requests through the shared BFF hosting token-forwarding path.
+3. In Split, calls to `/api/*` are proxied by YARP from the BFF to the API; in Standalone, the Combined bridge dispatches them in-process to the same API pipeline.
+4. The BFF adds the server-held bearer token through the shared BFF request-enrichment path; the API validates that token rather than accepting the cookie as API authority.
 5. Embedded control-plane routes use the same BFF session; their actions remain authorized by API/Application policies and advertised through HAL links.
 
 ## JWT Bearer Configuration (API)
@@ -255,14 +290,14 @@ Walk-in optional-questionnaire discovery is anonymous but fails closed. The API 
 
 ## BFF Antiforgery Contract
 
-Unsafe browser requests proxied through the BFF at `/api/*`, including anonymous requests, must validate antiforgery tokens. Direct `Explore.API` bearer-token and API-key callers do not cross the browser BFF boundary and are not subject to BFF antiforgery validation.
+Unsafe browser requests through the BFF at `/api/*`, including anonymous requests, must validate antiforgery tokens. Split validates at the YARP proxy boundary; Standalone validates in `CombinedApiBridgeMiddleware` before API dispatch. Direct `Explore.API` bearer-token and API-key callers do not cross the browser BFF boundary and are not subject to BFF antiforgery validation.
 
 - Token issuance: `UseAntiforgeryTokenMiddleware` calls `IAntiforgery.GetAndStoreTokens` on non-static `GET` requests and writes the request token to the readable `XSRF-TOKEN` cookie. Static assets bypass issuance so the antiforgery service does not disable browser caching for immutable UI resources.
 - Header contract: clients send the token back in the `X-CSRF-TOKEN` header. This matches the BFF `AddAntiforgery` configuration.
 - Browser client path: `BrowserCredentialsMessageHandler` sends browser credentials, and `BffAntiforgeryMessageHandler` adds `X-CSRF-TOKEN` for `POST`, `PUT`, `PATCH`, and `DELETE` requests.
 - Server self-call path: `BffCookieForwardingHandler` forwards captured cookies and mirrors `XSRF-TOKEN` into `X-CSRF-TOKEN` when InteractiveServer code calls BFF endpoints.
 - Endpoint validation: unsafe minimal BFF endpoints call `.ValidateAntiforgery()`, which returns `400 Antiforgery validation failed` for missing or invalid tokens.
-- Proxy validation: unsafe `/api/*` requests validate through `EventApiProxyExtensions` before YARP forwards them. Existing setup-secret and anonymous onboarding/bootstrap decisions remain outside this browser-antiforgery check.
+- API-path validation: unsafe `/api/*` requests validate through `EventApiProxyExtensions` before YARP forwarding in Split and through `CombinedApiBridgeMiddleware` before API dispatch in Standalone. Existing setup-secret and anonymous onboarding/bootstrap decisions remain outside this browser-antiforgery check.
 - Protected endpoint families include auth refresh, support-access start/stop, storage upload session/proxy, preference mutations, and appearance profile mutations.
 - InteractiveServer storage upload self-calls use a short-lived Data Protection protected `X-ISLAMU-BFF-SELF-CALL` token bound to method, path, host, and authenticated user. That token lets same-process server calls satisfy the same endpoint filter without turning browser-originated storage uploads into an antiforgery exception.
 - Documented exceptions are setup-secret bootstrap endpoints and `/bff/auth/refresh-session/internal`; these remain constrained by setup credentials, server-owned setup/session state, authorization where applicable, and rate limiting because they run before or outside normal browser antiforgery semantics.
