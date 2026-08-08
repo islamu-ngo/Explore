@@ -25,6 +25,14 @@ namespace Event.Standalone.IntegrationTests.Fixtures;
 
 public sealed class StandaloneWebApplicationFactory : WebApplicationFactory<StandaloneHostMarker>
 {
+    private readonly IReadOnlyDictionary<string, string?>? _configurationOverrides;
+
+    public StandaloneWebApplicationFactory(
+        IReadOnlyDictionary<string, string?>? configurationOverrides = null)
+    {
+        _configurationOverrides = configurationOverrides;
+    }
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Testing");
@@ -34,6 +42,10 @@ public sealed class StandaloneWebApplicationFactory : WebApplicationFactory<Stan
             configuration.AddInMemoryCollection(new Dictionary<string, string?>
             {
                 ["Database:Provider"] = "PostgreSql",
+                ["Database:Host"] = "postgres.example.test",
+                ["Database:Database"] = "event_test",
+                ["Database:Runtime:Username"] = "event_test",
+                ["Database:Runtime:Password"] = "test-only-secret",
                 ["ExploreApi:BaseUrl"] = "http://127.0.0.1:7039/",
                 ["Keycloak:Authority"] = "https://auth.example.com",
                 ["Keycloak:Realm"] = "explore",
@@ -48,6 +60,11 @@ public sealed class StandaloneWebApplicationFactory : WebApplicationFactory<Stan
                 ["Bff:AdminHosts:0"] = "admin.proxy.test",
                 ["Bff:AdminHostAllowedIpRanges:0"] = "203.0.113.0/24"
             }));
+        if (_configurationOverrides is not null)
+        {
+            builder.ConfigureAppConfiguration((_, configuration) =>
+                configuration.AddInMemoryCollection(_configurationOverrides));
+        }
 
         builder.ConfigureServices(services =>
         {

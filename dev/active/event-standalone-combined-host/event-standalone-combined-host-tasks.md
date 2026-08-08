@@ -96,7 +96,7 @@ Last Updated: 2026-08-02 Europe/Brussels
 - [x] `dotnet build --configuration Release --verbosity quiet`
 - [x] `dotnet test --project tests/Event.Standalone.IntegrationTests/Event.Standalone.IntegrationTests.csproj --configuration Release --verbosity quiet`
 
-## Phase 4: Optional Aspire Topology And Operator Contract ⏳ NOT STARTED
+## Phase 4: Optional Aspire Topology And Operator Contract 🟡 VERIFICATION OPEN
 
 - [x] **4.1 Add explicit Aspire topology selection**
   - **Files:** `src/Explore.AppHost/AppHost.cs`; exact AppHost settings/tests only when repository convention requires them.
@@ -118,18 +118,18 @@ Last Updated: 2026-08-02 Europe/Brussels
 
 ### Phase 4 Verification — RUN ONCE AFTER ALL PHASE TASKS
 
-- [ ] `dotnet build --configuration Release --verbosity quiet`
+- [x] `dotnet build --configuration Release --verbosity quiet`
 - [ ] `dotnet test --project tests/Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet`
 
-## Phase 5: SQLite Default Persistence And Provider Override ⏳ NOT STARTED
+## Phase 5: SQLite Default Persistence And Provider Override ✅ COMPLETE
 
-- [ ] **5.1 Integrate SQLite default provider with standalone composition**
+- [x] **5.1 Integrate SQLite default provider with standalone composition**
   - **Files:** `src/Event.Standalone/Program.cs` (existing); `src/Event.Standalone/appsettings.json` (existing); persistence registration from `multi-database-support` workstream.
   - **Acceptance:** Default startup with no database configuration uses SQLite at `/app/data/event.db` with WAL mode; `DATABASE_PROVIDER=PostgreSQL` with structured fields switches provider; invalid config fails-fast with actionable diagnostics; busy-timeout prevents `SQLITE_BUSY`.
   - **Effort:** L
   - **Dependencies:** 4.3, multi-database-support Phase 1.
 
-- [ ] **5.2 Add provider-override integration tests**
+- [x] **5.2 Add provider-override integration tests**
   - **Files:** affected `tests/Event.Standalone.IntegrationTests/**`.
   - **Acceptance:** Tests prove SQLite default, WAL activation, PostgreSQL override, fail-fast on invalid config, and single-replica enforcement.
   - **Effort:** M
@@ -137,10 +137,10 @@ Last Updated: 2026-08-02 Europe/Brussels
 
 ### Phase 5 Verification — RUN ONCE AFTER ALL PHASE TASKS
 
-- [ ] `dotnet build --configuration Release --verbosity quiet`
-- [ ] `dotnet test --project tests/Event.Standalone.IntegrationTests/Event.Standalone.IntegrationTests.csproj --configuration Release --verbosity quiet`
+- [x] `dotnet build --configuration Release --verbosity quiet`
+- [x] `dotnet test --project tests/Event.Standalone.IntegrationTests/Event.Standalone.IntegrationTests.csproj --configuration Release --verbosity quiet`
 
-## Phase 6: Docker Packaging ⏳ NOT STARTED
+## Phase 6: Docker Packaging 🟡 RUNTIME VERIFICATION BLOCKED
 
 - [ ] **6.1 Create multi-stage Dockerfile**
   - **Files:** `src/Event.Standalone/Dockerfile` (new).
@@ -154,7 +154,7 @@ Last Updated: 2026-08-02 Europe/Brussels
   - **Effort:** S
   - **Dependencies:** 6.1.
 
-- [ ] **6.3 Update self-hosting documentation**
+- [x] **6.3 Update self-hosting documentation**
   - **Files:** `docs/SELF_HOSTING.md` (existing); `docs/CONFIGURATION.md` (existing).
   - **Acceptance:** `docker run` one-liner documented; provider override examples cover PostgreSQL/SQL Server/MariaDB; SQLite backup/restore documented; single-replica constraint explicit.
   - **Effort:** M

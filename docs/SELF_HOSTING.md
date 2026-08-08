@@ -6,8 +6,8 @@ ABOUTME: Covers minimum viable stack, optional services, setup, migrations, heal
 > **Audience:** Operators and DevOps engineers  
 > **Status:** Implemented  
 > **Owner:** Platform/Ops  
-> **Last Verified:** 2026-08-05
-> **Source Anchors:** `docker-compose.yml`, `Explore.AppHost/AppHost.cs`, `Explore.API/Program.cs`, `Explore.Blazor/Extensions/YarpProxyExtensions.cs`
+> **Last Verified:** 2026-08-08
+> **Source Anchors:** `docker-compose.yml`, `docker-compose.standalone.yml`, `src/Event.Standalone/Dockerfile`, `src/Event.MigrationService/Dockerfile`, `src/Event.Standalone/Program.cs`, `src/Explore.API/Hosting/ApiHostStartupExtensions.cs`
 
 ---
 
@@ -77,33 +77,35 @@ public origin and the exact BFF admin host yourself. The origin is not derived
 from a container or service-discovery address.
 
 > [!IMPORTANT]
-> `docker-compose.yml` does not launch `Event.Standalone`, and this repository
-> does not yet provide a standalone Dockerfile or Compose file. Likewise,
-> selecting `Standalone` does not automatically choose SQLite. Keep using the
-> explicit `DATABASE_*` provider contract and the SQLite single-writer rules
-> where SQLite is deliberately selected.
+> The Split stack remains `docker-compose.yml`. The opt-in, one-process
+> container deployment is `docker-compose.standalone.yml`; it defaults to
+> SQLite and is independent of the Aspire-only `Hosting:Topology` selector.
+> Use its documented structured database configuration, not a raw connection
+> string or unrecognised application environment aliases.
 
-The three application composition roots (`Explore.API`, `Explore.Blazor`, and `Event.Standalone`) preserve one API contract: use `/api/...` with non-URL API versioning (`Accept`, `?api-version=`, or `X-Api-Version`), never `/api/v1/...` (see [the support matrix](ARCHITECTURE.md#hosting-topology)). To return from the opt-in one-process host, restart AppHost in its Split default; this topology rollback does not alter persisted data.
+The three application composition roots (`Explore.API`, `Explore.Blazor`, and `Event.Standalone`) preserve one API contract: use `/api/...` with non-URL API versioning (`Accept`, `?api-version=`, or `X-Api-Version`); do not add a path-version segment (see [the support matrix](ARCHITECTURE.md#hosting-topology)). To return from the opt-in one-process host, restart AppHost in its Split default; this topology rollback does not alter persisted data.
 
 ---
 
 ## Table of Contents
 
 1. [Quick Start (5 Minutes)](#quick-start-5-minutes)
-2. [Architecture Overview](#architecture-overview)
-3. [Service Reference](#service-reference)
-4. [Deployment Tiers](#deployment-tiers)
-5. [Environment Configuration](#environment-configuration)
-6. [First-Run Setup](#first-run-setup)
-7. [Identity Provider (Keycloak)](#identity-provider-keycloak)
-8. [Optional Services](#optional-services)
-9. [Reverse Proxy & TLS](#reverse-proxy--tls)
-10. [Multi-Tenant Deployment](#multi-tenant-deployment)
-11. [Email Configuration](#email-configuration)
-12. [Health Checks & Monitoring](#health-checks--monitoring)
-13. [Backup & Upgrade](#backup--upgrade)
-14. [Troubleshooting](#troubleshooting)
-15. [Related Documentation](#related-documentation)
+2. [Standalone Container Quick Start](#standalone-container-quick-start)
+3. [Architecture Overview](#architecture-overview)
+4. [Service Reference](#service-reference)
+5. [Deployment Tiers](#deployment-tiers)
+6. [Environment Configuration](#environment-configuration)
+7. [First-Run Setup](#first-run-setup)
+8. [Identity Provider (Keycloak)](#identity-provider-keycloak)
+9. [Optional Services](#optional-services)
+10. [Reverse Proxy & TLS](#reverse-proxy--tls)
+11. [Multi-Tenant Deployment](#multi-tenant-deployment)
+12. [Email Configuration](#email-configuration)
+13. [Health Checks & Monitoring](#health-checks--monitoring)
+14. [Backup & Upgrade](#backup--upgrade)
+15. [Standalone Backup, Restore, And Changeover](#standalone-backup-restore-and-changeover)
+16. [Troubleshooting](#troubleshooting)
+17. [Related Documentation](#related-documentation)
 
 ---
 
@@ -152,8 +154,9 @@ docker compose up -d
 ```
 
 The one-shot migration process must exit successfully before the API starts.
-The default Compose database is PostgreSQL; select another provider through the
-structured `DATABASE_*` inputs and its deployment-specific database service.
+The default Compose database is PostgreSQL; its `.env` `DATABASE_*` values are
+Compose interpolation inputs that map to the native structured keys inside the
+service definitions. They are not application environment aliases.
 This Compose procedure is intentionally Split-only; do not set
 `Hosting__Topology=Standalone` expecting the existing Compose services to
 combine.
@@ -171,6 +174,61 @@ combine.
 
 > [!TIP]
 > For the absolute minimal deployment (no Keycloak, no Redis, no Mailpit), see [Deployment Tiers → Tier 1: Bare Minimum](#tier-1-bare-minimum).
+
+## Standalone Container Quick Start
+
+The standalone descriptor builds the images when a Docker daemon is available
+and starts a serialized local-storage flow:
+`volume-init` assigns `/app/data` to UID/GID `1654`,
+`event-migrationservice` applies the schema and exits, then
+`event-standalone` starts one web replica. Its SQLite default is the named
+`event_standalone_data` volume, mounted at `/app/data`; the primary database is
+`/app/data/event.db` and the embedded privacy-erasure authority is
+`/app/data/privacy_erasure_authority.db`.
+
+```bash
+docker compose -f docker-compose.standalone.yml up --build
+```
+
+The web listener is published on `http://localhost:8080` by default. After the
+services are running, probe it from the host:
+
+```bash
+curl --fail http://localhost:8080/health
+```
+
+Do not treat a rendered Compose file as a successful image build, migration, or
+health probe. The web service runs in `Production` and does not apply the
+application schema itself; a failed migration service prevents it from starting.
+
+### Build and run the web image directly
+
+Build the web image explicitly:
+
+```bash
+docker build -t islamu/event-standalone -f src/Event.Standalone/Dockerfile .
+```
+
+Before running that image, create and initialize its named volume, then build
+and run the one-shot migration image. The migration service, not the Production
+web image, owns this step:
+
+```bash
+docker volume create event_standalone_data
+docker run --rm --user 0:0 --mount source=event_standalone_data,target=/app/data busybox:1.37.0-musl sh -c 'chown 1654:1654 /app/data && chmod 700 /app/data'
+docker build -t islamu/event-migrationservice -f src/Event.MigrationService/Dockerfile .
+docker run --rm --mount source=event_standalone_data,target=/app/data -e ASPNETCORE_ENVIRONMENT=Production -e Database__Provider=Sqlite -e Database__Database=/app/data/event.db -e PrivacyErasure__Authority__Topology=EmbeddedSqlite -e PrivacyErasureAuthorityEmbedded__Path=/app/data/privacy_erasure_authority.db -e PrivacyErasureAuthorityEmbedded__WriterReplicaCount=1 -e PrivacyErasureAuthorityEmbedded__BusyTimeoutSeconds=30 islamu/event-migrationservice
+```
+
+Only after that command exits zero, start the web image with one SQLite replica:
+
+```bash
+docker run --rm --name islamu-event-standalone --mount source=event_standalone_data,target=/app/data -p 8080:8080 -e ASPNETCORE_ENVIRONMENT=Production -e Database__Provider=Sqlite -e Database__Database=/app/data/event.db -e Hosting__ReplicaCount=1 -e PrivacyErasure__Authority__Topology=EmbeddedSqlite -e PrivacyErasureAuthorityEmbedded__Path=/app/data/privacy_erasure_authority.db -e PrivacyErasureAuthorityEmbedded__WriterReplicaCount=1 -e PrivacyErasureAuthorityEmbedded__BusyTimeoutSeconds=30 islamu/event-standalone
+```
+
+`linux/amd64` is the initial supported image target. `linux/arm64`, Kubernetes,
+and Helm packaging are deferred; do not infer their support from this Compose
+workflow.
 
 ---
 
@@ -197,7 +255,7 @@ combine.
                     ┌──────────────────▼───────────────────────────┐
                     │            API (islamu-event-api)             │
                     │  • REST API (MediatR/CQRS)                   │
-                    │  • EF Core migrations on startup             │
+                    │  • Startup gates; deployed schema is external│
                     │  • Background workers & outbox processing    │
                     │  • Health checks, metrics, MCP adapter       │
                     └──────┬──────────────────────┬────────────────┘
@@ -347,7 +405,11 @@ The `.env` file is used by Docker Compose for variable interpolation. It is `.gi
 
 ### Required Variables
 
-The primary database uses one closed structured contract:
+For the Split `docker-compose.yml`, these are Compose `.env` interpolation
+inputs. The application receives the mapped native `Database__*` keys, not
+`DATABASE_*` compatibility aliases. The standalone descriptor uses the native
+key contract in [Configuration](CONFIGURATION.md#persistence-configuration)
+and calls its database-name interpolation input `DATABASE_NAME`.
 
 | Variable | Default | Purpose |
 |---|---|---|
@@ -823,6 +885,65 @@ provider-specific ownership contract.
 For the full backup and restore runbook, see [BACKUP_RESTORE_UPGRADE.md](BACKUP_RESTORE_UPGRADE.md).  
 For the release checklist, see [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md).
 
+## Standalone Backup, Restore, And Changeover
+
+### Cold SQLite backup
+
+Take cold backups only: stop the web service first so no process writes either
+SQLite database while its primary file, WAL, and shared-memory sidecars are
+archived. The two archives are intentionally separate because the primary and
+privacy-erasure authority databases have independent restore lifecycles.
+
+```bash
+mkdir -p backups
+docker compose -f docker-compose.standalone.yml stop event-standalone
+docker compose -f docker-compose.standalone.yml run --rm --no-deps --entrypoint sh -v "$(pwd)/backups:/backup" volume-init -c 'set -eu; cd /app/data; tar -czf /backup/event-primary-$(date +%Y%m%dT%H%M%SZ).tgz event.db*'
+docker compose -f docker-compose.standalone.yml run --rm --no-deps --entrypoint sh -v "$(pwd)/backups:/backup" volume-init -c 'set -eu; cd /app/data; tar -czf /backup/privacy-erasure-authority-$(date +%Y%m%dT%H%M%SZ).tgz privacy_erasure_authority.db*'
+```
+
+Store and verify both archives away from the Docker host. The commands use the
+root-owned `volume-init` helper because the chiseled web image has no shell,
+`sqlite3`, or `curl`; run host-side `curl --fail http://localhost:8080/health`
+after restart instead of trying to inspect the web image.
+
+### Cold SQLite restore
+
+> [!WARNING]
+> Restore overwrites the selected database and its `-wal`/`-shm` sidecars.
+> Stop the web service, preserve the current archives, and restore the primary
+> and authority archives only when their independent recovery decision permits
+> it. Do not replace the whole named volume or treat an authority archive as a
+> primary-database archive.
+
+Set each archive basename to the exact cold backup you selected. The commands
+validate and list the selected archive before removing any database file:
+
+```bash
+export PRIMARY_ARCHIVE='event-primary-20260808T000000Z.tgz'
+export AUTHORITY_ARCHIVE='privacy-erasure-authority-20260808T000000Z.tgz'
+docker compose -f docker-compose.standalone.yml stop event-standalone
+docker compose -f docker-compose.standalone.yml run --rm --no-deps -e PRIMARY_ARCHIVE --entrypoint sh -v "$(pwd)/backups:/backup" volume-init -c 'set -eu; case "$PRIMARY_ARCHIVE" in ""|.|..|*/*) echo "invalid primary archive basename" >&2; exit 64 ;; event-primary-*.tgz) ;; *) echo "unexpected primary archive name" >&2; exit 64 ;; esac; archive="/backup/$PRIMARY_ARCHIVE"; test -f "$archive"; tar -tzf "$archive"; rm -f /app/data/event.db /app/data/event.db-wal /app/data/event.db-shm; tar -xzf "$archive" -C /app/data; chown 1654:1654 /app/data/event.db*; chmod 700 /app/data'
+docker compose -f docker-compose.standalone.yml run --rm --no-deps -e AUTHORITY_ARCHIVE --entrypoint sh -v "$(pwd)/backups:/backup" volume-init -c 'set -eu; case "$AUTHORITY_ARCHIVE" in ""|.|..|*/*) echo "invalid authority archive basename" >&2; exit 64 ;; privacy-erasure-authority-*.tgz) ;; *) echo "unexpected authority archive name" >&2; exit 64 ;; esac; archive="/backup/$AUTHORITY_ARCHIVE"; test -f "$archive"; tar -tzf "$archive"; rm -f /app/data/privacy_erasure_authority.db /app/data/privacy_erasure_authority.db-wal /app/data/privacy_erasure_authority.db-shm; tar -xzf "$archive" -C /app/data; chown 1654:1654 /app/data/privacy_erasure_authority.db*; chmod 700 /app/data'
+docker compose -f docker-compose.standalone.yml up --build -d
+curl --fail http://localhost:8080/health
+```
+
+The final Compose command reruns `volume-init` and the one-shot migration
+service before the web process. Verify its migration exit and the host-side
+`/health` result; neither `sqlite3` nor `curl` is expected inside the runtime
+image.
+
+### Rollback and provider switching
+
+To roll back an image, stop the web service, restore the compatible cold
+archives, then start the previous image through the same migration-first flow.
+Do not downgrade a database merely by changing an image tag. For a provider
+switch, take and verify independent primary and authority backups, provision
+the target server database, supply its native `Database__*` fields and separate
+runtime/migrator credentials as described in [Configuration](CONFIGURATION.md#standalone-provider-overrides), run the migration service, and start the
+web service. Changing `Database__Provider` does not convert existing SQLite
+data; use a separately planned export/import procedure.
+
 ---
 
 ## Troubleshooting
@@ -838,6 +959,10 @@ For the release checklist, see [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md).
 | Realm export changes not applied | Keycloak skips import when realm exists | Remove the `keycloak_data` volume and restart |
 | `429` responses | Rate limiting or OpenGraph image saturation | Review rate-limit configuration and dispatch capacity |
 | Storage health unhealthy | Selected provider can't write to data root | Check volume mounts and file permissions |
+| `event-migrationservice` exits nonzero and web never starts | Schema/authority migration failed; Compose requires successful completion | Read the migration-service logs, correct the structured fields or target database, then rerun `docker compose -f docker-compose.standalone.yml up --build` |
+| SQLite permission denied | `/app/data` is not owned by UID/GID `1654` or is not mode `700` | Run the descriptor so `volume-init` repairs ownership; do not run the web image as root to mask the problem |
+| `/health` fails on port `8080` | Web has not started, migration is still failing, or a dependency is unready | Check `event-migrationservice` before the web logs, then probe `curl --fail http://localhost:8080/health` from the host |
+| Database provider validation fails | Missing/invalid native `Database__*` field, wrong TLS policy, or MariaDB flavor/version omitted | Use the provider matrix in [Configuration](CONFIGURATION.md#standalone-provider-overrides); do not substitute `DATABASE_*` aliases outside Compose interpolation |
 
 ### Diagnostic Tool
 

@@ -1,6 +1,7 @@
 // ABOUTME: Carries Combined-profile Event API HttpClient requests through the existing in-process API pipeline.
 // ABOUTME: Preserves HTTP semantics while isolating synthetic requests from browser cookies and principals.
 
+using System.Collections.Immutable;
 using System.Net;
 using System.Security.Claims;
 using System.IO.Pipelines;
@@ -348,8 +349,8 @@ internal sealed class InProcessResponseFeature : IHttpResponseFeature, IHttpResp
 {
     private readonly Pipe _pipe;
     private readonly Action _abort;
-    private readonly List<(Func<object, Task> Callback, object State)> _starting = [];
-    private readonly List<(Func<object, Task> Callback, object State)> _completed = [];
+    private ImmutableArray<(Func<object, Task> Callback, object State)> _starting = [];
+    private ImmutableArray<(Func<object, Task> Callback, object State)> _completed = [];
     private readonly TaskCompletionSource _started = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private readonly Stream _stream;
     private readonly object _startLock = new();
@@ -407,18 +408,24 @@ internal sealed class InProcessResponseFeature : IHttpResponseFeature, IHttpResp
     public void OnStarting(Func<object, Task> callback, object state)
     {
         ArgumentNullException.ThrowIfNull(callback);
-        if (HasStarted || _startingCallbacks)
+        lock (_startLock)
         {
-            throw new InvalidOperationException("OnStarting cannot be set because the response has already started.");
-        }
+            if (HasStarted || _startingCallbacks)
+            {
+                throw new InvalidOperationException("OnStarting cannot be set because the response has already started.");
+            }
 
-        _starting.Add((callback, state));
+            _starting = _starting.Add((callback, state));
+        }
     }
 
     public void OnCompleted(Func<object, Task> callback, object state)
     {
         ArgumentNullException.ThrowIfNull(callback);
-        _completed.Add((callback, state));
+        lock (_startLock)
+        {
+            _completed = _completed.Add((callback, state));
+        }
     }
 
     public Task StartAsync(CancellationToken cancellationToken = default)
@@ -446,7 +453,7 @@ internal sealed class InProcessResponseFeature : IHttpResponseFeature, IHttpResp
     {
         try
         {
-            for (var index = _starting.Count - 1; index >= 0; index--)
+            for (var index = _starting.Length - 1; index >= 0; index--)
             {
                 var callback = _starting[index];
                 await callback.Callback(callback.State).ConfigureAwait(false);
@@ -527,11 +534,17 @@ internal sealed class InProcessResponseFeature : IHttpResponseFeature, IHttpResp
 
     public async Task InvokeCompletedAsync()
     {
-        for (var index = _completed.Count - 1; index >= 0; index--)
+        ImmutableArray<(Func<object, Task> Callback, object State)> completed;
+        lock (_startLock)
+        {
+            completed = _completed;
+        }
+
+        for (var index = completed.Length - 1; index >= 0; index--)
         {
             try
             {
-                var callback = _completed[index];
+                var callback = completed[index];
                 await callback.Callback(callback.State).ConfigureAwait(false);
             }
             catch

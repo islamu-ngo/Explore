@@ -6,8 +6,8 @@ ABOUTME: Focuses on non-inferable key names, mapping behavior, and settings casc
 > **Audience:** Operators | Contributors | AI agents
 > **Status:** Implemented
 > **Owner:** Platform/Ops
-> **Last Verified:** 2026-08-05
-> **Source Anchors:** `Explore.API/Extensions/ConfigurationExtensions.cs`, `Explore.API/Controllers/ListmonkIntegrationSettingsController.cs`, `Explore.API/Controllers/PlatformMonetizationSettingsController.cs`, `Explore.Application/DTOs/Integrations/ListmonkIntegrationSettingsDto.cs`, `Explore.Application/Features/PlatformMonetization/`, `Explore.Infrastructure/Integrations/Listmonk/ListmonkSyncService.cs`, `Explore.Blazor/Extensions/ConfigurationExtension.cs`, `Explore.Blazor/Extensions/YarpProxyExtensions.cs`, `Event.Web.BffHosting/Authentication/EventBffKeycloakAuthenticationOptions.cs`, `Event.Web.BffHosting/Proxy/EventApiBaseAddressResolver.cs`, `Explore.Application/Features/EventReporting/EventReportSubmissionOptions.cs`, `Explore.Application/Services/AccountAuthorityLifecycleEmailOptions.cs`, `Explore.Application/Notifications/AccountAuthorityKind.cs`, `Explore.Application/Notifications/NotificationRoutingOptions.cs`, `Explore.Infrastructure/Configuration/ModerationProviderOptions.cs`, `Explore.Infrastructure/Configuration/OspreyProviderOptions.cs`, `Explore.Infrastructure/Configuration/CoopProviderOptions.cs`, `Explore.API/Services/CoopWebhookSignatureValidator.cs`, `Explore.Infrastructure/Services/HierarchicalSettingsResolver.cs`, `Explore.Infrastructure/Services/Keycloak/KeycloakLifecycleEmailOptions.cs`, `Explore.Infrastructure/Services/Keycloak/KeycloakAccountAuthorityLifecycleEmailService.cs`, `Explore.Infrastructure/Storage/LocalFileStorageProvider.cs`, `Explore.Infrastructure/Storage/S3ConfigResolver.cs`, `Explore.Infrastructure/StorageReconciliationSettings.cs`, `Explore.Infrastructure/Mail/SmtpConfigResolver.cs`, `Explore.Infrastructure/Services/SetupSecretProvider.cs`, `Explore.Domain/Constants/GovernanceSettingKeys.cs`, `Explore.Domain/Constants/InfrastructureSecretSettingKeys.cs`, `Explore.Domain/Secrets/SecretDefinitionRegistry.cs`, `docs/SECRETS.md`
+> **Last Verified:** 2026-08-08
+> **Source Anchors:** `src/Explore.Secrets/Database/PrimaryDatabaseConfiguration.cs`, `src/Event.MigrationService/Extensions/ConfigurationExtensions.cs`, `src/Event.Standalone/Program.cs`, `src/Event.Standalone/appsettings.json`, `docker-compose.standalone.yml`, `Explore.API/Extensions/ConfigurationExtensions.cs`, `Explore.API/Controllers/ListmonkIntegrationSettingsController.cs`, `Explore.API/Controllers/PlatformMonetizationSettingsController.cs`, `Explore.Application/DTOs/Integrations/ListmonkIntegrationSettingsDto.cs`, `Explore.Application/Features/PlatformMonetization/`, `Explore.Infrastructure/Integrations/Listmonk/ListmonkSyncService.cs`, `Explore.Blazor/Extensions/ConfigurationExtension.cs`, `Explore.Blazor/Extensions/YarpProxyExtensions.cs`, `Event.Web.BffHosting/Authentication/EventBffKeycloakAuthenticationOptions.cs`, `Event.Web.BffHosting/Proxy/EventApiBaseAddressResolver.cs`, `Explore.Application/Features/EventReporting/EventReportSubmissionOptions.cs`, `Explore.Application/Services/AccountAuthorityLifecycleEmailOptions.cs`, `Explore.Application/Notifications/AccountAuthorityKind.cs`, `Explore.Application/Notifications/NotificationRoutingOptions.cs`, `Explore.Infrastructure/Configuration/ModerationProviderOptions.cs`, `Explore.Infrastructure/Configuration/OspreyProviderOptions.cs`, `Explore.Infrastructure/Configuration/CoopProviderOptions.cs`, `Explore.API/Services/CoopWebhookSignatureValidator.cs`, `Explore.Infrastructure/Services/HierarchicalSettingsResolver.cs`, `Explore.Infrastructure/Services/Keycloak/KeycloakLifecycleEmailOptions.cs`, `Explore.Infrastructure/Services/Keycloak/KeycloakAccountAuthorityLifecycleEmailService.cs`, `Explore.Infrastructure/Storage/LocalFileStorageProvider.cs`, `Explore.Infrastructure/Storage/S3ConfigResolver.cs`, `Explore.Infrastructure/StorageReconciliationSettings.cs`, `Explore.Infrastructure/Mail/SmtpConfigResolver.cs`, `Explore.Infrastructure/Services/SetupSecretProvider.cs`, `Explore.Domain/Constants/GovernanceSettingKeys.cs`, `Explore.Domain/Constants/InfrastructureSecretSettingKeys.cs`, `Explore.Domain/Secrets/SecretDefinitionRegistry.cs`, `docs/SECRETS.md`
 
 ## Runtime Configuration Sources
 
@@ -59,7 +59,7 @@ This configuration does not make SQLite the standalone default and does not
 enable a standalone Docker Compose deployment. Those remain explicit provider
 and packaging work; `docker-compose.yml` continues to use the Split services.
 
-The three application composition roots (`Explore.API`, `Explore.Blazor`, and `Event.Standalone`) therefore share one API route convention: `/api/...` is canonical and API versioning uses `Accept`, `?api-version=`, or `X-Api-Version`, never `/api/v1/...` (see [the support matrix](ARCHITECTURE.md#hosting-topology)). Switching back to the Split default changes only AppHost composition; it is not a data rollback.
+The three application composition roots (`Explore.API`, `Explore.Blazor`, and `Event.Standalone`) therefore share one API route convention: `/api/...` is canonical and API versioning uses `Accept`, `?api-version=`, or `X-Api-Version`; do not add a path-version segment (see [the support matrix](ARCHITECTURE.md#hosting-topology)). Switching back to the Split default changes only AppHost composition; it is not a data rollback.
 
 ### Keycloak onboarding metadata
 
@@ -196,18 +196,83 @@ operators should select `Required` with a trusted CA/hostname. The CI matrix's
 disabled or trusted-ephemeral-certificate settings are test-lane exceptions,
 not production guidance.
 
-Environment variables use normal .NET double-underscore mapping. Docker
-Compose exposes equivalent `DATABASE_*` interpolation values:
+Environment variables use normal .NET double-underscore mapping. The native
+application keys are `Database__Provider`, `Database__Host`,
+`Database__Port`, `Database__Database`, `Database__Schema`,
+`Database__TlsMode`, `Database__TrustServerCertificate`,
+`Database__ServerFlavor`, `Database__ServerVersion`,
+`Database__Runtime__Username`, `Database__Runtime__Password`,
+`Database__Migrator__Username`, and `Database__Migrator__Password`.
 
-| .NET environment key | Compose `.env` key |
-|---|---|
-| `Database__Provider` | `DATABASE_PROVIDER` |
-| `Database__Host`, `Database__Port`, `Database__Database` | `DATABASE_HOST`, `DATABASE_PORT`, `DATABASE_DATABASE` |
-| `Database__Schema` | `DATABASE_SCHEMA` |
-| `Database__TlsMode`, `Database__TrustServerCertificate` | `DATABASE_TLS_MODE`, `DATABASE_TRUST_SERVER_CERTIFICATE` |
-| `Database__ServerFlavor`, `Database__ServerVersion` | `DATABASE_SERVER_FLAVOR`, `DATABASE_SERVER_VERSION` |
-| `Database__Runtime__Username`, `Database__Runtime__Password` | `DATABASE_RUNTIME_USERNAME`, `DATABASE_RUNTIME_PASSWORD` |
-| `Database__Migrator__Username`, `Database__Migrator__Password` | `DATABASE_MIGRATOR_USERNAME`, `DATABASE_MIGRATOR_PASSWORD` |
+`DATABASE_PROVIDER` and the other `DATABASE_*` names in
+`docker-compose.standalone.yml` are Compose interpolation inputs only. Compose
+maps its supported inputs to native keys in each service definition; they are
+not application compatibility aliases. A direct `docker run` or a Compose
+override must set the native `Database__*` names. Kubernetes packaging is
+deferred and has no supported manifest in this repository.
+The standalone descriptor currently interpolates `DATABASE_PROVIDER`,
+`DATABASE_HOST`, `DATABASE_PORT`, `DATABASE_NAME`, `DATABASE_SCHEMA`,
+`DATABASE_TLS_MODE`, `DATABASE_TRUST_SERVER_CERTIFICATE`, and the two
+role-specific credential pairs. It does not turn arbitrary `DATABASE_*` names
+into runtime configuration.
+
+### Standalone provider overrides
+
+The standalone default is `Sqlite` at `/app/data/event.db`. It uses WAL and a
+30-second SQLite timeout, needs a durable local named volume, and permits
+exactly one web replica (`Hosting__ReplicaCount=1`). The primary database and
+the embedded `/app/data/privacy_erasure_authority.db` are distinct logical
+databases and must be backed up and restored separately even when they share
+the `/app/data` volume.
+
+For a server provider, apply the shared endpoint fields to both
+`event-migrationservice` and `event-standalone`, then provide each service only
+its own credentials. Put placeholder values in a protected `.env` file or
+secret store; never place real values in a Compose file and never pass
+`Database__Migrator__*` to the web service.
+
+| Provider | Native fields for **both** services | Migrator-only fields | Web-only fields |
+|---|---|---|---|
+| PostgreSql | `Database__Provider=PostgreSql`, `Database__Host=<db-host>`, `Database__Port=5432`, `Database__Database=<database>`, `Database__Schema=islamu_event`, `Database__TlsMode=Required`, `Database__TrustServerCertificate=false` | `Database__Migrator__Username=${DB_MIGRATOR_USERNAME}`, `Database__Migrator__Password=${DB_MIGRATOR_PASSWORD}` | `Database__Runtime__Username=${DB_RUNTIME_USERNAME}`, `Database__Runtime__Password=${DB_RUNTIME_PASSWORD}` |
+| SqlServer | `Database__Provider=SqlServer`, `Database__Host=<db-host>`, `Database__Port=1433`, `Database__Database=<database>`, `Database__Schema=islamu_event`, `Database__TlsMode=Required`, `Database__TrustServerCertificate=false` | `Database__Migrator__Username=${DB_MIGRATOR_USERNAME}`, `Database__Migrator__Password=${DB_MIGRATOR_PASSWORD}` | `Database__Runtime__Username=${DB_RUNTIME_USERNAME}`, `Database__Runtime__Password=${DB_RUNTIME_PASSWORD}` |
+| MariaDb | `Database__Provider=MariaDb`, `Database__Host=<db-host>`, `Database__Port=3306`, `Database__Database=<database>`, `Database__Schema=islamu_event`, `Database__TlsMode=Required`, `Database__TrustServerCertificate=false`, `Database__ServerFlavor=MariaDb`, `Database__ServerVersion=<major.minor.patch>` | `Database__Migrator__Username=${DB_MIGRATOR_USERNAME}`, `Database__Migrator__Password=${DB_MIGRATOR_PASSWORD}` | `Database__Runtime__Username=${DB_RUNTIME_USERNAME}`, `Database__Runtime__Password=${DB_RUNTIME_PASSWORD}` |
+
+For example, put the PostgreSQL shared fields and each role's credentials in a
+`docker-compose.standalone.override.yml` file rather than relying on undeclared
+`DATABASE_*` aliases:
+
+```yaml
+services:
+  event-migrationservice:
+    environment:
+      Database__Provider: PostgreSql
+      Database__Host: ${DB_HOST}
+      Database__Port: "5432"
+      Database__Database: ${DB_NAME}
+      Database__Schema: islamu_event
+      Database__TlsMode: Required
+      Database__TrustServerCertificate: "false"
+      Database__Migrator__Username: ${DB_MIGRATOR_USERNAME}
+      Database__Migrator__Password: ${DB_MIGRATOR_PASSWORD}
+  event-standalone:
+    environment:
+      Database__Provider: PostgreSql
+      Database__Host: ${DB_HOST}
+      Database__Port: "5432"
+      Database__Database: ${DB_NAME}
+      Database__Schema: islamu_event
+      Database__TlsMode: Required
+      Database__TrustServerCertificate: "false"
+      Database__Runtime__Username: ${DB_RUNTIME_USERNAME}
+      Database__Runtime__Password: ${DB_RUNTIME_PASSWORD}
+```
+
+Start the override with the base descriptor so the volume initialization and
+one-shot migration ordering remain intact:
+
+```bash
+docker compose -f docker-compose.standalone.yml -f docker-compose.standalone.override.yml up --build
+```
 
 Provider-specific migrations are intentionally separate. PostgreSQL
 application and Data Protection migrations live in `Explore.Persistence`;
