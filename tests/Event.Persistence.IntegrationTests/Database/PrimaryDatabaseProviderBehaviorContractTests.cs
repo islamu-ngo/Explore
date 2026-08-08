@@ -5,6 +5,7 @@ using Event.Persistence.IntegrationTests.Fixtures;
 using Explore.Domain;
 using Explore.Domain.Enums;
 using Explore.Persistence;
+using Explore.Persistence.Projections;
 using Explore.Persistence.QueryFilters;
 using Explore.Persistence.Repositories;
 using Microsoft.AspNetCore.DataProtection;
@@ -42,6 +43,7 @@ public sealed class PrimaryDatabaseProviderBehaviorContractTests
         await fixture.PrepareAsync();
         var scope = await SeedTenantGraphAsync(fixture);
 
+        await VerifyProjectionLockContentionAsync(fixture);
         await VerifyCrudPagingTenantIsolationAndSoftDeleteAsync(fixture, scope);
         await VerifyOptimisticConcurrencyAsync(fixture, scope);
         await VerifyTransactionsOutboxAndIdempotentReplayAsync(fixture);
@@ -77,6 +79,40 @@ public sealed class PrimaryDatabaseProviderBehaviorContractTests
 
             await Assert.That(restored).IsEqualTo(payload);
         }
+    }
+
+    private static async Task VerifyProjectionLockContentionAsync(
+        PrimaryDatabaseProviderBehaviorFixture fixture)
+    {
+        await using var owner = fixture.CreateSystemContext();
+        await using var contender = fixture.CreateSystemContext();
+        await using var transaction = await owner.Database.BeginTransactionAsync();
+        Guid tenantId = Guid.CreateVersion7();
+
+        bool acquired = await ProjectionInfrastructure.TryAcquireAdvisoryLockAsync(
+            owner,
+            projectionLockKey: 82001,
+            tenantId,
+            exclusive: true,
+            CancellationToken.None);
+        bool blocked = await ProjectionInfrastructure.TryAcquireAdvisoryLockAsync(
+            contender,
+            projectionLockKey: 82001,
+            tenantId,
+            exclusive: false,
+            CancellationToken.None);
+
+        await Assert.That(acquired).IsTrue();
+        await Assert.That(blocked).IsFalse();
+        await transaction.RollbackAsync();
+
+        bool acquiredAfterRelease = await ProjectionInfrastructure.TryAcquireAdvisoryLockAsync(
+            contender,
+            projectionLockKey: 82001,
+            tenantId,
+            exclusive: false,
+            CancellationToken.None);
+        await Assert.That(acquiredAfterRelease).IsTrue();
     }
 
     private static async Task<ProviderScope> SeedTenantGraphAsync(

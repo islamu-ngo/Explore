@@ -3,9 +3,9 @@
 
 # Multi-Database Support Context
 
-**Last Updated:** 2026-08-05 Europe/Brussels
+**Last Updated:** 2026-08-08 Europe/Brussels
 
-**Status:** Implementation complete; final verification command lane executed, release evidence linked
+**Status:** Implementation complete; post-review hardening and release evidence reconciled
 
 **Target providers:** PostgreSQL, SQLite, SQL Server, MariaDB, MySQL
 
@@ -15,7 +15,7 @@
 
 Allow an operator to select a supported primary database through one provider-neutral, structured configuration contract. Application code validates that contract, builds the provider-specific connection string internally, selects the correct EF Core provider and generated migration assembly, and preserves the platform's behavioral invariants.
 
-This workstream does not make the privacy erasure authority use the selected primary provider. Its default authority is a restore-isolated embedded SQLite file; its enterprise option remains a separate PostgreSQL database. The two workstreams share configuration conventions and release evidence but have independent storage lifecycles.
+This workstream does not select the privacy-erasure authority topology. `EmbeddedSqlite`, `CoLocated`, and `ExternalDatabase` are explicit, mutually exclusive choices owned by the Optional Retained Erasure Authority workstream. The workstreams share structured configuration and provider primitives, but only `CoLocated` deliberately shares the primary database restore lifecycle.
 
 ## Verified Current State
 
@@ -25,29 +25,32 @@ This workstream does not make the privacy erasure authority use the selected pri
 - Clean MigrationService runs, second-run idempotence, catalog inspection, runtime smoke, and the shared behavior contract passed on all five real provider engines.
 - Provider-specific SQL is isolated behind explicit capability branches. A fresh production scan found no unguarded PostgreSQL runtime path for alternate providers.
 - Primary SQLite is restricted to a durable local file and one application instance; its busy timeout, WAL initialization, recovery, and authority-file separation are covered.
-- The privacy-erasure authority defaults to a separate embedded SQLite file and retains the external PostgreSQL enterprise topology.
+- Primary-provider selection does not infer authority topology. The authority workstream defaults to a separate embedded SQLite file, retains external PostgreSQL, and owns the explicit `CoLocated` alternative and its narrower restore guarantee.
 - Deployment examples, health diagnostics, provider CI lanes, recovery guidance, and operator documentation use the structured contract.
 
-## SESSION PROGRESS (2026-08-02 Europe/Brussels)
+## SESSION PROGRESS (2026-08-08 Europe/Brussels)
 
 ### ✅ COMPLETED
 
-- MDB-001 through MDB-708 and MDB-D01 through MDB-D07 are implemented and backed by focused, provider, deployment, and recovery evidence under `.omo/evidence/`.
+- MDB-001 through MDB-713 and MDB-D01 through MDB-D08 are implemented and backed by focused, provider, deployment, recovery, review, and manual-QA evidence under `.omo/evidence/`.
 - All ten application/Data Protection provider migration models were regenerated through EF tooling and report no pending model changes.
 - Real PostgreSQL, SQLite, SQL Server, MariaDB, and MySQL runs applied migrations twice and passed runtime smoke plus the shared behavior contract.
 - Late repository portability repairs cover email/outbox, fanout, registration inventory, idempotency, API quota, domain-host lookup, group hierarchy, ATProto replay, and custom-property projection locks.
+- Server lock command contracts no longer construct unused provider-specific EF models; the shared real-provider behavior lane now proves exclusive acquisition, nonblocking contention, transaction release, and reacquisition.
+- Production-mode SQLite MigrationService QA applied application, Data Protection, and embedded-authority migrations twice, verified fixed-prefix catalogs and independent histories/files, and left no temporary process or database behind.
+- The full canonical command matrix and independent review were executed; residual architecture, API, and persistence-project failures are attributed below without weakening tests.
 
 ### 🟡 IN PROGRESS
 
-- MDB-709 and MDB-710: canonical Release build, all nine required project test commands, and release-evidence closure.
+- None in this workstream.
 
 ### ⏭️ NEXT
 
-1. Obtain independent change and gate review when available (the active handoff currently has none).
+1. Keep future authority-topology changes in `dev/active/optional-retained-erasure-authority/` and reuse the MDB provider primitives rather than reopening this plan.
 
 ### ⚠️ BLOCKERS
 
-- None in the multi-database implementation. Final repository gates may still expose unrelated concurrent worktree failures; record them precisely without weakening tests.
+- None in the multi-database implementation. Repository-wide architecture, API, and persistence test-infrastructure blockers remain outside this workstream and are recorded under Verification State.
 
 ## Settled Decisions
 
@@ -101,8 +104,9 @@ Exact configuration binding names are settled during the contract phase, but eve
 ## Privacy Authority Boundary
 
 - Default: `EmbeddedSqlite`, stored at a persisted path such as `/app/data/privacy_erasure_authority.db` on a dedicated volume excluded from primary database restore operations.
+- Explicit alternative: `CoLocated`, owned by the authority workstream, stores retained authority state in the selected primary database and intentionally shares its atomic backup/restore lifecycle. It must never be inferred from `Database:Provider`.
 - Enterprise: `ExternalDatabase`, initially PostgreSQL because current authority functions and ACL contracts are PostgreSQL-specific.
-- The primary database stores only the authority replay checkpoint for authority state. Existing saga, outbox, and receipt records remain where their normal application transaction requires them.
+- The primary database stores only the authority replay checkpoint outside `CoLocated`. Existing saga, outbox, and receipt records remain where their normal application transaction requires them.
 - `PrivacyErasureStartupGate` replays the authority before readiness.
 - External authority configuration uses the same structured field semantics under a privacy-erasure prefix, with separate runtime and migrator credentials. It never accepts a raw authority connection string.
 
@@ -129,40 +133,43 @@ Exact configuration binding names are settled during the contract phase, but eve
 
 ## Handoff Guidance
 
-Start with `multi-database-support-tasks.md`, then inspect executor session `ses_03c96c432ffeACCq72heVpiQ23` and the actual worktree diff. Parent orchestration session `ses_03c9767feffeWmWkC0034LJuks` did not receive a DoneClaim; reviewer session `ses_03c886502ffemjGbc7l0bXWRFR` produced a checklist only, not a verdict. Do not begin Phase 2 until Phase 1 is independently accepted. Update tasks immediately, context when evidence or decisions change, and the plan only when sequencing or architecture changes.
+The MDB implementation is closed. New primary-provider defects should start from the provider composition, migration ownership, and shared behavior evidence linked in `multi-database-support-tasks.md`. Authority-topology work resumes from OREA-1010 in `dev/active/optional-retained-erasure-authority/`; do not reinterpret `Database:Provider` as an authority-topology selector.
 
-## Verification Constraint
+## Verification State
 
-The original 13-error baseline is resolved and the exact Release build has passed. The latest candidate evidence is incomplete: Secrets tests passed 205/205, the final focused persistence test result is missing, the full Persistence suite is red for apparently unrelated dirty-worktree failures, and manual QA/cleanup/independent review are absent. During implementation, run one Release build and at most one fastest relevant non-browser test project at each phase end, as required by the implementation-plan workflow.
+- Release build: passed with 0 errors.
+- Canonical green projects: Domain 714, Application 3,450, Secrets 222, Infrastructure non-runtime 1,152, Blazor integration 409, and Blazor client 2,292.
+- Architecture: 357 passed, 5 failed, 1 skipped for unrelated later host-service namespace/mutability, OpenAPI, and DTO-rule changes.
+- API: 2,165 passed, 10 failed, 1 skipped for unrelated scheduler schema, snapshots, policy/ACL, response-contract, and missing-table changes.
+- Persistence at current `HEAD`: 794 passed, 169 failed, 3 skipped. EF Core 10.0.10's process-wide cache throws after 20 distinct options configurations; the single project intentionally loads five primary providers plus application, Data Protection, migration, and authority shapes. The MDB command-contract test was repaired to avoid adding unused EF configurations. The remaining project-sharding/test-process decision is not a production persistence change and remains outside this plan.
+- Focused MDB portability: 10 passed.
+- Real file-backed SQLite shared behavior contract: 1 passed, including exclusive projection lock acquisition, nonblocking contender rejection, rollback release, and reacquisition.
+- Post-change server lock evidence: the shared contract compiles for SQL Server, MariaDB, and MySQL provider lanes, but those engines were unavailable locally; the next provider CI run must capture the server-engine execution artifact.
+- Manual production MigrationService QA: first and second SQLite runs passed; the second applied no migrations; primary and authority histories/files remained distinct; cleanup passed.
 
-## Handoff — 2026-08-02 Europe/Brussels
+## Handoff — 2026-08-08 Europe/Brussels
 
 ### Current State
 
-- Phase 0 is verified and complete.
-- Phase 1 has a substantial candidate implementation in the worktree but no accepted DoneClaim.
-- No Phase 2 provider-composition work is approved to start.
+- All MDB phases, decisions, closeout tasks, and acceptance criteria are complete within the documented deployment envelopes.
+- No migration or model-snapshot artifact was edited during closeout.
+- The full repository is not green because of the precisely attributed gates above; no failing test was weakened, deleted, retried, or suppressed.
 
 ### Modified Files
 
-- `src/Explore.Secrets/Database/` — new structured provider contract, validation, builders, and redaction.
-- `src/Explore.Secrets/Explore.Secrets.csproj`, `Directory.Packages.props`, and affected lock files — provider builder dependencies.
-- `src/Explore.Persistence/PersistenceServicesRegistration.cs`, `ExploreDbContextFactory.cs`, and `DataProtectionKeyContextFactory.cs` — candidate shared runtime/design-time routing.
-- `src/Event.MigrationService/Extensions/ConfigurationExtensions.cs` and `Program.cs` — candidate migrator routing and current PostgreSQL gate.
-- `src/Explore.API/Extensions/TickerQSchedulerExtensions.cs` and `Scheduling/ApiTickerQDbContextFactory.cs` — candidate shared routing and hardcoded-localhost removal.
-- `src/Explore.Secrets/Configuration/InfisicalConfigurationProvider.cs` — legacy public URL mapping removal.
-- `tests/Event.Persistence.IntegrationTests/Database/PrimaryDatabaseConfigurationTests.cs` and `tests/Explore.Secrets.UnitTests/Bootstrap/BootstrapSecretLoaderTests.cs` — candidate contract and retained-bootstrap coverage.
+- `PrimaryPersistencePortabilityTests.cs` — native disconnected connections replace unused server-provider EF contexts.
+- `PrimaryDatabaseProviderBehaviorContractTests.cs` — the existing real-provider contract now covers projection-lock contention and release.
+- This plan, task ledger, and context — authority ownership, closeout evidence, and residual gates are synchronized.
 
 ### Validation
 
-- `dotnet build --configuration Release --verbosity quiet` — passed.
-- `dotnet test --project tests/Explore.Secrets.UnitTests/Explore.Secrets.UnitTests.csproj --configuration Release` — passed 205/205.
-- `Event.Persistence.IntegrationTests` — not green; unrelated FK and migration-count failures reported. Focused MDB test rerun has no recorded final result.
-- Manual external-process QA, artifact cleanup receipt, and independent acceptance — not completed.
+- Exact commands and counts are recorded in `multi-database-support-tasks.md` and the `.omo/evidence/mdb-*` ledgers.
+- Independent re-review against `84bd22af28d48e412513cc2c233cd0ac34cb5b0b` returned **PASS** after the authority-scope finding was resolved by aligning this plan with the explicit, separately owned OREA topology contract.
+- Medium residual review items are bounded: post-change server lock execution awaits the next provider CI run, MySQL uniqueness remains principally model/migration-evidenced, and the large SQLite email regression file was not split because that would be unrelated structural churn.
 
 ### Notes For Next Contributor Or Agent
 
 - Read `AGENTS.md`, persistence/migration/test rules, this context, the plan, and tasks before editing.
-- Re-read every target file because concurrent agents are active.
-- Never edit generated migrations or snapshots; concurrent changes there belong to another workstream.
-- Do not stage, reset, or clean the shared worktree. Separate MDB evidence by explicit path and diff inspection.
+- Never hand-edit generated migrations or snapshots.
+- Preserve explicit topology selection: primary provider and authority topology are orthogonal configuration decisions.
+- Treat the EF provider-cache failure as test-infrastructure work; do not hide it in production `DbContext` configuration.

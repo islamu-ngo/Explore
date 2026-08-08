@@ -9,8 +9,10 @@ using Explore.Persistence;
 using Explore.Persistence.Projections;
 using Explore.Persistence.Repositories;
 using FluentAssertions;
+using Microsoft.Data.SqlClient;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
+using MySqlConnector;
 using TUnit.Core;
 
 namespace Event.Persistence.IntegrationTests.Database;
@@ -147,13 +149,20 @@ public sealed class PrimaryPersistencePortabilityTests
         string commandFragment,
         string? expectedMode)
     {
-        await using ExploreDbContext context = CreateDisconnectedContext(provider);
-        DbConnection connection = context.Database.GetDbConnection();
+        await using DbConnection connection = provider switch
+        {
+            "SqlServer" => new SqlConnection(),
+            "MariaDb" or "MySql" => new MySqlConnection(),
+            _ => throw new ArgumentOutOfRangeException(nameof(provider), provider, null),
+        };
+        string providerName = provider == "SqlServer"
+            ? RelationalNamedLock.SqlServerProvider
+            : RelationalNamedLock.MySqlProvider;
 
         await using DbCommand command = ProjectionInfrastructure.CreateServerTryAcquireCommand(
             connection,
             transaction: null,
-            context.Database.ProviderName!,
+            providerName,
             "projection-resource",
             exclusive);
 
@@ -188,31 +197,6 @@ public sealed class PrimaryPersistencePortabilityTests
             .UseSnakeCaseNamingConvention()
             .AddInterceptors(SqliteProjectionLockTransactionInterceptor.Instance)
             .Options);
-
-    private static ExploreDbContext CreateDisconnectedContext(string provider)
-    {
-        var builder = new DbContextOptionsBuilder<ExploreDbContext>();
-        switch (provider)
-        {
-            case "SqlServer":
-                builder.UseSqlServer("Server=localhost;Database=event;User Id=event;Password=event");
-                break;
-            case "MariaDb":
-                builder.UseMySql(
-                    "Server=localhost;Database=event;User=event;Password=event",
-                    new MariaDbServerVersion(new Version(11, 4)));
-                break;
-            case "MySql":
-                builder.UseMySql(
-                    "Server=localhost;Database=event;User=event;Password=event",
-                    new MySqlServerVersion(new Version(8, 4)));
-                break;
-            default:
-                throw new ArgumentOutOfRangeException(nameof(provider), provider, null);
-        }
-
-        return new ExploreDbContext(builder.Options);
-    }
 
     private static Task CreateTenantSettingTableAsync(ExploreDbContext context) =>
         context.Database.ExecuteSqlRawAsync(

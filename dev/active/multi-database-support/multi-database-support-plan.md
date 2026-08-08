@@ -3,20 +3,20 @@
 
 # Multi-Database Support Implementation Plan
 
-**Last Updated:** 2026-08-02 Europe/Brussels
+**Last Updated:** 2026-08-08 Europe/Brussels
 
-**Status:** Implementation complete; final verification and release evidence in progress
+**Status:** Implementation complete; post-review hardening and release evidence reconciled
 
-**Scope:** Primary application persistence and Data Protection only
+**Scope:** Primary application persistence and Data Protection, plus provider-neutral integration points consumed by the separately owned authority workstream
 
-**Out of scope:** A universal SQL abstraction, runtime provider switching, mixed primary providers in one deployment, and changing the authority's independent topology
+**Out of scope:** A universal SQL abstraction, runtime provider switching, mixed primary providers in one deployment, and selecting or changing the privacy-authority topology
 
-## Re-baseline — 2026-08-02 Europe/Brussels
+## Re-baseline — 2026-08-08 Europe/Brussels
 
-- **Reason:** All implementation phases and real-provider QA are complete; only repository-wide release gates remain.
-- **What changed:** The structured contract, five provider compositions, generated migrations, runtime capability seams, deployment/CI surfaces, and recovery topology are implemented and evidenced.
-- **Plan impact:** Phases 0 through 7 implementation are closed. Final work is limited to canonical verification, independent review, and evidence reconciliation.
-- **Remaining work:** Complete MDB-709, MDB-710, and MDB-D08 without weakening unrelated failing tests.
+- **Reason:** Canonical verification and independent review exposed stale closeout text, an avoidable EF provider-cache contribution in a command-contract test, and an authority-topology ownership ambiguity.
+- **What changed:** Server lock command tests now use native disconnected connections instead of constructing EF models, the shared real-provider contract exercises lock contention and release, and the authority boundary explicitly delegates topology semantics to the Optional Retained Erasure Authority workstream.
+- **Plan impact:** Phases 0 through 7 remain complete. MDB-709 through MDB-713 close the implementation with scoped verification, manual SQLite QA, independent review, and precise residual-failure attribution.
+- **Remaining work:** None in this workstream. Repository-wide architecture, API, and persistence-suite blockers remain owned by their originating workstreams and are recorded without weakening tests.
 
 ## Outcome
 
@@ -32,7 +32,7 @@ An operator selects one supported primary provider and supplies structured field
 6. Invalid or incomplete structured settings fail before readiness with credential-safe diagnostics.
 7. PostgreSQL remains a non-regressed production path.
 8. Primary SQLite is explicitly constrained to one instance and a local persisted file.
-9. The embedded privacy authority remains a separate SQLite file and restore lifecycle; external authority remains a separate PostgreSQL database.
+9. Primary-provider selection never implicitly selects or changes authority topology. `EmbeddedSqlite`, `CoLocated`, and `ExternalDatabase` are explicit, mutually exclusive choices owned by the Optional Retained Erasure Authority workstream; embedded and external modes remain restore-independent, while `CoLocated` intentionally shares the primary restore lifecycle.
 10. Deployment and recovery documentation explain provider selection, migration ownership, backup/restore, TLS, and rollback.
 
 ## Architecture
@@ -221,4 +221,4 @@ Update canonical architecture, operations, testing, deployment, environment, Asp
 - Generated migration output is reproducible and untouched by hand.
 - Structured configuration is the only operator contract.
 - PostgreSQL has no regression and every other provider meets its documented envelope.
-- Authority storage remains independently restorable and anti-resurrection replay remains failure-closed.
+- Authority behavior matches the explicitly selected topology: restore-independent modes remain independently restorable and failure-closed, while `CoLocated` makes no restore-isolation claim.
