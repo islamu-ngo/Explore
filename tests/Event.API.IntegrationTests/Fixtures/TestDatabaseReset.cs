@@ -13,7 +13,7 @@ namespace Event.Api.IntegrationTests.Fixtures;
 /// </summary>
 public sealed class TestDatabaseReset
 {
-    private const string ApplicationSchema = "islamu_event";
+    private const string DefaultApplicationSchema = "islamu_event";
     private readonly Respawner _respawner;
     private readonly string _connectionString;
 
@@ -31,12 +31,13 @@ public sealed class TestDatabaseReset
     {
         await using var connection = new NpgsqlConnection(connectionString);
         await connection.OpenAsync();
+        string applicationSchema = GetApplicationSchema(connectionString);
 
         var respawner = await Respawner.CreateAsync(connection, new RespawnerOptions
         {
             DbAdapter = DbAdapter.Postgres,
-            SchemasToInclude = [ApplicationSchema],
-            TablesToIgnore = LookupTables,
+            SchemasToInclude = [applicationSchema],
+            TablesToIgnore = CreateLookupTables(applicationSchema),
         });
 
         return new TestDatabaseReset(respawner, connectionString);
@@ -57,9 +58,15 @@ public sealed class TestDatabaseReset
     /// Tables preserved across resets: migration history and all lookup/seed tables.
     /// Derived from LookupTableSeeder entity types with snake_case naming convention.
     /// </summary>
-    private static Table[] LookupTables => UnqualifiedLookupTables
-        .Select(static table => new Table(table.Name, ApplicationSchema))
+    private static Table[] CreateLookupTables(string schema) => UnqualifiedLookupTables
+        .Select(table => new Table(table.Name, schema))
         .ToArray();
+
+    private static string GetApplicationSchema(string connectionString) =>
+        new NpgsqlConnectionStringBuilder(connectionString).SearchPath?
+            .Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
+            .FirstOrDefault()
+        ?? DefaultApplicationSchema;
 
     private static readonly Table[] UnqualifiedLookupTables =
     [
