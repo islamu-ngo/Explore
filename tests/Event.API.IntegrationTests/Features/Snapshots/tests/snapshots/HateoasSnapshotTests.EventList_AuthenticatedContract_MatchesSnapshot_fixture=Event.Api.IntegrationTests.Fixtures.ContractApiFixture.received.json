@@ -32,13 +32,13 @@
         "source": "local",
         "event": {
           "id": "Guid_1",
-          "title": "Published Visibility Event 2574108bd87c4fcf982dd4c75d75b385",
-          "publicCode": "c3cbb223276e",
+          "title": "Published Visibility Event 4ea71ccb56db465f92f6524692b9fc65",
+          "publicCode": "a02d1a52c640",
           "eventTypeId": 0,
           "audienceGenderId": 0,
           "audienceAgeId": 0,
           "actorId": "Guid_2",
-          "actorDisplayName": "Default Session Visibility Actor",
+          "actorDisplayName": "Default Visibility Actor",
           "actorTypeId": 1,
           "actorTypeFullName": "User",
           "actorUserId": "Guid_3",
@@ -61,8 +61,8 @@
           "eventFormatId": 1,
           "eventFormatFullName": "Local (In-Person)",
           "sessionCount": 1,
-          "firstSessionDate": "2026-08-12",
-          "lastSessionDate": "2026-08-12",
+          "firstSessionDate": "2026-08-15",
+          "lastSessionDate": "2026-08-15",
           "firstSessionStartUtc": "DateTimeOffset_1",
           "isPast": false,
           "totalViews": 0,
@@ -71,22 +71,22 @@
         },
         "_links": {
           "self": {
-            "href": "/api/event/68d634cd-ad21-4e6d-9cb9-7338e440cf45",
-            "title": "Published Visibility Event 2574108bd87c4fcf982dd4c75d75b385",
+            "href": "/api/event/6b2e159b-b08b-490b-a24a-21e466b9325f",
+            "title": "Published Visibility Event 4ea71ccb56db465f92f6524692b9fc65",
             "method": "GET"
           },
           "sessions": {
-            "href": "/api/eventsession/by-event/68d634cd-ad21-4e6d-9cb9-7338e440cf45",
+            "href": "/api/eventsession/by-event/6b2e159b-b08b-490b-a24a-21e466b9325f",
             "title": "1 sessions",
             "method": "GET"
           },
           "actor": {
-            "href": "/api/actor/fb7b5f26-2575-44cd-9bd9-81eeb031532f",
-            "title": "Default Session Visibility Actor",
+            "href": "/api/actor/e8bd2093-376e-4556-bc99-ed4f0b326be5",
+            "title": "Default Visibility Actor",
             "method": "GET"
           },
           "event-report-options": {
-            "href": "/api/event-reports/events/68d634cd-ad21-4e6d-9cb9-7338e440cf45/options",
+            "href": "/api/event-reports/events/6b2e159b-b08b-490b-a24a-21e466b9325f/options",
             "title": "Event report options",
             "method": "GET"
           },
@@ -96,12 +96,12 @@
             "method": "POST"
           },
           "edit": {
-            "href": "/api/event/68d634cd-ad21-4e6d-9cb9-7338e440cf45",
+            "href": "/api/event/6b2e159b-b08b-490b-a24a-21e466b9325f",
             "title": "Update event",
             "method": "PATCH"
           },
           "delete": {
-            "href": "/api/event/68d634cd-ad21-4e6d-9cb9-7338e440cf45",
+            "href": "/api/event/6b2e159b-b08b-490b-a24a-21e466b9325f",
             "title": "Delete event",
             "method": "DELETE"
           }
