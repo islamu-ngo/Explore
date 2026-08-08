@@ -1,5 +1,5 @@
 <!-- ABOUTME: Resumable context for a retained privacy-erasure authority that survives primary database restore. -->
-<!-- ABOUTME: Preserves completed erasure work while re-baselining authority storage to embedded SQLite or external PostgreSQL. -->
+<!-- ABOUTME: Preserves completed erasure work while tracking explicit three-mode authority storage topology settlement. -->
 
 # Optional Retained Erasure Authority Context
 
@@ -8,6 +8,8 @@
 **Default topology:** `EmbeddedSqlite`
 
 **Enterprise topology:** `ExternalDatabase` using PostgreSQL
+
+**Alternative topology:** `CoLocated` (legacy single-database mode) retained as a deployable option
 
 **Related workstream:** [Multi-Database Support](../multi-database-support/multi-database-support-plan.md)
 
@@ -30,11 +32,11 @@ The preceding workstream delivered and accepted substantial behavior that remain
 
 Completed task IDs retained as historical evidence: OREA-100, 110, 120, 200, 210, 220, 300, 420, 500, 510, 520, 600, 610, and 700. OREA-310 and 320 remain partially open. OREA-400/410, 620, 710, and 720 remain open or require revalidation.
 
-The old `CoLocated` PostgreSQL topology is no longer the target. Its code and tests are evidence of implemented semantics, not the desired storage boundary.
+- `CoLocated` is now an explicit operator choice and is treated as a first-class storage topology, not as an incidental fallback.
 
 ## Verified Current State
 
-- Current authority topologies are `CoLocated` and `ExternalDatabase`.
+- Current authority topologies are `CoLocated`, `EmbeddedSqlite`, and `ExternalDatabase`.
 - Co-located authority writes append state in the primary PostgreSQL database but not in the erasure transaction itself.
 - External authority uses a dedicated PostgreSQL context plus PostgreSQL functions and ACLs.
 - External authority migrations are owned by `Event.MigrationService` only when that topology is selected.
@@ -62,9 +64,14 @@ The old `CoLocated` PostgreSQL topology is no longer the target. Its code and te
 - Runtime append/read credentials and migrator/owner credentials remain separate.
 - Operators bind the same privacy-prefixed structured shape separately for runtime and migrator roles: provider, host, port, database, username, password, TLS mode/trust, and bounded settings. No raw connection string or free-form fragment is accepted.
 
+### CoLocated
+
+- Authority ledger and replay checkpoint both live in the primary PostgreSQL schema.
+- The same anti-resurrection and checkpoint invariants apply; mutating `ExternalDatabase`/`EmbeddedSqlite` state is not permitted while this mode is active.
+
 ## Primary Database Boundary
 
-Authority-specific primary state is limited to the replay checkpoint needed to prove convergence. The retained authority ledger itself exists only in the embedded file or external authority database.
+Authority-specific primary state is limited to the replay checkpoint needed to prove convergence. The retained authority ledger itself is constrained to exactly one topology destination: embedded file, external authority database, or primary database in `CoLocated`.
 
 Normal application records remain in the primary database when transaction ownership requires them, including erasure saga state, transactional outbox messages, dispatch receipts, and domain-side completion evidence. They must not become a second retained authority ledger.
 
@@ -103,12 +110,13 @@ External mode uses the same provider-neutral structured database model defined b
 - External PostgreSQL authority migrations target only the external authority database.
 - The primary provider's migrations retain only the replay checkpoint for authority state.
 - Generated migrations and model snapshots are never hand-edited.
-- Existing deployed co-located data needs an explicit generated transition/export strategy; do not silently discard retained intent.
+- Existing deployed co-located data needs an explicit generated transition/export strategy if operators migrate to `EmbeddedSqlite`.
+- In `CoLocated` mode, co-located retention artifacts are intentionally retained and remain the active authority source.
 
 ## Open Work
 
 - Finish durable provider contract settlement and replay boundary tests from OREA-310/320.
-- Replace `CoLocated` with `EmbeddedSqlite` in topology, DI, contexts, migrations, configuration, health/readiness, and operations.
+- Enforce mode-boundary exclusivity in topology, DI, contexts, migrations, configuration, health/readiness, and operations (`CoLocated` writes only primary; others write only non-primary authority stores).
 - Migrate or export existing co-located retained intent into the embedded file before removing the primary ledger.
 - Complete external PostgreSQL credential/migration settlement using structured fields.
 - Prove independent disaster recovery and failure-closed rollback detection.

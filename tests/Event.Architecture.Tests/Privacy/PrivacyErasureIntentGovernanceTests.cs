@@ -11,9 +11,10 @@ public sealed class PrivacyErasureIntentGovernanceTests
         "PrivacyErasure:Authority:Topology",
         "EmbeddedSqlite",
         "ExternalDatabase",
+        "CoLocated",
         "default is EmbeddedSqlite",
-        "application-side replay checkpoint remains active in both topologies",
-        "PrivacyErasure:Durability:Mode",
+        "application-side replay checkpoint remains active in all topologies",
+        "A present legacy PrivacyErasure:Durability:Mode key is rejected",
         "reset-only",
         "receipt/status",
         "provider settlement",
@@ -22,7 +23,7 @@ public sealed class PrivacyErasureIntentGovernanceTests
         "restore",
         "For ExternalDatabase, API runtime and MigrationService receive separate runtime and migrator authority credentials",
         "mapped to structured privacy-prefixed database fields only in the owning process",
-        "EmbeddedSqlite receives no authority database credential and Blazor receives neither secret",
+        "EmbeddedSqlite and CoLocated receive no authority database credential and Blazor receives neither secret",
         "dev/active/optional-retained-erasure-authority/**",
         ".omo/evidence/optional-retained-erasure-authority/**",
         "docs/DEPLOYMENT_MODES.md",
@@ -44,10 +45,6 @@ public sealed class PrivacyErasureIntentGovernanceTests
         "PrivacyErasure__Durability__Mode",
         "The application-database and retained-authority restore paths prove",
         "authority-free local-lite",
-        "accepts only CoLocated or ExternalDatabase",
-        "default is CoLocated",
-        "one-database CoLocated",
-        "CoLocated and ExternalDatabase semantics",
         "CoLocated proves rollback replay",
         "ConnectionStrings__PrivacyErasureAuthority"
     ];
@@ -65,6 +62,7 @@ public sealed class PrivacyErasureIntentGovernanceTests
     [Arguments("PrivacyErasure:Authority:Topology")]
     [Arguments("EmbeddedSqlite")]
     [Arguments("ExternalDatabase")]
+    [Arguments("CoLocated")]
     public async Task AuthorityFirstContract_RejectsMissingTopologyTerm(string requiredTerm)
     {
         string catalog = await File.ReadAllTextAsync(ContextSystemHelpers.RepoPath(
@@ -77,23 +75,10 @@ public sealed class PrivacyErasureIntentGovernanceTests
     }
 
     [Test]
-    public async Task AuthorityFirstContractRejectsLegacyCoLocatedAcceptance()
-    {
-        string catalog = await File.ReadAllTextAsync(ContextSystemHelpers.RepoPath(
-            ".claude", "contract", "intents.yaml"));
-        string intent = SelectIntent(catalog, "platform-privacy-erasure");
-        string legacyIntent = intent.Replace("EmbeddedSqlite", "CoLocated", StringComparison.Ordinal);
-
-        await Assert.That(legacyIntent).IsNotEqualTo(intent);
-        await Assert.That(() => RequireAuthorityFirstContract(legacyIntent))
-            .Throws<InvalidOperationException>();
-    }
-
-    [Test]
     public async Task AuthorityFirstContract_RejectsMissingCredentialSeparationAcceptance()
     {
         const string credentialAcceptance =
-            "For ExternalDatabase, API runtime and MigrationService receive separate runtime and migrator authority credentials mapped to structured privacy-prefixed database fields only in the owning process; EmbeddedSqlite receives no authority database credential and Blazor receives neither secret";
+            "For ExternalDatabase, API runtime and MigrationService receive separate runtime and migrator authority credentials mapped to structured privacy-prefixed database fields only in the owning process; EmbeddedSqlite and CoLocated receive no authority database credential and Blazor receives neither secret";
         string catalog = await File.ReadAllTextAsync(ContextSystemHelpers.RepoPath(
             ".claude", "contract", "intents.yaml"));
         string intent = SelectIntent(catalog, "platform-privacy-erasure");

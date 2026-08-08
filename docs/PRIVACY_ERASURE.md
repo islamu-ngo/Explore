@@ -1,5 +1,5 @@
 <!-- ABOUTME: Canonical documentation for the Privacy Erasure Authority, its concrete meaning, and storage topologies. -->
-<!-- ABOUTME: Explains EmbeddedSqlite vs ExternalDatabase modes and guides self-hosters through topology selection. -->
+<!-- ABOUTME: Explains EmbeddedSqlite, CoLocated, and ExternalDatabase modes and guides self-hosters through topology selection. -->
 
 # Privacy Erasure Authority & Storage Topologies
 
@@ -48,19 +48,19 @@ erasure request -> append authority fact (committed first)
 
 ---
 
-## 2. Storage Topologies: `EmbeddedSqlite` vs `ExternalDatabase`
+## 2. Storage Topologies: `EmbeddedSqlite`, `CoLocated`, `ExternalDatabase`
 
-The platform workflow code is **100% identical** regardless of deployment choice. The configuration setting `PrivacyErasure:Authority:Topology` (`PRIVACY_ERASURE_AUTHORITY_TOPOLOGY`) selects between two persistence topologies for storing the authority ledger.
+The platform workflow code is **100% identical** regardless of deployment choice. The configuration setting `PrivacyErasure:Authority:Topology` (`PRIVACY_ERASURE_AUTHORITY_TOPOLOGY`) selects one of three persistence topologies for storing the authority ledger.
 
-| Feature / Guarantee | `EmbeddedSqlite` Mode | `ExternalDatabase` Mode |
-|---|---|---|
-| **Authority Database Placement** | Dedicated local SQLite file, default `/app/data/privacy_erasure_authority.db` | Separate, independently managed PostgreSQL database instance |
-| **Connection Credentials** | None; protected by restrictive filesystem permissions | Structured endpoint plus separate function-only runtime and migrator roles |
-| **`restoreReplayProtection` Health Flag** | `true` when its dedicated file is kept outside the primary restore | `true` when the external database has an independent restore lifecycle |
-| **Rollback Resilience (Local Tx Failure)** | **Yes** — authority append commits before the application transaction | **Yes** — authority append commits before the application transaction |
-| **Stale Application Restore Protection** | **Yes** — when the authority file is not overwritten by the primary restore | **Yes** — untouched external authority replays missing erasures against restored primary DB |
-| **Concurrency Ceiling** | Exactly one writer/API replica; private cache, WAL, bounded busy timeout | Normal PostgreSQL deployment limits and function ACLs |
-| **Target Use Case** | Local development, CI, and single-replica self-hosting | Multi-replica/HA production and independently operated compliance storage |
+| Feature / Guarantee | `EmbeddedSqlite` Mode | `CoLocated` Mode | `ExternalDatabase` Mode |
+|---|---|---|---|
+| **Authority Database Placement** | Dedicated local SQLite file, default `/app/data/privacy_erasure_authority.db` | Primary application PostgreSQL/SQLite database | Separate, independently managed PostgreSQL database instance |
+| **Connection Credentials** | None; protective filesystem permissions only | Application database credentials | Structured endpoint plus separate function-only runtime and migrator roles |
+| **`restoreReplayProtection` Health Flag** | `true` when its dedicated file is kept outside the primary restore | `false`; authority follows primary restore lifecycle | `true` when the external database has an independent restore lifecycle |
+| **Rollback Resilience (Local Tx Failure)** | **Yes** — authority append commits before the application transaction | **Yes** — authority append commits before the application transaction | **Yes** — authority append commits before the application transaction |
+| **Stale Application Restore Protection** | **Yes** — when the authority file is not overwritten by the primary restore | **No** — not guaranteed beyond primary restore fidelity | **Yes** — untouched external authority replays missing erasures against restored primary DB |
+| **Concurrency Ceiling** | Exactly one writer/API replica; private cache, WAL, bounded busy timeout | Application-primary limits | Normal PostgreSQL deployment limits and function ACLs |
+| **Target Use Case** | Local development, CI, and single-replica self-hosting | Single-database deployments and operationally simple upgrades | Multi-replica/HA production and independently operated compliance storage |
 
 ---
 
@@ -92,8 +92,8 @@ by an older primary backup.
 
 Embedded authority startup requires `WriterReplicaCount=1`, a local durable
 path, private cache, WAL, and a bounded busy timeout. Multi-replica/HA
-deployments must choose `ExternalDatabase`. This pre-v1 development repository
-does not provide a legacy `CoLocated` conversion or compatibility cutover.
+deployments must choose `ExternalDatabase`, while `CoLocated` is suitable when
+single-database operating simplicity is preferred.
 
 ---
 
@@ -101,12 +101,9 @@ does not provide a legacy `CoLocated` conversion or compatibility cutover.
 
 Use this decision matrix to select the right topology for your environment:
 
-```text
-Can the authority have one writer, local durable storage, and a backup/restore
-lifecycle independent from the primary database?
-  YES -> EmbeddedSqlite
-  NO  -> Operate a separate PostgreSQL authority -> ExternalDatabase
-```
+- **EmbeddedSqlite** when local one-writer, file-backed isolation is acceptable.
+- **CoLocated** when you want single-database operation and do not require independent authority backup-restore.
+- **ExternalDatabase** when you need isolated compliance storage and independent authority recovery.
 
 ### Guidance Summary
 
@@ -119,6 +116,10 @@ lifecycle independent from the primary database?
   - You operate enterprise multi-tenant or production SaaS environments.
   - You maintain independent backup/restore schedules for primary vs compliance databases.
   - You require absolute guarantees that restoring an application database backup from 30 days ago will automatically re-erase all accounts deleted during those 30 days upon service startup.
+- **Choose `CoLocated` if**:
+  - You want a single primary database with fewer components.
+  - Your topology or platform operations already treat app and authority recovery together.
+  - You do not require independently operated compliance database recovery.
 
 ---
 
@@ -127,14 +128,15 @@ lifecycle independent from the primary database?
 Set the following environment variables in `.env`:
 
 ```dotenv
-# Topology Selection: EmbeddedSqlite (default) | ExternalDatabase
+# Topology Selection: EmbeddedSqlite (default) | CoLocated | ExternalDatabase
 PRIVACY_ERASURE_AUTHORITY_TOPOLOGY=EmbeddedSqlite
 
 PRIVACY_ERASURE_AUTHORITY_EMBEDDED_PATH=/app/data/privacy_erasure_authority.db
 PRIVACY_ERASURE_AUTHORITY_WRITER_REPLICA_COUNT=1
 PRIVACY_ERASURE_AUTHORITY_BUSY_TIMEOUT_SECONDS=30
 
-# Required ONLY when PRIVACY_ERASURE_AUTHORITY_TOPOLOGY=ExternalDatabase:
+# CoLocated reuses primary application credentials. External-only values are required
+# ONLY when PRIVACY_ERASURE_AUTHORITY_TOPOLOGY=ExternalDatabase.
 PRIVACY_ERASURE_AUTHORITY_HOST=privacy-erasure-db
 PRIVACY_ERASURE_AUTHORITY_PORT=5432
 PRIVACY_ERASURE_AUTHORITY_DATABASE=privacy_erasure
@@ -152,8 +154,8 @@ dedicated volume with restrictive permissions and back it up separately.
 Compose maps these aliases to `PrivacyErasureAuthorityEmbedded:Path`,
 `WriterReplicaCount`, and `BusyTimeoutSeconds`; direct .NET environment
 configuration uses double underscores for those section separators.
-Legacy `CoLocated`, raw authority connection strings, and
-`PrivacyErasure:Durability:Mode` are unsupported and block startup.
+Raw authority connection strings and `PrivacyErasure:Durability:Mode` are
+unsupported and block startup.
 
 ---
 

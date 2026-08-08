@@ -1,6 +1,3 @@
-// ABOUTME: Verifies topology-neutral privacy-erasure workflow registration and secret isolation.
-// ABOUTME: Proves only persistence selects the authority adapter and EmbeddedSqlite never reads external settings.
-
 using Explore.Application;
 using Explore.Application.Configuration;
 using Explore.Application.Contracts.Services;
@@ -29,8 +26,9 @@ public sealed class PrivacyErasureModelCompositionTests
     }
 
     [Test]
-    [Arguments("EmbeddedSqlite")]
     [Arguments("ExternalDatabase")]
+    [Arguments("CoLocated")]
+    [Arguments("EmbeddedSqlite")]
     public async Task BothTopologies_RegisterExactlyOneAuthorityFirstWorkflow(string topology)
     {
         var values = new Dictionary<string, string?>
@@ -61,6 +59,20 @@ public sealed class PrivacyErasureModelCompositionTests
         services.ConfigureApplicationServices(Build(new Dictionary<string, string?>
         {
             ["PrivacyErasure:Authority:Topology"] = "EmbeddedSqlite"
+        }));
+
+        await Assert.That(services.Any(descriptor =>
+            descriptor.ServiceType.FullName ==
+            "Explore.Application.Contracts.PrivacyErasure.IPrivacyErasureAuthority")).IsFalse();
+    }
+
+    [Test]
+    public async Task CoLocatedTopology_Composition_DoesNotRegisterEmbeddedAuthority()
+    {
+        var services = new ServiceCollection();
+        services.ConfigureApplicationServices(Build(new Dictionary<string, string?>
+        {
+            ["PrivacyErasure:Authority:Topology"] = "CoLocated"
         }));
 
         await Assert.That(services.Any(descriptor =>

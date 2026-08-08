@@ -4,6 +4,9 @@
 using Explore.Domain;
 using Explore.Domain.Interfaces;
 using Microsoft.EntityFrameworkCore;
+using System.Globalization;
+using System.Security.Cryptography;
+using System.Text;
 
 namespace Explore.Persistence;
 
@@ -143,10 +146,48 @@ public partial class ExploreDbContext
             return;
         }
 
-        foreach (var entry in ChangeTracker.Entries().Where(item => item.State == EntityState.Added))
+        foreach (var entry in ChangeTracker.Entries()
+                     .Where(item => item.State is EntityState.Added or EntityState.Modified))
         {
             switch (entry.Entity)
             {
+                case ExternalBinding externalBinding:
+                    entry.Property("ExternalGlobalUniquenessHash").CurrentValue = externalBinding.ScopeTenantId is null
+                        ? ComputeMySqlUniquenessHash(externalBinding.ProviderKey, externalBinding.ExternalSystem, externalBinding.ExternalType, externalBinding.ExternalId)
+                        : null;
+                    entry.Property("ExternalTenantUniquenessHash").CurrentValue = externalBinding.ScopeTenantId is { } externalScope
+                        ? ComputeMySqlUniquenessHash(externalBinding.ProviderKey, externalBinding.ExternalSystem, externalBinding.ExternalType, externalBinding.ExternalId, externalScope.ToString("D"))
+                        : null;
+                    entry.Property("InternalGlobalUniquenessHash").CurrentValue = externalBinding.ScopeTenantId is null
+                        ? ComputeMySqlUniquenessHash(externalBinding.ProviderKey, externalBinding.ExternalSystem, externalBinding.InternalType, externalBinding.InternalId.ToString("D"))
+                        : null;
+                    entry.Property("InternalTenantUniquenessHash").CurrentValue = externalBinding.ScopeTenantId is { } internalScope
+                        ? ComputeMySqlUniquenessHash(externalBinding.ProviderKey, externalBinding.ExternalSystem, externalBinding.InternalType, externalBinding.InternalId.ToString("D"), internalScope.ToString("D"))
+                        : null;
+                    break;
+                case StorageObject storageObject:
+                    entry.Property("ProviderObjectKeyUniquenessHash").CurrentValue = storageObject.ObjectKey is { } objectKey
+                        ? ComputeMySqlUniquenessHash(storageObject.Provider, objectKey)
+                        : null;
+                    break;
+                case UserExternalLogin externalLogin:
+                    entry.Property("ProviderKeyUniquenessHash").CurrentValue =
+                        externalLogin.Provider is { } loginProvider && externalLogin.ProviderKey is { } providerKey
+                            ? ComputeMySqlUniquenessHash(loginProvider, providerKey)
+                            : null;
+                    break;
+                case WebPushSubscription webPushSubscription:
+                    var active = webPushSubscription.IsActive && !webPushSubscription.IsDeleted;
+                    entry.Property("ActiveEndpointUniquenessHash").CurrentValue = active
+                        ? ComputeMySqlUniquenessHash(webPushSubscription.Endpoint)
+                        : null;
+                    entry.Property("ActiveUserDeviceUniquenessHash").CurrentValue = active
+                        ? ComputeMySqlUniquenessHash(
+                            webPushSubscription.TenantId.ToString("D"),
+                            webPushSubscription.UserId.ToString("D"),
+                            webPushSubscription.DeviceIdentifier)
+                        : null;
+                    break;
                 case WebhookConsumer consumer:
                     entry.Property(nameof(WebhookConsumer.ConfigurationScopeId)).CurrentValue =
                         consumer.TenantId ?? consumer.InstanceId ?? Guid.Empty;
@@ -162,6 +203,21 @@ public partial class ExploreDbContext
                 case WebhookConsumerProviderBinding binding:
                     entry.Property(nameof(WebhookConsumerProviderBinding.ConfigurationScopeId)).CurrentValue =
                         binding.TenantId ?? binding.InstanceId;
+                    var providerKind = binding.ProviderKindId.ToString(CultureInfo.InvariantCulture);
+                    entry.Property("ProviderEnvironmentApplicationUidHash").CurrentValue =
+                        ComputeMySqlUniquenessHash(providerKind, binding.NormalizedEnvironment, binding.NormalizedApplicationUid);
+                    entry.Property("ProviderEnvironmentExternalAppHash").CurrentValue =
+                        binding.NormalizedExternalApplicationId is { } externalApplicationId
+                            ? ComputeMySqlUniquenessHash(providerKind, binding.NormalizedEnvironment, externalApplicationId)
+                            : null;
+                    entry.Property("ProviderApplicationIdentityHash").CurrentValue =
+                        binding.NormalizedExternalApplicationId is { } normalizedExternalApplicationId
+                            ? ComputeMySqlUniquenessHash(
+                                providerKind,
+                                binding.NormalizedEnvironment,
+                                normalizedExternalApplicationId,
+                                binding.NormalizedApplicationUid)
+                            : null;
                     break;
                 case RegistrationOrder order:
                     entry.Property("RegistrationWorkflowVersionKey").CurrentValue =
@@ -188,6 +244,20 @@ public partial class ExploreDbContext
                     break;
             }
         }
+    }
+
+    internal static byte[] ComputeMySqlUniquenessHash(params string[] components)
+    {
+        var canonical = new StringBuilder();
+        foreach (var component in components)
+        {
+            var byteLength = Encoding.UTF8.GetByteCount(component);
+            canonical.Append(byteLength.ToString("D10", CultureInfo.InvariantCulture));
+            canonical.Append(':');
+            canonical.Append(component);
+        }
+
+        return SHA256.HashData(Encoding.UTF8.GetBytes(canonical.ToString()));
     }
 
     private void ValidateEventLocationCarrierConsistency()

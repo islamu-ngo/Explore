@@ -25,6 +25,8 @@ public sealed class PrivacyErasureDurabilityOptionsTests
     [Arguments("embeddedsqlite", PrivacyErasureAuthorityTopology.EmbeddedSqlite)]
     [Arguments("ExternalDatabase", PrivacyErasureAuthorityTopology.ExternalDatabase)]
     [Arguments("externaldatabase", PrivacyErasureAuthorityTopology.ExternalDatabase)]
+    [Arguments("CoLocated", PrivacyErasureAuthorityTopology.CoLocated)]
+    [Arguments("colocated", PrivacyErasureAuthorityTopology.CoLocated)]
     public async Task SupportedTopologyName_IsAccepted(
         string configured,
         PrivacyErasureAuthorityTopology expected)
@@ -45,7 +47,6 @@ public sealed class PrivacyErasureDurabilityOptionsTests
     [Arguments("1")]
     [Arguments("ApplicationDatabase")]
     [Arguments("RetainedAuthority")]
-    [Arguments("CoLocated")]
     public async Task UnsupportedTopologyName_FailsValidation(string configured)
     {
         await Assert.ThrowsAsync<OptionsValidationException>(() =>
@@ -100,9 +101,14 @@ public sealed class PrivacyErasureDurabilityOptionsTests
         {
             ["PrivacyErasure:Authority:Topology"] = "ExternalDatabase"
         });
+        PrivacyErasureDurabilityOptions colocated = Resolve(new Dictionary<string, string?>
+        {
+            ["PrivacyErasure:Authority:Topology"] = "CoLocated"
+        });
 
         await Assert.That(embedded.RestoreReplayProtection).IsTrue();
         await Assert.That(external.RestoreReplayProtection).IsTrue();
+        await Assert.That(colocated.RestoreReplayProtection).IsFalse();
     }
 
     private static PrivacyErasureDurabilityOptions Resolve(

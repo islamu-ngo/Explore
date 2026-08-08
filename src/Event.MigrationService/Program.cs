@@ -7,6 +7,7 @@ using Explore.Persistence;
 using Explore.Persistence.Database;
 using Explore.Persistence.Privacy.ErasureAuthority;
 using Explore.Secrets.Database;
+using Explore.Secrets.Database;
 using Microsoft.EntityFrameworkCore;
 using Npgsql.EntityFrameworkCore.PostgreSQL;
 
@@ -48,6 +49,13 @@ public class Program
                         .MigrationsHistoryTable(
                             PrivacyErasureAuthorityDatabaseConfiguration.MigrationsHistoryTable))
                     .UseSnakeCaseNamingConvention());
+        }
+        else if (erasureTopology == PrivacyErasureAuthorityTopology.CoLocated)
+        {
+            builder.Services.AddDbContext<PrivacyErasureAuthorityDbContext>(options =>
+                PrimaryDatabaseProviderComposition.ConfigureApplication(
+                    options,
+                    databaseOptions));
         }
         else
         {

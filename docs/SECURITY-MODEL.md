@@ -55,12 +55,11 @@ Topology rollback is process-level only: `Hosting:Topology` controls how local A
 
 ## Privacy-erasure Authority Boundary
 
-The platform ships one authority-first User-erasure workflow with two storage
-topologies. Co-located authority keeps the ledger beside the application
-database; external authority keeps the ledger outside the application restore
-set and is the only topology with restore replay protection. Restoring the whole
-application database can still restore both PII and the co-located authority
-state, so the topology choice matters.
+The platform ships one authority-first User-erasure workflow with three storage
+topologies. `EmbeddedSqlite` keeps the ledger in a dedicated file, `CoLocated`
+keeps it beside the application database, and `ExternalDatabase` keeps it in a
+separate PostgreSQL database. Only `ExternalDatabase` provides independent
+restore replay guarantees.
 
 Authority facts are typed, immutable, monotonic User facts with bounded policy
 and reason codes only. They do not carry names, email, addresses, arbitrary
@@ -87,8 +86,8 @@ for operator review.
 
 The readiness check reports only topology, restore-replay protection, caught-up
 state, and aggregate provider/cache backlog counts. Remaining gaps are explicit:
-no generalized compaction, no legal hold, and no claim that co-located restore
-survives an application restore.
+no generalized compaction, no legal hold, and no claim that `CoLocated` restores
+outside the primary restore contract.
 
 The restore proof uses a real pre-erasure application dump, restores it into a
 fresh database, and leaves the external authority untouched. Replay removes the

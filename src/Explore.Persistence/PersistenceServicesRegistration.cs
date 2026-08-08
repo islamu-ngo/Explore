@@ -53,14 +53,20 @@ public static class PersistenceServicesRegistration
 
         string? applicationConnectionString = null;
         PrimaryDatabaseProvider? applicationProvider = null;
+        PrimaryDatabaseConnectionOptions applicationRuntimeOptions = new()
+        {
+            Role = PrimaryDatabaseRole.Runtime,
+            Provider = PrimaryDatabaseProvider.PostgreSql
+        };
 
         // Skip DbContext registration when running integration tests (they register their own)
-        if (!skipDbContextRegistration)
+        if (!skipDbContextRegistration || erasureDurability.Topology == PrivacyErasureAuthorityTopology.CoLocated)
         {
             var runtimeDatabaseOptions = PrimaryDatabaseConfiguration.BindRuntime(configuration);
             var runtimeDatabase = PrimaryDatabaseConfiguration.BuildConnectionString(runtimeDatabaseOptions);
             applicationConnectionString = runtimeDatabase.ConnectionString;
             applicationProvider = runtimeDatabase.Provider;
+            applicationRuntimeOptions = runtimeDatabaseOptions;
 
             // Use pooled DbContext factory for performance (EF Core recommended pattern)
             // The scoped ExploreDbContext registration below handles scoped dependency injection
@@ -77,6 +83,11 @@ public static class PersistenceServicesRegistration
                 if (runtimeDatabase.Provider is PrimaryDatabaseProvider.MariaDb or PrimaryDatabaseProvider.MySql)
                 {
                     options.AddInterceptors(MySqlNamedLockTransactionInterceptor.Instance);
+                }
+
+                if (runtimeDatabase.Provider == PrimaryDatabaseProvider.Sqlite)
+                {
+                    options.AddInterceptors(SqliteProjectionLockTransactionInterceptor.Instance);
                 }
 
                 var runtimeEnvironmentName = environmentName
@@ -294,6 +305,20 @@ public static class PersistenceServicesRegistration
                             .MigrationsHistoryTable(
                                 PrivacyErasureAuthorityDatabaseConfiguration.MigrationsHistoryTable))
                     .UseSnakeCaseNamingConvention());
+            services.AddScoped<IPrivacyErasureAuthority, EfCorePrivacyErasureAuthorityRepository>();
+        }
+        else if (erasureDurability.Topology == PrivacyErasureAuthorityTopology.CoLocated)
+        {
+            if (string.IsNullOrWhiteSpace(applicationConnectionString))
+            {
+                throw new OptionsValidationException(
+                    nameof(PrivacyErasureDurabilityOptions),
+                    typeof(PrivacyErasureDurabilityOptions),
+                    ["CoLocated requires a valid primary database runtime configuration."]);
+            }
+
+            services.AddDbContext<PrivacyErasureAuthorityDbContext>(options =>
+                PrimaryDatabaseProviderComposition.ConfigureApplication(options, applicationRuntimeOptions));
             services.AddScoped<IPrivacyErasureAuthority, EfCorePrivacyErasureAuthorityRepository>();
         }
         else

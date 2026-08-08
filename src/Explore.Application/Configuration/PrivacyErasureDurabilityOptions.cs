@@ -1,5 +1,4 @@
 // ABOUTME: Defines the startup-only topology for the platform privacy-erasure authority.
-// ABOUTME: Defaults to restore-isolated EmbeddedSqlite with ExternalDatabase as the enterprise option.
 
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Options;
@@ -9,22 +8,26 @@ namespace Explore.Application.Configuration;
 public enum PrivacyErasureAuthorityTopology
 {
     EmbeddedSqlite,
-    ExternalDatabase
+    ExternalDatabase,
+    CoLocated
 }
 
 public sealed class PrivacyErasureDurabilityOptions
 {
     public const string SectionName = "PrivacyErasure:Authority";
-    public const string LegacyModeKey = "PrivacyErasure:Durability:Mode";
+    private const string LegacyDurabilityModeKey = "PrivacyErasure:Durability:Mode";
+    private const string LegacyDurabilityModeLegacyAlias = "PrivacyErasure__Durability__Mode";
     public PrivacyErasureAuthorityTopology Topology { get; set; } =
         PrivacyErasureAuthorityTopology.EmbeddedSqlite;
 
-    public bool RestoreReplayProtection => true;
+    public bool RestoreReplayProtection =>
+        Topology != PrivacyErasureAuthorityTopology.CoLocated;
 
     public static PrivacyErasureDurabilityOptions FromConfiguration(
         IConfiguration configuration)
     {
         ArgumentNullException.ThrowIfNull(configuration);
+        RejectLegacyDurabilityMode(configuration);
         return new PrivacyErasureDurabilityOptions
         {
             Topology = GetTopology(configuration)
@@ -34,12 +37,6 @@ public sealed class PrivacyErasureDurabilityOptions
     public static PrivacyErasureAuthorityTopology GetTopology(IConfiguration configuration)
     {
         ArgumentNullException.ThrowIfNull(configuration);
-        if (HasLegacyModeKey(configuration))
-        {
-            throw InvalidConfiguration(
-                $"{LegacyModeKey} is no longer supported. Confirm this pre-v1 development deployment is reset-eligible, create and verify a backup or export for every value the operator must retain, then perform an operator-managed reset, remove the legacy key, and configure {SectionName}:Topology as EmbeddedSqlite or ExternalDatabase.");
-        }
-
         string? configuredTopology = configuration[$"{SectionName}:Topology"];
         PrivacyErasureAuthorityTopology topology;
         if (configuredTopology is null
@@ -52,6 +49,13 @@ public sealed class PrivacyErasureDurabilityOptions
         }
         else if (string.Equals(
             configuredTopology,
+            nameof(PrivacyErasureAuthorityTopology.CoLocated),
+            StringComparison.OrdinalIgnoreCase))
+        {
+            topology = PrivacyErasureAuthorityTopology.CoLocated;
+        }
+        else if (string.Equals(
+            configuredTopology,
             nameof(PrivacyErasureAuthorityTopology.ExternalDatabase),
             StringComparison.OrdinalIgnoreCase))
         {
@@ -60,21 +64,29 @@ public sealed class PrivacyErasureDurabilityOptions
         else
         {
             throw InvalidConfiguration(
-                $"{SectionName}:Topology must be EmbeddedSqlite or ExternalDatabase.");
+                $"{SectionName}:Topology must be EmbeddedSqlite, ExternalDatabase, or CoLocated.");
         }
 
         return topology;
     }
-
-    private static bool HasLegacyModeKey(IConfiguration configuration) =>
-        configuration[LegacyModeKey] is not null
-        || configuration.GetSection("PrivacyErasure:Durability")
-            .GetChildren()
-            .Any(section => section.Key.Equals("Mode", StringComparison.OrdinalIgnoreCase));
 
     private static OptionsValidationException InvalidConfiguration(string failure) =>
         new(
             nameof(PrivacyErasureDurabilityOptions),
             typeof(PrivacyErasureDurabilityOptions),
             [failure]);
+
+    private static void RejectLegacyDurabilityMode(IConfiguration configuration)
+    {
+        bool legacyMode = configuration.GetSection(LegacyDurabilityModeKey).Exists();
+        bool legacyModeAlias = configuration.GetSection(LegacyDurabilityModeLegacyAlias).Exists();
+
+        if (legacyMode || legacyModeAlias)
+        {
+            throw InvalidConfiguration(
+                "PrivacyErasure:Durability:Mode was removed. "
+                + "Use PrivacyErasure:Authority:Topology (EmbeddedSqlite, CoLocated, ExternalDatabase). "
+                + "Existing deployment data and retention metadata are no longer eligible, and operator-led reset-only restore/export/backup is required before changing erasure topologies.");
+        }
+    }
 }

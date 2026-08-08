@@ -54,6 +54,41 @@ public sealed class PrivacyErasureAuthorityCompositionValidationTests
     }
 
     [Test]
+    public async Task CoLocatedTopology_RegistersEfCoreAuthorityAdapterAgainstPrimaryDatabase()
+    {
+        var settings = PrimaryDatabaseSettings(new NpgsqlConnectionStringBuilder
+        {
+            Host = "localhost",
+            Database = "event",
+            Username = "application",
+            Password = "application-canary"
+        });
+        settings["PrivacyErasure:Authority:Topology"] = "CoLocated";
+        settings["PrivacyErasureAuthorityEmbedded:Path"] =
+            Path.Combine(Path.GetTempPath(), $"authority-{Guid.CreateVersion7():N}.db");
+        IConfiguration configuration = new ConfigurationBuilder().AddInMemoryCollection(settings).Build();
+
+        var services = new ServiceCollection();
+        services.ConfigurePersistenceServices(
+            configuration,
+            skipDbContextRegistration: true,
+            skipLookupCacheInitializer: true);
+
+        await using ServiceProvider provider = services.BuildServiceProvider(
+            new ServiceProviderOptions { ValidateScopes = true });
+        await using AsyncServiceScope scope = provider.CreateAsyncScope();
+        await using PrivacyErasureAuthorityDbContext context = scope.ServiceProvider.GetRequiredService<PrivacyErasureAuthorityDbContext>();
+
+        await Assert.That(context).IsNotNull();
+        await Assert.That(services.Any(descriptor =>
+            descriptor.ServiceType == typeof(IPrivacyErasureAuthority))).IsTrue();
+        await Assert.That(services.Any(descriptor =>
+            descriptor.ServiceType == typeof(EmbeddedPrivacyErasureAuthorityDbContext))).IsFalse();
+        await Assert.That(services.Any(descriptor =>
+            descriptor.ServiceType == typeof(EmbeddedPrivacyErasureAuthorityStorage))).IsFalse();
+    }
+
+    [Test]
     [Arguments("Port", "invalid")]
     [Arguments("TlsMode", "invalid")]
     public async Task ExternalComposition_InvalidStructuredValue_FailsBeforeRegistration(
@@ -128,10 +163,15 @@ public sealed class PrivacyErasureAuthorityCompositionValidationTests
         ServiceCollection external = Compose(
             "ExternalDatabase",
             "authority");
+        ServiceCollection coLocated = Compose(
+            "CoLocated",
+            "event");
 
         await Assert.That(embedded.Count(descriptor =>
             descriptor.ServiceType == typeof(IPrivacyErasureAuthority))).IsEqualTo(1);
         await Assert.That(external.Count(descriptor =>
+            descriptor.ServiceType == typeof(IPrivacyErasureAuthority))).IsEqualTo(1);
+        await Assert.That(coLocated.Count(descriptor =>
             descriptor.ServiceType == typeof(IPrivacyErasureAuthority))).IsEqualTo(1);
         await Assert.That(embedded.Single(descriptor =>
             descriptor.ServiceType == typeof(IPrivacyErasureAuthority)).ImplementationType)
@@ -139,8 +179,13 @@ public sealed class PrivacyErasureAuthorityCompositionValidationTests
         await Assert.That(external.Single(descriptor =>
             descriptor.ServiceType == typeof(IPrivacyErasureAuthority)).ImplementationType)
             .IsEqualTo(typeof(EfCorePrivacyErasureAuthorityRepository));
+        await Assert.That(coLocated.Single(descriptor =>
+            descriptor.ServiceType == typeof(IPrivacyErasureAuthority)).ImplementationType)
+            .IsEqualTo(typeof(EfCorePrivacyErasureAuthorityRepository));
         await Assert.That(embedded.Any(descriptor =>
             descriptor.ServiceType == typeof(PrivacyErasureAuthorityDbContext))).IsFalse();
+        await Assert.That(coLocated.Any(descriptor =>
+            descriptor.ServiceType == typeof(PrivacyErasureAuthorityDbContext))).IsTrue();
         await Assert.That(embedded.Count(descriptor =>
             descriptor.ServiceType == typeof(IDbContextFactory<EmbeddedPrivacyErasureAuthorityDbContext>)))
             .IsEqualTo(1);

@@ -1,9 +1,9 @@
 <!-- ABOUTME: Progress ledger for preserving privacy erasure intent outside the primary database restore lifecycle. -->
-<!-- ABOUTME: Retains accepted historical work and tracks the embedded SQLite topology rebaseline through release evidence. -->
+<!-- ABOUTME: Retains accepted historical work and tracks explicit authority topology settlement through release evidence. -->
 
 # Optional Retained Erasure Authority Tasks
 
-**Status:** Historical semantics accepted; topology replacement in progress
+**Status:** Historical semantics accepted; topology settlement in progress
 
 **Rule:** Do not uncheck completed behavior merely because its storage implementation is being replaced.
 
@@ -34,7 +34,7 @@
 ## Phase 8: Rebaseline Contracts and Inventory
 
 - [ ] **OREA-799** Restore a green Release build before any runtime authority edit and record unrelated fixes outside this workstream.
-- [ ] **OREA-800** Replace deployable `CoLocated` topology with `EmbeddedSqlite` while preserving `ExternalDatabase`.
+- [ ] **OREA-800** Settle three deployable authority modes (`CoLocated`, `EmbeddedSqlite`, `ExternalDatabase`) as mutually exclusive with one active authority storage destination.
 - [ ] **OREA-801** Define embedded file path, volume, one-writer, local-filesystem, permissions, WAL, private-cache, busy-timeout, and integrity constraints.
 - [ ] **OREA-802** Define privacy-prefixed external structured fields aligned with MDB-101.
 - [ ] **OREA-803** Restrict external authority provider to PostgreSQL initially.
@@ -113,7 +113,7 @@
 ## Settled Decisions
 
 - [x] **OREA-D01** Retained authority must be outside the primary restore lifecycle.
-- [x] **OREA-D02** Default topology is a dedicated embedded SQLite file.
+- [x] **OREA-D02** Default topology is a dedicated embedded SQLite file, with `CoLocated` and `ExternalDatabase` as explicit alternate modes.
 - [x] **OREA-D03** Enterprise topology is a separately restored PostgreSQL database.
 - [x] **OREA-D04** Primary authority state is limited to the replay checkpoint.
 - [x] **OREA-D05** Normal saga/outbox/receipt records remain in primary according to transaction ownership.

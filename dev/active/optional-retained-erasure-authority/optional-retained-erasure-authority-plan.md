@@ -1,4 +1,4 @@
-<!-- ABOUTME: Implementation plan for a restore-isolated retained erasure authority with embedded SQLite and external PostgreSQL modes. -->
+<!-- ABOUTME: Implementation plan for a restore-isolated retained erasure authority with EmbeddedSqlite, CoLocated, and ExternalDatabase modes. -->
 <!-- ABOUTME: Defines anti-resurrection storage, replay, migration, security, recovery, and topology transition work. -->
 
 # Optional Retained Erasure Authority Implementation Plan
@@ -6,6 +6,7 @@
 **Status:** Re-baselined after partial implementation
 
 **Default:** Restore-isolated embedded SQLite
+**Alternative:** `CoLocated` or `ExternalDatabase` explicit topologies for different operational constraints.
 
 **Enterprise option:** Separately restored external PostgreSQL
 
@@ -19,17 +20,19 @@ Do not reimplement accepted authority contracts, erasure orchestration, startup 
 
 ## Acceptance Criteria
 
-1. `EmbeddedSqlite` is the default topology and `CoLocated` is removed as a deployable target.
+1. Authority storage is single-sink per deployment mode:
+   - `EmbeddedSqlite` (default): dedicated local authority file.
+   - `CoLocated`: authority tables in the primary application database.
+   - `ExternalDatabase`: authority in a separate external PostgreSQL database.
 2. The embedded authority file lives on a dedicated persisted local volume outside primary backup/restore.
 3. `ExternalDatabase` remains available using a separate PostgreSQL database and independently scoped credentials.
-4. The primary database contains only the replay checkpoint as authority state; normal saga/outbox/receipt records remain transactionally owned application records.
+4. In `EmbeddedSqlite` and `ExternalDatabase`, the primary database contains only the replay checkpoint as authority state; `CoLocated` also stores retained authority rows in the primary application database.
 5. `PrivacyErasureStartupGate` replays retained intent before readiness after a primary restore.
 6. Primary checkpoint ahead of retained authority state fails readiness closed.
 7. Embedded append, replay, compaction, restart, backup/restore, and concurrency behavior are proven against a real file.
 8. Embedded mode rejects multi-replica, shared/network filesystem, invalid path, and unsafe-permission deployments.
 9. External authority accepts structured privacy-prefixed database fields, never a raw connection string.
 10. Runtime and migrator credentials are separate for external PostgreSQL and enforced by ACL tests.
-11. Existing co-located retained intent has an explicit, recoverable cutover path.
 12. Generated migration artifacts are reproducible and never hand-edited.
 13. Retained intent is durably appended before destructive primary erasure is acknowledged; the primary outbox is not the first authority copy.
 
@@ -37,8 +40,9 @@ Do not reimplement accepted authority contracts, erasure orchestration, startup 
 
 ```text
 retained authority
-  - embedded SQLite file, or
-  - external PostgreSQL database
+  - embedded SQLite file (`EmbeddedSqlite`),
+  - primary application database (`CoLocated`), or
+  - external PostgreSQL database (`ExternalDatabase`)
         |-- durable idempotent intent append
         v
 primary erasure transaction
@@ -61,23 +65,26 @@ Authority-first ordering avoids a loss window between primary commit and authori
 
 The preceding plan accepted Phases 1, 2, 5, and most of 6. It completed OREA-100/110/120, 200/210/220, 300, 420, 500/510/520, 600/610, and 700. Those results remain evidence. OREA-310/320 are incomplete. Provider settlement OREA-400/410, disaster recovery OREA-620, and final evidence OREA-710/720 remain open or must be rerun.
 
-## Phase 8: Topology Rebaseline and Contract Settlement
+## Phase 8: Topology Settlement and Contract Rebaseline
 
 ### Work
 
-- Replace the topology enum/configuration target `CoLocated` with `EmbeddedSqlite`.
+- Settle a mutually exclusive topology enum/configuration with `EmbeddedSqlite`, `CoLocated`, and `ExternalDatabase`.
 - Define embedded file path, local-volume, one-writer, permissions, WAL, busy-timeout, private-cache, and integrity requirements.
 - Define external privacy-prefixed structured database fields using the shared multi-database input vocabulary.
 - Permit only PostgreSQL for external authority initially.
 - Complete OREA-310/320 contract and boundary work under the new topology.
 - Define the authority-first handoff and stable idempotency contract before changing storage implementations.
-- Inventory all primary authority ledger tables, functions, repositories, migrations, and tests that must move or be removed.
+- Inventory all primary authority ledger tables, functions, repositories, migrations, and tests by mode:
+  - retained in `EmbeddedSqlite`,
+  - retained in primary DB for `CoLocated`, and
+  - reduced/removed for `ExternalDatabase`.
 
 ### Exit criteria
 
 - Configuration matrix has no raw connection-string path.
 - Topology and ownership boundaries are explicit in code-facing contracts.
-- A reviewed cutover inventory maps every co-located artifact.
+- A reviewed mode inventory maps every legacy artifact and each mode's intended destination.
 
 ## Phase 9: Embedded SQLite Authority
 
@@ -96,20 +103,20 @@ The preceding plan accepted Phases 1, 2, 5, and most of 6. It completed OREA-100
 - Real-file tests prove monotonic append, bounded contention, restart durability, replay, compaction, and integrity checks.
 - Invalid or unsafe file topology blocks readiness.
 
-## Phase 10: Primary Ledger Removal and Cutover
+## Phase 10: CoLocated Alignment and Legacy Retained-Ledger Retirement
 
 ### Work
 
-- Define a generated migration/export procedure that copies deployed co-located retained intent into the embedded authority before primary ledger removal.
-- Make the procedure idempotent, observable, restartable, and rollback-safe.
-- Reduce primary authority state to the replay checkpoint.
+- Preserve the `CoLocated` path as a first-class topology while completing legacy cleanup for non-colocated modes.
+- Ensure this phase does not introduce operator-side mode migration; it only finalizes topology contracts.
+- Reduce authority footprint in `EmbeddedSqlite`/`ExternalDatabase` to replay checkpoint-only.
 - Retain normal privacy saga, transactional outbox, receipt, and completion records required by primary transaction ownership.
-- Remove or retire co-located authority repositories, tables, functions, configuration, and tests only after cutover evidence passes.
+- Remove or retire legacy retained-authority repositories, tables, functions, configuration, and tests only where they conflict with the finalized topology model.
 - Ensure MigrationService is the only production migration/cutover owner.
 
 ### Exit criteria
 
-- No retained authority ledger remains in the primary schema.
+- No retained authority ledger remains in the primary schema for `EmbeddedSqlite` and `ExternalDatabase`; `CoLocated` intentionally keeps the retained authority tables there.
 - Existing retained intent is preserved and replayable from the authority file.
 - Rollback procedure cannot resurrect erased data or silently fork authority history.
 
@@ -166,7 +173,7 @@ The preceding plan accepted Phases 1, 2, 5, and most of 6. It completed OREA-100
 
 - Contract tests: topology validation, structured external settings, credential redaction, one-writer and path constraints.
 - Embedded file tests: concurrent append, monotonic sequence/floor, busy timeout, restart, replay, compaction, corruption, permissions, backup/restore, and rollback detection.
-- Primary integration: erasure transaction, saga/outbox/receipt behavior, checkpoint advancement, idempotent replay, and absence of a shadow authority ledger.
+- Primary integration: erasure transaction, saga/outbox/receipt behavior, checkpoint advancement, idempotent replay, and absence of shadow authority ledgers in non-colocated topologies.
 - External PostgreSQL: real functions, ACLs, runtime/migrator separation, clean migrations, replay, backup/restore, and rollback detection.
 - Recovery: primary-only rollback must replay; authority rollback must fail closed.
 - Architecture: independent contexts, migration assemblies, provider registration, and no generated artifact edits.
@@ -188,8 +195,8 @@ The preceding plan accepted Phases 1, 2, 5, and most of 6. It completed OREA-100
 
 ## Definition of Done
 
-- `EmbeddedSqlite` and external PostgreSQL satisfy all acceptance criteria.
-- `CoLocated` is no longer deployable and its retained primary ledger is safely removed.
+- `EmbeddedSqlite`, `CoLocated`, and external PostgreSQL each satisfy acceptance criteria for their selected mode.
+- Each mode is mutually exclusive and writes retained authority state to only one destination.
 - Historical completed behavior remains intact.
 - Startup replay and rollback detection are proven failure-closed.
 - Recovery documentation and drills prove authority independence from every supported primary provider.

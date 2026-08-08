@@ -73,6 +73,13 @@ public sealed class Worker(IServiceProvider serviceProvider, IHostApplicationLif
             await authorityDb.Database.MigrateAsync(stoppingToken);
             logger.LogInformation("External privacy-erasure authority migrations applied successfully.");
         }
+        else if (erasureOptions.Value.Topology == PrivacyErasureAuthorityTopology.CoLocated)
+        {
+            logger.LogInformation("Applying co-located privacy-erasure authority migrations...");
+            var authorityDb = scope.ServiceProvider.GetRequiredService<PrivacyErasureAuthorityDbContext>();
+            await authorityDb.Database.MigrateAsync(stoppingToken);
+            logger.LogInformation("Co-located privacy-erasure authority migrations applied successfully.");
+        }
         else
         {
             logger.LogInformation("Applying embedded privacy-erasure authority migrations...");

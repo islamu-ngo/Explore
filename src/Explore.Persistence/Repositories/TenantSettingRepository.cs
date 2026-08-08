@@ -4,6 +4,7 @@
 namespace Explore.Persistence.Repositories;
 
 using Explore.Application.Contracts.Persistence;
+using Explore.Application.Settings;
 using Explore.Domain;
 using Explore.Persistence.QueryFilters;
 using Microsoft.EntityFrameworkCore;
@@ -28,22 +29,30 @@ public class TenantSettingRepository : ITenantSettingRepository
             .FirstOrDefaultAsync(s => s.TenantId == tenantId && s.SettingKey == key, cancellationToken);
     }
 
-    public Task<TenantSetting?> GetByDomainHostAsync(
+    public async Task<TenantSetting?> GetByDomainHostAsync(
         string normalizedHost,
         CancellationToken cancellationToken = default)
     {
         string normalizedValue = normalizedHost.Trim().TrimEnd('.').ToLowerInvariant();
-        return _dbContext.TenantSettingOverrides
-            .FromSqlInterpolated(
-                $$"""
-                SELECT *
-                FROM tenant_setting_overrides
-                WHERE setting_key IN ('domains.tenant_subdomain', 'domains.tenant_custom_domain')
-                  AND rtrim(lower(btrim(value::jsonb #>> '{}')), '.') = {{normalizedValue}}
-                """)
+        string canonicalValue = SettingValueSerializer.Serialize(normalizedValue);
+        string canonicalValueWithTrailingDot = SettingValueSerializer.Serialize(normalizedValue + ".");
+        TenantSetting? match = await _dbContext.TenantSettingOverrides
             .IgnoreTenantFilter(TenantFilterBypassReasons.ManagedTenantDomainUniqueness)
             .AsNoTracking()
-            .FirstOrDefaultAsync(cancellationToken);
+            .Where(setting => setting.SettingKey == "domains.tenant_subdomain"
+                || setting.SettingKey == "domains.tenant_custom_domain")
+            .FirstOrDefaultAsync(
+                setting => setting.Value.ToLower() == canonicalValue
+                    || setting.Value.ToLower() == canonicalValueWithTrailingDot,
+                cancellationToken);
+
+        if (match is null)
+        {
+            return null;
+        }
+
+        string matchedHost = SettingValueSerializer.DeserializeString(match.Value).Trim().TrimEnd('.');
+        return string.Equals(matchedHost, normalizedValue, StringComparison.OrdinalIgnoreCase) ? match : null;
     }
 
     public async Task SetValueAsync(
