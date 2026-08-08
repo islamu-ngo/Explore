@@ -6,13 +6,13 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace Explore.Persistence.PrivacyErasureAuthority.Migrations.Sqlite.Migrations
 {
     /// <inheritdoc />
-    public partial class InitialEmbeddedPrivacyErasureAuthority : Migration
+    public partial class InitialSqlitePrivacyErasureAuthority : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.CreateTable(
-                name: "authority_counter",
+                name: "ie_authority_counter",
                 columns: table => new
                 {
                     singleton = table.Column<bool>(type: "INTEGER", nullable: false),
@@ -20,13 +20,13 @@ namespace Explore.Persistence.PrivacyErasureAuthority.Migrations.Sqlite.Migratio
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("pk_authority_counter", x => x.singleton);
+                    table.PrimaryKey("pk_ie_authority_counter", x => x.singleton);
                     table.CheckConstraint("ck_authority_counter_nonnegative", "last_sequence >= 0");
                     table.CheckConstraint("ck_authority_counter_singleton", "singleton = 1");
                 });
 
             migrationBuilder.CreateTable(
-                name: "erasure_intents",
+                name: "ie_erasure_intents",
                 columns: table => new
                 {
                     authority_sequence = table.Column<long>(type: "INTEGER", nullable: false),
@@ -41,8 +41,8 @@ namespace Explore.Persistence.PrivacyErasureAuthority.Migrations.Sqlite.Migratio
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("pk_erasure_intents", x => x.authority_sequence);
-                    table.UniqueConstraint("ak_erasure_intents_intent_id", x => x.intent_id);
+                    table.PrimaryKey("pk_ie_erasure_intents", x => x.authority_sequence);
+                    table.UniqueConstraint("ak_ie_erasure_intents_intent_id", x => x.intent_id);
                     table.CheckConstraint("ck_erasure_intents_intent_uuid_v7", "substr(intent_id, 15, 1) = '7'");
                     table.CheckConstraint("ck_erasure_intents_intent_variant", "lower(substr(intent_id, 20, 1)) IN ('8', '9', 'a', 'b')");
                     table.CheckConstraint("ck_erasure_intents_policy_version", "policy_version > 0");
@@ -55,8 +55,8 @@ namespace Explore.Persistence.PrivacyErasureAuthority.Migrations.Sqlite.Migratio
                 });
 
             migrationBuilder.CreateIndex(
-                name: "ix_erasure_intents_intent_id_subject_kind_policy_version",
-                table: "erasure_intents",
+                name: "ix_ie_erasure_intents_intent_id_subject_kind_policy_version",
+                table: "ie_erasure_intents",
                 columns: new[] { "intent_id", "subject_kind", "policy_version" },
                 unique: true);
         }
@@ -65,10 +65,10 @@ namespace Explore.Persistence.PrivacyErasureAuthority.Migrations.Sqlite.Migratio
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropTable(
-                name: "authority_counter");
+                name: "ie_authority_counter");
 
             migrationBuilder.DropTable(
-                name: "erasure_intents");
+                name: "ie_erasure_intents");
         }
     }
 }

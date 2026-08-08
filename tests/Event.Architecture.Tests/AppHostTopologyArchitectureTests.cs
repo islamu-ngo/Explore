@@ -9,6 +9,7 @@ public sealed class AppHostTopologyArchitectureTests
 {
     private static readonly string RepoRoot = ContextSystemHelpers.RepoRoot;
     private static readonly string AppHostPath = Path.Combine(RepoRoot, "src", "Explore.AppHost", "AppHost.cs");
+    private static readonly string AppHostProjectPath = Path.Combine(RepoRoot, "src", "Explore.AppHost", "Explore.AppHost.csproj");
     private static readonly string StandaloneProjectPath = Path.Combine(RepoRoot, "src", "Event.Standalone", "Event.Standalone.csproj");
     private static readonly string[] RequiredSolutionProjects =
     [
@@ -64,6 +65,9 @@ public sealed class AppHostTopologyArchitectureTests
         var splitApiIndex = appHost.IndexOf("var exploreAPI = WithProfileSecretMode(", splitIndex, StringComparison.Ordinal);
         var splitBlazorIndex = appHost.IndexOf("var exploreBlazor = WithProfileSecretMode(", splitIndex, StringComparison.Ordinal);
         var standaloneIndex = appHost.IndexOf("var eventStandalone = WithProfileSecretMode(", firstElseIndex, StringComparison.Ordinal);
+        const string splitApiRegistration = "builder.AddProject<Projects.Explore_API>(";
+        const string splitBlazorRegistration = "builder.AddProject<Projects.Explore_Blazor>(";
+        const string standaloneRegistration = "builder.AddProject<Projects.Event_Standalone>(";
 
         await Assert.That(splitApiIndex).IsGreaterThan(splitIndex);
         await Assert.That(splitBlazorIndex).IsGreaterThan(splitIndex);
@@ -77,10 +81,16 @@ public sealed class AppHostTopologyArchitectureTests
         await Assert.That(splitBranch).Contains("var exploreAPI = WithProfileSecretMode(");
         await Assert.That(splitBranch).Contains("var exploreBlazor = WithProfileSecretMode(");
         await Assert.That(splitBranch).DoesNotContain("var eventStandalone = WithProfileSecretMode(");
+        await Assert.That(splitBranch).Contains(splitApiRegistration);
+        await Assert.That(splitBranch).Contains(splitBlazorRegistration);
+        await Assert.That(splitBranch).DoesNotContain(standaloneRegistration);
 
         await Assert.That(standaloneBranch).Contains("var eventStandalone = WithProfileSecretMode(");
         await Assert.That(standaloneBranch).DoesNotContain("var exploreAPI = WithProfileSecretMode(");
         await Assert.That(standaloneBranch).DoesNotContain("var exploreBlazor = WithProfileSecretMode(");
+        await Assert.That(standaloneBranch).Contains(standaloneRegistration);
+        await Assert.That(standaloneBranch).DoesNotContain(splitApiRegistration);
+        await Assert.That(standaloneBranch).DoesNotContain(splitBlazorRegistration);
 
         var splitApiCount = CountMatches(appHost, "var exploreAPI = WithProfileSecretMode(");
         var splitBlazorCount = CountMatches(appHost, "var exploreBlazor = WithProfileSecretMode(");
@@ -89,6 +99,9 @@ public sealed class AppHostTopologyArchitectureTests
         await Assert.That(splitApiCount).IsEqualTo(1);
         await Assert.That(splitBlazorCount).IsEqualTo(1);
         await Assert.That(standaloneCount).IsEqualTo(1);
+        await Assert.That(CountMatches(appHost, splitApiRegistration)).IsEqualTo(1);
+        await Assert.That(CountMatches(appHost, splitBlazorRegistration)).IsEqualTo(1);
+        await Assert.That(CountMatches(appHost, standaloneRegistration)).IsEqualTo(1);
     }
 
     [Test]
@@ -134,18 +147,10 @@ public sealed class AppHostTopologyArchitectureTests
             .Select(element => element.Attribute("Include")?.Value ?? string.Empty)
             .ToArray();
 
-        await Assert.That(standaloneReferences).Contains("..\\Explore.API\\Explore.API.csproj");
-        await Assert.That(standaloneReferences).Contains("..\\Explore.Blazor\\Explore.Blazor.csproj");
-        await Assert.That(standaloneReferences)
-            .DoesNotContain("..\\Explore.Application\\Explore.Application.csproj");
-        await Assert.That(standaloneReferences)
-            .DoesNotContain("..\\Explore.Domain\\Explore.Domain.csproj");
-        await Assert.That(standaloneReferences)
-            .DoesNotContain("..\\Explore.Infrastructure\\Explore.Infrastructure.csproj");
-        await Assert.That(standaloneReferences)
-            .DoesNotContain("..\\Explore.Persistence\\Explore.Persistence.csproj");
-        await Assert.That(standaloneReferences)
-            .DoesNotContain("..\\Explore.Secrets\\Explore.Secrets.csproj");
+        await Assert.That(standaloneReferences).IsEquivalentTo([
+            "..\\Explore.API\\Explore.API.csproj",
+            "..\\Explore.Blazor\\Explore.Blazor.csproj"
+        ]);
         await Assert.That(projectXml).Contains("<ProjectReference Include=\"..\\Explore.API\\Explore.API.csproj\" />");
         await Assert.That(projectXml).Contains("<ProjectReference Include=\"..\\Explore.Blazor\\Explore.Blazor.csproj\" />");
 
@@ -157,6 +162,16 @@ public sealed class AppHostTopologyArchitectureTests
         await Assert.That(blazorProject).DoesNotContain("Event.Standalone.csproj");
         await Assert.That(standaloneCsProj).Contains("ProjectReference Include=\"..\\Explore.API\\Explore.API.csproj\"");
         await Assert.That(standaloneCsProj).Contains("ProjectReference Include=\"..\\Explore.Blazor\\Explore.Blazor.csproj\"");
+
+        var appHostReferences = XDocument.Load(AppHostProjectPath)
+            .Descendants()
+            .Where(element => element.Name.LocalName == "ProjectReference")
+            .Select(element => element.Attribute("Include")?.Value ?? string.Empty)
+            .ToArray();
+
+        await Assert.That(appHostReferences).Contains("..\\Event.Standalone\\Event.Standalone.csproj");
+        await Assert.That(appHostReferences).Contains("..\\Explore.API\\Explore.API.csproj");
+        await Assert.That(appHostReferences).Contains("..\\Explore.Blazor\\Explore.Blazor.csproj");
     }
 
     [Test]

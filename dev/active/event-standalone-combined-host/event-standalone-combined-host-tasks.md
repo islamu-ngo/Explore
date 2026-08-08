@@ -110,7 +110,7 @@ Last Updated: 2026-08-02 Europe/Brussels
   - **Effort:** L
   - **Dependencies:** 4.1.
 
-- [ ] **4.3 Lock composition-root and topology invariants**
+- [x] **4.3 Lock composition-root and topology invariants**
   - **Files:** affected `tests/Event.Architecture.Tests/**`; affected AppHost static/config test files if present.
   - **Acceptance:** Standalone is allowed as a composition root without broadening Blazor/Client access; solution membership/reference direction are protected; Split default and mutually exclusive Standalone opt-in are asserted without launching Aspire.
   - **Effort:** M

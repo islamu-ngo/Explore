@@ -5,8 +5,10 @@ using Explore.Application.Contracts.PrivacyErasure;
 using Explore.Domain;
 using Explore.Infrastructure;
 using Explore.Persistence;
+using Explore.Persistence.Database;
 using Explore.Persistence.Privacy.ErasureAuthority;
 using Explore.Persistence.Privacy.ErasureAuthority.Repositories;
+using Explore.Secrets.Database;
 using Microsoft.AspNetCore.DataProtection.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
@@ -201,6 +203,22 @@ public sealed class PrivacyErasureAuthorityModelTests
                 .UseNpgsql("Host=localhost;Database=model_only;Username=unused;Password=unused")
                 .UseSnakeCaseNamingConvention()
                 .Options);
+        var coLocatedOptions = new DbContextOptionsBuilder<CoLocatedPrivacyErasureAuthorityDbContext>();
+        PrimaryDatabaseProviderComposition.ConfigureCoLocatedPrivacyErasureAuthority(
+            coLocatedOptions,
+            new PrimaryDatabaseConnectionOptions
+            {
+                Role = PrimaryDatabaseRole.Runtime,
+                Provider = PrimaryDatabaseProvider.PostgreSql,
+                Host = "localhost",
+                Database = "model_only",
+                Schema = "custom_event",
+                Username = "unused",
+                Password = "unused",
+                TlsMode = PrimaryDatabaseTlsMode.Disabled
+            });
+        await using var coLocated = new CoLocatedPrivacyErasureAuthorityDbContext(
+            coLocatedOptions.Options);
         await using var embedded = new EmbeddedPrivacyErasureAuthorityDbContext(
             new DbContextOptionsBuilder<EmbeddedPrivacyErasureAuthorityDbContext>()
                 .UseSqlite("Data Source=:memory:")
@@ -210,8 +228,10 @@ public sealed class PrivacyErasureAuthorityModelTests
         await Assert.That(application.Model.FindEntityType(typeof(PrivacyErasureCounter))).IsNull();
         await Assert.That(external.Model.FindEntityType(typeof(PrivacyErasureIntent))!.GetSchema())
             .IsEqualTo("privacy_erasure_authority");
+        await Assert.That(coLocated.Model.FindEntityType(typeof(PrivacyErasureIntent))!.GetSchema())
+            .IsEqualTo("custom_event");
         await Assert.That(embedded.Model.FindEntityType(typeof(PrivacyErasureIntent))!.GetTableName())
-            .IsEqualTo("erasure_intents");
+            .IsEqualTo("ie_erasure_intents");
         await Assert.That(embedded.Model.FindEntityType(typeof(PrivacyErasureIntent))!.GetSchema())
             .IsNull();
         await Assert.That(EmbeddedPrivacyErasureAuthorityDbContext.MigrationsHistoryTable)

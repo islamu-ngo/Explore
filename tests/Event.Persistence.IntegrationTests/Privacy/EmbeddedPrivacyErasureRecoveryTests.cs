@@ -275,7 +275,7 @@ public sealed class EmbeddedPrivacyErasureRecoveryTests
             var connection = (SqliteConnection)context.Database.GetDbConnection();
             await using SqliteCommand command = connection.CreateCommand();
             command.CommandText =
-                "SELECT name FROM sqlite_master WHERE type = 'table' AND name IN ('authority_counter', 'erasure_intents', '__EFPrivacyErasureAuthorityMigrationsHistory')";
+                "SELECT name FROM sqlite_master WHERE type = 'table' AND name IN ('ie_authority_counter', 'ie_erasure_intents', 'ie___EFPrivacyErasureAuthorityMigrationsHistory')";
             await using SqliteDataReader reader = await command.ExecuteReaderAsync();
             await Assert.That(await reader.ReadAsync()).IsFalse();
         }

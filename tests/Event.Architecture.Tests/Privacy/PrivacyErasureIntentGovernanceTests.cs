@@ -24,6 +24,7 @@ public sealed class PrivacyErasureIntentGovernanceTests
         "For ExternalDatabase, API runtime and MigrationService receive separate runtime and migrator authority credentials",
         "mapped to structured privacy-prefixed database fields only in the owning process",
         "EmbeddedSqlite and CoLocated receive no authority database credential and Blazor receives neither secret",
+        "CoLocated reports restoreReplayProtection=false and is backed up and restored atomically with the primary database",
         "dev/active/optional-retained-erasure-authority/**",
         ".omo/evidence/optional-retained-erasure-authority/**",
         "docs/DEPLOYMENT_MODES.md",

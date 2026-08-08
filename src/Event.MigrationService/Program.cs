@@ -7,7 +7,6 @@ using Explore.Persistence;
 using Explore.Persistence.Database;
 using Explore.Persistence.Privacy.ErasureAuthority;
 using Explore.Secrets.Database;
-using Explore.Secrets.Database;
 using Microsoft.EntityFrameworkCore;
 using Npgsql.EntityFrameworkCore.PostgreSQL;
 
@@ -52,10 +51,25 @@ public class Program
         }
         else if (erasureTopology == PrivacyErasureAuthorityTopology.CoLocated)
         {
-            builder.Services.AddDbContext<PrivacyErasureAuthorityDbContext>(options =>
-                PrimaryDatabaseProviderComposition.ConfigureApplication(
-                    options,
-                    databaseOptions));
+            if (databaseOptions.Provider == PrimaryDatabaseProvider.PostgreSql)
+            {
+                builder.Services.AddDbContext<CoLocatedPrivacyErasureAuthorityDbContext>(options =>
+                    PrimaryDatabaseProviderComposition.ConfigureCoLocatedPrivacyErasureAuthority(
+                        options,
+                        databaseOptions));
+            }
+            else if (databaseOptions.Provider == PrimaryDatabaseProvider.Sqlite)
+            {
+                builder.Services.AddDbContext<EmbeddedPrivacyErasureAuthorityDbContext>(options =>
+                    EmbeddedPrivacyErasureAuthorityDbContextFactory.ConfigureCoLocated(
+                        options,
+                        databaseOptions));
+            }
+            else
+            {
+                throw new InvalidOperationException(
+                    "CoLocated currently supports primary PostgreSql or Sqlite databases.");
+            }
         }
         else
         {

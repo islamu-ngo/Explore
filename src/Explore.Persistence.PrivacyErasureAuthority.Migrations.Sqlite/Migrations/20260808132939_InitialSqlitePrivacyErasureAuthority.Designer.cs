@@ -11,8 +11,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Explore.Persistence.PrivacyErasureAuthority.Migrations.Sqlite.Migrations
 {
     [DbContext(typeof(EmbeddedPrivacyErasureAuthorityDbContext))]
-    [Migration("20260802200124_InitialEmbeddedPrivacyErasureAuthority")]
-    partial class InitialEmbeddedPrivacyErasureAuthority
+    [Migration("20260808132939_InitialSqlitePrivacyErasureAuthority")]
+    partial class InitialSqlitePrivacyErasureAuthority
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -31,9 +31,9 @@ namespace Explore.Persistence.PrivacyErasureAuthority.Migrations.Sqlite.Migratio
                         .HasColumnName("last_sequence");
 
                     b.HasKey("Singleton")
-                        .HasName("pk_authority_counter");
+                        .HasName("pk_ie_authority_counter");
 
-                    b.ToTable("authority_counter", null, t =>
+                    b.ToTable("ie_authority_counter", null, t =>
                         {
                             t.HasCheckConstraint("ck_authority_counter_nonnegative", "last_sequence >= 0");
 
@@ -80,16 +80,16 @@ namespace Explore.Persistence.PrivacyErasureAuthority.Migrations.Sqlite.Migratio
                         .HasColumnName("subject_kind");
 
                     b.HasKey("AuthoritySequence")
-                        .HasName("pk_erasure_intents");
+                        .HasName("pk_ie_erasure_intents");
 
                     b.HasAlternateKey("IntentId")
-                        .HasName("ak_erasure_intents_intent_id");
+                        .HasName("ak_ie_erasure_intents_intent_id");
 
                     b.HasIndex("IntentId", "SubjectKind", "PolicyVersion")
                         .IsUnique()
-                        .HasDatabaseName("ix_erasure_intents_intent_id_subject_kind_policy_version");
+                        .HasDatabaseName("ix_ie_erasure_intents_intent_id_subject_kind_policy_version");
 
-                    b.ToTable("erasure_intents", null, t =>
+                    b.ToTable("ie_erasure_intents", null, t =>
                         {
                             t.HasCheckConstraint("ck_erasure_intents_intent_uuid_v7", "substr(intent_id, 15, 1) = '7'");
 

@@ -1,7 +1,8 @@
-// ABOUTME: Maps the embedded authority's singleton monotonic sequence allocator.
-// ABOUTME: Enforces exactly the true singleton key and a non-negative sequence.
+// ABOUTME: Maps the SQLite authority's singleton monotonic sequence allocator.
+// ABOUTME: Uses the fixed ie_ namespace and enforces a non-negative sequence.
 
 using Explore.Domain;
+using Explore.Persistence.Schema;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -12,7 +13,7 @@ public sealed class EmbeddedPrivacyErasureCounterConfiguration
 {
     public void Configure(EntityTypeBuilder<PrivacyErasureCounter> builder)
     {
-        builder.ToTable("authority_counter", table =>
+        builder.ToTable(RelationalModelNamespace.Prefix + "authority_counter", table =>
         {
             table.HasCheckConstraint("ck_authority_counter_singleton", "singleton = 1");
             table.HasCheckConstraint("ck_authority_counter_nonnegative", "last_sequence >= 0");

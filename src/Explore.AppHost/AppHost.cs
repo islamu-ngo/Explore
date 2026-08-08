@@ -61,7 +61,8 @@ var grafanaDashboardPath = Path.Combine(appHostConfigRoot, "grafana-dashboard");
 var pgAdminServersPath = Path.Combine(appHostConfigRoot, "pgadmin", "servers.json");
 var pgAdminPassFilePath = Path.Combine(appHostConfigRoot, "pgadmin", "pgpass");
 Directory.CreateDirectory(localStorageRootPath);
-Directory.CreateDirectory(embeddedPrivacyErasureAuthorityDirectory);
+if (usesEmbeddedPrivacyErasureAuthority)
+    Directory.CreateDirectory(embeddedPrivacyErasureAuthorityDirectory);
 Directory.CreateDirectory(grafanaDashboardPath);
 
 Console.WriteLine("===========================================");

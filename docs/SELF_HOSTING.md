@@ -640,7 +640,8 @@ and separate runtime/migrator roles, then run `event-migrationservice` before
 the API.
 
 For `CoLocated`, no separate authority target is configured and it shares the
-primary application database. Raw authority connection strings are not supported.
+primary `PostgreSql` or `Sqlite` database. Other primary providers are rejected
+for this topology. Raw authority connection strings are not supported.
 See
 [PRIVACY_ERASURE.md](PRIVACY_ERASURE.md) for guidance.
 

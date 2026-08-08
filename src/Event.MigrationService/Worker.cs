@@ -76,8 +76,18 @@ public sealed class Worker(IServiceProvider serviceProvider, IHostApplicationLif
         else if (erasureOptions.Value.Topology == PrivacyErasureAuthorityTopology.CoLocated)
         {
             logger.LogInformation("Applying co-located privacy-erasure authority migrations...");
-            var authorityDb = scope.ServiceProvider.GetRequiredService<PrivacyErasureAuthorityDbContext>();
-            await authorityDb.Database.MigrateAsync(stoppingToken);
+            if (migrationDatabaseOptions.Provider == PrimaryDatabaseProvider.Sqlite)
+            {
+                var authorityDb = scope.ServiceProvider
+                    .GetRequiredService<EmbeddedPrivacyErasureAuthorityDbContext>();
+                await authorityDb.Database.MigrateAsync(stoppingToken);
+            }
+            else
+            {
+                var authorityDb = scope.ServiceProvider
+                    .GetRequiredService<CoLocatedPrivacyErasureAuthorityDbContext>();
+                await authorityDb.Database.MigrateAsync(stoppingToken);
+            }
             logger.LogInformation("Co-located privacy-erasure authority migrations applied successfully.");
         }
         else

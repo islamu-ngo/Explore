@@ -12,7 +12,7 @@ public sealed class PrivacyErasureIntentConfiguration
 {
     public void Configure(EntityTypeBuilder<PrivacyErasureIntent> builder)
     {
-        builder.ToTable("erasure_intents", PrivacyErasureAuthorityDatabaseContract.SchemaName, table =>
+        builder.ToTable("erasure_intents", table =>
         {
             table.HasCheckConstraint("ck_privacy_erasure_intents_sequence", "authority_sequence > 0");
             table.HasCheckConstraint("ck_privacy_erasure_intents_intent_uuid_v7", "substring(intent_id::text, 15, 1) = '7'");

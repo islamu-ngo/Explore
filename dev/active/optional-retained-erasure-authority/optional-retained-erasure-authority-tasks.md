@@ -1,11 +1,27 @@
-<!-- ABOUTME: Progress ledger for preserving privacy erasure intent outside the primary database restore lifecycle. -->
-<!-- ABOUTME: Retains accepted historical work and tracks explicit authority topology settlement through release evidence. -->
+<!-- ABOUTME: Progress ledger for three mutually exclusive privacy-erasure authority topologies. -->
+<!-- ABOUTME: Tracks five-provider CoLocated completion while retaining accepted historical work. -->
 
 # Optional Retained Erasure Authority Tasks
 
-**Status:** Historical semantics accepted; topology settlement in progress
+**Status:** Historical semantics accepted; five-provider `CoLocated` completion in progress
+
+**Last Updated:** 2026-08-08 (Europe/Brussels)
 
 **Rule:** Do not uncheck completed behavior merely because its storage implementation is being replaced.
+
+## Status Summary
+
+- **Overall status:** Re-baselined; implementation paused for session handoff.
+- **Completed rebaseline:** OREA-1009.
+- **Current priority:** OREA-1010.
+- **Next recommended slice:** Provider-neutral co-located authority model and
+  context for all five primary providers; do not start migration regeneration
+  until that model is settled.
+- **Known worktree condition:** Uncommitted implementation, migration, test,
+  intent, and documentation changes overlap Phase 10. Preserve and reconcile
+  them before editing.
+- **Handoff validation:** Planning-only `git diff --check` passed; no runtime
+  build or test command was run for the handoff.
 
 ## Historical Progress Ledger
 
@@ -29,12 +45,12 @@
 - [ ] **OREA-620** Complete independent disaster-recovery drills for target topologies.
 - [x] **OREA-700** Complete initial operational documentation and accepted evidence.
 - [ ] **OREA-710** Revalidate completeness after topology replacement.
-- [ ] **OREA-720** Capture final release evidence for embedded and external modes.
+- [ ] **OREA-720** Capture final release evidence for all three modes.
 
 ## Phase 8: Rebaseline Contracts and Inventory
 
 - [ ] **OREA-799** Restore a green Release build before any runtime authority edit and record unrelated fixes outside this workstream.
-- [ ] **OREA-800** Settle three deployable authority modes (`CoLocated`, `EmbeddedSqlite`, `ExternalDatabase`) as mutually exclusive with one active authority storage destination.
+- [x] **OREA-800** Settle three deployable authority modes (`CoLocated`, `EmbeddedSqlite`, `ExternalDatabase`) as mutually exclusive with one active authority storage destination.
 - [ ] **OREA-801** Define embedded file path, volume, one-writer, local-filesystem, permissions, WAL, private-cache, busy-timeout, and integrity constraints.
 - [ ] **OREA-802** Define privacy-prefixed external structured fields aligned with MDB-101.
 - [ ] **OREA-803** Restrict external authority provider to PostgreSQL initially.
@@ -47,29 +63,39 @@
 
 ## Phase 9: Embedded SQLite Authority
 
-- [ ] **OREA-900** Add a dedicated SQLite authority DbContext and generated migration assembly.
-- [ ] **OREA-901** Register it only for `EmbeddedSqlite`.
-- [ ] **OREA-902** Create/validate the dedicated directory and file with restrictive permissions.
-- [ ] **OREA-903** Initialize WAL once with bounded busy timeout and private cache.
+- [x] **OREA-900** Add a dedicated SQLite authority DbContext and clean generated migration assembly with fixed `ie_` names.
+- [x] **OREA-901** Register the SQLite authority context for `EmbeddedSqlite` and co-located primary SQLite, while registering dedicated storage only for `EmbeddedSqlite`.
+- [x] **OREA-902** Create/validate the dedicated directory and file with restrictive permissions.
+- [x] **OREA-903** Initialize WAL once with bounded busy timeout and private cache.
 - [ ] **OREA-904** Implement monotonic append/read/high-water/floor behavior using SQLite-safe transactions.
 - [ ] **OREA-905** Implement replay and compaction without weakening retained-floor semantics.
 - [ ] **OREA-906** Enforce one API writer/replica and reject network/shared filesystem claims.
-- [ ] **OREA-907** Keep primary and authority SQLite files, contexts, migrations, volumes, health checks, and backups separate.
+- [ ] **OREA-907** Keep primary and authority SQLite files, volumes, health checks, and backups separate for `EmbeddedSqlite`; deliberately share only the physical file for `CoLocated` while keeping contexts and migration histories separate.
 - [ ] **OREA-908** Add real-file append concurrency, restart, replay, compaction, permissions, integrity, and backup/restore tests.
 - [ ] **OREA-909** Complete and evidence OREA-400.
 - [ ] **OREA-910** Record phase build/test evidence.
 
-## Phase 10: Co-Located Cutover and Primary Ledger Removal
+## Phase 10: Co-Located Provider Alignment and Single-Sink Enforcement
 
-- [ ] **OREA-1000** Design the generated migration/export path from deployed co-located authority state to embedded SQLite.
-- [ ] **OREA-1001** Make cutover idempotent, observable, restartable, and rollback-safe.
-- [ ] **OREA-1002** Prove every retained intent row transfers with sequence/floor integrity.
-- [ ] **OREA-1003** Reduce primary authority-specific state to the replay checkpoint.
-- [ ] **OREA-1004** Retain normal saga, transactional outbox, receipt, and completion records required by primary transaction ownership.
-- [ ] **OREA-1005** Remove/retire co-located authority tables, functions, repositories, configuration, and tests only after cutover evidence.
-- [ ] **OREA-1006** Keep MigrationService as the only production migration/cutover owner.
-- [ ] **OREA-1007** Prove rollback cannot fork authority history or resurrect erased data.
+- [x] **OREA-1000** Deliver the historical PostgreSQL/SQLite `CoLocated` slice as a first-class primary-database authority sink.
+- [x] **OREA-1001** Add the historical dedicated co-located PostgreSQL context, generated migration, and direct primary-credential repository.
+- [x] **OREA-1002** Add the historical co-located SQLite path with fixed `ie_` tables and a distinct migration history.
+- [x] **OREA-1003** Apply configurable `DATABASE_SCHEMA` to PostgreSQL and reject any configurable database prefix in the delivered slice.
+- [x] **OREA-1004** Register exactly one authority adapter and no external/embedded authority credential or storage surface in `CoLocated`.
+- [x] **OREA-1005** Keep the primary application model checkpoint-only outside the selected co-located authority context.
+- [x] **OREA-1006** Keep MigrationService as the only production migration owner for the selected topology.
+- [ ] **OREA-1007** Prove co-located atomic backup/restore behavior and report `restoreReplayProtection=false` without claiming restore isolation.
 - [ ] **OREA-1008** Record phase build/test evidence.
+- [x] **OREA-1009** Rebaseline `CoLocated` acceptance to PostgreSQL, SQLite, SQL Server, MariaDB, and MySQL while preserving exactly three mutually exclusive topologies.
+- [ ] **OREA-1010** Replace provider-specific co-located contexts/configurations with one provider-neutral authority model that applies `DATABASE_SCHEMA` to PostgreSQL/SQL Server, fixed `ie_` names to SQLite/MariaDB/MySQL, and the existing MySQL identifier policy.
+- [ ] **OREA-1011** Replace PostgreSQL SQL and co-located SQLite special cases with one EF repository using the existing transaction-scoped `RelationalNamedLock`, including MySQL/MariaDB lock release.
+- [ ] **OREA-1012** Generate dedicated co-located migration lanes for all five providers, keep embedded SQLite migrations separate, and regenerate every unapplied development artifact with `dotnet ef` rather than hand-editing it.
+- [ ] **OREA-1013** Make runtime DI and MigrationService select the same five-provider co-located context/repository and remove the three provider rejection branches.
+- [ ] **OREA-1014** Add fast composition, namespace, model, migration-ownership, topology-exclusivity, and architecture tests for all five providers.
+- [ ] **OREA-1015** Run the real-engine co-located matrix: migrate twice, append/retry/mismatch/concurrency/read ordering, replay, restart, namespace, and exactly-one-sink checks on all five providers.
+- [ ] **OREA-1016** Prove provider-native atomic co-located backup/restore for all five providers and report `restoreReplayProtection=false`.
+- [ ] **OREA-1017** Converge intent acceptance, configuration schema, `.env.example`, operator docs, troubleshooting, testing, backup/restore, and self-hosting guidance on five-provider co-located support and fixed `ie_` behavior.
+- [ ] **OREA-1018** Record Phase 10 build, required project-test, real-engine, migration-generation, and documentation evidence.
 
 ## Phase 11: Startup Replay and Rollback Detection
 
@@ -105,21 +131,25 @@
 - [ ] **OREA-1305** Run authority rollback/replacement failure-closed drill.
 - [ ] **OREA-1306** Run corruption, permission, unavailable-storage, and interrupted-cutover drills.
 - [ ] **OREA-1307** Run independent external PostgreSQL restore drill.
-- [ ] **OREA-1308** Revalidate security, observability, compaction, and performance evidence under both topologies.
+- [ ] **OREA-1308** Revalidate security, observability, compaction, and performance evidence under all three topologies.
 - [ ] **OREA-1309** Complete and evidence OREA-620.
 - [ ] **OREA-1310** Complete and evidence OREA-710 and OREA-720.
 - [ ] **OREA-1311** Run final Release build, architecture tests, file-backed authority tests, external PostgreSQL tests, and documentation-link checks.
 
 ## Settled Decisions
 
-- [x] **OREA-D01** Retained authority must be outside the primary restore lifecycle.
+- [x] **OREA-D01** `EmbeddedSqlite` and `ExternalDatabase` authority must be outside the primary restore lifecycle; `CoLocated` intentionally shares it.
 - [x] **OREA-D02** Default topology is a dedicated embedded SQLite file, with `CoLocated` and `ExternalDatabase` as explicit alternate modes.
 - [x] **OREA-D03** Enterprise topology is a separately restored PostgreSQL database.
-- [x] **OREA-D04** Primary authority state is limited to the replay checkpoint.
+- [x] **OREA-D04** Primary authority state is limited to the replay checkpoint except in `CoLocated`, where the primary database is the selected authority sink.
 - [x] **OREA-D05** Normal saga/outbox/receipt records remain in primary according to transaction ownership.
 - [x] **OREA-D06** Startup replay remains mandatory before readiness.
 - [x] **OREA-D07** Primary checkpoint ahead of authority fails closed.
 - [x] **OREA-D08** External operator configuration uses structured fields, never raw connection strings.
 - [x] **OREA-D09** Embedded mode is one writer on a durable local filesystem.
 - [x] **OREA-D10** Retained authority append precedes acknowledged destructive primary erasure; the primary outbox is not the first durable authority copy.
-- [ ] **OREA-D11** Existing deployment cutover and rollback procedure approved with evidence.
+- [x] **OREA-D11** Pre-v1 provider/topology changes use reset-only development guidance; no automatic cross-mode migration or backward-compatibility shim is required.
+- [x] **OREA-D12** `CoLocated` supports every primary provider: PostgreSQL, SQLite, SQL Server, MariaDB, and MySQL.
+- [x] **OREA-D13** PostgreSQL and SQL Server use `DATABASE_SCHEMA` with default `islamu_event`; SQLite, MariaDB, and MySQL use fixed `ie_`, with no configurable prefix.
+- [x] **OREA-D14** Co-located monotonic allocation reuses one provider-neutral repository and the existing `RelationalNamedLock` instead of adding provider SQL repositories.
+- [x] **OREA-D15** `ExternalDatabase` remains PostgreSQL-only and `EmbeddedSqlite` remains a dedicated SQLite file; expanding `CoLocated` does not expand those provider contracts.

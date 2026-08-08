@@ -317,9 +317,32 @@ public static class PersistenceServicesRegistration
                     ["CoLocated requires a valid primary database runtime configuration."]);
             }
 
-            services.AddDbContext<PrivacyErasureAuthorityDbContext>(options =>
-                PrimaryDatabaseProviderComposition.ConfigureApplication(options, applicationRuntimeOptions));
-            services.AddScoped<IPrivacyErasureAuthority, EfCorePrivacyErasureAuthorityRepository>();
+            if (applicationProvider == PrimaryDatabaseProvider.PostgreSql)
+            {
+                services.AddDbContext<CoLocatedPrivacyErasureAuthorityDbContext>(options =>
+                    PrimaryDatabaseProviderComposition.ConfigureCoLocatedPrivacyErasureAuthority(
+                        options,
+                        applicationRuntimeOptions));
+                services.TryAddSingleton<TimeProvider>(TimeProvider.System);
+                services.AddScoped<IPrivacyErasureAuthority,
+                    CoLocatedPostgresPrivacyErasureAuthorityRepository>();
+            }
+            else if (applicationProvider == PrimaryDatabaseProvider.Sqlite)
+            {
+                services.AddDbContextFactory<EmbeddedPrivacyErasureAuthorityDbContext>(options =>
+                    EmbeddedPrivacyErasureAuthorityDbContextFactory.ConfigureCoLocated(
+                        options,
+                        applicationRuntimeOptions));
+                services.TryAddSingleton<TimeProvider>(TimeProvider.System);
+                services.AddSingleton<IPrivacyErasureAuthority, EmbeddedPrivacyErasureAuthorityRepository>();
+            }
+            else
+            {
+                throw new OptionsValidationException(
+                    nameof(PrivacyErasureDurabilityOptions),
+                    typeof(PrivacyErasureDurabilityOptions),
+                    ["CoLocated currently supports primary PostgreSql or Sqlite databases."]);
+            }
         }
         else
         {

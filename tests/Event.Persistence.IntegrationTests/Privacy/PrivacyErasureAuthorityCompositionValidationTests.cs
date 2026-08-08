@@ -3,14 +3,19 @@
 
 using Explore.Application.Configuration;
 using Explore.Application.Contracts.PrivacyErasure;
+using Explore.Domain;
 using Explore.Persistence;
+using Explore.Persistence.Database;
 using Explore.Persistence.Privacy.ErasureAuthority;
 using Explore.Persistence.Privacy.ErasureAuthority.Repositories;
+using Explore.Secrets.Database;
+using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Npgsql;
+using Testcontainers.PostgreSql;
 
 namespace Event.Persistence.IntegrationTests.Privacy;
 
@@ -54,7 +59,7 @@ public sealed class PrivacyErasureAuthorityCompositionValidationTests
     }
 
     [Test]
-    public async Task CoLocatedTopology_RegistersEfCoreAuthorityAdapterAgainstPrimaryDatabase()
+    public async Task CoLocatedPostgresTopology_RegistersPrimaryDatabaseAuthorityAdapter()
     {
         var settings = PrimaryDatabaseSettings(new NpgsqlConnectionStringBuilder
         {
@@ -77,7 +82,8 @@ public sealed class PrivacyErasureAuthorityCompositionValidationTests
         await using ServiceProvider provider = services.BuildServiceProvider(
             new ServiceProviderOptions { ValidateScopes = true });
         await using AsyncServiceScope scope = provider.CreateAsyncScope();
-        await using PrivacyErasureAuthorityDbContext context = scope.ServiceProvider.GetRequiredService<PrivacyErasureAuthorityDbContext>();
+        await using CoLocatedPrivacyErasureAuthorityDbContext context = scope.ServiceProvider
+            .GetRequiredService<CoLocatedPrivacyErasureAuthorityDbContext>();
 
         await Assert.That(context).IsNotNull();
         await Assert.That(services.Any(descriptor =>
@@ -86,6 +92,123 @@ public sealed class PrivacyErasureAuthorityCompositionValidationTests
             descriptor.ServiceType == typeof(EmbeddedPrivacyErasureAuthorityDbContext))).IsFalse();
         await Assert.That(services.Any(descriptor =>
             descriptor.ServiceType == typeof(EmbeddedPrivacyErasureAuthorityStorage))).IsFalse();
+        await Assert.That(services.Any(descriptor =>
+            descriptor.ServiceType == typeof(PrivacyErasureAuthorityDbContext))).IsFalse();
+    }
+
+    [Test]
+    [Category("Runtime")]
+    [Timeout(240_000)]
+    public async Task CoLocatedPostgresTopology_MigratesAndAppendsInPrimarySchema()
+    {
+        await using var database = new PostgreSqlBuilder("postgres:18-alpine")
+            .WithDatabase("event")
+            .WithUsername("postgres")
+            .WithPassword("postgres")
+            .Build();
+        await database.StartAsync();
+
+        const string schema = "custom_event";
+        var migratorOptions = new DbContextOptionsBuilder<CoLocatedPrivacyErasureAuthorityDbContext>();
+        PrimaryDatabaseProviderComposition.ConfigureCoLocatedPrivacyErasureAuthority(
+            migratorOptions,
+            CreatePostgresOptions(database.GetConnectionString(), PrimaryDatabaseRole.Migrator, schema));
+        await using (var migrator = new CoLocatedPrivacyErasureAuthorityDbContext(migratorOptions.Options))
+        {
+            await migrator.Database.MigrateAsync();
+        }
+
+        var runtimeOptions = new DbContextOptionsBuilder<CoLocatedPrivacyErasureAuthorityDbContext>();
+        PrimaryDatabaseProviderComposition.ConfigureCoLocatedPrivacyErasureAuthority(
+            runtimeOptions,
+            CreatePostgresOptions(database.GetConnectionString(), PrimaryDatabaseRole.Runtime, schema));
+        await using var context = new CoLocatedPrivacyErasureAuthorityDbContext(runtimeOptions.Options);
+        var authority = new CoLocatedPostgresPrivacyErasureAuthorityRepository(
+            context,
+            TimeProvider.System,
+            Options.Create(new PrivacyErasureOptions()));
+        var request = new PrivacyErasureRequest(
+            Guid.CreateVersion7(),
+            PrivacyErasureSubjectKind.User,
+            Guid.CreateVersion7(),
+            PrivacyErasureReasonCode.SubjectErasureRequest,
+            1);
+
+        PrivacyErasureIntent appended = await authority.AppendAsync(request);
+        PrivacyErasureIntent duplicate = await authority.AppendAsync(request);
+        IReadOnlyList<PrivacyErasureIntent> replay = await authority.ReadAfterAsync(0, 10);
+
+        await Assert.That(appended.AuthoritySequence).IsEqualTo(1);
+        await Assert.That(duplicate.AuthoritySequence).IsEqualTo(appended.AuthoritySequence);
+        await Assert.That(replay.Select(item => item.IntentId)).IsEquivalentTo([request.IntentId]);
+        await Assert.That(context.Model.FindEntityType(typeof(PrivacyErasureIntent))!.GetSchema())
+            .IsEqualTo(schema);
+    }
+
+    [Test]
+    public async Task CoLocatedSqliteTopology_UsesPrimaryFileAndFixedPrefixWithoutEmbeddedStorage()
+    {
+        string primaryPath = Path.Combine(
+            Path.GetTempPath(),
+            $"event-primary-{Guid.CreateVersion7():N}.db");
+        IConfiguration configuration = new ConfigurationBuilder().AddInMemoryCollection(
+            new Dictionary<string, string?>
+            {
+                ["Database:Provider"] = "Sqlite",
+                ["Database:Database"] = primaryPath,
+                ["PrivacyErasure:Authority:Topology"] = "CoLocated"
+            }).Build();
+        var services = new ServiceCollection();
+        services.AddOptions<PrivacyErasureOptions>();
+
+        services.ConfigurePersistenceServices(
+            configuration,
+            skipDbContextRegistration: true,
+            skipLookupCacheInitializer: true);
+
+        try
+        {
+            await using ServiceProvider provider = services.BuildServiceProvider(
+                new ServiceProviderOptions { ValidateScopes = true });
+            await using AsyncServiceScope scope = provider.CreateAsyncScope();
+            IPrivacyErasureAuthority authority =
+                scope.ServiceProvider.GetRequiredService<IPrivacyErasureAuthority>();
+            var factory = scope.ServiceProvider
+                .GetRequiredService<IDbContextFactory<EmbeddedPrivacyErasureAuthorityDbContext>>();
+            await using EmbeddedPrivacyErasureAuthorityDbContext context =
+                await factory.CreateDbContextAsync();
+            await context.Database.MigrateAsync();
+            string dataSource = new SqliteConnectionStringBuilder(
+                context.Database.GetConnectionString()).DataSource;
+            var request = PrivacyErasureRequest.Create(
+                Guid.CreateVersion7(),
+                PrivacyErasureSubjectKind.User,
+                Guid.CreateVersion7(),
+                PrivacyErasureReasonCode.SubjectErasureRequest,
+                1);
+            PrivacyErasureIntent retained = await authority.AppendAsync(request);
+            IReadOnlyList<PrivacyErasureIntent> replay = await authority.ReadAfterAsync(0, 10);
+
+            await Assert.That(authority).IsTypeOf<EmbeddedPrivacyErasureAuthorityRepository>();
+            await Assert.That(services.Single(descriptor =>
+                descriptor.ServiceType == typeof(IPrivacyErasureAuthority)).Lifetime)
+                .IsEqualTo(ServiceLifetime.Singleton);
+            await Assert.That(Path.GetFullPath(dataSource)).IsEqualTo(Path.GetFullPath(primaryPath));
+            await Assert.That(context.Model.FindEntityType(typeof(PrivacyErasureIntent))!
+                .GetTableName()).IsEqualTo("ie_erasure_intents");
+            await Assert.That(replay.Select(item => item.IntentId)).Contains(retained.IntentId);
+            await Assert.That(services.Any(descriptor =>
+                descriptor.ServiceType == typeof(EmbeddedPrivacyErasureAuthorityStorage))).IsFalse();
+            await Assert.That(services.Any(descriptor =>
+                descriptor.ServiceType == typeof(PrivacyErasureAuthorityDbContext))).IsFalse();
+        }
+        finally
+        {
+            SqliteConnection.ClearAllPools();
+            File.Delete(primaryPath);
+            File.Delete(primaryPath + "-wal");
+            File.Delete(primaryPath + "-shm");
+        }
     }
 
     [Test]
@@ -181,11 +304,13 @@ public sealed class PrivacyErasureAuthorityCompositionValidationTests
             .IsEqualTo(typeof(EfCorePrivacyErasureAuthorityRepository));
         await Assert.That(coLocated.Single(descriptor =>
             descriptor.ServiceType == typeof(IPrivacyErasureAuthority)).ImplementationType)
-            .IsEqualTo(typeof(EfCorePrivacyErasureAuthorityRepository));
+            .IsEqualTo(typeof(CoLocatedPostgresPrivacyErasureAuthorityRepository));
         await Assert.That(embedded.Any(descriptor =>
             descriptor.ServiceType == typeof(PrivacyErasureAuthorityDbContext))).IsFalse();
         await Assert.That(coLocated.Any(descriptor =>
-            descriptor.ServiceType == typeof(PrivacyErasureAuthorityDbContext))).IsTrue();
+            descriptor.ServiceType == typeof(CoLocatedPrivacyErasureAuthorityDbContext))).IsTrue();
+        await Assert.That(coLocated.Any(descriptor =>
+            descriptor.ServiceType == typeof(PrivacyErasureAuthorityDbContext))).IsFalse();
         await Assert.That(embedded.Count(descriptor =>
             descriptor.ServiceType == typeof(IDbContextFactory<EmbeddedPrivacyErasureAuthorityDbContext>)))
             .IsEqualTo(1);
@@ -251,4 +376,24 @@ public sealed class PrivacyErasureAuthorityCompositionValidationTests
         ["PrivacyErasureAuthorityDatabase:Migrator:Username"] = "migrator",
         ["PrivacyErasureAuthorityDatabase:Migrator:Password"] = "migrator-canary",
     };
+
+    private static PrimaryDatabaseConnectionOptions CreatePostgresOptions(
+        string connectionString,
+        PrimaryDatabaseRole role,
+        string schema)
+    {
+        var target = new NpgsqlConnectionStringBuilder(connectionString);
+        return new PrimaryDatabaseConnectionOptions
+        {
+            Role = role,
+            Provider = PrimaryDatabaseProvider.PostgreSql,
+            Host = target.Host,
+            Port = target.Port,
+            Database = target.Database,
+            Schema = schema,
+            Username = target.Username,
+            Password = target.Password,
+            TlsMode = PrimaryDatabaseTlsMode.Disabled,
+        };
+    }
 }

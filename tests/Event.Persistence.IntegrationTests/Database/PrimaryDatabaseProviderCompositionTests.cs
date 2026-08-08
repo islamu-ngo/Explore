@@ -124,7 +124,7 @@ public sealed class PrimaryDatabaseProviderCompositionTests
     }
 
     [Test]
-    public void MigrationAssemblyContract_IsStableForApplicationAndDataProtection()
+    public void MigrationAssemblyContract_IsStableForAllPrimaryContexts()
     {
         PrimaryDatabaseProviderComposition.GetMigrationsAssemblyName(
                 PrimaryDatabaseProvider.PostgreSql,
@@ -133,6 +133,10 @@ public sealed class PrimaryDatabaseProviderCompositionTests
         PrimaryDatabaseProviderComposition.GetMigrationsAssemblyName(
                 PrimaryDatabaseProvider.PostgreSql,
                 PrimaryDatabaseMigrationTarget.DataProtection)
+            .Should().Be("Explore.Persistence");
+        PrimaryDatabaseProviderComposition.GetMigrationsAssemblyName(
+                PrimaryDatabaseProvider.PostgreSql,
+                PrimaryDatabaseMigrationTarget.CoLocatedPrivacyErasureAuthority)
             .Should().Be("Explore.Persistence");
 
         foreach (var provider in Enum.GetValues<PrimaryDatabaseProvider>()
@@ -146,6 +150,10 @@ public sealed class PrimaryDatabaseProviderCompositionTests
                     provider,
                     PrimaryDatabaseMigrationTarget.DataProtection)
                 .Should().Be($"Explore.Persistence.DataProtection.Migrations.{provider}");
+            FluentActions.Invoking(() => PrimaryDatabaseProviderComposition.GetMigrationsAssemblyName(
+                    provider,
+                    PrimaryDatabaseMigrationTarget.CoLocatedPrivacyErasureAuthority))
+                .Should().Throw<InvalidOperationException>();
         }
     }
 
@@ -175,6 +183,12 @@ public sealed class PrimaryDatabaseProviderCompositionTests
                 dataProtection.Should().Be(("ie___EFDataProtectionMigrationsHistory", null));
             }
         }
+
+        PrimaryDatabaseProviderComposition.GetMigrationsHistoryTable(
+                PrimaryDatabaseProvider.PostgreSql,
+                PrimaryDatabaseMigrationTarget.CoLocatedPrivacyErasureAuthority,
+                "custom_event")
+            .Should().Be(("__EFPrivacyErasureAuthorityMigrationsHistory", "custom_event"));
     }
 
     [Test]

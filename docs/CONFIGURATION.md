@@ -245,13 +245,15 @@ busy timeout, one writer, restrictive permissions, and a separately mounted
 durable volume.
 
 `CoLocated` stores authority facts in the primary application database and uses
-the existing application database credentials.
+the existing application database credentials. It currently supports primary
+`PostgreSql` and `Sqlite`; other primary providers fail configuration validation.
 
 `ExternalDatabase` uses a dedicated authority migration against a different
 physical PostgreSQL database; startup rejects an authority target that resolves to
 the application database even when endpoint identity is obscured by different
-credentials. The application mirror remains in the primary database in both
-`EmbeddedSqlite` and `CoLocated`, and never in `ExternalDatabase`.
+credentials. The primary database keeps only the replay checkpoint in
+`EmbeddedSqlite` and `ExternalDatabase`. `CoLocated` additionally keeps the
+retained authority rows there because the primary database is its sole sink.
 
 | Key | Default | Description |
 |---|---:|---|
@@ -274,8 +276,8 @@ Compose maps `PRIVACY_ERASURE_AUTHORITY_TOPOLOGY`,
 For the external topology it maps `PRIVACY_ERASURE_AUTHORITY_HOST`, `PORT`,
 `DATABASE`, `TLS_MODE`, `TRUST_SERVER_CERTIFICATE`, and the `RUNTIME_*` /
 `MIGRATOR_*` credential families. External fields are ignored by
-`EmbeddedSqlite` and `CoLocated`; back up its dedicated file/volume independently from the
-primary database.
+`EmbeddedSqlite` and `CoLocated`. Back up the embedded file/volume independently;
+include co-located authority rows in the primary database backup.
 Aspire creates a distinct local authority PostgreSQL resource whenever
 `ExternalDatabase` is selected in a profile that uses local data. Profiles
 without local data use operator-provided external infrastructure.

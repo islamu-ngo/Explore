@@ -13,6 +13,7 @@ public enum PrimaryDatabaseMigrationTarget
 {
     Application,
     DataProtection,
+    CoLocatedPrivacyErasureAuthority,
 }
 
 public static class PrimaryDatabaseProviderComposition
@@ -21,6 +22,8 @@ public static class PrimaryDatabaseProviderComposition
     public const string PostgreSqlDataProtectionMigrationsAssembly = "Explore.Persistence";
     internal const string ApplicationMigrationsHistoryTable = "__EFMigrationsHistory";
     internal const string DataProtectionMigrationsHistoryTable = "__EFDataProtectionMigrationsHistory";
+    internal const string CoLocatedPrivacyErasureAuthorityMigrationsHistoryTable =
+        "__EFPrivacyErasureAuthorityMigrationsHistory";
 
     public static PrimaryDatabaseConnectionResult ConfigureApplication(
         DbContextOptionsBuilder optionsBuilder,
@@ -32,21 +35,47 @@ public static class PrimaryDatabaseProviderComposition
         PrimaryDatabaseConnectionOptions options)
         => Configure(optionsBuilder, options, PrimaryDatabaseMigrationTarget.DataProtection);
 
+    public static PrimaryDatabaseConnectionResult ConfigureCoLocatedPrivacyErasureAuthority(
+        DbContextOptionsBuilder optionsBuilder,
+        PrimaryDatabaseConnectionOptions options)
+    {
+        if (options.Provider != PrimaryDatabaseProvider.PostgreSql)
+        {
+            throw new InvalidOperationException(
+                "Co-located PostgreSQL authority composition requires Database:Provider=PostgreSql.");
+        }
+
+        return Configure(
+            optionsBuilder,
+            options,
+            PrimaryDatabaseMigrationTarget.CoLocatedPrivacyErasureAuthority);
+    }
+
     public static string GetMigrationsAssemblyName(
         PrimaryDatabaseProvider provider,
         PrimaryDatabaseMigrationTarget target)
     {
         if (provider == PrimaryDatabaseProvider.PostgreSql)
         {
-            return target == PrimaryDatabaseMigrationTarget.Application
-                ? PostgreSqlApplicationMigrationsAssembly
-                : PostgreSqlDataProtectionMigrationsAssembly;
+            return target switch
+            {
+                PrimaryDatabaseMigrationTarget.Application => PostgreSqlApplicationMigrationsAssembly,
+                PrimaryDatabaseMigrationTarget.DataProtection => PostgreSqlDataProtectionMigrationsAssembly,
+                PrimaryDatabaseMigrationTarget.CoLocatedPrivacyErasureAuthority =>
+                    PostgreSqlApplicationMigrationsAssembly,
+                _ => throw new ArgumentOutOfRangeException(nameof(target)),
+            };
         }
 
         var providerName = provider.ToString();
-        return target == PrimaryDatabaseMigrationTarget.Application
-            ? $"Explore.Persistence.Migrations.{providerName}"
-            : $"Explore.Persistence.DataProtection.Migrations.{providerName}";
+        return target switch
+        {
+            PrimaryDatabaseMigrationTarget.Application => $"Explore.Persistence.Migrations.{providerName}",
+            PrimaryDatabaseMigrationTarget.DataProtection =>
+                $"Explore.Persistence.DataProtection.Migrations.{providerName}",
+            _ => throw new InvalidOperationException(
+                "Co-located authority migrations currently support PostgreSql only."),
+        };
     }
 
     private static PrimaryDatabaseConnectionResult Configure(
@@ -73,10 +102,13 @@ public static class PrimaryDatabaseProviderComposition
                 {
                     providerOptions.MigrationsAssembly(migrationsAssembly);
                     providerOptions.MigrationsHistoryTable(migrationsHistory.Table, migrationsHistory.Schema);
-                    providerOptions.EnableRetryOnFailure(
-                        maxRetryCount: 3,
-                        maxRetryDelay: TimeSpan.FromSeconds(5),
-                        errorCodesToAdd: null);
+                    if (target != PrimaryDatabaseMigrationTarget.CoLocatedPrivacyErasureAuthority)
+                    {
+                        providerOptions.EnableRetryOnFailure(
+                            maxRetryCount: 3,
+                            maxRetryDelay: TimeSpan.FromSeconds(5),
+                            errorCodesToAdd: null);
+                    }
                     providerOptions.CommandTimeout(30);
                     if (target == PrimaryDatabaseMigrationTarget.Application)
                     {
@@ -142,9 +174,14 @@ public static class PrimaryDatabaseProviderComposition
         PrimaryDatabaseMigrationTarget target,
         string schema = PrimaryDatabaseConnectionOptions.DefaultSchema)
     {
-        var table = target == PrimaryDatabaseMigrationTarget.Application
-            ? ApplicationMigrationsHistoryTable
-            : DataProtectionMigrationsHistoryTable;
+        var table = target switch
+        {
+            PrimaryDatabaseMigrationTarget.Application => ApplicationMigrationsHistoryTable,
+            PrimaryDatabaseMigrationTarget.DataProtection => DataProtectionMigrationsHistoryTable,
+            PrimaryDatabaseMigrationTarget.CoLocatedPrivacyErasureAuthority =>
+                CoLocatedPrivacyErasureAuthorityMigrationsHistoryTable,
+            _ => throw new ArgumentOutOfRangeException(nameof(target)),
+        };
 
         return provider is PrimaryDatabaseProvider.PostgreSql or PrimaryDatabaseProvider.SqlServer
             ? (table, schema)

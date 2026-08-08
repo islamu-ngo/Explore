@@ -1,7 +1,8 @@
-// ABOUTME: Maps retained privacy-erasure facts to a provider-correct SQLite authority table.
+// ABOUTME: Maps retained privacy-erasure facts to the fixed ie_-prefixed SQLite authority table.
 // ABOUTME: Stores UTC ticks and enforces sequence, UUIDv7, subject, reason, and retention invariants.
 
 using Explore.Domain;
+using Explore.Persistence.Schema;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -12,7 +13,7 @@ public sealed class EmbeddedPrivacyErasureIntentConfiguration
 {
     public void Configure(EntityTypeBuilder<PrivacyErasureIntent> builder)
     {
-        builder.ToTable("erasure_intents", table =>
+        builder.ToTable(RelationalModelNamespace.Prefix + "erasure_intents", table =>
         {
             table.HasCheckConstraint("ck_erasure_intents_sequence", "authority_sequence > 0");
             table.HasCheckConstraint("ck_erasure_intents_intent_uuid_v7", "substr(intent_id, 15, 1) = '7'");

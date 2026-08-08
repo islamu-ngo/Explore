@@ -1,5 +1,5 @@
-// ABOUTME: Creates the embedded authority context from validated dedicated-file settings.
-// ABOUTME: Keeps design-time migrations aligned with runtime SQLite composition.
+// ABOUTME: Creates the SQLite authority context for dedicated or primary-database storage.
+// ABOUTME: Keeps one generated SQLite migration model aligned across both topologies.
 
 using Explore.Secrets.Database;
 using Microsoft.EntityFrameworkCore;
@@ -33,12 +33,38 @@ public sealed class EmbeddedPrivacyErasureAuthorityDbContextFactory
     public static void Configure(
         DbContextOptionsBuilder options,
         EmbeddedPrivacyErasureAuthorityOptions embedded) =>
+        ConfigureSqlite(options, embedded.BuildConnectionString(), embedded.BusyTimeoutSeconds);
+
+    public static void ConfigureCoLocated(
+        DbContextOptionsBuilder options,
+        PrimaryDatabaseConnectionOptions primaryDatabase)
+    {
+        ArgumentNullException.ThrowIfNull(options);
+        ArgumentNullException.ThrowIfNull(primaryDatabase);
+        if (primaryDatabase.Provider != PrimaryDatabaseProvider.Sqlite)
+        {
+            throw new InvalidOperationException(
+                "CoLocated SQLite authority composition requires Database:Provider=Sqlite.");
+        }
+
+        PrimaryDatabaseConnectionResult database =
+            PrimaryDatabaseConfiguration.BuildConnectionString(primaryDatabase);
+        ConfigureSqlite(
+            options,
+            database.ConnectionString,
+            EmbeddedPrivacyErasureAuthorityOptions.DefaultBusyTimeoutSeconds);
+    }
+
+    private static void ConfigureSqlite(
+        DbContextOptionsBuilder options,
+        string connectionString,
+        int busyTimeoutSeconds) =>
         options.UseSqlite(
-                embedded.BuildConnectionString(),
+                connectionString,
                 sqlite => sqlite
                     .MigrationsAssembly(EmbeddedPrivacyErasureAuthorityDbContext.MigrationsAssembly)
                     .MigrationsHistoryTable(EmbeddedPrivacyErasureAuthorityDbContext.MigrationsHistoryTable))
             .UseSnakeCaseNamingConvention()
-            .AddInterceptors(new EmbeddedPrivacyErasureAuthorityConnectionInterceptor(
-                embedded.BusyTimeoutSeconds));
+            .AddInterceptors(EmbeddedPrivacyErasureAuthorityConnectionInterceptor.For(
+                busyTimeoutSeconds));
 }

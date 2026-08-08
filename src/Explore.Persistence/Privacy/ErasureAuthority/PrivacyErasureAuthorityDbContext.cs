@@ -15,6 +15,7 @@ public sealed class PrivacyErasureAuthorityDbContext(
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        modelBuilder.HasDefaultSchema(PrivacyErasureAuthorityDatabaseContract.SchemaName);
         modelBuilder.ApplyConfiguration(new PrivacyErasureIntentConfiguration());
         modelBuilder.ApplyConfiguration(new PrivacyErasureCounterConfiguration());
     }

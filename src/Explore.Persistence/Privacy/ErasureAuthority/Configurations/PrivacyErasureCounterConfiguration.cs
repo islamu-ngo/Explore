@@ -12,7 +12,7 @@ public sealed class PrivacyErasureCounterConfiguration
 {
     public void Configure(EntityTypeBuilder<PrivacyErasureCounter> builder)
     {
-        builder.ToTable("authority_counter", PrivacyErasureAuthorityDatabaseContract.SchemaName, table =>
+        builder.ToTable("authority_counter", table =>
         {
             table.HasCheckConstraint("ck_privacy_erasure_authority_counter_singleton", "singleton");
             table.HasCheckConstraint("ck_privacy_erasure_authority_counter_nonnegative", "last_sequence >= 0");
