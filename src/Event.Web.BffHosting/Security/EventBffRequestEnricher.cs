@@ -21,14 +21,26 @@ public sealed class EventBffRequestEnricher(
         return await ResolveAsync(httpContext, accessToken, cancellationToken);
     }
 
-    public ValueTask<EventBffTrustedRequest> ResolveForSessionAsync(
+    public async ValueTask<EventBffTrustedRequest> ResolveForSessionAsync(
         HttpContext httpContext,
         AuthenticateResult session,
         CancellationToken cancellationToken)
     {
+        ArgumentNullException.ThrowIfNull(httpContext);
         ArgumentNullException.ThrowIfNull(session);
+        ArgumentNullException.ThrowIfNull(session.Principal);
         var accessToken = session.Properties?.GetTokenValue("access_token");
-        return ResolveAsync(httpContext, accessToken, cancellationToken);
+        var originalPrincipal = httpContext.User;
+        httpContext.User = session.Principal;
+
+        try
+        {
+            return await ResolveAsync(httpContext, accessToken, cancellationToken);
+        }
+        finally
+        {
+            httpContext.User = originalPrincipal;
+        }
     }
 
     private async ValueTask<EventBffTrustedRequest> ResolveAsync(

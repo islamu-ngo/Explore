@@ -45,7 +45,7 @@ The browser never owns access tokens. Interactive UI calls go through the BFF or
 
 The Standalone topology keeps one API endpoint graph: controller routes, API versioning, authentication schemes, authorization, rate limits, and API middleware remain API-owned. The Blazor `Combined` profile omits only Split transport concerns (YARP and remote-API readiness); it retains the BFF, OIDC session, Razor/static assets, SignalR, render policy, antiforgery issuance, and BFF endpoint graph.
 
-Version and boundary invariants stay fixed across both topologies: `Explore.API` continues to own `/api/*` behavior, including route policy, header/`api-version` negotiation, and versioned contract stability. Standalone does not add URL-version segments or alternate API policy.
+Version and boundary invariants stay fixed across both topologies: `Explore.API` continues to own `/api/*` behavior, including route policy and version parsing from the `Accept` media-type parameter, `?api-version=`, or `X-Api-Version`. Standalone does not add URL-version segments or alternate API policy.
 
 Operationally, AppHost selects Standalone for local topology runs; direct `Event.Standalone` launch profiles remain available for development. `docker-compose.yml` remains Split-only, and no standalone Docker descriptor exists yet; a Standalone topology selection does not set the primary provider to SQLite.
 
@@ -68,7 +68,7 @@ Both Topology modes issue `XSRF-TOKEN` from the BFF and require unsafe browser A
 
 Standalone couples UI and API availability, deployment, and scaling to one process. Choose Split when independent host scaling, independently deployed failure domains, or a network boundary between BFF and API is required. Combined removes the network hop and YARP proxy diagnostics; it does not relax token secrecy, header sanitation, API authorization, HAL affordance gating, or the requirement to keep browser tokens out of client storage.
 
-The three application composition roots use the same contract: AppHost defaults to Split, while explicit Standalone uses `WithHttpEndpoint(name: "http")` for dynamic/non-guaranteed internal HTTP and explicit HTTPS `https://localhost:7180`; direct `Event.Standalone` launch profiles reserve `http://localhost:5180`. It owns Combined startup/readiness once. Revert by selecting Split again; this does not roll back data. Standalone neither changes the SQLite provider choice nor adds `docker-compose.yml`; API routes remain `/api/...` with non-URL API versioning, never `/api/v1/...` (see [the support matrix](ARCHITECTURE.md#hosting-topology)).
+The three application composition roots use the same contract: AppHost defaults to Split, while explicit Standalone uses `WithHttpEndpoint(name: "http")` for dynamic/non-guaranteed internal HTTP and explicit HTTPS `https://localhost:7180`; direct `Event.Standalone` launch profiles reserve `http://localhost:5180`. AppHost waits for migration completion and selected infrastructure, then `Event.Standalone` owns Combined startup/readiness once. Revert by selecting Split again; this does not roll back data. Standalone neither changes the SQLite provider choice nor adds `docker-compose.yml`; API routes remain `/api/...` with non-URL API versioning, never `/api/v1/...` (see [the support matrix](ARCHITECTURE.md#hosting-topology)).
 
 ## Render Mode Boundary
 

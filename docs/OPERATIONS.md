@@ -6,7 +6,7 @@ ABOUTME: Captures current behavior implemented in API, Blazor BFF, migration ser
 > **Audience:** Operators | Contributors | AI agents
 > **Status:** Mixed
 > **Owner:** Platform/Ops
-> **Last Verified:** 2026-07-04
+> **Last Verified:** 2026-08-05
 > **Source Anchors:** `Explore.AppHost/AppHost.cs`, `Explore.API/Program.cs`, `Explore.API/HealthChecks/StorageReadinessHealthCheck.cs`, `Explore.API/HealthChecks/StorageReconciliationHealthCheck.cs`, `Explore.API/BackgroundServices/StorageReconciliationProcessor.cs`, `Explore.Infrastructure/StorageObjectDeletionService.cs`, `Explore.ServiceDefaults/`, `docker-compose.yml`, `docs/SELF_HOSTING.md`, `docs/BACKUP_RESTORE_UPGRADE.md`, `docs/TROUBLESHOOTING.md`
 
 This page is the operational reference for implemented runtime behavior. Task procedures should live in dedicated runbooks and be linked from here.
@@ -121,6 +121,10 @@ Hosting__Topology=Standalone aspire run --apphost src/Explore.AppHost/Explore.Ap
 | `Standalone` (opt-in) | `Event.Standalone` only | Combined UI and `/api/*`: `https://localhost:7180`; HTTP via `WithHttpEndpoint(name: "http")` (dynamic/non-guaranteed) | The combined host waits for migrations and shared infrastructure directly; Keycloak callbacks target its one browser endpoint and `/api/*` uses the in-process bridge, not YARP. |
 
 The three application composition roots are `Explore.API`, `Explore.Blazor`, and `Event.Standalone`; AppHost orchestrates the selected set. `/api/*` contract behavior remains unchanged between topologies. API routes, HAL boundaries, rate limits, and version parsing remain API-owned and stable; Standalone only swaps transport from out-of-process YARP forwarding to in-process bridge forwarding.
+
+The Combined in-process bridge is still the BFF/API trust boundary: it
+sanitizes browser headers and reconstructs the server-held bearer request before
+the API pipeline authorizes it.
 
 AppHost publishes dynamic/non-guaranteed internal HTTP via `WithHttpEndpoint(name: "http")`; HTTPS remains `https://localhost:7180`. Direct `Event.Standalone` launch profiles reserve `http://localhost:5180` (and `https://localhost:7180` for the HTTPS profile).
 

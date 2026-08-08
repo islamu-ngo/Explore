@@ -79,6 +79,16 @@ public static class MiddlewareExtensions
         return app;
     }
 
+    public static IApplicationBuilder UseAntiforgeryTokenMiddleware(
+        this IApplicationBuilder app,
+        WebApplication host)
+    {
+        var antiforgery = host.Services.GetRequiredService<IAntiforgery>();
+        var secureCookie = !host.Environment.IsDevelopment();
+        app.Use((ctx, next) => DistributeAntiforgeryTokenAsync(ctx, next, antiforgery, secureCookie));
+        return app;
+    }
+
     /// <summary>
     /// Redirects "/" to "/setup" when onboarding is incomplete, and vice versa.
     /// Also gates authentication entry points (/login, /auth/login, /auth/challenge) so that
@@ -95,7 +105,21 @@ public static class MiddlewareExtensions
         return app;
     }
 
+    public static IApplicationBuilder UseStartupRedirectMiddleware(
+        this IApplicationBuilder app,
+        WebApplication host)
+    {
+        app.Use((ctx, next) => HandleStartupRedirectAsync(ctx, next, host.Logger));
+        return app;
+    }
+
     public static WebApplication UsePathTenantResolverMiddleware(this WebApplication app)
+    {
+        app.UseMiddleware<PathTenantResolverMiddleware>();
+        return app;
+    }
+
+    public static IApplicationBuilder UsePathTenantResolverMiddleware(this IApplicationBuilder app)
     {
         app.UseMiddleware<PathTenantResolverMiddleware>();
         return app;
@@ -106,6 +130,12 @@ public static class MiddlewareExtensions
     /// Avoids .GetAwaiter().GetResult() anti-pattern in synchronous component code.
     /// </summary>
     public static WebApplication UseAccessTokenCaptureMiddleware(this WebApplication app)
+    {
+        app.Use(CaptureAccessTokenAsync);
+        return app;
+    }
+
+    public static IApplicationBuilder UseAccessTokenCaptureMiddleware(this IApplicationBuilder app)
     {
         app.Use(CaptureAccessTokenAsync);
         return app;
@@ -122,6 +152,14 @@ public static class MiddlewareExtensions
         return app;
     }
 
+    public static IApplicationBuilder UseBffDiagnosticsMiddleware(
+        this IApplicationBuilder app,
+        WebApplication host)
+    {
+        app.Use((ctx, next) => LogUnauthenticatedBffRequestsAsync(ctx, next, host.Logger));
+        return app;
+    }
+
     /// <summary>
     /// Server-side authentication gate for onboarding entry routes that must require a logged-in user.
     /// Razor [Authorize] is inert in this app (App.razor uses CascadingAuthenticationState without
@@ -129,6 +167,12 @@ public static class MiddlewareExtensions
     /// the authoritative gate that redirects anonymous GETs to /login before any component renders.
     /// </summary>
     public static WebApplication UseOnboardingAuthGateMiddleware(this WebApplication app)
+    {
+        app.Use(EnforceOnboardingAuthGateAsync);
+        return app;
+    }
+
+    public static IApplicationBuilder UseOnboardingAuthGateMiddleware(this IApplicationBuilder app)
     {
         app.Use(EnforceOnboardingAuthGateAsync);
         return app;

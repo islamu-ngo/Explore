@@ -21,7 +21,7 @@ There are three application composition roots: `Explore.API` owns the Split API 
 | Topology | Processes and localhost endpoint | Startup and readiness ownership |
 |---|---|---|
 | Split default | `Explore.API` at `https://localhost:7039` and `Explore.Blazor` at `https://localhost:7177` | AppHost waits for migrations before both hosts and makes the BFF wait for API readiness. Each host owns its own process startup. |
-| Standalone / Combined | one `Event.Standalone` process at `https://localhost:7180`; AppHost also publishes a dynamic internal HTTP endpoint | The combined root starts API initialization before Blazor initialization and owns API workers, migration/seeding gates, shared service defaults, health, and shutdown exactly once. The Combined BFF profile does not register YARP or remote-API readiness. |
+| Standalone / Combined | one `Event.Standalone` process at `https://localhost:7180`; AppHost also publishes a dynamic internal HTTP endpoint | AppHost waits for migration completion and selected infrastructure; the combined root then starts API initialization before Blazor initialization and owns API workers, health, and shutdown exactly once. The Combined BFF profile does not register YARP or remote-API readiness. |
 
 AppHost exposes the optional Standalone HTTP endpoint through
 `WithHttpEndpoint(name: "http")` (dynamic/non-guaranteed internal HTTP), with HTTPS canonical on

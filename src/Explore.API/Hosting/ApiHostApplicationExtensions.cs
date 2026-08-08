@@ -19,65 +19,100 @@ public static class ApiHostApplicationExtensions
 {
     public static WebApplication UseApiHostMiddleware(
         this WebApplication app,
-        ApiHostCompositionState state)
+        ApiHostCompositionState state,
+        Func<HttpContext, bool>? predicate = null,
+        bool includeForwardedHeaders = true)
     {
         ArgumentNullException.ThrowIfNull(app);
         ArgumentNullException.ThrowIfNull(state);
 
+        if (predicate is not null)
+        {
+            app.UseWhen(predicate, branch => UseApiHostMiddlewareBeforeScheduler(
+                branch,
+                app,
+                state,
+                includeForwardedHeaders));
+            UseApiHostScheduler(app, state);
+            app.UseWhen(predicate, UseApiHostMiddlewareAfterScheduler);
+            return app;
+        }
+
+        UseApiHostMiddlewareBeforeScheduler(app, app, state, includeForwardedHeaders);
+        UseApiHostScheduler(app, state);
+        UseApiHostMiddlewareAfterScheduler(app);
+        return app;
+    }
+
+    private static void UseApiHostMiddlewareBeforeScheduler(
+        IApplicationBuilder pipeline,
+        WebApplication app,
+        ApiHostCompositionState state,
+        bool includeForwardedHeaders)
+    {
         if (app.Environment.IsDevelopment() ||
             app.Environment.IsEnvironment("Testing") ||
             state.IsOpenApiGeneration)
         {
-            app.UseSwagger();
-            app.UseSwaggerUI(options =>
+            pipeline.UseSwagger();
+            pipeline.UseSwaggerUI(options =>
                 options.SwaggerEndpoint("/swagger/v0.1/swagger.json", "Explore API v0.1"));
         }
 
         if (app.Environment.IsDevelopment() || app.Environment.IsEnvironment("Testing"))
         {
             Microsoft.IdentityModel.Logging.IdentityModelEventSource.ShowPII = true;
-            app.UseCors("DevPolicy");
+            pipeline.UseCors("DevPolicy");
         }
         else
         {
-            app.UseCors("InternalAppPolicy");
-            app.UseHsts();
+            pipeline.UseCors("InternalAppPolicy");
+            pipeline.UseHsts();
         }
 
-        app.UseApiExceptionHandling();
-        app.UseForwardedHeaders();
-        app.UseSecurityHeaders();
-        app.UseCorrelationId();
-        app.UseRequestLogging();
-        app.UseResponseCompression();
+        pipeline.UseApiExceptionHandling();
+        if (includeForwardedHeaders)
+        {
+            pipeline.UseForwardedHeaders();
+        }
+        pipeline.UseSecurityHeaders();
+        pipeline.UseCorrelationId();
+        pipeline.UseRequestLogging();
+        pipeline.UseResponseCompression();
         if (state.HttpsRedirectionEnabled)
         {
-            app.UseHttpsRedirection();
+            pipeline.UseHttpsRedirection();
         }
 
-        app.UseHateoas();
-        app.UseRouting();
-        app.UseMiddleware<ApiTenantResolutionMiddleware>();
-        app.UseRequestTimeouts();
-        app.UseMiddleware<ApiAuthenticationConflictMiddleware>();
-        app.UseAuthentication();
-        app.UseMiddleware<ApiTenantPostAuthenticationMiddleware>();
-        app.UseMiddleware<McpRuntimeGateMiddleware>();
-        app.UseRequestLocalization();
-        app.UseRateLimiter();
-        app.UseAuthorization();
-        app.UseMiddleware<IdempotencyMiddleware>();
-        app.UseMiddleware<SupportAccessAuditMiddleware>();
+        pipeline.UseHateoas();
+        pipeline.UseRouting();
+        pipeline.UseMiddleware<ApiTenantResolutionMiddleware>();
+        pipeline.UseRequestTimeouts();
+        pipeline.UseMiddleware<ApiAuthenticationConflictMiddleware>();
+        pipeline.UseAuthentication();
+        pipeline.UseMiddleware<ApiTenantPostAuthenticationMiddleware>();
+        pipeline.UseMiddleware<McpRuntimeGateMiddleware>();
+        pipeline.UseRequestLocalization();
+        pipeline.UseRateLimiter();
+        pipeline.UseAuthorization();
+        pipeline.UseMiddleware<IdempotencyMiddleware>();
+        pipeline.UseMiddleware<SupportAccessAuditMiddleware>();
+    }
+
+    private static void UseApiHostScheduler(WebApplication app, ApiHostCompositionState state)
+    {
         if (!state.IsOpenApiGeneration &&
             state.UseTickerQEmailDispatch &&
             TickerQSchedulerExtensions.IsTickerQSchedulerEnabled(app.Configuration, app.Environment))
         {
             app.UseApiTickerQScheduler();
         }
+    }
 
-        app.UseOutputCache();
-        app.UseETag();
-        return app;
+    private static void UseApiHostMiddlewareAfterScheduler(IApplicationBuilder pipeline)
+    {
+        pipeline.UseOutputCache();
+        pipeline.UseETag();
     }
 
     public static WebApplication MapApiHostEndpoints(

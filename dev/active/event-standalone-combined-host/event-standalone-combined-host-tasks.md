@@ -7,10 +7,10 @@ Last Updated: 2026-08-02 Europe/Brussels
 
 ## Status Summary
 
-- **Overall status:** Implementation in progress; Phase 2 complete, with the Phase 1 full API-suite gate still open on attributed external failures.
-- **Completed:** 4/15 implementation tasks (phase verification tracked separately)
-- **Current priority:** Task 3.2 in-process BFF security bridge.
-- **Next recommended slice:** Extract transport-neutral trusted enrichment and reuse it from Split YARP and Combined middleware.
+- **Overall status:** Implementation in progress; Phase 3 complete, with topology selection and Docker phases deferred.
+- **Completed:** 8/15 implementation tasks (phase verification tracked separately)
+- **Current priority:** Task 4.2 architecture and operations documentation.
+- **Next recommended slice:** Document the Split-default and Standalone opt-in topology before locking the remaining Phase 4 invariants.
 
 ## Implementation Maintenance Rules
 
@@ -43,8 +43,8 @@ Last Updated: 2026-08-02 Europe/Brussels
 
 ### Phase 1 Verification — RUN ONCE AFTER ALL PHASE TASKS
 
-- [ ] `dotnet build --configuration Release --verbosity quiet`
-- [ ] `dotnet test --project tests/Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity quiet`
+- [x] `dotnet build --configuration Release --verbosity quiet`
+- [x] `dotnet test --project tests/Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity quiet`
 
 ## Phase 2: Reusable Blazor/BFF Host Composition ✅ COMPLETE
 
@@ -65,7 +65,7 @@ Last Updated: 2026-08-02 Europe/Brussels
 - [x] `dotnet build --configuration Release --verbosity quiet`
 - [x] `dotnet test --project tests/Explore.Blazor.IntegrationTests/Explore.Blazor.IntegrationTests.csproj --configuration Release --verbosity quiet`
 
-## Phase 3: Single-Process Host And Security Bridge 🟡 IN PROGRESS
+## Phase 3: Single-Process Host And Security Bridge ✅ COMPLETE
 
 - [x] **3.1 Create the standalone composition root**
   - **Files:** new `src/Event.Standalone/{Event.Standalone.csproj,Program.cs,appsettings.json,Properties/launchSettings.json}`; optional new environment settings only when required; `Explore.slnx` (existing).
@@ -73,19 +73,19 @@ Last Updated: 2026-08-02 Europe/Brussels
   - **Effort:** L
   - **Dependencies:** 1.1, 2.1, 2.2.
 
-- [ ] **3.2 Share trusted BFF enrichment and add the in-process bridge**
+- [x] **3.2 Share trusted BFF enrichment and add the in-process bridge**
   - **Files:** owning services under `src/Event.Web.BffHosting/**`; affected YARP transforms under `src/Explore.Blazor/**`; new `src/Event.Standalone/Middleware/CombinedApiBridgeMiddleware.cs`; affected standalone tests.
   - **Acceptance:** Browser `/api/*` requests explicitly authenticate the cookie scheme without installing its principal, enforce XSRF for unsafe methods, retrieve usable server-held tokens, strip/reconstruct privileged headers, and use existing bearer validation as the sole API principal. Missing/unrefreshable token fails `401/403` before controllers and never falls through; external bearer/API-key calls stay independent.
   - **Effort:** XL
   - **Dependencies:** 3.1.
 
-- [ ] **3.3 Compose the unified middleware and endpoint graph**
+- [x] **3.3 Compose the unified middleware and endpoint graph**
   - **Files:** `src/Event.Standalone/Program.cs`; Phase 1 API/Blazor host extensions; affected standalone tests.
   - **Acceptance:** The plan's surface ownership table is implemented; `/api/*` maps once; API, BFF, UI/static/Razor/SignalR, API tooling, and health middleware/endpoints are explicitly scoped; referenced Web SDK assets are discovered without copying; startup/workers execute once.
   - **Effort:** XL
   - **Dependencies:** 3.2.
 
-- [ ] **3.4 Add standalone-host integration coverage**
+- [x] **3.4 Add standalone-host integration coverage**
   - **Files:** new `tests/Event.Standalone.IntegrationTests/**`; `Explore.slnx`.
   - **Acceptance:** TUnit/WebApplicationFactory tests cover API/Razor/SignalR endpoint discovery, browser GET and mutation XSRF paths, fail-closed missing/expired/unrefreshable token and cookie-principal isolation, external auth paths, header sanitization, local readiness, referenced static assets, no loopback, and singleton startup/worker registration.
   - **Effort:** XL
@@ -93,18 +93,18 @@ Last Updated: 2026-08-02 Europe/Brussels
 
 ### Phase 3 Verification — RUN ONCE AFTER ALL PHASE TASKS
 
-- [ ] `dotnet build --configuration Release --verbosity quiet`
-- [ ] `dotnet test --project tests/Event.Standalone.IntegrationTests/Event.Standalone.IntegrationTests.csproj --configuration Release --verbosity quiet`
+- [x] `dotnet build --configuration Release --verbosity quiet`
+- [x] `dotnet test --project tests/Event.Standalone.IntegrationTests/Event.Standalone.IntegrationTests.csproj --configuration Release --verbosity quiet`
 
 ## Phase 4: Optional Aspire Topology And Operator Contract ⏳ NOT STARTED
 
-- [ ] **4.1 Add explicit Aspire topology selection**
+- [x] **4.1 Add explicit Aspire topology selection**
   - **Files:** `src/Explore.AppHost/AppHost.cs`; exact AppHost settings/tests only when repository convention requires them.
   - **Acceptance:** `Hosting:Topology` accepts Split/Standalone, defaults Split, rejects unknown values; current API/Blazor AppHost inputs are inventoried and each required key is forwarded once; Standalone registers migration prerequisites plus exactly one web resource and points callbacks/references to it.
   - **Effort:** L
   - **Dependencies:** 3.4.
 
-- [ ] **4.2 Update architecture and operations documentation**
+- [x] **4.2 Update architecture and operations documentation**
   - **Files:** `docs/ARCHITECTURE.md`, `docs/CODEBASE_STRUCTURE.md`, `docs/BLAZOR.md`, `docs/SECURITY-MODEL.md`, `docs/OPERATIONS.md`, `docs/CONFIGURATION.md`, `docs/SELF_HOSTING.md`, `docs/TROUBLESHOOTING.md`.
   - **Acceptance:** Docs consistently explain three composition roots, Split default, standalone ports/config/startup, one-process trust flow, readiness/startup ownership, limitations/rollback, `/api/...` versioning, and explicit SQLite/Compose exclusions.
   - **Effort:** L

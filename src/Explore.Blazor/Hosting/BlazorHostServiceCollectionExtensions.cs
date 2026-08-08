@@ -80,7 +80,11 @@ public static class BlazorHostServiceCollectionExtensions
         builder.Services.AddApplicationServices();
         builder.Services.AddServerOnlyServices(builder.Configuration);
         builder.Services.AddEventControlPlaneClient();
-        builder.Services.AddApiHttpClients(builder.Configuration, builder.Environment);
+        builder.Services.AddApiHttpClients(builder.Configuration, builder.Environment, profile);
+        if (profile == BlazorHostProfile.Combined)
+        {
+            builder.Services.AddSingleton<DynamicAuthSchemeInitializer>();
+        }
 
         var detailedErrors = builder.Configuration.GetValue<bool>("DetailedErrors");
         builder.Services.AddRazorComponents()
@@ -136,7 +140,8 @@ public static class BlazorHostServiceCollectionExtensions
         });
 
         builder.Services.AddControllersWithViews(options =>
-            options.Filters.Add(new AutoValidateAntiforgeryTokenAttribute()));
+                options.Filters.Add(new AutoValidateAntiforgeryTokenAttribute()))
+            .AddApplicationPart(typeof(BlazorHostServiceCollectionExtensions).Assembly);
 
         var healthChecks = builder.Services.AddHealthChecks();
         if (profile == BlazorHostProfile.Split)

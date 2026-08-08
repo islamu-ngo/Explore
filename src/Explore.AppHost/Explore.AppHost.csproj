@@ -25,6 +25,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Event.MigrationService\Event.MigrationService.csproj" />
+    <ProjectReference Include="..\Event.Standalone\Event.Standalone.csproj" />
     <ProjectReference Include="..\Explore.API\Explore.API.csproj" />
     <ProjectReference Include="..\Explore.Blazor\Explore.Blazor.csproj" />
     <ProjectReference Include="..\Explore.Infrastructure\Explore.Infrastructure.csproj" IsAspireProjectResource="false" />

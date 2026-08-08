@@ -23,18 +23,19 @@ Last Updated: 2026-08-02 Europe/Brussels
 - Independently closed the Phase 2 gate after a 20-second no-writer window: Release build succeeded with 35 projects and 0 errors; all 409 Blazor integration tests passed with no reflection-resolver signature; port 5200 and task-owned temporary artifacts were clean.
 - Context7 documentation lookup was attempted as requested but could not authenticate because the configured OAuth token is invalid or expired. No Context7 claim was substituted; official Tavily/primary-source evidence is retained instead.
 - Completed Task 3.1: the new `Event.Standalone` .NET 10 Web SDK project references the API and Blazor hosts, is registered under the solution's existing API hosting group, uses launch ports 5180/7180, and composes one API-owned common/startup/shutdown state with the Combined Blazor profile. Split retains its existing common registrations; Combined omits duplicate service defaults, common readiness/health, and shutdown middleware while preserving BFF/UI-specific services. Independent evidence includes a 12-project targeted Release build with 0 errors, focused profile tests 5/5, and locked-mode restore against the retained generated NuGet lock file.
+- Completed Task 3.2: Split YARP and the new Combined bridge reuse one `EventBffRequestEnricher` for token, tenant, setup-secret, and support-session reconstruction. `/api/*` uses explicit cookie classification only, shared antiforgery rules, fail-closed token handling, shared privileged-header sanitation, and the existing `MultiAuth` API scheme; non-cookie external bearer/API-key traffic remains unchanged. The independent security review found and verified a repair that scopes the cookie principal only while user-bound trusted providers resolve, restores it in `finally`, and clears it before downstream API authentication. Focused evidence is green: Standalone 9/9, sanitizer 3/3, Split proxy 20/20, shared architecture 3/3, targeted build 0 errors.
+- Completed Task 3.3: Unified middleware and endpoint ownership is now composed in `Event.Standalone` with `UseWhen` path predicates, explicit API/Blazor boundary isolation, no `/api` self-proxy recursion, explicit assembly registration for API application parts, and in-process API transport wiring.
+- Completed Task 3.4: Added and green-passed standalone integration coverage in `CombinedApiBridgeMiddlewareTests`, `StandaloneHostGraphTests`, and `InProcessEventApiTransportTests`; verified API/tooling/UI/SignalR ownership, token fail-close semantics, header trust resets, external auth behavior, no loopback, and startup/worker execution.
 
 ### 🟡 IN PROGRESS
 
-- Task 3.2 transport-neutral trusted BFF enrichment and in-process API bridge.
-- Phase 1 API integration-suite re-verification remains open until the owning persistence/auth/snapshot inputs materially change.
+- Phase 1 API integration-suite re-verification remains open until owning persistence/auth/snapshot inputs materially change.
 
 ### ⏭️ NEXT
 
-1. Extract transport-neutral privileged-header sanitization/enrichment from the current YARP path and implement the fail-closed Combined API bridge.
-2. Compose the exact unified middleware/endpoint ownership graph and prove referenced static assets without copying.
-3. Rerun the Phase 1 API integration project only after its out-of-scope persistence/auth/snapshot inputs materially change and shared build writers are quiet.
-4. Coordinate with `multi-database-support` workstream for its structured `DatabaseOptions` contract before Phase 5.
+1. Implement Phase 4: add explicit `Hosting:Topology` selection to `Explore.AppHost` (Split default, Standalone opt-in) and assert forwarding invariants.
+2. Re-run Phase 1 API integration suite only when owning dependency inputs change or failures become in-scope.
+3. Coordinate with `multi-database-support` workstream for its structured `DatabaseOptions` contract before Phase 5.
 
 ### ⚠️ BLOCKERS
 
@@ -116,13 +117,13 @@ Last Updated: 2026-08-02 Europe/Brussels
 
 ## Handoff Notes
 
-### Handoff — 2026-08-02 Europe/Brussels
+### Handoff — 2026-08-05 Europe/Brussels
 
-- **Current state:** Planning complete; implementation has not started. Runtime remains unchanged.
-- **Next action:** Restore/confirm a green external baseline, then start Task 1.1.
-- **Blockers:** Existing 13-error Release build failure outside this workstream.
-- **Modified files:** Only the three files in `dev/active/event-standalone-combined-host/`.
-- **Validation:** Planning artifacts must pass `git diff --check`; no implementation suites should be run for plan verification.
-- **Documentation impact:** Runtime docs are named in Task 4.2 but intentionally not edited before implementation.
-- **Risks:** Combined middleware/auth order and static web asset discovery.
-- **Notes for next contributor/agent:** Phases 1–4 focus on host composition. Phase 5 adds SQLite default with provider override (coordinate with `multi-database-support` workstream). Phase 6 adds Docker packaging. Do not solve the current unrelated compile errors under this plan. Preserve split mode at every slice.
+- **Current state:** Task 3.3 and Task 3.4 are complete; phase-3 verification is green (`dotnet build`, `Event.Standalone.IntegrationTests`).
+- **Next action:** Implement explicit Aspire topology selection and phase-4 invariants.
+- **Blockers:** External/ownership failures remain in `Event.API.IntegrationTests` due persistence/auth/snapshot state.
+- **Modified files:** `src/Event.Standalone/Program.cs`; `src/Event.Standalone/Middleware/CombinedApiBridgeMiddleware.cs`; `src/Event.Web.BffHosting/Security/*`; `src/Explore.API/Hosting/ApiHostApplicationExtensions.cs`; `src/Explore.Blazor/{Extensions,Hosting,Services}/...`; `tests/Event.Standalone.IntegrationTests/**`; and phase 3 workstream docs.
+- **Validation:** `dotnet build --configuration Release --verbosity quiet`; `dotnet test --project tests/Event.Standalone.IntegrationTests/Event.Standalone.IntegrationTests.csproj --configuration Release --verbosity quiet`.
+- **Documentation impact:** Runtime docs remain open for Phase 4–6 updates.
+- **Risks:** Combined middleware/auth order and static web asset discovery are now guarded by phase 3 tests; monitor when topology logic is added.
+- **Notes for next contributor/agent:** Do not patch unrelated owning failures from other workstreams; keep Split as default and Standalone explicit.

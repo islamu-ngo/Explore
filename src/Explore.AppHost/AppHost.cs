@@ -22,12 +22,15 @@ if (File.Exists(dotenvPath))
     Env.NoClobber().Load(dotenvPath);
 var builder = DistributedApplication.CreateBuilder(args);
 var runMode = AspireRunModeExtensions.Parse(builder.Configuration["ISLAMU_ASPIRE_MODE"]);
+var hostingTopology = ParseHostingTopology(builder.Configuration["Hosting:Topology"]);
 var eventLocationPrivacyMigrationStage =
     builder.Configuration["Database:Migrations:EventLocationPrivacyStage"];
 var privacyErasureTopology = ParsePrivacyErasureTopology(ConfiguredValue(
     builder.Configuration,
     "PRIVACY_ERASURE_AUTHORITY_TOPOLOGY",
     nameof(PrivacyErasureAuthorityTopology.EmbeddedSqlite)));
+var usesEmbeddedPrivacyErasureAuthority =
+    privacyErasureTopology == PrivacyErasureAuthorityTopology.EmbeddedSqlite;
 var usesExternalPrivacyErasureAuthority =
     privacyErasureTopology == PrivacyErasureAuthorityTopology.ExternalDatabase;
 var webhookProvider = ConfiguredValue(
@@ -64,6 +67,7 @@ Directory.CreateDirectory(grafanaDashboardPath);
 Console.WriteLine("===========================================");
 Console.WriteLine("Explore AppHost - Local Development Orchestrator");
 Console.WriteLine($"Mode: {runMode}");
+Console.WriteLine($"Hosting topology: {hostingTopology}");
 Console.WriteLine("local-full: full local platform; local-default: lightweight local platform; local-core: local data/cache; local-lite: external infrastructure");
 Console.WriteLine("===========================================");
 
@@ -131,7 +135,7 @@ var migrations = WithProfileSecretMode(
         builder.Configuration)
     .WithEnvironment("PrivacyErasure__Authority__Topology", privacyErasureTopology.ToString());
 
-if (privacyErasureTopology == PrivacyErasureAuthorityTopology.EmbeddedSqlite)
+if (usesEmbeddedPrivacyErasureAuthority)
 {
     migrations = WithEmbeddedPrivacyErasureAuthority(
         migrations,
@@ -172,166 +176,296 @@ else if (usesExternalPrivacyErasureAuthority)
 
 migrations = ConfigureLocalMailpitSmtp(migrations, mailpit, builder.Configuration);
 
-var exploreAPI = WithProfileSecretMode(
-        builder.AddProject<Projects.Explore_API>(
-                "explore-api",
-                ExcludeProjectLaunchProfile)
-            .WithHttpEndpoint(name: "http")
-            .WithHttpsEndpoint(port: 7039, name: "https"),
-        runMode,
-        builder.Configuration)
-    .WithEnvironment("HttpsRedirection__Enabled", "false")
-    .WithEnvironment("CONTROL_PLANE_PUBLIC_ORIGIN", ConfiguredValue(builder.Configuration, "CONTROL_PLANE_PUBLIC_ORIGIN", "http://admin.localhost:7002"))
-    .WithEnvironment("Cerbos__PolicyPackagePath", cerbosPolicyPackagePath)
-    .WithEnvironment("Storage__Local__RootPath", localStorageRootPath)
-    .WithEnvironment("Storage__Local__CreateRootIfMissing", "true")
-    .WithEnvironment("StorageReconciliation__Enabled", "true")
-    .WithEnvironment("StorageReconciliation__DryRun", "true")
-    .WithEnvironment("PrivacyErasure__Authority__Topology", privacyErasureTopology.ToString())
-    .WaitFor(mailpit);
-
-if (privacyErasureTopology == PrivacyErasureAuthorityTopology.EmbeddedSqlite)
-{
-    exploreAPI = WithEmbeddedPrivacyErasureAuthority(
-        exploreAPI,
-        embeddedPrivacyErasureAuthorityPath,
-        embeddedPrivacyErasureAuthorityBusyTimeout);
-}
-
-exploreAPI = ConfigureLocalMailpitSmtp(exploreAPI, mailpit, builder.Configuration);
-
-if (!string.IsNullOrWhiteSpace(eventLocationPrivacyMigrationStage))
-{
-    exploreAPI = exploreAPI.WithEnvironment("Database__Migrations__EventLocationPrivacyStage", eventLocationPrivacyMigrationStage);
-}
-
 var vapidPublicKey = builder.Configuration["VAPID_PUBLIC_KEY"];
 var vapidPrivateKey = builder.Configuration["VAPID_PRIVATE_KEY"];
 var vapidSubject = builder.Configuration["VAPID_SUBJECT"];
-if (!string.IsNullOrWhiteSpace(vapidPublicKey))
-    exploreAPI = exploreAPI.WithEnvironment("VAPID_PUBLIC_KEY", vapidPublicKey);
-if (!string.IsNullOrWhiteSpace(vapidSubject))
-    exploreAPI = exploreAPI.WithEnvironment("VAPID_SUBJECT", vapidSubject);
-if (!string.IsNullOrWhiteSpace(vapidPrivateKey))
-{
-    var vapidPrivateKeyParameter = builder.AddParameterFromConfiguration(
-        "vapid-private-key",
-        "VAPID_PRIVATE_KEY",
-        secret: true);
-    exploreAPI = exploreAPI.WithEnvironment("VAPID_PRIVATE_KEY", vapidPrivateKeyParameter);
-}
 
-exploreAPI = exploreAPI
-    .WithReference(migrations)
-    .WaitForCompletion(migrations);
-
-if (database is not null)
+if (hostingTopology == HostingTopology.Split)
 {
-    exploreAPI = WithLocalPrimaryDatabase(exploreAPI, database, PrimaryDatabaseRole.Runtime)
-        .WaitFor(database);
+    var exploreAPI = WithProfileSecretMode(
+            builder.AddProject<Projects.Explore_API>(
+                    "explore-api",
+                    ExcludeProjectLaunchProfile)
+                .WithHttpEndpoint(name: "http")
+                .WithHttpsEndpoint(port: 7039, name: "https"),
+            runMode,
+            builder.Configuration)
+        .WithEnvironment("HttpsRedirection__Enabled", "false")
+        .WithEnvironment("CONTROL_PLANE_PUBLIC_ORIGIN", ConfiguredValue(builder.Configuration, "CONTROL_PLANE_PUBLIC_ORIGIN", "http://admin.localhost:7002"))
+        .WithEnvironment("Cerbos__PolicyPackagePath", cerbosPolicyPackagePath)
+        .WithEnvironment("Storage__Local__RootPath", localStorageRootPath)
+        .WithEnvironment("Storage__Local__CreateRootIfMissing", "true")
+        .WithEnvironment("StorageReconciliation__Enabled", "true")
+        .WithEnvironment("StorageReconciliation__DryRun", "true")
+        .WithEnvironment("PrivacyErasure__Authority__Topology", privacyErasureTopology.ToString())
+        .WaitFor(mailpit);
+
+    if (usesEmbeddedPrivacyErasureAuthority)
+    {
+        exploreAPI = WithEmbeddedPrivacyErasureAuthority(
+            exploreAPI,
+            embeddedPrivacyErasureAuthorityPath,
+            embeddedPrivacyErasureAuthorityBusyTimeout);
+    }
+
+    exploreAPI = ConfigureLocalMailpitSmtp(exploreAPI, mailpit, builder.Configuration);
+
+    if (!string.IsNullOrWhiteSpace(eventLocationPrivacyMigrationStage))
+    {
+        exploreAPI = exploreAPI.WithEnvironment("Database__Migrations__EventLocationPrivacyStage", eventLocationPrivacyMigrationStage);
+    }
+
+    if (!string.IsNullOrWhiteSpace(vapidPublicKey))
+        exploreAPI = exploreAPI.WithEnvironment("VAPID_PUBLIC_KEY", vapidPublicKey);
+    if (!string.IsNullOrWhiteSpace(vapidSubject))
+        exploreAPI = exploreAPI.WithEnvironment("VAPID_SUBJECT", vapidSubject);
+    if (!string.IsNullOrWhiteSpace(vapidPrivateKey))
+    {
+        var vapidPrivateKeyParameter = builder.AddParameterFromConfiguration(
+            "vapid-private-key",
+            "VAPID_PRIVATE_KEY",
+            secret: true);
+        exploreAPI = exploreAPI.WithEnvironment("VAPID_PRIVATE_KEY", vapidPrivateKeyParameter);
+    }
+
+    exploreAPI = exploreAPI
+        .WithReference(migrations)
+        .WaitForCompletion(migrations);
+
+    if (database is not null)
+    {
+        exploreAPI = WithLocalPrimaryDatabase(exploreAPI, database, PrimaryDatabaseRole.Runtime)
+            .WaitFor(database);
+    }
+    else
+    {
+        exploreAPI = WithExternalPrimaryDatabase(builder, exploreAPI, PrimaryDatabaseRole.Runtime);
+    }
+
+    if (privacyErasureDatabase is not null)
+    {
+        exploreAPI = WithLocalPrivacyErasureAuthorityDatabase(
+                exploreAPI,
+                privacyErasureDatabase,
+                PrimaryDatabaseRole.Runtime)
+            .WaitFor(privacyErasureDatabase);
+    }
+    else if (usesExternalPrivacyErasureAuthority)
+    {
+        exploreAPI = WithExternalPrivacyErasureAuthorityDatabase(
+            builder,
+            exploreAPI,
+            PrimaryDatabaseRole.Runtime);
+    }
+
+    if (cache is not null)
+    {
+        exploreAPI = exploreAPI
+            .WithReference(cache)
+            .WaitFor(cache);
+    }
+
+    if (messaging is not null)
+    {
+        exploreAPI = exploreAPI
+            .WithReference(messaging)
+            .WaitFor(messaging)
+            .WithEnvironment("EmailDispatchRabbitMq__Enabled", "true");
+    }
+    else
+    {
+        exploreAPI = exploreAPI.WithEnvironment("EmailDispatchRabbitMq__Enabled", "false");
+    }
+
+    if (localPlatformResources is not null)
+    {
+        exploreAPI = ConfigureLocalPlatformApi(
+                exploreAPI,
+                localPlatformResources,
+                builder.Configuration)
+            .WaitFor(localPlatformResources.Keycloak)
+            .WaitFor(localPlatformResources.Cerbos)
+            .WaitFor(localPlatformResources.Minio);
+    }
+
+    // Service discovery (via WithReference) automatically resolves the API URL at runtime.
+    // Do NOT hardcode ExploreAPI__BaseUrl here — Aspire assigns dynamic ports.
+    var exploreBlazor = WithProfileSecretMode(
+            builder.AddProject<Projects.Explore_Blazor>(
+                    "explore-blazor",
+                    ExcludeProjectLaunchProfile)
+                .WithHttpEndpoint(name: "http")
+                .WithHttpsEndpoint(port: 7177, name: "https"),
+            runMode,
+            builder.Configuration)
+        .WithReference(exploreAPI)
+        .WaitFor(exploreAPI)
+        .WithEnvironment("Bff__AdminHosts__0", ConfiguredValue(builder.Configuration, "CONTROL_PLANE_PUBLIC_ORIGIN", "http://admin.localhost:7002"))
+        .WithEnvironment("Storage__Local__RootPath", localStorageRootPath);
+
+    if (localPlatformResources is not null)
+    {
+        localPlatformResources = localPlatformResources with
+        {
+            KeycloakInit = ConfigureLocalKeycloakCallbacks(
+                localPlatformResources.KeycloakInit,
+                exploreBlazor,
+                builder.Configuration)
+        };
+    }
+
+    exploreBlazor = exploreBlazor
+        .WithReference(migrations)
+        .WaitForCompletion(migrations);
+
+    if (database is not null)
+    {
+        exploreBlazor = WithLocalPrimaryDatabase(exploreBlazor, database, PrimaryDatabaseRole.Runtime)
+            .WaitFor(database);
+    }
+    else
+    {
+        exploreBlazor = WithExternalPrimaryDatabase(builder, exploreBlazor, PrimaryDatabaseRole.Runtime);
+    }
+
+    if (cache is not null)
+    {
+        exploreBlazor = exploreBlazor
+            .WithReference(cache)
+            .WaitFor(cache);
+    }
+
+    if (localPlatformResources is not null)
+    {
+        exploreBlazor = ConfigureLocalPlatformBlazor(exploreBlazor, localPlatformResources, builder.Configuration)
+            .WaitFor(localPlatformResources.Keycloak);
+    }
 }
 else
 {
-    exploreAPI = WithExternalPrimaryDatabase(builder, exploreAPI, PrimaryDatabaseRole.Runtime);
-}
+    var eventStandalone = WithProfileSecretMode(
+            builder.AddProject<Projects.Event_Standalone>(
+                    "event-standalone",
+                    ExcludeProjectLaunchProfile)
+                .WithHttpEndpoint(name: "http")
+                .WithHttpsEndpoint(port: 7180, name: "https"),
+            runMode,
+            builder.Configuration)
+        .WithEnvironment("HttpsRedirection__Enabled", "false")
+        .WithEnvironment("CONTROL_PLANE_PUBLIC_ORIGIN", ConfiguredValue(builder.Configuration, "CONTROL_PLANE_PUBLIC_ORIGIN", "http://admin.localhost:7002"))
+        .WithEnvironment("Cerbos__PolicyPackagePath", cerbosPolicyPackagePath)
+        .WithEnvironment("Storage__Local__RootPath", localStorageRootPath)
+        .WithEnvironment("Storage__Local__CreateRootIfMissing", "true")
+        .WithEnvironment("StorageReconciliation__Enabled", "true")
+        .WithEnvironment("StorageReconciliation__DryRun", "true")
+        .WithEnvironment("PrivacyErasure__Authority__Topology", privacyErasureTopology.ToString())
+        .WithEnvironment("Bff__AdminHosts__0", ConfiguredValue(builder.Configuration, "CONTROL_PLANE_PUBLIC_ORIGIN", "http://admin.localhost:7002"))
+        .WaitFor(mailpit);
 
-if (privacyErasureDatabase is not null)
-{
-    exploreAPI = WithLocalPrivacyErasureAuthorityDatabase(
-            exploreAPI,
-            privacyErasureDatabase,
-            PrimaryDatabaseRole.Runtime)
-        .WaitFor(privacyErasureDatabase);
-}
-else if (usesExternalPrivacyErasureAuthority)
-{
-    exploreAPI = WithExternalPrivacyErasureAuthorityDatabase(
-        builder,
-        exploreAPI,
-        PrimaryDatabaseRole.Runtime);
-}
+    if (usesEmbeddedPrivacyErasureAuthority)
+    {
+        eventStandalone = WithEmbeddedPrivacyErasureAuthority(
+            eventStandalone,
+            embeddedPrivacyErasureAuthorityPath,
+            embeddedPrivacyErasureAuthorityBusyTimeout);
+    }
 
-if (cache is not null)
-{
-    exploreAPI = exploreAPI
-        .WithReference(cache)
-        .WaitFor(cache);
-}
+    eventStandalone = ConfigureLocalMailpitSmtp(eventStandalone, mailpit, builder.Configuration);
 
-if (messaging is not null)
-{
-    exploreAPI = exploreAPI
-        .WithReference(messaging)
-        .WaitFor(messaging)
-        .WithEnvironment("EmailDispatchRabbitMq__Enabled", "true");
-}
-else
-{
-    exploreAPI = exploreAPI.WithEnvironment("EmailDispatchRabbitMq__Enabled", "false");
-}
+    if (!string.IsNullOrWhiteSpace(eventLocationPrivacyMigrationStage))
+    {
+        eventStandalone = eventStandalone.WithEnvironment("Database__Migrations__EventLocationPrivacyStage", eventLocationPrivacyMigrationStage);
+    }
 
-if (localPlatformResources is not null)
-{
-    exploreAPI = ConfigureLocalPlatformApi(
-            exploreAPI,
+    if (!string.IsNullOrWhiteSpace(vapidPublicKey))
+        eventStandalone = eventStandalone.WithEnvironment("VAPID_PUBLIC_KEY", vapidPublicKey);
+    if (!string.IsNullOrWhiteSpace(vapidSubject))
+        eventStandalone = eventStandalone.WithEnvironment("VAPID_SUBJECT", vapidSubject);
+    if (!string.IsNullOrWhiteSpace(vapidPrivateKey))
+    {
+        var vapidPrivateKeyParameter = builder.AddParameterFromConfiguration(
+            "vapid-private-key",
+            "VAPID_PRIVATE_KEY",
+            secret: true);
+        eventStandalone = eventStandalone.WithEnvironment("VAPID_PRIVATE_KEY", vapidPrivateKeyParameter);
+    }
+
+    eventStandalone = eventStandalone
+        .WithReference(migrations)
+        .WaitForCompletion(migrations);
+
+    if (database is not null)
+    {
+        eventStandalone = WithLocalPrimaryDatabase(
+                eventStandalone,
+                database,
+                PrimaryDatabaseRole.Runtime)
+            .WaitFor(database);
+    }
+    else
+    {
+        eventStandalone = WithExternalPrimaryDatabase(builder, eventStandalone, PrimaryDatabaseRole.Runtime);
+    }
+
+    if (privacyErasureDatabase is not null)
+    {
+        eventStandalone = WithLocalPrivacyErasureAuthorityDatabase(
+                eventStandalone,
+                privacyErasureDatabase,
+                PrimaryDatabaseRole.Runtime)
+            .WaitFor(privacyErasureDatabase);
+    }
+    else if (usesExternalPrivacyErasureAuthority)
+    {
+        eventStandalone = WithExternalPrivacyErasureAuthorityDatabase(
+            builder,
+            eventStandalone,
+            PrimaryDatabaseRole.Runtime);
+    }
+
+    if (cache is not null)
+    {
+        eventStandalone = eventStandalone
+            .WithReference(cache)
+            .WaitFor(cache);
+    }
+
+    if (messaging is not null)
+    {
+        eventStandalone = eventStandalone
+            .WithReference(messaging)
+            .WaitFor(messaging)
+            .WithEnvironment("EmailDispatchRabbitMq__Enabled", "true");
+    }
+    else
+    {
+        eventStandalone = eventStandalone.WithEnvironment("EmailDispatchRabbitMq__Enabled", "false");
+    }
+
+    if (localPlatformResources is not null)
+    {
+        localPlatformResources = localPlatformResources with
+        {
+            KeycloakInit = ConfigureLocalKeycloakCallbacks(
+                localPlatformResources.KeycloakInit,
+                eventStandalone,
+                builder.Configuration)
+        };
+
+        eventStandalone = ConfigureLocalPlatformApi(
+                eventStandalone,
+                localPlatformResources,
+                builder.Configuration)
+            .WaitFor(localPlatformResources.Keycloak)
+            .WaitFor(localPlatformResources.Cerbos)
+            .WaitFor(localPlatformResources.Minio);
+
+        eventStandalone = ConfigureLocalPlatformBlazor(
+            eventStandalone,
             localPlatformResources,
             builder.Configuration)
-        .WaitFor(localPlatformResources.Keycloak)
-        .WaitFor(localPlatformResources.Cerbos)
-        .WaitFor(localPlatformResources.Minio);
-}
-
-// Service discovery (via WithReference) automatically resolves the API URL at runtime.
-// Do NOT hardcode ExploreAPI__BaseUrl here — Aspire assigns dynamic ports.
-var exploreBlazor = WithProfileSecretMode(
-        builder.AddProject<Projects.Explore_Blazor>(
-                "explore-blazor",
-                ExcludeProjectLaunchProfile)
-            .WithHttpEndpoint(name: "http")
-            .WithHttpsEndpoint(port: 7177, name: "https"),
-        runMode,
-        builder.Configuration)
-    .WithReference(exploreAPI)
-    .WaitFor(exploreAPI)
-    .WithEnvironment("Bff__AdminHosts__0", ConfiguredValue(builder.Configuration, "CONTROL_PLANE_PUBLIC_ORIGIN", "http://admin.localhost:7002"))
-    .WithEnvironment("Storage__Local__RootPath", localStorageRootPath);
-
-if (localPlatformResources is not null)
-{
-    localPlatformResources = localPlatformResources with
-    {
-        KeycloakInit = ConfigureLocalKeycloakCallbacks(
-            localPlatformResources.KeycloakInit,
-            exploreBlazor,
-            builder.Configuration)
-    };
-}
-
-exploreBlazor = exploreBlazor
-    .WithReference(migrations)
-    .WaitForCompletion(migrations);
-
-if (database is not null)
-{
-    exploreBlazor = WithLocalPrimaryDatabase(exploreBlazor, database, PrimaryDatabaseRole.Runtime)
-        .WaitFor(database);
-}
-else
-{
-    exploreBlazor = WithExternalPrimaryDatabase(builder, exploreBlazor, PrimaryDatabaseRole.Runtime);
-}
-
-if (cache is not null)
-{
-    exploreBlazor = exploreBlazor
-        .WithReference(cache)
-        .WaitFor(cache);
-}
-
-if (localPlatformResources is not null)
-{
-    exploreBlazor = ConfigureLocalPlatformBlazor(exploreBlazor, localPlatformResources, builder.Configuration)
-        .WaitFor(localPlatformResources.Keycloak);
+            .WaitFor(localPlatformResources.Keycloak);
+    }
 }
 
 await builder.Build().RunAsync();
@@ -1138,8 +1272,37 @@ static PrivacyErasureAuthorityTopology ParsePrivacyErasureTopology(string value)
         return PrivacyErasureAuthorityTopology.ExternalDatabase;
     }
 
+    if (string.Equals(
+            value,
+            nameof(PrivacyErasureAuthorityTopology.CoLocated),
+            StringComparison.OrdinalIgnoreCase))
+    {
+        return PrivacyErasureAuthorityTopology.CoLocated;
+    }
+
     throw new InvalidOperationException(
-        "PRIVACY_ERASURE_AUTHORITY_TOPOLOGY must be EmbeddedSqlite or ExternalDatabase.");
+        "PRIVACY_ERASURE_AUTHORITY_TOPOLOGY must be EmbeddedSqlite, CoLocated, or ExternalDatabase.");
+}
+
+static HostingTopology ParseHostingTopology(string? rawValue)
+{
+    if (string.IsNullOrWhiteSpace(rawValue))
+    {
+        return HostingTopology.Split;
+    }
+
+    if (string.Equals(rawValue.Trim(), nameof(HostingTopology.Split), StringComparison.OrdinalIgnoreCase))
+    {
+        return HostingTopology.Split;
+    }
+
+    if (string.Equals(rawValue.Trim(), nameof(HostingTopology.Standalone), StringComparison.OrdinalIgnoreCase))
+    {
+        return HostingTopology.Standalone;
+    }
+
+    throw new InvalidOperationException(
+        "Hosting:Topology must be Split or Standalone.");
 }
 
 static IResourceBuilder<ProjectResource> WithProfileSecretMode(
@@ -1236,6 +1399,12 @@ static string ConfiguredValue(IConfiguration configuration, string key, string f
 static bool UsesSvixProvider(string provider) =>
     string.Equals(provider, WebhookOptions.ProviderSvix, StringComparison.OrdinalIgnoreCase) ||
     string.Equals(provider, WebhookOptions.ProviderComposite, StringComparison.OrdinalIgnoreCase);
+
+internal enum HostingTopology
+{
+    Split,
+    Standalone
+}
 
 internal enum AspireRunMode
 {

@@ -6,6 +6,7 @@ using Explore.Blazor.Client.Contracts.Services;
 using Explore.Blazor.Client.Extensions;
 using Explore.Blazor.Client.Services;
 using Explore.Blazor.HealthChecks;
+using Explore.Blazor.Hosting;
 using Explore.Blazor.Services;
 using Explore.Blazor.Services.Auth;
 using Microsoft.Extensions.Http.Resilience;
@@ -26,15 +27,29 @@ public static class HttpClientExtensions
     public static IServiceCollection AddApiHttpClients(
         this IServiceCollection services,
         IConfiguration configuration,
-        IWebHostEnvironment environment)
+        IWebHostEnvironment environment) =>
+        services.AddApiHttpClients(configuration, environment, BlazorHostProfile.Split);
+
+    public static IServiceCollection AddApiHttpClients(
+        this IServiceCollection services,
+        IConfiguration configuration,
+        IWebHostEnvironment environment,
+        BlazorHostProfile profile)
     {
-        var apiBaseUrl = ResolveApiBaseUrl(configuration);
+        var apiBaseUrl = profile == BlazorHostProfile.Combined
+            ? InProcessEventApiDispatcher.InternalBaseAddress.AbsoluteUri
+            : ResolveApiBaseUrl(configuration);
 
         services.AddTransient<AccessTokenForwardingHandler>();
         services.AddTransient<TenantHeaderForwardingHandler>();
         services.AddTransient<SetupSecretForwardingHandler>();
         services.AddTransient<SupportAccessForwardingHandler>();
         services.AddTransient<BffCookieForwardingHandler>();
+        if (profile == BlazorHostProfile.Combined)
+        {
+            services.AddSingleton<InProcessEventApiDispatcher>();
+            services.AddTransient<InProcessEventApiHttpMessageHandler>();
+        }
 
         // Named "BffSelfClient" — used by InteractiveServer components calling BFF endpoints on this server.
         // No BaseAddress here; components set it from NavigationManager.BaseUri at runtime.
@@ -43,7 +58,7 @@ public static class HttpClientExtensions
             .ConfigureDevCertBypass(environment, allowAutoRedirect: false);
 
         // Typed NSwag-generated API client
-        services.AddTypedApiClient<IEventApiClient, EventApiClient>(apiBaseUrl, environment)
+        services.AddTypedApiClient<IEventApiClient, EventApiClient>(apiBaseUrl, environment, profile)
             .AddInteractiveResilience();
 
         services.AddScoped<ILocalizationAdminService, LocalizationAdminService>();
@@ -53,14 +68,14 @@ public static class HttpClientExtensions
         {
             client.BaseAddress = new Uri(apiBaseUrl);
             client.Timeout = TimeSpan.FromSeconds(5);
-        }).ConfigureDevCertBypass(environment)
+        }).ConfigureApiTransport(environment, profile)
           .AddAdminResilience();
 
         services.AddHttpClient(ApiBackedOAuthSessionStore.HttpClientName, client =>
         {
             client.BaseAddress = new Uri(apiBaseUrl);
             client.Timeout = TimeSpan.FromSeconds(20);
-        }).ConfigureDevCertBypass(environment);
+        }).ConfigureApiTransport(environment, profile);
 
         return services;
     }
@@ -68,7 +83,8 @@ public static class HttpClientExtensions
     private static IHttpClientBuilder AddTypedApiClient<TInterface, TImplementation>(
         this IServiceCollection services,
         string baseUrl,
-        IWebHostEnvironment environment)
+        IWebHostEnvironment environment,
+        BlazorHostProfile profile)
         where TInterface : class
         where TImplementation : class, TInterface
     {
@@ -80,8 +96,16 @@ public static class HttpClientExtensions
         .AddHttpMessageHandler<TenantHeaderForwardingHandler>()
         .AddHttpMessageHandler<SetupSecretForwardingHandler>()
         .AddHttpMessageHandler<SupportAccessForwardingHandler>()
-        .ConfigureDevCertBypass(environment);
+        .ConfigureApiTransport(environment, profile);
     }
+
+    private static IHttpClientBuilder ConfigureApiTransport(
+        this IHttpClientBuilder builder,
+        IWebHostEnvironment environment,
+        BlazorHostProfile profile) =>
+        profile == BlazorHostProfile.Combined
+            ? builder.ConfigurePrimaryHttpMessageHandler<InProcessEventApiHttpMessageHandler>()
+            : builder.ConfigureDevCertBypass(environment);
 
     // Interactive BFF->API calls use a lean custom pipeline: no circuit breaker (same-machine
     // traffic; a shared breaker trips unrelated UI requests after a single slow endpoint), one

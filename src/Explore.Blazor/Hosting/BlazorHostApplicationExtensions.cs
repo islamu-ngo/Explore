@@ -17,14 +17,19 @@ public static class BlazorHostApplicationExtensions
         BlazorHostProfile profile)
     {
         ValidateProfile(app, profile);
-        await app.InitializeDynamicAuthSchemesAsync();
+        if (profile == BlazorHostProfile.Split)
+        {
+            await app.InitializeDynamicAuthSchemesAsync();
+        }
+
         return app;
     }
 
     public static WebApplication UseBlazorHostMiddleware(
         this WebApplication app,
         BlazorHostProfile profile,
-        GracefulShutdownState shutdownState)
+        GracefulShutdownState shutdownState,
+        Func<HttpContext, bool>? predicate = null)
     {
         ArgumentNullException.ThrowIfNull(shutdownState);
         ValidateProfile(app, profile);
@@ -46,43 +51,57 @@ public static class BlazorHostApplicationExtensions
             app.MapDefaultEndpoints();
         }
 
+        if (predicate is not null)
+        {
+            app.UseWhen(predicate, branch => UseBlazorHostMiddlewareCore(branch, app, profile));
+            return app;
+        }
+
+        UseBlazorHostMiddlewareCore(app, app, profile);
+        return app;
+    }
+
+    private static void UseBlazorHostMiddlewareCore(
+        IApplicationBuilder pipeline,
+        WebApplication app,
+        BlazorHostProfile profile)
+    {
         if (app.Environment.IsDevelopment())
         {
-            app.UseWebAssemblyDebugging();
-            app.UseDeveloperExceptionPage();
+            pipeline.UseWebAssemblyDebugging();
+            pipeline.UseDeveloperExceptionPage();
         }
         else
         {
-            app.UseExceptionHandler("/Error", createScopeForErrors: true);
-            app.UseHsts();
+            pipeline.UseExceptionHandler("/Error", createScopeForErrors: true);
+            pipeline.UseHsts();
         }
 
-        app.UseWhen(
+        pipeline.UseWhen(
             context => !context.Request.Path.StartsWithSegments(
                 "/bff",
                 StringComparison.OrdinalIgnoreCase),
             branch => branch.UseStatusCodePagesWithReExecute(
                 "/errors/{0}",
                 createScopeForStatusCodePages: true));
-        app.UseHttpsRedirection();
-        app.UseStartupRedirectMiddleware();
-        app.UsePathTenantResolverMiddleware();
-        app.UseRouting();
-        app.UseAuthentication();
-        app.UseAntiforgeryTokenMiddleware();
-        app.UseRequestLocalization();
-        app.UseAccessTokenCaptureMiddleware();
-        app.UseBffDiagnosticsMiddleware();
-        app.UseOnboardingAuthGateMiddleware();
-        app.UseAuthorization();
+        pipeline.UseHttpsRedirection();
+        pipeline.UseStartupRedirectMiddleware(app);
+        pipeline.UsePathTenantResolverMiddleware();
+        pipeline.UseRouting();
+        pipeline.UseAuthentication();
+        pipeline.UseAntiforgeryTokenMiddleware(app);
+        pipeline.UseRequestLocalization();
+        pipeline.UseAccessTokenCaptureMiddleware();
+        pipeline.UseBffDiagnosticsMiddleware(app);
+        pipeline.UseOnboardingAuthGateMiddleware();
+        pipeline.UseAuthorization();
         if (profile == BlazorHostProfile.Split)
         {
-            app.UseEventApiProxyAntiforgery();
+            pipeline.UseEventApiProxyAntiforgery();
         }
 
-        app.UseRateLimiter();
-        app.UseAntiforgery();
-        return app;
+        pipeline.UseRateLimiter();
+        pipeline.UseAntiforgery();
     }
 
     public static WebApplication MapBlazorHostEndpoints(
@@ -91,7 +110,10 @@ public static class BlazorHostApplicationExtensions
     {
         ValidateProfile(app, profile);
 
-        app.MapControllers();
+        if (profile == BlazorHostProfile.Split)
+        {
+            app.MapControllers();
+        }
 
         if (app.Environment.IsDevelopment())
         {

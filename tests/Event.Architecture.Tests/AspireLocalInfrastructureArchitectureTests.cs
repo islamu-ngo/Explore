@@ -65,18 +65,22 @@ public sealed class AspireLocalInfrastructureArchitectureTests
             ".WithEnvironment(\"Database__Migrations__EventLocationPrivacyStage\", eventLocationPrivacyMigrationStage)";
 
         await Assert.That(appHost.Split(configurationRead, StringSplitOptions.None).Length - 1).IsEqualTo(1);
-        await Assert.That(appHost.Split(environmentMapping, StringSplitOptions.None).Length - 1).IsEqualTo(2);
+        await Assert.That(appHost.Split(environmentMapping, StringSplitOptions.None).Length - 1).IsEqualTo(3);
         await Assert.That(appHost).Contains("if (!string.IsNullOrWhiteSpace(eventLocationPrivacyMigrationStage))");
         await Assert.That(appHost).DoesNotContain($"{configurationRead} ??");
 
         int migrationWorkerIndex = appHost.IndexOf("var migrations = WithProfileSecretMode(", StringComparison.Ordinal);
         int apiIndex = appHost.IndexOf("var exploreAPI = WithProfileSecretMode(", StringComparison.Ordinal);
+        int standaloneIndex = appHost.IndexOf("var eventStandalone = WithProfileSecretMode(", StringComparison.Ordinal);
         int firstMappingIndex = appHost.IndexOf(environmentMapping, StringComparison.Ordinal);
         int secondMappingIndex = appHost.IndexOf(environmentMapping, firstMappingIndex + 1, StringComparison.Ordinal);
+        int thirdMappingIndex = appHost.IndexOf(environmentMapping, secondMappingIndex + 1, StringComparison.Ordinal);
 
         await Assert.That(firstMappingIndex).IsGreaterThan(migrationWorkerIndex);
         await Assert.That(firstMappingIndex).IsLessThan(apiIndex);
         await Assert.That(secondMappingIndex).IsGreaterThan(apiIndex);
+        await Assert.That(standaloneIndex).IsGreaterThan(apiIndex);
+        await Assert.That(thirdMappingIndex).IsGreaterThan(standaloneIndex);
     }
 
     [Test]
@@ -125,7 +129,8 @@ public sealed class AspireLocalInfrastructureArchitectureTests
         await Assert.That(appHost).DoesNotContain("connectionName: \"PrivacyErasureAuthority");
 
         int blazorIndex = appHost.IndexOf("var exploreBlazor =", StringComparison.Ordinal);
-        string blazorComposition = appHost[blazorIndex..];
+        int standaloneIndex = appHost.IndexOf("var eventStandalone = WithProfileSecretMode(", StringComparison.Ordinal);
+        string blazorComposition = appHost[blazorIndex..standaloneIndex];
         await Assert.That(blazorComposition).DoesNotContain("privacyErasureDatabase");
         await Assert.That(blazorComposition).DoesNotContain("PrivacyErasureAuthorityMigrator");
     }

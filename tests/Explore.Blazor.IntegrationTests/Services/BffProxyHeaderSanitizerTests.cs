@@ -16,6 +16,7 @@ public class BffProxyHeaderSanitizerTests
         request.Headers.Add("Cookie", "bff=session; setup-secret=secret");
         request.Headers.Add("X-Setup-Secret", "browser-secret");
         request.Headers.Add(EventBffHeaderNames.ApiKey, "browser-api-key");
+        request.Headers.Add("X-Control-Plane-Key", "browser-control-plane-key");
         request.Headers.Add("Access-Token", "access");
         request.Headers.Add("Refresh-Token", "refresh");
         request.Headers.Add("Identity-Token", "identity");
@@ -41,6 +42,7 @@ public class BffProxyHeaderSanitizerTests
         await Assert.That(request.Headers.Contains("Cookie")).IsFalse();
         await Assert.That(request.Headers.Contains("X-Setup-Secret")).IsFalse();
         await Assert.That(request.Headers.Contains(EventBffHeaderNames.ApiKey)).IsFalse();
+        await Assert.That(request.Headers.Contains("X-Control-Plane-Key")).IsFalse();
         await Assert.That(request.Headers.Contains("Access-Token")).IsFalse();
         await Assert.That(request.Headers.Contains("Refresh-Token")).IsFalse();
         await Assert.That(request.Headers.Contains("Identity-Token")).IsFalse();

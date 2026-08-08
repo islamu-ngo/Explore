@@ -6,7 +6,7 @@ ABOUTME: Prioritizes repeat incidents and non-obvious checks over generic .NET a
 > **Audience:** Operators | Contributors | Admins
 > **Status:** Implemented
 > **Owner:** Platform/Ops
-> **Last Verified:** 2026-08-02
+> **Last Verified:** 2026-08-05
 > **Source Anchors:** `Explore.API/Program.cs`, `Explore.Blazor/`, `Explore.Infrastructure/Services/Keycloak/KeycloakBootstrapService.cs`, `Explore.Infrastructure/StorageObjectDeletionService.cs`, `docs/SELF_HOSTING.md`, `docs/OPERATIONS.md`, `docs/BACKUP_RESTORE_UPGRADE.md`, `docs/CONFIGURATION.md`, `docs/SECRETS.md`
 
 Use this page when you have a symptom. For planned work, installation, backup, restore, upgrade, or rollback procedures, use the linked runbooks instead of copying procedures into this file.
@@ -53,6 +53,9 @@ Checks:
 AppHost assigns the optional Standalone HTTP endpoint dynamically through `WithHttpEndpoint(name: "http")`; it remains internal/non-guaranteed, while HTTPS is `https://localhost:7180`. If running `Event.Standalone` directly, use its launch profile's reserved `http://localhost:5180` HTTP endpoint (or its `https://localhost:7180` HTTPS profile).
 
 These checks cover the three application composition roots (`Explore.API`, `Explore.Blazor`, and `Event.Standalone`): AppHost selects the Split default or explicit Standalone, while the latter keeps browser `/api/*` traffic in-process after cookie antiforgery and trusted-header reconstruction. Keep canonical API paths as `/api/...` with non-URL API versioning (`Accept`, `?api-version=`, or `X-Api-Version`), never `/api/v1/...` (see [the support matrix](ARCHITECTURE.md#hosting-topology)).
+
+The in-process Combined bridge remains the BFF/API trust boundary; a topology
+switch never bypasses API authentication, authorization, or tenant isolation.
 
 ## Database Startup, Migration, Or Provider Failures
 

@@ -61,10 +61,11 @@ public sealed class CombinedApiBridgeMiddlewareTests
     {
         await using var app = await CreateApplicationAsync(cookieToken: "server-token");
         using var client = app.GetTestClient();
-        using var request = new HttpRequestMessage(HttpMethod.Get, "/api/events");
+        using var request = new HttpRequestMessage(HttpMethod.Patch, "/api/instance/settings/auth-provider");
         request.Headers.Add("X-Test-Cookie", "valid");
         request.Headers.Add("Authorization", "Bearer attacker");
         request.Headers.Add(EventBffHeaderNames.ApiKey, "attacker-key");
+        request.Headers.Add("X-Control-Plane-Key", "attacker-control-plane-key");
         request.Headers.Add(EventBffHeaderNames.TenantSlug, "attacker-tenant");
         request.Headers.Add(EventBffHeaderNames.SupportAccessMode, "Write");
 
@@ -75,11 +76,78 @@ public sealed class CombinedApiBridgeMiddlewareTests
             .IsEqualTo("Bearer server-token");
         await Assert.That(response.Headers.GetValues("X-Seen-Tenant").Single())
             .IsEqualTo("trusted-tenant");
+        await Assert.That(response.Headers.GetValues("X-Seen-Setup").Single())
+            .IsEqualTo("trusted-setup-cookie-user");
         await Assert.That(response.Headers.GetValues("X-Seen-Support").Single())
             .IsEqualTo("11111111-1111-1111-1111-111111111111");
         await Assert.That(response.Headers.GetValues("X-Seen-Auth-Type").Single())
             .IsEqualTo(ApiAuthenticationSchemeNames.MultiAuth);
         await Assert.That(response.Headers.Contains("X-Seen-Api-Key")).IsFalse();
+        await Assert.That(response.Headers.Contains("X-Seen-Control-Plane-Key")).IsFalse();
+    }
+
+    [Test]
+    public async Task SessionResolutionRestoresOriginalPrincipalWhenProviderThrows()
+    {
+        var originalPrincipal = CreatePrincipal("original-user", "Original");
+        var cookiePrincipal = CreatePrincipal("cookie-user", TestAuthenticationHandler.CookieScheme);
+        var context = new DefaultHttpContext { User = originalPrincipal };
+        var properties = new AuthenticationProperties();
+        properties.StoreTokens([new AuthenticationToken { Name = "access_token", Value = "server-token" }]);
+        var session = AuthenticateResult.Success(
+            new AuthenticationTicket(cookiePrincipal, properties, TestAuthenticationHandler.CookieScheme));
+        var throwingProvider = new ThrowingSupportAccessProvider();
+        var enricher = new EventBffRequestEnricher(
+            new NullAccessTokenProvider(),
+            new TrustedTenantProvider(),
+            new PrincipalSetupSecretProvider(),
+            throwingProvider);
+        Exception? caught = null;
+
+        try
+        {
+            _ = await enricher.ResolveForSessionAsync(context, session, CancellationToken.None);
+        }
+        catch (Exception exception)
+        {
+            caught = exception;
+        }
+
+        await Assert.That(caught).IsTypeOf<InvalidOperationException>();
+        await Assert.That(throwingProvider.SawCookiePrincipal).IsTrue();
+        await Assert.That(context.User).IsSameReferenceAs(originalPrincipal);
+    }
+
+    [Test]
+    public async Task SessionResolutionRestoresOriginalPrincipalWhenCancelled()
+    {
+        var originalPrincipal = CreatePrincipal("original-user", "Original");
+        var cookiePrincipal = CreatePrincipal("cookie-user", TestAuthenticationHandler.CookieScheme);
+        var context = new DefaultHttpContext { User = originalPrincipal };
+        var session = AuthenticateResult.Success(
+            new AuthenticationTicket(cookiePrincipal, TestAuthenticationHandler.CookieScheme));
+        var cancellingProvider = new CancellingSupportAccessProvider();
+        var enricher = new EventBffRequestEnricher(
+            new NullAccessTokenProvider(),
+            new TrustedTenantProvider(),
+            new PrincipalSetupSecretProvider(),
+            cancellingProvider);
+        using var cancellation = new CancellationTokenSource();
+        cancellation.Cancel();
+        Exception? caught = null;
+
+        try
+        {
+            _ = await enricher.ResolveForSessionAsync(context, session, cancellation.Token);
+        }
+        catch (Exception exception)
+        {
+            caught = exception;
+        }
+
+        await Assert.That(caught).IsTypeOf<OperationCanceledException>();
+        await Assert.That(cancellingProvider.SawCookiePrincipal).IsTrue();
+        await Assert.That(context.User).IsSameReferenceAs(originalPrincipal);
     }
 
     [Test]
@@ -164,8 +232,8 @@ public sealed class CombinedApiBridgeMiddlewareTests
         builder.Services.AddSingleton(new TestTokenState(cookieToken));
         builder.Services.AddSingleton<IEventBffAccessTokenProvider, NullAccessTokenProvider>();
         builder.Services.AddSingleton<IEventBffTenantHintProvider, TrustedTenantProvider>();
-        builder.Services.AddSingleton<IEventBffSetupSecretProvider, NullSetupSecretProvider>();
-        builder.Services.AddSingleton<IEventBffSupportAccessProvider, TrustedSupportAccessProvider>();
+        builder.Services.AddSingleton<IEventBffSetupSecretProvider, PrincipalSetupSecretProvider>();
+        builder.Services.AddSingleton<IEventBffSupportAccessProvider, PrincipalSupportAccessProvider>();
         builder.Services.AddAntiforgery();
         builder.Services.AddCombinedApiBridge();
 
@@ -177,7 +245,9 @@ public sealed class CombinedApiBridgeMiddlewareTests
             context.Response.Headers["X-Next-Reached"] = "true";
             CopyHeader(context, "Authorization", "X-Seen-Authorization");
             CopyHeader(context, EventBffHeaderNames.ApiKey, "X-Seen-Api-Key");
+            CopyHeader(context, "X-Control-Plane-Key", "X-Seen-Control-Plane-Key");
             CopyHeader(context, EventBffHeaderNames.TenantSlug, "X-Seen-Tenant");
+            CopyHeader(context, EventBffHeaderNames.SetupSecret, "X-Seen-Setup");
             CopyHeader(context, EventBffHeaderNames.SupportAccessSessionId, "X-Seen-Support");
             if (!string.IsNullOrEmpty(context.User.Identity?.AuthenticationType))
             {
@@ -197,6 +267,9 @@ public sealed class CombinedApiBridgeMiddlewareTests
             context.Response.Headers[destination] = value;
         }
     }
+
+    private static ClaimsPrincipal CreatePrincipal(string name, string authenticationType) =>
+        new(new ClaimsIdentity([new Claim(ClaimTypes.Name, name)], authenticationType));
 
     private sealed record TestTokenState(string? Token);
 
@@ -257,15 +330,46 @@ public sealed class CombinedApiBridgeMiddlewareTests
         public string ResolveTenantSlug(HttpContext httpContext) => "trusted-tenant";
     }
 
-    private sealed class NullSetupSecretProvider : IEventBffSetupSecretProvider
+    private sealed class PrincipalSetupSecretProvider : IEventBffSetupSecretProvider
     {
         public ValueTask<string?> ResolveSetupSecretAsync(HttpContext httpContext, CancellationToken cancellationToken) =>
-            ValueTask.FromResult<string?>(null);
+            ValueTask.FromResult(httpContext.User.Identity?.Name == "cookie-user"
+                ? "trusted-setup-cookie-user"
+                : null);
     }
 
-    private sealed class TrustedSupportAccessProvider : IEventBffSupportAccessProvider
+    private sealed class PrincipalSupportAccessProvider : IEventBffSupportAccessProvider
     {
         public ValueTask<string?> ResolveSupportAccessSessionIdAsync(HttpContext httpContext, CancellationToken cancellationToken) =>
-            ValueTask.FromResult<string?>("11111111-1111-1111-1111-111111111111");
+            ValueTask.FromResult(httpContext.User.Identity?.Name == "cookie-user"
+                ? "11111111-1111-1111-1111-111111111111"
+                : null);
+    }
+
+    private sealed class ThrowingSupportAccessProvider : IEventBffSupportAccessProvider
+    {
+        public bool SawCookiePrincipal { get; private set; }
+
+        public ValueTask<string?> ResolveSupportAccessSessionIdAsync(
+            HttpContext httpContext,
+            CancellationToken cancellationToken)
+        {
+            SawCookiePrincipal = httpContext.User.Identity?.Name == "cookie-user";
+            throw new InvalidOperationException("provider failure");
+        }
+    }
+
+    private sealed class CancellingSupportAccessProvider : IEventBffSupportAccessProvider
+    {
+        public bool SawCookiePrincipal { get; private set; }
+
+        public ValueTask<string?> ResolveSupportAccessSessionIdAsync(
+            HttpContext httpContext,
+            CancellationToken cancellationToken)
+        {
+            SawCookiePrincipal = httpContext.User.Identity?.Name == "cookie-user";
+            cancellationToken.ThrowIfCancellationRequested();
+            return ValueTask.FromResult<string?>(null);
+        }
     }
 }

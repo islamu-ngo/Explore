@@ -4,6 +4,7 @@
 using Explore.API.Hosting;
 using Explore.Blazor.Extensions;
 using Explore.Blazor.Hosting;
+using Event.Standalone.Hosting;
 using Event.Standalone.Middleware;
 
 const BlazorHostProfile hostProfile = BlazorHostProfile.Combined;
@@ -20,6 +21,9 @@ await app.RunApiHostStartupAsync(
     shutdownCts,
     () => shutdownState.IsShuttingDown = true);
 await app.InitializeBlazorHostAsync(hostProfile);
+app.UseStandaloneHostMiddleware(apiHost, hostProfile, shutdownState);
+app.MapStandaloneHostEndpoints(apiHost, hostProfile);
+app.BindStandaloneInternalApiTransport();
 app.Run();
 
 partial class Program;
