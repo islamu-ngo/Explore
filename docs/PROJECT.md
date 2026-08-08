@@ -23,10 +23,24 @@ ISLAMU Event (solution: `Explore`) is an open-source event discovery and managem
 8. Modular event aspects (Islamic and Tech aspect models).
 9. Linked-account AT Protocol OAuth plus governed event federation through database-first PDS delivery, exact-collection Jetstream ingestion, and typed tenant-gated discovery.
 
-## Platform Positioning
-1. General-purpose software platform: can be adapted beyond Islamic use-cases.
-2. ISLAMU-hosted instance: curated for Islamic community events and policies.
-3. White-label use is supported via tenant and governance settings.
+## Platform Positioning & Market Strategy
+
+### 1. The Red Ocean vs. Blue Ocean Distinction
+The commercial event management space (e.g., Eventbrite, Luma, Meetup, Splash) is a crowded **Red Ocean**. Commercial platforms compete on proprietary UI iterations while imposing heavy per-ticket fees, rigid vendor lock-in, forced platform co-branding, and zero data sovereignty.
+
+ISLAMU Event operates strictly in the **Blue Ocean**:
+* **Open Source Core (AGPL-3.0-or-later):** 100% free software engine with zero ticketing commissions or volume caps.
+* **Self-Hostable Sovereignty:** Operators retain absolute control over hosting infrastructure (Docker, Coolify, Aspire, On-Prem) and attendee database governance.
+* **Purpose-Agnostic White-Label Engine:** Switchable branding, custom domains, dynamic tenant governance, and extensible aspect models (Islamic, Tech, Corporate, Community).
+* **AI-Native MCP Endpoint (`/mcp`):** Native Model Context Protocol adapter for autonomous AI agents to query events and draft actions safely.
+* **Decentralized Federation:** Built for open protocol event discovery (AT Protocol / Bluesky Jetstream ingestion and PDS delivery).
+* **Ethical Non-Compete Model:** ISLAMU does not run a competing proprietary SaaS; we endorse vetted Official Partners and offer an optional commercial fleet-management Control Plane for multi-instance operators.
+
+### 2. Deployment Versatility
+1. **General-purpose software platform:** Easily adapted beyond Islamic use-cases via modular aspect schemas.
+2. **ISLAMU-hosted instance:** Curated specifically for Islamic community events, policies, and prayer-aware metadata.
+3. **White-label tenant engine:** Complete isolation and custom branding for single communities or multi-tenant organizations.
+
 
 ## Federation Status
 Implemented AT Protocol surface:

@@ -90,7 +90,7 @@ Start with [README.md](../README.md) if you are new to the project. Use this pag
 - [SEO.md](SEO.md) - sitemap, robots, render-policy, and public-discovery SEO behavior.
 - [SECURITY.md](SECURITY.md) - auth/authz model and trust boundaries.
 - [SECURITY-MODEL.md](SECURITY-MODEL.md) - platform security invariants, privilege isolation, and privacy boundaries.
-- [PRIVACY_ERASURE.md](PRIVACY_ERASURE.md) - Privacy Erasure Authority, concrete meaning, storage topologies (EmbeddedSqlite vs ExternalDatabase), independent restore-isolation rationale, and single-writer/HA self-hoster decision guide.
+- [PRIVACY_ERASURE.md](PRIVACY_ERASURE.md) - Privacy Erasure Authority, concrete meaning, storage topologies (EmbeddedSqlite, CoLocated, ExternalDatabase), independent restore-isolation rationale, and self-hoster decision guide.
 - [OPERATIONS.md](OPERATIONS.md) - deployment, health, observability.
 - [TESTING.md](TESTING.md) - TUnit framework, test projects, TDD workflow.
 - [TEST_RELIABILITY.md](TEST_RELIABILITY.md) - flaky/deferred runtime, stress, and manual-test tracking.
@@ -120,6 +120,7 @@ Start with [README.md](../README.md) if you are new to the project. Use this pag
 
 ## Extensibility And Federation
 - [EXTENSIBILITY.md](EXTENSIBILITY.md) - modular extension strategy.
+- [ERP_INTEGRATION_GUIDE.md](ERP_INTEGRATION_GUIDE.md) - operator & partner guide for integrating ISLAMU Event as a white-label module in enterprise ERP platforms.
 - [WEBHOOKS.md](WEBHOOKS.md) - outgoing webhook provider extension point and self-hosted Svix integration.
 - [INTEGRATIONS.md](INTEGRATIONS.md) - incoming integration callback boundary.
 - [COOP_INTEGRATION.md](COOP_INTEGRATION.md) - multi-tenant human review dashboard integration and escalation flow.

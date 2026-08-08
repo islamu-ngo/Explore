@@ -5,6 +5,8 @@ ABOUTME: Focuses on what exists today and documents the boundary between typed s
 
 ## Implemented Building Blocks
 
+Unlike rigid commercial event tools that force every event into a single static model, ISLAMU Event provides a 3-layer architecture designed for **white-label adaptability**. Any community, enterprise, or platform operator can define custom domain attributes and sector aspect models without modifying core code.
+
 1. Layer 2 typed schema for events and sessions:
    - `EventIslamicAspect` (1:1 with `Event` via shared PK `Id`)
    - `EventTechAspect` (1:1 with `Event` via shared PK `Id`)
