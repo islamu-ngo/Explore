@@ -183,7 +183,7 @@ The README is the entrypoint for new readers. [docs/index.md](docs/index.md) is 
 |---|---|---|
 | Evaluator | [Project](docs/PROJECT.md), [Architecture](docs/ARCHITECTURE.md), [Security Model](docs/SECURITY-MODEL.md) | You want product scope, status, and architecture context. |
 | Local developer | [Getting Started](docs/GETTING_STARTED.md), [Testing](docs/TESTING.md), [Troubleshooting](docs/TROUBLESHOOTING.md) | You want to build, run, and validate the app locally. |
-| Self-hoster/operator | [Self-Hosting](docs/SELF_HOSTING.md), [Configuration](docs/CONFIGURATION.md), [Operations](docs/OPERATIONS.md), [Backup/Restore/Upgrade](docs/BACKUP_RESTORE_UPGRADE.md) | You want Docker Compose, infrastructure, secrets, health checks, and upgrades. |
+| Self-hoster/operator | [Self-Hosting](docs/SELF_HOSTING.md), [Configuration](docs/CONFIGURATION.md), [Operations](docs/OPERATIONS.md), [Backup/Restore/Upgrade](docs/BACKUP_RESTORE_UPGRADE.md), [ERP Integration](docs/ERP_INTEGRATION_GUIDE.md) | You want Docker Compose, infrastructure, secrets, health checks, upgrades, or ERP white-label embedding. |
 | Contributor | [First Contribution](docs/FIRST_CONTRIBUTION.md), [Contributing](docs/CONTRIBUTING.md), [Quick Reference](docs/QUICK_REFERENCE.md) | You want the shortest safe path to a docs-only or small-bug PR. |
 | API integrator | [API Cookbook](docs/API_COOKBOOK.md), [API Reference](docs/API.md), [API Changelog](docs/API_CHANGELOG.md) | You want task-first API examples before the full API reference. |
 | Frontend contributor | [Blazor](docs/BLAZOR.md) | You want client architecture, render policies, and UI conventions. |
@@ -351,6 +351,7 @@ The CLA is versioned. The current version and full legal text live in [`legal/CL
 [mcp-debugging-doc]: docs/MCP_DEBUGGING.md
 [federation-doc]: docs/FEDERATION.md
 [ai-rag-doc]: docs/AI_RAG_FOUNDATION.md
+[erp-integration-doc]: docs/ERP_INTEGRATION_GUIDE.md
 [security-policy]: SECURITY-POLICY.md
 [privacy-policy]: https://openislamu.org/privacy
 [license-link]: LICENSE
