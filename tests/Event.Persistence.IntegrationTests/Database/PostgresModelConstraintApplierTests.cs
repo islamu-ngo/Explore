@@ -2,9 +2,10 @@
 // ABOUTME: Guards schema-qualified preflight and catalog lookup behavior after namespace cutovers.
 
 using Explore.Persistence;
+using Explore.Persistence.Database;
 using Explore.Persistence.Schema;
+using Explore.Secrets.Database;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Diagnostics;
 using Npgsql;
 using Testcontainers.PostgreSql;
 
@@ -13,7 +14,9 @@ namespace Event.Persistence.IntegrationTests.Database;
 public sealed class PostgresModelConstraintApplierTests
 {
     [Test]
-    public async Task ApplyAsync_AfterNamespaceCutover_CreatesConstraintInApplicationSchema()
+    [Arguments("islamu_event")]
+    [Arguments("custom_event")]
+    public async Task ApplyAsync_AfterNamespaceCutover_CreatesConstraintInApplicationSchema(string schema)
     {
         await using var database = new PostgreSqlBuilder("postgres:18-alpine")
             .WithDatabase("constraint_applier_test")
@@ -22,31 +25,42 @@ public sealed class PostgresModelConstraintApplierTests
             .Build();
         await database.StartAsync();
 
-        var options = new DbContextOptionsBuilder<ExploreDbContext>()
-            .UseNpgsql(database.GetConnectionString())
-            .UseSnakeCaseNamingConvention()
-            .ConfigureWarnings(warnings => warnings.Ignore(RelationalEventId.PendingModelChangesWarning))
-            .Options;
-        await using var context = new ExploreDbContext(options);
+        var container = new NpgsqlConnectionStringBuilder(database.GetConnectionString());
+        var options = new PrimaryDatabaseConnectionOptions
+        {
+            Role = PrimaryDatabaseRole.Migrator,
+            Provider = PrimaryDatabaseProvider.PostgreSql,
+            Host = container.Host,
+            Port = container.Port,
+            Database = container.Database,
+            Schema = schema,
+            Username = container.Username,
+            Password = container.Password,
+            TlsMode = PrimaryDatabaseTlsMode.Disabled,
+        };
+        var optionsBuilder = new DbContextOptionsBuilder<ExploreDbContext>();
+        PrimaryDatabaseConnectionResult configured =
+            PrimaryDatabaseProviderComposition.ConfigureApplication(optionsBuilder, options);
+        await using var context = new ExploreDbContext(optionsBuilder.Options);
         await context.Database.MigrateAsync();
 
-        await using var connection = new NpgsqlConnection(database.GetConnectionString());
+        await using var connection = new NpgsqlConnection(configured.ConnectionString);
         await connection.OpenAsync();
         await using (var stateCommand = new NpgsqlCommand(
-                         "SELECT current_setting('search_path'), to_regclass('islamu_event.event_sessions')::text, to_regclass('public.event_sessions')::text",
+                         "SELECT current_setting('search_path'), to_regclass(@qualified_table)::text, to_regclass('public.event_sessions')::text",
                          connection))
-        await using (var reader = await stateCommand.ExecuteReaderAsync())
         {
+            stateCommand.Parameters.AddWithValue("qualified_table", $"{schema}.event_sessions");
+            await using var reader = await stateCommand.ExecuteReaderAsync();
             await reader.ReadAsync();
-            await Assert.That(reader.GetString(0)).IsEqualTo("\"$user\", public");
-            await Assert.That(reader.GetString(1)).IsEqualTo("islamu_event.event_sessions");
+            await Assert.That(reader.GetString(0)).IsEqualTo($"{schema}, public");
+            await Assert.That(reader.GetString(1)).IsEqualTo("event_sessions");
             await Assert.That(reader.IsDBNull(2)).IsTrue();
         }
 
         var appliedMigrations = (await context.Database.GetAppliedMigrationsAsync()).ToArray();
-        await Assert.That(appliedMigrations.Any(migration =>
-            migration.EndsWith("_Phase82TypedRegistrationAnswersInPublic", StringComparison.Ordinal))).IsTrue();
-        await Assert.That(appliedMigrations.Last()).EndsWith("_AdoptIslamuEventNamespace");
+        await Assert.That(appliedMigrations).HasSingleItem();
+        await Assert.That(appliedMigrations[0]).EndsWith("_InitialPostgreSqlApplication");
 
         await PostgresModelConstraintApplier.ApplyAsync(context);
 
@@ -56,12 +70,13 @@ public sealed class PostgresModelConstraintApplierTests
             FROM pg_catalog.pg_constraint AS constraint_entry
             JOIN pg_catalog.pg_class AS table_entry ON table_entry.oid = constraint_entry.conrelid
             JOIN pg_catalog.pg_namespace AS schema_entry ON schema_entry.oid = table_entry.relnamespace
-            WHERE schema_entry.nspname = 'islamu_event'
+            WHERE schema_entry.nspname = @schema
               AND table_entry.relname = 'event_sessions'
               AND constraint_entry.conname = 'EX_EventSession_RoomNoOverlap'
               AND constraint_entry.contype = 'x'
             """,
             connection);
+        constraintCommand.Parameters.AddWithValue("schema", schema);
         await Assert.That((int)(await constraintCommand.ExecuteScalarAsync())!).IsEqualTo(1);
 
         await PostgresModelConstraintApplier.ApplyAsync(context);
@@ -73,7 +88,7 @@ public sealed class PostgresModelConstraintApplierTests
             FROM pg_catalog.pg_constraint AS constraint_entry
             JOIN pg_catalog.pg_class AS table_entry ON table_entry.oid = constraint_entry.conrelid
             JOIN pg_catalog.pg_namespace AS schema_entry ON schema_entry.oid = table_entry.relnamespace
-            WHERE schema_entry.nspname = 'islamu_event'
+            WHERE schema_entry.nspname = @schema
               AND table_entry.relname = 'event_sessions'
               AND constraint_entry.conname IN (
                   'CK_EventSession_EndAfterStart',
@@ -86,6 +101,7 @@ public sealed class PostgresModelConstraintApplierTests
               AND constraint_entry.contype = 'c'
             """,
             connection);
+        checkConstraintCommand.Parameters.AddWithValue("schema", schema);
         await Assert.That((int)(await checkConstraintCommand.ExecuteScalarAsync())!).IsEqualTo(7);
     }
 }

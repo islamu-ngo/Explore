@@ -20,6 +20,12 @@ public static partial class PrimaryDatabaseConfiguration
     private const string MigratorSectionName = "Migrator";
     private const string PrivacyErasureAuthorityDatabaseFileName = "privacy_erasure_authority.db";
     private const string SchemaEnvironmentAlias = "DATABASE_SCHEMA";
+    private const string PrefixEnvironmentAlias = "DATABASE_PREFIX";
+    private const string RuntimePrefixEnvironmentAlias = "DATABASE_RUNTIME_PREFIX";
+    private const string MigratorPrefixEnvironmentAlias = "DATABASE_MIGRATOR_PREFIX";
+    private const string PrefixStructuredAlias = "Database:Prefix";
+    private const string RuntimePrefixStructuredAlias = "Database:Runtime:Prefix";
+    private const string MigratorPrefixStructuredAlias = "Database:Migrator:Prefix";
 
     public static PrimaryDatabaseConnectionOptions BindRuntime(IConfiguration configuration)
         => Bind(configuration, PrimaryDatabaseRole.Runtime);
@@ -30,6 +36,8 @@ public static partial class PrimaryDatabaseConfiguration
     public static PrimaryDatabaseConnectionOptions Bind(IConfiguration configuration, PrimaryDatabaseRole role)
     {
         ArgumentNullException.ThrowIfNull(configuration);
+
+        RejectUnsupportedPrefixAlias(configuration);
 
         var root = configuration.GetSection(SectionName);
         if (!root.Exists())
@@ -212,6 +220,9 @@ public static partial class PrimaryDatabaseConfiguration
             Database = options.Database!,
             Username = options.Username!,
             Password = options.Password!,
+            SearchPath = options.Role == PrimaryDatabaseRole.Migrator
+                ? $"{options.Schema}, public"
+                : options.Schema,
             SslMode = MapNpgsqlSslMode(options.TlsMode, options.TrustServerCertificate),
         };
 
@@ -459,6 +470,29 @@ public static partial class PrimaryDatabaseConfiguration
         return string.IsNullOrWhiteSpace(alias)
             ? PrimaryDatabaseConnectionOptions.DefaultSchema
             : alias.Trim();
+    }
+
+    private static void RejectUnsupportedPrefixAlias(IConfiguration configuration)
+    {
+        var unsupportedPrefix = configuration[PrefixEnvironmentAlias];
+        var unsupportedStructuredPrefix = configuration[PrefixStructuredAlias];
+        var unsupportedRuntimePrefix = configuration[RuntimePrefixEnvironmentAlias];
+        var unsupportedMigratorPrefix = configuration[MigratorPrefixEnvironmentAlias];
+        var unsupportedRuntimeStructuredPrefix = configuration[RuntimePrefixStructuredAlias];
+        var unsupportedMigratorStructuredPrefix = configuration[MigratorPrefixStructuredAlias];
+
+        if (!string.IsNullOrWhiteSpace(unsupportedPrefix) ||
+            !string.IsNullOrWhiteSpace(unsupportedStructuredPrefix) ||
+            !string.IsNullOrWhiteSpace(unsupportedRuntimePrefix) ||
+            !string.IsNullOrWhiteSpace(unsupportedMigratorPrefix) ||
+            !string.IsNullOrWhiteSpace(unsupportedRuntimeStructuredPrefix) ||
+            !string.IsNullOrWhiteSpace(unsupportedMigratorStructuredPrefix))
+        {
+            throw new InvalidOperationException(
+                "Prefix overrides are not supported (DATABASE_PREFIX, DATABASE_RUNTIME_PREFIX, "
+                + "DATABASE_MIGRATOR_PREFIX, Database:Prefix, Database:Runtime:Prefix, and Database:Migrator:Prefix are rejected); "
+                + "use Database:Schema (or DATABASE_SCHEMA) only. Schema-less providers always use the fixed ie_ prefix.");
+        }
     }
 
     private static int? ReadOptionalInt(IConfiguration root, IConfiguration role, string key)

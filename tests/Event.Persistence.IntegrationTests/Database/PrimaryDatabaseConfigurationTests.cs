@@ -59,6 +59,200 @@ public sealed class PrimaryDatabaseConfigurationTests
     }
 
     [Test]
+    public void BindRuntime_RejectsUnsupportedPrefixAlias()
+    {
+        var configuration = BuildConfiguration(new Dictionary<string, string?>
+        {
+            ["Database:Provider"] = "PostgreSql",
+            ["Database:Host"] = "pg.example.test",
+            ["Database:Database"] = "event_db",
+            ["DATABASE_PREFIX"] = "ie_custom",
+            ["Database:Runtime:Username"] = "app_user",
+            ["Database:Runtime:Password"] = "runtime-secret",
+        });
+
+        Action act = () => PrimaryDatabaseConfiguration.BindRuntime(configuration);
+
+        act.Should().Throw<InvalidOperationException>()
+            .WithMessage("*Prefix overrides are not supported*");
+    }
+
+    [Test]
+    public void BindRuntime_RejectsRuntimePrefixEnvironmentAlias()
+    {
+        var configuration = BuildConfiguration(new Dictionary<string, string?>
+        {
+            ["Database:Provider"] = "PostgreSql",
+            ["Database:Host"] = "pg.example.test",
+            ["Database:Database"] = "event_db",
+            ["DATABASE_RUNTIME_PREFIX"] = "ie_custom",
+            ["Database:Runtime:Username"] = "app_user",
+            ["Database:Runtime:Password"] = "runtime-secret",
+        });
+
+        Action act = () => PrimaryDatabaseConfiguration.BindRuntime(configuration);
+
+        act.Should().Throw<InvalidOperationException>()
+            .WithMessage("*Prefix overrides are not supported*");
+    }
+
+    [Test]
+    public void BindRuntime_RejectsStructuredPrefixAlias()
+    {
+        var configuration = BuildConfiguration(new Dictionary<string, string?>
+        {
+            ["Database:Provider"] = "PostgreSql",
+            ["Database:Host"] = "pg.example.test",
+            ["Database:Database"] = "event_db",
+            ["Database:Prefix"] = "ie_custom",
+            ["Database:Runtime:Username"] = "app_user",
+            ["Database:Runtime:Password"] = "runtime-secret",
+        });
+
+        Action act = () => PrimaryDatabaseConfiguration.BindRuntime(configuration);
+
+        act.Should().Throw<InvalidOperationException>()
+            .WithMessage("*Prefix overrides are not supported*");
+    }
+
+    [Test]
+    public void BindRuntime_RejectsRuntimeStructuredPrefixAlias()
+    {
+        var configuration = BuildConfiguration(new Dictionary<string, string?>
+        {
+            ["Database:Provider"] = "PostgreSql",
+            ["Database:Host"] = "pg.example.test",
+            ["Database:Database"] = "event_db",
+            ["Database:Runtime:Prefix"] = "ie_custom",
+            ["Database:Runtime:Username"] = "app_user",
+            ["Database:Runtime:Password"] = "runtime-secret",
+        });
+
+        Action act = () => PrimaryDatabaseConfiguration.BindRuntime(configuration);
+
+        act.Should().Throw<InvalidOperationException>()
+            .WithMessage("*Prefix overrides are not supported*");
+    }
+
+    [Test]
+    public void BindMigrator_RejectsUnsupportedPrefixAlias()
+    {
+        var configuration = BuildConfiguration(new Dictionary<string, string?>
+        {
+            ["Database:Provider"] = "PostgreSql",
+            ["Database:Host"] = "pg.example.test",
+            ["Database:Database"] = "event_db",
+            ["DATABASE_PREFIX"] = "ie_custom",
+            ["Database:Migrator:Username"] = "migrator_user",
+            ["Database:Migrator:Password"] = "migrator-secret",
+        });
+
+        Action act = () => PrimaryDatabaseConfiguration.BindMigrator(configuration);
+
+        act.Should().Throw<InvalidOperationException>()
+            .WithMessage("*Prefix overrides are not supported*");
+    }
+
+    [Test]
+    public void BindMigrator_RejectsMigratorPrefixEnvironmentAlias()
+    {
+        var configuration = BuildConfiguration(new Dictionary<string, string?>
+        {
+            ["Database:Provider"] = "PostgreSql",
+            ["Database:Host"] = "pg.example.test",
+            ["Database:Database"] = "event_db",
+            ["DATABASE_MIGRATOR_PREFIX"] = "ie_custom",
+            ["Database:Migrator:Username"] = "migrator_user",
+            ["Database:Migrator:Password"] = "migrator-secret",
+        });
+
+        Action act = () => PrimaryDatabaseConfiguration.BindMigrator(configuration);
+
+        act.Should().Throw<InvalidOperationException>()
+            .WithMessage("*Prefix overrides are not supported*");
+    }
+
+    [Test]
+    public void BindMigrator_RejectsStructuredPrefixAlias()
+    {
+        var configuration = BuildConfiguration(new Dictionary<string, string?>
+        {
+            ["Database:Provider"] = "PostgreSql",
+            ["Database:Host"] = "pg.example.test",
+            ["Database:Database"] = "event_db",
+            ["Database:Prefix"] = "ie_custom",
+            ["Database:Migrator:Username"] = "migrator_user",
+            ["Database:Migrator:Password"] = "migrator-secret",
+        });
+
+        Action act = () => PrimaryDatabaseConfiguration.BindMigrator(configuration);
+
+        act.Should().Throw<InvalidOperationException>()
+            .WithMessage("*Prefix overrides are not supported*");
+    }
+
+    [Test]
+    public void BindMigrator_RejectsMigratorStructuredPrefixAlias()
+    {
+        var configuration = BuildConfiguration(new Dictionary<string, string?>
+        {
+            ["Database:Provider"] = "PostgreSql",
+            ["Database:Host"] = "pg.example.test",
+            ["Database:Database"] = "event_db",
+            ["Database:Migrator:Prefix"] = "ie_custom",
+            ["Database:Migrator:Username"] = "migrator_user",
+            ["Database:Migrator:Password"] = "migrator-secret",
+        });
+
+        Action act = () => PrimaryDatabaseConfiguration.BindMigrator(configuration);
+
+        act.Should().Throw<InvalidOperationException>()
+            .WithMessage("*Prefix overrides are not supported*");
+    }
+
+    [Test]
+    public void BuildConnectionString_PostgreSqlCustomSchemaSetsSessionSearchPath()
+    {
+        var options = new PrimaryDatabaseConnectionOptions
+        {
+            Role = PrimaryDatabaseRole.Runtime,
+            Provider = PrimaryDatabaseProvider.PostgreSql,
+            Host = "pg.example.test",
+            Database = "event_db",
+            Schema = "custom_event",
+            Username = "app_user",
+            Password = "runtime-secret",
+            TlsMode = PrimaryDatabaseTlsMode.Disabled,
+        };
+
+        var result = PrimaryDatabaseConfiguration.BuildConnectionString(options);
+
+        new NpgsqlConnectionStringBuilder(result.ConnectionString).SearchPath
+            .Should().Be("custom_event");
+    }
+
+    [Test]
+    public void BuildConnectionString_PostgreSqlMigratorSearchPathKeepsPublicBootstrapFallback()
+    {
+        var options = new PrimaryDatabaseConnectionOptions
+        {
+            Role = PrimaryDatabaseRole.Migrator,
+            Provider = PrimaryDatabaseProvider.PostgreSql,
+            Host = "pg.example.test",
+            Database = "event_db",
+            Schema = "custom_event",
+            Username = "migrator_user",
+            Password = "migrator-secret",
+            TlsMode = PrimaryDatabaseTlsMode.Disabled,
+        };
+
+        var result = PrimaryDatabaseConfiguration.BuildConnectionString(options);
+
+        new NpgsqlConnectionStringBuilder(result.ConnectionString).SearchPath
+            .Should().Be("custom_event, public");
+    }
+
+    [Test]
     [Arguments("bad-schema")]
     [Arguments("9bad")]
     [Arguments("schema;drop")]

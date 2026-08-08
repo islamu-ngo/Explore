@@ -68,12 +68,12 @@ public class ExternalApiKeyQuotaRepository : GenericRepository<ExternalApiKeyQuo
         var strategy = _dbContext.Database.CreateExecutionStrategy();
         return await strategy.ExecuteAsync(async () =>
         {
-            await using var transaction = await _dbContext.Database.BeginTransactionAsync(
-                IsolationLevel.Serializable,
-                cancellationToken);
             await using IAsyncDisposable provisionLease = await RelationalNamedLock.AcquireSessionAsync(
                 _dbContext,
                 $"external-api-key-quota:{externalApiKeyId:N}:{periodStart:yyyyMMdd}",
+                cancellationToken);
+            await using var transaction = await _dbContext.Database.BeginTransactionAsync(
+                IsolationLevel.Serializable,
                 cancellationToken);
             var quota = await FindOrCreatePeriodAsync(
                 externalApiKeyId,

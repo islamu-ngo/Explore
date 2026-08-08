@@ -1622,7 +1622,10 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .IsRequired()
                         .HasMaxLength(2048)
                         .HasColumnType("varchar(2048)")
-                        .HasColumnName("did");
+                        .HasColumnName("did")
+                        .UseCollation("ascii_bin");
+
+                    MySqlPropertyBuilderExtensions.HasCharSet(b.Property<string>("Did"), "ascii");
 
                     b.Property<int?>("DidCustodyTypeId")
                         .HasColumnType("int")
@@ -10062,6 +10065,10 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasDefaultValue(1)
                         .HasColumnName("external_binding_status_id");
 
+                    b.Property<byte[]>("ExternalGlobalUniquenessHash")
+                        .HasColumnType("binary(32)")
+                        .HasColumnName("external_global_uniqueness_hash");
+
                     b.Property<string>("ExternalId")
                         .IsRequired()
                         .HasMaxLength(512)
@@ -10074,15 +10081,27 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasColumnType("varchar(128)")
                         .HasColumnName("external_system");
 
+                    b.Property<byte[]>("ExternalTenantUniquenessHash")
+                        .HasColumnType("binary(32)")
+                        .HasColumnName("external_tenant_uniqueness_hash");
+
                     b.Property<string>("ExternalType")
                         .IsRequired()
                         .HasMaxLength(128)
                         .HasColumnType("varchar(128)")
                         .HasColumnName("external_type");
 
+                    b.Property<byte[]>("InternalGlobalUniquenessHash")
+                        .HasColumnType("binary(32)")
+                        .HasColumnName("internal_global_uniqueness_hash");
+
                     b.Property<Guid>("InternalId")
                         .HasColumnType("char(36)")
                         .HasColumnName("internal_id");
+
+                    b.Property<byte[]>("InternalTenantUniquenessHash")
+                        .HasColumnType("binary(32)")
+                        .HasColumnName("internal_tenant_uniqueness_hash");
 
                     b.Property<string>("InternalType")
                         .IsRequired()
@@ -10119,28 +10138,24 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                     b.HasKey("Id")
                         .HasName("pk_ie_external_bindings");
 
+                    b.HasIndex("ExternalGlobalUniquenessHash")
+                        .IsUnique()
+                        .HasDatabaseName("ux_external_bindings_external_global_hash");
+
+                    b.HasIndex("ExternalTenantUniquenessHash")
+                        .IsUnique()
+                        .HasDatabaseName("ux_external_bindings_external_tenant_hash");
+
+                    b.HasIndex("InternalGlobalUniquenessHash")
+                        .IsUnique()
+                        .HasDatabaseName("ux_external_bindings_internal_global_hash");
+
+                    b.HasIndex("InternalTenantUniquenessHash")
+                        .IsUnique()
+                        .HasDatabaseName("ux_external_bindings_internal_tenant_hash");
+
                     b.HasIndex("ScopeTenantId")
                         .HasDatabaseName("ix_external_bindings_scope_tenant_id");
-
-                    b.HasIndex("ProviderKey", "ExternalSystem", "ExternalType", "ExternalId")
-                        .IsUnique()
-                        .HasDatabaseName("IX_ie_external_bindings_provider_key_external_system_ex_21982EC9")
-                        .HasFilter("scope_tenant_id IS NULL");
-
-                    b.HasIndex("ProviderKey", "ExternalSystem", "InternalType", "InternalId")
-                        .IsUnique()
-                        .HasDatabaseName("IX_ie_external_bindings_provider_key_external_system_in_4C85AFA9")
-                        .HasFilter("scope_tenant_id IS NULL");
-
-                    b.HasIndex("ProviderKey", "ExternalSystem", "ExternalType", "ExternalId", "ScopeTenantId")
-                        .IsUnique()
-                        .HasDatabaseName("IX_ie_external_bindings_provider_key_external_system_ex_DA885C8B")
-                        .HasFilter("scope_tenant_id IS NOT NULL");
-
-                    b.HasIndex("ProviderKey", "ExternalSystem", "InternalType", "InternalId", "ScopeTenantId")
-                        .IsUnique()
-                        .HasDatabaseName("IX_ie_external_bindings_provider_key_external_system_in_1D084116")
-                        .HasFilter("scope_tenant_id IS NOT NULL");
 
                     b.ToTable("ie_external_bindings", null, t =>
                         {
@@ -20645,6 +20660,10 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasColumnType("varchar(50)")
                         .HasColumnName("provider");
 
+                    b.Property<byte[]>("ProviderObjectKeyUniquenessHash")
+                        .HasColumnType("binary(32)")
+                        .HasColumnName("provider_object_key_uniqueness_hash");
+
                     b.Property<string>("Purpose")
                         .IsRequired()
                         .HasMaxLength(100)
@@ -20715,10 +20734,9 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                     b.HasIndex("FileTypeId")
                         .HasDatabaseName("ix_ie_storage_objects_file_type_id");
 
-                    b.HasIndex("Provider", "ObjectKey")
+                    b.HasIndex("ProviderObjectKeyUniquenessHash")
                         .IsUnique()
-                        .HasDatabaseName("ux_storage_objects_provider_object_key")
-                        .HasFilter("object_key IS NOT NULL");
+                        .HasDatabaseName("ux_storage_objects_provider_object_key_hash");
 
                     b.HasIndex("TenantId", "OwningResourceKind", "OwningResourceId")
                         .HasDatabaseName("IX_ie_storage_objects_tenant_id_owning_resource_kind_ow_D5288125")
@@ -23577,7 +23595,10 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .IsRequired()
                         .HasMaxLength(500)
                         .HasColumnType("varchar(500)")
-                        .HasColumnName("provider");
+                        .HasColumnName("provider")
+                        .UseCollation("ascii_bin");
+
+                    MySqlPropertyBuilderExtensions.HasCharSet(b.Property<string>("Provider"), "ascii");
 
                     b.Property<byte[]>("SessionCiphertext")
                         .IsRequired()
@@ -23588,7 +23609,10 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .IsRequired()
                         .HasMaxLength(2048)
                         .HasColumnType("varchar(2048)")
-                        .HasColumnName("subject_did");
+                        .HasColumnName("subject_did")
+                        .UseCollation("ascii_bin");
+
+                    MySqlPropertyBuilderExtensions.HasCharSet(b.Property<string>("SubjectDid"), "ascii");
 
                     b.Property<Guid>("TenantId")
                         .HasColumnType("char(36)")
@@ -23654,6 +23678,10 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasColumnType("varchar(2048)")
                         .HasColumnName("provider_key");
 
+                    b.Property<byte[]>("ProviderKeyUniquenessHash")
+                        .HasColumnType("binary(32)")
+                        .HasColumnName("provider_key_uniqueness_hash");
+
                     b.Property<Guid>("TenantId")
                         .HasColumnType("char(36)")
                         .HasColumnName("tenant_id");
@@ -23673,16 +23701,15 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                     b.HasKey("Id")
                         .HasName("pk_ie_user_external_logins");
 
+                    b.HasIndex("ProviderKeyUniquenessHash")
+                        .IsUnique()
+                        .HasDatabaseName("ux_user_external_logins_provider_key_hash");
+
                     b.HasIndex("TenantId")
                         .HasDatabaseName("ix_ie_user_external_logins_tenant_id");
 
                     b.HasIndex("UserId")
                         .HasDatabaseName("ix_ie_user_external_logins_user_id");
-
-                    b.HasIndex("Provider", "ProviderKey")
-                        .IsUnique()
-                        .HasDatabaseName("ix_ie_user_external_logins_provider_provider_key")
-                        .HasFilter("provider IS NOT NULL AND provider_key IS NOT NULL");
 
                     b.ToTable("ie_user_external_logins", (string)null);
                 });
@@ -24138,6 +24165,14 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasColumnType("char(36)")
                         .HasColumnName("id");
 
+                    b.Property<byte[]>("ActiveEndpointUniquenessHash")
+                        .HasColumnType("binary(32)")
+                        .HasColumnName("active_endpoint_uniqueness_hash");
+
+                    b.Property<byte[]>("ActiveUserDeviceUniquenessHash")
+                        .HasColumnType("binary(32)")
+                        .HasColumnName("active_user_device_uniqueness_hash");
+
                     b.Property<string>("AuthSecret")
                         .IsRequired()
                         .HasMaxLength(500)
@@ -24235,18 +24270,16 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                     b.HasKey("Id")
                         .HasName("pk_ie_web_push_subscriptions");
 
-                    b.HasIndex("Endpoint")
+                    b.HasIndex("ActiveEndpointUniquenessHash")
                         .IsUnique()
-                        .HasDatabaseName("ux_web_push_subscriptions_active_endpoint")
-                        .HasFilter("is_deleted = false AND is_active = true");
+                        .HasDatabaseName("ux_web_push_subscriptions_active_endpoint_hash");
+
+                    b.HasIndex("ActiveUserDeviceUniquenessHash")
+                        .IsUnique()
+                        .HasDatabaseName("ux_web_push_subscriptions_active_user_device_hash");
 
                     b.HasIndex("UserId")
                         .HasDatabaseName("ix_ie_web_push_subscriptions_user_id");
-
-                    b.HasIndex("TenantId", "UserId", "DeviceIdentifier")
-                        .IsUnique()
-                        .HasDatabaseName("ux_web_push_subscriptions_active_user_device")
-                        .HasFilter("is_deleted = false AND is_active = true");
 
                     b.HasIndex("TenantId", "UserId", "IsActive")
                         .HasDatabaseName("ix_web_push_subscriptions_tenant_user_active");
@@ -25026,11 +25059,23 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasColumnType("varchar(500)")
                         .HasColumnName("normalized_external_application_id");
 
+                    b.Property<byte[]>("ProviderApplicationIdentityHash")
+                        .HasColumnType("binary(32)")
+                        .HasColumnName("provider_application_identity_hash");
+
                     b.Property<string>("ProviderEnvironment")
                         .IsRequired()
                         .HasMaxLength(500)
                         .HasColumnType("varchar(500)")
                         .HasColumnName("provider_environment");
+
+                    b.Property<byte[]>("ProviderEnvironmentApplicationUidHash")
+                        .HasColumnType("binary(32)")
+                        .HasColumnName("provider_environment_application_uid_hash");
+
+                    b.Property<byte[]>("ProviderEnvironmentExternalAppHash")
+                        .HasColumnType("binary(32)")
+                        .HasColumnName("provider_environment_external_app_hash");
 
                     b.Property<int>("ProviderKindId")
                         .HasColumnType("int")
@@ -25081,6 +25126,21 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                     b.HasKey("Id")
                         .HasName("pk_ie_webhook_consumer_provider_bindings");
 
+                    b.HasIndex("ProviderApplicationIdentityHash")
+                        .IsUnique()
+                        .HasDatabaseName("IX_ie_webhook_consumer_provider_bindings_provider_appli_924C0733");
+
+                    b.HasIndex("ProviderEnvironmentApplicationUidHash")
+                        .IsUnique()
+                        .HasDatabaseName("IX_ie_webhook_consumer_provider_bindings_provider_envir_BD4CA762");
+
+                    b.HasIndex("ProviderEnvironmentExternalAppHash")
+                        .IsUnique()
+                        .HasDatabaseName("IX_ie_webhook_consumer_provider_bindings_provider_envir_9EEB276B");
+
+                    b.HasIndex("ProviderKindId")
+                        .HasDatabaseName("ix_ie_webhook_consumer_provider_bindings_provider_kind_id");
+
                     b.HasIndex("TenantId")
                         .HasDatabaseName("ix_ie_webhook_consumer_provider_bindings_tenant_id");
 
@@ -25090,23 +25150,9 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                     b.HasIndex("ConfigurationScopeId", "WebhookConsumerId")
                         .HasDatabaseName("IX_ie_webhook_consumer_provider_bindings_configuration__1F6E448C");
 
-                    b.HasIndex("ProviderKindId", "NormalizedEnvironment", "NormalizedApplicationUid")
-                        .IsUnique()
-                        .HasDatabaseName("IX_ie_webhook_consumer_provider_bindings_provider_kind__B4EC5E57");
-
-                    b.HasIndex("ProviderKindId", "NormalizedEnvironment", "NormalizedExternalApplicationId")
-                        .IsUnique()
-                        .HasDatabaseName("IX_ie_webhook_consumer_provider_bindings_provider_kind__CA077B3B")
-                        .HasFilter("normalized_external_application_id IS NOT NULL");
-
                     b.HasIndex("WebhookConsumerId", "ProviderKindId", "NormalizedEnvironment")
                         .IsUnique()
                         .HasDatabaseName("IX_ie_webhook_consumer_provider_bindings_webhook_consum_5F6157EF");
-
-                    b.HasIndex("ProviderKindId", "NormalizedEnvironment", "NormalizedExternalApplicationId", "NormalizedApplicationUid")
-                        .IsUnique()
-                        .HasDatabaseName("IX_ie_webhook_consumer_provider_bindings_provider_kind__8F90FDDF")
-                        .HasFilter("normalized_external_application_id IS NOT NULL");
 
                     b.ToTable("ie_webhook_consumer_provider_bindings", null, t =>
                         {

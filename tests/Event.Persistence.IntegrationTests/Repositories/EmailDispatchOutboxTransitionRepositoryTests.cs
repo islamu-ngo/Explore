@@ -1408,17 +1408,21 @@ public sealed class EmailDispatchOutboxTransitionRepositoryTests(PostgreSqlConta
         await MakeGraphUnknownAsync(context, graph);
         var repository = new EmailDispatchOutboxRepository(context);
 
-        await using var transaction = await context.Database.BeginTransactionAsync();
-        var reconciled = await repository.TryReconcileUnknown(
-            graph.Dispatch.TenantId,
-            graph.Dispatch.Id,
-            EmailDispatchUnknownReconciliationOutcome.Delivered,
-            "provider log confirms acceptance",
-            "provider-confirmed-id",
-            Guid.NewGuid(),
-            DateTime.UtcNow,
-            CancellationToken.None);
-        await transaction.CommitAsync();
+        bool reconciled = await context.Database.CreateExecutionStrategy().ExecuteAsync(async () =>
+        {
+            await using var transaction = await context.Database.BeginTransactionAsync();
+            bool result = await repository.TryReconcileUnknown(
+                graph.Dispatch.TenantId,
+                graph.Dispatch.Id,
+                EmailDispatchUnknownReconciliationOutcome.Delivered,
+                "provider log confirms acceptance",
+                "provider-confirmed-id",
+                Guid.NewGuid(),
+                DateTime.UtcNow,
+                CancellationToken.None);
+            await transaction.CommitAsync();
+            return result;
+        });
 
         context.ChangeTracker.Clear();
         await Assert.That(reconciled).IsTrue();
@@ -1441,17 +1445,21 @@ public sealed class EmailDispatchOutboxTransitionRepositoryTests(PostgreSqlConta
         await MakeGraphUnknownAsync(context, graph);
         var repository = new EmailDispatchOutboxRepository(context);
 
-        await using var transaction = await context.Database.BeginTransactionAsync();
-        var reconciled = await repository.TryReconcileUnknown(
-            graph.Dispatch.TenantId,
-            graph.Dispatch.Id,
-            EmailDispatchUnknownReconciliationOutcome.NotDelivered,
-            "provider log confirms no acceptance",
-            null,
-            Guid.NewGuid(),
-            DateTime.UtcNow,
-            CancellationToken.None);
-        await transaction.CommitAsync();
+        bool reconciled = await context.Database.CreateExecutionStrategy().ExecuteAsync(async () =>
+        {
+            await using var transaction = await context.Database.BeginTransactionAsync();
+            bool result = await repository.TryReconcileUnknown(
+                graph.Dispatch.TenantId,
+                graph.Dispatch.Id,
+                EmailDispatchUnknownReconciliationOutcome.NotDelivered,
+                "provider log confirms no acceptance",
+                null,
+                Guid.NewGuid(),
+                DateTime.UtcNow,
+                CancellationToken.None);
+            await transaction.CommitAsync();
+            return result;
+        });
 
         context.ChangeTracker.Clear();
         await Assert.That(reconciled).IsTrue();
@@ -1701,17 +1709,7 @@ public sealed class EmailDispatchOutboxTransitionRepositoryTests(PostgreSqlConta
             CancellationToken.None);
 
     private ExploreDbContext CreateDbContext(DbCommandInterceptor interceptor)
-    {
-        var options = new DbContextOptionsBuilder<ExploreDbContext>()
-            .UseNpgsql(fixture.ConnectionString)
-            .UseSnakeCaseNamingConvention()
-            .ConfigureWarnings(warnings => warnings.Ignore(RelationalEventId.PendingModelChangesWarning))
-            .AddInterceptors(interceptor)
-            .Options;
-        var context = new ExploreDbContext(options);
-        context.EnableTenantFilterBypass("Email settlement fault-injection test.");
-        return context;
-    }
+        => fixture.CreateDbContext(interceptor);
 
     private static async Task<AcceptedSettlementGraph> SeedAcceptedSettlementGraphAsync(
         ExploreDbContext context,
@@ -2163,7 +2161,8 @@ public sealed class EmailDispatchOutboxTransitionRepositoryTests(PostgreSqlConta
             InterceptionResult<int> result,
             CancellationToken cancellationToken = default)
         {
-            if (command.CommandText.Contains($"UPDATE {failingTable}", StringComparison.OrdinalIgnoreCase))
+            if (command.CommandText.Contains("UPDATE", StringComparison.OrdinalIgnoreCase)
+                && command.CommandText.Contains(failingTable, StringComparison.OrdinalIgnoreCase))
             {
                 throw new InvalidOperationException($"Injected accepted-settlement failure at {failingTable}.");
             }

@@ -4,10 +4,10 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
-namespace Explore.Persistence.Migrations.MySql.Migrations
+namespace Explore.Persistence.Migrations.MariaDb.Migrations
 {
     /// <inheritdoc />
-    public partial class InitialMySqlApplication : Migration
+    public partial class InitialMariaDbApplication : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -4226,7 +4226,11 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                     created_at = table.Column<DateTime>(type: "datetime(6)", nullable: false, defaultValueSql: "(UTC_TIMESTAMP())"),
                     created_by = table.Column<Guid>(type: "char(36)", nullable: true, collation: "ascii_general_ci"),
                     updated_at = table.Column<DateTime>(type: "datetime(6)", nullable: true),
-                    updated_by = table.Column<Guid>(type: "char(36)", nullable: true, collation: "ascii_general_ci")
+                    updated_by = table.Column<Guid>(type: "char(36)", nullable: true, collation: "ascii_general_ci"),
+                    external_global_uniqueness_hash = table.Column<byte[]>(type: "binary(32)", nullable: true),
+                    external_tenant_uniqueness_hash = table.Column<byte[]>(type: "binary(32)", nullable: true),
+                    internal_global_uniqueness_hash = table.Column<byte[]>(type: "binary(32)", nullable: true),
+                    internal_tenant_uniqueness_hash = table.Column<byte[]>(type: "binary(32)", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -5065,10 +5069,10 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                     id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     user_id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     tenant_id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
-                    provider = table.Column<string>(type: "varchar(500)", maxLength: 500, nullable: false)
-                        .Annotation("MySql:CharSet", "utf8mb4"),
-                    subject_did = table.Column<string>(type: "varchar(2048)", maxLength: 2048, nullable: false)
-                        .Annotation("MySql:CharSet", "utf8mb4"),
+                    provider = table.Column<string>(type: "varchar(500)", maxLength: 500, nullable: false, collation: "ascii_bin")
+                        .Annotation("MySql:CharSet", "ascii"),
+                    subject_did = table.Column<string>(type: "varchar(2048)", maxLength: 2048, nullable: false, collation: "ascii_bin")
+                        .Annotation("MySql:CharSet", "ascii"),
                     session_ciphertext = table.Column<byte[]>(type: "longblob", nullable: false),
                     encryption_key_id = table.Column<string>(type: "varchar(128)", maxLength: 128, nullable: false)
                         .Annotation("MySql:CharSet", "utf8mb4"),
@@ -5120,7 +5124,8 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                     created_at = table.Column<DateTime>(type: "datetime(6)", nullable: false),
                     created_by = table.Column<Guid>(type: "char(36)", nullable: true, collation: "ascii_general_ci"),
                     updated_at = table.Column<DateTime>(type: "datetime(6)", nullable: true),
-                    updated_by = table.Column<Guid>(type: "char(36)", nullable: true, collation: "ascii_general_ci")
+                    updated_by = table.Column<Guid>(type: "char(36)", nullable: true, collation: "ascii_general_ci"),
+                    provider_key_uniqueness_hash = table.Column<byte[]>(type: "binary(32)", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -5230,7 +5235,9 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                     is_deleted = table.Column<bool>(type: "tinyint(1)", nullable: false),
                     deleted_at = table.Column<DateTime>(type: "datetime(6)", nullable: true),
                     deleted_by = table.Column<Guid>(type: "char(36)", nullable: true, collation: "ascii_general_ci"),
-                    concurrency_stamp = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci")
+                    concurrency_stamp = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
+                    active_endpoint_uniqueness_hash = table.Column<byte[]>(type: "binary(32)", nullable: true),
+                    active_user_device_uniqueness_hash = table.Column<byte[]>(type: "binary(32)", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -5538,8 +5545,8 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
-                    did = table.Column<string>(type: "varchar(2048)", maxLength: 2048, nullable: false)
-                        .Annotation("MySql:CharSet", "utf8mb4"),
+                    did = table.Column<string>(type: "varchar(2048)", maxLength: 2048, nullable: false, collation: "ascii_bin")
+                        .Annotation("MySql:CharSet", "ascii"),
                     actor_id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     did_custody_type_id = table.Column<int>(type: "int", nullable: true),
                     handle = table.Column<string>(type: "varchar(253)", maxLength: 253, nullable: true)
@@ -5628,7 +5635,8 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                     is_deleted = table.Column<bool>(type: "tinyint(1)", nullable: false),
                     deleted_at = table.Column<DateTime>(type: "datetime(6)", nullable: true),
                     deleted_by = table.Column<Guid>(type: "char(36)", nullable: true, collation: "ascii_general_ci"),
-                    concurrency_stamp = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci")
+                    concurrency_stamp = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
+                    provider_object_key_uniqueness_hash = table.Column<byte[]>(type: "binary(32)", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -9326,7 +9334,10 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                     created_at = table.Column<DateTime>(type: "datetime(6)", nullable: false),
                     created_by = table.Column<Guid>(type: "char(36)", nullable: true, collation: "ascii_general_ci"),
                     updated_at = table.Column<DateTime>(type: "datetime(6)", nullable: true),
-                    updated_by = table.Column<Guid>(type: "char(36)", nullable: true, collation: "ascii_general_ci")
+                    updated_by = table.Column<Guid>(type: "char(36)", nullable: true, collation: "ascii_general_ci"),
+                    provider_application_identity_hash = table.Column<byte[]>(type: "binary(32)", nullable: true),
+                    provider_environment_application_uid_hash = table.Column<byte[]>(type: "binary(32)", nullable: true),
+                    provider_environment_external_app_hash = table.Column<byte[]>(type: "binary(32)", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -16193,32 +16204,28 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                 column: "scope_tenant_id");
 
             migrationBuilder.CreateIndex(
-                name: "IX_ie_external_bindings_provider_key_external_system_ex_21982EC9",
+                name: "ux_external_bindings_external_global_hash",
                 table: "ie_external_bindings",
-                columns: new[] { "provider_key", "external_system", "external_type", "external_id" },
-                unique: true,
-                filter: "scope_tenant_id IS NULL");
+                column: "external_global_uniqueness_hash",
+                unique: true);
 
             migrationBuilder.CreateIndex(
-                name: "IX_ie_external_bindings_provider_key_external_system_ex_DA885C8B",
+                name: "ux_external_bindings_external_tenant_hash",
                 table: "ie_external_bindings",
-                columns: new[] { "provider_key", "external_system", "external_type", "external_id", "scope_tenant_id" },
-                unique: true,
-                filter: "scope_tenant_id IS NOT NULL");
+                column: "external_tenant_uniqueness_hash",
+                unique: true);
 
             migrationBuilder.CreateIndex(
-                name: "IX_ie_external_bindings_provider_key_external_system_in_1D084116",
+                name: "ux_external_bindings_internal_global_hash",
                 table: "ie_external_bindings",
-                columns: new[] { "provider_key", "external_system", "internal_type", "internal_id", "scope_tenant_id" },
-                unique: true,
-                filter: "scope_tenant_id IS NOT NULL");
+                column: "internal_global_uniqueness_hash",
+                unique: true);
 
             migrationBuilder.CreateIndex(
-                name: "IX_ie_external_bindings_provider_key_external_system_in_4C85AFA9",
+                name: "ux_external_bindings_internal_tenant_hash",
                 table: "ie_external_bindings",
-                columns: new[] { "provider_key", "external_system", "internal_type", "internal_id" },
-                unique: true,
-                filter: "scope_tenant_id IS NULL");
+                column: "internal_tenant_uniqueness_hash",
+                unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "ux_external_workflow_provider_kinds_master_code",
@@ -18261,11 +18268,10 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                 columns: new[] { "tenant_id", "visibility", "purpose" });
 
             migrationBuilder.CreateIndex(
-                name: "ux_storage_objects_provider_object_key",
+                name: "ux_storage_objects_provider_object_key_hash",
                 table: "ie_storage_objects",
-                columns: new[] { "provider", "object_key" },
-                unique: true,
-                filter: "object_key IS NOT NULL");
+                column: "provider_object_key_uniqueness_hash",
+                unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "ix_ie_storage_upload_sessions_storage_object_id",
@@ -18840,13 +18846,6 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                 unique: true);
 
             migrationBuilder.CreateIndex(
-                name: "ix_ie_user_external_logins_provider_provider_key",
-                table: "ie_user_external_logins",
-                columns: new[] { "provider", "provider_key" },
-                unique: true,
-                filter: "provider IS NOT NULL AND provider_key IS NOT NULL");
-
-            migrationBuilder.CreateIndex(
                 name: "ix_ie_user_external_logins_tenant_id",
                 table: "ie_user_external_logins",
                 column: "tenant_id");
@@ -18855,6 +18854,12 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                 name: "ix_ie_user_external_logins_user_id",
                 table: "ie_user_external_logins",
                 column: "user_id");
+
+            migrationBuilder.CreateIndex(
+                name: "ux_user_external_logins_provider_key_hash",
+                table: "ie_user_external_logins",
+                column: "provider_key_uniqueness_hash",
+                unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "ix_ie_user_notification_preferences_tenant_id_user_id_category",
@@ -18922,18 +18927,16 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                 columns: new[] { "tenant_id", "user_id", "is_active" });
 
             migrationBuilder.CreateIndex(
-                name: "ux_web_push_subscriptions_active_endpoint",
+                name: "ux_web_push_subscriptions_active_endpoint_hash",
                 table: "ie_web_push_subscriptions",
-                column: "endpoint",
-                unique: true,
-                filter: "is_deleted = false AND is_active = true");
+                column: "active_endpoint_uniqueness_hash",
+                unique: true);
 
             migrationBuilder.CreateIndex(
-                name: "ux_web_push_subscriptions_active_user_device",
+                name: "ux_web_push_subscriptions_active_user_device_hash",
                 table: "ie_web_push_subscriptions",
-                columns: new[] { "tenant_id", "user_id", "device_identifier" },
-                unique: true,
-                filter: "is_deleted = false AND is_active = true");
+                column: "active_user_device_uniqueness_hash",
+                unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "ux_webhook_audit_actions_master_code",
@@ -19062,24 +19065,27 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                 columns: new[] { "configuration_scope_id", "webhook_consumer_id" });
 
             migrationBuilder.CreateIndex(
-                name: "IX_ie_webhook_consumer_provider_bindings_provider_kind__8F90FDDF",
+                name: "IX_ie_webhook_consumer_provider_bindings_provider_appli_924C0733",
                 table: "ie_webhook_consumer_provider_bindings",
-                columns: new[] { "provider_kind_id", "normalized_environment", "normalized_external_application_id", "normalized_application_uid" },
-                unique: true,
-                filter: "normalized_external_application_id IS NOT NULL");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_ie_webhook_consumer_provider_bindings_provider_kind__B4EC5E57",
-                table: "ie_webhook_consumer_provider_bindings",
-                columns: new[] { "provider_kind_id", "normalized_environment", "normalized_application_uid" },
+                column: "provider_application_identity_hash",
                 unique: true);
 
             migrationBuilder.CreateIndex(
-                name: "IX_ie_webhook_consumer_provider_bindings_provider_kind__CA077B3B",
+                name: "IX_ie_webhook_consumer_provider_bindings_provider_envir_9EEB276B",
                 table: "ie_webhook_consumer_provider_bindings",
-                columns: new[] { "provider_kind_id", "normalized_environment", "normalized_external_application_id" },
-                unique: true,
-                filter: "normalized_external_application_id IS NOT NULL");
+                column: "provider_environment_external_app_hash",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_ie_webhook_consumer_provider_bindings_provider_envir_BD4CA762",
+                table: "ie_webhook_consumer_provider_bindings",
+                column: "provider_environment_application_uid_hash",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "ix_ie_webhook_consumer_provider_bindings_provider_kind_id",
+                table: "ie_webhook_consumer_provider_bindings",
+                column: "provider_kind_id");
 
             migrationBuilder.CreateIndex(
                 name: "ix_ie_webhook_consumer_provider_bindings_tenant_id",

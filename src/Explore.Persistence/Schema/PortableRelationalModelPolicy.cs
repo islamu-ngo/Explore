@@ -2,6 +2,7 @@
 // ABOUTME: Preserves PostgreSQL types while emitting portable defaults and constraint SQL for every provider.
 
 using System.Text.RegularExpressions;
+using Explore.Domain;
 using Explore.Persistence.ValueGenerators;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata;
@@ -43,6 +44,27 @@ internal static partial class PortableRelationalModelPolicy
 
         foreach (var entityType in modelBuilder.Model.GetEntityTypes())
         {
+            if (providerName == MySqlProvider && entityType.ClrType == typeof(ExternalBinding))
+            {
+                ConfigureMySqlExternalBindingUniqueness(entityType);
+            }
+            else if (providerName == MySqlProvider && entityType.ClrType == typeof(StorageObject))
+            {
+                ConfigureMySqlStorageObjectUniqueness(entityType);
+            }
+            else if (providerName == MySqlProvider && entityType.ClrType == typeof(UserExternalLogin))
+            {
+                ConfigureMySqlUserExternalLoginUniqueness(entityType);
+            }
+            else if (providerName == MySqlProvider && entityType.ClrType == typeof(WebPushSubscription))
+            {
+                ConfigureMySqlWebPushSubscriptionUniqueness(entityType);
+            }
+            else if (providerName == MySqlProvider && entityType.ClrType == typeof(WebhookConsumerProviderBinding))
+            {
+                ConfigureMySqlWebhookProviderBindingUniqueness(entityType);
+            }
+
             NormalizeProperties(entityType, providerName);
             if (providerName == SqlServerProvider)
             {
@@ -69,7 +91,22 @@ internal static partial class PortableRelationalModelPolicy
                 property.ValueGenerated = ValueGenerated.Never;
             }
 
-            if (providerName != PostgreSqlProvider && property.GetCollation() is not null)
+            var configuredCollation = property.GetCollation();
+            if (providerName == MySqlProvider &&
+                string.Equals(configuredCollation, "C", StringComparison.Ordinal))
+            {
+                property.SetCharSet("ascii");
+                property.SetCollation("ascii_bin");
+            }
+            else if (providerName == MySqlProvider &&
+                     entityType.ClrType == typeof(UserAuthenticationToken) &&
+                     property.Name is nameof(UserAuthenticationToken.Provider) or
+                         nameof(UserAuthenticationToken.SubjectDid))
+            {
+                property.SetCharSet("ascii");
+                property.SetCollation("ascii_bin");
+            }
+            else if (providerName != PostgreSqlProvider && configuredCollation is not null)
             {
                 property.SetCollation(null);
             }
@@ -239,6 +276,207 @@ internal static partial class PortableRelationalModelPolicy
                 index.SetFilter(NormalizeBooleanLiterals(filter, providerName));
             }
         }
+    }
+
+    private static void ConfigureMySqlExternalBindingUniqueness(IMutableEntityType entityType)
+    {
+        var replacedIndexNames = new HashSet<string>(StringComparer.Ordinal)
+        {
+            "ix_external_bindings_external_global_unique",
+            "ix_external_bindings_external_tenant_unique",
+            "ix_external_bindings_internal_global_unique",
+            "ix_external_bindings_internal_tenant_unique"
+        };
+
+        foreach (var index in entityType.GetIndexes()
+                     .Where(index => replacedIndexNames.Contains(index.GetDatabaseName() ?? string.Empty))
+                     .ToArray())
+        {
+            entityType.RemoveIndex(index);
+        }
+
+        AddMySqlUniquenessHash(
+            entityType,
+            "ExternalGlobalUniquenessHash",
+            "external_global_uniqueness_hash",
+            "ux_external_bindings_external_global_hash",
+            "scope_tenant_id IS NULL",
+            ["provider_key", "external_system", "external_type", "external_id"]);
+        AddMySqlUniquenessHash(
+            entityType,
+            "ExternalTenantUniquenessHash",
+            "external_tenant_uniqueness_hash",
+            "ux_external_bindings_external_tenant_hash",
+            "scope_tenant_id IS NOT NULL",
+            ["provider_key", "external_system", "external_type", "external_id", "scope_tenant_id"]);
+        AddMySqlUniquenessHash(
+            entityType,
+            "InternalGlobalUniquenessHash",
+            "internal_global_uniqueness_hash",
+            "ux_external_bindings_internal_global_hash",
+            "scope_tenant_id IS NULL",
+            ["provider_key", "external_system", "internal_type", "internal_id"]);
+        AddMySqlUniquenessHash(
+            entityType,
+            "InternalTenantUniquenessHash",
+            "internal_tenant_uniqueness_hash",
+            "ux_external_bindings_internal_tenant_hash",
+            "scope_tenant_id IS NOT NULL",
+            ["provider_key", "external_system", "internal_type", "internal_id", "scope_tenant_id"]);
+    }
+
+    private static void AddMySqlUniquenessHash(
+        IMutableEntityType entityType,
+        string propertyName,
+        string columnName,
+        string indexName,
+        string scopePredicate,
+        IReadOnlyList<string> inputColumns)
+    {
+        var property = entityType.AddProperty(propertyName, typeof(byte[]));
+        property.IsNullable = true;
+        property.SetColumnName(columnName);
+        property.SetColumnType("binary(32)");
+        property.ValueGenerated = ValueGenerated.Never;
+
+        var index = entityType.AddIndex(property);
+        index.IsUnique = true;
+        index.SetDatabaseName(indexName);
+    }
+
+    private static void ConfigureMySqlStorageObjectUniqueness(IMutableEntityType entityType)
+    {
+        var providerObjectKeyIndex = entityType.GetIndexes().Single(index =>
+            index.GetDatabaseName() == "ux_storage_objects_provider_object_key");
+        entityType.RemoveIndex(providerObjectKeyIndex);
+
+        var property = entityType.AddProperty("ProviderObjectKeyUniquenessHash", typeof(byte[]));
+        property.IsNullable = true;
+        property.SetColumnName("provider_object_key_uniqueness_hash");
+        property.SetColumnType("binary(32)");
+        property.ValueGenerated = ValueGenerated.Never;
+
+        var index = entityType.AddIndex(property);
+        index.IsUnique = true;
+        index.SetDatabaseName("ux_storage_objects_provider_object_key_hash");
+    }
+
+    private static void ConfigureMySqlUserExternalLoginUniqueness(IMutableEntityType entityType)
+    {
+        var providerKeyIndex = entityType.GetIndexes().Single(index =>
+            index.Properties.Select(property => property.Name).SequenceEqual([
+                nameof(UserExternalLogin.Provider),
+                nameof(UserExternalLogin.ProviderKey)
+            ]));
+        entityType.RemoveIndex(providerKeyIndex);
+
+        var property = entityType.AddProperty("ProviderKeyUniquenessHash", typeof(byte[]));
+        property.IsNullable = true;
+        property.SetColumnName("provider_key_uniqueness_hash");
+        property.SetColumnType("binary(32)");
+        property.ValueGenerated = ValueGenerated.Never;
+
+        var index = entityType.AddIndex(property);
+        index.IsUnique = true;
+        index.SetDatabaseName("ux_user_external_logins_provider_key_hash");
+    }
+
+    private static void ConfigureMySqlWebPushSubscriptionUniqueness(IMutableEntityType entityType)
+    {
+        foreach (var index in entityType.GetIndexes().Where(index => index.GetDatabaseName() is
+                     "ux_web_push_subscriptions_active_endpoint" or
+                     "ux_web_push_subscriptions_active_user_device").ToArray())
+        {
+            entityType.RemoveIndex(index);
+        }
+
+        AddMySqlActiveWebPushHash(
+            entityType,
+            "ActiveEndpointUniquenessHash",
+            "active_endpoint_uniqueness_hash",
+            "ux_web_push_subscriptions_active_endpoint_hash",
+            ["endpoint"]);
+        AddMySqlActiveWebPushHash(
+            entityType,
+            "ActiveUserDeviceUniquenessHash",
+            "active_user_device_uniqueness_hash",
+            "ux_web_push_subscriptions_active_user_device_hash",
+            ["tenant_id", "user_id", "device_identifier"]);
+    }
+
+    private static void AddMySqlActiveWebPushHash(
+        IMutableEntityType entityType,
+        string propertyName,
+        string columnName,
+        string indexName,
+        IReadOnlyList<string> inputColumns)
+    {
+        var property = entityType.AddProperty(propertyName, typeof(byte[]));
+        property.IsNullable = true;
+        property.SetColumnName(columnName);
+        property.SetColumnType("binary(32)");
+        property.ValueGenerated = ValueGenerated.Never;
+
+        var index = entityType.AddIndex(property);
+        index.IsUnique = true;
+        index.SetDatabaseName(indexName);
+    }
+
+    private static void ConfigureMySqlWebhookProviderBindingUniqueness(IMutableEntityType entityType)
+    {
+        var replacedPropertySets = new HashSet<string>(StringComparer.Ordinal)
+        {
+            $"{nameof(WebhookConsumerProviderBinding.ProviderKindId)}|{nameof(WebhookConsumerProviderBinding.NormalizedEnvironment)}|{nameof(WebhookConsumerProviderBinding.NormalizedApplicationUid)}",
+            $"{nameof(WebhookConsumerProviderBinding.ProviderKindId)}|{nameof(WebhookConsumerProviderBinding.NormalizedEnvironment)}|{nameof(WebhookConsumerProviderBinding.NormalizedExternalApplicationId)}",
+            $"{nameof(WebhookConsumerProviderBinding.ProviderKindId)}|{nameof(WebhookConsumerProviderBinding.NormalizedEnvironment)}|{nameof(WebhookConsumerProviderBinding.NormalizedExternalApplicationId)}|{nameof(WebhookConsumerProviderBinding.NormalizedApplicationUid)}"
+        };
+        foreach (var index in entityType.GetIndexes().Where(index =>
+                     replacedPropertySets.Contains(string.Join('|', index.Properties.Select(property => property.Name))))
+                     .ToArray())
+        {
+            entityType.RemoveIndex(index);
+        }
+
+        AddMySqlWebhookProviderBindingHash(
+            entityType,
+            "ProviderEnvironmentApplicationUidHash",
+            "provider_environment_application_uid_hash",
+            "ux_webhook_provider_environment_application_uid_hash",
+            "1 = 1",
+            ["provider_kind_id", "normalized_environment", "normalized_application_uid"]);
+        AddMySqlWebhookProviderBindingHash(
+            entityType,
+            "ProviderEnvironmentExternalAppHash",
+            "provider_environment_external_app_hash",
+            "ux_webhook_provider_environment_external_app_hash",
+            "normalized_external_application_id IS NOT NULL",
+            ["provider_kind_id", "normalized_environment", "normalized_external_application_id"]);
+        AddMySqlWebhookProviderBindingHash(
+            entityType,
+            "ProviderApplicationIdentityHash",
+            "provider_application_identity_hash",
+            "ux_webhook_provider_application_identity_hash",
+            "normalized_external_application_id IS NOT NULL",
+            ["provider_kind_id", "normalized_environment", "normalized_external_application_id", "normalized_application_uid"]);
+    }
+
+    private static void AddMySqlWebhookProviderBindingHash(
+        IMutableEntityType entityType,
+        string propertyName,
+        string columnName,
+        string indexName,
+        string predicate,
+        IReadOnlyList<string> inputColumns)
+    {
+        var property = entityType.AddProperty(propertyName, typeof(byte[]));
+        property.IsNullable = true;
+        property.SetColumnName(columnName);
+        property.SetColumnType("binary(32)");
+        property.ValueGenerated = ValueGenerated.Never;
+
+        var index = entityType.AddIndex(property);
+        index.IsUnique = true;
+        index.SetDatabaseName(indexName);
     }
 
     private static void NormalizeSqlServerDeleteBehaviors(IMutableEntityType entityType)

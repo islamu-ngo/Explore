@@ -162,8 +162,7 @@ public sealed class RegistrationWorkflowPersistenceTests
     {
         await using ExploreDbContext context = CreateModelContext();
         IMigrationsAssembly assembly = context.GetService<IMigrationsAssembly>();
-        KeyValuePair<string, System.Reflection.TypeInfo> item = assembly.Migrations
-            .Single(entry => entry.Key.EndsWith("_init", StringComparison.Ordinal));
+        KeyValuePair<string, System.Reflection.TypeInfo> item = assembly.Migrations.Single();
         Migration migration = assembly.CreateMigration(item.Value, context.Database.ProviderName!);
         string[] taskTables =
         [

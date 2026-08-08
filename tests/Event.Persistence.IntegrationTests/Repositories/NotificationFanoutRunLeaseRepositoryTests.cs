@@ -94,53 +94,56 @@ public sealed class NotificationFanoutRunLeaseRepositoryTests(PostgreSqlContaine
             ensureRun: false);
 
         await using var heavyContext = fixture.CreateDbContext();
-        await using var heavyTransaction = await heavyContext.Database.BeginTransactionAsync();
-        var occurrenceRepository = new NotificationFanoutOccurrenceRepository(heavyContext);
-        await occurrenceRepository.AcquireEventPrecedenceLockAndHasHeavyAuthorityAsync(
-            scenario.TenantId,
-            scenario.EventId,
-            CancellationToken.None);
-        NotificationFanoutOccurrence occurrence = await heavyContext.NotificationFanoutOccurrences
-            .SingleAsync(item => item.TenantId == scenario.TenantId
-                && item.Id == scenario.OccurrenceId);
-        occurrence.Supersede(
-            replacementId,
-            "heavy_precedence",
-            Utc(2026, 8, 1, 12));
-        await heavyContext.SaveChangesAsync();
-
-        await using var ensureContext = fixture.CreateDbContext();
-        await ensureContext.Database.OpenConnectionAsync();
-        int ensureBackendPid = await ensureContext.Database
-            .SqlQueryRaw<int>("SELECT pg_backend_pid() AS \"Value\"")
-            .SingleAsync();
-        var runRepository = new NotificationFanoutRunRepository(ensureContext);
-        Task<NotificationFanoutRun?> ensureTask = runRepository.EnsurePendingOccurrenceRunAsync(
-            scenario.TenantId,
-            scenario.OccurrenceId,
-            Guid.CreateVersion7(),
-            CancellationToken.None);
-
-        bool waitedOnEventLock;
-        try
+        await heavyContext.Database.CreateExecutionStrategy().ExecuteAsync(async () =>
         {
-            waitedOnEventLock = await WaitForAdvisoryLockWaiterAsync(ensureBackendPid);
-        }
-        finally
-        {
-            await heavyTransaction.CommitAsync();
-        }
+            await using var heavyTransaction = await heavyContext.Database.BeginTransactionAsync();
+            var occurrenceRepository = new NotificationFanoutOccurrenceRepository(heavyContext);
+            await occurrenceRepository.AcquireEventPrecedenceLockAndHasHeavyAuthorityAsync(
+                scenario.TenantId,
+                scenario.EventId,
+                CancellationToken.None);
+            NotificationFanoutOccurrence occurrence = await heavyContext.NotificationFanoutOccurrences
+                .SingleAsync(item => item.TenantId == scenario.TenantId
+                    && item.Id == scenario.OccurrenceId);
+            occurrence.Supersede(
+                replacementId,
+                "heavy_precedence",
+                Utc(2026, 8, 1, 12));
+            await heavyContext.SaveChangesAsync();
 
-        NotificationFanoutRun? ensured = await ensureTask.WaitAsync(TimeSpan.FromSeconds(5));
-        await using var verificationContext = fixture.CreateDbContext();
-        int pendingRunCount = await verificationContext.NotificationFanoutRuns
-            .CountAsync(run => run.TenantId == scenario.TenantId
-                && run.FanoutOccurrenceId == scenario.OccurrenceId
-                && run.Status == "pending");
+            await using var ensureContext = fixture.CreateDbContext();
+            await ensureContext.Database.OpenConnectionAsync();
+            int ensureBackendPid = await ensureContext.Database
+                .SqlQueryRaw<int>("SELECT pg_backend_pid() AS \"Value\"")
+                .SingleAsync();
+            var runRepository = new NotificationFanoutRunRepository(ensureContext);
+            Task<NotificationFanoutRun?> ensureTask = runRepository.EnsurePendingOccurrenceRunAsync(
+                scenario.TenantId,
+                scenario.OccurrenceId,
+                Guid.CreateVersion7(),
+                CancellationToken.None);
 
-        await Assert.That(waitedOnEventLock).IsTrue();
-        await Assert.That(ensured).IsNull();
-        await Assert.That(pendingRunCount).IsEqualTo(0);
+            bool waitedOnEventLock;
+            try
+            {
+                waitedOnEventLock = await WaitForAdvisoryLockWaiterAsync(ensureBackendPid);
+            }
+            finally
+            {
+                await heavyTransaction.CommitAsync();
+            }
+
+            NotificationFanoutRun? ensured = await ensureTask.WaitAsync(TimeSpan.FromSeconds(5));
+            await using var verificationContext = fixture.CreateDbContext();
+            int pendingRunCount = await verificationContext.NotificationFanoutRuns
+                .CountAsync(run => run.TenantId == scenario.TenantId
+                    && run.FanoutOccurrenceId == scenario.OccurrenceId
+                    && run.Status == "pending");
+
+            await Assert.That(waitedOnEventLock).IsTrue();
+            await Assert.That(ensured).IsNull();
+            await Assert.That(pendingRunCount).IsEqualTo(0);
+        });
     }
 
     [Test]
@@ -492,58 +495,61 @@ public sealed class NotificationFanoutRunLeaseRepositoryTests(PostgreSqlContaine
             ensureRun: false);
 
         await using var blockingContext = fixture.CreateDbContext();
-        await using var blockingTransaction = await blockingContext.Database.BeginTransactionAsync();
-        string lockKey = $"notification-fanout-precedence:{scenario.TenantId:N}:{scenario.EventId:N}";
-        await using IAsyncDisposable blockingLease = await RelationalNamedLock.AcquireTransactionAsync(
-            blockingContext,
-            lockKey,
-            CancellationToken.None);
-        NotificationFanoutOccurrence occurrence = await blockingContext.NotificationFanoutOccurrences
-            .SingleAsync(item => item.TenantId == scenario.TenantId
-                && item.Id == scenario.OccurrenceId);
-        occurrence.Supersede(replacementId, "newer_occurrence", claimedAt);
-        await blockingContext.SaveChangesAsync();
-
-        await using var claimContext = fixture.CreateDbContext();
-        await claimContext.Database.OpenConnectionAsync();
-        int claimBackendPid = await claimContext.Database
-            .SqlQueryRaw<int>("SELECT pg_backend_pid() AS \"Value\"")
-            .SingleAsync();
-        var claimRepository = new NotificationFanoutRunRepository(claimContext);
-        Task<NotificationFanoutClaim?> claimTask = claimRepository.TryClaimOccurrenceAsync(
-            scenario.TenantId,
-            scenario.OccurrenceId,
-            "supersession-race-worker",
-            claimedAt,
-            TimeSpan.FromMinutes(1),
-            8,
-            1,
-            BacklogHighWatermark,
-            BacklogLowWatermark,
-            CancellationToken.None);
-
-        bool waitedOnEventLock;
-        try
+        await blockingContext.Database.CreateExecutionStrategy().ExecuteAsync(async () =>
         {
-            waitedOnEventLock = await WaitForAdvisoryLockWaiterAsync(claimBackendPid);
-        }
-        finally
-        {
-            await blockingTransaction.CommitAsync();
-        }
+            await using var blockingTransaction = await blockingContext.Database.BeginTransactionAsync();
+            string lockKey = $"notification-fanout-precedence:{scenario.TenantId:N}:{scenario.EventId:N}";
+            await using IAsyncDisposable blockingLease = await RelationalNamedLock.AcquireTransactionAsync(
+                blockingContext,
+                lockKey,
+                CancellationToken.None);
+            NotificationFanoutOccurrence occurrence = await blockingContext.NotificationFanoutOccurrences
+                .SingleAsync(item => item.TenantId == scenario.TenantId
+                    && item.Id == scenario.OccurrenceId);
+            occurrence.Supersede(replacementId, "newer_occurrence", claimedAt);
+            await blockingContext.SaveChangesAsync();
 
-        NotificationFanoutClaim? claim = await claimTask.WaitAsync(TimeSpan.FromSeconds(5));
-        NotificationFanoutRun? run = await claimRepository.GetByOccurrenceAsync(
-            scenario.TenantId,
-            scenario.OccurrenceId,
-            trackChanges: false,
-            CancellationToken.None);
+            await using var claimContext = fixture.CreateDbContext();
+            await claimContext.Database.OpenConnectionAsync();
+            int claimBackendPid = await claimContext.Database
+                .SqlQueryRaw<int>("SELECT pg_backend_pid() AS \"Value\"")
+                .SingleAsync();
+            var claimRepository = new NotificationFanoutRunRepository(claimContext);
+            Task<NotificationFanoutClaim?> claimTask = claimRepository.TryClaimOccurrenceAsync(
+                scenario.TenantId,
+                scenario.OccurrenceId,
+                "supersession-race-worker",
+                claimedAt,
+                TimeSpan.FromMinutes(1),
+                8,
+                1,
+                BacklogHighWatermark,
+                BacklogLowWatermark,
+                CancellationToken.None);
 
-        await Assert.That(waitedOnEventLock).IsTrue();
-        await Assert.That(claim).IsNull();
-        await Assert.That(run).IsNotNull();
-        await Assert.That(run!.Status).IsEqualTo("pending");
-        await Assert.That(run.ProcessingLeaseToken).IsNull();
+            bool waitedOnEventLock;
+            try
+            {
+                waitedOnEventLock = await WaitForAdvisoryLockWaiterAsync(claimBackendPid);
+            }
+            finally
+            {
+                await blockingTransaction.CommitAsync();
+            }
+
+            NotificationFanoutClaim? claim = await claimTask.WaitAsync(TimeSpan.FromSeconds(5));
+            NotificationFanoutRun? run = await claimRepository.GetByOccurrenceAsync(
+                scenario.TenantId,
+                scenario.OccurrenceId,
+                trackChanges: false,
+                CancellationToken.None);
+
+            await Assert.That(waitedOnEventLock).IsTrue();
+            await Assert.That(claim).IsNull();
+            await Assert.That(run).IsNotNull();
+            await Assert.That(run!.Status).IsEqualTo("pending");
+            await Assert.That(run.ProcessingLeaseToken).IsNull();
+        });
     }
 
     [Test]

@@ -24,7 +24,7 @@ and only when all of the following are true:
 3. A backup or export exists for every value the operator must retain, and the
    operator has verified that the retained artifacts are readable or restorable.
 4. The legacy key is removed and
-   `PrivacyErasure:Authority:Topology=EmbeddedSqlite|ExternalDatabase` is selected
+   `PrivacyErasure:Authority:Topology=EmbeddedSqlite|CoLocated|ExternalDatabase` is selected
    explicitly.
 
 If any prerequisite is false or unknown, stop and preserve the database,
@@ -40,7 +40,7 @@ functions and function-only runtime grants before starting the API.
 | Asset | Compose Anchor | Why It Matters |
 |---|---|---|
 | Primary application data | Provider database or primary SQLite volume/file | Tenants, events, users, settings, outbox, and Data Protection keys. |
-| Privacy-erasure authority | `EmbeddedSqlite`: dedicated `/app/data/privacy_erasure_authority.db` volume/file; `ExternalDatabase`: independently operated structured PostgreSQL target | Typed immutable erasure facts and monotonic counter drive replay. It must be excluded from the primary restore operation. |
+| Privacy-erasure authority | `EmbeddedSqlite`: dedicated `/app/data/privacy_erasure_authority.db` volume/file; `CoLocated`: primary application database; `ExternalDatabase`: independently operated structured PostgreSQL target | Typed immutable erasure facts and monotonic counter drive replay. Preserve topology-specific backup independence from application restore operations. |
 | Keycloak PostgreSQL data | `keycloak-db` volume `keycloak_data` | Realms, clients, roles, users, and login configuration. |
 | Object storage | API volume `local_storage_data`; optional `minio` volume `minio_data` or external S3 bucket when selected | Uploaded files, images, and storage-backed assets. |
 | Secrets and environment | `.env`, secret-provider project, Keycloak client secrets | Required to recreate the same runtime identity and storage bindings. |
@@ -70,11 +70,13 @@ Do not treat Docker image tags alone as a backup. Database schema and secret-pro
    artifact with the provider's restore/validation command, not only a file
    existence check. Back up the separate Keycloak database when self-hosted.
 
-4. Back up the retained erasure authority independently. For
+4. Back up the retained erasure authority per topology. For
    `EmbeddedSqlite`, stop its only writer and use SQLite `.backup` against
    `/app/data/privacy_erasure_authority.db`, storing the artifact outside both
    the primary and authority volumes. Preserve restrictive permissions on
-   restore. For `ExternalDatabase`, use an authority backup role and a
+   restore. For `CoLocated`, include authority rows in the primary backup because
+   authority is in the primary database. For `ExternalDatabase`, use an
+   authority backup role and a
    PostgreSQL custom-format dump, never the function-only runtime role.
 
    Record the authority watermark, application watermark, backup timestamp, dump SHA-256, and restore drill identifier in the release manifest. Never record the DSN or opaque owner/location/intent IDs.
@@ -95,9 +97,11 @@ Do not treat Docker image tags alone as a backup. Database schema and secret-pro
 Choose the contract before restoring:
 
 - `EmbeddedSqlite` has `restoreReplayProtection=true` only when its dedicated
-  file/volume remains outside the primary restore. Never overwrite the
-  authority file with a primary backup or embed it inside a primary SQLite
-  volume snapshot.
+  file/volume remains outside the primary restore. Never overwrite the authority
+  file with a primary backup or embed it inside a primary SQLite volume
+  snapshot.
+- `CoLocated` has `restoreReplayProtection=false`; authority rows are restored
+  with the same restore contract as the primary database.
 - `ExternalDatabase` has `restoreReplayProtection=true` as a capability flag,
   conditional on the authority database being outside the application restore
   operation. If both databases or their shared storage snapshot are restored
@@ -117,7 +121,8 @@ Choose the contract before restoring:
 5. Restore object storage before user-facing traffic resumes. For local-first Compose, restore `local_storage_data` or the configured `Storage:Local:RootPath`; for S3-compatible mode, restore `minio_data` or the external bucket.
 6. Restore matching structured `Database:*` values and role credentials. For
    `EmbeddedSqlite`, restore the authority file with its restrictive
-   permissions; for `ExternalDatabase`, restore its structured PostgreSQL
+   permissions; for `CoLocated`, restore the application database artifact;
+   for `ExternalDatabase`, restore its structured PostgreSQL
    settings and credentials.
 7. Start dependencies, run `Event.MigrationService` to completion, then start
    the API. Do not start or expose the BFF until the API replay gate succeeds:
@@ -220,6 +225,7 @@ If release notes do not explicitly state that a rollback is image-only safe, ass
 - [ ] The retained erasure authority was backed up and restored independently, and its watermark/hash are recorded without identifiers or connection details.
 - [ ] For either authority topology, API startup replay advanced the application checkpoint to the untouched authority watermark; restored PII canaries are absent and outbox evidence is present once before BFF startup.
 - [ ] `EmbeddedSqlite` restore evidence proves the dedicated authority file was not overwritten by the primary restore and writer replica count remained one.
+- [ ] `CoLocated` restore evidence proves app + authority rows were restored and replay catches up correctly from the shared checkpoint.
 - [ ] `Event.MigrationService` completed twice against the restored provider before API/BFF startup.
 - [ ] `docker compose ps` shows required services running.
 - [ ] API `/alive` and `/health` return expected status.

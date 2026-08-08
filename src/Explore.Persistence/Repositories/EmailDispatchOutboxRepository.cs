@@ -2241,57 +2241,62 @@ public class EmailDispatchOutboxRepository : IEmailDispatchOutboxRepository
 
         foreach (ReminderIntentReference reminder in reminders)
         {
-            var sessions = await (
-                from parent in _dbContext.RegistrationOrders
-                    .IgnoreTenantFilter(TenantFilterBypassReasons.EmailDispatchTenantOperation)
-                    .AsNoTracking()
-                join child in _dbContext.EventRegistrations
-                    .IgnoreTenantFilter(TenantFilterBypassReasons.EmailDispatchTenantOperation)
-                    .AsNoTracking()
-                    on new { parent.TenantId, OrderId = parent.Id }
-                    equals new { child.TenantId, OrderId = child.RegistrationOrderId!.Value }
-                join session in _dbContext.EventSessions
-                    .IgnoreTenantFilter(TenantFilterBypassReasons.EmailDispatchTenantOperation)
-                    .AsNoTracking()
-                    on new { child.TenantId, child.EventId, SessionId = child.EventSessionId }
-                    equals new { session.TenantId, session.EventId, SessionId = session.Id }
-                join eventRow in _dbContext.Events
-                    .IgnoreTenantFilter(TenantFilterBypassReasons.EmailDispatchTenantOperation)
-                    .AsNoTracking()
-                    on new { parent.TenantId, parent.EventId }
-                    equals new { eventRow.TenantId, EventId = eventRow.Id }
-                where parent.TenantId == request.TenantId
+            bool orderEligible = await _dbContext.RegistrationOrders
+                .IgnoreTenantFilter(TenantFilterBypassReasons.EmailDispatchTenantOperation)
+                .AsNoTracking()
+                .AnyAsync(parent => parent.TenantId == request.TenantId
                     && parent.Id == reminder.RegistrationOrderId
                     && parent.EventId == request.EventId
                     && parent.AccountUserId == reminder.RecipientUserId
                     && !parent.IsDeleted
-                    && parent.RegistrationOrderStatusId == (int)RegistrationOrderStatusEnum.Confirmed
-                    && child.LinkedUserId == parent.AccountUserId
-                    && child.EventId == parent.EventId
-                    && !child.IsDeleted
-                    && child.ApprovalStatusId == (int)ApprovalStatusEnum.Approved
-                    && !session.IsDeleted
-                    && session.EventSessionStatusId == (int)EventSessionStatusEnum.Published
-                    && session.StartTime != null
-                    && session.LocalStartDate != null
-                    && session.LocalStartTime != null
-                    && session.StartTime > changedAtOffset
+                    && parent.RegistrationOrderStatusId == (int)RegistrationOrderStatusEnum.Confirmed,
+                    cancellationToken);
+            Guid[] eligibleSessionIds = orderEligible
+                ? await _dbContext.EventRegistrations
+                    .IgnoreTenantFilter(TenantFilterBypassReasons.EmailDispatchTenantOperation)
+                    .AsNoTracking()
+                    .Where(child => child.TenantId == request.TenantId
+                        && child.RegistrationOrderId == reminder.RegistrationOrderId
+                        && child.EventId == request.EventId
+                        && child.LinkedUserId == reminder.RecipientUserId
+                        && !child.IsDeleted
+                        && child.ApprovalStatusId == (int)ApprovalStatusEnum.Approved)
+                    .Select(child => child.EventSessionId)
+                    .Distinct()
+                    .ToArrayAsync(cancellationToken)
+                : [];
+            var eventAuthority = await _dbContext.Events
+                .IgnoreTenantFilter(TenantFilterBypassReasons.EmailDispatchTenantOperation)
+                .AsNoTracking()
+                .Where(eventRow => eventRow.TenantId == request.TenantId
+                    && eventRow.Id == request.EventId
                     && !eventRow.IsDeleted
-                    && eventRow.EventStatusId == (int)EventStatusEnum.Published
-                orderby session.StartTime, session.Id
-                select new
-                {
-                    session.Id,
-                    session.StartTime,
-                    session.LocalStartDate,
-                    session.LocalStartTime,
-                    eventRow.EventTimeZoneId,
-                    eventRow.Timezone
-                })
-                .ToArrayAsync(cancellationToken);
-            var eligible = sessions.FirstOrDefault(session =>
-                Explore.Domain.Services.Scheduling.ScheduleTimeZoneResolver.NormalizeOrUtc(
-                    session.EventTimeZoneId ?? session.Timezone) == timeZoneId);
+                    && eventRow.EventStatusId == (int)EventStatusEnum.Published)
+                .Select(eventRow => new { eventRow.EventTimeZoneId, eventRow.Timezone })
+                .SingleOrDefaultAsync(cancellationToken);
+            EventSession[] sessions = eligibleSessionIds.Length == 0
+                ? []
+                : await _dbContext.EventSessions
+                    .IgnoreTenantFilter(TenantFilterBypassReasons.EmailDispatchTenantOperation)
+                    .AsNoTracking()
+                    .Where(session => session.TenantId == request.TenantId
+                        && session.EventId == request.EventId
+                        && eligibleSessionIds.Contains(session.Id)
+                        && !session.IsDeleted
+                        && session.EventSessionStatusId == (int)EventSessionStatusEnum.Published
+                        && session.StartTime != null
+                        && session.LocalStartDate != null
+                        && session.LocalStartTime != null)
+                    .ToArrayAsync(cancellationToken);
+            EventSession? eligible = eventAuthority is not null
+                && Explore.Domain.Services.Scheduling.ScheduleTimeZoneResolver.NormalizeOrUtc(
+                    eventAuthority.EventTimeZoneId ?? eventAuthority.Timezone) == timeZoneId
+                ? sessions
+                    .Where(session => session.StartTime > changedAtOffset)
+                    .OrderBy(session => session.StartTime)
+                    .ThenBy(session => session.Id)
+                    .FirstOrDefault()
+                : null;
 
             EmailDispatchOutbox? outbox = await _dbContext.EmailDispatchOutbox
                 .IgnoreTenantFilter(TenantFilterBypassReasons.EmailDispatchTenantOperation)

@@ -8710,7 +8710,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                     status_id = table.Column<int>(type: "int", nullable: false),
                     secret_ref = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: false),
                     secret_version = table.Column<int>(type: "int", nullable: false, defaultValue: 1),
-                    secret_activated_at = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValueSql: "CURRENT_TIMESTAMP"),
+                    secret_activated_at = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValueSql: "SYSUTCDATETIME()"),
                     previous_secret_ref = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: true),
                     previous_secret_valid_until = table.Column<DateTime>(type: "datetime2", nullable: true),
                     provider_endpoint_id = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: true),

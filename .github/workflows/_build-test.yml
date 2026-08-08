@@ -404,7 +404,7 @@ jobs:
             server_version: 8.4.6
             email_dispatch_mode: HostedService
             health_options: >-
-              --health-cmd "healthcheck.sh --connect --innodb_initialized"
+              --health-cmd "MYSQL_PWD=\"$MYSQL_PASSWORD\" mysqladmin --protocol=tcp --host=127.0.0.1 --user=\"$MYSQL_USER\" --silent status"
               --health-interval 5s
               --health-timeout 5s
               --health-retries 20

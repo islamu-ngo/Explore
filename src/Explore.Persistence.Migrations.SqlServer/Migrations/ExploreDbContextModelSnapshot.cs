@@ -25553,7 +25553,7 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("datetime2")
                         .HasColumnName("secret_activated_at")
-                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+                        .HasDefaultValueSql("SYSUTCDATETIME()");
 
                     b.Property<string>("SecretRef")
                         .IsRequired()

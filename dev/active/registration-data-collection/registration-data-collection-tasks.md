@@ -3,14 +3,12 @@
 
 # Registration Data Collection & Participation Platform — Task Checklist
 
-Last Updated: 2026-08-02 Europe/Brussels
+Last Updated: 2026-08-03 Europe/Brussels
 
 ## Status Summary
-- **Overall status:** Phases 5–7 and Phase 8.1 remain confirmed. Task 8.2 is interrupted/in progress; Phase 8 remains in progress
-- **Checkbox count:** 43/88 implementation-task boxes are checked. This is not workstream completion
-- **Current priority:** Phase 8.2 — inspect interrupted typed-answer work before any implementation continues
-- **Next recommended slice:** Inspect Phase 8.2-looking diffs and query/continue backend session `ses_03c5ef347ffeT0FEuYCnTmHROx` before spawning another writer
-- **Latest focused evidence:** Phase 8.1 remains confirmed with generated migration `20260802165308_Phase81RegistrationAttemptPersistence`. Task 8.2 exploration is complete, but its backend session returned no `DoneClaim`; no Task 8.2 implementation, migration, test, pending-model, or independent-verifier completion is claimed
+- **Overall status:** Phase 8 production implementation is source-complete. Its final verification wave is explicitly paused by the user as of 2026-08-03 and is not complete.
+- **Current priority:** Preserve the shipped Phase 8 boundaries; resume only the explicitly paused verification wave when authorized.
+- **Latest implementation evidence:** typed answers/subjects, the 17-type CQRS pipeline, immutable consent snapshots, fenced finalization, native API/HAL, the Blazor renderer, and quarantined file release are present in production source and generated provider baselines.
 
 ## Handoff — 2026-08-01 Europe/Brussels: Task 7.5 Confirmed / Tasks 7.6–7.7 Current
 
@@ -245,23 +243,23 @@ Last Updated: 2026-08-02 Europe/Brussels
 - [x] `dotnet build --configuration Release --verbosity quiet`
 - [x] `dotnet test --project tests/Event.Domain.UnitTests/Event.Domain.UnitTests.csproj --configuration Release --verbosity quiet`
 
-## Phase 8: Native Collection Runtime 🟡 IN PROGRESS
-- [x] **8.1 Attempt + submission + status machines** — attempt/submission/revision entities + lookups; dedup uniqueness; token single-use — **Acceptance:** duplicate → no-op; supersession rules — **Effort:** L — **Dependencies:** Phase 7
-  - **Evidence:** independently confirmed with characterization 25/25, privacy 12/12, architecture/naming/tenant-filter 15/15, PostgreSQL assertion-level verification 10/10, clean pending EF model, Application/Persistence/API Release builds with 0 errors, and generated migration `20260802165308_Phase81RegistrationAttemptPersistence`.
+## Phase 8: Native Collection Runtime ✅ PRODUCTION IMPLEMENTATION COMPLETE — VERIFICATION PAUSED
+- [x] **8.1 Attempt + submission + status machines** — attempt/submission/revision entities + lookups; dedup uniqueness; token single-use; Task 8.2 closes answer identity `(submission, field, subject, ordinal)` at the database boundary — **Acceptance:** duplicate → no-op; supersession rules; answer identity — **Effort:** L — **Dependencies:** Phase 7
+  - **Evidence:** independently confirmed with characterization 25/25, privacy 12/12, architecture/naming/tenant-filter 15/15, PostgreSQL assertion-level verification 10/10, a clean pending EF model, and Application/Persistence/API Release builds with 0 errors. The earlier task-local migration was later consolidated into the current generated provider baselines recorded in the Phase 8 context.
   - **Database disposition:** a no-`--connection` EF update used the configured PostgreSQL connection supplied through Infisical; the user deleted and recreated that development database with the same name and confirmed no consequences. Infisical itself was not migrated.
-- [ ] **8.2 Typed answer storage + CHECK constraints + subjects — 🟡 INTERRUPTED / IN PROGRESS** — `RegistrationAnswer`, `RegistrationSensitiveAnswerValue` + raw-SQL checks — **Acceptance:** DB rejects two-column and wrong-type rows; subject-shape constraint (answer subject must match field applicability); answer-identity uniqueness constrained at DB level (Hi.Events §4.7 gap) — **Effort:** L — **Dependencies:** 8.1
-  - **Handoff:** Exploration sessions completed, but backend session `ses_03c5ef347ffeT0FEuYCnTmHROx` returned no `DoneClaim` after a 30-minute timeout and user-aborted continuation. Inspect all candidate diffs and continue/query that session before another writer; independently require failing-first, isolated generated-migration, real PostgreSQL, architecture/privacy, pending-model, and verifier evidence before checking this task.
-- [ ] **8.3 Normalization + validation pipeline** — submit handlers + Domain normalizers (NFC/E.164/ISO/BCP-47/URL/decimal/date) — **Acceptance:** 17-type matrix; encrypted sensitive round-trip; reject-not-coerce — **Effort:** XL — **Dependencies:** 8.2
-- [ ] **8.4 Consent evidence records** — `RegistrationConsentRecord` + pipeline handling — **Acceptance:** immutable evidence; Boolean-only consent impossible — **Effort:** M — **Dependencies:** 8.3
-- [ ] **8.5 Requirement fulfillment + idempotent finalization effect** — fulfillment + fenced `RegistrationFinalizationEffect` shared by all paths — **Acceptance:** duplicate effect executes once; optional never blocks — **Effort:** L — **Dependencies:** 8.3, Phase 5
+- [x] **8.2 Typed answer storage + CHECK constraints + subjects** — `RegistrationAnswer` and its configuration enforce exactly-one typed value, field-type agreement, subject shape, positive ordinals, and durable answer identity; `RegistrationSensitiveAnswerValue` is split from the atomic answer row.
+- [x] **8.3 Normalization + validation pipeline** — `NormalizeRegistrationSubmissionCommandHandler` normalizes all 17 portable types, rejects rather than coerces invalid input, evaluates Phase 7 cross-field rules, records safe issues, and protects sensitive values with purpose/versioned ASP.NET Core Data Protection.
+- [x] **8.4 Consent evidence records** — consent fields create immutable `RegistrationConsentRecord` evidence with exact text/version/language snapshots and a one-way withdrawal transition; Boolean-only consent cannot become an ordinary answer row.
+- [x] **8.5 Requirement fulfillment + idempotent finalization effect** — fulfillment and attempt consumption share atomic persistence with one fenced `RegistrationFinalizationEffect`; optional skips do not block completion.
 - [x] **8.6 Native submission API surface** — typed progress + exact attempt launch + submit/optional skip endpoints (auth + guest); attendee-safe pinned form, subject keys/progress, conditional HAL, explicit idempotency headers, bounded capability delivery, and regenerated NSwag contract — **Acceptance:** no answers in ProblemDetails; wrong lineage fails closed — **Effort:** M — **Dependencies:** 8.5
   - **Evidence:** real MediatR/EF HTTP plus capability/ProblemDetails/HAL and ambiguous-form fail-closed scenarios 6/6; real PostgreSQL concurrent optional-skip atomicity 1/1 with exactly one success/consumed attempt/fulfillment/finalization effect; native OpenAPI contract 2/2; OpenAPI parity 11/11; inventory 1/1; generated client and canonical 37-project Release build green; LSP error diagnostics clean. Receipt: `.omo/evidence/phase86-DONE_CLAIM.md`.
-- [ ] **8.7 Native Blazor form renderer** — `Components/Registration/FormRenderer/**` (new) — **Acceptance:** per-type render + condition toggles; skip flow non-error — **Effort:** XL — **Dependencies:** 8.6
+- [x] **8.7 Native Blazor form renderer** — the HAL-gated renderer covers all 17 portable field contracts, applies condition visibility/requiredness, keeps client validation advisory, supports RTL/accessibility announcements, and exposes optional skip as a non-error transition.
 - [x] **8.8 File answers (gated)** — `RegistrationAnswerFile` + quarantine-by-default; scanner investigation — **Acceptance:** quarantined files unreachable; deferral recorded — **Effort:** L — **Dependencies:** 8.3
   - **Decision:** no scanner exists; `Registration:FileAnswers:Enabled` defaults off, upload validation reuses the existing storage policy, and scanner/automatic-release integration is deferred. Explicit manual release is the only release transition.
   - **Evidence:** repaired gate PASS at 0.99; Domain release 4/4, publication gate 2/2, reused upload policy 30/30, persistence containment/soft-delete/idempotency/erasure 4/4, real HTTP authorization/release/content-public-presigned scenarios 2/2, HAL/OpenAPI inventory 34/34, privacy inventory 14/14, API build 0 errors, and 14-file LSP clean. Task 8.8 introduced no migration or snapshot change. Receipt: `.omo/evidence/phase88-DONE_CLAIM.md`.
 
 ### Phase 8 Verification — RUN ONCE AFTER ALL PHASE TASKS
+- **Paused by explicit user direction on 2026-08-03.** Do not mark any item complete from the source/ledger synchronization above.
 - [ ] `dotnet build --configuration Release --verbosity quiet`
 - [ ] `dotnet test --project tests/Event.Application.UnitTests/Event.Application.UnitTests.csproj --configuration Release --verbosity quiet`
 

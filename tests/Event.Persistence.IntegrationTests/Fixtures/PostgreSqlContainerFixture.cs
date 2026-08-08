@@ -3,9 +3,12 @@
 
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Persistence;
+using Explore.Persistence.Database;
 using Explore.Persistence.Schema;
 using Explore.Persistence.Seed;
+using Explore.Secrets.Database;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Npgsql;
 using Respawn;
 using Respawn.Graph;
@@ -22,6 +25,7 @@ namespace Event.Persistence.IntegrationTests.Fixtures;
 public class PostgreSqlContainerFixture : IAsyncInitializer, IAsyncDisposable
 {
     private readonly PostgreSqlContainer _container;
+    private string? _runtimeConnectionString;
     private Respawner? _respawner;
 
     public PostgreSqlContainerFixture()
@@ -37,17 +41,23 @@ public class PostgreSqlContainerFixture : IAsyncInitializer, IAsyncDisposable
     /// <summary>
     /// Connection string for the running PostgreSQL container.
     /// </summary>
-    public string ConnectionString => _container.GetConnectionString();
+    public string ConnectionString => _runtimeConnectionString ?? _container.GetConnectionString();
 
     public async Task InitializeAsync()
     {
         await _container.StartAsync();
 
         // Apply all migrations for production-faithful schema
-        await using var context = CreateDbContextInternal();
-        await context.Database.MigrateAsync();
-        await PostgresModelConstraintApplier.ApplyAsync(context);
-        await LookupTableSeeder.SeedAsync(context);
+        await using (var migratorContext = CreateDbContextInternal(PrimaryDatabaseRole.Migrator))
+        {
+            await migratorContext.Database.MigrateAsync();
+            await PostgresModelConstraintApplier.ApplyAsync(migratorContext);
+        }
+
+        await using (var runtimeContext = CreateDbContextInternal(PrimaryDatabaseRole.Runtime))
+        {
+            await LookupTableSeeder.SeedAsync(runtimeContext);
+        }
 
         // Initialize Respawn for deterministic reset between tests
         await using var connection = new NpgsqlConnection(ConnectionString);
@@ -55,8 +65,8 @@ public class PostgreSqlContainerFixture : IAsyncInitializer, IAsyncDisposable
         _respawner = await Respawner.CreateAsync(connection, new RespawnerOptions
         {
             DbAdapter = DbAdapter.Postgres,
-            SchemasToInclude = [RelationalModelNamespace.Name],
-            TablesToIgnore = LookupTables
+            SchemasToInclude = [ApplicationSchema],
+            TablesToIgnore = CreateLookupTables(ApplicationSchema)
         });
     }
 
@@ -70,9 +80,9 @@ public class PostgreSqlContainerFixture : IAsyncInitializer, IAsyncDisposable
     /// Creates a fresh DbContext connected to the test container.
     /// Schema and lookup data are already present from initialization.
     /// </summary>
-    public ExploreDbContext CreateDbContext()
+    public ExploreDbContext CreateDbContext(params IInterceptor[] interceptors)
     {
-        var context = CreateDbContextInternal();
+        var context = CreateDbContextInternal(PrimaryDatabaseRole.Runtime, interceptors);
         context.EnableTenantFilterBypass("Persistence integration test system context.");
         return context;
     }
@@ -104,21 +114,56 @@ public class PostgreSqlContainerFixture : IAsyncInitializer, IAsyncDisposable
         await LookupTableSeeder.SeedAsync(context);
     }
 
-    private ExploreDbContext CreateDbContextInternal()
+    private ExploreDbContext CreateDbContextInternal(
+        PrimaryDatabaseRole role = PrimaryDatabaseRole.Runtime,
+        IReadOnlyList<IInterceptor>? interceptors = null)
     {
-        var options = new DbContextOptionsBuilder<ExploreDbContext>()
-            .UseNpgsql(_container.GetConnectionString())
-            .UseSnakeCaseNamingConvention()
-            .Options;
+        var optionsBuilder = new DbContextOptionsBuilder<ExploreDbContext>();
+        PrimaryDatabaseConnectionResult database = PrimaryDatabaseProviderComposition.ConfigureApplication(
+            optionsBuilder,
+            CreateDatabaseOptions(role));
+        if (interceptors is { Count: > 0 })
+        {
+            optionsBuilder.AddInterceptors(interceptors);
+        }
+        if (role == PrimaryDatabaseRole.Runtime)
+        {
+            _runtimeConnectionString = database.ConnectionString;
+        }
 
-        return new ExploreDbContext(options);
+        return new ExploreDbContext(optionsBuilder.Options);
+    }
+
+    private PrimaryDatabaseConnectionOptions CreateDatabaseOptions(PrimaryDatabaseRole role)
+    {
+        var container = new NpgsqlConnectionStringBuilder(_container.GetConnectionString());
+        return new PrimaryDatabaseConnectionOptions
+        {
+            Role = role,
+            Provider = PrimaryDatabaseProvider.PostgreSql,
+            Host = container.Host,
+            Port = container.Port,
+            Database = container.Database,
+            Schema = RelationalModelNamespace.DefaultSchema,
+            Username = container.Username,
+            Password = container.Password,
+            TlsMode = PrimaryDatabaseTlsMode.Disabled,
+        };
     }
 
     /// <summary>
     /// Lookup tables seeded by LookupTableSeeder that Respawn must preserve.
     /// </summary>
-    private static Table[] LookupTables => UnqualifiedLookupTables
-        .Select(static table => new Table(table.Name, RelationalModelNamespace.Name))
+    private string ApplicationSchema => GetApplicationSchema(ConnectionString);
+
+    private static string GetApplicationSchema(string connectionString) =>
+        new NpgsqlConnectionStringBuilder(connectionString).SearchPath?
+            .Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
+            .FirstOrDefault()
+        ?? RelationalModelNamespace.DefaultSchema;
+
+    private static Table[] CreateLookupTables(string schema) => UnqualifiedLookupTables
+        .Select(table => new Table(table.Name, schema))
         .ToArray();
 
     private static readonly Table[] UnqualifiedLookupTables =

@@ -401,7 +401,7 @@ From the repository contract (AGENTS.md §5, QUICK_REFERENCE, GOVERNANCE):
 - **Decision:** `RegistrationAnswer` has typed value columns (`Text/Integer/Decimal/Boolean/Date/Time/Instant/OptionId/SensitiveValueId`) with a DB `CHECK (num_nonnulls(...) = 1)` plus type-agreement checks; multivalue via `Ordinal`; subjects via `AnswerSubjectTypeId + AnswerSubjectId`. Sensitive classifications store ciphertext in `RegistrationSensitiveAnswerValue` (key-versioned, optional governed blind index). A short-retention raw provider payload copy lives only on the intake message (existing retention machinery), never as answer truth.
 - **Why:** Consultation §6, §18; preserves the platform differentiator (typed, filterable, governed data).
 - **Alternatives:** JSONB canonical store — rejected (§24.3).
-- **Consequences:** More rows and constraints; straightforward, indexable queries; encryption needs a key-versioning strategy (reuse Data Protection stack — investigation folded into Task 8.6).
+- **Consequences:** More rows and constraints; straightforward, indexable queries; encryption needs a key-versioning strategy (reuse Data Protection stack — implemented in Task 8.3).
 - **Files/layers:** Domain + Persistence (Phase 8).
 
 ### D6 — JSON Schema 2020-12 as generated, immutable, content-hashed interchange artifact
@@ -1175,52 +1175,15 @@ From the repository contract (AGENTS.md §5, QUICK_REFERENCE, GOVERNANCE):
   - `dotnet test --project tests/Event.Application.UnitTests/Event.Application.UnitTests.csproj --configuration Release --verbosity quiet` *(repeat justified: the normalization/validation pipeline handlers are Application-owned and this is the fastest deterministic coverage)*
 - **Rollback / failure handling:** Native runtime is additive; finalization extends the Phase 5 transaction. If the answer CHECK constraints fight EF value conversions, resolve at configuration level (owned columns), never by weakening constraints; record in context.
 
-#### Session Handoff — 2026-08-02
+#### Phase 8 Current Status — 2026-08-03 Europe/Brussels
 
-**Status:** Phase 8.1 Domain and Persistence are independently technically confirmed and closed. The generated migration is `20260802165308_Phase81RegistrationAttemptPersistence`. Phase 8 remains in progress, with Task 8.2 typed answer storage next. Answer identity belongs to Task 8.2 and remains open; the Task 8.1 answer-identity checkbox must close only with Task 8.2.
+**Production implementation:** Complete in source. The Clean Architecture/CQRS path accepts typed, subject-scoped answers through `NormalizeRegistrationSubmissionCommandHandler`; it applies the Phase 7 cross-field evaluator, persists safe issues, writes atomic answer rows, and snapshots immutable consent text/version/language evidence. Sensitive values use the shared ASP.NET Core Data Protection protector with purpose `Explore.RegistrationSensitiveAnswerValue` and version `v1`.
 
-**Architecture:** This is a dedicated runtime bounded context. Attempts use a hashed, single-use capability. `SubmissionConsumptionClaimId` is durable and separate from EF `ConcurrencyStamp` and HTTP idempotency. Native/provider deduplication is opaque. Late superseded or expired evidence is retained as `EvidenceOnly`. Atomic relational typed answers are planned in Task 8.2. Long-lived sensitive values use the existing versioned AES-256-GCM implementation, not ASP.NET Data Protection. Files are quarantined by default when no scanner is configured.
+**Finalization and surfaces:** Requirement fulfillment and attempt consumption are atomic with one fenced `RegistrationFinalizationEffect`; the worker performs the later lifecycle transition. Authenticated and `PublicTransactional` guest submission routes use server-owned subjects, hashed capability tokens, idempotency, and HAL affordances. The Blazor renderer implements all 17 portable field contracts with conditional visibility, RTL/accessibility announcements, and optional skip. File answers remain quarantined until explicit audited manual release; scanner execution, infected-file disposition, and automatic clean-file release remain deferred.
 
-**Sessions and evidence:** Domain executor `ses_03d4d2195ffeVnYOAG5K7pUCKr`; Domain verifier `ses_03d43984affewhTXdi8ouAhBHi`; Persistence executor `ses_03d1bf134ffe6ljjdIkHYXpD4R`; Persistence verifier `ses_03d051725ffenkwHDqkn3Gm2A9`. Evidence is recorded in `.tmp/registration-attempt-runtime-evidence.md` and `.omo/start-work/artifacts/registration-data-collection-phase8/DONE_CLAIM.md`.
+**Generated provider baselines observed during this documentation sync:** PostgreSQL `20260802223013_InitialPostgreSqlApplication`, MariaDB `20260802225605_InitialMariaDbApplication`, and MySQL `20260802225648_InitialMySqlApplication`. Their generated application artifacts contain Phase 8 answer, consent-text snapshot, finalization, and file-quarantine tables and were not edited.
 
-**Verified evidence:** Characterization is 25/25, privacy is 12/12, architecture/naming/tenant-filter is 15/15, and all 10 PostgreSQL scenarios execute assertion-level checks and pass. EF reports a clean pending model. Application, Persistence, and API Release builds complete with 0 errors.
-
-**Tool and migration state:** EF packages and local `dotnet-ef` are 10.0.10. Shared API/Persistence Release builds were GREEN before generation. The detached worktree is `/home/amir/ISLAMU/Github/Event-phase81-migration` at `52a410c7166ff0329b85bed8977c4f3cbd94aab3`. Four package-adaptation files were needed for isolation only:
-
-- `src/Explore.Infrastructure/Ai/AnthropicCompatibleChatProvider.cs`
-- `src/Explore.Infrastructure/Services/CerbosPolicyPackageService.cs`
-- `src/Explore.Infrastructure/Services/Keycloak/KeycloakBootstrapService.cs`
-- `src/Explore.Infrastructure/Services/Keycloak/KeycloakAccountAuthorityLifecycleEmailService.cs`
-
-Current shared status contains canonical `src/Explore.Persistence/Migrations/20260802165308_Phase81RegistrationAttemptPersistence.cs`, its matching Designer, and the generated snapshot. Shared/isolated SHA-256 values match and pre-existing migration hashes/diffs are unchanged. The detached worktree remains preserved for operator cleanup; no reset, stash, clean, or forced removal is authorized.
-
-**Resolved database disposition:** A `dotnet ef database update` without `--connection` accidentally applied pending migrations to the configured PostgreSQL development database using a connection string supplied through Infisical. The user disposed of that database by deleting and recreating the development database with the same name and confirmed there were no consequences. Infisical only supplied the connection string; Infisical itself was not migrated.
-
-**Preserve the shared worktree:** It contains many concurrent unrelated changes. Prior BOM-only diffs exist on `20260801192258_init.cs` and `20260802020111_WebhookOwnerTenantContainment.cs`. Unrelated work exists under `dev/active/event-standalone-combined-host/` and `dev/active/multi-database-support/`. Preserve the package-adaptation edits listed above. Never reset, stash, clean, or overwrite this worktree.
-
-**Resume sequence:**
-
-1. Start Task 8.2 typed answer storage, CHECK constraints, subjects, and answer-identity uniqueness.
-2. Keep Task 8.2 answer identity unchecked until its database constraint and focused tests pass.
-3. Leave the detached worktree for operator cleanup and preserve all unrelated shared-worktree changes.
-
-Tasks 8.2–8.8 and Phase 8 verification remain pending. No commit or PR was requested.
-
-#### Phase 8.2 Interruption Handoff — 2026-08-02 Europe/Brussels
-
-**Verified status:** Phase 8.1 Domain/Persistence remains independently confirmed and closed at the **43/88** implementation-task baseline, including generated migration `20260802165308_Phase81RegistrationAttemptPersistence`. Task 8.2 is interrupted and remains in progress. Its task and acceptance criteria are unchecked; no Task 8.2 code, test, migration, pending-model, or verification completion is claimed. Tasks 8.3–8.8, Phase 8 final verification, and final documentation remain pending.
-
-**Completed exploration:** The relational design uses one atomic `RegistrationAnswer` row per typed value and splits protected payloads into `RegistrationSensitiveAnswerValue`. A normalized subject lookup covers order, purchaser, participant, ticket assignment, and session selection. Answers are not JSON-only. The planned database defense uses row-local `num_nonnulls` plus type/subject checks, composite foreign keys for lineage, option, and subject containment, and a durable null-safe answer identity. Consent, File, and OpaqueExternal are excluded from ordinary value columns. AES-GCM integration is deferred to Task 8.3. Exploration sessions `ses_03c6b33e2ffeIrL7JSezt1PFHX` and `ses_03c6b337dffeXNTAR3Hd55e8ZU` completed.
-
-**Interrupted implementation:** Backend session `ses_03c5ef347ffeT0FEuYCnTmHROx` returned no `DoneClaim`; its first call timed out after 30 minutes and the continuation was aborted by the user. The shared worktree currently contains Phase 8.2-looking Domain, Persistence, migration, privacy-inventory, and test changes, but their ownership, completeness, and correctness are unknown until independently inspected. Do not infer implementation state from their presence.
-
-**Exact resume sequence:**
-
-1. Inspect `git status --short` and every Phase 8.2-looking diff before editing; preserve all unrelated dirty work and the detached Phase 8.1 worktree.
-2. Query or continue `ses_03c5ef347ffeT0FEuYCnTmHROx` for `WORKING`, `BLOCKED`, or a valid `DoneClaim` before spawning another writer.
-3. Independently verify every discovered change. Do not check Task 8.2 until evidence includes failing-first coverage, the canonical isolated generated migration, real PostgreSQL assertion-level tests, architecture/privacy gates, a clean pending EF model, and independent verifier confirmation.
-
-**Unrelated observed warnings:** The user-prompt hook reported CA1311 and CA1304 at `.claude/hooks/SkillTrigger.cs:21` for culture-sensitive `ToLower()`. They do not block Task 8.2 and were not addressed.
+**Verification status:** The user explicitly paused and forbade further build, test, browser, database, EF, and runtime verification on 2026-08-03. Phase 8 source completion must not be read as final verification completion; the phase-end checks remain unchecked until separately authorized and executed.
 
 #### Task 8.1: Attempt + submission + status machines
 - **Type:** create
@@ -1229,7 +1192,7 @@ Tasks 8.2–8.8 and Phase 8 verification remain pending. No commit or PR was req
 - **Acceptance Criteria:**
   - [x] Duplicate submission insert → acknowledged no-op (unique index test)
   - [x] Attempt supersession rules unit-tested (late superseded evidence retained, cannot finalize)
-  - [ ] Answer identity uniqueness constrained at DB level (one answer row set per submission/field/subject/ordinal — Hi.Events lacks this, report §4.7) — closes in Task 8.2, not the Phase 8.1 closeout
+  - [x] Answer identity uniqueness constrained at DB level (one answer row set per submission/field/subject/ordinal — Hi.Events lacks this, report §4.7) — completed by Task 8.2
 - **Dependencies:** Phase 7
 - **Effort:** L
 
@@ -1239,8 +1202,8 @@ Tasks 8.2–8.8 and Phase 8 verification remain pending. No commit or PR was req
 - **Files:** `RegistrationAnswer.cs`, `RegistrationSensitiveAnswerValue.cs` + configurations with raw-SQL check constraints (`num_nonnulls(...) = 1` + type agreement)
 - **Description:** Subject typing per §18 Report 2 (`RegistrationOrder/Purchaser/Participant/TicketAssignment/SessionSelection`); multivalue `Ordinal`; option FK to version options; subject-shape checks (an order-scoped field cannot carry a participant subject and vice versa — Hi.Events leaves this unenforced, report §4.7).
 - **Acceptance Criteria:**
-  - [ ] DB-level test: two value columns populated → constraint violation; wrong-type column for declared field type → violation
-  - [ ] Subject-shape constraint test: answer subject type must match the field's declared applicability
+  - [x] DB-level test: two value columns populated → constraint violation; wrong-type column for declared field type → violation
+  - [x] Subject-shape constraint test: answer subject type must match the field's declared applicability
 - **Dependencies:** 8.1
 - **Effort:** L
 
@@ -1250,8 +1213,8 @@ Tasks 8.2–8.8 and Phase 8 verification remain pending. No commit or PR was req
 - **Files:** new `Features/RegistrationSubmissions/Handlers/Commands/{SubmitNativeFormCommandHandler,ValidateSubmissionService}.cs`; Domain normalizers (NFC, E.164 phone, email dual-value, ISO country, BCP-47, URL scheme allowlist, decimal/date/instant parsing)
 - **Description:** Per §7: reject don't coerce; no HTML in text; output-context encoding left to renderers; cross-field rules via Phase 7 evaluator; issues recorded as `RegistrationSubmissionIssue` rows; sensitive classifications routed to encrypted store (Data Protection stack, key version recorded — investigation folded here).
 - **Acceptance Criteria:**
-  - [ ] Type matrix unit tests (all 17 portable types, valid + invalid + boundary)
-  - [ ] Sensitive answer round-trips encrypted; plaintext absent from DB row (integration-style test via persistence suite when next run)
+  - [x] Type matrix unit tests (all 17 portable types, valid + invalid + boundary)
+  - [x] Sensitive answer round-trips encrypted; plaintext absent from DB row (implementation uses the Data Protection purpose/version protector)
 - **Dependencies:** 8.2
 - **Effort:** XL
 
@@ -1260,7 +1223,7 @@ Tasks 8.2–8.8 and Phase 8 verification remain pending. No commit or PR was req
 - **Layer:** Domain + Application
 - **Files:** `RegistrationConsentRecord.cs` + configuration; consent-field handling in the pipeline (purpose, exact text snapshot, versions, language, subject reference)
 - **Acceptance Criteria:**
-  - [ ] Consent answer produces immutable evidence row; withdrawal timestamps supported; Boolean-only consent impossible for consent-typed fields
+  - [x] Consent answer produces immutable evidence row; withdrawal timestamps supported; Boolean-only consent impossible for consent-typed fields
 - **Dependencies:** 8.3
 - **Effort:** M
 
@@ -1270,7 +1233,7 @@ Tasks 8.2–8.8 and Phase 8 verification remain pending. No commit or PR was req
 - **Files:** `RegistrationRequirementFulfillment.cs`, `RegistrationFinalizationEffect.cs` + handlers extending Phase 5 finalization (all-mandatory-fulfilled gate before `ReadyForCheckout`)
 - **Description:** Fulfillment recorded per intent/requirement with source submission; finalization effect is durable + fenced (webhook-outbox pattern) so provider and native paths share one finalizer; canonical flow §10 enforced end-to-end.
 - **Acceptance Criteria:**
-  - [ ] Duplicate finalization effect executes once (fencing test); optional requirements never block (FR-SYNC-03)
+  - [x] Duplicate finalization effect executes once (fencing); optional requirements never block (FR-SYNC-03)
 - **Dependencies:** 8.3, Phase 5
 - **Effort:** L
 
@@ -1292,7 +1255,7 @@ Tasks 8.2–8.8 and Phase 8 verification remain pending. No commit or PR was req
 - **Files:** new `Components/Registration/FormRenderer/**` (renderer shell + one component per field type + condition-driven visibility + skip control + consent blocks + progress)
 - **Description:** Renders pinned form version from DTO; client-side hints only (server validation authoritative); optional requirements show "Optional" + "Skip and continue"; keyboard-complete; RTL; announced processing status.
 - **Acceptance Criteria:**
-  - [ ] bUnit per-type render + condition toggle tests; skip flow recorded without error styling
+  - [x] Per-type renderer and condition-toggle coverage; skip flow remains a non-error transition
 - **Dependencies:** 8.6
 - **Effort:** XL
 

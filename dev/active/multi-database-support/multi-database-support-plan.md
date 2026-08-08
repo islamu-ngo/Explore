@@ -5,7 +5,7 @@
 
 **Last Updated:** 2026-08-02 Europe/Brussels
 
-**Status:** Phase 0 verified; Phase 1 candidate implementation present but not accepted
+**Status:** Implementation complete; final verification and release evidence in progress
 
 **Scope:** Primary application persistence and Data Protection only
 
@@ -13,10 +13,10 @@
 
 ## Re-baseline — 2026-08-02 Europe/Brussels
 
-- **Reason:** Session handoff after the Phase 1 executor stopped before returning a verified DoneClaim.
-- **What changed:** The Release baseline is green and a candidate structured configuration implementation now exists in the shared worktree.
-- **Plan impact:** Phase ordering and architecture are unchanged. Phase 1 remains open until focused persistence tests, manual external-process QA, cleanup, and independent review confirm the candidate.
-- **Remaining work:** Accept or repair MDB-100 through MDB-111, record MDB-112 evidence, then begin provider composition. Do not start Phase 2 from the candidate alone.
+- **Reason:** All implementation phases and real-provider QA are complete; only repository-wide release gates remain.
+- **What changed:** The structured contract, five provider compositions, generated migrations, runtime capability seams, deployment/CI surfaces, and recovery topology are implemented and evidenced.
+- **Plan impact:** Phases 0 through 7 implementation are closed. Final work is limited to canonical verification, independent review, and evidence reconciliation.
+- **Remaining work:** Complete MDB-709, MDB-710, and MDB-D08 without weakening unrelated failing tests.
 
 ## Outcome
 
@@ -54,7 +54,7 @@ operator fields / Aspire parameters / secret-store fields
  process-local provider registration + derived connection string
 ```
 
-The structured contract contains provider, host, port, database/path, username, password, TLS mode, trust policy, and the bounded provider settings required by a selected engine. Server deployments instantiate that same shape for separate runtime and migrator credential roles; this is role separation, not a second connection configuration flow. Provider-specific builders map those values to Npgsql, Sqlite, SqlClient, or Microting-native syntax. Raw string passthrough and arbitrary fragments are forbidden.
+The structured contract contains provider, host, port, database/path, schema, username, password, TLS mode, trust policy, and the bounded provider settings required by a selected engine. `Database:Schema` / `DATABASE_SCHEMA` defaults to `islamu_event` and is applied by PostgreSQL and SQL Server. Schema-less providers use the non-configurable `ie_` prefix. Server deployments instantiate that same shape for separate runtime and migrator credential roles; this is role separation, not a second connection configuration flow. Provider-specific builders map those values to Npgsql, Sqlite, SqlClient, or Microting-native syntax. Raw string passthrough and arbitrary fragments are forbidden.
 
 ### Persistence composition
 
@@ -110,7 +110,7 @@ Each provider owns generated application and Data Protection migrations. Migrati
 - Audit entity mappings, value conversions, collations, timestamps, UUIDv7 handling, JSON, decimal precision, generated values, indexes, constraints, and query filters.
 - Replace avoidable PostgreSQL assumptions with portable EF Core constructs.
 - Keep PostgreSQL-native defenses behind narrow PostgreSQL capability implementations.
-- Assert fixed namespace behavior: `islamu_event` schema for PostgreSQL and fixed `islamu_event_` names where schemas are unavailable.
+- Assert configurable schema behavior for PostgreSQL and SQL Server with `islamu_event` as the default, plus fixed `ie_` names where schemas are unavailable.
 - Preserve entity-returning repositories and no-tracking read behavior.
 
 ### Exit criteria

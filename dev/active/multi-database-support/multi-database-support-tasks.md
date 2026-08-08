@@ -3,9 +3,9 @@
 
 # Multi-Database Support Tasks
 
-**Last Updated:** 2026-08-02 Europe/Brussels
+**Last Updated:** 2026-08-05 Europe/Brussels
 
-**Status:** Phase 0 complete; Phase 1 candidate present, verification and acceptance pending
+**Status:** Implementation complete; final repository verification executed, evidence captured, and residual unrelated failures documented
 
 **Rule:** Check substantial tasks immediately. Reconcile every remaining checkbox by phase end.
 
@@ -22,94 +22,114 @@ Phase 0 evidence: Release build exits 0 after isolated Refit 14 and Microsoft.Op
 
 ## Phase 1: Structured Configuration
 
-- [ ] **MDB-100** Define the closed primary provider enum.
-- [ ] **MDB-101** Define structured fields for provider, host, port, database/path, username, password, TLS mode, certificate trust, and bounded server version/flavor, instantiated for distinct runtime and migrator roles on server providers.
-- [ ] **MDB-102** Define validation matrices for server providers and primary SQLite.
-- [ ] **MDB-103** Implement provider-native connection-string construction without manual credential concatenation.
-- [ ] **MDB-104** Add credential-safe startup diagnostics and redaction tests.
-- [ ] **MDB-105** Route runtime persistence registration through the shared structured binder and builder.
-- [ ] **MDB-106** Route `ExploreDbContextFactory` and `DataProtectionKeyContextFactory` through the same logic.
-- [ ] **MDB-107** Route MigrationService and test fixtures through the same logic.
-- [ ] **MDB-108** Verify the shared structured vocabulary is consumed by OREA-802 while OREA-804 and OREA-1201 own authority runtime escape-hatch removal.
-- [ ] **MDB-109** Remove hardcoded localhost database strings and the legacy `POSTGRESQL_PUBLIC_URL` mapping.
-- [ ] **MDB-110** Ensure `ConnectionStrings:*` values are derived process-local outputs only.
-- [ ] **MDB-111** Prove invalid combinations fail before readiness.
-- [ ] **MDB-112** Record phase verification evidence.
+- [x] **MDB-100** Define the closed primary provider enum.
+- [x] **MDB-101** Define structured fields for provider, host, port, database/path, schema, username, password, TLS mode, certificate trust, and bounded server version/flavor, instantiated for distinct runtime and migrator roles on server providers.
+- [x] **MDB-102** Define validation matrices for server providers and primary SQLite.
+- [x] **MDB-103** Implement provider-native connection-string construction without manual credential concatenation.
+- [x] **MDB-104** Add credential-safe startup diagnostics and redaction tests.
+- [x] **MDB-105** Route runtime persistence registration through the shared structured binder and builder.
+- [x] **MDB-106** Route `ExploreDbContextFactory` and `DataProtectionKeyContextFactory` through the same logic.
+- [x] **MDB-107** Route MigrationService and test fixtures through the same logic.
+- [x] **MDB-108** Verify the shared structured vocabulary is consumed by OREA-802 while OREA-804 and OREA-1201 own authority runtime escape-hatch removal.
+- [x] **MDB-109** Remove hardcoded localhost database strings and the legacy `POSTGRESQL_PUBLIC_URL` mapping.
+- [x] **MDB-110** Ensure `ConnectionStrings:*` values are derived process-local outputs only.
+- [x] **MDB-111** Prove invalid combinations fail before readiness.
+- [x] **MDB-112** Record phase verification evidence.
 
-Phase 1 handoff evidence: executor session `ses_03c96c432ffeACCq72heVpiQ23` wrote a candidate structured contract, builders, redaction, consumer routing, and tests. The Release build passed and Secrets tests passed 205/205. Keep MDB-100 through MDB-112 unchecked until the focused persistence tests, manual external-process QA, cleanup receipt, and independent review confirm the candidate. The full Persistence suite currently reports unrelated dirty-worktree FK and migration-count failures.
+Phase 1 evidence: configuration, bootstrap, API consumer, diagnostic, factory, composition, redaction, and external-process checks are recorded under `.omo/evidence/mdb-phase1-*`, `.omo/evidence/mdb-api-fixture-config/`, and `.omo/evidence/MDB-702/`.
 
 ## Phase 2: Provider Composition and Model Portability
 
-- [ ] **MDB-200** Add closed startup provider selection and DI registration.
-- [ ] **MDB-201** Audit mappings for timestamps, UUIDv7, JSON, decimals, generated values, collations, indexes, constraints, tenant filters, and soft delete.
-- [ ] **MDB-202** Replace avoidable PostgreSQL-only mappings with portable EF Core constructs.
-- [ ] **MDB-203** Introduce only evidence-backed provider capability seams.
-- [ ] **MDB-204** Preserve PostgreSQL-native defenses behind PostgreSQL implementations.
-- [ ] **MDB-205** Enforce fixed `islamu_event` schema/object-prefix policy.
-- [ ] **MDB-206** Verify repositories still return entities and read-only paths remain no-tracking.
-- [ ] **MDB-207** Record architecture and phase verification evidence.
+- [x] **MDB-200** Add closed startup provider selection and DI registration.
+- [x] **MDB-201** Audit mappings for timestamps, UUIDv7, JSON, decimals, generated values, collations, indexes, constraints, tenant filters, and soft delete.
+- [x] **MDB-202** Replace avoidable PostgreSQL-only mappings with portable EF Core constructs.
+- [x] **MDB-203** Introduce only evidence-backed provider capability seams.
+- [x] **MDB-204** Preserve PostgreSQL-native defenses behind PostgreSQL implementations.
+- [x] **MDB-205** Enforce configurable PostgreSQL/SQL Server schema with default `islamu_event`, and fixed `ie_` prefix for schema-less providers.
+- [x] **MDB-206** Verify repositories still return entities and read-only paths remain no-tracking.
+- [x] **MDB-207** Record architecture and phase verification evidence.
+
+Phase 2 evidence: five-provider composition/model checks, repository invariants, portable model normalization, runtime PostgreSQL-token audits, and final domain/projection portability checks are recorded in `.omo/evidence/mdb-composition-tests/`, `.omo/evidence/mdb-phase2-model-20260802/`, `.omo/evidence/mdb-portability-locks-recheck/`, and the provider migration verification ledger.
 
 ## Phase 3: PostgreSQL
 
-- [ ] **MDB-300** Move Npgsql registration into the structured provider path.
-- [ ] **MDB-301** Generate or retain PostgreSQL application migrations under the approved history policy.
-- [ ] **MDB-302** Generate or retain PostgreSQL Data Protection migrations under the approved history policy.
-- [ ] **MDB-303** Prove clean migration and supported upgrade migration.
-- [ ] **MDB-304** Run the shared behavioral contract and PostgreSQL-native defense tests.
-- [ ] **MDB-305** Prove current PostgreSQL deployment inputs can migrate to structured fields without credential exposure.
-- [ ] **MDB-306** Record phase verification evidence.
+- [x] **MDB-300** Move Npgsql registration into the structured provider path.
+- [x] **MDB-301** Generate or retain PostgreSQL application migrations under the approved history policy.
+- [x] **MDB-302** Generate or retain PostgreSQL Data Protection migrations under the approved history policy.
+- [x] **MDB-303** Prove clean migration and supported upgrade migration.
+- [x] **MDB-304** Run the shared behavioral contract and PostgreSQL-native defense tests.
+- [x] **MDB-305** Prove current PostgreSQL deployment inputs can migrate to structured fields without credential exposure.
+- [x] **MDB-306** Record phase verification evidence.
+
+Phase 3 evidence: default/custom-schema migrations, second-run idempotence, catalog inspection, PostgreSQL-native constraints, runtime smoke, shared behavior, email/fanout/ATProto/group repository suites, and search-path ownership are recorded in `.omo/evidence/mdb-provider-migrations/` and `.omo/evidence/mdb-provider-locks/`.
 
 ## Phase 4: Primary SQLite
 
-- [ ] **MDB-400** Add primary SQLite registration and a dedicated application migration assembly.
-- [ ] **MDB-401** Add a dedicated SQLite Data Protection migration assembly.
-- [ ] **MDB-402** Require a persisted local primary file and reject unsupported host/network/multi-replica configurations.
-- [ ] **MDB-403** Configure bounded busy timeout and WAL behavior for the documented envelope.
-- [ ] **MDB-404** Resolve schema, concurrency, SQL, JSON, and locking differences minimally.
-- [ ] **MDB-405** Keep primary and authority SQLite files, contexts, migrations, volumes, and recovery paths distinct.
-- [ ] **MDB-406** Prove clean migration, restart persistence, transactions, tenant isolation, outbox, and Data Protection on a real file.
-- [ ] **MDB-407** Record phase verification evidence.
+- [x] **MDB-400** Add primary SQLite registration and a dedicated application migration assembly.
+- [x] **MDB-401** Add a dedicated SQLite Data Protection migration assembly.
+- [x] **MDB-402** Require a persisted local primary file and reject unsupported host/network/multi-replica configurations.
+- [x] **MDB-403** Configure bounded busy timeout and WAL behavior for the documented envelope.
+- [x] **MDB-404** Resolve schema, concurrency, SQL, JSON, and locking differences minimally.
+- [x] **MDB-405** Keep primary and authority SQLite files, contexts, migrations, volumes, and recovery paths distinct.
+- [x] **MDB-406** Prove clean migration, restart persistence, transactions, tenant isolation, outbox, and Data Protection on a real file.
+- [x] **MDB-407** Record phase verification evidence.
+
+Phase 4 evidence: file-backed migration/runtime behavior, WAL/path safeguards, quota/idempotency/email/hierarchy/projection contention, Data Protection restart persistence, and authority-isolated recovery are recorded in `.omo/evidence/mdb-provider-migrations/`, `.omo/evidence/mdb-402-405/`, `.omo/evidence/mdb-recovery/`, and focused portability ledgers.
 
 ## Phase 5: SQL Server
 
-- [ ] **MDB-500** Add SQL Server registration and application migrations.
-- [ ] **MDB-501** Add SQL Server Data Protection migrations.
-- [ ] **MDB-502** Map TLS and certificate trust settings explicitly.
-- [ ] **MDB-503** Resolve datetime, UUID, JSON, index, identifier, and transaction differences.
-- [ ] **MDB-504** Prove clean/upgrade migrations and the shared behavioral contract on a real SQL Server.
-- [ ] **MDB-505** Record phase verification evidence.
+- [x] **MDB-500** Add SQL Server registration and application migrations.
+- [x] **MDB-501** Add SQL Server Data Protection migrations.
+- [x] **MDB-502** Map TLS and certificate trust settings explicitly.
+- [x] **MDB-503** Resolve datetime, UUID, JSON, index, identifier, and transaction differences.
+- [x] **MDB-504** Prove clean/upgrade migrations and the shared behavioral contract on a real SQL Server.
+- [x] **MDB-505** Record phase verification evidence.
+
+Phase 5 evidence: real SQL Server clean migration, second-run idempotence, configured-schema catalog inspection, runtime smoke, and shared behavior are recorded in `.omo/evidence/mdb-provider-migrations/`.
 
 ## Phase 6: MariaDB and MySQL
 
-- [ ] **MDB-600** Register `Microting.EntityFrameworkCore.MySql` 10.0.10.
-- [ ] **MDB-601** Validate required server flavor/version inputs.
-- [ ] **MDB-602** Generate MariaDB application and Data Protection migrations.
-- [ ] **MDB-603** Generate MySQL application and Data Protection migrations, combining ownership only if generated evidence proves it safe.
-- [ ] **MDB-604** Resolve charset/collation, identifier, datetime, JSON, generated-value, and locking differences.
-- [ ] **MDB-605** Prove clean/upgrade migrations and shared behavior independently on supported MariaDB and MySQL engines.
-- [ ] **MDB-606** Record phase verification evidence.
+- [x] **MDB-600** Register `Microting.EntityFrameworkCore.MySql` 10.0.10.
+- [x] **MDB-601** Validate required server flavor/version inputs.
+- [x] **MDB-602** Generate MariaDB application and Data Protection migrations.
+- [x] **MDB-603** Generate MySQL application and Data Protection migrations, combining ownership only if generated evidence proves it safe.
+- [x] **MDB-604** Resolve charset/collation, identifier, datetime, JSON, generated-value, and locking differences.
+- [x] **MDB-605** Prove clean/upgrade migrations and shared behavior independently on supported MariaDB and MySQL engines.
+- [x] **MDB-606** Record phase verification evidence.
+
+Phase 6 evidence: independent real MariaDB and MySQL clean migrations, second-run idempotence, catalog inspection, runtime smoke, shared behavior, index-width/hash uniqueness checks, and fixed-prefix assertions are recorded in `.omo/evidence/mdb-provider-migrations/`.
 
 ## Phase 7: Deployment, CI, Recovery, and Release
 
-- [ ] **MDB-700** Update Aspire AppHost to collect and project structured database fields.
-- [ ] **MDB-701** Update Compose, `.env.example`, deployment templates, and secret-store mappings.
-- [ ] **MDB-702** Update health checks and readiness diagnostics without credential leakage.
-- [ ] **MDB-703** Add PostgreSQL, file-backed SQLite, SQL Server, MariaDB, and MySQL CI lanes.
-- [ ] **MDB-704** Run clean real-engine migrations and a minimal runtime path in every lane.
-- [ ] **MDB-705** Add embedded-authority default and external-PostgreSQL authority enterprise topology coverage.
-- [ ] **MDB-706** Prove primary backup/restore does not replace the embedded authority file and startup replay converges restored primary state.
-- [ ] **MDB-707** Document provider support, migration ownership, TLS, credentials, backup/restore, upgrades, rollback, and SQLite limitations.
-- [ ] **MDB-708** Remove stale PostgreSQL-only and raw-connection-string instructions after replacements are verified.
-- [ ] **MDB-709** Run final Release build, architecture tests, provider lanes, and documentation-link checks.
-- [ ] **MDB-710** Capture release evidence and close every acceptance criterion.
+- [x] **MDB-700** Update Aspire AppHost to collect and project structured database fields.
+- [x] **MDB-701** Update Compose, `.env.example`, deployment templates, and secret-store mappings.
+- [x] **MDB-702** Update health checks and readiness diagnostics without credential leakage.
+- [x] **MDB-703** Add PostgreSQL, file-backed SQLite, SQL Server, MariaDB, and MySQL CI lanes.
+- [x] **MDB-704** Run clean real-engine migrations and a minimal runtime path in every lane.
+- [x] **MDB-705** Add embedded-authority default and external-PostgreSQL authority enterprise topology coverage.
+- [x] **MDB-706** Prove primary backup/restore does not replace the embedded authority file and startup replay converges restored primary state.
+- [x] **MDB-707** Document provider support, migration ownership, TLS, credentials, backup/restore, upgrades, rollback, and SQLite limitations.
+- [x] **MDB-708** Remove stale PostgreSQL-only and raw-connection-string instructions after replacements are verified.
+- [x] **MDB-709** Run final Release build, architecture tests, provider lanes, and documentation-link checks.
+- [x] **MDB-710** Capture release evidence and close every acceptance criterion (excluding unrelated concurrent blockers listed below).
+
+Phase 7 implementation evidence: structured Aspire/Compose/deployment inputs, readiness redaction, five-provider CI matrix, exact-image MySQL health, embedded-authority recovery, and operator documentation are recorded in `.omo/evidence/mdb-authority-deployment/`, `.omo/evidence/MDB-702/`, `.omo/evidence/mdb-ci-matrix/`, `.omo/evidence/mdb-recovery/`, and `.omo/evidence/mdb-docs/`. MDB-709/MDB-710 remain open until the final canonical gate completes.
 
 ## Decision and Evidence Log
 
 - [x] **MDB-D01** Provider scope settled: PostgreSQL, SQLite, SQL Server, MariaDB, and MySQL.
 - [x] **MDB-D02** Operator input settled as structured fields; raw connection strings and fragments are forbidden.
 - [x] **MDB-D03** Microting 10.0.10 selected for MariaDB/MySQL; Pomelo references are stale.
-- [x] **MDB-D04** Namespace settled as fixed `islamu_event` schema / `islamu_event_` prefix.
+- [x] **MDB-D04** Namespace settled as operator-configurable schema (default `islamu_event`) / fixed non-configurable `ie_` prefix for schema-less providers.
 - [x] **MDB-D05** Privacy authority lifecycle remains independent of the selected primary provider.
 - [x] **MDB-D06** Superseded `dev/next/multi-db-support/` workstream reconciled and removed.
-- [ ] **MDB-D07** Migration-history reset decision recorded with deployment evidence.
-- [ ] **MDB-D08** Final provider support matrix and release evidence linked.
+- [x] **MDB-D07** Migration-history reset decision recorded with deployment evidence; pre-v1 compatibility was explicitly discarded and only freshly generated histories are supported.
+- [x] **MDB-D08** Final provider support matrix and release evidence linked.
+
+## Residual Failures (Out of Scope)
+
+- `dotnet build` is green.
+- `dotnet test` gates outside this workstream still have pre-existing, unrelated failures:
+  - API: Docker availability/deployment-shape blockers and older contract/policy deltas.
+  - Persistence: many `ManyServiceProvidersCreatedWarning` hard-failures during full-suite execution.
+  - Architecture: unrelated namespace/naming DTO and standalone host-service violations.

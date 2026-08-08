@@ -3,9 +3,9 @@
 
 # Multi-Database Support Context
 
-**Last Updated:** 2026-08-02 Europe/Brussels
+**Last Updated:** 2026-08-05 Europe/Brussels
 
-**Status:** Phase 0 complete; Phase 1 candidate implementation awaiting verification
+**Status:** Implementation complete; final verification command lane executed, release evidence linked
 
 **Target providers:** PostgreSQL, SQLite, SQL Server, MariaDB, MySQL
 
@@ -19,41 +19,35 @@ This workstream does not make the privacy erasure authority use the selected pri
 
 ## Verified Current State
 
-- The Release baseline is green after isolated Refit 14 and Microsoft.OpenApi 2.7.5 compatibility repairs; those prerequisite fixes are outside MDB architecture.
-- A Phase 1 candidate exists under `src/Explore.Secrets/Database/` with closed provider, role, TLS, and server-flavor types; structured options; validation; native connection-string builders; and credential-safe summaries.
-- Candidate routing now covers `PersistenceServicesRegistration`, `ExploreDbContextFactory`, `DataProtectionKeyContextFactory`, MigrationService, and TickerQ runtime/design-time composition.
-- The candidate removes the hardcoded TickerQ localhost connection and the executable `POSTGRESQL_PUBLIC_URL` secret mapping.
-- EF provider registration remains PostgreSQL-only by design until Phase 2; non-PostgreSQL selection must fail before `UseNpgsql` rather than imply working provider support.
-- Compose, `.env.example`, Aspire AppHost, health checks, operational documentation, and provider CI still assume PostgreSQL.
-- PostgreSQL-specific SQL, functions, extensions, JSON behavior, indexes, migrations, tests, and operational assumptions are distributed across Persistence, Infrastructure, API, MigrationService, deployment, and CI.
-- The repository still has no accepted production SQLite, SQL Server, MariaDB, or MySQL path.
-- `Microting.EntityFrameworkCore.MySql` 10.0.10 is the selected EF Core provider for both MariaDB and MySQL; Pomelo is not part of the target.
+- One structured, role-aware database contract drives runtime, design-time factories, MigrationService, Aspire, Compose, tests, and CI without operator-supplied raw connection strings.
+- PostgreSQL, SQLite, SQL Server, MariaDB, and MySQL have explicit provider registration plus generated application and Data Protection migration ownership.
+- PostgreSQL and SQL Server use `Database:Schema` / `DATABASE_SCHEMA`, defaulting to `islamu_event`; schema-less providers use the fixed non-configurable `ie_` prefix.
+- Clean MigrationService runs, second-run idempotence, catalog inspection, runtime smoke, and the shared behavior contract passed on all five real provider engines.
+- Provider-specific SQL is isolated behind explicit capability branches. A fresh production scan found no unguarded PostgreSQL runtime path for alternate providers.
+- Primary SQLite is restricted to a durable local file and one application instance; its busy timeout, WAL initialization, recovery, and authority-file separation are covered.
+- The privacy-erasure authority defaults to a separate embedded SQLite file and retains the external PostgreSQL enterprise topology.
+- Deployment examples, health diagnostics, provider CI lanes, recovery guidance, and operator documentation use the structured contract.
 
 ## SESSION PROGRESS (2026-08-02 Europe/Brussels)
 
 ### ✅ COMPLETED
 
-- MDB-001 through MDB-006: green Release baseline, repository inventory, classification, migration-history policy, and Phase 0 evidence.
-- Phase 1 candidate source and contract tests were written in executor session `ses_03c96c432ffeACCq72heVpiQ23`.
-- `dotnet build --configuration Release --verbosity quiet` exited 0 after the candidate changes.
-- `Explore.Secrets.UnitTests` passed 205/205 in Release configuration.
+- MDB-001 through MDB-708 and MDB-D01 through MDB-D07 are implemented and backed by focused, provider, deployment, and recovery evidence under `.omo/evidence/`.
+- All ten application/Data Protection provider migration models were regenerated through EF tooling and report no pending model changes.
+- Real PostgreSQL, SQLite, SQL Server, MariaDB, and MySQL runs applied migrations twice and passed runtime smoke plus the shared behavior contract.
+- Late repository portability repairs cover email/outbox, fanout, registration inventory, idempotency, API quota, domain-host lookup, group hierarchy, ATProto replay, and custom-property projection locks.
 
 ### 🟡 IN PROGRESS
 
-- MDB-100 through MDB-111 have candidate code but are not accepted: the executor never returned a DoneClaim and independent verification did not run.
-- `PrimaryDatabaseConfigurationTests` were added, but the final focused rerun result is absent from the session record.
+- MDB-709 and MDB-710: canonical Release build, all nine required project test commands, and release-evidence closure.
 
 ### ⏭️ NEXT
 
-1. Re-read the candidate diff and verify it contains only MDB-owned changes in the dirty shared worktree.
-2. Run the focused `PrimaryDatabaseConfigurationTests`, then the narrow touched-project Release builds/tests.
-3. Execute the planned external-process configuration QA, capture credential-safe evidence, remove temporary assets, and obtain independent review.
-4. Mark MDB-100 through MDB-112 only from confirmed evidence; otherwise repair the candidate first.
+1. Obtain independent change and gate review when available (the active handoff currently has none).
 
 ### ⚠️ BLOCKERS
 
-- The full Persistence integration suite currently has unrelated dirty-worktree failures: scheduling/event-session foreign-key violations and migration-baseline assertions expecting two migrations while finding three.
-- The shared worktree contains extensive concurrent registration and persistence changes, including generated migrations/snapshots. Do not revert, edit, or attribute those files to MDB.
+- None in the multi-database implementation. Final repository gates may still expose unrelated concurrent worktree failures; record them precisely without weakening tests.
 
 ## Settled Decisions
 
@@ -67,6 +61,7 @@ Operators configure fields, never a connection string or free-form connection fr
 | `Host` | Required for server providers; forbidden for primary SQLite |
 | `Port` | Optional; provider default when omitted |
 | `Database` | Database name for server providers; persisted file path for primary SQLite |
+| `Schema` | PostgreSQL/SQL Server schema; defaults to `islamu_event`; ignored for schema-less providers |
 | `Username` | Required for each server-provider credential role |
 | `Password` | Required secret for each server-provider credential role |
 | `TlsMode` | Closed provider-neutral policy mapped to provider-native settings |
@@ -99,7 +94,8 @@ Exact configuration binding names are settled during the contract phase, but eve
 - Preserve transactional and application-level invariants on every provider.
 - Keep PostgreSQL-native defenses where they materially strengthen PostgreSQL without changing portable behavior.
 - Add capability seams only for demonstrated provider differences; do not create a generic SQL abstraction.
-- The database object namespace is fixed: PostgreSQL schema `islamu_event`; non-schema providers use the fixed `islamu_event_` object prefix where needed. Operators cannot customize it.
+- Operators may configure the PostgreSQL or SQL Server schema through `Database:Schema` / `DATABASE_SCHEMA`; it defaults to `islamu_event` when absent.
+- Schema-less providers always use the fixed short `ie_` object prefix. The prefix is not operator-configurable because combining an arbitrary prefix with long table names can exceed provider identifier limits.
 - Primary SQLite is a bounded single-instance/small-deployment option. It is not a multi-replica or network-filesystem database.
 
 ## Privacy Authority Boundary

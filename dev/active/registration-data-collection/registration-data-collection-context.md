@@ -3,7 +3,15 @@
 
 # Registration Data Collection & Participation Platform — Context
 
-Last Updated: 2026-08-02 Europe/Brussels
+Last Updated: 2026-08-03 Europe/Brussels
+
+## PHASE 8 PRODUCTION IMPLEMENTATION COMPLETE — VERIFICATION PAUSED (2026-08-03 Europe/Brussels)
+
+Phase 8 is complete in production source, not final-verified. The user explicitly paused and forbade further build, test, browser, database, EF, and runtime verification on 2026-08-03; no unchecked verification work may be inferred from this ledger synchronization.
+
+The native CQRS flow normalizes 17 portable types, applies the Phase 7 cross-field evaluator, persists typed subject-scoped answers and safe issues, snapshots exact consent text/version/language, and protects sensitive values using ASP.NET Core Data Protection purpose `Explore.RegistrationSensitiveAnswerValue` / version `v1`. Fulfillment plus consumed attempts atomically create a single fenced finalization effect. Authenticated and `PublicTransactional` guest routes use hash-only capability authorization and HAL affordances; the Blazor renderer is HAL-gated and covers all 17 field types with conditional/RTL/accessibility behavior. File answers remain quarantined until explicit audited manual release; malware scanning, infected-file disposition, and automatic clean-file release are deliberately deferred.
+
+The latest generated application baselines observed during this documentation sync are PostgreSQL `20260802223013_InitialPostgreSqlApplication`, MariaDB `20260802225605_InitialMariaDbApplication`, and MySQL `20260802225648_InitialMySqlApplication`; their generated artifacts contain Phase 8 answer, consent-text snapshot, finalization, and quarantine tables. No migration, snapshot, compatibility shim, or dual-write path was edited or introduced.
 
 ## TASK 8.8 FILE-ANSWER DECISION (2026-08-02 Europe/Brussels)
 
@@ -12,30 +20,6 @@ No malware scanner is available in the current deployment stack. File answers th
 The shared content reader and presigned-download handler deny provider access while any registration-file association remains quarantined, including a soft-deleted association; only the named soft-delete filter is bypassed, preserving tenant isolation. Composite submission/form/version/section/field/type/storage foreign keys enforce exact ownership lineage. Privacy erasure prepares durable provider-object deletion, scrubs and deletes local storage metadata, then hard-deletes answer-file/release metadata.
 
 `Registration:FileAnswers:Enabled` defaults to `false`. Publication preflight rejects File fields with `field.file_pipeline_disabled` until a deployment deliberately enables the existing upload-session pipeline. That pipeline remains the sole authority for declared content type, extension, exact byte count, and container-signature validation; Task 8.8 adds no second MIME parser or size policy. Malware scanner selection, scan execution, infected-file disposition, and automatic clean-file release remain deferred infrastructure work. No migration or model snapshot was generated or edited in this task, as explicitly required by the Task 8.8 execution boundary. The original independent rejection and repaired PASS are retained in `.omo/start-work/artifacts/registration-data-collection-phase8/task-8.8-gate.md`.
-
-## PHASE 8.2 INTERRUPTED HANDOFF (2026-08-02 Europe/Brussels)
-
-### Verified State
-- Phase 8.1 Domain/Persistence remains independently confirmed and closed with generated migration `20260802165308_Phase81RegistrationAttemptPersistence`; the implementation-task ledger remains **43/88**.
-- Task 8.2 exploration is complete. The selected design is atomic relational `RegistrationAnswer` storage with split `RegistrationSensitiveAnswerValue`; normalized order/purchaser/participant/ticket-assignment/session-selection subjects; no JSON-only answer truth; row-local `num_nonnulls` and type/subject checks; composite lineage, option, and subject-containment foreign keys; durable null-safe answer identity; and no ordinary Consent/File/OpaqueExternal values. AES-GCM integration is deferred to Task 8.3.
-- Exploration sessions `ses_03c6b33e2ffeIrL7JSezt1PFHX` and `ses_03c6b337dffeXNTAR3Hd55e8ZU` completed.
-
-### Interrupted Implementation And Resume
-- Backend session `ses_03c5ef347ffeT0FEuYCnTmHROx` returned no `DoneClaim`: its first call timed out after 30 minutes and its continuation was aborted by the user. Phase 8.2-looking Domain, Persistence, migration, privacy-inventory, and test files are present in the dirty worktree, but their exact state is unknown. No Task 8.2 implementation or verification completion is claimed.
-- Resume by inspecting `git status --short` and all Phase 8.2-looking diffs, then query or continue the preserved backend session for `WORKING`, `BLOCKED`, or a valid `DoneClaim` before spawning another writer. Preserve unrelated dirty work and the detached Phase 8.1 worktree.
-- Independently verify every discovered change. Task 8.2 stays unchecked until failing-first evidence, a canonical isolated generated migration, real PostgreSQL assertion-level tests, architecture/privacy gates, a clean pending EF model, and independent verifier confirmation all exist.
-- Tasks 8.3–8.8, Phase 8 final verification, and final documentation remain pending. The unrelated `.claude/hooks/SkillTrigger.cs:21` CA1311/CA1304 warnings do not block this work and were not addressed.
-
-## PHASE 8.1 COMPLETE HANDOFF (2026-08-02 Europe/Brussels)
-
-### Completed
-- Phase 8.1 Domain and Persistence are independently technically confirmed. Attempts use hashed single-use capabilities; submission-consumption claims are durable and separate from EF concurrency and HTTP idempotency; opaque deduplication and evidence-only retention preserve late superseded or expired submissions.
-- Generated migration `20260802165308_Phase81RegistrationAttemptPersistence` is confirmed with a clean pending EF model. Characterization is 25/25, privacy is 12/12, architecture/naming/tenant-filter is 15/15, PostgreSQL assertion-level verification is 10/10, and Application/Persistence/API Release builds have 0 errors.
-- A no-`--connection` EF database update used the configured PostgreSQL connection supplied through Infisical. The user deleted and recreated that development database with the same name, confirmed no consequences, and closed the incident. Infisical itself was not migrated.
-
-### Boundaries And Next Step
-- The shared worktree still contains extensive unrelated changes. The detached Phase 8.1 worktree remains preserved for operator cleanup; do not reset, stash, clean, force-remove, or modify unrelated work.
-- Start Task 8.2 typed answer storage, CHECK constraints, subjects, and answer-identity uniqueness. Answer identity remains unchecked until Task 8.2 closes; Tasks 8.2–8.8 and Phase 8 verification remain open.
 
 ## PHASE 7 COMPLETE HANDOFF (2026-08-02 Europe/Brussels)
 

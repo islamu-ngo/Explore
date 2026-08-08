@@ -6,7 +6,7 @@ ABOUTME: Covers minimum viable stack, optional services, setup, migrations, heal
 > **Audience:** Operators and DevOps engineers  
 > **Status:** Implemented  
 > **Owner:** Platform/Ops  
-> **Last Verified:** 2026-08-02  
+> **Last Verified:** 2026-08-05
 > **Source Anchors:** `docker-compose.yml`, `Explore.AppHost/AppHost.cs`, `Explore.API/Program.cs`, `Explore.Blazor/Extensions/YarpProxyExtensions.cs`
 
 ---
@@ -31,7 +31,7 @@ Commercial event SaaS platforms lock your community's data inside third-party da
 Self-hosting ISLAMU Event delivers a superior alternative:
 * **Zero Platform Tax:** Eliminate recurring per-ticket commission fees or monthly registration volume penalties.
 * **Complete Data Sovereignty:** You own your PostgreSQL/database infrastructure, attendee identities, and contact lists entirely.
-* **Flexible Compliance & Privacy:** Built-in GDPR Privacy Erasure Authority allows either co-located or isolated compliance database topologies.
+* **Flexible Compliance & Privacy:** Built-in GDPR Privacy Erasure Authority supports three topologies: EmbeddedSqlite, CoLocated, and ExternalDatabase.
 * **Full White-Label Independence:** Customize tenant domains, logos, navigation, and governance without third-party vendor watermarks.
 
 > [!IMPORTANT]
@@ -216,9 +216,10 @@ combine.
 - **The primary datastore is selected explicitly.** PostgreSQL, SQLite, SQL
   Server, MariaDB, and MySQL share the application model but use separate
   generated migration sets.
-- **Privacy-erasure authority storage is always separate from the primary.**
+- **Privacy-erasure authority storage is configurable.**
   `EmbeddedSqlite` uses `/app/data/privacy_erasure_authority.db` on its own
-  durable volume; `ExternalDatabase` uses a separate PostgreSQL database.
+  durable volume; `CoLocated` stores authority tables in the primary application
+  database; `ExternalDatabase` uses a separate PostgreSQL database.
 
 ---
 
@@ -354,7 +355,7 @@ The primary database uses one closed structured contract:
 | `DATABASE_HOST` | `postgres` | Required for server providers; omit for SQLite |
 | `DATABASE_PORT` | provider default | Optional server port (`5432`, `1433`, or `3306`) |
 | `DATABASE_DATABASE` | `islamu_event_db` | Server database name, or persisted local SQLite file path |
-| `DATABASE_SCHEMA` | `islamu_event` | PostgreSQL or SQL Server schema; schema-less providers always use the fixed `ie_` table prefix (no `DATABASE_PREFIX`/`Database:Prefix` override is supported) |
+| `DATABASE_SCHEMA` | `islamu_event` | PostgreSQL or SQL Server schema; schema-less providers always use the fixed `ie_` table prefix (no prefix override is supported; keys `DATABASE_PREFIX`, `DATABASE_RUNTIME_PREFIX`, `DATABASE_MIGRATOR_PREFIX`, `Database:Prefix`, `Database:Runtime:Prefix`, and `Database:Migrator:Prefix` are rejected) |
 | `DATABASE_TLS_MODE` | `Prefer` in local Compose | `Prefer`, `Required`, or `Disabled`; production server deployments should use `Required` |
 | `DATABASE_TRUST_SERVER_CERTIFICATE` | `false` | Certificate bypass accepted only with required TLS; development only |
 | `DATABASE_RUNTIME_USERNAME`, `DATABASE_RUNTIME_PASSWORD` | `explore` locally | Runtime role; forbidden for SQLite |
@@ -627,7 +628,7 @@ and include the file in a separate backup job. It uses private cache, WAL, a
 bounded busy timeout, and a single writer. It must never be the primary SQLite
 file or share the primary database's restore lifecycle.
 
-For external database topology:
+For `ExternalDatabase` topology:
 
 ```bash
 PRIVACY_ERASURE_AUTHORITY_TOPOLOGY=ExternalDatabase \
@@ -636,8 +637,11 @@ docker compose --profile privacy-erasure-external up -d
 
 This starts a separate authority PostgreSQL. Supply structured endpoint fields
 and separate runtime/migrator roles, then run `event-migrationservice` before
-the API. `CoLocated` and raw authority connection strings are not supported;
-this pre-v1 development repository provides no compatibility cutover. See
+the API.
+
+For `CoLocated`, no separate authority target is configured and it shares the
+primary application database. Raw authority connection strings are not supported.
+See
 [PRIVACY_ERASURE.md](PRIVACY_ERASURE.md) for guidance.
 
 ---

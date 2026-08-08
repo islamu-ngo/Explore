@@ -1,6 +1,7 @@
 // ABOUTME: File-backed SQLite regression for portable external API key quota mutations.
 // ABOUTME: Proves concurrent provisioners create one period row and credit use remains bounded.
 
+using Explore.Application.Contracts.Infrastructure;
 using Explore.Domain;
 using Explore.Domain.Enums;
 using Explore.Persistence;
@@ -22,14 +23,18 @@ public sealed class ExternalApiKeyQuotaRepositorySqliteTests
 
         try
         {
-            Guid externalApiKeyId = await CreateDatabaseAndKeyAsync(databasePath);
-            ExternalApiKeyQuota[] provisioned = await ProvisionConcurrentlyAsync(databasePath, externalApiKeyId, periodStart);
-            bool[] consumption = await ConsumeConcurrentlyAsync(databasePath, provisioned[0].Id);
+            (Guid externalApiKeyId, Guid tenantId) = await CreateDatabaseAndKeyAsync(databasePath);
+            ExternalApiKeyQuota[] provisioned = await ProvisionConcurrentlyAsync(
+                databasePath,
+                externalApiKeyId,
+                tenantId,
+                periodStart);
+            bool[] consumption = await ConsumeConcurrentlyAsync(databasePath, tenantId, provisioned[0].Id);
 
             await Assert.That(provisioned.Select(quota => quota.Id).Distinct()).HasSingleItem();
             await Assert.That(consumption.Count(consumed => consumed)).IsEqualTo(3);
 
-            await using ExploreDbContext assertContext = CreateContext(databasePath);
+            await using ExploreDbContext assertContext = CreateContext(databasePath, tenantId);
             ExternalApiKeyQuota[] quotas = await assertContext.ExternalApiKeyQuotas
                 .AsNoTracking()
                 .Where(quota => quota.ExternalApiKeyId == externalApiKeyId && quota.PeriodStart == periodStart)
@@ -48,15 +53,25 @@ public sealed class ExternalApiKeyQuotaRepositorySqliteTests
         }
     }
 
-    private static async Task<Guid> CreateDatabaseAndKeyAsync(string databasePath)
+    private static async Task<(Guid ExternalApiKeyId, Guid TenantId)> CreateDatabaseAndKeyAsync(string databasePath)
     {
         await using ExploreDbContext context = CreateContext(databasePath);
         await context.Database.EnsureCreatedAsync();
         await LookupTableSeeder.SeedAsync(context, CancellationToken.None);
 
+        var tenant = new Tenant
+        {
+            Id = Guid.CreateVersion7(),
+            FullName = "SQLite quota tenant",
+            Slug = $"sqlite-quota-{Guid.CreateVersion7():N}",
+            TenantStatusId = (int)TenantStatusEnum.Active,
+            TenantStatus = null!,
+        };
         var apiKey = new ExternalApiKey
         {
             Id = Guid.CreateVersion7(),
+            TenantId = tenant.Id,
+            Tenant = tenant,
             Name = "SQLite quota key",
             KeyId = $"sqlite-quota-{Guid.CreateVersion7():N}",
             SecretHash = "sqlite-quota-hash",
@@ -72,15 +87,16 @@ public sealed class ExternalApiKeyQuotaRepositorySqliteTests
         };
         context.ExternalApiKeys.Add(apiKey);
         await context.SaveChangesAsync();
-        return apiKey.Id;
+        return (apiKey.Id, tenant.Id);
     }
 
     private static async Task<ExternalApiKeyQuota[]> ProvisionConcurrentlyAsync(
         string databasePath,
         Guid externalApiKeyId,
+        Guid tenantId,
         DateOnly periodStart)
     {
-        ExploreDbContext[] contexts = Enumerable.Range(0, 4).Select(_ => CreateContext(databasePath)).ToArray();
+        ExploreDbContext[] contexts = Enumerable.Range(0, 4).Select(_ => CreateContext(databasePath, tenantId)).ToArray();
         try
         {
             var start = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -108,9 +124,9 @@ public sealed class ExternalApiKeyQuotaRepositorySqliteTests
         }
     }
 
-    private static async Task<bool[]> ConsumeConcurrentlyAsync(string databasePath, Guid quotaId)
+    private static async Task<bool[]> ConsumeConcurrentlyAsync(string databasePath, Guid tenantId, Guid quotaId)
     {
-        ExploreDbContext[] contexts = Enumerable.Range(0, 8).Select(_ => CreateContext(databasePath)).ToArray();
+        ExploreDbContext[] contexts = Enumerable.Range(0, 8).Select(_ => CreateContext(databasePath, tenantId)).ToArray();
         try
         {
             var start = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -132,7 +148,7 @@ public sealed class ExternalApiKeyQuotaRepositorySqliteTests
         }
     }
 
-    private static ExploreDbContext CreateContext(string databasePath)
+    private static ExploreDbContext CreateContext(string databasePath, Guid? tenantId = null)
     {
         var connectionString = new SqliteConnectionStringBuilder
         {
@@ -141,9 +157,13 @@ public sealed class ExternalApiKeyQuotaRepositorySqliteTests
             Pooling = true,
         }.ToString();
 
-        return new ExploreDbContext(new DbContextOptionsBuilder<ExploreDbContext>()
+        var context = new ExploreDbContext(new DbContextOptionsBuilder<ExploreDbContext>()
             .UseSqlite(connectionString)
             .UseSnakeCaseNamingConvention()
             .Options);
+        context.TenantContext = tenantId is null ? null : new TestTenantContext(tenantId.Value);
+        return context;
     }
+
+    private sealed record TestTenantContext(Guid TenantId) : ITenantContext;
 }

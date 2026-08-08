@@ -6,7 +6,7 @@ ABOUTME: Focuses on non-inferable key names, mapping behavior, and settings casc
 > **Audience:** Operators | Contributors | AI agents
 > **Status:** Implemented
 > **Owner:** Platform/Ops
-> **Last Verified:** 2026-08-02
+> **Last Verified:** 2026-08-05
 > **Source Anchors:** `Explore.API/Extensions/ConfigurationExtensions.cs`, `Explore.API/Controllers/ListmonkIntegrationSettingsController.cs`, `Explore.API/Controllers/PlatformMonetizationSettingsController.cs`, `Explore.Application/DTOs/Integrations/ListmonkIntegrationSettingsDto.cs`, `Explore.Application/Features/PlatformMonetization/`, `Explore.Infrastructure/Integrations/Listmonk/ListmonkSyncService.cs`, `Explore.Blazor/Extensions/ConfigurationExtension.cs`, `Explore.Blazor/Extensions/YarpProxyExtensions.cs`, `Event.Web.BffHosting/Authentication/EventBffKeycloakAuthenticationOptions.cs`, `Event.Web.BffHosting/Proxy/EventApiBaseAddressResolver.cs`, `Explore.Application/Features/EventReporting/EventReportSubmissionOptions.cs`, `Explore.Application/Services/AccountAuthorityLifecycleEmailOptions.cs`, `Explore.Application/Notifications/AccountAuthorityKind.cs`, `Explore.Application/Notifications/NotificationRoutingOptions.cs`, `Explore.Infrastructure/Configuration/ModerationProviderOptions.cs`, `Explore.Infrastructure/Configuration/OspreyProviderOptions.cs`, `Explore.Infrastructure/Configuration/CoopProviderOptions.cs`, `Explore.API/Services/CoopWebhookSignatureValidator.cs`, `Explore.Infrastructure/Services/HierarchicalSettingsResolver.cs`, `Explore.Infrastructure/Services/Keycloak/KeycloakLifecycleEmailOptions.cs`, `Explore.Infrastructure/Services/Keycloak/KeycloakAccountAuthorityLifecycleEmailService.cs`, `Explore.Infrastructure/Storage/LocalFileStorageProvider.cs`, `Explore.Infrastructure/Storage/S3ConfigResolver.cs`, `Explore.Infrastructure/StorageReconciliationSettings.cs`, `Explore.Infrastructure/Mail/SmtpConfigResolver.cs`, `Explore.Infrastructure/Services/SetupSecretProvider.cs`, `Explore.Domain/Constants/GovernanceSettingKeys.cs`, `Explore.Domain/Constants/InfrastructureSecretSettingKeys.cs`, `Explore.Domain/Secrets/SecretDefinitionRegistry.cs`, `docs/SECRETS.md`
 
 ## Runtime Configuration Sources
@@ -216,10 +216,11 @@ other providers use `Explore.Persistence.Migrations.{Provider}` and
 `__EFMigrationsHistory` and `__EFDataProtectionMigrationsHistory` in the
 configured schema (default `islamu_event`), or the corresponding fixed
 `ie_`-prefixed tables where schemas are not supported. The prefix is deliberately
-not configurable (`DATABASE_PREFIX` and `Database:Prefix` are rejected), so an
-operator-supplied value cannot exceed provider identifier
-limits when combined with long table names. Generated migrations and snapshots
-are never hand-edited.
+not configurable (`DATABASE_PREFIX`, `DATABASE_RUNTIME_PREFIX`,
+`DATABASE_MIGRATOR_PREFIX`, `Database:Prefix`, `Database:Runtime:Prefix`, and
+`Database:Migrator:Prefix` are rejected), so an operator-supplied value cannot
+exceed provider identifier limits when combined with long table names.
+Generated migrations and snapshots are never hand-edited.
 
 SQLite adds three non-negotiable deployment rules: use durable local storage,
 mount the file into both migration and API processes at the same path, and run
@@ -234,16 +235,23 @@ application migration. The primary file must not be named
 
 ### Privacy-erasure authority topology
 
-`PrivacyErasure:Authority:Topology` accepts only `EmbeddedSqlite` (the default)
-or `ExternalDatabase`. `EmbeddedSqlite` stores authority facts in the dedicated
+`PrivacyErasure:Authority:Topology` accepts `EmbeddedSqlite` (the default),
+`CoLocated`, or `ExternalDatabase`.
+
+`EmbeddedSqlite` stores authority facts in the dedicated
 `/app/data/privacy_erasure_authority.db` file; it never shares the primary
 database or primary SQLite file. The file uses a private cache, WAL, a bounded
 busy timeout, one writer, restrictive permissions, and a separately mounted
-durable volume. `ExternalDatabase` uses the dedicated authority migration
-against a different physical PostgreSQL database; startup rejects an authority
-target that resolves to the application database even when endpoint identity is
-obscured by different credentials. The application mirror remains in the
-primary database in both topologies.
+durable volume.
+
+`CoLocated` stores authority facts in the primary application database and uses
+the existing application database credentials.
+
+`ExternalDatabase` uses a dedicated authority migration against a different
+physical PostgreSQL database; startup rejects an authority target that resolves to
+the application database even when endpoint identity is obscured by different
+credentials. The application mirror remains in the primary database in both
+`EmbeddedSqlite` and `CoLocated`, and never in `ExternalDatabase`.
 
 | Key | Default | Description |
 |---|---:|---|
@@ -266,17 +274,18 @@ Compose maps `PRIVACY_ERASURE_AUTHORITY_TOPOLOGY`,
 For the external topology it maps `PRIVACY_ERASURE_AUTHORITY_HOST`, `PORT`,
 `DATABASE`, `TLS_MODE`, `TRUST_SERVER_CERTIFICATE`, and the `RUNTIME_*` /
 `MIGRATOR_*` credential families. External fields are ignored by
-`EmbeddedSqlite`; back up its dedicated file/volume independently from the
+`EmbeddedSqlite` and `CoLocated`; back up its dedicated file/volume independently from the
 primary database.
 Aspire creates a distinct local authority PostgreSQL resource whenever
 `ExternalDatabase` is selected in a profile that uses local data. Profiles
 without local data use operator-provided external infrastructure.
 
-`CoLocated`, `PrivacyErasure:Durability:Mode`, and raw authority connection
+`PrivacyErasure:Durability:Mode`, and raw authority connection
 strings are removed and are never translated. This repository is pre-v1 and in
 development mode: reset affected development data after taking any required
-export, then select `EmbeddedSqlite` or `ExternalDatabase`. There is no legacy
-co-located fact-copy or compatibility cutover. Application code and
+export, then select `EmbeddedSqlite`, `CoLocated`, or `ExternalDatabase`.
+There is no legacy compatibility cutover for removed contracts. Application code
+and
 implementation agents never delete databases, containers, volumes, or backups.
 
 ### Localization Configuration
