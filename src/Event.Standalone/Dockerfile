@@ -1,7 +1,7 @@
 # ABOUTME: Builds the Event.Standalone combined API and Blazor host as a deterministic runtime image.
 # ABOUTME: Publishes locked dependencies, exposes HTTP on 8080, and provides app-owned SQLite storage.
 
-FROM mcr.microsoft.com/dotnet/sdk:10.0@sha256:72dd743782f2ae7e5476fd64f6a460045e3998dc862218b80e6944cba79a01b0 AS build
+FROM mcr.microsoft.com/dotnet/sdk:10.0.301@sha256:548d93f8a18a1acbe6cc127bc4f47281430d34a9e35c18afa80a8d6741c2adc3 AS build
 WORKDIR /src
 
 COPY ["global.json", "Directory.Build.props", "Directory.Packages.props", "./"]
@@ -17,6 +17,7 @@ COPY ["src/Explore.Persistence/Explore.Persistence.csproj", "src/Explore.Persist
 COPY ["src/Explore.Secrets/Explore.Secrets.csproj", "src/Explore.Secrets/packages.lock.json", "src/Explore.Secrets/"]
 COPY ["src/Explore.ServiceDefaults/Explore.ServiceDefaults.csproj", "src/Explore.ServiceDefaults/packages.lock.json", "src/Explore.ServiceDefaults/"]
 COPY ["src/Event.Web.BffHosting/Event.Web.BffHosting.csproj", "src/Event.Web.BffHosting/packages.lock.json", "src/Event.Web.BffHosting/"]
+RUN dotnet workload install wasm-tools --version 10.0.301.1 --skip-manifest-update
 RUN dotnet restore "src/Event.Standalone/Event.Standalone.csproj" --locked-mode
 
 COPY . .
