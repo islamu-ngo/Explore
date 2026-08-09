@@ -5,7 +5,7 @@ ABOUTME: Helps AI agents and developers locate code quickly without full-repo sc
 
 > Complete directory map for AI agents and developers.
 > Lists all folders with max 2 key files per folder for quick lookup.
-> Last Updated: July 2026
+> Last Updated: August 2026
 
 ---
 
@@ -56,7 +56,7 @@ The Combined `/api/*` path is an in-process BFF-to-API trust flow: cookie classi
 
 AppHost uses `WithHttpEndpoint(name: "http")` for a dynamic/non-guaranteed internal HTTP listener and explicit HTTPS `https://localhost:7180`. Direct `Event.Standalone` launch profiles reserve `http://localhost:5180` (and `https://localhost:7180` for the HTTPS profile). Returning to the Split default is a configuration relaunch, not a data rollback; the one-process profile trades independent host scaling for one owner of startup/readiness. It neither chooses SQLite nor supplies standalone `docker-compose.yml`; canonical routes stay `/api/...` and read versions from the `Accept` media-type parameter, `?api-version=`, or `X-Api-Version`, never `/api/v1/...` (see [the support matrix](ARCHITECTURE.md#hosting-topology)).
 
-Standalone is a local composition choice only. It is not a deployment packaging mode: `docker-compose.yml` still describes the Split API+BFF deployment and does not include `Event.Standalone`. Topology selection does not switch provider defaults (`Docker`/`Compose` remains explicit), and `DATABASE_PROVIDER` still drives primary database selection.
+Standalone is an explicit composition choice. `docker-compose.yml` describes the Split API+BFF deployment, while `docker-compose.standalone.yml` packages `Event.Standalone` with SQLite as that descriptor's default. AppHost topology selection does not switch database providers, and `DATABASE_PROVIDER` still drives primary database selection.
 
 API versioning and security invariants remain anchored in `Explore.API`: a topology switch never changes versioning format, trust boundary ownership, or authorization policy path.
 
@@ -232,7 +232,7 @@ Explore.Persistence/
 │       ├── EventConfiguration.cs  — Event table mapping, relationships, indexes
 │       ├── OrganizationConfiguration.cs — Organization table with JSON columns
 │       └── [40+ more configs]     — One per entity; lookup tables include HasData() seeding
-├── Migrations/                    — EF Core migration files
+├── Migrations/                    — PostgreSQL EF Core migration files
 │   ├── ExploreDbContextModelSnapshot.cs — Current model state
 │   └── [timestamped migration files]    — Chronological schema changes
 ├── QueryFilters/                  — Named query filter constants
@@ -250,6 +250,12 @@ Explore.Persistence/
 │   └── ProjectionInfrastructure.cs — Advisory locks, FNV-1a hash, batch chunking (used by both projection updaters)
 └── ValueGenerators/               — Custom EF Core value generators
 ```
+
+Provider-specific sibling projects own generated SQLite, SQL Server, MariaDB,
+and MySQL application/Data Protection migrations. PostgreSQL and SQL Server
+use the configured schema with clean table names; SQLite, MariaDB, and MySQL
+use the fixed `ie_` prefix. `Event.MigrationService` selects the matching
+assemblies before an API or Standalone host starts.
 
 ---
 

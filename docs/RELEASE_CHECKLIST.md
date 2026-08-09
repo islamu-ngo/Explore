@@ -6,7 +6,7 @@ ABOUTME: Provides the release documentation contract for self-hostable operators
 > **Audience:** Contributors | Operators | AI agents
 > **Status:** Implemented
 > **Owner:** Platform/Ops
-> **Last Verified:** 2026-08-02
+> **Last Verified:** 2026-08-09
 > **Source Anchors:** `docs/BACKUP_RESTORE_UPGRADE.md`, `docs/CONTRIBUTING.md`, `docs/TESTING.md`, `.github/workflows/test.yml`
 
 Use this checklist before tagging or publishing a release. A release is not ready until operators can understand what changed, how to upgrade, how to verify, and how to roll back.
@@ -76,6 +76,7 @@ Use `Not applicable` only when the change has no release-impact category. If the
 - [ ] New EF migrations are named, reviewed, and tied to the feature/release.
 - [ ] Clean-database migration and a second idempotent MigrationService run pass for PostgreSQL, SQLite, SQL Server, MariaDB, and MySQL on the release matrix.
 - [ ] Provider-specific application and Data Protection migration assemblies are present, generated from the model, and use their governed history tables; generated migrations and snapshots were not hand-edited.
+- [ ] Namespace evidence proves PostgreSQL/SQL Server use the configured schema with clean unprefixed table names, while SQLite/MariaDB/MySQL force `ie_` for application and history tables.
 - [ ] TickerQ operational-schema ownership remains in the API and is enabled only for PostgreSQL; non-PostgreSQL release lanes prove `EmailDispatchProcessor:Mode=HostedService` with equivalent durable outbox/drain behavior.
 - [ ] Migration impact is documented: additive, data backfill, destructive, or rollback-sensitive. Do not claim below-floor compaction or DR rehearsal coverage, or any RPO/RTO number, until it is shipped and linked in evidence.
 - [ ] Data-protection/key storage impact is documented if changed.
@@ -87,6 +88,7 @@ Use `Not applicable` only when the change has no release-impact category. If the
 - [ ] New or changed environment keys are documented in `CONFIGURATION.md` or `SECRETS.md`.
 - [ ] Removed keys are listed with replacements.
 - [ ] `Database:*` provider, endpoint, TLS, and runtime/migrator role inputs are documented without raw connection-string secrets; MariaDB/MySQL release inputs pin matching server flavor and version.
+- [ ] `Database:Schema` / `DATABASE_SCHEMA` is documented as the PostgreSQL/SQL Server namespace only; flat providers retain `ie_`, and any TickerQ-enabled multi-instance PostgreSQL deployment uses separate databases because `ticker` remains fixed.
 - [ ] The default `EmbeddedSqlite` privacy-erasure authority uses a dedicated local volume, one writer, independently rehearsed backup/restore, and no primary-database credential. Any `ExternalDatabase` topology uses a distinct structured PostgreSQL target and separate roles.
 - [ ] Secret-provider paths and key names are documented.
 - [ ] Keycloak realm/client/role changes are documented.

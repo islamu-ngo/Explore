@@ -6,7 +6,7 @@ ABOUTME: Links deeper docs instead of duplicating self-hosting, testing, and con
 > **Audience:** Contributors | Evaluators | AI agents
 > **Status:** Implemented
 > **Owner:** Contributor Experience
-> **Last Verified:** 2026-08-02
+> **Last Verified:** 2026-08-09
 > **Source Anchors:** `global.json`, `Explore.AppHost/AppHost.cs`, `docker-compose.yml`, `docs/SELF_HOSTING.md`, `docs/TESTING.md`
 
 Use this page for the shortest safe local path. For production-style hosting, start with [SELF_HOSTING.md](SELF_HOSTING.md) instead.
@@ -145,6 +145,11 @@ or MySQL, set the structured `DATABASE_*` fields described in
 selected engine/file, and require MigrationService to finish before API start.
 Use `EmailDispatchProcessor:Mode=HostedService` for every non-PostgreSQL
 provider.
+
+PostgreSQL and SQL Server use `DATABASE_SCHEMA` as their namespace and retain
+clean table names such as `users`. SQLite, MariaDB, and MySQL force the fixed
+`ie_` prefix, such as `ie_users`; use a separate SQLite file or MySQL-family
+database per local instance instead of trying to configure a prefix.
 
 Default Compose endpoints:
 

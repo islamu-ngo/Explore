@@ -3,7 +3,7 @@
 
 # Event Standalone Combined Host — Implementation Plan
 
-Last Updated: 2026-08-02 Europe/Brussels
+Last Updated: 2026-08-09 Europe/Brussels
 
 ## 0. Planning Metadata
 
@@ -135,7 +135,7 @@ The bridge flow is:
 7. Register and execute API workers, startup migration/seeding, privacy gate, setup-secret initialization, service defaults, health, and shutdown exactly once.
 8. Preserve `RuntimeRenderPolicyService`: the fallback is `InteractiveServer`, tenant policy may select `InteractiveAuto` or `InteractiveWebAssembly`, onboarding remains forced to `InteractiveServer`, and components may not depend on `HttpContext`.
 9. Keep split hosting as the default configuration and regression-test both profiles.
-10. SQLite is the default provider for Event.Standalone; operators may override via `DATABASE_PROVIDER` environment variable or Infisical secret to select PostgreSQL, SQL Server, MariaDB, or MySQL. Provider selection follows the `multi-database-support` workstream contract.
+10. SQLite is the default provider for Event.Standalone; operators may override via `DATABASE_PROVIDER` environment variable or Infisical secret to select PostgreSQL, SQL Server, MariaDB, or MySQL. Provider selection uses the completed `multi-database-support` workstream's structured `DatabaseOptions` contract: closed provider enum, structured fields (host/port/database/schema/username/password/TLS/trust/server-version), provider-native connection-string builders, dual-role runtime/migrator credentials, `RelationalModelNamespace` (schema-backed engines use configurable schema defaulting to `islamu_event` with clean table names; flat engines use fixed `ie_` prefix), and 10 generated migration assemblies (5 providers × 2 contexts).
 11. Every new source or documentation file begins with two `ABOUTME:` lines.
 12. Run only project-scoped Release tests, never solution-level `dotnet test`.
 
@@ -199,11 +199,11 @@ The bridge flow is:
 
 ### Decision H: SQLite as default persistence with provider override
 
-- **Decision:** Event.Standalone defaults to SQLite with a local persistent file (`/app/data/event.db`). Operators may override by setting `DATABASE_PROVIDER=PostgreSQL` (or `SqlServer`, `MariaDb`, `MySql`) plus structured connection fields via environment variables or Infisical secrets. Provider selection uses the same `DatabaseOptions` contract defined by the `multi-database-support` workstream.
+- **Decision:** Event.Standalone defaults to SQLite with a local persistent file (`/app/data/islamu_event.db`). Operators may override by setting `DATABASE_PROVIDER=PostgreSQL` (or `SqlServer`, `MariaDb`, `MySql`) plus structured connection fields via environment variables or Infisical secrets. Provider selection uses the completed `multi-database-support` workstream's `DatabaseOptions` contract with its closed provider enum (`PostgreSql`, `Sqlite`, `SqlServer`, `MariaDb`, `MySql`), startup validation, provider-native connection-string builders, and dual-role runtime/migrator credentials.
 - **Why:** SQLite eliminates the database container for small self-hosters, achieving the single-container deployment goal. Provider override preserves the path to production-grade databases for larger operators.
 - **Alternatives considered:** Require PostgreSQL always; auto-detect based on connection string presence; separate standalone images per provider.
-- **Consequences:** The standalone image must include SQLite native binaries. WAL mode and busy-timeout PRAGMAs must be set at startup. Single-replica constraint applies when using SQLite. Docker volume mount is required for data persistence.
-- **Files/layers affected:** `Event.Standalone/Program.cs`, `Event.Standalone/appsettings.json`, `Dockerfile`, Docker Compose, `multi-database-support` workstream Phase 4.
+- **Consequences:** The standalone image must include SQLite native binaries. WAL mode and busy-timeout PRAGMAs are already handled by the MDB Phase 4 SQLite provider registration (bounded busy timeout, WAL initialization). Single-replica constraint applies when using SQLite. Docker volume mount is required for data persistence. Schema-capable providers (PostgreSQL, SQL Server) use the configurable schema (default `islamu_event`) with clean table names; flat providers (SQLite, MariaDB, MySQL) use the fixed `ie_` prefix via `RelationalModelNamespace`.
+- **Files/layers affected:** `Event.Standalone/Program.cs`, `Event.Standalone/appsettings.json`, `Dockerfile`, Docker Compose. MDB workstream Phase 4 SQLite provider registration and migration assemblies are complete and consumed directly.
 
 ### Decision I: Single-container Docker image with volume mount
 
@@ -417,28 +417,29 @@ The bridge flow is:
 ### Phase 5: SQLite Default Persistence And Provider Override
 
 - **Goal:** Make Event.Standalone default to SQLite and allow operators to override the provider via environment variables or Infisical secrets.
-- **Depends on:** Phase 4 complete. The `multi-database-support` workstream Phase 1 (structured `DatabaseOptions` contract) must be landed or co-developed.
-- **Relevant files:** `src/Event.Standalone/Program.cs`; `src/Event.Standalone/appsettings.json`; `multi-database-support` Phase 4 SQLite provider registration; existing/new standalone integration tests.
+- **Depends on:** Phase 4 complete. The `multi-database-support` workstream is fully implemented (MDB-001 through MDB-715 complete). The structured `DatabaseOptions` contract, all five provider registrations, 10 migration assemblies, and SQLite-specific WAL/busy-timeout configuration are available for direct consumption.
+- **Relevant files:** `src/Event.Standalone/Program.cs`; `src/Event.Standalone/appsettings.json`; MDB's SQLite provider registration and `DatabaseOptions` validation pipeline.
 - **Related skills/rules:** `dotnet-efcore-guidelines`, `clean-architecture-rules`.
-- **Acceptance criteria:** Default startup with no database configuration uses SQLite at `/app/data/event.db` with WAL mode enabled; `DATABASE_PROVIDER=PostgreSQL` plus structured fields switches to PostgreSQL; invalid provider/missing required fields fail-fast at startup; SQLite data survives container restart via volume mount; single-replica constraint is enforced for SQLite.
+- **Acceptance criteria:** Default startup with no database configuration uses SQLite at `/app/data/islamu_event.db` with WAL mode enabled; `DATABASE_PROVIDER=PostgreSQL` plus structured fields switches to PostgreSQL; invalid provider/missing required fields fail-fast at startup with credential-safe diagnostics; SQLite data survives container restart via volume mount; single-replica constraint is enforced for SQLite. Privacy-erasure authority SQLite file (`privacy_erasure_authority.db`) remains separate from the primary `islamu_event.db` file on a distinct volume, with independent restore lifecycle.
 - **Phase-end verification (run once after all tasks):**
   - `dotnet build --configuration Release --verbosity quiet`
   - `dotnet test --project tests/Event.Standalone.IntegrationTests/Event.Standalone.IntegrationTests.csproj --configuration Release --verbosity quiet`
-- **Rollback / failure handling:** Revert to requiring explicit database configuration; do not silently fall back to in-memory or create unpersistedfiles.
+- **Rollback / failure handling:** Revert to requiring explicit database configuration; do not silently fall back to in-memory or create unpersisted files.
 
 #### Task 5.1: Integrate SQLite default provider with standalone composition
 
 - **Type:** modify
 - **Layer:** Persistence/Composition
-- **Files:** `src/Event.Standalone/Program.cs` (existing); `src/Event.Standalone/appsettings.json` (existing); persistence registration extensions from `multi-database-support` workstream.
-- **Description:** When no `DATABASE_PROVIDER` is configured, default to SQLite with connection string `Data Source=/app/data/event.db;Cache=Shared`. Execute `PRAGMA journal_mode=WAL; PRAGMA busy_timeout=5000;` via a connection interceptor or startup hook. When `DATABASE_PROVIDER` is set, delegate to the structured `DatabaseOptions` provider-selection logic from the `multi-database-support` workstream.
+- **Files:** `src/Event.Standalone/Program.cs` (existing); `src/Event.Standalone/appsettings.json` (existing); completed MDB persistence registration extensions (`DatabaseOptions`, `DatabaseOptionsValidator`, provider-native connection-string builders, SQLite WAL/busy-timeout configuration).
+- **Description:** When no `DATABASE_PROVIDER` is configured, default to SQLite by supplying `DatabaseOptions` with `Provider = Sqlite` and `Database = /app/data/islamu_event.db`. The completed MDB Phase 4 SQLite provider registration already handles WAL initialization, bounded busy timeout, persisted local file path enforcement, and single-instance validation. When `DATABASE_PROVIDER` is set, bind the operator's structured fields to `DatabaseOptions` and delegate to the existing MDB provider-selection and validation pipeline. The `RelationalModelNamespace` automatically applies the fixed `ie_` prefix for SQLite or the configured schema for PostgreSQL/SQL Server. Privacy-erasure authority file remains at its separate persisted path on a distinct volume.
 - **Acceptance Criteria:**
-  - [ ] Default standalone startup creates and uses `/app/data/event.db` without any database configuration.
-  - [ ] WAL mode is enabled and verified at startup.
+  - [ ] Default standalone startup creates and uses `/app/data/islamu_event.db` without any database configuration.
+  - [ ] WAL mode is enabled and verified at startup (handled by MDB SQLite registration).
   - [ ] `DATABASE_PROVIDER=PostgreSQL` with structured fields switches to PostgreSQL.
-  - [ ] Missing required fields for a non-SQLite provider produce actionable startup errors.
-  - [ ] SQLite busy-timeout prevents `SQLITE_BUSY` under concurrent API requests.
-- **Dependencies:** 4.3, multi-database-support Phase 1.
+  - [ ] Missing required fields for a non-SQLite provider produce actionable, credential-safe startup errors.
+  - [ ] SQLite busy-timeout prevents `SQLITE_BUSY` under concurrent API requests (handled by MDB SQLite registration).
+  - [ ] Primary SQLite file and privacy-erasure authority SQLite file are on separate volumes with independent restore lifecycles.
+- **Dependencies:** 4.3. MDB workstream is complete (no co-development needed).
 - **Effort:** L
 - **Required Skills/Rules:** `dotnet-efcore-guidelines`, `clean-architecture-rules`.
 
@@ -512,7 +513,7 @@ The bridge flow is:
 - **Acceptance Criteria:**
   - [ ] `docker run -v data:/app/data -p 8080:8080 islamu/event-standalone` is documented as the minimal deployment.
   - [ ] Provider override examples cover PostgreSQL, SQL Server, MariaDB.
-  - [ ] SQLite backup (`cp /app/data/event.db`) and restore procedures are documented.
+  - [ ] SQLite backup (`cp /app/data/islamu_event.db`) and restore procedures are documented.
   - [ ] Single-replica constraint for SQLite is explicit.
 - **Dependencies:** 6.1, 6.2.
 - **Effort:** M
@@ -575,11 +576,11 @@ The bridge flow is:
 
 ## 12. Migration And Compatibility Plan
 
-- **Database/schema/data:** Event.Standalone defaults to SQLite with `/app/data/event.db`. Operators may override to PostgreSQL or other providers. Provider selection and migration assembly routing follow the `multi-database-support` workstream contract. SQLite migrations are generated separately from PostgreSQL migrations.
-- **Startup migration:** Existing API migration/seeding orchestration is reused once by Standalone; `Event.MigrationService` ordering remains an Aspire prerequisite.
+- **Database/schema/data:** Event.Standalone defaults to SQLite with `/app/data/islamu_event.db`. Operators may override to PostgreSQL, SQL Server, MariaDB, or MySQL using the completed MDB structured `DatabaseOptions` contract. Each provider has its own generated application and Data Protection migration assemblies (10 total). `MigrationService` selects the correct migration assembly based on the configured provider. Schema-capable providers use the configurable schema (default `islamu_event`) with clean table names; flat providers use the fixed `ie_` prefix. The privacy-erasure authority SQLite file remains independently managed.
+- **Startup migration:** Existing API migration/seeding orchestration is reused once by Standalone; `Event.MigrationService` ordering remains an Aspire prerequisite. MigrationService uses the same `DatabaseOptions` contract for provider selection and migration assembly routing.
 - **API compatibility:** Routes, version negotiation, controllers, HAL, ProblemDetails, and generated clients remain unchanged.
 - **Deployment compatibility:** Split remains default and is the immediate rollback. Standalone is additive and opt-in.
-- **Configuration compatibility:** Existing API/BFF keys are consumed as-is. Only `Hosting:Topology` and standalone launch ports are new.
+- **Configuration compatibility:** Existing API/BFF keys are consumed as-is. Only `Hosting:Topology` and standalone launch ports are new. Provider configuration uses the MDB structured fields (`DATABASE_PROVIDER`, `DATABASE_HOST`, `DATABASE_PORT`, `DATABASE_DATABASE`, `DATABASE_SCHEMA`, `DATABASE_USERNAME`, `DATABASE_PASSWORD`, `DATABASE_TLS_MODE`, etc.).
 - **Rollback:** Select `Hosting__Topology=Split` or use the existing API and Blazor startup projects; no data rollback is required.
 
 ## 13. Risk Register
@@ -638,4 +639,4 @@ Docs updated: tasks yes/no; context/plan updated or unchanged with reason
 
 ## 17. Potential Risks & Unknowns
 
-The most failure-prone slice is Task 3.3: ASP.NET Core middleware that is harmless in separate hosts can become globally active and conflict when combined. The implementation must route-group or branch API- and BFF-specific behavior explicitly instead of concatenating both programs. The static-web-asset behavior of referenced Web SDK projects also remains an evidence gap until the new WebApplicationFactory coverage executes. If the current baseline build is still red, implementation must stop at the first phase gate and wait for the owning fixes rather than broadening this plan. The SQLite integration depends on the `multi-database-support` workstream Phase 1 (structured `DatabaseOptions` contract) and Phase 4 (SQLite provider registration). If those phases are not landed, Phase 5 of this workstream must co-develop the minimal SQLite provider registration independently. The privacy-erasure authority SQLite file (`privacy_erasure_authority.db`) must remain separate from the primary application SQLite file (`event.db`) to preserve independent restore lifecycles.
+The most failure-prone slice is Task 3.3: ASP.NET Core middleware that is harmless in separate hosts can become globally active and conflict when combined. The implementation must route-group or branch API- and BFF-specific behavior explicitly instead of concatenating both programs. The static-web-asset behavior of referenced Web SDK projects also remains an evidence gap until the new WebApplicationFactory coverage executes. If the current baseline build is still red, implementation must stop at the first phase gate and wait for the owning fixes rather than broadening this plan. The `multi-database-support` workstream is fully implemented (MDB-001 through MDB-715 complete): the structured `DatabaseOptions` contract, all five provider registrations (PostgreSQL, SQLite, SQL Server, MariaDB, MySQL), 10 migration assemblies, SQLite WAL/busy-timeout configuration, and the `RelationalModelNamespace` schema/prefix policy are available for direct consumption. No co-development is needed. The privacy-erasure authority SQLite file (`privacy_erasure_authority.db`) must remain separate from the primary application SQLite file (`islamu_event.db`) to preserve independent restore lifecycles; this separation is enforced by the MDB workstream's authority-topology boundary.

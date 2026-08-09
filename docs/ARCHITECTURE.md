@@ -10,7 +10,7 @@ ABOUTME: Captures key runtime patterns and boundaries that are not obvious from 
 - BFF host: `Explore.Blazor`.
 - Interactive UI client: `Explore.Blazor.Client`.
 - Optional combined host: `Event.Standalone`.
-- Data: PostgreSQL via EF Core.
+- Data: PostgreSQL, SQLite, SQL Server, MariaDB, or MySQL via EF Core.
 
 ## Hosting: Topology
 
@@ -39,7 +39,7 @@ Split/Standalone is a process-composition choice only: it changes where BFF and 
 | `/api/...` plus `Accept` media-type parameter, `?api-version=`, or `X-Api-Version` | Supported | The same API pipeline parses these in Split and Standalone. |
 | `/api/v1/...`, `/api/v0.1/...`, or any topology-specific versioned route | Unsupported | URL version segments are never added; routes and HAL links remain canonical. |
 
-Local-only Compose exclusions are operationally explicit. The current repository `docker-compose.yml` remains Split deployment only; AppHost is the local topology selector, while direct `Event.Standalone` launch profiles are also available for development. Selecting Standalone does not automatically change `DATABASE_PROVIDER` to SQLite, and SQLite remains an explicit structured provider contract.
+Compose packaging is explicit. The repository `docker-compose.yml` describes the Split deployment, while `docker-compose.standalone.yml` packages the one-process Standalone deployment with SQLite as that descriptor's default. AppHost remains the local topology selector. Selecting Standalone through AppHost does not automatically change `DATABASE_PROVIDER`; database selection always remains an explicit structured provider contract.
 
 ## Layer Boundaries
 1. `Explore.Domain`: entities, enums, domain rules, no infrastructure concerns.
@@ -49,6 +49,16 @@ Local-only Compose exclusions are operationally explicit. The current repository
 5. `Explore.Blazor` and `Explore.Blazor.Client`: isolated presentation/BFF projects that consume generated `IEventApiClient` contracts only; `Event.Standalone` reuses their host modules without giving the client implementation-layer dependencies.
 
 The API dependency direction is inward: API -> Infrastructure/Persistence -> Application -> Domain. Blazor has no project or source dependency on those layers; its backend boundary is the generated API client.
+
+## Primary Relational Namespace
+
+The provider-specific EF composition boundary owns physical names. PostgreSQL
+and SQL Server apply `Database:Schema` (default `islamu_event`) and retain clean
+table names. SQLite, MariaDB, and MySQL apply the fixed non-configurable `ie_`
+prefix; deployment instances isolate through distinct SQLite files or
+MariaDB/MySQL databases. PostgreSQL TickerQ state remains outside the
+application schema in its fixed `ticker` schema, so TickerQ-enabled instances
+must not share one PostgreSQL database.
 
 ## Request Flow
 1. HTTP request enters the middleware pipeline (exception handling → security headers → correlation ID → logging → compression → HATEOAS → routing → timeouts → auth → rate limiting → authorization → output cache → ETag → idempotency).
@@ -184,14 +194,14 @@ Notification refresh uses a one-way authenticated SSE endpoint at `GET /api/noti
 Specialized outbox variants exist for specific subsystems:
 - `PdsSyncOutbox` — AT Protocol federation sync (DID, Collection, RecordKey, PdsHost).
 - `PolicyChangeOutbox` — authorization policy change propagation (SettingScope).
-- `EmailDispatchOutbox` — Basic Dispatch Mode email delivery state for registration confirmation and future lifecycle email workflows. PostgreSQL owns delivery state; TickerQ schedules drain execution; SMTP/RabbitMQ are transports only.
+- `EmailDispatchOutbox` — Basic Dispatch Mode email delivery state for registration confirmation and future lifecycle email workflows. The selected primary database owns delivery state; PostgreSQL may use TickerQ to schedule drain execution, while other providers use the HostedService trigger. SMTP/RabbitMQ are transports only.
 - `IntegrationSyncOutbox` — durable external integration sync intent for Listmonk and future providers. Handlers enqueue provider/resource payload snapshots; background drains own external I/O and retry/dead-letter state.
 - `WebPushDispatchOutbox` — VAPID web push notification dispatch queue (Endpoint, P256dh, Auth, Retries).
 - `IncomingWebhookEffectOutbox` — provider incoming webhook effect reconciliation outbox for Coop callback repairs.
 
 ### Lifecycle email delivery architecture
 
-The workstream at `dev/active/email-responsibility-architecture/` separates one recipient occurrence into `NotificationIntent` (business meaning), `NotificationDelivery` (channel authorization/outcome), and `EmailDispatchOutbox` (SMTP execution). PostgreSQL remains the only SMTP ledger; TickerQ and RabbitMQ carry pointers only. Application-owned transactions atomically persist all recipient channel rows, while fanout mutations persist one immutable occurrence and a PII-free pointer for a resumable worker.
+The workstream at `dev/active/email-responsibility-architecture/` separates one recipient occurrence into `NotificationIntent` (business meaning), `NotificationDelivery` (channel authorization/outcome), and `EmailDispatchOutbox` (SMTP execution). The selected primary database remains the only SMTP ledger; TickerQ and RabbitMQ carry pointers only. Application-owned transactions atomically persist all recipient channel rows, while fanout mutations persist one immutable occurrence and a PII-free pointer for a resumable worker.
 
 Report-decision execution adds a separate decision-owned durability seam. Each local or Coop `EventReportDecision` owns one `EventReportDecisionExecution`; conditional PostgreSQL updates fence enforcement and completion leases. Light/heavy actions must resolve the exact source-bound `EventModerationRecord` before the execution enters `CompletionPending`. Case/report mutation, organizer warnings, reporter outcome intent/deliveries, and execution completion then commit in one serializable transaction. This prevents a response-loss retry from repeating moderation or sending an outcome before truthful enforcement.
 

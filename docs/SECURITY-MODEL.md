@@ -6,8 +6,8 @@ ABOUTME: Focuses on enforced behavior in code (BFF, MediatR authorization, and f
 > **Audience:** Operators | Contributors | AI agents
 > **Status:** Mixed
 > **Owner:** Security
-> **Last Verified:** 2026-08-05
-> **Source Anchors:** `Event.Standalone/Program.cs`, `Event.Standalone/Middleware/CombinedApiBridgeMiddleware.cs`, `Explore.Blazor/Hosting/`, `Explore.Blazor/Services/InProcessEventApiTransport.cs`, `Event.Web.BffHosting/Security/EventBffRequestEnricher.cs`, `Event.Web.BffHosting/Security/BffProxyHeaderSanitizer.cs`, `Explore.API/BackgroundServices/PrivacyErasureStartupGate.cs`, `Explore.API/BackgroundServices/PrivacyErasureCredentialCleanupProcessor.cs`, `Explore.API/Controllers/PrivacyErasureController.cs`, `Explore.API/HealthChecks/PrivacyErasureReadinessHealthCheck.cs`, `Explore.Application/Services/RetainedAuthorityPrivacyErasureWorkflow.cs`, `Explore.Infrastructure/PrivacyErasureCredentialCleanupService.cs`, `Explore.Infrastructure/Services/Privacy/PrivacyErasureReplayService.cs`, `Explore.Persistence/Repositories/PrivacyErasureProviderWorkRepository.cs`, `Explore.Domain/PrivacyErasure*.cs`, `docs/AUTHORIZATION.md`
+> **Last Verified:** 2026-08-09
+> **Source Anchors:** `docker-compose.yml`, `docker-compose.standalone.yml`, `Event.Standalone/Program.cs`, `Event.Standalone/Middleware/CombinedApiBridgeMiddleware.cs`, `Explore.Secrets/Database/PrimaryDatabaseConfiguration.cs`, `Explore.Blazor/Hosting/`, `Explore.Blazor/Services/InProcessEventApiTransport.cs`, `Event.Web.BffHosting/Security/EventBffRequestEnricher.cs`, `Event.Web.BffHosting/Security/BffProxyHeaderSanitizer.cs`, `Explore.API/BackgroundServices/PrivacyErasureStartupGate.cs`, `Explore.API/BackgroundServices/PrivacyErasureCredentialCleanupProcessor.cs`, `Explore.API/Controllers/PrivacyErasureController.cs`, `Explore.API/HealthChecks/PrivacyErasureReadinessHealthCheck.cs`, `Explore.Application/Services/RetainedAuthorityPrivacyErasureWorkflow.cs`, `Explore.Infrastructure/PrivacyErasureCredentialCleanupService.cs`, `Explore.Infrastructure/Services/Privacy/PrivacyErasureReplayService.cs`, `Explore.Persistence/Repositories/PrivacyErasureProviderWorkRepository.cs`, `Explore.Domain/PrivacyErasure*.cs`, `docs/AUTHORIZATION.md`
 
 ## Security Model
 
@@ -22,7 +22,13 @@ The platform uses a BFF model:
 
 `Hosting:Topology=Split` is the default composition: `Explore.Blazor` and `Explore.API` run as separate hosts, and the BFF uses YARP for `/api/*`. `Hosting:Topology=Standalone` explicitly starts `Event.Standalone`, which composes those same host modules in one process. The Standalone `Combined` profile does not register YARP or create a loopback proxy; the one-process bridge routes browser `/api/*` requests into the existing API pipeline in-process.
 
-Topology is a local composition choice, not a deployment packaging or storage-default switch. Standalone does not imply a standalone container profile in `docker-compose.yml`, and it never changes `DATABASE_PROVIDER`; SQLite must still be selected through the explicit structured provider settings when intended.
+Topology is a composition choice, not an implicit database switch. The Split deployment uses `docker-compose.yml`; the separate `docker-compose.standalone.yml` descriptor packages Standalone and explicitly defaults that descriptor to SQLite. AppHost topology selection never changes `DATABASE_PROVIDER`; SQLite must still be selected through structured provider settings when intended.
+
+`Database:Schema` is a PostgreSQL/SQL Server deployment namespace, not a tenant
+authorization boundary. Tenant filters, resource authorization, and
+least-privilege runtime/migrator roles remain mandatory. SQLite instances use
+separate local files, and MariaDB/MySQL instances use separate databases; all
+three flat-provider families retain the fixed `ie_` prefix.
 
 The process boundary changes, but the trust boundary does not. The bridge is responsible only for translating a BFF session into an API request; API `MultiAuth`, endpoint authorization, MediatR resource authorization, tenant filters, rate limits, and HAL link filtering remain authoritative.
 

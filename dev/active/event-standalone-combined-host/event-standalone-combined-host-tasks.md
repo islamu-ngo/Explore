@@ -3,7 +3,7 @@
 
 # Event Standalone Combined Host — Task Checklist
 
-Last Updated: 2026-08-02 Europe/Brussels
+Last Updated: 2026-08-09 Europe/Brussels
 
 ## Status Summary
 
@@ -23,7 +23,7 @@ Last Updated: 2026-08-02 Europe/Brussels
 - Update the plan only for scope, architecture, sequence, acceptance, risk, or validation changes.
 - Do not run build/tests after individual tasks; verify once at phase end.
 - Do not use app/browser/Docker/Aspire/Playwright/Chrome live runs as phase verification.
-- Do not absorb unrelated baseline fixes into this ledger. Phase 5 coordinates with `multi-database-support` for SQLite; Phase 6 owns Docker packaging.
+- Do not absorb unrelated baseline fixes into this ledger. Phase 5 consumes the completed `multi-database-support` workstream's `DatabaseOptions` contract directly (no co-development needed); Phase 6 owns Docker packaging.
 
 ## Implementation Prerequisite ✅ COMPLETE
 
@@ -125,9 +125,9 @@ Last Updated: 2026-08-02 Europe/Brussels
 
 - [x] **5.1 Integrate SQLite default provider with standalone composition**
   - **Files:** `src/Event.Standalone/Program.cs` (existing); `src/Event.Standalone/appsettings.json` (existing); persistence registration from `multi-database-support` workstream.
-  - **Acceptance:** Default startup with no database configuration uses SQLite at `/app/data/event.db` with WAL mode; `DATABASE_PROVIDER=PostgreSQL` with structured fields switches provider; invalid config fails-fast with actionable diagnostics; busy-timeout prevents `SQLITE_BUSY`.
+  - **Acceptance:** Default startup with no database configuration uses SQLite at `/app/data/islamu_event.db` with WAL mode; `DATABASE_PROVIDER=PostgreSQL` with structured fields switches provider; invalid config fails-fast with actionable diagnostics; busy-timeout prevents `SQLITE_BUSY`.
   - **Effort:** L
-  - **Dependencies:** 4.3, multi-database-support Phase 1.
+  - **Dependencies:** 4.3. MDB workstream is complete (no co-development needed).
 
 - [x] **5.2 Add provider-override integration tests**
   - **Files:** affected `tests/Event.Standalone.IntegrationTests/**`.
@@ -167,7 +167,7 @@ Last Updated: 2026-08-02 Europe/Brussels
 
 ## Remaining / Deferred Work
 
-- **Privacy-erasure authority SQLite file:** The embedded `privacy_erasure_authority.db` must remain separate from the primary `event.db` file. Restore lifecycle independence is a hard constraint.
+- **Privacy-erasure authority SQLite file:** The embedded `privacy_erasure_authority.db` must remain separate from the primary `islamu_event.db` file. Restore lifecycle independence is a hard constraint.
 - **Multi-architecture Docker images:** Initial Dockerfile targets `linux/amd64`; `linux/arm64` support is a follow-up after base image verification.
 - **Kubernetes / Helm packaging:** Excluded; Compose is the initial packaging target.
 - **New API/UI behavior:** Excluded; this topology must be behaviorally compatible.

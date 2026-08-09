@@ -3,7 +3,7 @@
 
 # Event Standalone Combined Host — Context
 
-Last Updated: 2026-08-02 Europe/Brussels
+Last Updated: 2026-08-09 Europe/Brussels
 
 ## SESSION PROGRESS (2026-08-02 Europe/Brussels)
 
@@ -31,11 +31,11 @@ Last Updated: 2026-08-02 Europe/Brussels
 
 - Phase 1 API integration-suite re-verification remains open until owning persistence/auth/snapshot inputs materially change.
 
-### ⏭️ NEXT
+### ⭐️ NEXT
 
 1. Implement Phase 4: add explicit `Hosting:Topology` selection to `Explore.AppHost` (Split default, Standalone opt-in) and assert forwarding invariants.
 2. Re-run Phase 1 API integration suite only when owning dependency inputs change or failures become in-scope.
-3. Coordinate with `multi-database-support` workstream for its structured `DatabaseOptions` contract before Phase 5.
+3. The `multi-database-support` workstream is fully complete (MDB-001 through MDB-715). Phase 5 can consume the structured `DatabaseOptions` contract, all five provider registrations, 10 migration assemblies, and SQLite WAL/busy-timeout configuration directly with no co-development needed.
 
 ### ⚠️ BLOCKERS
 
@@ -79,7 +79,7 @@ Last Updated: 2026-08-02 Europe/Brussels
 9. **Explicit assemblies:** Add API MVC application parts and Blazor root/client Razor/static asset assemblies deliberately.
 10. **Ports:** Standalone launch profiles reserve HTTP 5180 and HTTPS 7180.
 11. **Aspire selection:** `Hosting__Topology=Standalone`; omitted value means Split; invalid values fail fast.
-12. **SQLite default with provider override:** Event.Standalone defaults to SQLite (`/app/data/event.db`); operators override via `DATABASE_PROVIDER` env var or Infisical secret. Docker packaging ships a single-container image.
+12. **SQLite default with provider override:** Event.Standalone defaults to SQLite (`/app/data/islamu_event.db`); operators override via `DATABASE_PROVIDER` env var or Infisical secret. Docker packaging ships a single-container image.
 
 ## Constraints And Rules To Remember
 
@@ -89,7 +89,7 @@ Last Updated: 2026-08-02 Europe/Brussels
 - API tenant/auth/rate-limit/authorization/idempotency/output-cache order and BFF auth/antiforgery order are security contracts.
 - Controllers, HAL, ProblemDetails, generated clients, and API versioning remain unchanged.
 - Preserve the route-aware runtime render policy: fallback `InteractiveServer`, tenant-selectable `InteractiveAuto`/`InteractiveWebAssembly`, forced `InteractiveServer` onboarding, and no component dependency on `HttpContext`.
-- SQLite is the default provider for Event.Standalone; provider override follows the `multi-database-support` workstream contract. The privacy-erasure authority SQLite file remains separate from the primary application SQLite file.
+- SQLite is the default provider for Event.Standalone; provider override uses the completed `multi-database-support` workstream's `DatabaseOptions` contract (closed provider enum, structured fields, provider-native builders, dual-role credentials, `RelationalModelNamespace` schema/prefix policy, 10 migration assemblies). The privacy-erasure authority SQLite file remains separate from the primary application SQLite file, enforced by the MDB authority-topology boundary.
 - New files require two `ABOUTME:` lines.
 - Tests use project-scoped Release commands only.
 
@@ -112,7 +112,7 @@ Last Updated: 2026-08-02 Europe/Brussels
 - **Task 3.3/3.4:** referenced Web SDK static asset/root component discovery must be proven by integration tests without copying assets.
 - **Task 3.2/3.4:** cookie classification must never become the API principal; missing tokens fail closed and all API policies evaluate the revalidated bearer principal.
 - **Task 4.1:** configuration forwarded to two current resources must be inventoried and forwarded once without conflicting names or duplicate services.
-- **Phase 5:** SQLite integration depends on `multi-database-support` workstream Phase 1 (`DatabaseOptions` contract). If not landed, Phase 5 must co-develop minimal SQLite registration.
+- **Phase 5:** The `multi-database-support` workstream is fully implemented (MDB-001 through MDB-715). The structured `DatabaseOptions` contract, all five provider registrations, 10 migration assemblies, and SQLite-specific WAL/busy-timeout configuration are available for direct consumption. No co-development is needed.
 - **Phase 6:** Docker image must include SQLite native binaries for target architectures (linux/amd64, linux/arm64).
 
 ## Handoff Notes
@@ -127,3 +127,10 @@ Last Updated: 2026-08-02 Europe/Brussels
 - **Documentation impact:** Runtime docs remain open for Phase 4–6 updates.
 - **Risks:** Combined middleware/auth order and static web asset discovery are now guarded by phase 3 tests; monitor when topology logic is added.
 - **Notes for next contributor/agent:** Do not patch unrelated owning failures from other workstreams; keep Split as default and Standalone explicit.
+
+### Handoff — 2026-08-09 Europe/Brussels
+
+- **Current state:** The `multi-database-support` workstream is fully complete (MDB-001 through MDB-715). The standalone host plan, context, and tasks have been updated to reflect the completed MDB contract. Phase 5's dependency on MDB is resolved — no co-development needed.
+- **What changed:** Updated plan Decision H, Phase 5, Task 5.1, Section 12, Section 17, and constraint #10 with precise references to the completed MDB implementation (closed provider enum, `DatabaseOptions`/`DatabaseOptionsValidator`, provider-native builders, dual-role credentials, `RelationalModelNamespace` schema/prefix policy, 10 migration assemblies, SQLite WAL/busy-timeout, authority-topology separation). Removed conditional "must be landed or co-developed" language throughout.
+- **Next action:** Continue with Phase 4 (Aspire topology) or Phase 6 (Docker packaging) depending on priority.
+- **Risks:** Phase 4 architecture test verification remains open. Docker packaging (Phase 6 tasks 6.1, 6.2) remains incomplete.
