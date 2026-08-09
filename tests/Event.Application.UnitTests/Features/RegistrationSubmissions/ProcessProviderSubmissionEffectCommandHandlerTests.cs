@@ -118,7 +118,7 @@ public sealed class ProcessProviderSubmissionEffectCommandHandlerTests
         await Assert.That(parked!.IsFinalizable).IsFalse();
         await Assert.That(parked.FinalizedAt).IsNull();
         await Assert.That(issues).IsNotNull();
-        await Assert.That(issues!.Single().IssueCode).IsEqualTo("TRUST_OR_DRIFT_BLOCKED");
+        await Assert.That(issues!.Single().Code).IsEqualTo("TRUST_OR_DRIFT_BLOCKED");
         await repositories.Submissions.DidNotReceive().PersistAcceptedWithNormalizationAsync(
             Arg.Any<RegistrationAttempt>(), Arg.Any<RegistrationSubmission>(), Arg.Any<Guid>(),
             Arg.Any<IReadOnlyCollection<RegistrationAnswer>>(), Arg.Any<IReadOnlyCollection<RegistrationConsentRecord>>(),
@@ -329,8 +329,8 @@ public sealed class ProcessProviderSubmissionEffectCommandHandlerTests
         Guid fieldId = Guid.CreateVersion7();
         RegistrationFormSection section = RegistrationFormSection.Create(Guid.CreateVersion7(), version, 1, "Profile", Now);
         RegistrationFormField field = RegistrationFormField.Create(
-            fieldId, section, 1, "profile", "display_name", "Display name", RegistrationFieldTypeEnum.Text, 1,
-            RegistrationOrganizerVisibilityEnum.Visible, false, false, Now);
+            fieldId, section, 1, "profile", "display_name", "Display name", RegistrationFieldTypeEnum.ShortText, 1,
+            RegistrationOrganizerVisibilityEnum.AuthorizedOrganizers, false, false, Now);
         version.AddSection(section);
         version.AddField(section, field);
         if (addFieldMapping)
