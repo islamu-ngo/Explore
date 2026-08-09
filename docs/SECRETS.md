@@ -74,9 +74,16 @@ Docker Compose uses `.env` for interpolation before starting containers. The Com
 
 The database contract is structured; do not store or inject a raw connection
 string. Endpoint metadata uses `DATABASE_PROVIDER`, `DATABASE_HOST`,
-`DATABASE_PORT`, `DATABASE_DATABASE`, `DATABASE_TLS_MODE`, and
+`DATABASE_PORT`, `DATABASE_DATABASE`, `DATABASE_SCHEMA`, `DATABASE_TLS_MODE`, and
 `DATABASE_TRUST_SERVER_CERTIFICATE`. MariaDB/MySQL additionally require
 `DATABASE_SERVER_FLAVOR` and `DATABASE_SERVER_VERSION`.
+
+`DATABASE_SCHEMA` is non-secret namespace metadata. PostgreSQL and SQL Server
+use it as the application and Data Protection schema and keep clean table names
+such as `users`. SQLite, MariaDB, and MySQL always apply the fixed `ie_` prefix
+and do not use this field for table placement. Prefer a separate SQLite file or
+MariaDB/MySQL database for each deployment instance; never invent or store a
+configurable prefix secret.
 
 | Compose key | Direct .NET key | Consumer |
 |---|---|---|

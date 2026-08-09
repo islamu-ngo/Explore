@@ -3,7 +3,7 @@
 
 Project islamu_event {
   database_type: 'PostgreSQL'
-  Note: 'ISLAMU Event multi-tenant platform. ATProto federation, Clean Architecture, modular event composition.'
+  Note: 'ISLAMU Event multi-tenant platform with ATProto federation and modular event composition. This is the logical unprefixed model: PostgreSQL and SQL Server place these names in the configured schema; SQLite, MariaDB, and MySQL materialize them with the fixed ie_ prefix.'
 }
 
 // ============================================================

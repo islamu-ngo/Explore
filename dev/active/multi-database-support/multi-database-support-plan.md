@@ -3,13 +3,20 @@
 
 # Multi-Database Support Implementation Plan
 
-**Last Updated:** 2026-08-08 Europe/Brussels
+**Last Updated:** 2026-08-09 Europe/Brussels
 
 **Status:** Implementation complete; post-review hardening and release evidence reconciled
 
 **Scope:** Primary application persistence and Data Protection, plus provider-neutral integration points consumed by the separately owned authority workstream
 
 **Out of scope:** A universal SQL abstraction, runtime provider switching, mixed primary providers in one deployment, and selecting or changing the privacy-authority topology
+
+## Re-baseline — 2026-08-09 Europe/Brussels
+
+- **Reason:** The operator clarified that a configured PostgreSQL or SQL Server schema is the instance-isolation boundary and must retain clean table names, while flat providers always use the fixed `ie_` prefix.
+- **What changed:** The shared `RelationalModelNamespace` implementation already enforced that policy. The architecture contract now additionally proves custom-schema models contain unprefixed `users` and no `ie_` table names; retained Production-mode SQLite MigrationService QA records 355 `ie_` tables and no unprefixed `actor_types` table. Environment templates plus architecture, security, testing, schema, operator, deployment, recovery, secrets, troubleshooting, release, and public installation docs now describe the same automatic namespace rule.
+- **Plan impact:** MDB-714 closes the missing observable assertion, and MDB-715 closes the operator-documentation propagation. The EF model did not change, so generated migrations and snapshots correctly remain untouched.
+- **Remaining work:** None for this clarification. Existing repository-wide test-infrastructure and unrelated architecture failures remain recorded without weakening gates.
 
 ## Re-baseline — 2026-08-08 Europe/Brussels
 

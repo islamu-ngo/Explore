@@ -3,7 +3,7 @@
 
 # Multi-Database Support Context
 
-**Last Updated:** 2026-08-08 Europe/Brussels
+**Last Updated:** 2026-08-09 Europe/Brussels
 
 **Status:** Implementation complete; post-review hardening and release evidence reconciled
 
@@ -28,7 +28,7 @@ This workstream does not select the privacy-erasure authority topology. `Embedde
 - Primary-provider selection does not infer authority topology. The authority workstream defaults to a separate embedded SQLite file, retains external PostgreSQL, and owns the explicit `CoLocated` alternative and its narrower restore guarantee.
 - Deployment examples, health diagnostics, provider CI lanes, recovery guidance, and operator documentation use the structured contract.
 
-## SESSION PROGRESS (2026-08-08 Europe/Brussels)
+## SESSION PROGRESS (2026-08-09 Europe/Brussels)
 
 ### ✅ COMPLETED
 
@@ -38,6 +38,8 @@ This workstream does not select the privacy-erasure authority topology. `Embedde
 - Late repository portability repairs cover email/outbox, fanout, registration inventory, idempotency, API quota, domain-host lookup, group hierarchy, ATProto replay, and custom-property projection locks.
 - Server lock command contracts no longer construct unused provider-specific EF models; the shared real-provider behavior lane now proves exclusive acquisition, nonblocking contention, transaction release, and reacquisition.
 - Production-mode SQLite MigrationService QA applied application, Data Protection, and embedded-authority migrations twice, verified fixed-prefix catalogs and independent histories/files, and left no temporary process or database behind.
+- MDB-714 independently revalidated the schema-as-boundary rule: custom PostgreSQL/SQL Server models expose clean unprefixed table names, while retained fresh Production-mode SQLite catalog evidence records 355 `ie_` tables and no unprefixed `actor_types` table.
+- MDB-715 propagated the same rule through `.env`, `.env.example`, architecture, security, testing, schema, self-hosting, configuration, secrets, deployment, recovery, troubleshooting, release, and public installation documentation, including the fixed TickerQ `ticker`-schema limitation.
 - The full canonical command matrix and independent review were executed; residual architecture, API, and persistence-project failures are attributed below without weakening tests.
 
 ### 🟡 IN PROGRESS
@@ -139,10 +141,11 @@ The MDB implementation is closed. New primary-provider defects should start from
 
 - Release build: passed with 0 errors.
 - Canonical green projects: Domain 714, Application 3,450, Secrets 222, Infrastructure non-runtime 1,152, Blazor integration 409, and Blazor client 2,292.
-- Architecture: 357 passed, 5 failed, 1 skipped for unrelated later host-service namespace/mutability, OpenAPI, and DTO-rule changes.
+- Architecture: 358 passed, 4 failed, 1 skipped for unrelated OpenAPI enum registration, CQRS namespace placement, and DTO naming changes.
 - API: 2,165 passed, 10 failed, 1 skipped for unrelated scheduler schema, snapshots, policy/ACL, response-contract, and missing-table changes.
 - Persistence at current `HEAD`: 794 passed, 169 failed, 3 skipped. EF Core 10.0.10's process-wide cache throws after 20 distinct options configurations; the single project intentionally loads five primary providers plus application, Data Protection, migration, and authority shapes. The MDB command-contract test was repaired to avoid adding unused EF configurations. The remaining project-sharding/test-process decision is not a production persistence change and remains outside this plan.
 - Focused MDB portability: 10 passed.
+- Focused namespace verification: 5 architecture provider cases and 29 persistence model/file cases passed; changed-file LSP diagnostics and diff hygiene were clean.
 - Real file-backed SQLite shared behavior contract: 1 passed, including exclusive projection lock acquisition, nonblocking contender rejection, rollback release, and reacquisition.
 - Post-change server lock evidence: the shared contract compiles for SQL Server, MariaDB, and MySQL provider lanes, but those engines were unavailable locally; the next provider CI run must capture the server-engine execution artifact.
 - Manual production MigrationService QA: first and second SQLite runs passed; the second applied no migrations; primary and authority histories/files remained distinct; cleanup passed.
@@ -173,3 +176,11 @@ The MDB implementation is closed. New primary-provider defects should start from
 - Never hand-edit generated migrations or snapshots.
 - Preserve explicit topology selection: primary provider and authority topology are orthogonal configuration decisions.
 - Treat the EF provider-cache failure as test-infrastructure work; do not hide it in production `DbContext` configuration.
+
+## Handoff — 2026-08-09 Europe/Brussels
+
+- The operator's schema-or-prefix rule required no production or migration change because the shared namespace boundary already implements it.
+- `RuntimeSchemaCapableModelsUseConfiguredSchema` now prevents a regression where schema-backed tables could accidentally regain the flat-provider prefix.
+- Retained fresh SQLite MigrationService QA records 355 `ie_` tables and no unprefixed `actor_types` table; the temporary databases were removed.
+- Independent review's evidence-precision finding was corrected. Unrelated `.dockerignore` and `src/Event.Standalone/Dockerfile` edits were preserved.
+- Environment templates and operator-facing docs now consistently distinguish schema-backed clean names from the fixed flat-provider `ie_` prefix and document the separate TickerQ isolation boundary.

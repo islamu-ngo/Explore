@@ -3,7 +3,7 @@
 
 # Multi-Database Support Tasks
 
-**Last Updated:** 2026-08-08 Europe/Brussels
+**Last Updated:** 2026-08-09 Europe/Brussels
 
 **Status:** Implementation complete; post-review hardening, manual QA, and release evidence reconciled
 
@@ -115,12 +115,18 @@ Phase 6 evidence: independent real MariaDB and MySQL clean migrations, second-ru
 - [x] **MDB-711** Remove avoidable EF internal-provider creation from the server-lock command contract and prove the focused portability tests remain green.
 - [x] **MDB-712** Add real-engine projection-lock contention/release coverage to the shared provider behavior contract and exercise it against migrated file-backed SQLite.
 - [x] **MDB-713** Reconcile authority-topology ownership, canonical gate results, manual QA, independent review, and residual-failure attribution across plan, tasks, and context.
+- [x] **MDB-714** Prove that a custom PostgreSQL/SQL Server schema produces clean unprefixed table names while flat providers retain the fixed `ie_` namespace.
+- [x] **MDB-715** Propagate the automatic schema-or-prefix rule through all relevant operator documentation and environment templates, including the fixed TickerQ schema caveat.
 
 Phase 7 implementation evidence: structured Aspire/Compose/deployment inputs, readiness redaction, five-provider CI matrix, exact-image MySQL health, embedded-authority recovery, and operator documentation are recorded in `.omo/evidence/mdb-authority-deployment/`, `.omo/evidence/MDB-702/`, `.omo/evidence/mdb-ci-matrix/`, `.omo/evidence/mdb-recovery/`, and `.omo/evidence/mdb-docs/`. The 2026-08-08 closeout added a green Release build, all nine canonical project-test outcomes, a production MigrationService SQLite idempotence drill, catalog/history/file-isolation inspection, a focused 10/10 portability run, and a migrated real-SQLite shared behavior contract including lock contention/release.
 
 Post-change lock behavior was executed locally on file-backed SQLite. The same shared contract compiles for all provider lanes, but SQL Server, MariaDB, and MySQL need their next CI/provider-lane run to produce post-change server-engine evidence.
 
 Independent re-review against `84bd22af28d48e412513cc2c233cd0ac34cb5b0b` returned **PASS**: the authority ownership blocker is resolved, the native-connection command harness is appropriate, and the two-context real-provider lock contract covers acquire/contention/release/reacquire. Its only closeout residual is the missing post-change server-engine run noted above.
+
+MDB-714 evidence: the focused architecture provider contract passed 5/5, focused persistence model/file verification passed 29/29, and Production-mode SQLite MigrationService exited 0 against a fresh file. Retained catalog inspection records 355 `ie_` tables and no unprefixed `actor_types` table. No EF model changed, so no generated migration artifact was regenerated or edited. Independent review requested this narrower evidence wording so the completion record matches the retained QA artifact exactly.
+
+MDB-715 evidence: `.env`, `.env.example`, canonical architecture/security/testing/schema/operator/configuration/secrets/deployment/recovery/troubleshooting/release docs, and the public Docker Compose installation guide use one provider matrix: PostgreSQL/SQL Server select a schema and retain clean names; SQLite/MariaDB/MySQL force `ie_` and isolate instances by file/database. The docs also record that TickerQ retains its fixed PostgreSQL `ticker` schema.
 
 ## Decision and Evidence Log
 
@@ -137,6 +143,6 @@ Independent re-review against `84bd22af28d48e412513cc2c233cd0ac34cb5b0b` returne
 
 - `dotnet build --configuration Release --verbosity quiet` is green with 0 errors.
 - Canonical project gates outside this workstream still have failures that were not weakened or hidden:
-  - Architecture: 357 passed, 5 failed, 1 skipped; failures concern later standalone transport mutability/namespaces and unrelated OpenAPI/DTO rules.
+  - Architecture: 358 passed, 4 failed, 1 skipped; failures concern unrelated OpenAPI enum registration, CQRS namespace placement, and DTO naming rules.
   - API: 2,165 passed, 10 failed, 1 skipped; failures concern later scheduler schema, volatile snapshots, policy/ACL, response-contract, and missing-table work.
   - Persistence at current `HEAD`: 794 passed, 169 failed, 3 skipped. EF Core 10.0.10 throws `ManyServiceProvidersCreatedWarning` after 20 cached option configurations; this single integration assembly intentionally combines five primary providers, application/Data Protection migration shapes, and authority contexts. MDB command-contract tests no longer add needless EF configurations. Fixing the remaining project-wide process/sharding policy is separate test-infrastructure work and must not suppress the production warning.

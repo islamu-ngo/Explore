@@ -6,7 +6,7 @@ ABOUTME: Grounds release operations in provider-native database tools, authority
 > **Audience:** Operators
 > **Status:** Implemented
 > **Owner:** Platform/Ops
-> **Last Verified:** 2026-08-02
+> **Last Verified:** 2026-08-09
 > **Source Anchors:** `docker-compose.yml`, `Event.MigrationService/Worker.cs`, `Explore.API/Program.cs`, `PrivacyErasureStartupGate.cs`, `PrivacyErasureReplayService.cs`, `GlobalLocationPrivacyErasureTests.cs`, `docs/SELF_HOSTING.md`, `docs/CONFIGURATION.md`, `docs/SECRETS.md`
 
 This runbook covers self-hosted deployments using the repository Docker Compose topology. Treat every upgrade as a data operation first and an image rollout second.
@@ -39,7 +39,7 @@ functions and function-only runtime grants before starting the API.
 
 | Asset | Compose Anchor | Why It Matters |
 |---|---|---|
-| Primary application data | Provider database or primary SQLite volume/file | Tenants, events, users, settings, outbox, and Data Protection keys. |
+| Primary application data | Provider database/schema or primary SQLite volume/file | Tenants, events, users, settings, outbox, and Data Protection keys. Record the configured `Database:Schema`; PostgreSQL/SQL Server tables are clean names inside it, while flat providers use `ie_`. |
 | Privacy-erasure authority | `EmbeddedSqlite`: dedicated `/app/data/privacy_erasure_authority.db` volume/file; `CoLocated`: primary application database; `ExternalDatabase`: independently operated structured PostgreSQL target | Typed immutable erasure facts and monotonic counter drive replay. Preserve topology-specific backup independence from application restore operations. |
 | Keycloak PostgreSQL data | `keycloak-db` volume `keycloak_data` | Realms, clients, roles, users, and login configuration. |
 | Object storage | API volume `local_storage_data`; optional `minio` volume `minio_data` or external S3 bucket when selected | Uploaded files, images, and storage-backed assets. |
@@ -68,7 +68,11 @@ Do not treat Docker image tags alone as a backup. Database schema and secret-pro
 
    Include the EF migration history and Data Protection tables. Verify the
    artifact with the provider's restore/validation command, not only a file
-   existence check. Back up the separate Keycloak database when self-hosted.
+   existence check. For PostgreSQL or SQL Server, record and verify the exact
+   configured application schema. A full-database backup must contain it; any
+   intentionally schema-scoped PostgreSQL backup must also include all required
+   application/Data Protection histories and separately governed operational
+   schemas. Back up the separate Keycloak database when self-hosted.
 
 4. Back up the retained erasure authority per topology. For
    `EmbeddedSqlite`, stop its only writer and use SQLite `.backup` against
@@ -120,6 +124,10 @@ Choose the contract before restoring:
 4. Restore Keycloak data before starting Keycloak-dependent application services.
 5. Restore object storage before user-facing traffic resumes. For local-first Compose, restore `local_storage_data` or the configured `Storage:Local:RootPath`; for S3-compatible mode, restore `minio_data` or the external bucket.
 6. Restore matching structured `Database:*` values and role credentials. For
+   PostgreSQL and SQL Server, restore the exact `Database:Schema` and its grants;
+   selecting another schema points the application at another namespace and is
+   not a restore or automatic data move. For MariaDB/MySQL, restore the intended
+   database; for SQLite, restore the intended local file. For
    `EmbeddedSqlite`, restore the authority file with its restrictive
    permissions; for `CoLocated`, restore the application database artifact;
    for `ExternalDatabase`, restore its structured PostgreSQL
@@ -221,6 +229,7 @@ If release notes do not explicitly state that a rollback is image-only safe, ass
 ## Verification Checklist
 
 - [ ] Backups exist for the selected primary provider, authority storage, Keycloak DB, object storage, and secrets.
+- [ ] The release manifest records the selected primary database and effective namespace: configured schema for PostgreSQL/SQL Server, local file for SQLite, or database name for MariaDB/MySQL.
 - [ ] Restore was tested in non-production.
 - [ ] The retained erasure authority was backed up and restored independently, and its watermark/hash are recorded without identifiers or connection details.
 - [ ] For either authority topology, API startup replay advanced the application checkpoint to the untouched authority watermark; restored PII canaries are absent and outbox evidence is present once before BFF startup.

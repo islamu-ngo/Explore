@@ -147,6 +147,11 @@ These are CI-tested baselines, not a promise that every patch/minor engine
 version is supported. Production server deployments use verified TLS; the CI
 trust bypass/disabled settings are limited to ephemeral isolated services.
 
+The provider contract also verifies physical namespaces: PostgreSQL and SQL
+Server use a configured schema with unprefixed application names, while
+SQLite, MariaDB, and MySQL use the fixed `ie_` prefix for application and
+migration-history tables. Prefix overrides are rejected.
+
 Every lane must:
 
 1. start with a clean database/file and run `Event.MigrationService`;

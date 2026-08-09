@@ -13,6 +13,22 @@ Set `DATABASE_PROVIDER` to one of `PostgreSql`, `Sqlite`, `SqlServer`, `MariaDb`
 - MariaDB and MySQL additionally require an exact `DATABASE_SERVER_FLAVOR` and positive `DATABASE_SERVER_VERSION` matching the server.
 - SQLite uses a persisted absolute local path mounted into both MigrationService and API. Use one application replica, a local durable filesystem, and a file distinct from the privacy-erasure authority.
 
+## Choose the instance namespace
+
+Namespace selection is automatic from the provider:
+
+- PostgreSQL and SQL Server use `DATABASE_SCHEMA` (default `islamu_event`) as
+  the application namespace and create clean names such as
+  `islamu_event.users`. Give each instance a distinct schema when sharing a
+  database.
+- SQLite, MariaDB, and MySQL always use the fixed `ie_` prefix, producing
+  `ie_users`. The prefix is not configurable. Give each SQLite instance its own
+  local file and each MariaDB/MySQL instance its own database.
+
+PostgreSQL TickerQ uses its own fixed `ticker` schema. Do not share one
+PostgreSQL database between multiple TickerQ-enabled ISLAMU instances; use
+separate databases or the portable HostedService email-dispatch mode.
+
 PostgreSQL remains the default Compose profile. The release test matrix records the exact engine versions currently exercised in CI; treat those as tested baselines, not as a promise that every other engine version is supported.
 
 ## Migrate before starting the API
@@ -30,6 +46,6 @@ MigrationService selects the provider-specific application and Data Protection m
 
 The default topology is `EmbeddedSqlite`. Mount `/app/data/privacy_erasure_authority.db` on its own durable volume, keep exactly one authority writer, and back up/restore it independently from the primary database. The authority initializer requires a local non-symlink path, private permissions, WAL, synchronous `FULL`, foreign keys, and a successful integrity check.
 
-For a remote authority, select `ExternalDatabase` and configure a distinct PostgreSQL endpoint and runtime/migrator roles under `PrivacyErasureAuthorityDatabase:*`. Raw authority connection strings and co-located primary/authority storage are not supported.
+For a remote authority, select `ExternalDatabase` and configure a distinct PostgreSQL endpoint and runtime/migrator roles under `PrivacyErasureAuthorityDatabase:*`. Raw authority connection strings are not supported. `CoLocated` is an explicit alternative only for PostgreSQL or SQLite primary databases; it is not a valid substitute for the independent-restore guarantees of `ExternalDatabase`.
 
 See [Self-hosting](../../SELF_HOSTING.md) for the complete service topology, [Secrets](../../SECRETS.md) for credential names, and [Backup, Restore, and Upgrade](../../BACKUP_RESTORE_UPGRADE.md) before production use.

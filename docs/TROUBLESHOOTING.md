@@ -6,7 +6,7 @@ ABOUTME: Prioritizes repeat incidents and non-obvious checks over generic .NET a
 > **Audience:** Operators | Contributors | Admins
 > **Status:** Implemented
 > **Owner:** Platform/Ops
-> **Last Verified:** 2026-08-05
+> **Last Verified:** 2026-08-09
 > **Source Anchors:** `Explore.API/Program.cs`, `Explore.Blazor/`, `Explore.Infrastructure/Services/Keycloak/KeycloakBootstrapService.cs`, `Explore.Infrastructure/StorageObjectDeletionService.cs`, `docs/SELF_HOSTING.md`, `docs/OPERATIONS.md`, `docs/BACKUP_RESTORE_UPGRADE.md`, `docs/CONFIGURATION.md`, `docs/SECRETS.md`
 
 Use this page when you have a symptom. For planned work, installation, backup, restore, upgrade, or rollback procedures, use the linked runbooks instead of copying procedures into this file.
@@ -48,7 +48,7 @@ Checks:
 3. Standalone waits for `Event.MigrationService` completion and the selected shared dependencies. It owns API workers, readiness, shutdown, and BFF/UI startup once. If it is unhealthy, read its one process log and the migration-service result; do not look for an API-to-BFF YARP hop.
 4. Confirm `CONTROL_PLANE_PUBLIC_ORIGIN` is the exact browser-facing admin origin. AppHost forwards it as `Bff__AdminHosts__0`; an admin host outside AppHost must configure that value explicitly. Refresh Keycloak's exact callback/web-origin/logout registration after changing the browser endpoint.
 5. To roll back the local topology selection, stop the current AppHost run and relaunch with `Hosting__Topology=Split` (or omit it). This does not undo schema/data changes: preserve the database, run normal readiness checks, and use [BACKUP_RESTORE_UPGRADE.md](BACKUP_RESTORE_UPGRADE.md) for an actual database rollback.
-6. `docker-compose.yml` is Split-only. There is no standalone Compose runtime and no automatic SQLite default in this release; do not diagnose missing `Event.Standalone` containers or change database provider settings as a topology repair.
+6. `docker-compose.yml` is Split-only. The separate `docker-compose.standalone.yml` descriptor is the one-process SQLite-default container path; do not expect `Hosting__Topology` to combine the Split descriptor or change its database provider.
 
 AppHost assigns the optional Standalone HTTP endpoint dynamically through `WithHttpEndpoint(name: "http")`; it remains internal/non-guaranteed, while HTTPS is `https://localhost:7180`. If running `Event.Standalone` directly, use its launch profile's reserved `http://localhost:5180` HTTP endpoint (or its `https://localhost:7180` HTTPS profile).
 
@@ -68,6 +68,9 @@ exception text into support artifacts.
 | Runtime works but MigrationService fails authentication | Runtime credentials were reused or migrator role is missing | Supply `Database:Migrator:Username/Password` only to MigrationService; keep `Database:Runtime:*` in API/runtime. |
 | TLS validation fails | Certificate hostname/chain mismatch or unsafe trust combination | Use `TlsMode=Required` with a trusted CA and matching host. `TrustServerCertificate=true` is a controlled-development bypass and is invalid unless TLS is required. |
 | MariaDB/MySQL fails before connecting | Missing or mismatched dialect metadata | Set the exact `ServerFlavor` and positive `ServerVersion` matching the engine. |
+| PostgreSQL/SQL Server tables appear under the wrong schema | MigrationService and runtime received different `Database:Schema` values, or the schema changed without a data-move plan | Stop rollout, restore one shared schema value and grants for both roles, and run MigrationService against the intended target. Changing the value creates/selects another namespace; it does not rename or move tables. |
+| SQLite/MariaDB/MySQL still creates `ie_` tables after setting `Database:Schema` | Expected flat-provider behavior | Keep the fixed prefix. Use a separate SQLite file or MariaDB/MySQL database per instance; prefix overrides are rejected. |
+| Two TickerQ-enabled PostgreSQL instances target one database | The application schemas differ, but both schedulers own the fixed `ticker` schema | Use separate PostgreSQL databases, or select HostedService email dispatch before sharing a database through separate application schemas. |
 | SQLite configuration is rejected | In-memory, URI, network, or reserved authority path | Use a persisted absolute/local file, mount it into MigrationService and API, and keep it separate from `/app/data/privacy_erasure_authority.db`. |
 | SQLite reports busy/readonly/not-a-database | Multiple writers, wrong mount permissions, inconsistent file copy, or network filesystem | Stop traffic, verify one replica, local durable storage, writable ownership, and WAL-aware restore, then rerun MigrationService. Do not delete the file as a repair. |
 | MigrationService succeeds once but fails on repeat | Generated migration ownership/history drift or non-idempotent seed/model SQL | Stop rollout. Verify provider-specific application/Data Protection assemblies and history tables; fix the EF model/generator and regenerate only unapplied migrations. Never patch generated files. |

@@ -6,7 +6,7 @@ ABOUTME: Focuses on non-inferable key names, mapping behavior, and settings casc
 > **Audience:** Operators | Contributors | AI agents
 > **Status:** Implemented
 > **Owner:** Platform/Ops
-> **Last Verified:** 2026-08-08
+> **Last Verified:** 2026-08-09
 > **Source Anchors:** `src/Explore.Secrets/Database/PrimaryDatabaseConfiguration.cs`, `src/Event.MigrationService/Extensions/ConfigurationExtensions.cs`, `src/Event.Standalone/Program.cs`, `src/Event.Standalone/appsettings.json`, `docker-compose.standalone.yml`, `Explore.API/Extensions/ConfigurationExtensions.cs`, `Explore.API/Controllers/ListmonkIntegrationSettingsController.cs`, `Explore.API/Controllers/PlatformMonetizationSettingsController.cs`, `Explore.Application/DTOs/Integrations/ListmonkIntegrationSettingsDto.cs`, `Explore.Application/Features/PlatformMonetization/`, `Explore.Infrastructure/Integrations/Listmonk/ListmonkSyncService.cs`, `Explore.Blazor/Extensions/ConfigurationExtension.cs`, `Explore.Blazor/Extensions/YarpProxyExtensions.cs`, `Event.Web.BffHosting/Authentication/EventBffKeycloakAuthenticationOptions.cs`, `Event.Web.BffHosting/Proxy/EventApiBaseAddressResolver.cs`, `Explore.Application/Features/EventReporting/EventReportSubmissionOptions.cs`, `Explore.Application/Services/AccountAuthorityLifecycleEmailOptions.cs`, `Explore.Application/Notifications/AccountAuthorityKind.cs`, `Explore.Application/Notifications/NotificationRoutingOptions.cs`, `Explore.Infrastructure/Configuration/ModerationProviderOptions.cs`, `Explore.Infrastructure/Configuration/OspreyProviderOptions.cs`, `Explore.Infrastructure/Configuration/CoopProviderOptions.cs`, `Explore.API/Services/CoopWebhookSignatureValidator.cs`, `Explore.Infrastructure/Services/HierarchicalSettingsResolver.cs`, `Explore.Infrastructure/Services/Keycloak/KeycloakLifecycleEmailOptions.cs`, `Explore.Infrastructure/Services/Keycloak/KeycloakAccountAuthorityLifecycleEmailService.cs`, `Explore.Infrastructure/Storage/LocalFileStorageProvider.cs`, `Explore.Infrastructure/Storage/S3ConfigResolver.cs`, `Explore.Infrastructure/StorageReconciliationSettings.cs`, `Explore.Infrastructure/Mail/SmtpConfigResolver.cs`, `Explore.Infrastructure/Services/SetupSecretProvider.cs`, `Explore.Domain/Constants/GovernanceSettingKeys.cs`, `Explore.Domain/Constants/InfrastructureSecretSettingKeys.cs`, `Explore.Domain/Secrets/SecretDefinitionRegistry.cs`, `docs/SECRETS.md`
 
 ## Runtime Configuration Sources
@@ -171,11 +171,41 @@ the API or Blazor containers.
 
 | Provider | Required shape | Default port / namespace | Operational boundary |
 |---|---|---|---|
-| `PostgreSql` | Host, database, and role credentials; `ServerFlavor`/`ServerVersion` forbidden | `5432`; configurable schema, default `islamu_event` | Full primary support; only provider supported by TickerQ and the external erasure authority. |
-| `Sqlite` | `Database` is a persisted local file path; host, port, credentials, flavor, and version forbidden | no port; fixed table prefix `ie_` | Single application instance only. In-memory, URI, and network paths are rejected. |
-| `SqlServer` | Host, database, and role credentials; `ServerFlavor`/`ServerVersion` forbidden | `1433`; configurable schema, default `islamu_event` | Full primary support; use `HostedService` email dispatch because TickerQ is unavailable. |
-| `MariaDb` | Host, database, role credentials, `ServerFlavor=MariaDb`, and explicit `ServerVersion` | `3306`; fixed table prefix `ie_` | Full primary support; explicit version selects the EF SQL dialect. |
-| `MySql` | Host, database, role credentials, `ServerFlavor=MySql`, and explicit `ServerVersion` | `3306`; fixed table prefix `ie_` | Full primary support; explicit version selects the EF SQL dialect. |
+| `PostgreSql` | Host, database, and role credentials; `ServerFlavor`/`ServerVersion` forbidden | `5432`; configurable schema, default `islamu_event`; clean unprefixed table names | Full primary support; only provider supported by TickerQ and the external erasure authority. |
+| `Sqlite` | `Database` is a persisted local file path; host, port, credentials, flavor, and version forbidden | no port; forced fixed table prefix `ie_` | Single application instance only. In-memory, URI, and network paths are rejected. |
+| `SqlServer` | Host, database, and role credentials; `ServerFlavor`/`ServerVersion` forbidden | `1433`; configurable schema, default `islamu_event`; clean unprefixed table names | Full primary support; use `HostedService` email dispatch because TickerQ is unavailable. |
+| `MariaDb` | Host, database, role credentials, `ServerFlavor=MariaDb`, and explicit `ServerVersion` | `3306`; forced fixed table prefix `ie_` | Full primary support; explicit version selects the EF SQL dialect. Prefer a separate database per deployment instance. |
+| `MySql` | Host, database, role credentials, `ServerFlavor=MySql`, and explicit `ServerVersion` | `3306`; forced fixed table prefix `ie_` | Full primary support; explicit version selects the EF SQL dialect. Prefer a separate database per deployment instance. |
+
+#### Relational namespace and instance isolation
+
+`Database:Schema` (Compose `DATABASE_SCHEMA`) is always populated and validated,
+defaulting to `islamu_event`, but its table-placement effect is provider-specific:
+
+| Provider family | Isolation boundary | Resulting table example | Multi-instance guidance |
+|---|---|---|---|
+| PostgreSQL / SQL Server | Configured database schema | `islamu_event.users` | Give each application instance a distinct schema when sharing one database, and grant both runtime and migrator roles access to that schema. |
+| SQLite | Database file plus forced fixed prefix | `ie_users` | Give each instance its own durable local file and one writer. Never share one SQLite file between instances. |
+| MariaDB / MySQL | Selected database plus forced fixed prefix | `ie_users` | Prefer one database per instance on the same server, for example `islamu_event_prod` and `islamu_event_staging`. |
+
+PostgreSQL and SQL Server call `HasDefaultSchema` before the shared model is
+materialized, so application and Data Protection table names remain clean and
+the schema supplies the namespace. SQLite, MariaDB, and MySQL do not use
+`Database:Schema` for table placement; the model applies `ie_` to every owned
+table and to its EF migration history tables. The field may remain at its
+default for those providers, but changing it does not disable or rename the
+prefix.
+
+This boundary covers the application-owned relational model. PostgreSQL
+TickerQ operational tables remain in the separately governed fixed `ticker`
+schema. Deployments that enable TickerQ must not run multiple ISLAMU instances
+against the same PostgreSQL database; use separate databases, or select the
+portable `HostedService` email-dispatch mode for schema-isolated instances.
+
+Changing `Database:Schema` points the application at another namespace; it is
+not an automatic rename or data move. Back up the source, provision grants,
+run `Event.MigrationService` against the target schema, and use an explicitly
+planned export/import when existing data must move.
 
 Supported TLS values are named values only: `Prefer`, `Required`, or
 `Disabled`. Server providers default to `Required`. With
@@ -203,6 +233,10 @@ application keys are `Database__Provider`, `Database__Host`,
 `Database__ServerFlavor`, `Database__ServerVersion`,
 `Database__Runtime__Username`, `Database__Runtime__Password`,
 `Database__Migrator__Username`, and `Database__Migrator__Password`.
+
+`Database__Schema` is validated for every provider so the structured contract
+stays uniform. Only PostgreSQL and SQL Server use it as the model namespace;
+SQLite, MariaDB, and MySQL retain `ie_` regardless of its value.
 
 `DATABASE_PROVIDER` and the other `DATABASE_*` names in
 `docker-compose.standalone.yml` are Compose interpolation inputs only. Compose
@@ -235,7 +269,8 @@ secret store; never place real values in a Compose file and never pass
 |---|---|---|---|
 | PostgreSql | `Database__Provider=PostgreSql`, `Database__Host=<db-host>`, `Database__Port=5432`, `Database__Database=<database>`, `Database__Schema=islamu_event`, `Database__TlsMode=Required`, `Database__TrustServerCertificate=false` | `Database__Migrator__Username=${DB_MIGRATOR_USERNAME}`, `Database__Migrator__Password=${DB_MIGRATOR_PASSWORD}` | `Database__Runtime__Username=${DB_RUNTIME_USERNAME}`, `Database__Runtime__Password=${DB_RUNTIME_PASSWORD}` |
 | SqlServer | `Database__Provider=SqlServer`, `Database__Host=<db-host>`, `Database__Port=1433`, `Database__Database=<database>`, `Database__Schema=islamu_event`, `Database__TlsMode=Required`, `Database__TrustServerCertificate=false` | `Database__Migrator__Username=${DB_MIGRATOR_USERNAME}`, `Database__Migrator__Password=${DB_MIGRATOR_PASSWORD}` | `Database__Runtime__Username=${DB_RUNTIME_USERNAME}`, `Database__Runtime__Password=${DB_RUNTIME_PASSWORD}` |
-| MariaDb | `Database__Provider=MariaDb`, `Database__Host=<db-host>`, `Database__Port=3306`, `Database__Database=<database>`, `Database__Schema=islamu_event`, `Database__TlsMode=Required`, `Database__TrustServerCertificate=false`, `Database__ServerFlavor=MariaDb`, `Database__ServerVersion=<major.minor.patch>` | `Database__Migrator__Username=${DB_MIGRATOR_USERNAME}`, `Database__Migrator__Password=${DB_MIGRATOR_PASSWORD}` | `Database__Runtime__Username=${DB_RUNTIME_USERNAME}`, `Database__Runtime__Password=${DB_RUNTIME_PASSWORD}` |
+| MariaDb | `Database__Provider=MariaDb`, `Database__Host=<db-host>`, `Database__Port=3306`, `Database__Database=<database>`, `Database__TlsMode=Required`, `Database__TrustServerCertificate=false`, `Database__ServerFlavor=MariaDb`, `Database__ServerVersion=<major.minor.patch>` | `Database__Migrator__Username=${DB_MIGRATOR_USERNAME}`, `Database__Migrator__Password=${DB_MIGRATOR_PASSWORD}` | `Database__Runtime__Username=${DB_RUNTIME_USERNAME}`, `Database__Runtime__Password=${DB_RUNTIME_PASSWORD}` |
+| MySql | `Database__Provider=MySql`, `Database__Host=<db-host>`, `Database__Port=3306`, `Database__Database=<database>`, `Database__TlsMode=Required`, `Database__TrustServerCertificate=false`, `Database__ServerFlavor=MySql`, `Database__ServerVersion=<major.minor.patch>` | `Database__Migrator__Username=${DB_MIGRATOR_USERNAME}`, `Database__Migrator__Password=${DB_MIGRATOR_PASSWORD}` | `Database__Runtime__Username=${DB_RUNTIME_USERNAME}`, `Database__Runtime__Password=${DB_RUNTIME_PASSWORD}` |
 
 For example, put the PostgreSQL shared fields and each role's credentials in a
 `docker-compose.standalone.override.yml` file rather than relying on undeclared

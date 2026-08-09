@@ -6,7 +6,7 @@ ABOUTME: Covers minimum viable stack, optional services, setup, migrations, heal
 > **Audience:** Operators and DevOps engineers  
 > **Status:** Implemented  
 > **Owner:** Platform/Ops  
-> **Last Verified:** 2026-08-08
+> **Last Verified:** 2026-08-09
 > **Source Anchors:** `docker-compose.yml`, `docker-compose.standalone.yml`, `src/Event.Standalone/Dockerfile`, `src/Event.MigrationService/Dockerfile`, `src/Event.Standalone/Program.cs`, `src/Explore.API/Hosting/ApiHostStartupExtensions.cs`
 
 ---
@@ -417,7 +417,7 @@ and calls its database-name interpolation input `DATABASE_NAME`.
 | `DATABASE_HOST` | `postgres` | Required for server providers; omit for SQLite |
 | `DATABASE_PORT` | provider default | Optional server port (`5432`, `1433`, or `3306`) |
 | `DATABASE_DATABASE` | `islamu_event_db` | Server database name, or persisted local SQLite file path |
-| `DATABASE_SCHEMA` | `islamu_event` | PostgreSQL or SQL Server schema; schema-less providers always use the fixed `ie_` table prefix (no prefix override is supported; keys `DATABASE_PREFIX`, `DATABASE_RUNTIME_PREFIX`, `DATABASE_MIGRATOR_PREFIX`, `Database:Prefix`, `Database:Runtime:Prefix`, and `Database:Migrator:Prefix` are rejected) |
+| `DATABASE_SCHEMA` | `islamu_event` | PostgreSQL or SQL Server namespace; tables remain clean, for example `islamu_event.users`. SQLite, MariaDB, and MySQL always use  prefix ie_ like `ie_users` regardless of this value. No prefix override is supported. |
 | `DATABASE_TLS_MODE` | `Prefer` in local Compose | `Prefer`, `Required`, or `Disabled`; production server deployments should use `Required` |
 | `DATABASE_TRUST_SERVER_CERTIFICATE` | `false` | Certificate bypass accepted only with required TLS; development only |
 | `DATABASE_RUNTIME_USERNAME`, `DATABASE_RUNTIME_PASSWORD` | `explore` locally | Runtime role; forbidden for SQLite |
@@ -429,6 +429,29 @@ and calls its database-name interpolation input `DATABASE_NAME`.
 
 > [!IMPORTANT]
 > `KEYCLOAK_BLAZOR_CLIENT_SECRET` has no default. Generate it with `openssl rand -hex 32` and add it to your `.env` before starting.
+
+### Database namespace and multiple instances
+
+The namespace rule is automatic; operators do not select a prefix:
+
+| Provider | Application boundary | Example | Recommended instance layout |
+|---|---|---|---|
+| PostgreSQL | `DATABASE_DATABASE` + `DATABASE_SCHEMA` | `islamu_event.users` | Different schemas may share one database when TickerQ is disabled; otherwise use separate databases because TickerQ owns the fixed `ticker` schema. |
+| SQL Server | `DATABASE_DATABASE` + `DATABASE_SCHEMA` | `islamu_event.users` | Assign a distinct schema to each instance sharing a database. |
+| SQLite | Durable local `DATABASE_DATABASE` file + forced `ie_` prefix | `ie_users` | One file and one application replica per instance. |
+| MariaDB / MySQL | `DATABASE_DATABASE` + forced `ie_` prefix | `ie_users` | Create a separate database per instance on the same server; the prefix is an additional collision guard. |
+
+For PostgreSQL or SQL Server, changing `DATABASE_SCHEMA` changes the target
+namespace and removes the need for prefixed table names. MigrationService
+creates/migrates that namespace with clean names. It does not move data from a
+previous schema, so back up and explicitly export/import existing data before a
+schema change. Runtime and migrator services must receive the same schema.
+
+For SQLite, MariaDB, and MySQL, `DATABASE_SCHEMA` remains part of the uniform
+validated configuration but does not affect table placement. The application
+forces `ie_`; `DATABASE_PREFIX`, `DATABASE_RUNTIME_PREFIX`,
+`DATABASE_MIGRATOR_PREFIX`, `Database:Prefix`, `Database:Runtime:Prefix`, and
+`Database:Migrator:Prefix` are rejected.
 
 The API and MigrationService construct native connection strings from these
 validated fields. Do not pre-construct or inject a raw application connection

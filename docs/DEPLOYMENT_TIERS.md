@@ -72,6 +72,23 @@ Typical setup:
   - authorization policy storage,
 - centralized observability stack.
 
+## Database Instance Isolation
+
+Deployment tier does not change the relational namespace rule:
+
+- PostgreSQL and SQL Server use the configured `Database:Schema` /
+  `DATABASE_SCHEMA` as the application boundary and keep clean table names.
+- SQLite forces `ie_` and requires a distinct durable local file plus one
+  application replica per instance.
+- MariaDB and MySQL force `ie_`; create a distinct database for each instance
+  on the same server rather than placing production and staging in one database.
+
+PostgreSQL TickerQ state is outside the application schema in the fixed
+`ticker` schema. Tier 2/3 deployments that run more than one ISLAMU instance
+must use separate PostgreSQL databases while TickerQ is enabled, or use the
+portable HostedService email-dispatch mode before sharing a database through
+separate application schemas.
+
 ## Upgrade Path
 
 1. Start Tier 1 with local authorization.
