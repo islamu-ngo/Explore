@@ -17,17 +17,16 @@ COPY ["src/Explore.Persistence/Explore.Persistence.csproj", "src/Explore.Persist
 COPY ["src/Explore.Secrets/Explore.Secrets.csproj", "src/Explore.Secrets/packages.lock.json", "src/Explore.Secrets/"]
 COPY ["src/Explore.ServiceDefaults/Explore.ServiceDefaults.csproj", "src/Explore.ServiceDefaults/packages.lock.json", "src/Explore.ServiceDefaults/"]
 COPY ["src/Event.Web.BffHosting/Event.Web.BffHosting.csproj", "src/Event.Web.BffHosting/packages.lock.json", "src/Event.Web.BffHosting/"]
-RUN dotnet workload install wasm-tools --version 10.0.301.1 --skip-manifest-update
-RUN dotnet restore "src/Event.Standalone/Event.Standalone.csproj" --locked-mode
+RUN dotnet restore "src/Event.Standalone/Event.Standalone.csproj" --locked-mode --force-evaluate /p:StandaloneContainerPublish=true
 
 COPY . .
-RUN dotnet publish "src/Event.Standalone/Event.Standalone.csproj" -c Release -o /app/publish /p:UseAppHost=false --no-restore && mkdir /app/data
+RUN dotnet publish "src/Event.Standalone/Event.Standalone.csproj" -c Release -o /app/publish /p:StandaloneContainerPublish=true /p:DebugType=none /p:ErrorOnDuplicatePublishOutputFiles=false --no-restore && cp src/Event.Standalone/appsettings.json /app/publish/appsettings.json && mkdir /app/data
 
-FROM mcr.microsoft.com/dotnet/aspnet:10.0-noble-chiseled-extra@sha256:f9bd6be9b5ab75b8196bff0f0972580edaea7fa8ca04e6ef530950e33caee5b0 AS final
+FROM mcr.microsoft.com/dotnet/runtime-deps:10.0-noble-chiseled-extra@sha256:a0428e029a1026daa75e68d00ee464c78d8979fb10f289257b143e3ea997196b AS final
 WORKDIR /app
 ENV ASPNETCORE_HTTP_PORTS=8080
 EXPOSE 8080
 COPY --from=build /app/publish .
 COPY --chown=$APP_UID:$APP_UID --from=build /app/data /app/data
 USER $APP_UID
-ENTRYPOINT ["dotnet", "Event.Standalone.dll"]
+ENTRYPOINT ["./Event.Standalone"]

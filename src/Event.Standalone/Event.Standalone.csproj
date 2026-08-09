@@ -10,6 +10,14 @@
     <UserSecretsId>event-shared-secrets</UserSecretsId>
   </PropertyGroup>
 
+  <PropertyGroup Condition="'$(StandaloneContainerPublish)' == 'true'">
+    <RuntimeIdentifier>linux-x64</RuntimeIdentifier>
+    <SelfContained>true</SelfContained>
+    <PublishTrimmed>true</PublishTrimmed>
+    <UseAppHost>true</UseAppHost>
+    <ValidateExecutableReferencesMatchSelfContained>false</ValidateExecutableReferencesMatchSelfContained>
+  </PropertyGroup>
+
   <ItemGroup>
     <ProjectReference Include="..\Explore.API\Explore.API.csproj" />
     <ProjectReference Include="..\Explore.Blazor\Explore.Blazor.csproj" />
