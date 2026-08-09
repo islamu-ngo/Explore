@@ -77,7 +77,7 @@ public sealed class TenantStorageSettingsController(
 
         if (!response.Success)
         {
-            if (response.Message?.Contains("administrators", StringComparison.OrdinalIgnoreCase) == true)
+            if (response.FailureCode == FailureCodes.AdminRequired)
             {
                 return this.ToForbiddenProblem(
                     detail: response.Message ?? "Tenant storage settings can only be patched by authorized administrators.");

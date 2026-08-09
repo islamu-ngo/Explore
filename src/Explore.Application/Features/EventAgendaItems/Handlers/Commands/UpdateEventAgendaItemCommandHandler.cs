@@ -77,6 +77,7 @@ public class UpdateEventAgendaItemCommandHandler : IRequestHandler<UpdateEventAg
         {
             response.Success = false;
             response.Message = "Event agenda item not found.";
+            response.FailureCode = FailureCodes.NotFound;
             return response;
         }
 

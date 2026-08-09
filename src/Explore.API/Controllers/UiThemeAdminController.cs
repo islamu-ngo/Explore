@@ -131,7 +131,7 @@ public class UiThemeAdminController : ControllerBase
             return this.ToCommandValidationProblem(response, UpdateValidationProblem);
         }
 
-        if (response.Message == "UI theme not found.")
+        if (response.FailureCode == FailureCodes.NotFound)
         {
             return this.ToNotFoundProblem(UiThemeNotFoundProblem);
         }

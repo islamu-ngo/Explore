@@ -37,7 +37,8 @@ public sealed class UpdateTenantCommandHandler(
             return new BaseCommandResponse<Guid>
             {
                 Success = false,
-                Message = "Tenant not found."
+                Message = "Tenant not found.",
+                FailureCode = FailureCodes.NotFound
             };
         }
 

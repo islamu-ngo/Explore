@@ -57,11 +57,6 @@ public class UpdateEventSessionSpeakerCommandHandler : IRequestHandler<UpdateEve
             return response;
         }
 
-        if (speaker.EventSessionId != request.EventSessionId)
-        {
-            return ValidationFailure("Speaker assignment does not belong to the requested event session.");
-        }
-
         if (speaker.ConcurrencyStamp != request.ExpectedConcurrencyStamp)
         {
             throw new ConcurrencyConflictException(
@@ -70,12 +65,14 @@ public class UpdateEventSessionSpeakerCommandHandler : IRequestHandler<UpdateEve
         }
 
         var previousSession = await _eventSessionRepository.GetById(speaker.EventSessionId);
-        if (previousSession is null ||
-            previousSession.EventId != request.EventId ||
-            previousSession.TenantId != request.TenantId)
+        if (previousSession is null)
         {
             return ValidationFailure("Speaker assignment context no longer matches its persisted event session.");
         }
+
+        request.EventSessionId = speaker.EventSessionId;
+        request.EventId = previousSession.EventId;
+        request.TenantId = previousSession.TenantId;
 
         var targetSessionId = request.SpeakerDto.Session?.EventSessionId ?? speaker.EventSessionId;
         var targetActorId = request.SpeakerDto.Actor?.ActorId ?? speaker.ActorId;

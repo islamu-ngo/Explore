@@ -65,6 +65,9 @@ public class UpdateEventSessionGroupCommandHandler : IRequestHandler<UpdateEvent
             return response;
         }
 
+        request.EventId = group.EventId;
+        request.TenantId = group.TenantId;
+
         if (group.ConcurrencyStamp != request.ExpectedConcurrencyStamp)
         {
             throw new ConcurrencyConflictException(

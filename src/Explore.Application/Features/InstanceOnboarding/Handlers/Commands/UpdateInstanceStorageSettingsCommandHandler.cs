@@ -39,6 +39,7 @@ public class UpdateInstanceStorageSettingsCommandHandler : IRequestHandler<Updat
         {
             response.Success = false;
             response.Message = "Only instance administrators can update storage settings.";
+            response.FailureCode = FailureCodes.AdminRequired;
             return response;
         }
 

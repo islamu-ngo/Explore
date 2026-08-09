@@ -311,7 +311,7 @@ public class GroupController : ExploreControllerBase
 
         if (!response.Success)
         {
-            return response.Message?.Contains("not found", StringComparison.OrdinalIgnoreCase) == true
+            return response.FailureCode == FailureCodes.NotFound
                 ? this.ToNotFoundProblem(GroupNotFoundProblem)
                 : this.ToCommandValidationProblem(response, UpdateValidationProblem);
         }
@@ -376,24 +376,6 @@ public class GroupController : ExploreControllerBase
         }
 
         return Ok(response);
-    }
-
-    private static bool TryParseConcurrencyStamp(string? ifMatch, out Guid concurrencyStamp)
-    {
-        concurrencyStamp = default;
-        if (string.IsNullOrWhiteSpace(ifMatch))
-        {
-            return false;
-        }
-
-        var value = ifMatch.Trim();
-        if (value.StartsWith("W/", StringComparison.OrdinalIgnoreCase))
-        {
-            return false;
-        }
-
-        value = value.Trim('"');
-        return Guid.TryParse(value, out concurrencyStamp) && concurrencyStamp != Guid.Empty;
     }
 
 }

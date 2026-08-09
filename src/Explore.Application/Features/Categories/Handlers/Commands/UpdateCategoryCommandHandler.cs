@@ -50,6 +50,7 @@ public class UpdateCategoryCommandHandler : IRequestHandler<UpdateCategoryComman
         {
             response.Success = false;
             response.Message = "Category not found.";
+            response.FailureCode = FailureCodes.NotFound;
             return response;
         }
 

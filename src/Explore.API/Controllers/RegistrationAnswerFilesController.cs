@@ -8,7 +8,8 @@ using Explore.API.Extensions;
 using Explore.API.Hateoas;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.DTOs.Registration;
-using Explore.Application.Features.RegistrationAnswerFiles;
+using Explore.Application.Features.RegistrationAnswerFiles.Commands;
+using Explore.Application.Features.RegistrationAnswerFiles.Queries;
 using Explore.Application.Hateoas;
 using Explore.Application.Responses;
 using MediatR;
@@ -62,7 +63,7 @@ public sealed class RegistrationAnswerFilesController(
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<HalResource<RegistrationAnswerFileDto>>> Release(
         Guid id,
-        RegistrationAnswerFileReleaseInput input,
+        RegistrationAnswerFileReleaseInputDto input,
         CancellationToken cancellationToken)
     {
         BaseCommandResponse<Guid> response = await mediator.Send(

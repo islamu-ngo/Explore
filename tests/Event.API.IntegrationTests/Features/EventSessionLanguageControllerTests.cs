@@ -105,6 +105,32 @@ public sealed class EventSessionLanguageControllerTests
         await Assert.That(command.ExpectedConcurrencyStamp).IsEqualTo(concurrencyStamp);
     }
 
+    [Test]
+    public async Task Update_WhenFailureCodeIsNotFound_ReturnsNotFound()
+    {
+        using var mediator = new EventSessionLanguageMediatorStub(request => request switch
+        {
+            UpdateEventSessionLanguageCommand => new BaseCommandResponse<int>
+            {
+                Success = false,
+                Message = "Event session language not found.",
+                FailureCode = FailureCodes.NotFound
+            },
+            _ => throw new InvalidOperationException($"Unexpected request: {request.GetType().Name}")
+        });
+        await using var factory = CreateFactoryWithMediator(mediator);
+        using var client = factory.CreateClient();
+        using var request = CreateAuthenticatedJsonRequest(
+            HttpMethod.Patch,
+            "/api/eventsessionlanguage/7",
+            CreateUpdateDto(),
+            ifMatch: Guid.NewGuid());
+
+        var response = await client.SendAsync(request);
+
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.NotFound);
+    }
+
     private static WebApplicationFactory<Program> CreateFactoryWithMediator(IMediator mediator)
     {
         var factory = new AuthenticatedWebApplicationFactory();

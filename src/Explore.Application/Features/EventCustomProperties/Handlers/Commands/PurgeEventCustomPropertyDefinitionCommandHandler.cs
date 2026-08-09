@@ -55,6 +55,7 @@ public sealed class PurgeEventCustomPropertyDefinitionCommandHandler : IRequestH
         {
             response.Success = false;
             response.Message = "Event custom-property definition not found.";
+            response.FailureCode = FailureCodes.NotFound;
             return response;
         }
 

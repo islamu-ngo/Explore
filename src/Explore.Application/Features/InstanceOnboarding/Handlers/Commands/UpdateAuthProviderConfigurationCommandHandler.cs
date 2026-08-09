@@ -53,6 +53,7 @@ public class UpdateAuthProviderConfigurationCommandHandler :
         {
             response.Success = false;
             response.Message = "Only instance administrators can update auth provider configuration.";
+            response.FailureCode = FailureCodes.AdminRequired;
             return response;
         }
 

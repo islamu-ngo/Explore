@@ -171,7 +171,7 @@ public class TagController : ControllerBase
 
         if (!response.Success)
         {
-            return response.Message?.Contains("not found", StringComparison.OrdinalIgnoreCase) == true
+            return response.FailureCode == FailureCodes.NotFound
                 ? this.ToNotFoundProblem(TagNotFoundProblem)
                 : this.ToCommandValidationProblem(response, UpdateValidationProblem);
         }

@@ -180,7 +180,7 @@ public class CategoryController : ControllerBase
 
         if (!response.Success)
         {
-            return response.Message?.Contains("not found", StringComparison.OrdinalIgnoreCase) == true
+            return response.FailureCode == FailureCodes.NotFound
                 ? this.ToNotFoundProblem(CategoryNotFoundProblem)
                 : this.ToCommandValidationProblem(response, UpdateValidationProblem);
         }

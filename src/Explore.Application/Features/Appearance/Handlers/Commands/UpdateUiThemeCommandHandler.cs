@@ -37,6 +37,7 @@ public class UpdateUiThemeCommandHandler : IRequestHandler<UpdateUiThemeCommand,
         {
             response.Success = false;
             response.Message = "UI theme not found.";
+            response.FailureCode = FailureCodes.NotFound;
             return response;
         }
 
@@ -46,6 +47,7 @@ public class UpdateUiThemeCommandHandler : IRequestHandler<UpdateUiThemeCommand,
             response.Message = theme.TenantId.HasValue
                 ? "Only tenant administrators or instance administrators can manage this tenant theme."
                 : "Only instance administrators can manage platform themes.";
+            response.FailureCode = FailureCodes.AdminRequired;
             return response;
         }
 

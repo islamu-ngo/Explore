@@ -328,7 +328,7 @@ public class OrganizationController : ExploreControllerBase
 
         if (!result.Success)
         {
-            return result.Message?.Contains("not found", StringComparison.OrdinalIgnoreCase) == true
+        return result.FailureCode == FailureCodes.NotFound
                 ? this.ToNotFoundProblem(OrganizationNotFoundProblem)
                 : this.ToCommandValidationProblem(result, UpdateValidationProblem);
         }
@@ -397,21 +397,4 @@ public class OrganizationController : ExploreControllerBase
         return NoContent();
     }
 
-    private static bool TryParseConcurrencyStamp(string? ifMatch, out Guid concurrencyStamp)
-    {
-        concurrencyStamp = default;
-        if (string.IsNullOrWhiteSpace(ifMatch))
-        {
-            return false;
-        }
-
-        var value = ifMatch.Trim();
-        if (value.StartsWith("W/", StringComparison.OrdinalIgnoreCase))
-        {
-            return false;
-        }
-
-        value = value.Trim('"');
-        return Guid.TryParse(value, out concurrencyStamp) && concurrencyStamp != Guid.Empty;
-    }
 }

@@ -240,7 +240,7 @@ public class LocationController : ControllerBase
 
         if (!response.Success)
         {
-            return response.Message?.Contains("not found", StringComparison.OrdinalIgnoreCase) == true
+            return response.FailureCode == FailureCodes.NotFound
                 ? this.ToNotFoundProblem(LocationNotFoundProblem)
                 : this.ToCommandValidationProblem(response, UpdateValidationProblem);
         }

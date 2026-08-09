@@ -272,7 +272,7 @@ public class UserController : ExploreControllerBase
 
         if (!response.Success)
         {
-            return response.Message?.Contains("not found", StringComparison.OrdinalIgnoreCase) == true
+            return response.FailureCode == FailureCodes.NotFound
                 ? this.ToNotFoundProblem(UserNotFoundProblem)
                 : this.ToCommandValidationProblem(response, UpdateValidationProblem);
         }
@@ -313,24 +313,6 @@ public class UserController : ExploreControllerBase
     private async Task<Guid?> ResolveCurrentUserIdAsync(CancellationToken cancellationToken)
     {
         return await base.ResolveCurrentUserIdAsync(_mediator, cancellationToken);
-    }
-
-    private static bool TryParseConcurrencyStamp(string? ifMatch, out Guid concurrencyStamp)
-    {
-        concurrencyStamp = default;
-        if (string.IsNullOrWhiteSpace(ifMatch))
-        {
-            return false;
-        }
-
-        var value = ifMatch.Trim();
-        if (value.StartsWith("W/", StringComparison.OrdinalIgnoreCase))
-        {
-            return false;
-        }
-
-        value = value.Trim('"');
-        return Guid.TryParse(value, out concurrencyStamp) && concurrencyStamp != Guid.Empty;
     }
 
 }

@@ -121,22 +121,27 @@ public sealed class UpdateEventSessionSpeakerCommandHandlerTests
     }
 
     [Test]
-    public async Task Handle_WithRouteSessionMismatch_ReturnsValidationFailureWithoutSaving()
+    public async Task Handle_WithRouteSessionMismatch_UsesPersistedSessionContext()
     {
         var entity = CreateSpeakerAssignment();
+        var eventId = Guid.NewGuid();
         var command = CreateCommand(entity, new UpdateEventSessionSpeakerDto
         {
             Actor = new UpdateEventSessionSpeakerActorDto { ActorId = Guid.NewGuid() }
         });
         command.EventSessionId = Guid.NewGuid();
         _repository.GetById(entity.Id).Returns(entity);
+        _eventSessionRepository.GetById(entity.EventSessionId)
+            .Returns(CreateSession(entity.EventSessionId, entity.TenantId, eventId));
+        _actorRepository.GetById(command.SpeakerDto.Actor.ActorId).Returns(CreateActor(command.SpeakerDto.Actor.ActorId, entity.TenantId));
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
-        await Assert.That(result.Errors).Contains("Speaker assignment does not belong to the requested event session.");
-        await _repository.DidNotReceive().Update(Arg.Any<EventSessionSpeaker>());
-        await _cache.DidNotReceive().RemoveByTagAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
+        await Assert.That(result.Success).IsTrue();
+        await Assert.That(command.EventSessionId).IsEqualTo(entity.EventSessionId);
+        await Assert.That(command.EventId).IsEqualTo(eventId);
+        await Assert.That(command.TenantId).IsEqualTo(entity.TenantId);
+        await _repository.Received(1).Update(entity);
     }
 
     [Test]

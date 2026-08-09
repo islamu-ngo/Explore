@@ -55,6 +55,7 @@ public sealed class PatchTenantBrandingSettingsDocumentCommandHandler(
         {
             response.Success = false;
             response.Message = "Tenant branding settings document not found.";
+            response.FailureCode = FailureCodes.NotFound;
             return response;
         }
 

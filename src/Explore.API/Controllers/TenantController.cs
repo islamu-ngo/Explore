@@ -158,7 +158,7 @@ public class TenantController : ExploreControllerBase
 
         if (!response.Success)
         {
-            return response.Message?.Contains("not found", StringComparison.OrdinalIgnoreCase) == true
+            return response.FailureCode == FailureCodes.NotFound
                 ? this.ToNotFoundProblem(TenantNotFoundProblem)
                 : this.ToCommandValidationProblem(response, UpdateValidationProblem);
         }
@@ -248,7 +248,7 @@ public class TenantController : ExploreControllerBase
 
         if (!response.Success)
         {
-            return response.Message?.Contains("not found", StringComparison.OrdinalIgnoreCase) == true
+            return response.FailureCode == FailureCodes.NotFound
                 ? this.ToNotFoundProblem(NavigationNotFoundProblem)
                 : this.ToCommandValidationProblem(response, UpdateNavigationValidationProblem);
         }

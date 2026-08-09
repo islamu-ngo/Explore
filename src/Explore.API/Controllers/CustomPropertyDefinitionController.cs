@@ -189,7 +189,7 @@ public class CustomPropertyDefinitionController : ControllerBase
 
         if (!result.Success)
         {
-            return string.Equals(result.Message, "Custom-property definition not found.", StringComparison.Ordinal)
+            return result.FailureCode == FailureCodes.NotFound
                 ? this.ToNotFoundProblem(PurgeNotFoundProblem)
                 : this.ToQuotaProblemOrBadRequest(result);
         }
@@ -242,7 +242,7 @@ public class CustomPropertyDefinitionController : ControllerBase
             return Ok(result);
         }
 
-        return string.Equals(result.Message, "Custom-property definition not found.", StringComparison.Ordinal)
+        return result.FailureCode == FailureCodes.NotFound
             ? this.ToNotFoundProblem(PurgeNotFoundProblem)
             : this.ToCommandValidationProblem(result, PurgeValidationProblem);
     }

@@ -66,6 +66,7 @@ public class UpdateUserCommandHandler : IRequestHandler<UpdateUserCommand, BaseC
             {
                 response.Success = false;
                 response.Message = "User not found";
+                response.FailureCode = FailureCodes.NotFound;
                 return response;
             }
 
@@ -75,6 +76,7 @@ public class UpdateUserCommandHandler : IRequestHandler<UpdateUserCommand, BaseC
             {
                 response.Success = false;
                 response.Message = "User not found";
+                response.FailureCode = FailureCodes.NotFound;
                 return response;
             }
 

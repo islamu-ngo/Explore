@@ -23,8 +23,6 @@ public sealed class UpdateReportingRoutingSettingsCommandHandler(
     IUnitOfWork unitOfWork)
     : IRequestHandler<UpdateReportingRoutingSettingsCommand, BaseCommandResponse<Guid>>
 {
-    private const string LockedFailureCode = "ReportingTenantOverridesLocked";
-
     public async Task<BaseCommandResponse<Guid>> Handle(
         UpdateReportingRoutingSettingsCommand request,
         CancellationToken cancellationToken)
@@ -36,6 +34,7 @@ public sealed class UpdateReportingRoutingSettingsCommandHandler(
         {
             response.Success = false;
             response.Message = "Only tenant administrators or instance administrators can update moderation reporting routing settings.";
+            response.FailureCode = FailureCodes.AdminRequired;
             return response;
         }
 
@@ -101,7 +100,7 @@ public sealed class UpdateReportingRoutingSettingsCommandHandler(
     private static BaseCommandResponse<Guid> Locked(string message) => new()
     {
         Success = false,
-        FailureCode = LockedFailureCode,
+        FailureCode = FailureCodes.ReportingTenantOverridesLocked,
         Message = message,
         Errors = ["Instance reporting delegation must be unlocked before tenant reporting provider overrides can be saved."]
     };

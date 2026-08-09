@@ -184,7 +184,7 @@ public sealed class ControlPlaneController : ExploreControllerBase
     {
         var response = await _mediator.Send(new CreateControlPlaneTenantPlanDraftCommand(draft), cancellationToken);
 
-        return response.Success ? Ok(response) : BadRequest(response);
+        return this.MapCommandResponse(response);
     }
 
     [HttpPost("plans/{key}/versions", Name = RouteNames.CreateControlPlaneTenantPlanVersionDraft)]
@@ -203,7 +203,7 @@ public sealed class ControlPlaneController : ExploreControllerBase
     {
         var response = await _mediator.Send(new CreateControlPlaneTenantPlanVersionDraftCommand(key, draft), cancellationToken);
 
-        return response.Success ? Ok(response) : BadRequest(response);
+        return this.MapCommandResponse(response);
     }
 
     [HttpPatch("plans/versions/{versionId:guid}", Name = RouteNames.UpdateControlPlaneTenantPlanVersionDraft)]
@@ -224,7 +224,7 @@ public sealed class ControlPlaneController : ExploreControllerBase
             new UpdateControlPlaneTenantPlanVersionDraftCommand(versionId, update),
             cancellationToken);
 
-        return response.Success ? Ok(response) : BadRequest(response);
+        return this.MapCommandResponse(response);
     }
 
     [HttpPost("plans/versions/{versionId:guid}/publish", Name = RouteNames.PublishControlPlaneTenantPlanVersion)]
@@ -245,7 +245,7 @@ public sealed class ControlPlaneController : ExploreControllerBase
             new PublishControlPlaneTenantPlanVersionCommand(versionId, request.ExistingTenantPolicy),
             cancellationToken);
 
-        return response.Success ? Ok(response) : BadRequest(response);
+        return this.MapCommandResponse(response);
     }
 
     [HttpPost("plans/versions/{versionId:guid}/archive", Name = RouteNames.ArchiveControlPlaneTenantPlanVersion)]
@@ -263,7 +263,7 @@ public sealed class ControlPlaneController : ExploreControllerBase
     {
         var response = await _mediator.Send(new ArchiveControlPlaneTenantPlanVersionCommand(versionId), cancellationToken);
 
-        return response.Success ? Ok(response) : BadRequest(response);
+        return this.MapCommandResponse(response);
     }
 
     [HttpPost("plans/versions/{sourceVersionId:guid}/clone", Name = RouteNames.CloneControlPlaneTenantPlan)]
@@ -284,7 +284,7 @@ public sealed class ControlPlaneController : ExploreControllerBase
             new CloneControlPlaneTenantPlanCommand(sourceVersionId, request.Key, request.Name),
             cancellationToken);
 
-        return response.Success ? Ok(response) : BadRequest(response);
+        return this.MapCommandResponse(response);
     }
 
     [HttpPost("plans/validate", Name = RouteNames.ValidateControlPlaneTenantPlanDraft)]
@@ -384,7 +384,7 @@ public sealed class ControlPlaneController : ExploreControllerBase
             new SetControlPlaneTenantSettingCommand(tenantId, key, request.Value),
             cancellationToken);
 
-        return response.Success ? Ok(response) : BadRequest(response);
+        return this.MapCommandResponse(response);
     }
 
     [HttpPost("tenants/{tenantId:guid}/settings/{key}/lock", Name = RouteNames.LockControlPlaneTenantSetting)]
@@ -406,7 +406,7 @@ public sealed class ControlPlaneController : ExploreControllerBase
             new LockControlPlaneTenantSettingCommand(tenantId, key),
             cancellationToken);
 
-        return response.Success ? Ok(response) : BadRequest(response);
+        return this.MapCommandResponse(response);
     }
 
     [HttpDelete("tenants/{tenantId:guid}/settings/{key}/lock", Name = RouteNames.UnlockControlPlaneTenantSetting)]
@@ -428,7 +428,7 @@ public sealed class ControlPlaneController : ExploreControllerBase
             new UnlockControlPlaneTenantSettingCommand(tenantId, key),
             cancellationToken);
 
-        return response.Success ? Ok(response) : BadRequest(response);
+        return this.MapCommandResponse(response);
     }
 
     [HttpPost("tenants/{tenantId:guid}/plan-assignment", Name = RouteNames.SwitchControlPlaneTenantPlanAssignment)]
@@ -456,7 +456,7 @@ public sealed class ControlPlaneController : ExploreControllerBase
             new SwitchControlPlaneTenantPlanAssignmentCommand(tenantId, request.TenantPlanVersionId, operatorId.Value),
             cancellationToken);
 
-        return response.Success ? Ok(response) : BadRequest(response);
+        return this.MapCommandResponse(response);
     }
 
     [HttpPost("tenants/{tenantId:guid}/plan-assignments/{assignmentId:guid}/apply", Name = RouteNames.ApplyControlPlaneTenantPlanAssignment)]
@@ -484,7 +484,7 @@ public sealed class ControlPlaneController : ExploreControllerBase
             new ApplyControlPlaneTenantPlanAssignmentCommand(tenantId, assignmentId, operatorId.Value),
             cancellationToken);
 
-        return response.Success ? Ok(response) : BadRequest(response);
+        return this.MapCommandResponse(response);
     }
 
     [HttpPost("tenants/{tenantId:guid}/plan-assignments/{assignmentId:guid}/rollback", Name = RouteNames.RollbackControlPlaneTenantPlanAssignment)]
@@ -512,7 +512,7 @@ public sealed class ControlPlaneController : ExploreControllerBase
             new RollbackControlPlaneTenantPlanAssignmentCommand(tenantId, assignmentId, operatorId.Value),
             cancellationToken);
 
-        return response.Success ? Ok(response) : BadRequest(response);
+        return this.MapCommandResponse(response);
     }
 
     [HttpGet("tenants/{tenantId:guid}", Name = RouteNames.GetControlPlaneTenantById)]
@@ -560,7 +560,7 @@ public sealed class ControlPlaneController : ExploreControllerBase
             RequestingUserId = CurrentUserId
         }, cancellationToken);
 
-        return response.Success ? Ok(response) : BadRequest(response);
+        return this.MapCommandResponse(response);
     }
 
     [HttpPost("tenants/{tenantId:guid}/activate", Name = RouteNames.ActivateControlPlaneTenant)]
@@ -658,7 +658,7 @@ public sealed class ControlPlaneController : ExploreControllerBase
             new TransitionControlPlaneTenantLifecycleCommand(tenantId, status, dto?.Reason, dto?.ConfirmationText),
             cancellationToken);
 
-        return response.Success ? Ok(response) : BadRequest(response);
+        return this.MapCommandResponse(response);
     }
 }
 

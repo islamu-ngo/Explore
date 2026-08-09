@@ -77,6 +77,21 @@ public sealed class InstanceModerationReportingSettingsControllerAuthorizedTests
         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Forbidden);
     }
 
+    [Test]
+    public async Task UpdateLocks_WhenFailureMessageIsUnclassified_ShouldReturnBadRequest()
+    {
+        using var factory = CreateFactory(new LockMediator(
+            allowUpdate: false,
+            failureMessage: "Moderation reporting provider lock update failed."));
+        using var client = factory.CreateClient();
+        using var request = CreateAuthenticatedRequest();
+        request.Content = JsonContent.Create(new UpdateReportingProviderLocksDto());
+
+        var response = await client.SendAsync(request);
+
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.BadRequest);
+    }
+
     private static WebApplicationFactory<Program> CreateFactory(IMediator mediator)
     {
         var factory = new AuthenticatedWebApplicationFactory
@@ -101,7 +116,7 @@ public sealed class InstanceModerationReportingSettingsControllerAuthorizedTests
         return request;
     }
 
-    private sealed class LockMediator(bool allowUpdate) : IMediator
+    private sealed class LockMediator(bool allowUpdate, string? failureMessage = null) : IMediator
     {
         public UpdateReportingProviderLocksCommand? LastCommand { get; private set; }
 
@@ -153,7 +168,8 @@ public sealed class InstanceModerationReportingSettingsControllerAuthorizedTests
                 : new BaseCommandResponse<Guid>
                 {
                     Success = false,
-                    Message = "Only instance administrators can update moderation reporting provider locks."
+                    Message = failureMessage ?? "Only instance administrators can update moderation reporting provider locks.",
+                    FailureCode = failureMessage is null ? FailureCodes.AdminRequired : null
                 };
         }
     }

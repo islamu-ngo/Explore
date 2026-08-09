@@ -179,7 +179,7 @@ public class EventTemplateController : ControllerBase
 
         if (!result.Success)
         {
-            return string.Equals(result.Message, "Event template not found.", StringComparison.Ordinal)
+            return result.FailureCode == FailureCodes.NotFound
                 ? this.ToNotFoundProblem(EventTemplateNotFoundProblem)
                 : this.ToQuotaProblemOrBadRequest(result);
         }

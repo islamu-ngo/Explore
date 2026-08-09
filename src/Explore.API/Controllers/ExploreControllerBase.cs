@@ -21,6 +21,24 @@ public abstract class ExploreControllerBase : ControllerBase
     /// <exception cref="UnauthorizedAccessException">User is not authenticated.</exception>
     protected Guid RequiredUserId => UserContext.GetRequiredUserId();
 
+    protected static bool TryParseConcurrencyStamp(string? ifMatch, out Guid concurrencyStamp)
+    {
+        concurrencyStamp = default;
+        if (string.IsNullOrWhiteSpace(ifMatch))
+        {
+            return false;
+        }
+
+        var value = ifMatch.Trim();
+        if (value.StartsWith("W/", StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        value = value.Trim('"');
+        return Guid.TryParse(value, out concurrencyStamp) && concurrencyStamp != Guid.Empty;
+    }
+
     protected string? ResolveProviderSubject()
     {
         return User.FindFirst("sub")?.Value

@@ -61,6 +61,7 @@ public class UpdateTenantNavLinkCommandHandler : IRequestHandler<UpdateTenantNav
             response.Success = false;
             response.Message = "Navigation link not found or does not belong to your tenant.";
             response.Errors = ["Navigation link not found."];
+            response.FailureCode = FailureCodes.NotFound;
             return response;
         }
 
@@ -74,6 +75,7 @@ public class UpdateTenantNavLinkCommandHandler : IRequestHandler<UpdateTenantNav
             response.Success = false;
             response.Message = "Navigation link not found or does not belong to your tenant.";
             response.Errors = new() { "Navigation link not found." };
+            response.FailureCode = FailureCodes.NotFound;
             return response;
         }
 

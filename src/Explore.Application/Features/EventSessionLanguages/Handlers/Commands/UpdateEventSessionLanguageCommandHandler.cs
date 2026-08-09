@@ -51,8 +51,11 @@ public class UpdateEventSessionLanguageCommandHandler : IRequestHandler<UpdateEv
         {
             response.Success = false;
             response.Message = "Event Session Language not found.";
+            response.FailureCode = FailureCodes.NotFound;
             return response;
         }
+
+        request.EventSessionId = eventSessionLanguage.EventSessionId;
 
         if (eventSessionLanguage.EventSessionId != request.EventSessionId)
         {

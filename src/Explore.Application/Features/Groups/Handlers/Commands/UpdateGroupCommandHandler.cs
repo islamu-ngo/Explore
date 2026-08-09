@@ -73,6 +73,7 @@ public class UpdateGroupCommandHandler : IRequestHandler<UpdateGroupCommand, Bas
         {
             response.Success = false;
             response.Message = "Group not found.";
+            response.FailureCode = FailureCodes.NotFound;
             return response;
         }
 
@@ -97,6 +98,7 @@ public class UpdateGroupCommandHandler : IRequestHandler<UpdateGroupCommand, Bas
                 {
                     response.Success = false;
                     response.Message = "Group not found.";
+                    response.FailureCode = FailureCodes.NotFound;
                     return response;
                 }
 

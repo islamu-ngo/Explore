@@ -55,12 +55,18 @@ public sealed class ModerateAtprotoIdentityCommandHandler(
         Guid? operatorUserId = await adminContext.ResolveUserIdAsync(cancellationToken);
         if (!operatorUserId.HasValue)
         {
-            return ValidationFailure(request.AtprotoIdentityId, "Authenticated instance administrator context is required.");
+            return ValidationFailure(
+                request.AtprotoIdentityId,
+                "Authenticated instance administrator context is required.",
+                FailureCodes.AuthenticationRequired);
         }
 
         if (!await adminContext.IsInstanceAdminAsync(operatorUserId.Value, cancellationToken))
         {
-            return ValidationFailure(request.AtprotoIdentityId, "Only instance administrators can moderate global AT Protocol identities.");
+            return ValidationFailure(
+                request.AtprotoIdentityId,
+                "Only instance administrators can moderate global AT Protocol identities.",
+                FailureCodes.AdminRequired);
         }
 
         var moderatedAt = timeProvider.GetUtcNow().UtcDateTime;
@@ -181,10 +187,14 @@ public sealed class ModerateAtprotoIdentityCommandHandler(
         }
     }
 
-    private static BaseCommandResponse<Guid> ValidationFailure(Guid identityId, string message) => new()
+    private static BaseCommandResponse<Guid> ValidationFailure(
+        Guid identityId,
+        string message,
+        string? failureCode = null) => new()
     {
         Id = identityId,
         Success = false,
-        Message = message
+        Message = message,
+        FailureCode = failureCode
     };
 }

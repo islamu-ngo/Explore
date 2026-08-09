@@ -2,6 +2,7 @@
 // ABOUTME: Tenant-scoped, org-scoped, and resource-specific access evaluation methods.
 
 using Explore.Application.Authorization;
+using Explore.Application.Helpers;
 using Explore.Domain;
 using Explore.Domain.Constants;
 
@@ -23,25 +24,11 @@ public partial class FallbackAuthorizationService
             return false;
         }
 
-        Guid tenantId;
-        if (resourceAttributes?.TryGetValue("tenantId", out var tenantIdObj) == true)
+        var tenantId = _tenantContext.TenantId;
+        if (resourceAttributes?.TryGetValue("tenantId", out var tenantIdObj) == true
+            && AttributeResolver.TryGetGuid(tenantIdObj, out var parsedTenantId))
         {
-            if (tenantIdObj is Guid tid)
-            {
-                tenantId = tid;
-            }
-            else if (tenantIdObj is string tenantIdString && Guid.TryParse(tenantIdString, out var parsedTenantId))
-            {
-                tenantId = parsedTenantId;
-            }
-            else
-            {
-                tenantId = _tenantContext.TenantId;
-            }
-        }
-        else
-        {
-            tenantId = _tenantContext.TenantId;
+            tenantId = parsedTenantId;
         }
 
         var isTenantAdmin = await _adminContext.IsTenantAdminAsync(tenantId, cancellationToken);
@@ -84,7 +71,7 @@ public partial class FallbackAuthorizationService
 
         if (resourceAttributes?.TryGetValue("organizationId", out var orgIdObj) != true)
         {
-            if (!Guid.TryParse(resourceId, out var orgIdFromResource))
+            if (!AttributeResolver.TryGetGuid(resourceId, out var orgIdFromResource))
             {
                 LogDecision("deny", "missing_organization_id", "islamuevent_organization", resourceId, action);
                 return false;
@@ -94,15 +81,11 @@ public partial class FallbackAuthorizationService
         }
         else
         {
-            if (orgIdObj is Guid parsedOrgId)
+            if (AttributeResolver.TryGetGuid(orgIdObj, out var parsedOrgId))
             {
                 orgId = parsedOrgId;
             }
-            else if (orgIdObj is string orgIdString && Guid.TryParse(orgIdString, out var parsedOrgIdFromString))
-            {
-                orgId = parsedOrgIdFromString;
-            }
-            else if (!Guid.TryParse(resourceId, out orgId))
+            else if (!AttributeResolver.TryGetGuid(resourceId, out orgId))
             {
                 LogDecision("deny", "invalid_organization_id", "islamuevent_organization", resourceId, action);
                 return false;
@@ -279,18 +262,12 @@ public partial class FallbackAuthorizationService
         out WebhookConsumerKind ownerKind)
     {
         ownerKind = default;
-        if (resourceAttributes?.TryGetValue("ownerKindId", out var rawKind) != true)
+        if (resourceAttributes?.TryGetValue("ownerKindId", out var rawKind) != true
+            || !AttributeResolver.TryGetInt(rawKind, out var ownerKindId))
         {
             return false;
         }
 
-        var ownerKindId = rawKind switch
-        {
-            int value => value,
-            long value when value is >= int.MinValue and <= int.MaxValue => (int)value,
-            string value when int.TryParse(value, out var parsed) => parsed,
-            _ => 0
-        };
         if (!Enum.IsDefined(typeof(WebhookConsumerKind), ownerKindId))
         {
             return false;
@@ -786,7 +763,7 @@ public partial class FallbackAuthorizationService
         CancellationToken cancellationToken)
     {
         if (action is "view" or "update" && _adminContext.UserId.HasValue
-            && Guid.TryParse(resourceId, out var targetUserId)
+            && AttributeResolver.TryGetGuid(resourceId, out var targetUserId)
             && targetUserId == _adminContext.UserId.Value)
         {
             LogDecision("allow", "self_service", "islamuevent_user", resourceId, action);

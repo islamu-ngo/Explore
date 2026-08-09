@@ -182,7 +182,7 @@ public class EventSessionTemplateController : ControllerBase
 
         if (!result.Success)
         {
-            return string.Equals(result.Message, "Event session template not found.", StringComparison.Ordinal)
+            return result.FailureCode == FailureCodes.NotFound
                 ? this.ToNotFoundProblem(EventSessionTemplateNotFoundProblem)
                 : this.ToCommandValidationProblem(result, UpdateValidationProblem);
         }

@@ -55,6 +55,7 @@ public sealed class PurgeEventSessionCustomPropertyDefinitionCommandHandler : IR
         {
             response.Success = false;
             response.Message = "Session custom-property definition not found.";
+            response.FailureCode = FailureCodes.NotFound;
             return response;
         }
 

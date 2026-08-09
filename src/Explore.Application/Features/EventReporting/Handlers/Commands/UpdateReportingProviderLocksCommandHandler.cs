@@ -27,6 +27,7 @@ public sealed class UpdateReportingProviderLocksCommandHandler(
             {
                 Success = false,
                 Message = "Only instance administrators can update moderation reporting provider locks.",
+                FailureCode = FailureCodes.AdminRequired
             };
         }
 

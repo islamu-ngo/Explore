@@ -247,21 +247,4 @@ public sealed class EventPublicActionController : ExploreControllerBase
         return Ok(response);
     }
 
-    private static bool TryParseConcurrencyStamp(string? ifMatch, out Guid concurrencyStamp)
-    {
-        concurrencyStamp = default;
-        if (string.IsNullOrWhiteSpace(ifMatch))
-        {
-            return false;
-        }
-
-        var value = ifMatch.Trim();
-        if (value.StartsWith("W/", StringComparison.OrdinalIgnoreCase))
-        {
-            return false;
-        }
-
-        value = value.Trim('"');
-        return Guid.TryParse(value, out concurrencyStamp) && concurrencyStamp != Guid.Empty;
-    }
 }

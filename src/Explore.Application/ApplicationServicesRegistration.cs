@@ -17,7 +17,31 @@ using Explore.Application.Features.AiAssistant.Disclosure;
 using Explore.Application.Features.AiAssistant.Tools;
 using Explore.Application.Features.Authentication.Atproto.Services;
 using Explore.Application.Features.ControlPlane.Plans;
+using Explore.Application.Features.CustomPropertyDefinitions.Authorization;
+using Explore.Application.Features.CustomPropertyDefinitions.Requests.Commands;
+using Explore.Application.Features.EventCategories.Authorization;
+using Explore.Application.Features.EventCategories.Requests.Commands;
+using Explore.Application.Features.EventCustomProperties.Authorization;
+using Explore.Application.Features.EventCustomProperties.Requests.Commands;
+using Explore.Application.Features.EventOrganizerClaims.Authorization;
+using Explore.Application.Features.EventOrganizerClaims.Requests.Commands;
 using Explore.Application.Features.EventReporting;
+using Explore.Application.Features.EventSessionAgendaItems.Authorization;
+using Explore.Application.Features.EventSessionAgendaItems.Requests.Commands;
+using Explore.Application.Features.EventSessionCustomProperties.Authorization;
+using Explore.Application.Features.EventSessionCustomProperties.Requests.Commands;
+using Explore.Application.Features.EventSessionGroups.Authorization;
+using Explore.Application.Features.EventSessionGroups.Requests.Commands;
+using Explore.Application.Features.EventSessionLanguages.Authorization;
+using Explore.Application.Features.EventSessionLanguages.Requests.Commands;
+using Explore.Application.Features.EventSessionSpeakers.Authorization;
+using Explore.Application.Features.EventSessionSpeakers.Requests.Commands;
+using Explore.Application.Features.EventSessionTemplates.Authorization;
+using Explore.Application.Features.EventSessionTemplates.Requests.Commands;
+using Explore.Application.Features.EventTags.Authorization;
+using Explore.Application.Features.EventTags.Requests.Commands;
+using Explore.Application.Features.EventTemplates.Authorization;
+using Explore.Application.Features.EventTemplates.Requests.Commands;
 using Explore.Application.Features.Federation.Atproto.Services;
 using Explore.Application.Features.Footer.Handlers.Commands;
 using Explore.Application.Features.ManagedProviderProvisioning;
@@ -103,6 +127,19 @@ public static class ApplicationServicesRegistration
 
         services.AddTransient(typeof(IPipelineBehavior<,>), typeof(PerformanceBehavior<,>));
         services.AddTransient(typeof(IPipelineBehavior<,>), typeof(AuthorizationBehavior<,>));
+        services.AddTransient<AuthorizationResourceContextResolver>();
+        services.AddTransient<IAuthorizationContextEnricher<UpdateCustomPropertyDefinitionCommand>, UpdateCustomPropertyDefinitionAuthorizationContextEnricher>();
+        services.AddTransient<IAuthorizationContextEnricher<UpdateEventCustomPropertyDefinitionCommand>, UpdateEventCustomPropertyDefinitionAuthorizationContextEnricher>();
+        services.AddTransient<IAuthorizationContextEnricher<UpdateEventSessionCustomPropertyDefinitionCommand>, UpdateEventSessionCustomPropertyDefinitionAuthorizationContextEnricher>();
+        services.AddTransient<IAuthorizationContextEnricher<UpdateEventTemplateCommand>, UpdateEventTemplateAuthorizationContextEnricher>();
+        services.AddTransient<IAuthorizationContextEnricher<UpdateEventSessionTemplateCommand>, UpdateEventSessionTemplateAuthorizationContextEnricher>();
+        services.AddTransient<IAuthorizationContextEnricher<UpdateEventSessionLanguageCommand>, UpdateEventSessionLanguageAuthorizationContextEnricher>();
+        services.AddTransient<IAuthorizationContextEnricher<UpdateEventCategoriesCommand>, UpdateEventCategoriesAuthorizationContextEnricher>();
+        services.AddTransient<IAuthorizationContextEnricher<UpdateEventTagsCommand>, UpdateEventTagsAuthorizationContextEnricher>();
+        services.AddTransient<IAuthorizationContextEnricher<UpdateEventSessionAgendaItemCommand>, UpdateEventSessionAgendaItemAuthorizationContextEnricher>();
+        services.AddTransient<IAuthorizationContextEnricher<UpdateEventSessionGroupCommand>, UpdateEventSessionGroupAuthorizationContextEnricher>();
+        services.AddTransient<IAuthorizationContextEnricher<UpdateEventSessionSpeakerCommand>, UpdateEventSessionSpeakerAuthorizationContextEnricher>();
+        services.AddTransient<IAuthorizationContextEnricher<WithdrawEventOrganizerClaimCommand>, WithdrawEventOrganizerClaimAuthorizationContextEnricher>();
         services.AddOptions<EventReportSubmissionOptions>()
             .Bind(configuration.GetSection(EventReportSubmissionOptions.SectionName))
             .Validate(
@@ -150,6 +187,8 @@ public static class ApplicationServicesRegistration
         services.AddSingleton<IEventLocationRegistrationAccessService, EventLocationRegistrationAccessService>();
         services.AddSingleton<IFormSchemaArtifactGenerator, FormSchemaArtifactGenerator>();
         services.AddSingleton<FormSchemaArtifactPublicationService>();
+        services.AddSingleton<SchemaDriftClassifier>();
+        services.AddScoped<RegistrationEffectiveCapabilityResolver>();
         services.AddSingleton(provider => new RegistrationFormPublishPreflightService(
             provider.GetRequiredService<Microsoft.Extensions.Options.IOptions<RegistrationFileAnswerOptions>>().Value));
         services.AddScoped<RegistrationFormAuthoringCommandService>();

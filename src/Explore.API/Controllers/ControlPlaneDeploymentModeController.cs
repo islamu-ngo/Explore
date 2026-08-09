@@ -3,6 +3,7 @@
 
 using Asp.Versioning;
 using Explore.API.Attributes;
+using Explore.API.ExceptionHandling;
 using Explore.API.Extensions;
 using Explore.API.Hateoas;
 using Explore.Application.Contracts.Hateoas;
@@ -78,6 +79,6 @@ public sealed class ControlPlaneDeploymentModeController(
             new TransitionControlPlaneDeploymentModeCommand(targetMode, dto.Reason, dto.ConfirmationText),
             cancellationToken);
 
-        return response.Success ? Ok(response) : BadRequest(response);
+        return this.MapCommandResponse(response);
     }
 }

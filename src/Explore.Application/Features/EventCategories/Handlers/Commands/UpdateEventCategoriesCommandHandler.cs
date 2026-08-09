@@ -57,6 +57,9 @@ public class UpdateEventCategoriesCommandHandler : IRequestHandler<UpdateEventCa
             return response;
         }
 
+        request.EventId = eventCategories.EventId;
+        request.TenantId = eventCategories.TenantId;
+
         if (eventCategories.EventId != request.EventId || eventCategories.TenantId != request.TenantId)
         {
             throw new AuthorizationException(ResourceKinds.Event, AuthorizationActions.Update);

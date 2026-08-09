@@ -834,7 +834,7 @@ public class EventController : ExploreControllerBase
 
         if (!response.Success)
         {
-            return response.Message?.Contains("not found", StringComparison.OrdinalIgnoreCase) == true
+            return response.FailureCode == FailureCodes.NotFound
                 ? this.ToNotFoundProblem(EventNotFoundProblem)
                 : this.ToCommandValidationProblem(response, UpdateValidationProblem);
         }
@@ -1030,21 +1030,4 @@ public class EventController : ExploreControllerBase
             : sanitized.ToLowerInvariant();
     }
 
-    private static bool TryParseConcurrencyStamp(string? ifMatch, out Guid concurrencyStamp)
-    {
-        concurrencyStamp = default;
-        if (string.IsNullOrWhiteSpace(ifMatch))
-        {
-            return false;
-        }
-
-        var value = ifMatch.Trim();
-        if (value.StartsWith("W/", StringComparison.OrdinalIgnoreCase))
-        {
-            return false;
-        }
-
-        value = value.Trim('"');
-        return Guid.TryParse(value, out concurrencyStamp) && concurrencyStamp != Guid.Empty;
-    }
 }

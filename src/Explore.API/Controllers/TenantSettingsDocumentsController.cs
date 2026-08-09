@@ -12,6 +12,7 @@ using Explore.Application.DTOs.TenantSettingsDocuments;
 using Explore.Application.Features.TenantSettingsDocuments.Requests.Commands;
 using Explore.Application.Features.TenantSettingsDocuments.Requests.Queries;
 using Explore.Application.Hateoas;
+using Explore.Application.Responses;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -87,7 +88,7 @@ public sealed class TenantSettingsDocumentsController(
 
         if (!response.Success)
         {
-            if (response.Message == "Tenant branding settings document not found.")
+            if (response.FailureCode == FailureCodes.NotFound)
             {
                 return this.ToNotFoundProblem(BrandingDocumentNotFoundProblem);
             }

@@ -45,6 +45,7 @@ public class UpdateLocationRoomCommandHandler : IRequestHandler<UpdateLocationRo
         {
             response.Success = false;
             response.Message = "Room not found.";
+            response.FailureCode = FailureCodes.NotFound;
             return response;
         }
 

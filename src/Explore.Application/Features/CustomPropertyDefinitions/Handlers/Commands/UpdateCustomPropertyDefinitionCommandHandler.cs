@@ -74,13 +74,17 @@ public class UpdateCustomPropertyDefinitionCommandHandler : IRequestHandler<Upda
         {
             response.Success = false;
             response.Message = "Custom-property definition not found.";
+            response.FailureCode = FailureCodes.NotFound;
             return response;
         }
+
+        request.TenantId = definition.TenantId;
 
         if (request.TenantId == Guid.Empty || request.TenantId != definition.TenantId)
         {
             response.Success = false;
             response.Message = "Custom-property definition not found.";
+            response.FailureCode = FailureCodes.NotFound;
             return response;
         }
 

@@ -34,6 +34,7 @@ public class UpdateResolverConfigurationCommandHandler : IRequestHandler<UpdateR
         {
             response.Success = false;
             response.Message = "Only instance administrators can update tenant resolver configuration.";
+            response.FailureCode = FailureCodes.AdminRequired;
             return response;
         }
 

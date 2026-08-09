@@ -53,6 +53,7 @@ public class CompleteTenantOnboardingCommandHandler : IRequestHandler<CompleteTe
         {
             response.Success = false;
             response.Message = "Only tenant administrators or instance administrators can complete tenant onboarding.";
+            response.FailureCode = FailureCodes.AdminRequired;
             return response;
         }
 

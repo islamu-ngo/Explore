@@ -45,6 +45,7 @@ public class UpdateTagCommandHandler : IRequestHandler<UpdateTagCommand, BaseCom
         {
             response.Success = false;
             response.Message = "Tag not found.";
+            response.FailureCode = FailureCodes.NotFound;
             return response;
         }
 
@@ -54,6 +55,7 @@ public class UpdateTagCommandHandler : IRequestHandler<UpdateTagCommand, BaseCom
         {
             response.Success = false;
             response.Message = "Tag not found.";
+            response.FailureCode = FailureCodes.NotFound;
             return response;
         }
 

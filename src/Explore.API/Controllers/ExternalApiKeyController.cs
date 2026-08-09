@@ -121,7 +121,7 @@ public class ExternalApiKeyController : ControllerBase
 
         if (!response.Success)
         {
-            if (response.Message == "External API key not found.")
+            if (response.FailureCode == FailureCodes.NotFound)
             {
                 return this.ToNotFoundProblem(ExternalApiKeyNotFoundProblem);
             }

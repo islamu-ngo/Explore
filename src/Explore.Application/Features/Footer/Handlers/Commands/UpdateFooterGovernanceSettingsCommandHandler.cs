@@ -24,7 +24,8 @@ public sealed class UpdateFooterGovernanceSettingsCommandHandler(
             return new BaseCommandResponse<Guid>
             {
                 Success = false,
-                Message = "Only instance administrators can update footer governance settings."
+                Message = "Only instance administrators can update footer governance settings.",
+                FailureCode = FailureCodes.AdminRequired
             };
 
         if (!request.Patch.HasChanges())

@@ -50,6 +50,7 @@ public class UpdateOrganizationCommandHandler : IRequestHandler<UpdateOrganizati
         {
             response.Success = false;
             response.Message = "Organization not found.";
+            response.FailureCode = FailureCodes.NotFound;
             return response;
         }
 

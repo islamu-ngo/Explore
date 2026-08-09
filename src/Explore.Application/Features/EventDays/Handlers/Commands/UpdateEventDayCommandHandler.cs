@@ -54,6 +54,7 @@ public class UpdateEventDayCommandHandler : IRequestHandler<UpdateEventDayComman
         {
             response.Success = false;
             response.Message = "Event day not found.";
+            response.FailureCode = FailureCodes.NotFound;
             return response;
         }
 

@@ -322,15 +322,12 @@ public class ActorController : ControllerBase
             return Ok(response);
         }
 
-        if (string.Equals(
-                response.Message,
-                "Authenticated instance administrator context is required.",
-                StringComparison.Ordinal))
+        if (response.FailureCode == FailureCodes.AuthenticationRequired)
         {
             return this.ToAuthenticationRequiredProblem(detail: response.Message!);
         }
 
-        return response.Message?.Contains("administrators", StringComparison.OrdinalIgnoreCase) == true
+        return response.FailureCode == FailureCodes.AdminRequired
             ? this.ToForbiddenProblem(detail: response.Message)
             : this.ToCommandValidationProblem(response, GlobalModerationValidationProblem);
     }

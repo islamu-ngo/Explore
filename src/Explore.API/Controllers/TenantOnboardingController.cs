@@ -101,7 +101,7 @@ public class TenantOnboardingController : ExploreControllerBase
 
         if (!response.Success)
         {
-            if (response.Message?.Contains("Only tenant administrators", StringComparison.OrdinalIgnoreCase) == true)
+            if (response.FailureCode == FailureCodes.AdminRequired)
             {
                 return this.ToForbiddenProblem(detail: response.Message);
             }

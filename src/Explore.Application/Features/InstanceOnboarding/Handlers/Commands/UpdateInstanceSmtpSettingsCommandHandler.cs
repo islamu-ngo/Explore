@@ -35,6 +35,7 @@ public class UpdateInstanceSmtpSettingsCommandHandler : IRequestHandler<UpdateIn
         {
             response.Success = false;
             response.Message = "Only instance administrators can update SMTP settings.";
+            response.FailureCode = FailureCodes.AdminRequired;
             return response;
         }
 

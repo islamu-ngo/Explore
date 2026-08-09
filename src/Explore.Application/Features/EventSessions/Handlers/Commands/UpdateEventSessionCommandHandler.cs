@@ -112,7 +112,7 @@ public class UpdateEventSessionCommandHandler : IRequestHandler<UpdateEventSessi
                 EventSession? eventSession = await _eventSessionRepository.GetById(request.EventSessionId);
                 if (eventSession is null)
                 {
-                    transactionFailure = CreateFailureResponse("Event session not found.");
+                    transactionFailure = CreateFailureResponse("Event session not found.", failureCode: FailureCodes.NotFound);
                     return false;
                 }
 

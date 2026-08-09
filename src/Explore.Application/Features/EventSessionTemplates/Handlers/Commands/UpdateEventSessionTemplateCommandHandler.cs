@@ -73,13 +73,17 @@ public class UpdateEventSessionTemplateCommandHandler : IRequestHandler<UpdateEv
         {
             response.Success = false;
             response.Message = "Event session template not found.";
+            response.FailureCode = FailureCodes.NotFound;
             return response;
         }
+
+        request.TenantId = sessionTemplate.TenantId;
 
         if (request.TenantId == Guid.Empty || request.TenantId != sessionTemplate.TenantId)
         {
             response.Success = false;
             response.Message = "Event session template not found.";
+            response.FailureCode = FailureCodes.NotFound;
             return response;
         }
 

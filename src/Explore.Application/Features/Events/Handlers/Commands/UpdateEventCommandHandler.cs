@@ -122,7 +122,8 @@ public class UpdateEventCommandHandler : IRequestHandler<UpdateEventCommand, Bas
                 return new BaseCommandResponse<Guid>
                 {
                     Success = false,
-                    Message = "Event not found."
+                    Message = "Event not found.",
+                    FailureCode = FailureCodes.NotFound
                 };
             }
 

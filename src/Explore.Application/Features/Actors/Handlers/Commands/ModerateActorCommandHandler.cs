@@ -55,12 +55,18 @@ public sealed class ModerateActorCommandHandler(
         Guid? operatorUserId = await adminContext.ResolveUserIdAsync(cancellationToken);
         if (!operatorUserId.HasValue)
         {
-            return ValidationFailure(request.ActorId, "Authenticated instance administrator context is required.");
+            return ValidationFailure(
+                request.ActorId,
+                "Authenticated instance administrator context is required.",
+                FailureCodes.AuthenticationRequired);
         }
 
         if (!await adminContext.IsInstanceAdminAsync(operatorUserId.Value, cancellationToken))
         {
-            return ValidationFailure(request.ActorId, "Only instance administrators can moderate global actors.");
+            return ValidationFailure(
+                request.ActorId,
+                "Only instance administrators can moderate global actors.",
+                FailureCodes.AdminRequired);
         }
 
         var moderatedAt = timeProvider.GetUtcNow().UtcDateTime;
@@ -178,10 +184,14 @@ public sealed class ModerateActorCommandHandler(
         }
     }
 
-    private static BaseCommandResponse<Guid> ValidationFailure(Guid actorId, string message) => new()
+    private static BaseCommandResponse<Guid> ValidationFailure(
+        Guid actorId,
+        string message,
+        string? failureCode = null) => new()
     {
         Id = actorId,
         Success = false,
-        Message = message
+        Message = message,
+        FailureCode = failureCode
     };
 }

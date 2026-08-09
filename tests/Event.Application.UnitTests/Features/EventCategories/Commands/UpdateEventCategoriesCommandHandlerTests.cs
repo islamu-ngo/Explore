@@ -52,19 +52,26 @@ public sealed class UpdateEventCategoriesCommandHandlerTests
     }
 
     [Test]
-    public async Task Handle_WithMismatchedPersistedAuthorizationContext_ThrowsBeforeMutation()
+    public async Task Handle_WithMismatchedRouteContext_UsesPersistedAuthorizationContextBeforeMutation()
     {
         var entity = CreateEventCategory();
         _repository.GetById(entity.Id).Returns(entity);
+        _eventRepository.GetById(entity.EventId).Returns(CreateEvent(entity.EventId, entity.TenantId));
+        var newCategoryId = Guid.NewGuid();
+        _categoryRepository.GetById(newCategoryId).Returns(CreateCategory(newCategoryId, entity.TenantId));
+        _repository.GetByEventAndCategory(entity.EventId, newCategoryId, entity.Id).Returns((Explore.Domain.EventCategories?)null);
         var command = CreateCommand(entity, new UpdateEventCategoriesDto
         {
-            Category = new UpdateEventCategoriesCategoryDto { CategoryId = Guid.NewGuid() }
+            Category = new UpdateEventCategoriesCategoryDto { CategoryId = newCategoryId }
         });
         command.EventId = Guid.NewGuid();
 
-        await Assert.That(async () => await _handler.Handle(command, CancellationToken.None))
-            .Throws<AuthorizationException>();
-        await _repository.DidNotReceive().Update(Arg.Any<Explore.Domain.EventCategories>());
+        var result = await _handler.Handle(command, CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await Assert.That(command.EventId).IsEqualTo(entity.EventId);
+        await Assert.That(command.TenantId).IsEqualTo(entity.TenantId);
+        await _repository.Received(1).Update(entity);
     }
 
     [Test]

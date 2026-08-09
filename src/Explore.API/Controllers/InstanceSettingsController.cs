@@ -844,7 +844,7 @@ public class InstanceSettingsController : ExploreControllerBase
     {
         if (response.Success) return Ok(response);
 
-        if (response.Message?.Contains("Only instance administrators", StringComparison.OrdinalIgnoreCase) == true)
+        if (response.FailureCode == FailureCodes.AdminRequired)
         {
             return this.ToForbiddenProblem(detail: response.Message);
         }

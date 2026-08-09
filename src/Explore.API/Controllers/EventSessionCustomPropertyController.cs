@@ -193,7 +193,7 @@ public class EventSessionCustomPropertyController : ControllerBase
 
         if (!result.Success)
         {
-            return string.Equals(result.Message, "Event session custom property definition not found.", StringComparison.Ordinal)
+            return result.FailureCode == FailureCodes.NotFound
                 ? this.ToNotFoundProblem(DefinitionNotFoundProblem)
                 : this.ToQuotaProblemOrBadRequest(result);
         }
@@ -246,7 +246,7 @@ public class EventSessionCustomPropertyController : ControllerBase
             return Ok(result);
         }
 
-        return string.Equals(result.Message, "Session custom-property definition not found.", StringComparison.Ordinal)
+        return result.FailureCode == FailureCodes.NotFound
             ? this.ToNotFoundProblem(PurgeNotFoundProblem)
             : this.ToCommandValidationProblem(result, PurgeValidationProblem);
     }

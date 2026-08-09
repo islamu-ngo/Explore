@@ -52,6 +52,7 @@ public class UpdateExternalApiKeyPolicyCommandHandler : IRequestHandler<UpdateEx
         {
             response.Success = false;
             response.Message = "External API key not found.";
+            response.FailureCode = FailureCodes.NotFound;
             return response;
         }
 

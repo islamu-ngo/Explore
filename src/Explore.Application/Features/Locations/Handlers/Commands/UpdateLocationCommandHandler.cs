@@ -42,6 +42,7 @@ public class UpdateLocationCommandHandler : IRequestHandler<UpdateLocationComman
         {
             response.Success = false;
             response.Message = "Location not found.";
+            response.FailureCode = FailureCodes.NotFound;
             return response;
         }
 

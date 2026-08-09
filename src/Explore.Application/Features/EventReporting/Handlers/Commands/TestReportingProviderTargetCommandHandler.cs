@@ -19,8 +19,6 @@ public sealed class TestReportingProviderTargetCommandHandler(
     IReportingRoutingPolicyResolver routingPolicyResolver)
     : IRequestHandler<TestReportingProviderTargetCommand, BaseCommandResponse<Guid>>
 {
-    private const string LockedFailureCode = "ReportingTenantOverridesLocked";
-
     public async Task<BaseCommandResponse<Guid>> Handle(
         TestReportingProviderTargetCommand request,
         CancellationToken cancellationToken)
@@ -29,7 +27,9 @@ public sealed class TestReportingProviderTargetCommandHandler(
 
         if (!await IsUserAuthorizedAsync(tenantId, request.UserId, cancellationToken))
         {
-            return Failed("Only tenant administrators or instance administrators can test moderation reporting providers.");
+            return Failed(
+                "Only tenant administrators or instance administrators can test moderation reporting providers.",
+                FailureCodes.AdminRequired);
         }
 
         if (request.Provider is not EventReportExternalProvider.Osprey and not EventReportExternalProvider.Coop)
@@ -125,14 +125,15 @@ public sealed class TestReportingProviderTargetCommandHandler(
     private static BaseCommandResponse<Guid> Locked(string message) => new()
     {
         Success = false,
-        FailureCode = LockedFailureCode,
+        FailureCode = FailureCodes.ReportingTenantOverridesLocked,
         Message = message,
         Errors = ["Instance reporting delegation must be unlocked before tenant reporting provider tests can run."]
     };
 
-    private static BaseCommandResponse<Guid> Failed(string message) => new()
+    private static BaseCommandResponse<Guid> Failed(string message, string? failureCode = null) => new()
     {
         Success = false,
+        FailureCode = failureCode,
         Message = message,
         Errors = [message]
     };

@@ -73,13 +73,17 @@ public class UpdateEventTemplateCommandHandler : IRequestHandler<UpdateEventTemp
         {
             response.Success = false;
             response.Message = "Event template not found.";
+            response.FailureCode = FailureCodes.NotFound;
             return response;
         }
+
+        request.TenantId = template.TenantId;
 
         if (request.TenantId == Guid.Empty || request.TenantId != template.TenantId)
         {
             response.Success = false;
             response.Message = "Event template not found.";
+            response.FailureCode = FailureCodes.NotFound;
             return response;
         }
 

@@ -40,6 +40,7 @@ public class UpdateAuthorizationProviderConfigurationCommandHandler :
         {
             response.Success = false;
             response.Message = "Only instance administrators can update authorization provider configuration.";
+            response.FailureCode = FailureCodes.AdminRequired;
             return response;
         }
 

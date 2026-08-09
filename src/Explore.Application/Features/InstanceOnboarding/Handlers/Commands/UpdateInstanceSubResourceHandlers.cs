@@ -61,6 +61,7 @@ public class UpdateModuleSettingsCommandHandler : IRequestHandler<UpdateModuleSe
     {
         r.Success = false;
         r.Message = "Only instance administrators can update instance governance settings.";
+        r.FailureCode = FailureCodes.AdminRequired;
         return r;
     }
 
@@ -119,6 +120,7 @@ public class UpdateEventPolicyCommandHandler : IRequestHandler<UpdateEventPolicy
     {
         r.Success = false;
         r.Message = "Only instance administrators can update instance governance settings.";
+        r.FailureCode = FailureCodes.AdminRequired;
         return r;
     }
 
@@ -168,6 +170,7 @@ public class UpdateOrganizationPolicyCommandHandler : IRequestHandler<UpdateOrga
     {
         r.Success = false;
         r.Message = "Only instance administrators can update instance governance settings.";
+        r.FailureCode = FailureCodes.AdminRequired;
         return r;
     }
 
@@ -251,6 +254,7 @@ public class UpdateBrandingSettingsCommandHandler : IRequestHandler<UpdateBrandi
     {
         r.Success = false;
         r.Message = "Only instance administrators can update instance governance settings.";
+        r.FailureCode = FailureCodes.AdminRequired;
         return r;
     }
 
@@ -309,6 +313,7 @@ public class UpdateDomainSettingsCommandHandler : IRequestHandler<UpdateDomainSe
     {
         r.Success = false;
         r.Message = "Only instance administrators can update instance governance settings.";
+        r.FailureCode = FailureCodes.AdminRequired;
         return r;
     }
 
@@ -378,6 +383,7 @@ public class UpdateTenantDelegationSettingsCommandHandler : IRequestHandler<Upda
     {
         r.Success = false;
         r.Message = "Only instance administrators can update instance governance settings.";
+        r.FailureCode = FailureCodes.AdminRequired;
         return r;
     }
 
@@ -425,6 +431,7 @@ public class UpdateAdminPortalSettingsCommandHandler : IRequestHandler<UpdateAdm
     {
         r.Success = false;
         r.Message = "Only instance administrators can update instance governance settings.";
+        r.FailureCode = FailureCodes.AdminRequired;
         return r;
     }
 
@@ -481,6 +488,7 @@ public class UpdateMcpGovernanceSettingsCommandHandler : IRequestHandler<UpdateM
     {
         r.Success = false;
         r.Message = "Only instance administrators can update instance governance settings.";
+        r.FailureCode = FailureCodes.AdminRequired;
         return r;
     }
 
@@ -549,6 +557,7 @@ public class UpdateAiAssistantGovernanceSettingsCommandHandler : IRequestHandler
     {
         r.Success = false;
         r.Message = "Only instance administrators can update instance governance settings.";
+        r.FailureCode = FailureCodes.AdminRequired;
         return r;
     }
 
@@ -632,6 +641,7 @@ public class UpdateRenderPolicySettingsCommandHandler : IRequestHandler<UpdateRe
     {
         r.Success = false;
         r.Message = "Only instance administrators can update instance governance settings.";
+        r.FailureCode = FailureCodes.AdminRequired;
         return r;
     }
 

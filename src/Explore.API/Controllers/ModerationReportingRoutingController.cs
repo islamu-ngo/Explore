@@ -83,8 +83,7 @@ public sealed class ModerationReportingRoutingController(
 
         if (!response.Success)
         {
-            if (response.FailureCode == "ReportingTenantOverridesLocked"
-                || response.Message?.Contains("administrators", StringComparison.OrdinalIgnoreCase) == true)
+            if (response.FailureCode is FailureCodes.ReportingTenantOverridesLocked or FailureCodes.AdminRequired)
             {
                 return this.ToForbiddenProblem(
                     detail: response.Message ?? "Moderation reporting routing settings can only be updated by authorized administrators.");
@@ -120,8 +119,7 @@ public sealed class ModerationReportingRoutingController(
 
         if (!response.Success)
         {
-            if (response.FailureCode == "ReportingTenantOverridesLocked"
-                || response.Message?.Contains("administrators", StringComparison.OrdinalIgnoreCase) == true)
+            if (response.FailureCode is FailureCodes.ReportingTenantOverridesLocked or FailureCodes.AdminRequired)
             {
                 return this.ToForbiddenProblem(
                     detail: response.Message ?? "Moderation reporting providers can only be tested by authorized administrators.");

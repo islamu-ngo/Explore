@@ -416,7 +416,7 @@ public class SettingsController : ControllerBase
     {
         if (response.Success) return Ok(response);
 
-        if (response.Message?.Contains("administrators", StringComparison.OrdinalIgnoreCase) == true)
+        if (response.FailureCode == FailureCodes.AdminRequired)
         {
             return this.ToForbiddenProblem(detail: response.Message);
         }

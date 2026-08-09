@@ -52,7 +52,7 @@ public sealed class InstanceModerationReportingSettingsController(IMediator medi
 
         if (!response.Success)
         {
-            if (response.Message?.Contains("administrators", StringComparison.OrdinalIgnoreCase) == true)
+            if (response.FailureCode == FailureCodes.AdminRequired)
             {
                 return this.ToForbiddenProblem(
                     detail: response.Message ?? "Moderation reporting provider locks can only be updated by instance administrators.");

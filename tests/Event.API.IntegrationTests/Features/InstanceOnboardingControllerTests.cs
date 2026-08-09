@@ -19,6 +19,7 @@ using Explore.Application.Responses;
 using Explore.Domain;
 using Explore.Domain.Constants;
 using Explore.Domain.Enums;
+using Explore.Infrastructure.Services.Keycloak;
 using Explore.Persistence;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Hosting;
@@ -809,7 +810,7 @@ public class InstanceOnboardingControllerTests
             {
                 Success = false,
                 Message = "Keycloak Admin API was unreachable during bootstrap.",
-                FailureCode = "keycloak_unreachable"
+                FailureCode = KeycloakFailureCodes.Unreachable
             }
         };
         using var factory = CreateFactoryWithKeycloakBootstrapService(bootstrapService);
@@ -836,7 +837,9 @@ public class InstanceOnboardingControllerTests
         using var document = JsonDocument.Parse(body);
         var root = document.RootElement;
         await Assert.That(root.GetProperty("status").GetInt32()).IsEqualTo((int)HttpStatusCode.ServiceUnavailable);
+        await Assert.That(root.GetProperty("type").GetString()).IsEqualTo("https://tools.ietf.org/html/rfc9110#section-15.6.4");
         await Assert.That(root.GetProperty("title").GetString()).IsEqualTo("Keycloak provider unavailable");
+        await Assert.That(root.GetProperty("detail").GetString()).IsEqualTo("Keycloak Admin API was unreachable during bootstrap.");
         await Assert.That(root.GetProperty("code").GetString()).IsEqualTo("keycloak_unreachable");
         await Assert.That(root.TryGetProperty("traceId", out _)).IsTrue();
         await Assert.That(root.TryGetProperty("timestamp", out _)).IsTrue();
@@ -852,7 +855,7 @@ public class InstanceOnboardingControllerTests
             {
                 Success = false,
                 Message = "Keycloak Admin API returned an invalid response.",
-                FailureCode = "keycloak_invalid_response"
+                FailureCode = KeycloakFailureCodes.InvalidResponse
             }
         };
         using var factory = CreateFactoryWithKeycloakBootstrapService(bootstrapService);
@@ -879,7 +882,9 @@ public class InstanceOnboardingControllerTests
         using var document = JsonDocument.Parse(body);
         var root = document.RootElement;
         await Assert.That(root.GetProperty("status").GetInt32()).IsEqualTo((int)HttpStatusCode.BadGateway);
+        await Assert.That(root.GetProperty("type").GetString()).IsEqualTo("https://tools.ietf.org/html/rfc9110#section-15.6.3");
         await Assert.That(root.GetProperty("title").GetString()).IsEqualTo("Keycloak provider returned an invalid bootstrap response");
+        await Assert.That(root.GetProperty("detail").GetString()).IsEqualTo("Keycloak Admin API returned an invalid response.");
         await Assert.That(root.GetProperty("code").GetString()).IsEqualTo("keycloak_invalid_response");
         await Assert.That(root.TryGetProperty("traceId", out _)).IsTrue();
         await Assert.That(root.TryGetProperty("timestamp", out _)).IsTrue();

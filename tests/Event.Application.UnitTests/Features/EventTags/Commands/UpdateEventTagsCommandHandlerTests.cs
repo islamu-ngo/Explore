@@ -52,19 +52,26 @@ public sealed class UpdateEventTagsCommandHandlerTests
     }
 
     [Test]
-    public async Task Handle_WithMismatchedPersistedAuthorizationContext_ThrowsBeforeMutation()
+    public async Task Handle_WithMismatchedRouteContext_UsesPersistedAuthorizationContextBeforeMutation()
     {
         var entity = CreateEventTag();
         _repository.GetById(entity.Id).Returns(entity);
+        _eventRepository.GetById(entity.EventId).Returns(CreateEvent(entity.EventId, entity.TenantId));
+        var newTagId = Guid.NewGuid();
+        _tagRepository.GetById(newTagId).Returns(CreateTag(newTagId, entity.TenantId));
+        _repository.GetByEventAndTag(entity.EventId, newTagId, entity.Id).Returns((Explore.Domain.EventTags?)null);
         var command = CreateCommand(entity, new UpdateEventTagsDto
         {
-            Tag = new UpdateEventTagsTagDto { TagId = Guid.NewGuid() }
+            Tag = new UpdateEventTagsTagDto { TagId = newTagId }
         });
         command.TenantId = Guid.NewGuid();
 
-        await Assert.That(async () => await _handler.Handle(command, CancellationToken.None))
-            .Throws<AuthorizationException>();
-        await _repository.DidNotReceive().Update(Arg.Any<Explore.Domain.EventTags>());
+        var result = await _handler.Handle(command, CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await Assert.That(command.EventId).IsEqualTo(entity.EventId);
+        await Assert.That(command.TenantId).IsEqualTo(entity.TenantId);
+        await _repository.Received(1).Update(entity);
     }
 
     [Test]

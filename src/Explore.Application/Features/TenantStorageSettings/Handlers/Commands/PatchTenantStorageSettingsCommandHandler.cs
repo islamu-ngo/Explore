@@ -53,6 +53,7 @@ public sealed class PatchTenantStorageSettingsCommandHandler
         {
             response.Success = false;
             response.Message = "Only tenant administrators or instance administrators can patch tenant storage settings.";
+            response.FailureCode = FailureCodes.AdminRequired;
             return response;
         }
 

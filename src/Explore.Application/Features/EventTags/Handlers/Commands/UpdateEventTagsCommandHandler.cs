@@ -57,6 +57,9 @@ public class UpdateEventTagsCommandHandler : IRequestHandler<UpdateEventTagsComm
             return response;
         }
 
+        request.EventId = eventTags.EventId;
+        request.TenantId = eventTags.TenantId;
+
         if (eventTags.EventId != request.EventId || eventTags.TenantId != request.TenantId)
         {
             throw new AuthorizationException(ResourceKinds.Event, AuthorizationActions.Update);

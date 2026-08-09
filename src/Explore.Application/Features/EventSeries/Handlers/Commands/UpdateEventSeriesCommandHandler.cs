@@ -53,7 +53,8 @@ public class UpdateEventSeriesCommandHandler : IRequestHandler<UpdateEventSeries
             return new BaseCommandResponse<Guid>
             {
                 Success = false,
-                Message = "Event series not found."
+                Message = "Event series not found.",
+                FailureCode = FailureCodes.NotFound
             };
         }
 

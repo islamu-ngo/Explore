@@ -247,7 +247,7 @@ public class EventAgendaItemController : ControllerBase
 
         if (!response.Success)
         {
-            return response.Message?.Contains("not found", StringComparison.OrdinalIgnoreCase) == true
+            return response.FailureCode == FailureCodes.NotFound
                 ? this.ToNotFoundProblem(AgendaItemNotFoundProblem)
                 : this.ToCommandValidationProblem(response, UpdateValidationProblem);
         }
