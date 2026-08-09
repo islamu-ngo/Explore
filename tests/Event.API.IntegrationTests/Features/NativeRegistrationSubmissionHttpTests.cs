@@ -5,6 +5,11 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using Event.Api.IntegrationTests.Fixtures;
+using Explore.API.Services;
+using Explore.Application.Contracts.Persistence;
+using Explore.Application.Contracts.Services.Registration;
+using Explore.Application.Contracts.Webhooks;
+using Explore.Application.DTOs.RegistrationOrders;
 using Explore.Application.DTOs.RegistrationSubmissions;
 using Explore.Application.Features.RegistrationOrders.Requests.Commands;
 using Explore.Application.Features.RegistrationSubmissions.Commands;
@@ -19,6 +24,7 @@ using Microsoft.AspNetCore.TestHost;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Hosting;
 using NSubstitute;
 
 namespace Event.Api.IntegrationTests.Features;
@@ -28,6 +34,51 @@ public sealed class NativeRegistrationSubmissionHttpTests
 {
     private const string OrderCapabilityHeader = "X-Registration-Order-Capability";
     private const string AttemptCapabilityHeader = "X-Registration-Attempt-Capability";
+
+    [Test]
+    public async Task GuestStartReplayRestoresProtectedCapability()
+    {
+        const string capability = "guest-order-capability";
+        var mediator = Substitute.For<IMediator>();
+        Guid orderId = Guid.CreateVersion7();
+        mediator.Send(Arg.Any<StartGuestRegistrationOrderCommand>(), Arg.Any<CancellationToken>())
+            .Returns(new GuestRegistrationOrderStartDto
+            {
+                Id = orderId,
+                Success = true,
+                GuestCapabilityToken = capability
+            });
+        await using WebApplicationFactory<Program> factory = CreateFactory(mediator);
+        using HttpClient client = factory.CreateClient();
+        Guid eventId = Guid.CreateVersion7();
+        string idempotencyKey = Guid.CreateVersion7().ToString("D");
+        object body = new
+        {
+            ticketCatalogVersionId = Guid.CreateVersion7(),
+            bookingPartyType = "Individual",
+            lines = Array.Empty<object>()
+        };
+
+        using HttpResponseMessage first = await PostAsync(
+            client, $"/api/events/{eventId:D}/registration-orders/guest", body, false,
+            idempotencyKey: idempotencyKey);
+        using HttpResponseMessage replay = await PostAsync(
+            client, $"/api/events/{eventId:D}/registration-orders/guest", body, false,
+            idempotencyKey: idempotencyKey);
+
+        await Assert.That(first.StatusCode).IsEqualTo(HttpStatusCode.Created);
+        await Assert.That(replay.StatusCode).IsEqualTo(HttpStatusCode.Created);
+        await Assert.That(first.Headers.GetValues(OrderCapabilityHeader).Single()).IsEqualTo(capability);
+        await Assert.That(replay.Headers.GetValues(OrderCapabilityHeader).Single()).IsEqualTo(capability);
+        await Assert.That(replay.Headers.GetValues("X-Idempotency-Replay").Single()).IsEqualTo("true");
+        await mediator.Received(1).Send(Arg.Any<StartGuestRegistrationOrderCommand>(), Arg.Any<CancellationToken>());
+
+        using IServiceScope scope = factory.Services.CreateScope();
+        ExploreDbContext db = scope.ServiceProvider.GetRequiredService<ExploreDbContext>();
+        IdempotencyRecord record = await db.IdempotencyRecords.SingleAsync(item => item.Key == idempotencyKey);
+        await Assert.That(record.ResponseBody!.StartsWith("dp:v1:", StringComparison.Ordinal)).IsTrue();
+        await Assert.That(record.ResponseBody.Contains(capability, StringComparison.Ordinal)).IsFalse();
+    }
 
     [Test]
     public async Task AuthenticatedLaunchRequiresAuthenticationAndReturnsBoundedAttemptCapability()
@@ -236,9 +287,11 @@ public sealed class NativeRegistrationSubmissionHttpTests
         await Assert.That(progressPayload).Contains($"REGISTRATION_ORDER:{orderId:D}");
 
         object launchBody = new { requirementId, channelId, formId, formVersionId = versionId };
+        string launchIdempotencyKey = Guid.CreateVersion7().ToString("D");
         using HttpResponseMessage launchResponse = await PostAsync(
             client, $"/api/events/{eventId:D}/registration-orders/{orderId:D}/attempts",
-            launchBody, authenticated: true, authenticatedUserId: userId);
+            launchBody, authenticated: true, authenticatedUserId: userId,
+            idempotencyKey: launchIdempotencyKey);
         string launchPayload = await launchResponse.Content.ReadAsStringAsync();
         using JsonDocument launchJson = JsonDocument.Parse(launchPayload);
         Guid attemptId = launchJson.RootElement.GetProperty("attemptId").GetGuid();
@@ -251,6 +304,17 @@ public sealed class NativeRegistrationSubmissionHttpTests
             .IsEqualTo("I agree to receive event updates by email.");
         await Assert.That(launchPayload).Contains("submit");
         await Assert.That(launchPayload).Contains("skip");
+
+        using HttpResponseMessage replayResponse = await PostAsync(
+            client, $"/api/events/{eventId:D}/registration-orders/{orderId:D}/attempts",
+            launchBody, authenticated: true, authenticatedUserId: userId,
+            idempotencyKey: launchIdempotencyKey);
+        string replayPayload = await replayResponse.Content.ReadAsStringAsync();
+        await Assert.That(replayResponse.StatusCode).IsEqualTo(HttpStatusCode.Created);
+        await Assert.That(replayResponse.Headers.GetValues("X-Idempotency-Replay").Single()).IsEqualTo("true");
+        await Assert.That(replayResponse.Headers.GetValues(AttemptCapabilityHeader).Single())
+            .IsEqualTo(rawAttemptCapability);
+        await Assert.That(replayPayload).IsEqualTo(launchPayload);
 
         using HttpResponseMessage skipResponse = await PostAsync(
             client,
@@ -286,6 +350,10 @@ public sealed class NativeRegistrationSubmissionHttpTests
             await Assert.That(persisted.RegistrationFormVersionId).IsEqualTo(versionId);
             await Assert.That(persisted.CapabilityTokenHash.Value).IsNotEqualTo(rawAttemptCapability);
             await Assert.That(await db.RegistrationRequirementFulfillments.CountAsync()).IsEqualTo(1);
+            IdempotencyRecord replayRecord = await db.IdempotencyRecords.SingleAsync(record =>
+                record.Key == launchIdempotencyKey);
+            await Assert.That(replayRecord.ResponseBody!.StartsWith("dp:v1:", StringComparison.Ordinal)).IsTrue();
+            await Assert.That(replayRecord.ResponseBody.Contains(rawAttemptCapability, StringComparison.Ordinal)).IsFalse();
         }
     }
 
@@ -325,12 +393,115 @@ public sealed class NativeRegistrationSubmissionHttpTests
         await Assert.That(await db.RegistrationAttempts.CountAsync()).IsEqualTo(0);
     }
 
+    [Test]
+    public async Task ProviderCallback_DuplicateValidPost_IsAcceptedTwiceAndCreatesOneMessageAndEffect()
+    {
+        await using WebApplicationFactory<Program> factory = CreateCallbackFactory();
+        Guid bindingId = await SeedRegistrationProviderBindingAsync(factory, "external-form");
+        using HttpClient client = factory.CreateClient();
+        object body = new
+        {
+            attemptId = Guid.CreateVersion7(),
+            providerSubmissionId = "provider-submission-1",
+            providerResponseRevision = "revision-1"
+        };
+
+        using HttpResponseMessage first = await PostCallbackAsync(client, "external-form", bindingId, body);
+        using HttpResponseMessage second = await PostCallbackAsync(client, "external-form", bindingId, body);
+
+        await Assert.That(first.StatusCode).IsEqualTo(HttpStatusCode.Accepted);
+        await Assert.That(second.StatusCode).IsEqualTo(HttpStatusCode.Accepted);
+
+        using IServiceScope scope = factory.Services.CreateScope();
+        ExploreDbContext db = scope.ServiceProvider.GetRequiredService<ExploreDbContext>();
+        var messageRepository = scope.ServiceProvider.GetRequiredService<IIncomingWebhookMessageRepository>();
+        IReadOnlyList<IncomingWebhookClaim> claims = await messageRepository.ClaimDueAsync(
+            new IncomingWebhookClaimRequest("test", 10, DateTime.UtcNow, TimeSpan.FromMinutes(5)),
+            CancellationToken.None);
+        foreach (IncomingWebhookClaim claim in claims)
+        {
+            using IServiceScope processingScope = factory.Services.CreateScope();
+            var processingService = processingScope.ServiceProvider.GetRequiredService<IIncomingWebhookProcessingService>();
+            _ = await processingService.ProcessAsync(claim, CancellationToken.None);
+        }
+
+        string providerMessageId = $"{bindingId:N}:provider-submission-1";
+        await Assert.That(await db.IncomingWebhookMessages.CountAsync(message => message.ProviderMessageId == providerMessageId)).IsEqualTo(1);
+        await Assert.That(await db.IncomingWebhookEffectOutboxes.CountAsync(pointer => pointer.ProviderDecisionId == providerMessageId)).IsEqualTo(1);
+        IncomingWebhookMessage message = await db.IncomingWebhookMessages.SingleAsync(message => message.ProviderMessageId == providerMessageId);
+        await Assert.That(message.HeadersJson).DoesNotContain("super-secret-signature");
+        await Assert.That(message.HeadersJson).DoesNotContain("raw-provider-receipt");
+        await Assert.That(message.HeadersJson).Contains("X-Registration-Verification-Receipt");
+
+        Dictionary<string, string> headers = JsonSerializer.Deserialize<Dictionary<string, string>>(message.HeadersJson!)!;
+        var receiptProtector = scope.ServiceProvider.GetRequiredService<IRegistrationProviderCallbackReceiptProtector>();
+        RegistrationProviderCallbackReceipt receipt = receiptProtector.Unprotect(headers[IncomingWebhookIntakeService.VerificationReceiptHeader]);
+        await Assert.That(receipt.BindingId).IsEqualTo(bindingId);
+        await Assert.That(receipt.Provider).IsEqualTo("external-form");
+    }
+
+    [Test]
+    public async Task ProviderCallback_MalformedJsonOrMissingSubmissionId_IsAcceptedWithoutCapture()
+    {
+        await using WebApplicationFactory<Program> factory = CreateCallbackFactory();
+        Guid bindingId = await SeedRegistrationProviderBindingAsync(factory, "external-form");
+        using HttpClient client = factory.CreateClient();
+
+        using HttpResponseMessage malformed = await PostRawCallbackAsync(
+            client, "external-form", bindingId, "{", includeSignature: true);
+        using HttpResponseMessage missingSubmissionId = await PostRawCallbackAsync(
+            client, "external-form", bindingId,
+            JsonSerializer.Serialize(new { attemptId = Guid.CreateVersion7(), providerResponseRevision = "revision-1" }),
+            includeSignature: true);
+
+        await Assert.That(malformed.StatusCode).IsEqualTo(HttpStatusCode.Accepted);
+        await Assert.That(missingSubmissionId.StatusCode).IsEqualTo(HttpStatusCode.Accepted);
+
+        using IServiceScope scope = factory.Services.CreateScope();
+        ExploreDbContext db = scope.ServiceProvider.GetRequiredService<ExploreDbContext>();
+        await Assert.That(await db.IncomingWebhookMessages.CountAsync()).IsEqualTo(0);
+        await Assert.That(await db.IncomingWebhookEffectOutboxes.CountAsync()).IsEqualTo(0);
+    }
+
+    [Test]
+    public async Task ProviderCallback_VerifierFormatException_IsAcceptedWithoutTenantDisclosure()
+    {
+        await using WebApplicationFactory<Program> factory = CreateCallbackFactory<ThrowingRegistrationProviderCallbackVerifier>();
+        Guid bindingId = await SeedRegistrationProviderBindingAsync(factory, "external-form");
+        using HttpClient client = factory.CreateClient();
+        object body = new
+        {
+            attemptId = Guid.CreateVersion7(),
+            providerSubmissionId = "provider-submission-1",
+            providerResponseRevision = "revision-1"
+        };
+
+        using HttpResponseMessage response = await PostCallbackAsync(client, "external-form", bindingId, body);
+        string payload = await response.Content.ReadAsStringAsync();
+
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Accepted);
+        await Assert.That(payload).DoesNotContain(PlatformDefaults.DefaultTenantId.ToString("D"));
+    }
+
     private static WebApplicationFactory<Program> CreateFactory(IMediator mediator) =>
         new AuthenticatedWebApplicationFactory().WithWebHostBuilder(builder =>
             builder.ConfigureTestServices(services =>
             {
                 services.RemoveAll<IMediator>();
                 services.AddSingleton(mediator);
+            }));
+
+    private static WebApplicationFactory<Program> CreateCallbackFactory() =>
+        CreateCallbackFactory<FakeRegistrationProviderCallbackVerifier>();
+
+    private static WebApplicationFactory<Program> CreateCallbackFactory<TVerifier>()
+        where TVerifier : class, IRegistrationProviderCallbackVerifier =>
+        new AuthenticatedWebApplicationFactory().WithWebHostBuilder(builder =>
+            builder.ConfigureTestServices(services =>
+            {
+                services.RemoveAll<IRegistrationProviderCallbackVerifier>();
+                services.RemoveAll<IHostedService>();
+                services.AddSingleton<IRegistrationProviderCallbackVerifier, TVerifier>();
             }));
 
     private static NativeRegistrationAttemptResult CreateAttemptResult(
@@ -367,7 +538,7 @@ public sealed class NativeRegistrationSubmissionHttpTests
         Guid formId = Guid.CreateVersion7();
         Guid versionId = Guid.CreateVersion7();
         Guid fieldId = Guid.CreateVersion7();
-        DateTime now = new(2026, 8, 3, 10, 0, 0, DateTimeKind.Utc);
+        DateTime now = DateTime.UtcNow;
 
         using IServiceScope scope = factory.Services.CreateScope();
         ExploreDbContext db = scope.ServiceProvider.GetRequiredService<ExploreDbContext>();
@@ -424,6 +595,35 @@ public sealed class NativeRegistrationSubmissionHttpTests
         return new(eventId, orderId, userId, requirementId, channelId, formId, versionId, fieldId);
     }
 
+    private static async Task<Guid> SeedRegistrationProviderBindingAsync(
+        WebApplicationFactory<Program> factory,
+        string provider)
+    {
+        Guid tenantId = PlatformDefaults.DefaultTenantId;
+        Guid eventId = Guid.CreateVersion7();
+        DateTime now = DateTime.UtcNow;
+        using IServiceScope scope = factory.Services.CreateScope();
+        ExploreDbContext db = scope.ServiceProvider.GetRequiredService<ExploreDbContext>();
+        RegistrationProviderConnection connection = RegistrationProviderConnection.Create(
+            tenantId, "Provider", RegistrationProviderKindEnum.ExternalForm,
+            RegistrationProviderDeploymentKindEnum.HostedSaas, null, null, now);
+        RegistrationProviderBinding binding = RegistrationProviderBinding.Create(
+            tenantId, connection.Id, Guid.CreateVersion7(), Guid.CreateVersion7(),
+            RegistrationProviderPresentationModeEnum.Redirect,
+            RegistrationProviderCollectionModeEnum.ProviderHosted,
+            RegistrationProviderCompletionModeEnum.Callback,
+            RegistrationProviderTrustLevelEnum.FullCanonical,
+            now);
+        binding.AddCapability(RegistrationProviderCapability.Create(
+            binding, provider, "hosted", "v1", "policy", "evidence",
+            RegistrationProviderCapabilityCodes.CallbackVerification));
+        binding.Publish(RegistrationEvidenceHash.Create(Convert.ToBase64String(System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes("mapping")))), now);
+        db.RegistrationProviderConnections.Add(connection);
+        db.RegistrationProviderBindings.Add(binding);
+        await db.SaveChangesAsync();
+        return binding.Id;
+    }
+
     private sealed record RealNativeFlow(
         Guid EventId,
         Guid OrderId,
@@ -441,13 +641,14 @@ public sealed class NativeRegistrationSubmissionHttpTests
         bool authenticated,
         string? orderCapability = null,
         string? attemptCapability = null,
-        Guid? authenticatedUserId = null)
+        Guid? authenticatedUserId = null,
+        string? idempotencyKey = null)
     {
         using var request = new HttpRequestMessage(HttpMethod.Post, path)
         {
             Content = JsonContent.Create(body)
         };
-        request.Headers.Add("Idempotency-Key", Guid.CreateVersion7().ToString("D"));
+        request.Headers.Add("Idempotency-Key", idempotencyKey ?? Guid.CreateVersion7().ToString("D"));
         if (authenticated)
         {
             request.Headers.Add(TestAuthHandler.AuthHeaderName,
@@ -462,5 +663,59 @@ public sealed class NativeRegistrationSubmissionHttpTests
             request.Headers.Add(AttemptCapabilityHeader, attemptCapability);
         }
         return await client.SendAsync(request);
+    }
+
+    private static async Task<HttpResponseMessage> PostCallbackAsync(
+        HttpClient client,
+        string provider,
+        Guid bindingId,
+        object body)
+    {
+        using var request = new HttpRequestMessage(
+            HttpMethod.Post,
+            $"/api/integrations/registration/{provider}/{bindingId:D}/callback")
+        {
+            Content = JsonContent.Create(body)
+        };
+        request.Headers.Add("X-Provider-Signature", "super-secret-signature");
+        return await client.SendAsync(request);
+    }
+
+    private static async Task<HttpResponseMessage> PostRawCallbackAsync(
+        HttpClient client,
+        string provider,
+        Guid bindingId,
+        string body,
+        bool includeSignature)
+    {
+        using var request = new HttpRequestMessage(
+            HttpMethod.Post,
+            $"/api/integrations/registration/{provider}/{bindingId:D}/callback")
+        {
+            Content = new StringContent(body, System.Text.Encoding.UTF8, "application/json")
+        };
+        if (includeSignature)
+        {
+            request.Headers.Add("X-Provider-Signature", "super-secret-signature");
+        }
+
+        return await client.SendAsync(request);
+    }
+
+    private sealed class FakeRegistrationProviderCallbackVerifier : IRegistrationProviderCallbackVerifier
+    {
+        public Task<RegistrationProviderCallbackVerificationResult> VerifyCallbackAsync(
+            RegistrationProviderCallbackVerificationRequest request,
+            CancellationToken cancellationToken) => Task.FromResult(
+            request.Headers.ContainsKey("X-Provider-Signature")
+                ? new RegistrationProviderCallbackVerificationResult(true, Receipt: "raw-provider-receipt")
+                : new RegistrationProviderCallbackVerificationResult(false, "missing_signature"));
+    }
+
+    private sealed class ThrowingRegistrationProviderCallbackVerifier : IRegistrationProviderCallbackVerifier
+    {
+        public Task<RegistrationProviderCallbackVerificationResult> VerifyCallbackAsync(
+            RegistrationProviderCallbackVerificationRequest request,
+            CancellationToken cancellationToken) => throw new System.Security.Cryptography.CryptographicException("bad signature envelope");
     }
 }

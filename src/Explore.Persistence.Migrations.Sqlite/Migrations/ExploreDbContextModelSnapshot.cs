@@ -16472,7 +16472,8 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnName("date_value");
 
                     b.Property<decimal?>("DecimalValue")
-                        .HasColumnType("numeric")
+                        .HasPrecision(19, 4)
+                        .HasColumnType("TEXT")
                         .HasColumnName("decimal_value");
 
                     b.Property<DateTime?>("DeletedAt")
@@ -16658,7 +16659,11 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                     b.ToTable("ie_registration_answers", null, t =>
                         {
+                            t.HasCheckConstraint("ck_registration_answers_exactly_one_value", "(CASE WHEN text_value IS NULL THEN 0 ELSE 1 END + CASE WHEN integer_value IS NULL THEN 0 ELSE 1 END + CASE WHEN decimal_value IS NULL THEN 0 ELSE 1 END + CASE WHEN boolean_value IS NULL THEN 0 ELSE 1 END + CASE WHEN date_value IS NULL THEN 0 ELSE 1 END + CASE WHEN time_value IS NULL THEN 0 ELSE 1 END + CASE WHEN instant_value IS NULL THEN 0 ELSE 1 END + CASE WHEN selected_option_id IS NULL THEN 0 ELSE 1 END + CASE WHEN sensitive_answer_value_id IS NULL THEN 0 ELSE 1 END) = 1");
+
                             t.HasCheckConstraint("ck_registration_answers_positive_ordinal", "ordinal > 0");
+
+                            t.HasCheckConstraint("ck_registration_answers_subject_shape", "(CASE WHEN order_subject_id IS NULL THEN 0 ELSE 1 END + CASE WHEN purchaser_subject_id IS NULL THEN 0 ELSE 1 END + CASE WHEN participant_subject_id IS NULL THEN 0 ELSE 1 END + CASE WHEN ticket_assignment_subject_id IS NULL THEN 0 ELSE 1 END + CASE WHEN session_selection_subject_id IS NULL THEN 0 ELSE 1 END) = 1 AND ((answer_subject_type_id = 1 AND order_subject_id = registration_order_id AND ticket_assignment_order_line_id IS NULL AND requirement_subject_type_id = 1) OR (answer_subject_type_id = 2 AND purchaser_subject_id = registration_order_id AND ticket_assignment_order_line_id IS NULL AND requirement_subject_type_id IN (1, 4)) OR (answer_subject_type_id = 3 AND participant_subject_id IS NOT NULL AND ticket_assignment_order_line_id IS NULL AND requirement_subject_type_id IN (3, 5)) OR (answer_subject_type_id = 4 AND ticket_assignment_subject_id IS NOT NULL AND ticket_assignment_order_line_id IS NOT NULL AND requirement_subject_id IS NOT NULL AND requirement_subject_type_id = 2) OR (answer_subject_type_id = 5 AND session_selection_subject_id = requirement_subject_id AND ticket_assignment_order_line_id IS NULL AND requirement_subject_type_id = 6))");
 
                             t.HasCheckConstraint("ck_registration_answers_value_matches_field_type", "(field_type_id IN (1, 2, 9, 10, 11, 12, 13) AND (text_value IS NOT NULL OR sensitive_answer_value_id IS NOT NULL)) OR (field_type_id IN (3, 16) AND (integer_value IS NOT NULL OR sensitive_answer_value_id IS NOT NULL)) OR (field_type_id = 4 AND (decimal_value IS NOT NULL OR sensitive_answer_value_id IS NOT NULL)) OR (field_type_id = 5 AND (boolean_value IS NOT NULL OR sensitive_answer_value_id IS NOT NULL)) OR (field_type_id = 6 AND (date_value IS NOT NULL OR sensitive_answer_value_id IS NOT NULL)) OR (field_type_id = 7 AND (time_value IS NOT NULL OR sensitive_answer_value_id IS NOT NULL)) OR (field_type_id = 8 AND (instant_value IS NOT NULL OR sensitive_answer_value_id IS NOT NULL)) OR (field_type_id IN (14, 15) AND selected_option_id IS NOT NULL)");
                         });

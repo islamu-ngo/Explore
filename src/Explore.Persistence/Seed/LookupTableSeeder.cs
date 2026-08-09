@@ -76,6 +76,7 @@ public static class LookupTableSeeder
         await SeedRegistrationWorkflowLookupsAsync(context, cancellationToken);
         await SeedRegistrationFormLookupsAsync(context, cancellationToken);
         await SeedRegistrationRuntimeLookupsAsync(context, cancellationToken);
+        await SeedRegistrationProviderLookupsAsync(context, cancellationToken);
         await SeedPlatformMonetizationDefaultsAsync(context, cancellationToken);
         await SeedEventStatusesAsync(context, cancellationToken);
         await SeedEventSessionStatusesAsync(context, cancellationToken);
@@ -1691,6 +1692,71 @@ public static class LookupTableSeeder
             new RegistrationAnswerSubjectType { Id = (int)RegistrationAnswerSubjectTypeEnum.Participant, MasterCode = "PARTICIPANT", FullName = "Participant" },
             new RegistrationAnswerSubjectType { Id = (int)RegistrationAnswerSubjectTypeEnum.TicketAssignment, MasterCode = "TICKET_ASSIGNMENT", FullName = "Ticket assignment" },
             new RegistrationAnswerSubjectType { Id = (int)RegistrationAnswerSubjectTypeEnum.SessionSelection, MasterCode = "SESSION_SELECTION", FullName = "Session selection" }
+        ], row => row.Id, ct);
+    }
+
+    internal static async Task SeedRegistrationProviderLookupsAsync(ExploreDbContext context, CancellationToken ct)
+    {
+        await SeedMissingLookupRowsAsync(context,
+        [
+            new RegistrationProviderKind { Id = (int)RegistrationProviderKindEnum.Native, MasterCode = "NATIVE", FullName = "Native" },
+            new RegistrationProviderKind { Id = (int)RegistrationProviderKindEnum.ExternalForm, MasterCode = "EXTERNAL_FORM", FullName = "External form" },
+            new RegistrationProviderKind { Id = (int)RegistrationProviderKindEnum.ExternalApi, MasterCode = "EXTERNAL_API", FullName = "External API" }
+        ], row => row.Id, ct);
+        await SeedMissingLookupRowsAsync(context,
+        [
+            new RegistrationProviderDeploymentKind { Id = (int)RegistrationProviderDeploymentKindEnum.HostedSaas, MasterCode = "HOSTED_SAAS", FullName = "Hosted SaaS" },
+            new RegistrationProviderDeploymentKind { Id = (int)RegistrationProviderDeploymentKindEnum.SelfHosted, MasterCode = "SELF_HOSTED", FullName = "Self-hosted" },
+            new RegistrationProviderDeploymentKind { Id = (int)RegistrationProviderDeploymentKindEnum.Native, MasterCode = "NATIVE", FullName = "Native" }
+        ], row => row.Id, ct);
+        await SeedMissingLookupRowsAsync(context,
+        [
+            new RegistrationProviderSchemaAuthority { Id = (int)RegistrationProviderSchemaAuthorityEnum.PlatformGenerated, MasterCode = "PLATFORM_GENERATED", FullName = "Platform generated" },
+            new RegistrationProviderSchemaAuthority { Id = (int)RegistrationProviderSchemaAuthorityEnum.ProviderDiscovered, MasterCode = "PROVIDER_DISCOVERED", FullName = "Provider discovered" },
+            new RegistrationProviderSchemaAuthority { Id = (int)RegistrationProviderSchemaAuthorityEnum.OperatorEntered, MasterCode = "OPERATOR_ENTERED", FullName = "Operator entered" }
+        ], row => row.Id, ct);
+        await SeedMissingLookupRowsAsync(context,
+        [
+            new RegistrationProviderPresentationMode { Id = (int)RegistrationProviderPresentationModeEnum.Redirect, MasterCode = "REDIRECT", FullName = "Redirect" },
+            new RegistrationProviderPresentationMode { Id = (int)RegistrationProviderPresentationModeEnum.Embed, MasterCode = "EMBED", FullName = "Embed" },
+            new RegistrationProviderPresentationMode { Id = (int)RegistrationProviderPresentationModeEnum.Manual, MasterCode = "MANUAL", FullName = "Manual" }
+        ], row => row.Id, ct);
+        await SeedMissingLookupRowsAsync(context,
+        [
+            new RegistrationProviderCollectionMode { Id = (int)RegistrationProviderCollectionModeEnum.Native, MasterCode = "NATIVE", FullName = "Native" },
+            new RegistrationProviderCollectionMode { Id = (int)RegistrationProviderCollectionModeEnum.ProviderHosted, MasterCode = "PROVIDER_HOSTED", FullName = "Provider hosted" },
+            new RegistrationProviderCollectionMode { Id = (int)RegistrationProviderCollectionModeEnum.ProviderApi, MasterCode = "PROVIDER_API", FullName = "Provider API" }
+        ], row => row.Id, ct);
+        await SeedMissingLookupRowsAsync(context,
+        [
+            new RegistrationProviderCompletionMode { Id = (int)RegistrationProviderCompletionModeEnum.Callback, MasterCode = "CALLBACK", FullName = "Callback" },
+            new RegistrationProviderCompletionMode { Id = (int)RegistrationProviderCompletionModeEnum.Polling, MasterCode = "POLLING", FullName = "Polling" },
+            new RegistrationProviderCompletionMode { Id = (int)RegistrationProviderCompletionModeEnum.Manual, MasterCode = "MANUAL", FullName = "Manual" }
+        ], row => row.Id, ct);
+        await SeedMissingLookupRowsAsync(context,
+        [
+            new RegistrationProviderTrustLevel { Id = (int)RegistrationProviderTrustLevelEnum.Untrusted, MasterCode = "UNTRUSTED", FullName = "Untrusted" },
+            new RegistrationProviderTrustLevel { Id = (int)RegistrationProviderTrustLevelEnum.CompletionOnly, MasterCode = "COMPLETION_ONLY", FullName = "Completion only" },
+            new RegistrationProviderTrustLevel { Id = (int)RegistrationProviderTrustLevelEnum.SelectedFields, MasterCode = "SELECTED_FIELDS", FullName = "Selected fields" },
+            new RegistrationProviderTrustLevel { Id = (int)RegistrationProviderTrustLevelEnum.FullCanonical, MasterCode = "FULL_CANONICAL", FullName = "Full canonical" }
+        ], row => row.Id, ct);
+        await SeedMissingLookupRowsAsync(context,
+        [
+            new RegistrationProviderDriftClass { Id = (int)RegistrationProviderDriftClassEnum.NoDrift, MasterCode = "NO_DRIFT", FullName = "No drift" },
+            new RegistrationProviderDriftClass { Id = (int)RegistrationProviderDriftClassEnum.AdditiveOptionalChange, MasterCode = "ADDITIVE_OPTIONAL_CHANGE", FullName = "Additive optional change" },
+            new RegistrationProviderDriftClass { Id = (int)RegistrationProviderDriftClassEnum.LabelOnlyChange, MasterCode = "LABEL_ONLY_CHANGE", FullName = "Label-only change" },
+            new RegistrationProviderDriftClass { Id = (int)RegistrationProviderDriftClassEnum.MappingRequired, MasterCode = "MAPPING_REQUIRED", FullName = "Mapping required" },
+            new RegistrationProviderDriftClass { Id = (int)RegistrationProviderDriftClassEnum.RequiredFieldRemoved, MasterCode = "REQUIRED_FIELD_REMOVED", FullName = "Required field removed" },
+            new RegistrationProviderDriftClass { Id = (int)RegistrationProviderDriftClassEnum.TypeChanged, MasterCode = "TYPE_CHANGED", FullName = "Type changed" },
+            new RegistrationProviderDriftClass { Id = (int)RegistrationProviderDriftClassEnum.OptionSetChanged, MasterCode = "OPTION_SET_CHANGED", FullName = "Option set changed" },
+            new RegistrationProviderDriftClass { Id = (int)RegistrationProviderDriftClassEnum.UnsupportedChange, MasterCode = "UNSUPPORTED_CHANGE", FullName = "Unsupported change" }
+        ], row => row.Id, ct);
+        await SeedMissingLookupRowsAsync(context,
+        [
+            new RegistrationProviderBindingState { Id = (int)RegistrationProviderBindingStateEnum.Draft, MasterCode = "DRAFT", FullName = "Draft" },
+            new RegistrationProviderBindingState { Id = (int)RegistrationProviderBindingStateEnum.Published, MasterCode = "PUBLISHED", FullName = "Published" },
+            new RegistrationProviderBindingState { Id = (int)RegistrationProviderBindingStateEnum.Disabled, MasterCode = "DISABLED", FullName = "Disabled" },
+            new RegistrationProviderBindingState { Id = (int)RegistrationProviderBindingStateEnum.DriftBlocked, MasterCode = "DRIFT_BLOCKED", FullName = "Drift blocked" }
         ], row => row.Id, ct);
     }
 

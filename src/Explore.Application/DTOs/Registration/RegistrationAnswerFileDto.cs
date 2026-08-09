@@ -19,4 +19,4 @@ public sealed record RegistrationAnswerFileDto(
     DateTime? ReleasedAt,
     string? ReleaseReason);
 
-public sealed record RegistrationAnswerFileReleaseInput(string Reason);
+public sealed record RegistrationAnswerFileReleaseInputDto(string Reason);

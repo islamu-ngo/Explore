@@ -22,6 +22,11 @@ public class SecretBindingConfiguration : IEntityTypeConfiguration<SecretBinding
             .IsRequired()
             .HasMaxLength(256);
 
+        builder.Property(e => e.Qualifier)
+            .IsRequired()
+            .HasMaxLength(128)
+            .HasDefaultValue(string.Empty);
+
         builder.Ignore(e => e.Scope);
 
         builder.Property(e => e.SettingScopeId)
@@ -83,16 +88,18 @@ public class SecretBindingConfiguration : IEntityTypeConfiguration<SecretBinding
 
         // Filtered unique indexes for Postgres NULL semantics (Oracle-mandated for correct uniqueness on nullable ScopeId):
         // - Instance rows: one binding per (SettingKey) where scope_id IS NULL
-        builder.HasIndex(e => e.SettingKey)
+        builder.HasIndex(e => new { e.SettingKey, e.Qualifier })
             .IsUnique()
             .HasFilter("scope_id IS NULL")
             .HasDatabaseName("ix_secret_bindings_setting_key_instance_unique");
 
         // - Tenant rows: one binding per (SettingKey, ScopeId) where scope_id IS NOT NULL
-        builder.HasIndex(e => new { e.SettingKey, e.ScopeId })
+        builder.HasIndex(e => new { e.SettingKey, e.ScopeId, e.Qualifier })
             .IsUnique()
             .HasFilter("scope_id IS NOT NULL")
             .HasDatabaseName("ix_secret_bindings_setting_key_scope_id_tenant_unique");
+
+        builder.HasAlternateKey(e => new { e.ScopeId, e.Id });
 
         // Lookup index by scope for bulk listing
         builder.HasIndex(e => new { e.SettingScopeId, e.ScopeId })

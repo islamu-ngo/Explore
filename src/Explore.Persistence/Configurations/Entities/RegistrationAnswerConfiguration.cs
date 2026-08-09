@@ -18,7 +18,15 @@ public sealed class RegistrationAnswerConfiguration : IEntityTypeConfiguration<R
         builder.ToTable("registration_answers", table =>
         {
             table.HasCheckConstraint("ck_registration_answers_exactly_one_value",
-                "num_nonnulls(text_value, integer_value, decimal_value, boolean_value, date_value, time_value, instant_value, selected_option_id, sensitive_answer_value_id) = 1");
+                "(CASE WHEN text_value IS NULL THEN 0 ELSE 1 END + " +
+                "CASE WHEN integer_value IS NULL THEN 0 ELSE 1 END + " +
+                "CASE WHEN decimal_value IS NULL THEN 0 ELSE 1 END + " +
+                "CASE WHEN boolean_value IS NULL THEN 0 ELSE 1 END + " +
+                "CASE WHEN date_value IS NULL THEN 0 ELSE 1 END + " +
+                "CASE WHEN time_value IS NULL THEN 0 ELSE 1 END + " +
+                "CASE WHEN instant_value IS NULL THEN 0 ELSE 1 END + " +
+                "CASE WHEN selected_option_id IS NULL THEN 0 ELSE 1 END + " +
+                "CASE WHEN sensitive_answer_value_id IS NULL THEN 0 ELSE 1 END) = 1");
             table.HasCheckConstraint("ck_registration_answers_value_matches_field_type", ValueTypeConstraint());
             table.HasCheckConstraint("ck_registration_answers_subject_shape", SubjectConstraint());
             table.HasCheckConstraint("ck_registration_answers_positive_ordinal", "ordinal > 0");
@@ -26,7 +34,7 @@ public sealed class RegistrationAnswerConfiguration : IEntityTypeConfiguration<R
         builder.Property(answer => answer.Id).ValueGeneratedNever();
         builder.Property(answer => answer.TextValue).HasMaxLength(10000);
         builder.Property(answer => answer.IntegerValue).HasColumnType("bigint");
-        builder.Property(answer => answer.DecimalValue).HasColumnType("numeric");
+        builder.Property(answer => answer.DecimalValue).HasPrecision(19, 4);
         builder.Property(answer => answer.DateValue).HasColumnType("date");
         builder.Property(answer => answer.TimeValue).HasColumnType("time without time zone");
         builder.Property(answer => answer.InstantValue).HasColumnType("timestamp with time zone");
@@ -201,7 +209,11 @@ public sealed class RegistrationAnswerConfiguration : IEntityTypeConfiguration<R
         $"(field_type_id IN ({(int)RegistrationFieldTypeEnum.SingleChoice}, {(int)RegistrationFieldTypeEnum.MultipleChoice}) AND selected_option_id IS NOT NULL)";
 
     private static string SubjectConstraint() =>
-        "num_nonnulls(order_subject_id, purchaser_subject_id, participant_subject_id, ticket_assignment_subject_id, session_selection_subject_id) = 1 AND (" +
+        "(CASE WHEN order_subject_id IS NULL THEN 0 ELSE 1 END + " +
+        "CASE WHEN purchaser_subject_id IS NULL THEN 0 ELSE 1 END + " +
+        "CASE WHEN participant_subject_id IS NULL THEN 0 ELSE 1 END + " +
+        "CASE WHEN ticket_assignment_subject_id IS NULL THEN 0 ELSE 1 END + " +
+        "CASE WHEN session_selection_subject_id IS NULL THEN 0 ELSE 1 END) = 1 AND (" +
         $"(answer_subject_type_id = {(int)RegistrationAnswerSubjectTypeEnum.RegistrationOrder} AND order_subject_id = registration_order_id AND ticket_assignment_order_line_id IS NULL AND requirement_subject_type_id = {(int)RegistrationRequirementSubjectTypeEnum.AllOrders}) OR " +
         $"(answer_subject_type_id = {(int)RegistrationAnswerSubjectTypeEnum.Purchaser} AND purchaser_subject_id = registration_order_id AND ticket_assignment_order_line_id IS NULL AND requirement_subject_type_id IN ({(int)RegistrationRequirementSubjectTypeEnum.AllOrders}, {(int)RegistrationRequirementSubjectTypeEnum.LeadBookerOnly})) OR " +
         $"(answer_subject_type_id = {(int)RegistrationAnswerSubjectTypeEnum.Participant} AND participant_subject_id IS NOT NULL AND ticket_assignment_order_line_id IS NULL AND requirement_subject_type_id IN ({(int)RegistrationRequirementSubjectTypeEnum.EveryParticipant}, {(int)RegistrationRequirementSubjectTypeEnum.ChildParticipants})) OR " +

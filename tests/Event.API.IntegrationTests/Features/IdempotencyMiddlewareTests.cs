@@ -6,10 +6,12 @@ using System.Security.Claims;
 using System.Text;
 using System.Text.Json;
 using Event.Api.IntegrationTests.Fixtures;
+using Explore.API.Attributes;
 using Explore.API.Middleware;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Domain;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.DependencyInjection;
@@ -153,6 +155,82 @@ public class IdempotencyMiddlewareRealRuntimeTests(RealRuntimeApiFixture fixture
         await Assert.That(second.Headers["X-Idempotency-Replay"].ToString()).IsEqualTo("true");
         await Assert.That(second.Body).IsEqualTo("""{"created":true}""");
         await Assert.That(nextCallCount).IsEqualTo(1);
+    }
+
+    [Test]
+    public async Task Middleware_ForProtectedReplay_StoresCiphertextAndRestoresCapability()
+    {
+        var repository = new InMemoryIdempotencyRepository();
+        var dataProtectionProvider = new EphemeralDataProtectionProvider();
+        const string capability = "raw-attempt-capability";
+        string[] protectedHeaders = ["X-Registration-Attempt-Capability", "Cache-Control", "Location"];
+
+        var first = await InvokeMiddlewareAsync(
+            repository,
+            "{}",
+            async context =>
+            {
+                context.Response.StatusCode = StatusCodes.Status201Created;
+                context.Response.ContentType = "application/json";
+                context.Response.Headers["X-Registration-Attempt-Capability"] = capability;
+                context.Response.Headers.CacheControl = "private, no-store";
+                context.Response.Headers.Location = "/api/attempts/1";
+                await context.Response.WriteAsync(JsonSerializer.Serialize(new
+                {
+                    attemptCapabilityToken = capability
+                }));
+            },
+            dataProtectionProvider: dataProtectionProvider,
+            protectedReplayHeaders: protectedHeaders);
+
+        string storedBody = repository.Records.Single().ResponseBody!;
+        await Assert.That(storedBody.StartsWith("dp:v1:", StringComparison.Ordinal)).IsTrue();
+        await Assert.That(storedBody.Contains(capability, StringComparison.Ordinal)).IsFalse();
+
+        var replay = await InvokeMiddlewareAsync(
+            repository,
+            "{}",
+            _ => throw new InvalidOperationException("Replay request should not invoke the next delegate."),
+            dataProtectionProvider: dataProtectionProvider,
+            protectedReplayHeaders: protectedHeaders);
+
+        await Assert.That(first.Body).IsEqualTo(replay.Body);
+        await Assert.That(replay.Headers["X-Registration-Attempt-Capability"]).IsEqualTo(capability);
+        await Assert.That(replay.Headers["Cache-Control"]).IsEqualTo("private, no-store");
+        await Assert.That(replay.Headers["Location"]).IsEqualTo("/api/attempts/1");
+        await Assert.That(replay.Headers["X-Idempotency-Replay"]).IsEqualTo("true");
+    }
+
+    [Test]
+    public async Task Middleware_ForCorruptProtectedReplay_FailsClosed()
+    {
+        var repository = new InMemoryIdempotencyRepository();
+        var dataProtectionProvider = new EphemeralDataProtectionProvider();
+        string[] protectedHeaders = ["X-Registration-Attempt-Capability"];
+
+        await InvokeMiddlewareAsync(
+            repository,
+            "{}",
+            context =>
+            {
+                context.Response.StatusCode = StatusCodes.Status201Created;
+                return context.Response.WriteAsync("{}");
+            },
+            dataProtectionProvider: dataProtectionProvider,
+            protectedReplayHeaders: protectedHeaders);
+        repository.Records.Single().ResponseBody = "dp:v1:corrupt";
+
+        var replay = await InvokeMiddlewareAsync(
+            repository,
+            "{}",
+            _ => throw new InvalidOperationException("Corrupt replay must not invoke the next delegate."),
+            dataProtectionProvider: dataProtectionProvider,
+            protectedReplayHeaders: protectedHeaders);
+
+        await Assert.That(replay.StatusCode).IsEqualTo(StatusCodes.Status503ServiceUnavailable);
+        using JsonDocument problem = JsonDocument.Parse(replay.Body);
+        await Assert.That(problem.RootElement.GetProperty("code").GetString())
+            .IsEqualTo("idempotency_unavailable");
     }
 
     [Test]
@@ -405,7 +483,9 @@ public class IdempotencyMiddlewareRealRuntimeTests(RealRuntimeApiFixture fixture
         string path = "/api/idempotency-test",
         string contentType = "application/json; charset=utf-8",
         string? userId = "test-user",
-        Guid? tenantId = null)
+        Guid? tenantId = null,
+        IDataProtectionProvider? dataProtectionProvider = null,
+        IReadOnlyList<string>? protectedReplayHeaders = null)
     {
         var effectiveTenantId = tenantId ?? Guid.Parse("018e4e5c-7f00-7000-8000-000000000001");
         var services = new ServiceCollection()
@@ -426,11 +506,20 @@ public class IdempotencyMiddlewareRealRuntimeTests(RealRuntimeApiFixture fixture
         context.Request.Headers["Idempotency-Key"] = idempotencyKey;
         context.Request.Body = new MemoryStream(Encoding.UTF8.GetBytes(body));
         context.Response.Body = new MemoryStream();
+        if (protectedReplayHeaders is not null)
+        {
+            context.SetEndpoint(new Endpoint(
+                _ => Task.CompletedTask,
+                new EndpointMetadataCollection(
+                    new ProtectIdempotencyReplayAttribute(protectedReplayHeaders.ToArray())),
+                "protected-idempotency-test"));
+        }
 
         var middleware = new IdempotencyMiddleware(
             next,
             new RecyclableMemoryStreamManager(),
-            NullLogger<IdempotencyMiddleware>.Instance);
+            NullLogger<IdempotencyMiddleware>.Instance,
+            dataProtectionProvider ?? new EphemeralDataProtectionProvider());
 
         await middleware.InvokeAsync(context);
 

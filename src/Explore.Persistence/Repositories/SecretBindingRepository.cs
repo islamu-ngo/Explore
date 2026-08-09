@@ -34,6 +34,7 @@ public class SecretBindingRepository : GenericRepository<SecretBinding, Guid>, I
             .AsNoTracking()
             .FirstOrDefaultAsync(
                 b => b.SettingKey == settingKey
+                      && b.Qualifier == string.Empty
                       && b.SettingScopeId == ToSettingScopeId(scope)
                      && b.ScopeId == scopeId,
                 cancellationToken);
@@ -71,6 +72,7 @@ public class SecretBindingRepository : GenericRepository<SecretBinding, Guid>, I
             .AsNoTracking()
             .AnyAsync(
                 b => b.SettingKey == settingKey
+                      && b.Qualifier == string.Empty
                       && b.SettingScopeId == ToSettingScopeId(scope)
                      && b.ScopeId == scopeId,
                 cancellationToken);

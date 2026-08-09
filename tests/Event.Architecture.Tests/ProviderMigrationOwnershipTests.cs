@@ -178,6 +178,33 @@ public sealed class ProviderMigrationOwnershipTests
         }
     }
 
+    [Test]
+    public async Task ProviderModelsPreserveAtomicAnswerChecksAndDecimalPrecision()
+    {
+        foreach (PrimaryDatabaseProvider provider in Enum.GetValues<PrimaryDatabaseProvider>())
+        {
+            var builder = new DbContextOptionsBuilder<ExploreDbContext>();
+            PrimaryDatabaseProviderComposition.ConfigureApplication(builder, CreateOptions(provider));
+            await using var db = new ExploreDbContext(builder.Options);
+            IModel model = db.GetService<IDesignTimeModel>().Model;
+            IEntityType answer = model.FindEntityType(typeof(RegistrationAnswer))!;
+            string[] constraintSql = answer.GetCheckConstraints()
+                .Where(constraint =>
+                    constraint.Name == "ck_registration_answers_exactly_one_value" ||
+                    constraint.Name == "ck_registration_answers_subject_shape")
+                .Select(constraint => constraint.Sql)
+                .ToArray();
+            IProperty decimalValue = answer.FindProperty(nameof(RegistrationAnswer.DecimalValue))!;
+
+            await Assert.That(constraintSql.Length).IsEqualTo(2);
+            await Assert.That(constraintSql.All(sql =>
+                !sql.Contains("num_nonnulls", StringComparison.OrdinalIgnoreCase) &&
+                sql.Contains("CASE WHEN", StringComparison.OrdinalIgnoreCase))).IsTrue();
+            await Assert.That(decimalValue.GetPrecision()).IsEqualTo(19);
+            await Assert.That(decimalValue.GetScale()).IsEqualTo(4);
+        }
+    }
+
     private static async Task AssertPortableCursorMapping<TEntity>(
         ExploreDbContext db,
         string propertyName,

@@ -27,7 +27,7 @@ public sealed class RegistrationSubmissionRepository(ExploreDbContext dbContext)
         RegistrationSubmission submission,
         Guid expectedAttemptConcurrencyStamp,
         CancellationToken cancellationToken) => PersistAcceptedWithNormalizationAsync(
-        attempt, submission, expectedAttemptConcurrencyStamp, [], [], [], cancellationToken);
+        attempt, submission, expectedAttemptConcurrencyStamp, [], [], [], [], cancellationToken);
 
     public async Task<RegistrationSubmissionPersistenceResult> PersistAcceptedWithNormalizationAsync(
         RegistrationAttempt attempt,
@@ -36,6 +36,7 @@ public sealed class RegistrationSubmissionRepository(ExploreDbContext dbContext)
         IReadOnlyCollection<RegistrationAnswer> answers,
         IReadOnlyCollection<RegistrationConsentRecord> consentRecords,
         IReadOnlyCollection<RegistrationSubmissionIssue> issues,
+        IReadOnlyCollection<RegistrationRequirementFulfillment> fulfillments,
         CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(attempt);
@@ -43,6 +44,7 @@ public sealed class RegistrationSubmissionRepository(ExploreDbContext dbContext)
         ArgumentNullException.ThrowIfNull(answers);
         ArgumentNullException.ThrowIfNull(consentRecords);
         ArgumentNullException.ThrowIfNull(issues);
+        ArgumentNullException.ThrowIfNull(fulfillments);
         if (expectedAttemptConcurrencyStamp == Guid.Empty ||
             submission.AttemptConsumptionClaimId is null ||
             submission.AttemptConsumptionClaimId != attempt.SubmissionConsumptionClaimId ||
@@ -53,6 +55,17 @@ public sealed class RegistrationSubmissionRepository(ExploreDbContext dbContext)
         }
 
         ValidateNormalizationGraph(submission, answers, consentRecords, issues);
+        if (fulfillments.Any(fulfillment =>
+                fulfillment.TenantId != submission.TenantId ||
+                fulfillment.EventId != submission.EventId ||
+                fulfillment.RegistrationOrderId != submission.RegistrationOrderId ||
+                fulfillment.RegistrationWorkflowId != submission.RegistrationWorkflowId ||
+                fulfillment.RegistrationRequirementId != submission.RegistrationRequirementId ||
+                fulfillment.SourceRegistrationSubmissionId != submission.Id ||
+                fulfillment.IsSkipped))
+        {
+            throw new ArgumentException("Fulfillment graph must belong to the accepted submission.", nameof(fulfillments));
+        }
 
         RegistrationSubmission? existing = await FindExistingAsync(submission, cancellationToken);
         if (existing is not null)
@@ -108,7 +121,28 @@ public sealed class RegistrationSubmissionRepository(ExploreDbContext dbContext)
                     await dbContext.RegistrationSubmissionIssues.AddRangeAsync(issues, cancellationToken);
                 }
 
+                if (fulfillments.Count > 0)
+                {
+                    await dbContext.RegistrationRequirementFulfillments.AddRangeAsync(fulfillments, cancellationToken);
+                }
+
                 await dbContext.SaveChangesAsync(cancellationToken);
+                bool ready = fulfillments.Count > 0 &&
+                    await RegistrationFinalizationRepository.AreMandatoryRequirementsFulfilledCoreAsync(
+                        dbContext, submission.TenantId, submission.RegistrationOrderId, cancellationToken);
+                if (ready && !await dbContext.RegistrationFinalizationEffects.AnyAsync(value =>
+                        value.TenantId == submission.TenantId &&
+                        value.RegistrationOrderId == submission.RegistrationOrderId,
+                        cancellationToken))
+                {
+                    RegistrationOrder order = await dbContext.RegistrationOrders.SingleAsync(value =>
+                        value.TenantId == submission.TenantId && value.Id == submission.RegistrationOrderId,
+                        cancellationToken);
+                    await dbContext.RegistrationFinalizationEffects.AddAsync(
+                        RegistrationFinalizationEffect.Create(order, submission.ReceivedAt), cancellationToken);
+                    await dbContext.SaveChangesAsync(cancellationToken);
+                }
+
                 await transaction.CommitAsync(cancellationToken);
                 return new(RegistrationSubmissionPersistenceOutcome.Inserted, submission);
             }

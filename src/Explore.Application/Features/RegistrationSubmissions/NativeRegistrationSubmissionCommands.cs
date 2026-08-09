@@ -173,9 +173,9 @@ public sealed class SubmitNativeRegistrationAttemptCommandHandler(
     IRegistrationInventoryRepository inventory,
     IRegistrationSubmissionRepository submissions,
     IRegistrationFormAuthoringRepository forms,
+    IRegistrationParticipantRepository participantRepository,
     IRegistrationSensitiveValueProtector protector,
     IGuestCapabilityTokenService capabilities,
-    ISender sender,
     TimeProvider timeProvider)
     : IRequestHandler<SubmitNativeRegistrationAttemptCommand, NativeRegistrationSubmissionResult>
 {
@@ -220,19 +220,30 @@ public sealed class SubmitNativeRegistrationAttemptCommandHandler(
         }
 
         RegistrationSubmissionNormalizationDraft draft = await NormalizeRegistrationSubmissionCommandHandler.PrepareAsync(
-            submission, request.Answers, submissions, forms, protector, timeProvider, cancellationToken);
+            submission,
+            request.Answers,
+            order,
+            await participantRepository.GetParticipantsByOrderAsync(order.Id, request.TenantId, cancellationToken),
+            await participantRepository.GetAssignmentsWithParticipantsByOrderAsync(order.Id, request.TenantId, cancellationToken),
+            submissions,
+            forms,
+            protector,
+            timeProvider,
+            cancellationToken);
         RegistrationSubmissionPersistenceResult persisted = await submissions.PersistAcceptedWithNormalizationAsync(
-            attempt, submission, expectedStamp, draft.Answers, draft.ConsentRecords, draft.Issues, cancellationToken);
+            attempt,
+            submission,
+            expectedStamp,
+            draft.Answers,
+            draft.ConsentRecords,
+            draft.Issues,
+            draft.Fulfillments,
+            cancellationToken);
         if (persisted.Submission is null || persisted.Outcome == RegistrationSubmissionPersistenceOutcome.AttemptUnavailable)
         {
             return Missing();
         }
 
-        if (persisted.Outcome == RegistrationSubmissionPersistenceOutcome.Inserted)
-        {
-            await NormalizeRegistrationSubmissionCommandHandler.RecordFulfillmentAsync(
-                persisted.Submission, request.Answers, draft.IsValid, sender, cancellationToken);
-        }
         return new(draft.IsValid, persisted.Submission.Id, draft.SafeIssues,
             draft.IsValid ? null : "registration_submission_invalid");
     }

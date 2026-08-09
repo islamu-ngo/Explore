@@ -23,6 +23,18 @@ public class IncomingWebhookMessageRepository : IIncomingWebhookMessageRepositor
 
     public async Task<bool> TryCreateAsync(IncomingWebhookMessage message, CancellationToken cancellationToken)
     {
+        bool exists = await _dbContext.IncomingWebhookMessages
+            .IgnoreTenantFilter(TenantFilterBypassReasons.WebhookTenantOperation)
+            .AnyAsync(existing =>
+                existing.TenantId == message.TenantId &&
+                existing.Provider == message.Provider &&
+                existing.ProviderMessageId == message.ProviderMessageId,
+                cancellationToken);
+        if (exists)
+        {
+            return false;
+        }
+
         try
         {
             await _dbContext.IncomingWebhookMessages.AddAsync(message, cancellationToken);

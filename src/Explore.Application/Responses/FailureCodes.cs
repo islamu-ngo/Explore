@@ -9,6 +9,21 @@ namespace Explore.Application.Responses;
 /// </summary>
 public static class FailureCodes
 {
+    /// <summary>Requested resource does not exist.</summary>
+    public const string NotFound = "not_found";
+
+    /// <summary>Operation requires instance administrator authority.</summary>
+    public const string AdminRequired = "admin_required";
+
+    /// <summary>Operation requires an authenticated user context.</summary>
+    public const string AuthenticationRequired = "authentication_required";
+
+    /// <summary>Operation conflicts with a concurrent update.</summary>
+    public const string ConcurrencyConflict = "concurrency_conflict";
+
+    /// <summary>Tenant reporting provider overrides are locked by instance policy.</summary>
+    public const string ReportingTenantOverridesLocked = "ReportingTenantOverridesLocked";
+
     public const string QuotaExceeded = "quota_exceeded";
     public const string StorageUploadTooLarge = "storage_upload_too_large";
     public const string StorageUploadSessionNotFound = "storage_upload_session_not_found";

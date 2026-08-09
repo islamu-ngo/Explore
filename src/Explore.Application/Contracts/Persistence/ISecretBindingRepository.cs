@@ -48,7 +48,7 @@ public interface ISecretBindingRepository : IGenericRepository<SecretBinding, Gu
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Checks whether a binding already exists at a given scope for a given key.
+    /// Checks whether an unqualified binding already exists at a given scope for a given key.
     /// </summary>
     Task<bool> ExistsForScopeAsync(
         string settingKey,

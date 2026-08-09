@@ -39,6 +39,8 @@ public partial class SecretBinding : IAuditableEntity
     /// </summary>
     public required string SettingKey { get; set; }
 
+    public string Qualifier { get; set; } = string.Empty;
+
     /// <summary>
     /// Scope level: <see cref="SecretScope.Instance"/> for instance-wide bindings (<see cref="ScopeId"/> MUST be null),
     /// or <see cref="SecretScope.Tenant"/> for tenant-scoped bindings (<see cref="ScopeId"/> MUST be the tenant id).

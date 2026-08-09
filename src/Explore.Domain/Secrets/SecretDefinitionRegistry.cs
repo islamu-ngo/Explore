@@ -133,6 +133,12 @@ public static class SecretDefinitionRegistry
             public const string SvixOperationalWebhookSecret = "webhooks.svix.operational_webhook_secret";
         }
 
+        public static class RegistrationProviders
+        {
+            public const string ApiToken = "registration_provider.api_token";
+            public const string WebhookSecret = "registration_provider.webhook_secret";
+        }
+
         public static class Ai
         {
             public const string OpenAiApiKey = "ai.openai.api_key";
@@ -430,6 +436,29 @@ public static class SecretDefinitionRegistry
                 DefaultEnvironmentVariableName = "WEBHOOKS_SVIX_OPERATIONAL_WEBHOOK_SECRET",
                 IsBootstrapSecret = false,
                 Description = "Svix endpoint signing secret used to verify incoming operational callbacks.",
+            },
+
+            new()
+            {
+                Key = Keys.RegistrationProviders.ApiToken,
+                AllowedScopes = new[] { SecretScope.Tenant },
+                AllowedSources = nonBootstrapSources,
+                DefaultInfisicalPath = "/registration-providers",
+                DefaultInfisicalKey = "REGISTRATION_PROVIDER_API_TOKEN",
+                DefaultEnvironmentVariableName = "REGISTRATION_PROVIDER_API_TOKEN",
+                IsBootstrapSecret = false,
+                Description = "Tenant registration-provider API token reference.",
+            },
+            new()
+            {
+                Key = Keys.RegistrationProviders.WebhookSecret,
+                AllowedScopes = new[] { SecretScope.Tenant },
+                AllowedSources = nonBootstrapSources,
+                DefaultInfisicalPath = "/registration-providers",
+                DefaultInfisicalKey = "REGISTRATION_PROVIDER_WEBHOOK_SECRET",
+                DefaultEnvironmentVariableName = "REGISTRATION_PROVIDER_WEBHOOK_SECRET",
+                IsBootstrapSecret = false,
+                Description = "Tenant registration-provider webhook signing secret reference.",
             },
 
             // --- postgresql/POSTGRESQL_* (ALL bootstrap) ---

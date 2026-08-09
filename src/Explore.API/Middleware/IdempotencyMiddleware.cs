@@ -5,8 +5,11 @@ using Explore.API.Attributes;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Domain;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.IO;
+using System.Security.Cryptography;
+using System.Text.Json;
 
 namespace Explore.API.Middleware;
 
@@ -21,6 +24,7 @@ public sealed class IdempotencyMiddleware
 {
     private const string IdempotencyKeyHeader = "Idempotency-Key";
     private const string ReplayHeader = "X-Idempotency-Replay";
+    private const string ProtectedReplayPrefix = "dp:v1:";
     private const int MaxKeyLength = 128;
     private const int MaxStoredResponseBodyBytes = 1024 * 1024;
     private static readonly TimeSpan DefaultExpiration = TimeSpan.FromHours(24);
@@ -36,14 +40,19 @@ public sealed class IdempotencyMiddleware
     private readonly RequestDelegate _next;
     private readonly RecyclableMemoryStreamManager _streamManager;
     private readonly ILogger<IdempotencyMiddleware> _logger;
+    private readonly IDataProtector _replayProtector;
     public IdempotencyMiddleware(
         RequestDelegate next,
         RecyclableMemoryStreamManager streamManager,
-        ILogger<IdempotencyMiddleware> logger)
+        ILogger<IdempotencyMiddleware> logger,
+        IDataProtectionProvider dataProtectionProvider)
     {
         _next = next;
         _streamManager = streamManager;
         _logger = logger;
+        _replayProtector = dataProtectionProvider.CreateProtector(
+            "Explore.API.IdempotencyReplay",
+            "v1");
     }
 
     public async Task InvokeAsync(HttpContext context)
@@ -101,6 +110,8 @@ public sealed class IdempotencyMiddleware
 
         var tenantContext = context.RequestServices.GetRequiredService<ITenantContext>();
         var repository = context.RequestServices.GetRequiredService<IIdempotencyRepository>();
+        var replayProtection = context.GetEndpoint()?.Metadata
+            .GetMetadata<ProtectIdempotencyReplayAttribute>();
         var tenantId = tenantContext.TenantId;
         var requestIdentity = await IdempotencyRequestIdentityFactory.CreateAsync(
             context,
@@ -162,9 +173,33 @@ public sealed class IdempotencyMiddleware
                 context.Response.ContentType = claim.Record.ContentType;
             }
 
-            if (!string.IsNullOrEmpty(claim.Record.ResponseBody))
+            string? replayBody = claim.Record.ResponseBody;
+            if (replayProtection is not null)
             {
-                await context.Response.WriteAsync(claim.Record.ResponseBody, context.RequestAborted);
+                if (!TryUnprotectReplay(replayBody, out ProtectedReplayEnvelope? replay))
+                {
+                    await WritePersistenceFailureAsync(context);
+                    return;
+                }
+
+                replayBody = replay.Body;
+                foreach (string headerName in replayProtection.ResponseHeaders)
+                {
+                    if (replay.Headers.TryGetValue(headerName, out string? headerValue))
+                    {
+                        context.Response.Headers[headerName] = headerValue;
+                    }
+                }
+            }
+            else if (replayBody?.StartsWith(ProtectedReplayPrefix, StringComparison.Ordinal) == true)
+            {
+                await WritePersistenceFailureAsync(context);
+                return;
+            }
+
+            if (!string.IsNullOrEmpty(replayBody))
+            {
+                await context.Response.WriteAsync(replayBody, context.RequestAborted);
             }
 
             return;
@@ -201,10 +236,13 @@ public sealed class IdempotencyMiddleware
         {
             try
             {
+                string? persistedResponseBody = replayProtection is null
+                    ? responseBody
+                    : ProtectReplay(responseBody, context.Response, replayProtection);
                 if (!await repository.CompleteAsync(
                         record.Id,
                         context.Response.StatusCode,
-                        responseBody,
+                        persistedResponseBody,
                         context.Response.ContentType,
                         context.RequestAborted))
                 {
@@ -233,6 +271,53 @@ public sealed class IdempotencyMiddleware
         bufferStream.Position = 0;
         await bufferStream.CopyToAsync(originalBodyStream, context.RequestAborted);
     }
+
+    private string ProtectReplay(
+        string? responseBody,
+        HttpResponse response,
+        ProtectIdempotencyReplayAttribute metadata)
+    {
+        var headers = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        foreach (string headerName in metadata.ResponseHeaders)
+        {
+            if (response.Headers.TryGetValue(headerName, out var headerValue))
+            {
+                headers[headerName] = headerValue.ToString();
+            }
+        }
+
+        var envelope = new ProtectedReplayEnvelope(1, responseBody, headers);
+        return ProtectedReplayPrefix + _replayProtector.Protect(JsonSerializer.Serialize(envelope));
+    }
+
+    private bool TryUnprotectReplay(string? storedBody, out ProtectedReplayEnvelope replay)
+    {
+        replay = null!;
+        if (storedBody?.StartsWith(ProtectedReplayPrefix, StringComparison.Ordinal) != true)
+        {
+            return false;
+        }
+
+        try
+        {
+            replay = JsonSerializer.Deserialize<ProtectedReplayEnvelope>(
+                _replayProtector.Unprotect(storedBody[ProtectedReplayPrefix.Length..]))!;
+            return replay is { Version: 1, Headers: not null };
+        }
+        catch (CryptographicException)
+        {
+            return false;
+        }
+        catch (JsonException)
+        {
+            return false;
+        }
+    }
+
+    private sealed record ProtectedReplayEnvelope(
+        int Version,
+        string? Body,
+        Dictionary<string, string> Headers);
 
     private static bool MatchesRequestIdentity(
         IdempotencyRecord record,

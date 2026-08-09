@@ -68,6 +68,9 @@ public static class PersistenceServicesRegistration
             applicationProvider = runtimeDatabase.Provider;
             applicationRuntimeOptions = runtimeDatabaseOptions;
 
+            services.AddDbContext<DataProtectionKeyContext>(options =>
+                PrimaryDatabaseProviderComposition.ConfigureDataProtection(options, runtimeDatabaseOptions));
+
             // Use pooled DbContext factory for performance (EF Core recommended pattern)
             // The scoped ExploreDbContext registration below handles scoped dependency injection
             services.AddPooledDbContextFactory<ExploreDbContext>(options =>
@@ -215,6 +218,7 @@ public static class PersistenceServicesRegistration
         services.AddScoped<IEventRepository, EventRepository>();
         services.AddScoped<IEventParticipationConfigurationRepository, EventParticipationConfigurationRepository>();
         services.AddScoped<IRegistrationFormAuthoringRepository, RegistrationFormAuthoringRepository>();
+        services.AddScoped<IRegistrationProviderRepository, RegistrationProviderRepository>();
         services.AddScoped<IParticipationRequirementAttachmentRepository, ParticipationRequirementAttachmentRepository>();
         services.AddScoped<IEventTicketCatalogRepository, EventTicketCatalogRepository>();
         services.AddScoped<IRegistrationInventoryRepository, RegistrationInventoryRepository>();

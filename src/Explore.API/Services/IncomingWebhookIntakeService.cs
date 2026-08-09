@@ -23,7 +23,8 @@ public sealed class IncomingWebhookIntakeService(
     private const int MaxProviderMessageIdLength = IncomingWebhookMessage.MaxProviderMessageIdLength;
     private const int MaxIdempotencyKeyLength = IncomingWebhookMessage.MaxIdempotencyKeyLength;
     private const int MaxEventTypeLength = IncomingWebhookMessage.MaxEventTypeLength;
-    private const int MaxSafeHeaderValueLength = 256;
+    private const int MaxSafeHeaderValueLength = 4096;
+    public const string VerificationReceiptHeader = "X-Registration-Verification-Receipt";
 
     private static readonly string[] SensitiveHeaderFragments =
     [
@@ -76,10 +77,20 @@ public sealed class IncomingWebhookIntakeService(
         var rawPayload = Encoding.UTF8.GetString(bodyBytes);
         var payloadHash = ComputePayloadHash(bodyBytes);
         var receivedAt = DateTimeOffset.UtcNow;
-        var verifier = verifierRegistry.GetRequired(normalizedProvider);
-        var verification = await verifier.VerifyAsync(
-            new IncomingWebhookContext(normalizedProvider, rawPayload, bodyBytes, headers, receivedAt),
-            cancellationToken);
+        IncomingWebhookVerificationResult verification;
+        try
+        {
+            var verifier = verifierRegistry.GetRequired(normalizedProvider);
+            verification = await verifier.VerifyAsync(
+                new IncomingWebhookContext(normalizedProvider, rawPayload, bodyBytes, headers, receivedAt),
+                cancellationToken);
+        }
+        catch (JsonException)
+        {
+            verification = IncomingWebhookVerificationResult.Rejected(
+                $"{normalizedProvider}_webhook_format_invalid",
+                "The incoming webhook could not be verified.");
+        }
 
         if (!verification.IsVerified)
         {
@@ -170,7 +181,7 @@ public sealed class IncomingWebhookIntakeService(
             readResult.PayloadHash,
             readResult.ContentType,
             readResult.ContentEncoding,
-            SerializeSafeHeaders(readResult.Headers),
+            SerializeSafeHeaders(readResult.Headers, readResult.Verification.Receipt),
             readResult.ReceivedAt.UtcDateTime,
             now,
             retention.InboundPayloadRetentionUntil.UtcDateTime,
@@ -286,7 +297,7 @@ public sealed class IncomingWebhookIntakeService(
         return "sha256:" + Convert.ToHexString(hash).ToLowerInvariant();
     }
 
-    private static string SerializeSafeHeaders(IReadOnlyDictionary<string, string> headers)
+    private static string SerializeSafeHeaders(IReadOnlyDictionary<string, string> headers, string? verificationReceipt = null)
     {
         SortedDictionary<string, string> safe = new(StringComparer.OrdinalIgnoreCase);
         foreach (var header in headers)
@@ -297,6 +308,11 @@ public sealed class IncomingWebhookIntakeService(
             }
 
             safe[header.Key] = Truncate(header.Value, MaxSafeHeaderValueLength);
+        }
+
+        if (!string.IsNullOrWhiteSpace(verificationReceipt))
+        {
+            safe[VerificationReceiptHeader] = Truncate(verificationReceipt.Trim(), MaxSafeHeaderValueLength);
         }
 
         return JsonSerializer.Serialize(safe);

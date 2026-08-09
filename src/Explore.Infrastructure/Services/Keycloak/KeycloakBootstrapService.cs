@@ -113,7 +113,7 @@ public sealed class KeycloakBootstrapService : IKeycloakBootstrapService
             var accessToken = await RequestAdminTokenAsync(api, request, cancellationToken);
             if (string.IsNullOrWhiteSpace(accessToken))
             {
-                return Failure(request, "keycloak_auth_failed", "Keycloak admin authentication failed.");
+                return Failure(request, KeycloakFailureCodes.AuthFailed, "Keycloak admin authentication failed.");
             }
 
             var realmStatus = await EnsureRealmAsync(api, request, accessToken, cancellationToken);
@@ -185,16 +185,16 @@ public sealed class KeycloakBootstrapService : IKeycloakBootstrapService
         catch (Exception ex) when (ex is OperationCanceledException or ApiRequestException { InnerException: OperationCanceledException })
         {
             cancellationToken.ThrowIfCancellationRequested();
-            return Failure(request, "keycloak_timeout", "Keycloak bootstrap timed out before completion.");
+            return Failure(request, KeycloakFailureCodes.Timeout, "Keycloak bootstrap timed out before completion.");
         }
         catch (Exception ex) when (ex is HttpRequestException or ApiRequestException)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            return Failure(request, "keycloak_unreachable", "Keycloak Admin API was unreachable during bootstrap.");
+            return Failure(request, KeycloakFailureCodes.Unreachable, "Keycloak Admin API was unreachable during bootstrap.");
         }
         catch (JsonException)
         {
-            return Failure(request, "keycloak_invalid_response", "Keycloak Admin API returned an invalid response.");
+            return Failure(request, KeycloakFailureCodes.InvalidResponse, "Keycloak Admin API returned an invalid response.");
         }
     }
 
@@ -316,7 +316,7 @@ public sealed class KeycloakBootstrapService : IKeycloakBootstrapService
         {
             cancellationToken.ThrowIfCancellationRequested();
             checks.Add(DoctorCheck(
-                "keycloak_timeout",
+                KeycloakFailureCodes.Timeout,
                 "Keycloak reachability",
                 "blocked",
                 "Keycloak diagnostics timed out before completion.",
@@ -327,7 +327,7 @@ public sealed class KeycloakBootstrapService : IKeycloakBootstrapService
         {
             cancellationToken.ThrowIfCancellationRequested();
             checks.Add(DoctorCheck(
-                "keycloak_unreachable",
+                KeycloakFailureCodes.Unreachable,
                 "Keycloak reachability",
                 "blocked",
                 "Keycloak was unreachable during diagnostics.",
@@ -337,7 +337,7 @@ public sealed class KeycloakBootstrapService : IKeycloakBootstrapService
         catch (JsonException)
         {
             checks.Add(DoctorCheck(
-                "keycloak_invalid_response",
+                KeycloakFailureCodes.InvalidResponse,
                 "Keycloak response format",
                 "blocked",
                 "Keycloak returned a response that could not be parsed safely.",
@@ -497,7 +497,7 @@ public sealed class KeycloakBootstrapService : IKeycloakBootstrapService
         {
             cancellationToken.ThrowIfCancellationRequested();
             diagnostics.Add(DoctorCheck(
-                "keycloak_timeout",
+                KeycloakFailureCodes.Timeout,
                 "Keycloak reachability",
                 "blocked",
                 "Keycloak sync preview timed out before completion.",
@@ -508,7 +508,7 @@ public sealed class KeycloakBootstrapService : IKeycloakBootstrapService
         {
             cancellationToken.ThrowIfCancellationRequested();
             diagnostics.Add(DoctorCheck(
-                "keycloak_unreachable",
+                KeycloakFailureCodes.Unreachable,
                 "Keycloak reachability",
                 "blocked",
                 "Keycloak was unreachable during sync preview.",
@@ -518,7 +518,7 @@ public sealed class KeycloakBootstrapService : IKeycloakBootstrapService
         catch (JsonException)
         {
             diagnostics.Add(DoctorCheck(
-                "keycloak_invalid_response",
+                KeycloakFailureCodes.InvalidResponse,
                 "Keycloak response format",
                 "blocked",
                 "Keycloak returned a response that could not be parsed safely.",
@@ -656,7 +656,7 @@ public sealed class KeycloakBootstrapService : IKeycloakBootstrapService
         {
             cancellationToken.ThrowIfCancellationRequested();
             diagnostics.Add(DoctorCheck(
-                "keycloak_timeout",
+                KeycloakFailureCodes.Timeout,
                 "Keycloak reachability",
                 "blocked",
                 "Keycloak sync apply timed out before completion.",
@@ -667,7 +667,7 @@ public sealed class KeycloakBootstrapService : IKeycloakBootstrapService
         {
             cancellationToken.ThrowIfCancellationRequested();
             diagnostics.Add(DoctorCheck(
-                "keycloak_unreachable",
+                KeycloakFailureCodes.Unreachable,
                 "Keycloak reachability",
                 "blocked",
                 "Keycloak was unreachable during sync apply.",
@@ -677,7 +677,7 @@ public sealed class KeycloakBootstrapService : IKeycloakBootstrapService
         catch (JsonException)
         {
             diagnostics.Add(DoctorCheck(
-                "keycloak_invalid_response",
+                KeycloakFailureCodes.InvalidResponse,
                 "Keycloak response format",
                 "blocked",
                 "Keycloak returned a response that could not be parsed safely.",
@@ -968,7 +968,7 @@ public sealed class KeycloakBootstrapService : IKeycloakBootstrapService
     private static bool TryNormalizeBaseUri(string keycloakBaseUrl, bool allowLocalUrls, out Uri? baseUri, out string failureCode)
     {
         baseUri = null;
-        failureCode = "keycloak_invalid_url";
+        failureCode = KeycloakFailureCodes.InvalidUrl;
 
         if (!Uri.TryCreate(keycloakBaseUrl, UriKind.Absolute, out var uri)
             || (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps)
@@ -982,7 +982,7 @@ public sealed class KeycloakBootstrapService : IKeycloakBootstrapService
 
         if (!allowLocalUrls && IsBlockedHost(uri.Host))
         {
-            failureCode = "keycloak_unsafe_host";
+            failureCode = KeycloakFailureCodes.UnsafeHost;
             return false;
         }
 
@@ -999,7 +999,7 @@ public sealed class KeycloakBootstrapService : IKeycloakBootstrapService
     {
         baseUri = null;
         realm = string.Empty;
-        failureCode = "keycloak_invalid_authority";
+        failureCode = KeycloakFailureCodes.InvalidAuthority;
 
         if (!Uri.TryCreate(authority, UriKind.Absolute, out var authorityUri))
             return false;
@@ -1096,11 +1096,11 @@ public sealed class KeycloakBootstrapService : IKeycloakBootstrapService
                 request.Mode,
                 (int?)checkResponse.StatusCode);
 
-            return Failure(request, "keycloak_realm_check_failed", "Keycloak realm status could not be verified.");
+            return Failure(request, KeycloakFailureCodes.RealmCheckFailed, "Keycloak realm status could not be verified.");
         }
 
         if (request.Mode != KeycloakBootstrapMode.CreateRealm)
-            return Failure(request, "keycloak_realm_not_found", "Keycloak realm was not found and create mode was not requested.");
+            return Failure(request, KeycloakFailureCodes.RealmNotFound, "Keycloak realm was not found and create mode was not requested.");
 
         var createResponse = await api.CreateRealmAsync(
             AuthorizationHeader(accessToken),
@@ -1115,7 +1115,7 @@ public sealed class KeycloakBootstrapService : IKeycloakBootstrapService
             request.Realm,
             (int?)createResponse.StatusCode);
 
-        return Failure(request, "keycloak_realm_create_failed", "Keycloak realm could not be created.");
+        return Failure(request, KeycloakFailureCodes.RealmCreateFailed, "Keycloak realm could not be created.");
     }
 
     private async Task<ClientSecretUpdateResult> EnsureClientSecretAsync(
@@ -1132,7 +1132,7 @@ public sealed class KeycloakBootstrapService : IKeycloakBootstrapService
     {
         var lookup = await FindClientAsync(api, realm, clientId, accessToken, cancellationToken);
         if (!lookup.Success)
-            return ClientSecretUpdateResult.Failure("keycloak_client_lookup_failed", "Keycloak client lookup failed.");
+            return ClientSecretUpdateResult.Failure(KeycloakFailureCodes.ClientLookupFailed, "Keycloak client lookup failed.");
 
         var clientUuid = lookup.ClientUuid;
         if (clientUuid is null)
@@ -1143,16 +1143,16 @@ public sealed class KeycloakBootstrapService : IKeycloakBootstrapService
 
             lookup = await FindClientAsync(api, realm, clientId, accessToken, cancellationToken);
             if (!lookup.Success)
-                return ClientSecretUpdateResult.Failure("keycloak_client_lookup_failed", "Keycloak client lookup failed.");
+                return ClientSecretUpdateResult.Failure(KeycloakFailureCodes.ClientLookupFailed, "Keycloak client lookup failed.");
 
             clientUuid = lookup.ClientUuid;
             if (clientUuid is null)
-                return ClientSecretUpdateResult.Failure("keycloak_client_not_found", "Keycloak client could not be located after creation.");
+                return ClientSecretUpdateResult.Failure(KeycloakFailureCodes.ClientNotFound, "Keycloak client could not be located after creation.");
         }
 
         var clientRepresentation = await GetClientRepresentationAsync(api, realm, clientUuid, accessToken, cancellationToken);
         if (clientRepresentation is null)
-            return ClientSecretUpdateResult.Failure("keycloak_client_lookup_failed", "Keycloak client representation could not be loaded.");
+            return ClientSecretUpdateResult.Failure(KeycloakFailureCodes.ClientLookupFailed, "Keycloak client representation could not be loaded.");
 
         var representationSecretMatches = string.Equals(
             clientRepresentation["secret"]?.GetValue<string>(),
@@ -1226,7 +1226,7 @@ public sealed class KeycloakBootstrapService : IKeycloakBootstrapService
             (int?)secretResponse.StatusCode);
 
         return ClientSecretUpdateResult.Failure(
-            "keycloak_client_secret_update_failed",
+            KeycloakFailureCodes.ClientSecretUpdateFailed,
             "Keycloak client secret could not be updated.");
     }
 
@@ -1356,7 +1356,7 @@ public sealed class KeycloakBootstrapService : IKeycloakBootstrapService
         if (offlineRole is null)
         {
             return ClientSecretUpdateResult.Failure(
-                "keycloak_offline_access_role_not_found",
+                KeycloakFailureCodes.OfflineAccessRoleNotFound,
                 "Keycloak offline access realm role could not be located.");
         }
 
@@ -1366,7 +1366,7 @@ public sealed class KeycloakBootstrapService : IKeycloakBootstrapService
         if (string.IsNullOrWhiteSpace(defaultRoleId))
         {
             return ClientSecretUpdateResult.Failure(
-                "keycloak_default_role_not_found",
+                KeycloakFailureCodes.DefaultRoleNotFound,
                 "Keycloak default realm role could not be located.");
         }
 
@@ -1380,7 +1380,7 @@ public sealed class KeycloakBootstrapService : IKeycloakBootstrapService
         return response.IsSuccessStatusCode || response.StatusCode == HttpStatusCode.Conflict
             ? ClientSecretUpdateResult.Succeeded()
             : ClientSecretUpdateResult.Failure(
-                "keycloak_offline_access_role_update_failed",
+                KeycloakFailureCodes.OfflineAccessRoleUpdateFailed,
                 "Keycloak offline access realm role could not be assigned to the default role.");
     }
 
@@ -1406,7 +1406,7 @@ public sealed class KeycloakBootstrapService : IKeycloakBootstrapService
         if (string.IsNullOrWhiteSpace(scopeId))
         {
             return ClientSecretUpdateResult.Failure(
-                "keycloak_client_scope_not_found",
+                KeycloakFailureCodes.ClientScopeNotFound,
                 "Keycloak offline access client scope could not be located.");
         }
 
@@ -1420,7 +1420,7 @@ public sealed class KeycloakBootstrapService : IKeycloakBootstrapService
         return response.IsSuccessStatusCode || response.StatusCode == HttpStatusCode.Conflict
             ? ClientSecretUpdateResult.Succeeded()
             : ClientSecretUpdateResult.Failure(
-                "keycloak_client_scope_update_failed",
+                KeycloakFailureCodes.ClientScopeUpdateFailed,
                 "Keycloak offline access client scope could not be assigned.");
     }
 
@@ -1434,7 +1434,7 @@ public sealed class KeycloakBootstrapService : IKeycloakBootstrapService
         if (string.IsNullOrWhiteSpace(scopeId))
         {
             return ClientSecretUpdateResult.Failure(
-                "keycloak_client_scope_not_found",
+                KeycloakFailureCodes.ClientScopeNotFound,
                 "Keycloak offline access client scope could not be located.");
         }
 
@@ -1457,7 +1457,7 @@ public sealed class KeycloakBootstrapService : IKeycloakBootstrapService
         if (offlineRole is null)
         {
             return ClientSecretUpdateResult.Failure(
-                "keycloak_offline_access_role_not_found",
+                KeycloakFailureCodes.OfflineAccessRoleNotFound,
                 "Keycloak offline access realm role could not be located.");
         }
 
@@ -1471,7 +1471,7 @@ public sealed class KeycloakBootstrapService : IKeycloakBootstrapService
         return response.IsSuccessStatusCode || response.StatusCode == HttpStatusCode.Conflict
             ? ClientSecretUpdateResult.Succeeded()
             : ClientSecretUpdateResult.Failure(
-                "keycloak_offline_access_scope_mapping_failed",
+                KeycloakFailureCodes.OfflineAccessScopeMappingFailed,
                 "Keycloak offline access role could not be assigned to the offline access client scope.");
     }
 
@@ -1623,7 +1623,7 @@ public sealed class KeycloakBootstrapService : IKeycloakBootstrapService
             clientId,
             (int?)response.StatusCode);
 
-        return ClientSecretUpdateResult.Failure("keycloak_client_create_failed", "Keycloak client could not be created.");
+        return ClientSecretUpdateResult.Failure(KeycloakFailureCodes.ClientCreateFailed, "Keycloak client could not be created.");
     }
 
     private static async Task AddDiscoveryCheckAsync(
@@ -1661,7 +1661,7 @@ public sealed class KeycloakBootstrapService : IKeycloakBootstrapService
         ThrowIfRequestFailed(realmResponse, cancellationToken);
         checks.Add(realmResponse.IsSuccessStatusCode
             ? DoctorCheck("keycloak_realm_exists", "Realm", "healthy", "Keycloak realm exists and is readable.")
-            : DoctorCheck("keycloak_realm_not_found", "Realm", "blocked", "Keycloak realm could not be read through the Admin API.", "Verify the realm exists and the temporary admin has read access."));
+            : DoctorCheck(KeycloakFailureCodes.RealmNotFound, "Realm", "blocked", "Keycloak realm could not be read through the Admin API.", "Verify the realm exists and the temporary admin has read access."));
 
         if (!realmResponse.IsSuccessStatusCode)
             return;
@@ -1882,7 +1882,7 @@ public sealed class KeycloakBootstrapService : IKeycloakBootstrapService
         ThrowIfRequestFailed(realmResponse, cancellationToken);
         diagnostics.Add(realmResponse.IsSuccessStatusCode
             ? DoctorCheck("keycloak_realm_exists", "Realm", "healthy", "Keycloak realm exists and is readable.")
-            : DoctorCheck("keycloak_realm_not_found", "Realm", "blocked", "Keycloak realm could not be read through the Admin API.", "Verify the realm exists and the temporary admin has read access."));
+            : DoctorCheck(KeycloakFailureCodes.RealmNotFound, "Realm", "blocked", "Keycloak realm could not be read through the Admin API.", "Verify the realm exists and the temporary admin has read access."));
 
         if (!realmResponse.IsSuccessStatusCode)
         {
@@ -2178,7 +2178,7 @@ public sealed class KeycloakBootstrapService : IKeycloakBootstrapService
         ThrowIfRequestFailed(realmResponse, cancellationToken);
         diagnostics.Add(realmResponse.IsSuccessStatusCode
             ? DoctorCheck("keycloak_realm_exists", "Realm", "healthy", "Keycloak realm exists and is readable.")
-            : DoctorCheck("keycloak_realm_not_found", "Realm", "blocked", "Keycloak realm could not be read through the Admin API.", "Verify the realm exists and the temporary admin has read access."));
+            : DoctorCheck(KeycloakFailureCodes.RealmNotFound, "Realm", "blocked", "Keycloak realm could not be read through the Admin API.", "Verify the realm exists and the temporary admin has read access."));
 
         if (!realmResponse.IsSuccessStatusCode)
         {

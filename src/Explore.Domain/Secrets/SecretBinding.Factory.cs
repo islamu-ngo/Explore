@@ -19,7 +19,8 @@ public partial class SecretBinding
         string environment,
         string path,
         string key,
-        bool isLocked = false)
+        bool isLocked = false,
+        string? qualifier = null)
     {
         var definition = GetValidDefinition(settingKey, scope, scopeId, SecretSourceTypeEnum.Infisical);
 
@@ -34,6 +35,7 @@ public partial class SecretBinding
         return new SecretBinding
         {
             SettingKey = settingKey,
+            Qualifier = NormalizeQualifier(qualifier),
             Scope = scope,
             ScopeId = scopeId,
             SourceType = SecretSourceTypeEnum.Infisical,
@@ -55,7 +57,8 @@ public partial class SecretBinding
         Guid? scopeId,
         byte[] ciphertext,
         int ciphertextVersion,
-        bool isLocked = false)
+        bool isLocked = false,
+        string? qualifier = null)
     {
         GetValidDefinition(settingKey, scope, scopeId, SecretSourceTypeEnum.InlineEncrypted);
 
@@ -67,6 +70,7 @@ public partial class SecretBinding
         return new SecretBinding
         {
             SettingKey = settingKey,
+            Qualifier = NormalizeQualifier(qualifier),
             Scope = scope,
             ScopeId = scopeId,
             SourceType = SecretSourceTypeEnum.InlineEncrypted,
@@ -84,7 +88,8 @@ public partial class SecretBinding
         SecretScope scope,
         Guid? scopeId,
         string variableName,
-        bool isLocked = false)
+        bool isLocked = false,
+        string? qualifier = null)
     {
         GetValidDefinition(settingKey, scope, scopeId, SecretSourceTypeEnum.EnvironmentVariable);
 
@@ -94,6 +99,7 @@ public partial class SecretBinding
         return new SecretBinding
         {
             SettingKey = settingKey,
+            Qualifier = NormalizeQualifier(qualifier),
             Scope = scope,
             ScopeId = scopeId,
             SourceType = SecretSourceTypeEnum.EnvironmentVariable,
@@ -231,6 +237,14 @@ public partial class SecretBinding
         }
 
         return definition;
+    }
+
+    private static string NormalizeQualifier(string? qualifier)
+    {
+        string normalized = qualifier?.Trim() ?? string.Empty;
+        return normalized.Length <= 128
+            ? normalized
+            : throw new ArgumentException("Secret binding qualifier must be at most 128 characters.", nameof(qualifier));
     }
 
     /// <summary>Clears every metadata field; use before switching SourceType.</summary>

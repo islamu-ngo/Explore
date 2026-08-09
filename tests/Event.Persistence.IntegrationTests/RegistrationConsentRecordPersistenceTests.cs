@@ -76,7 +76,7 @@ public sealed class RegistrationConsentRecordPersistenceTests
 
         Exception failure = (await Assert.That(async () => await new RegistrationSubmissionRepository(context)
             .PersistAcceptedWithNormalizationAsync(orderScope.Attempt, accepted, expectedAttemptStamp,
-                [answer], [firstDuplicate, secondDuplicate], [issue], CancellationToken.None))
+                [answer], [firstDuplicate, secondDuplicate], [issue], [], CancellationToken.None))
             .Throws<Exception>())!;
         await Assert.That(FindPostgresException(failure).ConstraintName).IsEqualTo("ux_registration_consent_records_evidence");
         context.ChangeTracker.Clear();

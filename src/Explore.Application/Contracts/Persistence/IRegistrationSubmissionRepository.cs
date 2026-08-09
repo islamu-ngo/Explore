@@ -22,6 +22,7 @@ public interface IRegistrationSubmissionRepository
         IReadOnlyCollection<RegistrationAnswer> answers,
         IReadOnlyCollection<RegistrationConsentRecord> consentRecords,
         IReadOnlyCollection<RegistrationSubmissionIssue> issues,
+        IReadOnlyCollection<RegistrationRequirementFulfillment> fulfillments,
         CancellationToken cancellationToken);
 
     Task<RegistrationSubmissionPersistenceResult> PersistEvidenceOnlyAsync(

@@ -5,6 +5,7 @@ using Explore.Application.DTOs.StorageObject;
 using Explore.Application.Features.EmailDispatch;
 using Explore.Application.Features.EventReporting;
 using Explore.Application.Responses;
+using Explore.Infrastructure.Services.Keycloak;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Explore.API.ExceptionHandling;
@@ -35,6 +36,24 @@ internal static class CommandResponseResultMapper
         "instanceAuthProviderConfiguration",
         "Instance auth-provider configuration validation failed",
         "Instance auth-provider configuration update failed.");
+
+    public static ActionResult MapCommandResponse<TKey>(
+        this ControllerBase controller,
+        BaseCommandResponse<TKey> response)
+    {
+        if (response.Success)
+        {
+            return controller.Ok(response);
+        }
+
+        return response.FailureCode switch
+        {
+            FailureCodes.NotFound => controller.NotFound(response),
+            FailureCodes.AdminRequired => controller.StatusCode(StatusCodes.Status403Forbidden, response),
+            FailureCodes.ConcurrencyConflict => controller.Conflict(response),
+            _ => controller.BadRequest(response)
+        };
+    }
 
     public static ActionResult ToCommandValidationProblem<TKey>(
         this ControllerBase controller,
@@ -284,17 +303,17 @@ internal static class CommandResponseResultMapper
     private static int ResolveAuthProviderStatusCode(string? failureCode)
         => failureCode switch
         {
-            "keycloak_timeout" => StatusCodes.Status503ServiceUnavailable,
-            "keycloak_unreachable" => StatusCodes.Status503ServiceUnavailable,
-            "keycloak_invalid_response" => StatusCodes.Status502BadGateway,
-            "keycloak_realm_check_failed" => StatusCodes.Status502BadGateway,
-            "keycloak_realm_create_failed" => StatusCodes.Status502BadGateway,
-            "keycloak_client_lookup_failed" => StatusCodes.Status502BadGateway,
-            "keycloak_client_create_failed" => StatusCodes.Status502BadGateway,
-            "keycloak_client_secret_update_failed" => StatusCodes.Status502BadGateway,
-            "keycloak_offline_access_role_update_failed" => StatusCodes.Status502BadGateway,
-            "keycloak_client_scope_update_failed" => StatusCodes.Status502BadGateway,
-            "keycloak_offline_access_scope_mapping_failed" => StatusCodes.Status502BadGateway,
+            KeycloakFailureCodes.Timeout => StatusCodes.Status503ServiceUnavailable,
+            KeycloakFailureCodes.Unreachable => StatusCodes.Status503ServiceUnavailable,
+            KeycloakFailureCodes.InvalidResponse => StatusCodes.Status502BadGateway,
+            KeycloakFailureCodes.RealmCheckFailed => StatusCodes.Status502BadGateway,
+            KeycloakFailureCodes.RealmCreateFailed => StatusCodes.Status502BadGateway,
+            KeycloakFailureCodes.ClientLookupFailed => StatusCodes.Status502BadGateway,
+            KeycloakFailureCodes.ClientCreateFailed => StatusCodes.Status502BadGateway,
+            KeycloakFailureCodes.ClientSecretUpdateFailed => StatusCodes.Status502BadGateway,
+            KeycloakFailureCodes.OfflineAccessRoleUpdateFailed => StatusCodes.Status502BadGateway,
+            KeycloakFailureCodes.ClientScopeUpdateFailed => StatusCodes.Status502BadGateway,
+            KeycloakFailureCodes.OfflineAccessScopeMappingFailed => StatusCodes.Status502BadGateway,
             _ => StatusCodes.Status400BadRequest
         };
 
@@ -303,7 +322,7 @@ internal static class CommandResponseResultMapper
         {
             StatusCodes.Status502BadGateway => "Keycloak provider returned an invalid bootstrap response",
             StatusCodes.Status503ServiceUnavailable => "Keycloak provider unavailable",
-            _ when failureCode == "keycloak_bootstrap_validation_failed" => AuthProviderValidationProblem.Title,
+            _ when failureCode == KeycloakFailureCodes.BootstrapValidationFailed => AuthProviderValidationProblem.Title,
             _ => AuthProviderValidationProblem.Title
         };
 

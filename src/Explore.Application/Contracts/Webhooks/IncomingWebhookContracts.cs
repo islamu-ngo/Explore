@@ -18,7 +18,8 @@ public sealed record IncomingWebhookVerificationResult(
     string? EventType,
     string? IdempotencyKey,
     string? FailureCategory,
-    string? SafeDetail)
+    string? SafeDetail,
+    string? Receipt = null)
 {
     public static IncomingWebhookVerificationResult VerifiedProviderBinding(
         Guid tenantId,

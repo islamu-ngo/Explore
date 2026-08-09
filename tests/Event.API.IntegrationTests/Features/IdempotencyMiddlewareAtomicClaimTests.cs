@@ -8,6 +8,7 @@ using Explore.API.Middleware;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Domain;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.DependencyInjection;
@@ -126,7 +127,8 @@ public sealed class IdempotencyMiddlewareAtomicClaimTests
         var middleware = new IdempotencyMiddleware(
             next,
             new RecyclableMemoryStreamManager(),
-            NullLogger<IdempotencyMiddleware>.Instance);
+            NullLogger<IdempotencyMiddleware>.Instance,
+            new EphemeralDataProtectionProvider());
         await middleware.InvokeAsync(context);
 
         context.Response.Body.Position = 0;

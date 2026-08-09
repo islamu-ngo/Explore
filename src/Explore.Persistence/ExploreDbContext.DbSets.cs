@@ -168,6 +168,12 @@ public partial class ExploreDbContext
     public DbSet<RegistrationWorkflow> RegistrationWorkflows { get; set; }
     public DbSet<RegistrationRequirement> RegistrationRequirements { get; set; }
     public DbSet<RegistrationChannel> RegistrationChannels { get; set; }
+    public DbSet<RegistrationProviderConnection> RegistrationProviderConnections { get; set; }
+    public DbSet<RegistrationProviderBinding> RegistrationProviderBindings { get; set; }
+    public DbSet<RegistrationProviderCapability> RegistrationProviderCapabilities { get; set; }
+    public DbSet<RegistrationProviderFieldMapping> RegistrationProviderFieldMappings { get; set; }
+    public DbSet<RegistrationProviderOptionMapping> RegistrationProviderOptionMappings { get; set; }
+    public DbSet<RegistrationProviderSchemaRevision> RegistrationProviderSchemaRevisions { get; set; }
     public DbSet<RegistrationForm> RegistrationForms { get; set; }
     public DbSet<RegistrationFormVersion> RegistrationFormVersions { get; set; }
     public DbSet<RegistrationFormSection> RegistrationFormSections { get; set; }
@@ -226,6 +232,15 @@ public partial class ExploreDbContext
     public DbSet<RegistrationOrganizerVisibility> RegistrationOrganizerVisibilities { get; set; }
     public DbSet<RegistrationAttemptStatus> RegistrationAttemptStatuses { get; set; }
     public DbSet<RegistrationSubmissionStatus> RegistrationSubmissionStatuses { get; set; }
+    public DbSet<RegistrationProviderKind> RegistrationProviderKinds { get; set; }
+    public DbSet<RegistrationProviderDeploymentKind> RegistrationProviderDeploymentKinds { get; set; }
+    public DbSet<RegistrationProviderSchemaAuthority> RegistrationProviderSchemaAuthorities { get; set; }
+    public DbSet<RegistrationProviderPresentationMode> RegistrationProviderPresentationModes { get; set; }
+    public DbSet<RegistrationProviderCollectionMode> RegistrationProviderCollectionModes { get; set; }
+    public DbSet<RegistrationProviderCompletionMode> RegistrationProviderCompletionModes { get; set; }
+    public DbSet<RegistrationProviderTrustLevel> RegistrationProviderTrustLevels { get; set; }
+    public DbSet<RegistrationProviderDriftClass> RegistrationProviderDriftClasses { get; set; }
+    public DbSet<RegistrationProviderBindingState> RegistrationProviderBindingStates { get; set; }
 
     // ===== Instance Monetization =====
     public DbSet<PlatformFeePolicy> PlatformFeePolicies { get; set; }

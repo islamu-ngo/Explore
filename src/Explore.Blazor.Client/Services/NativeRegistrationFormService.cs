@@ -71,7 +71,7 @@ public sealed class NativeRegistrationFormService(
             Answers = submission.Answers.Select(answer => new NativeRegistrationSubmissionAnswerRequest
             {
                 FieldId = answer.Key,
-                SubjectType = subject.SubjectType,
+                SubjectType = MapSubjectType(subject.SubjectType),
                 SubjectId = subject.SubjectId,
                 TicketAssignmentOrderLineId = subject.TicketAssignmentOrderLineId,
                 Value = answer.Value!
@@ -144,5 +144,15 @@ public sealed class NativeRegistrationFormService(
         "LENGTH_OUT_OF_RANGE" => "Use the allowed number of characters.",
         "INVALID_OPTION" => "Choose one of the available options.",
         _ => "Review the format of this answer."
+    };
+
+    private static RegistrationAnswerSubjectTypeEnum MapSubjectType(int subjectType) => subjectType switch
+    {
+        1 => RegistrationAnswerSubjectTypeEnum.RegistrationOrder,
+        2 => RegistrationAnswerSubjectTypeEnum.Purchaser,
+        3 => RegistrationAnswerSubjectTypeEnum.Participant,
+        4 => RegistrationAnswerSubjectTypeEnum.TicketAssignment,
+        5 => RegistrationAnswerSubjectTypeEnum.SessionSelection,
+        _ => throw new ArgumentOutOfRangeException(nameof(subjectType), subjectType, "Unknown registration answer subject type.")
     };
 }

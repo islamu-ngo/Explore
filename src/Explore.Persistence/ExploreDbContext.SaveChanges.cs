@@ -3,6 +3,8 @@
 
 using Explore.Domain;
 using Explore.Domain.Interfaces;
+using Explore.Domain.Secrets;
+using Explore.Persistence.QueryFilters;
 using Microsoft.EntityFrameworkCore;
 using System.Globalization;
 using System.Security.Cryptography;
@@ -61,6 +63,8 @@ public partial class ExploreDbContext
     private void PrepareTrackedEntities()
     {
         ValidateEventLocationCarrierConsistency();
+        ValidateRegistrationProviderConnectionSecrets();
+        ValidateRegistrationAttemptProviderRevisions();
         PopulateMySqlPortableComputedValues();
         var userId = GetCurrentUserId();
         var now = DateTime.UtcNow;
@@ -137,6 +141,61 @@ public partial class ExploreDbContext
             }
         }
 
+    }
+
+    private void ValidateRegistrationProviderConnectionSecrets()
+    {
+        foreach (var entry in ChangeTracker.Entries<RegistrationProviderConnection>()
+                     .Where(item => item.State is EntityState.Added or EntityState.Modified))
+        {
+            RegistrationProviderConnection connection = entry.Entity;
+            EnsureProviderSecretPurpose(connection.TenantId, connection.ApiTokenSecretBindingId,
+                SecretDefinitionRegistry.Keys.RegistrationProviders.ApiToken, nameof(connection.ApiTokenSecretBindingId));
+            EnsureProviderSecretPurpose(connection.TenantId, connection.WebhookSecretBindingId,
+                SecretDefinitionRegistry.Keys.RegistrationProviders.WebhookSecret, nameof(connection.WebhookSecretBindingId));
+        }
+    }
+
+    private void EnsureProviderSecretPurpose(Guid tenantId, Guid? bindingId, string expectedKey, string parameterName)
+    {
+        if (bindingId is null)
+        {
+            return;
+        }
+
+        SecretBinding? binding = ChangeTracker.Entries<SecretBinding>()
+            .Select(entry => entry.Entity)
+            .FirstOrDefault(candidate => candidate.Id == bindingId)
+            ?? SecretBindings
+                .IgnoreTenantFilter(TenantFilterBypassReasons.TenantScopedRepositoryExactTenantPredicate)
+                .FirstOrDefault(candidate => candidate.Id == bindingId);
+        if (binding is null || binding.ScopeId != tenantId || binding.SettingKey != expectedKey || string.IsNullOrWhiteSpace(binding.Qualifier))
+        {
+            throw new InvalidOperationException($"Registration provider connection {parameterName} must reference a tenant-qualified {expectedKey} SecretBinding.");
+        }
+    }
+
+    private void ValidateRegistrationAttemptProviderRevisions()
+    {
+        foreach (var entry in ChangeTracker.Entries<RegistrationAttempt>()
+                     .Where(item => item.State is EntityState.Added or EntityState.Modified))
+        {
+            RegistrationAttempt attempt = entry.Entity;
+            if (attempt.RegistrationProviderBindingId is null && attempt.ProviderMappingRevisionHash is null)
+            {
+                continue;
+            }
+
+            RegistrationProviderBinding? binding = ChangeTracker.Entries<RegistrationProviderBinding>()
+                .Select(item => item.Entity)
+                .FirstOrDefault(candidate => candidate.TenantId == attempt.TenantId && candidate.Id == attempt.RegistrationProviderBindingId)
+                ?? RegistrationProviderBindings.IgnoreTenantFilter(TenantFilterBypassReasons.TenantScopedRepositoryExactTenantPredicate)
+                    .FirstOrDefault(candidate => candidate.TenantId == attempt.TenantId && candidate.Id == attempt.RegistrationProviderBindingId);
+            if (binding?.PublishedMappingRevisionHash?.Value != attempt.ProviderMappingRevisionHash?.Value)
+            {
+                throw new InvalidOperationException("Registration attempts must pin the published provider binding mapping revision.");
+            }
+        }
     }
 
     private void PopulateMySqlPortableComputedValues()
@@ -226,6 +285,8 @@ public partial class ExploreDbContext
                 case RegistrationAttempt attempt:
                     entry.Property("RegistrationProviderBindingKey").CurrentValue =
                         attempt.RegistrationProviderBindingId ?? Guid.Empty;
+                    entry.Property("ProviderMappingRevisionHashKey").CurrentValue =
+                        attempt.ProviderMappingRevisionHash?.Value ?? string.Empty;
                     break;
                 case RegistrationChannel channel:
                     entry.Property("RegistrationProviderBindingKey").CurrentValue =

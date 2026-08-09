@@ -58,7 +58,7 @@ public sealed class RegistrationFinalizationRepository(ExploreDbContext dbContex
             }
 
             bool ready = await AreMandatoryRequirementsFulfilledCoreAsync(
-                fulfillment.TenantId, fulfillment.RegistrationOrderId, cancellationToken);
+                dbContext, fulfillment.TenantId, fulfillment.RegistrationOrderId, cancellationToken);
             if (ready && !await dbContext.RegistrationFinalizationEffects.AnyAsync(value =>
                     value.TenantId == fulfillment.TenantId &&
                     value.RegistrationOrderId == fulfillment.RegistrationOrderId,
@@ -140,7 +140,7 @@ public sealed class RegistrationFinalizationRepository(ExploreDbContext dbContex
             }
 
             bool ready = await AreMandatoryRequirementsFulfilledCoreAsync(
-                attempt.TenantId, attempt.RegistrationOrderId, cancellationToken);
+                dbContext, attempt.TenantId, attempt.RegistrationOrderId, cancellationToken);
             if (ready && !await dbContext.RegistrationFinalizationEffects.AnyAsync(value =>
                     value.TenantId == attempt.TenantId &&
                     value.RegistrationOrderId == attempt.RegistrationOrderId,
@@ -163,7 +163,7 @@ public sealed class RegistrationFinalizationRepository(ExploreDbContext dbContex
         Guid tenantId,
         Guid registrationOrderId,
         CancellationToken cancellationToken) =>
-        AreMandatoryRequirementsFulfilledCoreAsync(tenantId, registrationOrderId, cancellationToken);
+        AreMandatoryRequirementsFulfilledCoreAsync(dbContext, tenantId, registrationOrderId, cancellationToken);
 
     public async Task<IReadOnlyList<RegistrationFinalizationClaim>> ClaimDueAsync(
         string leaseOwner,
@@ -259,7 +259,8 @@ public sealed class RegistrationFinalizationRepository(ExploreDbContext dbContex
                 .SetProperty(value => value.UpdatedAt, failedAt), cancellationToken) == 1;
     }
 
-    private async Task<bool> AreMandatoryRequirementsFulfilledCoreAsync(
+    internal static async Task<bool> AreMandatoryRequirementsFulfilledCoreAsync(
+        ExploreDbContext dbContext,
         Guid tenantId,
         Guid registrationOrderId,
         CancellationToken cancellationToken)

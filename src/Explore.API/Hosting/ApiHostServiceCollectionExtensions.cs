@@ -14,6 +14,7 @@ using Explore.API.Services.OpenGraph;
 using Explore.Application;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Services;
+using Explore.Application.Contracts.Services.Registration;
 using Explore.Application.Contracts.Webhooks;
 using Explore.Application.Features.Events.OpenGraph;
 using Explore.Application.Services.Webhooks;
@@ -26,9 +27,11 @@ using Explore.Infrastructure.Webhooks;
 using Explore.Persistence;
 using Explore.Secrets.Extensions;
 using Explore.ServiceDefaults.HealthChecks;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.ResponseCompression;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Options;
 using Microsoft.IO;
 using ModelContextProtocol.Server;
@@ -118,6 +121,10 @@ public static class ApiHostServiceCollectionExtensions
         builder.Services.AddScoped<ICoopWebhookSignatureValidator, CoopWebhookSignatureValidator>();
         builder.Services.AddScoped<IIncomingWebhookVerifier, CoopIncomingWebhookVerifier>();
         builder.Services.AddScoped<IIncomingWebhookVerifier, SvixIncomingWebhookVerifier>();
+        builder.Services.AddScoped<IIncomingWebhookVerifier, RegistrationProviderIncomingWebhookVerifier>();
+        builder.Services.AddScoped<IRegistrationProviderCallbackBindingResolver, RegistrationProviderCallbackBindingResolver>();
+        builder.Services.AddScoped<IRegistrationProviderCallbackReceiptProtector, RegistrationProviderCallbackReceiptProtector>();
+        builder.Services.TryAddScoped<IRegistrationProviderCallbackVerifier, RejectingRegistrationProviderCallbackVerifier>();
         builder.Services.AddScoped<IIncomingWebhookVerifierRegistry, IncomingWebhookVerifierRegistry>();
         builder.Services.AddScoped<IIncomingWebhookIntakeService, IncomingWebhookIntakeService>();
         builder.Services.AddScoped<IManagedEventHealthProbe, ManagedEventHealthProbe>();
@@ -177,6 +184,12 @@ public static class ApiHostServiceCollectionExtensions
             skipDbContextRegistration: skipDbContext,
             skipLookupCacheInitializer: isOpenApiGeneration,
             environmentName: builder.Environment.EnvironmentName);
+        var dataProtection = builder.Services.AddDataProtection()
+            .SetApplicationName("islamu-event");
+        if (!skipDbContext)
+        {
+            dataProtection.PersistKeysToDbContext<DataProtectionKeyContext>();
+        }
 
         builder.Services.AddScoped<ITenantResolverService, Explore.Infrastructure.Services.TenantResolverService>();
         builder.Services.AddScoped<ITenantContext, Explore.Infrastructure.Services.TenantContext>();

@@ -45,6 +45,14 @@ public sealed class RegistrationAttemptConfiguration : IEntityTypeConfiguration<
         builder.Property(attempt => attempt.ProviderMappingRevisionHash)
             .HasConversion(hash => hash == null ? null : hash.Value,
                 value => value == null ? null : RegistrationEvidenceHash.Create(value)).HasMaxLength(44);
+        var providerMappingRevisionHashKey = builder.Property<string>("ProviderMappingRevisionHashKey");
+        providerMappingRevisionHashKey
+            .HasComputedColumnSql("COALESCE(provider_mapping_revision_hash, '')", stored: true)
+            .HasMaxLength(44)
+            .ValueGeneratedOnAdd()
+            .IsRequired();
+        providerMappingRevisionHashKey.Metadata.SetBeforeSaveBehavior(PropertySaveBehavior.Ignore);
+        providerMappingRevisionHashKey.Metadata.SetAfterSaveBehavior(PropertySaveBehavior.Throw);
         builder.Property(attempt => attempt.SupersessionReason).HasMaxLength(500);
         builder.Property(attempt => attempt.CreatedAt).IsRequired();
         builder.Property(attempt => attempt.IsDeleted).HasDefaultValue(false);
@@ -89,6 +97,10 @@ public sealed class RegistrationAttemptConfiguration : IEntityTypeConfiguration<
             .HasPrincipalKey(version => new { version.TenantId, version.EventId, version.RegistrationFormId, version.Id })
             .OnDelete(DeleteBehavior.Restrict);
         builder.HasOne(attempt => attempt.Status).WithMany().HasForeignKey(attempt => attempt.StatusId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne<RegistrationProviderBinding>().WithMany()
+            .HasForeignKey(nameof(RegistrationAttempt.TenantId), nameof(RegistrationAttempt.RegistrationProviderBindingId), "ProviderMappingRevisionHashKey")
+            .HasPrincipalKey(nameof(RegistrationProviderBinding.TenantId), nameof(RegistrationProviderBinding.Id), nameof(RegistrationProviderBinding.PublishedMappingRevisionHashKey))
+            .OnDelete(DeleteBehavior.Restrict);
         builder.HasOne<RegistrationAttempt>().WithMany()
             .HasForeignKey(attempt => new
             {

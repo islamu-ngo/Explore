@@ -16,6 +16,7 @@ using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Infrastructure.Ai;
 using Explore.Application.Contracts.LocationPrivacy;
 using Explore.Application.Contracts.Services;
+using Explore.Application.Contracts.Services.Registration;
 using Explore.Application.Contracts.Strategies;
 using Explore.Application.Contracts.Webhooks;
 using Explore.Application.Management;
@@ -34,6 +35,7 @@ using Explore.Infrastructure.Mail.Unsubscribe;
 using Explore.Infrastructure.Management;
 using Explore.Infrastructure.Messaging;
 using Explore.Infrastructure.NotificationFanout;
+using Explore.Infrastructure.Registration;
 using Explore.Infrastructure.Services;
 using Explore.Infrastructure.Services.Federation;
 using Explore.Infrastructure.Services.Keycloak;
@@ -111,6 +113,9 @@ public static class InfrastructureServicesRegistration
         services.AddSingleton<IEmailDispatchDrainService, EmailDispatchDrainService>();
         services.AddScoped<IEmailUnsubscribeTokenService, EmailUnsubscribeTokenService>();
         services.AddSingleton<IGuestCapabilityTokenService, GuestCapabilityTokenService>();
+        services.AddSingleton<IRegistrationProviderDescriptor, NullRegistrationProviderDescriptor>();
+        services.AddSingleton<IRegistrationProviderDescriptor, NativeRegistrationProviderDescriptor>();
+        services.AddSingleton<IRegistrationProviderRegistry, RegistrationProviderRegistry>();
 
         // Legacy S3-compatible object storage service. New local-first flows use IFileStorageProvider.
         services.AddScoped<IS3ConfigResolver, S3ConfigResolver>();
@@ -264,6 +269,7 @@ public static class InfrastructureServicesRegistration
         services.AddSingleton<IIncomingWebhookEffectDrainService, IncomingWebhookEffectDrainService>();
         services.AddScoped<IIncomingWebhookEffectProcessingService, IncomingWebhookEffectProcessingService>();
         services.AddScoped<IIncomingWebhookHandler, CoopDecisionIncomingWebhookHandler>();
+        services.AddScoped<IIncomingWebhookHandler, RegistrationProviderSubmissionIncomingWebhookHandler>();
         services.AddOptions<IncomingWebhookProcessingSettings>()
             .Bind(configuration.GetSection(IncomingWebhookProcessingSettings.SectionName))
             .ValidateDataAnnotations()

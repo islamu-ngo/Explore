@@ -43,12 +43,12 @@ public sealed class NativeRegistrationFormServiceTests
         await Assert.That(result.Success).IsTrue();
         await _api.Received(1).SubmitAuthenticatedNativeRegistrationAttemptAsync(
             eventId, orderId, attempt.AttemptId,
-            Arg.Is<SubmitNativeRegistrationAttemptRequest>(request =>
+            Arg.Is<SubmitNativeRegistrationAttemptRequest>((SubmitNativeRegistrationAttemptRequest request) =>
                 request.RequirementId == attempt.RequirementId &&
                 request.Answers.Count == 1 &&
                 request.Answers.Single().FieldId == fieldId &&
                 request.Answers.Single().SubjectId == subject.SubjectId &&
-                request.Answers.Single().SubjectType == subject.SubjectType),
+                request.Answers.Single().SubjectType == RegistrationAnswerSubjectTypeEnum.Purchaser),
             attempt.AttemptCapabilityToken, idempotencyKey, null, null, Arg.Any<CancellationToken>());
     }
 }

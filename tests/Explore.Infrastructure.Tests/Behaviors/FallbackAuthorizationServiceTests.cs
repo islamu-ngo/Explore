@@ -260,6 +260,32 @@ public class FallbackAuthorizationServiceTests
     }
 
     [Test]
+    public async Task IsAllowed_TenantSetting_AcceptsStringTenantId()
+    {
+        _adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(false);
+        _adminContext.IsTenantAdminAsync(TestTenantId, Arg.Any<CancellationToken>()).Returns(true);
+
+        var attrs = new Dictionary<string, object> { ["tenantId"] = TestTenantId.ToString("D") };
+
+        var result = await _service.IsAllowedAsync("islamuevent_tenant_setting", "some-key", "update", attrs);
+
+        await Assert.That(result).IsTrue();
+    }
+
+    [Test]
+    public async Task IsAllowed_TenantSetting_InvalidTenantIdFallsBackToCurrentTenant()
+    {
+        _adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(false);
+        _adminContext.IsTenantAdminAsync(TestTenantId, Arg.Any<CancellationToken>()).Returns(true);
+
+        var attrs = new Dictionary<string, object> { ["tenantId"] = "not-a-guid" };
+
+        var result = await _service.IsAllowedAsync("islamuevent_tenant_setting", "some-key", "update", attrs);
+
+        await Assert.That(result).IsTrue();
+    }
+
+    [Test]
     public async Task IsAllowed_TenantAdmin_AllowsTenantViewAndUpdateForResolvedTenant()
     {
         _adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(false);
@@ -519,6 +545,45 @@ public class FallbackAuthorizationServiceTests
             WebhookOwnerAttributes(WebhookConsumerKind.Instance, TestInstanceId));
 
         await Assert.That(result).IsFalse();
+    }
+
+    [Test]
+    public async Task IsAllowed_WebhookOwnerKind_AcceptsExistingNumericRepresentations()
+    {
+        _adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(false);
+        _adminContext.IsTenantAdminAsync(TestTenantId, Arg.Any<CancellationToken>()).Returns(false);
+        _adminContext.IsOrganizationAdminAsync(TestOrgId, Arg.Any<CancellationToken>()).Returns(true);
+
+        foreach (var ownerKindId in new object[] { "2", 2L })
+        {
+            var attrs = WebhookOwnerAttributes(WebhookConsumerKind.Organization, TestOrgId);
+            attrs["ownerKindId"] = ownerKindId;
+
+            var result = await _service.IsAllowedAsync(
+                ResourceKinds.Webhook,
+                Guid.NewGuid().ToString("D"),
+                AuthorizationActions.Webhooks.Update,
+                attrs);
+
+            await Assert.That(result).IsTrue();
+        }
+    }
+
+    [Test]
+    public async Task IsAllowed_WebhookOwnerKind_InvalidValueFallsBackToTenantScope()
+    {
+        _adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(false);
+        _adminContext.IsTenantAdminAsync(TestTenantId, Arg.Any<CancellationToken>()).Returns(true);
+        var attrs = WebhookOwnerAttributes(WebhookConsumerKind.Tenant, TestTenantId);
+        attrs["ownerKindId"] = "not-an-int";
+
+        var result = await _service.IsAllowedAsync(
+            ResourceKinds.Webhook,
+            Guid.NewGuid().ToString("D"),
+            AuthorizationActions.Webhooks.Update,
+            attrs);
+
+        await Assert.That(result).IsTrue();
     }
 
     [Test]
@@ -885,6 +950,55 @@ public class FallbackAuthorizationServiceTests
 
         var attrs = new Dictionary<string, object> { ["organizationId"] = TestOrgId };
         var result = await _service.IsAllowedAsync("islamuevent_organization", TestOrgId.ToString(), "update", attrs);
+
+        await Assert.That(result).IsFalse();
+    }
+
+    [Test]
+    public async Task IsAllowed_Organization_AcceptsStringOrganizationId()
+    {
+        _adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(false);
+        _adminContext.IsTenantAdminAsync(TestTenantId, Arg.Any<CancellationToken>()).Returns(false);
+        _adminContext.IsOrganizationAdminAsync(TestOrgId, Arg.Any<CancellationToken>()).Returns(true);
+        var attrs = new Dictionary<string, object> { ["organizationId"] = TestOrgId.ToString("D") };
+
+        var result = await _service.IsAllowedAsync("islamuevent_organization", Guid.NewGuid().ToString("D"), "update", attrs);
+
+        await Assert.That(result).IsTrue();
+    }
+
+    [Test]
+    public async Task IsAllowed_Organization_InvalidAttributeFallsBackToResourceId()
+    {
+        _adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(false);
+        _adminContext.IsTenantAdminAsync(TestTenantId, Arg.Any<CancellationToken>()).Returns(false);
+        _adminContext.IsOrganizationAdminAsync(TestOrgId, Arg.Any<CancellationToken>()).Returns(true);
+        var attrs = new Dictionary<string, object> { ["organizationId"] = "not-a-guid" };
+
+        var result = await _service.IsAllowedAsync("islamuevent_organization", TestOrgId.ToString("D"), "update", attrs);
+
+        await Assert.That(result).IsTrue();
+    }
+
+    [Test]
+    public async Task IsAllowed_User_AcceptsGuidResourceIdForSelfService()
+    {
+        _adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(false);
+        _adminContext.UserId.Returns(TestUserId);
+
+        var result = await _service.IsAllowedAsync(ResourceKinds.User, TestUserId.ToString("D"), AuthorizationActions.Update);
+
+        await Assert.That(result).IsTrue();
+    }
+
+    [Test]
+    public async Task IsAllowed_User_InvalidResourceIdFallsBackToTenantAuthorization()
+    {
+        _adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(false);
+        _adminContext.UserId.Returns(TestUserId);
+        _adminContext.IsTenantAdminAsync(TestTenantId, Arg.Any<CancellationToken>()).Returns(false);
+
+        var result = await _service.IsAllowedAsync(ResourceKinds.User, "not-a-guid", AuthorizationActions.Update);
 
         await Assert.That(result).IsFalse();
     }

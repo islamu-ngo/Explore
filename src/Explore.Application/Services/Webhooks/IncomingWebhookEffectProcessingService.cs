@@ -9,6 +9,7 @@ using Explore.Application.Exceptions;
 using Explore.Application.Features.EventReporting;
 using Explore.Application.Features.EventReporting.Requests.Commands;
 using Explore.Application.Features.EventReporting.Validators;
+using Explore.Application.Features.RegistrationSubmissions.Commands;
 using Explore.Application.Serialization;
 using Explore.Domain;
 using MediatR;
@@ -68,6 +69,11 @@ public sealed class IncomingWebhookEffectProcessingService(
                 "The retained Coop callback tenant does not match its effect pointer.",
                 retry: false,
                 cancellationToken);
+        }
+
+        if (string.Equals(active.EffectKind, ProcessProviderSubmissionEffectCommandHandler.StableEffectKind, StringComparison.Ordinal))
+        {
+            return await ProcessRegistrationProviderSubmissionAsync(claim, active, message, cancellationToken);
         }
 
         if (!HasMatchingEnvelope(active, message))
@@ -341,6 +347,86 @@ public sealed class IncomingWebhookEffectProcessingService(
         string.Equals(message.EventType, pointer.EffectKind, StringComparison.Ordinal) &&
         string.Equals(message.ProviderMessageId, pointer.ProviderDecisionId, StringComparison.Ordinal) &&
         string.Equals(message.PayloadHash, pointer.PayloadSha256, StringComparison.Ordinal);
+
+    private async Task<IncomingWebhookClaimExecutionResult> ProcessRegistrationProviderSubmissionAsync(
+        IncomingWebhookEffectClaim claim,
+        IncomingWebhookEffectOutbox pointer,
+        IncomingWebhookMessage message,
+        CancellationToken cancellationToken)
+    {
+        if (!string.Equals(message.Provider, pointer.Provider, StringComparison.Ordinal) ||
+            !string.Equals(message.EventType, pointer.EffectKind, StringComparison.Ordinal) ||
+            !string.Equals(message.ProviderMessageId, pointer.ProviderDecisionId, StringComparison.Ordinal) ||
+            !string.Equals(message.PayloadHash, pointer.PayloadSha256, StringComparison.Ordinal))
+        {
+            return await TransitionAsync(
+                claim,
+                "registration_effect_identity_mismatch",
+                "The retained registration callback identity does not match its effect pointer.",
+                retry: false,
+                cancellationToken);
+        }
+
+        try
+        {
+            Guid bindingId = ParseBindingId(pointer.ProviderDecisionId);
+            string provider = ReadSafeHeader(message.HeadersJson, "X-Registration-Callback-Provider") ?? "registration-provider";
+            ProviderSubmissionEffectResult result = await mediator.Send(
+                new ProcessProviderSubmissionEffectCommand(
+                    pointer.TenantId,
+                    pointer.IncomingWebhookMessageId,
+                    bindingId,
+                    provider,
+                    message.PayloadBytes,
+                    ReadSafeHeaders(message.HeadersJson)),
+                cancellationToken);
+            return result.Outcome == ProviderSubmissionEffectOutcome.Completed
+                ? await CompleteAsync(claim, cancellationToken)
+                : await TransitionAsync(
+                    claim,
+                    result.Code.ToLowerInvariant(),
+                    "The registration provider submission needs reconciliation.",
+                    retry: false,
+                    cancellationToken);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception) when (!cancellationToken.IsCancellationRequested)
+        {
+            return await TransitionAsync(
+                claim,
+                "registration_effect_transient_failure",
+                "The registration provider submission could not be completed because of a transient failure.",
+                retry: true,
+                cancellationToken);
+        }
+    }
+
+    private static Guid ParseBindingId(string providerDecisionId)
+    {
+        string prefix = providerDecisionId.Split(':', 2)[0];
+        return Guid.TryParseExact(prefix, "N", out Guid bindingId)
+            ? bindingId
+            : throw new InvalidOperationException("Registration callback binding identity is invalid.");
+    }
+
+    private static IReadOnlyDictionary<string, string> ReadSafeHeaders(string? headersJson)
+    {
+        if (string.IsNullOrWhiteSpace(headersJson)) return new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        try
+        {
+            return JsonSerializer.Deserialize<Dictionary<string, string>>(headersJson) ?? new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        }
+        catch (JsonException)
+        {
+            return new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        }
+    }
+
+    private static string? ReadSafeHeader(string? headersJson, string name) =>
+        ReadSafeHeaders(headersJson).TryGetValue(name, out string? value) ? value : null;
 
     private TimeSpan ComputeRetryDelay(int attemptCount)
     {

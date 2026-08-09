@@ -10,6 +10,7 @@ using Explore.API.OpenApi;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Domain;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.DependencyInjection;
@@ -197,7 +198,8 @@ public class IdempotencyMiddlewareTests
                 return effectiveNext(httpContext);
             },
             new RecyclableMemoryStreamManager(),
-            NullLogger<IdempotencyMiddleware>.Instance);
+            NullLogger<IdempotencyMiddleware>.Instance,
+            new EphemeralDataProtectionProvider());
 
         await middleware.InvokeAsync(context);
 

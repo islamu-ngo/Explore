@@ -81,6 +81,10 @@ public sealed class RegistrationChannelConfiguration : IEntityTypeConfiguration<
                 requirement.Id
             })
             .OnDelete(DeleteBehavior.Cascade);
+        builder.HasOne<RegistrationProviderBinding>().WithMany()
+            .HasForeignKey(channel => new { channel.TenantId, channel.RegistrationProviderBindingId })
+            .HasPrincipalKey(binding => new { binding.TenantId, binding.Id })
+            .OnDelete(DeleteBehavior.Restrict);
         builder.HasIndex(channel => new { channel.RegistrationRequirementId, channel.Ordinal }).IsUnique();
         builder.HasIndex(channel => new { channel.TenantId, channel.EventId });
         builder.HasIndex(channel => channel.RegistrationProviderBindingId);

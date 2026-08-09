@@ -4,6 +4,7 @@
 using System.Text.Json;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
+using Explore.Application.DTOs.RegistrationSubmissions;
 using Explore.Domain;
 using Explore.Domain.Enums;
 using Explore.Domain.Services.Registration;
@@ -36,7 +37,9 @@ public sealed record RegistrationSubmissionNormalizationDraft(
     IReadOnlyCollection<RegistrationAnswer> Answers,
     IReadOnlyCollection<RegistrationConsentRecord> ConsentRecords,
     IReadOnlyCollection<RegistrationSubmissionIssue> Issues,
-    IReadOnlyList<RegistrationSubmissionIssueDto> SafeIssues);
+    IReadOnlyCollection<RegistrationRequirementFulfillment> Fulfillments,
+    IReadOnlyList<RegistrationSubmissionIssueDto> SafeIssues,
+    IReadOnlyList<NativeRegistrationAnswerSubjectDto> CompletedSubjects);
 
 public sealed class NormalizeRegistrationSubmissionCommandValidator : AbstractValidator<NormalizeRegistrationSubmissionCommand>
 {
@@ -49,8 +52,10 @@ public sealed class NormalizeRegistrationSubmissionCommandValidator : AbstractVa
 }
 
 public sealed class NormalizeRegistrationSubmissionCommandHandler(
+    IRegistrationInventoryRepository inventoryRepository,
     IRegistrationSubmissionRepository submissionRepository,
     IRegistrationFormAuthoringRepository formRepository,
+    IRegistrationParticipantRepository participantRepository,
     IRegistrationSensitiveValueProtector protector,
     ISender sender,
     TimeProvider timeProvider)
@@ -64,17 +69,28 @@ public sealed class NormalizeRegistrationSubmissionCommandHandler(
         RegistrationSubmission submission = await submissionRepository.GetSubmissionAsync(
             request.TenantId, request.SubmissionId, cancellationToken)
             ?? throw new InvalidOperationException("Registration submission was not found.");
+        RegistrationOrder order = await inventoryRepository.GetOrderWithLinesAsync(
+            submission.RegistrationOrderId, submission.TenantId, cancellationToken)
+            ?? throw new InvalidOperationException("Registration order was not found.");
+        IReadOnlyList<RegistrationParticipant> participants = await participantRepository.GetParticipantsByOrderAsync(
+            order.Id, submission.TenantId, cancellationToken);
+        IReadOnlyList<RegistrationTicketAssignment> assignments = await participantRepository
+            .GetAssignmentsWithParticipantsByOrderAsync(order.Id, submission.TenantId, cancellationToken);
         RegistrationSubmissionNormalizationDraft draft = await PrepareAsync(
-            submission, request.Answers, submissionRepository, formRepository, protector, timeProvider, cancellationToken);
+            submission, request.Answers, order, participants, assignments, submissionRepository, formRepository,
+            protector, timeProvider, cancellationToken);
         await submissionRepository.PersistNormalizationAsync(
             draft.Answers, draft.ConsentRecords, draft.Issues, cancellationToken);
-        await RecordFulfillmentAsync(submission, request.Answers, draft.IsValid, sender, cancellationToken);
+        await RecordFulfillmentAsync(submission, draft.CompletedSubjects, draft.IsValid, sender, cancellationToken);
         return new(draft.IsValid, draft.Answers.Count, draft.Issues.Count) { Issues = draft.SafeIssues };
     }
 
     internal static async Task<RegistrationSubmissionNormalizationDraft> PrepareAsync(
         RegistrationSubmission submission,
         IReadOnlyList<RegistrationSubmissionAnswerInput> inputs,
+        RegistrationOrder order,
+        IReadOnlyList<RegistrationParticipant> participants,
+        IReadOnlyList<RegistrationTicketAssignment> assignments,
         IRegistrationSubmissionRepository submissionRepository,
         IRegistrationFormAuthoringRepository formRepository,
         IRegistrationSensitiveValueProtector protector,
@@ -87,12 +103,23 @@ public sealed class NormalizeRegistrationSubmissionCommandHandler(
         RegistrationRequirement requirement = await submissionRepository.GetRequirementAsync(
             submission.TenantId, submission.RegistrationRequirementId, cancellationToken)
             ?? throw new InvalidOperationException("Pinned registration requirement was not found.");
+        if (order.TenantId != submission.TenantId || order.EventId != submission.EventId ||
+            order.Id != submission.RegistrationOrderId ||
+            order.RegistrationWorkflowVersionId != submission.RegistrationWorkflowId)
+        {
+            throw new InvalidOperationException("Pinned registration order lineage is invalid.");
+        }
+
+        IReadOnlyList<NativeRegistrationAnswerSubjectDto> allowedSubjects = NativeRegistrationAttemptContractBuilder.Subjects(
+            order, requirement, participants, assignments, []);
+        HashSet<(RegistrationAnswerSubjectTypeEnum Type, Guid Id, Guid? LineId)> allowedSubjectKeys = allowedSubjects
+            .Select(subject => (subject.SubjectType, subject.SubjectId, subject.TicketAssignmentOrderLineId))
+            .ToHashSet();
         DateTime now = timeProvider.GetUtcNow().UtcDateTime;
         Dictionary<Guid, RegistrationFormField> fields = version.Sections
             .SelectMany(section => section.Fields)
             .Where(field => !field.IsDeleted)
             .ToDictionary(field => field.Id);
-        Dictionary<FormFieldReference, FormAnswerValue> conditionAnswers = [];
         List<(RegistrationSubmissionAnswerInput Input, RegistrationFormField Field, NormalizedRegistrationValue Value)> normalized = [];
         List<RegistrationSubmissionIssue> issues = [];
 
@@ -101,6 +128,12 @@ public sealed class NormalizeRegistrationSubmissionCommandHandler(
             if (!fields.TryGetValue(input.FieldId, out RegistrationFormField? field))
             {
                 issues.Add(RegistrationSubmissionIssue.Create(submission, "UNKNOWN_FIELD", now));
+                continue;
+            }
+
+            if (!allowedSubjectKeys.Contains((input.SubjectType, input.SubjectId, input.TicketAssignmentOrderLineId)))
+            {
+                issues.Add(RegistrationSubmissionIssue.Create(submission, "INVALID_SUBJECT", now, field.Id));
                 continue;
             }
 
@@ -119,20 +152,36 @@ public sealed class NormalizeRegistrationSubmissionCommandHandler(
             }
 
             normalized.Add((input, field, result.Value!));
-            conditionAnswers[new(field.Namespace, field.Key)] = ToConditionValue(result.Value!);
         }
 
-        HashSet<Guid> suppliedFields = normalized.Select(item => item.Field.Id).ToHashSet();
-        foreach (RegistrationFormField field in fields.Values)
+        IReadOnlyList<NativeRegistrationAnswerSubjectDto> submittedSubjects = inputs.Count == 0 && allowedSubjects.Count == 1
+            ? allowedSubjects
+            : [.. allowedSubjects.Where(subject => inputs.Any(input =>
+                input.SubjectType == subject.SubjectType &&
+                input.SubjectId == subject.SubjectId &&
+                input.TicketAssignmentOrderLineId == subject.TicketAssignmentOrderLineId))];
+        foreach (NativeRegistrationAnswerSubjectDto subject in submittedSubjects)
         {
-            (bool visible, bool required) = ApplyRules(version, field, conditionAnswers);
-            if (!visible && suppliedFields.Contains(field.Id))
+            var subjectAnswers = normalized.Where(item =>
+                    item.Input.SubjectType == subject.SubjectType &&
+                    item.Input.SubjectId == subject.SubjectId &&
+                    item.Input.TicketAssignmentOrderLineId == subject.TicketAssignmentOrderLineId)
+                .ToArray();
+            Dictionary<FormFieldReference, FormAnswerValue> conditionAnswers = subjectAnswers.ToDictionary(
+                item => new FormFieldReference(item.Field.Namespace, item.Field.Key),
+                item => ToConditionValue(item.Value));
+            HashSet<Guid> suppliedFields = subjectAnswers.Select(item => item.Field.Id).ToHashSet();
+            foreach (RegistrationFormField field in fields.Values)
             {
-                issues.Add(RegistrationSubmissionIssue.Create(submission, "HIDDEN_FIELD_SUPPLIED", now, field.Id));
-            }
-            else if (visible && required && !suppliedFields.Contains(field.Id))
-            {
-                issues.Add(RegistrationSubmissionIssue.Create(submission, "REQUIRED_FIELD_MISSING", now, field.Id));
+                (bool visible, bool required) = ApplyRules(version, field, conditionAnswers);
+                if (!visible && suppliedFields.Contains(field.Id))
+                {
+                    issues.Add(RegistrationSubmissionIssue.Create(submission, "HIDDEN_FIELD_SUPPLIED", now, field.Id));
+                }
+                else if (visible && required && !suppliedFields.Contains(field.Id))
+                {
+                    issues.Add(RegistrationSubmissionIssue.Create(submission, "REQUIRED_FIELD_MISSING", now, field.Id));
+                }
             }
         }
 
@@ -159,45 +208,43 @@ public sealed class NormalizeRegistrationSubmissionCommandHandler(
             consentRecords.Clear();
         }
 
+        IReadOnlyCollection<RegistrationRequirementFulfillment> fulfillments = issues.Count == 0 && submission.IsFinalizable
+            ? [.. submittedSubjects.Select(subject => RegistrationRequirementFulfillment.CreateFulfilled(
+                order, requirement, submission, subject.SubjectType, subject.SubjectId, now))]
+            : [];
+
         return new(
             issues.Count == 0,
             answers,
             consentRecords,
             issues,
+            fulfillments,
             issues.Select(issue => new RegistrationSubmissionIssueDto(
                 issue.Code,
                 issue.RegistrationFormFieldId is { } fieldId && fields.TryGetValue(fieldId, out RegistrationFormField? field)
                     ? field.Key
-                    : null)).ToArray());
+                    : null)).ToArray(),
+            issues.Count == 0 ? submittedSubjects : []);
     }
 
     internal static async Task RecordFulfillmentAsync(
         RegistrationSubmission submission,
-        IReadOnlyList<RegistrationSubmissionAnswerInput> inputs,
+        IReadOnlyList<NativeRegistrationAnswerSubjectDto> completedSubjects,
         bool normalizationIsValid,
         ISender sender,
         CancellationToken cancellationToken)
     {
         if (normalizationIsValid && submission.IsFinalizable)
         {
-            (RegistrationAnswerSubjectTypeEnum Type, Guid Id)[] subjects = inputs
-                .Select(answer => (answer.SubjectType, answer.SubjectId))
-                .Distinct()
-                .ToArray();
-            if (subjects.Length == 0)
-            {
-                subjects = [(RegistrationAnswerSubjectTypeEnum.RegistrationOrder, submission.RegistrationOrderId)];
-            }
-
-            foreach ((RegistrationAnswerSubjectTypeEnum type, Guid id) in subjects)
+            foreach (NativeRegistrationAnswerSubjectDto subject in completedSubjects)
             {
                 await sender.Send(new RecordRegistrationRequirementFulfillmentCommand(
                     submission.TenantId,
                     submission.RegistrationOrderId,
                     submission.RegistrationRequirementId,
                     submission.Id,
-                    type,
-                    id,
+                    subject.SubjectType,
+                    subject.SubjectId,
                     false), cancellationToken);
             }
         }
