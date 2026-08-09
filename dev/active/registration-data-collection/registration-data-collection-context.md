@@ -3,15 +3,19 @@
 
 # Registration Data Collection & Participation Platform — Context
 
-Last Updated: 2026-08-03 Europe/Brussels
+Last Updated: 2026-08-09 Europe/Brussels
 
-## PHASE 8 PRODUCTION IMPLEMENTATION COMPLETE — VERIFICATION PAUSED (2026-08-03 Europe/Brussels)
+## PHASE 8 COMPLETE AND VERIFIED (2026-08-09 Europe/Brussels)
 
-Phase 8 is complete in production source, not final-verified. The user explicitly paused and forbade further build, test, browser, database, EF, and runtime verification on 2026-08-03; no unchecked verification work may be inferred from this ledger synchronization.
+Phase 8 production source and focused verification are complete. The canonical Release build succeeds with zero errors; Application passes 3,458/3,458; Architecture passes 181 with one governed skip; protected idempotency middleware passes 8/8; native registration HTTP passes 7/7; and native Blazor transport mapping passes 1/1. Independent Oracle review returned `APPROVE` with no Phase 8-owned findings.
 
 The native CQRS flow normalizes 17 portable types, applies the Phase 7 cross-field evaluator, persists typed subject-scoped answers and safe issues, snapshots exact consent text/version/language, and protects sensitive values using ASP.NET Core Data Protection purpose `Explore.RegistrationSensitiveAnswerValue` / version `v1`. Fulfillment plus consumed attempts atomically create a single fenced finalization effect. Authenticated and `PublicTransactional` guest routes use hash-only capability authorization and HAL affordances; the Blazor renderer is HAL-gated and covers all 17 field types with conditional/RTL/accessibility behavior. File answers remain quarantined until explicit audited manual release; malware scanning, infected-file disposition, and automatic clean-file release are deliberately deferred.
 
-The latest generated application baselines observed during this documentation sync are PostgreSQL `20260802223013_InitialPostgreSqlApplication`, MariaDB `20260802225605_InitialMariaDbApplication`, and MySQL `20260802225648_InitialMySqlApplication`; their generated artifacts contain Phase 8 answer, consent-text snapshot, finalization, and quarantine tables. No migration, snapshot, compatibility shim, or dual-write path was edited or introduced.
+The generated application baselines are SQLite `20260809144252_InitialSqliteApplication`, PostgreSQL `20260809144354_InitialPostgreSqlApplication`, SQL Server `20260809144515_InitialSqlServerApplication`, MariaDB `20260809144607_InitialMariaDbApplication`, and MySQL `20260809144652_InitialMySqlApplication`. All five were regenerated through EF tooling and report no pending model changes; no migration or snapshot was hand-edited and no compatibility shim or dual-write path was introduced.
+
+Protected replay now covers native attempt launch and guest order start. `IdempotencyMiddleware` encrypts marked response bodies plus allowlisted capability/cache/location headers with Data Protection purpose `Explore.API.IdempotencyReplay` / `v1`, persists `dp:v1:` ciphertext, restores exact headers on replay, and returns `503 idempotency_unavailable` when protected replay cannot be decrypted. Data Protection keys persist through `DataProtectionKeyContext`. The Blazor transport explicitly maps one-based domain subject IDs to the zero-based generated enum and fails closed on unknown values.
+
+Broad-suite status is not globally green and is not attributed to Phase 8: Persistence reached 794 passes before 169 process-wide `ManyServiceProvidersCreatedWarning` cascade failures; API reached 2,172 passes with 15 failures, after which the single Phase 8 launch failure was repaired and passed in focused reruns. The remaining API failures concern unrelated TickerQ schema, authorization expectations, snapshots, and a PostgreSQL migration fixture.
 
 ## TASK 8.8 FILE-ANSWER DECISION (2026-08-02 Europe/Brussels)
 

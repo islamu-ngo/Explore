@@ -1175,15 +1175,15 @@ From the repository contract (AGENTS.md §5, QUICK_REFERENCE, GOVERNANCE):
   - `dotnet test --project tests/Event.Application.UnitTests/Event.Application.UnitTests.csproj --configuration Release --verbosity quiet` *(repeat justified: the normalization/validation pipeline handlers are Application-owned and this is the fastest deterministic coverage)*
 - **Rollback / failure handling:** Native runtime is additive; finalization extends the Phase 5 transaction. If the answer CHECK constraints fight EF value conversions, resolve at configuration level (owned columns), never by weakening constraints; record in context.
 
-#### Phase 8 Current Status — 2026-08-03 Europe/Brussels
+#### Phase 8 Current Status — 2026-08-09 Europe/Brussels
 
 **Production implementation:** Complete in source. The Clean Architecture/CQRS path accepts typed, subject-scoped answers through `NormalizeRegistrationSubmissionCommandHandler`; it applies the Phase 7 cross-field evaluator, persists safe issues, writes atomic answer rows, and snapshots immutable consent text/version/language evidence. Sensitive values use the shared ASP.NET Core Data Protection protector with purpose `Explore.RegistrationSensitiveAnswerValue` and version `v1`.
 
 **Finalization and surfaces:** Requirement fulfillment and attempt consumption are atomic with one fenced `RegistrationFinalizationEffect`; the worker performs the later lifecycle transition. Authenticated and `PublicTransactional` guest submission routes use server-owned subjects, hashed capability tokens, idempotency, and HAL affordances. The Blazor renderer implements all 17 portable field contracts with conditional visibility, RTL/accessibility announcements, and optional skip. File answers remain quarantined until explicit audited manual release; scanner execution, infected-file disposition, and automatic clean-file release remain deferred.
 
-**Generated provider baselines observed during this documentation sync:** PostgreSQL `20260802223013_InitialPostgreSqlApplication`, MariaDB `20260802225605_InitialMariaDbApplication`, and MySQL `20260802225648_InitialMySqlApplication`. Their generated application artifacts contain Phase 8 answer, consent-text snapshot, finalization, and file-quarantine tables and were not edited.
+**Generated provider baselines:** SQLite `20260809144252_InitialSqliteApplication`, PostgreSQL `20260809144354_InitialPostgreSqlApplication`, SQL Server `20260809144515_InitialSqlServerApplication`, MariaDB `20260809144607_InitialMariaDbApplication`, and MySQL `20260809144652_InitialMySqlApplication`. All five were regenerated through EF tooling and report no pending model changes.
 
-**Verification status:** The user explicitly paused and forbade further build, test, browser, database, EF, and runtime verification on 2026-08-03. Phase 8 source completion must not be read as final verification completion; the phase-end checks remain unchecked until separately authorized and executed.
+**Verification status:** Complete. Release build succeeds with zero errors; Application passes 3,458/3,458; Architecture passes 181 with one governed skip; protected idempotency middleware passes 8/8; native registration HTTP passes 7/7; and native Blazor transport mapping passes 1/1. Real HTTP retries preserve encrypted attempt and guest-order capabilities, execute the command once, and persist `dp:v1:` replay envelopes without plaintext capabilities. Independent Oracle review returned `APPROVE` with no Phase 8-owned findings. Broad Persistence and API projects still contain unrelated shared-worktree failures recorded in the context ledger.
 
 #### Task 8.1: Attempt + submission + status machines
 - **Type:** create

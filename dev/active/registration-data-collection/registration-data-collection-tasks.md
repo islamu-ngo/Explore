@@ -243,7 +243,7 @@ Last Updated: 2026-08-03 Europe/Brussels
 - [x] `dotnet build --configuration Release --verbosity quiet`
 - [x] `dotnet test --project tests/Event.Domain.UnitTests/Event.Domain.UnitTests.csproj --configuration Release --verbosity quiet`
 
-## Phase 8: Native Collection Runtime ✅ PRODUCTION IMPLEMENTATION COMPLETE — VERIFICATION PAUSED
+## Phase 8: Native Collection Runtime ✅ COMPLETE AND VERIFIED
 - [x] **8.1 Attempt + submission + status machines** — attempt/submission/revision entities + lookups; dedup uniqueness; token single-use; Task 8.2 closes answer identity `(submission, field, subject, ordinal)` at the database boundary — **Acceptance:** duplicate → no-op; supersession rules; answer identity — **Effort:** L — **Dependencies:** Phase 7
   - **Evidence:** independently confirmed with characterization 25/25, privacy 12/12, architecture/naming/tenant-filter 15/15, PostgreSQL assertion-level verification 10/10, a clean pending EF model, and Application/Persistence/API Release builds with 0 errors. The earlier task-local migration was later consolidated into the current generated provider baselines recorded in the Phase 8 context.
   - **Database disposition:** a no-`--connection` EF update used the configured PostgreSQL connection supplied through Infisical; the user deleted and recreated that development database with the same name and confirmed no consequences. Infisical itself was not migrated.
@@ -259,9 +259,10 @@ Last Updated: 2026-08-03 Europe/Brussels
   - **Evidence:** repaired gate PASS at 0.99; Domain release 4/4, publication gate 2/2, reused upload policy 30/30, persistence containment/soft-delete/idempotency/erasure 4/4, real HTTP authorization/release/content-public-presigned scenarios 2/2, HAL/OpenAPI inventory 34/34, privacy inventory 14/14, API build 0 errors, and 14-file LSP clean. Task 8.8 introduced no migration or snapshot change. Receipt: `.omo/evidence/phase88-DONE_CLAIM.md`.
 
 ### Phase 8 Verification — RUN ONCE AFTER ALL PHASE TASKS
-- **Paused by explicit user direction on 2026-08-03.** Do not mark any item complete from the source/ledger synchronization above.
-- [ ] `dotnet build --configuration Release --verbosity quiet`
-- [ ] `dotnet test --project tests/Event.Application.UnitTests/Event.Application.UnitTests.csproj --configuration Release --verbosity quiet`
+- [x] `dotnet build --configuration Release --verbosity quiet` — 0 errors; 3,395 existing warnings on the final full rebuild
+- [x] `dotnet test --project tests/Event.Application.UnitTests/Event.Application.UnitTests.csproj --configuration Release --verbosity quiet` — 3,458/3,458
+- **Additional Phase 8 evidence:** Architecture 181 passed / 1 governed skip; idempotency middleware 8/8; native registration HTTP 7/7; native Blazor transport 1/1; five provider migrations regenerated with no pending model changes; Oracle `APPROVE` with no findings.
+- **Unrelated broad-suite debt:** Persistence reached 794 passes before 169 `ManyServiceProvidersCreatedWarning` cascade failures. API reached 2,172 passes with 15 failures; the Phase 8 launch failure was repaired and now passes, leaving unrelated TickerQ, authorization, snapshot, and migration-fixture failures.
 
 ## Phase 9: Provider Framework ⏳ NOT STARTED
 - [ ] **9.1 Provider configuration domain model + secret definitions** — connection/binding/capability/mapping/revision entities + 8 lookups; `SecretDefinitionRegistry` additions (+ its unit tests) — **Acceptance:** secret-reference-only credentials — **Effort:** L — **Dependencies:** Phase 8
