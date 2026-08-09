@@ -113,7 +113,8 @@ Last Updated: 2026-08-09 Europe/Brussels
 - **Task 3.2/3.4:** cookie classification must never become the API principal; missing tokens fail closed and all API policies evaluate the revalidated bearer principal.
 - **Task 4.1:** configuration forwarded to two current resources must be inventoried and forwarded once without conflicting names or duplicate services.
 - **Phase 5:** The `multi-database-support` workstream is fully implemented (MDB-001 through MDB-715). The structured `DatabaseOptions` contract, all five provider registrations, 10 migration assemblies, and SQLite-specific WAL/busy-timeout configuration are available for direct consumption. No co-development is needed.
-- **Phase 6:** Docker image must include SQLite native binaries for target architectures (linux/amd64, linux/arm64).
+- **Phase 6:** The functional framework-dependent image is `362,893,616` uncompressed bytes. Safe pruning retains only `linux-x64`, removes symbols and `BlazorDebugProxy`, and preserves localization, Blazor static assets, and SQLite native libraries, but cannot satisfy the `<250 MB` contract.
+- **Phase 6 publish graph:** Framework-dependent trimming is unsupported. A self-contained trim probe reaches a transitive `browser-wasm` application-host conflict because global server publish properties flow into `Explore.Blazor.Client`; resolving it requires an explicit scope/acceptance decision and full runtime regression proof.
 
 ## Handoff Notes
 
@@ -134,3 +135,13 @@ Last Updated: 2026-08-09 Europe/Brussels
 - **What changed:** Updated plan Decision H, Phase 5, Task 5.1, Section 12, Section 17, and constraint #10 with precise references to the completed MDB implementation (closed provider enum, `DatabaseOptions`/`DatabaseOptionsValidator`, provider-native builders, dual-role credentials, `RelationalModelNamespace` schema/prefix policy, 10 migration assemblies, SQLite WAL/busy-timeout, authority-topology separation). Removed conditional "must be landed or co-developed" language throughout.
 - **Next action:** Continue with Phase 4 (Aspire topology) or Phase 6 (Docker packaging) depending on priority.
 - **Risks:** Phase 4 architecture test verification remains open. Docker packaging (Phase 6 tasks 6.1, 6.2) remains incomplete.
+
+### Handoff — 2026-08-09 Phase 6 Runtime Investigation
+
+- **Current state:** Tasks 6.1 and 6.2 remain unchecked. The Dockerfile now restores with current lock evaluation, resolves combined-host publish output collisions in favor of `Event.Standalone/appsettings.json`, omits debug output, retains only `linux-x64` native assets, and removes `BlazorDebugProxy`.
+- **Observed runtime:** Rootless Podman produced a functional `linux/amd64` image. Metadata is UID 1654, port 8080, and `dotnet Event.Standalone.dll`; `libe_sqlite3.so` is present and the non-root process creates SQLite WAL files in the mounted `/app/data` volume. Production web startup correctly stops before health when the migration-service-owned privacy schema is absent.
+- **Blocking acceptance:** The uncompressed image is `362,893,616` bytes versus the plan's `<250 MB` ceiling. Docker's native image-size convention is uncompressed local size; compressed transfer size is not a valid reinterpretation of the current wording.
+- **Investigated alternatives:** Plain chiseled saves only `39,048,620` bytes and drops the `-extra` globalization posture; arbitrary DLL/static/native deletion violates runtime behavior. Framework-dependent trimming fails `NETSDK1102`. Self-contained trimming requires MSBuild property isolation between the `linux-x64` server graph and transitive `browser-wasm` client before it can even reach ILLink/runtime validation.
+- **Separate blocker:** The exact Phase 4 architecture suite remains red at 358 passed, 4 failed, 1 skipped; all four failures are owned by `registration-data-collection`, and no Standalone invariant is failing.
+- **Decision required:** Either authorize the cross-project, container-specific trim-safety work and its broader verification scope, or re-baseline Task 6.1's uncompressed image ceiling to a measured value (recommended floor: 375 MB). After that, run migration-first Compose health and volume-persistence QA.
+- **Evidence:** `.omo/evidence/event-standalone-combined-host/task-6-1-20260809/`, `.omo/evidence/event-standalone-combined-host/task-6-1-publish-graph-debug-20260809/`, and `.omo/evidence/event-standalone-combined-host/phase4-architecture-regate-20260809/`.

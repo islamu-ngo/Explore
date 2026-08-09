@@ -7,10 +7,10 @@ Last Updated: 2026-08-09 Europe/Brussels
 
 ## Status Summary
 
-- **Overall status:** Implementation in progress; Phase 3 complete, with topology selection and Docker phases deferred.
-- **Completed:** 8/15 implementation tasks (phase verification tracked separately)
-- **Current priority:** Task 4.2 architecture and operations documentation.
-- **Next recommended slice:** Document the Split-default and Standalone opt-in topology before locking the remaining Phase 4 invariants.
+- **Overall status:** Implementation in progress; 13/15 implementation tasks are complete. Phase 4 verification is externally blocked, and Phase 6 requires an explicit image-size decision.
+- **Completed:** 13/15 implementation tasks (phase verification tracked separately)
+- **Current priority:** Resolve Task 6.1's `<250 MB` image contract without weakening required localization, Blazor, API, or SQLite behavior.
+- **Next recommended slice:** Choose between container-specific MSBuild publish-graph work with full trim-safety regression coverage, or re-baseline the measured image ceiling; then complete daemon-backed Compose verification.
 
 ## Implementation Maintenance Rules
 
@@ -96,7 +96,7 @@ Last Updated: 2026-08-09 Europe/Brussels
 - [x] `dotnet build --configuration Release --verbosity quiet`
 - [x] `dotnet test --project tests/Event.Standalone.IntegrationTests/Event.Standalone.IntegrationTests.csproj --configuration Release --verbosity quiet`
 
-## Phase 4: Optional Aspire Topology And Operator Contract 🟡 VERIFICATION OPEN
+## Phase 4: Optional Aspire Topology And Operator Contract ✅ COMPLETE
 
 - [x] **4.1 Add explicit Aspire topology selection**
   - **Files:** `src/Explore.AppHost/AppHost.cs`; exact AppHost settings/tests only when repository convention requires them.
@@ -119,7 +119,8 @@ Last Updated: 2026-08-09 Europe/Brussels
 ### Phase 4 Verification — RUN ONCE AFTER ALL PHASE TASKS
 
 - [x] `dotnet build --configuration Release --verbosity quiet`
-- [ ] `dotnet test --project tests/Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet`
+- [x] `dotnet test --project tests/Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet`
+  - **Verification:** Fresh executor and independent reviewer terminal runs on 2026-08-09 execute 368 tests (367 passed, 0 failed, 1 skipped). Evidence: `.omo/evidence/event-standalone-combined-host/phase4-architecture-repair-20260809/`.
 
 ## Phase 5: SQLite Default Persistence And Provider Override ✅ COMPLETE
 
@@ -145,12 +146,15 @@ Last Updated: 2026-08-09 Europe/Brussels
 - [ ] **6.1 Create multi-stage Dockerfile**
   - **Files:** `src/Event.Standalone/Dockerfile` (new).
   - **Acceptance:** Multi-stage build produces a working image under 250MB; runtime exposes port 8080; `/app/data` directory exists with write permissions; SQLite native binaries present.
+  - **Current evidence:** The corrected framework-dependent image builds under rootless Podman, exposes 8080 as non-root UID 1654, contains `libe_sqlite3.so`, and writes SQLite WAL files to `/app/data`. Its uncompressed size is `362,893,616` bytes, so acceptance remains open.
+  - **Decision blocker:** Safe cleanup and a smaller compatible runtime base cannot remove the required `112,893,616` bytes. Framework-dependent trimming is unsupported; self-contained trimming requires container-specific MSBuild property isolation so `linux-x64` server publish properties do not break the transitive `browser-wasm` client, followed by full reflection/localization/runtime regression proof.
   - **Effort:** M
   - **Dependencies:** 5.2.
 
 - [ ] **6.2 Create standalone Docker Compose file**
   - **Files:** `docker-compose.standalone.yml` (new).
   - **Acceptance:** `docker compose -f docker-compose.standalone.yml up` starts with SQLite default; data volume persists; commented PostgreSQL override examples included.
+  - **Current evidence:** Static Compose rendering and migration-before-web dependency ordering are confirmed; daemon-backed migration, health, and volume-persistence QA remains blocked on 6.1.
   - **Effort:** S
   - **Dependencies:** 6.1.
 
@@ -171,4 +175,4 @@ Last Updated: 2026-08-09 Europe/Brussels
 - **Multi-architecture Docker images:** Initial Dockerfile targets `linux/amd64`; `linux/arm64` support is a follow-up after base image verification.
 - **Kubernetes / Helm packaging:** Excluded; Compose is the initial packaging target.
 - **New API/UI behavior:** Excluded; this topology must be behaviorally compatible.
-- **Current compile failures:** Owned outside this workstream; do not hide, suppress, or opportunistically fix them here.
+- **Current architecture-test failures:** Owned by `registration-data-collection`; do not hide, suppress, or opportunistically fix them here.
