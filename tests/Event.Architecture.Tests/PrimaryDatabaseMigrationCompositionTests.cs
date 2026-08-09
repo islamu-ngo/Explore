@@ -82,6 +82,14 @@ public sealed class PrimaryDatabaseMigrationCompositionTests
         await using var context = new ExploreDbContext(builder.Options);
 
         await Assert.That(context.Model.GetDefaultSchema()).IsEqualTo("operator_event");
+        string[] tableNames = context.Model.GetEntityTypes()
+            .Select(entityType => entityType.GetTableName())
+            .OfType<string>()
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
+        await Assert.That(tableNames).Contains("users");
+        await Assert.That(tableNames)
+            .All(tableName => !tableName.StartsWith("ie_", StringComparison.Ordinal));
     }
 
     [Test]
