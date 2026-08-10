@@ -245,19 +245,19 @@ not application compatibility aliases. A direct `docker run` or a Compose
 override must set the native `Database__*` names. Kubernetes packaging is
 deferred and has no supported manifest in this repository.
 The standalone descriptor currently interpolates `DATABASE_PROVIDER`,
-`DATABASE_HOST`, `DATABASE_PORT`, `DATABASE_NAME`, `DATABASE_SCHEMA`,
+`DATABASE_HOST`, `DATABASE_PORT`, `DATABASE_DATABASE`, `DATABASE_SCHEMA`,
 `DATABASE_TLS_MODE`, `DATABASE_TRUST_SERVER_CERTIFICATE`, and the two
 role-specific credential pairs. It does not turn arbitrary `DATABASE_*` names
 into runtime configuration.
 
 ### Standalone provider overrides
 
-The standalone default is `Sqlite` at `/app/data/event.db`. It uses WAL and a
-30-second SQLite timeout, needs a durable local named volume, and permits
-exactly one web replica (`Hosting__ReplicaCount=1`). The primary database and
-the embedded `/app/data/privacy_erasure_authority.db` are distinct logical
-databases and must be backed up and restored separately even when they share
-the `/app/data` volume.
+The standalone default is `Sqlite` at `/app/data/islamu_event.db`. It uses WAL
+and a 30-second SQLite timeout, needs a durable local named volume, and permits
+exactly one web replica (`Hosting__ReplicaCount=1`). Compose mounts the primary
+file at `/app/data` from `event_standalone_data` and the embedded authority file
+at `/app/privacy-erasure-authority/privacy_erasure_authority.db` from
+`event_standalone_authority`; back up and restore those volumes independently.
 
 For a server provider, apply the shared endpoint fields to both
 `event-migrationservice` and `event-standalone`, then provide each service only
@@ -634,6 +634,17 @@ Svix cloud service or provider-native replay:
 | `WebhookBulkReplay:MaximumFilterWindowDays` | `30` | Maximum explicit preview/schedule window, from 1 through 365 days. |
 
 Local development can source Svix secrets from `WEBHOOKS_SVIX_AUTH_TOKEN` and `WEBHOOKS_SVIX_OPERATIONAL_WEBHOOK_SECRET`; both remain intentionally empty while Local is selected. Development seeding creates missing instance secret bindings only when values are configured. See [WEBHOOKS.md](WEBHOOKS.md) for provider behavior and runbooks.
+
+### Registration Provider Framework Configuration
+
+Phase 9 is provider-neutral and has no static `RegistrationProviders:*` adapter configuration. Provider connections are tenant-owned data managed through the authenticated registration-provider management API. Credentials are referenced by `SecretBinding` rows only:
+
+| Secret definition key | Default Infisical path/key | Scope | Purpose |
+|---|---|---|---|
+| `registration_provider.api_token` | `/registration-providers/REGISTRATION_PROVIDER_API_TOKEN` | Tenant | Optional provider API token reference for future concrete adapters. |
+| `registration_provider.webhook_secret` | `/registration-providers/REGISTRATION_PROVIDER_WEBHOOK_SECRET` | Tenant | Optional provider callback signing secret reference. |
+
+Use `SecretBinding.Qualifier` (bounded to 128 characters) to distinguish multiple tenant connections that use the same definition key. Approved origins are connection data, not appsettings: each origin must be an HTTPS origin only and cannot target local, private, link-local, multicast, or metadata hosts. Launch descriptors and embeds are generated from those origins by the server; operators must not add raw iframe HTML or provider URLs to configuration files.
 
 ### Reporting Static Configuration
 

@@ -220,12 +220,14 @@ Infisical uses `SCREAMING_SNAKE_CASE` with path-based sections. The provider map
 | `/reporting/COOP_WEBHOOK_SECRET` | `reporting.coop_webhook_secret` tenant Coop callback HMAC secret |
 | `/integrations/listmonk/LISTMONK_API_USERNAME` | `integrations.listmonk.api_username` |
 | `/integrations/listmonk/LISTMONK_API_KEY` | `integrations.listmonk.api_key` |
+| `/registration-providers/REGISTRATION_PROVIDER_API_TOKEN` | `registration_provider.api_token` |
+| `/registration-providers/REGISTRATION_PROVIDER_WEBHOOK_SECRET` | `registration_provider.webhook_secret` |
 | `/api/VAPID_SUBJECT` | `WebPush:VapidSubject` |
 | `/api/VAPID_PUBLIC_KEY` | `WebPush:VapidPublicKey` |
 | `/api/VAPID_PRIVATE_KEY` | `WebPush:VapidPrivateKey` |
 | raw process environment + `STORAGE_S3_*` | consumed directly by the S3 resolver as a compatibility fallback |
 
-The three ATProto rows use the same uppercase name as their default environment-variable name as well as their Infisical key. Environment variable format otherwise uses double-underscore separators for .NET keys, for example `S3Settings__Endpoint`. Storage also accepts raw `STORAGE_S3_*` variables for deployment compatibility. Primary database bootstrap uses discrete structured fields rather than a single URL-form connection string; the PostgreSQL-only compatibility loader remains a fallback for older development inputs. SMTP secret-provider defaults use the user-facing `MAIL_SMTP_*` names; local Compose also exports older `SMTP_*` aliases for compatibility with development seeding.
+The three ATProto rows use the same uppercase name as their default environment-variable name as well as their Infisical key. Environment variable format otherwise uses double-underscore separators for .NET keys, for example `S3Settings__Endpoint`. Storage also accepts raw `STORAGE_S3_*` variables for deployment compatibility. Primary database bootstrap uses discrete structured fields rather than a single URL-form connection string; the PostgreSQL-only compatibility loader remains a fallback for older development inputs. SMTP secret-provider defaults use the user-facing `MAIL_SMTP_*` names; local Compose also exports older `SMTP_*` aliases for compatibility with development seeding. Registration-provider credentials are tenant-scoped secret definitions and must be bound through `SecretBinding`; use the bounded `Qualifier` field when several tenant connections need distinct API tokens or webhook secrets for the same key. Connection DTOs carry binding IDs only and never carry secret values.
 
 Compose Keycloak bootstrap consumes `KEYCLOAK_ADMIN` and `KEYCLOAK_ADMIN_PASSWORD` only inside the one-shot `keycloak-init` container. Those credentials are not application runtime secrets and must not be stored in governance settings or copied into support artifacts. The init logs redact client secret values.
 

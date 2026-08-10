@@ -1287,7 +1287,7 @@ From the repository contract (AGENTS.md §5, QUICK_REFERENCE, GOVERNANCE):
 - **Layer:** Domain + Persistence + Secrets
 - **Files:** entities/lookups above + configurations + seeder; `src/Explore.Domain/Secrets/SecretDefinitionRegistry.cs` (existing — add registration provider secret definitions, tenant scope)
 - **Acceptance Criteria:**
-  - [ ] Credentials representable only as secret-binding references (no secret columns); `Explore.Secrets.UnitTests` addition for new definitions
+  - [x] Credentials representable only as secret-binding references (no secret columns); `Explore.Secrets.UnitTests` addition for new definitions
 - **Dependencies:** Phase 8
 - **Effort:** L
 
@@ -1296,7 +1296,7 @@ From the repository contract (AGENTS.md §5, QUICK_REFERENCE, GOVERNANCE):
 - **Layer:** Application + Infrastructure
 - **Files:** the ten D3 interfaces; `RegistrationProviderRegistry` (Infrastructure); effective-capability resolver (proven ∩ configured ∩ governance ∩ mapping ∩ authorization); capability tuple entity wiring
 - **Acceptance Criteria:**
-  - [ ] Unknown tuple → automatic finalization refused, redirect/manual channels still offered (fail-closed test)
+  - [x] Unknown tuple → automatic finalization refused, redirect/manual channels still offered (fail-closed test)
 - **Dependencies:** 9.1
 - **Effort:** L
 
@@ -1306,7 +1306,7 @@ From the repository contract (AGENTS.md §5, QUICK_REFERENCE, GOVERNANCE):
 - **Files:** mapping entities; `Services/Registration/SchemaDriftClassifier.cs` (new, pure); mapping-revision pinning on attempts (Phase 8 fields already present)
 - **Description:** Drift classes `NoDrift/AdditiveOptionalChange/LabelOnlyChange/MappingRequired/RequiredFieldRemoved/TypeChanged/OptionSetChanged/UnsupportedChange` with §17 behaviors; mappings never silently rewritten after submissions exist (guard + test).
 - **Acceptance Criteria:**
-  - [ ] Classifier unit-tested per class; fail-closed classes block binding publication
+  - [x] Classifier unit-tested per class; fail-closed classes block binding publication
 - **Dependencies:** 9.1
 - **Effort:** L
 
@@ -1315,8 +1315,8 @@ From the repository contract (AGENTS.md §5, QUICK_REFERENCE, GOVERNANCE):
 - **Layer:** API + Application
 - **Files:** new `src/Explore.API/Controllers/RegistrationProviderCallbackController.cs` (bounded-bytes read, binding resolution without tenant disclosure, provider-proof verification hook, insert-or-acknowledge `IncomingWebhookMessage`, one unique registration effect, prompt return); new `Features/RegistrationSubmissions/Handlers/Commands/ProcessProviderSubmissionEffectHandler.cs` worker path (fenced claim → re-verify → fetch where supported → normalize → validate → fulfill → finalize via Phase 8 effect)
 - **Acceptance Criteria:**
-  - [ ] Controller provably never touches order/registration aggregates (architecture test on namespace references)
-  - [ ] Duplicate callback acknowledged; callback-before-user-return and user-return-before-callback orderings both converge (handler tests)
+  - [x] Controller provably never touches order/registration aggregates (architecture test on namespace references)
+  - [x] Duplicate callback acknowledged; callback-before-user-return and user-return-before-callback orderings both converge (handler tests)
 - **Dependencies:** 9.2, 9.3
 - **Effort:** XL
 
@@ -1325,7 +1325,7 @@ From the repository contract (AGENTS.md §5, QUICK_REFERENCE, GOVERNANCE):
 - **Layer:** Application
 - **Files:** pipeline extensions: `NONE` (no storage, no fulfillment), `COMPLETION_ONLY` (evidence only, fulfillment iff verified+correlated+unexpired per §10.3), `SELECTED_FIELDS` (approved mappings only), `FULL_CANONICAL`, `MIRROR_ONLY` (sink path stub for Phase 10); minimum-trust-level policy gate → `NeedsReconciliation` below threshold
 - **Acceptance Criteria:**
-  - [ ] FR-SYNC-01…07 handler tests; completion-only stores zero `RegistrationAnswer` rows
+  - [x] FR-SYNC-01…07 handler tests; completion-only stores zero `RegistrationAnswer` rows
 - **Dependencies:** 9.4
 - **Effort:** L
 
@@ -1334,7 +1334,7 @@ From the repository contract (AGENTS.md §5, QUICK_REFERENCE, GOVERNANCE):
 - **Layer:** Application + API
 - **Files:** reconciliation commands (poll checkpoint fetch abstraction, manual import queue, `NeedsReconciliation` organizer queue); health read model per binding (connection validity, callback age, drift, reconciliation lag — bounded fields per §21); event HAL relations `manage-registration-channels` / `view-registration-provider-health`
 - **Acceptance Criteria:**
-  - [ ] Health surface exposes no attendee data; reconciliation queue lists parked submissions with issue codes only
+  - [x] Health surface exposes no attendee data; reconciliation queue lists parked submissions with issue codes only
 - **Dependencies:** 9.4
 - **Effort:** L
 
@@ -1343,9 +1343,9 @@ From the repository contract (AGENTS.md §5, QUICK_REFERENCE, GOVERNANCE):
 - **Layer:** API + Blazor
 - **Files:** channel CRUD on requirements (attach binding, order, fallback); server-generated iframe descriptors from approved connection domains; CSP `frame-src` allowlist wiring (investigate current CSP source in BFF/API — bounded); new `Pages/Studio/StudioEventIntegrations.razor`; modify `Routes.razor`, `StudioEventNavigation.razor`; attendee-facing processing-status pattern with intent-status polling
 - **Acceptance Criteria:**
-  - [ ] Arbitrary organizer iframe HTML impossible (no such input path); non-allowlisted domain refused server-side
-  - [ ] Completion never inferred from iframe navigation (UI polls order/requirement status only)
-  - [ ] Integrations sidebar link is absent unless `manage-registration-channels` or `view-registration-provider-health` exists
+  - [x] Arbitrary organizer iframe HTML impossible (no such input path); non-allowlisted domain refused server-side
+  - [x] Completion never inferred from iframe navigation (UI polls order/requirement status only)
+  - [x] Integrations sidebar link is absent unless `manage-registration-channels` or `view-registration-provider-health` exists
 - **Dependencies:** 9.5, 9.6
 - **Effort:** XL
 

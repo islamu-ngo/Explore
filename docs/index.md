@@ -151,3 +151,4 @@ Start with [README.md](../README.md) if you are new to the project. Use this pag
 - [adr/ADR-009-postgresql-partitioning-deferral.md](adr/ADR-009-postgresql-partitioning-deferral.md) - PostgreSQL partitioning deferral, activation gates, and runbook requirements.
 - [adr/ADR-010-mcp-adapter-hosting-strategy.md](adr/ADR-010-mcp-adapter-hosting-strategy.md) - MCP adapter hosting, transport, auth, tenancy, and disable posture.
 - [adr/ADR-011-local-mcp-stdio-diagnostic-host.md](adr/ADR-011-local-mcp-stdio-diagnostic-host.md) - local-only stdio diagnostic-host decision and deferral.
+- [adr/ADR-021-keycloak-authentication-standard.md](adr/ADR-021-keycloak-authentication-standard.md) - standardizing ERP authentication on Keycloak and authorization on Cerbos across all deployment tiers.

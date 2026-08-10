@@ -125,6 +125,24 @@ Checks:
 
 If CI reports drift on an unrelated PR, check `.github/workflows/openapi-contract.yml` job summary. The guard has an internal no-op detector; unrelated changes should pass without regeneration.
 
+## Registration Provider Integrations
+
+Symptoms:
+
+- Studio `/studio/events/{eventId}/integrations` is missing or health-only.
+- A provider iframe is blank or returns `404` from the BFF embed route.
+- Callback provider logs show retries, but ISLAMU shows parked items or no completion.
+- Reconciliation queue rows expose issue codes such as `UNKNOWN_TUPLE`, `UNVERIFIABLE_EVIDENCE`, `BLOCKING_DRIFT`, `BELOW_MINIMUM_TRUST`, `STALE_OR_OUT_OF_ORDER`, or `MIRROR_SINK_UNSUPPORTED`.
+
+Checks:
+
+1. Confirm the event HAL contains `manage-registration-channels` for management or `view-registration-provider-health` for health-only visibility. The UI must not recreate hidden actions from roles or local claims.
+2. For embeds, call the same-origin BFF route without query parameters. If it returns `404`, inspect the API launch descriptor lineage, mode, availability, and the connection approved origins. Only HTTPS origins are accepted; local/private/link-local/metadata targets are rejected.
+3. For callbacks, remember `202 Accepted` is not completion. The callback endpoint acknowledges invalid, duplicate, unknown, stale, and parked evidence to avoid retry storms and tenant enumeration. Inspect provider health and queue resources instead.
+4. For parked callbacks, verify the binding's exact capability tuple `(ProviderCode, DeploymentKind, ApiVersion, AdapterPolicyVersion, ConformanceEvidenceRevision)`, drift class, requirement sync mode, trust level, and Data Protection receipt availability. Do not change a provider name to force capability matching.
+5. Health and queue responses are privacy-bounded. If you need raw provider payloads or attendee answers for diagnosis, do not add them to health/support artifacts; use an audited operator workflow outside this Phase 9 surface.
+6. Docker-backed provider tests may be unavailable in local environments without Docker/Testcontainers. Record that as an environment caveat; do not weaken source docs or claim runtime provider proof from no-container tests.
+
 ## Auth And BFF Issues
 
 ### 401 on write endpoints

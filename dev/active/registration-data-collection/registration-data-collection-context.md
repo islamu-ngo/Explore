@@ -3,7 +3,35 @@
 
 # Registration Data Collection & Participation Platform — Context
 
-Last Updated: 2026-08-09 Europe/Brussels
+Last Updated: 2026-08-10 Europe/Brussels
+
+## PHASE 9 COMPLETE — DOCS CLOSEOUT (2026-08-10 Europe/Brussels)
+
+Phase 9 provider-neutral framework and final-review repairs are implemented. Publish now uses the canonical server-owned revision hash, event managers can list tenant connections without receiving tenant-mutation affordances, Studio requires both secret-binding IDs, reconciliation uses a bounded checkpoint, and every management action declares explicit 400/401/403 metadata. OpenAPI, NSwag, and the API contract inventory were regenerated after the repairs.
+
+Verified source evidence:
+
+- Provider secrets: `SecretDefinitionRegistry.Keys.RegistrationProviders.ApiToken` = `registration_provider.api_token` and `WebhookSecret` = `registration_provider.webhook_secret`, both tenant-scoped with default Infisical path `/registration-providers`; `SecretBinding.Qualifier` is the bounded 128-character discriminator for multiple tenant connections.
+- Provider model: `RegistrationProviderConnection` stores only secret-binding IDs and approved HTTPS origins; `RegistrationProviderBinding` pins connection/form/version/modes/trust/drift/state; `RegistrationProviderCapability`, field/option mappings, and schema revisions store provider evidence and mapping metadata only; `RegistrationChannel` links requirements to native or provider binding channels.
+- Exact capability tuple: `(ProviderCode, DeploymentKind, ApiVersion, AdapterPolicyVersion, ConformanceEvidenceRevision)`. The ten D3 interfaces are `IRegistrationProviderDescriptor`, `IRegistrationProviderPresentation`, `IRegistrationProviderSchemaReader`, `IRegistrationProviderFormProvisioner`, `IRegistrationProviderSubmissionWriter`, `IRegistrationProviderSubmissionReader`, `IRegistrationProviderCallbackVerifier`, `IRegistrationProviderSubscriptionManager`, `IRegistrationProviderReconciliationProvider`, and `IRegistrationProviderSubmissionSink`.
+- Drift classes: `NoDrift`, `AdditiveOptionalChange`, `LabelOnlyChange`, `MappingRequired`, `RequiredFieldRemoved`, `TypeChanged`, `OptionSetChanged`, `UnsupportedChange`; `MappingRequired` and worse block publication.
+- Callback/effect: `RegistrationProviderCallbackController` reads bounded exact bytes and returns `202 Accepted` for every non-oversize intake outcome; `RegistrationProviderIncomingWebhookVerifier` creates one stable `registration.provider_submission` effect pointer; `RegistrationProviderCallbackReceiptProtector` protects receipts with Data Protection purpose `Explore.RegistrationProviderCallbackReceipt` / `v1`; `ProcessProviderSubmissionEffectCommandHandler` revalidates receipt, tuple, payload hash, and provider submission ID before Phase 8 persistence or parking.
+- Sync/trust: `NONE` stores nothing; `COMPLETION_ONLY` stores evidence/fulfillment and zero answers; `SELECTED_FIELDS`/`FULL_CANONICAL` normalize mapped answers; `MIRROR_ONLY` requires `SUBMISSION_SINK` or parks. Trust gates require `CompletionOnly`, `SelectedFields`, or `FullCanonical` for their matching sync modes.
+- Health/reconciliation privacy: health DTOs expose connection validity, callback age class, drift class, lag, queue depth, and capability codes only; queue DTOs expose status, issue codes, timestamps, next attempt, and generation only. `explore.registration_providers.management_actions` uses bounded `action`/`outcome` tags.
+- Auth/HAL/UI: event relations `manage-registration-channels` and `view-registration-provider-health` are authority for Studio `/studio/events/{eventId}/integrations`; item relations include `provider-create`, `origins`, `mappings`, `publish`, `manual-import`, `poll`, `retry`, `resolve`, and `launch-descriptor`; `RegistrationProviderIntegrationService` validates HAL link method/path before writes.
+- Embed/CSP: approved origins are HTTPS origin-only and SSRF-filtered; `/bff/registration-provider-embed/...` fetches the descriptor server-side, rejects query strings/lineage mismatch/non-approved targets, emits per-route `frame-src`, and renders a sandboxed iframe plus new-tab fallback. `RegistrationProviderLaunchState` treats iframe events as display status only and polls order/requirement state for completion authority.
+- Phase boundary: independent OpenAI Oracle reassessment classified organizer capability editing and attendee-visible provider launch as `NOT_BLOCKER`. Capability rows include adapter policy and conformance evidence, so Phase 10's trusted adapter provisioning path owns them; the launch/frame primitives remain authenticated and dormant until a concrete conformance-backed adapter provides a public order-scoped journey.
+- Migrations: five generated initial application migrations are PostgreSQL `20260810001244_InitialPostgreSqlApplication`, SQLite `20260810001310_InitialSqliteApplication`, SQL Server `20260810001317_InitialSqlServerApplication`, MariaDB `20260810001325_InitialMariaDbApplication`, and MySQL `20260810001333_InitialMySqlApplication`.
+
+Verification: canonical Release build succeeds with 0 errors and 3,669 existing warnings; Application passes 3,512/3,512, Architecture 368 with one governed skip, and Blazor Client 2,330 with one governed skip. Focused management handlers pass 17/17, provider architecture 3/3, Studio 20/20, authenticated BFF embed 9/9, API HAL 14/14, and generated contract checks 6/6. The full API run reached 1,687 passes; 523 Docker/Testcontainers cases could not start because `unix:///var/run/docker.sock` is unavailable.
+
+Final independent OpenAI Oracle review returned `APPROVE` after verifying launch-descriptor event authorization, permission-bound HAL, required secret-binding enforcement, generated contracts, and regression coverage.
+
+Environment caveat: Docker/Testcontainers-backed runtime/provider lanes may be unavailable in this workspace. When unavailable, record the Docker caveat and do not convert no-container checks into provider runtime proof.
+
+### ⏭️ NEXT
+
+Start Phase 10. Phase 10 must add dated provider conformance evidence before making any concrete Formbricks capability or adapter claim.
 
 ## PHASE 8 COMPLETE AND VERIFIED (2026-08-09 Europe/Brussels)
 

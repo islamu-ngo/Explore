@@ -43,6 +43,8 @@ Self-hosting ISLAMU Event delivers a superior alternative:
 
 Everything else — Redis, Keycloak, Cerbos, MinIO, Svix, Coop, AI, federation — is **optional** and can be added when your deployment needs it.
 
+Registration-provider Phase 9 support is provider-neutral and does not require an extra container. Store future provider API tokens and webhook secrets as tenant-scoped secret bindings (`registration_provider.api_token`, `registration_provider.webhook_secret`) with a bounded qualifier when multiple tenant connections use the same key. Approved browser/embed origins are managed as connection data through the API, not `.env` iframe snippets. Concrete provider adapters such as Formbricks, Google Forms, or Microsoft Forms are not claimed until their later phases.
+
 ### Current host topology support
 
 The supported Docker Compose deployment is `Split`: one migration process, an
@@ -179,12 +181,14 @@ combine.
 
 The standalone descriptor builds the images when a Docker daemon is available
 and starts a serialized local-storage flow:
-`volume-init` assigns `/app/data` to UID/GID `1654`,
+`volume-init` assigns `/app/data` and `/app/privacy-erasure-authority` to UID/GID `1654`,
 `event-migrationservice` applies the schema and exits, then
 `event-standalone` starts one web replica. Its SQLite default is the named
 `event_standalone_data` volume, mounted at `/app/data`; the primary database is
-`/app/data/event.db` and the embedded privacy-erasure authority is
-`/app/data/privacy_erasure_authority.db`.
+`/app/data/islamu_event.db`. The independent
+`event_standalone_authority` volume mounts at `/app/privacy-erasure-authority`
+for `privacy_erasure_authority.db`, so restoring the primary never overwrites
+the authority ledger.
 
 ```bash
 docker compose -f docker-compose.standalone.yml up --build
@@ -215,15 +219,16 @@ web image, owns this step:
 
 ```bash
 docker volume create event_standalone_data
-docker run --rm --user 0:0 --mount source=event_standalone_data,target=/app/data busybox:1.37.0-musl sh -c 'chown 1654:1654 /app/data && chmod 700 /app/data'
+docker volume create event_standalone_authority
+docker run --rm --user 0:0 --mount source=event_standalone_data,target=/app/data --mount source=event_standalone_authority,target=/app/privacy-erasure-authority busybox:1.37.0-musl sh -c 'chown 1654:1654 /app/data /app/privacy-erasure-authority && chmod 700 /app/data /app/privacy-erasure-authority'
 docker build -t islamu/event-migrationservice -f src/Event.MigrationService/Dockerfile .
-docker run --rm --mount source=event_standalone_data,target=/app/data -e ASPNETCORE_ENVIRONMENT=Production -e Database__Provider=Sqlite -e Database__Database=/app/data/event.db -e PrivacyErasure__Authority__Topology=EmbeddedSqlite -e PrivacyErasureAuthorityEmbedded__Path=/app/data/privacy_erasure_authority.db -e PrivacyErasureAuthorityEmbedded__WriterReplicaCount=1 -e PrivacyErasureAuthorityEmbedded__BusyTimeoutSeconds=30 islamu/event-migrationservice
+docker run --rm --mount source=event_standalone_data,target=/app/data --mount source=event_standalone_authority,target=/app/privacy-erasure-authority -e ASPNETCORE_ENVIRONMENT=Production -e Database__Provider=Sqlite -e Database__Database=/app/data/islamu_event.db -e PrivacyErasure__Authority__Topology=EmbeddedSqlite -e PrivacyErasureAuthorityEmbedded__Path=/app/privacy-erasure-authority/privacy_erasure_authority.db -e PrivacyErasureAuthorityEmbedded__WriterReplicaCount=1 -e PrivacyErasureAuthorityEmbedded__BusyTimeoutSeconds=30 islamu/event-migrationservice
 ```
 
 Only after that command exits zero, start the web image with one SQLite replica:
 
 ```bash
-docker run --rm --name islamu-event-standalone --mount source=event_standalone_data,target=/app/data -p 8080:8080 -e ASPNETCORE_ENVIRONMENT=Production -e Database__Provider=Sqlite -e Database__Database=/app/data/event.db -e Hosting__ReplicaCount=1 -e PrivacyErasure__Authority__Topology=EmbeddedSqlite -e PrivacyErasureAuthorityEmbedded__Path=/app/data/privacy_erasure_authority.db -e PrivacyErasureAuthorityEmbedded__WriterReplicaCount=1 -e PrivacyErasureAuthorityEmbedded__BusyTimeoutSeconds=30 islamu/event-standalone
+docker run --rm --name islamu-event-standalone --mount source=event_standalone_data,target=/app/data --mount source=event_standalone_authority,target=/app/privacy-erasure-authority -p 8080:8080 -e ASPNETCORE_ENVIRONMENT=Production -e Database__Provider=Sqlite -e Database__Database=/app/data/islamu_event.db -e Hosting__ReplicaCount=1 -e PrivacyErasure__Authority__Topology=EmbeddedSqlite -e PrivacyErasureAuthorityEmbedded__Path=/app/privacy-erasure-authority/privacy_erasure_authority.db -e PrivacyErasureAuthorityEmbedded__WriterReplicaCount=1 -e PrivacyErasureAuthorityEmbedded__BusyTimeoutSeconds=30 islamu/event-standalone
 ```
 
 `linux/amd64` is the initial supported image target. `linux/arm64`, Kubernetes,
@@ -275,8 +280,9 @@ workflow.
   Server, MariaDB, and MySQL share the application model but use separate
   generated migration sets.
 - **Privacy-erasure authority storage is configurable.**
-  `EmbeddedSqlite` uses `/app/data/privacy_erasure_authority.db` on its own
-  durable volume; `CoLocated` stores authority tables in the primary application
+  `EmbeddedSqlite` uses a dedicated local file. Standalone Compose mounts it at
+  `/app/privacy-erasure-authority/privacy_erasure_authority.db` on its own durable
+  volume; `CoLocated` stores authority tables in the primary application
   database; `ExternalDatabase` uses a separate PostgreSQL database.
 
 ---
@@ -409,7 +415,7 @@ For the Split `docker-compose.yml`, these are Compose `.env` interpolation
 inputs. The application receives the mapped native `Database__*` keys, not
 `DATABASE_*` compatibility aliases. The standalone descriptor uses the native
 key contract in [Configuration](CONFIGURATION.md#persistence-configuration)
-and calls its database-name interpolation input `DATABASE_NAME`.
+and calls its database-name interpolation input `DATABASE_DATABASE`.
 
 | Variable | Default | Purpose |
 |---|---|---|
@@ -706,12 +712,13 @@ For full details, see [FEDERATION.md](FEDERATION.md) and [CONFIGURATION.md](CONF
 
 ### Privacy Erasure Authority Topology
 
-**Default behavior:** `EmbeddedSqlite` stores the authority ledger at the fixed
-path `/app/data/privacy_erasure_authority.db`. Mount `/app/data` as a dedicated
-durable local volume, restrict filesystem access to the application identity,
-and include the file in a separate backup job. It uses private cache, WAL, a
-bounded busy timeout, and a single writer. It must never be the primary SQLite
-file or share the primary database's restore lifecycle.
+**Standalone Compose behavior:** `EmbeddedSqlite` stores the authority ledger at
+`/app/privacy-erasure-authority/privacy_erasure_authority.db` on the dedicated
+`event_standalone_authority` volume. Restrict filesystem access to the
+application identity and back up that volume separately from
+`event_standalone_data`. It uses private cache, WAL, a bounded busy timeout, and
+a single writer. It must never be the primary SQLite file or share the primary
+database's restore lifecycle.
 
 For `ExternalDatabase` topology:
 
@@ -876,7 +883,7 @@ Admin support access is off by default (`support_access.enabled=false`). Enable 
 Before every upgrade:
 
 1. ✅ Back up the selected primary database with its provider-native tool
-2. ✅ Back up `/app/data/privacy_erasure_authority.db`, or the independently managed external authority PostgreSQL database
+2. ✅ Back up `/app/privacy-erasure-authority/privacy_erasure_authority.db` from its dedicated volume, or the independently managed external authority PostgreSQL database
 3. ✅ Back up Keycloak PostgreSQL data (if using local Keycloak)
 4. ✅ Back up object storage — `local_storage_data` volume, `minio_data`, or S3 bucket
 5. ✅ Record image tags, commit SHA, enabled Compose profiles, and secret-provider key names
@@ -920,8 +927,8 @@ privacy-erasure authority databases have independent restore lifecycles.
 ```bash
 mkdir -p backups
 docker compose -f docker-compose.standalone.yml stop event-standalone
-docker compose -f docker-compose.standalone.yml run --rm --no-deps --entrypoint sh -v "$(pwd)/backups:/backup" volume-init -c 'set -eu; cd /app/data; tar -czf /backup/event-primary-$(date +%Y%m%dT%H%M%SZ).tgz event.db*'
-docker compose -f docker-compose.standalone.yml run --rm --no-deps --entrypoint sh -v "$(pwd)/backups:/backup" volume-init -c 'set -eu; cd /app/data; tar -czf /backup/privacy-erasure-authority-$(date +%Y%m%dT%H%M%SZ).tgz privacy_erasure_authority.db*'
+docker compose -f docker-compose.standalone.yml run --rm --no-deps --entrypoint sh -v "$(pwd)/backups:/backup" volume-init -c 'set -eu; cd /app/data; tar -czf /backup/event-primary-$(date +%Y%m%dT%H%M%SZ).tgz islamu_event.db*'
+docker compose -f docker-compose.standalone.yml run --rm --no-deps --entrypoint sh -v "$(pwd)/backups:/backup" volume-init -c 'set -eu; cd /app/privacy-erasure-authority; tar -czf /backup/privacy-erasure-authority-$(date +%Y%m%dT%H%M%SZ).tgz privacy_erasure_authority.db*'
 ```
 
 Store and verify both archives away from the Docker host. The commands use the
@@ -945,8 +952,8 @@ validate and list the selected archive before removing any database file:
 export PRIMARY_ARCHIVE='event-primary-20260808T000000Z.tgz'
 export AUTHORITY_ARCHIVE='privacy-erasure-authority-20260808T000000Z.tgz'
 docker compose -f docker-compose.standalone.yml stop event-standalone
-docker compose -f docker-compose.standalone.yml run --rm --no-deps -e PRIMARY_ARCHIVE --entrypoint sh -v "$(pwd)/backups:/backup" volume-init -c 'set -eu; case "$PRIMARY_ARCHIVE" in ""|.|..|*/*) echo "invalid primary archive basename" >&2; exit 64 ;; event-primary-*.tgz) ;; *) echo "unexpected primary archive name" >&2; exit 64 ;; esac; archive="/backup/$PRIMARY_ARCHIVE"; test -f "$archive"; tar -tzf "$archive"; rm -f /app/data/event.db /app/data/event.db-wal /app/data/event.db-shm; tar -xzf "$archive" -C /app/data; chown 1654:1654 /app/data/event.db*; chmod 700 /app/data'
-docker compose -f docker-compose.standalone.yml run --rm --no-deps -e AUTHORITY_ARCHIVE --entrypoint sh -v "$(pwd)/backups:/backup" volume-init -c 'set -eu; case "$AUTHORITY_ARCHIVE" in ""|.|..|*/*) echo "invalid authority archive basename" >&2; exit 64 ;; privacy-erasure-authority-*.tgz) ;; *) echo "unexpected authority archive name" >&2; exit 64 ;; esac; archive="/backup/$AUTHORITY_ARCHIVE"; test -f "$archive"; tar -tzf "$archive"; rm -f /app/data/privacy_erasure_authority.db /app/data/privacy_erasure_authority.db-wal /app/data/privacy_erasure_authority.db-shm; tar -xzf "$archive" -C /app/data; chown 1654:1654 /app/data/privacy_erasure_authority.db*; chmod 700 /app/data'
+docker compose -f docker-compose.standalone.yml run --rm --no-deps -e PRIMARY_ARCHIVE --entrypoint sh -v "$(pwd)/backups:/backup" volume-init -c 'set -eu; case "$PRIMARY_ARCHIVE" in ""|.|..|*/*) echo "invalid primary archive basename" >&2; exit 64 ;; event-primary-*.tgz) ;; *) echo "unexpected primary archive name" >&2; exit 64 ;; esac; archive="/backup/$PRIMARY_ARCHIVE"; test -f "$archive"; tar -tzf "$archive"; rm -f /app/data/islamu_event.db /app/data/islamu_event.db-wal /app/data/islamu_event.db-shm; tar -xzf "$archive" -C /app/data; chown 1654:1654 /app/data/islamu_event.db*; chmod 700 /app/data'
+docker compose -f docker-compose.standalone.yml run --rm --no-deps -e AUTHORITY_ARCHIVE --entrypoint sh -v "$(pwd)/backups:/backup" volume-init -c 'set -eu; case "$AUTHORITY_ARCHIVE" in ""|.|..|*/*) echo "invalid authority archive basename" >&2; exit 64 ;; privacy-erasure-authority-*.tgz) ;; *) echo "unexpected authority archive name" >&2; exit 64 ;; esac; archive="/backup/$AUTHORITY_ARCHIVE"; test -f "$archive"; tar -tzf "$archive"; rm -f /app/privacy-erasure-authority/privacy_erasure_authority.db /app/privacy-erasure-authority/privacy_erasure_authority.db-wal /app/privacy-erasure-authority/privacy_erasure_authority.db-shm; tar -xzf "$archive" -C /app/privacy-erasure-authority; chown 1654:1654 /app/privacy-erasure-authority/privacy_erasure_authority.db*; chmod 700 /app/privacy-erasure-authority'
 docker compose -f docker-compose.standalone.yml up --build -d
 curl --fail http://localhost:8080/health
 ```

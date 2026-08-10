@@ -143,10 +143,12 @@ Content-Type: application/json
 
 ### Identity Federation with Keycloak OIDC
 
-ISLAMU Event uses Keycloak for standard OIDC authentication (see [SECURITY-MODEL.md](SECURITY-MODEL.md)):
+Per [ADR-021](adr/ADR-021-keycloak-authentication-standard.md), ISLAMU Event standardizes on Keycloak as the mandatory identity and authentication plane across all SaaS, BYOC, and on-premise deployment tiers (see also [SECURITY-MODEL.md](SECURITY-MODEL.md)):
 
-* **Shared Identity Provider**: The ERP and ISLAMU Event can connect to the same Keycloak realm.
+* **One Identity Plane per ERP Deployment**: All installed ERP modules (Accounting, CRM, Events) share a single Keycloak deployment and user session.
 * **Seamless Session Passing**: When the user clicks the "Events" tab in the ERP, the browser passes the existing Keycloak session cookie, completing OIDC Authorization Code Flow with PKCE without requesting user credentials again.
+* **Separation of Concerns**: Keycloak manages authentication, enterprise IdP federation (OIDC/SAML/AD), MFA, and sessions; Cerbos manages fine-grained business action authorization PDP decisions; ERP domain databases manage tenant entitlements and module license keys.
+
 
 ### HATEOAS & HAL Link Affordance Gating
 

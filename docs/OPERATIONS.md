@@ -611,6 +611,7 @@ Current counters include:
 - `explore.ai.provider.proposed_actions` (`provider`, `action_kind`) — aggregate count of provider-returned proposed actions; labels intentionally include only bounded action kinds such as `create_event_draft`, not raw tool arguments or proposal payloads.
 - `explore.ai.retention.cleanup_runs` (`mode`, `outcome`) — scheduled AI retention cleanup pass outcomes in `dry_run` or `redact` mode; labels intentionally exclude tenant IDs, prompts, responses, provider IDs, and tool payloads.
 - `explore.ai.retention.cleanup_rows` (`mode`, `category`) — bounded aggregate row counts for eligible/redacted AI retention cleanup categories; labels intentionally exclude tenant IDs and content-bearing identifiers.
+- `explore.registration_providers.management_actions` (`action`, `outcome`) — bounded registration-provider management action outcomes such as reconciliation, manual import, retry, and resolve; labels intentionally exclude tenant IDs, event IDs, binding IDs, provider submission IDs, URLs, answers, PII, secret refs, raw payloads, and raw provider errors.
 - `explore.storage.upload_sessions` (`provider`, `operation`, `outcome`, `failure_category`) — provider-neutral upload session create/finalize/cancel outcomes; labels intentionally exclude tenant IDs, user IDs, upload-session IDs, filenames, object keys, paths, endpoints, bucket names, access keys, secrets, and raw exception text.
 - `explore.storage.upload_bytes` (`provider`, `outcome`, `failure_category`) — upload byte histogram for accepted/attempted provider writes; labels are bounded to provider and outcome categories.
 - `explore.storage.reads` (`provider`, `outcome`, `failure_category`, `visibility`) — metadata-backed storage read outcomes after lifecycle and visibility checks; labels intentionally exclude storage-object IDs, object keys, paths, filenames, tenant IDs, user IDs, and raw provider errors.
@@ -640,6 +641,19 @@ Incident controls:
 - Retention cleanup cannot clear retained callback bytes while an effect is pending, failed, or processing. Completed/dead-lettered pointers permit payload cleanup only after the inbox payload-retention timestamp and replay window have expired. After cleanup, redrive is intentionally unavailable.
 - Alert on `explore.webhooks.processing_outcomes{provider="coop",operation="incoming_effect"}`, `explore.webhooks.retries_scheduled`, `explore.webhooks.dead_letters`, and `explore.webhooks.provider_health_checks`. These labels are closed and PII-free; logs include bounded failure type/category only.
 - Back up the retained inbox, effect pointer, applied-effect receipt, and webhook audit tables together. Restoring only part of this relationship can remove replay evidence or cause a settled command to appear pending.
+
+### Registration Provider Operations
+
+Registration-provider callbacks reuse the incoming webhook ledger with effect kind `registration.provider_submission`. The callback route acknowledges every non-oversize outcome with `202 Accepted`; operators diagnose completion through event-scoped provider health and reconciliation, not HTTP callback status.
+
+Operator sequence:
+
+1. Open Studio at `/studio/events/{eventId}/integrations` only when the event HAL exposes `manage-registration-channels` or `view-registration-provider-health`.
+2. Check provider health rows for connection validity, callback age class, drift class, reconciliation lag, parked queue depth, and capability codes. The surface intentionally contains no answers, attendee PII, raw provider payloads, URLs, or secret refs.
+3. Use HAL `poll` for reconciliation, `manual-import` for bounded storage/source metadata, and item `retry`/`resolve` only when the queue resource emits them. Retry requires retained effect identity and current processing generation; receipt conflicts and event/binding mismatches fail closed.
+4. For browser embeds, verify the connection approved origin. The BFF emits a per-route CSP `frame-src` for the descriptor origin and rejects arbitrary iframe input; iframe navigation is display-only, so use status polling for completion.
+
+Five Phase 9 initial application migration IDs exist for the supported providers: PostgreSQL `20260810001244_InitialPostgreSqlApplication`, SQLite `20260810001310_InitialSqliteApplication`, SQL Server `20260810001317_InitialSqlServerApplication`, MariaDB `20260810001325_InitialMariaDbApplication`, and MySQL `20260810001333_InitialMySqlApplication`. They are generated artifacts; do not patch them by hand.
 
 ### Support Access Operations
 

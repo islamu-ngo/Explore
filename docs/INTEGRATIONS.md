@@ -27,6 +27,7 @@ Outgoing product webhooks use `Local`, `Svix`, `Composite`, `DryRun`, or `Disabl
 |---|---|---|---|
 | `POST /api/integrations/moderation/coop/callback` | Coop-compatible review queue | API key policy plus timestamped HMAC-SHA256 over raw body | Atomically retains the verified callback and one unique effect pointer. A fenced worker revalidates the retained payload and invokes canonical decision execution; command success is required before receipt/pointer completion. |
 | `POST /api/integrations/moderation/osprey/callback` | Osprey-compatible signal worker | API key policy | Records bounded moderation signals on the local report; it does not directly execute moderation actions. |
+| `POST /api/integrations/registration/{provider}/{bindingId}/callback` | Registration-provider framework | `[AllowAnonymous]` edge plus provider-neutral callback verifier | Captures bounded provider-submission evidence as one `registration.provider_submission` effect. Non-oversize malformed, duplicate, unknown, stale, or parked evidence is acknowledged with `202 Accepted`; registration mutation happens later in the fenced worker. |
 | `POST /api/integrations/svix/operational` | Svix operational webhook | `[AllowAnonymous]` at HTTP edge plus Svix-compatible signature verification | Verifies operational callbacks with `svix-id`, `svix-timestamp`, and `svix-signature`; tenant-addressed payloads are captured in the incoming ledger. |
 
 These routes continue to work when outgoing webhooks are `Disabled`, `Local`, `Svix`, `Composite`, or `DryRun`.
@@ -72,6 +73,14 @@ Svix operational callbacks use Svix-compatible verification. Configure:
 | `WEBHOOKS_SVIX_OPERATIONAL_WEBHOOK_SECRET` | Local/deployment environment value used by the development seeder when configured. |
 
 This callback does not require `Webhooks:Provider=Svix`; it is an incoming integration endpoint, not the outgoing SvixProvider.
+
+## Registration Provider Framework
+
+Phase 9 ships only the provider-neutral framework. Concrete provider claims start in Phase 10+ after dated conformance evidence. The exact capability tuple is `(ProviderCode, DeploymentKind, ApiVersion, AdapterPolicyVersion, ConformanceEvidenceRevision)`, and automatic finalization fails closed when the tuple is unknown, drift is blocking, trust is below the required sync mode, or receipt verification fails.
+
+Callbacks follow the shared intake pattern: exact bytes are retained, the verifier returns a Data Protection receipt, and a durable effect pointer is created. The worker validates that receipt against tenant, connection, binding, provider, tuple, payload hash, provider submission id, and timestamp before using Phase 8 normalization/finalization. `NONE` stores nothing; `COMPLETION_ONLY` records evidence/fulfillment but zero answers; `SELECTED_FIELDS` and `FULL_CANONICAL` map approved fields; `MIRROR_ONLY` records evidence only when a sink capability exists, otherwise it parks.
+
+Management APIs expose connection, binding, mapping, channel, health, and reconciliation resources under `/api/tenants/{tenantId}/events/{eventId}/registration-providers`. Health and queue data is privacy-bounded: connection validity, callback age class, drift class, reconciliation lag, queue depth, issue codes, generation, and timestamps only. Studio and integrations must use HAL relations (`manage-registration-channels`, `view-registration-provider-health`, `provider-create`, `origins`, `mappings`, `publish`, `manual-import`, `poll`, `retry`, `resolve`) and must not infer actions from provider names or capability codes.
 
 ## Related
 

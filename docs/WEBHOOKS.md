@@ -25,6 +25,8 @@ domain/application event
 
 ISLAMU owns the canonical event catalog and `webhook_messages` ledger even when Svix performs final delivery. That keeps audit, provider switching, payload retention, and local fallback under the application boundary.
 
+Incoming registration-provider callbacks are not outgoing webhooks. `POST /api/integrations/registration/{provider}/{bindingId}/callback` reuses the incoming-webhook message/effect ledger with effect kind `registration.provider_submission`, acknowledges non-oversize deliveries with `202 Accepted`, and parks unverifiable or unsafe evidence for organizer reconciliation. Outgoing `Webhooks:*` mode does not enable, disable, or authenticate that callback route.
+
 ## Provider Modes
 
 | Mode | Behavior | Use |

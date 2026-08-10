@@ -11,12 +11,15 @@ ABOUTME: Focuses on enforced behavior in code (BFF, MediatR authorization, and f
 
 ## Security Model
 
-The platform uses a BFF model:
+Per [ADR-021](adr/ADR-021-keycloak-authentication-standard.md), the platform standardizes on **Keycloak** as its single, mandatory identity and authentication plane across all deployment modes (SaaS, BYOC, On-Premise), while delegating fine-grained resource authorization to **Cerbos**:
 
-- `Explore.Blazor` (server) handles OIDC and session cookies.
+- `Keycloak` acts as the single authentication authority, issuing OpenID Connect / OAuth 2.0 tokens, managing sessions, MFA, and enterprise IdP federation (OIDC/SAML/LDAP).
+- `Explore.Blazor` (BFF server) handles OIDC Code Flow + PKCE (`S256`) and session cookies.
 - Dedicated admin hosts use the embedded control-plane shell inside `Explore.Blazor` and the same server-owned OIDC session boundary.
 - `Explore.Blazor.Client` (WASM) does not directly manage access tokens.
-- `Explore.API` authorizes bearer-token requests and applies resource-level checks in Application layer.
+- `Explore.API` authorizes bearer-token requests using dynamic JWKS prefetching (`DynamicJwtConfigurationService`) and applies resource-level policy checks via Cerbos.
+- `ERP Domain` remains authoritative for tenant memberships, legal entities, and module license entitlements.
+
 
 ## BFF/API Topology and Trust Boundary
 
@@ -242,13 +245,18 @@ Admin support access is a persisted, time-boxed support session, not an imperson
 
 ## Incoming Webhook Public Ingestion
 
-Some machine callbacks are intentionally anonymous because the provider signature is the authentication boundary. The Svix operational callback at `POST /api/integrations/svix/operational` is one of these public-ingestion exceptions.
+Some machine callbacks are intentionally anonymous because the provider signature is the authentication boundary. The Svix operational callback at `POST /api/integrations/svix/operational` and the registration-provider callback at `POST /api/integrations/registration/{provider}/{bindingId}/callback` are public-ingestion exceptions.
 
 - Verify signatures over the raw body before parsing JSON. For Svix-compatible callbacks, verification uses `svix-id`, `svix-timestamp`, and `svix-signature` with a bounded timestamp tolerance and fixed-time signature comparison.
 - Enforce a configured body-size limit before dispatching to provider-specific verification or Application commands.
 - Treat the provider message ID as the replay/idempotency key. Duplicate verified deliveries are acknowledged but must not re-run side effects.
 - Persist only the durable idempotency ledger fields needed for processing: tenant binding when present, provider name, provider message ID, idempotency key, event type, payload hash, redacted headers, and bounded status/failure metadata.
 - ProblemDetails, logs, metrics, and traces must not include raw callback bodies, signature headers, authorization headers, secrets, tokens, tenant/user identifiers, provider message IDs, or raw verification exceptions.
+- Registration provider callbacks add provider/binding route metadata server-side, capture only a bounded retained message/effect pointer, and acknowledge non-oversize invalid or duplicate deliveries with `202 Accepted` to avoid provider retry storms and tenant enumeration. The worker validates the Data Protection receipt (`Explore.RegistrationProviderCallbackReceipt` / `v1`) before any registration effect.
+
+## Registration Provider Browser Embed Boundary
+
+External registration embeds are browser-only presentation, not authority. The BFF route `/bff/registration-provider-embed/tenants/{tenantId}/events/{eventId}/workflows/{workflowId}/requirements/{requirementId}/channels/{channelId}/bindings/{bindingId}` is authenticated, same-origin, no-store, and accepts no query string. It fetches a server-generated launch descriptor via the generated API client, rejects lineage mismatches and non-approved HTTPS URLs, blocks local/private literal hosts, and emits a route-specific CSP: `default-src 'none'; frame-src {approved-origin}; frame-ancestors 'self'; base-uri 'none'; form-action 'none'; object-src 'none'; script-src 'none'; style-src 'none'`. The HTML contains only a sandboxed iframe (`allow-forms allow-same-origin allow-scripts`) and a `noopener noreferrer` new-tab fallback. Iframe load or navigation never completes a requirement; clients poll server-owned order/requirement status.
 
 ## Outgoing Webhook Egress
 
