@@ -5,6 +5,7 @@ FROM mcr.microsoft.com/dotnet/sdk:10.0.301@sha256:548d93f8a18a1acbe6cc127bc4f472
 WORKDIR /src
 
 COPY ["global.json", "Directory.Build.props", "Directory.Packages.props", "./"]
+COPY ["dotnet-tools.json", "./"]
 COPY ["src/Event.Standalone/Event.Standalone.csproj", "src/Event.Standalone/packages.lock.json", "src/Event.Standalone/"]
 COPY ["src/Explore.API/Explore.API.csproj", "src/Explore.API/packages.lock.json", "src/Explore.API/"]
 COPY ["src/Explore.Application/Explore.Application.csproj", "src/Explore.Application/packages.lock.json", "src/Explore.Application/"]
@@ -17,14 +18,19 @@ COPY ["src/Explore.Persistence/Explore.Persistence.csproj", "src/Explore.Persist
 COPY ["src/Explore.Secrets/Explore.Secrets.csproj", "src/Explore.Secrets/packages.lock.json", "src/Explore.Secrets/"]
 COPY ["src/Explore.ServiceDefaults/Explore.ServiceDefaults.csproj", "src/Explore.ServiceDefaults/packages.lock.json", "src/Explore.ServiceDefaults/"]
 COPY ["src/Event.Web.BffHosting/Event.Web.BffHosting.csproj", "src/Event.Web.BffHosting/packages.lock.json", "src/Event.Web.BffHosting/"]
-RUN dotnet restore "src/Event.Standalone/Event.Standalone.csproj" --locked-mode --force-evaluate /p:StandaloneContainerPublish=true
+RUN dotnet restore "src/Event.Standalone/Event.Standalone.csproj" --locked-mode --force-evaluate /p:StandaloneContainerPublish=true && dotnet tool restore
 
 COPY . .
-RUN dotnet publish "src/Event.Standalone/Event.Standalone.csproj" -c Release -o /app/publish /p:StandaloneContainerPublish=true /p:DebugType=none /p:ErrorOnDuplicatePublishOutputFiles=false --no-restore && cp src/Event.Standalone/appsettings.json /app/publish/appsettings.json && mkdir /app/data
+RUN dotnet publish "src/Event.Standalone/Event.Standalone.csproj" -c Release -o /app/publish /p:StandaloneContainerPublish=true /p:DebugType=none /p:ErrorOnDuplicatePublishOutputFiles=false --no-restore \
+    && find /app/publish/wwwroot -type f -name '*.gz' -delete \
+    && cp src/Event.Standalone/appsettings.json /app/publish/appsettings.json \
+    && mkdir /app/data
 
 FROM mcr.microsoft.com/dotnet/runtime-deps:10.0-noble-chiseled-extra@sha256:a0428e029a1026daa75e68d00ee464c78d8979fb10f289257b143e3ea997196b AS final
 WORKDIR /app
 ENV ASPNETCORE_HTTP_PORTS=8080
+ENV HttpsRedirection__Enabled=false
+ENV HttpsRedirection__HttpsPort=
 EXPOSE 8080
 COPY --from=build /app/publish .
 COPY --chown=$APP_UID:$APP_UID --from=build /app/data /app/data

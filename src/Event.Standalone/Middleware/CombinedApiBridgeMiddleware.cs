@@ -25,20 +25,6 @@ public sealed class CombinedApiBridgeMiddleware(RequestDelegate next)
             return;
         }
 
-        var session = await context.AuthenticateAsync(CookieAuthenticationDefaults.AuthenticationScheme);
-        if (!session.Succeeded)
-        {
-            if (context.Items.ContainsKey(EventBffAuthenticationConstants.TokenRefreshRejectedItemKey))
-            {
-                BffProxyHeaderSanitizer.RemoveBrowserControlledHeaders(context.Request);
-                context.Response.StatusCode = StatusCodes.Status401Unauthorized;
-                return;
-            }
-
-            await next(context);
-            return;
-        }
-
         if (EventBffRequestPolicy.RequiresAntiforgeryValidation(context.Request))
         {
             try
@@ -51,6 +37,20 @@ public sealed class CombinedApiBridgeMiddleware(RequestDelegate next)
                 await context.Response.WriteAsync("Antiforgery validation failed", context.RequestAborted);
                 return;
             }
+        }
+
+        var session = await context.AuthenticateAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+        if (!session.Succeeded)
+        {
+            if (context.Items.ContainsKey(EventBffAuthenticationConstants.TokenRefreshRejectedItemKey))
+            {
+                BffProxyHeaderSanitizer.RemoveBrowserControlledHeaders(context.Request);
+                context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+                return;
+            }
+
+            await next(context);
+            return;
         }
 
         var enrichment = await enricher.ResolveForSessionAsync(context, session, context.RequestAborted);

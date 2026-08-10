@@ -7,7 +7,7 @@ name: islamu-event-standalone
 # DATABASE_PROVIDER=PostgreSql
 # DATABASE_HOST=postgres.example.internal
 # DATABASE_PORT=5432
-# DATABASE_NAME=islamu_event
+# DATABASE_DATABASE=islamu_event
 # DATABASE_SCHEMA=islamu_event
 # DATABASE_RUNTIME_USERNAME=islamu_event_runtime
 # DATABASE_RUNTIME_PASSWORD=<runtime-password>
@@ -19,9 +19,10 @@ services:
     image: busybox:1.37.0-musl
     restart: "no"
     user: "0:0"
-    command: ["sh", "-c", "chown 1654:1654 /app/data && chmod 700 /app/data"]
+    command: ["sh", "-c", "chown 1654:1654 /app/data /app/privacy-erasure-authority && chmod 700 /app/data /app/privacy-erasure-authority"]
     volumes:
       - event_standalone_data:/app/data
+      - event_standalone_authority:/app/privacy-erasure-authority
 
   event-migrationservice:
     build:
@@ -34,18 +35,19 @@ services:
       Database__Provider: ${DATABASE_PROVIDER:-Sqlite}
       Database__Host: ${DATABASE_HOST:-}
       Database__Port: ${DATABASE_PORT:-}
-      Database__Database: ${DATABASE_NAME:-/app/data/event.db}
+      Database__Database: ${DATABASE_DATABASE:-/app/data/islamu_event.db}
       Database__Schema: ${DATABASE_SCHEMA:-islamu_event}
       Database__TlsMode: ${DATABASE_TLS_MODE:-}
       Database__TrustServerCertificate: ${DATABASE_TRUST_SERVER_CERTIFICATE:-false}
       Database__Migrator__Username: ${DATABASE_MIGRATOR_USERNAME:-}
       Database__Migrator__Password: ${DATABASE_MIGRATOR_PASSWORD:-}
       PrivacyErasure__Authority__Topology: EmbeddedSqlite
-      PrivacyErasureAuthorityEmbedded__Path: /app/data/privacy_erasure_authority.db
+      PrivacyErasureAuthorityEmbedded__Path: /app/privacy-erasure-authority/privacy_erasure_authority.db
       PrivacyErasureAuthorityEmbedded__WriterReplicaCount: "1"
       PrivacyErasureAuthorityEmbedded__BusyTimeoutSeconds: "30"
     volumes:
       - event_standalone_data:/app/data
+      - event_standalone_authority:/app/privacy-erasure-authority
     depends_on:
       volume-init:
         condition: service_completed_successfully
@@ -61,14 +63,14 @@ services:
       Database__Provider: ${DATABASE_PROVIDER:-Sqlite}
       Database__Host: ${DATABASE_HOST:-}
       Database__Port: ${DATABASE_PORT:-}
-      Database__Database: ${DATABASE_NAME:-/app/data/event.db}
+      Database__Database: ${DATABASE_DATABASE:-/app/data/islamu_event.db}
       Database__Schema: ${DATABASE_SCHEMA:-islamu_event}
       Database__TlsMode: ${DATABASE_TLS_MODE:-}
       Database__TrustServerCertificate: ${DATABASE_TRUST_SERVER_CERTIFICATE:-false}
       Database__Runtime__Username: ${DATABASE_RUNTIME_USERNAME:-}
       Database__Runtime__Password: ${DATABASE_RUNTIME_PASSWORD:-}
       PrivacyErasure__Authority__Topology: EmbeddedSqlite
-      PrivacyErasureAuthorityEmbedded__Path: /app/data/privacy_erasure_authority.db
+      PrivacyErasureAuthorityEmbedded__Path: /app/privacy-erasure-authority/privacy_erasure_authority.db
       PrivacyErasureAuthorityEmbedded__WriterReplicaCount: "1"
       PrivacyErasureAuthorityEmbedded__BusyTimeoutSeconds: "30"
       Hosting__ReplicaCount: "1"
@@ -76,6 +78,7 @@ services:
       - "${EVENT_STANDALONE_HTTP_PORT:-8080}:8080"
     volumes:
       - event_standalone_data:/app/data
+      - event_standalone_authority:/app/privacy-erasure-authority
     deploy:
       replicas: 1
     depends_on:
@@ -84,3 +87,4 @@ services:
 
 volumes:
   event_standalone_data:
+  event_standalone_authority:

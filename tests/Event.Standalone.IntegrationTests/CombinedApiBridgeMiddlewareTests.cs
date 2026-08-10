@@ -9,6 +9,7 @@ using Event.Web.BffHosting.Abstractions;
 using Event.Web.BffHosting.Security;
 using Explore.Application.Constants;
 using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
@@ -61,8 +62,11 @@ public sealed class CombinedApiBridgeMiddlewareTests
     {
         await using var app = await CreateApplicationAsync(cookieToken: "server-token");
         using var client = app.GetTestClient();
+        var antiforgery = await IssueAntiforgeryAsync(client);
         using var request = new HttpRequestMessage(HttpMethod.Patch, "/api/instance/settings/auth-provider");
         request.Headers.Add("X-Test-Cookie", "valid");
+        request.Headers.Add("Cookie", antiforgery.CookieHeader);
+        request.Headers.Add("X-CSRF-TOKEN", antiforgery.Token);
         request.Headers.Add("Authorization", "Bearer attacker");
         request.Headers.Add(EventBffHeaderNames.ApiKey, "attacker-key");
         request.Headers.Add("X-Control-Plane-Key", "attacker-control-plane-key");
@@ -84,6 +88,50 @@ public sealed class CombinedApiBridgeMiddlewareTests
             .IsEqualTo(ApiAuthenticationSchemeNames.MultiAuth);
         await Assert.That(response.Headers.Contains("X-Seen-Api-Key")).IsFalse();
         await Assert.That(response.Headers.Contains("X-Seen-Control-Plane-Key")).IsFalse();
+    }
+
+    [Test]
+    [Arguments("/api/instance/settings/auth-provider", null)]
+    [Arguments("/api/instance/settings/auth-provider", "invalid-token")]
+    [Arguments("/api/InstanceOnboarding/auth-provider-configuration", null)]
+    [Arguments("/api/InstanceOnboarding/auth-provider-configuration", "invalid-token")]
+    public async Task CookieUnsafeSetupAndOnboardingRequestsRequireValidAntiforgery(
+        string path,
+        string? token)
+    {
+        await using var app = await CreateApplicationAsync(cookieToken: "server-token");
+        using var client = app.GetTestClient();
+        var antiforgery = await IssueAntiforgeryAsync(client);
+        using var request = new HttpRequestMessage(HttpMethod.Patch, path);
+        request.Headers.Add("X-Test-Cookie", "valid");
+        request.Headers.Add("Cookie", antiforgery.CookieHeader);
+        if (token is not null)
+        {
+            request.Headers.Add("X-CSRF-TOKEN", token);
+        }
+
+        using var response = await client.SendAsync(request);
+
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.BadRequest);
+        await Assert.That(response.Headers.Contains("X-Next-Reached")).IsFalse();
+    }
+
+    [Test]
+    public async Task NoCookieLeavesExternalUnsafeBearerRequestIndependentOfAntiforgery()
+    {
+        await using var app = await CreateApplicationAsync(cookieToken: "server-token");
+        using var client = app.GetTestClient();
+        using var request = new HttpRequestMessage(HttpMethod.Patch, "/api/instance/settings/auth-provider");
+        request.Headers.Add("Authorization", "Bearer external-token");
+        request.Headers.Add(EventBffHeaderNames.ApiKey, "external-key");
+
+        using var response = await client.SendAsync(request);
+
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
+        await Assert.That(response.Headers.GetValues("X-Seen-Authorization").Single())
+            .IsEqualTo("Bearer external-token");
+        await Assert.That(response.Headers.GetValues("X-Seen-Api-Key").Single())
+            .IsEqualTo("external-key");
     }
 
     [Test]
@@ -173,6 +221,7 @@ public sealed class CombinedApiBridgeMiddlewareTests
         using var client = app.GetTestClient();
         using var request = new HttpRequestMessage(HttpMethod.Post, "/api/events");
         request.Headers.Add("X-Test-Cookie", "valid");
+        request.Headers.Add("Cookie", ".AspNetCore.Cookies=test-session");
 
         using var response = await client.SendAsync(request);
 
@@ -234,10 +283,21 @@ public sealed class CombinedApiBridgeMiddlewareTests
         builder.Services.AddSingleton<IEventBffTenantHintProvider, TrustedTenantProvider>();
         builder.Services.AddSingleton<IEventBffSetupSecretProvider, PrincipalSetupSecretProvider>();
         builder.Services.AddSingleton<IEventBffSupportAccessProvider, PrincipalSupportAccessProvider>();
-        builder.Services.AddAntiforgery();
+        builder.Services.AddAntiforgery(options => options.HeaderName = "X-CSRF-TOKEN");
         builder.Services.AddCombinedApiBridge();
 
         var app = builder.Build();
+        app.Use(async (context, next) =>
+        {
+            if (context.Request.Path == "/xsrf")
+            {
+                var antiforgery = context.RequestServices.GetRequiredService<IAntiforgery>();
+                await context.Response.WriteAsync(antiforgery.GetAndStoreTokens(context).RequestToken!);
+                return;
+            }
+
+            await next(context);
+        });
         app.UseCombinedApiBridge();
         app.UseAuthentication();
         app.Run(context =>
@@ -260,6 +320,16 @@ public sealed class CombinedApiBridgeMiddlewareTests
         return app;
     }
 
+    private static async Task<AntiforgeryPair> IssueAntiforgeryAsync(HttpClient client)
+    {
+        using var response = await client.GetAsync("/xsrf");
+        var token = await response.Content.ReadAsStringAsync();
+        var cookieHeader = string.Join(
+            "; ",
+            response.Headers.GetValues("Set-Cookie").Select(value => value.Split(';', 2)[0]));
+        return new AntiforgeryPair(token, cookieHeader);
+    }
+
     private static void CopyHeader(HttpContext context, string source, string destination)
     {
         if (context.Request.Headers.TryGetValue(source, out var value))
@@ -272,6 +342,8 @@ public sealed class CombinedApiBridgeMiddlewareTests
         new(new ClaimsIdentity([new Claim(ClaimTypes.Name, name)], authenticationType));
 
     private sealed record TestTokenState(string? Token);
+
+    private sealed record AntiforgeryPair(string Token, string CookieHeader);
 
     private sealed class TestAuthenticationHandler(
         IOptionsMonitor<AuthenticationSchemeOptions> options,

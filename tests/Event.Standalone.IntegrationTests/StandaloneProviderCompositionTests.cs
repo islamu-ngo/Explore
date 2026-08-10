@@ -17,6 +17,31 @@ namespace Event.Standalone.IntegrationTests;
 public sealed class StandaloneProviderCompositionTests
 {
     [Test]
+    public async Task StandaloneStorageContractUsesDedicatedPrimaryAndAuthorityVolumes()
+    {
+        var repositoryRoot = FindRepositoryRoot();
+        IConfiguration settings = new ConfigurationBuilder()
+            .AddJsonFile(
+                Path.Combine(repositoryRoot, "src", "Event.Standalone", "appsettings.json"),
+                optional: false)
+            .Build();
+        var compose = await File.ReadAllTextAsync(
+            Path.Combine(repositoryRoot, "docker-compose.standalone.yml"));
+
+        await Assert.That(settings["Database:Provider"]).IsEqualTo("Sqlite");
+        await Assert.That(settings["Database:Database"]).IsEqualTo("/app/data/islamu_event.db");
+        await Assert.That(compose).Contains("Database__Database: ${DATABASE_DATABASE:-/app/data/islamu_event.db}");
+        await Assert.That(compose).DoesNotContain("DATABASE_NAME");
+        const string primaryMount = "event_standalone_data:/app/data";
+        const string authorityMount = "event_standalone_authority:/app/privacy-erasure-authority";
+        await Assert.That(compose.Split(primaryMount).Length - 1).IsEqualTo(3);
+        await Assert.That(compose.Split(authorityMount).Length - 1).IsEqualTo(3);
+        await Assert.That(compose).Contains("event_standalone_authority:");
+        await Assert.That(compose).Contains(
+            "PrivacyErasureAuthorityEmbedded__Path: /app/privacy-erasure-authority/privacy_erasure_authority.db");
+    }
+
+    [Test]
     public async Task SqliteReplicaCountGreaterThanOneFailsBeforeHostStartup()
     {
         var temporaryDirectory = Path.Combine(Path.GetTempPath(), $"event-standalone-{Guid.NewGuid():N}");
@@ -153,5 +178,18 @@ public sealed class StandaloneProviderCompositionTests
             skipLookupCacheInitializer: true,
             environmentName: "Development");
         return services.BuildServiceProvider();
+    }
+
+    private static string FindRepositoryRoot()
+    {
+        for (var directory = new DirectoryInfo(AppContext.BaseDirectory); directory is not null; directory = directory.Parent)
+        {
+            if (File.Exists(Path.Combine(directory.FullName, "docker-compose.standalone.yml")))
+            {
+                return directory.FullName;
+            }
+        }
+
+        throw new DirectoryNotFoundException("Could not locate the repository root.");
     }
 }
