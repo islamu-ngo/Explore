@@ -135,8 +135,7 @@ public static class EventBffRequestPolicy
         ArgumentNullException.ThrowIfNull(request);
         return request.Path.StartsWithSegments("/api", StringComparison.OrdinalIgnoreCase)
             && IsUnsafeMethod(request.Method)
-            && !RequiresSetupSecret(request.Method, request.Path)
-            && !IsAnonymousOnboardingPath(request.Path);
+            && request.Cookies.Count > 0;
     }
 
     public static bool IsAnonymousOnboardingPath(PathString path)

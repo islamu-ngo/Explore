@@ -126,6 +126,50 @@ public sealed class BffApiProxyAntiforgeryTests : IAsyncDisposable
     }
 
     [Test]
+    [Arguments("/api/instance/settings/auth-provider", null)]
+    [Arguments("/api/instance/settings/auth-provider", "invalid-token")]
+    [Arguments("/api/InstanceOnboarding/auth-provider-configuration", null)]
+    [Arguments("/api/InstanceOnboarding/auth-provider-configuration", "invalid-token")]
+    public async Task CookieSetupAndOnboardingPatch_WithoutValidAntiforgery_DoesNotReachApi(
+        string path,
+        string? token)
+    {
+        _upstream.ResetCapture();
+        var antiforgery = await IssueAntiforgeryCookieAsync();
+        using var request = CreateAuthenticatedRequest(HttpMethod.Patch, path);
+        request.Headers.Remove("Cookie");
+        request.Headers.Add("Cookie", antiforgery.CookieHeader);
+        if (token is not null)
+        {
+            request.Headers.Add("X-CSRF-TOKEN", token);
+        }
+
+        using var response = await _client.SendAsync(request);
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        _upstream.LastPathAndQuery.Should().BeNull();
+    }
+
+    [Test]
+    public async Task CookieSetupPatch_WithValidAntiforgery_ReachesApiWithTrustedEnrichment()
+    {
+        _upstream.ResetCapture();
+        var antiforgery = await IssueAntiforgeryCookieAsync();
+        using var request = CreateAuthenticatedRequest(
+            HttpMethod.Patch,
+            "/api/instance/settings/auth-provider");
+        request.Headers.Remove("Cookie");
+        request.Headers.Add("Cookie", antiforgery.CookieHeader);
+        request.Headers.Add("X-CSRF-TOKEN", antiforgery.Token);
+
+        using var response = await _client.SendAsync(request);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        _upstream.LastPathAndQuery.Should().Be("/api/instance/settings/auth-provider");
+        _upstream.LastSetupSecret.Should().Be("trusted-yarp-instance-settings-secret");
+    }
+
+    [Test]
     [Arguments("/api/instance/settings/auth-provider")]
     [Arguments("/api/instance/settings/authz-provider")]
     public async Task InstanceProviderPatch_CanonicalPath_ForwardsOnlyResolverSecret(string path)

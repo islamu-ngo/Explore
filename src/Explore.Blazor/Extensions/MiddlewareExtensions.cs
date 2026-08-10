@@ -15,6 +15,7 @@ namespace Explore.Blazor.Extensions;
 public static class MiddlewareExtensions
 {
     internal const string ContentSecurityPolicyNonceItemKey = "Explore.Blazor.CspNonce";
+    internal const string PreserveExplicitSecurityHeadersItemKey = "Explore.Blazor.PreserveExplicitSecurityHeaders";
 
     private const string ContentSecurityPolicyPrefix =
         "default-src 'self'; " +
@@ -221,9 +222,18 @@ public static class MiddlewareExtensions
         context.Response.OnStarting(() =>
         {
             var headers = context.Response.Headers;
-            headers[HeaderNames.ContentSecurityPolicy] =
-                $"{ContentSecurityPolicyPrefix}'nonce-{nonce}'{ContentSecurityPolicySuffix}";
-            headers[HeaderNames.XFrameOptions] = "DENY";
+            var preserveExplicitHeaders = context.Items.ContainsKey(PreserveExplicitSecurityHeadersItemKey);
+            if (!preserveExplicitHeaders || !headers.ContainsKey(HeaderNames.ContentSecurityPolicy))
+            {
+                headers[HeaderNames.ContentSecurityPolicy] =
+                    $"{ContentSecurityPolicyPrefix}'nonce-{nonce}'{ContentSecurityPolicySuffix}";
+            }
+
+            if (!preserveExplicitHeaders || !headers.ContainsKey(HeaderNames.XFrameOptions))
+            {
+                headers[HeaderNames.XFrameOptions] = "DENY";
+            }
+
             headers[HeaderNames.XContentTypeOptions] = "nosniff";
             headers["Referrer-Policy"] = "strict-origin-when-cross-origin";
             headers["Permissions-Policy"] = PermissionsPolicy;

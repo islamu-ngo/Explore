@@ -69,6 +69,7 @@ public class RoutesConfigurationTests
         await Assert.That(routesContent).Contains("Path = \"/studio/events/:eventId/schedule\", Component = typeof(StudioEventShell), Transition = RouteTransition.Fade, Guards = RequireAuthenticated()");
         await Assert.That(routesContent).Contains("Path = \"/studio/events/:eventId/registration\", Component = typeof(StudioEventShell), Transition = RouteTransition.Fade, Guards = RequireAuthenticated()");
         await Assert.That(routesContent).Contains("Path = \"/studio/events/:eventId/tickets\", Component = typeof(StudioEventShell), Transition = RouteTransition.Fade, Guards = RequireAuthenticated()");
+        await Assert.That(routesContent).Contains("Path = \"/studio/events/:eventId/integrations\", Component = typeof(StudioEventShell), Transition = RouteTransition.Fade, Guards = RequireAuthenticated()");
         const string formsRoute = "Path = \"/studio/events/:eventId/forms\", Component = typeof(StudioEventShell), Transition = RouteTransition.Fade, Guards = RequireAuthenticated()";
         const string genericRoute = "Path = \"/studio/events/:eventId\", Component = typeof(StudioEventShell), Transition = RouteTransition.Fade, Guards = RequireAuthenticated()";
         await Assert.That(routesContent).Contains(formsRoute);

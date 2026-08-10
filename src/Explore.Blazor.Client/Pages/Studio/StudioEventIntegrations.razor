@@ -1,0 +1,1035 @@
+@* ABOUTME: Studio event registration-provider integration management page. *@
+@* ABOUTME: Gates every mutation affordance with API-emitted HAL links only. *@
+@using System.Text.Json
+@using Explore.Blazor.Client.Contracts.Services.Accessibility
+@inject IRegistrationProviderIntegrationService Integrations
+@inject IAccessibilityAnnouncerService Announcer
+@inject IAccessibilityFocusService Focus
+@inject ILogger<StudioEventIntegrations> Logger
+@implements IDisposable
+
+<div class="studio-event-integrations" data-testid="studio-event-integrations">
+    @if (Event.TenantId is null || Event.Id is null)
+    {
+        <div class="studio-event-integrations__state" role="alert" data-testid="integrations-missing-lineage">
+            Integration management needs a loaded event and tenant. Refresh and try again.
+        </div>
+    }
+    else if (_isLoading)
+    {
+        <div class="studio-event-integrations__state" role="status" aria-live="polite" data-testid="integrations-loading">
+            <MudProgressCircular Indeterminate="true" Color="Color.Primary" />
+            <span>Loading provider integrations…</span>
+        </div>
+    }
+    else if (_errorMessage is not null)
+    {
+        <div class="studio-event-integrations__state" role="alert" data-testid="integrations-error">
+            <MudText Typo="Typo.body1">@_errorMessage</MudText>
+            <AppButton Variant="Variant.Outlined" OnClick="ReloadAsync">Try again</AppButton>
+        </div>
+    }
+    else
+    {
+        <section class="studio-event-integrations__summary" aria-labelledby="integrations-summary-title">
+            <MudText Id="integrations-summary-title" Typo="Typo.h6" HtmlTag="h3">Provider overview</MudText>
+            <div class="studio-event-integrations__stats" role="list">
+                <div role="listitem"><strong>@_connections.Count</strong><span>Connections</span></div>
+                <div role="listitem"><strong>@_bindings.Count</strong><span>Bindings</span></div>
+                @if (CanViewHealth)
+                {
+                    <div role="listitem"><strong>@_health.Count</strong><span>Health rows</span></div>
+                }
+                <div role="listitem"><strong>@_queue.Count</strong><span>Parked items</span></div>
+            </div>
+            @if (IsHealthOnly)
+            {
+                <p class="studio-event-integrations__notice" data-testid="integrations-health-only">Health-only access: mutation controls are hidden because the event did not expose management HAL links.</p>
+            }
+        </section>
+
+        @if (CanViewHealth)
+        {
+        <section class="studio-event-integrations__panel" aria-labelledby="provider-health-title">
+            <MudText Id="provider-health-title" Typo="Typo.h6" HtmlTag="h3">Provider health</MudText>
+            @if (_health.Count == 0)
+            {
+                <p class="studio-event-integrations__empty" data-testid="integrations-health-empty">No provider health has been reported.</p>
+            }
+            else
+            {
+                <div class="studio-event-integrations__cards" role="list">
+                    @foreach (var row in _health)
+                    {
+                        <article class="studio-event-integrations__card" role="listitem" data-testid="integration-health-row">
+                            <MudText Typo="Typo.subtitle1" HtmlTag="h4">@row.Title("Binding")</MudText>
+                            <p>@row.Text("status", "statusCode", "Unknown")</p>
+                            <p>@row.Text("message", "lastError", "No message reported")</p>
+                            @if (CanPoll(row))
+                            {
+                                <AppButton Variant="Variant.Outlined" OnClick="@(() => PollAsync(row))" aria-label="Poll provider reconciliation">
+                                    Poll reconciliation
+                                </AppButton>
+                            }
+                        </article>
+                    }
+                </div>
+            }
+        </section>
+        }
+
+        <section class="studio-event-integrations__panel" aria-labelledby="connections-title">
+            <div class="studio-event-integrations__section-header">
+                <MudText Id="connections-title" Typo="Typo.h6" HtmlTag="h3">Connections and approved origins</MudText>
+            </div>
+            @if (CanCreateConnection)
+            {
+                <EditForm Model="_connectionDraft" OnValidSubmit="CreateConnectionAsync" class="studio-event-integrations__form" data-testid="connection-form">
+                    <AppTextField T="string" Label="Connection name" Required="true" @bind-Value="_connectionDraft.Name" />
+                    <AppTextField T="int?" Label="Provider kind ID" InputType="InputType.Number" Required="true" @bind-Value="_connectionDraft.ProviderKindId" />
+                    <AppTextField T="int?" Label="Deployment kind ID" InputType="InputType.Number" Required="true" @bind-Value="_connectionDraft.DeploymentKindId" />
+                    <AppTextField T="Guid?" Label="API token secret binding ID" Required="true" @bind-Value="_connectionDraft.ApiTokenSecretBindingId" />
+                    <AppTextField T="Guid?" Label="Webhook secret binding ID" Required="true" @bind-Value="_connectionDraft.WebhookSecretBindingId" />
+                    <AppTextField T="string" Label="Approved origins, one per line" Lines="3" @bind-Value="_connectionDraft.OriginsText" />
+                    <AppButton ButtonType="ButtonType.Submit" Disabled="_isSaving">Add connection</AppButton>
+                </EditForm>
+            }
+            @RenderCollection(_connections, "No provider connections yet.", "integration-connection-row", RenderConnection)
+        </section>
+
+        <section class="studio-event-integrations__panel" aria-labelledby="bindings-title">
+            <MudText Id="bindings-title" Typo="Typo.h6" HtmlTag="h3">Draft binding, mapping, publish, and drift</MudText>
+            @if (CanCreateBinding)
+            {
+                <EditForm Model="_bindingDraft" OnSubmit="@(_ => CreateBindingAsync())" class="studio-event-integrations__form" data-testid="binding-form">
+                    <AppSelect T="Guid?" Label="Connection" Required="true" Value="_bindingDraft.ConnectionId" ValueChanged="@(value => _bindingDraft.ConnectionId = value)" data-testid="binding-connection-id">
+                        @foreach (var connection in _connections.Where(connection => connection.Id is not null))
+                        {
+                            <MudSelectItem T="Guid?" Value="@connection.Id">@connection.Title("Connection")</MudSelectItem>
+                        }
+                    </AppSelect>
+                    <AppTextField T="Guid?" Label="Form ID" Required="true" @bind-Value="_bindingDraft.FormId" />
+                    <AppTextField T="Guid?" Label="Form version ID" Required="true" @bind-Value="_bindingDraft.FormVersionId" />
+                    <AppTextField T="int?" Label="Presentation mode ID" InputType="InputType.Number" Required="true" min="1" @bind-Value="_bindingDraft.PresentationModeId" />
+                    <AppTextField T="int?" Label="Collection mode ID" InputType="InputType.Number" Required="true" min="1" @bind-Value="_bindingDraft.CollectionModeId" />
+                    <AppTextField T="int?" Label="Completion mode ID" InputType="InputType.Number" Required="true" min="1" @bind-Value="_bindingDraft.CompletionModeId" />
+                    <AppTextField T="int?" Label="Trust level ID" InputType="InputType.Number" Required="true" min="1" @bind-Value="_bindingDraft.TrustLevelId" />
+                    <AppButton ButtonType="ButtonType.Submit" Disabled="_isSaving">Save binding draft</AppButton>
+                </EditForm>
+            }
+            @RenderCollection(_bindings, "No provider bindings yet.", "integration-binding-row", RenderBinding)
+        </section>
+
+        <section class="studio-event-integrations__panel" aria-labelledby="channels-title">
+            <MudText Id="channels-title" Typo="Typo.h6" HtmlTag="h3">Requirement channel order and fallback</MudText>
+            @if (CanManageChannels)
+            {
+                <EditForm Model="_channelScope" OnValidSubmit="LoadChannelsAsync" class="studio-event-integrations__form" data-testid="channel-scope-form">
+                    <AppTextField T="Guid?" Label="Workflow ID" Required="true" @bind-Value="_channelScope.WorkflowId" />
+                    <AppTextField T="Guid?" Label="Requirement ID" Required="true" @bind-Value="_channelScope.RequirementId" />
+                    <AppButton ButtonType="ButtonType.Submit" Variant="Variant.Outlined">Load channels</AppButton>
+                </EditForm>
+                @if (_channelsLoaded && CanCreateChannel)
+                {
+                    <EditForm Model="_channelDraft" OnValidSubmit="CreateChannelAsync" class="studio-event-integrations__form" data-testid="channel-form">
+                        <AppTextField T="int?" Label="Order" InputType="InputType.Number" Required="true" @bind-Value="_channelDraft.Ordinal" />
+                        <MudCheckBox T="bool" Label="Native fallback channel" @bind-Value="_channelDraft.IsNative" />
+                        <AppTextField T="Guid?" Label="Provider binding ID" @bind-Value="_channelDraft.RegistrationProviderBindingId" />
+                        <AppButton ButtonType="ButtonType.Submit" Disabled="_isSaving">Add channel</AppButton>
+                    </EditForm>
+                }
+            }
+            @RenderCollection(_channels, _channelsLoaded ? "No channels configured for this requirement." : "Load a workflow and requirement to inspect channel order.", "integration-channel-row", RenderChannel)
+        </section>
+
+        <section class="studio-event-integrations__panel" aria-labelledby="queue-title">
+            <MudText Id="queue-title" Typo="Typo.h6" HtmlTag="h3">Reconciliation queue</MudText>
+            @if (CanManualImport)
+            {
+                <EditForm Model="_manualImport" OnValidSubmit="ManualImportAsync" class="studio-event-integrations__form" data-testid="manual-import-form">
+                    <AppTextField T="Guid?" Label="Binding ID" Required="true" @bind-Value="_manualImport.BindingId" />
+                    <AppTextField T="string" Label="Storage reference" Required="true" @bind-Value="_manualImport.StorageReference" />
+                    <AppTextField T="string" Label="Source reference" @bind-Value="_manualImport.SourceReference" />
+                    <AppButton ButtonType="ButtonType.Submit" Disabled="_isSaving">Queue manual import</AppButton>
+                </EditForm>
+            }
+            @RenderCollection(_queue, "No parked reconciliation items.", "integration-queue-row", RenderQueueItem)
+        </section>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public EventDto Event { get; set; } = null!;
+
+    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
+    private List<IntegrationHalItem> _connections = [];
+    private List<IntegrationHalItem> _bindings = [];
+    private List<IntegrationHalItem> _channels = [];
+    private List<IntegrationHalItem> _health = [];
+    private List<IntegrationHalItem> _queue = [];
+    private bool _channelsLoaded;
+    private bool _isLoading = true;
+    private bool _isSaving;
+    private string? _errorMessage;
+    private string? _validationMessage;
+    private readonly ConnectionDraft _connectionDraft = new();
+    private readonly BindingDraft _bindingDraft = new();
+    private readonly ChannelScope _channelScope = new();
+    private readonly ChannelDraft _channelDraft = new();
+    private readonly ManualImportDraft _manualImport = new();
+    private readonly Dictionary<Guid, ConnectionDraft> _connectionEdits = new();
+    private readonly Dictionary<Guid, string?> _originEdits = new();
+    private readonly Dictionary<Guid, BindingDraft> _bindingEdits = new();
+    private readonly Dictionary<Guid, ChannelDraft> _channelEdits = new();
+    private const string ProviderCreateRel = "provider-create";
+    private const string ManualImportRel = "manual-import";
+    private const string OriginsRel = "origins";
+    private const string PollRel = "poll";
+    private const string RetryRel = "retry";
+    private const string ResolveRel = "resolve";
+    private const string PublishRel = "publish";
+    private const string DeleteRel = "delete";
+    private const string EditRel = "edit";
+
+    private Guid TenantId => Event.TenantId!.Value;
+    private Guid EventId => Event.Id!.Value;
+    private bool CanManageChannels => Event.HasHalLink("manage-registration-channels");
+    private bool CanViewHealth => Event.HasHalLink("view-registration-provider-health");
+    private bool IsHealthOnly => CanViewHealth && !CanManageChannels;
+    private bool CanCreateConnection => CanManageChannels && HasCollectionLink(_connectionLinks, ProviderCreateRel);
+    private bool CanCreateBinding => CanManageChannels && HasCollectionLink(_bindingLinks, ProviderCreateRel);
+    private bool CanCreateChannel => CanManageChannels && HasCollectionLink(_channelLinks, ProviderCreateRel);
+    private bool CanManualImport => CanManageChannels && HasCollectionLink(_queueLinks, ManualImportRel);
+    private IReadOnlyDictionary<string, HalLink>? _connectionLinks;
+    private IReadOnlyDictionary<string, HalLink>? _bindingLinks;
+    private IReadOnlyDictionary<string, HalLink>? _channelLinks;
+    private IReadOnlyDictionary<string, HalLink>? _queueLinks;
+    private CancellationTokenSource? _loadCts;
+    private int _loadGeneration;
+    private Guid? _loadedTenantId;
+    private Guid? _loadedEventId;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (Event.TenantId is null || Event.Id is null)
+        {
+            ClearEventScopedState();
+            _isLoading = false;
+            return;
+        }
+
+        if (_loadedTenantId != Event.TenantId || _loadedEventId != Event.Id)
+        {
+            _loadedTenantId = Event.TenantId;
+            _loadedEventId = Event.Id;
+            CancelLoad();
+            ClearEventScopedState();
+        }
+
+        await ReloadAsync();
+    }
+
+    private async Task ReloadAsync()
+    {
+        CancelLoad();
+        _loadCts = new CancellationTokenSource();
+        var generation = ++_loadGeneration;
+        var cancellationToken = _loadCts.Token;
+        _isLoading = true;
+        _errorMessage = null;
+        _validationMessage = null;
+        try
+        {
+            if (CanManageChannels)
+            {
+                var connections = await Integrations.GetConnectionsAsync(TenantId, EventId, cancellationToken);
+                if (generation != _loadGeneration) return;
+                _connectionLinks = Links(connections._links);
+                _connections = Items(connections._embedded?.Items).ToList();
+
+                var bindings = await Integrations.GetBindingsAsync(TenantId, EventId, cancellationToken);
+                if (generation != _loadGeneration) return;
+                _bindingLinks = Links(bindings._links);
+                _bindings = Items(bindings._embedded?.Items).ToList();
+            }
+            else
+            {
+                _connectionLinks = _bindingLinks = null;
+                _connections = [];
+                _bindings = [];
+                _queueLinks = _channelLinks = null;
+                _queue = [];
+                _channels = [];
+                _channelsLoaded = false;
+                ClearRowEditDrafts();
+            }
+
+            if (CanViewHealth)
+            {
+                var health = await Integrations.GetHealthAsync(TenantId, EventId, cancellationToken);
+                if (generation != _loadGeneration) return;
+                _health = Items(health._embedded?.Items).ToList();
+            }
+            else
+            {
+                _health = [];
+            }
+
+            if (CanManageChannels)
+            {
+                var queue = await Integrations.GetQueueAsync(TenantId, EventId, 50, cancellationToken);
+                if (generation != _loadGeneration) return;
+                _queueLinks = Links(queue._links);
+                _queue = Items(queue._embedded?.Items).ToList();
+            }
+            else
+            {
+                _queueLinks = null;
+                _queue = [];
+            }
+
+            await Announcer.AnnouncePoliteAsync("Registration provider integrations loaded");
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+        }
+        catch (Exception exception)
+        {
+            Logger.LogError(exception, "Failed to load registration provider integrations for event {EventId}", EventId);
+            _errorMessage = "Registration provider integrations could not be loaded. Try again.";
+            await Announcer.AnnounceAssertiveAsync(_errorMessage);
+        }
+        finally
+        {
+            if (generation == _loadGeneration)
+            {
+                _isLoading = false;
+            }
+        }
+    }
+
+    public void Dispose()
+    {
+        CancelLoad();
+    }
+
+    private void CancelLoad()
+    {
+        _loadCts?.Cancel();
+        _loadCts?.Dispose();
+        _loadCts = null;
+        _loadGeneration++;
+    }
+
+    private void ClearEventScopedState()
+    {
+        _connections = [];
+        _bindings = [];
+        _channels = [];
+        _health = [];
+        _queue = [];
+        _connectionLinks = _bindingLinks = _channelLinks = _queueLinks = null;
+        _channelsLoaded = false;
+        ClearRowEditDrafts();
+    }
+
+    private void ClearRowEditDrafts()
+    {
+        _connectionEdits.Clear();
+        _originEdits.Clear();
+        _bindingEdits.Clear();
+        _channelEdits.Clear();
+    }
+
+    private RenderFragment RenderCollection(List<IntegrationHalItem> items, string emptyText, string testId, Func<IntegrationHalItem, RenderFragment> row) => builder =>
+    {
+        if (_validationMessage is not null)
+        {
+            builder.OpenElement(0, "div");
+            builder.AddAttribute(1, "class", "studio-event-integrations__validation");
+            builder.AddAttribute(2, "role", "alert");
+            builder.AddAttribute(3, "data-testid", "integrations-validation");
+            builder.AddContent(4, _validationMessage);
+            builder.CloseElement();
+        }
+
+        if (items.Count == 0)
+        {
+            builder.OpenElement(5, "p");
+            builder.AddAttribute(6, "class", "studio-event-integrations__empty");
+            builder.AddContent(7, emptyText);
+            builder.CloseElement();
+            return;
+        }
+
+        builder.OpenElement(8, "div");
+        builder.AddAttribute(9, "class", "studio-event-integrations__cards");
+        builder.AddAttribute(10, "role", "list");
+        foreach (var item in items)
+        {
+            builder.OpenElement(11, "article");
+            builder.AddAttribute(12, "class", "studio-event-integrations__card");
+            builder.AddAttribute(13, "role", "listitem");
+            builder.AddAttribute(14, "data-testid", testId);
+            builder.AddContent(15, row(item));
+            builder.CloseElement();
+        }
+        builder.CloseElement();
+    };
+
+    private RenderFragment RenderConnection(IntegrationHalItem item) => @<>
+        @{ var edit = item.Id is { } editId ? ConnectionEditFor(editId, item) : new ConnectionDraft(); }
+        <MudText Typo="Typo.subtitle1" HtmlTag="h4">@item.Title("Connection")</MudText>
+        <p>@item.Text("providerKindName", "providerKindCode", "Provider not reported") · @item.Text("deploymentKindName", "deploymentKindCode", "Deployment not reported")</p>
+        <p>Approved origins: @string.Join(", ", item.StringArray("approvedOrigins"))</p>
+        @if (item.HasLink(EditRel))
+        {
+            <EditForm Model="edit" OnValidSubmit="@(() => UpdateConnectionAsync(item))" class="studio-event-integrations__form" data-testid="connection-edit-form">
+                <AppTextField T="string" Label="Connection name" @bind-Value="edit.Name" />
+                <AppTextField T="int?" Label="Provider kind ID" InputType="InputType.Number" min="1" @bind-Value="edit.ProviderKindId" />
+                <AppTextField T="int?" Label="Deployment kind ID" InputType="InputType.Number" min="1" @bind-Value="edit.DeploymentKindId" />
+                <AppTextField T="Guid?" Label="API token secret binding ID" @bind-Value="edit.ApiTokenSecretBindingId" />
+                <AppTextField T="Guid?" Label="Webhook secret binding ID" @bind-Value="edit.WebhookSecretBindingId" />
+                <AppButton ButtonType="ButtonType.Submit" Variant="Variant.Outlined" Disabled="_isSaving">Update connection</AppButton>
+            </EditForm>
+        }
+        @if (item.HasLink(OriginsRel))
+        {
+            <AppTextField T="string" Label="Approved origins replacement" Lines="3" Value="@OriginEditFor(item)" ValueChanged="@(value => SetOriginEdit(item, value))" />
+            <AppButton Variant="Variant.Outlined" OnClick="@(() => ReplaceOriginsAsync(item, OriginEditFor(item)))">Replace origins</AppButton>
+        }
+        <div class="studio-event-integrations__actions">
+            @if (item.HasLink(DeleteRel))
+            {
+                <AppButton Variant="Variant.Outlined" Color="Color.Error" OnClick="@(() => DeleteConnectionAsync(item))">Delete connection</AppButton>
+            }
+        </div>
+    </>;
+
+    private RenderFragment RenderBinding(IntegrationHalItem item) => @<>
+        @{ var edit = item.Id is { } editId ? BindingEditFor(editId, item) : new BindingDraft(); }
+        <MudText Typo="Typo.subtitle1" HtmlTag="h4">@item.Title("Binding")</MudText>
+        <p>Connection: @item.Text("connectionId", "providerConnectionId", "Unknown")</p>
+        <p>Revision: @item.Text("revisionHash", "draftRevisionHash", "No revision hash") · Drift: @item.Text("driftStatus", "driftStatusCode", "Unknown")</p>
+        @if (item.HasLink(EditRel))
+        {
+            <EditForm Model="edit" OnSubmit="@(_ => UpdateBindingAsync(item))" class="studio-event-integrations__form" data-testid="binding-edit-form">
+                <AppSelect T="Guid?" Label="Connection" Required="true" Value="edit.ConnectionId" ValueChanged="@(value => edit.ConnectionId = value)" data-testid="binding-edit-connection-id">
+                    @foreach (var connection in _connections.Where(connection => connection.Id is not null))
+                    {
+                        <MudSelectItem T="Guid?" Value="@connection.Id">@connection.Title("Connection")</MudSelectItem>
+                    }
+                </AppSelect>
+                <AppTextField T="Guid?" Label="Form ID" Required="true" @bind-Value="edit.FormId" />
+                <AppTextField T="Guid?" Label="Form version ID" Required="true" @bind-Value="edit.FormVersionId" />
+                <AppTextField T="int?" Label="Presentation mode ID" InputType="InputType.Number" Required="true" min="1" @bind-Value="edit.PresentationModeId" />
+                <AppTextField T="int?" Label="Collection mode ID" InputType="InputType.Number" Required="true" min="1" @bind-Value="edit.CollectionModeId" />
+                <AppTextField T="int?" Label="Completion mode ID" InputType="InputType.Number" Required="true" min="1" @bind-Value="edit.CompletionModeId" />
+                <AppTextField T="int?" Label="Trust level ID" InputType="InputType.Number" Required="true" min="1" @bind-Value="edit.TrustLevelId" />
+                <AppButton ButtonType="ButtonType.Submit" Variant="Variant.Outlined" Disabled="_isSaving">Update binding</AppButton>
+            </EditForm>
+        }
+        @if (item.HasLink(MappingsRel))
+        {
+            <div class="studio-event-integrations__form" data-testid="binding-mappings-editor">
+                <MudText Typo="Typo.subtitle2" HtmlTag="h5">Field mappings</MudText>
+                @foreach (var mapping in edit.FieldMappings)
+                {
+                    <AppTextField T="string" Label="Platform field key" @bind-Value="mapping.PlatformFieldKey" />
+                    <AppTextField T="string" Label="Provider field key" @bind-Value="mapping.ProviderFieldKey" />
+                    <MudCheckBox T="bool" Label="Required" @bind-Value="mapping.IsRequired" />
+                }
+                <AppButton Variant="Variant.Outlined" OnClick="@(() => edit.FieldMappings.Add(new FieldMappingDraft()))">Add field mapping</AppButton>
+                <MudText Typo="Typo.subtitle2" HtmlTag="h5">Option mappings</MudText>
+                @foreach (var mapping in edit.OptionMappings)
+                {
+                    <AppTextField T="string" Label="Platform field key" @bind-Value="mapping.PlatformFieldKey" />
+                    <AppTextField T="string" Label="Platform option key" @bind-Value="mapping.PlatformOptionKey" />
+                    <AppTextField T="string" Label="Provider option key" @bind-Value="mapping.ProviderOptionKey" />
+                }
+                <AppButton Variant="Variant.Outlined" OnClick="@(() => edit.OptionMappings.Add(new OptionMappingDraft()))">Add option mapping</AppButton>
+                <AppButton Variant="Variant.Outlined" OnClick="@(() => ReplaceMappingsAsync(item))" Disabled="_isSaving">Save mappings</AppButton>
+            </div>
+        }
+        <div class="studio-event-integrations__actions">
+            @if (item.HasLink(PublishRel))
+            {
+                <AppButton OnClick="@(() => PublishBindingAsync(item))">Publish binding</AppButton>
+            }
+            @if (item.HasLink(DeleteRel))
+            {
+                <AppButton Variant="Variant.Outlined" Color="Color.Error" OnClick="@(() => DeleteBindingAsync(item))">Delete binding</AppButton>
+            }
+        </div>
+    </>;
+
+    private RenderFragment RenderChannel(IntegrationHalItem item) => @<>
+        @{ var edit = item.Id is { } editId ? ChannelEditFor(editId, item) : new ChannelDraft(); }
+        <MudText Typo="Typo.subtitle1" HtmlTag="h4">Order @item.Text("ordinal", "order", "?")</MudText>
+        <p>@(item.Bool("isNative") ? "Native fallback" : $"Provider binding {item.Text("registrationProviderBindingId", "bindingId", "unknown")}")</p>
+        @if (item.HasLink(EditRel))
+        {
+            <EditForm Model="edit" OnValidSubmit="@(() => UpdateChannelAsync(item))" class="studio-event-integrations__form" data-testid="channel-edit-form">
+                <AppTextField T="int?" Label="Order" InputType="InputType.Number" min="1" @bind-Value="edit.Ordinal" />
+                <MudCheckBox T="bool" Label="Native fallback channel" Value="edit.IsNative" ValueChanged="@(value => edit.SetNative(value))" />
+                <AppTextField T="Guid?" Label="Provider binding ID" @bind-Value="edit.RegistrationProviderBindingId" />
+                <AppButton ButtonType="ButtonType.Submit" Variant="Variant.Outlined" Disabled="_isSaving">Update order/fallback</AppButton>
+            </EditForm>
+        }
+        <div class="studio-event-integrations__actions">
+            @if (item.HasLink(DeleteRel))
+            {
+                <AppButton Variant="Variant.Outlined" Color="Color.Error" OnClick="@(() => DeleteChannelAsync(item))">Delete channel</AppButton>
+            }
+        </div>
+    </>;
+
+    private RenderFragment RenderQueueItem(IntegrationHalItem item) => @<>
+        <MudText Typo="Typo.subtitle1" HtmlTag="h4">@item.Title("Parked item")</MudText>
+        <p>@item.Text("reason", "reasonCode", "No reason")</p>
+        <p>Generation @item.Text("processingGeneration", "expectedProcessingGeneration", "0")</p>
+        <div class="studio-event-integrations__actions">
+            @if (item.HasLink(RetryRel))
+            {
+                <AppButton OnClick="@(() => RetryQueueItemAsync(item))">Retry</AppButton>
+            }
+            @if (item.HasLink(ResolveRel))
+            {
+                <AppButton Variant="Variant.Outlined" OnClick="@(() => ResolveQueueItemAsync(item))">Resolve</AppButton>
+            }
+        </div>
+    </>;
+
+    private async Task CreateConnectionAsync()
+    {
+        if (!CanCreateConnection || !await ValidateAsync(_connectionDraft.Name, _connectionDraft.ProviderKindId, _connectionDraft.DeploymentKindId, _connectionDraft.ApiTokenSecretBindingId, _connectionDraft.WebhookSecretBindingId) || _connectionLinks?[ProviderCreateRel] is not { } createLink) return;
+        if (RawLines(_connectionDraft.OriginsText).Any() && !await ValidateOriginsAsync(_connectionDraft.OriginsText)) return;
+        _isSaving = true;
+        _validationMessage = null;
+        var cancellationToken = _loadCts?.Token ?? default;
+        var createdConnection = false;
+        try
+        {
+            var created = await Integrations.CreateConnectionAsync(TenantId, EventId, createLink, new RegistrationProviderConnectionRequestDto
+            {
+                Name = _connectionDraft.Name,
+                ProviderKindId = _connectionDraft.ProviderKindId,
+                DeploymentKindId = _connectionDraft.DeploymentKindId,
+                ApiTokenSecretBindingId = _connectionDraft.ApiTokenSecretBindingId,
+                WebhookSecretBindingId = _connectionDraft.WebhookSecretBindingId
+            }, cancellationToken);
+            createdConnection = true;
+            if (_connectionDraft.Origins.Count > 0)
+            {
+                await PersistCreatedOriginsAsync(created.Id, cancellationToken);
+            }
+            await Announcer.AnnouncePoliteAsync("Connection saved");
+            await ReloadAsync();
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+        }
+        catch (Exception exception)
+        {
+            Logger.LogError(exception, "Registration provider connection create failed");
+            _validationMessage = createdConnection
+                ? "The connection was created, but approved origins could not be saved. The entered origins are still in the form; retry origins after refresh."
+                : "The provider action failed. Refresh and try again.";
+            await Announcer.AnnounceAssertiveAsync(_validationMessage);
+        }
+        finally
+        {
+            _isSaving = false;
+            await Focus.RestoreFocusAsync("[data-testid='studio-event-integrations']");
+        }
+    }
+
+    private async Task UpdateConnectionAsync(IntegrationHalItem item)
+    {
+        if (item.Id is not { } id || item.Link(EditRel) is not { } link) return;
+        var request = new RegistrationProviderConnectionRequestDto
+        {
+            Name = ConnectionEditFor(id, item).Name,
+            ProviderKindId = ConnectionEditFor(id, item).ProviderKindId,
+            DeploymentKindId = ConnectionEditFor(id, item).DeploymentKindId,
+            ApiTokenSecretBindingId = ConnectionEditFor(id, item).ApiTokenSecretBindingId,
+            WebhookSecretBindingId = ConnectionEditFor(id, item).WebhookSecretBindingId
+        };
+        if (!await ValidateAsync(request.Name, request.ProviderKindId, request.DeploymentKindId, request.ApiTokenSecretBindingId, request.WebhookSecretBindingId)) return;
+        await SaveAsync(ct => Integrations.UpdateConnectionAsync(TenantId, EventId, id, link, request, ct), "Connection updated");
+    }
+
+    private async Task CreateBindingAsync()
+    {
+        if (!CanCreateBinding || !await ValidateBindingAsync(_bindingDraft) || _bindingLinks?[ProviderCreateRel] is not { } createLink) return;
+        await SaveAsync(ct => Integrations.CreateBindingAsync(TenantId, EventId, createLink, new RegistrationProviderBindingRequestDto
+        {
+            ConnectionId = _bindingDraft.ConnectionId,
+            FormId = _bindingDraft.FormId,
+            FormVersionId = _bindingDraft.FormVersionId,
+            PresentationModeId = _bindingDraft.PresentationModeId,
+            CollectionModeId = _bindingDraft.CollectionModeId,
+            CompletionModeId = _bindingDraft.CompletionModeId,
+            TrustLevelId = _bindingDraft.TrustLevelId
+        }, ct), "Binding saved");
+    }
+
+    private async Task UpdateBindingAsync(IntegrationHalItem item)
+    {
+        if (item.Id is not { } id || item.Link(EditRel) is not { } link) return;
+        var edit = BindingEditFor(id, item);
+        var request = new RegistrationProviderBindingRequestDto
+        {
+            ConnectionId = edit.ConnectionId,
+            FormId = edit.FormId,
+            FormVersionId = edit.FormVersionId,
+            PresentationModeId = edit.PresentationModeId,
+            CollectionModeId = edit.CollectionModeId,
+            CompletionModeId = edit.CompletionModeId,
+            TrustLevelId = edit.TrustLevelId
+        };
+        if (!await ValidateBindingAsync(edit)) return;
+        await SaveAsync(ct => Integrations.UpdateBindingAsync(TenantId, EventId, id, link, request, ct), "Binding updated");
+    }
+
+    private async Task ReplaceMappingsAsync(IntegrationHalItem item)
+    {
+        if (item.Id is not { } id || item.Link(MappingsRel) is not { } link) return;
+        var edit = BindingEditFor(id, item);
+        if (!await ValidateMappingsAsync(edit)) return;
+        await SaveAsync(ct => Integrations.ReplaceMappingsAsync(TenantId, EventId, id, link, new ReplaceRegistrationProviderMappingsRequestDto
+        {
+            FieldMappings = edit.FieldMappings.Select(mapping => new RegistrationProviderFieldMappingDto
+            {
+                PlatformFieldKey = mapping.PlatformFieldKey,
+                ProviderFieldKey = mapping.ProviderFieldKey,
+                IsRequired = mapping.IsRequired
+            }).ToList(),
+            OptionMappings = edit.OptionMappings.Select(mapping => new RegistrationProviderOptionMappingDto
+            {
+                PlatformFieldKey = mapping.PlatformFieldKey,
+                PlatformOptionKey = mapping.PlatformOptionKey,
+                ProviderOptionKey = mapping.ProviderOptionKey
+            }).ToList()
+        }, ct), "Mappings saved");
+    }
+
+    private async Task LoadChannelsAsync()
+    {
+        if (!await ValidateAsync(_channelScope.WorkflowId, _channelScope.RequirementId)) return;
+        var generation = _loadGeneration;
+        var cancellationToken = _loadCts?.Token ?? default;
+        try
+        {
+            var channels = await Integrations.GetChannelsAsync(TenantId, EventId, _channelScope.WorkflowId!.Value, _channelScope.RequirementId!.Value, cancellationToken);
+            if (generation != _loadGeneration || cancellationToken.IsCancellationRequested) return;
+            _channelLinks = Links(channels._links);
+            _channels = Items(channels._embedded?.Items).OrderBy(item => item.Int("ordinal") ?? int.MaxValue).ToList();
+            _channelsLoaded = true;
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+        }
+    }
+
+    private async Task CreateChannelAsync()
+    {
+        if (!CanCreateChannel || !await ValidateAsync(_channelScope.WorkflowId, _channelScope.RequirementId, _channelDraft.Ordinal) || _channelLinks?[ProviderCreateRel] is not { } createLink) return;
+        await SaveAsync(ct => Integrations.CreateChannelAsync(TenantId, EventId, _channelScope.WorkflowId!.Value, _channelScope.RequirementId!.Value, createLink, new RegistrationChannelRequestDto
+        {
+            Ordinal = _channelDraft.Ordinal,
+            IsNative = _channelDraft.IsNative,
+            RegistrationProviderBindingId = _channelDraft.IsNative ? null : _channelDraft.RegistrationProviderBindingId
+        }, ct), "Channel saved");
+        await LoadChannelsAsync();
+    }
+
+    private async Task UpdateChannelAsync(IntegrationHalItem item)
+    {
+        if (item.Id is not { } id || item.Link(EditRel) is not { } link || _channelScope.WorkflowId is not { } workflowId || _channelScope.RequirementId is not { } requirementId) return;
+        var edit = ChannelEditFor(id, item);
+        var isNative = edit.IsNativeSet ? edit.IsNative : item.Bool("isNative");
+        var request = new RegistrationChannelRequestDto
+        {
+            Ordinal = edit.Ordinal,
+            IsNative = isNative,
+            RegistrationProviderBindingId = isNative ? null : edit.RegistrationProviderBindingId
+        };
+        if (!await ValidateAsync(request.Ordinal)) return;
+        await SaveAsync(ct => Integrations.UpdateChannelAsync(TenantId, EventId, workflowId, requirementId, id, link, request, ct), "Channel updated");
+        await LoadChannelsAsync();
+    }
+
+    private async Task ReplaceOriginsAsync(IntegrationHalItem item, string? value)
+    {
+        value ??= string.Join('\n', item.StringArray("approvedOrigins"));
+        if (item.Id is not { } id || item.Link(OriginsRel) is not { } link || !await ValidateOriginsAsync(value)) return;
+        await SaveAsync(ct => Integrations.ReplaceApprovedOriginsAsync(TenantId, EventId, id, link, new ReplaceRegistrationProviderApprovedOriginsRequestDto
+        {
+            Origins = SplitLines(value).ToList()
+        }, ct), "Origins replaced");
+    }
+
+    private Task DeleteConnectionAsync(IntegrationHalItem item) => item.Id is { } id && item.Link(DeleteRel) is { } link
+        ? SaveAsync(ct => Integrations.DeleteConnectionAsync(TenantId, EventId, id, link, ct), "Connection deleted")
+        : Task.CompletedTask;
+
+    private Task DeleteBindingAsync(IntegrationHalItem item) => item.Id is { } id && item.Link(DeleteRel) is { } link
+        ? SaveAsync(ct => Integrations.DeleteBindingAsync(TenantId, EventId, id, link, ct), "Binding deleted")
+        : Task.CompletedTask;
+
+    private Task DeleteChannelAsync(IntegrationHalItem item) => item.Id is { } id && item.Link(DeleteRel) is { } link && _channelScope.WorkflowId is { } workflowId && _channelScope.RequirementId is { } requirementId
+        ? SaveAsync(ct => Integrations.DeleteChannelAsync(TenantId, EventId, workflowId, requirementId, id, link, ct), "Channel deleted")
+        : Task.CompletedTask;
+
+    private Task PublishBindingAsync(IntegrationHalItem item) => item.Id is { } id && item.Link(PublishRel) is { } link
+        ? SaveAsync(ct => Integrations.PublishBindingAsync(TenantId, EventId, id, link, ct), "Binding published")
+        : Task.CompletedTask;
+
+    private Task PollAsync(IntegrationHalItem item) => CanPoll(item) && item.Guid("bindingId", "registrationProviderBindingId", "id") is { } bindingId
+        ? SaveAsync(ct => Integrations.PollReconciliationAsync(TenantId, EventId, bindingId, item.Link(PollRel)!, item.Timestamp("lastCallbackAt") ?? DateTimeOffset.UtcNow.AddHours(-24), ct), "Reconciliation poll requested")
+        : Task.CompletedTask;
+
+    private async Task ManualImportAsync()
+    {
+        if (!CanManualImport || !await ValidateAsync(_manualImport.BindingId, _manualImport.StorageReference) || _queueLinks?[ManualImportRel] is not { } link) return;
+        await SaveAsync(ct => Integrations.QueueManualImportAsync(TenantId, EventId, link, new ManualRegistrationProviderImportRequestDto
+        {
+            BindingId = _manualImport.BindingId,
+            StorageReference = _manualImport.StorageReference,
+            SourceReference = _manualImport.SourceReference
+        }, ct), "Manual import queued");
+    }
+
+    private Task RetryQueueItemAsync(IntegrationHalItem item) => item.Link(RetryRel) is { } link
+        ? SaveAsync(ct => Integrations.RetryQueueItemAsync(TenantId, EventId, link, new RetryRegistrationProviderParkedItemRequestDto
+        {
+            SubmissionId = item.Guid("submissionId"),
+            EffectOutboxId = item.Guid("effectOutboxId"),
+            ExpectedProcessingGeneration = item.Int("processingGeneration", "expectedProcessingGeneration"),
+            Reason = "operator-retry"
+        }, ct), "Queue item retried")
+        : Task.CompletedTask;
+
+    private Task ResolveQueueItemAsync(IntegrationHalItem item) => item.Link(ResolveRel) is { } link
+        ? SaveAsync(ct => Integrations.ResolveQueueItemAsync(TenantId, EventId, link, new ResolveRegistrationProviderQueueItemRequestDto
+        {
+            SubmissionId = item.Guid("submissionId"),
+            EffectOutboxId = item.Guid("effectOutboxId"),
+            DecisionCode = "resolved",
+            NoteReference = "studio-ui"
+        }, ct), "Queue item resolved")
+        : Task.CompletedTask;
+
+    private bool CanPoll(IntegrationHalItem item) => CanManageChannels && item.HasLink(PollRel);
+
+    private async Task SaveAsync(Func<CancellationToken, Task> action, string message)
+    {
+        _isSaving = true;
+        _validationMessage = null;
+        var cancellationToken = _loadCts?.Token ?? default;
+        try
+        {
+            await action(cancellationToken);
+            await Announcer.AnnouncePoliteAsync(message);
+            await ReloadAsync();
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+        }
+        catch (Exception exception)
+        {
+            Logger.LogError(exception, "Registration provider mutation failed");
+            _validationMessage = "The provider action failed. Refresh and try again.";
+            await Announcer.AnnounceAssertiveAsync(_validationMessage);
+        }
+        finally
+        {
+            _isSaving = false;
+            await Focus.RestoreFocusAsync("[data-testid='studio-event-integrations']");
+        }
+    }
+
+    private async Task<bool> ValidateAsync(params object?[] values)
+    {
+        var valid = values.All(value => value switch
+        {
+            null => false,
+            string text => !string.IsNullOrWhiteSpace(text),
+            int number => number > 0,
+            Guid guid => guid != Guid.Empty,
+            _ => true
+        });
+        _validationMessage = valid ? null : "Complete the required fields before saving.";
+        if (!valid)
+        {
+            await Announcer.AnnounceAssertiveAsync(_validationMessage);
+            await Focus.RestoreFocusAsync("[data-testid='integrations-validation']");
+        }
+        return valid;
+    }
+
+    private async Task<bool> ValidateOriginsAsync(string? value)
+    {
+        var valid = RawLines(value).All(origin => Uri.IsWellFormedUriString(origin, UriKind.Absolute));
+        _validationMessage = valid ? null : "Approved origins must be absolute URLs, one per line.";
+        if (!valid)
+        {
+            await Announcer.AnnounceAssertiveAsync(_validationMessage);
+            await Focus.RestoreFocusAsync("[data-testid='integrations-validation']");
+        }
+        return valid;
+    }
+
+    private Task<bool> ValidateBindingAsync(BindingDraft draft) => ValidateAsync(
+        draft.ConnectionId,
+        draft.FormId,
+        draft.FormVersionId,
+        draft.PresentationModeId,
+        draft.CollectionModeId,
+        draft.CompletionModeId,
+        draft.TrustLevelId);
+
+    private async Task<bool> ValidateMappingsAsync(BindingDraft draft)
+    {
+        var valid = draft.FieldMappings.All(mapping => !string.IsNullOrWhiteSpace(mapping.PlatformFieldKey) && !string.IsNullOrWhiteSpace(mapping.ProviderFieldKey))
+            && draft.OptionMappings.All(mapping => !string.IsNullOrWhiteSpace(mapping.PlatformFieldKey) && !string.IsNullOrWhiteSpace(mapping.PlatformOptionKey) && !string.IsNullOrWhiteSpace(mapping.ProviderOptionKey));
+        _validationMessage = valid ? null : "Complete mapping keys before saving mappings.";
+        if (!valid)
+        {
+            await Announcer.AnnounceAssertiveAsync(_validationMessage);
+            await Focus.RestoreFocusAsync("[data-testid='integrations-validation']");
+        }
+        return valid;
+    }
+
+    private async Task PersistCreatedOriginsAsync(Guid? connectionId, CancellationToken cancellationToken)
+    {
+        if (connectionId is null || connectionId == Guid.Empty) throw new InvalidOperationException("Created connection response did not include an id.");
+        var resource = await Integrations.GetConnectionAsync(TenantId, EventId, connectionId.Value, cancellationToken);
+        var item = new IntegrationHalItem(JsonSerializer.SerializeToElement(resource, JsonOptions).Clone());
+        if (item.Link(OriginsRel) is not { } originsLink) throw new InvalidOperationException("Created connection did not expose origins link.");
+        await Integrations.ReplaceApprovedOriginsAsync(TenantId, EventId, connectionId.Value, originsLink, new ReplaceRegistrationProviderApprovedOriginsRequestDto
+        {
+            Origins = _connectionDraft.Origins
+        }, cancellationToken);
+    }
+
+    private ConnectionDraft ConnectionEditFor(Guid id, IntegrationHalItem item) => _connectionEdits.TryGetValue(id, out var draft)
+        ? draft
+        : _connectionEdits[id] = new ConnectionDraft
+        {
+            Name = item.Text("name", "displayName", null),
+            ProviderKindId = item.Int("providerKindId"),
+            DeploymentKindId = item.Int("deploymentKindId"),
+            ApiTokenSecretBindingId = item.Guid("apiTokenSecretBindingId"),
+            WebhookSecretBindingId = item.Guid("webhookSecretBindingId")
+        };
+
+    private string? OriginEditFor(IntegrationHalItem item)
+    {
+        if (item.Id is not { } id) return string.Join('\n', item.StringArray("approvedOrigins"));
+        if (!_originEdits.TryGetValue(id, out var value)) _originEdits[id] = value = string.Join('\n', item.StringArray("approvedOrigins"));
+        return value;
+    }
+
+    private void SetOriginEdit(IntegrationHalItem item, string? value)
+    {
+        if (item.Id is { } id) _originEdits[id] = value;
+    }
+
+    private BindingDraft BindingEditFor(Guid id, IntegrationHalItem item) => _bindingEdits.TryGetValue(id, out var draft)
+        ? draft
+        : _bindingEdits[id] = new BindingDraft
+        {
+            ConnectionId = item.Guid("connectionId", "providerConnectionId"),
+            FormId = item.Guid("formId", "registrationFormId"),
+            FormVersionId = item.Guid("formVersionId", "registrationFormVersionId"),
+            PresentationModeId = item.Int("presentationModeId"),
+            CollectionModeId = item.Int("collectionModeId"),
+            CompletionModeId = item.Int("completionModeId"),
+            TrustLevelId = item.Int("trustLevelId"),
+            FieldMappings = item.FieldMappings().ToList(),
+            OptionMappings = item.OptionMappings().ToList()
+        };
+
+    private ChannelDraft ChannelEditFor(Guid id, IntegrationHalItem item) => _channelEdits.TryGetValue(id, out var draft)
+        ? draft
+        : _channelEdits[id] = new ChannelDraft
+        {
+            Ordinal = item.Int("ordinal", "order"),
+            IsNative = item.Bool("isNative"),
+            RegistrationProviderBindingId = item.Guid("registrationProviderBindingId", "bindingId")
+        };
+
+    private static bool HasCollectionLink(IReadOnlyDictionary<string, HalLink>? links, string rel) => links?.ContainsKey(rel) == true;
+    private static IReadOnlyDictionary<string, HalLink>? Links(IDictionary<string, HalLink>? links) => links?.ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.OrdinalIgnoreCase);
+    private static IEnumerable<string> RawLines(string? value) => (value ?? string.Empty)
+        .Split(['\n', '\r'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+        .Where(origin => !string.IsNullOrWhiteSpace(origin));
+    private static IEnumerable<string> SplitLines(string? value) => RawLines(value).Where(origin => Uri.IsWellFormedUriString(origin, UriKind.Absolute));
+
+    private const string MappingsRel = "mappings";
+    private static IEnumerable<IntegrationHalItem> Items(System.Collections.IEnumerable? items)
+    {
+        if (items is null) yield break;
+        foreach (var item in items)
+        {
+            var element = item is JsonElement json ? json : JsonSerializer.SerializeToElement(item, JsonOptions);
+            yield return new IntegrationHalItem(element.Clone());
+        }
+    }
+
+    private sealed class ConnectionDraft
+    {
+        public string? Name { get; set; }
+        public int? ProviderKindId { get; set; }
+        public int? DeploymentKindId { get; set; }
+        public Guid? ApiTokenSecretBindingId { get; set; }
+        public Guid? WebhookSecretBindingId { get; set; }
+        public string? OriginsText { get; set; }
+        public List<string> Origins => SplitLines(OriginsText).ToList();
+    }
+
+    private sealed class BindingDraft
+    {
+        public Guid? ConnectionId { get; set; }
+        public Guid? FormId { get; set; }
+        public Guid? FormVersionId { get; set; }
+        public int? PresentationModeId { get; set; }
+        public int? CollectionModeId { get; set; }
+        public int? CompletionModeId { get; set; }
+        public int? TrustLevelId { get; set; }
+        public List<FieldMappingDraft> FieldMappings { get; set; } = [];
+        public List<OptionMappingDraft> OptionMappings { get; set; } = [];
+    }
+
+    private sealed class FieldMappingDraft
+    {
+        public string? PlatformFieldKey { get; set; }
+        public string? ProviderFieldKey { get; set; }
+        public bool IsRequired { get; set; }
+    }
+
+    private sealed class OptionMappingDraft
+    {
+        public string? PlatformFieldKey { get; set; }
+        public string? PlatformOptionKey { get; set; }
+        public string? ProviderOptionKey { get; set; }
+    }
+
+    private sealed class ChannelScope
+    {
+        public Guid? WorkflowId { get; set; }
+        public Guid? RequirementId { get; set; }
+    }
+
+    private sealed class ChannelDraft
+    {
+        private bool _isNative;
+        public int? Ordinal { get; set; }
+        public bool IsNative
+        {
+            get => _isNative;
+            set => _isNative = value;
+        }
+        public bool IsNativeSet { get; private set; }
+        public Guid? RegistrationProviderBindingId { get; set; }
+        public void SetNative(bool value)
+        {
+            _isNative = value;
+            IsNativeSet = true;
+        }
+    }
+
+    private sealed class ManualImportDraft
+    {
+        public Guid? BindingId { get; set; }
+        public string? StorageReference { get; set; }
+        public string? SourceReference { get; set; }
+    }
+
+    private readonly record struct IntegrationHalItem(JsonElement Element)
+    {
+        public Guid? Id => Guid("id", "connectionId", "bindingId", "channelId");
+        public string Title(string fallback) => Text("name", "displayName", "title", fallback) ?? fallback;
+        public bool HasLink(string rel) => Element.TryGetProperty("_links", out var links) && links.ValueKind == JsonValueKind.Object && links.TryGetProperty(rel, out _);
+        public HalLink? Link(string rel) => Element.TryGetProperty("_links", out var links) && links.ValueKind == JsonValueKind.Object && links.TryGetProperty(rel, out var link)
+            ? JsonSerializer.Deserialize<HalLink>(link.GetRawText(), JsonOptions)
+            : null;
+        public string? Text(string first, string second, string? fallback) => Text([first, second], fallback);
+        public string? Text(string first, string second, string third, string? fallback) => Text([first, second, third], fallback);
+        public string? Text(string[] names, string? fallback)
+        {
+            foreach (var name in names)
+            {
+                if (Element.TryGetProperty(name, out var value))
+                {
+                    return value.ValueKind switch
+                    {
+                        JsonValueKind.String => string.IsNullOrWhiteSpace(value.GetString()) ? fallback : value.GetString(),
+                        JsonValueKind.Number => value.GetRawText(),
+                        JsonValueKind.True => "Yes",
+                        JsonValueKind.False => "No",
+                        _ => fallback
+                    };
+                }
+            }
+            return fallback;
+        }
+        public Guid? Guid(params string[] names)
+        {
+            foreach (var name in names)
+            {
+                if (Element.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.String && System.Guid.TryParse(value.GetString(), out var guid)) return guid;
+            }
+            return null;
+        }
+        public int? Int(params string[] names)
+        {
+            foreach (var name in names)
+            {
+                if (Element.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.Number && value.TryGetInt32(out var number)) return number;
+            }
+            return null;
+        }
+        public bool Bool(string name) => Element.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.True;
+        public DateTimeOffset? Timestamp(string name) => Element.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.String && DateTimeOffset.TryParse(value.GetString(), out var timestamp)
+            ? timestamp
+            : null;
+        public IEnumerable<string> StringArray(string name)
+        {
+            if (!Element.TryGetProperty(name, out var array) || array.ValueKind != JsonValueKind.Array) yield break;
+            foreach (var value in array.EnumerateArray()) if (value.ValueKind == JsonValueKind.String && value.GetString() is { } text) yield return text;
+        }
+        public IEnumerable<FieldMappingDraft> FieldMappings()
+        {
+            if (!Element.TryGetProperty("fieldMappings", out var array) || array.ValueKind != JsonValueKind.Array) yield break;
+            foreach (var value in array.EnumerateArray())
+            {
+                yield return new FieldMappingDraft
+                {
+                    PlatformFieldKey = JsonText(value, "platformFieldKey"),
+                    ProviderFieldKey = JsonText(value, "providerFieldKey"),
+                    IsRequired = value.TryGetProperty("isRequired", out var required) && required.ValueKind == JsonValueKind.True
+                };
+            }
+        }
+        public IEnumerable<OptionMappingDraft> OptionMappings()
+        {
+            if (!Element.TryGetProperty("optionMappings", out var array) || array.ValueKind != JsonValueKind.Array) yield break;
+            foreach (var value in array.EnumerateArray())
+            {
+                yield return new OptionMappingDraft
+                {
+                    PlatformFieldKey = JsonText(value, "platformFieldKey"),
+                    PlatformOptionKey = JsonText(value, "platformOptionKey"),
+                    ProviderOptionKey = JsonText(value, "providerOptionKey")
+                };
+            }
+        }
+        private static string? JsonText(JsonElement element, string name) => element.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.String
+            ? value.GetString()
+            : null;
+    }
+}

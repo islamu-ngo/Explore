@@ -132,6 +132,48 @@ public sealed class StudioEventShellTests : IDisposable
         await _eventService.Received(1).GetEventByIdAsync(resource.Id.Value);
     }
 
+    [Test]
+    public async Task IntegrationsRoute_WithoutProviderRelations_FailsClosed()
+    {
+        var resource = CreateEvent();
+        _eventService.GetEventByIdAsync(resource.Id!.Value).Returns(resource);
+        _ctx.Services.GetRequiredService<NavigationManager>()
+            .NavigateTo($"/studio/events/{resource.Id}/integrations");
+
+        var cut = _ctx.RenderMudComponent<StudioEventShell>(parameters => parameters
+            .Add(component => component.EventId, resource.Id.Value));
+
+        cut.WaitForElement("[data-testid='integrations-route-unavailable']");
+        await Assert.That(cut.FindAll("[data-testid='studio-event-integrations']")).IsEmpty();
+    }
+
+    [Test]
+    [Arguments("manage-registration-channels")]
+    [Arguments("view-registration-provider-health")]
+    public async Task IntegrationsRoute_WithProviderRelation_RendersManagementPage(string relation)
+    {
+        var resource = CreateEvent(relation);
+        resource.TenantId = Guid.CreateVersion7();
+        _eventService.GetEventByIdAsync(resource.Id!.Value).Returns(resource);
+        var integrationService = _ctx.AddMockService<IRegistrationProviderIntegrationService>();
+        integrationService.GetConnectionsAsync(resource.TenantId.Value, resource.Id.Value, Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(new HalCollectionResourceOfRegistrationProviderConnectionDto()));
+        integrationService.GetBindingsAsync(resource.TenantId.Value, resource.Id.Value, Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(new HalCollectionResourceOfRegistrationProviderBindingDto()));
+        integrationService.GetHealthAsync(resource.TenantId.Value, resource.Id.Value, Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(new HalCollectionResourceOfRegistrationProviderBindingHealthDto()));
+        integrationService.GetQueueAsync(resource.TenantId.Value, resource.Id.Value, 50, Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(new HalCollectionResourceOfRegistrationProviderParkedQueueItemDto()));
+        _ctx.Services.GetRequiredService<NavigationManager>()
+            .NavigateTo($"/studio/events/{resource.Id}/integrations");
+
+        var cut = _ctx.RenderMudComponent<StudioEventShell>(parameters => parameters
+            .Add(component => component.EventId, resource.Id.Value));
+
+        cut.WaitForElement("[data-testid='studio-event-integrations']");
+        await Assert.That(cut.FindAll("[data-testid='integrations-route-unavailable']")).IsEmpty();
+    }
+
     private static EventDto CreateEvent(params string[] relations)
     {
         var eventId = Guid.CreateVersion7();

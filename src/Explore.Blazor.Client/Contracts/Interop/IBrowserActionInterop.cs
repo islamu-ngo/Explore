@@ -20,4 +20,8 @@ public interface IBrowserActionInterop
     Task<bool> DownloadFileFromUrlAsync(
         string url,
         CancellationToken cancellationToken = default);
+
+    Task<bool> OpenSameOriginNewTabAsync(
+        string url,
+        CancellationToken cancellationToken = default);
 }

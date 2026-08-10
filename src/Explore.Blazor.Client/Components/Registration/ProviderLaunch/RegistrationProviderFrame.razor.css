@@ -1,0 +1,42 @@
+/* ABOUTME: Scoped responsive styling for attendee registration provider iframe. */
+/* ABOUTME: Uses design tokens and logical properties for RTL-safe layout. */
+
+.registration-provider-frame {
+    display: grid;
+    gap: var(--isl-space-4);
+}
+
+.registration-provider-frame__header {
+    align-items: start;
+    display: flex;
+    gap: var(--isl-space-3);
+    justify-content: space-between;
+}
+
+.registration-provider-frame__state,
+.registration-provider-frame__status {
+    background: var(--isl-color-surface);
+    border: 1px solid var(--mud-palette-lines-default);
+    border-radius: var(--isl-radius-card);
+    padding-block: var(--isl-space-3);
+    padding-inline: var(--isl-space-4);
+}
+
+.registration-provider-frame__iframe {
+    block-size: min(42rem, 75vh);
+    border: 1px solid var(--mud-palette-lines-default);
+    border-radius: var(--isl-radius-card);
+    inline-size: 100%;
+}
+
+.registration-provider-frame__iframe:focus-visible {
+    outline: var(--isl-focus-ring-width) solid var(--mud-palette-primary);
+    outline-offset: var(--isl-focus-ring-offset);
+}
+
+@media (max-width: 48em) {
+    .registration-provider-frame__header {
+        align-items: stretch;
+        flex-direction: column;
+    }
+}

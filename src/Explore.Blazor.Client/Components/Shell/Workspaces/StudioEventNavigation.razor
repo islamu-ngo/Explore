@@ -56,6 +56,12 @@
                     Orders
                 </MudNavLink>
             }
+            @if (HasIntegrationRelation(Resource))
+            {
+                <MudNavLink Href="@($"{StudioRoute}/integrations")" Icon="@Icons.Material.Outlined.Extension" Match="NavLinkMatch.All" data-event-section="integrations">
+                    Integrations
+                </MudNavLink>
+            }
             @if (Resource.HasHalLink("manage-registration-workflow"))
             {
                 <MudNavLink Href="@($"{StudioRoute}/forms")" Icon="@Icons.Material.Outlined.DynamicForm" Match="NavLinkMatch.All" data-event-section="forms">
@@ -115,6 +121,10 @@
         || resource.HasHalLink("session-groups")
         || resource.HasHalLink("add-session")
         || resource.HasHalLink("create-session-draft");
+
+    private static bool HasIntegrationRelation(EventDto resource) =>
+        resource.HasHalLink("manage-registration-channels")
+        || resource.HasHalLink("view-registration-provider-health");
 
     private void OnContextChanged() => _ = InvokeAsync(StateHasChanged);
 

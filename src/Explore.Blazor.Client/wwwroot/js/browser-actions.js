@@ -104,6 +104,28 @@ export function downloadFileFromUrl(url) {
     }
 }
 
+export function openSameOriginNewTab(url) {
+    if (typeof url !== 'string' || url.trim().length === 0) {
+        return false;
+    }
+
+    try {
+        const targetUrl = new URL(url, window.location.origin);
+        if (targetUrl.origin !== window.location.origin) {
+            return false;
+        }
+
+        const opened = window.open(targetUrl.href, '_blank', 'noopener,noreferrer');
+        if (opened) {
+            opened.opener = null;
+        }
+
+        return Boolean(opened);
+    } catch {
+        return false;
+    }
+}
+
 function normalizeContentType(contentType) {
     return typeof contentType === 'string' && contentType.trim().length > 0
         ? contentType

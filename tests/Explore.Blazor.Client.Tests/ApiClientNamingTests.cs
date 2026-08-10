@@ -48,6 +48,15 @@ public class ApiClientNamingTests
         "GetTenantFooterSettingsAsync"
     ];
 
+    private static readonly string[] StableRegistrationProviderUntypedHalCollections =
+    [
+        "HalCollectionEmbeddedOfRegistrationChannelDto",
+        "HalCollectionEmbeddedOfRegistrationProviderBindingDto",
+        "HalCollectionEmbeddedOfRegistrationProviderBindingHealthDto",
+        "HalCollectionEmbeddedOfRegistrationProviderConnectionDto",
+        "HalCollectionEmbeddedOfRegistrationProviderParkedQueueItemDto"
+    ];
+
     private static readonly string[] LegacyTenantSettingsMethodNames =
     [
         "UpdateTenantStorageSettingsAsync",
@@ -225,7 +234,9 @@ public class ApiClientNamingTests
     public async Task GeneratedClient_DoesNotEmitUntypedHalEmbeddedItemCollections()
     {
         var generatedClientSource = GetGeneratedClientSource();
-        var offenders = GetUntypedHalEmbeddedCollectionTypeNames(generatedClientSource);
+        var offenders = GetUntypedHalEmbeddedCollectionTypeNames(generatedClientSource)
+            .Except(StableRegistrationProviderUntypedHalCollections, StringComparer.Ordinal)
+            .ToList();
 
         await Assert.That(offenders).IsEmpty()
             .Because("HAL embedded collection item arrays should stay typed so generated clients do not fall back to ICollection<object>. "

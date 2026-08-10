@@ -1,0 +1,66 @@
+@* ABOUTME: Attendee-facing provider embed frame for external registration collection. *@
+@* ABOUTME: Uses same-origin BFF launch URLs and polls server state after iframe events. *@
+@namespace Explore.Blazor.Client.Components.Registration.ProviderLaunch
+
+<section class="registration-provider-frame" aria-labelledby="registration-provider-frame-title" data-testid="registration-provider-frame">
+    <div class="registration-provider-frame__header">
+        <div>
+            <MudText Id="registration-provider-frame-title" Typo="Typo.h6" HtmlTag="h2">External registration provider</MudText>
+            <MudText Typo="Typo.body2" Color="Color.Secondary">Status is confirmed by Event after polling the provider handoff.</MudText>
+        </div>
+        <AppButton Variant="Variant.Outlined" OnClick="OpenNewTabAsync" Disabled="@(!CanRenderFrame)" aria-label="Open registration provider in a new tab">
+            Open in new tab
+        </AppButton>
+    </div>
+
+    @if (!CanRenderFrame)
+    {
+        <div class="registration-provider-frame__state" role="status" data-testid="registration-provider-frame-unavailable">
+            The provider frame is not available yet. Refresh the registration step and try again.
+        </div>
+    }
+    else
+    {
+        <iframe class="registration-provider-frame__iframe"
+                src="@State!.EmbedUrl"
+                title="External registration provider form"
+                sandbox="allow-forms allow-scripts allow-same-origin allow-popups"
+                loading="lazy"
+                @onload="OnFrameLoadedAsync"
+                data-testid="registration-provider-iframe"></iframe>
+        <div class="registration-provider-frame__status" role="status" aria-live="polite" data-testid="registration-provider-frame-status">
+            @(State!.IsComplete ? "Provider requirement complete." : "Waiting for provider completion. This frame cannot mark the requirement complete by itself.")
+        </div>
+    }
+</section>
+
+@code {
+    [Parameter] public RegistrationProviderLaunchState? State { get; set; }
+
+    private bool CanRenderFrame => State?.EmbedUrl is { Length: > 0 } url && IsSameOriginBffUrl(url);
+
+    private async Task OnFrameLoadedAsync()
+    {
+        if (State is null)
+        {
+            return;
+        }
+
+        await State.OnIframeLoadedAsync();
+        await State.PollAsync();
+    }
+
+    private async Task OpenNewTabAsync()
+    {
+        if (State is not null && CanRenderFrame)
+        {
+            await State.OpenAuthorizedNewTabAsync();
+        }
+    }
+
+    private static bool IsSameOriginBffUrl(string url) =>
+        url.StartsWith("/bff/registration-provider-embed/", StringComparison.Ordinal) &&
+        !url.StartsWith("//", StringComparison.Ordinal) &&
+        !url.Contains('\\') &&
+        !url.Any(char.IsControl);
+}

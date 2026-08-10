@@ -1,0 +1,103 @@
+/* ABOUTME: Scoped BEM styles for Studio event registration-provider integrations. */
+/* ABOUTME: Reuses design tokens, logical properties, and responsive grid behavior. */
+
+.studio-event-integrations {
+    display: grid;
+    gap: var(--isl-space-5);
+}
+
+.studio-event-integrations__summary,
+.studio-event-integrations__panel,
+.studio-event-integrations__state {
+    background: var(--isl-color-surface);
+    border: 1px solid var(--mud-palette-lines-default);
+    border-radius: var(--isl-radius-card);
+    padding-block: var(--isl-space-5);
+    padding-inline: var(--isl-space-5);
+}
+
+.studio-event-integrations__state {
+    align-items: center;
+    display: flex;
+    gap: var(--isl-space-3);
+}
+
+.studio-event-integrations__stats,
+.studio-event-integrations__cards,
+.studio-event-integrations__form {
+    display: grid;
+    gap: var(--isl-space-3);
+}
+
+.studio-event-integrations__stats {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    margin-block-start: var(--isl-space-3);
+}
+
+.studio-event-integrations__stats > div,
+.studio-event-integrations__card {
+    border: 1px solid var(--mud-palette-lines-default);
+    border-radius: var(--isl-radius-md);
+    padding-block: var(--isl-space-3);
+    padding-inline: var(--isl-space-4);
+}
+
+.studio-event-integrations__stats strong,
+.studio-event-integrations__stats span {
+    display: block;
+}
+
+.studio-event-integrations__notice,
+.studio-event-integrations__empty,
+.studio-event-integrations__validation {
+    color: var(--mud-palette-text-secondary);
+    margin-block: var(--isl-space-3) 0;
+}
+
+.studio-event-integrations__validation {
+    color: var(--isl-color-error);
+}
+
+.studio-event-integrations__section-header,
+.studio-event-integrations__actions {
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--isl-space-2);
+    justify-content: space-between;
+}
+
+.studio-event-integrations__form {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    margin-block: var(--isl-space-4);
+}
+
+.studio-event-integrations__form :last-child {
+    align-self: end;
+}
+
+.studio-event-integrations__card:focus-within {
+    outline: var(--isl-focus-ring-width) solid var(--mud-palette-primary);
+    outline-offset: var(--isl-focus-ring-offset);
+}
+
+@media (max-width: 64em) {
+    .studio-event-integrations__stats,
+    .studio-event-integrations__form {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 48em) {
+    .studio-event-integrations__stats,
+    .studio-event-integrations__form {
+        grid-template-columns: 1fr;
+    }
+
+    .studio-event-integrations__state,
+    .studio-event-integrations__section-header,
+    .studio-event-integrations__actions {
+        align-items: stretch;
+        flex-direction: column;
+    }
+}

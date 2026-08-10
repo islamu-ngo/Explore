@@ -28,6 +28,8 @@ public sealed class StudioEventNavigationTests : IDisposable
     [Arguments("sessions", "Schedule")]
     [Arguments("configure-participation", "Registration")]
     [Arguments("view-registration-orders", "Orders")]
+    [Arguments("manage-registration-channels", "Integrations")]
+    [Arguments("view-registration-provider-health", "Integrations")]
     [Arguments("view-participants", "Attendees")]
     [Arguments("manage-registration-workflow", "Forms")]
     [Arguments("team", "Team")]
