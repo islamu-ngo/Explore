@@ -5,6 +5,10 @@ using Explore.Domain;
 using Explore.Domain.Enums;
 using Explore.Persistence;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
+using Explore.API.Controllers;
+using System.Reflection;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
 
@@ -12,6 +16,24 @@ namespace Event.Architecture.Tests;
 
 public sealed class RegistrationProviderFoundationArchitectureTests
 {
+    [Test]
+    public async Task RegistrationProviderManagementActionsDeclareRequiredProblemMetadata()
+    {
+        MethodInfo[] actions = typeof(RegistrationProviderManagementController)
+            .GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly);
+
+        await Assert.That(actions).IsNotEmpty();
+        foreach (MethodInfo action in actions)
+        {
+            int[] statuses = action.GetCustomAttributes<ProducesResponseTypeAttribute>()
+                .Select(attribute => attribute.StatusCode)
+                .ToArray();
+            await Assert.That(statuses).Contains(StatusCodes.Status400BadRequest);
+            await Assert.That(statuses).Contains(StatusCodes.Status401Unauthorized);
+            await Assert.That(statuses).Contains(StatusCodes.Status403Forbidden);
+        }
+    }
+
     [Test]
     public async Task RegistrationProviderConnectionStoresOnlySecretBindingReferences()
     {

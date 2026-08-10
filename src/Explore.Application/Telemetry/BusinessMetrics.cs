@@ -28,6 +28,7 @@ public sealed class BusinessMetrics : IDisposable
     private readonly Counter<long> _eventReportProviderCallbacks;
     private readonly Counter<long> _eventPublicActionEngagements;
     private readonly Counter<long> _registrationsCreated;
+    private readonly Counter<long> _registrationProviderManagementActions;
     private readonly Counter<long> _organizationsCreated;
     private readonly Counter<long> _authorizationDecisions;
     private readonly Counter<long> _supportAccessLifecycleEvents;
@@ -149,6 +150,11 @@ public sealed class BusinessMetrics : IDisposable
             "explore.registrations.created",
             unit: "{registration}",
             description: "Total number of event registrations created");
+
+        _registrationProviderManagementActions = meter.CreateCounter<long>(
+            "explore.registration_providers.management_actions",
+            unit: "{action}",
+            description: "Total registration-provider management actions by bounded action and outcome");
 
         _organizationsCreated = meter.CreateCounter<long>(
             "explore.organizations.created",
@@ -601,6 +607,13 @@ public sealed class BusinessMetrics : IDisposable
     {
         _registrationsCreated.Add(1,
             new KeyValuePair<string, object?>("tenant_id", tenantId ?? "default"));
+    }
+
+    public void RecordRegistrationProviderManagementAction(string action, string outcome)
+    {
+        _registrationProviderManagementActions.Add(1,
+            new KeyValuePair<string, object?>("action", NormalizeTag(action)),
+            new KeyValuePair<string, object?>("outcome", NormalizeTag(outcome)));
     }
 
     public void RecordOrganizationCreated(string? tenantId = null)

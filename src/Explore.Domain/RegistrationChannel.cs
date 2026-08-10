@@ -74,6 +74,39 @@ public sealed class RegistrationChannel : ITenantEntity, IAuditableEntity, ISoft
         };
     }
 
+    public void Update(int ordinal, bool isNative, Guid? registrationProviderBindingId)
+    {
+        if (ordinal <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(ordinal), "Channel ordinal must be positive.");
+        }
+
+        if (registrationProviderBindingId == Guid.Empty || isNative == registrationProviderBindingId.HasValue)
+        {
+            throw new ArgumentException("A native channel has no provider binding; a provider channel requires one.", nameof(registrationProviderBindingId));
+        }
+
+        Ordinal = ordinal;
+        IsNative = isNative;
+        RegistrationProviderBindingId = registrationProviderBindingId;
+        ConcurrencyStamp = Guid.CreateVersion7();
+    }
+
+    public void Revive(int ordinal, bool isNative, Guid? registrationProviderBindingId)
+    {
+        Update(ordinal, isNative, registrationProviderBindingId);
+        IsDeleted = false;
+        DeletedAt = null;
+        DeletedBy = null;
+    }
+
+    public void Remove(DateTime removedAt)
+    {
+        IsDeleted = true;
+        DeletedAt = EnsureUtc(removedAt);
+        ConcurrencyStamp = Guid.CreateVersion7();
+    }
+
     private static DateTime EnsureUtc(DateTime value)
     {
         if (value == default || value.Kind != DateTimeKind.Utc)

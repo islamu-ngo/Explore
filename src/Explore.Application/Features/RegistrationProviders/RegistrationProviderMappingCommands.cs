@@ -63,6 +63,11 @@ public sealed class ReplaceDraftRegistrationProviderMappingsCommandHandler(IRegi
         await new ReplaceDraftRegistrationProviderMappingsCommandValidator().ValidateAndThrowAsync(request, cancellationToken);
         RegistrationProviderBinding? binding = await repository.GetBindingAsync(request.TenantId, request.BindingId, cancellationToken);
         if (binding is null) return RegistrationProviderCommandResponses.Failure(request.BindingId, "registration_provider_binding_not_found");
+        if (binding.StateId != (int)RegistrationProviderBindingStateEnum.Draft)
+        {
+            return RegistrationProviderCommandResponses.Failure(request.BindingId, "registration_provider_binding_not_draft");
+        }
+
         if (await repository.HasSubmissionForBindingAsync(request.TenantId, request.BindingId, cancellationToken))
         {
             return RegistrationProviderCommandResponses.Failure(request.BindingId, "registration_provider_mapping_pinned");

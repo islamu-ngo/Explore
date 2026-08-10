@@ -433,7 +433,9 @@ public partial class FallbackAuthorizationService
 
         if ((resourceKind == ResourceKinds.Event
                 && action is AuthorizationActions.Events.ManageRegistrations
-                    or AuthorizationActions.Events.ManageRegistrationWorkflow)
+                    or AuthorizationActions.Events.ManageRegistrationWorkflow
+                    or AuthorizationActions.Events.ManageRegistrationChannels
+                    or AuthorizationActions.Events.ViewRegistrationProviderHealth)
             || resourceKind == ResourceKinds.RegistrationForm)
         {
             return await EvaluateManageRegistrationsAccessAsync(

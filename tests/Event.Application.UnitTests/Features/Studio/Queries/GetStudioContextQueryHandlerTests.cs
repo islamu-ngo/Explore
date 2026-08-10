@@ -86,18 +86,22 @@ public sealed class GetStudioContextQueryHandlerTests
             .Returns(AiAssistantActorContextResolution.Success(actorId, []));
         _events.GetEventsByActorWithDetails(actorId, Arg.Any<CancellationToken>()).Returns([managedEvent]);
         _authorization.IsAllowedBatchAsync(Arg.Any<IReadOnlyList<AuthorizationCheck>>(), Arg.Any<CancellationToken>())
-            .Returns([true]);
+            .Returns([true, true, true]);
 
         StudioContextDto result = await CreateHandler().Handle(new GetStudioContextQuery(actorId), CancellationToken.None);
 
         await Assert.That(result.AllowedLinkRelations).Contains(LinkRelations.ViewRegistrationOrders);
         await Assert.That(result.AllowedLinkRelations).Contains(LinkRelations.ViewParticipants);
+        await Assert.That(result.AllowedLinkRelations).Contains(LinkRelations.ManageRegistrationChannels);
+        await Assert.That(result.AllowedLinkRelations).Contains(LinkRelations.ViewRegistrationProviderHealth);
         await _authorization.Received(1).IsAllowedBatchAsync(
             Arg.Is<IReadOnlyList<AuthorizationCheck>>(checks =>
-                checks.Count == 1 &&
+                checks.Count == 3 &&
                 checks[0].ResourceKind == ResourceKinds.Event &&
                 checks[0].Action == AuthorizationActions.Events.ManageRegistrations &&
-                checks[0].ResourceId == managedEvent.Id.ToString("D")),
+                checks[0].ResourceId == managedEvent.Id.ToString("D") &&
+                checks[1].Action == AuthorizationActions.Events.ManageRegistrationChannels &&
+                checks[2].Action == AuthorizationActions.Events.ViewRegistrationProviderHealth),
             Arg.Any<CancellationToken>());
     }
 

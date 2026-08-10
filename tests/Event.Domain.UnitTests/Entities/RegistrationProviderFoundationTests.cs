@@ -109,6 +109,43 @@ public sealed class RegistrationProviderFoundationTests
         await Assert.That(webhookSecret.DefaultInfisicalPath).IsEqualTo("/registration-providers");
     }
 
+    [Test]
+    public async Task ApprovedOrigins_AcceptOnlyHttpsOriginsAndBlockLocalTargets()
+    {
+        RegistrationProviderConnection connection = RegistrationProviderConnection.Create(
+            Guid.CreateVersion7(), "provider", RegistrationProviderKindEnum.ExternalForm,
+            RegistrationProviderDeploymentKindEnum.HostedSaas, null, null, Now);
+
+        connection.ReplaceApprovedOrigins([" HTTPS://Forms.Example.Org:8443/ "], Now);
+
+        await Assert.That(connection.ApprovedOrigins.Single().Origin).IsEqualTo("https://forms.example.org:8443");
+        await Assert.That(connection.IsOriginApproved(new Uri("https://forms.example.org:8443"))).IsTrue();
+        await Assert.That(() => connection.ReplaceApprovedOrigins(["http://forms.example.org"], Now)).Throws<ArgumentException>();
+        await Assert.That(() => connection.ReplaceApprovedOrigins(["https://127.0.0.1"], Now)).Throws<ArgumentException>();
+        await Assert.That(() => connection.ReplaceApprovedOrigins(["https://forms.example.org/path"], Now)).Throws<ArgumentException>();
+    }
+
+    [Test]
+    [Arguments("https://0.0.0.0")]
+    [Arguments("https://224.0.0.1")]
+    [Arguments("https://[::]")]
+    [Arguments("https://[ff02::1]")]
+    [Arguments("https://[fc00::1]")]
+    [Arguments("https://[fd00:ec2::254]")]
+    [Arguments("https://[::ffff:127.0.0.1]")]
+    [Arguments("https://[::ffff:10.0.0.1]")]
+    [Arguments("https://[::ffff:172.16.0.1]")]
+    [Arguments("https://[::ffff:192.168.0.1]")]
+    [Arguments("https://[::ffff:169.254.169.254]")]
+    public async Task ApprovedOrigins_BlockSpecialAndPrivateIpLiterals(string origin)
+    {
+        RegistrationProviderConnection connection = RegistrationProviderConnection.Create(
+            Guid.CreateVersion7(), "provider", RegistrationProviderKindEnum.ExternalForm,
+            RegistrationProviderDeploymentKindEnum.HostedSaas, null, null, Now);
+
+        await Assert.That(() => connection.ReplaceApprovedOrigins([origin], Now)).Throws<ArgumentException>();
+    }
+
     private static RegistrationProviderBinding Binding() => RegistrationProviderBinding.Create(
         Guid.CreateVersion7(), Guid.CreateVersion7(), Guid.CreateVersion7(), Guid.CreateVersion7(),
         RegistrationProviderPresentationModeEnum.Redirect, RegistrationProviderCollectionModeEnum.ProviderHosted,

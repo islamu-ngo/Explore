@@ -78,7 +78,7 @@ public sealed class ProcessProviderSubmissionEffectCommandHandlerTests
         ProviderSubmissionEffectResult result = await handler.Handle(CreateCommand(scope), CancellationToken.None);
 
         await Assert.That(result.Outcome).IsEqualTo(ProviderSubmissionEffectOutcome.NeedsReconciliation);
-        await Assert.That(result.Code).IsEqualTo("TRUST_OR_DRIFT_BLOCKED");
+        await Assert.That(result.Code).IsEqualTo("BELOW_MINIMUM_TRUST");
         await repositories.Submissions.DidNotReceive().PersistAcceptedWithNormalizationAsync(
             Arg.Any<RegistrationAttempt>(), Arg.Any<RegistrationSubmission>(), Arg.Any<Guid>(),
             Arg.Any<IReadOnlyCollection<RegistrationAnswer>>(), Arg.Any<IReadOnlyCollection<RegistrationConsentRecord>>(),
@@ -113,12 +113,12 @@ public sealed class ProcessProviderSubmissionEffectCommandHandlerTests
         ProviderSubmissionEffectResult result = await handler.Handle(CreateCommand(scope), CancellationToken.None);
 
         await Assert.That(result.Outcome).IsEqualTo(ProviderSubmissionEffectOutcome.NeedsReconciliation);
-        await Assert.That(result.Code).IsEqualTo("TRUST_OR_DRIFT_BLOCKED");
+        await Assert.That(result.Code).IsEqualTo("BELOW_MINIMUM_TRUST");
         await Assert.That(parked).IsNotNull();
         await Assert.That(parked!.IsFinalizable).IsFalse();
         await Assert.That(parked.FinalizedAt).IsNull();
         await Assert.That(issues).IsNotNull();
-        await Assert.That(issues!.Single().Code).IsEqualTo("TRUST_OR_DRIFT_BLOCKED");
+        await Assert.That(issues!.Single().Code).IsEqualTo("BELOW_MINIMUM_TRUST");
         await repositories.Submissions.DidNotReceive().PersistAcceptedWithNormalizationAsync(
             Arg.Any<RegistrationAttempt>(), Arg.Any<RegistrationSubmission>(), Arg.Any<Guid>(),
             Arg.Any<IReadOnlyCollection<RegistrationAnswer>>(), Arg.Any<IReadOnlyCollection<RegistrationConsentRecord>>(),
@@ -192,7 +192,7 @@ public sealed class ProcessProviderSubmissionEffectCommandHandlerTests
         ProviderSubmissionEffectResult result = await handler.Handle(CreateCommand(scope), CancellationToken.None);
 
         await Assert.That(result.Outcome).IsEqualTo(ProviderSubmissionEffectOutcome.NeedsReconciliation);
-        await Assert.That(result.Code).IsEqualTo("TRUST_OR_DRIFT_BLOCKED");
+        await Assert.That(result.Code).IsEqualTo("BLOCKING_DRIFT");
         await Assert.That(parked).IsNotNull();
         await Assert.That(parked!.IsFinalizable).IsFalse();
     }
@@ -239,12 +239,34 @@ public sealed class ProcessProviderSubmissionEffectCommandHandlerTests
         await repositories.Submissions.DidNotReceive().GetAttemptAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>());
     }
 
-    private static ProcessProviderSubmissionEffectCommand CreateCommand(ProviderScope scope) => new(
+    [Test]
+    public async Task MissingAttemptId_ReturnsMalformedEvidenceBeforeAttemptLookup()
+    {
+        ProviderScope scope = CreateScope(RegistrationAnswerSyncModeEnum.COMPLETION_ONLY);
+        var repositories = CreateRepositories(scope);
+        var handler = CreateHandler(scope, repositories);
+        var command = CreateCommand(scope, Encoding.UTF8.GetBytes(JsonSerializer.Serialize(new
+        {
+            providerSubmissionId = "submission-1",
+            providerResponseRevision = "revision-1"
+        })));
+
+        ProviderSubmissionEffectResult result = await handler.Handle(command, CancellationToken.None);
+
+        await Assert.That(result.Outcome).IsEqualTo(ProviderSubmissionEffectOutcome.NeedsReconciliation);
+        await Assert.That(result.Code).IsEqualTo("MALFORMED_EVIDENCE");
+        await repositories.Submissions.DidNotReceive().GetAttemptAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+    }
+
+    private static ProcessProviderSubmissionEffectCommand CreateCommand(ProviderScope scope) =>
+        CreateCommand(scope, Payload(scope));
+
+    private static ProcessProviderSubmissionEffectCommand CreateCommand(ProviderScope scope, byte[] payload) => new(
         scope.TenantId,
         scope.IncomingWebhookMessageId,
         scope.Binding.Id,
         "external-form",
-        Payload(scope),
+        payload,
         new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {
             ["X-Registration-Verification-Receipt"] = "receipt:v1:test"

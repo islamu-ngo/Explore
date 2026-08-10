@@ -9,6 +9,7 @@ using Explore.Application.Exceptions;
 using Explore.Application.Features.EventReporting;
 using Explore.Application.Features.EventReporting.Requests.Commands;
 using Explore.Application.Features.EventReporting.Validators;
+using Explore.Application.Features.RegistrationProviders.Commands;
 using Explore.Application.Features.RegistrationSubmissions.Commands;
 using Explore.Application.Serialization;
 using Explore.Domain;
@@ -74,6 +75,16 @@ public sealed class IncomingWebhookEffectProcessingService(
         if (string.Equals(active.EffectKind, ProcessProviderSubmissionEffectCommandHandler.StableEffectKind, StringComparison.Ordinal))
         {
             return await ProcessRegistrationProviderSubmissionAsync(claim, active, message, cancellationToken);
+        }
+
+        if (string.Equals(active.EffectKind, QueueManualRegistrationProviderImportCommandHandler.ManualImportEffectKind, StringComparison.Ordinal))
+        {
+            return await TransitionAsync(
+                claim,
+                "manual_import_pending",
+                "Manual registration-provider import requires organizer reconciliation.",
+                retry: false,
+                cancellationToken);
         }
 
         if (!HasMatchingEnvelope(active, message))
@@ -392,6 +403,33 @@ public sealed class IncomingWebhookEffectProcessingService(
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
             throw;
+        }
+        catch (KeyNotFoundException)
+        {
+            return await TransitionAsync(
+                claim,
+                "malformed_evidence",
+                "The retained registration callback evidence is malformed.",
+                retry: false,
+                cancellationToken);
+        }
+        catch (FormatException)
+        {
+            return await TransitionAsync(
+                claim,
+                "malformed_evidence",
+                "The retained registration callback evidence is malformed.",
+                retry: false,
+                cancellationToken);
+        }
+        catch (JsonException)
+        {
+            return await TransitionAsync(
+                claim,
+                "malformed_evidence",
+                "The retained registration callback evidence is malformed.",
+                retry: false,
+                cancellationToken);
         }
         catch (Exception) when (!cancellationToken.IsCancellationRequested)
         {

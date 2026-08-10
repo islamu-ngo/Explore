@@ -45,6 +45,30 @@ public sealed class StudioContextLinkPolicy : ILinkPolicy<StudioContextDto>
                 "View participants",
                 RequiresAuth: true);
         }
+
+        if (dto.AllowedLinkRelations.Contains(LinkRelations.ViewRegistrationProviderHealth)
+            && selectedActorId is Guid healthActorId)
+        {
+            yield return new LinkDefinition(
+                LinkRelations.ViewRegistrationProviderHealth,
+                RouteNames.GetManagedEventsByActor,
+                new { actorId = healthActorId },
+                HttpMethods.Get,
+                "View registration provider health",
+                RequiresAuth: true);
+        }
+
+        if (dto.AllowedLinkRelations.Contains(LinkRelations.ManageRegistrationChannels)
+            && selectedActorId is Guid channelsActorId)
+        {
+            yield return new LinkDefinition(
+                LinkRelations.ManageRegistrationChannels,
+                RouteNames.GetManagedEventsByActor,
+                new { actorId = channelsActorId },
+                HttpMethods.Get,
+                "Manage registration channels",
+                RequiresAuth: true);
+        }
     }
 }
 

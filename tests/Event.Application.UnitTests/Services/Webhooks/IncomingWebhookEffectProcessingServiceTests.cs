@@ -6,6 +6,8 @@ using System.Text;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Webhooks;
 using Explore.Application.Features.EventReporting.Requests.Commands;
+using Explore.Application.Features.RegistrationProviders.Commands;
+using Explore.Application.Features.RegistrationSubmissions.Commands;
 using Explore.Application.Responses;
 using Explore.Application.Services.Webhooks;
 using Explore.Domain;
@@ -102,6 +104,61 @@ public sealed class IncomingWebhookEffectProcessingServiceTests
     }
 
     [Test]
+    public async Task ProcessAsync_RegistrationMalformedAttemptId_DeadLettersWithoutRetry()
+    {
+        var setup = CreateClaim(
+            Encoding.UTF8.GetBytes("""
+                {
+                  "attemptId": "not-a-guid",
+                  "providerSubmissionId": "provider-submission-1",
+                  "providerResponseRevision": "revision-1"
+                }
+                """),
+            effectKind: ProcessProviderSubmissionEffectCommandHandler.StableEffectKind,
+            provider: "registration-provider",
+            providerDecisionId: $"{Guid.CreateVersion7():N}:provider-submission-1");
+        ConfigureRepositories(setup);
+        _mediator.Send(Arg.Any<ProcessProviderSubmissionEffectCommand>(), Arg.Any<CancellationToken>())
+            .Returns<Task<ProviderSubmissionEffectResult>>(_ => throw new FormatException("canary-sensitive-text"));
+
+        var result = await CreateService(setup.Now).ProcessAsync(setup.Claim, CancellationToken.None);
+
+        await Assert.That(result.Outcome).IsEqualTo(IncomingWebhookClaimExecutionOutcome.Completed);
+        await Assert.That(setup.Pointer.Status).IsEqualTo(OutboxMessageStatus.DeadLettered);
+        await Assert.That(setup.Pointer.FailureCategory).IsEqualTo("malformed_evidence");
+        await Assert.That(setup.Pointer.SafeDetail).DoesNotContain("canary-sensitive-text");
+        await Assert.That(setup.Pointer.NextAttemptAt).IsNull();
+    }
+
+    [Test]
+    public async Task ProcessAsync_ManualImportEffect_ParksWithoutSubmissionCommandOrMalformedEvidence()
+    {
+        var bindingId = Guid.CreateVersion7();
+        var setup = CreateClaim(
+            Encoding.UTF8.GetBytes($$"""
+                {
+                  "bindingId": "{{bindingId}}",
+                  "storageReference": "storage:object/123",
+                  "sourceReference": "operator-import-1"
+                }
+                """),
+            effectKind: QueueManualRegistrationProviderImportCommandHandler.ManualImportEffectKind,
+            provider: "registration-provider",
+            providerDecisionId: $"{bindingId:N}:manual:abcdef");
+        ConfigureRepositories(setup);
+
+        var result = await CreateService(setup.Now).ProcessAsync(setup.Claim, CancellationToken.None);
+
+        await Assert.That(result.Outcome).IsEqualTo(IncomingWebhookClaimExecutionOutcome.Completed);
+        await Assert.That(setup.Pointer.Status).IsEqualTo(OutboxMessageStatus.DeadLettered);
+        await Assert.That(setup.Pointer.FailureCategory).IsEqualTo("manual_import_pending");
+        await Assert.That(setup.Pointer.FailureCategory).IsNotEqualTo("malformed_evidence");
+        await _mediator.DidNotReceive().Send(
+            Arg.Any<ProcessProviderSubmissionEffectCommand>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
     public async Task ProcessAsync_PayloadTenantMismatch_DeadLetters()
     {
         var setup = CreateClaim(CreatePayload(tenantId: Guid.CreateVersion7()), Guid.CreateVersion7());
@@ -164,16 +221,22 @@ public sealed class IncomingWebhookEffectProcessingServiceTests
             .Returns(setup.Message);
     }
 
-    private static Setup CreateClaim(byte[] payload, Guid? pointerTenantId = null)
+    private static Setup CreateClaim(
+        byte[] payload,
+        Guid? pointerTenantId = null,
+        string provider = "coop",
+        string providerDecisionId = "provider-decision-1",
+        string? effectKind = null)
     {
         var now = new DateTime(2026, 7, 17, 12, 0, 0, DateTimeKind.Utc);
         var tenantId = pointerTenantId ?? ReadTenantId(payload) ?? Guid.CreateVersion7();
+        string kind = effectKind ?? CoopDecisionIncomingWebhookHandler.StableEffectKind;
         var message = IncomingWebhookMessage.CreateVerified(
             tenantId,
-            "coop",
-            "provider-decision-1",
-            "provider-decision-1",
-            CoopDecisionIncomingWebhookHandler.StableEffectKind,
+            provider,
+            providerDecisionId,
+            providerDecisionId,
+            kind,
             payload,
             "sha256:" + Convert.ToHexString(SHA256.HashData(payload)).ToLowerInvariant(),
             "application/json",
@@ -190,9 +253,9 @@ public sealed class IncomingWebhookEffectProcessingServiceTests
         var pointer = IncomingWebhookEffectOutbox.CreatePending(
             tenantId,
             message.Id,
-            "coop",
-            "provider-decision-1",
-            CoopDecisionIncomingWebhookHandler.StableEffectKind,
+            provider,
+            providerDecisionId,
+            kind,
             message.PayloadHash,
             now.AddMinutes(-1));
         var leaseToken = Guid.CreateVersion7();

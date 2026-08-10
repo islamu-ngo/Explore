@@ -124,6 +124,39 @@ public sealed class RegistrationProviderBinding : ITenantEntity, IAuditableEntit
         ConcurrencyStamp = Guid.CreateVersion7();
     }
 
+    public void UpdateDraft(Guid connectionId, Guid formId, Guid formVersionId,
+        RegistrationProviderPresentationModeEnum presentationMode, RegistrationProviderCollectionModeEnum collectionMode,
+        RegistrationProviderCompletionModeEnum completionMode, RegistrationProviderTrustLevelEnum trustLevel)
+    {
+        EnsureDraft();
+        if (new[] { connectionId, formId, formVersionId }.Any(id => id == Guid.Empty) ||
+            !Enum.IsDefined(presentationMode) || !Enum.IsDefined(collectionMode) || !Enum.IsDefined(completionMode) || !Enum.IsDefined(trustLevel))
+        {
+            throw new ArgumentException("Provider binding identities and lookup values must be valid.");
+        }
+
+        RegistrationProviderConnectionId = connectionId;
+        RegistrationFormId = formId;
+        RegistrationFormVersionId = formVersionId;
+        PresentationModeId = (int)presentationMode;
+        CollectionModeId = (int)collectionMode;
+        CompletionModeId = (int)completionMode;
+        TrustLevelId = (int)trustLevel;
+        ConcurrencyStamp = Guid.CreateVersion7();
+    }
+
+    public void Remove(DateTime removedAt)
+    {
+        if (StateId == (int)RegistrationProviderBindingStateEnum.Published)
+        {
+            throw new InvalidOperationException("Published provider bindings cannot be deleted; disable replacement behavior instead.");
+        }
+
+        IsDeleted = true;
+        DeletedAt = RegistrationProviderConnection.EnsureUtc(removedAt, nameof(removedAt));
+        ConcurrencyStamp = Guid.CreateVersion7();
+    }
+
     internal void EnsureDraft()
     {
         if (StateId != (int)RegistrationProviderBindingStateEnum.Draft)

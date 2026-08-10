@@ -309,6 +309,101 @@ public sealed class RegistrationFinalizationEffectPersistenceTests
         await Assert.That(persisted.ProcessingFence).IsEqualTo(2);
     }
 
+    [Test]
+    [Category("Runtime")]
+    public async Task ProviderCallbackAndUserReturnFulfillmentOrdersConvergeToOneFinalizationEffect()
+    {
+        await AssertConvergesAsync("phase95callbackfirst", callbackFirst: true);
+        await AssertConvergesAsync("phase95userfirst", callbackFirst: false);
+    }
+
+    private static async Task AssertConvergesAsync(string databaseName, bool callbackFirst)
+    {
+        await using var database = new PostgreSqlBuilder("postgres:18-alpine")
+            .WithDatabase(databaseName)
+            .WithUsername("postgres")
+            .WithPassword("postgres")
+            .Build();
+        await database.StartAsync();
+        DbContextOptions<ExploreDbContext> options = new DbContextOptionsBuilder<ExploreDbContext>()
+            .UseNpgsql(database.GetConnectionString())
+            .UseSnakeCaseNamingConvention()
+            .Options;
+        (RegistrationOrder order, RegistrationWorkflow workflow) = CreateOrder();
+        RegistrationRequirement required = CreateRequired(
+            workflow, 1, RegistrationRequirementSubjectTypeEnum.AllOrders, null);
+
+        await using (ExploreDbContext setup = CreateContext(options, true))
+        {
+            await setup.Database.EnsureCreatedAsync();
+            await setup.Database.OpenConnectionAsync();
+            await setup.Database.ExecuteSqlRawAsync("SET session_replication_role = replica");
+            setup.RegistrationOrders.Add(order);
+            setup.RegistrationWorkflows.Add(workflow);
+            setup.RegistrationRequirements.Add(required);
+            await setup.SaveChangesAsync();
+            await setup.Database.ExecuteSqlRawAsync("SET session_replication_role = origin");
+        }
+
+        await using ExploreDbContext context = CreateContext(options, true);
+        await context.Database.OpenConnectionAsync();
+        await context.Database.ExecuteSqlRawAsync("SET session_replication_role = replica");
+        var repository = new RegistrationFinalizationRepository(context);
+        RegistrationSubmission callbackSubmission = CreateProviderSubmission(order, required, UtcNow);
+        RegistrationSubmission userReturnSubmission = CreateNativeSubmission(order, required, UtcNow.AddSeconds(1));
+        RegistrationRequirementFulfillment callback = RegistrationRequirementFulfillment.CreateFulfilled(
+            order, required, callbackSubmission, RegistrationAnswerSubjectTypeEnum.RegistrationOrder, order.Id, UtcNow);
+        RegistrationRequirementFulfillment userReturn = RegistrationRequirementFulfillment.CreateFulfilled(
+            order, required, userReturnSubmission, RegistrationAnswerSubjectTypeEnum.RegistrationOrder, order.Id, UtcNow.AddSeconds(1));
+
+        bool firstReady = await repository.RecordFulfillmentAsync(
+            callbackFirst ? callback : userReturn, UtcNow, CancellationToken.None);
+        bool secondReady = await repository.RecordFulfillmentAsync(
+            callbackFirst ? userReturn : callback, UtcNow.AddSeconds(1), CancellationToken.None);
+
+        await Assert.That(firstReady).IsTrue();
+        await Assert.That(secondReady).IsTrue();
+        await Assert.That(await context.RegistrationRequirementFulfillments.CountAsync()).IsEqualTo(1);
+        await Assert.That(await context.RegistrationFinalizationEffects.CountAsync()).IsEqualTo(1);
+        RegistrationFinalizationEffect effect = await context.RegistrationFinalizationEffects.SingleAsync();
+        await Assert.That(effect.RegistrationOrderId).IsEqualTo(order.Id);
+        await Assert.That(effect.Status).IsEqualTo(OutboxMessageStatus.Pending);
+        await context.Database.ExecuteSqlRawAsync("SET session_replication_role = origin");
+    }
+
+    private static RegistrationSubmission CreateNativeSubmission(
+        RegistrationOrder order,
+        RegistrationRequirement requirement,
+        DateTime receivedAt)
+    {
+        RegistrationAttempt attempt = RegistrationAttempt.Create(
+            order.TenantId, order.EventId, order.Id, requirement.RegistrationWorkflowId, requirement.Id,
+            Guid.CreateVersion7(), Guid.CreateVersion7(), Guid.CreateVersion7(),
+            CapabilityTokenHash.Create(Hash("native-capability")), null, null, UtcNow, UtcNow.AddMinutes(10));
+        return attempt.SubmitNative(
+            RegistrationEvidenceHash.Create(Hash("native-evidence")), receivedAt,
+            RegistrationTransportIdempotencyHash.Create(Hash("native-transport")));
+    }
+
+    private static RegistrationSubmission CreateProviderSubmission(
+        RegistrationOrder order,
+        RegistrationRequirement requirement,
+        DateTime receivedAt)
+    {
+        RegistrationAttempt attempt = RegistrationAttempt.Create(
+            order.TenantId, order.EventId, order.Id, requirement.RegistrationWorkflowId, requirement.Id,
+            Guid.CreateVersion7(), Guid.CreateVersion7(), Guid.CreateVersion7(),
+            CapabilityTokenHash.Create(Hash("provider-capability")), Guid.CreateVersion7(),
+            RegistrationEvidenceHash.Create(Hash("provider-mapping")), UtcNow, UtcNow.AddMinutes(10));
+        return attempt.SubmitProvider(
+            RegistrationEvidenceHash.Create(Hash("provider-evidence")), receivedAt,
+            RegistrationTransportIdempotencyHash.Create(Hash("provider-transport")),
+            "provider-submission", "revision-1", null, null);
+    }
+
+    private static string Hash(string value) =>
+        Convert.ToBase64String(System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(value)));
+
     private static ExploreDbContext CreateContext(DbContextOptions<ExploreDbContext> options, bool bypassTenantFilter)
     {
         var context = new ExploreDbContext(options);

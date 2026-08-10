@@ -1,6 +1,7 @@
 // ABOUTME: Tenant-owned provider connection metadata for external registration collection.
-// ABOUTME: References SecretBinding credentials only; no provider secret value or adapter-specific payload is stored.
+// ABOUTME: References SecretBinding credentials only and owns SSRF-safe approved HTTPS origins.
 
+using System.Net;
 using Explore.Domain.Enums;
 using Explore.Domain.Interfaces;
 
@@ -8,6 +9,8 @@ namespace Explore.Domain;
 
 public sealed class RegistrationProviderConnection : ITenantEntity, IAuditableEntity, ISoftDeletable, IConcurrencyAware
 {
+    private readonly List<RegistrationProviderApprovedOrigin> _approvedOrigins = [];
+
     private RegistrationProviderConnection() { }
 
     public Guid Id { get; private set; }
@@ -17,6 +20,7 @@ public sealed class RegistrationProviderConnection : ITenantEntity, IAuditableEn
     public int DeploymentKindId { get; private set; }
     public Guid? ApiTokenSecretBindingId { get; private set; }
     public Guid? WebhookSecretBindingId { get; private set; }
+    public IReadOnlyList<RegistrationProviderApprovedOrigin> ApprovedOrigins => _approvedOrigins;
     public DateTime CreatedAt { get; set; }
     public Guid? CreatedBy { get; set; }
     public DateTime? UpdatedAt { get; set; }
@@ -52,6 +56,63 @@ public sealed class RegistrationProviderConnection : ITenantEntity, IAuditableEn
         };
     }
 
+    public void Update(string name, RegistrationProviderKindEnum providerKind, RegistrationProviderDeploymentKindEnum deploymentKind,
+        Guid? apiTokenSecretBindingId, Guid? webhookSecretBindingId)
+    {
+        if (apiTokenSecretBindingId == Guid.Empty || webhookSecretBindingId == Guid.Empty || !Enum.IsDefined(providerKind) || !Enum.IsDefined(deploymentKind))
+        {
+            throw new ArgumentException("Provider connection lookup and secret references must be valid.");
+        }
+
+        Name = NormalizeText(name, nameof(name), 120);
+        ProviderKindId = (int)providerKind;
+        DeploymentKindId = (int)deploymentKind;
+        ApiTokenSecretBindingId = apiTokenSecretBindingId;
+        WebhookSecretBindingId = webhookSecretBindingId;
+        ConcurrencyStamp = Guid.CreateVersion7();
+    }
+
+    public void ReplaceApprovedOrigins(IEnumerable<string> origins, DateTime observedAt)
+    {
+        EnsureUtc(observedAt, nameof(observedAt));
+        ArgumentNullException.ThrowIfNull(origins);
+        string[] normalized = [.. origins.Select(RegistrationProviderApprovedOrigin.NormalizeOrigin).Distinct(StringComparer.OrdinalIgnoreCase)];
+        if (normalized.Length > 20)
+        {
+            throw new ArgumentException("At most 20 approved origins are allowed.", nameof(origins));
+        }
+
+        foreach (RegistrationProviderApprovedOrigin existing in _approvedOrigins.Where(origin => !normalized.Contains(origin.Origin, StringComparer.OrdinalIgnoreCase)))
+        {
+            existing.IsDeleted = true;
+            existing.DeletedAt = observedAt;
+        }
+
+        foreach (string origin in normalized.Where(origin => _approvedOrigins.All(existing => !string.Equals(existing.Origin, origin, StringComparison.OrdinalIgnoreCase))))
+        {
+            _approvedOrigins.Add(RegistrationProviderApprovedOrigin.Create(this, origin, observedAt));
+        }
+
+        foreach (RegistrationProviderApprovedOrigin existing in _approvedOrigins.Where(origin => normalized.Contains(origin.Origin, StringComparer.OrdinalIgnoreCase)))
+        {
+            existing.IsDeleted = false;
+            existing.DeletedAt = null;
+            existing.DeletedBy = null;
+        }
+
+        ConcurrencyStamp = Guid.CreateVersion7();
+    }
+
+    public void Remove(DateTime removedAt)
+    {
+        IsDeleted = true;
+        DeletedAt = EnsureUtc(removedAt, nameof(removedAt));
+        ConcurrencyStamp = Guid.CreateVersion7();
+    }
+
+    public bool IsOriginApproved(Uri uri) => uri.IsAbsoluteUri && uri.Scheme == Uri.UriSchemeHttps && !RegistrationProviderApprovedOrigin.HostIsBlocked(uri.Host) &&
+        _approvedOrigins.Any(origin => !origin.IsDeleted && string.Equals(origin.Origin, uri.IsDefaultPort ? $"https://{uri.IdnHost.ToLowerInvariant()}" : $"https://{uri.IdnHost.ToLowerInvariant()}:{uri.Port}", StringComparison.OrdinalIgnoreCase));
+
     private static string NormalizeText(string value, string parameterName, int maxLength)
     {
         string normalized = value?.Trim() ?? string.Empty;
@@ -64,4 +125,77 @@ public sealed class RegistrationProviderConnection : ITenantEntity, IAuditableEn
         value != default && value.Kind == DateTimeKind.Utc
             ? value
             : throw new ArgumentException("Timestamp must be a non-default UTC value.", parameterName);
+}
+
+public sealed class RegistrationProviderApprovedOrigin : ITenantEntity, IAuditableEntity, ISoftDeletable
+{
+    private RegistrationProviderApprovedOrigin() { }
+
+    public Guid Id { get; private set; }
+    public Guid TenantId { get; set; }
+    public Guid RegistrationProviderConnectionId { get; private set; }
+    public RegistrationProviderConnection? Connection { get; private set; }
+    public string Origin { get; private set; } = string.Empty;
+    public DateTime CreatedAt { get; set; }
+    public Guid? CreatedBy { get; set; }
+    public DateTime? UpdatedAt { get; set; }
+    public Guid? UpdatedBy { get; set; }
+    public bool IsDeleted { get; set; }
+    public DateTime? DeletedAt { get; set; }
+    public Guid? DeletedBy { get; set; }
+
+    internal static RegistrationProviderApprovedOrigin Create(RegistrationProviderConnection connection, string origin, DateTime createdAt)
+    {
+        ArgumentNullException.ThrowIfNull(connection);
+        return new RegistrationProviderApprovedOrigin
+        {
+            Id = Guid.CreateVersion7(),
+            TenantId = connection.TenantId,
+            RegistrationProviderConnectionId = connection.Id,
+            Origin = NormalizeOrigin(origin),
+            CreatedAt = RegistrationProviderConnection.EnsureUtc(createdAt, nameof(createdAt))
+        };
+    }
+
+    public static string NormalizeOrigin(string origin)
+    {
+        if (!Uri.TryCreate(origin?.Trim(), UriKind.Absolute, out Uri? uri))
+        {
+            throw new ArgumentException("Approved origin must be an absolute HTTPS origin.", nameof(origin));
+        }
+
+        return NormalizeOrigin(uri);
+    }
+
+    public static string NormalizeOrigin(Uri uri)
+    {
+        if (uri.Scheme != Uri.UriSchemeHttps || !string.IsNullOrEmpty(uri.UserInfo) ||
+            uri.AbsolutePath != "/" || !string.IsNullOrEmpty(uri.Query) || !string.IsNullOrEmpty(uri.Fragment) || HostIsBlocked(uri.Host))
+        {
+            throw new ArgumentException("Approved origin must be HTTPS origin only and cannot target local/private hosts.", nameof(uri));
+        }
+
+        return uri.IsDefaultPort ? $"https://{uri.IdnHost.ToLowerInvariant()}" : $"https://{uri.IdnHost.ToLowerInvariant()}:{uri.Port}";
+    }
+
+    internal static bool HostIsBlocked(string host)
+    {
+        string normalized = (host ?? string.Empty).TrimEnd('.').ToLowerInvariant();
+        if (normalized is "" or "localhost" or "metadata.google.internal" or "169.254.169.254" || normalized.EndsWith(".localhost", StringComparison.Ordinal))
+        {
+            return true;
+        }
+
+        if (!IPAddress.TryParse(normalized, out IPAddress? address)) return false;
+        if (address.IsIPv4MappedToIPv6)
+        {
+            address = address.MapToIPv4();
+        }
+
+        byte[] bytes = address.GetAddressBytes();
+        return IPAddress.IsLoopback(address) || address.Equals(IPAddress.Any) || address.Equals(IPAddress.IPv6Any) ||
+            bytes.Length == 4 && (bytes[0] is 0 or 10 or 127 || bytes[0] >= 224 || (bytes[0] == 169 && bytes[1] == 254) ||
+                (bytes[0] == 172 && bytes[1] is >= 16 and <= 31) || (bytes[0] == 192 && bytes[1] == 168)) ||
+            bytes.Length == 16 && (address.IsIPv6LinkLocal || address.IsIPv6SiteLocal || address.IsIPv6Multicast || (bytes[0] & 0xfe) == 0xfc);
+    }
 }

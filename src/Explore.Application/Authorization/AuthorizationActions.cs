@@ -88,6 +88,8 @@ public static class AuthorizationActions
         public const string ManageFinance = "manage-finance";
         public const string ManagePublicActions = "manage-public-actions";
         public const string ManageRegistrationWorkflow = "manage-registration-workflow";
+        public const string ManageRegistrationChannels = "manage-registration-channels";
+        public const string ViewRegistrationProviderHealth = "view-registration-provider-health";
         public const string ClaimOrganizer = "claim-organizer";
         public const string WithdrawOrganizerClaim = "withdraw-organizer-claim";
         public const string ReviewOrganizerClaim = "review-organizer-claim";

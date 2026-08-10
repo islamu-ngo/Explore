@@ -200,6 +200,39 @@ public partial class ExploreDbContext
 
     private void PopulateMySqlPortableComputedValues()
     {
+        foreach (var entry in ChangeTracker.Entries()
+                     .Where(item => item.State is EntityState.Added or EntityState.Modified))
+        {
+            switch (entry.Entity)
+            {
+                case RegistrationOrder order:
+                    entry.Property("RegistrationWorkflowVersionKey").CurrentValue =
+                        order.RegistrationWorkflowVersionId ?? Guid.Empty;
+                    break;
+                case RegistrationAttempt attempt:
+                    entry.Property("RegistrationProviderBindingKey").CurrentValue =
+                        attempt.RegistrationProviderBindingId ?? Guid.Empty;
+                    entry.Property("ProviderMappingRevisionHashKey").CurrentValue =
+                        attempt.ProviderMappingRevisionHash?.Value ?? string.Empty;
+                    break;
+                case RegistrationChannel channel:
+                    entry.Property("RegistrationProviderBindingKey").CurrentValue =
+                        channel.RegistrationProviderBindingId ?? Guid.Empty;
+                    break;
+                case RegistrationRequirement requirement:
+                    entry.Property(nameof(RegistrationRequirement.AppliesToSubjectKey)).CurrentValue =
+                        requirement.AppliesToSubjectId ?? Guid.Empty;
+                    break;
+                case RegistrationAnswer answer:
+                    entry.Property(nameof(RegistrationAnswer.RequirementSubjectKey)).CurrentValue =
+                        answer.RequirementSubjectId ?? Guid.Empty;
+                    entry.Property(nameof(RegistrationAnswer.EffectiveSubjectIdentity)).CurrentValue =
+                        answer.OrderSubjectId ?? answer.PurchaserSubjectId ?? answer.ParticipantSubjectId ??
+                        answer.TicketAssignmentSubjectId ?? answer.SessionSelectionSubjectId ?? Guid.Empty;
+                    break;
+            }
+        }
+
         if (!StringComparer.Ordinal.Equals(Database.ProviderName, "Microting.EntityFrameworkCore.MySql"))
         {
             return;

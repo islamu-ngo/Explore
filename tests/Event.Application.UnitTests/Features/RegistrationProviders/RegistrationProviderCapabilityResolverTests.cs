@@ -3,10 +3,12 @@
 
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services.Registration;
+using Explore.Application.DTOs.RegistrationProviders;
 using Explore.Application.Features.RegistrationProviders.Commands;
 using Explore.Application.Services.Registration;
 using Explore.Domain;
 using Explore.Domain.Enums;
+using System.Text.Json;
 
 namespace Event.Application.UnitTests.Features.RegistrationProviders;
 
@@ -115,6 +117,86 @@ public sealed class RegistrationProviderCapabilityResolverTests
             .IsEqualTo(RegistrationProviderSchemaDriftClass.MappingRequired);
         await Assert.That(classifier.Classify(baseline, Snapshot(Field("email", "E-mail", "number", true, [Option("no", "No")]))))
             .IsEqualTo(RegistrationProviderSchemaDriftClass.TypeChanged);
+    }
+
+    [Test]
+    public async Task HealthHandler_UsesBindingAccurateCallbackQueueAndOldestLag()
+    {
+        RegistrationProviderBinding binding = Binding();
+        var repository = new FakeProviderRepository(binding)
+        {
+            LastCallbackAt = Now.AddMinutes(-5),
+            ParkedCount = 2,
+            OldestPendingAt = Now.AddMinutes(-30)
+        };
+        var handler = new GetRegistrationProviderHealthQueryHandler(repository, new Registry(), TimeProviderFrom(Now));
+
+        RegistrationProviderBindingHealthDto dto = (await handler.Handle(new GetRegistrationProviderHealthQuery(binding.TenantId, Guid.CreateVersion7()), CancellationToken.None)).Single();
+
+        await Assert.That(dto.LastCallbackAt).IsEqualTo(Now.AddMinutes(-5));
+        await Assert.That(dto.ParkedQueueDepth).IsEqualTo(2);
+        await Assert.That(dto.ReconciliationLagSeconds).IsEqualTo(1800);
+        await Assert.That(dto.ReconciliationLagClass).IsEqualTo("parked");
+    }
+
+    [Test]
+    public async Task QueueHandler_ProjectsRetainedEffectFieldsWithoutPayload()
+    {
+        RegistrationProviderBinding binding = Binding();
+        IncomingWebhookEffectOutbox effect = ParkedEffect(binding, "blocking_drift", 2, Now.AddMinutes(10));
+        var repository = new FakeProviderRepository(binding)
+        {
+            ParkedItems = [new RegistrationProviderParkedItem(null, new RegistrationProviderParkedEffect(effect, binding.Id, Guid.CreateVersion7()))]
+        };
+        var handler = new GetRegistrationProviderQueueQueryHandler(repository);
+
+        RegistrationProviderParkedQueueItemDto dto = (await handler.Handle(new GetRegistrationProviderQueueQuery(binding.TenantId, Guid.CreateVersion7(), 50), CancellationToken.None)).Single();
+        string json = JsonSerializer.Serialize(dto);
+
+        await Assert.That(dto.EffectOutboxId).IsEqualTo(effect.Id);
+        await Assert.That(dto.ProcessingGeneration).IsEqualTo(2);
+        await Assert.That(dto.NextAttemptAt).IsEqualTo(Now.AddMinutes(20));
+        await Assert.That(dto.FailureCategory).IsEqualTo("blocking_drift");
+        await Assert.That(json).DoesNotContain("payload");
+        await Assert.That(json).DoesNotContain("answer");
+        await Assert.That(json).DoesNotContain("token");
+    }
+
+    [Test]
+    public async Task HealthAndQueueDtos_SerializeWithoutAttendeeAnswerOrPayloadFields()
+    {
+        var health = new RegistrationProviderBindingHealthDto
+        {
+            TenantId = Guid.CreateVersion7(),
+            EventId = Guid.CreateVersion7(),
+            BindingId = Guid.CreateVersion7(),
+            ConnectionId = Guid.CreateVersion7(),
+            ProviderKind = "ExternalForm",
+            BindingStatus = "Published",
+            ConnectionValidity = "valid",
+            CallbackAgeClass = "fresh",
+            DriftClass = "NoDrift",
+            ReconciliationLagClass = "current",
+            CapabilityCodes = [RegistrationProviderCapabilityCodes.Reconciliation]
+        };
+        var item = new RegistrationProviderParkedQueueItemDto
+        {
+            TenantId = health.TenantId,
+            EventId = health.EventId,
+            BindingId = health.BindingId,
+            SubmissionId = Guid.CreateVersion7(),
+            Status = "EvidenceOnly",
+            IssueCodes = ["BELOW_MINIMUM_TRUST"],
+            CreatedAt = Now
+        };
+
+        string json = JsonSerializer.Serialize(new { health, item });
+
+        await Assert.That(json).DoesNotContain("answer", StringComparison.OrdinalIgnoreCase);
+        await Assert.That(json).DoesNotContain("payload", StringComparison.OrdinalIgnoreCase);
+        await Assert.That(json).DoesNotContain("email", StringComparison.OrdinalIgnoreCase);
+        await Assert.That(json).DoesNotContain("token", StringComparison.OrdinalIgnoreCase);
+        await Assert.That(json).Contains("BELOW_MINIMUM_TRUST");
     }
 
     [Test]
@@ -233,6 +315,23 @@ public sealed class RegistrationProviderCapabilityResolverTests
     private static RegistrationProviderSchemaFieldSnapshot Field(string key, string label, string type, bool required, IReadOnlyList<RegistrationProviderSchemaOptionSnapshot>? options = null) => new(key, label, type, required, options ?? []);
     private static RegistrationProviderSchemaOptionSnapshot Option(string key, string label) => new(key, label);
     private static RegistrationEvidenceHash Hash() => RegistrationEvidenceHash.Create(Convert.ToBase64String(new byte[32]));
+    private static TimeProvider TimeProviderFrom(DateTime now) => new FixedTimeProvider(now);
+
+    private static IncomingWebhookEffectOutbox ParkedEffect(RegistrationProviderBinding binding, string failureCategory, int generation, DateTime nextAttemptAt)
+    {
+        var effect = IncomingWebhookEffectOutbox.CreatePending(binding.TenantId, Guid.CreateVersion7(), "registration-provider", $"{binding.Id:N}:provider-submission-1", "registration.provider_submission", "sha256:" + new string('0', 64), Now);
+        var leaseToken = Guid.CreateVersion7();
+        effect.Claim("test", leaseToken, Now.AddMinutes(5), Now);
+        effect.DeadLetter(leaseToken, 1, 1, failureCategory, "safe", Now.AddMinutes(1));
+        if (generation == 2)
+        {
+            effect.Redrive(1, nextAttemptAt);
+            var secondLeaseToken = Guid.CreateVersion7();
+            effect.Claim("test", secondLeaseToken, nextAttemptAt.AddMinutes(5), nextAttemptAt);
+            effect.ScheduleRetry(secondLeaseToken, 2, 2, failureCategory, "safe", nextAttemptAt.AddMinutes(10), nextAttemptAt.AddMinutes(1));
+        }
+        return effect;
+    }
 
     private sealed record Descriptor(RegistrationProviderTuple Tuple, RegistrationProviderCapabilitySet ProvenCapabilities) : IRegistrationProviderDescriptor;
 
@@ -244,14 +343,36 @@ public sealed class RegistrationProviderCapabilityResolverTests
     private sealed class FakeProviderRepository(RegistrationProviderBinding binding) : IRegistrationProviderRepository
     {
         public bool HasSubmission { get; init; }
+        public int ParkedCount { get; init; }
+        public DateTime? LastCallbackAt { get; init; } = Now;
+        public DateTime? OldestPendingAt { get; init; }
+        public IReadOnlyList<RegistrationProviderParkedItem> ParkedItems { get; init; } = [];
         public int SaveCount { get; private set; }
         public Task<RegistrationProviderConnection?> GetConnectionAsync(Guid tenantId, Guid connectionId, CancellationToken cancellationToken) => throw new NotImplementedException();
+        public Task<IReadOnlyList<RegistrationProviderConnection>> GetConnectionsAsync(Guid tenantId, CancellationToken cancellationToken) => Task.FromResult<IReadOnlyList<RegistrationProviderConnection>>([]);
         public Task<RegistrationProviderBinding?> GetBindingAsync(Guid tenantId, Guid bindingId, CancellationToken cancellationToken) => cancellationToken.IsCancellationRequested ? Task.FromCanceled<RegistrationProviderBinding?>(cancellationToken) : Task.FromResult<RegistrationProviderBinding?>(binding);
+        public Task<bool> FormVersionBelongsToEventAsync(Guid tenantId, Guid eventId, Guid formId, Guid formVersionId, CancellationToken cancellationToken) => Task.FromResult(true);
         public Task<RegistrationProviderBinding?> GetBindingForCallbackAsync(Guid bindingId, CancellationToken cancellationToken) => Task.FromResult<RegistrationProviderBinding?>(binding.Id == bindingId ? binding : null);
         public Task<bool> HasSubmissionForBindingAsync(Guid tenantId, Guid bindingId, CancellationToken cancellationToken) => Task.FromResult(HasSubmission);
+        public Task<IReadOnlyList<RegistrationProviderBinding>> GetBindingsAsync(Guid tenantId, CancellationToken cancellationToken) => Task.FromResult<IReadOnlyList<RegistrationProviderBinding>>([binding]);
+        public Task<RegistrationRequirement?> GetRequirementAsync(Guid tenantId, Guid eventId, Guid workflowId, Guid requirementId, CancellationToken cancellationToken) => Task.FromResult<RegistrationRequirement?>(null);
+        public Task<RegistrationChannel?> GetChannelAsync(Guid tenantId, Guid eventId, Guid workflowId, Guid requirementId, Guid channelId, CancellationToken cancellationToken) => Task.FromResult<RegistrationChannel?>(null);
+        public Task<IReadOnlyList<RegistrationProviderBinding>> GetBindingsForEventAsync(Guid tenantId, Guid eventId, CancellationToken cancellationToken) => Task.FromResult<IReadOnlyList<RegistrationProviderBinding>>([binding]);
+        public Task<DateTime?> GetLastCallbackAtAsync(Guid tenantId, Guid bindingId, CancellationToken cancellationToken) => Task.FromResult(LastCallbackAt);
+        public Task<int> CountParkedItemsAsync(Guid tenantId, Guid bindingId, CancellationToken cancellationToken) => Task.FromResult(ParkedCount);
+        public Task<DateTime?> GetOldestPendingItemAtAsync(Guid tenantId, Guid bindingId, CancellationToken cancellationToken) => Task.FromResult(OldestPendingAt);
+        public Task<IReadOnlyList<RegistrationProviderParkedItem>> GetParkedItemsForEventAsync(Guid tenantId, Guid eventId, int limit, CancellationToken cancellationToken) => Task.FromResult(ParkedItems);
+        public Task<RegistrationSubmission?> GetParkedSubmissionAsync(Guid tenantId, Guid eventId, Guid submissionId, CancellationToken cancellationToken) => Task.FromResult<RegistrationSubmission?>(null);
+        public Task AddSubmissionIssueAsync(RegistrationSubmissionIssue issue, CancellationToken cancellationToken) => Task.CompletedTask;
         public Task AddConnectionAsync(RegistrationProviderConnection connection, CancellationToken cancellationToken) => throw new NotImplementedException();
         public Task AddBindingAsync(RegistrationProviderBinding binding, CancellationToken cancellationToken) => throw new NotImplementedException();
+        public Task AddChannelAsync(RegistrationChannel channel, CancellationToken cancellationToken) => Task.CompletedTask;
         public Task AddSchemaRevisionAsync(RegistrationProviderSchemaRevision revision, CancellationToken cancellationToken) => throw new NotImplementedException();
         public Task SaveChangesAsync(CancellationToken cancellationToken) { SaveCount++; return Task.CompletedTask; }
+    }
+
+    private sealed class FixedTimeProvider(DateTime now) : TimeProvider
+    {
+        public override DateTimeOffset GetUtcNow() => new(now);
     }
 }

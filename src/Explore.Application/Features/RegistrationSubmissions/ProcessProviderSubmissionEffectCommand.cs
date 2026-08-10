@@ -114,14 +114,36 @@ public sealed class ProcessProviderSubmissionEffectCommandHandler(
             return ProviderSubmissionEffectResult.Completed("sync_none_no_storage");
         }
 
-        if (BindingCannotAutoFinalize(binding) || !HasMinimumTrust(binding, (RegistrationAnswerSyncModeEnum)requirement.AnswerSyncModeId))
+        if (BindingCannotAutoFinalize(binding))
         {
-            return await ParkAsync(request, attempt, "TRUST_OR_DRIFT_BLOCKED", cancellationToken);
+            return await ParkAsync(request, attempt, "BLOCKING_DRIFT", cancellationToken);
         }
 
         if ((RegistrationAnswerSyncModeEnum)requirement.AnswerSyncModeId == RegistrationAnswerSyncModeEnum.MIRROR_ONLY)
         {
+            if (HasCapability(binding, RegistrationProviderCapabilityCodes.SubmissionSink))
+            {
+                RegistrationSubmissionPersistenceResult mirrorPersisted = await submissionRepository.PersistEvidenceOnlyAsync(RegistrationSubmission.CreateProviderEvidenceOnly(
+                    attempt,
+                    evidenceHash,
+                    receivedAt,
+                    transportHash,
+                    envelope.ProviderSubmissionId,
+                    envelope.ProviderResponseRevision,
+                    envelope.ProviderSubjectId,
+                    envelope.ProviderCorrelationId),
+                    cancellationToken);
+                return mirrorPersisted.Outcome is RegistrationSubmissionPersistenceOutcome.Inserted or RegistrationSubmissionPersistenceOutcome.Existing
+                    ? ProviderSubmissionEffectResult.Completed("mirror_only_recorded")
+                    : ProviderSubmissionEffectResult.NeedsReconciliation("PERSISTENCE_CONFLICT");
+            }
+
             return await ParkAsync(request, attempt, "MIRROR_SINK_UNSUPPORTED", cancellationToken);
+        }
+
+        if (!HasMinimumTrust(binding, (RegistrationAnswerSyncModeEnum)requirement.AnswerSyncModeId))
+        {
+            return await ParkAsync(request, attempt, "BELOW_MINIMUM_TRUST", cancellationToken);
         }
 
         RegistrationSubmission submission;
@@ -315,6 +337,11 @@ public sealed class ProcessProviderSubmissionEffectCommandHandler(
         _ => false
     };
 
+    private static bool HasCapability(RegistrationProviderBinding binding, string capabilityCode) =>
+        binding.Capabilities.Any(capability =>
+            !capability.IsDeleted &&
+            string.Equals(capability.CapabilityCode, capabilityCode, StringComparison.OrdinalIgnoreCase));
+
     private bool TryValidateReceipt(
         ProcessProviderSubmissionEffectCommand request,
         RegistrationProviderBinding binding,
@@ -377,8 +404,14 @@ public sealed class ProcessProviderSubmissionEffectCommandHandler(
                 }
             }
 
+            if (!root.TryGetProperty("attemptId", out JsonElement attemptIdElement) ||
+                !attemptIdElement.TryGetGuid(out Guid attemptId))
+            {
+                throw new JsonException("Provider submission envelope is missing a valid attempt id.");
+            }
+
             return new(
-                root.GetProperty("attemptId").GetGuid(),
+                attemptId,
                 Required(root, "providerSubmissionId"),
                 Required(root, "providerResponseRevision"),
                 root.TryGetProperty("receivedAt", out JsonElement receivedAt) && receivedAt.ValueKind == JsonValueKind.String

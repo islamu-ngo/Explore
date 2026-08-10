@@ -48,7 +48,7 @@ public sealed class RegistrationProviderIncomingWebhookVerifier(
             providerSubmissionId = ReadProviderSubmissionId(context.RawPayloadBytes.Span);
             tuple = ResolveTuple(binding, provider);
         }
-        catch (Exception exception) when (exception is JsonException or FormatException or InvalidOperationException or ArgumentException)
+        catch (Exception exception) when (exception is JsonException or FormatException or InvalidOperationException or ArgumentException or CryptographicException)
         {
             return IncomingWebhookVerificationResult.Rejected("registration_callback_format_invalid", "The registration callback could not be verified.");
         }

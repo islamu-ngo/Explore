@@ -97,7 +97,7 @@ public sealed class RegistrationRequirement : ITenantEntity, IAuditableEntity, I
         ArgumentNullException.ThrowIfNull(channel);
         if (channel.TenantId != TenantId || channel.EventId != EventId ||
             channel.RegistrationWorkflowId != RegistrationWorkflowId || channel.RegistrationRequirementId != Id ||
-            _channels.Any(existing => existing.Id == channel.Id || existing.Ordinal == channel.Ordinal))
+            _channels.Any(existing => !existing.IsDeleted && (existing.Id == channel.Id || existing.Ordinal == channel.Ordinal)))
         {
             throw new ArgumentException("Channel must be unique and owned by this requirement.", nameof(channel));
         }

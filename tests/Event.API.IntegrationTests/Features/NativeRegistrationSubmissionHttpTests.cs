@@ -16,6 +16,7 @@ using Explore.Application.Features.RegistrationSubmissions.Commands;
 using Explore.Domain;
 using Explore.Domain.Constants;
 using Explore.Domain.Enums;
+using Explore.Domain.ValueObjects;
 using Explore.Persistence;
 using MediatR;
 using Microsoft.AspNetCore.Hosting;
@@ -26,6 +27,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using NSubstitute;
+using Testcontainers.PostgreSql;
 
 namespace Event.Api.IntegrationTests.Features;
 
@@ -441,6 +443,201 @@ public sealed class NativeRegistrationSubmissionHttpTests
     }
 
     [Test]
+    public async Task ProviderCallback_DuplicateEffectClaim_DispatchesFencedCommandOnce()
+    {
+        var mediator = new CapturingMediator();
+        await using WebApplicationFactory<Program> factory = CreateCallbackFactory<FakeRegistrationProviderCallbackVerifier>(services =>
+        {
+            services.RemoveAll<IMediator>();
+            services.AddSingleton<IMediator>(mediator);
+        });
+        Guid bindingId = await SeedRegistrationProviderBindingAsync(factory, "external-form");
+        using HttpClient client = factory.CreateClient();
+        object body = new
+        {
+            attemptId = Guid.CreateVersion7(),
+            providerSubmissionId = "provider-submission-fenced",
+            providerResponseRevision = "revision-1"
+        };
+
+        using HttpResponseMessage response = await PostCallbackAsync(client, "external-form", bindingId, body);
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Accepted);
+        await DrainIncomingWebhookMessagesAsync(factory);
+
+        using IServiceScope scope = factory.Services.CreateScope();
+        var pointerRepository = scope.ServiceProvider.GetRequiredService<IIncomingWebhookEffectOutboxRepository>();
+        IReadOnlyList<IncomingWebhookEffectClaim> claims = await pointerRepository.ClaimDueAsync(
+            new IncomingWebhookEffectClaimRequest("effect-test", 10, DateTime.UtcNow, TimeSpan.FromMinutes(5)),
+            CancellationToken.None);
+        IncomingWebhookEffectClaim claim = claims.Single();
+        var effectProcessor = scope.ServiceProvider.GetRequiredService<IIncomingWebhookEffectProcessingService>();
+
+        IncomingWebhookClaimExecutionResult first = await effectProcessor.ProcessAsync(claim, CancellationToken.None);
+        IncomingWebhookClaimExecutionResult duplicate = await effectProcessor.ProcessAsync(claim, CancellationToken.None);
+
+        ExploreDbContext db = scope.ServiceProvider.GetRequiredService<ExploreDbContext>();
+        await Assert.That(first.Outcome).IsEqualTo(IncomingWebhookClaimExecutionOutcome.Completed);
+        await Assert.That(duplicate.Outcome).IsEqualTo(IncomingWebhookClaimExecutionOutcome.LeaseLost);
+        await Assert.That(mediator.ProviderSubmissionDispatches).IsEqualTo(1);
+        await Assert.That(await db.IncomingWebhookEffectReceipts.CountAsync()).IsEqualTo(1);
+        await Assert.That(await db.IncomingWebhookEffectOutboxes.CountAsync(pointer => pointer.Status == OutboxMessageStatus.Completed)).IsEqualTo(1);
+    }
+
+    [Test]
+    public async Task ProviderCallback_RealEffectProcessor_PersistsProviderSubmissionFulfillmentAndFinalizationOnce()
+    {
+        await using var database = new PostgreSqlBuilder("postgres:18-alpine")
+            .WithDatabase("registration_callback_phase9")
+            .WithUsername("postgres")
+            .WithPassword("postgres")
+            .Build();
+        await database.StartAsync();
+        string connectionString = database.GetConnectionString();
+        await using (var migrationContext = new ExploreDbContext(new DbContextOptionsBuilder<ExploreDbContext>()
+            .UseNpgsql(connectionString)
+            .UseSnakeCaseNamingConvention()
+            .Options))
+        {
+            await migrationContext.Database.MigrateAsync();
+        }
+
+        await using WebApplicationFactory<Program> factory = CreatePostgreSqlCallbackFactory(connectionString);
+        RealNativeFlow scenario = await SeedRealNativeFlowAsync(factory, publishedFormCount: 1);
+        Guid bindingId = await SeedRegistrationProviderBindingAsync(factory, "external-form", scenario);
+        Guid attemptId = await SeedProviderAttemptAsync(factory, scenario, bindingId);
+        using HttpClient client = factory.CreateClient();
+        object body = new
+        {
+            attemptId,
+            providerSubmissionId = "provider-submission-real",
+            providerResponseRevision = "revision-1",
+            answers = new Dictionary<string, object>
+            {
+                ["provider.event_updates"] = true,
+                ["provider.unmapped"] = "drop-me"
+            }
+        };
+
+        using HttpResponseMessage first = await PostCallbackAsync(client, "external-form", bindingId, body);
+        using HttpResponseMessage duplicate = await PostCallbackAsync(client, "external-form", bindingId, body);
+        string firstPayload = await first.Content.ReadAsStringAsync();
+        await DrainIncomingWebhookMessagesAsync(factory);
+        IncomingWebhookClaimExecutionResult effectResult;
+        IncomingWebhookClaimExecutionResult duplicateEffectResult;
+        using (IServiceScope scope = factory.Services.CreateScope())
+        {
+            var pointerRepository = scope.ServiceProvider.GetRequiredService<IIncomingWebhookEffectOutboxRepository>();
+            IncomingWebhookEffectClaim claim = (await pointerRepository.ClaimDueAsync(
+                new IncomingWebhookEffectClaimRequest("effect-test", 10, DateTime.UtcNow, TimeSpan.FromMinutes(5)),
+                CancellationToken.None)).Single();
+            var effectProcessor = scope.ServiceProvider.GetRequiredService<IIncomingWebhookEffectProcessingService>();
+            effectResult = await effectProcessor.ProcessAsync(claim, CancellationToken.None);
+            duplicateEffectResult = await effectProcessor.ProcessAsync(claim, CancellationToken.None);
+        }
+
+        await Assert.That(first.StatusCode).IsEqualTo(HttpStatusCode.Accepted);
+        await Assert.That(duplicate.StatusCode).IsEqualTo(HttpStatusCode.Accepted);
+        await Assert.That(firstPayload).DoesNotContain("super-secret-signature");
+        await Assert.That(firstPayload).DoesNotContain("provider-submission-real");
+        await Assert.That(effectResult.Outcome).IsEqualTo(IncomingWebhookClaimExecutionOutcome.Completed);
+        await Assert.That(effectResult.FailureCategory).IsEqualTo("succeeded");
+        await Assert.That(duplicateEffectResult.Outcome).IsEqualTo(IncomingWebhookClaimExecutionOutcome.LeaseLost);
+
+        using IServiceScope verifyScope = factory.Services.CreateScope();
+        ExploreDbContext db = verifyScope.ServiceProvider.GetRequiredService<ExploreDbContext>();
+        await Assert.That(await db.RegistrationSubmissions.CountAsync(submission =>
+            submission.ProviderSubmissionId == "provider-submission-real")).IsEqualTo(1);
+        RegistrationAnswer answer = await db.RegistrationAnswers.SingleAsync(answer => answer.RegistrationFormFieldId == scenario.FieldId);
+        await Assert.That(answer.BooleanValue).IsTrue();
+        await Assert.That(await db.RegistrationAnswers.CountAsync()).IsEqualTo(1);
+        await Assert.That(await db.RegistrationRequirementFulfillments.CountAsync()).IsEqualTo(1);
+        await Assert.That(await db.RegistrationFinalizationEffects.CountAsync()).IsEqualTo(1);
+        await Assert.That(await db.IncomingWebhookEffectOutboxes.CountAsync(pointer => pointer.Status == OutboxMessageStatus.Completed)).IsEqualTo(1);
+        IncomingWebhookMessage message = await db.IncomingWebhookMessages.SingleAsync();
+        await Assert.That(message.HeadersJson).DoesNotContain("super-secret-signature");
+        await Assert.That(message.HeadersJson).DoesNotContain("raw-provider-receipt");
+    }
+
+    [Test]
+    public async Task ProviderCallback_SameIdentityDifferentPayload_IsAcceptedAndDoesNotCreateDuplicateEffect()
+    {
+        await using WebApplicationFactory<Program> factory = CreateCallbackFactory();
+        Guid bindingId = await SeedRegistrationProviderBindingAsync(factory, "external-form");
+        using HttpClient client = factory.CreateClient();
+        object firstBody = new
+        {
+            attemptId = Guid.CreateVersion7(),
+            providerSubmissionId = "provider-submission-conflict",
+            providerResponseRevision = "revision-1"
+        };
+        object conflictingBody = new
+        {
+            attemptId = Guid.CreateVersion7(),
+            providerSubmissionId = "provider-submission-conflict",
+            providerResponseRevision = "revision-2"
+        };
+
+        using HttpResponseMessage first = await PostCallbackAsync(client, "external-form", bindingId, firstBody);
+        await DrainIncomingWebhookMessagesAsync(factory);
+        using HttpResponseMessage conflict = await PostCallbackAsync(client, "external-form", bindingId, conflictingBody);
+
+        await Assert.That(first.StatusCode).IsEqualTo(HttpStatusCode.Accepted);
+        await Assert.That(conflict.StatusCode).IsEqualTo(HttpStatusCode.Accepted);
+        using IServiceScope scope = factory.Services.CreateScope();
+        ExploreDbContext db = scope.ServiceProvider.GetRequiredService<ExploreDbContext>();
+        string providerMessageId = $"{bindingId:N}:provider-submission-conflict";
+        IncomingWebhookMessage message = await db.IncomingWebhookMessages.SingleAsync(value => value.ProviderMessageId == providerMessageId);
+        await Assert.That(message.Status).IsEqualTo(IncomingWebhookMessageStatus.PayloadConflict);
+        await Assert.That(await db.IncomingWebhookEffectOutboxes.CountAsync(pointer => pointer.ProviderDecisionId == providerMessageId)).IsEqualTo(1);
+    }
+
+    [Test]
+    public async Task ProviderCallback_UnknownBindingProviderOrTuple_ReturnsGenericAcceptedWithoutTenantDisclosure()
+    {
+        await using WebApplicationFactory<Program> factory = CreateCallbackFactory();
+        Guid bindingId = await SeedRegistrationProviderBindingAsync(factory, "external-form");
+        using HttpClient client = factory.CreateClient();
+        object body = new
+        {
+            attemptId = Guid.CreateVersion7(),
+            providerSubmissionId = "provider-submission-unknown",
+            providerResponseRevision = "revision-1"
+        };
+
+        using HttpResponseMessage unknownBinding = await PostCallbackAsync(client, "external-form", Guid.CreateVersion7(), body);
+        using HttpResponseMessage unknownTuple = await PostCallbackAsync(client, "other-provider", bindingId, body);
+        string unknownBindingPayload = await unknownBinding.Content.ReadAsStringAsync();
+        string unknownTuplePayload = await unknownTuple.Content.ReadAsStringAsync();
+
+        await Assert.That(unknownBinding.StatusCode).IsEqualTo(HttpStatusCode.Accepted);
+        await Assert.That(unknownTuple.StatusCode).IsEqualTo(HttpStatusCode.Accepted);
+        await Assert.That(unknownBindingPayload).DoesNotContain(PlatformDefaults.DefaultTenantId.ToString("D"));
+        await Assert.That(unknownTuplePayload).DoesNotContain(PlatformDefaults.DefaultTenantId.ToString("D"));
+        using IServiceScope scope = factory.Services.CreateScope();
+        ExploreDbContext db = scope.ServiceProvider.GetRequiredService<ExploreDbContext>();
+        await Assert.That(await db.IncomingWebhookMessages.CountAsync()).IsEqualTo(0);
+        await Assert.That(await db.IncomingWebhookEffectOutboxes.CountAsync()).IsEqualTo(0);
+    }
+
+    [Test]
+    public async Task ProviderCallback_OversizedBody_ReturnsSafePayloadTooLargeWithoutProblemDetailsLeak()
+    {
+        await using WebApplicationFactory<Program> factory = CreateCallbackFactory();
+        Guid bindingId = await SeedRegistrationProviderBindingAsync(factory, "external-form");
+        using HttpClient client = factory.CreateClient();
+        string rawPayload = "attendee@example.test-raw-signature";
+        string oversizedBody = "{\"providerSubmissionId\":\"oversized\",\"data\":\"" + new string('a', 257 * 1024) + rawPayload + "\"}";
+
+        using HttpResponseMessage response = await PostRawCallbackAsync(
+            client, "external-form", bindingId, oversizedBody, includeSignature: true);
+        string payload = await response.Content.ReadAsStringAsync();
+
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.RequestEntityTooLarge);
+        await Assert.That(payload).DoesNotContain(rawPayload);
+        await Assert.That(payload).DoesNotContain("super-secret-signature");
+    }
+
+    [Test]
     public async Task ProviderCallback_MalformedJsonOrMissingSubmissionId_IsAcceptedWithoutCapture()
     {
         await using WebApplicationFactory<Program> factory = CreateCallbackFactory();
@@ -494,7 +691,8 @@ public sealed class NativeRegistrationSubmissionHttpTests
     private static WebApplicationFactory<Program> CreateCallbackFactory() =>
         CreateCallbackFactory<FakeRegistrationProviderCallbackVerifier>();
 
-    private static WebApplicationFactory<Program> CreateCallbackFactory<TVerifier>()
+    private static WebApplicationFactory<Program> CreateCallbackFactory<TVerifier>(
+        Action<IServiceCollection>? configureServices = null)
         where TVerifier : class, IRegistrationProviderCallbackVerifier =>
         new AuthenticatedWebApplicationFactory().WithWebHostBuilder(builder =>
             builder.ConfigureTestServices(services =>
@@ -502,7 +700,32 @@ public sealed class NativeRegistrationSubmissionHttpTests
                 services.RemoveAll<IRegistrationProviderCallbackVerifier>();
                 services.RemoveAll<IHostedService>();
                 services.AddSingleton<IRegistrationProviderCallbackVerifier, TVerifier>();
+                configureServices?.Invoke(services);
             }));
+
+    private static WebApplicationFactory<Program> CreatePostgreSqlCallbackFactory(string connectionString) =>
+        new PostgreSqlApiWebApplicationFactory(
+            connectionString,
+            configureTestServices: services =>
+            {
+                services.RemoveAll<IRegistrationProviderCallbackVerifier>();
+                services.AddSingleton<IRegistrationProviderCallbackVerifier, FakeRegistrationProviderCallbackVerifier>();
+            });
+
+    private static async Task DrainIncomingWebhookMessagesAsync(WebApplicationFactory<Program> factory)
+    {
+        using IServiceScope scope = factory.Services.CreateScope();
+        var messageRepository = scope.ServiceProvider.GetRequiredService<IIncomingWebhookMessageRepository>();
+        IReadOnlyList<IncomingWebhookClaim> claims = await messageRepository.ClaimDueAsync(
+            new IncomingWebhookClaimRequest("test", 10, DateTime.UtcNow, TimeSpan.FromMinutes(5)),
+            CancellationToken.None);
+        foreach (IncomingWebhookClaim claim in claims)
+        {
+            using IServiceScope processingScope = factory.Services.CreateScope();
+            var processingService = processingScope.ServiceProvider.GetRequiredService<IIncomingWebhookProcessingService>();
+            _ = await processingService.ProcessAsync(claim, CancellationToken.None);
+        }
+    }
 
     private static NativeRegistrationAttemptResult CreateAttemptResult(
         Guid attemptId,
@@ -525,7 +748,7 @@ public sealed class NativeRegistrationSubmissionHttpTests
         attemptToken);
 
     private static async Task<RealNativeFlow> SeedRealNativeFlowAsync(
-        AuthenticatedWebApplicationFactory factory,
+        WebApplicationFactory<Program> factory,
         int publishedFormCount)
     {
         Guid tenantId = PlatformDefaults.DefaultTenantId;
@@ -592,15 +815,19 @@ public sealed class NativeRegistrationSubmissionHttpTests
         db.RegistrationWorkflows.Add(workflow);
         db.RegistrationOrders.Add(order);
         await db.SaveChangesAsync();
-        return new(eventId, orderId, userId, requirementId, channelId, formId, versionId, fieldId);
+        return new(eventId, orderId, userId, workflowId, requirementId, channelId, formId, versionId, fieldId);
     }
 
     private static async Task<Guid> SeedRegistrationProviderBindingAsync(
         WebApplicationFactory<Program> factory,
-        string provider)
+        string provider) => await SeedRegistrationProviderBindingAsync(factory, provider, null);
+
+    private static async Task<Guid> SeedRegistrationProviderBindingAsync(
+        WebApplicationFactory<Program> factory,
+        string provider,
+        RealNativeFlow? scenario)
     {
         Guid tenantId = PlatformDefaults.DefaultTenantId;
-        Guid eventId = Guid.CreateVersion7();
         DateTime now = DateTime.UtcNow;
         using IServiceScope scope = factory.Services.CreateScope();
         ExploreDbContext db = scope.ServiceProvider.GetRequiredService<ExploreDbContext>();
@@ -608,7 +835,7 @@ public sealed class NativeRegistrationSubmissionHttpTests
             tenantId, "Provider", RegistrationProviderKindEnum.ExternalForm,
             RegistrationProviderDeploymentKindEnum.HostedSaas, null, null, now);
         RegistrationProviderBinding binding = RegistrationProviderBinding.Create(
-            tenantId, connection.Id, Guid.CreateVersion7(), Guid.CreateVersion7(),
+            tenantId, connection.Id, scenario?.FormId ?? Guid.CreateVersion7(), scenario?.VersionId ?? Guid.CreateVersion7(),
             RegistrationProviderPresentationModeEnum.Redirect,
             RegistrationProviderCollectionModeEnum.ProviderHosted,
             RegistrationProviderCompletionModeEnum.Callback,
@@ -617,6 +844,14 @@ public sealed class NativeRegistrationSubmissionHttpTests
         binding.AddCapability(RegistrationProviderCapability.Create(
             binding, provider, "hosted", "v1", "policy", "evidence",
             RegistrationProviderCapabilityCodes.CallbackVerification));
+        binding.AddCapability(RegistrationProviderCapability.Create(
+            binding, provider, "hosted", "v1", "policy", "evidence",
+            RegistrationProviderCapabilityCodes.SubmissionRead));
+        if (scenario is not null)
+        {
+            binding.AddFieldMapping(RegistrationProviderFieldMapping.Create(
+                binding, "registration.event_updates", "provider.event_updates", false));
+        }
         binding.Publish(RegistrationEvidenceHash.Create(Convert.ToBase64String(System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes("mapping")))), now);
         db.RegistrationProviderConnections.Add(connection);
         db.RegistrationProviderBindings.Add(binding);
@@ -624,10 +859,41 @@ public sealed class NativeRegistrationSubmissionHttpTests
         return binding.Id;
     }
 
+    private static async Task<Guid> SeedProviderAttemptAsync(
+        WebApplicationFactory<Program> factory,
+        RealNativeFlow scenario,
+        Guid bindingId)
+    {
+        DateTime now = DateTime.UtcNow;
+        using IServiceScope scope = factory.Services.CreateScope();
+        ExploreDbContext db = scope.ServiceProvider.GetRequiredService<ExploreDbContext>();
+        RegistrationProviderBinding binding = await db.RegistrationProviderBindings.SingleAsync(binding => binding.Id == bindingId);
+        RegistrationAttempt attempt = RegistrationAttempt.Create(
+            PlatformDefaults.DefaultTenantId,
+            scenario.EventId,
+            scenario.OrderId,
+            scenario.WorkflowId,
+            scenario.RequirementId,
+            scenario.ChannelId,
+            scenario.FormId,
+            scenario.VersionId,
+            CapabilityTokenHash.Create(Convert.ToBase64String(System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes("provider-capability")))),
+            binding.Id,
+            binding.PublishedMappingRevisionHash,
+            now,
+            now.AddMinutes(10));
+        db.RegistrationAttempts.Add(attempt);
+        db.Entry(attempt).Property("RegistrationProviderBindingKey").CurrentValue = binding.Id;
+        db.Entry(attempt).Property("ProviderMappingRevisionHashKey").CurrentValue = binding.PublishedMappingRevisionHash!.Value;
+        await db.SaveChangesAsync();
+        return attempt.Id;
+    }
+
     private sealed record RealNativeFlow(
         Guid EventId,
         Guid OrderId,
         Guid UserId,
+        Guid WorkflowId,
         Guid RequirementId,
         Guid ChannelId,
         Guid FormId,
@@ -717,5 +983,39 @@ public sealed class NativeRegistrationSubmissionHttpTests
         public Task<RegistrationProviderCallbackVerificationResult> VerifyCallbackAsync(
             RegistrationProviderCallbackVerificationRequest request,
             CancellationToken cancellationToken) => throw new System.Security.Cryptography.CryptographicException("bad signature envelope");
+    }
+
+    private sealed class CapturingMediator : IMediator
+    {
+        public int ProviderSubmissionDispatches { get; private set; }
+
+        public Task<TResponse> Send<TResponse>(IRequest<TResponse> request, CancellationToken cancellationToken = default)
+        {
+            if (request is ProcessProviderSubmissionEffectCommand)
+            {
+                ProviderSubmissionDispatches++;
+                return Task.FromResult((TResponse)(object)ProviderSubmissionEffectResult.Completed());
+            }
+
+            throw new InvalidOperationException("Unexpected mediator request: " + request.GetType().Name);
+        }
+
+        public Task Send<TRequest>(TRequest request, CancellationToken cancellationToken = default)
+            where TRequest : IRequest
+            => throw new InvalidOperationException("Unexpected mediator request: " + typeof(TRequest).Name);
+
+        public Task<object?> Send(object request, CancellationToken cancellationToken = default)
+            => throw new InvalidOperationException("Unexpected mediator request: " + request.GetType().Name);
+
+        public IAsyncEnumerable<TResponse> CreateStream<TResponse>(IStreamRequest<TResponse> request, CancellationToken cancellationToken = default)
+            => AsyncEnumerable.Empty<TResponse>();
+
+        public IAsyncEnumerable<object?> CreateStream(object request, CancellationToken cancellationToken = default)
+            => AsyncEnumerable.Empty<object?>();
+
+        public Task Publish(object notification, CancellationToken cancellationToken = default) => Task.CompletedTask;
+
+        public Task Publish<TNotification>(TNotification notification, CancellationToken cancellationToken = default)
+            where TNotification : INotification => Task.CompletedTask;
     }
 }

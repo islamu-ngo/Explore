@@ -871,6 +871,7 @@ Table "configuration_change_logs" {
 Table "secret_bindings" {
   "id" uuid [pk, not null, note: 'uuidv7()']
   "setting_key" varchar(256) [not null]
+  "qualifier" varchar(128) [not null, default: '']
   "setting_scope_id" int [not null]
   "scope_id" uuid
   "environment_variable_name" varchar(256)
@@ -891,14 +892,14 @@ Table "secret_bindings" {
   "updated_by" uuid
 
   indexes {
-    setting_key [name: 'ix_secret_bindings_setting_key_instance_unique', note: 'filter: scope_id IS NULL']
-    (setting_key, scope_id) [unique, name: 'ix_secret_bindings_setting_key_scope_id_tenant_unique', note: 'filter: scope_id IS NOT NULL']
+    (setting_key, qualifier) [unique, name: 'ix_secret_bindings_setting_key_instance_unique', note: 'filter: scope_id IS NULL']
+    (setting_key, scope_id, qualifier) [unique, name: 'ix_secret_bindings_setting_key_scope_id_tenant_unique', note: 'filter: scope_id IS NOT NULL']
     secret_source_type_id [name: 'ix_secret_bindings_secret_source_type_id']
     secret_validation_status_id [name: 'ix_secret_bindings_secret_validation_status_id']
     (setting_scope_id, scope_id) [name: 'ix_secret_bindings_setting_scope_id_scope_id']
   }
 
-  Note: 'Maps application settings to external secrets providers (Infisical, env vars, and inline encrypted values).'
+  Note: 'Maps application settings to external secrets providers. Qualifier separates same setting/scope bindings for provider-specific secret roles.'
 }
 
 
@@ -4659,6 +4660,132 @@ Table "registration_requirement_subject_types" {
   Note: 'Lookup: All orders(1), Specific ticket type(2), Every participant(3), Lead booker only(4), Child participants(5), Specific session selection(6). Seeded.'
 }
 
+
+Table "registration_answer_subject_types" {
+  "id" int [pk, not null]
+  "master_code" text [not null]
+  "full_name" text [not null]
+  "description" text
+
+  Note: 'Lookup: answer/consent subject identity. Values: RegistrationOrder(1), Purchaser(2), Participant(3), TicketAssignment(4), SessionSelection(5). Runtime-seeded.'
+}
+
+Table "registration_attempt_statuses" {
+  "id" int [pk, not null]
+  "master_code" varchar(100) [not null]
+  "full_name" varchar(200) [not null]
+  "description" varchar(500)
+
+  indexes {
+    master_code [unique, name: 'ix_registration_attempt_statuses_master_code']
+  }
+
+  Note: 'Lookup: registration-attempt lifecycle. Values include Issued, Consumed, Expired, Superseded. Runtime-seeded.'
+}
+
+Table "registration_submission_statuses" {
+  "id" int [pk, not null]
+  "master_code" varchar(100) [not null]
+  "full_name" varchar(200) [not null]
+  "description" varchar(500)
+
+  indexes {
+    master_code [unique, name: 'ix_registration_submission_statuses_master_code']
+  }
+
+  Note: 'Lookup: submission lifecycle. Values include Received, Finalized, EvidenceOnly. Runtime-seeded.'
+}
+
+Table "registration_provider_kinds" {
+  "id" int [pk, not null]
+  "master_code" varchar(100) [not null]
+  "full_name" varchar(200) [not null]
+  "description" varchar(500)
+  indexes {
+    master_code [unique, name: 'ix_registration_provider_kinds_master_code']
+  }
+}
+
+Table "registration_provider_deployment_kinds" {
+  "id" int [pk, not null]
+  "master_code" varchar(100) [not null]
+  "full_name" varchar(200) [not null]
+  "description" varchar(500)
+  indexes {
+    master_code [unique, name: 'ix_registration_provider_deployment_kinds_master_code']
+  }
+}
+
+Table "registration_provider_schema_authorities" {
+  "id" int [pk, not null]
+  "master_code" varchar(100) [not null]
+  "full_name" varchar(200) [not null]
+  "description" varchar(500)
+  indexes {
+    master_code [unique, name: 'ix_registration_provider_schema_authorities_master_code']
+  }
+}
+
+Table "registration_provider_presentation_modes" {
+  "id" int [pk, not null]
+  "master_code" varchar(100) [not null]
+  "full_name" varchar(200) [not null]
+  "description" varchar(500)
+  indexes {
+    master_code [unique, name: 'ix_registration_provider_presentation_modes_master_code']
+  }
+}
+
+Table "registration_provider_collection_modes" {
+  "id" int [pk, not null]
+  "master_code" varchar(100) [not null]
+  "full_name" varchar(200) [not null]
+  "description" varchar(500)
+  indexes {
+    master_code [unique, name: 'ix_registration_provider_collection_modes_master_code']
+  }
+}
+
+Table "registration_provider_completion_modes" {
+  "id" int [pk, not null]
+  "master_code" varchar(100) [not null]
+  "full_name" varchar(200) [not null]
+  "description" varchar(500)
+  indexes {
+    master_code [unique, name: 'ix_registration_provider_completion_modes_master_code']
+  }
+}
+
+Table "registration_provider_trust_levels" {
+  "id" int [pk, not null]
+  "master_code" varchar(100) [not null]
+  "full_name" varchar(200) [not null]
+  "description" varchar(500)
+  indexes {
+    master_code [unique, name: 'ix_registration_provider_trust_levels_master_code']
+  }
+}
+
+Table "registration_provider_drift_classes" {
+  "id" int [pk, not null]
+  "master_code" varchar(100) [not null]
+  "full_name" varchar(200) [not null]
+  "description" varchar(500)
+  indexes {
+    master_code [unique, name: 'ix_registration_provider_drift_classes_master_code']
+  }
+}
+
+Table "registration_provider_binding_states" {
+  "id" int [pk, not null]
+  "master_code" varchar(100) [not null]
+  "full_name" varchar(200) [not null]
+  "description" varchar(500)
+  indexes {
+    master_code [unique, name: 'ix_registration_provider_binding_states_master_code']
+  }
+}
+
 Table "registration_workflows" {
   "id" uuid [pk, not null, note: 'uuidv7 app-side']
   "tenant_id" uuid [not null]
@@ -4748,6 +4875,7 @@ Table "registration_channels" {
   "ordinal" int [not null]
   "registration_provider_binding_id" uuid
   "is_native" boolean [not null]
+  "registration_provider_binding_key" uuid [not null, note: 'computed: COALESCE(registration_provider_binding_id, zero uuid)']
   "created_at" timestamptz [not null]
   "created_by" uuid
   "updated_at" timestamptz
@@ -4758,12 +4886,15 @@ Table "registration_channels" {
   "concurrency_stamp" uuid [not null]
 
   indexes {
+    (tenant_id, event_id, registration_workflow_id, registration_requirement_id, id) [unique, name: 'ak_registration_channels_tenant_id_event_id_registration_workf']
+    (tenant_id, event_id, registration_workflow_id, registration_requirement_id, id, registration_provider_binding_key) [unique, name: 'ak_registration_channels_tenant_id_event_id_registration_workf1']
     (registration_requirement_id, ordinal) [unique, name: 'ix_registration_channels_registration_requirement_id_ordinal']
     registration_provider_binding_id [name: 'ix_registration_channels_registration_provider_binding_id']
+    (tenant_id, registration_provider_binding_id) [name: 'ix_registration_channels_tenant_id_registration_provider_bindi']
     (tenant_id, event_id) [name: 'ix_registration_channels_tenant_id_event_id']
   }
 
-  Note: 'Requirement-owned alternative channel; native channels have no provider binding.'
+  Note: 'Requirement-owned alternative channel. Check ck_registration_channels_provider_shape: native rows require null provider binding and zero binding key; provider rows require binding_id = binding_key.'
 }
 
 Table "registration_form_statuses" {
@@ -5053,6 +5184,564 @@ Table "registration_ticket_assignments" {
   }
 
   Note: 'Concrete ticket-unit slot. PostgreSQL trigger locks the order line and rejects active assignment count above its quantity.'
+}
+
+
+// ============================================================
+// Registration Runtime Evidence and Provider Framework (Phase 8/9)
+// ============================================================
+
+Table "registration_provider_connections" {
+  "id" uuid [pk, not null, note: 'uuidv7 app-side']
+  "tenant_id" uuid [not null]
+  "name" varchar(120) [not null]
+  "provider_kind_id" int [not null]
+  "deployment_kind_id" int [not null]
+  "api_token_secret_binding_id" uuid
+  "webhook_secret_binding_id" uuid
+  "created_at" timestamptz [not null]
+  "created_by" uuid
+  "updated_at" timestamptz
+  "updated_by" uuid
+  "is_deleted" boolean [not null, default: false]
+  "deleted_at" timestamptz
+  "deleted_by" uuid
+  "concurrency_stamp" uuid [not null]
+
+  indexes {
+    (tenant_id, id) [unique, name: 'ak_registration_provider_connections_tenant_id_id']
+    deployment_kind_id [name: 'ix_registration_provider_connections_deployment_kind_id']
+    provider_kind_id [name: 'ix_registration_provider_connections_provider_kind_id']
+    (tenant_id, api_token_secret_binding_id) [name: 'ix_registration_provider_connections_tenant_id_api_token_secre']
+    (tenant_id, webhook_secret_binding_id) [name: 'ix_registration_provider_connections_tenant_id_webhook_secret_']
+    (tenant_id, name) [unique, name: 'ix_registration_provider_connections_tenant_id_name']
+  }
+
+  Note: 'Tenant-local provider connection. Secret FKs point to SecretBinding by (tenant_id scope_id, id); no provider credential plaintext is stored here.'
+}
+
+Table "registration_provider_approved_origins" {
+  "id" uuid [pk, not null, note: 'uuidv7 app-side']
+  "tenant_id" uuid [not null]
+  "registration_provider_connection_id" uuid [not null]
+  "origin" varchar(300) [not null]
+  "created_at" timestamptz [not null]
+  "created_by" uuid
+  "updated_at" timestamptz
+  "updated_by" uuid
+  "is_deleted" boolean [not null, default: false]
+  "deleted_at" timestamptz
+  "deleted_by" uuid
+
+  indexes {
+    (tenant_id, registration_provider_connection_id, id) [unique, name: 'ak_registration_provider_approved_origins_tenant_id_registrati']
+    (tenant_id, registration_provider_connection_id, origin) [unique, name: 'ix_registration_provider_approved_origins_tenant_id_registrati']
+  }
+}
+
+Table "registration_provider_schema_revisions" {
+  "id" uuid [pk, not null, note: 'uuidv7 app-side']
+  "tenant_id" uuid [not null]
+  "registration_provider_connection_id" uuid [not null]
+  "schema_authority_id" int [not null]
+  "revision_hash" varchar(44) [not null]
+  "observed_at" timestamptz [not null]
+  "created_at" timestamptz [not null]
+  "created_by" uuid
+  "updated_at" timestamptz
+  "updated_by" uuid
+  "is_deleted" boolean [not null, default: false]
+
+  indexes {
+    schema_authority_id [name: 'ix_registration_provider_schema_revisions_schema_authority_id']
+    (tenant_id, registration_provider_connection_id, revision_hash) [unique, name: 'ix_registration_provider_schema_revisions_tenant_id_registrati']
+  }
+}
+
+Table "registration_provider_bindings" {
+  "id" uuid [pk, not null, note: 'uuidv7 app-side']
+  "tenant_id" uuid [not null]
+  "registration_provider_connection_id" uuid [not null]
+  "registration_form_id" uuid [not null]
+  "registration_form_version_id" uuid [not null]
+  "presentation_mode_id" int [not null]
+  "collection_mode_id" int [not null]
+  "completion_mode_id" int [not null]
+  "trust_level_id" int [not null]
+  "drift_class_id" int [not null]
+  "state_id" int [not null]
+  "published_mapping_revision_hash" varchar(44)
+  "published_mapping_revision_hash_key" varchar(44) [not null, default: '']
+  "published_at" timestamptz
+  "created_at" timestamptz [not null]
+  "created_by" uuid
+  "updated_at" timestamptz
+  "updated_by" uuid
+  "is_deleted" boolean [not null, default: false]
+  "deleted_at" timestamptz
+  "deleted_by" uuid
+  "concurrency_stamp" uuid [not null]
+
+  indexes {
+    (tenant_id, id) [unique, name: 'ak_registration_provider_bindings_tenant_id_id']
+    (tenant_id, id, published_mapping_revision_hash_key) [unique, name: 'ak_registration_provider_bindings_tenant_id_id_published_mappi']
+    collection_mode_id [name: 'ix_registration_provider_bindings_collection_mode_id']
+    completion_mode_id [name: 'ix_registration_provider_bindings_completion_mode_id']
+    drift_class_id [name: 'ix_registration_provider_bindings_drift_class_id']
+    presentation_mode_id [name: 'ix_registration_provider_bindings_presentation_mode_id']
+    state_id [name: 'ix_registration_provider_bindings_state_id']
+    (tenant_id, registration_form_id, registration_form_version_id) [name: 'ix_registration_provider_bindings_tenant_id_registration_form_']
+    (tenant_id, registration_provider_connection_id, registration_form_version_id) [unique, name: 'ix_registration_provider_bindings_tenant_id_registration_provi']
+    trust_level_id [name: 'ix_registration_provider_bindings_trust_level_id']
+  }
+
+  Note: 'Provider binding pins one provider connection to one form version. Check ck_registration_provider_bindings_publication: published state requires published_mapping_revision_hash and published_at; non-published rows do not.'
+}
+
+Table "registration_provider_capabilities" {
+  "id" uuid [pk, not null, note: 'uuidv7 app-side']
+  "tenant_id" uuid [not null]
+  "registration_provider_binding_id" uuid [not null]
+  "provider_code" varchar(100) [not null]
+  "deployment_kind" varchar(100) [not null]
+  "api_version" varchar(100) [not null]
+  "adapter_policy_version" varchar(100) [not null]
+  "conformance_evidence_revision" varchar(200) [not null]
+  "capability_code" varchar(100) [not null]
+  "is_deleted" boolean [not null, default: false]
+
+  indexes {
+    (registration_provider_binding_id, provider_code, deployment_kind, api_version, adapter_policy_version, conformance_evidence_revision, capability_code) [unique, name: 'ix_registration_provider_capabilities_registration_provider_bi']
+    (tenant_id, registration_provider_binding_id) [name: 'ix_registration_provider_capabilities_tenant_id_registration_p']
+  }
+
+  Note: 'Exact provider capability tuple. Provider/deployment/API/adapter/evidence/capability columns are all part of the uniqueness contract.'
+}
+
+Table "registration_provider_field_mappings" {
+  "id" uuid [pk, not null, note: 'uuidv7 app-side']
+  "tenant_id" uuid [not null]
+  "registration_provider_binding_id" uuid [not null]
+  "platform_field_key" varchar(200) [not null]
+  "provider_field_key" varchar(200) [not null]
+  "is_required" boolean [not null]
+  "is_deleted" boolean [not null, default: false]
+
+  indexes {
+    (tenant_id, registration_provider_binding_id, id) [unique, name: 'ak_registration_provider_field_mappings_tenant_id_registration']
+    (registration_provider_binding_id, platform_field_key) [unique, name: 'ix_registration_provider_field_mappings_registration_provider_']
+    (registration_provider_binding_id, provider_field_key) [unique, name: 'ix_registration_provider_field_mappings_registration_provider_1']
+  }
+}
+
+Table "registration_provider_option_mappings" {
+  "id" uuid [pk, not null, note: 'uuidv7 app-side']
+  "tenant_id" uuid [not null]
+  "registration_provider_binding_id" uuid [not null]
+  "registration_provider_field_mapping_id" uuid [not null]
+  "platform_option_key" varchar(200) [not null]
+  "provider_option_key" varchar(200) [not null]
+  "is_deleted" boolean [not null, default: false]
+
+  indexes {
+    (registration_provider_field_mapping_id, platform_option_key) [unique, name: 'ix_registration_provider_option_mappings_registration_provider']
+    (tenant_id, registration_provider_binding_id, registration_provider_field_mapping_id) [name: 'ix_registration_provider_option_mappings_tenant_id_registratio']
+  }
+}
+
+Table "registration_sensitive_answer_values" {
+  "id" uuid [pk, not null, note: 'uuidv7 app-side']
+  "tenant_id" uuid [not null]
+  "ciphertext" varchar(131072) [not null]
+  "key_version" int [not null]
+  "created_at" timestamptz [not null]
+  "created_by" uuid
+  "updated_at" timestamptz
+  "updated_by" uuid
+  "is_deleted" boolean [not null, default: false]
+  "deleted_at" timestamptz
+  "deleted_by" uuid
+
+  indexes {
+    (tenant_id, id) [unique, name: 'ak_registration_sensitive_answer_values_tenant_id_id']
+    (tenant_id, key_version) [name: 'ix_registration_sensitive_answer_values_tenant_id_key_version']
+  }
+
+  Note: 'Ciphertext-only sensitive answer payload. Check ck_registration_sensitive_answer_values_shape: key_version > 0 and ciphertext is nonblank.'
+}
+
+Table "registration_attempts" {
+  "id" uuid [pk, not null, note: 'uuidv7 app-side']
+  "tenant_id" uuid [not null]
+  "event_id" uuid [not null]
+  "registration_order_id" uuid [not null]
+  "registration_workflow_id" uuid [not null]
+  "registration_requirement_id" uuid [not null]
+  "registration_channel_id" uuid [not null]
+  "registration_form_id" uuid [not null]
+  "registration_form_version_id" uuid [not null]
+  "registration_provider_binding_id" uuid
+  "provider_mapping_revision_hash" varchar(44)
+  "capability_token_hash" varchar(44) [not null]
+  "expires_at" timestamptz [not null]
+  "consumed_at" timestamptz
+  "submission_consumption_claim_id" uuid
+  "superseded_at" timestamptz
+  "superseded_by_registration_attempt_id" uuid
+  "supersession_reason" varchar(500)
+  "status_id" int [not null]
+  "concurrency_stamp" uuid [not null]
+  "created_at" timestamptz [not null]
+  "created_by" uuid
+  "updated_at" timestamptz
+  "updated_by" uuid
+  "is_deleted" boolean [not null, default: false]
+  "deleted_at" timestamptz
+  "deleted_by" uuid
+  "provider_mapping_revision_hash_key" varchar(44) [not null, note: 'computed: COALESCE(provider_mapping_revision_hash, empty string)']
+  "registration_provider_binding_key" uuid [not null, note: 'computed: COALESCE(registration_provider_binding_id, zero uuid)']
+
+  indexes {
+    (tenant_id, id) [unique, name: 'ak_registration_attempts_tenant_id_id']
+    (tenant_id, event_id, registration_order_id, registration_workflow_id, registration_requirement_id, registration_channel_id, registration_form_id, id) [unique, name: 'ak_registration_attempts_tenant_id_event_id_registration_order']
+    (tenant_id, event_id, registration_order_id, registration_workflow_id, registration_requirement_id, registration_channel_id, registration_form_id, registration_form_version_id, id) [unique, name: 'ak_registration_attempts_tenant_id_event_id_registration_order1']
+    status_id [name: 'ix_registration_attempts_status_id']
+    (tenant_id, capability_token_hash) [unique, name: 'ix_registration_attempts_tenant_id_capability_token_hash']
+    (tenant_id, event_id, registration_form_id, registration_form_version_id) [name: 'ix_registration_attempts_tenant_id_event_id_registration_form_']
+    (tenant_id, event_id, registration_order_id, registration_workflow_id, registration_requirement_id, registration_channel_id, registration_form_id, superseded_by_registration_attempt_id) [name: 'ix_registration_attempts_tenant_id_event_id_registration_order']
+    (tenant_id, event_id, registration_workflow_id, registration_order_id) [name: 'ix_registration_attempts_tenant_id_event_id_registration_workf']
+    (tenant_id, event_id, registration_workflow_id, registration_requirement_id, registration_channel_id, registration_provider_binding_key) [name: 'ix_registration_attempts_tenant_id_event_id_registration_workf1']
+    (tenant_id, registration_provider_binding_id, provider_mapping_revision_hash_key) [name: 'ix_registration_attempts_tenant_id_registration_provider_bindi']
+    (tenant_id, status_id, expires_at) [name: 'ix_registration_attempts_tenant_id_status_id_expires_at']
+  }
+
+  Note: 'Capability-token attempt. Checks: provider binding and mapping revision must be both null or both present; provider key mirrors binding or zero uuid; expires_at > created_at; consumed and superseded statuses require their lifecycle columns. Provider FK pins to registration_provider_bindings(tenant_id,id,published_mapping_revision_hash_key).'
+}
+
+Table "registration_submissions" {
+  "id" uuid [pk, not null, note: 'uuidv7 app-side']
+  "tenant_id" uuid [not null]
+  "event_id" uuid [not null]
+  "registration_order_id" uuid [not null]
+  "registration_workflow_id" uuid [not null]
+  "registration_requirement_id" uuid [not null]
+  "registration_channel_id" uuid [not null]
+  "registration_form_id" uuid [not null]
+  "registration_form_version_id" uuid [not null]
+  "registration_attempt_id" uuid [not null]
+  "attempt_status_at_receipt_id" int [not null]
+  "business_deduplication_key" varchar(71) [not null]
+  "received_evidence_hash" varchar(44) [not null]
+  "http_idempotency_key_hash" varchar(44)
+  "registration_provider_binding_id" uuid
+  "provider_mapping_revision_hash" varchar(44)
+  "provider_submission_id" varchar(200)
+  "provider_response_revision" varchar(200)
+  "provider_subject_id" varchar(200)
+  "provider_correlation_id" varchar(200)
+  "received_at" timestamptz [not null]
+  "finalized_at" timestamptz
+  "attempt_consumption_claim_id" uuid
+  "is_finalizable" boolean [not null]
+  "status_id" int [not null]
+  "concurrency_stamp" uuid [not null]
+  "created_at" timestamptz [not null]
+  "created_by" uuid
+  "updated_at" timestamptz
+  "updated_by" uuid
+  "is_deleted" boolean [not null, default: false]
+  "deleted_at" timestamptz
+  "deleted_by" uuid
+
+  indexes {
+    (tenant_id, event_id, id) [unique, name: 'ak_registration_submissions_tenant_id_event_id_id']
+    (tenant_id, event_id, registration_order_id, registration_workflow_id, registration_requirement_id, registration_form_id, registration_form_version_id, registration_attempt_id, id) [unique, name: 'ak_registration_submissions_tenant_id_event_id_registration_or']
+    attempt_status_at_receipt_id [name: 'ix_registration_submissions_attempt_status_at_receipt_id']
+    http_idempotency_key_hash [name: 'ix_registration_submissions_http_idempotency_key_hash']
+    status_id [name: 'ix_registration_submissions_status_id']
+    (tenant_id, event_id, registration_order_id, registration_workflow_id, registration_requirement_id, registration_channel_id, registration_form_id, registration_form_version_id, registration_attempt_id) [name: 'ix_registration_submissions_tenant_id_event_id_registration_or']
+    (tenant_id, registration_attempt_id, received_at) [name: 'ix_registration_submissions_tenant_id_registration_attempt_id_']
+    (tenant_id, registration_attempt_id, business_deduplication_key) [unique, name: 'ux_registration_submissions_native_identity', note: 'filter: registration_provider_binding_id IS NULL']
+    (tenant_id, registration_provider_binding_id, provider_submission_id, provider_response_revision) [unique, name: 'ux_registration_submissions_provider_identity', note: 'filter: registration_provider_binding_id IS NOT NULL']
+  }
+
+  Note: 'Immutable native/provider submission evidence. Checks: provider tuple is all-null for native or all-present for provider; finalization shape ties status to is_finalizable, attempt_consumption_claim_id, and finalized_at.'
+}
+
+Table "registration_submission_revisions" {
+  "id" uuid [pk, not null, note: 'uuidv7 app-side']
+  "tenant_id" uuid [not null]
+  "event_id" uuid [not null]
+  "registration_submission_id" uuid [not null]
+  "revision_number" int [not null]
+  "received_evidence_hash" varchar(44) [not null]
+  "provider_revision_id" varchar(200)
+  "received_at" timestamptz [not null]
+  "concurrency_stamp" uuid [not null]
+  "created_at" timestamptz [not null]
+  "created_by" uuid
+  "updated_at" timestamptz
+  "updated_by" uuid
+  "is_deleted" boolean [not null, default: false]
+  "deleted_at" timestamptz
+  "deleted_by" uuid
+
+  indexes {
+    (tenant_id, event_id, registration_submission_id) [name: 'ix_registration_submission_revisions_tenant_id_event_id_regist']
+    (tenant_id, registration_submission_id, revision_number) [unique, name: 'ux_registration_submission_revisions_submission_revision_number']
+  }
+
+  Note: 'Append-only submission revision evidence. Check: revision_number > 0.'
+}
+
+Table "registration_submission_issues" {
+  "id" uuid [pk, not null, note: 'uuidv7 app-side']
+  "tenant_id" uuid [not null]
+  "event_id" uuid [not null]
+  "registration_attempt_id" uuid [not null]
+  "registration_submission_id" uuid [not null]
+  "registration_form_version_id" uuid [not null]
+  "registration_form_field_id" uuid
+  "code" varchar(100) [not null]
+  "created_at" timestamptz [not null]
+  "created_by" uuid
+  "updated_at" timestamptz
+  "updated_by" uuid
+
+  indexes {
+    (tenant_id, event_id, registration_submission_id) [name: 'ix_registration_submission_issues_tenant_id_event_id_registrat']
+    (tenant_id, registration_submission_id) [name: 'ix_registration_submission_issues_tenant_id_registration_submi']
+  }
+
+  Note: 'Safe issue-code evidence only; no rejected raw answer value or free-form attendee content is persisted.'
+}
+
+Table "registration_answers" {
+  "id" uuid [pk, not null, note: 'uuidv7 app-side']
+  "tenant_id" uuid [not null]
+  "event_id" uuid [not null]
+  "registration_order_id" uuid [not null]
+  "registration_attempt_id" uuid [not null]
+  "registration_submission_id" uuid [not null]
+  "registration_workflow_id" uuid [not null]
+  "registration_requirement_id" uuid [not null]
+  "registration_form_id" uuid [not null]
+  "registration_form_version_id" uuid [not null]
+  "registration_form_section_id" uuid [not null]
+  "registration_form_field_id" uuid [not null]
+  "field_type_id" int [not null]
+  "requirement_subject_type_id" int [not null]
+  "requirement_subject_id" uuid
+  "requirement_subject_key" uuid [not null, note: 'computed: COALESCE(requirement_subject_id, zero uuid)']
+  "answer_subject_type_id" int [not null]
+  "order_subject_id" uuid
+  "purchaser_subject_id" uuid
+  "participant_subject_id" uuid
+  "ticket_assignment_subject_id" uuid
+  "ticket_assignment_order_line_id" uuid
+  "session_selection_subject_id" uuid
+  "effective_subject_identity" uuid [not null, note: 'computed: first non-null concrete subject id']
+  "ordinal" int [not null]
+  "text_value" varchar(10000)
+  "integer_value" bigint
+  "decimal_value" decimal(19,4)
+  "boolean_value" boolean
+  "date_value" date
+  "time_value" time
+  "instant_value" timestamptz
+  "selected_option_id" uuid
+  "sensitive_answer_value_id" uuid
+  "created_at" timestamptz [not null]
+  "created_by" uuid
+  "updated_at" timestamptz
+  "updated_by" uuid
+  "is_deleted" boolean [not null, default: false]
+  "deleted_at" timestamptz
+  "deleted_by" uuid
+
+  indexes {
+    answer_subject_type_id [name: 'ix_registration_answers_answer_subject_type_id']
+    (tenant_id, event_id, registration_form_id, registration_form_version_id, registration_form_section_id, registration_form_field_id, field_type_id) [name: 'ix_registration_answers_tenant_id_event_id_registration_form_i']
+    (tenant_id, event_id, registration_form_id, registration_form_version_id, registration_form_section_id, registration_form_field_id, selected_option_id) [name: 'ix_registration_answers_tenant_id_event_id_registration_form_i1']
+    (tenant_id, event_id, registration_order_id, registration_workflow_id, registration_requirement_id, registration_form_id, registration_form_version_id, registration_attempt_id, registration_submission_id) [name: 'ix_registration_answers_tenant_id_event_id_registration_order_']
+    (tenant_id, event_id, registration_workflow_id, registration_requirement_id, requirement_subject_type_id, requirement_subject_key) [name: 'ix_registration_answers_tenant_id_event_id_registration_workfl']
+    (tenant_id, registration_order_id) [name: 'ix_registration_answers_tenant_id_registration_order_id']
+    (tenant_id, registration_order_id, participant_subject_id) [name: 'ix_registration_answers_tenant_id_registration_order_id_partic']
+    (tenant_id, registration_order_id, ticket_assignment_order_line_id, requirement_subject_id) [name: 'ix_registration_answers_tenant_id_registration_order_id_ticket']
+    (tenant_id, registration_order_id, ticket_assignment_subject_id, ticket_assignment_order_line_id) [name: 'ix_registration_answers_tenant_id_registration_order_id_ticket1']
+    (tenant_id, sensitive_answer_value_id) [unique, name: 'ix_registration_answers_tenant_id_sensitive_answer_value_id']
+    (tenant_id, registration_submission_id, registration_form_field_id, answer_subject_type_id, effective_subject_identity, ordinal) [unique, name: 'ux_registration_answers_durable_identity']
+  }
+
+  Note: 'Atomic typed answer. Checks: exactly one value column; value shape must match registration field type; exactly one subject identity; ordinal > 0.'
+}
+
+Table "registration_consent_records" {
+  "id" uuid [pk, not null, note: 'uuidv7()']
+  "tenant_id" uuid [not null]
+  "event_id" uuid [not null]
+  "registration_order_id" uuid [not null]
+  "registration_attempt_id" uuid [not null]
+  "registration_submission_id" uuid [not null]
+  "registration_workflow_id" uuid [not null]
+  "registration_requirement_id" uuid [not null]
+  "registration_form_id" uuid [not null]
+  "registration_form_version_id" uuid [not null]
+  "registration_form_version" int [not null]
+  "registration_form_section_id" uuid [not null]
+  "registration_form_field_id" uuid [not null]
+  "field_type_id" int [not null]
+  "requirement_subject_type_id" int [not null]
+  "requirement_subject_id" uuid
+  "requirement_subject_key" uuid [not null, note: 'computed: COALESCE(requirement_subject_id, zero uuid)']
+  "purpose_code" varchar(100) [not null]
+  "consent_text_snapshot" varchar(4000) [not null]
+  "consent_text_version" varchar(100) [not null]
+  "language_tag" varchar(35) [not null]
+  "answer_subject_type_id" int [not null]
+  "order_subject_id" uuid
+  "purchaser_subject_id" uuid
+  "participant_subject_id" uuid
+  "ticket_assignment_subject_id" uuid
+  "ticket_assignment_order_line_id" uuid
+  "session_selection_subject_id" uuid
+  "effective_subject_identity" uuid [not null, note: 'computed: first non-null concrete subject id']
+  "granted_at" timestamptz [not null]
+  "withdrawn_at" timestamptz
+  "created_at" timestamptz [not null]
+  "created_by" uuid
+  "updated_at" timestamptz
+  "updated_by" uuid
+
+  indexes {
+    answer_subject_type_id [name: 'ix_registration_consent_records_answer_subject_type_id']
+    (tenant_id, answer_subject_type_id, effective_subject_identity, withdrawn_at) [name: 'ix_registration_consent_records_subject']
+    (tenant_id, event_id, registration_workflow_id, registration_requirement_id, requirement_subject_type_id, requirement_subject_key) [name: 'ix_registration_consent_records_tenant_id_event_id_registratio']
+    (tenant_id, event_id, registration_form_id, registration_form_version_id, registration_form_section_id, registration_form_field_id, field_type_id) [name: 'ix_registration_consent_records_tenant_id_event_id_registratio1']
+    (tenant_id, event_id, registration_order_id, registration_workflow_id, registration_requirement_id, registration_form_id, registration_form_version_id, registration_attempt_id, registration_submission_id) [name: 'ix_registration_consent_records_tenant_id_event_id_registratio2']
+    (tenant_id, registration_order_id, participant_subject_id) [name: 'ix_registration_consent_records_tenant_id_registration_order_i']
+    (tenant_id, registration_order_id, ticket_assignment_order_line_id, requirement_subject_id) [name: 'ix_registration_consent_records_tenant_id_registration_order_i1']
+    (tenant_id, registration_order_id, ticket_assignment_subject_id, ticket_assignment_order_line_id) [name: 'ix_registration_consent_records_tenant_id_registration_order_i2']
+    (tenant_id, registration_submission_id, registration_form_field_id, answer_subject_type_id, effective_subject_identity) [unique, name: 'ux_registration_consent_records_evidence']
+  }
+
+  Note: 'Immutable consent evidence snapshot. Check ck_registration_consent_records_subject_shape mirrors answer subject identity rules.'
+}
+
+Table "registration_requirement_fulfillments" {
+  "id" uuid [pk, not null, note: 'uuidv7 app-side']
+  "tenant_id" uuid [not null]
+  "event_id" uuid [not null]
+  "registration_order_id" uuid [not null]
+  "registration_workflow_id" uuid [not null]
+  "registration_requirement_id" uuid [not null]
+  "subject_type_id" int [not null]
+  "subject_id" uuid [not null]
+  "source_registration_submission_id" uuid
+  "is_skipped" boolean [not null]
+  "recorded_at" timestamptz [not null]
+  "created_at" timestamptz [not null]
+  "created_by" uuid
+  "updated_at" timestamptz
+  "updated_by" uuid
+
+  indexes {
+    (tenant_id, id) [unique, name: 'ak_registration_requirement_fulfillments_tenant_id_id']
+    subject_type_id [name: 'ix_registration_requirement_fulfillments_subject_type_id']
+    (tenant_id, event_id, registration_order_id) [name: 'ix_registration_requirement_fulfillments_tenant_id_event_id_re']
+    (tenant_id, event_id, registration_workflow_id, registration_requirement_id) [name: 'ix_registration_requirement_fulfillments_tenant_id_event_id_re1']
+    (tenant_id, event_id, source_registration_submission_id) [name: 'ix_registration_requirement_fulfillments_tenant_id_event_id_so']
+    (tenant_id, registration_order_id, registration_requirement_id, subject_type_id, subject_id, is_skipped) [unique, name: 'ux_registration_requirement_fulfillments_identity']
+  }
+
+  Note: 'Durable requirement outcome. Check ck_registration_requirement_fulfillments_outcome: skipped rows have no source submission; fulfilled rows require one.'
+}
+
+Table "registration_finalization_effects" {
+  "id" uuid [pk, not null, note: 'uuidv7 app-side']
+  "tenant_id" uuid [not null]
+  "event_id" uuid [not null]
+  "registration_order_id" uuid [not null]
+  "status" int [not null, note: 'OutboxMessageStatus: Pending(1), Processing(2), Completed(3), Failed(4)']
+  "attempt_count" int [not null]
+  "processing_fence" bigint [not null]
+  "processing_lease_owner" varchar(200)
+  "processing_lease_token" uuid
+  "processing_lease_expires_at" timestamptz
+  "next_attempt_at" timestamptz
+  "completed_at" timestamptz
+  "created_at" timestamptz [not null]
+  "created_by" uuid
+  "updated_at" timestamptz
+  "updated_by" uuid
+
+  indexes {
+    (tenant_id, id) [unique, name: 'ak_registration_finalization_effects_tenant_id_id']
+    (tenant_id, event_id, registration_order_id) [name: 'ix_registration_finalization_effects_tenant_id_event_id_regist']
+    (status, next_attempt_at, created_at) [name: 'ix_registration_finalization_effects_worker_poll']
+    (tenant_id, registration_order_id) [unique, name: 'ux_registration_finalization_effects_order']
+  }
+
+  Note: 'Fenced finalization effect/outbox row. Checks: attempt_count and processing_fence nonnegative; state check requires lease columns only while Processing and completed_at only while Completed.'
+}
+
+Table "registration_answer_files" {
+  "id" uuid [pk, not null, note: 'uuidv7 app-side']
+  "tenant_id" uuid [not null]
+  "event_id" uuid [not null]
+  "registration_submission_id" uuid [not null]
+  "registration_form_id" uuid [not null]
+  "registration_form_version_id" uuid [not null]
+  "registration_form_section_id" uuid [not null]
+  "registration_form_field_id" uuid [not null]
+  "field_type_id" int [not null]
+  "storage_object_id" uuid [not null]
+  "safe_display_name" varchar(500) [not null]
+  "content_type" varchar(255) [not null]
+  "extension" varchar(50) [not null]
+  "sha256checksum" varchar(64)
+  "size" bigint [not null]
+  "quarantine_state" varchar(20) [not null]
+  "scan_status" varchar(20) [not null]
+  "quarantined_at" timestamptz [not null]
+  "released_at" timestamptz
+  "released_by" uuid
+  "concurrency_stamp" uuid [not null]
+  "created_at" timestamptz [not null]
+  "created_by" uuid
+  "updated_at" timestamptz
+  "updated_by" uuid
+  "is_deleted" boolean [not null, default: false]
+  "deleted_at" timestamptz
+  "deleted_by" uuid
+
+  indexes {
+    (tenant_id, id) [unique, name: 'ak_registration_answer_files_tenant_id_id']
+    (tenant_id, event_id, registration_form_id, registration_form_version_id, registration_form_section_id, registration_form_field_id, field_type_id) [name: 'ix_registration_answer_files_tenant_id_event_id_registration_f']
+    (tenant_id, event_id, registration_submission_id) [name: 'ix_registration_answer_files_tenant_id_event_id_registration_s']
+    (tenant_id, registration_submission_id, registration_form_field_id, storage_object_id) [unique, name: 'ix_registration_answer_files_tenant_id_registration_submission']
+    (tenant_id, storage_object_id) [unique, name: 'ix_registration_answer_files_tenant_id_storage_object_id']
+    (tenant_id, storage_object_id, quarantine_state) [name: 'ix_registration_answer_files_tenant_id_storage_object_id_quara']
+  }
+
+  Note: 'Quarantined file-answer metadata. Checks: field_type_id = File(18), size >= 0, quarantine_state in quarantined/released, scan_status = not_scanned, release columns required only for released rows.'
+}
+
+Table "registration_answer_file_releases" {
+  "id" uuid [pk, not null, note: 'uuidv7 app-side']
+  "tenant_id" uuid [not null]
+  "registration_answer_file_id" uuid [not null]
+  "released_by" uuid [not null]
+  "released_at" timestamptz [not null]
+  "reason" varchar(500) [not null]
+  "previous_quarantine_state" varchar(20) [not null]
+  "new_quarantine_state" varchar(20) [not null]
+
+  indexes {
+    (tenant_id, registration_answer_file_id) [unique, name: 'ix_registration_answer_file_releases_tenant_id_registration_an']
+  }
+
+  Note: 'One manual release audit for a quarantined registration file. Check: previous_quarantine_state = quarantined and new_quarantine_state = released.'
 }
 
 Table "registration_order_pii" {
@@ -6130,6 +6819,76 @@ Ref: "registration_requirements".("tenant_id", "event_id") > "events".("tenant_i
 Ref: "registration_requirements".("tenant_id", "event_id", "registration_workflow_id") > "registration_workflows".("tenant_id", "event_id", "id") [delete: cascade]
 Ref: "registration_requirements"."criticality_id" > "registration_requirement_criticalities"."id" [delete: restrict]
 Ref: "registration_requirements"."completion_effect_id" > "registration_requirement_completion_effects"."id" [delete: restrict]
+
+Ref: "registration_provider_connections"."tenant_id" > "tenants"."id" [delete: restrict]
+Ref: "registration_provider_connections"."provider_kind_id" > "registration_provider_kinds"."id" [delete: restrict]
+Ref: "registration_provider_connections"."deployment_kind_id" > "registration_provider_deployment_kinds"."id" [delete: restrict]
+Ref: "registration_provider_connections"."api_token_secret_binding_id" > "secret_bindings"."id" [delete: restrict]
+Ref: "registration_provider_connections"."webhook_secret_binding_id" > "secret_bindings"."id" [delete: restrict]
+Ref: "registration_provider_approved_origins"."registration_provider_connection_id" > "registration_provider_connections"."id" [delete: cascade]
+Ref: "registration_provider_schema_revisions"."registration_provider_connection_id" > "registration_provider_connections"."id" [delete: restrict]
+Ref: "registration_provider_schema_revisions"."schema_authority_id" > "registration_provider_schema_authorities"."id" [delete: restrict]
+Ref: "registration_provider_bindings"."tenant_id" > "tenants"."id" [delete: restrict]
+Ref: "registration_provider_bindings"."registration_provider_connection_id" > "registration_provider_connections"."id" [delete: restrict]
+Ref: "registration_provider_bindings"."registration_form_version_id" > "registration_form_versions"."id" [delete: restrict]
+Ref: "registration_provider_bindings"."presentation_mode_id" > "registration_provider_presentation_modes"."id" [delete: restrict]
+Ref: "registration_provider_bindings"."collection_mode_id" > "registration_provider_collection_modes"."id" [delete: restrict]
+Ref: "registration_provider_bindings"."completion_mode_id" > "registration_provider_completion_modes"."id" [delete: restrict]
+Ref: "registration_provider_bindings"."trust_level_id" > "registration_provider_trust_levels"."id" [delete: restrict]
+Ref: "registration_provider_bindings"."drift_class_id" > "registration_provider_drift_classes"."id" [delete: restrict]
+Ref: "registration_provider_bindings"."state_id" > "registration_provider_binding_states"."id" [delete: restrict]
+Ref: "registration_provider_capabilities"."registration_provider_binding_id" > "registration_provider_bindings"."id" [delete: cascade]
+Ref: "registration_provider_field_mappings"."registration_provider_binding_id" > "registration_provider_bindings"."id" [delete: cascade]
+Ref: "registration_provider_option_mappings"."registration_provider_binding_id" > "registration_provider_bindings"."id" [delete: cascade]
+Ref: "registration_provider_option_mappings"."registration_provider_field_mapping_id" > "registration_provider_field_mappings"."id" [delete: cascade]
+Ref: "registration_sensitive_answer_values"."tenant_id" > "tenants"."id" [delete: restrict]
+Ref: "registration_attempts"."tenant_id" > "tenants"."id" [delete: restrict]
+Ref: "registration_attempts"."event_id" > "events"."id" [delete: restrict]
+Ref: "registration_attempts"."registration_order_id" > "registration_orders"."id" [delete: restrict]
+Ref: "registration_attempts"."registration_workflow_id" > "registration_workflows"."id" [delete: restrict]
+Ref: "registration_attempts"."registration_requirement_id" > "registration_requirements"."id" [delete: restrict]
+Ref: "registration_attempts"."registration_channel_id" > "registration_channels"."id" [delete: restrict]
+Ref: "registration_attempts"."registration_form_id" > "registration_forms"."id" [delete: restrict]
+Ref: "registration_attempts"."registration_form_version_id" > "registration_form_versions"."id" [delete: restrict]
+Ref: "registration_attempts"."registration_provider_binding_id" > "registration_provider_bindings"."id" [delete: restrict]
+Ref: "registration_attempts"."superseded_by_registration_attempt_id" > "registration_attempts"."id" [delete: restrict]
+Ref: "registration_attempts"."status_id" > "registration_attempt_statuses"."id" [delete: restrict]
+Ref: "registration_submissions"."tenant_id" > "tenants"."id" [delete: restrict]
+Ref: "registration_submissions"."event_id" > "events"."id" [delete: restrict]
+Ref: "registration_submissions"."registration_attempt_id" > "registration_attempts"."id" [delete: restrict]
+Ref: "registration_submissions"."attempt_status_at_receipt_id" > "registration_attempt_statuses"."id" [delete: restrict]
+Ref: "registration_submissions"."status_id" > "registration_submission_statuses"."id" [delete: restrict]
+Ref: "registration_submission_revisions"."registration_submission_id" > "registration_submissions"."id" [delete: restrict]
+Ref: "registration_submission_issues"."registration_submission_id" > "registration_submissions"."id" [delete: restrict]
+Ref: "registration_answers"."registration_submission_id" > "registration_submissions"."id" [delete: restrict]
+Ref: "registration_answers"."registration_requirement_id" > "registration_requirements"."id" [delete: restrict]
+Ref: "registration_answers"."registration_form_field_id" > "registration_form_fields"."id" [delete: restrict]
+Ref: "registration_answers"."selected_option_id" > "registration_form_field_options"."id" [delete: restrict]
+Ref: "registration_answers"."participant_subject_id" > "registration_participants"."id" [delete: restrict]
+Ref: "registration_answers"."ticket_assignment_subject_id" > "registration_ticket_assignments"."id" [delete: restrict]
+Ref: "registration_answers"."answer_subject_type_id" > "registration_answer_subject_types"."id" [delete: restrict]
+Ref: "registration_answers"."sensitive_answer_value_id" > "registration_sensitive_answer_values"."id" [delete: restrict]
+Ref: "registration_consent_records"."registration_submission_id" > "registration_submissions"."id" [delete: restrict]
+Ref: "registration_consent_records"."registration_requirement_id" > "registration_requirements"."id" [delete: restrict]
+Ref: "registration_consent_records"."registration_form_field_id" > "registration_form_fields"."id" [delete: restrict]
+Ref: "registration_consent_records"."participant_subject_id" > "registration_participants"."id" [delete: restrict]
+Ref: "registration_consent_records"."ticket_assignment_subject_id" > "registration_ticket_assignments"."id" [delete: restrict]
+Ref: "registration_consent_records"."answer_subject_type_id" > "registration_answer_subject_types"."id" [delete: restrict]
+Ref: "registration_requirement_fulfillments"."tenant_id" > "tenants"."id" [delete: restrict]
+Ref: "registration_requirement_fulfillments"."registration_order_id" > "registration_orders"."id" [delete: restrict]
+Ref: "registration_requirement_fulfillments"."registration_requirement_id" > "registration_requirements"."id" [delete: restrict]
+Ref: "registration_requirement_fulfillments"."source_registration_submission_id" > "registration_submissions"."id" [delete: restrict]
+Ref: "registration_requirement_fulfillments"."subject_type_id" > "registration_answer_subject_types"."id" [delete: restrict]
+Ref: "registration_finalization_effects"."tenant_id" > "tenants"."id" [delete: restrict]
+Ref: "registration_finalization_effects"."registration_order_id" > "registration_orders"."id" [delete: restrict]
+Ref: "registration_answer_files"."tenant_id" > "tenants"."id" [delete: restrict]
+Ref: "registration_answer_files"."registration_submission_id" > "registration_submissions"."id" [delete: restrict]
+Ref: "registration_answer_files"."registration_form_field_id" > "registration_form_fields"."id" [delete: restrict]
+Ref: "registration_answer_files"."storage_object_id" > "storage_objects"."id" [delete: restrict]
+Ref: "registration_answer_file_releases"."tenant_id" > "tenants"."id" [delete: restrict]
+Ref: "registration_answer_file_releases"."registration_answer_file_id" > "registration_answer_files"."id" [delete: restrict]
+Ref: "registration_channels"."registration_provider_binding_id" > "registration_provider_bindings"."id" [delete: restrict]
+
 Ref: "registration_requirements"."answer_sync_mode_id" > "registration_answer_sync_modes"."id" [delete: restrict]
 Ref: "registration_requirements"."applies_to_subject_type_id" > "registration_requirement_subject_types"."id" [delete: restrict]
 Ref: "participation_requirement_attachments".("tenant_id", "participation_configuration_id") > "event_participation_configurations".("tenant_id", "id") [delete: cascade]

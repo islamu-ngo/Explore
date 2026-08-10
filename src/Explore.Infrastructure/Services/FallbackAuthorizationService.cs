@@ -326,6 +326,8 @@ public partial class FallbackAuthorizationService : IAuthorizationProvider
             or AuthorizationActions.Events.ManagePublicActions
             or AuthorizationActions.Events.ManageRegistrations
             or AuthorizationActions.Events.ManageRegistrationWorkflow
+            or AuthorizationActions.Events.ManageRegistrationChannels
+            or AuthorizationActions.Events.ViewRegistrationProviderHealth
             or AuthorizationActions.Events.ManageTickets
             or AuthorizationActions.Events.ClaimOrganizer
             or AuthorizationActions.Events.WithdrawOrganizerClaim
@@ -374,6 +376,8 @@ public partial class FallbackAuthorizationService : IAuthorizationProvider
             or AuthorizationActions.Events.ManagePublicActions
             or AuthorizationActions.Events.ManageRegistrations
             or AuthorizationActions.Events.ManageRegistrationWorkflow
+            or AuthorizationActions.Events.ManageRegistrationChannels
+            or AuthorizationActions.Events.ViewRegistrationProviderHealth
             or AuthorizationActions.Events.ManageTickets;
 
     private static bool IsTenantAdminEventAction(string action) =>
@@ -403,6 +407,8 @@ public partial class FallbackAuthorizationService : IAuthorizationProvider
         if (resourceKind is ResourceKinds.Event or ResourceKinds.RegistrationForm &&
             action is AuthorizationActions.Events.ManageRegistrations
                 or AuthorizationActions.Events.ManageRegistrationWorkflow
+                or AuthorizationActions.Events.ManageRegistrationChannels
+                or AuthorizationActions.Events.ViewRegistrationProviderHealth
                 or AuthorizationActions.RegistrationForms.View
                 or AuthorizationActions.RegistrationForms.Create
                 or AuthorizationActions.RegistrationForms.Update

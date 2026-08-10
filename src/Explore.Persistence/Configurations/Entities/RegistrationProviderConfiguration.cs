@@ -25,7 +25,22 @@ public sealed class RegistrationProviderConnectionConfiguration : IEntityTypeCon
         builder.HasOne<RegistrationProviderDeploymentKind>().WithMany().HasForeignKey(connection => connection.DeploymentKindId).OnDelete(DeleteBehavior.Restrict);
         builder.HasOne<SecretBinding>().WithMany().HasForeignKey(connection => new { ScopeId = connection.TenantId, Id = connection.ApiTokenSecretBindingId }).HasPrincipalKey(binding => new { binding.ScopeId, binding.Id }).OnDelete(DeleteBehavior.Restrict);
         builder.HasOne<SecretBinding>().WithMany().HasForeignKey(connection => new { ScopeId = connection.TenantId, Id = connection.WebhookSecretBindingId }).HasPrincipalKey(binding => new { binding.ScopeId, binding.Id }).OnDelete(DeleteBehavior.Restrict);
+        builder.HasMany(connection => connection.ApprovedOrigins).WithOne(origin => origin.Connection).HasForeignKey(origin => new { origin.TenantId, origin.RegistrationProviderConnectionId }).HasPrincipalKey(connection => new { connection.TenantId, connection.Id }).OnDelete(DeleteBehavior.Cascade);
         builder.HasIndex(connection => new { connection.TenantId, connection.Name }).IsUnique();
+    }
+}
+
+public sealed class RegistrationProviderApprovedOriginConfiguration : IEntityTypeConfiguration<RegistrationProviderApprovedOrigin>
+{
+    public void Configure(EntityTypeBuilder<RegistrationProviderApprovedOrigin> builder)
+    {
+        builder.ToTable("registration_provider_approved_origins");
+        builder.Property(origin => origin.Id).ValueGeneratedNever();
+        builder.Property(origin => origin.Origin).IsRequired().HasMaxLength(300);
+        builder.Property(origin => origin.CreatedAt).IsRequired();
+        builder.Property(origin => origin.IsDeleted).HasDefaultValue(false);
+        builder.HasAlternateKey(origin => new { origin.TenantId, origin.RegistrationProviderConnectionId, origin.Id });
+        builder.HasIndex(origin => new { origin.TenantId, origin.RegistrationProviderConnectionId, origin.Origin }).IsUnique();
     }
 }
 
@@ -44,6 +59,7 @@ public sealed class RegistrationProviderBindingConfiguration : IEntityTypeConfig
         builder.HasAlternateKey(binding => new { binding.TenantId, binding.Id });
         builder.HasAlternateKey(binding => new { binding.TenantId, binding.Id, binding.PublishedMappingRevisionHashKey });
         builder.HasOne(binding => binding.Connection).WithMany().HasForeignKey(binding => new { binding.TenantId, binding.RegistrationProviderConnectionId }).HasPrincipalKey(connection => new { connection.TenantId, connection.Id }).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne<RegistrationFormVersion>().WithMany().HasForeignKey(binding => new { binding.TenantId, binding.RegistrationFormId, binding.RegistrationFormVersionId }).HasPrincipalKey(version => new { version.TenantId, version.RegistrationFormId, version.Id }).OnDelete(DeleteBehavior.Restrict);
         builder.HasOne<RegistrationProviderPresentationMode>().WithMany().HasForeignKey(binding => binding.PresentationModeId).OnDelete(DeleteBehavior.Restrict);
         builder.HasOne<RegistrationProviderCollectionMode>().WithMany().HasForeignKey(binding => binding.CollectionModeId).OnDelete(DeleteBehavior.Restrict);
         builder.HasOne<RegistrationProviderCompletionMode>().WithMany().HasForeignKey(binding => binding.CompletionModeId).OnDelete(DeleteBehavior.Restrict);

@@ -2,10 +2,13 @@
 // ABOUTME: Includes the manual-QA persistence driver for qualified SecretBinding credentials and connections.
 
 using Explore.Application.Contracts.Infrastructure;
+using Explore.Application.Contracts.Persistence;
 using Explore.Domain;
 using Explore.Domain.Enums;
 using Explore.Domain.Secrets;
+using Explore.Domain.ValueObjects;
 using Explore.Persistence;
+using Explore.Persistence.Repositories;
 using Explore.Persistence.QueryFilters;
 using Explore.Persistence.Seed;
 using Microsoft.Data.Sqlite;
@@ -183,6 +186,129 @@ public sealed class RegistrationProviderFoundationPersistenceTests
             nameof(RegistrationProviderBinding.TenantId), nameof(RegistrationProviderBinding.Id), nameof(RegistrationProviderBinding.PublishedMappingRevisionHashKey)]);
     }
 
+    [Test]
+    public async Task ProviderManagementQueue_IsolatesRetainedEffectsByBindingAndEvent()
+    {
+        Guid tenantId = Guid.CreateVersion7();
+        Guid eventA = Guid.CreateVersion7();
+        Guid eventB = Guid.CreateVersion7();
+        await using ExploreDbContext context = CreateInMemoryContext($"provider-management-queue-{Guid.NewGuid():N}");
+        RegistrationProviderConnection connection = Connection(tenantId, "a", false);
+        RegistrationForm formA = RegistrationForm.Create(tenantId, eventA, "registration", "a", "A", Now);
+        RegistrationForm formB = RegistrationForm.Create(tenantId, eventB, "registration", "b", "B", Now);
+        RegistrationProviderBinding bindingA = Binding(tenantId, connection.Id, formA.Id);
+        RegistrationProviderBinding bindingB = Binding(tenantId, connection.Id, formB.Id);
+        context.AddRange(connection, formA, formB, bindingA, bindingB);
+        AddRetainedEffect(context, tenantId, bindingA.Id, "a", Now.AddMinutes(-30));
+        AddRetainedEffect(context, tenantId, bindingB.Id, "b", Now.AddMinutes(-5));
+        await context.SaveChangesAsync();
+        context.TenantContext = new TestTenantContext(tenantId);
+        RegistrationProviderRepository repository = new(context);
+
+        IReadOnlyList<RegistrationProviderParkedItem> rows = await repository.GetParkedItemsForEventAsync(tenantId, eventA, 10, CancellationToken.None);
+
+        await Assert.That(rows).HasSingleItem();
+        await Assert.That(rows[0].Effect!.BindingId).IsEqualTo(bindingA.Id);
+        await Assert.That(rows[0].Effect!.EventId).IsEqualTo(eventA);
+        await Assert.That(await repository.GetLastCallbackAtAsync(tenantId, bindingA.Id, CancellationToken.None)).IsEqualTo(Now.AddMinutes(-30));
+        await Assert.That(await repository.GetOldestPendingItemAtAsync(tenantId, bindingA.Id, CancellationToken.None)).IsEqualTo(Now.AddMinutes(-30));
+    }
+
+    [Test]
+    public async Task ProviderManagementQueue_ExcludesResolvedEffectsAndSubmissions()
+    {
+        Guid tenantId = Guid.CreateVersion7();
+        Guid eventId = Guid.CreateVersion7();
+        await using ExploreDbContext context = CreateInMemoryContext($"provider-management-resolved-{Guid.NewGuid():N}");
+        RegistrationProviderConnection connection = Connection(tenantId, "a", false);
+        RegistrationForm form = RegistrationForm.Create(tenantId, eventId, "registration", "a", "A", Now);
+        RegistrationProviderBinding binding = Binding(tenantId, connection.Id, form.Id);
+        context.AddRange(connection, form, binding);
+        IncomingWebhookEffectOutbox effect = AddRetainedEffect(context, tenantId, binding.Id, "resolved", Now.AddMinutes(-30));
+        RegistrationSubmission submission = ProviderSubmission(tenantId, eventId, binding.Id);
+        context.AddRange(
+            submission,
+            RegistrationSubmissionIssue.Create(submission, "BLOCKING_DRIFT", Now));
+        await context.SaveChangesAsync();
+        context.TenantContext = new TestTenantContext(tenantId);
+        RegistrationProviderRepository repository = new(context);
+
+        await Assert.That((await repository.GetParkedItemsForEventAsync(tenantId, eventId, 10, CancellationToken.None)).Count).IsEqualTo(2);
+
+        effect.AcknowledgeResolution("organizer_accepted", Now.AddMinutes(1));
+        await repository.AddSubmissionIssueAsync(RegistrationSubmissionIssue.Create(submission, "RESOLVED_ACCEPTED", Now.AddMinutes(1)), CancellationToken.None);
+        await repository.SaveChangesAsync(CancellationToken.None);
+
+        IReadOnlyList<RegistrationProviderParkedItem> rows = await repository.GetParkedItemsForEventAsync(tenantId, eventId, 10, CancellationToken.None);
+
+        await Assert.That(rows).IsEmpty();
+        await Assert.That(await repository.CountParkedItemsAsync(tenantId, binding.Id, CancellationToken.None)).IsEqualTo(0);
+        await Assert.That(await repository.GetOldestPendingItemAtAsync(tenantId, binding.Id, CancellationToken.None)).IsNull();
+        await Assert.That(await context.RegistrationSubmissionIssues.AnyAsync(issue => issue.RegistrationSubmissionId == submission.Id && issue.Code == "BLOCKING_DRIFT")).IsTrue();
+    }
+
+    [Test]
+    public async Task ApprovedOrigins_ReaddingSameOriginRevivesSoftDeletedRow()
+    {
+        Guid tenantId = Guid.CreateVersion7();
+        RegistrationProviderConnection connection = Connection(tenantId, "origins", false);
+
+        connection.ReplaceApprovedOrigins(["https://forms.example.org"], Now);
+        connection.ReplaceApprovedOrigins([], Now.AddMinutes(1));
+        connection.ReplaceApprovedOrigins(["https://forms.example.org"], Now.AddMinutes(2));
+
+        await Assert.That(connection.ApprovedOrigins).HasSingleItem();
+        await Assert.That(connection.ApprovedOrigins.Single().IsDeleted).IsFalse();
+        await Assert.That(connection.IsOriginApproved(new Uri("https://forms.example.org/launch"))).IsTrue();
+    }
+
+    [Test]
+    public async Task ApprovedOrigins_ReaddingPersistedSoftDeletedOriginRevivesExistingRow()
+    {
+        string databaseName = $"provider-origin-revive-{Guid.NewGuid():N}";
+        Guid tenantId = Guid.CreateVersion7();
+        Guid connectionId;
+
+        await using (ExploreDbContext seed = CreateInMemoryContext(databaseName))
+        {
+            RegistrationProviderConnection connection = Connection(tenantId, "origins", false);
+            connectionId = connection.Id;
+            connection.ReplaceApprovedOrigins(["https://forms.example.org"], Now);
+            seed.RegistrationProviderConnections.Add(connection);
+            await seed.SaveChangesAsync();
+        }
+
+        await using (ExploreDbContext removeContext = CreateInMemoryContext(databaseName))
+        {
+            removeContext.TenantContext = new TestTenantContext(tenantId);
+            RegistrationProviderRepository repository = new(removeContext);
+            RegistrationProviderConnection connection = (await repository.GetConnectionAsync(tenantId, connectionId, CancellationToken.None))!;
+            connection.ReplaceApprovedOrigins([], Now.AddMinutes(1));
+            await repository.SaveChangesAsync(CancellationToken.None);
+        }
+
+        await using (ExploreDbContext readdContext = CreateInMemoryContext(databaseName))
+        {
+            readdContext.TenantContext = new TestTenantContext(tenantId);
+            RegistrationProviderRepository repository = new(readdContext);
+            RegistrationProviderConnection connection = (await repository.GetConnectionAsync(tenantId, connectionId, CancellationToken.None))!;
+            await Assert.That(connection.ApprovedOrigins).HasSingleItem();
+            await Assert.That(connection.ApprovedOrigins.Single().IsDeleted).IsTrue();
+
+            connection.ReplaceApprovedOrigins(["https://forms.example.org"], Now.AddMinutes(2));
+            await repository.SaveChangesAsync(CancellationToken.None);
+        }
+
+        await using ExploreDbContext verifyContext = CreateInMemoryContext(databaseName);
+        verifyContext.TenantContext = new TestTenantContext(tenantId);
+        RegistrationProviderRepository verifyRepository = new(verifyContext);
+        RegistrationProviderConnection reloaded = (await verifyRepository.GetConnectionAsync(tenantId, connectionId, CancellationToken.None))!;
+
+        await Assert.That(reloaded.ApprovedOrigins).HasSingleItem();
+        await Assert.That(reloaded.ApprovedOrigins.Single().IsDeleted).IsFalse();
+        await Assert.That(reloaded.IsOriginApproved(new Uri("https://forms.example.org/launch"))).IsTrue();
+    }
+
     private static RegistrationProviderConnection Connection(Guid tenantId, string name, bool deleted)
     {
         RegistrationProviderConnection connection = RegistrationProviderConnection.Create(tenantId, name, RegistrationProviderKindEnum.ExternalForm, RegistrationProviderDeploymentKindEnum.HostedSaas, null, null, Now);
@@ -190,10 +316,63 @@ public sealed class RegistrationProviderFoundationPersistenceTests
         return connection;
     }
 
-    private static RegistrationProviderBinding Binding(Guid tenantId, Guid connectionId) => RegistrationProviderBinding.Create(
-        tenantId, connectionId, Guid.CreateVersion7(), Guid.CreateVersion7(), RegistrationProviderPresentationModeEnum.Redirect,
+    private static RegistrationProviderBinding Binding(Guid tenantId, Guid connectionId, Guid? formId = null) => RegistrationProviderBinding.Create(
+        tenantId, connectionId, formId ?? Guid.CreateVersion7(), Guid.CreateVersion7(), RegistrationProviderPresentationModeEnum.Redirect,
         RegistrationProviderCollectionModeEnum.ProviderHosted, RegistrationProviderCompletionModeEnum.Callback,
         RegistrationProviderTrustLevelEnum.SelectedFields, Now);
+
+    private static IncomingWebhookEffectOutbox AddRetainedEffect(ExploreDbContext context, Guid tenantId, Guid bindingId, string suffix, DateTime createdAt)
+    {
+        byte[] payload = [1];
+        string hash = "sha256:" + Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(payload));
+        string providerDecisionId = $"{bindingId:N}:{suffix}";
+        IncomingWebhookMessage message = IncomingWebhookMessage.CreateVerified(
+            tenantId,
+            "registration-provider",
+            providerDecisionId,
+            providerDecisionId,
+            "registration.provider_submission",
+            payload,
+            hash,
+            "application/json",
+            "utf-8",
+            "{}",
+            createdAt,
+            createdAt,
+            createdAt.AddDays(1),
+            "test",
+            createdAt.AddDays(1),
+            createdAt.AddDays(1),
+            createdAt.AddDays(1),
+            createdAt.AddDays(1));
+        IncomingWebhookEffectOutbox effect = IncomingWebhookEffectOutbox.CreatePending(
+            tenantId,
+            message.Id,
+            "registration-provider",
+            providerDecisionId,
+            "registration.provider_submission",
+            hash,
+            createdAt);
+        context.AddRange(message, effect);
+        return effect;
+    }
+
+    private static RegistrationSubmission ProviderSubmission(Guid tenantId, Guid eventId, Guid bindingId)
+    {
+        RegistrationAttempt attempt = RegistrationAttempt.Create(
+            Guid.CreateVersion7(), tenantId, eventId, Guid.CreateVersion7(), Guid.CreateVersion7(), Guid.CreateVersion7(),
+            Guid.CreateVersion7(), Guid.CreateVersion7(), Guid.CreateVersion7(), CapabilityTokenHash.Create(Convert.ToBase64String(new byte[32])),
+            bindingId, RegistrationEvidenceHash.Create(Convert.ToBase64String(Enumerable.Repeat((byte)1, 32).ToArray())), Now, Now.AddHours(1));
+        return RegistrationSubmission.CreateProviderEvidenceOnly(
+            attempt,
+            RegistrationEvidenceHash.Create(Convert.ToBase64String(Enumerable.Repeat((byte)2, 32).ToArray())),
+            Now.AddMinutes(1),
+            null,
+            "provider-submission-1",
+            "revision-1",
+            null,
+            null);
+    }
 
     private static Tenant Tenant(Guid id, string slug) => new()
     {

@@ -32,6 +32,12 @@ public sealed class RegistrationFormVersionConfiguration : IEntityTypeConfigurat
             version.RegistrationFormId,
             version.Id
         });
+        builder.HasAlternateKey(version => new
+        {
+            version.TenantId,
+            version.RegistrationFormId,
+            version.Id
+        });
         builder.HasOne<Tenant>().WithMany().HasForeignKey(version => version.TenantId).OnDelete(DeleteBehavior.Restrict);
         builder.HasOne<Event>().WithMany()
             .HasForeignKey(version => new { version.TenantId, version.EventId })

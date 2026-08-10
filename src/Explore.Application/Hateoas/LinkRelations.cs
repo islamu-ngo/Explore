@@ -317,6 +317,13 @@ public static class LinkRelations
     public const string ManagePublicActions = "manage-public-actions";
     public const string ConfigureParticipation = "configure-participation";
     public const string ManageRegistrationWorkflow = "manage-registration-workflow";
+    public const string ManageRegistrationChannels = "manage-registration-channels";
+    public const string ViewRegistrationProviderHealth = "view-registration-provider-health";
+    public const string ProviderCreate = "provider-create";
+    public const string ManualImport = "manual-import";
+    public const string Poll = "poll";
+    public const string Origins = "origins";
+    public const string Mappings = "mappings";
     public const string Requirements = "requirements";
     public const string CreateRequirement = "create-requirement";
     public const string CreateForm = "create-form";
@@ -327,6 +334,7 @@ public static class LinkRelations
     public const string AddSection = "add-section";
     public const string ReorderSections = "reorder-sections";
     public const string ReorderFields = "reorder-fields";
+    public const string Reorder = "reorder";
     public const string Fields = "fields";
     public const string AddField = "add-field";
     public const string Options = "options";
@@ -411,6 +419,8 @@ public static class LinkRelations
     public const string DeliveryAttempts = "delivery-attempts";
 
     public const string Retry = "retry";
+
+    public const string Resolve = "resolve";
 
     public const string Pause = "pause";
 

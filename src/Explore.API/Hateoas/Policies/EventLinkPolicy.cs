@@ -251,6 +251,24 @@ public sealed class EventDetailLinkPolicy : ILinkPolicy<EventDto>
                 "Manage registration workflow",
                 RequiresAuth: true)
                 .RequirePermission(AuthorizationActions.Events.ManageRegistrationWorkflow, ResourceDescriptors.Event, dto);
+
+            yield return new LinkDefinition(
+                LinkRelations.ViewRegistrationProviderHealth,
+                RouteNames.GetRegistrationProviderHealth,
+                new { eventId = dto.Id, tenantId = dto.TenantId },
+                HttpMethods.Get,
+                "Registration provider health",
+                RequiresAuth: true)
+                .RequirePermission(AuthorizationActions.Events.ViewRegistrationProviderHealth, ResourceDescriptors.Event, dto);
+
+            yield return new LinkDefinition(
+                LinkRelations.ManageRegistrationChannels,
+                RouteNames.GetRegistrationProviderQueue,
+                new { eventId = dto.Id, tenantId = dto.TenantId },
+                HttpMethods.Get,
+                "Manage registration channels",
+                RequiresAuth: true)
+                .RequirePermission(AuthorizationActions.Events.ManageRegistrationChannels, ResourceDescriptors.Event, dto);
         }
 
         if (dto.ParticipationConfiguration?.ParticipationHandlingModeId == (int)ParticipationHandlingModeEnum.PlatformManaged)

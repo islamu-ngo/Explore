@@ -61,7 +61,7 @@ resourcePolicy:
       derivedRoles:
         - islamuevent_event_manager
 
-    - actions: ["manage-registrations", "manage-registration-workflow"]
+    - actions: ["manage-registrations", "manage-registration-workflow", "manage-registration-channels", "view-registration-provider-health"]
       effect: EFFECT_ALLOW
       derivedRoles:
         - islamuevent_registration_manager
@@ -73,7 +73,7 @@ resourcePolicy:
             (!has(request.principal.attr.is_machine) ||
              request.principal.attr.is_machine != true)
 
-    - actions: ["manage-registrations", "manage-registration-workflow"]
+    - actions: ["manage-registrations", "manage-registration-workflow", "manage-registration-channels", "view-registration-provider-health"]
       effect: EFFECT_ALLOW
       roles:
         - islamuevent_authenticated_user

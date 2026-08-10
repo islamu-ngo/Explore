@@ -208,6 +208,18 @@ public sealed class IncomingWebhookEffectOutbox : ITenantEntity, IAuditableEntit
         UpdatedAt = redrivenAt;
     }
 
+    public void AcknowledgeResolution(string decisionCode, DateTime acknowledgedAt)
+    {
+        EnsureUtc(acknowledgedAt, nameof(acknowledgedAt));
+        Status = OutboxMessageStatus.Completed;
+        CompletedAt = acknowledgedAt;
+        NextAttemptAt = null;
+        FailureCategory = NormalizeFailureCategory(decisionCode);
+        SafeDetail = "Organizer acknowledged registration provider reconciliation item.";
+        ClearLease();
+        UpdatedAt = acknowledgedAt;
+    }
+
     private void EnsureActiveClaim(
         Guid leaseToken,
         long processingFence,

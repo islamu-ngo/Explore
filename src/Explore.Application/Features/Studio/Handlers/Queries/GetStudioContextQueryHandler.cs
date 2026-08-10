@@ -48,12 +48,27 @@ public sealed class GetStudioContextQueryHandler(
         IReadOnlyList<Event> managedEvents = await events.GetEventsByActorWithDetails(actorId, cancellationToken);
         List<AuthorizationCheck> checks = managedEvents
             .Where(IsPlatformManaged)
-            .Select(eventEntity => new AuthorizationCheck(
-                ResourceKinds.Event,
-                eventEntity.Id.ToString("D"),
-                AuthorizationActions.Events.ManageRegistrations,
-                ResourceDescriptors.EventAuthorizationTarget.GetResourceAttributes(eventEntity),
-                ResourceDescriptors.EventAuthorizationTarget.GetScope(eventEntity)))
+            .SelectMany(eventEntity => new[]
+            {
+                new AuthorizationCheck(
+                    ResourceKinds.Event,
+                    eventEntity.Id.ToString("D"),
+                    AuthorizationActions.Events.ManageRegistrations,
+                    ResourceDescriptors.EventAuthorizationTarget.GetResourceAttributes(eventEntity),
+                    ResourceDescriptors.EventAuthorizationTarget.GetScope(eventEntity)),
+                new AuthorizationCheck(
+                    ResourceKinds.Event,
+                    eventEntity.Id.ToString("D"),
+                    AuthorizationActions.Events.ManageRegistrationChannels,
+                    ResourceDescriptors.EventAuthorizationTarget.GetResourceAttributes(eventEntity),
+                    ResourceDescriptors.EventAuthorizationTarget.GetScope(eventEntity)),
+                new AuthorizationCheck(
+                    ResourceKinds.Event,
+                    eventEntity.Id.ToString("D"),
+                    AuthorizationActions.Events.ViewRegistrationProviderHealth,
+                    ResourceDescriptors.EventAuthorizationTarget.GetResourceAttributes(eventEntity),
+                    ResourceDescriptors.EventAuthorizationTarget.GetScope(eventEntity))
+            })
             .ToList();
         if (checks.Count == 0)
         {
@@ -63,10 +78,20 @@ public sealed class GetStudioContextQueryHandler(
         try
         {
             IReadOnlyList<bool> decisions = await authorization.IsAllowedBatchAsync(checks, cancellationToken);
-            if (decisions.Any(allowed => allowed))
+            if (decisions.Where((_, index) => index % 3 == 0).Any(allowed => allowed))
             {
                 context.AllowedLinkRelations.Add(LinkRelations.ViewRegistrationOrders);
                 context.AllowedLinkRelations.Add(LinkRelations.ViewParticipants);
+            }
+
+            if (decisions.Where((_, index) => index % 3 == 1).Any(allowed => allowed))
+            {
+                context.AllowedLinkRelations.Add(LinkRelations.ManageRegistrationChannels);
+            }
+
+            if (decisions.Where((_, index) => index % 3 == 2).Any(allowed => allowed))
+            {
+                context.AllowedLinkRelations.Add(LinkRelations.ViewRegistrationProviderHealth);
             }
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)

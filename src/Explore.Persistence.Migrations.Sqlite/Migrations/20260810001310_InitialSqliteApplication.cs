@@ -1647,6 +1647,132 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "ie_registration_provider_binding_states",
+                columns: table => new
+                {
+                    id = table.Column<int>(type: "INTEGER", nullable: false),
+                    master_code = table.Column<string>(type: "TEXT", maxLength: 100, nullable: false),
+                    full_name = table.Column<string>(type: "TEXT", maxLength: 200, nullable: false),
+                    description = table.Column<string>(type: "TEXT", maxLength: 500, nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_ie_registration_provider_binding_states", x => x.id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "ie_registration_provider_collection_modes",
+                columns: table => new
+                {
+                    id = table.Column<int>(type: "INTEGER", nullable: false),
+                    master_code = table.Column<string>(type: "TEXT", maxLength: 100, nullable: false),
+                    full_name = table.Column<string>(type: "TEXT", maxLength: 200, nullable: false),
+                    description = table.Column<string>(type: "TEXT", maxLength: 500, nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_ie_registration_provider_collection_modes", x => x.id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "ie_registration_provider_completion_modes",
+                columns: table => new
+                {
+                    id = table.Column<int>(type: "INTEGER", nullable: false),
+                    master_code = table.Column<string>(type: "TEXT", maxLength: 100, nullable: false),
+                    full_name = table.Column<string>(type: "TEXT", maxLength: 200, nullable: false),
+                    description = table.Column<string>(type: "TEXT", maxLength: 500, nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_ie_registration_provider_completion_modes", x => x.id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "ie_registration_provider_deployment_kinds",
+                columns: table => new
+                {
+                    id = table.Column<int>(type: "INTEGER", nullable: false),
+                    master_code = table.Column<string>(type: "TEXT", maxLength: 100, nullable: false),
+                    full_name = table.Column<string>(type: "TEXT", maxLength: 200, nullable: false),
+                    description = table.Column<string>(type: "TEXT", maxLength: 500, nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_ie_registration_provider_deployment_kinds", x => x.id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "ie_registration_provider_drift_classes",
+                columns: table => new
+                {
+                    id = table.Column<int>(type: "INTEGER", nullable: false),
+                    master_code = table.Column<string>(type: "TEXT", maxLength: 100, nullable: false),
+                    full_name = table.Column<string>(type: "TEXT", maxLength: 200, nullable: false),
+                    description = table.Column<string>(type: "TEXT", maxLength: 500, nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_ie_registration_provider_drift_classes", x => x.id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "ie_registration_provider_kinds",
+                columns: table => new
+                {
+                    id = table.Column<int>(type: "INTEGER", nullable: false),
+                    master_code = table.Column<string>(type: "TEXT", maxLength: 100, nullable: false),
+                    full_name = table.Column<string>(type: "TEXT", maxLength: 200, nullable: false),
+                    description = table.Column<string>(type: "TEXT", maxLength: 500, nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_ie_registration_provider_kinds", x => x.id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "ie_registration_provider_presentation_modes",
+                columns: table => new
+                {
+                    id = table.Column<int>(type: "INTEGER", nullable: false),
+                    master_code = table.Column<string>(type: "TEXT", maxLength: 100, nullable: false),
+                    full_name = table.Column<string>(type: "TEXT", maxLength: 200, nullable: false),
+                    description = table.Column<string>(type: "TEXT", maxLength: 500, nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_ie_registration_provider_presentation_modes", x => x.id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "ie_registration_provider_schema_authorities",
+                columns: table => new
+                {
+                    id = table.Column<int>(type: "INTEGER", nullable: false),
+                    master_code = table.Column<string>(type: "TEXT", maxLength: 100, nullable: false),
+                    full_name = table.Column<string>(type: "TEXT", maxLength: 200, nullable: false),
+                    description = table.Column<string>(type: "TEXT", maxLength: 500, nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_ie_registration_provider_schema_authorities", x => x.id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "ie_registration_provider_trust_levels",
+                columns: table => new
+                {
+                    id = table.Column<int>(type: "INTEGER", nullable: false),
+                    master_code = table.Column<string>(type: "TEXT", maxLength: 100, nullable: false),
+                    full_name = table.Column<string>(type: "TEXT", maxLength: 200, nullable: false),
+                    description = table.Column<string>(type: "TEXT", maxLength: 500, nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_ie_registration_provider_trust_levels", x => x.id);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "ie_registration_requirement_completion_effects",
                 columns: table => new
                 {
@@ -2756,8 +2882,9 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                 {
                     id = table.Column<Guid>(type: "TEXT", nullable: false),
                     setting_key = table.Column<string>(type: "TEXT", maxLength: 256, nullable: false),
+                    qualifier = table.Column<string>(type: "TEXT", maxLength: 128, nullable: false, defaultValue: ""),
                     setting_scope_id = table.Column<int>(type: "INTEGER", nullable: false),
-                    scope_id = table.Column<Guid>(type: "TEXT", nullable: true),
+                    scope_id = table.Column<Guid>(type: "TEXT", nullable: false),
                     secret_source_type_id = table.Column<int>(type: "INTEGER", nullable: false),
                     infisical_environment = table.Column<string>(type: "TEXT", maxLength: 64, nullable: true),
                     infisical_path = table.Column<string>(type: "TEXT", maxLength: 512, nullable: true),
@@ -2778,6 +2905,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("pk_ie_secret_bindings", x => x.id);
+                    table.UniqueConstraint("ak_secret_bindings_scope_id_id", x => new { x.scope_id, x.id });
                     table.CheckConstraint("ck_secret_bindings_setting_scope_scope_id", "(setting_scope_id = 1 AND scope_id IS NULL) OR (setting_scope_id = 2 AND scope_id IS NOT NULL)");
                     table.CheckConstraint("ck_secret_bindings_source_metadata", "(secret_source_type_id = 0 AND infisical_environment IS NOT NULL AND infisical_path IS NOT NULL AND infisical_key IS NOT NULL   AND environment_variable_name IS NULL AND inline_ciphertext IS NULL AND inline_ciphertext_version IS NULL) OR (secret_source_type_id = 1 AND inline_ciphertext IS NOT NULL AND inline_ciphertext_version IS NOT NULL   AND infisical_environment IS NULL AND infisical_path IS NULL AND infisical_key IS NULL AND environment_variable_name IS NULL) OR (secret_source_type_id = 2 AND environment_variable_name IS NOT NULL   AND infisical_environment IS NULL AND infisical_path IS NULL AND infisical_key IS NULL AND inline_ciphertext IS NULL AND inline_ciphertext_version IS NULL)");
                     table.ForeignKey(
@@ -3643,6 +3771,62 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         name: "fk_ie_notification_preference_profiles_users_user_id",
                         column: x => x.user_id,
                         principalTable: "ie_users",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "ie_registration_provider_connections",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "TEXT", nullable: false),
+                    tenant_id = table.Column<Guid>(type: "TEXT", nullable: false),
+                    name = table.Column<string>(type: "TEXT", maxLength: 120, nullable: false),
+                    provider_kind_id = table.Column<int>(type: "INTEGER", nullable: false),
+                    deployment_kind_id = table.Column<int>(type: "INTEGER", nullable: false),
+                    api_token_secret_binding_id = table.Column<Guid>(type: "TEXT", nullable: true),
+                    webhook_secret_binding_id = table.Column<Guid>(type: "TEXT", nullable: true),
+                    created_at = table.Column<DateTime>(type: "TEXT", nullable: false),
+                    created_by = table.Column<Guid>(type: "TEXT", nullable: true),
+                    updated_at = table.Column<DateTime>(type: "TEXT", nullable: true),
+                    updated_by = table.Column<Guid>(type: "TEXT", nullable: true),
+                    is_deleted = table.Column<bool>(type: "INTEGER", nullable: false, defaultValue: false),
+                    deleted_at = table.Column<DateTime>(type: "TEXT", nullable: true),
+                    deleted_by = table.Column<Guid>(type: "TEXT", nullable: true),
+                    concurrency_stamp = table.Column<Guid>(type: "TEXT", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_ie_registration_provider_connections", x => x.id);
+                    table.UniqueConstraint("ak_registration_provider_connections_tenant_id_id", x => new { x.tenant_id, x.id });
+                    table.ForeignKey(
+                        name: "fk_ie_registration_provider_connections_registration_provider_deployment_kinds_deployment_kind_id",
+                        column: x => x.deployment_kind_id,
+                        principalTable: "ie_registration_provider_deployment_kinds",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_ie_registration_provider_connections_registration_provider_kinds_provider_kind_id",
+                        column: x => x.provider_kind_id,
+                        principalTable: "ie_registration_provider_kinds",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_ie_registration_provider_connections_secret_bindings_tenant_id_api_token_secret_binding_id",
+                        columns: x => new { x.tenant_id, x.api_token_secret_binding_id },
+                        principalTable: "ie_secret_bindings",
+                        principalColumns: new[] { "scope_id", "id" },
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_ie_registration_provider_connections_secret_bindings_tenant_id_webhook_secret_binding_id",
+                        columns: x => new { x.tenant_id, x.webhook_secret_binding_id },
+                        principalTable: "ie_secret_bindings",
+                        principalColumns: new[] { "scope_id", "id" },
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_ie_registration_provider_connections_tenants_tenant_id",
+                        column: x => x.tenant_id,
+                        principalTable: "ie_tenants",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Restrict);
                 });
@@ -4908,6 +5092,67 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         name: "fk_ie_location_rooms_tenants_tenant_id",
                         column: x => x.tenant_id,
                         principalTable: "ie_tenants",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "ie_registration_provider_approved_origins",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "TEXT", nullable: false),
+                    tenant_id = table.Column<Guid>(type: "TEXT", nullable: false),
+                    registration_provider_connection_id = table.Column<Guid>(type: "TEXT", nullable: false),
+                    origin = table.Column<string>(type: "TEXT", maxLength: 300, nullable: false),
+                    created_at = table.Column<DateTime>(type: "TEXT", nullable: false),
+                    created_by = table.Column<Guid>(type: "TEXT", nullable: true),
+                    updated_at = table.Column<DateTime>(type: "TEXT", nullable: true),
+                    updated_by = table.Column<Guid>(type: "TEXT", nullable: true),
+                    is_deleted = table.Column<bool>(type: "INTEGER", nullable: false, defaultValue: false),
+                    deleted_at = table.Column<DateTime>(type: "TEXT", nullable: true),
+                    deleted_by = table.Column<Guid>(type: "TEXT", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_ie_registration_provider_approved_origins", x => x.id);
+                    table.UniqueConstraint("ak_registration_provider_approved_origins_tenant_id_registration_provider_connection_id_id", x => new { x.tenant_id, x.registration_provider_connection_id, x.id });
+                    table.ForeignKey(
+                        name: "fk_ie_registration_provider_approved_origins_registration_provider_connections_tenant_id_registration_provider_connection_id",
+                        columns: x => new { x.tenant_id, x.registration_provider_connection_id },
+                        principalTable: "ie_registration_provider_connections",
+                        principalColumns: new[] { "tenant_id", "id" },
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "ie_registration_provider_schema_revisions",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "TEXT", nullable: false),
+                    tenant_id = table.Column<Guid>(type: "TEXT", nullable: false),
+                    registration_provider_connection_id = table.Column<Guid>(type: "TEXT", nullable: false),
+                    schema_authority_id = table.Column<int>(type: "INTEGER", nullable: false),
+                    revision_hash = table.Column<string>(type: "TEXT", maxLength: 44, nullable: false),
+                    observed_at = table.Column<DateTime>(type: "TEXT", nullable: false),
+                    created_at = table.Column<DateTime>(type: "TEXT", nullable: false),
+                    created_by = table.Column<Guid>(type: "TEXT", nullable: true),
+                    updated_at = table.Column<DateTime>(type: "TEXT", nullable: true),
+                    updated_by = table.Column<Guid>(type: "TEXT", nullable: true),
+                    is_deleted = table.Column<bool>(type: "INTEGER", nullable: false, defaultValue: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_ie_registration_provider_schema_revisions", x => x.id);
+                    table.ForeignKey(
+                        name: "fk_ie_registration_provider_schema_revisions_ie_registration_provider_connections_tenant_id_registration_provider_connection_id",
+                        columns: x => new { x.tenant_id, x.registration_provider_connection_id },
+                        principalTable: "ie_registration_provider_connections",
+                        principalColumns: new[] { "tenant_id", "id" },
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_ie_registration_provider_schema_revisions_ie_registration_provider_schema_authorities_schema_authority_id",
+                        column: x => x.schema_authority_id,
+                        principalTable: "ie_registration_provider_schema_authorities",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Restrict);
                 });
@@ -7973,6 +8218,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                 {
                     table.PrimaryKey("pk_ie_registration_form_versions", x => x.id);
                     table.UniqueConstraint("ak_registration_form_versions_tenant_id_event_id_registration_form_id_id", x => new { x.tenant_id, x.event_id, x.registration_form_id, x.id });
+                    table.UniqueConstraint("ak_registration_form_versions_tenant_id_registration_form_id_id", x => new { x.tenant_id, x.registration_form_id, x.id });
                     table.CheckConstraint("ck_registration_form_versions_schema_artifacts", "(status_id = 1 AND schema_hash IS NULL AND data_schema_artifact IS NULL AND ui_schema_artifact IS NULL AND logic_schema_artifact IS NULL AND mapping_artifact IS NULL) OR (status_id IN (2, 3) AND schema_hash IS NOT NULL AND data_schema_artifact IS NOT NULL AND ui_schema_artifact IS NOT NULL AND logic_schema_artifact IS NOT NULL AND mapping_artifact IS NOT NULL)");
                     table.ForeignKey(
                         name: "fk_ie_registration_form_versions_ie_events_tenant_id_event_id",
@@ -9117,6 +9363,95 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "ie_registration_provider_bindings",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "TEXT", nullable: false),
+                    tenant_id = table.Column<Guid>(type: "TEXT", nullable: false),
+                    registration_provider_connection_id = table.Column<Guid>(type: "TEXT", nullable: false),
+                    registration_form_id = table.Column<Guid>(type: "TEXT", nullable: false),
+                    registration_form_version_id = table.Column<Guid>(type: "TEXT", nullable: false),
+                    presentation_mode_id = table.Column<int>(type: "INTEGER", nullable: false),
+                    collection_mode_id = table.Column<int>(type: "INTEGER", nullable: false),
+                    completion_mode_id = table.Column<int>(type: "INTEGER", nullable: false),
+                    trust_level_id = table.Column<int>(type: "INTEGER", nullable: false),
+                    drift_class_id = table.Column<int>(type: "INTEGER", nullable: false),
+                    state_id = table.Column<int>(type: "INTEGER", nullable: false),
+                    published_mapping_revision_hash = table.Column<string>(type: "TEXT", maxLength: 44, nullable: true),
+                    published_mapping_revision_hash_key = table.Column<string>(type: "TEXT", maxLength: 44, nullable: false, defaultValue: ""),
+                    published_at = table.Column<DateTime>(type: "TEXT", nullable: true),
+                    created_at = table.Column<DateTime>(type: "TEXT", nullable: false),
+                    created_by = table.Column<Guid>(type: "TEXT", nullable: true),
+                    updated_at = table.Column<DateTime>(type: "TEXT", nullable: true),
+                    updated_by = table.Column<Guid>(type: "TEXT", nullable: true),
+                    is_deleted = table.Column<bool>(type: "INTEGER", nullable: false, defaultValue: false),
+                    deleted_at = table.Column<DateTime>(type: "TEXT", nullable: true),
+                    deleted_by = table.Column<Guid>(type: "TEXT", nullable: true),
+                    concurrency_stamp = table.Column<Guid>(type: "TEXT", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_ie_registration_provider_bindings", x => x.id);
+                    table.UniqueConstraint("ak_registration_provider_bindings_tenant_id_id", x => new { x.tenant_id, x.id });
+                    table.UniqueConstraint("ak_registration_provider_bindings_tenant_id_id_published_mapping_revision_hash_key", x => new { x.tenant_id, x.id, x.published_mapping_revision_hash_key });
+                    table.CheckConstraint("ck_registration_provider_bindings_publication", "(state_id = 2 AND published_mapping_revision_hash IS NOT NULL AND published_at IS NOT NULL) OR (state_id <> 2)");
+                    table.ForeignKey(
+                        name: "fk_ie_registration_provider_bindings_ie_registration_form_versions_tenant_id_registration_form_id_registration_form_version_id",
+                        columns: x => new { x.tenant_id, x.registration_form_id, x.registration_form_version_id },
+                        principalTable: "ie_registration_form_versions",
+                        principalColumns: new[] { "tenant_id", "registration_form_id", "id" },
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_ie_registration_provider_bindings_registration_provider_binding_states_state_id",
+                        column: x => x.state_id,
+                        principalTable: "ie_registration_provider_binding_states",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_ie_registration_provider_bindings_registration_provider_collection_modes_collection_mode_id",
+                        column: x => x.collection_mode_id,
+                        principalTable: "ie_registration_provider_collection_modes",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_ie_registration_provider_bindings_registration_provider_completion_modes_completion_mode_id",
+                        column: x => x.completion_mode_id,
+                        principalTable: "ie_registration_provider_completion_modes",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_ie_registration_provider_bindings_registration_provider_connections_tenant_id_registration_provider_connection_id",
+                        columns: x => new { x.tenant_id, x.registration_provider_connection_id },
+                        principalTable: "ie_registration_provider_connections",
+                        principalColumns: new[] { "tenant_id", "id" },
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_ie_registration_provider_bindings_registration_provider_drift_classes_drift_class_id",
+                        column: x => x.drift_class_id,
+                        principalTable: "ie_registration_provider_drift_classes",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_ie_registration_provider_bindings_registration_provider_presentation_modes_presentation_mode_id",
+                        column: x => x.presentation_mode_id,
+                        principalTable: "ie_registration_provider_presentation_modes",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_ie_registration_provider_bindings_registration_provider_trust_levels_trust_level_id",
+                        column: x => x.trust_level_id,
+                        principalTable: "ie_registration_provider_trust_levels",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_ie_registration_provider_bindings_tenants_tenant_id",
+                        column: x => x.tenant_id,
+                        principalTable: "ie_tenants",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "ie_participation_requirement_attachments",
                 columns: table => new
                 {
@@ -9166,54 +9501,6 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         columns: x => new { x.tenant_id, x.event_id, x.registration_workflow_id },
                         principalTable: "ie_registration_workflows",
                         principalColumns: new[] { "tenant_id", "event_id", "id" },
-                        onDelete: ReferentialAction.Restrict);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "ie_registration_channels",
-                columns: table => new
-                {
-                    id = table.Column<Guid>(type: "TEXT", nullable: false),
-                    tenant_id = table.Column<Guid>(type: "TEXT", nullable: false),
-                    event_id = table.Column<Guid>(type: "TEXT", nullable: false),
-                    registration_workflow_id = table.Column<Guid>(type: "TEXT", nullable: false),
-                    registration_requirement_id = table.Column<Guid>(type: "TEXT", nullable: false),
-                    ordinal = table.Column<int>(type: "INTEGER", nullable: false),
-                    registration_provider_binding_id = table.Column<Guid>(type: "TEXT", nullable: true),
-                    is_native = table.Column<bool>(type: "INTEGER", nullable: false),
-                    created_at = table.Column<DateTime>(type: "TEXT", nullable: false),
-                    created_by = table.Column<Guid>(type: "TEXT", nullable: true),
-                    updated_at = table.Column<DateTime>(type: "TEXT", nullable: true),
-                    updated_by = table.Column<Guid>(type: "TEXT", nullable: true),
-                    is_deleted = table.Column<bool>(type: "INTEGER", nullable: false, defaultValue: false),
-                    deleted_at = table.Column<DateTime>(type: "TEXT", nullable: true),
-                    deleted_by = table.Column<Guid>(type: "TEXT", nullable: true),
-                    concurrency_stamp = table.Column<Guid>(type: "TEXT", nullable: false),
-                    registration_provider_binding_key = table.Column<Guid>(type: "TEXT", nullable: false, computedColumnSql: "COALESCE(registration_provider_binding_id, '00000000-0000-0000-0000-000000000000')", stored: true)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("pk_ie_registration_channels", x => x.id);
-                    table.UniqueConstraint("ak_registration_channels_tenant_id_event_id_registration_workflow_id_registration_requirement_id_id", x => new { x.tenant_id, x.event_id, x.registration_workflow_id, x.registration_requirement_id, x.id });
-                    table.UniqueConstraint("ak_registration_channels_tenant_id_event_id_registration_workflow_id_registration_requirement_id_id_registration_provider_binding_key", x => new { x.tenant_id, x.event_id, x.registration_workflow_id, x.registration_requirement_id, x.id, x.registration_provider_binding_key });
-                    table.CheckConstraint("ck_registration_channels_provider_shape", "(is_native = true AND registration_provider_binding_id IS NULL AND registration_provider_binding_key = '00000000-0000-0000-0000-000000000000') OR (is_native = false AND registration_provider_binding_id IS NOT NULL AND registration_provider_binding_key = registration_provider_binding_id)");
-                    table.ForeignKey(
-                        name: "fk_ie_registration_channels_ie_events_tenant_id_event_id",
-                        columns: x => new { x.tenant_id, x.event_id },
-                        principalTable: "ie_events",
-                        principalColumns: new[] { "tenant_id", "id" },
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "fk_ie_registration_channels_registration_requirements_tenant_id_event_id_registration_workflow_id_registration_requirement_id",
-                        columns: x => new { x.tenant_id, x.event_id, x.registration_workflow_id, x.registration_requirement_id },
-                        principalTable: "ie_registration_requirements",
-                        principalColumns: new[] { "tenant_id", "event_id", "registration_workflow_id", "id" },
-                        onDelete: ReferentialAction.Cascade);
-                    table.ForeignKey(
-                        name: "fk_ie_registration_channels_tenants_tenant_id",
-                        column: x => x.tenant_id,
-                        principalTable: "ie_tenants",
-                        principalColumn: "id",
                         onDelete: ReferentialAction.Restrict);
                 });
 
@@ -9798,29 +10085,17 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "ie_registration_attempts",
+                name: "ie_registration_channels",
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "TEXT", nullable: false),
                     tenant_id = table.Column<Guid>(type: "TEXT", nullable: false),
                     event_id = table.Column<Guid>(type: "TEXT", nullable: false),
-                    registration_order_id = table.Column<Guid>(type: "TEXT", nullable: false),
                     registration_workflow_id = table.Column<Guid>(type: "TEXT", nullable: false),
                     registration_requirement_id = table.Column<Guid>(type: "TEXT", nullable: false),
-                    registration_channel_id = table.Column<Guid>(type: "TEXT", nullable: false),
-                    registration_form_id = table.Column<Guid>(type: "TEXT", nullable: false),
-                    registration_form_version_id = table.Column<Guid>(type: "TEXT", nullable: false),
+                    ordinal = table.Column<int>(type: "INTEGER", nullable: false),
                     registration_provider_binding_id = table.Column<Guid>(type: "TEXT", nullable: true),
-                    provider_mapping_revision_hash = table.Column<string>(type: "TEXT", maxLength: 44, nullable: true),
-                    capability_token_hash = table.Column<string>(type: "TEXT", maxLength: 44, nullable: false),
-                    expires_at = table.Column<DateTime>(type: "TEXT", nullable: false),
-                    consumed_at = table.Column<DateTime>(type: "TEXT", nullable: true),
-                    submission_consumption_claim_id = table.Column<Guid>(type: "TEXT", nullable: true),
-                    superseded_at = table.Column<DateTime>(type: "TEXT", nullable: true),
-                    superseded_by_registration_attempt_id = table.Column<Guid>(type: "TEXT", nullable: true),
-                    supersession_reason = table.Column<string>(type: "TEXT", maxLength: 500, nullable: true),
-                    status_id = table.Column<int>(type: "INTEGER", nullable: false),
-                    concurrency_stamp = table.Column<Guid>(type: "TEXT", nullable: false),
+                    is_native = table.Column<bool>(type: "INTEGER", nullable: false),
                     created_at = table.Column<DateTime>(type: "TEXT", nullable: false),
                     created_by = table.Column<Guid>(type: "TEXT", nullable: true),
                     updated_at = table.Column<DateTime>(type: "TEXT", nullable: true),
@@ -9828,79 +10103,89 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                     is_deleted = table.Column<bool>(type: "INTEGER", nullable: false, defaultValue: false),
                     deleted_at = table.Column<DateTime>(type: "TEXT", nullable: true),
                     deleted_by = table.Column<Guid>(type: "TEXT", nullable: true),
+                    concurrency_stamp = table.Column<Guid>(type: "TEXT", nullable: false),
                     registration_provider_binding_key = table.Column<Guid>(type: "TEXT", nullable: false, computedColumnSql: "COALESCE(registration_provider_binding_id, '00000000-0000-0000-0000-000000000000')", stored: true)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("pk_ie_registration_attempts", x => x.id);
-                    table.UniqueConstraint("ak_registration_attempts_tenant_id_event_id_registration_order_id_registration_workflow_id_registration_requirement_id_registration_channel_id_registration_form_id_id", x => new { x.tenant_id, x.event_id, x.registration_order_id, x.registration_workflow_id, x.registration_requirement_id, x.registration_channel_id, x.registration_form_id, x.id });
-                    table.UniqueConstraint("ak_registration_attempts_tenant_id_event_id_registration_order_id_registration_workflow_id_registration_requirement_id_registration_channel_id_registration_form_id_registration_form_version_id_id", x => new { x.tenant_id, x.event_id, x.registration_order_id, x.registration_workflow_id, x.registration_requirement_id, x.registration_channel_id, x.registration_form_id, x.registration_form_version_id, x.id });
-                    table.UniqueConstraint("ak_registration_attempts_tenant_id_id", x => new { x.tenant_id, x.id });
-                    table.CheckConstraint("ck_registration_attempts_consumption", "(status_id = 2 AND consumed_at IS NOT NULL) OR (status_id <> 2 AND consumed_at IS NULL AND submission_consumption_claim_id IS NULL)");
-                    table.CheckConstraint("ck_registration_attempts_expiry", "expires_at > created_at");
-                    table.CheckConstraint("ck_registration_attempts_provider_key", "(registration_provider_binding_id IS NULL AND registration_provider_binding_key = '00000000-0000-0000-0000-000000000000') OR (registration_provider_binding_id IS NOT NULL AND registration_provider_binding_key = registration_provider_binding_id)");
-                    table.CheckConstraint("ck_registration_attempts_provider_pair", "(registration_provider_binding_id IS NULL) = (provider_mapping_revision_hash IS NULL)");
-                    table.CheckConstraint("ck_registration_attempts_supersession", "(status_id = 4 AND superseded_at IS NOT NULL AND superseded_by_registration_attempt_id IS NOT NULL AND supersession_reason IS NOT NULL) OR (status_id <> 4 AND superseded_at IS NULL AND superseded_by_registration_attempt_id IS NULL AND supersession_reason IS NULL)");
+                    table.PrimaryKey("pk_ie_registration_channels", x => x.id);
+                    table.UniqueConstraint("ak_registration_channels_tenant_id_event_id_registration_workflow_id_registration_requirement_id_id", x => new { x.tenant_id, x.event_id, x.registration_workflow_id, x.registration_requirement_id, x.id });
+                    table.UniqueConstraint("ak_registration_channels_tenant_id_event_id_registration_workflow_id_registration_requirement_id_id_registration_provider_binding_key", x => new { x.tenant_id, x.event_id, x.registration_workflow_id, x.registration_requirement_id, x.id, x.registration_provider_binding_key });
+                    table.CheckConstraint("ck_registration_channels_provider_shape", "(is_native = true AND registration_provider_binding_id IS NULL AND registration_provider_binding_key = '00000000-0000-0000-0000-000000000000') OR (is_native = false AND registration_provider_binding_id IS NOT NULL AND registration_provider_binding_key = registration_provider_binding_id)");
                     table.ForeignKey(
-                        name: "fk_ie_registration_attempts_ie_events_tenant_id_event_id",
+                        name: "fk_ie_registration_channels_ie_events_tenant_id_event_id",
                         columns: x => new { x.tenant_id, x.event_id },
                         principalTable: "ie_events",
                         principalColumns: new[] { "tenant_id", "id" },
                         onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
-                        name: "fk_ie_registration_attempts_ie_registration_attempts_tenant_id_event_id_registration_order_id_registration_workflow_id_registration_requirement_id_registration_channel_id_registration_form_id_superseded_by_registration_attempt_id",
-                        columns: x => new { x.tenant_id, x.event_id, x.registration_order_id, x.registration_workflow_id, x.registration_requirement_id, x.registration_channel_id, x.registration_form_id, x.superseded_by_registration_attempt_id },
-                        principalTable: "ie_registration_attempts",
-                        principalColumns: new[] { "tenant_id", "event_id", "registration_order_id", "registration_workflow_id", "registration_requirement_id", "registration_channel_id", "registration_form_id", "id" },
+                        name: "fk_ie_registration_channels_registration_provider_bindings_tenant_id_registration_provider_binding_id",
+                        columns: x => new { x.tenant_id, x.registration_provider_binding_id },
+                        principalTable: "ie_registration_provider_bindings",
+                        principalColumns: new[] { "tenant_id", "id" },
                         onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
-                        name: "fk_ie_registration_attempts_registration_attempt_statuses_status_id",
-                        column: x => x.status_id,
-                        principalTable: "ie_registration_attempt_statuses",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "fk_ie_registration_attempts_registration_channels_tenant_id_event_id_registration_workflow_id_registration_requirement_id_registration_channel_id_registration_provider_binding_key",
-                        columns: x => new { x.tenant_id, x.event_id, x.registration_workflow_id, x.registration_requirement_id, x.registration_channel_id, x.registration_provider_binding_key },
-                        principalTable: "ie_registration_channels",
-                        principalColumns: new[] { "tenant_id", "event_id", "registration_workflow_id", "registration_requirement_id", "id", "registration_provider_binding_key" },
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "fk_ie_registration_attempts_registration_form_versions_tenant_id_event_id_registration_form_id_registration_form_version_id",
-                        columns: x => new { x.tenant_id, x.event_id, x.registration_form_id, x.registration_form_version_id },
-                        principalTable: "ie_registration_form_versions",
-                        principalColumns: new[] { "tenant_id", "event_id", "registration_form_id", "id" },
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "fk_ie_registration_attempts_registration_forms_tenant_id_event_id_registration_form_id",
-                        columns: x => new { x.tenant_id, x.event_id, x.registration_form_id },
-                        principalTable: "ie_registration_forms",
-                        principalColumns: new[] { "tenant_id", "event_id", "id" },
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "fk_ie_registration_attempts_registration_orders_tenant_id_event_id_registration_workflow_id_registration_order_id",
-                        columns: x => new { x.tenant_id, x.event_id, x.registration_workflow_id, x.registration_order_id },
-                        principalTable: "ie_registration_orders",
-                        principalColumns: new[] { "tenant_id", "event_id", "registration_workflow_version_key", "id" },
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "fk_ie_registration_attempts_registration_requirements_tenant_id_event_id_registration_workflow_id_registration_requirement_id",
+                        name: "fk_ie_registration_channels_registration_requirements_tenant_id_event_id_registration_workflow_id_registration_requirement_id",
                         columns: x => new { x.tenant_id, x.event_id, x.registration_workflow_id, x.registration_requirement_id },
                         principalTable: "ie_registration_requirements",
                         principalColumns: new[] { "tenant_id", "event_id", "registration_workflow_id", "id" },
-                        onDelete: ReferentialAction.Restrict);
+                        onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
-                        name: "fk_ie_registration_attempts_registration_workflows_tenant_id_event_id_registration_workflow_id",
-                        columns: x => new { x.tenant_id, x.event_id, x.registration_workflow_id },
-                        principalTable: "ie_registration_workflows",
-                        principalColumns: new[] { "tenant_id", "event_id", "id" },
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "fk_ie_registration_attempts_tenants_tenant_id",
+                        name: "fk_ie_registration_channels_tenants_tenant_id",
                         column: x => x.tenant_id,
                         principalTable: "ie_tenants",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "ie_registration_provider_capabilities",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "TEXT", nullable: false),
+                    tenant_id = table.Column<Guid>(type: "TEXT", nullable: false),
+                    registration_provider_binding_id = table.Column<Guid>(type: "TEXT", nullable: false),
+                    provider_code = table.Column<string>(type: "TEXT", maxLength: 100, nullable: false),
+                    deployment_kind = table.Column<string>(type: "TEXT", maxLength: 100, nullable: false),
+                    api_version = table.Column<string>(type: "TEXT", maxLength: 100, nullable: false),
+                    adapter_policy_version = table.Column<string>(type: "TEXT", maxLength: 100, nullable: false),
+                    conformance_evidence_revision = table.Column<string>(type: "TEXT", maxLength: 200, nullable: false),
+                    capability_code = table.Column<string>(type: "TEXT", maxLength: 100, nullable: false),
+                    is_deleted = table.Column<bool>(type: "INTEGER", nullable: false, defaultValue: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_ie_registration_provider_capabilities", x => x.id);
+                    table.ForeignKey(
+                        name: "fk_ie_registration_provider_capabilities_ie_registration_provider_bindings_tenant_id_registration_provider_binding_id",
+                        columns: x => new { x.tenant_id, x.registration_provider_binding_id },
+                        principalTable: "ie_registration_provider_bindings",
+                        principalColumns: new[] { "tenant_id", "id" },
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "ie_registration_provider_field_mappings",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "TEXT", nullable: false),
+                    tenant_id = table.Column<Guid>(type: "TEXT", nullable: false),
+                    registration_provider_binding_id = table.Column<Guid>(type: "TEXT", nullable: false),
+                    platform_field_key = table.Column<string>(type: "TEXT", maxLength: 200, nullable: false),
+                    provider_field_key = table.Column<string>(type: "TEXT", maxLength: 200, nullable: false),
+                    is_required = table.Column<bool>(type: "INTEGER", nullable: false),
+                    is_deleted = table.Column<bool>(type: "INTEGER", nullable: false, defaultValue: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_ie_registration_provider_field_mappings", x => x.id);
+                    table.UniqueConstraint("ak_registration_provider_field_mappings_tenant_id_registration_provider_binding_id_id", x => new { x.tenant_id, x.registration_provider_binding_id, x.id });
+                    table.ForeignKey(
+                        name: "fk_ie_registration_provider_field_mappings_ie_registration_provider_bindings_tenant_id_registration_provider_binding_id",
+                        columns: x => new { x.tenant_id, x.registration_provider_binding_id },
+                        principalTable: "ie_registration_provider_bindings",
+                        principalColumns: new[] { "tenant_id", "id" },
+                        onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.CreateTable(
@@ -10121,6 +10406,192 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "ie_registration_attempts",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "TEXT", nullable: false),
+                    tenant_id = table.Column<Guid>(type: "TEXT", nullable: false),
+                    event_id = table.Column<Guid>(type: "TEXT", nullable: false),
+                    registration_order_id = table.Column<Guid>(type: "TEXT", nullable: false),
+                    registration_workflow_id = table.Column<Guid>(type: "TEXT", nullable: false),
+                    registration_requirement_id = table.Column<Guid>(type: "TEXT", nullable: false),
+                    registration_channel_id = table.Column<Guid>(type: "TEXT", nullable: false),
+                    registration_form_id = table.Column<Guid>(type: "TEXT", nullable: false),
+                    registration_form_version_id = table.Column<Guid>(type: "TEXT", nullable: false),
+                    registration_provider_binding_id = table.Column<Guid>(type: "TEXT", nullable: true),
+                    provider_mapping_revision_hash = table.Column<string>(type: "TEXT", maxLength: 44, nullable: true),
+                    capability_token_hash = table.Column<string>(type: "TEXT", maxLength: 44, nullable: false),
+                    expires_at = table.Column<DateTime>(type: "TEXT", nullable: false),
+                    consumed_at = table.Column<DateTime>(type: "TEXT", nullable: true),
+                    submission_consumption_claim_id = table.Column<Guid>(type: "TEXT", nullable: true),
+                    superseded_at = table.Column<DateTime>(type: "TEXT", nullable: true),
+                    superseded_by_registration_attempt_id = table.Column<Guid>(type: "TEXT", nullable: true),
+                    supersession_reason = table.Column<string>(type: "TEXT", maxLength: 500, nullable: true),
+                    status_id = table.Column<int>(type: "INTEGER", nullable: false),
+                    concurrency_stamp = table.Column<Guid>(type: "TEXT", nullable: false),
+                    created_at = table.Column<DateTime>(type: "TEXT", nullable: false),
+                    created_by = table.Column<Guid>(type: "TEXT", nullable: true),
+                    updated_at = table.Column<DateTime>(type: "TEXT", nullable: true),
+                    updated_by = table.Column<Guid>(type: "TEXT", nullable: true),
+                    is_deleted = table.Column<bool>(type: "INTEGER", nullable: false, defaultValue: false),
+                    deleted_at = table.Column<DateTime>(type: "TEXT", nullable: true),
+                    deleted_by = table.Column<Guid>(type: "TEXT", nullable: true),
+                    provider_mapping_revision_hash_key = table.Column<string>(type: "TEXT", maxLength: 44, nullable: false, computedColumnSql: "COALESCE(provider_mapping_revision_hash, '')", stored: true),
+                    registration_provider_binding_key = table.Column<Guid>(type: "TEXT", nullable: false, computedColumnSql: "COALESCE(registration_provider_binding_id, '00000000-0000-0000-0000-000000000000')", stored: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_ie_registration_attempts", x => x.id);
+                    table.UniqueConstraint("ak_registration_attempts_tenant_id_event_id_registration_order_id_registration_workflow_id_registration_requirement_id_registration_channel_id_registration_form_id_id", x => new { x.tenant_id, x.event_id, x.registration_order_id, x.registration_workflow_id, x.registration_requirement_id, x.registration_channel_id, x.registration_form_id, x.id });
+                    table.UniqueConstraint("ak_registration_attempts_tenant_id_event_id_registration_order_id_registration_workflow_id_registration_requirement_id_registration_channel_id_registration_form_id_registration_form_version_id_id", x => new { x.tenant_id, x.event_id, x.registration_order_id, x.registration_workflow_id, x.registration_requirement_id, x.registration_channel_id, x.registration_form_id, x.registration_form_version_id, x.id });
+                    table.UniqueConstraint("ak_registration_attempts_tenant_id_id", x => new { x.tenant_id, x.id });
+                    table.CheckConstraint("ck_registration_attempts_consumption", "(status_id = 2 AND consumed_at IS NOT NULL) OR (status_id <> 2 AND consumed_at IS NULL AND submission_consumption_claim_id IS NULL)");
+                    table.CheckConstraint("ck_registration_attempts_expiry", "expires_at > created_at");
+                    table.CheckConstraint("ck_registration_attempts_provider_key", "(registration_provider_binding_id IS NULL AND registration_provider_binding_key = '00000000-0000-0000-0000-000000000000') OR (registration_provider_binding_id IS NOT NULL AND registration_provider_binding_key = registration_provider_binding_id)");
+                    table.CheckConstraint("ck_registration_attempts_provider_pair", "(registration_provider_binding_id IS NULL) = (provider_mapping_revision_hash IS NULL)");
+                    table.CheckConstraint("ck_registration_attempts_supersession", "(status_id = 4 AND superseded_at IS NOT NULL AND superseded_by_registration_attempt_id IS NOT NULL AND supersession_reason IS NOT NULL) OR (status_id <> 4 AND superseded_at IS NULL AND superseded_by_registration_attempt_id IS NULL AND supersession_reason IS NULL)");
+                    table.ForeignKey(
+                        name: "fk_ie_registration_attempts_ie_events_tenant_id_event_id",
+                        columns: x => new { x.tenant_id, x.event_id },
+                        principalTable: "ie_events",
+                        principalColumns: new[] { "tenant_id", "id" },
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_ie_registration_attempts_ie_registration_attempts_tenant_id_event_id_registration_order_id_registration_workflow_id_registration_requirement_id_registration_channel_id_registration_form_id_superseded_by_registration_attempt_id",
+                        columns: x => new { x.tenant_id, x.event_id, x.registration_order_id, x.registration_workflow_id, x.registration_requirement_id, x.registration_channel_id, x.registration_form_id, x.superseded_by_registration_attempt_id },
+                        principalTable: "ie_registration_attempts",
+                        principalColumns: new[] { "tenant_id", "event_id", "registration_order_id", "registration_workflow_id", "registration_requirement_id", "registration_channel_id", "registration_form_id", "id" },
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_ie_registration_attempts_registration_attempt_statuses_status_id",
+                        column: x => x.status_id,
+                        principalTable: "ie_registration_attempt_statuses",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_ie_registration_attempts_registration_channels_tenant_id_event_id_registration_workflow_id_registration_requirement_id_registration_channel_id_registration_provider_binding_key",
+                        columns: x => new { x.tenant_id, x.event_id, x.registration_workflow_id, x.registration_requirement_id, x.registration_channel_id, x.registration_provider_binding_key },
+                        principalTable: "ie_registration_channels",
+                        principalColumns: new[] { "tenant_id", "event_id", "registration_workflow_id", "registration_requirement_id", "id", "registration_provider_binding_key" },
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_ie_registration_attempts_registration_form_versions_tenant_id_event_id_registration_form_id_registration_form_version_id",
+                        columns: x => new { x.tenant_id, x.event_id, x.registration_form_id, x.registration_form_version_id },
+                        principalTable: "ie_registration_form_versions",
+                        principalColumns: new[] { "tenant_id", "event_id", "registration_form_id", "id" },
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_ie_registration_attempts_registration_forms_tenant_id_event_id_registration_form_id",
+                        columns: x => new { x.tenant_id, x.event_id, x.registration_form_id },
+                        principalTable: "ie_registration_forms",
+                        principalColumns: new[] { "tenant_id", "event_id", "id" },
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_ie_registration_attempts_registration_orders_tenant_id_event_id_registration_workflow_id_registration_order_id",
+                        columns: x => new { x.tenant_id, x.event_id, x.registration_workflow_id, x.registration_order_id },
+                        principalTable: "ie_registration_orders",
+                        principalColumns: new[] { "tenant_id", "event_id", "registration_workflow_version_key", "id" },
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_ie_registration_attempts_registration_provider_bindings_tenant_id_registration_provider_binding_id_provider_mapping_revision_hash_key",
+                        columns: x => new { x.tenant_id, x.registration_provider_binding_id, x.provider_mapping_revision_hash_key },
+                        principalTable: "ie_registration_provider_bindings",
+                        principalColumns: new[] { "tenant_id", "id", "published_mapping_revision_hash_key" },
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_ie_registration_attempts_registration_requirements_tenant_id_event_id_registration_workflow_id_registration_requirement_id",
+                        columns: x => new { x.tenant_id, x.event_id, x.registration_workflow_id, x.registration_requirement_id },
+                        principalTable: "ie_registration_requirements",
+                        principalColumns: new[] { "tenant_id", "event_id", "registration_workflow_id", "id" },
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_ie_registration_attempts_registration_workflows_tenant_id_event_id_registration_workflow_id",
+                        columns: x => new { x.tenant_id, x.event_id, x.registration_workflow_id },
+                        principalTable: "ie_registration_workflows",
+                        principalColumns: new[] { "tenant_id", "event_id", "id" },
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_ie_registration_attempts_tenants_tenant_id",
+                        column: x => x.tenant_id,
+                        principalTable: "ie_tenants",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "ie_registration_provider_option_mappings",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "TEXT", nullable: false),
+                    tenant_id = table.Column<Guid>(type: "TEXT", nullable: false),
+                    registration_provider_binding_id = table.Column<Guid>(type: "TEXT", nullable: false),
+                    registration_provider_field_mapping_id = table.Column<Guid>(type: "TEXT", nullable: false),
+                    platform_option_key = table.Column<string>(type: "TEXT", maxLength: 200, nullable: false),
+                    provider_option_key = table.Column<string>(type: "TEXT", maxLength: 200, nullable: false),
+                    is_deleted = table.Column<bool>(type: "INTEGER", nullable: false, defaultValue: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_ie_registration_provider_option_mappings", x => x.id);
+                    table.ForeignKey(
+                        name: "fk_ie_registration_provider_option_mappings_ie_registration_provider_bindings_tenant_id_registration_provider_binding_id",
+                        columns: x => new { x.tenant_id, x.registration_provider_binding_id },
+                        principalTable: "ie_registration_provider_bindings",
+                        principalColumns: new[] { "tenant_id", "id" },
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "fk_ie_registration_provider_option_mappings_ie_registration_provider_field_mappings_tenant_id_registration_provider_binding_id_registration_provider_field_mapping_id",
+                        columns: x => new { x.tenant_id, x.registration_provider_binding_id, x.registration_provider_field_mapping_id },
+                        principalTable: "ie_registration_provider_field_mappings",
+                        principalColumns: new[] { "tenant_id", "registration_provider_binding_id", "id" },
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "ie_webhook_provider_publication_attempts",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "TEXT", nullable: false),
+                    tenant_id = table.Column<Guid>(type: "TEXT", nullable: false),
+                    webhook_provider_publication_id = table.Column<Guid>(type: "TEXT", nullable: false),
+                    attempt_number = table.Column<int>(type: "INTEGER", nullable: false),
+                    publication_fence = table.Column<long>(type: "INTEGER", nullable: false),
+                    outcome_id = table.Column<int>(type: "INTEGER", nullable: false),
+                    started_at = table.Column<DateTime>(type: "TEXT", nullable: false),
+                    recorded_at = table.Column<DateTime>(type: "TEXT", nullable: false),
+                    external_provider_message_id = table.Column<string>(type: "TEXT", maxLength: 500, nullable: true),
+                    failure_category = table.Column<string>(type: "TEXT", maxLength: 100, nullable: true),
+                    safe_detail = table.Column<string>(type: "TEXT", maxLength: 1024, nullable: true),
+                    created_at = table.Column<DateTime>(type: "TEXT", nullable: false),
+                    created_by = table.Column<Guid>(type: "TEXT", nullable: true),
+                    updated_at = table.Column<DateTime>(type: "TEXT", nullable: true),
+                    updated_by = table.Column<Guid>(type: "TEXT", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_ie_webhook_provider_publication_attempts", x => x.id);
+                    table.UniqueConstraint("ak_webhook_provider_publication_attempts_tenant_id_id", x => new { x.tenant_id, x.id });
+                    table.ForeignKey(
+                        name: "fk_ie_webhook_provider_publication_attempts_ie_tenants_tenant_id",
+                        column: x => x.tenant_id,
+                        principalTable: "ie_tenants",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_ie_webhook_provider_publication_attempts_ie_webhook_provider_publications_tenant_id_webhook_provider_publication_id",
+                        columns: x => new { x.tenant_id, x.webhook_provider_publication_id },
+                        principalTable: "ie_webhook_provider_publications",
+                        principalColumns: new[] { "tenant_id", "id" },
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_ie_webhook_provider_publication_attempts_webhook_provider_publication_attempt_outcomes_outcome_id",
+                        column: x => x.outcome_id,
+                        principalTable: "ie_webhook_provider_publication_attempt_outcomes",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "ie_registration_submissions",
                 columns: table => new
                 {
@@ -10193,50 +10664,6 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         name: "fk_ie_registration_submissions_tenants_tenant_id",
                         column: x => x.tenant_id,
                         principalTable: "ie_tenants",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Restrict);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "ie_webhook_provider_publication_attempts",
-                columns: table => new
-                {
-                    id = table.Column<Guid>(type: "TEXT", nullable: false),
-                    tenant_id = table.Column<Guid>(type: "TEXT", nullable: false),
-                    webhook_provider_publication_id = table.Column<Guid>(type: "TEXT", nullable: false),
-                    attempt_number = table.Column<int>(type: "INTEGER", nullable: false),
-                    publication_fence = table.Column<long>(type: "INTEGER", nullable: false),
-                    outcome_id = table.Column<int>(type: "INTEGER", nullable: false),
-                    started_at = table.Column<DateTime>(type: "TEXT", nullable: false),
-                    recorded_at = table.Column<DateTime>(type: "TEXT", nullable: false),
-                    external_provider_message_id = table.Column<string>(type: "TEXT", maxLength: 500, nullable: true),
-                    failure_category = table.Column<string>(type: "TEXT", maxLength: 100, nullable: true),
-                    safe_detail = table.Column<string>(type: "TEXT", maxLength: 1024, nullable: true),
-                    created_at = table.Column<DateTime>(type: "TEXT", nullable: false),
-                    created_by = table.Column<Guid>(type: "TEXT", nullable: true),
-                    updated_at = table.Column<DateTime>(type: "TEXT", nullable: true),
-                    updated_by = table.Column<Guid>(type: "TEXT", nullable: true)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("pk_ie_webhook_provider_publication_attempts", x => x.id);
-                    table.UniqueConstraint("ak_webhook_provider_publication_attempts_tenant_id_id", x => new { x.tenant_id, x.id });
-                    table.ForeignKey(
-                        name: "fk_ie_webhook_provider_publication_attempts_ie_tenants_tenant_id",
-                        column: x => x.tenant_id,
-                        principalTable: "ie_tenants",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "fk_ie_webhook_provider_publication_attempts_ie_webhook_provider_publications_tenant_id_webhook_provider_publication_id",
-                        columns: x => new { x.tenant_id, x.webhook_provider_publication_id },
-                        principalTable: "ie_webhook_provider_publications",
-                        principalColumns: new[] { "tenant_id", "id" },
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "fk_ie_webhook_provider_publication_attempts_webhook_provider_publication_attempt_outcomes_outcome_id",
-                        column: x => x.outcome_id,
-                        principalTable: "ie_webhook_provider_publication_attempt_outcomes",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Restrict);
                 });
@@ -16052,6 +16479,11 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                 columns: new[] { "tenant_id", "event_id", "registration_workflow_id", "registration_requirement_id", "registration_channel_id", "registration_provider_binding_key" });
 
             migrationBuilder.CreateIndex(
+                name: "ix_ie_registration_attempts_tenant_id_registration_provider_binding_id_provider_mapping_revision_hash_key",
+                table: "ie_registration_attempts",
+                columns: new[] { "tenant_id", "registration_provider_binding_id", "provider_mapping_revision_hash_key" });
+
+            migrationBuilder.CreateIndex(
                 name: "ix_ie_registration_attempts_tenant_id_status_id_expires_at",
                 table: "ie_registration_attempts",
                 columns: new[] { "tenant_id", "status_id", "expires_at" });
@@ -16071,6 +16503,11 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                 name: "ix_ie_registration_channels_tenant_id_event_id",
                 table: "ie_registration_channels",
                 columns: new[] { "tenant_id", "event_id" });
+
+            migrationBuilder.CreateIndex(
+                name: "ix_ie_registration_channels_tenant_id_registration_provider_binding_id",
+                table: "ie_registration_channels",
+                columns: new[] { "tenant_id", "registration_provider_binding_id" });
 
             migrationBuilder.CreateIndex(
                 name: "ix_ie_registration_consent_records_answer_subject_type_id",
@@ -16358,6 +16795,178 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                 columns: new[] { "tenant_id", "registration_order_id", "guardian_participant_id" });
 
             migrationBuilder.CreateIndex(
+                name: "ix_ie_registration_provider_approved_origins_tenant_id_registration_provider_connection_id_origin",
+                table: "ie_registration_provider_approved_origins",
+                columns: new[] { "tenant_id", "registration_provider_connection_id", "origin" },
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "ix_ie_registration_provider_binding_states_master_code",
+                table: "ie_registration_provider_binding_states",
+                column: "master_code",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "ix_ie_registration_provider_bindings_collection_mode_id",
+                table: "ie_registration_provider_bindings",
+                column: "collection_mode_id");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_ie_registration_provider_bindings_completion_mode_id",
+                table: "ie_registration_provider_bindings",
+                column: "completion_mode_id");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_ie_registration_provider_bindings_drift_class_id",
+                table: "ie_registration_provider_bindings",
+                column: "drift_class_id");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_ie_registration_provider_bindings_presentation_mode_id",
+                table: "ie_registration_provider_bindings",
+                column: "presentation_mode_id");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_ie_registration_provider_bindings_state_id",
+                table: "ie_registration_provider_bindings",
+                column: "state_id");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_ie_registration_provider_bindings_tenant_id_registration_form_id_registration_form_version_id",
+                table: "ie_registration_provider_bindings",
+                columns: new[] { "tenant_id", "registration_form_id", "registration_form_version_id" });
+
+            migrationBuilder.CreateIndex(
+                name: "ix_ie_registration_provider_bindings_tenant_id_registration_provider_connection_id_registration_form_version_id",
+                table: "ie_registration_provider_bindings",
+                columns: new[] { "tenant_id", "registration_provider_connection_id", "registration_form_version_id" },
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "ix_ie_registration_provider_bindings_trust_level_id",
+                table: "ie_registration_provider_bindings",
+                column: "trust_level_id");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_ie_registration_provider_capabilities_registration_provider_binding_id_provider_code_deployment_kind_api_version_adapter_policy_version_conformance_evidence_revision_capability_code",
+                table: "ie_registration_provider_capabilities",
+                columns: new[] { "registration_provider_binding_id", "provider_code", "deployment_kind", "api_version", "adapter_policy_version", "conformance_evidence_revision", "capability_code" },
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "ix_ie_registration_provider_capabilities_tenant_id_registration_provider_binding_id",
+                table: "ie_registration_provider_capabilities",
+                columns: new[] { "tenant_id", "registration_provider_binding_id" });
+
+            migrationBuilder.CreateIndex(
+                name: "ix_ie_registration_provider_collection_modes_master_code",
+                table: "ie_registration_provider_collection_modes",
+                column: "master_code",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "ix_ie_registration_provider_completion_modes_master_code",
+                table: "ie_registration_provider_completion_modes",
+                column: "master_code",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "ix_ie_registration_provider_connections_deployment_kind_id",
+                table: "ie_registration_provider_connections",
+                column: "deployment_kind_id");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_ie_registration_provider_connections_provider_kind_id",
+                table: "ie_registration_provider_connections",
+                column: "provider_kind_id");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_ie_registration_provider_connections_tenant_id_api_token_secret_binding_id",
+                table: "ie_registration_provider_connections",
+                columns: new[] { "tenant_id", "api_token_secret_binding_id" });
+
+            migrationBuilder.CreateIndex(
+                name: "ix_ie_registration_provider_connections_tenant_id_name",
+                table: "ie_registration_provider_connections",
+                columns: new[] { "tenant_id", "name" },
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "ix_ie_registration_provider_connections_tenant_id_webhook_secret_binding_id",
+                table: "ie_registration_provider_connections",
+                columns: new[] { "tenant_id", "webhook_secret_binding_id" });
+
+            migrationBuilder.CreateIndex(
+                name: "ix_ie_registration_provider_deployment_kinds_master_code",
+                table: "ie_registration_provider_deployment_kinds",
+                column: "master_code",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "ix_ie_registration_provider_drift_classes_master_code",
+                table: "ie_registration_provider_drift_classes",
+                column: "master_code",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "ix_ie_registration_provider_field_mappings_registration_provider_binding_id_platform_field_key",
+                table: "ie_registration_provider_field_mappings",
+                columns: new[] { "registration_provider_binding_id", "platform_field_key" },
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "ix_ie_registration_provider_field_mappings_registration_provider_binding_id_provider_field_key",
+                table: "ie_registration_provider_field_mappings",
+                columns: new[] { "registration_provider_binding_id", "provider_field_key" },
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "ix_ie_registration_provider_kinds_master_code",
+                table: "ie_registration_provider_kinds",
+                column: "master_code",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "ix_ie_registration_provider_option_mappings_registration_provider_field_mapping_id_platform_option_key",
+                table: "ie_registration_provider_option_mappings",
+                columns: new[] { "registration_provider_field_mapping_id", "platform_option_key" },
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "ix_ie_registration_provider_option_mappings_tenant_id_registration_provider_binding_id_registration_provider_field_mapping_id",
+                table: "ie_registration_provider_option_mappings",
+                columns: new[] { "tenant_id", "registration_provider_binding_id", "registration_provider_field_mapping_id" });
+
+            migrationBuilder.CreateIndex(
+                name: "ix_ie_registration_provider_presentation_modes_master_code",
+                table: "ie_registration_provider_presentation_modes",
+                column: "master_code",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "ix_ie_registration_provider_schema_authorities_master_code",
+                table: "ie_registration_provider_schema_authorities",
+                column: "master_code",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "ix_ie_registration_provider_schema_revisions_schema_authority_id",
+                table: "ie_registration_provider_schema_revisions",
+                column: "schema_authority_id");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_ie_registration_provider_schema_revisions_tenant_id_registration_provider_connection_id_revision_hash",
+                table: "ie_registration_provider_schema_revisions",
+                columns: new[] { "tenant_id", "registration_provider_connection_id", "revision_hash" },
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "ix_ie_registration_provider_trust_levels_master_code",
+                table: "ie_registration_provider_trust_levels",
+                column: "master_code",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
                 name: "ix_ie_registration_requirement_completion_effects_master_code",
                 table: "ie_registration_requirement_completion_effects",
                 column: "master_code",
@@ -16592,14 +17201,14 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
             migrationBuilder.CreateIndex(
                 name: "ix_secret_bindings_setting_key_instance_unique",
                 table: "ie_secret_bindings",
-                column: "setting_key",
+                columns: new[] { "setting_key", "qualifier" },
                 unique: true,
                 filter: "scope_id IS NULL");
 
             migrationBuilder.CreateIndex(
                 name: "ix_secret_bindings_setting_key_scope_id_tenant_unique",
                 table: "ie_secret_bindings",
-                columns: new[] { "setting_key", "scope_id" },
+                columns: new[] { "setting_key", "scope_id", "qualifier" },
                 unique: true,
                 filter: "scope_id IS NOT NULL");
 
@@ -18612,6 +19221,18 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                 name: "ie_registration_participant_pii");
 
             migrationBuilder.DropTable(
+                name: "ie_registration_provider_approved_origins");
+
+            migrationBuilder.DropTable(
+                name: "ie_registration_provider_capabilities");
+
+            migrationBuilder.DropTable(
+                name: "ie_registration_provider_option_mappings");
+
+            migrationBuilder.DropTable(
+                name: "ie_registration_provider_schema_revisions");
+
+            migrationBuilder.DropTable(
                 name: "ie_registration_requirement_fulfillments");
 
             migrationBuilder.DropTable(
@@ -18816,9 +19437,6 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                 name: "ie_incoming_webhook_redrive_results");
 
             migrationBuilder.DropTable(
-                name: "ie_secret_bindings");
-
-            migrationBuilder.DropTable(
                 name: "ie_email_dispatch_outbox");
 
             migrationBuilder.DropTable(
@@ -18868,6 +19486,12 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
             migrationBuilder.DropTable(
                 name: "ie_registration_inventory_hold_statuses");
+
+            migrationBuilder.DropTable(
+                name: "ie_registration_provider_field_mappings");
+
+            migrationBuilder.DropTable(
+                name: "ie_registration_provider_schema_authorities");
 
             migrationBuilder.DropTable(
                 name: "ie_registration_answer_subject_types");
@@ -18979,15 +19603,6 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
             migrationBuilder.DropTable(
                 name: "ie_external_api_key_statuses");
-
-            migrationBuilder.DropTable(
-                name: "ie_secret_source_types");
-
-            migrationBuilder.DropTable(
-                name: "ie_secret_validation_statuses");
-
-            migrationBuilder.DropTable(
-                name: "ie_setting_scopes");
 
             migrationBuilder.DropTable(
                 name: "ie_managed_tenant_provisioning_operations");
@@ -19125,9 +19740,6 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                 name: "ie_registration_orders");
 
             migrationBuilder.DropTable(
-                name: "ie_registration_form_versions");
-
-            migrationBuilder.DropTable(
                 name: "ie_event_capacity_pools");
 
             migrationBuilder.DropTable(
@@ -19135,6 +19747,9 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
             migrationBuilder.DropTable(
                 name: "ie_ticket_pricing_modes");
+
+            migrationBuilder.DropTable(
+                name: "ie_registration_provider_bindings");
 
             migrationBuilder.DropTable(
                 name: "ie_registration_requirements");
@@ -19149,16 +19764,34 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                 name: "ie_registration_order_statuses");
 
             migrationBuilder.DropTable(
-                name: "ie_registration_form_statuses");
-
-            migrationBuilder.DropTable(
-                name: "ie_registration_forms");
-
-            migrationBuilder.DropTable(
                 name: "ie_capacity_hold_policies");
 
             migrationBuilder.DropTable(
                 name: "ie_capacity_oversell_policies");
+
+            migrationBuilder.DropTable(
+                name: "ie_registration_form_versions");
+
+            migrationBuilder.DropTable(
+                name: "ie_registration_provider_binding_states");
+
+            migrationBuilder.DropTable(
+                name: "ie_registration_provider_collection_modes");
+
+            migrationBuilder.DropTable(
+                name: "ie_registration_provider_completion_modes");
+
+            migrationBuilder.DropTable(
+                name: "ie_registration_provider_connections");
+
+            migrationBuilder.DropTable(
+                name: "ie_registration_provider_drift_classes");
+
+            migrationBuilder.DropTable(
+                name: "ie_registration_provider_presentation_modes");
+
+            migrationBuilder.DropTable(
+                name: "ie_registration_provider_trust_levels");
 
             migrationBuilder.DropTable(
                 name: "ie_registration_answer_sync_modes");
@@ -19177,6 +19810,30 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
             migrationBuilder.DropTable(
                 name: "ie_ticket_catalog_statuses");
+
+            migrationBuilder.DropTable(
+                name: "ie_registration_form_statuses");
+
+            migrationBuilder.DropTable(
+                name: "ie_registration_forms");
+
+            migrationBuilder.DropTable(
+                name: "ie_registration_provider_deployment_kinds");
+
+            migrationBuilder.DropTable(
+                name: "ie_registration_provider_kinds");
+
+            migrationBuilder.DropTable(
+                name: "ie_secret_bindings");
+
+            migrationBuilder.DropTable(
+                name: "ie_secret_source_types");
+
+            migrationBuilder.DropTable(
+                name: "ie_secret_validation_statuses");
+
+            migrationBuilder.DropTable(
+                name: "ie_setting_scopes");
 
             migrationBuilder.DropTable(
                 name: "ie_actors");

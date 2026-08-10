@@ -148,6 +148,8 @@ public partial class FallbackAuthorizationService
             "islamuevent_event" when action is "create" => IsEventCreateAllowedForProfile(profile, resourceAttributes),
             "islamuevent_event" when action is AuthorizationActions.Events.ManageRegistrations
                 or AuthorizationActions.Events.ManageRegistrationWorkflow
+                or AuthorizationActions.Events.ManageRegistrationChannels
+                or AuthorizationActions.Events.ViewRegistrationProviderHealth
                 => EvaluateManageRegistrationsWithProfile(profile, eventAuthority, resourceId, resourceAttributes),
             "islamuevent_registration_form"
                 => EvaluateManageRegistrationsWithProfile(profile, eventAuthority, resourceId, resourceAttributes),

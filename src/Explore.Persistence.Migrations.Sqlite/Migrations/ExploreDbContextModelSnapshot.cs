@@ -17003,6 +17003,14 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnType("TEXT")
                         .HasColumnName("provider_mapping_revision_hash");
 
+                    b.Property<string>("ProviderMappingRevisionHashKey")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(44)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("provider_mapping_revision_hash_key")
+                        .HasComputedColumnSql("COALESCE(provider_mapping_revision_hash, '')", true);
+
                     b.Property<Guid>("RegistrationChannelId")
                         .HasColumnType("TEXT")
                         .HasColumnName("registration_channel_id");
@@ -17088,6 +17096,9 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                     b.HasIndex("TenantId", "CapabilityTokenHash")
                         .IsUnique()
                         .HasDatabaseName("ix_ie_registration_attempts_tenant_id_capability_token_hash");
+
+                    b.HasIndex("TenantId", "RegistrationProviderBindingId", "ProviderMappingRevisionHashKey")
+                        .HasDatabaseName("ix_ie_registration_attempts_tenant_id_registration_provider_binding_id_provider_mapping_revision_hash_key");
 
                     b.HasIndex("TenantId", "StatusId", "ExpiresAt")
                         .HasDatabaseName("ix_ie_registration_attempts_tenant_id_status_id_expires_at");
@@ -17244,6 +17255,9 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                     b.HasIndex("TenantId", "EventId")
                         .HasDatabaseName("ix_ie_registration_channels_tenant_id_event_id");
+
+                    b.HasIndex("TenantId", "RegistrationProviderBindingId")
+                        .HasDatabaseName("ix_ie_registration_channels_tenant_id_registration_provider_binding_id");
 
                     b.ToTable("ie_registration_channels", null, t =>
                         {
@@ -18267,6 +18281,9 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                     b.HasKey("Id")
                         .HasName("pk_ie_registration_form_versions");
 
+                    b.HasAlternateKey("TenantId", "RegistrationFormId", "Id")
+                        .HasName("ak_registration_form_versions_tenant_id_registration_form_id_id");
+
                     b.HasAlternateKey("TenantId", "EventId", "RegistrationFormId", "Id")
                         .HasName("ak_registration_form_versions_tenant_id_event_id_registration_form_id_id");
 
@@ -19073,6 +19090,830 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasDatabaseName("ix_ie_registration_participant_pii_tenant_id_normalized_email");
 
                     b.ToTable("ie_registration_participant_pii", (string)null);
+                });
+
+            modelBuilder.Entity("Explore.Domain.RegistrationProviderApprovedOrigin", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("deleted_by");
+
+                    b.Property<bool>("IsDeleted")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_deleted");
+
+                    b.Property<string>("Origin")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("origin");
+
+                    b.Property<Guid>("RegistrationProviderConnectionId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("registration_provider_connection_id");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_ie_registration_provider_approved_origins");
+
+                    b.HasAlternateKey("TenantId", "RegistrationProviderConnectionId", "Id")
+                        .HasName("ak_registration_provider_approved_origins_tenant_id_registration_provider_connection_id_id");
+
+                    b.HasIndex("TenantId", "RegistrationProviderConnectionId", "Origin")
+                        .IsUnique()
+                        .HasDatabaseName("ix_ie_registration_provider_approved_origins_tenant_id_registration_provider_connection_id_origin");
+
+                    b.ToTable("ie_registration_provider_approved_origins", (string)null);
+                });
+
+            modelBuilder.Entity("Explore.Domain.RegistrationProviderBinding", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("id");
+
+                    b.Property<int>("CollectionModeId")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("collection_mode_id");
+
+                    b.Property<int>("CompletionModeId")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("completion_mode_id");
+
+                    b.Property<Guid>("ConcurrencyStamp")
+                        .IsConcurrencyToken()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("concurrency_stamp");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("deleted_by");
+
+                    b.Property<int>("DriftClassId")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("drift_class_id");
+
+                    b.Property<bool>("IsDeleted")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_deleted");
+
+                    b.Property<int>("PresentationModeId")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("presentation_mode_id");
+
+                    b.Property<DateTime?>("PublishedAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("published_at");
+
+                    b.Property<string>("PublishedMappingRevisionHash")
+                        .HasMaxLength(44)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("published_mapping_revision_hash");
+
+                    b.Property<string>("PublishedMappingRevisionHashKey")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(44)
+                        .HasColumnType("TEXT")
+                        .HasDefaultValue("")
+                        .HasColumnName("published_mapping_revision_hash_key");
+
+                    b.Property<Guid>("RegistrationFormId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("registration_form_id");
+
+                    b.Property<Guid>("RegistrationFormVersionId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("registration_form_version_id");
+
+                    b.Property<Guid>("RegistrationProviderConnectionId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("registration_provider_connection_id");
+
+                    b.Property<int>("StateId")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("state_id");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<int>("TrustLevelId")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("trust_level_id");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_ie_registration_provider_bindings");
+
+                    b.HasAlternateKey("TenantId", "Id")
+                        .HasName("ak_registration_provider_bindings_tenant_id_id");
+
+                    b.HasAlternateKey("TenantId", "Id", "PublishedMappingRevisionHashKey")
+                        .HasName("ak_registration_provider_bindings_tenant_id_id_published_mapping_revision_hash_key");
+
+                    b.HasIndex("CollectionModeId")
+                        .HasDatabaseName("ix_ie_registration_provider_bindings_collection_mode_id");
+
+                    b.HasIndex("CompletionModeId")
+                        .HasDatabaseName("ix_ie_registration_provider_bindings_completion_mode_id");
+
+                    b.HasIndex("DriftClassId")
+                        .HasDatabaseName("ix_ie_registration_provider_bindings_drift_class_id");
+
+                    b.HasIndex("PresentationModeId")
+                        .HasDatabaseName("ix_ie_registration_provider_bindings_presentation_mode_id");
+
+                    b.HasIndex("StateId")
+                        .HasDatabaseName("ix_ie_registration_provider_bindings_state_id");
+
+                    b.HasIndex("TrustLevelId")
+                        .HasDatabaseName("ix_ie_registration_provider_bindings_trust_level_id");
+
+                    b.HasIndex("TenantId", "RegistrationFormId", "RegistrationFormVersionId")
+                        .HasDatabaseName("ix_ie_registration_provider_bindings_tenant_id_registration_form_id_registration_form_version_id");
+
+                    b.HasIndex("TenantId", "RegistrationProviderConnectionId", "RegistrationFormVersionId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_ie_registration_provider_bindings_tenant_id_registration_provider_connection_id_registration_form_version_id");
+
+                    b.ToTable("ie_registration_provider_bindings", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_registration_provider_bindings_publication", "(state_id = 2 AND published_mapping_revision_hash IS NOT NULL AND published_at IS NOT NULL) OR (state_id <> 2)");
+                        });
+                });
+
+            modelBuilder.Entity("Explore.Domain.RegistrationProviderBindingState", b =>
+                {
+                    b.Property<int>("Id")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("description");
+
+                    b.Property<string>("FullName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("full_name");
+
+                    b.Property<string>("MasterCode")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("master_code");
+
+                    b.HasKey("Id")
+                        .HasName("pk_ie_registration_provider_binding_states");
+
+                    b.HasIndex("MasterCode")
+                        .IsUnique()
+                        .HasDatabaseName("ix_ie_registration_provider_binding_states_master_code");
+
+                    b.ToTable("ie_registration_provider_binding_states", (string)null);
+                });
+
+            modelBuilder.Entity("Explore.Domain.RegistrationProviderCapability", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("id");
+
+                    b.Property<string>("AdapterPolicyVersion")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("adapter_policy_version");
+
+                    b.Property<string>("ApiVersion")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("api_version");
+
+                    b.Property<string>("CapabilityCode")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("capability_code");
+
+                    b.Property<string>("ConformanceEvidenceRevision")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("conformance_evidence_revision");
+
+                    b.Property<string>("DeploymentKind")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("deployment_kind");
+
+                    b.Property<bool>("IsDeleted")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_deleted");
+
+                    b.Property<string>("ProviderCode")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("provider_code");
+
+                    b.Property<Guid>("RegistrationProviderBindingId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("registration_provider_binding_id");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("tenant_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_ie_registration_provider_capabilities");
+
+                    b.HasIndex("TenantId", "RegistrationProviderBindingId")
+                        .HasDatabaseName("ix_ie_registration_provider_capabilities_tenant_id_registration_provider_binding_id");
+
+                    b.HasIndex("RegistrationProviderBindingId", "ProviderCode", "DeploymentKind", "ApiVersion", "AdapterPolicyVersion", "ConformanceEvidenceRevision", "CapabilityCode")
+                        .IsUnique()
+                        .HasDatabaseName("ix_ie_registration_provider_capabilities_registration_provider_binding_id_provider_code_deployment_kind_api_version_adapter_policy_version_conformance_evidence_revision_capability_code");
+
+                    b.ToTable("ie_registration_provider_capabilities", (string)null);
+                });
+
+            modelBuilder.Entity("Explore.Domain.RegistrationProviderCollectionMode", b =>
+                {
+                    b.Property<int>("Id")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("description");
+
+                    b.Property<string>("FullName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("full_name");
+
+                    b.Property<string>("MasterCode")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("master_code");
+
+                    b.HasKey("Id")
+                        .HasName("pk_ie_registration_provider_collection_modes");
+
+                    b.HasIndex("MasterCode")
+                        .IsUnique()
+                        .HasDatabaseName("ix_ie_registration_provider_collection_modes_master_code");
+
+                    b.ToTable("ie_registration_provider_collection_modes", (string)null);
+                });
+
+            modelBuilder.Entity("Explore.Domain.RegistrationProviderCompletionMode", b =>
+                {
+                    b.Property<int>("Id")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("description");
+
+                    b.Property<string>("FullName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("full_name");
+
+                    b.Property<string>("MasterCode")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("master_code");
+
+                    b.HasKey("Id")
+                        .HasName("pk_ie_registration_provider_completion_modes");
+
+                    b.HasIndex("MasterCode")
+                        .IsUnique()
+                        .HasDatabaseName("ix_ie_registration_provider_completion_modes_master_code");
+
+                    b.ToTable("ie_registration_provider_completion_modes", (string)null);
+                });
+
+            modelBuilder.Entity("Explore.Domain.RegistrationProviderConnection", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("id");
+
+                    b.Property<Guid?>("ApiTokenSecretBindingId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("api_token_secret_binding_id");
+
+                    b.Property<Guid>("ConcurrencyStamp")
+                        .IsConcurrencyToken()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("concurrency_stamp");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("deleted_by");
+
+                    b.Property<int>("DeploymentKindId")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("deployment_kind_id");
+
+                    b.Property<bool>("IsDeleted")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_deleted");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("name");
+
+                    b.Property<int>("ProviderKindId")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("provider_kind_id");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("updated_by");
+
+                    b.Property<Guid?>("WebhookSecretBindingId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("webhook_secret_binding_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_ie_registration_provider_connections");
+
+                    b.HasAlternateKey("TenantId", "Id")
+                        .HasName("ak_registration_provider_connections_tenant_id_id");
+
+                    b.HasIndex("DeploymentKindId")
+                        .HasDatabaseName("ix_ie_registration_provider_connections_deployment_kind_id");
+
+                    b.HasIndex("ProviderKindId")
+                        .HasDatabaseName("ix_ie_registration_provider_connections_provider_kind_id");
+
+                    b.HasIndex("TenantId", "ApiTokenSecretBindingId")
+                        .HasDatabaseName("ix_ie_registration_provider_connections_tenant_id_api_token_secret_binding_id");
+
+                    b.HasIndex("TenantId", "Name")
+                        .IsUnique()
+                        .HasDatabaseName("ix_ie_registration_provider_connections_tenant_id_name");
+
+                    b.HasIndex("TenantId", "WebhookSecretBindingId")
+                        .HasDatabaseName("ix_ie_registration_provider_connections_tenant_id_webhook_secret_binding_id");
+
+                    b.ToTable("ie_registration_provider_connections", (string)null);
+                });
+
+            modelBuilder.Entity("Explore.Domain.RegistrationProviderDeploymentKind", b =>
+                {
+                    b.Property<int>("Id")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("description");
+
+                    b.Property<string>("FullName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("full_name");
+
+                    b.Property<string>("MasterCode")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("master_code");
+
+                    b.HasKey("Id")
+                        .HasName("pk_ie_registration_provider_deployment_kinds");
+
+                    b.HasIndex("MasterCode")
+                        .IsUnique()
+                        .HasDatabaseName("ix_ie_registration_provider_deployment_kinds_master_code");
+
+                    b.ToTable("ie_registration_provider_deployment_kinds", (string)null);
+                });
+
+            modelBuilder.Entity("Explore.Domain.RegistrationProviderDriftClass", b =>
+                {
+                    b.Property<int>("Id")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("description");
+
+                    b.Property<string>("FullName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("full_name");
+
+                    b.Property<string>("MasterCode")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("master_code");
+
+                    b.HasKey("Id")
+                        .HasName("pk_ie_registration_provider_drift_classes");
+
+                    b.HasIndex("MasterCode")
+                        .IsUnique()
+                        .HasDatabaseName("ix_ie_registration_provider_drift_classes_master_code");
+
+                    b.ToTable("ie_registration_provider_drift_classes", (string)null);
+                });
+
+            modelBuilder.Entity("Explore.Domain.RegistrationProviderFieldMapping", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("id");
+
+                    b.Property<bool>("IsDeleted")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_deleted");
+
+                    b.Property<bool>("IsRequired")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("is_required");
+
+                    b.Property<string>("PlatformFieldKey")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("platform_field_key");
+
+                    b.Property<string>("ProviderFieldKey")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("provider_field_key");
+
+                    b.Property<Guid>("RegistrationProviderBindingId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("registration_provider_binding_id");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("tenant_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_ie_registration_provider_field_mappings");
+
+                    b.HasAlternateKey("TenantId", "RegistrationProviderBindingId", "Id")
+                        .HasName("ak_registration_provider_field_mappings_tenant_id_registration_provider_binding_id_id");
+
+                    b.HasIndex("RegistrationProviderBindingId", "PlatformFieldKey")
+                        .IsUnique()
+                        .HasDatabaseName("ix_ie_registration_provider_field_mappings_registration_provider_binding_id_platform_field_key");
+
+                    b.HasIndex("RegistrationProviderBindingId", "ProviderFieldKey")
+                        .IsUnique()
+                        .HasDatabaseName("ix_ie_registration_provider_field_mappings_registration_provider_binding_id_provider_field_key");
+
+                    b.ToTable("ie_registration_provider_field_mappings", (string)null);
+                });
+
+            modelBuilder.Entity("Explore.Domain.RegistrationProviderKind", b =>
+                {
+                    b.Property<int>("Id")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("description");
+
+                    b.Property<string>("FullName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("full_name");
+
+                    b.Property<string>("MasterCode")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("master_code");
+
+                    b.HasKey("Id")
+                        .HasName("pk_ie_registration_provider_kinds");
+
+                    b.HasIndex("MasterCode")
+                        .IsUnique()
+                        .HasDatabaseName("ix_ie_registration_provider_kinds_master_code");
+
+                    b.ToTable("ie_registration_provider_kinds", (string)null);
+                });
+
+            modelBuilder.Entity("Explore.Domain.RegistrationProviderOptionMapping", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("id");
+
+                    b.Property<bool>("IsDeleted")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_deleted");
+
+                    b.Property<string>("PlatformOptionKey")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("platform_option_key");
+
+                    b.Property<string>("ProviderOptionKey")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("provider_option_key");
+
+                    b.Property<Guid>("RegistrationProviderBindingId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("registration_provider_binding_id");
+
+                    b.Property<Guid>("RegistrationProviderFieldMappingId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("registration_provider_field_mapping_id");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("tenant_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_ie_registration_provider_option_mappings");
+
+                    b.HasIndex("RegistrationProviderFieldMappingId", "PlatformOptionKey")
+                        .IsUnique()
+                        .HasDatabaseName("ix_ie_registration_provider_option_mappings_registration_provider_field_mapping_id_platform_option_key");
+
+                    b.HasIndex("TenantId", "RegistrationProviderBindingId", "RegistrationProviderFieldMappingId")
+                        .HasDatabaseName("ix_ie_registration_provider_option_mappings_tenant_id_registration_provider_binding_id_registration_provider_field_mapping_id");
+
+                    b.ToTable("ie_registration_provider_option_mappings", (string)null);
+                });
+
+            modelBuilder.Entity("Explore.Domain.RegistrationProviderPresentationMode", b =>
+                {
+                    b.Property<int>("Id")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("description");
+
+                    b.Property<string>("FullName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("full_name");
+
+                    b.Property<string>("MasterCode")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("master_code");
+
+                    b.HasKey("Id")
+                        .HasName("pk_ie_registration_provider_presentation_modes");
+
+                    b.HasIndex("MasterCode")
+                        .IsUnique()
+                        .HasDatabaseName("ix_ie_registration_provider_presentation_modes_master_code");
+
+                    b.ToTable("ie_registration_provider_presentation_modes", (string)null);
+                });
+
+            modelBuilder.Entity("Explore.Domain.RegistrationProviderSchemaAuthority", b =>
+                {
+                    b.Property<int>("Id")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("description");
+
+                    b.Property<string>("FullName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("full_name");
+
+                    b.Property<string>("MasterCode")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("master_code");
+
+                    b.HasKey("Id")
+                        .HasName("pk_ie_registration_provider_schema_authorities");
+
+                    b.HasIndex("MasterCode")
+                        .IsUnique()
+                        .HasDatabaseName("ix_ie_registration_provider_schema_authorities_master_code");
+
+                    b.ToTable("ie_registration_provider_schema_authorities", (string)null);
+                });
+
+            modelBuilder.Entity("Explore.Domain.RegistrationProviderSchemaRevision", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("created_by");
+
+                    b.Property<bool>("IsDeleted")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_deleted");
+
+                    b.Property<DateTime>("ObservedAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("observed_at");
+
+                    b.Property<Guid>("RegistrationProviderConnectionId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("registration_provider_connection_id");
+
+                    b.Property<string>("RevisionHash")
+                        .IsRequired()
+                        .HasMaxLength(44)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("revision_hash");
+
+                    b.Property<int>("SchemaAuthorityId")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("schema_authority_id");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_ie_registration_provider_schema_revisions");
+
+                    b.HasIndex("SchemaAuthorityId")
+                        .HasDatabaseName("ix_ie_registration_provider_schema_revisions_schema_authority_id");
+
+                    b.HasIndex("TenantId", "RegistrationProviderConnectionId", "RevisionHash")
+                        .IsUnique()
+                        .HasDatabaseName("ix_ie_registration_provider_schema_revisions_tenant_id_registration_provider_connection_id_revision_hash");
+
+                    b.ToTable("ie_registration_provider_schema_revisions", (string)null);
+                });
+
+            modelBuilder.Entity("Explore.Domain.RegistrationProviderTrustLevel", b =>
+                {
+                    b.Property<int>("Id")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("description");
+
+                    b.Property<string>("FullName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("full_name");
+
+                    b.Property<string>("MasterCode")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("master_code");
+
+                    b.HasKey("Id")
+                        .HasName("pk_ie_registration_provider_trust_levels");
+
+                    b.HasIndex("MasterCode")
+                        .IsUnique()
+                        .HasDatabaseName("ix_ie_registration_provider_trust_levels_master_code");
+
+                    b.ToTable("ie_registration_provider_trust_levels", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.RegistrationRequirement", b =>
@@ -20294,7 +21135,15 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnType("TEXT")
                         .HasColumnName("last_validation_error");
 
-                    b.Property<Guid?>("ScopeId")
+                    b.Property<string>("Qualifier")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(128)
+                        .HasColumnType("TEXT")
+                        .HasDefaultValue("")
+                        .HasColumnName("qualifier");
+
+                    b.Property<Guid>("ScopeId")
                         .HasColumnType("TEXT")
                         .HasColumnName("scope_id");
 
@@ -20329,24 +21178,27 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                     b.HasKey("Id")
                         .HasName("pk_ie_secret_bindings");
 
+                    b.HasAlternateKey("ScopeId", "Id")
+                        .HasName("ak_secret_bindings_scope_id_id");
+
                     b.HasIndex("SecretSourceTypeId")
                         .HasDatabaseName("ix_ie_secret_bindings_secret_source_type_id");
 
                     b.HasIndex("SecretValidationStatusId")
                         .HasDatabaseName("ix_ie_secret_bindings_secret_validation_status_id");
 
-                    b.HasIndex("SettingKey")
+                    b.HasIndex("SettingKey", "Qualifier")
                         .IsUnique()
                         .HasDatabaseName("ix_secret_bindings_setting_key_instance_unique")
                         .HasFilter("scope_id IS NULL");
 
-                    b.HasIndex("SettingKey", "ScopeId")
+                    b.HasIndex("SettingScopeId", "ScopeId")
+                        .HasDatabaseName("ix_secret_bindings_setting_scope_id_scope_id");
+
+                    b.HasIndex("SettingKey", "ScopeId", "Qualifier")
                         .IsUnique()
                         .HasDatabaseName("ix_secret_bindings_setting_key_scope_id_tenant_unique")
                         .HasFilter("scope_id IS NOT NULL");
-
-                    b.HasIndex("SettingScopeId", "ScopeId")
-                        .HasDatabaseName("ix_secret_bindings_setting_scope_id_scope_id");
 
                     b.ToTable("ie_secret_bindings", null, t =>
                         {
@@ -33514,6 +34366,13 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .IsRequired()
                         .HasConstraintName("fk_ie_registration_attempts_registration_workflows_tenant_id_event_id_registration_workflow_id");
 
+                    b.HasOne("Explore.Domain.RegistrationProviderBinding", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "RegistrationProviderBindingId", "ProviderMappingRevisionHashKey")
+                        .HasPrincipalKey("TenantId", "Id", "PublishedMappingRevisionHashKey")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_ie_registration_attempts_registration_provider_bindings_tenant_id_registration_provider_binding_id_provider_mapping_revision_hash_key");
+
                     b.HasOne("Explore.Domain.RegistrationFormVersion", null)
                         .WithMany()
                         .HasForeignKey("TenantId", "EventId", "RegistrationFormId", "RegistrationFormVersionId")
@@ -33572,6 +34431,13 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasConstraintName("fk_ie_registration_channels_ie_events_tenant_id_event_id");
+
+                    b.HasOne("Explore.Domain.RegistrationProviderBinding", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "RegistrationProviderBindingId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_ie_registration_channels_registration_provider_bindings_tenant_id_registration_provider_binding_id");
 
                     b.HasOne("Explore.Domain.RegistrationRequirement", null)
                         .WithMany("Channels")
@@ -34055,6 +34921,194 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasConstraintName("fk_ie_registration_participant_pii_ie_registration_participants_tenant_id_registration_participant_id");
 
                     b.Navigation("RegistrationParticipant");
+                });
+
+            modelBuilder.Entity("Explore.Domain.RegistrationProviderApprovedOrigin", b =>
+                {
+                    b.HasOne("Explore.Domain.RegistrationProviderConnection", "Connection")
+                        .WithMany("ApprovedOrigins")
+                        .HasForeignKey("TenantId", "RegistrationProviderConnectionId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_ie_registration_provider_approved_origins_registration_provider_connections_tenant_id_registration_provider_connection_id");
+
+                    b.Navigation("Connection");
+                });
+
+            modelBuilder.Entity("Explore.Domain.RegistrationProviderBinding", b =>
+                {
+                    b.HasOne("Explore.Domain.RegistrationProviderCollectionMode", null)
+                        .WithMany()
+                        .HasForeignKey("CollectionModeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_ie_registration_provider_bindings_registration_provider_collection_modes_collection_mode_id");
+
+                    b.HasOne("Explore.Domain.RegistrationProviderCompletionMode", null)
+                        .WithMany()
+                        .HasForeignKey("CompletionModeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_ie_registration_provider_bindings_registration_provider_completion_modes_completion_mode_id");
+
+                    b.HasOne("Explore.Domain.RegistrationProviderDriftClass", null)
+                        .WithMany()
+                        .HasForeignKey("DriftClassId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_ie_registration_provider_bindings_registration_provider_drift_classes_drift_class_id");
+
+                    b.HasOne("Explore.Domain.RegistrationProviderPresentationMode", null)
+                        .WithMany()
+                        .HasForeignKey("PresentationModeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_ie_registration_provider_bindings_registration_provider_presentation_modes_presentation_mode_id");
+
+                    b.HasOne("Explore.Domain.RegistrationProviderBindingState", null)
+                        .WithMany()
+                        .HasForeignKey("StateId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_ie_registration_provider_bindings_registration_provider_binding_states_state_id");
+
+                    b.HasOne("Explore.Domain.Tenant", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_ie_registration_provider_bindings_tenants_tenant_id");
+
+                    b.HasOne("Explore.Domain.RegistrationProviderTrustLevel", null)
+                        .WithMany()
+                        .HasForeignKey("TrustLevelId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_ie_registration_provider_bindings_registration_provider_trust_levels_trust_level_id");
+
+                    b.HasOne("Explore.Domain.RegistrationProviderConnection", "Connection")
+                        .WithMany()
+                        .HasForeignKey("TenantId", "RegistrationProviderConnectionId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_ie_registration_provider_bindings_registration_provider_connections_tenant_id_registration_provider_connection_id");
+
+                    b.HasOne("Explore.Domain.RegistrationFormVersion", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "RegistrationFormId", "RegistrationFormVersionId")
+                        .HasPrincipalKey("TenantId", "RegistrationFormId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_ie_registration_provider_bindings_ie_registration_form_versions_tenant_id_registration_form_id_registration_form_version_id");
+
+                    b.Navigation("Connection");
+                });
+
+            modelBuilder.Entity("Explore.Domain.RegistrationProviderCapability", b =>
+                {
+                    b.HasOne("Explore.Domain.RegistrationProviderBinding", "Binding")
+                        .WithMany("Capabilities")
+                        .HasForeignKey("TenantId", "RegistrationProviderBindingId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_ie_registration_provider_capabilities_ie_registration_provider_bindings_tenant_id_registration_provider_binding_id");
+
+                    b.Navigation("Binding");
+                });
+
+            modelBuilder.Entity("Explore.Domain.RegistrationProviderConnection", b =>
+                {
+                    b.HasOne("Explore.Domain.RegistrationProviderDeploymentKind", null)
+                        .WithMany()
+                        .HasForeignKey("DeploymentKindId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_ie_registration_provider_connections_registration_provider_deployment_kinds_deployment_kind_id");
+
+                    b.HasOne("Explore.Domain.RegistrationProviderKind", null)
+                        .WithMany()
+                        .HasForeignKey("ProviderKindId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_ie_registration_provider_connections_registration_provider_kinds_provider_kind_id");
+
+                    b.HasOne("Explore.Domain.Tenant", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_ie_registration_provider_connections_tenants_tenant_id");
+
+                    b.HasOne("Explore.Domain.Secrets.SecretBinding", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "ApiTokenSecretBindingId")
+                        .HasPrincipalKey("ScopeId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_ie_registration_provider_connections_secret_bindings_tenant_id_api_token_secret_binding_id");
+
+                    b.HasOne("Explore.Domain.Secrets.SecretBinding", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "WebhookSecretBindingId")
+                        .HasPrincipalKey("ScopeId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_ie_registration_provider_connections_secret_bindings_tenant_id_webhook_secret_binding_id");
+                });
+
+            modelBuilder.Entity("Explore.Domain.RegistrationProviderFieldMapping", b =>
+                {
+                    b.HasOne("Explore.Domain.RegistrationProviderBinding", "Binding")
+                        .WithMany("FieldMappings")
+                        .HasForeignKey("TenantId", "RegistrationProviderBindingId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_ie_registration_provider_field_mappings_ie_registration_provider_bindings_tenant_id_registration_provider_binding_id");
+
+                    b.Navigation("Binding");
+                });
+
+            modelBuilder.Entity("Explore.Domain.RegistrationProviderOptionMapping", b =>
+                {
+                    b.HasOne("Explore.Domain.RegistrationProviderBinding", "Binding")
+                        .WithMany("OptionMappings")
+                        .HasForeignKey("TenantId", "RegistrationProviderBindingId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_ie_registration_provider_option_mappings_ie_registration_provider_bindings_tenant_id_registration_provider_binding_id");
+
+                    b.HasOne("Explore.Domain.RegistrationProviderFieldMapping", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "RegistrationProviderBindingId", "RegistrationProviderFieldMappingId")
+                        .HasPrincipalKey("TenantId", "RegistrationProviderBindingId", "Id")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_ie_registration_provider_option_mappings_ie_registration_provider_field_mappings_tenant_id_registration_provider_binding_id_registration_provider_field_mapping_id");
+
+                    b.Navigation("Binding");
+                });
+
+            modelBuilder.Entity("Explore.Domain.RegistrationProviderSchemaRevision", b =>
+                {
+                    b.HasOne("Explore.Domain.RegistrationProviderSchemaAuthority", null)
+                        .WithMany()
+                        .HasForeignKey("SchemaAuthorityId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_ie_registration_provider_schema_revisions_ie_registration_provider_schema_authorities_schema_authority_id");
+
+                    b.HasOne("Explore.Domain.RegistrationProviderConnection", "Connection")
+                        .WithMany()
+                        .HasForeignKey("TenantId", "RegistrationProviderConnectionId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_ie_registration_provider_schema_revisions_ie_registration_provider_connections_tenant_id_registration_provider_connection_id");
+
+                    b.Navigation("Connection");
                 });
 
             modelBuilder.Entity("Explore.Domain.RegistrationRequirement", b =>
@@ -36828,6 +37882,20 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
             modelBuilder.Entity("Explore.Domain.RegistrationParticipant", b =>
                 {
                     b.Navigation("Pii");
+                });
+
+            modelBuilder.Entity("Explore.Domain.RegistrationProviderBinding", b =>
+                {
+                    b.Navigation("Capabilities");
+
+                    b.Navigation("FieldMappings");
+
+                    b.Navigation("OptionMappings");
+                });
+
+            modelBuilder.Entity("Explore.Domain.RegistrationProviderConnection", b =>
+                {
+                    b.Navigation("ApprovedOrigins");
                 });
 
             modelBuilder.Entity("Explore.Domain.RegistrationRequirement", b =>

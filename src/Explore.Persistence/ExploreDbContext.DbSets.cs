@@ -169,6 +169,7 @@ public partial class ExploreDbContext
     public DbSet<RegistrationRequirement> RegistrationRequirements { get; set; }
     public DbSet<RegistrationChannel> RegistrationChannels { get; set; }
     public DbSet<RegistrationProviderConnection> RegistrationProviderConnections { get; set; }
+    public DbSet<RegistrationProviderApprovedOrigin> RegistrationProviderApprovedOrigins { get; set; }
     public DbSet<RegistrationProviderBinding> RegistrationProviderBindings { get; set; }
     public DbSet<RegistrationProviderCapability> RegistrationProviderCapabilities { get; set; }
     public DbSet<RegistrationProviderFieldMapping> RegistrationProviderFieldMappings { get; set; }

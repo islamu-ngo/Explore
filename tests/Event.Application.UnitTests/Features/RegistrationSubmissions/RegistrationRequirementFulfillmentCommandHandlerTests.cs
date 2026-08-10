@@ -95,6 +95,44 @@ public sealed class RegistrationRequirementFulfillmentCommandHandlerTests
             Arg.Any<RegistrationFinalizationClaim>(), Arg.Any<DateTime>(), Arg.Any<DateTime>(), Arg.Any<CancellationToken>());
     }
 
+    [Test]
+    public async Task Drain_WhenCheckoutNotConverged_RetriesAndClearsTenantForInterruptionRecovery()
+    {
+        Guid tenantId = Guid.CreateVersion7();
+        Guid orderId = Guid.CreateVersion7();
+        RegistrationFinalizationClaim claim = new(
+            Guid.CreateVersion7(), tenantId, orderId, Guid.CreateVersion7(), 7);
+        IRegistrationFinalizationRepository finalization = Substitute.For<IRegistrationFinalizationRepository>();
+        IRegistrationOrderLifecycleService lifecycle = Substitute.For<IRegistrationOrderLifecycleService>();
+        ITenantContextAccessor tenantAccessor = Substitute.For<ITenantContextAccessor>();
+        finalization.ClaimDueAsync(
+                "worker", 100, UtcNow, TimeSpan.FromSeconds(60), CancellationToken.None)
+            .Returns([claim]);
+        lifecycle.ReadyForCheckoutAsync(orderId, tenantId, CancellationToken.None)
+            .Returns(new RegistrationOrderLifecycleResponseDto
+            {
+                Success = true,
+                Order = new RegistrationOrderDto
+                {
+                    Id = orderId,
+                    TenantId = tenantId,
+                    StatusId = (int)RegistrationOrderStatusEnum.AwaitingRequirements
+                }
+            });
+        var handler = new DrainRegistrationFinalizationEffectsCommandHandler(
+            finalization, lifecycle, tenantAccessor, new FixedTimeProvider(UtcNow));
+
+        int completed = await handler.Handle(new("worker"), CancellationToken.None);
+
+        await Assert.That(completed).IsEqualTo(0);
+        tenantAccessor.Received(1).SetTenant(tenantId);
+        tenantAccessor.Received(1).Clear();
+        await finalization.Received(1).RetryAsync(
+            claim, UtcNow.AddMinutes(1), UtcNow, CancellationToken.None);
+        await finalization.DidNotReceive().CompleteAsync(
+            Arg.Any<RegistrationFinalizationClaim>(), Arg.Any<DateTime>(), Arg.Any<CancellationToken>());
+    }
+
     private sealed class FixedTimeProvider(DateTime utcNow) : TimeProvider
     {
         public override DateTimeOffset GetUtcNow() => new(utcNow);
