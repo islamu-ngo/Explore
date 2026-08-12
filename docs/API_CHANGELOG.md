@@ -3,6 +3,11 @@ ABOUTME: Keeps release notes short and focused on externally observable API beha
 
 # API Changelog
 
+## 2026-08-12
+
+- Additive governed contact-sharing contract for API version `0.1`: `EventContactShareConsent` now supports `User`, `RegistrationPurchaser`, `RegistrationParticipant`, and `GuestContact` subjects with one current row per tenant/typed-subject/recipient/purpose and append-only grant, regrant, and withdrawal history. Export requests accept optional event provenance and select only active matching-purpose consent; every CSV/TSV export persists an export audit and per-consent item evidence. Managed platform Event HAL may advertise `export-attendees` only for a verified organization organizer and an authorized `ExportSharedContacts` decision. Studio renders that relation as an in-page **Export consented contacts** action and performs no role or claim inference.
+- Additive registration-retention schema: normalized policies assign immutable `RetentionUntil` deadlines to answers, sensitive values, order PII, and participant PII. The bounded daily cleanup deletes expired registration data while retaining consent history and export audit evidence.
+
 ## 2026-08-10
 
 - Additive registration-provider framework contract for API version `0.1`: anonymous `POST /api/integrations/registration/{provider}/{bindingId}/callback` records bounded provider-submission callbacks through the shared incoming-webhook ledger and returns `202 Accepted` for verified, duplicate, malformed, unknown, stale, or parked evidence, with `413` reserved for oversize payloads. Worker execution validates the Data Protection receipt and parks unverifiable, unknown-tuple, blocking-drift, low-trust, stale/out-of-order, and unsupported mirror/manual cases for reconciliation.

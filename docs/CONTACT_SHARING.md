@@ -6,34 +6,38 @@ ABOUTME: Prevents unsupported claims about permanent deletion, mailing-list remo
 > **Audience:** Admins | Integrators | Contributors
 > **Status:** Implemented
 > **Owner:** Product/Admin
-> **Last Verified:** 2026-05-06
-> **Source Anchors:** `Explore.Application/Features/ContactShareConsents/`, `Explore.API/Controllers/ContactShareConsentController.cs`, `Explore.Application/Services/ContactShareConsentService.cs`, `Explore.Domain/EventContactShareConsent.cs`, `Explore.Persistence/Repositories/EventContactShareConsentRepository.cs`
+> **Last Verified:** 2026-08-12
+> **Source Anchors:** `Explore.Application/Features/ContactShareConsents/`, `Explore.API/Controllers/ContactShareConsentController.cs`, `Explore.Application/Services/ContactShareConsentService.cs`, `Explore.Domain/EventContactShareConsent.cs`, `Explore.Domain/EventContactShareConsentHistory.cs`, `Explore.Persistence/Repositories/EventContactShareConsentRepository.cs`
 
-Contact sharing records a user's explicit consent to share registration contact details with an approved organization for future communications. The implemented behavior is consent storage, user withdrawal, organization read access, and browser-download export; it is not an email fanout or external mailing-list integration.
+Contact sharing records a subject's explicit consent to share registration contact details with an approved organization for a named purpose. The implemented behavior is typed consent storage, append-only lifecycle evidence, withdrawal, organization read access, and audited browser-download export; it is not an email fanout or external mailing-list integration.
 
 ## Consent Model
 
-`EventContactShareConsent` is scoped by tenant, user, recipient actor, and purpose:
+`EventContactShareConsent` is the current-state row scoped by tenant, typed subject, recipient actor, and purpose:
 
 | Field Family | Behavior |
 |---|---|
 | Recipient | Approved organization actor receiving access. |
 | Purpose | `ORGANIZER_FUTURE_COMMUNICATIONS`. |
-| Source event / registration intent | Audit context only; not the consent identity boundary. |
+| Subject | `User`, `RegistrationPurchaser`, `RegistrationParticipant`, or `GuestContact`, represented by `SubjectTypeId` and `SubjectId` with exactly one matching nullable FK. |
+| Source event / registration order | Stored in append-only history as provenance; not the consent identity boundary. |
 | Snapshot data | Email, normalized email, consent text, and UI version are stored as snapshots. |
 | Status | Granted or withdrawn; withdrawal sets `WithdrawnAt`. |
+| History | Every grant, regrant, and withdrawal appends an immutable `EventContactShareConsentHistory` snapshot in the same persistence operation. |
 
-Persistence enforces uniqueness for `(TenantId, UserId, RecipientActorId, PurposeCode)`. Do not describe consent as event-scoped; the source event is provenance for when consent was captured.
+Persistence enforces uniqueness for `(TenantId, SubjectTypeId, SubjectId, RecipientActorId, PurposeCode)` and a check constraint requiring exactly one typed subject FK. Do not describe consent as event-scoped; source events are provenance and may be used to narrow an export without changing consent identity.
 
 ## Capture Flow
 
-Registration handling calls `IContactShareConsentService.ProcessRegistrationConsent(...)`. The service records consent only when:
+Registration handling calls `IContactShareConsentService.ProcessRegistrationConsent(...)` for current-account consent. The service records consent only when:
 
 1. The registrant opts in.
 2. The event publisher resolves to an approved organization.
 3. The user has an email snapshot to share.
 
 The purpose is `ORGANIZER_FUTURE_COMMUNICATIONS`. Consent text and UI version are stored with the snapshot, and the service supplies defaults when those values are omitted by the registration flow.
+
+Native participant submissions preserve participant independence. Consent is created only for the exact submitted participant subject; purchaser consent is not copied to another participant. Marketing consent for a child participant is rejected with `CHILD_MARKETING_CONSENT_DISABLED`, while an adult participant in the same order can consent independently. Operational consent for a dependent is a separate future policy and must not be inferred from purchaser or guardian marketing consent.
 
 The registration UI displays the consent checkbox and links users to settings where they can review connected apps.
 
@@ -52,7 +56,8 @@ Organization read and export requests use application resource authorization for
 ## Privacy Boundary
 
 - Organization access reads stored contact snapshots for granted consents.
-- Export uses stored snapshots and writes an export audit record with row count, format, exporter, and email snapshot details.
+- Export selects only active consent matching `ORGANIZER_FUTURE_COMMUNICATIONS`; an optional event ID requires matching consent-history provenance for that event.
+- Export writes `EventContactShareExport` plus per-consent `EventContactShareExportItem` audit evidence with purpose, policy version, included fields, row count, content hash, exporter, and snapshots.
 - Withdrawal changes future application reads by moving the consent to withdrawn status.
 - Withdrawal is not a permanent-delete operation and does not prove removal from external mailing lists.
 
@@ -60,7 +65,7 @@ Do not document legal or privacy guarantees beyond these source-backed behaviors
 
 ## Verified Export Behavior
 
-Exports are generated as browser-download files in CSV or TSV format. The inspected source does not show server-to-server sharing, outbound email fanout, or external marketing-provider synchronization.
+Exports are generated as browser-download files in CSV or TSV format. Spreadsheet-formula prefixes are neutralized and file-name segments are sanitized. Withdrawn or wrong-purpose consent is excluded by the repository query. The inspected source does not show server-to-server sharing, outbound email fanout, or external marketing-provider synchronization.
 
 ## Admin And User Surfaces
 
@@ -69,6 +74,9 @@ Exports are generated as browser-download files in CSV or TSV format. The inspec
 | Registration consent checkbox | `Explore.Blazor.Client/Pages/Events/Components/EventRegistration.razor` |
 | User connected-app withdrawal | `Explore.Blazor.Client/Pages/User/Components/SettingsConnectedApps.razor` |
 | Organization shared contacts list/export | `Explore.Blazor.Client/Pages/Organizations/OrganizationSharedContacts.razor` |
+| Event attendee export | `Explore.Blazor.Client/Pages/Studio/StudioEventAttendees.razor` |
+
+The Studio attendee page renders **Export consented contacts** only when the management Event resource contains the server-authored `export-attendees` HAL relation. The relation itself is permission-bound to `ExportSharedContacts` on the verified organizer organization and routes through the same audited export command with event provenance. It remains an action inside Attendees, not a sidebar capability.
 
 The user settings UI warns that withdrawing consent does not guarantee removal from external mailing lists. Keep that warning unless a future source-backed integration proves stronger behavior.
 
