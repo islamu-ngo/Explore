@@ -138,6 +138,8 @@ public sealed class FormSchemaArtifactGenerator : IFormSchemaArtifactGenerator
         schema["x-organizerVisibility"] = ((RegistrationOrganizerVisibilityEnum)field.OrganizerVisibilityId).ToString();
         schema["x-requiresExplicitConsent"] = field.RequiresExplicitConsent;
         schema["x-providerTransferAllowed"] = field.IsProviderTransferAllowed;
+        schema["x-isExportable"] = field.IsExportable;
+        AddIfPresent(schema, "x-exportPurposeCode", field.ExportPurposeCode);
         AddIfPresent(schema, "x-consentPurposeCode", field.ConsentPurposeCode);
         AddIfPresent(schema, "x-consentTextVersion", field.ConsentTextVersion);
         AddIfPresent(schema, "x-consentText", field.ConsentText);

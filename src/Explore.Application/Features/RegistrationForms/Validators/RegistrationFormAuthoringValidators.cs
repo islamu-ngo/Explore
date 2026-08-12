@@ -77,10 +77,12 @@ public sealed class RegistrationFormAuthoringCommandValidator<TCommand> : Abstra
         AddRegistrationFormFieldCommand command => command.Ordinal > 0 && command.FieldTypeId > 0 &&
             command.RetentionPolicyId > 0 && command.OrganizerVisibilityId > 0 &&
             Present(command.Namespace, command.Key, command.Label) &&
+            ValidExport(command.IsExportable, command.ExportPurposeCode) &&
             ValidConsent(command.RequiresExplicitConsent, command.ConsentPurposeCode, command.ConsentTextVersion,
                 command.ConsentText),
         UpdateRegistrationFormFieldCommand command => command.Ordinal > 0 && command.RetentionPolicyId > 0 &&
             command.OrganizerVisibilityId > 0 && Present(command.Label) &&
+            ValidExport(command.IsExportable, command.ExportPurposeCode) &&
             ValidConsent(command.RequiresExplicitConsent, command.ConsentPurposeCode, command.ConsentTextVersion,
                 command.ConsentText),
         ReorderRegistrationFormFieldsCommand command => ValidOrder(command.OrderedIds),
@@ -105,6 +107,9 @@ public sealed class RegistrationFormAuthoringCommandValidator<TCommand> : Abstra
         string? text) => requiresExplicitConsent
         ? Present(purposeCode, textVersion, text)
         : !Present(purposeCode) && !Present(textVersion) && !Present(text);
+
+    private static bool ValidExport(bool isExportable, string? purposeCode) =>
+        isExportable ? Present(purposeCode) : !Present(purposeCode);
 
     private static bool ValidOrder(IReadOnlyList<Guid>? ids) =>
         ids is { Count: > 0 and <= 200 } && ids.All(id => id != Guid.Empty) && ids.Distinct().Count() == ids.Count;

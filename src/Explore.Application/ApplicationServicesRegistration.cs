@@ -196,6 +196,7 @@ public static class ApplicationServicesRegistration
         services.AddSingleton(provider => new RegistrationFormPublishPreflightService(
             provider.GetRequiredService<Microsoft.Extensions.Options.IOptions<RegistrationFileAnswerOptions>>().Value));
         services.AddScoped<RegistrationFormAuthoringCommandService>();
+        services.AddScoped<RegistrationFormTemplateCommandService>();
         services.AddScoped<IEventLocationExactReadAuditService, EventLocationExactReadAuditService>();
         services.AddScoped<IEventLocationManagementAuthorizationService, EventLocationManagementAuthorizationService>();
         services.AddScoped<IEventLocationDisclosureService, EventLocationDisclosureService>();

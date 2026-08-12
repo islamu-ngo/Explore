@@ -220,8 +220,9 @@ public sealed class RegistrationFormAuthoringCommandService(
             Guid.CreateVersion7(), section, request.Ordinal, request.Namespace, request.Key, request.Label,
             (RegistrationFieldTypeEnum)request.FieldTypeId, request.RetentionPolicyId,
             (RegistrationOrganizerVisibilityEnum)request.OrganizerVisibilityId, request.RequiresExplicitConsent,
-            request.IsProviderTransferAllowed, UtcNow(), request.ConsentPurposeCode, request.ConsentTextVersion,
-            request.ConsentText);
+            request.IsProviderTransferAllowed, request.IsExportable, request.ExportPurposeCode,
+            request.IsAnalyticsRelevant, request.IsOperationallyFilterable, UtcNow(), request.ConsentPurposeCode,
+            request.ConsentTextVersion, request.ConsentText);
         field.CreatedBy = currentUserService.UserId;
         version.AddField(section, field);
         await repository.UpdateVersionAsync(version, cancellationToken);
@@ -238,8 +239,9 @@ public sealed class RegistrationFormAuthoringCommandService(
         version.UpdateFieldDetails(field, request.Ordinal, request.Label);
         version.UpdateFieldGovernance(field, request.RetentionPolicyId,
             (RegistrationOrganizerVisibilityEnum)request.OrganizerVisibilityId, request.RequiresExplicitConsent,
-            request.IsProviderTransferAllowed, request.ConsentPurposeCode, request.ConsentTextVersion,
-            request.ConsentText);
+            request.IsProviderTransferAllowed, request.IsExportable, request.ExportPurposeCode,
+            request.IsAnalyticsRelevant, request.IsOperationallyFilterable,
+            request.ConsentPurposeCode, request.ConsentTextVersion, request.ConsentText);
         version.UpdateFieldValidation(field, request.IsRequired, request.IsMulti, request.MinLength, request.MaxLength,
             request.RegexPattern, request.MinNumber, request.MaxNumber, request.MinDateTime, request.MaxDateTime,
             request.AllowedUrlSchemes);
