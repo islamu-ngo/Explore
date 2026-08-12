@@ -270,7 +270,7 @@ public sealed record RegistrationProviderReconciliationResult(
     IReadOnlyList<RegistrationProviderReconciledSubmission>? Responses = null,
     string? NextCheckpoint = null,
     string? ContinuationCursor = null);
-public sealed record RegistrationProviderSubmissionSinkRequest(Guid TenantId, RegistrationProviderBinding Binding, RegistrationProviderConnection Connection, RegistrationProviderTuple Tuple, Guid AttemptId, IReadOnlyDictionary<string, string> Answers, string? ProviderSubmissionId);
+public sealed record RegistrationProviderSubmissionSinkRequest(Guid TenantId, RegistrationProviderBinding Binding, RegistrationProviderConnection Connection, RegistrationProviderTuple Tuple, Guid AttemptId, Guid RegistrationSubmissionId, IReadOnlyDictionary<string, string> Answers, string? ProviderSubmissionId);
 public sealed record RegistrationProviderSubmissionSinkResult(bool Accepted, Guid SubmissionId, bool AutoFinalizable);
 
 public sealed record RegistrationProviderSchemaSnapshot(IReadOnlyList<RegistrationProviderSchemaFieldSnapshot> Fields);

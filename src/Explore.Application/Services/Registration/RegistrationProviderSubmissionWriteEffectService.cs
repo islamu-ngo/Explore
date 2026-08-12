@@ -100,6 +100,7 @@ public sealed class DrainRegistrationProviderSubmissionWriteEffectsCommandHandle
                     delivery.Binding.Connection!,
                     tuple,
                     claim.RegistrationAttemptId,
+                    claim.RegistrationSubmissionId,
                     answers,
                     null),
                 cancellationToken);
@@ -197,7 +198,7 @@ public sealed class DrainRegistrationProviderSubmissionWriteEffectsCommandHandle
         Guid fieldMappingId,
         IReadOnlyDictionary<(Guid FieldMappingId, string OptionKey), string> providerOptionKeys)
     {
-        if (answer.TextValue is { } text) return text;
+        if (answer.TextValue is { } text) return NeutralizeFormula(text);
         if (answer.IntegerValue is { } integer) return integer.ToString(CultureInfo.InvariantCulture);
         if (answer.DecimalValue is { } decimalValue) return decimalValue.ToString(CultureInfo.InvariantCulture);
         if (answer.BooleanValue is { } boolean) return boolean ? "true" : "false";
@@ -213,11 +214,16 @@ public sealed class DrainRegistrationProviderSubmissionWriteEffectsCommandHandle
 
         if (answer.SensitiveAnswerValue is { } sensitive)
         {
-            return sensitiveValueProtector.Unprotect(sensitive.Ciphertext, sensitive.KeyVersion);
+            return NeutralizeFormula(sensitiveValueProtector.Unprotect(sensitive.Ciphertext, sensitive.KeyVersion));
         }
 
         return null;
     }
+
+    private static string NeutralizeFormula(string value) =>
+        value.Length > 0 && value[0] is '=' or '+' or '-' or '@' or '\t' or '\r'
+            ? "'" + value
+            : value;
 
     private async Task SettleFailureAsync(
         RegistrationProviderSubmissionWriteClaim claim,
