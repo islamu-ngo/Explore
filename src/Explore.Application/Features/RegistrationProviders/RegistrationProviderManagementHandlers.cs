@@ -903,6 +903,10 @@ public sealed class ImportExternalRegistrationProviderFormVersionCommandHandler(
                 RegistrationOrganizerVisibilityEnum.AuthorizedOrganizers,
                 false,
                 true,
+                false,
+                null,
+                false,
+                false,
                 now);
             version.AddField(section, field);
             version.UpdateFieldValidation(field, fieldSnapshot.IsRequired, fieldType == RegistrationFieldTypeEnum.MultipleChoice, null, null, null, null, null, null, null, null);

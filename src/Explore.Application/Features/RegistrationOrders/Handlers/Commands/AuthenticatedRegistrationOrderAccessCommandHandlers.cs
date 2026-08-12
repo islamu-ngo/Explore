@@ -7,8 +7,10 @@ using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.RegistrationOrders;
 using Explore.Application.Features.RegistrationOrders.Handlers;
 using Explore.Application.Features.RegistrationOrders.Requests.Commands;
+using Explore.Application.Features.RegistrationOrders.Validators;
 using Explore.Application.Features.RegistrationSubmissions.Commands;
 using Explore.Application.Responses;
+using Explore.Domain;
 using MediatR;
 
 namespace Explore.Application.Features.RegistrationOrders.Handlers.Commands;
@@ -44,6 +46,101 @@ public sealed class StartAuthenticatedRegistrationOrderCommandHandler(
             Lines = request.Lines
         }, cancellationToken);
     }
+}
+
+public sealed class ClaimGuestRegistrationOrderCommandHandler(
+    IRegistrationInventoryRepository inventory,
+    IGuestCapabilityTokenService capabilities,
+    ITenantContext tenant,
+    ICurrentUserService currentUser,
+    IUserRepository users,
+    TimeProvider timeProvider,
+    IUnitOfWork unitOfWork)
+    : IRequestHandler<ClaimGuestRegistrationOrderCommand, BaseCommandResponse<Guid>>
+{
+    public async Task<BaseCommandResponse<Guid>> Handle(
+        ClaimGuestRegistrationOrderCommand request,
+        CancellationToken cancellationToken)
+    {
+        if (!(await new GuestRegistrationOrderAccessCommandValidator<ClaimGuestRegistrationOrderCommand>()
+                .ValidateAsync(request, cancellationToken)).IsValid)
+        {
+            return NotFound(request.OrderId);
+        }
+
+        if (!currentUser.IsAuthenticated || currentUser.UserId is not { } userId)
+        {
+            return new BaseCommandResponse<Guid>
+            {
+                Id = request.OrderId,
+                Success = false,
+                FailureCode = "registration_order_authentication_required",
+                Message = "Registration order claim requires an authenticated account.",
+                Errors = ["Registration order claim requires an authenticated account."]
+            };
+        }
+
+        User? user = await users.GetUserWithDetails(userId, cancellationToken);
+        string? verifiedEmail = user is { EmailVerified: true } ? user.Pii.Email.Trim().ToUpperInvariant() : null;
+        if (string.IsNullOrWhiteSpace(verifiedEmail))
+        {
+            return Invalid(request.OrderId, "registration_order_verified_email_required", "A verified account email is required to claim this registration order.");
+        }
+
+        try
+        {
+            return await unitOfWork.ExecuteSerializableAsync(async token =>
+            {
+                RegistrationOrder? order = await inventory.GetOrderForUpdateWithPiiAsync(request.OrderId, tenant.TenantId, token);
+                if (order is null || order.EventId != request.EventId || order.GuestAccessTokenHash is null ||
+                    order.ExpiresAt is { } expiresAt && expiresAt <= timeProvider.GetUtcNow().UtcDateTime ||
+                    !capabilities.Matches(request.CapabilityToken, order.GuestAccessTokenHash))
+                {
+                    return NotFound(request.OrderId);
+                }
+
+                bool linked = order.TryLinkGuestOrderToAccount(userId, verifiedEmail);
+                await inventory.SaveChangesAsync(token);
+                return new BaseCommandResponse<Guid>
+                {
+                    Id = order.Id,
+                    Success = true,
+                    Message = linked
+                        ? "Registration order linked to the current account."
+                        : "Registration order already linked to the current account."
+                };
+            }, cancellationToken);
+        }
+        catch (InvalidOperationException exception) when (exception.Message.Contains("another account", StringComparison.Ordinal))
+        {
+            return Invalid(request.OrderId, "registration_order_already_linked", exception.Message);
+        }
+        catch (InvalidOperationException exception)
+        {
+            return Invalid(request.OrderId, "registration_order_email_mismatch", exception.Message);
+        }
+        catch (ArgumentException exception)
+        {
+            return Invalid(request.OrderId, "registration_order_claim_invalid", exception.Message);
+        }
+    }
+
+    private static BaseCommandResponse<Guid> NotFound(Guid orderId) => new()
+    {
+        Id = orderId,
+        Success = false,
+        FailureCode = "registration_order_not_found",
+        Message = "Registration order was not found."
+    };
+
+    private static BaseCommandResponse<Guid> Invalid(Guid orderId, string code, string message) => new()
+    {
+        Id = orderId,
+        Success = false,
+        FailureCode = code,
+        Message = message,
+        Errors = [message]
+    };
 }
 
 public sealed class ContinueAuthenticatedRegistrationOrderCommandHandler(
@@ -113,7 +210,8 @@ public sealed class LaunchAuthenticatedNativeRegistrationAttemptCommandHandler(
 
         return await sender.Send(new LaunchNativeRegistrationAttemptCommand(
             tenant.TenantId, request.EventId, request.OrderId, request.RequirementId,
-            request.ChannelId, request.FormId, request.FormVersionId, request.BindingId), cancellationToken);
+            request.ChannelId, request.FormId, request.FormVersionId, request.BindingId,
+            request.SupersededAttemptId), cancellationToken);
     }
 
     private static NativeRegistrationAttemptResult Missing(
@@ -164,7 +262,8 @@ public sealed class LaunchAuthenticatedRegistrationProviderAttemptCommandHandler
 
         return await sender.Send(new LaunchRegistrationProviderAttemptCommand(
             tenant.TenantId, request.EventId, request.OrderId, request.RequirementId,
-            request.ChannelId, request.BindingId, request.FormId, request.FormVersionId), cancellationToken);
+            request.ChannelId, request.BindingId, request.FormId, request.FormVersionId,
+            request.SupersededAttemptId), cancellationToken);
     }
 }
 

@@ -801,6 +801,65 @@ public sealed class RegistrationProviderManagementHandlerTests
     }
 
     [Test]
+    public async Task UpdateChannel_SwitchesFutureLaunchBindingWithoutRepointingExistingAttempt()
+    {
+        Guid eventId = Guid.CreateVersion7();
+        RegistrationProviderBinding originalBinding = Binding();
+        RegistrationProviderBinding switchedBinding = Binding(RegistrationProviderPresentationModeEnum.Embed, tenantId: originalBinding.TenantId);
+        AddLaunchCapabilities(switchedBinding, RegistrationProviderCapabilityCodes.Embed);
+        AttachConnection(switchedBinding).ReplaceApprovedOrigins(["https://forms.example.org"], Now);
+        originalBinding.Publish(Hash(), Now.AddMinutes(1));
+        switchedBinding.Publish(Hash(), Now.AddMinutes(1));
+        RegistrationRequirement requirement = RequirementWithChannel(originalBinding, eventId, out RegistrationChannel channel);
+        RegistrationAttempt existingAttempt = RegistrationAttempt.Create(
+            originalBinding.TenantId,
+            eventId,
+            Guid.CreateVersion7(),
+            requirement.RegistrationWorkflowId,
+            requirement.Id,
+            channel.Id,
+            originalBinding.RegistrationFormId,
+            originalBinding.RegistrationFormVersionId,
+            CapabilityTokenHash.Create(Convert.ToBase64String(new byte[32])),
+            originalBinding.Id,
+            originalBinding.PublishedMappingRevisionHash,
+            Now,
+            Now.AddHours(1));
+        var existingAttemptSnapshot = (
+            existingAttempt.RegistrationChannelId,
+            existingAttempt.RegistrationProviderBindingId,
+            existingAttempt.RegistrationFormId,
+            existingAttempt.RegistrationFormVersionId,
+            existingAttempt.ProviderMappingRevisionHash);
+        var repository = new FakeProviderRepository(originalBinding, eventId, requirement: requirement, otherBindings: [switchedBinding]);
+        var updateHandler = new UpsertRegistrationChannelCommandHandler(repository, new FixedTimeProvider(Now.AddMinutes(2)));
+
+        BaseCommandResponse<Guid> updateResult = await updateHandler.Handle(new UpsertRegistrationChannelCommand(
+            originalBinding.TenantId,
+            eventId,
+            requirement.RegistrationWorkflowId,
+            requirement.Id,
+            channel.Id,
+            new RegistrationChannelRequestDto { Ordinal = 1, IsNative = false, RegistrationProviderBindingId = switchedBinding.Id }), CancellationToken.None);
+        RegistrationProviderLaunchDescriptorDto launch = await new GetRegistrationProviderLaunchDescriptorQueryHandler(
+                repository,
+                new Registry(new PresentationDescriptor(new("forms", "hosted", "v1", "policy", "evidence"), new Uri("https://forms.example.org/next"))))
+            .Handle(new(originalBinding.TenantId, eventId, requirement.RegistrationWorkflowId, requirement.Id, channel.Id, switchedBinding.Id), CancellationToken.None);
+
+        await Assert.That(updateResult.Success).IsTrue();
+        await Assert.That((
+            existingAttempt.RegistrationChannelId,
+            existingAttempt.RegistrationProviderBindingId,
+            existingAttempt.RegistrationFormId,
+            existingAttempt.RegistrationFormVersionId,
+            existingAttempt.ProviderMappingRevisionHash)).IsEqualTo(existingAttemptSnapshot);
+        await Assert.That(channel.RegistrationProviderBindingId).IsEqualTo(switchedBinding.Id);
+        await Assert.That(launch.BindingId).IsEqualTo(switchedBinding.Id);
+        await Assert.That(launch.Available).IsTrue();
+        await Assert.That(launch.Reason).IsEqualTo("ok");
+    }
+
+    [Test]
     public async Task ExternalImport_CreatesPublishedFrozenExternalVersionWithRevisionSnapshot()
     {
         RegistrationProviderBinding binding = Binding();
@@ -1030,8 +1089,8 @@ public sealed class RegistrationProviderManagementHandlerTests
         WebhookSecretBindingId = webhookSecretBindingId
     };
 
-    private static RegistrationProviderBinding Binding(RegistrationProviderPresentationModeEnum presentationMode = RegistrationProviderPresentationModeEnum.Redirect, Guid? formVersionId = null) => RegistrationProviderBinding.Create(
-        Guid.CreateVersion7(), Guid.CreateVersion7(), Guid.CreateVersion7(), formVersionId ?? Guid.CreateVersion7(),
+    private static RegistrationProviderBinding Binding(RegistrationProviderPresentationModeEnum presentationMode = RegistrationProviderPresentationModeEnum.Redirect, Guid? formVersionId = null, Guid? tenantId = null) => RegistrationProviderBinding.Create(
+        tenantId ?? Guid.CreateVersion7(), Guid.CreateVersion7(), Guid.CreateVersion7(), formVersionId ?? Guid.CreateVersion7(),
         presentationMode,
         RegistrationProviderCollectionModeEnum.ProviderHosted,
         RegistrationProviderCompletionModeEnum.Callback,
@@ -1187,8 +1246,10 @@ public sealed class RegistrationProviderManagementHandlerTests
         Guid eventId,
         RegistrationSubmission? submission = null,
         RegistrationProviderConnection? connection = null,
-        RegistrationRequirement? requirement = null) : IRegistrationProviderRepository
+        RegistrationRequirement? requirement = null,
+        IReadOnlyList<RegistrationProviderBinding>? otherBindings = null) : IRegistrationProviderRepository
     {
+        private IReadOnlyList<RegistrationProviderBinding> Bindings => otherBindings is null ? [binding] : [binding, .. otherBindings];
         public List<RegistrationSubmissionIssue> Issues { get; } = [];
         public List<RegistrationProviderConnection> Connections { get; } = connection is null ? [] : [connection];
         public List<RegistrationForm> Forms { get; } = [];
@@ -1198,15 +1259,15 @@ public sealed class RegistrationProviderManagementHandlerTests
 
         public Task<RegistrationProviderConnection?> GetConnectionAsync(Guid tenantId, Guid connectionId, CancellationToken cancellationToken) => Task.FromResult(Connections.SingleOrDefault(connection => tenantId == connection.TenantId && connectionId == connection.Id));
         public Task<IReadOnlyList<RegistrationProviderConnection>> GetConnectionsAsync(Guid tenantId, CancellationToken cancellationToken) => cancellationToken.IsCancellationRequested ? Task.FromCanceled<IReadOnlyList<RegistrationProviderConnection>>(cancellationToken) : Task.FromResult<IReadOnlyList<RegistrationProviderConnection>>([.. Connections.Where(connection => connection.TenantId == tenantId)]);
-        public Task<RegistrationProviderBinding?> GetBindingAsync(Guid tenantId, Guid bindingId, CancellationToken cancellationToken) => Task.FromResult(tenantId == binding.TenantId && bindingId == binding.Id ? binding : null);
-        public Task<bool> FormVersionBelongsToEventAsync(Guid tenantId, Guid requestedEventId, Guid formId, Guid formVersionId, CancellationToken cancellationToken) => Task.FromResult(tenantId == binding.TenantId && requestedEventId == eventId && formId == binding.RegistrationFormId && formVersionId == binding.RegistrationFormVersionId);
+        public Task<RegistrationProviderBinding?> GetBindingAsync(Guid tenantId, Guid bindingId, CancellationToken cancellationToken) => Task.FromResult(Bindings.SingleOrDefault(item => tenantId == item.TenantId && bindingId == item.Id));
+        public Task<bool> FormVersionBelongsToEventAsync(Guid tenantId, Guid requestedEventId, Guid formId, Guid formVersionId, CancellationToken cancellationToken) => Task.FromResult(tenantId == binding.TenantId && requestedEventId == eventId && Bindings.Any(item => formId == item.RegistrationFormId && formVersionId == item.RegistrationFormVersionId));
         public Task<RegistrationProviderBinding?> GetBindingForCallbackAsync(Guid bindingId, CancellationToken cancellationToken) => Task.FromResult(bindingId == binding.Id ? binding : null);
-        public Task<IReadOnlyList<RegistrationProviderBinding>> GetBindingsAsync(Guid tenantId, CancellationToken cancellationToken) => Task.FromResult<IReadOnlyList<RegistrationProviderBinding>>(tenantId == binding.TenantId ? [binding] : []);
+        public Task<IReadOnlyList<RegistrationProviderBinding>> GetBindingsAsync(Guid tenantId, CancellationToken cancellationToken) => Task.FromResult<IReadOnlyList<RegistrationProviderBinding>>([.. Bindings.Where(item => item.TenantId == tenantId)]);
         public Task<RegistrationRequirement?> GetRequirementAsync(Guid tenantId, Guid eventId, Guid workflowId, Guid requirementId, CancellationToken cancellationToken) => cancellationToken.IsCancellationRequested ? Task.FromCanceled<RegistrationRequirement?>(cancellationToken) : Task.FromResult(requirement is not null && tenantId == requirement.TenantId && eventId == requirement.EventId && workflowId == requirement.RegistrationWorkflowId && requirementId == requirement.Id ? requirement : null);
         public Task<RegistrationChannel?> GetChannelAsync(Guid tenantId, Guid eventId, Guid workflowId, Guid requirementId, Guid channelId, CancellationToken cancellationToken) => cancellationToken.IsCancellationRequested ? Task.FromCanceled<RegistrationChannel?>(cancellationToken) : Task.FromResult(requirement?.Channels.SingleOrDefault(channel => channel.TenantId == tenantId && channel.EventId == eventId && channel.RegistrationWorkflowId == workflowId && channel.RegistrationRequirementId == requirementId && channel.Id == channelId));
         public Task<bool> HasSubmissionForBindingAsync(Guid tenantId, Guid bindingId, CancellationToken cancellationToken) => Task.FromResult(false);
         public Task<IReadOnlyList<RegistrationProviderBinding>> GetBindingsForEventAsync(Guid tenantId, Guid requestedEventId, CancellationToken cancellationToken) =>
-            Task.FromResult<IReadOnlyList<RegistrationProviderBinding>>(tenantId == binding.TenantId && requestedEventId == eventId ? [binding] : []);
+            Task.FromResult<IReadOnlyList<RegistrationProviderBinding>>(tenantId == binding.TenantId && requestedEventId == eventId ? Bindings : []);
         public Task<DateTime?> GetLastCallbackAtAsync(Guid tenantId, Guid bindingId, CancellationToken cancellationToken) => Task.FromResult<DateTime?>(null);
         public Task<int> CountParkedItemsAsync(Guid tenantId, Guid bindingId, CancellationToken cancellationToken) => Task.FromResult(0);
         public Task<DateTime?> GetOldestPendingItemAtAsync(Guid tenantId, Guid bindingId, CancellationToken cancellationToken) => Task.FromResult<DateTime?>(null);

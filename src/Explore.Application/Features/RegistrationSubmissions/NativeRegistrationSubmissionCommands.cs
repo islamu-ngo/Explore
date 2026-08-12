@@ -24,7 +24,8 @@ public sealed record LaunchNativeRegistrationAttemptCommand(
     Guid ChannelId,
     Guid FormId,
     Guid FormVersionId,
-    Guid? BindingId = null) : IRequest<NativeRegistrationAttemptResult>;
+    Guid? BindingId = null,
+    Guid? SupersededAttemptId = null) : IRequest<NativeRegistrationAttemptResult>;
 
 public sealed record LaunchRegistrationProviderAttemptCommand(
     Guid TenantId,
@@ -34,7 +35,8 @@ public sealed record LaunchRegistrationProviderAttemptCommand(
     Guid ChannelId,
     Guid BindingId,
     Guid FormId,
-    Guid FormVersionId) : IRequest<RegistrationProviderAttemptResult>;
+    Guid FormVersionId,
+    Guid? SupersededAttemptId = null) : IRequest<RegistrationProviderAttemptResult>;
 
 public sealed record SubmitNativeRegistrationAttemptCommand(
     Guid TenantId,
@@ -85,6 +87,7 @@ public sealed class LaunchNativeRegistrationAttemptCommandValidator
         RuleFor(command => command.ChannelId).NotEmpty();
         RuleFor(command => command.FormId).NotEmpty();
         RuleFor(command => command.FormVersionId).NotEmpty();
+        RuleFor(command => command.SupersededAttemptId).NotEqual(Guid.Empty);
     }
 }
 
@@ -117,6 +120,7 @@ public sealed class LaunchRegistrationProviderAttemptCommandValidator
         RuleFor(command => command.BindingId).NotEmpty();
         RuleFor(command => command.FormId).NotEmpty();
         RuleFor(command => command.FormVersionId).NotEmpty();
+        RuleFor(command => command.SupersededAttemptId).NotEqual(Guid.Empty);
     }
 }
 
@@ -204,7 +208,15 @@ public sealed class LaunchNativeRegistrationAttemptCommandHandler(
             binding?.PublishedMappingRevisionHash,
             now,
             expiresAt);
-        await submissions.PersistAttemptAsync(attempt, cancellationToken);
+        bool persisted = request.SupersededAttemptId is { } supersededAttemptId
+            ? await submissions.PersistReplacementAttemptAsync(
+                attempt, supersededAttemptId, "restart-with-fallback", now, cancellationToken)
+            : await PersistAttemptAsync(submissions, attempt, cancellationToken);
+        if (!persisted)
+        {
+            return Missing(request);
+        }
+
         return new(true, attempt.Id, requirement.Id, channel.Id, version.RegistrationFormId, version.Id,
             attempt.ExpiresAt, NativeRegistrationAttemptContractBuilder.Form(version), subjects,
             NativeRegistrationAttemptContractBuilder.Progress(subjects), requirement.CanSkip, capability.RawToken);
@@ -213,6 +225,15 @@ public sealed class LaunchNativeRegistrationAttemptCommandHandler(
     private static NativeRegistrationAttemptResult Missing(LaunchNativeRegistrationAttemptCommand request) =>
         new(false, Guid.Empty, request.RequirementId, request.ChannelId, request.FormId, request.FormVersionId,
             default, null, [], null, false, null, "registration_requirement_not_found");
+
+    private static async Task<bool> PersistAttemptAsync(
+        IRegistrationSubmissionRepository submissions,
+        RegistrationAttempt attempt,
+        CancellationToken cancellationToken)
+    {
+        await submissions.PersistAttemptAsync(attempt, cancellationToken);
+        return true;
+    }
 
     private static bool IsHeadlessBinding(
         RegistrationProviderBinding binding,
@@ -337,12 +358,29 @@ public sealed class LaunchRegistrationProviderAttemptCommandHandler(
             return Missing();
         }
 
-        await submissions.PersistAttemptAsync(attempt, cancellationToken);
+        bool persisted = request.SupersededAttemptId is { } supersededAttemptId
+            ? await submissions.PersistReplacementAttemptAsync(
+                attempt, supersededAttemptId, "restart-with-fallback", now, cancellationToken)
+            : await PersistAttemptAsync(submissions, attempt, cancellationToken);
+        if (!persisted)
+        {
+            return Missing();
+        }
+
         return new(true, attempt.Id, descriptor);
     }
 
     private static RegistrationProviderAttemptResult Missing() =>
         new(false, Guid.Empty, null, "registration_provider_attempt_not_found");
+
+    private static async Task<bool> PersistAttemptAsync(
+        IRegistrationSubmissionRepository submissions,
+        RegistrationAttempt attempt,
+        CancellationToken cancellationToken)
+    {
+        await submissions.PersistAttemptAsync(attempt, cancellationToken);
+        return true;
+    }
 }
 
 public sealed class SubmitNativeRegistrationAttemptCommandHandler(

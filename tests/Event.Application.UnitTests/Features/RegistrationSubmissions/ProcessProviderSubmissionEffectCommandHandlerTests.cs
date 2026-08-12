@@ -344,6 +344,32 @@ public sealed class ProcessProviderSubmissionEffectCommandHandlerTests
     }
 
     [Test]
+    public async Task SupersededAttemptCallback_IsRetainedAsEvidenceOnlyAndDoesNotFinalize()
+    {
+        ProviderScope scope = CreateScope(RegistrationAnswerSyncModeEnum.COMPLETION_ONLY);
+        scope.Attempt.Supersede(Guid.CreateVersion7(), Now.AddMinutes(1), "restart-with-fallback");
+        var repositories = CreateRepositories(scope);
+        RegistrationSubmission? retained = null;
+        repositories.Submissions.PersistEvidenceOnlyAsync(Arg.Do<RegistrationSubmission>(value => retained = value), Arg.Any<CancellationToken>())
+            .Returns(call => Task.FromResult(new RegistrationSubmissionPersistenceResult(
+                RegistrationSubmissionPersistenceOutcome.Inserted,
+                call.ArgAt<RegistrationSubmission>(0))));
+        var handler = CreateHandler(scope, repositories);
+
+        ProviderSubmissionEffectResult result = await handler.Handle(CreateCommand(scope), CancellationToken.None);
+
+        await Assert.That(result.Outcome).IsEqualTo(ProviderSubmissionEffectOutcome.NeedsReconciliation);
+        await Assert.That(result.Code).IsEqualTo("STALE_OR_OUT_OF_ORDER");
+        await Assert.That(retained).IsNotNull();
+        await Assert.That(retained!.IsFinalizable).IsFalse();
+        await repositories.Submissions.DidNotReceive().PersistAcceptedWithNormalizationAsync(
+            Arg.Any<RegistrationAttempt>(), Arg.Any<RegistrationSubmission>(), Arg.Any<Guid>(),
+            Arg.Any<IReadOnlyCollection<RegistrationAnswer>>(), Arg.Any<IReadOnlyCollection<RegistrationConsentRecord>>(),
+            Arg.Any<IReadOnlyCollection<RegistrationSubmissionIssue>>(), Arg.Any<IReadOnlyCollection<RegistrationRequirementFulfillment>>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
     public async Task ReceiptBodyHashMismatch_ParksBeforeAttemptLookup()
     {
         ProviderScope scope = CreateScope(RegistrationAnswerSyncModeEnum.COMPLETION_ONLY);

@@ -51,6 +51,9 @@ public sealed record FinalizeGuestRegistrationOrderCommand(Guid EventId, Guid Or
 public sealed record CancelGuestRegistrationOrderCommand(Guid EventId, Guid OrderId, string? CapabilityToken)
     : IRequest<GuestRegistrationOrderLifecycleResponseDto>, IGuestRegistrationOrderAccessCommand;
 
+public sealed record ClaimGuestRegistrationOrderCommand(Guid EventId, Guid OrderId, string? CapabilityToken)
+    : IRequest<BaseCommandResponse<Guid>>, IGuestRegistrationOrderAccessCommand;
+
 public sealed record ContinueAuthenticatedRegistrationOrderCommand(
     Guid EventId,
     Guid OrderId,
@@ -84,7 +87,8 @@ public sealed record LaunchGuestNativeRegistrationAttemptCommand(
     Guid ChannelId,
     Guid FormId,
     Guid FormVersionId,
-    Guid? BindingId = null)
+    Guid? BindingId = null,
+    Guid? SupersededAttemptId = null)
     : IRequest<NativeRegistrationAttemptResult>, IGuestRegistrationOrderAccessCommand;
 
 public sealed record LaunchAuthenticatedNativeRegistrationAttemptCommand(
@@ -94,7 +98,8 @@ public sealed record LaunchAuthenticatedNativeRegistrationAttemptCommand(
     Guid ChannelId,
     Guid FormId,
     Guid FormVersionId,
-    Guid? BindingId = null)
+    Guid? BindingId = null,
+    Guid? SupersededAttemptId = null)
     : IRequest<NativeRegistrationAttemptResult>, IAuthenticatedRegistrationOrderAccessCommand;
 
 public sealed record LaunchGuestRegistrationProviderAttemptCommand(
@@ -105,7 +110,8 @@ public sealed record LaunchGuestRegistrationProviderAttemptCommand(
     Guid ChannelId,
     Guid BindingId,
     Guid FormId,
-    Guid FormVersionId)
+    Guid FormVersionId,
+    Guid? SupersededAttemptId = null)
     : IRequest<RegistrationProviderAttemptResult>, IGuestRegistrationOrderAccessCommand;
 
 public sealed record LaunchAuthenticatedRegistrationProviderAttemptCommand(
@@ -115,7 +121,8 @@ public sealed record LaunchAuthenticatedRegistrationProviderAttemptCommand(
     Guid ChannelId,
     Guid BindingId,
     Guid FormId,
-    Guid FormVersionId)
+    Guid FormVersionId,
+    Guid? SupersededAttemptId = null)
     : IRequest<RegistrationProviderAttemptResult>, IAuthenticatedRegistrationOrderAccessCommand;
 
 public sealed record SubmitGuestNativeRegistrationAttemptCommand(

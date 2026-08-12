@@ -122,7 +122,8 @@ public sealed class LaunchGuestNativeRegistrationAttemptCommandHandler(
 
         return await sender.Send(new LaunchNativeRegistrationAttemptCommand(
             tenant.TenantId, request.EventId, request.OrderId, request.RequirementId,
-            request.ChannelId, request.FormId, request.FormVersionId, request.BindingId), cancellationToken);
+            request.ChannelId, request.FormId, request.FormVersionId, request.BindingId,
+            request.SupersededAttemptId), cancellationToken);
     }
 }
 
@@ -172,7 +173,8 @@ public sealed class LaunchGuestRegistrationProviderAttemptCommandHandler(
 
         return await sender.Send(new LaunchRegistrationProviderAttemptCommand(
             tenant.TenantId, request.EventId, request.OrderId, request.RequirementId,
-            request.ChannelId, request.BindingId, request.FormId, request.FormVersionId), cancellationToken);
+            request.ChannelId, request.BindingId, request.FormId, request.FormVersionId,
+            request.SupersededAttemptId), cancellationToken);
     }
 }
 

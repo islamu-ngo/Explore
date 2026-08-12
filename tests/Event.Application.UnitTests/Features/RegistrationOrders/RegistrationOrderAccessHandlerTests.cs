@@ -37,10 +37,17 @@ public sealed class RegistrationOrderAccessHandlerTests
     private readonly IRegistrationOrderStarter _starter = Substitute.For<IRegistrationOrderStarter>();
     private readonly ITenantContext _tenant = Substitute.For<ITenantContext>();
     private readonly ICurrentUserService _currentUser = Substitute.For<ICurrentUserService>();
+    private readonly IUserRepository _users = Substitute.For<IUserRepository>();
+    private readonly IUnitOfWork _unitOfWork = Substitute.For<IUnitOfWork>();
 
     public RegistrationOrderAccessHandlerTests()
     {
         _tenant.TenantId.Returns(_tenantId);
+        _unitOfWork.ExecuteSerializableAsync(
+                Arg.Any<Func<CancellationToken, Task<Explore.Application.Responses.BaseCommandResponse<Guid>>>>(),
+                Arg.Any<CancellationToken>())
+            .Returns(call => call.ArgAt<Func<CancellationToken, Task<Explore.Application.Responses.BaseCommandResponse<Guid>>>>(0)(
+                call.ArgAt<CancellationToken>(1)));
     }
 
     [Test]
@@ -448,6 +455,129 @@ public sealed class RegistrationOrderAccessHandlerTests
         await Assert.That(handlerInvoked).IsFalse();
     }
 
+    [Test]
+    public async Task ClaimGuestRegistrationOrderRequiresCapabilityAndDoesNotSilentlyLink()
+    {
+        Guid userId = Guid.CreateVersion7();
+        RegistrationOrder order = CreateGuestOrderWithPii("buyer@example.test");
+        _currentUser.IsAuthenticated.Returns(true);
+        _currentUser.UserId.Returns(userId);
+        _users.GetUserWithDetails(userId, Arg.Any<CancellationToken>()).Returns(CreateUser(userId, "buyer@example.test", verified: true));
+        _inventory.GetOrderForUpdateWithPiiAsync(_orderId, _tenantId, Arg.Any<CancellationToken>()).Returns(order);
+        _capabilities.Matches("bad-token", order.GuestAccessTokenHash!).Returns(false);
+
+        Explore.Application.Responses.BaseCommandResponse<Guid> result = await CreateClaimHandler().Handle(
+            new ClaimGuestRegistrationOrderCommand(_eventId, _orderId, "bad-token"), CancellationToken.None);
+
+        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.FailureCode).IsEqualTo("registration_order_not_found");
+        await Assert.That(order.AccountUserId).IsNull();
+        await _inventory.DidNotReceive().SaveChangesAsync(Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task ClaimGuestRegistrationOrderRequiresAuthenticatedCurrentAccount()
+    {
+        _currentUser.IsAuthenticated.Returns(false);
+        _currentUser.UserId.Returns((Guid?)null);
+
+        Explore.Application.Responses.BaseCommandResponse<Guid> result = await CreateClaimHandler().Handle(
+            new ClaimGuestRegistrationOrderCommand(_eventId, _orderId, "guest-token"), CancellationToken.None);
+
+        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.FailureCode).IsEqualTo("registration_order_authentication_required");
+        _ = await _inventory.DidNotReceive().GetOrderForUpdateWithPiiAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task ClaimGuestRegistrationOrderRequiresVerifiedCurrentUserEmailAuthority()
+    {
+        Guid userId = Guid.CreateVersion7();
+        _currentUser.IsAuthenticated.Returns(true);
+        _currentUser.UserId.Returns(userId);
+        _users.GetUserWithDetails(userId, Arg.Any<CancellationToken>()).Returns(CreateUser(userId, "buyer@example.test", verified: false));
+
+        Explore.Application.Responses.BaseCommandResponse<Guid> result = await CreateClaimHandler().Handle(
+            new ClaimGuestRegistrationOrderCommand(_eventId, _orderId, "guest-token"), CancellationToken.None);
+
+        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.FailureCode).IsEqualTo("registration_order_verified_email_required");
+        _ = await _inventory.DidNotReceive().GetOrderForUpdateWithPiiAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task ClaimGuestRegistrationOrderLinksOnlyWhenNormalizedVerifiedEmailMatchesAndThenAllowsAccountAccess()
+    {
+        Guid userId = Guid.CreateVersion7();
+        RegistrationOrder order = CreateGuestOrderWithPii("Buyer@Example.Test");
+        _currentUser.IsAuthenticated.Returns(true);
+        _currentUser.UserId.Returns(userId);
+        _users.GetUserWithDetails(userId, Arg.Any<CancellationToken>()).Returns(CreateUser(userId, "buyer@example.test", verified: true));
+        _inventory.GetOrderForUpdateWithPiiAsync(_orderId, _tenantId, Arg.Any<CancellationToken>()).Returns(order);
+        _inventory.GetOrderWithLinesAsync(_orderId, _tenantId, Arg.Any<CancellationToken>()).Returns(order);
+        _capabilities.Matches("guest-token", order.GuestAccessTokenHash!).Returns(true);
+        _lifecycle.GetAsync(_orderId, _tenantId, Arg.Any<CancellationToken>()).Returns(_ => RegistrationOrderDto.From(order));
+
+        Explore.Application.Responses.BaseCommandResponse<Guid> claim = await CreateClaimHandler().Handle(
+            new ClaimGuestRegistrationOrderCommand(_eventId, _orderId, "guest-token"), CancellationToken.None);
+        RegistrationOrderDto? current = await new GetCurrentRegistrationOrderQueryHandler(
+            _inventory, _lifecycle, _tenant, _currentUser).Handle(new GetCurrentRegistrationOrderQuery(_orderId), CancellationToken.None);
+
+        await Assert.That(claim.Success).IsTrue();
+        await Assert.That(order.AccountUserId).IsEqualTo(userId);
+        await Assert.That(current).IsNotNull();
+        await Assert.That(current!.AccountUserId).IsEqualTo(userId);
+        await _inventory.Received(1).SaveChangesAsync(CancellationToken.None);
+    }
+
+    [Test]
+    public async Task ClaimGuestRegistrationOrderRejectsCrossEventAndWrongEmailWithoutLinking()
+    {
+        Guid userId = Guid.CreateVersion7();
+        RegistrationOrder crossEvent = CreateGuestOrderWithPii("buyer@example.test", eventId: Guid.CreateVersion7());
+        RegistrationOrder wrongEmail = CreateGuestOrderWithPii("other@example.test");
+        _currentUser.IsAuthenticated.Returns(true);
+        _currentUser.UserId.Returns(userId);
+        _users.GetUserWithDetails(userId, Arg.Any<CancellationToken>()).Returns(CreateUser(userId, "buyer@example.test", verified: true));
+        _capabilities.Matches("guest-token", Arg.Any<CapabilityTokenHash>()).Returns(true);
+
+        _inventory.GetOrderForUpdateWithPiiAsync(_orderId, _tenantId, Arg.Any<CancellationToken>()).Returns(crossEvent, wrongEmail);
+
+        Explore.Application.Responses.BaseCommandResponse<Guid> eventResult = await CreateClaimHandler().Handle(
+            new ClaimGuestRegistrationOrderCommand(_eventId, _orderId, "guest-token"), CancellationToken.None);
+        Explore.Application.Responses.BaseCommandResponse<Guid> emailResult = await CreateClaimHandler().Handle(
+            new ClaimGuestRegistrationOrderCommand(_eventId, _orderId, "guest-token"), CancellationToken.None);
+
+        await Assert.That(eventResult.FailureCode).IsEqualTo("registration_order_not_found");
+        await Assert.That(emailResult.FailureCode).IsEqualTo("registration_order_email_mismatch");
+        await Assert.That(crossEvent.AccountUserId).IsNull();
+        await Assert.That(wrongEmail.AccountUserId).IsNull();
+    }
+
+    [Test]
+    public async Task ClaimGuestRegistrationOrderRejectsOtherAccountButIsIdempotentForSameAccount()
+    {
+        Guid userId = Guid.CreateVersion7();
+        Guid otherUserId = Guid.CreateVersion7();
+        RegistrationOrder otherLinked = CreateGuestOrderWithPii("buyer@example.test", accountUserId: otherUserId, guestHash: CapabilityTokenHash.Create(Convert.ToBase64String(new byte[32])));
+        RegistrationOrder sameLinked = CreateGuestOrderWithPii("buyer@example.test", accountUserId: userId, guestHash: CapabilityTokenHash.Create(Convert.ToBase64String(new byte[32])));
+        _currentUser.IsAuthenticated.Returns(true);
+        _currentUser.UserId.Returns(userId);
+        _users.GetUserWithDetails(userId, Arg.Any<CancellationToken>()).Returns(CreateUser(userId, "buyer@example.test", verified: true));
+        _capabilities.Matches("guest-token", Arg.Any<CapabilityTokenHash>()).Returns(true);
+        _inventory.GetOrderForUpdateWithPiiAsync(_orderId, _tenantId, Arg.Any<CancellationToken>()).Returns(otherLinked, sameLinked);
+
+        Explore.Application.Responses.BaseCommandResponse<Guid> conflict = await CreateClaimHandler().Handle(
+            new ClaimGuestRegistrationOrderCommand(_eventId, _orderId, "guest-token"), CancellationToken.None);
+        Explore.Application.Responses.BaseCommandResponse<Guid> retry = await CreateClaimHandler().Handle(
+            new ClaimGuestRegistrationOrderCommand(_eventId, _orderId, "guest-token"), CancellationToken.None);
+
+        await Assert.That(conflict.Success).IsFalse();
+        await Assert.That(conflict.FailureCode).IsEqualTo("registration_order_already_linked");
+        await Assert.That(retry.Success).IsTrue();
+        await Assert.That(retry.Message).IsEqualTo("Registration order already linked to the current account.");
+    }
+
     private GetGuestRegistrationOrderQueryHandler CreateGuestQueryHandler() => new(
         _inventory,
         _lifecycle,
@@ -461,6 +591,39 @@ public sealed class RegistrationOrderAccessHandlerTests
         _capabilities,
         _tenant,
         new FixedTimeProvider(UtcNow));
+
+    private ClaimGuestRegistrationOrderCommandHandler CreateClaimHandler() => new(
+        _inventory,
+        _capabilities,
+        _tenant,
+        _currentUser,
+        _users,
+        new FixedTimeProvider(UtcNow),
+        _unitOfWork);
+
+    private RegistrationOrder CreateGuestOrderWithPii(
+        string email,
+        Guid? eventId = null,
+        Guid? accountUserId = null,
+        CapabilityTokenHash? guestHash = null)
+    {
+        RegistrationOrder order = CreateGuestOrder(eventId, accountUserId, guestHash);
+        order.SetPii(RegistrationOrderPii.Create(order.Id, order.TenantId, "Buyer", email, null, null));
+        return order;
+    }
+
+    private static User CreateUser(Guid userId, string email, bool verified) => new()
+    {
+        Id = userId,
+        EmailVerified = verified,
+        Pii = new UserPii
+        {
+            UserId = userId,
+            Email = email,
+            FirstName = "Buyer",
+            LastName = "User"
+        }
+    };
 
     private RegistrationOrder CreateGuestOrder(
         Guid? eventId = null,

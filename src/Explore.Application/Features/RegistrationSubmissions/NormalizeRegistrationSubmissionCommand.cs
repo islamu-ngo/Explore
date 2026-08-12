@@ -6,6 +6,7 @@ using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.RegistrationSubmissions;
 using Explore.Domain;
+using Explore.Domain.Constants;
 using Explore.Domain.Enums;
 using Explore.Domain.Services.Registration;
 using FluentValidation;
@@ -134,6 +135,16 @@ public sealed class NormalizeRegistrationSubmissionCommandHandler(
             if (!allowedSubjectKeys.Contains((input.SubjectType, input.SubjectId, input.TicketAssignmentOrderLineId)))
             {
                 issues.Add(RegistrationSubmissionIssue.Create(submission, "INVALID_SUBJECT", now, field.Id));
+                continue;
+            }
+
+            if (input.SubjectType == RegistrationAnswerSubjectTypeEnum.Participant &&
+                (RegistrationFieldTypeEnum)field.FieldTypeId == RegistrationFieldTypeEnum.Consent &&
+                field.ConsentPurposeCode is { } purposeCode && ConsentPurposeCodes.IsMarketing(purposeCode) &&
+                participants.Any(participant => participant.Id == input.SubjectId &&
+                    participant.ParticipantTypeId is (int)ParticipantTypeEnum.Child or (int)ParticipantTypeEnum.Dependent))
+            {
+                issues.Add(RegistrationSubmissionIssue.Create(submission, "CHILD_MARKETING_CONSENT_DISABLED", now, field.Id));
                 continue;
             }
 
@@ -310,7 +321,7 @@ public sealed class NormalizeRegistrationSubmissionCommandHandler(
         {
             RegistrationProtectedValue protectedValue = protector.Protect(value.Canonical);
             RegistrationSensitiveAnswerValue sensitiveValue = RegistrationSensitiveAnswerValue.Create(
-                submission.TenantId, protectedValue.Ciphertext, protectedValue.KeyVersion, now);
+                submission.TenantId, protectedValue.Ciphertext, protectedValue.KeyVersion, field.RetentionPolicyId, now);
             yield return RegistrationAnswer.CreateSensitive(submission, field, requirement, input.SubjectType,
                 input.SubjectId, 1, sensitiveValue, now, input.TicketAssignmentOrderLineId);
             yield break;

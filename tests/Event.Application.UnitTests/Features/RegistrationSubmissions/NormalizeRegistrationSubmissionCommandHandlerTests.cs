@@ -9,6 +9,7 @@ using Explore.Application.Contracts.Services;
 using Explore.Application.Contracts.Services.Registration;
 using Explore.Application.Features.RegistrationSubmissions.Commands;
 using Explore.Domain;
+using Explore.Domain.Constants;
 using Explore.Domain.Enums;
 using Explore.Domain.Services.Registration;
 using Explore.Domain.ValueObjects;
@@ -125,6 +126,63 @@ public sealed class NormalizeRegistrationSubmissionCommandHandlerTests
         await Assert.That(result.Issues.Count(issue => issue.Code == "REQUIRED_FIELD_MISSING")).IsEqualTo(2);
         await sender.DidNotReceive().Send(
             Arg.Any<RecordRegistrationRequirementFulfillmentCommand>(), Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task ChildMarketingConsentIsRejectedWithoutAffectingAdultParticipantConsent()
+    {
+        SubmissionScope scope = CreateScope(RegistrationRequirementSubjectTypeEnum.EveryParticipant);
+        IRegistrationSubmissionRepository submissions = Substitute.For<IRegistrationSubmissionRepository>();
+        IRegistrationFormAuthoringRepository forms = Substitute.For<IRegistrationFormAuthoringRepository>();
+        IRegistrationInventoryRepository inventory = Substitute.For<IRegistrationInventoryRepository>();
+        IRegistrationParticipantRepository participants = Substitute.For<IRegistrationParticipantRepository>();
+        IRegistrationSensitiveValueProtector protector = Substitute.For<IRegistrationSensitiveValueProtector>();
+        ISender sender = Substitute.For<ISender>();
+        Guid adultId = Guid.CreateVersion7();
+        RegistrationParticipant adult = RegistrationParticipant.Create(
+            adultId, scope.TenantId, scope.OrderId, null, ParticipantTypeEnum.Adult, null);
+        Guid childId = Guid.CreateVersion7();
+        RegistrationParticipant child = RegistrationParticipant.Create(
+            childId, scope.TenantId, scope.OrderId, null, ParticipantTypeEnum.Child, adult);
+        submissions.GetRequirementAsync(scope.TenantId, scope.Requirement.Id, Arg.Any<CancellationToken>())
+            .Returns(scope.Requirement);
+        forms.GetVersionAsync(scope.EventId, scope.Form.Id, scope.Version.Id, Arg.Any<CancellationToken>())
+            .Returns(scope.Version);
+        submissions.GetSubmissionAsync(scope.TenantId, scope.Submission.Id, Arg.Any<CancellationToken>())
+            .Returns(scope.Submission);
+        inventory.GetOrderWithLinesAsync(scope.OrderId, scope.TenantId, Arg.Any<CancellationToken>())
+            .Returns(CreateOrder(scope));
+        participants.GetParticipantsByOrderAsync(scope.OrderId, scope.TenantId, Arg.Any<CancellationToken>())
+            .Returns([adult, child]);
+        IReadOnlyCollection<RegistrationConsentRecord> persistedConsents = [];
+        IReadOnlyCollection<RegistrationSubmissionIssue> persistedIssues = [];
+        submissions.PersistNormalizationAsync(
+                Arg.Any<IReadOnlyCollection<RegistrationAnswer>>(),
+                Arg.Do<IReadOnlyCollection<RegistrationConsentRecord>>(records => persistedConsents = records),
+                Arg.Do<IReadOnlyCollection<RegistrationSubmissionIssue>>(issues => persistedIssues = issues),
+                Arg.Any<CancellationToken>())
+            .Returns(Task.CompletedTask);
+        NormalizeRegistrationSubmissionCommandHandler handler = new(
+            inventory, submissions, forms, participants, protector, sender, TimeProvider.System);
+        using JsonDocument consent = JsonDocument.Parse("true");
+
+        RegistrationSubmissionNormalizationResult childResult = await handler.Handle(
+            new(scope.TenantId, scope.Submission.Id,
+                [new(scope.Consent.Id, RegistrationAnswerSubjectTypeEnum.Participant, childId, null, consent.RootElement.Clone())]),
+            CancellationToken.None);
+
+        await Assert.That(childResult.IsValid).IsFalse();
+        await Assert.That(persistedConsents).IsEmpty();
+        await Assert.That(persistedIssues.Single().Code).IsEqualTo("CHILD_MARKETING_CONSENT_DISABLED");
+
+        RegistrationSubmissionNormalizationResult adultResult = await handler.Handle(
+            new(scope.TenantId, scope.Submission.Id,
+                [new(scope.Consent.Id, RegistrationAnswerSubjectTypeEnum.Participant, adultId, null, consent.RootElement.Clone())]),
+            CancellationToken.None);
+
+        await Assert.That(adultResult.IsValid).IsTrue();
+        await Assert.That(persistedConsents.Single().ParticipantSubjectId).IsEqualTo(adultId);
+        await Assert.That(persistedConsents.Single().PurposeCode).IsEqualTo(ConsentPurposeCodes.EventUpdates);
     }
 
     [Test]
@@ -248,6 +306,75 @@ public sealed class NormalizeRegistrationSubmissionCommandHandlerTests
             Arg.Any<RecordRegistrationRequirementFulfillmentCommand>(), Arg.Any<CancellationToken>());
     }
 
+    [Test]
+    public async Task LaunchNativeRestartPersistsReplacementAndSupersedesOldAttemptInOneRepositoryCall()
+    {
+        SubmissionScope scope = CreateScope();
+        RegistrationOrder order = CreateOrder(scope);
+        order.TransitionTo(RegistrationOrderStatusEnum.AwaitingIdentity, UtcNow);
+        order.TransitionTo(RegistrationOrderStatusEnum.AwaitingParticipantDetails, UtcNow);
+        order.TransitionTo(RegistrationOrderStatusEnum.AwaitingRequirements, UtcNow);
+        IRegistrationInventoryRepository inventory = Substitute.For<IRegistrationInventoryRepository>();
+        IRegistrationFormAuthoringRepository authoring = Substitute.For<IRegistrationFormAuthoringRepository>();
+        IRegistrationSubmissionRepository submissions = Substitute.For<IRegistrationSubmissionRepository>();
+        IRegistrationProviderRepository providers = Substitute.For<IRegistrationProviderRepository>();
+        IRegistrationProviderRegistry registry = Substitute.For<IRegistrationProviderRegistry>();
+        IRegistrationParticipantRepository participants = Substitute.For<IRegistrationParticipantRepository>();
+        IRegistrationFinalizationRepository finalization = Substitute.For<IRegistrationFinalizationRepository>();
+        IGuestCapabilityTokenService capabilities = Substitute.For<IGuestCapabilityTokenService>();
+        Guid oldAttemptId = Guid.CreateVersion7();
+        inventory.GetOrderWithLinesAsync(scope.OrderId, scope.TenantId, Arg.Any<CancellationToken>()).Returns(order);
+        RegistrationWorkflow workflow = RegistrationWorkflow.Create(
+            scope.Requirement.RegistrationWorkflowId,
+            scope.TenantId,
+            scope.EventId,
+            "registration",
+            UtcNow);
+        RegistrationRequirement requirement = RegistrationRequirement.Create(
+            scope.Requirement.Id,
+            workflow,
+            1,
+            RegistrationRequirementCriticalityEnum.Required,
+            false,
+            RegistrationRequirementCompletionEffectEnum.BlocksRegistration,
+            RegistrationAnswerSyncModeEnum.FULL_CANONICAL,
+            RegistrationRequirementSubjectTypeEnum.AllOrders,
+            null,
+            UtcNow);
+        Guid channelId = Guid.CreateVersion7();
+        RegistrationChannel channel = RegistrationChannel.Create(
+            channelId,
+            requirement,
+            1,
+            true,
+            null,
+            UtcNow);
+        requirement.AddChannel(channel);
+        workflow.AddRequirement(requirement);
+        authoring.GetWorkflowAsync(scope.EventId, "registration", Arg.Any<CancellationToken>()).Returns(workflow);
+        authoring.GetPublishedVersionsAsync(scope.EventId, 2, Arg.Any<CancellationToken>()).Returns([scope.Version]);
+        capabilities.Issue().Returns(new GuestCapabilityTokenIssue("raw-token", CapabilityTokenHash.Create(Hash("raw-token"))));
+        submissions.PersistReplacementAttemptAsync(
+                Arg.Any<RegistrationAttempt>(), oldAttemptId, "restart-with-fallback", Arg.Any<DateTime>(), Arg.Any<CancellationToken>())
+            .Returns(true);
+        LaunchNativeRegistrationAttemptCommand command = new(
+            scope.TenantId, scope.EventId, scope.OrderId, scope.Requirement.Id,
+            channelId, scope.Form.Id, scope.Version.Id, null, oldAttemptId);
+
+        NativeRegistrationAttemptResult result = await new LaunchNativeRegistrationAttemptCommandHandler(
+            inventory, authoring, submissions, providers, registry, participants, finalization, capabilities, new FixedTimeProvider(UtcNow))
+            .Handle(command, CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await submissions.Received(1).PersistReplacementAttemptAsync(
+            Arg.Is<RegistrationAttempt>(attempt => attempt.Id == result.AttemptId && attempt.RegistrationChannelId == command.ChannelId),
+            oldAttemptId,
+            "restart-with-fallback",
+            UtcNow,
+            Arg.Any<CancellationToken>());
+        await submissions.DidNotReceive().PersistAttemptAsync(Arg.Any<RegistrationAttempt>(), Arg.Any<CancellationToken>());
+    }
+
     private static SubmissionScope CreateScope(
         RegistrationRequirementSubjectTypeEnum subjectType = RegistrationRequirementSubjectTypeEnum.AllOrders)
     {
@@ -274,7 +401,7 @@ public sealed class NormalizeRegistrationSubmissionCommandHandlerTests
         RegistrationFormField consent = RegistrationFormField.Create(
             Guid.CreateVersion7(), section, 3, "registration", "marketing_consent", "Send me event updates",
             RegistrationFieldTypeEnum.Consent, 1, RegistrationOrganizerVisibilityEnum.Hidden,
-            true, false, UtcNow, "EVENT_UPDATES", "2026-08", "I agree to receive event updates by email.");
+             true, false, UtcNow, ConsentPurposeCodes.EventUpdates, "2026-08", "I agree to receive event updates by email.");
         version.AddSection(section);
         version.AddField(section, trigger);
         version.AddField(section, target);
@@ -308,6 +435,11 @@ public sealed class NormalizeRegistrationSubmissionCommandHandlerTests
         UtcNow.AddMinutes(15));
 
     private static string Hash(string value) => Convert.ToBase64String(SHA256.HashData(Encoding.UTF8.GetBytes(value)));
+
+    private sealed class FixedTimeProvider(DateTime utcNow) : TimeProvider
+    {
+        public override DateTimeOffset GetUtcNow() => new(utcNow);
+    }
 
     private sealed record SubmissionScope(
         Guid TenantId,
