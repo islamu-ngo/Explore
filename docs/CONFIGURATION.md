@@ -6,8 +6,8 @@ ABOUTME: Focuses on non-inferable key names, mapping behavior, and settings casc
 > **Audience:** Operators | Contributors | AI agents
 > **Status:** Implemented
 > **Owner:** Platform/Ops
-> **Last Verified:** 2026-08-09
-> **Source Anchors:** `src/Explore.Secrets/Database/PrimaryDatabaseConfiguration.cs`, `src/Event.MigrationService/Extensions/ConfigurationExtensions.cs`, `src/Event.Standalone/Program.cs`, `src/Event.Standalone/appsettings.json`, `docker-compose.standalone.yml`, `Explore.API/Extensions/ConfigurationExtensions.cs`, `Explore.API/Controllers/ListmonkIntegrationSettingsController.cs`, `Explore.API/Controllers/PlatformMonetizationSettingsController.cs`, `Explore.Application/DTOs/Integrations/ListmonkIntegrationSettingsDto.cs`, `Explore.Application/Features/PlatformMonetization/`, `Explore.Infrastructure/Integrations/Listmonk/ListmonkSyncService.cs`, `Explore.Blazor/Extensions/ConfigurationExtension.cs`, `Explore.Blazor/Extensions/YarpProxyExtensions.cs`, `Event.Web.BffHosting/Authentication/EventBffKeycloakAuthenticationOptions.cs`, `Event.Web.BffHosting/Proxy/EventApiBaseAddressResolver.cs`, `Explore.Application/Features/EventReporting/EventReportSubmissionOptions.cs`, `Explore.Application/Services/AccountAuthorityLifecycleEmailOptions.cs`, `Explore.Application/Notifications/AccountAuthorityKind.cs`, `Explore.Application/Notifications/NotificationRoutingOptions.cs`, `Explore.Infrastructure/Configuration/ModerationProviderOptions.cs`, `Explore.Infrastructure/Configuration/OspreyProviderOptions.cs`, `Explore.Infrastructure/Configuration/CoopProviderOptions.cs`, `Explore.API/Services/CoopWebhookSignatureValidator.cs`, `Explore.Infrastructure/Services/HierarchicalSettingsResolver.cs`, `Explore.Infrastructure/Services/Keycloak/KeycloakLifecycleEmailOptions.cs`, `Explore.Infrastructure/Services/Keycloak/KeycloakAccountAuthorityLifecycleEmailService.cs`, `Explore.Infrastructure/Storage/LocalFileStorageProvider.cs`, `Explore.Infrastructure/Storage/S3ConfigResolver.cs`, `Explore.Infrastructure/StorageReconciliationSettings.cs`, `Explore.Infrastructure/Mail/SmtpConfigResolver.cs`, `Explore.Infrastructure/Services/SetupSecretProvider.cs`, `Explore.Domain/Constants/GovernanceSettingKeys.cs`, `Explore.Domain/Constants/InfrastructureSecretSettingKeys.cs`, `Explore.Domain/Secrets/SecretDefinitionRegistry.cs`, `docs/SECRETS.md`
+> **Last Verified:** 2026-08-11
+> **Source Anchors:** `src/Explore.Secrets/Database/PrimaryDatabaseConfiguration.cs`, `src/Event.MigrationService/Extensions/ConfigurationExtensions.cs`, `src/Event.Standalone/Program.cs`, `src/Event.Standalone/appsettings.json`, `src/Event.Standalone/Dockerfile`, `Explore.API/Extensions/ConfigurationExtensions.cs`, `Explore.API/Controllers/ListmonkIntegrationSettingsController.cs`, `Explore.API/Controllers/PlatformMonetizationSettingsController.cs`, `Explore.Application/DTOs/Integrations/ListmonkIntegrationSettingsDto.cs`, `Explore.Application/Features/PlatformMonetization/`, `Explore.Infrastructure/Integrations/Listmonk/ListmonkSyncService.cs`, `Explore.Blazor/Extensions/ConfigurationExtension.cs`, `Explore.Blazor/Extensions/YarpProxyExtensions.cs`, `Event.Web.BffHosting/Authentication/EventBffKeycloakAuthenticationOptions.cs`, `Event.Web.BffHosting/Proxy/EventApiBaseAddressResolver.cs`, `Explore.Application/Features/EventReporting/EventReportSubmissionOptions.cs`, `Explore.Application/Services/AccountAuthorityLifecycleEmailOptions.cs`, `Explore.Application/Notifications/AccountAuthorityKind.cs`, `Explore.Application/Notifications/NotificationRoutingOptions.cs`, `Explore.Infrastructure/Configuration/ModerationProviderOptions.cs`, `Explore.Infrastructure/Configuration/OspreyProviderOptions.cs`, `Explore.Infrastructure/Configuration/CoopProviderOptions.cs`, `Explore.API/Services/CoopWebhookSignatureValidator.cs`, `Explore.Infrastructure/Services/HierarchicalSettingsResolver.cs`, `Explore.Infrastructure/Services/Keycloak/KeycloakLifecycleEmailOptions.cs`, `Explore.Infrastructure/Services/Keycloak/KeycloakAccountAuthorityLifecycleEmailService.cs`, `Explore.Infrastructure/Storage/LocalFileStorageProvider.cs`, `Explore.Infrastructure/Storage/S3ConfigResolver.cs`, `Explore.Infrastructure/StorageReconciliationSettings.cs`, `Explore.Infrastructure/Mail/SmtpConfigResolver.cs`, `Explore.Infrastructure/Services/SetupSecretProvider.cs`, `Explore.Domain/Constants/GovernanceSettingKeys.cs`, `Explore.Domain/Constants/InfrastructureSecretSettingKeys.cs`, `Explore.Domain/Secrets/SecretDefinitionRegistry.cs`, `docs/SECRETS.md`
 
 ## Runtime Configuration Sources
 
@@ -52,6 +52,23 @@ readiness. In `Standalone`, the one host owns API and BFF/UI startup once and
 uses the in-process API bridge; that bridge remains the BFF/API trust boundary,
 so no `API_ENDPOINT` or loopback URL is needed for it. Keycloak callback,
 web-origin, and logout registration target the selected BFF/combined resource.
+
+### Formbricks mirror deployment inputs
+
+The optional Formbricks stack is deployment-owned infrastructure. Docker Compose starts it only with `--profile formbricks`; Aspire registers the same isolated dependency graph only for `ISLAMU_ASPIRE_MODE=FullLocal`. `DefaultLocal`, `ExternalInfra`, and `LocalDataExternalPlatform` do not register Formbricks resources.
+
+| Key | Required | Purpose |
+|---|---|---|
+| `FORMBRICKS_WEBAPP_URL` | No; local default `http://localhost:3005` | Browser-facing Formbricks origin and NextAuth URL. |
+| `FORMBRICKS_HTTP_PORT` | No; default `3005` | Compose host port for the Formbricks web app. |
+| `FORMBRICKS_DATABASE_NAME`, `FORMBRICKS_DATABASE_USER`, `FORMBRICKS_DATABASE_PASSWORD` | No for local Compose | Credentials for the profile's isolated PostgreSQL database. |
+| `FORMBRICKS_NEXTAUTH_SECRET` | Yes | NextAuth signing secret. |
+| `FORMBRICKS_ENCRYPTION_KEY` | Yes | Formbricks encryption key for 2FA and single-use links. |
+| `FORMBRICKS_CRON_SECRET` | Yes | Formbricks cron authorization secret. |
+| `FORMBRICKS_HUB_API_KEY` | Yes | Shared app-to-Hub API key. |
+| `FORMBRICKS_CUBEJS_API_SECRET` | Yes | Cube JWT/API authentication secret. |
+
+Leave required secrets blank in the checked-in example; the Compose migration validates and fails closed. Aspire `FullLocal` generates persistent secret parameters when values are absent. Provider API tokens and webhook secrets remain tenant-scoped ISLAMU secret bindings and are not any of the container-bootstrap values above.
 
 AppHost assigns standalone HTTP dynamically through `WithHttpEndpoint(name: "http")`; HTTPS remains explicitly `https://localhost:7180` for the combined endpoint. Direct `Event.Standalone` launch profiles reserve `http://localhost:5180`.
 
@@ -238,75 +255,54 @@ application keys are `Database__Provider`, `Database__Host`,
 stays uniform. Only PostgreSQL and SQL Server use it as the model namespace;
 SQLite, MariaDB, and MySQL retain `ie_` regardless of its value.
 
-`DATABASE_PROVIDER` and the other `DATABASE_*` names in
-`docker-compose.standalone.yml` are Compose interpolation inputs only. Compose
-maps its supported inputs to native keys in each service definition; they are
-not application compatibility aliases. A direct `docker run` or a Compose
-override must set the native `Database__*` names. Kubernetes packaging is
-deferred and has no supported manifest in this repository.
-The standalone descriptor currently interpolates `DATABASE_PROVIDER`,
-`DATABASE_HOST`, `DATABASE_PORT`, `DATABASE_DATABASE`, `DATABASE_SCHEMA`,
-`DATABASE_TLS_MODE`, `DATABASE_TRUST_SERVER_CERTIFICATE`, and the two
-role-specific credential pairs. It does not turn arbitrary `DATABASE_*` names
-into runtime configuration.
+The standalone image is run directly with `docker run --env-file .env` and
+normal .NET `Database__*` keys. The legacy single-underscore `DATABASE_*`
+names are Compose interpolation inputs for the Split descriptor only; they are
+not application compatibility aliases. Kubernetes packaging is deferred and
+has no supported manifest in this repository.
 
 ### Standalone provider overrides
 
 The standalone default is `Sqlite` at `/app/data/islamu_event.db`. It uses WAL
-and a 30-second SQLite timeout, needs a durable local named volume, and permits
-exactly one web replica (`Hosting__ReplicaCount=1`). Compose mounts the primary
-file at `/app/data` from `event_standalone_data` and the embedded authority file
-at `/app/privacy-erasure-authority/privacy_erasure_authority.db` from
-`event_standalone_authority`; back up and restore those volumes independently.
+and a 30-second SQLite timeout, needs one durable local named volume, and permits
+exactly one web replica (`Hosting__ReplicaCount=1`). Mount that volume at
+`/app/data`; the embedded authority defaults to
+`/app/data/privacy_erasure_authority.db` beside the primary database.
 
-For a server provider, apply the shared endpoint fields to both
-`event-migrationservice` and `event-standalone`, then provide each service only
-its own credentials. Put placeholder values in a protected `.env` file or
-secret store; never place real values in a Compose file and never pass
-`Database__Migrator__*` to the web service.
+For a server provider, put the shared endpoint fields plus separate migrator
+and runtime credentials in a protected `.env` file or secret store. The one
+standalone process uses the migrator role before binding HTTP and the runtime
+role afterward.
 
-| Provider | Native fields for **both** services | Migrator-only fields | Web-only fields |
+| Provider | Shared native fields | Migration phase | Runtime phase |
 |---|---|---|---|
 | PostgreSql | `Database__Provider=PostgreSql`, `Database__Host=<db-host>`, `Database__Port=5432`, `Database__Database=<database>`, `Database__Schema=islamu_event`, `Database__TlsMode=Required`, `Database__TrustServerCertificate=false` | `Database__Migrator__Username=${DB_MIGRATOR_USERNAME}`, `Database__Migrator__Password=${DB_MIGRATOR_PASSWORD}` | `Database__Runtime__Username=${DB_RUNTIME_USERNAME}`, `Database__Runtime__Password=${DB_RUNTIME_PASSWORD}` |
 | SqlServer | `Database__Provider=SqlServer`, `Database__Host=<db-host>`, `Database__Port=1433`, `Database__Database=<database>`, `Database__Schema=islamu_event`, `Database__TlsMode=Required`, `Database__TrustServerCertificate=false` | `Database__Migrator__Username=${DB_MIGRATOR_USERNAME}`, `Database__Migrator__Password=${DB_MIGRATOR_PASSWORD}` | `Database__Runtime__Username=${DB_RUNTIME_USERNAME}`, `Database__Runtime__Password=${DB_RUNTIME_PASSWORD}` |
 | MariaDb | `Database__Provider=MariaDb`, `Database__Host=<db-host>`, `Database__Port=3306`, `Database__Database=<database>`, `Database__TlsMode=Required`, `Database__TrustServerCertificate=false`, `Database__ServerFlavor=MariaDb`, `Database__ServerVersion=<major.minor.patch>` | `Database__Migrator__Username=${DB_MIGRATOR_USERNAME}`, `Database__Migrator__Password=${DB_MIGRATOR_PASSWORD}` | `Database__Runtime__Username=${DB_RUNTIME_USERNAME}`, `Database__Runtime__Password=${DB_RUNTIME_PASSWORD}` |
 | MySql | `Database__Provider=MySql`, `Database__Host=<db-host>`, `Database__Port=3306`, `Database__Database=<database>`, `Database__TlsMode=Required`, `Database__TrustServerCertificate=false`, `Database__ServerFlavor=MySql`, `Database__ServerVersion=<major.minor.patch>` | `Database__Migrator__Username=${DB_MIGRATOR_USERNAME}`, `Database__Migrator__Password=${DB_MIGRATOR_PASSWORD}` | `Database__Runtime__Username=${DB_RUNTIME_USERNAME}`, `Database__Runtime__Password=${DB_RUNTIME_PASSWORD}` |
 
-For example, put the PostgreSQL shared fields and each role's credentials in a
-`docker-compose.standalone.override.yml` file rather than relying on undeclared
-`DATABASE_*` aliases:
+For example, a PostgreSQL standalone `.env` uses native keys directly:
 
-```yaml
-services:
-  event-migrationservice:
-    environment:
-      Database__Provider: PostgreSql
-      Database__Host: ${DB_HOST}
-      Database__Port: "5432"
-      Database__Database: ${DB_NAME}
-      Database__Schema: islamu_event
-      Database__TlsMode: Required
-      Database__TrustServerCertificate: "false"
-      Database__Migrator__Username: ${DB_MIGRATOR_USERNAME}
-      Database__Migrator__Password: ${DB_MIGRATOR_PASSWORD}
-  event-standalone:
-    environment:
-      Database__Provider: PostgreSql
-      Database__Host: ${DB_HOST}
-      Database__Port: "5432"
-      Database__Database: ${DB_NAME}
-      Database__Schema: islamu_event
-      Database__TlsMode: Required
-      Database__TrustServerCertificate: "false"
-      Database__Runtime__Username: ${DB_RUNTIME_USERNAME}
-      Database__Runtime__Password: ${DB_RUNTIME_PASSWORD}
+```dotenv
+Database__Provider=PostgreSql
+Database__Host=postgres.example.internal
+Database__Port=5432
+Database__Database=islamu_event
+Database__Schema=islamu_event
+Database__TlsMode=Required
+Database__TrustServerCertificate=false
+Database__Migrator__Username=islamu_event_migrator
+Database__Migrator__Password=<migrator-password>
+Database__Runtime__Username=islamu_event_runtime
+Database__Runtime__Password=<runtime-password>
 ```
 
-Start the override with the base descriptor so the volume initialization and
-one-shot migration ordering remain intact:
+Pass it directly to the image; migration completes before the listener starts:
 
 ```bash
-docker compose -f docker-compose.standalone.yml -f docker-compose.standalone.override.yml up --build
+docker run --rm --name islamu-event-standalone --env-file .env \
+  --mount source=event_standalone_data,target=/app/data \
+  -p 8080:8080 islamu/event-standalone
 ```
 
 Provider-specific migrations are intentionally separate. PostgreSQL
@@ -637,14 +633,16 @@ Local development can source Svix secrets from `WEBHOOKS_SVIX_AUTH_TOKEN` and `W
 
 ### Registration Provider Framework Configuration
 
-Phase 9 is provider-neutral and has no static `RegistrationProviders:*` adapter configuration. Provider connections are tenant-owned data managed through the authenticated registration-provider management API. Credentials are referenced by `SecretBinding` rows only:
+Registration providers have no static `RegistrationProviders:*` adapter configuration. Provider connections are tenant-owned data managed through the authenticated registration-provider management API. Credentials are referenced by `SecretBinding` rows only:
 
 | Secret definition key | Default Infisical path/key | Scope | Purpose |
 |---|---|---|---|
-| `registration_provider.api_token` | `/registration-providers/REGISTRATION_PROVIDER_API_TOKEN` | Tenant | Optional provider API token reference for future concrete adapters. |
-| `registration_provider.webhook_secret` | `/registration-providers/REGISTRATION_PROVIDER_WEBHOOK_SECRET` | Tenant | Optional provider callback signing secret reference. |
+| `registration_provider.api_token` | `/registration-providers/REGISTRATION_PROVIDER_API_TOKEN` | Tenant | Provider API/OAuth credential reference. Google Forms accepts a raw access token or JSON with `access_token`; refresh envelopes must contain `refresh_token`, `client_id`, and `client_secret`. |
+| `registration_provider.webhook_secret` | `/registration-providers/REGISTRATION_PROVIDER_WEBHOOK_SECRET` | Tenant | Provider callback signing secret reference for providers that use shared callback secrets, such as Microsoft Forms. Google Forms Pub/Sub does not use this key because it validates Google-signed OIDC tokens. |
 
 Use `SecretBinding.Qualifier` (bounded to 128 characters) to distinguish multiple tenant connections that use the same definition key. Approved origins are connection data, not appsettings: each origin must be an HTTPS origin only and cannot target local, private, link-local, multicast, or metadata hosts. Launch descriptors and embeds are generated from those origins by the server; operators must not add raw iframe HTML or provider URLs to configuration files.
+
+Google Forms connection metadata is also stored on the tenant connection, not in appsettings. `GrantedOAuthScopes` must be exactly the read/import set (`openid email https://www.googleapis.com/auth/forms.body.readonly https://www.googleapis.com/auth/forms.responses.readonly`) or that set plus `https://www.googleapis.com/auth/forms.body` for managed provisioning. `ProviderIdentity` is required. `PublicBaseUrl` must pin `https://docs.google.com`; `ManagementApiBaseUrl` must stay on `https://forms.googleapis.com`. `WebhookSecretBindingId` must be unset because Google Pub/Sub uses OIDC, and supplied shared-secret bindings are rejected for the Google descriptor. `PubSubConfigurationReference` is required; JSON accepts `topicName`/`topic`, `audience`, and `serviceAccountEmail`/`email`, while semicolon text accepts `topic`, `audience`, and `serviceAccountEmail`; see [Google Forms Pub/Sub Integration](integrations/google-forms-pubsub.md#connection-fields).
 
 ### Reporting Static Configuration
 
@@ -1023,7 +1021,8 @@ Refresh behavior binds from `SecretRefresh` and runs via hosted `SecretRefreshSe
 
 | Key | Default | Purpose |
 |---|---|---|
-| `SETUP_SECRET` | internal random fallback | Env-only startup secret for interactive first-run onboarding. It cannot be configured from instance administration because setup needs it before the app is initialized. A configured value remains valid until onboarding completes and locks setup mode. When omitted, the API keeps validation fail-closed with an internal random value that is never written to logs or terminal output; configure `SETUP_SECRET` and restart to use interactive setup. |
+| `SETUP_SECRET` | generated file fallback | Env-only startup secret for interactive first-run onboarding. A non-empty value is always authoritative, removes any generated file, and remains valid until onboarding completes. When empty, the API creates one random secret at `SETUP_SECRET_FILE`, reuses it while that file survives, and deletes it after onboarding completes. The secret value is never logged. |
+| `SETUP_SECRET_FILE` | platform temp: `/tmp/islamu-event/setup-secret`; split Compose: `/app/bootstrap/setup-secret`; standalone: `/app/data/setup-secret` | Server-only generated-secret path. The file is created atomically with owner read/write permissions (`0600`) for explicit host-administrator retrieval. Split Compose backs `/app/bootstrap` with `setup_data`; standalone uses its existing data volume. An unmounted temp path survives process/container restarts but not container replacement. |
 | `SETUP_SECRET_REQUIRED` | `true` | Controls whether interactive setup endpoints can validate a setup secret. `false` is effective only when trusted managed provisioning is explicitly configured; otherwise the provider fails closed and still requires a setup secret. |
 | `PROVISIONING_TRUSTED` | `false` | Must be `true` before managed-provider provisioning can disable interactive setup-secret validation. |
 | `PROVISIONING_MODE` | unset | Trusted values are managed-provider modes such as `managed-provider`, `managed_provider`, `managed-hosting`, or `managed`. Other values do not disable setup-secret validation. |
@@ -1042,6 +1041,10 @@ Important safety behavior:
 - `SETUP_SECRET_REQUIRED=false` without all trusted managed-provisioning keys is ignored and the API still requires a setup secret.
 - `SETUP_SECRET_REQUIRED=false` with trusted managed provisioning does **not** make setup-secret-protected endpoints public. `ValidateSecret` returns false and those endpoints reject anonymous/no-secret calls; managed provider automation must use the authorized provisioning endpoint instead.
 - Raw setup secrets are never written to logs or terminal output.
+- Startup logs only an operator retrieval command such as `docker cp <container-name>:<setup-secret-path> ./setup-secret`; they never contain the value. The file is deleted when onboarding locks, and a non-empty `SETUP_SECRET` removes and overrides any stale generated file.
+- A read-only filesystem with no writable mount must supply `SETUP_SECRET`; startup fails closed with explicit guidance instead of printing a credential.
+- Rolling or multi-replica API deployments must supply one shared explicit `SETUP_SECRET` from the platform secret manager. Compose pins the API to one replica; generated-file mode is for a single API instance.
+- Losing an uncompleted generated secret is an availability event: replacing an ephemeral container creates a new secret and invalidates the old one. Completed onboarding remains authoritative in the database, so no replacement secret is generated afterward.
 - The API does not expire setup authority relative to process startup. The BFF instead issues a 30-minute rolling setup session; successful status and synchronization calls refresh it, while 30 minutes without setup activity requires the operator to enter `SETUP_SECRET` again.
 
 `/setup` is a separate pre-authentication operator gateway. Browser-provided privileged headers are always removed; the BFF and API accept setup authority only from their trusted server-owned setup-secret sources. Access tokens, setup secrets, provider administrator credentials, and raw provider responses must not enter browser storage, browser-facing DTOs, logs, traces, screenshots, or support artifacts.

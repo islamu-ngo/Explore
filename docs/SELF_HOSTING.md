@@ -1,4 +1,4 @@
-ABOUTME: Production self-hosting guide covering Docker Compose stack, configuration, and operations.
+ABOUTME: Production self-hosting guide covering split Compose and standalone image operations.
 ABOUTME: Covers minimum viable stack, optional services, setup, migrations, health checks, backups, and upgrades.
 
 # Self-Hosting Guide
@@ -6,8 +6,8 @@ ABOUTME: Covers minimum viable stack, optional services, setup, migrations, heal
 > **Audience:** Operators and DevOps engineers  
 > **Status:** Implemented  
 > **Owner:** Platform/Ops  
-> **Last Verified:** 2026-08-09
-> **Source Anchors:** `docker-compose.yml`, `docker-compose.standalone.yml`, `src/Event.Standalone/Dockerfile`, `src/Event.MigrationService/Dockerfile`, `src/Event.Standalone/Program.cs`, `src/Explore.API/Hosting/ApiHostStartupExtensions.cs`
+> **Last Verified:** 2026-08-11
+> **Source Anchors:** `docker-compose.yml`, `src/Event.Standalone/Dockerfile`, `src/Event.MigrationService/Dockerfile`, `src/Event.Standalone/Program.cs`, `src/Explore.API/Hosting/ApiHostStartupExtensions.cs`
 
 ---
 
@@ -35,15 +35,27 @@ Self-hosting ISLAMU Event delivers a superior alternative:
 * **Full White-Label Independence:** Customize tenant domains, logos, navigation, and governance without third-party vendor watermarks.
 
 > [!IMPORTANT]
-> **Deployed migrations belong to `Event.MigrationService`.** Run it to
-> successful completion before starting or upgrading the API. Development keeps
-> an API-owned application-migration convenience path; do not rely on that in a
-> deployed environment. The API separately owns TickerQ operational migrations,
-> and TickerQ is PostgreSQL-only.
+> **Split deployments run `Event.MigrationService` before the API.** The
+> standalone image applies the same application, Data Protection, and authority
+> migrations in-process before its HTTP listener starts. The API separately owns
+> TickerQ operational migrations, and TickerQ is PostgreSQL-only.
 
 Everything else — Redis, Keycloak, Cerbos, MinIO, Svix, Coop, AI, federation — is **optional** and can be added when your deployment needs it.
 
-Registration-provider Phase 9 support is provider-neutral and does not require an extra container. Store future provider API tokens and webhook secrets as tenant-scoped secret bindings (`registration_provider.api_token`, `registration_provider.webhook_secret`) with a bounded qualifier when multiple tenant connections use the same key. Approved browser/embed origins are managed as connection data through the API, not `.env` iframe snippets. Concrete provider adapters such as Formbricks, Google Forms, or Microsoft Forms are not claimed until their later phases.
+Registration-provider support is provider-neutral and does not require an extra container unless an operator selects a self-hosted provider. Store provider API tokens and webhook secrets as tenant-scoped secret bindings (`registration_provider.api_token`, `registration_provider.webhook_secret`) with a bounded qualifier when multiple tenant connections use the same key. Approved browser/embed origins are managed as connection data through the API, not `.env` iframe snippets.
+
+### Optional Formbricks mirror profile
+
+Formbricks is optional and never starts with the default Compose stack. To run the pinned self-hosted topology, generate the five required secrets documented in `.env.example`, then start its profile:
+
+```bash
+docker compose --profile formbricks config --quiet
+docker compose --profile formbricks up -d formbricks
+```
+
+The profile starts isolated PostgreSQL and Valkey storage, one-shot Formbricks and Hub migrations, Hub, Cube, and Formbricks `5.2.2` at `http://localhost:3005`. Application and Hub images are digest-pinned; PostgreSQL, Valkey, and Cube state use dedicated `formbricks_*` volumes. Stop only this optional topology with `docker compose --profile formbricks down`.
+
+Configure the provider binding with collection mode `MirrorOnly` (`MIRROR_ONLY`, ID `4`) when ISLAMU Event must remain canonical. The accepted native submission commits first; the existing provider write-effect worker then sends only mapped fields whose form definition has `IsProviderTransferAllowed=true`. Provider failure cannot roll back the ISLAMU Event submission. File answers and multilingual form provisioning are not advertised by the pinned Formbricks tuple.
 
 ### Current host topology support
 
@@ -79,11 +91,10 @@ public origin and the exact BFF admin host yourself. The origin is not derived
 from a container or service-discovery address.
 
 > [!IMPORTANT]
-> The Split stack remains `docker-compose.yml`. The opt-in, one-process
-> container deployment is `docker-compose.standalone.yml`; it defaults to
-> SQLite and is independent of the Aspire-only `Hosting:Topology` selector.
-> Use its documented structured database configuration, not a raw connection
-> string or unrecognised application environment aliases.
+> The Split stack remains `docker-compose.yml`. Standalone is one Docker image,
+> run directly with `docker run --env-file .env`; there is no standalone Compose
+> descriptor or helper container. It defaults to SQLite and is independent of
+> the Aspire-only `Hosting:Topology` selector.
 
 The three application composition roots (`Explore.API`, `Explore.Blazor`, and `Event.Standalone`) preserve one API contract: use `/api/...` with non-URL API versioning (`Accept`, `?api-version=`, or `X-Api-Version`); do not add a path-version segment (see [the support matrix](ARCHITECTURE.md#hosting-topology)). To return from the opt-in one-process host, restart AppHost in its Split default; this topology rollback does not alter persisted data.
 
@@ -135,10 +146,10 @@ cp .env.example .env
 openssl rand -hex 32
 ```
 
-**3. Set your setup secret in `.env`:**
+**3. Choose your setup-secret source in `.env`:**
 
 ```bash
-# Add to .env — you'll use this to complete onboarding at /setup
+# Optional: leave blank to use the generated setup_data volume file
 SETUP_SECRET=my-secure-setup-secret
 ```
 
@@ -153,6 +164,14 @@ docker compose config
 ```bash
 docker compose run --rm event-migrationservice
 docker compose up -d
+```
+
+If `SETUP_SECRET` is empty, retrieve the generated value from the API's
+dedicated bootstrap volume. The logs contain this command, never the value:
+
+```bash
+docker cp islamu-event-api:/app/bootstrap/setup-secret ./setup-secret
+chmod 600 ./setup-secret
 ```
 
 The one-shot migration process must exit successfully before the API starts.
@@ -171,27 +190,30 @@ combine.
 | **API** | `http://localhost:7039` |
 | **Mailpit** (email viewer) | `http://localhost:8025` |
 | **Keycloak Admin** | `http://localhost:8080` |
+| **Formbricks** (optional `formbricks` profile) | `http://localhost:3005` |
 
-**7. Complete first-run setup** at `http://localhost:7002/setup` using your `SETUP_SECRET`.
+**7. Complete first-run setup** at `http://localhost:7002/setup` using the explicit or retrieved secret, then remove the host copy.
 
 > [!TIP]
 > For the absolute minimal deployment (no Keycloak, no Redis, no Mailpit), see [Deployment Tiers → Tier 1: Bare Minimum](#tier-1-bare-minimum).
 
 ## Standalone Container Quick Start
 
-The standalone descriptor builds the images when a Docker daemon is available
-and starts a serialized local-storage flow:
-`volume-init` assigns `/app/data` and `/app/privacy-erasure-authority` to UID/GID `1654`,
-`event-migrationservice` applies the schema and exits, then
-`event-standalone` starts one web replica. Its SQLite default is the named
-`event_standalone_data` volume, mounted at `/app/data`; the primary database is
-`/app/data/islamu_event.db`. The independent
-`event_standalone_authority` volume mounts at `/app/privacy-erasure-authority`
-for `privacy_erasure_authority.db`, so restoring the primary never overwrites
-the authority ledger.
+Build one image, create one durable data volume, and run the image with the
+repository `.env` file. The image owns `/app/data` as its non-root UID, applies
+application, Data Protection, and privacy-authority migrations before accepting
+traffic, then starts the combined API/BFF host. Both SQLite files live in the
+same volume by default: `/app/data/islamu_event.db` and
+`/app/data/privacy_erasure_authority.db`.
 
 ```bash
-docker compose -f docker-compose.standalone.yml up --build
+docker build -t islamu/event-standalone -f src/Event.Standalone/Dockerfile .
+docker volume create event_standalone_data
+docker run --rm --name islamu-event-standalone \
+  --env-file .env \
+  --mount source=event_standalone_data,target=/app/data \
+  -p 8080:8080 \
+  islamu/event-standalone
 ```
 
 The web listener is published on `http://localhost:8080` by default. After the
@@ -201,9 +223,22 @@ services are running, probe it from the host:
 curl --fail http://localhost:8080/health
 ```
 
-Do not treat a rendered Compose file as a successful image build, migration, or
-health probe. The web service runs in `Production` and does not apply the
-application schema itself; a failed migration service prevents it from starting.
+When `.env` contains an empty `SETUP_SECRET`, the image creates one random
+secret in the existing data volume. Logs show only how to retrieve it:
+
+```bash
+docker logs islamu-event-standalone
+docker cp islamu-event-standalone:/app/data/setup-secret ./setup-secret
+chmod 600 ./setup-secret
+```
+
+Use the copied value at `http://localhost:8080/setup`, then remove the local
+copy. The volume copy survives container restarts but is deleted automatically
+when onboarding completes. A non-empty `SETUP_SECRET` in `.env` overrides this
+behavior and removes any stale generated file.
+
+The process exits before binding port `8080` if migration or seeding fails. No
+second container, init container, or shell entrypoint is involved.
 
 ### Build and run the web image directly
 
@@ -213,27 +248,24 @@ Build the web image explicitly:
 docker build -t islamu/event-standalone -f src/Event.Standalone/Dockerfile .
 ```
 
-Before running that image, create and initialize its named volume, then build
-and run the one-shot migration image. The migration service, not the Production
-web image, owns this step:
+Create the named volume once. Docker initializes it from the image's app-owned
+`/app/data` directory, so a root `volume-init` helper is unnecessary:
 
 ```bash
 docker volume create event_standalone_data
-docker volume create event_standalone_authority
-docker run --rm --user 0:0 --mount source=event_standalone_data,target=/app/data --mount source=event_standalone_authority,target=/app/privacy-erasure-authority busybox:1.37.0-musl sh -c 'chown 1654:1654 /app/data /app/privacy-erasure-authority && chmod 700 /app/data /app/privacy-erasure-authority'
-docker build -t islamu/event-migrationservice -f src/Event.MigrationService/Dockerfile .
-docker run --rm --mount source=event_standalone_data,target=/app/data --mount source=event_standalone_authority,target=/app/privacy-erasure-authority -e ASPNETCORE_ENVIRONMENT=Production -e Database__Provider=Sqlite -e Database__Database=/app/data/islamu_event.db -e PrivacyErasure__Authority__Topology=EmbeddedSqlite -e PrivacyErasureAuthorityEmbedded__Path=/app/privacy-erasure-authority/privacy_erasure_authority.db -e PrivacyErasureAuthorityEmbedded__WriterReplicaCount=1 -e PrivacyErasureAuthorityEmbedded__BusyTimeoutSeconds=30 islamu/event-migrationservice
 ```
 
-Only after that command exits zero, start the web image with one SQLite replica:
+Then start the single container. Native .NET keys such as
+`Database__Provider` in `.env` override the image's SQLite defaults when needed:
 
 ```bash
-docker run --rm --name islamu-event-standalone --mount source=event_standalone_data,target=/app/data --mount source=event_standalone_authority,target=/app/privacy-erasure-authority -p 8080:8080 -e ASPNETCORE_ENVIRONMENT=Production -e Database__Provider=Sqlite -e Database__Database=/app/data/islamu_event.db -e Hosting__ReplicaCount=1 -e PrivacyErasure__Authority__Topology=EmbeddedSqlite -e PrivacyErasureAuthorityEmbedded__Path=/app/privacy-erasure-authority/privacy_erasure_authority.db -e PrivacyErasureAuthorityEmbedded__WriterReplicaCount=1 -e PrivacyErasureAuthorityEmbedded__BusyTimeoutSeconds=30 islamu/event-standalone
+docker run --rm --name islamu-event-standalone --env-file .env \
+  --mount source=event_standalone_data,target=/app/data \
+  -p 8080:8080 islamu/event-standalone
 ```
 
 `linux/amd64` is the initial supported image target. `linux/arm64`, Kubernetes,
-and Helm packaging are deferred; do not infer their support from this Compose
-workflow.
+and Helm packaging are deferred; do not infer their support from this image.
 
 ---
 
@@ -473,7 +505,8 @@ The primary file must not be `/app/data/privacy_erasure_authority.db`.
 
 | Variable | Default | Purpose |
 |---|---|---|
-| `SETUP_SECRET` | *(internal random fallback)* | Operator secret for first-run onboarding at `/setup` |
+| `SETUP_SECRET` | *(generated file fallback)* | Optional explicit operator secret; a non-empty value always overrides generated-file behavior |
+| `SETUP_SECRET_FILE` | Temp default; Compose: `/app/bootstrap/setup-secret`; standalone: `/app/data/setup-secret` | Owner-only generated secret path; Compose and standalone map it to their named data volumes |
 | `DEPLOYMENT_MODE` | *(blank = single-tenant)* | Set `multi_tenant` before first launch for multi-tenant |
 | `CONTROL_PLANE_PUBLIC_ORIGIN` | — | Control-plane admin host for BFF admin-host registration |
 | `Hosting__Topology` | `Split` when running Aspire | AppHost-only local composition selector: `Split` or opt-in `Standalone`; ignored by the current Compose topology |
@@ -500,7 +533,7 @@ After starting the stack for the first time:
 
 ### 1. Set Your Setup Secret
 
-Configure `SETUP_SECRET` in your `.env` before starting the API. If absent, the API uses an internal random fallback that is never printed — you must set `SETUP_SECRET` and restart to use the `/setup` flow.
+Leave `SETUP_SECRET` empty for a single API instance to generate one owner-only file, then follow the logged `docker cp` instruction. Split Compose persists it in `setup_data`; standalone persists it in `event_standalone_data`; a direct unmounted API uses `/tmp/islamu-event/setup-secret` and may generate a replacement after container recreation. Raw values are never printed. Read-only or rolling/multi-replica deployments must provide one explicit shared `SETUP_SECRET` through their platform secret manager.
 
 ### 2. Open the Setup Wizard
 
@@ -712,13 +745,12 @@ For full details, see [FEDERATION.md](FEDERATION.md) and [CONFIGURATION.md](CONF
 
 ### Privacy Erasure Authority Topology
 
-**Standalone Compose behavior:** `EmbeddedSqlite` stores the authority ledger at
-`/app/privacy-erasure-authority/privacy_erasure_authority.db` on the dedicated
-`event_standalone_authority` volume. Restrict filesystem access to the
-application identity and back up that volume separately from
-`event_standalone_data`. It uses private cache, WAL, a bounded busy timeout, and
-a single writer. It must never be the primary SQLite file or share the primary
-database's restore lifecycle.
+**Standalone image behavior:** `EmbeddedSqlite` stores the authority ledger at
+`/app/data/privacy_erasure_authority.db` beside the primary file in the single
+`event_standalone_data` volume. Restrict filesystem access to the application
+identity and archive the authority file separately. It uses private cache, WAL,
+a bounded busy timeout, and a single writer. It must never be the primary SQLite
+file or be restored merely because the primary database is restored.
 
 For `ExternalDatabase` topology:
 
@@ -889,6 +921,9 @@ Before every upgrade:
 5. ✅ Record image tags, commit SHA, enabled Compose profiles, and secret-provider key names
 6. ✅ Read release notes for migrations, config changes, and rollback constraints
 
+Do not back up `setup_data` or a generated setup-secret file. The file is
+bootstrap-only and is removed automatically when onboarding completes.
+
 ### Migrations
 
 | Path | When Used | Behavior |
@@ -926,15 +961,14 @@ privacy-erasure authority databases have independent restore lifecycles.
 
 ```bash
 mkdir -p backups
-docker compose -f docker-compose.standalone.yml stop event-standalone
-docker compose -f docker-compose.standalone.yml run --rm --no-deps --entrypoint sh -v "$(pwd)/backups:/backup" volume-init -c 'set -eu; cd /app/data; tar -czf /backup/event-primary-$(date +%Y%m%dT%H%M%SZ).tgz islamu_event.db*'
-docker compose -f docker-compose.standalone.yml run --rm --no-deps --entrypoint sh -v "$(pwd)/backups:/backup" volume-init -c 'set -eu; cd /app/privacy-erasure-authority; tar -czf /backup/privacy-erasure-authority-$(date +%Y%m%dT%H%M%SZ).tgz privacy_erasure_authority.db*'
+docker stop islamu-event-standalone
+docker run --rm --mount source=event_standalone_data,target=/app/data -v "$(pwd)/backups:/backup" busybox:1.37.0-musl sh -c 'set -eu; cd /app/data; tar -czf /backup/event-primary-$(date +%Y%m%dT%H%M%SZ).tgz islamu_event.db*'
+docker run --rm --mount source=event_standalone_data,target=/app/data -v "$(pwd)/backups:/backup" busybox:1.37.0-musl sh -c 'set -eu; cd /app/data; tar -czf /backup/privacy-erasure-authority-$(date +%Y%m%dT%H%M%SZ).tgz privacy_erasure_authority.db*'
 ```
 
-Store and verify both archives away from the Docker host. The commands use the
-root-owned `volume-init` helper because the chiseled web image has no shell,
-`sqlite3`, or `curl`; run host-side `curl --fail http://localhost:8080/health`
-after restart instead of trying to inspect the web image.
+Store and verify both archives away from the Docker host. The temporary BusyBox
+commands are cold-backup tooling, not services in the standalone deployment;
+the chiseled application image intentionally has no shell, `sqlite3`, or `curl`.
 
 ### Cold SQLite restore
 
@@ -951,17 +985,16 @@ validate and list the selected archive before removing any database file:
 ```bash
 export PRIMARY_ARCHIVE='event-primary-20260808T000000Z.tgz'
 export AUTHORITY_ARCHIVE='privacy-erasure-authority-20260808T000000Z.tgz'
-docker compose -f docker-compose.standalone.yml stop event-standalone
-docker compose -f docker-compose.standalone.yml run --rm --no-deps -e PRIMARY_ARCHIVE --entrypoint sh -v "$(pwd)/backups:/backup" volume-init -c 'set -eu; case "$PRIMARY_ARCHIVE" in ""|.|..|*/*) echo "invalid primary archive basename" >&2; exit 64 ;; event-primary-*.tgz) ;; *) echo "unexpected primary archive name" >&2; exit 64 ;; esac; archive="/backup/$PRIMARY_ARCHIVE"; test -f "$archive"; tar -tzf "$archive"; rm -f /app/data/islamu_event.db /app/data/islamu_event.db-wal /app/data/islamu_event.db-shm; tar -xzf "$archive" -C /app/data; chown 1654:1654 /app/data/islamu_event.db*; chmod 700 /app/data'
-docker compose -f docker-compose.standalone.yml run --rm --no-deps -e AUTHORITY_ARCHIVE --entrypoint sh -v "$(pwd)/backups:/backup" volume-init -c 'set -eu; case "$AUTHORITY_ARCHIVE" in ""|.|..|*/*) echo "invalid authority archive basename" >&2; exit 64 ;; privacy-erasure-authority-*.tgz) ;; *) echo "unexpected authority archive name" >&2; exit 64 ;; esac; archive="/backup/$AUTHORITY_ARCHIVE"; test -f "$archive"; tar -tzf "$archive"; rm -f /app/privacy-erasure-authority/privacy_erasure_authority.db /app/privacy-erasure-authority/privacy_erasure_authority.db-wal /app/privacy-erasure-authority/privacy_erasure_authority.db-shm; tar -xzf "$archive" -C /app/privacy-erasure-authority; chown 1654:1654 /app/privacy-erasure-authority/privacy_erasure_authority.db*; chmod 700 /app/privacy-erasure-authority'
-docker compose -f docker-compose.standalone.yml up --build -d
+docker stop islamu-event-standalone
+docker run --rm -e PRIMARY_ARCHIVE --mount source=event_standalone_data,target=/app/data -v "$(pwd)/backups:/backup" busybox:1.37.0-musl sh -c 'set -eu; case "$PRIMARY_ARCHIVE" in ""|.|..|*/*) exit 64 ;; event-primary-*.tgz) ;; *) exit 64 ;; esac; archive="/backup/$PRIMARY_ARCHIVE"; test -f "$archive"; tar -tzf "$archive"; rm -f /app/data/islamu_event.db /app/data/islamu_event.db-wal /app/data/islamu_event.db-shm; tar -xzf "$archive" -C /app/data; chown 1654:1654 /app/data/islamu_event.db*'
+docker run --rm -e AUTHORITY_ARCHIVE --mount source=event_standalone_data,target=/app/data -v "$(pwd)/backups:/backup" busybox:1.37.0-musl sh -c 'set -eu; case "$AUTHORITY_ARCHIVE" in ""|.|..|*/*) exit 64 ;; privacy-erasure-authority-*.tgz) ;; *) exit 64 ;; esac; archive="/backup/$AUTHORITY_ARCHIVE"; test -f "$archive"; tar -tzf "$archive"; rm -f /app/data/privacy_erasure_authority.db /app/data/privacy_erasure_authority.db-wal /app/data/privacy_erasure_authority.db-shm; tar -xzf "$archive" -C /app/data; chown 1654:1654 /app/data/privacy_erasure_authority.db*'
+docker run -d --name islamu-event-standalone --env-file .env --mount source=event_standalone_data,target=/app/data -p 8080:8080 islamu/event-standalone
 curl --fail http://localhost:8080/health
 ```
 
-The final Compose command reruns `volume-init` and the one-shot migration
-service before the web process. Verify its migration exit and the host-side
-`/health` result; neither `sqlite3` nor `curl` is expected inside the runtime
-image.
+The restarted standalone process reapplies pending migrations before serving.
+Verify its logs and the host-side `/health` result; neither `sqlite3` nor `curl`
+is expected inside the runtime image.
 
 ### Rollback and provider switching
 
@@ -984,15 +1017,16 @@ data; use a separately planned export/import procedure.
 |---|---|---|
 | `unauthorized_client` from Keycloak | `KEYCLOAK_BLAZOR_CLIENT_SECRET` mismatch | Rerun `docker compose run --rm keycloak-init` |
 | OIDC redirect URI errors behind proxy | Missing `X-Forwarded-Proto`/`X-Forwarded-Host` | Configure reverse proxy to forward these headers |
-| Setup secret not working | Empty `SETUP_SECRET` or session expired | Set `SETUP_SECRET` in `.env` and restart API; re-enter if session expired |
+| Setup secret not working | Wrong explicit value, replaced/missing generated file, or session expired | Rerun the logged `docker cp` instruction while onboarding is incomplete; split uses `/app/bootstrap/setup-secret`, standalone uses `/app/data/setup-secret`, and a direct API defaults to `/tmp/islamu-event/setup-secret`. Re-enter after session expiry. |
+| API fails because setup-secret storage is not writable | Read-only filesystem and no writable bootstrap mount | Supply an explicit shared `SETUP_SECRET`, or mount one writable single-instance bootstrap path. Do not print the generated value or add a helper container. |
 | Cerbos denying all requests | PDP is down or unreachable | Cerbos fails closed. Check `CERBOS_GRPC_ENDPOINT` or switch to `AUTHORIZATION_PROVIDER=local` |
 | Realm export changes not applied | Keycloak skips import when realm exists | Remove the `keycloak_data` volume and restart |
 | `429` responses | Rate limiting or OpenGraph image saturation | Review rate-limit configuration and dispatch capacity |
 | Storage health unhealthy | Selected provider can't write to data root | Check volume mounts and file permissions |
-| `event-migrationservice` exits nonzero and web never starts | Schema/authority migration failed; Compose requires successful completion | Read the migration-service logs, correct the structured fields or target database, then rerun `docker compose -f docker-compose.standalone.yml up --build` |
-| SQLite permission denied | `/app/data` is not owned by UID/GID `1654` or is not mode `700` | Run the descriptor so `volume-init` repairs ownership; do not run the web image as root to mask the problem |
-| `/health` fails on port `8080` | Web has not started, migration is still failing, or a dependency is unready | Check `event-migrationservice` before the web logs, then probe `curl --fail http://localhost:8080/health` from the host |
-| Database provider validation fails | Missing/invalid native `Database__*` field, wrong TLS policy, or MariaDB flavor/version omitted | Use the provider matrix in [Configuration](CONFIGURATION.md#standalone-provider-overrides); do not substitute `DATABASE_*` aliases outside Compose interpolation |
+| Standalone exits before opening port `8080` | Schema, authority migration, or seeding failed | Read the one container log, correct the native structured settings or target database, then rerun the image |
+| SQLite permission denied | An existing `/app/data` volume was created with incompatible ownership | Recreate only an empty disposable volume, or correct the existing volume ownership to UID/GID `1654`; do not run the application image as root |
+| `/health` fails on port `8080` | Startup migration is still failing or a runtime dependency is unready | Read the standalone container log, then probe `curl --fail http://localhost:8080/health` from the host |
+| Database provider validation fails | Missing/invalid native `Database__*` field, wrong TLS policy, or MariaDB flavor/version omitted | Use the provider matrix in [Configuration](CONFIGURATION.md#standalone-provider-overrides); direct image execution does not translate legacy `DATABASE_*` aliases |
 
 ### Diagnostic Tool
 

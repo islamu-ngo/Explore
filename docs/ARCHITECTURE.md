@@ -39,7 +39,7 @@ Split/Standalone is a process-composition choice only: it changes where BFF and 
 | `/api/...` plus `Accept` media-type parameter, `?api-version=`, or `X-Api-Version` | Supported | The same API pipeline parses these in Split and Standalone. |
 | `/api/v1/...`, `/api/v0.1/...`, or any topology-specific versioned route | Unsupported | URL version segments are never added; routes and HAL links remain canonical. |
 
-Compose packaging is explicit. The repository `docker-compose.yml` describes the Split deployment, while `docker-compose.standalone.yml` packages the one-process Standalone deployment with SQLite as that descriptor's default. AppHost remains the local topology selector. Selecting Standalone through AppHost does not automatically change `DATABASE_PROVIDER`; database selection always remains an explicit structured provider contract.
+Container packaging is explicit. The repository `docker-compose.yml` describes the Split deployment; Standalone is the single `Event.Standalone` image run directly with an env file and defaults to SQLite. AppHost remains the local topology selector. Selecting Standalone through AppHost does not automatically change the database provider; database selection always remains an explicit structured provider contract.
 
 ## Layer Boundaries
 1. `Explore.Domain`: entities, enums, domain rules, no infrastructure concerns.

@@ -218,6 +218,8 @@ Infisical uses `SCREAMING_SNAKE_CASE` with path-based sections. The provider map
 | `/reporting/OSPREY_WEBHOOK_SECRET` | `reporting.osprey_webhook_secret` tenant Osprey callback/signing secret when a deployment uses one |
 | `/reporting/COOP_API_KEY` | `reporting.coop_api_key` tenant Coop provider credential |
 | `/reporting/COOP_WEBHOOK_SECRET` | `reporting.coop_webhook_secret` tenant Coop callback HMAC secret |
+| `/registration-providers/REGISTRATION_PROVIDER_API_TOKEN` | `registration_provider.api_token` tenant provider API/OAuth credential binding. Google Forms uses this for the OAuth access token or refresh-token envelope. |
+| `/registration-providers/REGISTRATION_PROVIDER_WEBHOOK_SECRET` | `registration_provider.webhook_secret` tenant callback signing secret binding for providers that use shared callback secrets. Google Forms Pub/Sub does not use it because callback authentication is Google OIDC. |
 | `/integrations/listmonk/LISTMONK_API_USERNAME` | `integrations.listmonk.api_username` |
 | `/integrations/listmonk/LISTMONK_API_KEY` | `integrations.listmonk.api_key` |
 | `/registration-providers/REGISTRATION_PROVIDER_API_TOKEN` | `registration_provider.api_token` |
@@ -250,7 +252,9 @@ The following values must never be persisted in browser storage, returned in bro
 - temporary provider administrator usernames/passwords or service-account credentials;
 - raw provider request or response bodies.
 
-Configure `SETUP_SECRET` in deployment configuration and restart the API before interactive setup. The configured value remains authoritative until onboarding completes and locks setup mode; it has no process-startup timeout. If it is absent, the API uses an internal random fail-closed fallback that is never written to logs or terminal output and has no readback path. After validation, the BFF keeps the secret in a protected, HttpOnly 30-minute rolling session and requires re-entry after 30 minutes without setup activity.
+An explicit `SETUP_SECRET` is always authoritative until onboarding completes and locks setup mode. When it is empty, the API writes one random secret to `SETUP_SECRET_FILE` with `0600` permissions and logs only a `docker cp` retrieval instruction. The platform default is `/tmp/islamu-event/setup-secret`; split Compose overrides it to the `setup_data` volume at `/app/bootstrap/setup-secret`, and standalone uses `/app/data/setup-secret`. The file is deleted when onboarding completes; setting a non-empty `SETUP_SECRET` also removes and overrides any generated file. After validation, the BFF keeps the secret in a protected, HttpOnly 30-minute rolling session and requires re-entry after 30 minutes without setup activity.
+
+Retrieve the generated fallback only from the Docker host, copy it to an owner-protected local file, enter it at `/setup`, then remove the local copy. Do not include the generated file in backups. An unmounted temp file may be replaced with a new secret after container recreation; the old value immediately stops working. Read-only containers and rolling or multi-replica API deployments must use an explicit shared `SETUP_SECRET` from their platform secret manager.
 
 Rerunning verification or completion does not grant permission to read a stored secret back. Application-managed credentials remain write-only and are rotated through the owning server operation. Deployment-managed credentials remain authoritative in their configured environment/secret provider; rotate them there, refresh or restart as required, and confirm only through configured/readiness metadata. Do not overwrite a deployment-managed value from onboarding to repair drift.
 
