@@ -73,25 +73,44 @@ public sealed class RegistrationParticipantCommandHandlerTests
         RegistrationOrderLifecycleResponseDto finalized = await fixture.Lifecycle.FinalizeFreeAsync(
             fixture.Order.Id, fixture.TenantId, CancellationToken.None);
         Guid optionalAdmissionId = fixture.Admissions.Single().Id;
-        Guid optionalParticipant = await fixture.AddParticipantAsync(ParticipantTypeEnum.Adult, null, new ParticipantDetailsDto(null, null, null));
-        Guid deferredParticipant = await fixture.AddParticipantAsync(ParticipantTypeEnum.Employee, null, new ParticipantDetailsDto("Employee", null, null));
-        var amendment = new BulkAssignRegistrationTicketsCommand(fixture.Order.Id,
-        [
-            new(fixture.FirstLine.Id, 1, optionalParticipant),
-            new(fixture.SecondLine.Id, 1, deferredParticipant)
-        ]);
+        string csv = $"registrationOrderLineId,ordinal,participantTypeId,displayName,email,phone\n{fixture.FirstLine.Id},1,{(int)ParticipantTypeEnum.Adult},Optional Person,optional@example.test,\n{fixture.SecondLine.Id},1,{(int)ParticipantTypeEnum.Employee},Employee,employee@example.test,";
+        var amendment = new ImportCompanyRegistrationAssignmentsCsvCommand(fixture.EventId, fixture.Order.Id, csv, "company-roster-1");
 
-        BaseCommandResponse<Guid> first = await fixture.BulkAssign.Handle(amendment, CancellationToken.None);
+        BaseCommandResponse<CompanyRegistrationAssignmentCsvResultDto> first = await fixture.ImportCompanyCsv.Handle(amendment, CancellationToken.None);
         Guid replayStamp = fixture.Order.ConcurrencyStamp;
-        BaseCommandResponse<Guid> replay = await fixture.BulkAssign.Handle(amendment, CancellationToken.None);
+        BaseCommandResponse<CompanyRegistrationAssignmentCsvResultDto> replay = await fixture.ImportCompanyCsv.Handle(amendment, CancellationToken.None);
 
         await Assert.That(deferred.Success && finalized.Success && first.Success && replay.Success).IsTrue();
         await Assert.That(fixture.Admissions).Count().IsEqualTo(2);
+        await Assert.That(fixture.AmendmentRows).Count().IsEqualTo(2);
         await Assert.That(fixture.Admissions.Single(value => value.RegistrationOrderLineId == fixture.FirstLine.Id).Id).IsEqualTo(optionalAdmissionId);
         await Assert.That(fixture.Admissions.Select(value => (value.RegistrationOrderLineId, value.EntitlementOrdinal, value.EventSessionId)).Distinct()).Count().IsEqualTo(2);
-        await Assert.That(fixture.Admissions.Single(value => value.RegistrationOrderLineId == fixture.FirstLine.Id).RegistrationParticipantId).IsEqualTo(optionalParticipant);
-        await Assert.That(fixture.Admissions.Single(value => value.RegistrationOrderLineId == fixture.SecondLine.Id).RegistrationParticipantId).IsEqualTo(deferredParticipant);
+        await Assert.That(replay.Id!.AlreadyApplied).IsTrue();
+        await Assert.That(fixture.Admissions.Single(value => value.RegistrationOrderLineId == fixture.FirstLine.Id).RegistrationParticipant.Pii?.DisplayName).IsEqualTo("Optional Person");
+        await Assert.That(fixture.Admissions.Single(value => value.RegistrationOrderLineId == fixture.SecondLine.Id).RegistrationParticipant.Pii?.DisplayName).IsEqualTo("Employee");
         await Assert.That(fixture.Order.ConcurrencyStamp).IsEqualTo(replayStamp);
+    }
+
+    [Test]
+    public async Task CompanyCsv_RejectsFormulaAndMalformedRowsWithoutWrites()
+    {
+        var fixture = new HandlerFixture(1, ParticipantDataCollectionModeEnum.PerTicketOptional, 1, ParticipantDataCollectionModeEnum.PerTicketOptional);
+        BaseCommandResponse<CompanyRegistrationAssignmentCsvResultDto> formula = await fixture.ImportCompanyCsv.Handle(
+            new ImportCompanyRegistrationAssignmentsCsvCommand(
+                fixture.EventId,
+                fixture.Order.Id,
+                $"registrationOrderLineId,ordinal,participantTypeId,displayName,email,phone\n={fixture.FirstLine.Id},1,{(int)ParticipantTypeEnum.Adult},Name,,",
+                "import-1"), CancellationToken.None);
+        BaseCommandResponse<CompanyRegistrationAssignmentCsvResultDto> malformed = await fixture.ImportCompanyCsv.Handle(
+            new ImportCompanyRegistrationAssignmentsCsvCommand(
+                fixture.EventId,
+                fixture.Order.Id,
+                $"registrationOrderLineId,ordinal,participantTypeId,displayName,email,phone\n{fixture.FirstLine.Id},1",
+                "import-2"), CancellationToken.None);
+
+        await Assert.That(formula.Success || malformed.Success).IsFalse();
+        await Assert.That(fixture.AssignmentRows).IsEmpty();
+        await Assert.That(fixture.AmendmentRows).IsEmpty();
     }
 
     [Test]
@@ -138,12 +157,76 @@ public sealed class RegistrationParticipantCommandHandlerTests
         await Assert.That(fixture.SerializableExecutions).IsEqualTo(1);
     }
 
+    [Test]
+    public async Task CompanyCsvImport_ValidatesWholeBatchAndCreatesAmendmentsWithAdmissionsAtomically()
+    {
+        var fixture = new HandlerFixture(
+            2,
+            ParticipantDataCollectionModeEnum.DeferredAssignment,
+            1,
+            ParticipantDataCollectionModeEnum.PerTicketOptional,
+            bookingPartyType: BookingPartyTypeEnum.Company);
+        await fixture.BulkDefer.Handle(new BulkDeferRegistrationTicketsCommand(
+            fixture.Order.Id,
+            [new(fixture.FirstLine.Id, 1), new(fixture.FirstLine.Id, 2)],
+            fixture.UtcNow.AddDays(7)), CancellationToken.None);
+        RegistrationOrderLifecycleResponseDto finalized = await fixture.Lifecycle.FinalizeFreeAsync(
+            fixture.Order.Id, fixture.TenantId, CancellationToken.None);
+        string csv = string.Join('\n',
+            "registrationOrderLineId,ordinal,participantTypeId,displayName,email,phone",
+            $"{fixture.FirstLine.Id},1,{(int)ParticipantTypeEnum.Employee},Employee One,one@example.test,",
+            $"{fixture.FirstLine.Id},2,{(int)ParticipantTypeEnum.Employee},Employee Two,two@example.test,");
+
+        BaseCommandResponse<CompanyRegistrationAssignmentCsvResultDto> imported = await fixture.ImportCompanyCsv.Handle(
+            new ImportCompanyRegistrationAssignmentsCsvCommand(fixture.EventId, fixture.Order.Id, csv, "import-001"), CancellationToken.None);
+        BaseCommandResponse<CompanyRegistrationAssignmentCsvResultDto> replayed = await fixture.ImportCompanyCsv.Handle(
+            new ImportCompanyRegistrationAssignmentsCsvCommand(fixture.EventId, fixture.Order.Id, csv, "import-001"), CancellationToken.None);
+
+        await Assert.That(finalized.Success && imported.Success && replayed.Success).IsTrue();
+        await Assert.That(imported.Id!.AssignmentCount).IsEqualTo(2);
+        await Assert.That(replayed.Id!.AlreadyApplied).IsTrue();
+        await Assert.That(fixture.ParticipantRows.Where(value => value.ParticipantTypeId == (int)ParticipantTypeEnum.Employee)).Count().IsEqualTo(2);
+        await Assert.That(fixture.AssignmentRows).Count().IsEqualTo(2);
+        await Assert.That(fixture.Admissions.Where(value => value.RegistrationOrderLineId == fixture.FirstLine.Id)).Count().IsEqualTo(2);
+        await Assert.That(fixture.AmendmentRows.Select(value => (value.Source, value.LineageKey)).Distinct()).IsEquivalentTo([("company-csv", "import-001")]);
+    }
+
+    [Test]
+    public async Task CompanyCsvImport_InvalidRowWritesNothing()
+    {
+        var fixture = new HandlerFixture(
+            1,
+            ParticipantDataCollectionModeEnum.DeferredAssignment,
+            1,
+            ParticipantDataCollectionModeEnum.PerTicketOptional,
+            bookingPartyType: BookingPartyTypeEnum.Company);
+        await fixture.BulkDefer.Handle(new BulkDeferRegistrationTicketsCommand(
+            fixture.Order.Id,
+            [new(fixture.FirstLine.Id, 1)],
+            fixture.UtcNow.AddDays(7)), CancellationToken.None);
+        await fixture.Lifecycle.FinalizeFreeAsync(fixture.Order.Id, fixture.TenantId, CancellationToken.None);
+        int originalAssignmentCount = fixture.AssignmentRows.Count;
+        string csv = string.Join('\n',
+            "registrationOrderLineId,ordinal,participantTypeId,displayName,email,phone",
+            $"{fixture.FirstLine.Id},1,{(int)ParticipantTypeEnum.Employee},Employee One,one@example.test,",
+            $"{fixture.SecondLine.Id},2,{(int)ParticipantTypeEnum.Employee},Employee Two,two@example.test,");
+
+        BaseCommandResponse<CompanyRegistrationAssignmentCsvResultDto> imported = await fixture.ImportCompanyCsv.Handle(
+            new ImportCompanyRegistrationAssignmentsCsvCommand(fixture.EventId, fixture.Order.Id, csv, "import-002"), CancellationToken.None);
+
+        await Assert.That(imported.Success).IsFalse();
+        await Assert.That(fixture.ParticipantRows.Where(value => value.ParticipantTypeId == (int)ParticipantTypeEnum.Employee)).IsEmpty();
+        await Assert.That(fixture.AssignmentRows).Count().IsEqualTo(originalAssignmentCount);
+        await Assert.That(fixture.AmendmentRows).IsEmpty();
+    }
+
     private sealed class HandlerFixture
     {
         private readonly IRegistrationInventoryRepository _inventory = Substitute.For<IRegistrationInventoryRepository>();
         private readonly IRegistrationParticipantRepository _participants = Substitute.For<IRegistrationParticipantRepository>();
         private readonly IEventTicketCatalogRepository _catalogs = Substitute.For<IEventTicketCatalogRepository>();
         private readonly IEventSessionRepository _sessions = Substitute.For<IEventSessionRepository>();
+        private readonly ICurrentUserService _currentUser = Substitute.For<ICurrentUserService>();
         private readonly IPlatformContributionSettingRepository _contributions = Substitute.For<IPlatformContributionSettingRepository>();
         private readonly IOutboxRepository _outbox = Substitute.For<IOutboxRepository>();
         private readonly IRegistrationFinalizationRepository _finalization = Substitute.For<IRegistrationFinalizationRepository>();
@@ -189,12 +272,15 @@ public sealed class RegistrationParticipantCommandHandlerTests
             };
             Sessions = [session];
             ConfigureSubstitutes();
+            _currentUser.UserId.Returns(Guid.CreateVersion7());
+            _currentUser.IsAuthenticated.Returns(true);
             var commandService = new RegistrationParticipantCommandService(
-                _inventory, _participants, _catalogs, _sessions, new TenantContext(TenantId), _unitOfWork, new FixedTimeProvider(UtcNow));
+                _inventory, _participants, _catalogs, _sessions, _currentUser, new TenantContext(TenantId), _unitOfWork, new FixedTimeProvider(UtcNow));
             Add = new AddRegistrationParticipantCommandHandler(commandService);
             Update = new UpdateRegistrationParticipantCommandHandler(commandService);
             Assign = new AssignRegistrationTicketCommandHandler(commandService);
             BulkAssign = new BulkAssignRegistrationTicketsCommandHandler(commandService);
+            ImportCompanyCsv = new ImportCompanyRegistrationAssignmentsCsvCommandHandler(commandService);
             Defer = new DeferRegistrationTicketCommandHandler(commandService);
             BulkDefer = new BulkDeferRegistrationTicketsCommandHandler(commandService);
             Lifecycle = new RegistrationOrderLifecycleService(
@@ -212,11 +298,13 @@ public sealed class RegistrationParticipantCommandHandlerTests
         public List<EventSession> Sessions { get; }
         public List<RegistrationParticipant> ParticipantRows { get; } = [];
         public List<RegistrationTicketAssignment> AssignmentRows { get; } = [];
+        public List<RegistrationAmendment> AmendmentRows { get; } = [];
         public List<EventRegistration> Admissions { get; } = [];
         public AddRegistrationParticipantCommandHandler Add { get; }
         public UpdateRegistrationParticipantCommandHandler Update { get; }
         public AssignRegistrationTicketCommandHandler Assign { get; }
         public BulkAssignRegistrationTicketsCommandHandler BulkAssign { get; }
+        public ImportCompanyRegistrationAssignmentsCsvCommandHandler ImportCompanyCsv { get; }
         public DeferRegistrationTicketCommandHandler Defer { get; }
         public BulkDeferRegistrationTicketsCommandHandler BulkDefer { get; }
         public RegistrationOrderLifecycleService Lifecycle { get; }
@@ -261,10 +349,14 @@ public sealed class RegistrationParticipantCommandHandlerTests
             _participants.GetAssignmentsForUpdateByOrderAsync(Order.Id, TenantId, Arg.Any<CancellationToken>()).Returns(AssignmentRows);
             _participants.GetAdmissionsForUpdateAsync(Order.Id, Arg.Any<Guid>(), Arg.Any<int>(), TenantId, Arg.Any<CancellationToken>())
                 .Returns(call => Admissions.Where(value => value.RegistrationOrderLineId == call.ArgAt<Guid>(1) && value.EntitlementOrdinal == call.ArgAt<int>(2)).ToArray());
+            _participants.HasCompanyCsvAmendmentAsync(Order.Id, TenantId, Arg.Any<string>(), Arg.Any<CancellationToken>())
+                .Returns(call => AmendmentRows.Any(value => value.Source == "company-csv" && value.LineageKey == call.ArgAt<string>(2)));
             _participants.AddParticipantAsync(Arg.Any<RegistrationParticipant>(), Arg.Any<CancellationToken>())
                 .Returns(call => { ParticipantRows.Add(call.ArgAt<RegistrationParticipant>(0)); return Task.CompletedTask; });
             _participants.AddAssignmentsAsync(Arg.Any<IReadOnlyCollection<RegistrationTicketAssignment>>(), Arg.Any<CancellationToken>())
                 .Returns(call => { AssignmentRows.AddRange(call.ArgAt<IReadOnlyCollection<RegistrationTicketAssignment>>(0)); return Task.CompletedTask; });
+            _participants.AddAmendmentsAsync(Arg.Any<IReadOnlyCollection<RegistrationAmendment>>(), Arg.Any<CancellationToken>())
+                .Returns(call => { AmendmentRows.AddRange(call.ArgAt<IReadOnlyCollection<RegistrationAmendment>>(0)); return Task.CompletedTask; });
             _participants.AddParticipantsAsync(Arg.Any<IReadOnlyCollection<RegistrationParticipant>>(), Arg.Any<CancellationToken>())
                 .Returns(call => { ParticipantRows.AddRange(call.ArgAt<IReadOnlyCollection<RegistrationParticipant>>(0)); return Task.CompletedTask; });
             _participants.SaveChangesAsync(Arg.Any<CancellationToken>()).Returns(Task.CompletedTask);

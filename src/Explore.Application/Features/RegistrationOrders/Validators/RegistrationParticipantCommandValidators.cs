@@ -70,6 +70,19 @@ public sealed class BulkDeferRegistrationTicketsCommandValidator : AbstractValid
     }
 }
 
+public sealed class ImportCompanyRegistrationAssignmentsCsvCommandValidator : AbstractValidator<ImportCompanyRegistrationAssignmentsCsvCommand>
+{
+    public const int MaxCsvUtf8Bytes = 256 * 1024;
+
+    public ImportCompanyRegistrationAssignmentsCsvCommandValidator()
+    {
+        RuleFor(x => x.RegistrationOrderId).NotEmpty();
+        RuleFor(x => x.LineageKey).NotEmpty().MaximumLength(128);
+        RuleFor(x => x.CsvUtf8).NotEmpty().Must(value => System.Text.Encoding.UTF8.GetByteCount(value) <= MaxCsvUtf8Bytes)
+            .WithMessage($"Company assignment CSV must be at most {MaxCsvUtf8Bytes} UTF-8 bytes.");
+    }
+}
+
 internal sealed class TicketParticipantAssignmentInputDtoValidator : AbstractValidator<DTOs.RegistrationOrders.TicketParticipantAssignmentInputDto>
 {
     public TicketParticipantAssignmentInputDtoValidator()

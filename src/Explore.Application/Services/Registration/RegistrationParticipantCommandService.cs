@@ -4,10 +4,12 @@
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.RegistrationOrders;
+using Explore.Application.Features.RegistrationOrders.Validators;
 using Explore.Application.Responses;
 using Explore.Domain;
 using Explore.Domain.Enums;
 using Explore.Domain.Services.Registration;
+using System.Text;
 
 namespace Explore.Application.Services.Registration;
 
@@ -16,6 +18,7 @@ public sealed class RegistrationParticipantCommandService(
     IRegistrationParticipantRepository participants,
     IEventTicketCatalogRepository catalogs,
     IEventSessionRepository eventSessions,
+    ICurrentUserService currentUser,
     ITenantContext tenant,
     IUnitOfWork unitOfWork,
     TimeProvider timeProvider)
@@ -50,7 +53,8 @@ public sealed class RegistrationParticipantCommandService(
                 if (HasDetails(details))
                 {
                     participant.SetPii(RegistrationParticipantPii.Create(
-                        participant.Id, order.TenantId, details.DisplayName, details.Email, details.Phone));
+                        participant.Id, order.TenantId, details.DisplayName, details.Email, details.Phone,
+                        (int)RegistrationRetentionPolicyEnum.StandardOperational, DateTime.UtcNow));
                 }
 
                 order.BumpConcurrency(orderConcurrency);
@@ -97,12 +101,14 @@ public sealed class RegistrationParticipantCommandService(
                     if (HasDetails(details))
                     {
                         participant.SetPii(RegistrationParticipantPii.Create(
-                            participant.Id, order.TenantId, details.DisplayName, details.Email, details.Phone));
+                            participant.Id, order.TenantId, details.DisplayName, details.Email, details.Phone,
+                            (int)RegistrationRetentionPolicyEnum.StandardOperational, DateTime.UtcNow));
                     }
                 }
                 else
                 {
-                    participant.Pii.Update(details.DisplayName, details.Email, details.Phone);
+                    participant.Pii.Update(details.DisplayName, details.Email, details.Phone,
+                        (int)RegistrationRetentionPolicyEnum.StandardOperational, DateTime.UtcNow);
                 }
 
                 order.BumpConcurrency(orderConcurrency);
@@ -120,20 +126,211 @@ public sealed class RegistrationParticipantCommandService(
         Guid orderId,
         IReadOnlyCollection<TicketParticipantAssignmentInputDto> requestedAssignments,
         CancellationToken cancellationToken) => MutateAssignmentsAsync(
-        orderId, requestedAssignments, [], null, cancellationToken);
+        orderId, requestedAssignments, [], null, null, cancellationToken);
+
+    public async Task<BaseCommandResponse<CompanyRegistrationAssignmentCsvResultDto>> ImportCompanyCsvAsync(
+        Guid eventId,
+        Guid orderId,
+        string csvText,
+        string lineageKey,
+        CancellationToken cancellationToken)
+    {
+        string normalizedLineage = lineageKey.Trim();
+        if (Encoding.UTF8.GetByteCount(csvText) > ImportCompanyRegistrationAssignmentsCsvCommandValidator.MaxCsvUtf8Bytes)
+        {
+            return InvalidCompany(orderId, "Company assignment CSV is too large.");
+        }
+
+        if (await participants.HasCompanyCsvAmendmentAsync(orderId, tenant.TenantId, normalizedLineage, cancellationToken))
+        {
+            return CompanySuccess(orderId, 0, alreadyApplied: true, "Company assignment CSV was already applied.");
+        }
+
+        if (!TryParseCompanyCsv(csvText, out CompanyRegistrationAssignmentInputDto[] rows, out string? error))
+        {
+            return InvalidCompany(orderId, error!);
+        }
+
+        RegistrationOrder? initialOrder = await inventory.GetOrderWithLinesAsync(orderId, tenant.TenantId, cancellationToken);
+        if (initialOrder is null)
+        {
+            return InvalidCompany(orderId, "Registration order was not found.", "registration_order_not_found");
+        }
+
+        if (initialOrder.EventId != eventId)
+        {
+            return InvalidCompany(orderId, "Registration order was not found.", "registration_order_not_found");
+        }
+
+        if (initialOrder.BookingPartyTypeId != (int)BookingPartyTypeEnum.Company)
+        {
+            return InvalidCompany(orderId, "Company assignment CSV can only be applied to company registration orders.");
+        }
+
+        EventTicketCatalogVersion? initialCatalog = await catalogs.GetOrderCatalogAsync(
+            initialOrder.TicketCatalogVersionId, initialOrder.EventId, tenant.TenantId, cancellationToken);
+        if (initialCatalog is null)
+        {
+            return InvalidCompany(orderId, "Registration order catalog was not found.", "registration_order_not_found");
+        }
+
+        List<EventSession> sessions = await eventSessions.GetSessionsByEvent(initialOrder.EventId);
+        var stableAdmissionIds = new Dictionary<(Guid RegistrationOrderLineId, int Ordinal), Guid[]>();
+        try
+        {
+            foreach (CompanyRegistrationAssignmentInputDto row in rows)
+            {
+                stableAdmissionIds[(row.RegistrationOrderLineId, row.Ordinal)] =
+                    CreateAdmissionIds(initialOrder, initialCatalog, row.RegistrationOrderLineId, sessions);
+            }
+        }
+        catch (InvalidOperationException)
+        {
+            return InvalidCompany(orderId, "Company assignment CSV references a line outside this order.");
+        }
+
+        DateTime now = timeProvider.GetUtcNow().UtcDateTime;
+        Guid[] participantIds = Enumerable.Range(0, rows.Length).Select(_ => Guid.CreateVersion7()).ToArray();
+        Guid[] participantConcurrency = Enumerable.Range(0, rows.Length).Select(_ => Guid.CreateVersion7()).ToArray();
+        Guid[] assignmentIds = Enumerable.Range(0, rows.Length).Select(_ => Guid.CreateVersion7()).ToArray();
+        Guid[] assignmentConcurrency = Enumerable.Range(0, rows.Length).Select(_ => Guid.CreateVersion7()).ToArray();
+        Guid[] admissionConcurrency = Enumerable.Range(0, stableAdmissionIds.Values.Sum(ids => ids.Length)).Select(_ => Guid.CreateVersion7()).ToArray();
+        Guid orderConcurrency = Guid.CreateVersion7();
+
+        try
+        {
+            return await unitOfWork.ExecuteSerializableAsync(async token =>
+            {
+                if (await participants.HasCompanyCsvAmendmentAsync(orderId, tenant.TenantId, normalizedLineage, token))
+                {
+                    return CompanySuccess(orderId, 0, alreadyApplied: true, "Company assignment CSV was already applied.");
+                }
+
+                RegistrationOrder? order = await inventory.GetOrderForUpdateWithLinesAsync(orderId, tenant.TenantId, token);
+                if (order is null || order.EventId != eventId || order.ConcurrencyStamp != initialOrder.ConcurrencyStamp)
+                {
+                    return InvalidCompany(orderId, "Registration order changed while company assignments were imported.");
+                }
+
+                if (order.BookingPartyTypeId != (int)BookingPartyTypeEnum.Company ||
+                    (RegistrationOrderStatusEnum)order.RegistrationOrderStatusId != RegistrationOrderStatusEnum.Confirmed)
+                {
+                    return InvalidCompany(orderId, "Company assignment CSV requires a confirmed company registration order.");
+                }
+
+                EventTicketCatalogVersion? catalog = await catalogs.GetOrderCatalogAsync(
+                    order.TicketCatalogVersionId, order.EventId, tenant.TenantId, token);
+                if (catalog is null)
+                {
+                    return InvalidCompany(orderId, "Registration order catalog was not found.", "registration_order_not_found");
+                }
+
+                var ticketTypes = catalog.TicketTypes.Where(ticket => !ticket.IsDeleted).ToDictionary(ticket => ticket.Id);
+                var lines = order.Lines.ToDictionary(line => line.Id);
+                IReadOnlyList<RegistrationTicketAssignment> existing =
+                    await participants.GetAssignmentsForUpdateByOrderAsync(order.Id, order.TenantId, token);
+                var byKey = existing.ToDictionary(item => (item.RegistrationOrderLineId, item.Ordinal));
+                var newParticipants = new List<RegistrationParticipant>();
+                var newAssignments = new List<RegistrationTicketAssignment>();
+                var amendments = new List<RegistrationAmendment>();
+                int admissionIndex = 0;
+
+                for (int index = 0; index < rows.Length; index++)
+                {
+                    CompanyRegistrationAssignmentInputDto row = rows[index];
+                    if (!TryResolveLine(row.RegistrationOrderLineId, row.Ordinal, lines, ticketTypes, out RegistrationOrderLine? line, out EventTicketType? ticket, out string? lineError))
+                    {
+                        return InvalidCompany(orderId, lineError!);
+                    }
+
+                    ParticipantDataCollectionModeEnum mode = NormalizeCollectionMode(ticket!.ParticipantDataCollectionModeId);
+                    if (mode is ParticipantDataCollectionModeEnum.None or ParticipantDataCollectionModeEnum.LeadBookerOnly || ticket.RequiresGuardian)
+                    {
+                        return InvalidCompany(orderId, "Company assignment CSV can only assign direct per-ticket or deferred ticket units.");
+                    }
+
+                    ParticipantTypeEnum type = NormalizeParticipantType(row.ParticipantTypeId);
+                    EnsureParticipantDetails(type, new ParticipantDetailsDto(row.DisplayName, row.Email, row.Phone), required: true);
+                    RegistrationParticipant participant = RegistrationParticipant.Create(
+                        participantIds[index], order.TenantId, order.Id, null, type, null);
+                    participant.ConcurrencyStamp = participantConcurrency[index];
+                    participant.SetPii(RegistrationParticipantPii.Create(participant.Id, order.TenantId, row.DisplayName, row.Email, row.Phone));
+                    newParticipants.Add(participant);
+
+                    RegistrationTicketAssignment? previous = byKey.GetValueOrDefault((line!.Id, row.Ordinal));
+                    if (previous is null)
+                    {
+                        RegistrationTicketAssignment assignment = RegistrationTicketAssignment.CreateAssigned(
+                            assignmentIds[index], line.Id, row.Ordinal, participant, now);
+                        assignment.ConcurrencyStamp = assignmentConcurrency[index];
+                        newAssignments.Add(assignment);
+                        byKey[(line.Id, row.Ordinal)] = assignment;
+                    }
+                    else
+                    {
+                        previous.Assign(participant, assignmentConcurrency[index]);
+                    }
+
+                    IReadOnlyList<EventRegistration> admissions = await participants.GetAdmissionsForUpdateAsync(
+                        order.Id, line.Id, row.Ordinal, order.TenantId, token);
+                    if (admissions.Count > 0)
+                    {
+                        foreach (EventRegistration admission in admissions.Where(value => value.RegistrationParticipantId != participant.Id))
+                        {
+                            admission.ReassignParticipant(participant, admissionConcurrency[admissionIndex++]);
+                        }
+                    }
+                    else
+                    {
+                        IReadOnlyList<(TicketTypeEntitlement Entitlement, EventSession Session)> expanded =
+                            RegistrationAdmissionMaterializer.Expand(ticket, sessions);
+                        Guid[] stableIds = stableAdmissionIds[(line.Id, row.Ordinal)];
+                        EventRegistration[] materialized = expanded.Select((value, admissionOrdinal) =>
+                            RegistrationAdmissionMaterializer.Create(
+                                stableIds[admissionOrdinal], admissionConcurrency[admissionIndex++], order, line, value.Entitlement,
+                                value.Session, participant, row.Ordinal, now)).ToArray();
+                        await inventory.AddEventRegistrationsAsync(materialized, token);
+                    }
+
+                    amendments.Add(RegistrationAmendment.CreateCompanyCsvAssignmentChange(
+                        order.TenantId, order.EventId, order.Id, currentUser.UserId, normalizedLineage, line.Id, row.Ordinal,
+                        previous?.ParticipantId, previous?.AssignmentStatusId, participant.Id, (int)AssignmentStatusEnum.Assigned, now));
+                }
+
+                order.BumpConcurrency(orderConcurrency);
+                foreach (RegistrationParticipant participant in newParticipants)
+                {
+                    await participants.AddParticipantAsync(participant, token);
+                }
+                await participants.AddAssignmentsAsync(newAssignments, token);
+                await participants.AddAmendmentsAsync(amendments, token);
+                await participants.SaveChangesAsync(token);
+                return CompanySuccess(order.Id, rows.Length, alreadyApplied: false, "Company assignment CSV imported.");
+            }, cancellationToken);
+        }
+        catch (ArgumentException exception)
+        {
+            return InvalidCompany(orderId, exception.Message);
+        }
+        catch (InvalidOperationException exception)
+        {
+            return InvalidCompany(orderId, exception.Message);
+        }
+    }
 
     public Task<BaseCommandResponse<Guid>> DeferAsync(
         Guid orderId,
         IReadOnlyCollection<TicketDeferralInputDto> requestedDeferrals,
         DateTime deadline,
         CancellationToken cancellationToken) => MutateAssignmentsAsync(
-        orderId, [], requestedDeferrals, deadline, cancellationToken);
+        orderId, [], requestedDeferrals, deadline, null, cancellationToken);
 
     private async Task<BaseCommandResponse<Guid>> MutateAssignmentsAsync(
         Guid orderId,
         IReadOnlyCollection<TicketParticipantAssignmentInputDto> requestedAssignments,
         IReadOnlyCollection<TicketDeferralInputDto> requestedDeferrals,
         DateTime? deadline,
+        string? amendmentReason,
         CancellationToken cancellationToken)
     {
         DateTime now = timeProvider.GetUtcNow().UtcDateTime;
@@ -207,9 +404,11 @@ public sealed class RegistrationParticipantCommandService(
                     await participants.GetAssignmentsForUpdateByOrderAsync(order.Id, order.TenantId, token);
                 var byKey = existing.ToDictionary(item => (item.RegistrationOrderLineId, item.Ordinal));
                 var additions = new List<RegistrationTicketAssignment>();
+                var amendments = new List<RegistrationAmendment>();
                 bool changed = false;
                 int mutationIndex = 0;
                 int admissionIndex = 0;
+                bool isConfirmed = (RegistrationOrderStatusEnum)order.RegistrationOrderStatusId == RegistrationOrderStatusEnum.Confirmed;
 
                 foreach (TicketParticipantAssignmentInputDto item in requestedAssignments)
                 {
@@ -241,11 +440,17 @@ public sealed class RegistrationParticipantCommandService(
                         return Invalid(orderId, "A participant cannot occupy more than one ticket ordinal in the same order.");
                     }
 
+                    Guid? beforeParticipantId = null;
+                    int? beforeStatusId = null;
+                    bool assignmentChanged = false;
                     if (byKey.TryGetValue((line!.Id, item.Ordinal), out RegistrationTicketAssignment? assignment))
                     {
+                        beforeParticipantId = assignment.ParticipantId;
+                        beforeStatusId = assignment.AssignmentStatusId;
                         if (assignment.AssignmentStatusId != (int)AssignmentStatusEnum.Assigned || assignment.ParticipantId != participant.Id)
                         {
                             assignment.Assign(participant, assignmentConcurrency[mutationIndex]);
+                            assignmentChanged = true;
                             changed = true;
                         }
                     }
@@ -255,12 +460,18 @@ public sealed class RegistrationParticipantCommandService(
                             assignmentIds[mutationIndex], line.Id, item.Ordinal, participant, now);
                         assignment.ConcurrencyStamp = assignmentConcurrency[mutationIndex];
                         additions.Add(assignment);
+                        assignmentChanged = true;
                         changed = true;
                         byKey[(line.Id, item.Ordinal)] = assignment;
                     }
 
-                    if ((RegistrationOrderStatusEnum)order.RegistrationOrderStatusId == RegistrationOrderStatusEnum.Confirmed)
+                    if (isConfirmed)
                     {
+                        if (assignmentChanged && string.IsNullOrWhiteSpace(amendmentReason))
+                        {
+                            return Invalid(orderId, "Finalized registration assignment changes require an amendment reason.");
+                        }
+
                         IReadOnlyList<EventRegistration> admissions = await participants.GetAdmissionsForUpdateAsync(
                             order.Id, line.Id, item.Ordinal, order.TenantId, token);
                         if (admissions.Count > 0)
@@ -282,6 +493,14 @@ public sealed class RegistrationParticipantCommandService(
                                     value.Session, participant, item.Ordinal, now)).ToArray();
                             await inventory.AddEventRegistrationsAsync(materialized, token);
                             changed = materialized.Length > 0 || changed;
+                        }
+
+                        if (assignmentChanged)
+                        {
+                            amendments.Add(RegistrationAmendment.CreateAssignmentChange(
+                                order.TenantId, order.EventId, order.Id, currentUser.UserId, amendmentReason!, line.Id,
+                                item.Ordinal, beforeParticipantId, beforeStatusId, participant.Id,
+                                (int)AssignmentStatusEnum.Assigned, now));
                         }
                     }
 
@@ -330,6 +549,7 @@ public sealed class RegistrationParticipantCommandService(
 
                 order.BumpConcurrency(orderConcurrency);
                 await participants.AddAssignmentsAsync(additions, token);
+                await participants.AddAmendmentsAsync(amendments, token);
                 await participants.SaveChangesAsync(token);
                 return Success(order.Id, "Registration ticket assignments updated.");
             }, cancellationToken);
@@ -416,8 +636,60 @@ public sealed class RegistrationParticipantCommandService(
     private static bool HasDetails(ParticipantDetailsDto details) =>
         !string.IsNullOrWhiteSpace(details.DisplayName) || !string.IsNullOrWhiteSpace(details.Email) || !string.IsNullOrWhiteSpace(details.Phone);
 
+    private static bool TryParseCompanyCsv(
+        string csvText,
+        out CompanyRegistrationAssignmentInputDto[] assignments,
+        out string? error)
+    {
+        assignments = [];
+        error = null;
+        string[] lines = csvText.Replace("\r\n", "\n", StringComparison.Ordinal).Replace('\r', '\n')
+            .Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        if (lines.Length is < 2 or > 1001 || lines[0] != "registrationOrderLineId,ordinal,participantTypeId,displayName,email,phone")
+        {
+            error = "Company assignment CSV is invalid.";
+            return false;
+        }
+
+        var parsed = new List<CompanyRegistrationAssignmentInputDto>(lines.Length - 1);
+        foreach (string line in lines.Skip(1))
+        {
+            string[] cells = line.Split(',', StringSplitOptions.TrimEntries);
+            if (cells.Length != 6 || cells.Any(IsFormulaCell) ||
+                !Guid.TryParse(cells[0], out Guid lineId) || !int.TryParse(cells[1], out int ordinal) ||
+                !int.TryParse(cells[2], out int participantTypeId) || string.IsNullOrWhiteSpace(cells[3]))
+            {
+                error = "Company assignment CSV is invalid.";
+                return false;
+            }
+
+            parsed.Add(new CompanyRegistrationAssignmentInputDto(lineId, ordinal, participantTypeId, cells[3], NullIfEmpty(cells[4]), NullIfEmpty(cells[5])));
+        }
+
+        assignments = parsed.ToArray();
+        return assignments.Length > 0;
+
+        static bool IsFormulaCell(string value) => value.Length > 0 && value[0] is '=' or '+' or '-' or '@';
+        static string? NullIfEmpty(string value) => string.IsNullOrWhiteSpace(value) ? null : value;
+    }
+
     private static BaseCommandResponse<Guid> Success(Guid id, string message) => new() { Id = id, Success = true, Message = message };
     private static BaseCommandResponse<Guid> Missing(Guid id) => new() { Id = id, Success = false, Message = "Registration participant resource was not found.", Errors = ["Registration participant resource was not found."] };
     private static BaseCommandResponse<Guid> Invalid(Guid id, string error) => new() { Id = id, Success = false, Message = "Registration participant request is invalid.", Errors = [error] };
     private static BaseCommandResponse<Guid> Conflict(Guid id) => new() { Id = id, Success = false, Message = "Registration order changed while assignments were updated.", Errors = ["Registration order changed while assignments were updated."] };
+    private static BaseCommandResponse<CompanyRegistrationAssignmentCsvResultDto> CompanySuccess(Guid id, int count, bool alreadyApplied, string message) => new()
+    {
+        Id = new CompanyRegistrationAssignmentCsvResultDto(id, count, alreadyApplied),
+        Success = true,
+        Message = message
+    };
+
+    private static BaseCommandResponse<CompanyRegistrationAssignmentCsvResultDto> InvalidCompany(Guid id, string error, string? failureCode = null) => new()
+    {
+        Id = new CompanyRegistrationAssignmentCsvResultDto(id, 0, false),
+        Success = false,
+        FailureCode = failureCode,
+        Message = "Company assignment CSV request is invalid.",
+        Errors = [error]
+    };
 }

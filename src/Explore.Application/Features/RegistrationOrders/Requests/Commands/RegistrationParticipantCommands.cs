@@ -2,6 +2,7 @@
 // ABOUTME: Accepts collection payloads for company bookings while leaving CSV parsing to a later phase.
 
 using Explore.Application.DTOs.RegistrationOrders;
+using Explore.Application.Authorization;
 using Explore.Application.Responses;
 using MediatR;
 
@@ -45,3 +46,18 @@ public sealed record BulkDeferRegistrationTicketsCommand(
     Guid RegistrationOrderId,
     IReadOnlyCollection<TicketDeferralInputDto> Assignments,
     DateTime AssignmentDeadline) : IRegistrationParticipantMutation;
+
+[AuthorizeResource(ResourceKinds.Event, AuthorizationActions.Events.ManageRegistrations)]
+public sealed record ImportCompanyRegistrationAssignmentsCsvCommand(
+    Guid EventId,
+    Guid RegistrationOrderId,
+    string CsvUtf8,
+    string LineageKey) : IRequest<BaseCommandResponse<CompanyRegistrationAssignmentCsvResultDto>>, ISecureRequest
+{
+    string? ISecureRequest.ResourceId => EventId == Guid.Empty ? null : EventId.ToString("D");
+
+    IDictionary<string, object>? ISecureRequest.ResourceAttributes => new Dictionary<string, object>
+    {
+        ["eventId"] = EventId.ToString("D")
+    };
+}

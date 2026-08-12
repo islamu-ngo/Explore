@@ -92,3 +92,22 @@ public sealed class BulkDeferRegistrationTicketsCommandHandler(RegistrationParti
             : AddRegistrationParticipantCommandHandler.Invalid(request.RegistrationOrderId, validation);
     }
 }
+
+public sealed class ImportCompanyRegistrationAssignmentsCsvCommandHandler(RegistrationParticipantCommandService service)
+    : IRequestHandler<ImportCompanyRegistrationAssignmentsCsvCommand, BaseCommandResponse<CompanyRegistrationAssignmentCsvResultDto>>
+{
+    public async Task<BaseCommandResponse<CompanyRegistrationAssignmentCsvResultDto>> Handle(
+        ImportCompanyRegistrationAssignmentsCsvCommand request,
+        CancellationToken cancellationToken)
+    {
+        ValidationResult validation = await new ImportCompanyRegistrationAssignmentsCsvCommandValidator().ValidateAsync(request, cancellationToken);
+        return validation.IsValid
+            ? await service.ImportCompanyCsvAsync(request.EventId, request.RegistrationOrderId, request.CsvUtf8, request.LineageKey, cancellationToken)
+            : new BaseCommandResponse<CompanyRegistrationAssignmentCsvResultDto>
+            {
+                Success = false,
+                Message = "Company assignment CSV request is invalid.",
+                Errors = validation.Errors.Select(error => error.ErrorMessage).ToList()
+            };
+    }
+}

@@ -59,14 +59,15 @@ public sealed class GetAuthenticatedRegistrationOrderParticipantsQueryHandler(
         }
 
         bool ownsOrder = currentUser.IsAuthenticated && currentUser.UserId == order.AccountUserId;
-        if (!ownsOrder && !await OrganizerMayViewAsync(order, cancellationToken))
+        bool organizerMayManage = await OrganizerMayViewAsync(order, cancellationToken);
+        if (!ownsOrder && !organizerMayManage)
         {
             return null;
         }
 
         RegistrationOrderParticipantsDto? result = await sender.Send(
             new GetRegistrationOrderParticipantsQuery(order.Id), cancellationToken);
-        return result is null ? null : result with { CanManage = ownsOrder };
+        return result is null ? null : result with { CanManage = ownsOrder, CanImportCompanyCsv = organizerMayManage };
     }
 
     private async Task<bool> OrganizerMayViewAsync(RegistrationOrder order, CancellationToken cancellationToken)
