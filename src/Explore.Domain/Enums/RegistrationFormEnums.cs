@@ -38,3 +38,10 @@ public enum RegistrationOrganizerVisibilityEnum
     Hidden = 1,
     AuthorizedOrganizers = 2
 }
+
+public enum RegistrationFormVersionSourceKindEnum
+{
+    Authored = 1,
+    TemplateClone = 2,
+    ExternalImported = 3
+}

@@ -48,7 +48,16 @@ public sealed class ImportRegistrationProviderSchemaRevisionCommandHandler(IRegi
         }
 
         RegistrationProviderSchemaRevision revision = RegistrationProviderSchemaRevision.Create(
-            request.TenantId, request.ConnectionId, request.Authority, request.RevisionHash, request.ObservedAt);
+            request.TenantId,
+            request.ConnectionId,
+            request.Authority,
+            request.RevisionHash,
+            "legacy",
+            null,
+            "{\"schema\":\"legacy.registration-provider-schema-revision\",\"fields\":[]}",
+            Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(request.RevisionHash.Value))),
+            RegistrationProviderDriftClassEnum.NoDrift,
+            request.ObservedAt);
         await repository.AddSchemaRevisionAsync(revision, cancellationToken);
         await repository.SaveChangesAsync(cancellationToken);
         return RegistrationProviderCommandResponses.Success(revision.Id, "Registration provider schema revision imported.");
@@ -132,8 +141,15 @@ public sealed class PublishRegistrationProviderBindingCommandHandler(IRegistrati
     private static RegistrationEvidenceHash ComputeMappingRevisionHash(RegistrationProviderBinding binding)
     {
         StringBuilder canonical = new();
-        canonical.Append("registration-provider-mapping-v1\n");
+        canonical.Append("registration-provider-mapping-v2\n");
         canonical.Append("form-version:").Append(binding.RegistrationFormVersionId).Append('\n');
+        if (binding.Connection is not null)
+        {
+            canonical.Append("tuple:").Append(binding.Connection.TupleKey.Length).Append(':').Append(binding.Connection.TupleKey).Append('\n');
+        }
+
+        canonical.Append("provider-survey:").Append(binding.ProviderSurveyId?.Length ?? 0).Append(':').Append(binding.ProviderSurveyId).Append('\n');
+        canonical.Append("provider-survey-revision:").Append(binding.ProviderSurveyRevisionId?.Length ?? 0).Append(':').Append(binding.ProviderSurveyRevisionId).Append('\n');
         foreach (RegistrationProviderFieldMapping field in binding.FieldMappings.Where(field => !field.IsDeleted).OrderBy(field => field.PlatformFieldKey, StringComparer.Ordinal))
         {
             canonical.Append("field:").Append(field.PlatformFieldKey.Length).Append(':').Append(field.PlatformFieldKey)

@@ -83,7 +83,8 @@ public sealed record LaunchGuestNativeRegistrationAttemptCommand(
     Guid RequirementId,
     Guid ChannelId,
     Guid FormId,
-    Guid FormVersionId)
+    Guid FormVersionId,
+    Guid? BindingId = null)
     : IRequest<NativeRegistrationAttemptResult>, IGuestRegistrationOrderAccessCommand;
 
 public sealed record LaunchAuthenticatedNativeRegistrationAttemptCommand(
@@ -92,8 +93,30 @@ public sealed record LaunchAuthenticatedNativeRegistrationAttemptCommand(
     Guid RequirementId,
     Guid ChannelId,
     Guid FormId,
-    Guid FormVersionId)
+    Guid FormVersionId,
+    Guid? BindingId = null)
     : IRequest<NativeRegistrationAttemptResult>, IAuthenticatedRegistrationOrderAccessCommand;
+
+public sealed record LaunchGuestRegistrationProviderAttemptCommand(
+    Guid EventId,
+    Guid OrderId,
+    string? CapabilityToken,
+    Guid RequirementId,
+    Guid ChannelId,
+    Guid BindingId,
+    Guid FormId,
+    Guid FormVersionId)
+    : IRequest<RegistrationProviderAttemptResult>, IGuestRegistrationOrderAccessCommand;
+
+public sealed record LaunchAuthenticatedRegistrationProviderAttemptCommand(
+    Guid EventId,
+    Guid OrderId,
+    Guid RequirementId,
+    Guid ChannelId,
+    Guid BindingId,
+    Guid FormId,
+    Guid FormVersionId)
+    : IRequest<RegistrationProviderAttemptResult>, IAuthenticatedRegistrationOrderAccessCommand;
 
 public sealed record SubmitGuestNativeRegistrationAttemptCommand(
     Guid EventId,

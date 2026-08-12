@@ -37,7 +37,8 @@ public sealed class RegistrationProviderIntegrationServiceTests
     {
         var lineage = new RegistrationProviderLaunchLineage(
             Guid.CreateVersion7(), Guid.CreateVersion7(), Guid.CreateVersion7(),
-            Guid.CreateVersion7(), Guid.CreateVersion7(), Guid.CreateVersion7());
+            Guid.CreateVersion7(), Guid.CreateVersion7(), Guid.CreateVersion7(),
+            Guid.CreateVersion7(), Guid.CreateVersion7());
         var expected = new HalResourceOfRegistrationProviderLaunchDescriptorDto();
         _apiClient.GetRegistrationProviderLaunchDescriptorAsync(
                 lineage.TenantId, lineage.EventId, lineage.WorkflowId, lineage.RequirementId,

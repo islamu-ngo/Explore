@@ -145,6 +145,21 @@ public sealed class RegistrationAttempt : ITenantEntity, IAuditableEntity, ISoft
         return submission;
     }
 
+    public RegistrationSubmission SubmitHeadlessProvider(
+        RegistrationEvidenceHash receivedEvidenceHash,
+        DateTime receivedAt,
+        RegistrationTransportIdempotencyHash? httpIdempotencyKeyHash)
+    {
+        DateTime timestamp = EnsureUtc(receivedAt, nameof(receivedAt));
+        EnsureProviderPinned();
+        EnsureCanSubmitAt(timestamp);
+        Guid claimId = Guid.CreateVersion7();
+        RegistrationSubmission submission = RegistrationSubmission.CreateAcceptedHeadlessProvider(
+            this, receivedEvidenceHash, timestamp, httpIdempotencyKeyHash, claimId);
+        ConsumeForSubmission(timestamp, claimId);
+        return submission;
+    }
+
     public RegistrationSubmission SubmitProvider(
         RegistrationEvidenceHash receivedEvidenceHash,
         DateTime receivedAt,

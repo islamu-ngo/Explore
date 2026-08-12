@@ -122,7 +122,7 @@ public sealed class LaunchGuestNativeRegistrationAttemptCommandHandler(
 
         return await sender.Send(new LaunchNativeRegistrationAttemptCommand(
             tenant.TenantId, request.EventId, request.OrderId, request.RequirementId,
-            request.ChannelId, request.FormId, request.FormVersionId), cancellationToken);
+            request.ChannelId, request.FormId, request.FormVersionId, request.BindingId), cancellationToken);
     }
 }
 
@@ -148,6 +148,31 @@ public sealed class SubmitGuestNativeRegistrationAttemptCommandHandler(
         return await sender.Send(new SubmitNativeRegistrationAttemptCommand(
             tenant.TenantId, request.EventId, request.OrderId, request.RequirementId, request.AttemptId,
             request.AttemptCapabilityToken, request.IdempotencyKey, request.Answers), cancellationToken);
+    }
+}
+
+public sealed class LaunchGuestRegistrationProviderAttemptCommandHandler(
+    IRegistrationInventoryRepository inventory,
+    IGuestCapabilityTokenService capabilities,
+    ITenantContext tenant,
+    TimeProvider timeProvider,
+    ISender sender)
+    : IRequestHandler<LaunchGuestRegistrationProviderAttemptCommand, RegistrationProviderAttemptResult>
+{
+    public async Task<RegistrationProviderAttemptResult> Handle(
+        LaunchGuestRegistrationProviderAttemptCommand request,
+        CancellationToken cancellationToken)
+    {
+        if (await RegistrationOrderAccessGuard.GetGuestOrderAsync(
+                inventory, capabilities, tenant.TenantId, request.EventId, request.OrderId,
+                request.CapabilityToken, timeProvider, cancellationToken) is null)
+        {
+            return new(false, Guid.Empty, null, "registration_order_not_found");
+        }
+
+        return await sender.Send(new LaunchRegistrationProviderAttemptCommand(
+            tenant.TenantId, request.EventId, request.OrderId, request.RequirementId,
+            request.ChannelId, request.BindingId, request.FormId, request.FormVersionId), cancellationToken);
     }
 }
 

@@ -127,6 +127,21 @@ public sealed class RegistrationSubmission : ITenantEntity, IAuditableEntity, IS
         Guid.CreateVersion7(), attempt, receivedEvidenceHash, receivedAt, httpIdempotencyKeyHash, providerSubmissionId,
         providerResponseRevision, providerSubjectId, providerCorrelationId, consumptionClaimId, true);
 
+    internal static RegistrationSubmission CreateAcceptedHeadlessProvider(
+        RegistrationAttempt attempt,
+        RegistrationEvidenceHash receivedEvidenceHash,
+        DateTime receivedAt,
+        RegistrationTransportIdempotencyHash? httpIdempotencyKeyHash,
+        Guid consumptionClaimId)
+    {
+        ValidateBase(Guid.CreateVersion7(), attempt, receivedEvidenceHash, receivedAt, out DateTime timestamp);
+        EnsureProviderAttempt(attempt);
+        return CreateCore(
+            Guid.CreateVersion7(), attempt, receivedEvidenceHash, timestamp, httpIdempotencyKeyHash,
+            attempt.RegistrationProviderBindingId, attempt.ProviderMappingRevisionHash,
+            null, null, null, null, consumptionClaimId, true);
+    }
+
     internal static void ValidateAcceptedNative(RegistrationAttempt attempt, RegistrationEvidenceHash receivedEvidenceHash, DateTime receivedAt)
     {
         ValidateBase(Guid.CreateVersion7(), attempt, receivedEvidenceHash, receivedAt, out _);
@@ -307,8 +322,10 @@ public sealed class RegistrationSubmission : ITenantEntity, IAuditableEntity, IS
         Guid? providerBindingId,
         RegistrationEvidenceHash? providerMappingRevisionHash,
         string? providerSubmissionId,
-        string? providerResponseRevision) => providerBindingId.HasValue
-        ? CreateOpaqueBusinessKey("provider", attempt.TenantId.ToString("N"), providerBindingId.Value.ToString("N"), providerSubmissionId!, providerResponseRevision!)
+        string? providerResponseRevision) => providerBindingId.HasValue && providerSubmissionId is not null
+        ? CreateOpaqueBusinessKey("provider", attempt.TenantId.ToString("N"), providerBindingId.Value.ToString("N"), providerSubmissionId, providerResponseRevision!)
+        : providerBindingId.HasValue
+            ? CreateOpaqueBusinessKey("headless", attempt.TenantId.ToString("N"), attempt.Id.ToString("N"), receivedEvidenceHash.Value)
         : CreateOpaqueBusinessKey("native", attempt.TenantId.ToString("N"), attempt.Id.ToString("N"), receivedEvidenceHash.Value);
 
     private static string CreateOpaqueBusinessKey(params string[] components)

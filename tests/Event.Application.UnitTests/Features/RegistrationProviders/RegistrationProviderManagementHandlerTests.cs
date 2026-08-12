@@ -4,15 +4,20 @@
 using System.Reflection;
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.Json;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services.Registration;
 using Explore.Application.Authorization;
 using Explore.Application.DTOs.RegistrationProviders;
 using Explore.Application.Features.RegistrationProviders.Commands;
 using Explore.Application.Features.RegistrationSubmissions.Commands;
+using Explore.Application.Features.StorageObjects.Requests.Queries;
+using Explore.Application.Models.Storage;
 using Explore.Application.Responses;
+using Explore.Application.Services.Registration;
 using Explore.Domain;
 using Explore.Domain.Enums;
+using Explore.Domain.Secrets;
 using Explore.Domain.ValueObjects;
 using MediatR;
 using NSubstitute;
@@ -28,14 +33,20 @@ public sealed class RegistrationProviderManagementHandlerTests
     {
         Guid eventId = Guid.CreateVersion7();
         RegistrationProviderBinding binding = Binding();
+        AttachConnection(binding);
+        binding.SetDraftProvisionedSurvey("survey-a", "revision-a");
         var repository = new FakeProviderRepository(binding, eventId);
         var canonical = new PublishRegistrationProviderBindingCommandHandler(repository);
         IMediator mediator = Substitute.For<IMediator>();
         mediator.Send(Arg.Any<PublishRegistrationProviderBindingCommand>(), Arg.Any<CancellationToken>())
             .Returns(call => canonical.Handle(call.Arg<PublishRegistrationProviderBindingCommand>(), call.Arg<CancellationToken>()));
+        IRegistrationProviderManagedPublishPreflight preflight = Substitute.For<IRegistrationProviderManagedPublishPreflight>();
+        preflight.RunAsync(binding.TenantId, eventId, binding, Arg.Any<CancellationToken>())
+            .Returns(RegistrationProviderManagedPublishPreflightResult.Success());
         var handler = new PublishEventRegistrationProviderBindingCommandHandler(
             repository,
             mediator,
+            preflight,
             new FixedTimeProvider(Now));
 
         BaseCommandResponse<Guid> result = await handler.Handle(
@@ -44,6 +55,50 @@ public sealed class RegistrationProviderManagementHandlerTests
 
         await Assert.That(result.Success).IsTrue();
         await Assert.That(binding.PublishedMappingRevisionHash).IsNotNull();
+    }
+
+    [Test]
+    public async Task PublishEventBinding_PreflightFailureDoesNotDispatchCanonicalPublish()
+    {
+        Guid eventId = Guid.CreateVersion7();
+        RegistrationProviderBinding binding = Binding();
+        AttachConnection(binding);
+        var repository = new FakeProviderRepository(binding, eventId);
+        IMediator mediator = Substitute.For<IMediator>();
+        IRegistrationProviderManagedPublishPreflight preflight = Substitute.For<IRegistrationProviderManagedPublishPreflight>();
+        preflight.RunAsync(binding.TenantId, eventId, binding, Arg.Any<CancellationToken>())
+            .Returns(RegistrationProviderManagedPublishPreflightResult.Failure("registration_provider_survey_inactive"));
+        var handler = new PublishEventRegistrationProviderBindingCommandHandler(
+            repository,
+            mediator,
+            preflight,
+            new FixedTimeProvider(Now));
+
+        BaseCommandResponse<Guid> result = await handler.Handle(
+            new PublishEventRegistrationProviderBindingCommand(binding.TenantId, eventId, binding.Id),
+            CancellationToken.None);
+
+        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.FailureCode).IsEqualTo("registration_provider_survey_inactive");
+        await mediator.DidNotReceive().Send(Arg.Any<PublishRegistrationProviderBindingCommand>(), Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task PublishBinding_IncludesConnectionTupleAndProviderSurveyInRevisionHash()
+    {
+        RegistrationProviderBinding first = Binding();
+        RegistrationProviderBinding second = Binding(formVersionId: first.RegistrationFormVersionId);
+        AttachConnection(first, providerWorkspaceId: "workspace-a");
+        AttachConnection(second, providerWorkspaceId: "workspace-b");
+        first.SetDraftProvisionedSurvey("survey-a", "revision-a");
+        second.SetDraftProvisionedSurvey("survey-b", "revision-a");
+        var handler = new PublishRegistrationProviderBindingCommandHandler(new FakeProviderRepository(first, Guid.CreateVersion7()));
+        var secondHandler = new PublishRegistrationProviderBindingCommandHandler(new FakeProviderRepository(second, Guid.CreateVersion7()));
+
+        await handler.Handle(new(first.TenantId, first.Id, RegistrationProviderSchemaDriftClass.NoDrift, Now), CancellationToken.None);
+        await secondHandler.Handle(new(second.TenantId, second.Id, RegistrationProviderSchemaDriftClass.NoDrift, Now), CancellationToken.None);
+
+        await Assert.That(first.PublishedMappingRevisionHash).IsNotEqualTo(second.PublishedMappingRevisionHash);
     }
 
     [Test]
@@ -89,12 +144,49 @@ public sealed class RegistrationProviderManagementHandlerTests
     }
 
     [Test]
+    public async Task MirrorOnlyBinding_RequiresSubmissionSinkCapability()
+    {
+        RegistrationProviderBinding binding = RegistrationProviderBinding.Create(
+            Guid.CreateVersion7(), Guid.CreateVersion7(), Guid.CreateVersion7(), Guid.CreateVersion7(),
+            RegistrationProviderPresentationModeEnum.Redirect,
+            RegistrationProviderCollectionModeEnum.MirrorOnly,
+            RegistrationProviderCompletionModeEnum.Callback,
+            RegistrationProviderTrustLevelEnum.SelectedFields,
+            null,
+            Now);
+        RegistrationProviderCapabilitySet withoutSink = new(
+            true, false, false, false, false, true, false, true, false, false, false, false);
+        RegistrationProviderCapabilitySet withSink = withoutSink with { SubmissionSink = true };
+
+        Type helpers = typeof(CreateRegistrationProviderBindingCommandHandler).Assembly.GetType(
+            "Explore.Application.Features.RegistrationProviders.Commands.RegistrationProviderManagementHandlerHelpers")!;
+        MethodInfo contractMatches = helpers.GetMethod(
+            "BindingLaunchContractMatchesCapabilities",
+            BindingFlags.Static | BindingFlags.Public)!;
+
+        await Assert.That((bool)contractMatches.Invoke(null, [binding, withoutSink])!).IsFalse();
+        await Assert.That((bool)contractMatches.Invoke(null, [binding, withSink])!).IsTrue();
+
+        RegistrationProviderBinding providerApi = RegistrationProviderBinding.Create(
+            Guid.CreateVersion7(), Guid.CreateVersion7(), Guid.CreateVersion7(), Guid.CreateVersion7(),
+            RegistrationProviderPresentationModeEnum.Redirect,
+            RegistrationProviderCollectionModeEnum.ProviderApi,
+            RegistrationProviderCompletionModeEnum.Callback,
+            RegistrationProviderTrustLevelEnum.SelectedFields,
+            null,
+            Now);
+        await Assert.That((bool)contractMatches.Invoke(null, [providerApi, withoutSink])!).IsFalse();
+        await Assert.That((bool)contractMatches.Invoke(null, [providerApi, withSink])!).IsTrue();
+    }
+
+    [Test]
     public async Task ConnectionRequest_RequiresBothSecretBindings()
     {
         Guid eventId = Guid.CreateVersion7();
         RegistrationProviderBinding binding = Binding();
         var handler = new UpsertRegistrationProviderConnectionCommandHandler(
             new FakeProviderRepository(binding, eventId),
+            new Registry(SecretCallbackDescriptor.Instance),
             new FixedTimeProvider(Now));
         var missing = new RegistrationProviderConnectionRequestDto
         {
@@ -109,6 +201,121 @@ public sealed class RegistrationProviderManagementHandlerTests
 
         await Assert.That(result.Success).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("registration_provider_connection_validation_failed");
+    }
+
+    [Test]
+    public async Task ConnectionUpsert_GoogleAcceptsOAuthTokenBindingWithoutWebhookSecret()
+    {
+        Guid eventId = Guid.CreateVersion7();
+        RegistrationProviderBinding binding = Binding();
+        var repository = new FakeProviderRepository(binding, eventId);
+        var handler = new UpsertRegistrationProviderConnectionCommandHandler(repository, new Registry(GoogleDescriptor.Instance), new FixedTimeProvider(Now));
+        RegistrationProviderConnectionRequestDto request = GoogleConnectionRequest();
+        request = new RegistrationProviderConnectionRequestDto
+        {
+            Name = request.Name,
+            ProviderKindId = request.ProviderKindId,
+            DeploymentKindId = request.DeploymentKindId,
+            ProviderCode = request.ProviderCode,
+            ProviderDeploymentCode = request.ProviderDeploymentCode,
+            ApiVersion = request.ApiVersion,
+            AdapterPolicyVersion = request.AdapterPolicyVersion,
+            ConformanceEvidenceRevision = request.ConformanceEvidenceRevision,
+            ManagementApiBaseUrl = request.ManagementApiBaseUrl,
+            PublicBaseUrl = request.PublicBaseUrl,
+            ProviderWorkspaceId = request.ProviderWorkspaceId,
+            ApiTokenSecretBindingId = request.ApiTokenSecretBindingId,
+            WebhookSecretBindingId = Guid.Empty,
+            GrantedOAuthScopes = "openid email https://www.googleapis.com/auth/forms.body.readonly https://www.googleapis.com/auth/forms.responses.readonly",
+            ProviderIdentity = "user:forms-owner@example.test",
+            PubSubConfigurationReference = "projects/forms-project/topics/registration-watch"
+        };
+
+        BaseCommandResponse<Guid> accepted = await handler.Handle(new(binding.TenantId, eventId, null, request), CancellationToken.None);
+        RegistrationProviderConnectionRequestDto driveRequest = GoogleConnectionRequest();
+        driveRequest = new RegistrationProviderConnectionRequestDto
+        {
+            Name = driveRequest.Name,
+            ProviderKindId = driveRequest.ProviderKindId,
+            DeploymentKindId = driveRequest.DeploymentKindId,
+            ProviderCode = driveRequest.ProviderCode,
+            ProviderDeploymentCode = driveRequest.ProviderDeploymentCode,
+            ApiVersion = driveRequest.ApiVersion,
+            AdapterPolicyVersion = driveRequest.AdapterPolicyVersion,
+            ConformanceEvidenceRevision = driveRequest.ConformanceEvidenceRevision,
+            ManagementApiBaseUrl = driveRequest.ManagementApiBaseUrl,
+            PublicBaseUrl = driveRequest.PublicBaseUrl,
+            ProviderWorkspaceId = driveRequest.ProviderWorkspaceId,
+            ApiTokenSecretBindingId = driveRequest.ApiTokenSecretBindingId,
+            WebhookSecretBindingId = Guid.Empty,
+            GrantedOAuthScopes = request.GrantedOAuthScopes + " https://www.googleapis.com/auth/drive",
+            ProviderIdentity = request.ProviderIdentity,
+            PubSubConfigurationReference = request.PubSubConfigurationReference
+        };
+        BaseCommandResponse<Guid> rejected = await handler.Handle(new(binding.TenantId, eventId, null, driveRequest), CancellationToken.None);
+
+        RegistrationProviderConnection created = repository.Connections.Single();
+        RegistrationProviderConnectionDto dto = await new GetRegistrationProviderConnectionQueryHandler(repository)
+            .Handle(new(binding.TenantId, eventId, created.Id), CancellationToken.None) ?? throw new InvalidOperationException();
+
+        await Assert.That(accepted.Success).IsTrue();
+        await Assert.That(rejected.Success).IsFalse();
+        await Assert.That(rejected.FailureCode).IsEqualTo("registration_provider_connection_validation_failed");
+        await Assert.That(created.GrantedOAuthScopes).IsEqualTo("email https://www.googleapis.com/auth/forms.body.readonly https://www.googleapis.com/auth/forms.responses.readonly openid");
+        await Assert.That(created.WebhookSecretBindingId).IsNull();
+        await Assert.That(dto.ProviderIdentity).IsEqualTo("user:forms-owner@example.test");
+        await Assert.That(dto.PubSubConfigurationReference).IsEqualTo("projects/forms-project/topics/registration-watch");
+    }
+
+    [Test]
+    public async Task ConnectionUpsert_RejectsUnnecessaryGoogleWebhookSecretInsteadOfStoringIt()
+    {
+        Guid eventId = Guid.CreateVersion7();
+        RegistrationProviderBinding binding = Binding();
+        var repository = new FakeProviderRepository(binding, eventId);
+        var handler = new UpsertRegistrationProviderConnectionCommandHandler(repository, new Registry(GoogleDescriptor.Instance), new FixedTimeProvider(Now));
+        RegistrationProviderConnectionRequestDto request = GoogleConnectionRequest();
+
+        BaseCommandResponse<Guid> result = await handler.Handle(new(binding.TenantId, eventId, null, request), CancellationToken.None);
+
+        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.FailureCode).IsEqualTo("registration_provider_connection_validation_failed");
+        await Assert.That(repository.Connections).IsEmpty();
+    }
+
+    [Test]
+    public async Task ConnectionUpsert_SecretCallbackProviderRequiresWebhookSecret()
+    {
+        Guid eventId = Guid.CreateVersion7();
+        RegistrationProviderBinding binding = Binding();
+        var repository = new FakeProviderRepository(binding, eventId);
+        var handler = new UpsertRegistrationProviderConnectionCommandHandler(repository, new Registry(SecretCallbackDescriptor.Instance), new FixedTimeProvider(Now));
+        RegistrationProviderConnectionRequestDto request = SecretCallbackConnectionRequest(Guid.Empty);
+
+        BaseCommandResponse<Guid> missing = await handler.Handle(new(binding.TenantId, eventId, null, request), CancellationToken.None);
+        request = SecretCallbackConnectionRequest(Guid.Parse("018e4e5c-7f00-7000-8000-000000000202"));
+        BaseCommandResponse<Guid> accepted = await handler.Handle(new(binding.TenantId, eventId, null, request), CancellationToken.None);
+
+        await Assert.That(missing.Success).IsFalse();
+        await Assert.That(missing.FailureCode).IsEqualTo("registration_provider_connection_validation_failed");
+        await Assert.That(accepted.Success).IsTrue();
+        await Assert.That(repository.Connections.Single().WebhookSecretBindingId).IsEqualTo(request.WebhookSecretBindingId);
+    }
+
+    [Test]
+    public async Task ConnectionCheckpointService_RecordsSuccessfulRefreshOnlyWithUtcTimestamp()
+    {
+        RegistrationProviderBinding binding = Binding();
+        RegistrationProviderConnection connection = AttachConnection(binding);
+        var repository = new FakeProviderRepository(binding, Guid.CreateVersion7(), connection: connection);
+        var service = new RegistrationProviderConnectionCheckpointService(repository, new FixedTimeProvider(Now));
+
+        await service.RecordCredentialRefreshAsync(binding.TenantId, connection.Id, CancellationToken.None);
+
+        await Assert.That(connection.LastCredentialRefreshAt).IsEqualTo(Now);
+        await Assert.That(repository.SaveCount).IsEqualTo(1);
+        await Assert.That(async () => await service.RecordCredentialRefreshAsync(Guid.CreateVersion7(), connection.Id, CancellationToken.None))
+            .Throws<InvalidOperationException>();
     }
 
     [Test]
@@ -164,34 +371,97 @@ public sealed class RegistrationProviderManagementHandlerTests
     }
 
     [Test]
-    public async Task ManualImport_IsIdempotentAndParksUnsupportedCapability()
+    public async Task ManualImport_QueuesCsvRowsIdempotentlyAndRejectsUnsupportedCapability()
     {
         Guid eventId = Guid.CreateVersion7();
+        Guid storageObjectId = Guid.CreateVersion7();
+        Guid attemptId = Guid.CreateVersion7();
         RegistrationProviderBinding supported = Binding();
         supported.AddCapability(RegistrationProviderCapability.Create(supported, "provider", "hosted", "v1", "policy", "evidence", RegistrationProviderCapabilityCodes.Manual));
+        supported.SetDraftProvisionedSurvey("survey-1", null);
+        AttachConnection(supported);
         RegistrationProviderBinding unsupported = Binding();
         var supportedMessages = new FakeMessageRepository();
         var supportedEffects = new FakeEffectRepository([]);
+        byte[] csv = Encoding.UTF8.GetBytes($"responseId,attemptId,attemptToken,timestamp,name\r\n1,{attemptId:D},token-1,{Now:O},Amir\r\n");
+        ISender sender = Substitute.For<ISender>();
+        sender.Send(Arg.Any<GetStorageObjectContentRequest>(), Arg.Any<CancellationToken>())
+            .Returns(_ => new StorageObjectContentResult(new MemoryStream(csv), "text/csv", csv.Length, Now, null));
+        IRegistrationProviderCallbackReceiptProtector receiptProtector = Substitute.For<IRegistrationProviderCallbackReceiptProtector>();
+        receiptProtector.Protect(Arg.Any<RegistrationProviderCallbackReceipt>()).Returns("receipt:v1:test");
         var supportedHandler = new QueueManualRegistrationProviderImportCommandHandler(
-            new FakeProviderRepository(supported, eventId), supportedMessages, supportedEffects, new FixedTimeProvider(Now));
+            new FakeProviderRepository(supported, eventId), supportedMessages, supportedEffects, receiptProtector, sender, new ImmediateUnitOfWork(), new FixedTimeProvider(Now));
         var unsupportedEffects = new FakeEffectRepository([]);
         var unsupportedHandler = new QueueManualRegistrationProviderImportCommandHandler(
-            new FakeProviderRepository(unsupported, eventId), new FakeMessageRepository(), unsupportedEffects, new FixedTimeProvider(Now));
+            new FakeProviderRepository(unsupported, eventId), new FakeMessageRepository(), unsupportedEffects, receiptProtector, sender, new ImmediateUnitOfWork(), new FixedTimeProvider(Now));
 
-        var first = await supportedHandler.Handle(new(supported.TenantId, eventId, supported.Id, "storage:object/123", "operator-import-1"), CancellationToken.None);
-        var second = await supportedHandler.Handle(new(supported.TenantId, eventId, supported.Id, "storage:object/123", "operator-import-1"), CancellationToken.None);
-        var unsupportedResult = await unsupportedHandler.Handle(new(unsupported.TenantId, eventId, unsupported.Id, "storage:object/123", "operator-import-1"), CancellationToken.None);
+        var first = await supportedHandler.Handle(new(supported.TenantId, eventId, supported.Id, storageObjectId.ToString("D"), "operator-import-1"), CancellationToken.None);
+        var second = await supportedHandler.Handle(new(supported.TenantId, eventId, supported.Id, storageObjectId.ToString("D"), "operator-import-1"), CancellationToken.None);
+        var unsupportedResult = await unsupportedHandler.Handle(new(unsupported.TenantId, eventId, unsupported.Id, storageObjectId.ToString("D"), "operator-import-1"), CancellationToken.None);
 
         await Assert.That(first.Success).IsTrue();
         await Assert.That(second.Success).IsTrue();
         await Assert.That(supportedMessages.Messages.Count).IsEqualTo(1);
+        Dictionary<string, string> queuedHeaders = JsonSerializer.Deserialize<Dictionary<string, string>>(
+            supportedMessages.Messages.Single().HeadersJson!)!;
+        await Assert.That(queuedHeaders["X-Registration-Callback-Provider"]).IsEqualTo("forms");
+        await Assert.That(queuedHeaders["X-Registration-Verification-Receipt"]).IsEqualTo("receipt:v1:test");
         await Assert.That(supportedEffects.Effects.Count).IsEqualTo(1);
-        await Assert.That(supportedEffects.Effects.Single().Status).IsEqualTo(OutboxMessageStatus.Completed);
-        await Assert.That(supportedEffects.Effects.Single().EffectKind).IsEqualTo(QueueManualRegistrationProviderImportCommandHandler.ManualImportEffectKind);
-        await Assert.That(unsupportedResult.Success).IsTrue();
-        await Assert.That(unsupportedEffects.Effects.Single().EffectKind).IsEqualTo(QueueManualRegistrationProviderImportCommandHandler.ManualImportEffectKind);
-        await Assert.That(unsupportedEffects.Effects.Single().Status).IsEqualTo(OutboxMessageStatus.DeadLettered);
-        await Assert.That(unsupportedEffects.Effects.Single().FailureCategory).IsEqualTo("manual_import_unsupported");
+        await Assert.That(supportedEffects.Effects.Single().Status).IsEqualTo(OutboxMessageStatus.Pending);
+        await Assert.That(supportedEffects.Effects.Single().EffectKind).IsEqualTo(ProcessProviderSubmissionEffectCommandHandler.StableEffectKind);
+        await Assert.That(unsupportedResult.Success).IsFalse();
+        await Assert.That(unsupportedEffects.Effects).IsEmpty();
+    }
+
+    [Test]
+    public async Task ManualImport_RejectsDuplicateCsvHeadersWithoutQueueingEffects()
+    {
+        Guid eventId = Guid.CreateVersion7();
+        Guid storageObjectId = Guid.CreateVersion7();
+        RegistrationProviderBinding binding = Binding();
+        binding.AddCapability(RegistrationProviderCapability.Create(binding, "provider", "hosted", "v1", "policy", "evidence", RegistrationProviderCapabilityCodes.Manual));
+        binding.SetDraftProvisionedSurvey("survey-1", null);
+        AttachConnection(binding);
+        byte[] csv = Encoding.UTF8.GetBytes($"responseId,attemptId,attemptToken,timestamp,responseId\r\n1,{Guid.CreateVersion7():D},token-1,{Now:O},duplicate\r\n");
+        ISender sender = Substitute.For<ISender>();
+        sender.Send(Arg.Any<GetStorageObjectContentRequest>(), Arg.Any<CancellationToken>())
+            .Returns(new StorageObjectContentResult(new MemoryStream(csv), "text/csv", csv.Length, Now, null));
+        IRegistrationProviderCallbackReceiptProtector receiptProtector = Substitute.For<IRegistrationProviderCallbackReceiptProtector>();
+        var effects = new FakeEffectRepository([]);
+        var handler = new QueueManualRegistrationProviderImportCommandHandler(
+            new FakeProviderRepository(binding, eventId), new FakeMessageRepository(), effects, receiptProtector, sender, new ImmediateUnitOfWork(), new FixedTimeProvider(Now));
+
+        var result = await handler.Handle(new(binding.TenantId, eventId, binding.Id, storageObjectId.ToString("D"), "operator-import-1"), CancellationToken.None);
+
+        await Assert.That(result.Success).IsFalse();
+        await Assert.That(effects.Effects).IsEmpty();
+    }
+
+    [Test]
+    public async Task ManualImport_InvalidLaterRowLeavesNoQueuedArtifacts()
+    {
+        Guid eventId = Guid.CreateVersion7();
+        Guid storageObjectId = Guid.CreateVersion7();
+        RegistrationProviderBinding binding = Binding();
+        binding.AddCapability(RegistrationProviderCapability.Create(binding, "provider", "hosted", "v1", "policy", "evidence", RegistrationProviderCapabilityCodes.Manual));
+        binding.SetDraftProvisionedSurvey("survey-1", null);
+        AttachConnection(binding);
+        byte[] csv = Encoding.UTF8.GetBytes(
+            $"responseId,attemptId,attemptToken,timestamp\r\n1,{Guid.CreateVersion7():D},token-1,{Now:O}\r\n2,not-a-guid,token-2,{Now:O}\r\n");
+        ISender sender = Substitute.For<ISender>();
+        sender.Send(Arg.Any<GetStorageObjectContentRequest>(), Arg.Any<CancellationToken>())
+            .Returns(new StorageObjectContentResult(new MemoryStream(csv), "text/csv", csv.Length, Now, null));
+        var messages = new FakeMessageRepository();
+        var effects = new FakeEffectRepository([]);
+        var handler = new QueueManualRegistrationProviderImportCommandHandler(
+            new FakeProviderRepository(binding, eventId), messages, effects,
+            Substitute.For<IRegistrationProviderCallbackReceiptProtector>(), sender, new ImmediateUnitOfWork(), new FixedTimeProvider(Now));
+
+        var result = await handler.Handle(new(binding.TenantId, eventId, binding.Id, storageObjectId.ToString("D"), "operator-import-1"), CancellationToken.None);
+
+        await Assert.That(result.Success).IsFalse();
+        await Assert.That(messages.Messages).IsEmpty();
+        await Assert.That(effects.Effects).IsEmpty();
     }
 
     [Test]
@@ -250,7 +520,8 @@ public sealed class RegistrationProviderManagementHandlerTests
         RegistrationRequirement requirement = RequirementWithChannel(binding, eventId, out RegistrationChannel channel);
         RegistrationProviderConnection connection = RegistrationProviderConnection.Create(
             binding.TenantId, "forms", RegistrationProviderKindEnum.ExternalForm,
-            RegistrationProviderDeploymentKindEnum.HostedSaas, null, null, Now);
+            RegistrationProviderDeploymentKindEnum.HostedSaas, "forms", "hosted", "v1", "policy", "evidence",
+            "https:/" + "/forms.example.org/api", "https:/" + "/forms.example.org", "workspace", null, null, Now);
         connection.ReplaceApprovedOrigins(["https://forms.example.org"], Now);
         typeof(RegistrationProviderBinding).GetProperty(nameof(RegistrationProviderBinding.Connection))!.SetValue(binding, connection);
         var handler = new GetRegistrationProviderLaunchDescriptorQueryHandler(
@@ -301,11 +572,21 @@ public sealed class RegistrationProviderManagementHandlerTests
             "forms",
             RegistrationProviderKindEnum.ExternalForm,
             RegistrationProviderDeploymentKindEnum.HostedSaas,
+            "forms",
+            "hosted",
+            "v1",
+            "policy",
+            "evidence",
+            "https:/" + "/forms.example.org/api",
+            "https:/" + "/forms.example.org",
+            "workspace",
             null,
             null,
             Now);
         var handler = new CreateRegistrationProviderBindingCommandHandler(
             new FakeProviderRepository(existing, eventId, connection: connection),
+            Substitute.For<ISecretBindingRepository>(),
+            new Registry(),
             new FixedTimeProvider(Now));
 
         var result = await handler.Handle(new CreateRegistrationProviderBindingCommand(
@@ -324,6 +605,84 @@ public sealed class RegistrationProviderManagementHandlerTests
 
         await Assert.That(result.Success).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("registration_provider_binding_validation_failed");
+    }
+
+    [Test]
+    public async Task CreateBinding_RejectsWebhookSecretWithoutBindingQualifierBeforePersistence()
+    {
+        Guid eventId = Guid.CreateVersion7();
+        RegistrationProviderBinding existing = Binding();
+        RegistrationProviderConnection connection = AttachConnection(existing);
+        Guid secretId = Guid.CreateVersion7();
+        ISecretBindingRepository secrets = Substitute.For<ISecretBindingRepository>();
+        SecretBinding wrongQualifier = SecretBinding.CreateEnvironmentVariable(
+            SecretDefinitionRegistry.Keys.RegistrationProviders.WebhookSecret,
+            SecretScope.Tenant,
+            existing.TenantId,
+            "WEBHOOK_SECRET",
+            qualifier: "other-binding");
+        wrongQualifier.Id = secretId;
+        secrets.GetByTenantAndIdAsync(existing.TenantId, secretId, Arg.Any<CancellationToken>()).Returns(wrongQualifier);
+        var repository = new FakeProviderRepository(existing, eventId, connection: connection);
+        var handler = new CreateRegistrationProviderBindingCommandHandler(repository, secrets, new Registry(), new FixedTimeProvider(Now));
+
+        BaseCommandResponse<Guid> result = await handler.Handle(new CreateRegistrationProviderBindingCommand(
+            existing.TenantId,
+            eventId,
+            new RegistrationProviderBindingRequestDto
+            {
+                ConnectionId = connection.Id,
+                FormId = existing.RegistrationFormId,
+                FormVersionId = existing.RegistrationFormVersionId,
+                ProviderWebhookId = "webhook-1",
+                WebhookSecretBindingId = secretId,
+                PresentationModeId = (int)RegistrationProviderPresentationModeEnum.Redirect,
+                CollectionModeId = (int)RegistrationProviderCollectionModeEnum.ProviderHosted,
+                CompletionModeId = (int)RegistrationProviderCompletionModeEnum.Callback,
+                TrustLevelId = (int)RegistrationProviderTrustLevelEnum.FullCanonical
+            }), CancellationToken.None);
+
+        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.FailureCode).IsEqualTo("registration_provider_binding_validation_failed");
+        await Assert.That(repository.SaveCount).IsEqualTo(0);
+    }
+
+    [Test]
+    public async Task CreateBinding_PersistsOnlyDescriptorProvenCapabilitiesAndIgnoresClientBooleans()
+    {
+        Guid eventId = Guid.CreateVersion7();
+        RegistrationProviderBinding existing = Binding();
+        RegistrationProviderConnection connection = AttachConnection(existing);
+        var repository = new FakeProviderRepository(existing, eventId, connection: connection);
+        var descriptor = new PresentationDescriptor(
+            new RegistrationProviderTuple(connection.ProviderCode, connection.ProviderDeploymentCode, connection.ApiVersion, connection.AdapterPolicyVersion, connection.ConformanceEvidenceRevision),
+            new Uri("https://forms.example.test/form"));
+        var handler = new CreateRegistrationProviderBindingCommandHandler(
+            repository,
+            Substitute.For<ISecretBindingRepository>(),
+            new Registry(descriptor),
+            new FixedTimeProvider(Now));
+
+        BaseCommandResponse<Guid> result = await handler.Handle(new CreateRegistrationProviderBindingCommand(
+            existing.TenantId,
+            eventId,
+            new RegistrationProviderBindingRequestDto
+            {
+                ConnectionId = connection.Id,
+                FormId = existing.RegistrationFormId,
+                FormVersionId = existing.RegistrationFormVersionId,
+                PresentationModeId = (int)RegistrationProviderPresentationModeEnum.Redirect,
+                CollectionModeId = (int)RegistrationProviderCollectionModeEnum.ProviderHosted,
+                CompletionModeId = (int)RegistrationProviderCompletionModeEnum.Callback,
+                TrustLevelId = (int)RegistrationProviderTrustLevelEnum.FullCanonical
+            }), CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await Assert.That(repository.AddedBinding!.Capabilities.Select(capability => capability.CapabilityCode)).IsEquivalentTo([
+            RegistrationProviderCapabilityCodes.Embed,
+            RegistrationProviderCapabilityCodes.SubmissionWrite,
+            RegistrationProviderCapabilityCodes.CallbackVerification
+        ]);
     }
 
     [Test]
@@ -441,13 +800,254 @@ public sealed class RegistrationProviderManagementHandlerTests
         await Assert.That(deleted.IsDeleted).IsFalse();
     }
 
-    private static RegistrationProviderBinding Binding(RegistrationProviderPresentationModeEnum presentationMode = RegistrationProviderPresentationModeEnum.Redirect) => RegistrationProviderBinding.Create(
-        Guid.CreateVersion7(), Guid.CreateVersion7(), Guid.CreateVersion7(), Guid.CreateVersion7(),
+    [Test]
+    public async Task ExternalImport_CreatesPublishedFrozenExternalVersionWithRevisionSnapshot()
+    {
+        RegistrationProviderBinding binding = Binding();
+        Guid eventId = Guid.CreateVersion7();
+        RegistrationProviderConnection connection = AttachConnection(binding);
+        var repository = new FakeProviderRepository(binding, eventId, connection: connection);
+        var handler = ExternalImportHandler(repository, new SchemaDescriptor(connection, Snapshot([Field("email", "Email", nameof(RegistrationFieldTypeEnum.Email), true)])));
+
+        BaseCommandResponse<Guid> result = await handler.Handle(new ImportExternalRegistrationProviderFormVersionCommand(
+            binding.TenantId,
+            eventId,
+            connection.Id,
+            new ImportExternalRegistrationProviderFormVersionRequestDto
+            {
+                Key = "external-registration",
+                Name = "External registration",
+                ProviderSurveyId = "survey-1",
+                LanguageTag = "en"
+            }), CancellationToken.None);
+
+        RegistrationFormVersion version = repository.Forms.Single().Versions.Single();
+        await Assert.That(result.Success).IsTrue();
+        await Assert.That(version.StatusId).IsEqualTo((int)RegistrationFormStatusEnum.Published);
+        await Assert.That(version.SourceKindId).IsEqualTo((int)RegistrationFormVersionSourceKindEnum.ExternalImported);
+        await Assert.That(version.ExternalRegistrationProviderConnectionId).IsEqualTo(connection.Id);
+        await Assert.That(version.ExternalImportMappingRevisionHash).HasLength().EqualTo(44);
+        await Assert.That(repository.Revisions.Single().ProviderSnapshotSha256Hash).HasLength().EqualTo(64);
+    }
+
+    [Test]
+    public async Task ExternalReimport_IdenticalSchemaReturnsExistingPublishedVersionWithoutInsertOrSave()
+    {
+        RegistrationProviderBinding binding = Binding();
+        Guid eventId = Guid.CreateVersion7();
+        RegistrationProviderConnection connection = AttachConnection(binding);
+        var repository = new FakeProviderRepository(binding, eventId, connection: connection);
+        var descriptor = new SchemaDescriptor(connection, Snapshot([Field("email", "Email", nameof(RegistrationFieldTypeEnum.Email), true)]));
+        var request = new ImportExternalRegistrationProviderFormVersionRequestDto { Key = "external-registration", Name = "External registration", ProviderSurveyId = "survey-1", LanguageTag = "en" };
+        BaseCommandResponse<Guid> first = await ExternalImportHandler(repository, descriptor).Handle(new(binding.TenantId, eventId, connection.Id, request), CancellationToken.None);
+        Guid formId = repository.Forms.Single().Id;
+        int saves = repository.SaveCount;
+
+        BaseCommandResponse<Guid> replay = await ExternalImportHandler(repository, descriptor).Handle(new(binding.TenantId, eventId, connection.Id, ReimportRequest(formId)), CancellationToken.None);
+
+        await Assert.That(replay.Success).IsTrue();
+        await Assert.That(replay.Id).IsEqualTo(first.Id);
+        await Assert.That(repository.Forms.Single().Versions.Count).IsEqualTo(1);
+        await Assert.That(repository.Revisions.Count).IsEqualTo(1);
+        await Assert.That(repository.SaveCount).IsEqualTo(saves);
+    }
+
+    [Test]
+    public async Task ExternalImport_InitialReplayWithoutFormIdReturnsExistingVersionWithoutWrite()
+    {
+        RegistrationProviderBinding binding = Binding();
+        Guid eventId = Guid.CreateVersion7();
+        RegistrationProviderConnection connection = AttachConnection(binding);
+        var repository = new FakeProviderRepository(binding, eventId, connection: connection);
+        var descriptor = new SchemaDescriptor(connection, Snapshot([Field("email", "Email", nameof(RegistrationFieldTypeEnum.Email), true)]));
+        var request = new ImportExternalRegistrationProviderFormVersionRequestDto { Key = "external-registration", Name = "External registration", ProviderSurveyId = "survey-1", LanguageTag = "en" };
+        BaseCommandResponse<Guid> first = await ExternalImportHandler(repository, descriptor).Handle(new(binding.TenantId, eventId, connection.Id, request), CancellationToken.None);
+        int saves = repository.SaveCount;
+
+        BaseCommandResponse<Guid> replay = await ExternalImportHandler(repository, descriptor).Handle(new(binding.TenantId, eventId, connection.Id, request), CancellationToken.None);
+
+        await Assert.That(replay.Success).IsTrue();
+        await Assert.That(replay.Id).IsEqualTo(first.Id);
+        await Assert.That(repository.Forms.Count).IsEqualTo(1);
+        await Assert.That(repository.Forms.Single().Versions.Count).IsEqualTo(1);
+        await Assert.That(repository.Revisions.Count).IsEqualTo(1);
+        await Assert.That(repository.SaveCount).IsEqualTo(saves);
+    }
+
+    [Test]
+    public async Task ExternalImport_InitialChangedSchemaWithoutFormIdReusesFormAndCreatesNextVersion()
+    {
+        RegistrationProviderBinding binding = Binding();
+        Guid eventId = Guid.CreateVersion7();
+        RegistrationProviderConnection connection = AttachConnection(binding);
+        var repository = new FakeProviderRepository(binding, eventId, connection: connection);
+        var request = new ImportExternalRegistrationProviderFormVersionRequestDto { Key = "external-registration", Name = "External registration", ProviderSurveyId = "survey-1", LanguageTag = "en" };
+        await ExternalImportHandler(repository, new SchemaDescriptor(connection, Snapshot([Field("email", "Email", nameof(RegistrationFieldTypeEnum.Email), true)])))
+            .Handle(new(binding.TenantId, eventId, connection.Id, request), CancellationToken.None);
+
+        BaseCommandResponse<Guid> changed = await ExternalImportHandler(repository, new SchemaDescriptor(connection, Snapshot([
+            Field("email", "Email", nameof(RegistrationFieldTypeEnum.Email), true),
+            Field("phone", "Phone", nameof(RegistrationFieldTypeEnum.Phone), false)])))
+            .Handle(new(binding.TenantId, eventId, connection.Id, request), CancellationToken.None);
+
+        await Assert.That(changed.Success).IsTrue();
+        await Assert.That(repository.Forms.Count).IsEqualTo(1);
+        await Assert.That(repository.Forms.Single().Versions.Count).IsEqualTo(2);
+        await Assert.That(repository.Revisions.Count).IsEqualTo(2);
+    }
+
+    [Test]
+    public async Task ExternalImport_TwoSurveysWithIdenticalSchemaCreateDistinctRevisions()
+    {
+        RegistrationProviderBinding binding = Binding();
+        Guid eventId = Guid.CreateVersion7();
+        RegistrationProviderConnection connection = AttachConnection(binding);
+        var repository = new FakeProviderRepository(binding, eventId, connection: connection);
+        var descriptor = new SchemaDescriptor(connection, Snapshot([Field("email", "Email", nameof(RegistrationFieldTypeEnum.Email), true)]));
+        await ExternalImportHandler(repository, descriptor).Handle(new(binding.TenantId, eventId, connection.Id,
+            new ImportExternalRegistrationProviderFormVersionRequestDto { Key = "survey-one", Name = "Survey one", ProviderSurveyId = "survey-1", LanguageTag = "en" }), CancellationToken.None);
+
+        BaseCommandResponse<Guid> result = await ExternalImportHandler(repository, descriptor).Handle(new(binding.TenantId, eventId, connection.Id,
+            new ImportExternalRegistrationProviderFormVersionRequestDto { Key = "survey-two", Name = "Survey two", ProviderSurveyId = "survey-2", LanguageTag = "en" }), CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await Assert.That(repository.Revisions.Count).IsEqualTo(2);
+        await Assert.That(repository.Revisions.Select(revision => revision.ProviderSurveyId).Order().SequenceEqual(["survey-1", "survey-2"])).IsTrue();
+    }
+
+    [Test]
+    public async Task ExternalReimport_LabelOnlyDriftCreatesNextPublishedVersion()
+    {
+        RegistrationProviderBinding binding = Binding();
+        Guid eventId = Guid.CreateVersion7();
+        RegistrationProviderConnection connection = AttachConnection(binding);
+        var repository = new FakeProviderRepository(binding, eventId, connection: connection);
+        var first = ExternalImportHandler(repository, new SchemaDescriptor(connection, Snapshot([Field("email", "Email", nameof(RegistrationFieldTypeEnum.Email), true)])));
+        var request = new ImportExternalRegistrationProviderFormVersionRequestDto { Key = "external-registration", Name = "External registration", ProviderSurveyId = "survey-1", LanguageTag = "en" };
+        await first.Handle(new(binding.TenantId, eventId, connection.Id, request), CancellationToken.None);
+        Guid formId = repository.Forms.Single().Id;
+        var second = ExternalImportHandler(repository, new SchemaDescriptor(connection, Snapshot([Field("email", "Email address", nameof(RegistrationFieldTypeEnum.Email), true)])));
+
+        BaseCommandResponse<Guid> result = await second.Handle(new(binding.TenantId, eventId, connection.Id, ReimportRequest(formId)), CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await Assert.That(repository.Forms.Single().Versions.Count).IsEqualTo(2);
+        await Assert.That(repository.Revisions.Last().DriftClassId).IsEqualTo((int)RegistrationProviderDriftClassEnum.LabelOnlyChange);
+        await Assert.That(repository.Forms.Single().Versions.Select(version => version.ExternalImportMappingRevisionHash).Distinct().Count()).IsEqualTo(1);
+    }
+
+    [Test]
+    public async Task ExternalReimport_BlockingDriftRecordsRevisionWithoutVersion()
+    {
+        RegistrationProviderBinding binding = Binding();
+        Guid eventId = Guid.CreateVersion7();
+        RegistrationProviderConnection connection = AttachConnection(binding);
+        var repository = new FakeProviderRepository(binding, eventId, connection: connection);
+        var request = new ImportExternalRegistrationProviderFormVersionRequestDto { Key = "external-registration", Name = "External registration", ProviderSurveyId = "survey-1", LanguageTag = "en" };
+        await ExternalImportHandler(repository, new SchemaDescriptor(connection, Snapshot([Field("email", "Email", nameof(RegistrationFieldTypeEnum.Email), true)])))
+            .Handle(new(binding.TenantId, eventId, connection.Id, request), CancellationToken.None);
+        Guid formId = repository.Forms.Single().Id;
+        var blocking = ExternalImportHandler(repository, new SchemaDescriptor(connection, Snapshot([])));
+
+        BaseCommandResponse<Guid> result = await blocking.Handle(new(binding.TenantId, eventId, connection.Id, ReimportRequest(formId)), CancellationToken.None);
+
+        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.FailureCode).IsEqualTo("registration_provider_schema_drift_blocked");
+        await Assert.That(repository.Forms.Single().Versions.Count).IsEqualTo(1);
+        await Assert.That(repository.Revisions.Last().DriftClassId).IsEqualTo((int)RegistrationProviderDriftClassEnum.RequiredFieldRemoved);
+    }
+
+    [Test]
+    public async Task ExternalReimport_RepeatedBlockingDriftReturnsExistingFailureWithoutInsertOrSave()
+    {
+        RegistrationProviderBinding binding = Binding();
+        Guid eventId = Guid.CreateVersion7();
+        RegistrationProviderConnection connection = AttachConnection(binding);
+        var repository = new FakeProviderRepository(binding, eventId, connection: connection);
+        var request = new ImportExternalRegistrationProviderFormVersionRequestDto { Key = "external-registration", Name = "External registration", ProviderSurveyId = "survey-1", LanguageTag = "en" };
+        await ExternalImportHandler(repository, new SchemaDescriptor(connection, Snapshot([Field("email", "Email", nameof(RegistrationFieldTypeEnum.Email), true)])))
+            .Handle(new(binding.TenantId, eventId, connection.Id, request), CancellationToken.None);
+        Guid formId = repository.Forms.Single().Id;
+        var blocking = ExternalImportHandler(repository, new SchemaDescriptor(connection, Snapshot([])));
+        BaseCommandResponse<Guid> firstBlock = await blocking.Handle(new(binding.TenantId, eventId, connection.Id, ReimportRequest(formId)), CancellationToken.None);
+        int revisions = repository.Revisions.Count;
+        int saves = repository.SaveCount;
+
+        BaseCommandResponse<Guid> replay = await blocking.Handle(new(binding.TenantId, eventId, connection.Id, ReimportRequest(formId)), CancellationToken.None);
+
+        await Assert.That(replay.Success).IsFalse();
+        await Assert.That(replay.Id).IsEqualTo(firstBlock.Id);
+        await Assert.That(replay.FailureCode).IsEqualTo("registration_provider_schema_drift_blocked");
+        await Assert.That(repository.Revisions.Count).IsEqualTo(revisions);
+        await Assert.That(repository.SaveCount).IsEqualTo(saves);
+    }
+
+    private static ImportExternalRegistrationProviderFormVersionCommandHandler ExternalImportHandler(FakeProviderRepository repository, IRegistrationProviderDescriptor descriptor) =>
+        new(repository, new Registry(descriptor), new SchemaDriftClassifier(), new FormSchemaArtifactPublicationService(new FormSchemaArtifactGenerator()), new FixedTimeProvider(Now));
+
+    private static RegistrationProviderSchemaSnapshot Snapshot(IReadOnlyList<RegistrationProviderSchemaFieldSnapshot> fields) => new(fields);
+
+    private static RegistrationProviderSchemaFieldSnapshot Field(string key, string label, string type, bool required) => new(key, label, type, required, []);
+
+    private static ImportExternalRegistrationProviderFormVersionRequestDto ReimportRequest(Guid formId) => new()
+    {
+        FormId = formId,
+        ProviderSurveyId = "survey-1",
+        LanguageTag = "en"
+    };
+
+    private static RegistrationProviderConnectionRequestDto GoogleConnectionRequest() => new()
+    {
+        Name = "Google Forms",
+        ProviderKindId = (int)RegistrationProviderKindEnum.ExternalForm,
+        DeploymentKindId = (int)RegistrationProviderDeploymentKindEnum.HostedSaas,
+        ProviderCode = "GOOGLE_FORMS",
+        ProviderDeploymentCode = "GOOGLE_WORKSPACE",
+        ApiVersion = "v1",
+        AdapterPolicyVersion = "ISLAMU_EVENT_GOOGLE_FORMS_PUBSUB_V1",
+        ConformanceEvidenceRevision = "2026-08-11",
+        ManagementApiBaseUrl = "https://forms.googleapis.com/v1",
+        PublicBaseUrl = "https://docs.google.com",
+        ProviderWorkspaceId = "google-workspace",
+        ApiTokenSecretBindingId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000101"),
+        WebhookSecretBindingId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000102")
+    };
+
+    private static RegistrationProviderConnectionRequestDto SecretCallbackConnectionRequest(Guid webhookSecretBindingId) => new()
+    {
+        Name = "Formbricks",
+        ProviderKindId = (int)RegistrationProviderKindEnum.ExternalForm,
+        DeploymentKindId = (int)RegistrationProviderDeploymentKindEnum.HostedSaas,
+        ProviderCode = "FORMBRICKS",
+        ProviderDeploymentCode = "CLOUD",
+        ApiVersion = "v1",
+        AdapterPolicyVersion = "ISLAMU_EVENT_FORMBRICKS_V1",
+        ConformanceEvidenceRevision = "2026-08-10",
+        ManagementApiBaseUrl = "https://api.formbricks.test/api/v1",
+        PublicBaseUrl = "https://forms.formbricks.test",
+        ProviderWorkspaceId = "workspace",
+        ApiTokenSecretBindingId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000101"),
+        WebhookSecretBindingId = webhookSecretBindingId
+    };
+
+    private static RegistrationProviderBinding Binding(RegistrationProviderPresentationModeEnum presentationMode = RegistrationProviderPresentationModeEnum.Redirect, Guid? formVersionId = null) => RegistrationProviderBinding.Create(
+        Guid.CreateVersion7(), Guid.CreateVersion7(), Guid.CreateVersion7(), formVersionId ?? Guid.CreateVersion7(),
         presentationMode,
         RegistrationProviderCollectionModeEnum.ProviderHosted,
         RegistrationProviderCompletionModeEnum.Callback,
         RegistrationProviderTrustLevelEnum.FullCanonical,
+        null,
         Now);
+
+    private static RegistrationProviderConnection AttachConnection(RegistrationProviderBinding binding, string providerWorkspaceId = "workspace")
+    {
+        RegistrationProviderConnection connection = RegistrationProviderConnection.Create(
+            binding.TenantId, "forms", RegistrationProviderKindEnum.ExternalForm,
+            RegistrationProviderDeploymentKindEnum.HostedSaas, "forms", "hosted", "v1", "policy", "evidence",
+            "https:/" + "/forms.example.org/api", "https:/" + "/forms.example.org", providerWorkspaceId, null, null, Now);
+        typeof(RegistrationProviderBinding).GetProperty(nameof(RegistrationProviderBinding.Connection))!.SetValue(binding, connection);
+        return connection;
+    }
 
     private static void AddLaunchCapabilities(RegistrationProviderBinding binding, string presentationCapability)
     {
@@ -527,6 +1127,39 @@ public sealed class RegistrationProviderManagementHandlerTests
             Task.FromResult(new RegistrationProviderPresentationResult(false, true, false, EmbedUri: EmbedUri));
     }
 
+    private sealed record GoogleDescriptor() : IRegistrationProviderDescriptor, IRegistrationProviderDelegatedAutomation, IRegistrationProviderCallbackVerifier
+    {
+        public static GoogleDescriptor Instance { get; } = new();
+        public RegistrationProviderTuple Tuple { get; } = new("GOOGLE_FORMS", "GOOGLE_WORKSPACE", "v1", "ISLAMU_EVENT_GOOGLE_FORMS_PUBSUB_V1", "2026-08-11");
+        public RegistrationProviderCapabilitySet ProvenCapabilities { get; } = new(true, true, true, true, true, false, true, true, true, true, false, false);
+        public string ConnectorContractVersion => "GOOGLE_FORMS_ENTRY_CORRELATION_V1";
+        public string RequiredCorrelationPlatformFieldKey => "system.registration_attempt_token";
+        public Task<RegistrationProviderCallbackVerificationResult> VerifyCallbackAsync(RegistrationProviderCallbackVerificationRequest request, CancellationToken cancellationToken) =>
+            Task.FromResult(new RegistrationProviderCallbackVerificationResult(true));
+    }
+
+    private sealed record SecretCallbackDescriptor() : IRegistrationProviderDescriptor, IRegistrationProviderCallbackVerifier
+    {
+        public static SecretCallbackDescriptor Instance { get; } = new();
+        public RegistrationProviderTuple Tuple { get; } = new("FORMBRICKS", "CLOUD", "v1", "ISLAMU_EVENT_FORMBRICKS_V1", "2026-08-10");
+        public RegistrationProviderCapabilitySet ProvenCapabilities { get; } = new(true, true, true, true, true, true, true, true, true, true, true, true);
+        public Task<RegistrationProviderCallbackVerificationResult> VerifyCallbackAsync(RegistrationProviderCallbackVerificationRequest request, CancellationToken cancellationToken) =>
+            Task.FromResult(new RegistrationProviderCallbackVerificationResult(true));
+    }
+
+    private sealed record SchemaDescriptor(RegistrationProviderTuple Tuple, RegistrationProviderSchemaSnapshot Snapshot) : IRegistrationProviderDescriptor, IRegistrationProviderSchemaReader
+    {
+        public SchemaDescriptor(RegistrationProviderConnection connection, RegistrationProviderSchemaSnapshot snapshot)
+            : this(new RegistrationProviderTuple(connection.ProviderCode, connection.ProviderDeploymentCode, connection.ApiVersion, connection.AdapterPolicyVersion, connection.ConformanceEvidenceRevision), snapshot)
+        {
+        }
+
+        public RegistrationProviderCapabilitySet ProvenCapabilities => new(false, false, false, true, false, false, false, false, false, false, false, false);
+
+        public Task<RegistrationProviderSchemaReadResult> ReadSchemaAsync(RegistrationProviderSchemaReadRequest request, CancellationToken cancellationToken) =>
+            Task.FromResult(new RegistrationProviderSchemaReadResult(Snapshot, true, "revision-" + Snapshot.Fields.Count.ToString()));
+    }
+
     private sealed class Registry(params IRegistrationProviderDescriptor[] descriptors) : IRegistrationProviderRegistry
     {
         public IRegistrationProviderDescriptor? TryResolve(RegistrationProviderTuple tuple) => descriptors.SingleOrDefault(descriptor => descriptor.Tuple == tuple);
@@ -557,9 +1190,14 @@ public sealed class RegistrationProviderManagementHandlerTests
         RegistrationRequirement? requirement = null) : IRegistrationProviderRepository
     {
         public List<RegistrationSubmissionIssue> Issues { get; } = [];
+        public List<RegistrationProviderConnection> Connections { get; } = connection is null ? [] : [connection];
+        public List<RegistrationForm> Forms { get; } = [];
+      public List<RegistrationProviderSchemaRevision> Revisions { get; } = [];
+      public RegistrationProviderBinding? AddedBinding { get; private set; }
+        public int SaveCount { get; private set; }
 
-        public Task<RegistrationProviderConnection?> GetConnectionAsync(Guid tenantId, Guid connectionId, CancellationToken cancellationToken) => Task.FromResult(connection is not null && tenantId == connection.TenantId && connectionId == connection.Id ? connection : null);
-        public Task<IReadOnlyList<RegistrationProviderConnection>> GetConnectionsAsync(Guid tenantId, CancellationToken cancellationToken) => cancellationToken.IsCancellationRequested ? Task.FromCanceled<IReadOnlyList<RegistrationProviderConnection>>(cancellationToken) : Task.FromResult<IReadOnlyList<RegistrationProviderConnection>>([]);
+        public Task<RegistrationProviderConnection?> GetConnectionAsync(Guid tenantId, Guid connectionId, CancellationToken cancellationToken) => Task.FromResult(Connections.SingleOrDefault(connection => tenantId == connection.TenantId && connectionId == connection.Id));
+        public Task<IReadOnlyList<RegistrationProviderConnection>> GetConnectionsAsync(Guid tenantId, CancellationToken cancellationToken) => cancellationToken.IsCancellationRequested ? Task.FromCanceled<IReadOnlyList<RegistrationProviderConnection>>(cancellationToken) : Task.FromResult<IReadOnlyList<RegistrationProviderConnection>>([.. Connections.Where(connection => connection.TenantId == tenantId)]);
         public Task<RegistrationProviderBinding?> GetBindingAsync(Guid tenantId, Guid bindingId, CancellationToken cancellationToken) => Task.FromResult(tenantId == binding.TenantId && bindingId == binding.Id ? binding : null);
         public Task<bool> FormVersionBelongsToEventAsync(Guid tenantId, Guid requestedEventId, Guid formId, Guid formVersionId, CancellationToken cancellationToken) => Task.FromResult(tenantId == binding.TenantId && requestedEventId == eventId && formId == binding.RegistrationFormId && formVersionId == binding.RegistrationFormVersionId);
         public Task<RegistrationProviderBinding?> GetBindingForCallbackAsync(Guid bindingId, CancellationToken cancellationToken) => Task.FromResult(bindingId == binding.Id ? binding : null);
@@ -572,14 +1210,36 @@ public sealed class RegistrationProviderManagementHandlerTests
         public Task<DateTime?> GetLastCallbackAtAsync(Guid tenantId, Guid bindingId, CancellationToken cancellationToken) => Task.FromResult<DateTime?>(null);
         public Task<int> CountParkedItemsAsync(Guid tenantId, Guid bindingId, CancellationToken cancellationToken) => Task.FromResult(0);
         public Task<DateTime?> GetOldestPendingItemAtAsync(Guid tenantId, Guid bindingId, CancellationToken cancellationToken) => Task.FromResult<DateTime?>(null);
+        public Task<RegistrationForm?> GetFormForExternalImportAsync(Guid tenantId, Guid requestedEventId, Guid formId, CancellationToken cancellationToken) =>
+            Task.FromResult(Forms.SingleOrDefault(form => form.TenantId == tenantId && form.EventId == requestedEventId && form.Id == formId));
+        public Task<RegistrationForm?> GetExternalImportFormAsync(Guid tenantId, Guid requestedEventId, Guid connectionId, string providerSurveyId, CancellationToken cancellationToken) =>
+            Task.FromResult(Forms.SingleOrDefault(form => form.TenantId == tenantId && form.EventId == requestedEventId && form.Versions.Any(version =>
+                version.SourceKindId == (int)RegistrationFormVersionSourceKindEnum.ExternalImported &&
+                version.ExternalRegistrationProviderConnectionId == connectionId &&
+                (version.ExternalProviderSurveyId == providerSurveyId || Revisions.Any(revision => revision.Id == version.ExternalRegistrationProviderSchemaRevisionId && revision.ProviderSurveyId == providerSurveyId)))));
+        public Task<RegistrationProviderSchemaRevision?> GetLatestExternalImportSchemaRevisionAsync(Guid tenantId, Guid requestedEventId, Guid formId, Guid connectionId, string providerSurveyId, CancellationToken cancellationToken)
+        {
+            Guid? revisionId = Forms.Single(form => form.Id == formId).Versions
+                .Where(version => version.TenantId == tenantId && version.EventId == requestedEventId &&
+                    version.SourceKindId == (int)RegistrationFormVersionSourceKindEnum.ExternalImported &&
+                    version.ExternalRegistrationProviderConnectionId == connectionId &&
+                    version.ExternalProviderSurveyId == providerSurveyId)
+                .OrderByDescending(version => version.Version)
+                .Select(version => version.ExternalRegistrationProviderSchemaRevisionId)
+                .FirstOrDefault();
+            return Task.FromResult(revisionId is null ? null : Revisions.Single(revision => revision.Id == revisionId));
+        }
+        public Task<RegistrationProviderSchemaRevision?> GetSchemaRevisionByHashAsync(Guid tenantId, Guid connectionId, string providerSurveyId, RegistrationEvidenceHash revisionHash, CancellationToken cancellationToken) =>
+            Task.FromResult(Revisions.SingleOrDefault(revision => revision.TenantId == tenantId && revision.RegistrationProviderConnectionId == connectionId && revision.ProviderSurveyId == providerSurveyId && revision.RevisionHash == revisionHash));
         public Task<IReadOnlyList<RegistrationProviderParkedItem>> GetParkedItemsForEventAsync(Guid tenantId, Guid requestedEventId, int limit, CancellationToken cancellationToken) => Task.FromResult<IReadOnlyList<RegistrationProviderParkedItem>>([]);
         public Task<RegistrationSubmission?> GetParkedSubmissionAsync(Guid tenantId, Guid requestedEventId, Guid submissionId, CancellationToken cancellationToken) => Task.FromResult(submission is not null && tenantId == submission.TenantId && requestedEventId == submission.EventId && submissionId == submission.Id ? submission : null);
         public Task AddSubmissionIssueAsync(RegistrationSubmissionIssue issue, CancellationToken cancellationToken) { Issues.Add(issue); return Task.CompletedTask; }
-        public Task AddConnectionAsync(RegistrationProviderConnection connection, CancellationToken cancellationToken) => Task.CompletedTask;
-        public Task AddBindingAsync(RegistrationProviderBinding registrationBinding, CancellationToken cancellationToken) => Task.CompletedTask;
+        public Task AddConnectionAsync(RegistrationProviderConnection connection, CancellationToken cancellationToken) { Connections.Add(connection); return Task.CompletedTask; }
+      public Task AddBindingAsync(RegistrationProviderBinding registrationBinding, CancellationToken cancellationToken) { AddedBinding = registrationBinding; return Task.CompletedTask; }
+        public Task AddFormAsync(RegistrationForm form, CancellationToken cancellationToken) { Forms.Add(form); return Task.CompletedTask; }
         public Task AddChannelAsync(RegistrationChannel channel, CancellationToken cancellationToken) => cancellationToken.IsCancellationRequested ? Task.FromCanceled(cancellationToken) : Task.CompletedTask;
-        public Task AddSchemaRevisionAsync(RegistrationProviderSchemaRevision revision, CancellationToken cancellationToken) => Task.CompletedTask;
-        public Task SaveChangesAsync(CancellationToken cancellationToken) => Task.CompletedTask;
+        public Task AddSchemaRevisionAsync(RegistrationProviderSchemaRevision revision, CancellationToken cancellationToken) { Revisions.Add(revision); return Task.CompletedTask; }
+        public Task SaveChangesAsync(CancellationToken cancellationToken) { SaveCount++; return Task.CompletedTask; }
     }
 
     private sealed class FakeMessageRepository : IIncomingWebhookMessageRepository
@@ -635,5 +1295,17 @@ public sealed class RegistrationProviderManagementHandlerTests
     private sealed class FixedTimeProvider(DateTime now) : TimeProvider
     {
         public override DateTimeOffset GetUtcNow() => new(now, TimeSpan.Zero);
+    }
+
+    private sealed class ImmediateUnitOfWork : IUnitOfWork
+    {
+        public async Task ExecuteInTransactionAsync(Func<CancellationToken, Task> operation, CancellationToken ct = default) =>
+            await operation(ct);
+
+        public async Task<T> ExecuteInTransactionAsync<T>(Func<CancellationToken, Task<T>> operation, CancellationToken ct = default) =>
+            await operation(ct);
+
+        public async Task<T> ExecuteSerializableAsync<T>(Func<CancellationToken, Task<T>> operation, CancellationToken ct = default) =>
+            await operation(ct);
     }
 }

@@ -68,6 +68,19 @@ public sealed class RegistrationProviderConnectionDto
     public string Name { get; init; } = string.Empty;
     public int ProviderKindId { get; init; }
     public int DeploymentKindId { get; init; }
+    public string ProviderCode { get; init; } = string.Empty;
+    public string ProviderDeploymentCode { get; init; } = string.Empty;
+    public string ApiVersion { get; init; } = string.Empty;
+    public string AdapterPolicyVersion { get; init; } = string.Empty;
+    public string ConformanceEvidenceRevision { get; init; } = string.Empty;
+    public string ManagementApiBaseUrl { get; init; } = string.Empty;
+    public string PublicBaseUrl { get; init; } = string.Empty;
+    public string ProviderWorkspaceId { get; init; } = string.Empty;
+    public string GrantedOAuthScopes { get; init; } = string.Empty;
+    public string ProviderIdentity { get; init; } = string.Empty;
+    public string PubSubConfigurationReference { get; init; } = string.Empty;
+    public DateTime? LastCredentialRefreshAt { get; init; }
+    public DateTime? LastAccessValidatedAt { get; init; }
     public Guid? ApiTokenSecretBindingId { get; init; }
     public Guid? WebhookSecretBindingId { get; init; }
     public IReadOnlyList<string> ApprovedOrigins { get; init; } = [];
@@ -78,6 +91,17 @@ public sealed class RegistrationProviderConnectionRequestDto
     public string Name { get; init; } = string.Empty;
     public int ProviderKindId { get; init; }
     public int DeploymentKindId { get; init; }
+    public string ProviderCode { get; init; } = string.Empty;
+    public string ProviderDeploymentCode { get; init; } = string.Empty;
+    public string ApiVersion { get; init; } = string.Empty;
+    public string AdapterPolicyVersion { get; init; } = string.Empty;
+    public string ConformanceEvidenceRevision { get; init; } = string.Empty;
+    public string ManagementApiBaseUrl { get; init; } = string.Empty;
+    public string PublicBaseUrl { get; init; } = string.Empty;
+    public string ProviderWorkspaceId { get; init; } = string.Empty;
+    public string GrantedOAuthScopes { get; init; } = string.Empty;
+    public string ProviderIdentity { get; init; } = string.Empty;
+    public string PubSubConfigurationReference { get; init; } = string.Empty;
     public Guid ApiTokenSecretBindingId { get; init; }
     public Guid WebhookSecretBindingId { get; init; }
 }
@@ -95,6 +119,10 @@ public sealed class RegistrationProviderBindingDto
     public Guid ConnectionId { get; init; }
     public Guid FormId { get; init; }
     public Guid FormVersionId { get; init; }
+    public string? ProviderSurveyId { get; init; }
+    public string? ProviderSurveyRevisionId { get; init; }
+    public string? ProviderWebhookId { get; init; }
+    public Guid? WebhookSecretBindingId { get; init; }
     public int PresentationModeId { get; init; }
     public int CollectionModeId { get; init; }
     public int CompletionModeId { get; init; }
@@ -126,6 +154,10 @@ public sealed class RegistrationProviderBindingRequestDto
     public Guid ConnectionId { get; init; }
     public Guid FormId { get; init; }
     public Guid FormVersionId { get; init; }
+    public string? ProviderSurveyId { get; init; }
+    public string? ProviderSurveyRevisionId { get; init; }
+    public string? ProviderWebhookId { get; init; }
+    public Guid? WebhookSecretBindingId { get; init; }
     public int PresentationModeId { get; init; }
     public int CollectionModeId { get; init; }
     public int CompletionModeId { get; init; }
@@ -136,6 +168,17 @@ public sealed class ReplaceRegistrationProviderMappingsRequestDto
 {
     public IReadOnlyList<RegistrationProviderFieldMappingDto> FieldMappings { get; init; } = [];
     public IReadOnlyList<RegistrationProviderOptionMappingDto> OptionMappings { get; init; } = [];
+}
+
+public sealed class ImportExternalRegistrationProviderFormVersionRequestDto
+{
+    public Guid? FormId { get; init; }
+    public string Namespace { get; init; } = "external";
+    public string Key { get; init; } = string.Empty;
+    public string Name { get; init; } = string.Empty;
+    public string LanguageTag { get; init; } = "en";
+    public string ProviderSurveyId { get; init; } = string.Empty;
+    public string? ProviderSurveyRevisionId { get; init; }
 }
 
 public sealed class RegistrationChannelDto

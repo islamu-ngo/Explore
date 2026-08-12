@@ -6,6 +6,7 @@ using System.Text;
 using System.Text.Json;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
+using Explore.Application.Contracts.Services.Registration;
 using Explore.Application.Features.RegistrationSubmissions.Commands;
 using Explore.Domain;
 using Explore.Domain.Enums;
@@ -189,10 +190,12 @@ public sealed class NormalizeRegistrationSubmissionCommandHandlerTests
         attempt.ConcurrencyStamp = Guid.CreateVersion7();
         IRegistrationInventoryRepository inventory = Substitute.For<IRegistrationInventoryRepository>();
         IRegistrationSubmissionRepository submissions = Substitute.For<IRegistrationSubmissionRepository>();
+        IRegistrationProviderRepository providerRepository = Substitute.For<IRegistrationProviderRepository>();
         IRegistrationFormAuthoringRepository forms = Substitute.For<IRegistrationFormAuthoringRepository>();
         IRegistrationParticipantRepository participantRepository = Substitute.For<IRegistrationParticipantRepository>();
         IRegistrationSensitiveValueProtector protector = Substitute.For<IRegistrationSensitiveValueProtector>();
         IGuestCapabilityTokenService capabilities = Substitute.For<IGuestCapabilityTokenService>();
+        IRegistrationProviderRegistry providerRegistry = Substitute.For<IRegistrationProviderRegistry>();
         ISender sender = Substitute.For<ISender>();
         RegistrationOrder order = RegistrationOrder.Create(
             scope.OrderId, scope.TenantId, scope.EventId, Guid.CreateVersion7(), null, BookingPartyTypeEnum.Individual,
@@ -226,7 +229,7 @@ public sealed class NormalizeRegistrationSubmissionCommandHandlerTests
                 scope.OrderId, null, value.RootElement.Clone())]);
 
         NativeRegistrationSubmissionResult result = await new SubmitNativeRegistrationAttemptCommandHandler(
-            inventory, submissions, forms, participantRepository, protector, capabilities, TimeProvider.System)
+            inventory, submissions, providerRepository, forms, participantRepository, protector, capabilities, providerRegistry, TimeProvider.System)
             .Handle(command, CancellationToken.None);
 
         await Assert.That(result.Success).IsTrue();

@@ -23,7 +23,8 @@ public interface IRegistrationSubmissionRepository
         IReadOnlyCollection<RegistrationConsentRecord> consentRecords,
         IReadOnlyCollection<RegistrationSubmissionIssue> issues,
         IReadOnlyCollection<RegistrationRequirementFulfillment> fulfillments,
-        CancellationToken cancellationToken);
+        CancellationToken cancellationToken,
+        RegistrationProviderSubmissionWriteEffect? providerWriteEffect = null);
 
     Task<RegistrationSubmissionPersistenceResult> PersistEvidenceOnlyAsync(
         RegistrationSubmission submission,

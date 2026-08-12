@@ -21,9 +21,8 @@ public sealed class RegistrationProviderCallbackBindingResolver(
         }
 
         RegistrationProviderBinding? binding = await repository.GetBindingForCallbackAsync(bindingId, cancellationToken);
-        return binding is not null && binding.Capabilities.Any(capability =>
-                !capability.IsDeleted &&
-                string.Equals(capability.ProviderCode, provider.Trim(), StringComparison.OrdinalIgnoreCase))
+        return binding is not null && binding.Connection is not null &&
+                string.Equals(binding.Connection.ProviderCode, provider.Trim(), StringComparison.OrdinalIgnoreCase)
             ? binding
             : null;
     }

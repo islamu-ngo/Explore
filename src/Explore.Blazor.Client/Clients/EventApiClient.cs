@@ -111,6 +111,11 @@ public partial class EventApiClient
                 "Idempotency-Key",
                 GuestRegistrationOrderIdempotencyKey.Value ?? Guid.CreateVersion7().ToString("N"));
         }
+
+        if (request.Method == HttpMethod.Post && IsRegistrationProviderAttemptRequest(url))
+        {
+            request.Headers.TryAddWithoutValidation("Idempotency-Key", Guid.CreateVersion7().ToString("N"));
+        }
     }
 
     partial void ProcessResponse(HttpClient client, HttpResponseMessage response)
@@ -135,6 +140,9 @@ public partial class EventApiClient
 
     private static bool IsGuestRegistrationOrderRequest(string url) =>
         url.Split('?', 2)[0].Contains("/registration-orders/guest", StringComparison.OrdinalIgnoreCase);
+
+    private static bool IsRegistrationProviderAttemptRequest(string url) =>
+        url.Split('?', 2)[0].EndsWith("/provider-attempts", StringComparison.OrdinalIgnoreCase);
 
     private sealed class GuestRegistrationOrderCapabilityCapture
     {

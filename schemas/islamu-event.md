@@ -1441,7 +1441,8 @@ Table "email_dispatch_outbox" {
   "status" int [not null]
   "attempt_count" int [not null]
   "max_attempts" int [not null, default: 5]
-  "next_attempt_at" timestamptz
+  "next_renewal_attempt_at" timestamptz
+  "next_sweep_attempt_at" timestamptz
   "processing_started_at" timestamptz
   "processing_lease_token" uuid
   "sent_at" timestamptz
@@ -5298,6 +5299,43 @@ Table "registration_provider_bindings" {
   Note: 'Provider binding pins one provider connection to one form version. Check ck_registration_provider_bindings_publication: published state requires published_mapping_revision_hash and published_at; non-published rows do not.'
 }
 
+Table "registration_provider_subscription_states" {
+  "id" uuid [pk, not null, note: 'uuidv7 app-side']
+  "tenant_id" uuid [not null]
+  "registration_provider_binding_id" uuid [not null]
+  "provider_event_type" varchar(120) [not null]
+  "watch_id" varchar(200) [not null]
+  "watch_expires_at" timestamptz [not null]
+  "response_checkpoint" varchar(1024)
+  "last_notification_at" timestamptz
+  "pending_notification_at" timestamptz
+  "last_sweep_success_at" timestamptz
+  "last_renewal_attempt_at" timestamptz
+  "last_renewal_success_at" timestamptz
+  "next_attempt_at" timestamptz
+  "failure_category" varchar(80)
+  "processing_generation" bigint [not null]
+  "lease_token" uuid
+  "lease_expires_at" timestamptz
+  "created_at" timestamptz [not null]
+  "created_by" uuid
+  "updated_at" timestamptz
+  "updated_by" uuid
+  "is_deleted" boolean [not null, default: false]
+  "deleted_at" timestamptz
+  "deleted_by" uuid
+  "concurrency_stamp" uuid [not null]
+
+  indexes {
+    (tenant_id, id) [unique, name: 'ak_registration_provider_subscription_states_tenant_id_id']
+    (pending_notification_at, next_sweep_attempt_at, lease_expires_at) [name: 'ix_registration_provider_subscription_states_sweep_poll']
+    (watch_expires_at, lease_expires_at) [name: 'ix_registration_provider_subscription_states_renewal_poll']
+    (tenant_id, registration_provider_binding_id, provider_event_type) [unique, name: 'ux_registration_provider_subscription_states_binding_event']
+  }
+
+  Note: 'Durable tenant-scoped provider watch state. Checks: processing_generation >= 0 and watch_expires_at > created_at. PendingNotificationAt is cleared by successful checkpoint settlement; NextRenewalAttemptAt gates renewal retry and NextSweepAttemptAt gates response-recovery retry independently. Workers claim with lease_token plus processing_generation fence.'
+}
+
 Table "registration_provider_capabilities" {
   "id" uuid [pk, not null, note: 'uuidv7 app-side']
   "tenant_id" uuid [not null]
@@ -5461,11 +5499,11 @@ Table "registration_submissions" {
     status_id [name: 'ix_registration_submissions_status_id']
     (tenant_id, event_id, registration_order_id, registration_workflow_id, registration_requirement_id, registration_channel_id, registration_form_id, registration_form_version_id, registration_attempt_id) [name: 'ix_registration_submissions_tenant_id_event_id_registration_or']
     (tenant_id, registration_attempt_id, received_at) [name: 'ix_registration_submissions_tenant_id_registration_attempt_id_']
-    (tenant_id, registration_attempt_id, business_deduplication_key) [unique, name: 'ux_registration_submissions_native_identity', note: 'filter: registration_provider_binding_id IS NULL']
-    (tenant_id, registration_provider_binding_id, provider_submission_id, provider_response_revision) [unique, name: 'ux_registration_submissions_provider_identity', note: 'filter: registration_provider_binding_id IS NOT NULL']
+    (tenant_id, registration_attempt_id, business_deduplication_key) [unique, name: 'ux_registration_submissions_native_identity', note: 'filter: provider_submission_id IS NULL']
+    (tenant_id, registration_provider_binding_id, provider_submission_id, provider_response_revision) [unique, name: 'ux_registration_submissions_provider_identity', note: 'filter: provider_submission_id IS NOT NULL']
   }
 
-  Note: 'Immutable native/provider submission evidence. Checks: provider tuple is all-null for native or all-present for provider; finalization shape ties status to is_finalizable, attempt_consumption_claim_id, and finalized_at.'
+  Note: 'Immutable native/provider submission evidence. Headless provider submissions may pin binding and mapping lineage before a provider response ID exists. Checks keep provider response ID and revision paired; finalization shape ties status to is_finalizable, attempt_consumption_claim_id, and finalized_at.'
 }
 
 Table "registration_submission_revisions" {
@@ -5683,6 +5721,40 @@ Table "registration_finalization_effects" {
   }
 
   Note: 'Fenced finalization effect/outbox row. Checks: attempt_count and processing_fence nonnegative; state check requires lease columns only while Processing and completed_at only while Completed.'
+}
+
+Table "registration_provider_submission_write_effects" {
+  "id" uuid [pk, not null, note: 'uuidv7 app-side']
+  "tenant_id" uuid [not null]
+  "event_id" uuid [not null]
+  "registration_order_id" uuid [not null]
+  "registration_attempt_id" uuid [not null]
+  "registration_submission_id" uuid [not null]
+  "registration_provider_binding_id" uuid [not null]
+  "status" int [not null, note: 'OutboxMessageStatus: Pending(1), Processing(2), Completed(3), Failed(4), DeadLettered(5)']
+  "attempt_count" int [not null]
+  "processing_fence" bigint [not null]
+  "processing_lease_owner" varchar(200)
+  "processing_lease_token" uuid
+  "processing_lease_expires_at" timestamptz
+  "next_attempt_at" timestamptz
+  "completed_at" timestamptz
+  "dead_lettered_at" timestamptz
+  "parked_at" timestamptz
+  "failure_code" varchar(120)
+  "created_at" timestamptz [not null]
+  "created_by" uuid
+  "updated_at" timestamptz
+  "updated_by" uuid
+
+  indexes {
+    (tenant_id, id) [unique, name: 'ak_registration_provider_submission_write_effects_tenant_id_id']
+    (tenant_id, event_id, registration_order_id) [name: 'ix_registration_provider_submission_write_effects_tenant_order']
+    (status, next_attempt_at, created_at) [name: 'ix_registration_provider_submission_write_effects_worker_poll']
+    (tenant_id, registration_submission_id) [unique, name: 'ux_registration_provider_submission_write_effects_submission']
+  }
+
+  Note: 'Identifiers-only fenced post-commit provider write intent. Canonical answers are rebuilt after claim. Retryable pre-handoff failures back off; permanent failures dead-letter; ambiguous post-handoff failures park without automatic retry.'
 }
 
 Table "registration_answer_files" {
@@ -6837,6 +6909,8 @@ Ref: "registration_provider_bindings"."completion_mode_id" > "registration_provi
 Ref: "registration_provider_bindings"."trust_level_id" > "registration_provider_trust_levels"."id" [delete: restrict]
 Ref: "registration_provider_bindings"."drift_class_id" > "registration_provider_drift_classes"."id" [delete: restrict]
 Ref: "registration_provider_bindings"."state_id" > "registration_provider_binding_states"."id" [delete: restrict]
+Ref: "registration_provider_subscription_states"."tenant_id" > "tenants"."id" [delete: restrict]
+Ref: "registration_provider_subscription_states".("tenant_id", "registration_provider_binding_id") > "registration_provider_bindings".("tenant_id", "id") [delete: restrict]
 Ref: "registration_provider_capabilities"."registration_provider_binding_id" > "registration_provider_bindings"."id" [delete: cascade]
 Ref: "registration_provider_field_mappings"."registration_provider_binding_id" > "registration_provider_bindings"."id" [delete: cascade]
 Ref: "registration_provider_option_mappings"."registration_provider_binding_id" > "registration_provider_bindings"."id" [delete: cascade]
@@ -6881,6 +6955,8 @@ Ref: "registration_requirement_fulfillments"."source_registration_submission_id"
 Ref: "registration_requirement_fulfillments"."subject_type_id" > "registration_answer_subject_types"."id" [delete: restrict]
 Ref: "registration_finalization_effects"."tenant_id" > "tenants"."id" [delete: restrict]
 Ref: "registration_finalization_effects"."registration_order_id" > "registration_orders"."id" [delete: restrict]
+Ref: "registration_provider_submission_write_effects"."tenant_id" > "tenants"."id" [delete: restrict]
+Ref: "registration_provider_submission_write_effects".("tenant_id", "event_id", "registration_order_id") > "registration_orders".("tenant_id", "event_id", "id") [delete: restrict]
 Ref: "registration_answer_files"."tenant_id" > "tenants"."id" [delete: restrict]
 Ref: "registration_answer_files"."registration_submission_id" > "registration_submissions"."id" [delete: restrict]
 Ref: "registration_answer_files"."registration_form_field_id" > "registration_form_fields"."id" [delete: restrict]

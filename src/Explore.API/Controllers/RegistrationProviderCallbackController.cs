@@ -20,9 +20,7 @@ namespace Explore.API.Controllers;
 [EndpointClassification(EndpointClass.Public)]
 [Produces(HateoasConstants.JsonMediaType)]
 public sealed class RegistrationProviderCallbackController(
-    IIncomingWebhookIntakeService incomingWebhookIntakeService,
-    IRegistrationProviderCallbackBindingResolver bindingResolver,
-    IRegistrationProviderCallbackVerifier callbackVerifier) : ExploreControllerBase
+    IIncomingWebhookIntakeService incomingWebhookIntakeService) : ExploreControllerBase
 {
     internal const string ProviderHeader = "X-Registration-Callback-Provider";
     internal const string BindingHeader = "X-Registration-Callback-BindingId";
@@ -41,8 +39,6 @@ public sealed class RegistrationProviderCallbackController(
         [FromRoute] Guid bindingId,
         CancellationToken cancellationToken = default)
     {
-        _ = bindingResolver;
-        _ = callbackVerifier;
         Request.Headers[ProviderHeader] = provider;
         Request.Headers[BindingHeader] = bindingId.ToString("D");
 

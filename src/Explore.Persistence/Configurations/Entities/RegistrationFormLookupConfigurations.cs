@@ -10,6 +10,11 @@ public sealed class RegistrationFormStatusConfiguration : LookupConfiguration<Re
     protected override string TableName => "registration_form_statuses";
 }
 
+public sealed class RegistrationFormVersionSourceKindConfiguration : LookupConfiguration<RegistrationFormVersionSourceKind>
+{
+    protected override string TableName => "registration_form_version_source_kinds";
+}
+
 public sealed class RegistrationFieldTypeConfiguration : LookupConfiguration<RegistrationFieldType>
 {
     protected override string TableName => "registration_field_types";

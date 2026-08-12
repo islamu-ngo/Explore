@@ -300,7 +300,7 @@ public sealed class RegistrationProviderCapabilityResolverTests
     private static RegistrationProviderBinding Binding(Guid? formVersionId = null) => RegistrationProviderBinding.Create(
         Guid.CreateVersion7(), Guid.CreateVersion7(), Guid.CreateVersion7(), formVersionId ?? Guid.CreateVersion7(),
         RegistrationProviderPresentationModeEnum.Redirect, RegistrationProviderCollectionModeEnum.ProviderHosted,
-        RegistrationProviderCompletionModeEnum.Callback, RegistrationProviderTrustLevelEnum.FullCanonical, Now);
+        RegistrationProviderCompletionModeEnum.Callback, RegistrationProviderTrustLevelEnum.FullCanonical, null, Now);
 
     private static void AddCapabilityTuple(RegistrationProviderBinding binding, RegistrationProviderTuple tuple, params string[] codes)
     {
@@ -352,6 +352,10 @@ public sealed class RegistrationProviderCapabilityResolverTests
         public Task<IReadOnlyList<RegistrationProviderConnection>> GetConnectionsAsync(Guid tenantId, CancellationToken cancellationToken) => Task.FromResult<IReadOnlyList<RegistrationProviderConnection>>([]);
         public Task<RegistrationProviderBinding?> GetBindingAsync(Guid tenantId, Guid bindingId, CancellationToken cancellationToken) => cancellationToken.IsCancellationRequested ? Task.FromCanceled<RegistrationProviderBinding?>(cancellationToken) : Task.FromResult<RegistrationProviderBinding?>(binding);
         public Task<bool> FormVersionBelongsToEventAsync(Guid tenantId, Guid eventId, Guid formId, Guid formVersionId, CancellationToken cancellationToken) => Task.FromResult(true);
+        public Task<RegistrationForm?> GetFormForExternalImportAsync(Guid tenantId, Guid eventId, Guid formId, CancellationToken cancellationToken) => Task.FromResult<RegistrationForm?>(null);
+        public Task<RegistrationForm?> GetExternalImportFormAsync(Guid tenantId, Guid eventId, Guid connectionId, string providerSurveyId, CancellationToken cancellationToken) => Task.FromResult<RegistrationForm?>(null);
+        public Task<RegistrationProviderSchemaRevision?> GetLatestExternalImportSchemaRevisionAsync(Guid tenantId, Guid eventId, Guid formId, Guid connectionId, string providerSurveyId, CancellationToken cancellationToken) => Task.FromResult<RegistrationProviderSchemaRevision?>(null);
+        public Task<RegistrationProviderSchemaRevision?> GetSchemaRevisionByHashAsync(Guid tenantId, Guid connectionId, string providerSurveyId, RegistrationEvidenceHash revisionHash, CancellationToken cancellationToken) => Task.FromResult<RegistrationProviderSchemaRevision?>(null);
         public Task<RegistrationProviderBinding?> GetBindingForCallbackAsync(Guid bindingId, CancellationToken cancellationToken) => Task.FromResult<RegistrationProviderBinding?>(binding.Id == bindingId ? binding : null);
         public Task<bool> HasSubmissionForBindingAsync(Guid tenantId, Guid bindingId, CancellationToken cancellationToken) => Task.FromResult(HasSubmission);
         public Task<IReadOnlyList<RegistrationProviderBinding>> GetBindingsAsync(Guid tenantId, CancellationToken cancellationToken) => Task.FromResult<IReadOnlyList<RegistrationProviderBinding>>([binding]);
@@ -366,6 +370,7 @@ public sealed class RegistrationProviderCapabilityResolverTests
         public Task AddSubmissionIssueAsync(RegistrationSubmissionIssue issue, CancellationToken cancellationToken) => Task.CompletedTask;
         public Task AddConnectionAsync(RegistrationProviderConnection connection, CancellationToken cancellationToken) => throw new NotImplementedException();
         public Task AddBindingAsync(RegistrationProviderBinding binding, CancellationToken cancellationToken) => throw new NotImplementedException();
+        public Task AddFormAsync(RegistrationForm form, CancellationToken cancellationToken) => Task.CompletedTask;
         public Task AddChannelAsync(RegistrationChannel channel, CancellationToken cancellationToken) => Task.CompletedTask;
         public Task AddSchemaRevisionAsync(RegistrationProviderSchemaRevision revision, CancellationToken cancellationToken) => throw new NotImplementedException();
         public Task SaveChangesAsync(CancellationToken cancellationToken) { SaveCount++; return Task.CompletedTask; }

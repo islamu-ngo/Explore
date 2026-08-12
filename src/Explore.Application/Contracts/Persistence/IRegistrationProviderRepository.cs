@@ -33,6 +33,30 @@ public interface IRegistrationProviderRepository
 
     Task<DateTime?> GetOldestPendingItemAtAsync(Guid tenantId, Guid bindingId, CancellationToken cancellationToken);
 
+    Task<RegistrationForm?> GetFormForExternalImportAsync(Guid tenantId, Guid eventId, Guid formId, CancellationToken cancellationToken);
+
+    Task<RegistrationForm?> GetExternalImportFormAsync(
+        Guid tenantId,
+        Guid eventId,
+        Guid connectionId,
+        string providerSurveyId,
+        CancellationToken cancellationToken);
+
+    Task<RegistrationProviderSchemaRevision?> GetLatestExternalImportSchemaRevisionAsync(
+        Guid tenantId,
+        Guid eventId,
+        Guid formId,
+        Guid connectionId,
+        string providerSurveyId,
+        CancellationToken cancellationToken);
+
+    Task<RegistrationProviderSchemaRevision?> GetSchemaRevisionByHashAsync(
+        Guid tenantId,
+        Guid connectionId,
+        string providerSurveyId,
+        RegistrationEvidenceHash revisionHash,
+        CancellationToken cancellationToken);
+
     Task<IReadOnlyList<RegistrationProviderParkedItem>> GetParkedItemsForEventAsync(
         Guid tenantId,
         Guid eventId,
@@ -46,6 +70,8 @@ public interface IRegistrationProviderRepository
     Task AddConnectionAsync(RegistrationProviderConnection connection, CancellationToken cancellationToken);
 
     Task AddBindingAsync(RegistrationProviderBinding binding, CancellationToken cancellationToken);
+
+    Task AddFormAsync(RegistrationForm form, CancellationToken cancellationToken);
 
     Task AddChannelAsync(RegistrationChannel channel, CancellationToken cancellationToken);
 

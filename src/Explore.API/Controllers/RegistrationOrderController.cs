@@ -127,7 +127,7 @@ public sealed class RegistrationOrderController(
         CancellationToken cancellationToken = default) => await LaunchNativeAttempt(
         await mediator.Send(new LaunchGuestNativeRegistrationAttemptCommand(
             eventId, orderId, capability, request.RequirementId, request.ChannelId,
-            request.FormId, request.FormVersionId), cancellationToken),
+            request.FormId, request.FormVersionId, request.BindingId), cancellationToken),
         eventId,
         orderId,
         guest: true);
@@ -146,6 +146,28 @@ public sealed class RegistrationOrderController(
         CancellationToken cancellationToken = default) => ToNativeProgressResource(
         await mediator.Send(new GetGuestNativeRegistrationRequirementProgressQuery(
             eventId, orderId, capability), cancellationToken), eventId, orderId, guest: true);
+
+    [AllowAnonymous]
+    [EndpointClassification(EndpointClass.PublicTransactional)]
+    [EnableRateLimiting(RateLimitingExtensions.PublicTransactionalPolicy)]
+    [RequireIdempotencyKey]
+    [HttpPost("guest/{orderId:guid}/provider-attempts", Name = RouteNames.LaunchGuestRegistrationProviderAttempt)]
+    [EndpointSummary("Launch guest registration provider attempt")]
+    [ProducesResponseType(typeof(HalResource<NativeRegistrationProviderLaunchDescriptorDto>), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<HalResource<NativeRegistrationProviderLaunchDescriptorDto>>> LaunchGuestProviderAttempt(
+        Guid eventId,
+        Guid orderId,
+        [FromHeader(Name = CapabilityHeader)] string? capability,
+        [FromBody] LaunchRegistrationProviderAttemptRequest request,
+        CancellationToken cancellationToken = default) => LaunchProviderAttempt(
+        await mediator.Send(new LaunchGuestRegistrationProviderAttemptCommand(
+            eventId, orderId, capability, request.RequirementId, request.ChannelId,
+            request.BindingId, request.FormId, request.FormVersionId), cancellationToken),
+        eventId,
+        orderId,
+        guest: true);
 
     [AllowAnonymous]
     [EndpointClassification(EndpointClass.PublicTransactional)]
@@ -441,7 +463,7 @@ public sealed class RegistrationOrderController(
         CancellationToken cancellationToken = default) => await LaunchNativeAttempt(
         await mediator.Send(new LaunchAuthenticatedNativeRegistrationAttemptCommand(
             eventId, orderId, request.RequirementId, request.ChannelId,
-            request.FormId, request.FormVersionId), cancellationToken),
+            request.FormId, request.FormVersionId, request.BindingId), cancellationToken),
         eventId,
         orderId,
         guest: false);
@@ -460,6 +482,28 @@ public sealed class RegistrationOrderController(
         CancellationToken cancellationToken = default) => ToNativeProgressResource(
         await mediator.Send(new GetAuthenticatedNativeRegistrationRequirementProgressQuery(
             eventId, orderId), cancellationToken), eventId, orderId, guest: false);
+
+    [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
+    [EnableRateLimiting(RateLimitingExtensions.WritePolicy)]
+    [RequireIdempotencyKey]
+    [HttpPost("{orderId:guid}/provider-attempts", Name = RouteNames.LaunchAuthenticatedRegistrationProviderAttempt)]
+    [EndpointSummary("Launch authenticated registration provider attempt")]
+    [ProducesResponseType(typeof(HalResource<NativeRegistrationProviderLaunchDescriptorDto>), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<HalResource<NativeRegistrationProviderLaunchDescriptorDto>>> LaunchAuthenticatedProviderAttempt(
+        Guid eventId,
+        Guid orderId,
+        [FromBody] LaunchRegistrationProviderAttemptRequest request,
+        CancellationToken cancellationToken = default) => LaunchProviderAttempt(
+        await mediator.Send(new LaunchAuthenticatedRegistrationProviderAttemptCommand(
+            eventId, orderId, request.RequirementId, request.ChannelId,
+            request.BindingId, request.FormId, request.FormVersionId), cancellationToken),
+        eventId,
+        orderId,
+        guest: false);
 
     [Authorize]
     [EndpointClassification(EndpointClass.Authenticated)]
@@ -750,11 +794,48 @@ public sealed class RegistrationOrderController(
         string launchRouteName = guest
             ? RouteNames.LaunchGuestNativeRegistrationAttempt
             : RouteNames.LaunchAuthenticatedNativeRegistrationAttempt;
+        string providerLaunchRouteName = guest
+            ? RouteNames.LaunchGuestRegistrationProviderAttempt
+            : RouteNames.LaunchAuthenticatedRegistrationProviderAttempt;
         var routeValues = new { eventId, orderId };
-        return Ok(new HalResource<NativeRegistrationRequirementProgressCollectionDto>(progress)
-            .WithLink(LinkRelations.Self, HalLink.Create(Url.Link(selfRouteName, routeValues)!))
-            .WithLink(LinkRelations.LaunchAttempt, HalLink.CreateAction(
-                Url.Link(launchRouteName, routeValues)!, HttpMethods.Post)));
+        var resource = new HalResource<NativeRegistrationRequirementProgressCollectionDto>(progress)
+            .WithLink(LinkRelations.Self, HalLink.Create(Url.Link(selfRouteName, routeValues)!));
+        if (progress.Requirements.Count != 0)
+        {
+            resource.WithLink(LinkRelations.LaunchAttempt, HalLink.CreateAction(
+                Url.Link(launchRouteName, routeValues)!, HttpMethods.Post));
+        }
+        if (progress.ProviderRequirements?.Count != 0)
+        {
+            resource.WithLink(LinkRelations.LaunchProviderAttempt, HalLink.CreateAction(
+                Url.Link(providerLaunchRouteName, routeValues)!, HttpMethods.Post));
+        }
+        return Ok(resource);
+    }
+
+    private ActionResult<HalResource<NativeRegistrationProviderLaunchDescriptorDto>> LaunchProviderAttempt(
+        RegistrationProviderAttemptResult response,
+        Guid eventId,
+        Guid orderId,
+        bool guest)
+    {
+        if (!response.Success || response.Descriptor is not { Available: true } descriptor)
+        {
+            return this.ToNotFoundProblem(RegistrationOrderNotFoundProblem);
+        }
+
+        Response.Headers.CacheControl = "private, no-store";
+        string routeName = guest
+            ? RouteNames.LaunchGuestRegistrationProviderAttempt
+            : RouteNames.LaunchAuthenticatedRegistrationProviderAttempt;
+        var resource = new HalResource<NativeRegistrationProviderLaunchDescriptorDto>(descriptor)
+            .WithLink(LinkRelations.Self, HalLink.CreateAction(
+                Url.Link(routeName, new { eventId, orderId })!, HttpMethods.Post))
+            .WithLink(LinkRelations.RequirementProgress, HalLink.Create(
+                Url.Link(guest
+                    ? RouteNames.GetGuestNativeRegistrationRequirementProgress
+                    : RouteNames.GetAuthenticatedNativeRegistrationRequirementProgress, new { eventId, orderId })!));
+        return CreatedAtRoute(routeName, new { eventId, orderId }, resource);
     }
 
     private ActionResult<NativeRegistrationSkipDto> MapNativeSkip(NativeRegistrationSkipResult response) =>

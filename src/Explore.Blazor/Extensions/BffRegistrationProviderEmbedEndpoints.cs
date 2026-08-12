@@ -3,42 +3,48 @@
 
 using System.Net;
 using System.Net.Sockets;
+using System.Security.Cryptography;
 using System.Text;
 using System.Text.Encodings.Web;
 using System.Text.Json;
 using Explore.Blazor.Client.Clients;
+using Explore.Blazor.Client.Components.Registration.ProviderLaunch;
+using Microsoft.Extensions.Caching.Distributed;
+using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Net.Http.Headers;
 
 namespace Explore.Blazor.Extensions;
 
 public static class BffRegistrationProviderEmbedEndpoints
 {
-    private const string Route = "/bff/registration-provider-embed/tenants/{tenantId:guid}/events/{eventId:guid}/workflows/{workflowId:guid}/requirements/{requirementId:guid}/channels/{channelId:guid}/bindings/{bindingId:guid}";
+    private const string LaunchRoute = "/bff/registration-provider-embed/launches";
+    private const string EmbedRoute = "/bff/registration-provider-embed/launches/{launchId}";
+    private const string CacheKeyPrefix = "registration-provider-embed:";
     private const string HtmlContentType = "text/html; charset=utf-8";
 
     public static WebApplication MapRegistrationProviderEmbedEndpoints(this WebApplication app)
     {
-        app.MapGet(Route, HandleEmbedHostAsync)
-            .RequireAuthorization()
+        app.MapPost(LaunchRoute, HandleLaunchAsync)
+            .ValidateAntiforgery()
+            .ExcludeFromDescription();
+
+        app.MapGet(EmbedRoute, HandleEmbedHostAsync)
             .ExcludeFromDescription();
 
         return app;
     }
 
-    private static async Task<IResult> HandleEmbedHostAsync(
-        Guid tenantId,
-        Guid eventId,
-        Guid workflowId,
-        Guid requirementId,
-        Guid channelId,
-        Guid bindingId,
+    private static async Task<IResult> HandleLaunchAsync(
+        RegistrationProviderBffLaunch request,
         HttpContext ctx,
         IEventApiClient apiClient,
+        IDistributedCache cache,
         CancellationToken cancellationToken)
     {
         SetNoStoreHeaders(ctx.Response.Headers);
-
-        if (ctx.Request.Query.Count != 0)
+        if (ctx.Request.Query.Count != 0 || request.EventId == Guid.Empty || request.OrderId == Guid.Empty ||
+            request.RequirementId == Guid.Empty || request.ChannelId == Guid.Empty || request.BindingId == Guid.Empty ||
+            request.FormId == Guid.Empty || request.FormVersionId == Guid.Empty)
         {
             return Results.BadRequest();
         }
@@ -46,22 +52,27 @@ public static class BffRegistrationProviderEmbedEndpoints
         RegistrationProviderLaunchDescriptor descriptor;
         try
         {
-            var resource = await apiClient.GetRegistrationProviderLaunchDescriptorAsync(
-                tenantId,
-                eventId,
-                workflowId,
-                requirementId,
-                channelId,
-                bindingId,
-                cancellationToken: cancellationToken);
+            var body = new LaunchRegistrationProviderAttemptRequest
+            {
+                RequirementId = request.RequirementId,
+                ChannelId = request.ChannelId,
+                BindingId = request.BindingId,
+                FormId = request.FormId,
+                FormVersionId = request.FormVersionId
+            };
+            HalResourceOfNativeRegistrationProviderLaunchDescriptorDto resource = string.IsNullOrWhiteSpace(request.GuestCapability)
+                ? await apiClient.LaunchAuthenticatedRegistrationProviderAttemptAsync(
+                    request.EventId, request.OrderId, body, cancellationToken: cancellationToken)
+                : await apiClient.LaunchGuestRegistrationProviderAttemptAsync(
+                    request.EventId, request.OrderId, body, request.GuestCapability, cancellationToken: cancellationToken);
             descriptor = RegistrationProviderLaunchDescriptor.From(resource.AdditionalProperties);
         }
-        catch (ApiException exception) when (exception.StatusCode is StatusCodes.Status401Unauthorized or StatusCodes.Status403Forbidden)
+        catch (ApiException exception) when (exception.StatusCode is StatusCodes.Status401Unauthorized or StatusCodes.Status403Forbidden or StatusCodes.Status404NotFound)
         {
             return Results.StatusCode(exception.StatusCode);
         }
 
-        if (!descriptor.Matches(tenantId, eventId, workflowId, requirementId, channelId, bindingId) ||
+        if (!descriptor.Matches(request.RequirementId, request.ChannelId, request.BindingId, request.FormId, request.FormVersionId) ||
             !descriptor.Available ||
             !string.Equals(descriptor.Mode, "embed", StringComparison.Ordinal) ||
             !TryGetApprovedHttpsUri(descriptor.Url, out var embedUri))
@@ -69,10 +80,37 @@ public static class BffRegistrationProviderEmbedEndpoints
             return Results.NotFound();
         }
 
+        string launchId = WebEncoders.Base64UrlEncode(RandomNumberGenerator.GetBytes(32));
+        await cache.SetStringAsync(CacheKeyPrefix + launchId,
+            JsonSerializer.Serialize(new CachedLaunch(embedUri.ToString(), descriptor.Title)),
+            new DistributedCacheEntryOptions { AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(5) },
+            cancellationToken);
+        return Results.Ok(new RegistrationProviderBffTicket($"{LaunchRoute}/{launchId}"));
+    }
+
+    private static async Task<IResult> HandleEmbedHostAsync(
+        string launchId,
+        HttpContext ctx,
+        IDistributedCache cache,
+        CancellationToken cancellationToken)
+    {
+        SetNoStoreHeaders(ctx.Response.Headers);
+        if (ctx.Request.Query.Count != 0 || launchId.Length is < 40 or > 50 ||
+            await cache.GetStringAsync(CacheKeyPrefix + launchId, cancellationToken) is not { } cachedJson)
+        {
+            return Results.NotFound();
+        }
+
+        CachedLaunch? launch = JsonSerializer.Deserialize<CachedLaunch>(cachedJson);
+        if (launch is null || !TryGetApprovedHttpsUri(launch.Url, out var embedUri))
+        {
+            return Results.NotFound();
+        }
+
         ctx.Response.Headers[HeaderNames.ContentSecurityPolicy] = BuildContentSecurityPolicy(embedUri);
         ctx.Response.Headers[HeaderNames.XFrameOptions] = "SAMEORIGIN";
         ctx.Items[MiddlewareExtensions.PreserveExplicitSecurityHeadersItemKey] = true;
-        return Results.Content(BuildHtml(embedUri, descriptor.Title), HtmlContentType, Encoding.UTF8);
+        return Results.Content(BuildHtml(embedUri, launch.Title), HtmlContentType, Encoding.UTF8);
     }
 
     private static string BuildContentSecurityPolicy(Uri embedUri) =>
@@ -164,36 +202,33 @@ public static class BffRegistrationProviderEmbedEndpoints
     }
 
     private sealed record RegistrationProviderLaunchDescriptor(
-        Guid TenantId,
-        Guid EventId,
-        Guid WorkflowId,
         Guid RequirementId,
         Guid ChannelId,
         Guid BindingId,
+        Guid FormId,
+        Guid FormVersionId,
         string Mode,
         bool Available,
         string? Url,
         string Title)
     {
         public static RegistrationProviderLaunchDescriptor From(IDictionary<string, object> properties) => new(
-            GetGuid(properties, "tenantId"),
-            GetGuid(properties, "eventId"),
-            GetGuid(properties, "workflowId"),
             GetGuid(properties, "requirementId"),
             GetGuid(properties, "channelId"),
             GetGuid(properties, "bindingId"),
+            GetGuid(properties, "formId"),
+            GetGuid(properties, "formVersionId"),
             GetString(properties, "mode"),
             GetBool(properties, "available"),
             GetNullableString(properties, "url"),
             GetString(properties, "title"));
 
-        public bool Matches(Guid tenantId, Guid eventId, Guid workflowId, Guid requirementId, Guid channelId, Guid bindingId) =>
-            TenantId == tenantId &&
-            EventId == eventId &&
-            WorkflowId == workflowId &&
+        public bool Matches(Guid requirementId, Guid channelId, Guid bindingId, Guid formId, Guid formVersionId) =>
             RequirementId == requirementId &&
             ChannelId == channelId &&
-            BindingId == bindingId;
+            BindingId == bindingId &&
+            FormId == formId &&
+            FormVersionId == formVersionId;
 
         private static Guid GetGuid(IDictionary<string, object> properties, string name) =>
             TryGet<JsonElement>(properties, name, out var element) && element.ValueKind == JsonValueKind.String && element.TryGetGuid(out var guid)
@@ -228,4 +263,6 @@ public static class BffRegistrationProviderEmbedEndpoints
             return false;
         }
     }
+
+    private sealed record CachedLaunch(string Url, string Title);
 }

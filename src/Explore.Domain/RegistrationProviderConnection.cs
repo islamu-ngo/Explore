@@ -18,9 +18,23 @@ public sealed class RegistrationProviderConnection : ITenantEntity, IAuditableEn
     public string Name { get; private set; } = string.Empty;
     public int ProviderKindId { get; private set; }
     public int DeploymentKindId { get; private set; }
+    public string ProviderCode { get; private set; } = string.Empty;
+    public string ProviderDeploymentCode { get; private set; } = string.Empty;
+    public string ApiVersion { get; private set; } = string.Empty;
+    public string AdapterPolicyVersion { get; private set; } = string.Empty;
+    public string ConformanceEvidenceRevision { get; private set; } = string.Empty;
+    public string ManagementApiBaseUrl { get; private set; } = string.Empty;
+    public string PublicBaseUrl { get; private set; } = string.Empty;
+    public string ProviderWorkspaceId { get; private set; } = string.Empty;
+    public string GrantedOAuthScopes { get; private set; } = string.Empty;
+    public string ProviderIdentity { get; private set; } = string.Empty;
+    public string PubSubConfigurationReference { get; private set; } = string.Empty;
+    public DateTime? LastCredentialRefreshAt { get; private set; }
+    public DateTime? LastAccessValidatedAt { get; private set; }
     public Guid? ApiTokenSecretBindingId { get; private set; }
     public Guid? WebhookSecretBindingId { get; private set; }
     public IReadOnlyList<RegistrationProviderApprovedOrigin> ApprovedOrigins => _approvedOrigins;
+    public string TupleKey => string.Join('|', ProviderCode, ProviderDeploymentCode, ApiVersion, AdapterPolicyVersion, ConformanceEvidenceRevision);
     public DateTime CreatedAt { get; set; }
     public Guid? CreatedBy { get; set; }
     public DateTime? UpdatedAt { get; set; }
@@ -31,11 +45,17 @@ public sealed class RegistrationProviderConnection : ITenantEntity, IAuditableEn
     public Guid ConcurrencyStamp { get; set; }
 
     public static RegistrationProviderConnection Create(Guid tenantId, string name, RegistrationProviderKindEnum providerKind,
-        RegistrationProviderDeploymentKindEnum deploymentKind, Guid? apiTokenSecretBindingId, Guid? webhookSecretBindingId, DateTime createdAt) =>
-        Create(Guid.CreateVersion7(), tenantId, name, providerKind, deploymentKind, apiTokenSecretBindingId, webhookSecretBindingId, createdAt);
+        RegistrationProviderDeploymentKindEnum deploymentKind, string providerCode, string providerDeploymentCode, string apiVersion,
+        string adapterPolicyVersion, string conformanceEvidenceRevision, string managementApiBaseUrl, string publicBaseUrl,
+        string providerWorkspaceId, Guid? apiTokenSecretBindingId, Guid? webhookSecretBindingId, DateTime createdAt) =>
+        Create(Guid.CreateVersion7(), tenantId, name, providerKind, deploymentKind, providerCode, providerDeploymentCode,
+            apiVersion, adapterPolicyVersion, conformanceEvidenceRevision, managementApiBaseUrl, publicBaseUrl,
+            providerWorkspaceId, apiTokenSecretBindingId, webhookSecretBindingId, createdAt);
 
     public static RegistrationProviderConnection Create(Guid id, Guid tenantId, string name, RegistrationProviderKindEnum providerKind,
-        RegistrationProviderDeploymentKindEnum deploymentKind, Guid? apiTokenSecretBindingId, Guid? webhookSecretBindingId, DateTime createdAt)
+        RegistrationProviderDeploymentKindEnum deploymentKind, string providerCode, string providerDeploymentCode, string apiVersion,
+        string adapterPolicyVersion, string conformanceEvidenceRevision, string managementApiBaseUrl, string publicBaseUrl,
+        string providerWorkspaceId, Guid? apiTokenSecretBindingId, Guid? webhookSecretBindingId, DateTime createdAt)
     {
         if (id == Guid.Empty || tenantId == Guid.Empty || apiTokenSecretBindingId == Guid.Empty || webhookSecretBindingId == Guid.Empty ||
             !Enum.IsDefined(providerKind) || !Enum.IsDefined(deploymentKind))
@@ -50,6 +70,14 @@ public sealed class RegistrationProviderConnection : ITenantEntity, IAuditableEn
             Name = NormalizeText(name, nameof(name), 120),
             ProviderKindId = (int)providerKind,
             DeploymentKindId = (int)deploymentKind,
+            ProviderCode = NormalizeText(providerCode, nameof(providerCode), 100),
+            ProviderDeploymentCode = NormalizeText(providerDeploymentCode, nameof(providerDeploymentCode), 100),
+            ApiVersion = NormalizeText(apiVersion, nameof(apiVersion), 100),
+            AdapterPolicyVersion = NormalizeText(adapterPolicyVersion, nameof(adapterPolicyVersion), 100),
+            ConformanceEvidenceRevision = NormalizeText(conformanceEvidenceRevision, nameof(conformanceEvidenceRevision), 120),
+            ManagementApiBaseUrl = NormalizeHttpsUrl(managementApiBaseUrl, nameof(managementApiBaseUrl)),
+            PublicBaseUrl = NormalizeHttpsUrl(publicBaseUrl, nameof(publicBaseUrl)),
+            ProviderWorkspaceId = NormalizeText(providerWorkspaceId, nameof(providerWorkspaceId), 200),
             ApiTokenSecretBindingId = apiTokenSecretBindingId,
             WebhookSecretBindingId = webhookSecretBindingId,
             CreatedAt = EnsureUtc(createdAt, nameof(createdAt))
@@ -57,6 +85,8 @@ public sealed class RegistrationProviderConnection : ITenantEntity, IAuditableEn
     }
 
     public void Update(string name, RegistrationProviderKindEnum providerKind, RegistrationProviderDeploymentKindEnum deploymentKind,
+        string providerCode, string providerDeploymentCode, string apiVersion, string adapterPolicyVersion,
+        string conformanceEvidenceRevision, string managementApiBaseUrl, string publicBaseUrl, string providerWorkspaceId,
         Guid? apiTokenSecretBindingId, Guid? webhookSecretBindingId)
     {
         if (apiTokenSecretBindingId == Guid.Empty || webhookSecretBindingId == Guid.Empty || !Enum.IsDefined(providerKind) || !Enum.IsDefined(deploymentKind))
@@ -67,8 +97,36 @@ public sealed class RegistrationProviderConnection : ITenantEntity, IAuditableEn
         Name = NormalizeText(name, nameof(name), 120);
         ProviderKindId = (int)providerKind;
         DeploymentKindId = (int)deploymentKind;
+        ProviderCode = NormalizeText(providerCode, nameof(providerCode), 100);
+        ProviderDeploymentCode = NormalizeText(providerDeploymentCode, nameof(providerDeploymentCode), 100);
+        ApiVersion = NormalizeText(apiVersion, nameof(apiVersion), 100);
+        AdapterPolicyVersion = NormalizeText(adapterPolicyVersion, nameof(adapterPolicyVersion), 100);
+        ConformanceEvidenceRevision = NormalizeText(conformanceEvidenceRevision, nameof(conformanceEvidenceRevision), 120);
+        ManagementApiBaseUrl = NormalizeHttpsUrl(managementApiBaseUrl, nameof(managementApiBaseUrl));
+        PublicBaseUrl = NormalizeHttpsUrl(publicBaseUrl, nameof(publicBaseUrl));
+        ProviderWorkspaceId = NormalizeText(providerWorkspaceId, nameof(providerWorkspaceId), 200);
         ApiTokenSecretBindingId = apiTokenSecretBindingId;
         WebhookSecretBindingId = webhookSecretBindingId;
+        ConcurrencyStamp = Guid.CreateVersion7();
+    }
+
+    public void UpdateOAuthMetadata(string grantedOAuthScopes, string providerIdentity, string pubSubConfigurationReference)
+    {
+        GrantedOAuthScopes = NormalizeScopes(grantedOAuthScopes);
+        ProviderIdentity = NormalizeOptionalText(providerIdentity, nameof(providerIdentity), 200);
+        PubSubConfigurationReference = NormalizeOptionalText(pubSubConfigurationReference, nameof(pubSubConfigurationReference), 300);
+        ConcurrencyStamp = Guid.CreateVersion7();
+    }
+
+    public void RecordCredentialRefresh(DateTime refreshedAt)
+    {
+        LastCredentialRefreshAt = EnsureUtc(refreshedAt, nameof(refreshedAt));
+        ConcurrencyStamp = Guid.CreateVersion7();
+    }
+
+    public void RecordAccessValidated(DateTime validatedAt)
+    {
+        LastAccessValidatedAt = EnsureUtc(validatedAt, nameof(validatedAt));
         ConcurrencyStamp = Guid.CreateVersion7();
     }
 
@@ -116,9 +174,40 @@ public sealed class RegistrationProviderConnection : ITenantEntity, IAuditableEn
     private static string NormalizeText(string value, string parameterName, int maxLength)
     {
         string normalized = value?.Trim() ?? string.Empty;
-        return normalized.Length is > 0 && normalized.Length <= maxLength
+        return normalized.Length is > 0 && normalized.Length <= maxLength && !normalized.Any(char.IsControl)
             ? normalized
             : throw new ArgumentException($"Value must be non-blank and at most {maxLength} characters.", parameterName);
+    }
+
+    private static string NormalizeOptionalText(string value, string parameterName, int maxLength)
+    {
+        string normalized = value?.Trim() ?? string.Empty;
+        return normalized.Length <= maxLength && !normalized.Any(char.IsControl)
+            ? normalized
+            : throw new ArgumentException($"Value must be at most {maxLength} characters.", parameterName);
+    }
+
+    private static string NormalizeScopes(string value)
+    {
+        string normalized = NormalizeOptionalText(value, nameof(value), 1000);
+        return string.Join(' ', normalized.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Distinct(StringComparer.Ordinal)
+            .Order(StringComparer.Ordinal));
+    }
+
+    private static string NormalizeHttpsUrl(string value, string parameterName)
+    {
+        string trimmed = value?.Trim() ?? string.Empty;
+        if (trimmed.Length is 0 or > 500 || !Uri.TryCreate(trimmed, UriKind.Absolute, out Uri? uri) ||
+            uri.Scheme != Uri.UriSchemeHttps || !string.IsNullOrEmpty(uri.UserInfo) ||
+            !string.IsNullOrEmpty(uri.Query) || !string.IsNullOrEmpty(uri.Fragment) ||
+            RegistrationProviderApprovedOrigin.HostIsBlocked(uri.Host))
+        {
+            throw new ArgumentException("Provider base URL must be an absolute HTTPS URL and cannot target local/private hosts.", parameterName);
+        }
+
+        string path = uri.AbsolutePath == "/" ? string.Empty : uri.AbsolutePath.TrimEnd('/');
+        return uri.IsDefaultPort ? $"https://{uri.IdnHost.ToLowerInvariant()}{path}" : $"https://{uri.IdnHost.ToLowerInvariant()}:{uri.Port}{path}";
     }
 
     internal static DateTime EnsureUtc(DateTime value, string parameterName) =>

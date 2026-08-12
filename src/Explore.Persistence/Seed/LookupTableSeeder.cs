@@ -1604,6 +1604,13 @@ public static class LookupTableSeeder
 
         await SeedMissingLookupRowsAsync(context,
         [
+            new RegistrationFormVersionSourceKind { Id = (int)RegistrationFormVersionSourceKindEnum.Authored, MasterCode = "AUTHORED", FullName = "Authored", Description = "Created directly in ISLAMU form authoring" },
+            new RegistrationFormVersionSourceKind { Id = (int)RegistrationFormVersionSourceKindEnum.TemplateClone, MasterCode = "TEMPLATE_CLONE", FullName = "Template clone", Description = "Cloned from a reusable form template" },
+            new RegistrationFormVersionSourceKind { Id = (int)RegistrationFormVersionSourceKindEnum.ExternalImported, MasterCode = "EXTERNAL_IMPORTED", FullName = "External imported", Description = "Frozen from an external provider schema snapshot" }
+        ], row => row.Id, ct);
+
+        await SeedMissingLookupRowsAsync(context,
+        [
             new RegistrationRequirementCompletionEffect { Id = (int)RegistrationRequirementCompletionEffectEnum.BlocksRegistration, MasterCode = "BLOCKS_REGISTRATION", FullName = "Blocks registration" },
             new RegistrationRequirementCompletionEffect { Id = (int)RegistrationRequirementCompletionEffectEnum.EnrichesRegistration, MasterCode = "ENRICHES_REGISTRATION", FullName = "Enriches registration" },
             new RegistrationRequirementCompletionEffect { Id = (int)RegistrationRequirementCompletionEffectEnum.NoRegistrationEffect, MasterCode = "NO_REGISTRATION_EFFECT", FullName = "No registration effect" }
@@ -1725,7 +1732,8 @@ public static class LookupTableSeeder
         [
             new RegistrationProviderCollectionMode { Id = (int)RegistrationProviderCollectionModeEnum.Native, MasterCode = "NATIVE", FullName = "Native" },
             new RegistrationProviderCollectionMode { Id = (int)RegistrationProviderCollectionModeEnum.ProviderHosted, MasterCode = "PROVIDER_HOSTED", FullName = "Provider hosted" },
-            new RegistrationProviderCollectionMode { Id = (int)RegistrationProviderCollectionModeEnum.ProviderApi, MasterCode = "PROVIDER_API", FullName = "Provider API" }
+            new RegistrationProviderCollectionMode { Id = (int)RegistrationProviderCollectionModeEnum.ProviderApi, MasterCode = "PROVIDER_API", FullName = "Provider API" },
+            new RegistrationProviderCollectionMode { Id = (int)RegistrationProviderCollectionModeEnum.MirrorOnly, MasterCode = "MIRROR_ONLY", FullName = "Mirror only" }
         ], row => row.Id, ct);
         await SeedMissingLookupRowsAsync(context,
         [

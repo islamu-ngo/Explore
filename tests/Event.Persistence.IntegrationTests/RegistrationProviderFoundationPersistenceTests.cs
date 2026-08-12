@@ -61,6 +61,9 @@ public sealed class RegistrationProviderFoundationPersistenceTests
         await LookupTableSeeder.SeedRegistrationProviderLookupsAsync(context, default);
 
         await Assert.That(await context.RegistrationProviderKinds.CountAsync()).IsEqualTo(3);
+        await Assert.That(await context.RegistrationProviderCollectionModes.CountAsync()).IsEqualTo(4);
+        await Assert.That((await context.RegistrationProviderCollectionModes.SingleAsync(
+            row => row.Id == (int)RegistrationProviderCollectionModeEnum.MirrorOnly)).MasterCode).IsEqualTo("MIRROR_ONLY");
         await Assert.That(await context.RegistrationProviderDriftClasses.CountAsync()).IsEqualTo(8);
         await Assert.That(await context.RegistrationProviderBindingStates.CountAsync()).IsEqualTo(4);
     }
@@ -93,8 +96,8 @@ public sealed class RegistrationProviderFoundationPersistenceTests
         context.SecretBindings.AddRange(first, second);
         await context.SaveChangesAsync();
         context.RegistrationProviderConnections.AddRange(
-            RegistrationProviderConnection.Create(tenantId, "Connection A", RegistrationProviderKindEnum.ExternalForm, RegistrationProviderDeploymentKindEnum.HostedSaas, first.Id, null, Now),
-            RegistrationProviderConnection.Create(tenantId, "Connection B", RegistrationProviderKindEnum.ExternalForm, RegistrationProviderDeploymentKindEnum.HostedSaas, second.Id, null, Now));
+            Connection(tenantId, "Connection A", false, first.Id),
+            Connection(tenantId, "Connection B", false, second.Id));
         await context.SaveChangesAsync();
         context.TenantContext = new TestTenantContext(tenantId);
 
@@ -114,7 +117,29 @@ public sealed class RegistrationProviderFoundationPersistenceTests
         await context.SaveChangesAsync();
         context.RegistrationProviderConnections.Add(RegistrationProviderConnection.Create(
             tenantId, "Connection A", RegistrationProviderKindEnum.ExternalForm,
-            RegistrationProviderDeploymentKindEnum.HostedSaas, smtpBinding.Id, null, Now));
+            RegistrationProviderDeploymentKindEnum.HostedSaas, "FORMBRICKS", "HOSTED_SAAS", "v1", "formbricks-policy-v1",
+            "official-api-v1-2026-08", "https:/" + "/app.formbricks.com/api/v1/management", "https:/" + "/app.formbricks.com",
+            "workspace", smtpBinding.Id, null, Now));
+
+        await Assert.That(() => context.SaveChangesAsync()).Throws<InvalidOperationException>();
+    }
+
+    [Test]
+    public async Task BindingWebhookSecretReferenceRequiresTenantWebhookKeyAndBindingQualifier()
+    {
+        Guid tenantId = Guid.CreateVersion7();
+        await using ExploreDbContext context = CreateInMemoryContext($"provider-binding-secret-{Guid.NewGuid():N}");
+        RegistrationProviderBinding binding = Binding(tenantId, Guid.CreateVersion7());
+        SecretBinding wrongQualifier = SecretBinding.CreateEnvironmentVariable(
+            SecretDefinitionRegistry.Keys.RegistrationProviders.WebhookSecret,
+            SecretScope.Tenant,
+            tenantId,
+            "WEBHOOK_SECRET",
+            qualifier: "other-binding");
+        context.SecretBindings.Add(wrongQualifier);
+        await context.SaveChangesAsync();
+        binding.SetDraftProvisionedSubscription("webhook-1", wrongQualifier.Id);
+        context.RegistrationProviderBindings.Add(binding);
 
         await Assert.That(() => context.SaveChangesAsync()).Throws<InvalidOperationException>();
     }
@@ -130,7 +155,17 @@ public sealed class RegistrationProviderFoundationPersistenceTests
         binding.AddFieldMapping(field);
         binding.AddOptionMapping(RegistrationProviderOptionMapping.Create(binding, field, "yes", "1"));
         binding.AddCapability(RegistrationProviderCapability.Create(binding, "unknown", "hosted", "v1", "policy", "evidence", "callback"));
-        RegistrationProviderSchemaRevision revision = RegistrationProviderSchemaRevision.Create(tenantId, connection.Id, RegistrationProviderSchemaAuthorityEnum.ProviderDiscovered, Hash(), Now);
+        RegistrationProviderSchemaRevision revision = RegistrationProviderSchemaRevision.Create(
+            tenantId,
+            connection.Id,
+            RegistrationProviderSchemaAuthorityEnum.ProviderDiscovered,
+            Hash(),
+            "survey-1",
+            "revision-1",
+            "{\"schema\":\"test\",\"fields\":[]}",
+            new string('0', 64),
+            RegistrationProviderDriftClassEnum.NoDrift,
+            Now);
         context.AddRange(connection, binding, revision);
         await context.SaveChangesAsync();
         context.TenantContext = new TestTenantContext(tenantId);
@@ -200,6 +235,7 @@ public sealed class RegistrationProviderFoundationPersistenceTests
         RegistrationProviderBinding bindingB = Binding(tenantId, connection.Id, formB.Id);
         context.AddRange(connection, formA, formB, bindingA, bindingB);
         AddRetainedEffect(context, tenantId, bindingA.Id, "a", Now.AddMinutes(-30));
+        Complete(AddRetainedEffect(context, tenantId, bindingA.Id, "a-callback", Now.AddMinutes(-30)), Now.AddMinutes(-29));
         AddRetainedEffect(context, tenantId, bindingB.Id, "b", Now.AddMinutes(-5));
         await context.SaveChangesAsync();
         context.TenantContext = new TestTenantContext(tenantId);
@@ -212,6 +248,26 @@ public sealed class RegistrationProviderFoundationPersistenceTests
         await Assert.That(rows[0].Effect!.EventId).IsEqualTo(eventA);
         await Assert.That(await repository.GetLastCallbackAtAsync(tenantId, bindingA.Id, CancellationToken.None)).IsEqualTo(Now.AddMinutes(-30));
         await Assert.That(await repository.GetOldestPendingItemAtAsync(tenantId, bindingA.Id, CancellationToken.None)).IsEqualTo(Now.AddMinutes(-30));
+    }
+
+    [Test]
+    public async Task LastCallback_ExcludesManualImportsAndRequiresCompletedCallbackEffect()
+    {
+        Guid tenantId = Guid.CreateVersion7();
+        Guid bindingId = Guid.CreateVersion7();
+        await using ExploreDbContext context = CreateInMemoryContext($"provider-callback-gate-{Guid.NewGuid():N}");
+        IncomingWebhookEffectOutbox callback = AddRetainedEffect(context, tenantId, bindingId, "callback", Now);
+        IncomingWebhookEffectOutbox manual = AddRetainedEffect(
+            context, tenantId, bindingId, "manual", Now.AddMinutes(1), "registration.provider_manual_import");
+        Complete(callback, Now.AddMinutes(2));
+        Complete(manual, Now.AddMinutes(3));
+        AddRetainedEffect(context, tenantId, bindingId, "pending", Now.AddMinutes(4));
+        await context.SaveChangesAsync();
+        var repository = new RegistrationProviderRepository(context);
+
+        DateTime? result = await repository.GetLastCallbackAtAsync(tenantId, bindingId, CancellationToken.None);
+
+        await Assert.That(result).IsEqualTo(Now);
     }
 
     [Test]
@@ -309,9 +365,221 @@ public sealed class RegistrationProviderFoundationPersistenceTests
         await Assert.That(reloaded.IsOriginApproved(new Uri("https://forms.example.org/launch"))).IsTrue();
     }
 
-    private static RegistrationProviderConnection Connection(Guid tenantId, string name, bool deleted)
+    [Test]
+    public async Task SubscriptionStateModelUsesTenantBindingCompositeKeyAndNamedFilters()
     {
-        RegistrationProviderConnection connection = RegistrationProviderConnection.Create(tenantId, name, RegistrationProviderKindEnum.ExternalForm, RegistrationProviderDeploymentKindEnum.HostedSaas, null, null, Now);
+        await using ExploreDbContext context = CreateModelContext();
+        IEntityType state = context.GetService<IDesignTimeModel>().Model.FindEntityType(typeof(RegistrationProviderSubscriptionState))!;
+
+        await Assert.That(state.FindDeclaredQueryFilter(QueryFilterNames.Tenant)).IsNotNull();
+        await Assert.That(state.FindDeclaredQueryFilter(QueryFilterNames.SoftDelete)).IsNotNull();
+        await Assert.That(state.FindProperty(nameof(RegistrationProviderSubscriptionState.ConcurrencyStamp))!.IsConcurrencyToken).IsTrue();
+        await Assert.That(state.GetIndexes().Any(index => index.IsUnique && HasProperties(index,
+            nameof(RegistrationProviderSubscriptionState.TenantId),
+            nameof(RegistrationProviderSubscriptionState.RegistrationProviderBindingId),
+            nameof(RegistrationProviderSubscriptionState.ProviderEventType)))).IsTrue();
+        IForeignKey bindingKey = state.GetForeignKeys().Single(key => key.PrincipalEntityType.ClrType == typeof(RegistrationProviderBinding));
+        await Assert.That(bindingKey.Properties.Select(property => property.Name)).IsEquivalentTo([
+            nameof(RegistrationProviderSubscriptionState.TenantId),
+            nameof(RegistrationProviderSubscriptionState.RegistrationProviderBindingId)]);
+    }
+
+    [Test]
+    public async Task SubscriptionStateRepositoryClaimsDueRenewalAndRejectsStaleConcurrency()
+    {
+        string databaseName = $"provider-subscription-state-{Guid.NewGuid():N}";
+        Guid tenantId = Guid.CreateVersion7();
+        Guid bindingId;
+        Guid stateId;
+        await using (ExploreDbContext seed = CreateInMemoryContext(databaseName))
+        {
+            RegistrationProviderConnection connection = Connection(tenantId, "subscription", false);
+            RegistrationProviderBinding binding = Binding(tenantId, connection.Id);
+            RegistrationProviderSubscriptionState state = RegistrationProviderSubscriptionState.Create(
+                tenantId, binding.Id, "google.forms.responses", "watch-1", Now.AddHours(1), "sync-1", Now);
+            bindingId = binding.Id;
+            stateId = state.Id;
+            seed.AddRange(connection, binding, state);
+            await seed.SaveChangesAsync();
+        }
+
+        await using ExploreDbContext firstContext = CreateInMemoryContext(databaseName);
+        await using ExploreDbContext secondContext = CreateInMemoryContext(databaseName);
+        RegistrationProviderSubscriptionStateRepository repository = new(firstContext);
+        IReadOnlyList<RegistrationProviderSubscriptionState> claims = await repository.ClaimDueRenewalsAsync(
+            1, Now.AddHours(2), Now.AddMinutes(1), TimeSpan.FromMinutes(5), CancellationToken.None);
+        RegistrationProviderSubscriptionState stale = (await secondContext.RegistrationProviderSubscriptionStates
+            .IgnoreTenantFilter(TenantFilterBypassReasons.RegistrationProviderSubscriptionStateWorkerCrossTenantQueue)
+            .SingleAsync(value => value.Id == stateId))!;
+        stale.Claim(Guid.CreateVersion7(), Now.AddMinutes(10), Now.AddMinutes(6));
+
+        await Assert.That(claims).HasSingleItem();
+        await Assert.That(claims[0].TenantId).IsEqualTo(tenantId);
+        await Assert.That(claims[0].RegistrationProviderBindingId).IsEqualTo(bindingId);
+        claims[0].SettleCheckpoint(claims[0].LeaseToken!.Value, claims[0].ProcessingGeneration, "sync-2", Now.AddMinutes(2));
+        await repository.SaveChangesAsync(CancellationToken.None);
+
+        await Assert.That(() => secondContext.SaveChangesAsync()).Throws<DbUpdateConcurrencyException>();
+    }
+
+    [Test]
+    public async Task SubscriptionStateSweepSettleDoesNotImmediatelyReclaimUntilNewNotification()
+    {
+        string databaseName = $"provider-subscription-sweep-{Guid.NewGuid():N}";
+        Guid tenantId = Guid.CreateVersion7();
+        Guid stateId;
+        await using (ExploreDbContext seed = CreateInMemoryContext(databaseName))
+        {
+            RegistrationProviderConnection connection = Connection(tenantId, "sweep", false);
+            RegistrationProviderBinding binding = Binding(tenantId, connection.Id);
+            RegistrationProviderSubscriptionState seededState = RegistrationProviderSubscriptionState.Create(
+                tenantId, binding.Id, "google.forms.responses", "watch-1", Now.AddDays(1), "sync-1", Now);
+            seededState.ReceiveNotification(Now.AddMinutes(1));
+            stateId = seededState.Id;
+            seed.AddRange(connection, binding, seededState);
+            await seed.SaveChangesAsync();
+        }
+
+        await using ExploreDbContext context = CreateInMemoryContext(databaseName);
+        RegistrationProviderSubscriptionStateRepository repository = new(context);
+        IReadOnlyList<RegistrationProviderSubscriptionState> first = await repository.ClaimDueSweepsAsync(
+            1, Now.AddMinutes(2), TimeSpan.FromMinutes(5), CancellationToken.None);
+        first[0].SettleCheckpoint(first[0].LeaseToken!.Value, first[0].ProcessingGeneration, "sync-2", Now.AddMinutes(3));
+        await repository.SaveChangesAsync(CancellationToken.None);
+
+        IReadOnlyList<RegistrationProviderSubscriptionState> second = await repository.ClaimDueSweepsAsync(
+            1, Now.AddMinutes(4), TimeSpan.FromMinutes(5), CancellationToken.None);
+
+        await Assert.That(second).IsEmpty();
+
+        RegistrationProviderSubscriptionState reloadedState = await context.RegistrationProviderSubscriptionStates
+            .IgnoreTenantFilter(TenantFilterBypassReasons.RegistrationProviderSubscriptionStateWorkerCrossTenantQueue)
+            .SingleAsync(value => value.Id == stateId);
+        reloadedState.ReceiveNotification(Now.AddMinutes(5));
+        await context.SaveChangesAsync();
+
+        await Assert.That(await repository.ClaimDueSweepsAsync(1, Now.AddMinutes(6), TimeSpan.FromMinutes(5), CancellationToken.None)).HasSingleItem();
+    }
+
+    [Test]
+    public async Task SubscriptionStatePeriodicSweepClaimsWhenNoPendingNotificationButScheduleIsStale()
+    {
+        string databaseName = $"provider-subscription-periodic-sweep-{Guid.NewGuid():N}";
+        Guid tenantId = Guid.CreateVersion7();
+        await using (ExploreDbContext seed = CreateInMemoryContext(databaseName))
+        {
+            RegistrationProviderConnection connection = Connection(tenantId, "periodic-sweep", false);
+            RegistrationProviderBinding binding = Binding(tenantId, connection.Id);
+            RegistrationProviderSubscriptionState state = RegistrationProviderSubscriptionState.Create(
+                tenantId, binding.Id, "google.forms.responses", "watch-1", Now.AddDays(1), "sync-1", Now);
+            state.Claim(Guid.CreateVersion7(), Now.AddMinutes(2), Now);
+            state.SettleCheckpoint(state.LeaseToken!.Value, state.ProcessingGeneration, "sync-2", Now.AddHours(6), Now.AddMinutes(1));
+            seed.AddRange(connection, binding, state);
+            await seed.SaveChangesAsync();
+        }
+
+        await using ExploreDbContext context = CreateInMemoryContext(databaseName);
+        RegistrationProviderSubscriptionStateRepository repository = new(context);
+
+        await Assert.That(await repository.ClaimDueSweepsAsync(1, Now.AddHours(5), TimeSpan.FromMinutes(5), CancellationToken.None)).IsEmpty();
+        await Assert.That(await repository.ClaimDueSweepsAsync(1, Now.AddHours(6), TimeSpan.FromMinutes(5), CancellationToken.None)).HasSingleItem();
+    }
+
+    [Test]
+    public async Task SubscriptionStateFailureBackoffAndDuplicateClaimLoserReturnEmpty()
+    {
+        string databaseName = $"provider-subscription-claim-race-{Guid.NewGuid():N}";
+        Guid tenantId = Guid.CreateVersion7();
+        await using (ExploreDbContext seed = CreateInMemoryContext(databaseName))
+        {
+            RegistrationProviderConnection connection = Connection(tenantId, "race", false);
+            RegistrationProviderBinding binding = Binding(tenantId, connection.Id);
+            RegistrationProviderSubscriptionState state = RegistrationProviderSubscriptionState.Create(
+                tenantId, binding.Id, "google.forms.responses", "watch-1", Now.AddDays(1), "sync-1", Now);
+            state.ReceiveNotification(Now.AddMinutes(1));
+            seed.AddRange(connection, binding, state);
+            await seed.SaveChangesAsync();
+        }
+
+        await using ExploreDbContext firstContext = CreateInMemoryContext(databaseName);
+        await using ExploreDbContext secondContext = CreateInMemoryContext(databaseName);
+        RegistrationProviderSubscriptionStateRepository firstRepository = new(firstContext);
+        RegistrationProviderSubscriptionStateRepository secondRepository = new(secondContext);
+        IReadOnlyList<RegistrationProviderSubscriptionState> first = await firstRepository.ClaimDueSweepsAsync(
+            1, Now.AddMinutes(2), TimeSpan.FromMinutes(5), CancellationToken.None);
+        IReadOnlyList<RegistrationProviderSubscriptionState> duplicate = await secondRepository.ClaimDueSweepsAsync(
+            1, Now.AddMinutes(2), TimeSpan.FromMinutes(5), CancellationToken.None);
+
+        await Assert.That(first).HasSingleItem();
+        await Assert.That(duplicate).IsEmpty();
+
+        first[0].Fail(RegistrationProviderSubscriptionOperation.Sweep, first[0].LeaseToken!.Value, first[0].ProcessingGeneration, "provider_timeout", Now.AddMinutes(10), Now.AddMinutes(3));
+        await firstRepository.SaveChangesAsync(CancellationToken.None);
+
+        await Assert.That(await firstRepository.ClaimDueSweepsAsync(1, Now.AddMinutes(4), TimeSpan.FromMinutes(5), CancellationToken.None)).IsEmpty();
+        await Assert.That(await firstRepository.ClaimDueSweepsAsync(1, Now.AddMinutes(11), TimeSpan.FromMinutes(5), CancellationToken.None)).HasSingleItem();
+    }
+
+    [Test]
+    public async Task SubscriptionStateSweepBackoffDoesNotSuppressUrgentRenewal()
+    {
+        string databaseName = $"provider-subscription-sweep-renewal-{Guid.NewGuid():N}";
+        Guid tenantId = Guid.CreateVersion7();
+        await using (ExploreDbContext seed = CreateInMemoryContext(databaseName))
+        {
+            RegistrationProviderConnection connection = Connection(tenantId, "sweep-renewal", false);
+            RegistrationProviderBinding binding = Binding(tenantId, connection.Id);
+            RegistrationProviderSubscriptionState state = RegistrationProviderSubscriptionState.Create(
+                tenantId, binding.Id, "google.forms.responses", "watch-1", Now.AddMinutes(30), "sync-1", Now);
+            state.ReceiveNotification(Now.AddMinutes(1));
+            seed.AddRange(connection, binding, state);
+            await seed.SaveChangesAsync();
+        }
+
+        await using ExploreDbContext context = CreateInMemoryContext(databaseName);
+        RegistrationProviderSubscriptionStateRepository repository = new(context);
+        IReadOnlyList<RegistrationProviderSubscriptionState> sweep = await repository.ClaimDueSweepsAsync(
+            1, Now.AddMinutes(2), TimeSpan.FromMinutes(5), CancellationToken.None);
+        sweep[0].Fail(RegistrationProviderSubscriptionOperation.Sweep, sweep[0].LeaseToken!.Value, sweep[0].ProcessingGeneration, "sweep_timeout", Now.AddMinutes(20), Now.AddMinutes(3));
+        await repository.SaveChangesAsync(CancellationToken.None);
+
+        await Assert.That(await repository.ClaimDueRenewalsAsync(1, Now.AddHours(1), Now.AddMinutes(4), TimeSpan.FromMinutes(5), CancellationToken.None)).HasSingleItem();
+        await Assert.That(await repository.ClaimDueSweepsAsync(1, Now.AddMinutes(4), TimeSpan.FromMinutes(5), CancellationToken.None)).IsEmpty();
+    }
+
+    [Test]
+    public async Task SubscriptionStateRenewalBackoffDoesNotSuppressResponseRecovery()
+    {
+        string databaseName = $"provider-subscription-renewal-sweep-{Guid.NewGuid():N}";
+        Guid tenantId = Guid.CreateVersion7();
+        await using (ExploreDbContext seed = CreateInMemoryContext(databaseName))
+        {
+            RegistrationProviderConnection connection = Connection(tenantId, "renewal-sweep", false);
+            RegistrationProviderBinding binding = Binding(tenantId, connection.Id);
+            RegistrationProviderSubscriptionState state = RegistrationProviderSubscriptionState.Create(
+                tenantId, binding.Id, "google.forms.responses", "watch-1", Now.AddMinutes(30), "sync-1", Now);
+            state.ReceiveNotification(Now.AddMinutes(1));
+            seed.AddRange(connection, binding, state);
+            await seed.SaveChangesAsync();
+        }
+
+        await using ExploreDbContext context = CreateInMemoryContext(databaseName);
+        RegistrationProviderSubscriptionStateRepository repository = new(context);
+        IReadOnlyList<RegistrationProviderSubscriptionState> renewal = await repository.ClaimDueRenewalsAsync(
+            1, Now.AddHours(1), Now.AddMinutes(2), TimeSpan.FromMinutes(5), CancellationToken.None);
+        renewal[0].Fail(RegistrationProviderSubscriptionOperation.Renewal, renewal[0].LeaseToken!.Value, renewal[0].ProcessingGeneration, "renewal_timeout", Now.AddMinutes(20), Now.AddMinutes(3));
+        await repository.SaveChangesAsync(CancellationToken.None);
+
+        await Assert.That(await repository.ClaimDueRenewalsAsync(1, Now.AddHours(1), Now.AddMinutes(4), TimeSpan.FromMinutes(5), CancellationToken.None)).IsEmpty();
+        await Assert.That(await repository.ClaimDueSweepsAsync(1, Now.AddMinutes(4), TimeSpan.FromMinutes(5), CancellationToken.None)).HasSingleItem();
+    }
+
+    private static RegistrationProviderConnection Connection(Guid tenantId, string name, bool deleted, Guid? apiTokenSecretBindingId = null)
+    {
+        RegistrationProviderConnection connection = RegistrationProviderConnection.Create(tenantId, name, RegistrationProviderKindEnum.ExternalForm,
+            RegistrationProviderDeploymentKindEnum.HostedSaas, "FORMBRICKS", name, "v1", "formbricks-policy-v1",
+            "official-api-v1-2026-08", "https:/" + "/app.formbricks.com/api/v1/management", "https:/" + "/app.formbricks.com",
+            "workspace-" + name, apiTokenSecretBindingId, null, Now);
         connection.IsDeleted = deleted;
         return connection;
     }
@@ -319,9 +587,15 @@ public sealed class RegistrationProviderFoundationPersistenceTests
     private static RegistrationProviderBinding Binding(Guid tenantId, Guid connectionId, Guid? formId = null) => RegistrationProviderBinding.Create(
         tenantId, connectionId, formId ?? Guid.CreateVersion7(), Guid.CreateVersion7(), RegistrationProviderPresentationModeEnum.Redirect,
         RegistrationProviderCollectionModeEnum.ProviderHosted, RegistrationProviderCompletionModeEnum.Callback,
-        RegistrationProviderTrustLevelEnum.SelectedFields, Now);
+        RegistrationProviderTrustLevelEnum.SelectedFields, null, Now);
 
-    private static IncomingWebhookEffectOutbox AddRetainedEffect(ExploreDbContext context, Guid tenantId, Guid bindingId, string suffix, DateTime createdAt)
+    private static IncomingWebhookEffectOutbox AddRetainedEffect(
+        ExploreDbContext context,
+        Guid tenantId,
+        Guid bindingId,
+        string suffix,
+        DateTime createdAt,
+        string eventType = "registration.provider_submission")
     {
         byte[] payload = [1];
         string hash = "sha256:" + Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(payload));
@@ -331,7 +605,7 @@ public sealed class RegistrationProviderFoundationPersistenceTests
             "registration-provider",
             providerDecisionId,
             providerDecisionId,
-            "registration.provider_submission",
+            eventType,
             payload,
             hash,
             "application/json",
@@ -355,6 +629,13 @@ public sealed class RegistrationProviderFoundationPersistenceTests
             createdAt);
         context.AddRange(message, effect);
         return effect;
+    }
+
+    private static void Complete(IncomingWebhookEffectOutbox effect, DateTime completedAt)
+    {
+        Guid leaseToken = Guid.CreateVersion7();
+        effect.Claim("test", leaseToken, completedAt.AddMinutes(1), completedAt.AddMinutes(-1));
+        effect.Complete(leaseToken, effect.ProcessingFence, effect.ProcessingGeneration, completedAt);
     }
 
     private static RegistrationSubmission ProviderSubmission(Guid tenantId, Guid eventId, Guid bindingId)

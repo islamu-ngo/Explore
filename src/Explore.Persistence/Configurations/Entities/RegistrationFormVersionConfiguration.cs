@@ -17,7 +17,11 @@ public sealed class RegistrationFormVersionConfiguration : IEntityTypeConfigurat
             "(status_id IN (2, 3) AND schema_hash IS NOT NULL AND data_schema_artifact IS NOT NULL AND ui_schema_artifact IS NOT NULL AND logic_schema_artifact IS NOT NULL AND mapping_artifact IS NOT NULL)"));
         builder.Property(version => version.Id).ValueGeneratedNever();
         builder.Property(version => version.LanguageTag).IsRequired().HasMaxLength(35);
+        builder.Property(version => version.SourceKindId).HasDefaultValue(1);
         builder.Property(version => version.SchemaHash).HasMaxLength(64);
+        builder.Property(version => version.ExternalProviderSurveyId).HasMaxLength(200);
+        builder.Property(version => version.ExternalProviderSurveyRevisionId).HasMaxLength(200);
+        builder.Property(version => version.ExternalImportMappingRevisionHash).HasMaxLength(44);
         builder.Property(version => version.DataSchemaArtifact).HasColumnType("text");
         builder.Property(version => version.UiSchemaArtifact).HasColumnType("text");
         builder.Property(version => version.LogicSchemaArtifact).HasColumnType("text");
@@ -47,6 +51,12 @@ public sealed class RegistrationFormVersionConfiguration : IEntityTypeConfigurat
             .HasPrincipalKey(form => new { form.TenantId, form.EventId, form.Id }).OnDelete(DeleteBehavior.Restrict);
         builder.HasOne(version => version.Status).WithMany().HasForeignKey(version => version.StatusId)
             .OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne(version => version.SourceKind).WithMany().HasForeignKey(version => version.SourceKindId)
+            .OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne<RegistrationProviderConnection>().WithMany()
+            .HasForeignKey(version => version.ExternalRegistrationProviderConnectionId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne<RegistrationProviderSchemaRevision>().WithMany()
+            .HasForeignKey(version => version.ExternalRegistrationProviderSchemaRevisionId).OnDelete(DeleteBehavior.Restrict);
         builder.HasIndex(version => new { version.TenantId, version.EventId, version.RegistrationFormId, version.Version })
             .IsUnique().HasFilter("is_deleted = false");
         builder.HasIndex(version => new

@@ -18235,6 +18235,29 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                         .HasColumnType("char(36)")
                         .HasColumnName("event_id");
 
+                    b.Property<string>("ExternalImportMappingRevisionHash")
+                        .HasMaxLength(44)
+                        .HasColumnType("varchar(44)")
+                        .HasColumnName("external_import_mapping_revision_hash");
+
+                    b.Property<string>("ExternalProviderSurveyId")
+                        .HasMaxLength(200)
+                        .HasColumnType("varchar(200)")
+                        .HasColumnName("external_provider_survey_id");
+
+                    b.Property<string>("ExternalProviderSurveyRevisionId")
+                        .HasMaxLength(200)
+                        .HasColumnType("varchar(200)")
+                        .HasColumnName("external_provider_survey_revision_id");
+
+                    b.Property<Guid?>("ExternalRegistrationProviderConnectionId")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("external_registration_provider_connection_id");
+
+                    b.Property<Guid?>("ExternalRegistrationProviderSchemaRevisionId")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("external_registration_provider_schema_revision_id");
+
                     b.Property<bool>("IsDeleted")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("tinyint(1)")
@@ -18271,6 +18294,12 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                         .HasMaxLength(64)
                         .HasColumnType("varchar(64)")
                         .HasColumnName("schema_hash");
+
+                    b.Property<int>("SourceKindId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(1)
+                        .HasColumnName("source_kind_id");
 
                     b.Property<Guid?>("SourceTemplateFormId")
                         .HasColumnType("char(36)")
@@ -18313,6 +18342,15 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                     b.HasAlternateKey("TenantId", "EventId", "RegistrationFormId", "Id")
                         .HasName("AK_ie_registration_form_versions_tenant_id_event_id_reg_4E4BEDFA");
 
+                    b.HasIndex("ExternalRegistrationProviderConnectionId")
+                        .HasDatabaseName("IX_ie_registration_form_versions_external_registration__84C0A657");
+
+                    b.HasIndex("ExternalRegistrationProviderSchemaRevisionId")
+                        .HasDatabaseName("IX_ie_registration_form_versions_external_registration__77CC7B2D");
+
+                    b.HasIndex("SourceKindId")
+                        .HasDatabaseName("ix_ie_registration_form_versions_source_kind_id");
+
                     b.HasIndex("StatusId")
                         .HasDatabaseName("ix_ie_registration_form_versions_status_id");
 
@@ -18328,6 +18366,39 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                         {
                             t.HasCheckConstraint("ck_registration_form_versions_schema_artifacts", "(status_id = 1 AND schema_hash IS NULL AND data_schema_artifact IS NULL AND ui_schema_artifact IS NULL AND logic_schema_artifact IS NULL AND mapping_artifact IS NULL) OR (status_id IN (2, 3) AND schema_hash IS NOT NULL AND data_schema_artifact IS NOT NULL AND ui_schema_artifact IS NOT NULL AND logic_schema_artifact IS NOT NULL AND mapping_artifact IS NOT NULL)");
                         });
+                });
+
+            modelBuilder.Entity("Explore.Domain.RegistrationFormVersionSourceKind", b =>
+                {
+                    b.Property<int>("Id")
+                        .HasColumnType("int")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("varchar(500)")
+                        .HasColumnName("description");
+
+                    b.Property<string>("FullName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("varchar(200)")
+                        .HasColumnName("full_name");
+
+                    b.Property<string>("MasterCode")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)")
+                        .HasColumnName("master_code");
+
+                    b.HasKey("Id")
+                        .HasName("pk_ie_registration_form_version_source_kinds");
+
+                    b.HasIndex("MasterCode")
+                        .IsUnique()
+                        .HasDatabaseName("ix_ie_registration_form_version_source_kinds_master_code");
+
+                    b.ToTable("ie_registration_form_version_source_kinds", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.RegistrationInventoryHold", b =>
@@ -19229,6 +19300,21 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                         .HasColumnType("int")
                         .HasColumnName("presentation_mode_id");
 
+                    b.Property<string>("ProviderSurveyId")
+                        .HasMaxLength(200)
+                        .HasColumnType("varchar(200)")
+                        .HasColumnName("provider_survey_id");
+
+                    b.Property<string>("ProviderSurveyRevisionId")
+                        .HasMaxLength(200)
+                        .HasColumnType("varchar(200)")
+                        .HasColumnName("provider_survey_revision_id");
+
+                    b.Property<string>("ProviderWebhookId")
+                        .HasMaxLength(200)
+                        .HasColumnType("varchar(200)")
+                        .HasColumnName("provider_webhook_id");
+
                     b.Property<DateTime?>("PublishedAt")
                         .HasColumnType("datetime(6)")
                         .HasColumnName("published_at");
@@ -19278,6 +19364,10 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                         .HasColumnType("char(36)")
                         .HasColumnName("updated_by");
 
+                    b.Property<Guid?>("WebhookSecretBindingId")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("webhook_secret_binding_id");
+
                     b.HasKey("Id")
                         .HasName("pk_ie_registration_provider_bindings");
 
@@ -19304,6 +19394,9 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
 
                     b.HasIndex("TrustLevelId")
                         .HasDatabaseName("ix_ie_registration_provider_bindings_trust_level_id");
+
+                    b.HasIndex("WebhookSecretBindingId")
+                        .HasDatabaseName("ix_ie_registration_provider_bindings_webhook_secret_binding_id");
 
                     b.HasIndex("TenantId", "RegistrationFormId", "RegistrationFormVersionId")
                         .HasDatabaseName("IX_ie_registration_provider_bindings_tenant_id_registra_98EEE1D3");
@@ -19492,14 +19585,32 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                         .HasColumnType("char(36)")
                         .HasColumnName("id");
 
+                    b.Property<string>("AdapterPolicyVersion")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)")
+                        .HasColumnName("adapter_policy_version");
+
                     b.Property<Guid?>("ApiTokenSecretBindingId")
                         .HasColumnType("char(36)")
                         .HasColumnName("api_token_secret_binding_id");
+
+                    b.Property<string>("ApiVersion")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)")
+                        .HasColumnName("api_version");
 
                     b.Property<Guid>("ConcurrencyStamp")
                         .IsConcurrencyToken()
                         .HasColumnType("char(36)")
                         .HasColumnName("concurrency_stamp");
+
+                    b.Property<string>("ConformanceEvidenceRevision")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("varchar(120)")
+                        .HasColumnName("conformance_evidence_revision");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime(6)")
@@ -19521,11 +19632,33 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                         .HasColumnType("int")
                         .HasColumnName("deployment_kind_id");
 
+                    b.Property<string>("GrantedOAuthScopes")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(1000)
+                        .HasColumnType("varchar(1000)")
+                        .HasDefaultValue("")
+                        .HasColumnName("granted_o_auth_scopes");
+
                     b.Property<bool>("IsDeleted")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("tinyint(1)")
                         .HasDefaultValue(false)
                         .HasColumnName("is_deleted");
+
+                    b.Property<DateTime?>("LastAccessValidatedAt")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("last_access_validated_at");
+
+                    b.Property<DateTime?>("LastCredentialRefreshAt")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("last_credential_refresh_at");
+
+                    b.Property<string>("ManagementApiBaseUrl")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("varchar(500)")
+                        .HasColumnName("management_api_base_url");
 
                     b.Property<string>("Name")
                         .IsRequired()
@@ -19533,9 +19666,49 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                         .HasColumnType("varchar(120)")
                         .HasColumnName("name");
 
+                    b.Property<string>("ProviderCode")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)")
+                        .HasColumnName("provider_code");
+
+                    b.Property<string>("ProviderDeploymentCode")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)")
+                        .HasColumnName("provider_deployment_code");
+
+                    b.Property<string>("ProviderIdentity")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(200)
+                        .HasColumnType("varchar(200)")
+                        .HasDefaultValue("")
+                        .HasColumnName("provider_identity");
+
                     b.Property<int>("ProviderKindId")
                         .HasColumnType("int")
                         .HasColumnName("provider_kind_id");
+
+                    b.Property<string>("ProviderWorkspaceId")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("varchar(200)")
+                        .HasColumnName("provider_workspace_id");
+
+                    b.Property<string>("PubSubConfigurationReference")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(300)
+                        .HasColumnType("varchar(300)")
+                        .HasDefaultValue("")
+                        .HasColumnName("pub_sub_configuration_reference");
+
+                    b.Property<string>("PublicBaseUrl")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("varchar(500)")
+                        .HasColumnName("public_base_url");
 
                     b.Property<Guid>("TenantId")
                         .HasColumnType("char(36)")
@@ -19559,21 +19732,25 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                     b.HasAlternateKey("TenantId", "Id")
                         .HasName("ak_registration_provider_connections_tenant_id_id");
 
+                    b.HasIndex("ApiTokenSecretBindingId")
+                        .HasDatabaseName("IX_ie_registration_provider_connections_api_token_secre_089F7099");
+
                     b.HasIndex("DeploymentKindId")
                         .HasDatabaseName("ix_ie_registration_provider_connections_deployment_kind_id");
 
                     b.HasIndex("ProviderKindId")
                         .HasDatabaseName("ix_ie_registration_provider_connections_provider_kind_id");
 
-                    b.HasIndex("TenantId", "ApiTokenSecretBindingId")
-                        .HasDatabaseName("IX_ie_registration_provider_connections_tenant_id_api_t_FD21D9A5");
+                    b.HasIndex("WebhookSecretBindingId")
+                        .HasDatabaseName("IX_ie_registration_provider_connections_webhook_secret__3770094C");
 
                     b.HasIndex("TenantId", "Name")
                         .IsUnique()
                         .HasDatabaseName("ix_ie_registration_provider_connections_tenant_id_name");
 
-                    b.HasIndex("TenantId", "WebhookSecretBindingId")
-                        .HasDatabaseName("IX_ie_registration_provider_connections_tenant_id_webho_FB44C077");
+                    b.HasIndex("TenantId", "ProviderCode", "ProviderDeploymentCode", "ApiVersion", "AdapterPolicyVersion", "ConformanceEvidenceRevision", "ProviderWorkspaceId")
+                        .IsUnique()
+                        .HasDatabaseName("IX_ie_registration_provider_connections_tenant_id_provi_3F56F9F2");
 
                     b.ToTable("ie_registration_provider_connections", (string)null);
                 });
@@ -19859,6 +20036,10 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                         .HasColumnType("char(36)")
                         .HasColumnName("created_by");
 
+                    b.Property<int>("DriftClassId")
+                        .HasColumnType("int")
+                        .HasColumnName("drift_class_id");
+
                     b.Property<bool>("IsDeleted")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("tinyint(1)")
@@ -19868,6 +20049,28 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                     b.Property<DateTime>("ObservedAt")
                         .HasColumnType("datetime(6)")
                         .HasColumnName("observed_at");
+
+                    b.Property<string>("ProviderSnapshotJson")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("provider_snapshot_json");
+
+                    b.Property<string>("ProviderSnapshotSha256Hash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64)")
+                        .HasColumnName("provider_snapshot_sha256hash");
+
+                    b.Property<string>("ProviderSurveyId")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("varchar(200)")
+                        .HasColumnName("provider_survey_id");
+
+                    b.Property<string>("ProviderSurveyRevisionId")
+                        .HasMaxLength(200)
+                        .HasColumnType("varchar(200)")
+                        .HasColumnName("provider_survey_revision_id");
 
                     b.Property<Guid>("RegistrationProviderConnectionId")
                         .HasColumnType("char(36)")
@@ -19898,14 +20101,285 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                     b.HasKey("Id")
                         .HasName("pk_ie_registration_provider_schema_revisions");
 
+                    b.HasAlternateKey("TenantId", "Id")
+                        .HasName("ak_registration_provider_schema_revisions_tenant_id_id");
+
+                    b.HasIndex("DriftClassId")
+                        .HasDatabaseName("ix_ie_registration_provider_schema_revisions_drift_class_id");
+
                     b.HasIndex("SchemaAuthorityId")
                         .HasDatabaseName("ix_ie_registration_provider_schema_revisions_schema_authority_id");
 
-                    b.HasIndex("TenantId", "RegistrationProviderConnectionId", "RevisionHash")
+                    b.HasIndex("TenantId", "RegistrationProviderConnectionId", "ProviderSurveyId", "RevisionHash")
                         .IsUnique()
-                        .HasDatabaseName("IX_ie_registration_provider_schema_revisions_tenant_id__87717C8A");
+                        .HasDatabaseName("IX_ie_registration_provider_schema_revisions_tenant_id__2E61ADF5");
 
                     b.ToTable("ie_registration_provider_schema_revisions", (string)null);
+                });
+
+            modelBuilder.Entity("Explore.Domain.RegistrationProviderSubmissionWriteEffect", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("id");
+
+                    b.Property<int>("AttemptCount")
+                        .HasColumnType("int")
+                        .HasColumnName("attempt_count");
+
+                    b.Property<DateTime?>("CompletedAt")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("completed_at");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTime?>("DeadLetteredAt")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("dead_lettered_at");
+
+                    b.Property<Guid>("EventId")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("event_id");
+
+                    b.Property<string>("FailureCode")
+                        .HasMaxLength(120)
+                        .HasColumnType("varchar(120)")
+                        .HasColumnName("failure_code");
+
+                    b.Property<DateTime?>("NextAttemptAt")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("next_attempt_at");
+
+                    b.Property<DateTime?>("ParkedAt")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("parked_at");
+
+                    b.Property<long>("ProcessingFence")
+                        .HasColumnType("bigint")
+                        .HasColumnName("processing_fence");
+
+                    b.Property<DateTime?>("ProcessingLeaseExpiresAt")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("processing_lease_expires_at");
+
+                    b.Property<string>("ProcessingLeaseOwner")
+                        .HasMaxLength(200)
+                        .HasColumnType("varchar(200)")
+                        .HasColumnName("processing_lease_owner");
+
+                    b.Property<Guid?>("ProcessingLeaseToken")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("processing_lease_token");
+
+                    b.Property<Guid>("RegistrationAttemptId")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("registration_attempt_id");
+
+                    b.Property<Guid>("RegistrationOrderId")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("registration_order_id");
+
+                    b.Property<Guid>("RegistrationProviderBindingId")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("registration_provider_binding_id");
+
+                    b.Property<Guid>("RegistrationSubmissionId")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("registration_submission_id");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int")
+                        .HasColumnName("status");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_ie_registration_provider_submission_write_effects");
+
+                    b.HasAlternateKey("TenantId", "Id")
+                        .HasName("AK_ie_registration_provider_submission_write_effects_te_7C158B14");
+
+                    b.HasIndex("TenantId", "RegistrationSubmissionId")
+                        .IsUnique()
+                        .HasDatabaseName("IX_ie_registration_provider_submission_write_effects_te_A5922E85");
+
+                    b.HasIndex("Status", "NextAttemptAt", "CreatedAt")
+                        .HasDatabaseName("IX_ie_registration_provider_submission_write_effects_st_74CB1F27");
+
+                    b.HasIndex("TenantId", "EventId", "RegistrationOrderId")
+                        .HasDatabaseName("IX_ie_registration_provider_submission_write_effects_te_103C1B32");
+
+                    b.ToTable("ie_registration_provider_submission_write_effects", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_registration_provider_submission_write_effects_attempt_count", "attempt_count >= 0");
+
+                            t.HasCheckConstraint("ck_registration_provider_submission_write_effects_processing_fence", "processing_fence >= 0");
+                        });
+                });
+
+            modelBuilder.Entity("Explore.Domain.RegistrationProviderSubscriptionState", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("ConcurrencyStamp")
+                        .IsConcurrencyToken()
+                        .HasColumnType("char(36)")
+                        .HasColumnName("concurrency_stamp");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("deleted_by");
+
+                    b.Property<string>("FailureCategory")
+                        .HasMaxLength(80)
+                        .HasColumnType("varchar(80)")
+                        .HasColumnName("failure_category");
+
+                    b.Property<bool>("IsDeleted")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("tinyint(1)")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_deleted");
+
+                    b.Property<DateTime?>("LastNotificationAt")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("last_notification_at");
+
+                    b.Property<DateTime?>("LastRenewalAttemptAt")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("last_renewal_attempt_at");
+
+                    b.Property<DateTime?>("LastRenewalSuccessAt")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("last_renewal_success_at");
+
+                    b.Property<DateTime?>("LastSweepSuccessAt")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("last_sweep_success_at");
+
+                    b.Property<DateTime?>("LeaseExpiresAt")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("lease_expires_at");
+
+                    b.Property<Guid?>("LeaseToken")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("lease_token");
+
+                    b.Property<DateTime?>("NextRenewalAttemptAt")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("next_renewal_attempt_at");
+
+                    b.Property<DateTime?>("NextSweepAttemptAt")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("next_sweep_attempt_at");
+
+                    b.Property<DateTime?>("PendingNotificationAt")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("pending_notification_at");
+
+                    b.Property<long>("ProcessingGeneration")
+                        .HasColumnType("bigint")
+                        .HasColumnName("processing_generation");
+
+                    b.Property<string>("ProviderEventType")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("varchar(120)")
+                        .HasColumnName("provider_event_type");
+
+                    b.Property<Guid>("RegistrationProviderBindingId")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("registration_provider_binding_id");
+
+                    b.Property<int>("RenewalFailureCount")
+                        .HasColumnType("int")
+                        .HasColumnName("renewal_failure_count");
+
+                    b.Property<string>("ResponseCheckpoint")
+                        .HasMaxLength(1024)
+                        .HasColumnType("varchar(1024)")
+                        .HasColumnName("response_checkpoint");
+
+                    b.Property<int>("SweepFailureCount")
+                        .HasColumnType("int")
+                        .HasColumnName("sweep_failure_count");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("updated_by");
+
+                    b.Property<DateTime>("WatchExpiresAt")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("watch_expires_at");
+
+                    b.Property<string>("WatchId")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("varchar(200)")
+                        .HasColumnName("watch_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_ie_registration_provider_subscription_states");
+
+                    b.HasAlternateKey("TenantId", "Id")
+                        .HasName("ak_registration_provider_subscription_states_tenant_id_id");
+
+                    b.HasIndex("WatchExpiresAt", "LeaseExpiresAt")
+                        .HasDatabaseName("IX_ie_registration_provider_subscription_states_watch_e_9B3AC270");
+
+                    b.HasIndex("PendingNotificationAt", "NextSweepAttemptAt", "LeaseExpiresAt")
+                        .HasDatabaseName("IX_ie_registration_provider_subscription_states_pending_021E53D6");
+
+                    b.HasIndex("TenantId", "RegistrationProviderBindingId", "ProviderEventType")
+                        .IsUnique()
+                        .HasDatabaseName("IX_ie_registration_provider_subscription_states_tenant__CA01FABE");
+
+                    b.ToTable("ie_registration_provider_subscription_states", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_registration_provider_subscription_states_failure_counts", "renewal_failure_count >= 0 AND sweep_failure_count >= 0");
+
+                            t.HasCheckConstraint("ck_registration_provider_subscription_states_generation", "processing_generation >= 0");
+
+                            t.HasCheckConstraint("ck_registration_provider_subscription_states_watch_expiry", "watch_expires_at > created_at");
+                        });
                 });
 
             modelBuilder.Entity("Explore.Domain.RegistrationProviderTrustLevel", b =>
@@ -20513,7 +20987,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                     b.HasIndex("TenantId", "RegistrationAttemptId", "BusinessDeduplicationKey")
                         .IsUnique()
                         .HasDatabaseName("IX_ie_registration_submissions_tenant_id_registration_a_C78E61A1")
-                        .HasFilter("registration_provider_binding_id IS NULL");
+                        .HasFilter("provider_submission_id IS NULL");
 
                     b.HasIndex("TenantId", "RegistrationAttemptId", "ReceivedAt")
                         .HasDatabaseName("IX_ie_registration_submissions_tenant_id_registration_a_15D35C7F");
@@ -20521,7 +20995,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                     b.HasIndex("TenantId", "RegistrationProviderBindingId", "ProviderSubmissionId", "ProviderResponseRevision")
                         .IsUnique()
                         .HasDatabaseName("IX_ie_registration_submissions_tenant_id_registration_p_A92B966C")
-                        .HasFilter("registration_provider_binding_id IS NOT NULL");
+                        .HasFilter("provider_submission_id IS NOT NULL");
 
                     b.HasIndex("TenantId", "EventId", "RegistrationOrderId", "RegistrationWorkflowId", "RegistrationRequirementId", "RegistrationChannelId", "RegistrationFormId", "RegistrationFormVersionId", "RegistrationAttemptId")
                         .HasDatabaseName("IX_ie_registration_submissions_tenant_id_event_id_regis_6A344AA5");
@@ -20530,7 +21004,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                         {
                             t.HasCheckConstraint("ck_registration_submissions_finalization_shape", "(status_id = 3 AND is_finalizable = false AND attempt_consumption_claim_id IS NULL AND finalized_at IS NULL) OR (status_id = 1 AND is_finalizable = true AND attempt_consumption_claim_id IS NOT NULL AND finalized_at IS NULL) OR (status_id = 2 AND is_finalizable = true AND attempt_consumption_claim_id IS NOT NULL AND finalized_at IS NOT NULL)");
 
-                            t.HasCheckConstraint("ck_registration_submissions_provider_tuple", "(registration_provider_binding_id IS NULL AND provider_mapping_revision_hash IS NULL AND provider_submission_id IS NULL AND provider_response_revision IS NULL) OR (registration_provider_binding_id IS NOT NULL AND provider_mapping_revision_hash IS NOT NULL AND provider_submission_id IS NOT NULL AND provider_response_revision IS NOT NULL)");
+                            t.HasCheckConstraint("ck_registration_submissions_provider_tuple", "(registration_provider_binding_id IS NULL AND provider_mapping_revision_hash IS NULL AND provider_submission_id IS NULL AND provider_response_revision IS NULL) OR (registration_provider_binding_id IS NOT NULL AND provider_mapping_revision_hash IS NOT NULL AND ((provider_submission_id IS NULL AND provider_response_revision IS NULL) OR (provider_submission_id IS NOT NULL AND provider_response_revision IS NOT NULL)))");
                         });
                 });
 
@@ -21167,7 +21641,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                         .HasDefaultValue("")
                         .HasColumnName("qualifier");
 
-                    b.Property<Guid>("ScopeId")
+                    b.Property<Guid?>("ScopeId")
                         .HasColumnType("char(36)")
                         .HasColumnName("scope_id");
 
@@ -21201,9 +21675,6 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
 
                     b.HasKey("Id")
                         .HasName("pk_ie_secret_bindings");
-
-                    b.HasAlternateKey("ScopeId", "Id")
-                        .HasName("ak_secret_bindings_scope_id_id");
 
                     b.HasIndex("SecretSourceTypeId")
                         .HasDatabaseName("ix_ie_secret_bindings_secret_source_type_id");
@@ -34702,6 +35173,25 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
 
             modelBuilder.Entity("Explore.Domain.RegistrationFormVersion", b =>
                 {
+                    b.HasOne("Explore.Domain.RegistrationProviderConnection", null)
+                        .WithMany()
+                        .HasForeignKey("ExternalRegistrationProviderConnectionId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("FK_ie_registration_form_versions_ie_registration_provid_1F791302");
+
+                    b.HasOne("Explore.Domain.RegistrationProviderSchemaRevision", null)
+                        .WithMany()
+                        .HasForeignKey("ExternalRegistrationProviderSchemaRevisionId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("FK_ie_registration_form_versions_ie_registration_provid_3BF4EB0C");
+
+                    b.HasOne("Explore.Domain.RegistrationFormVersionSourceKind", "SourceKind")
+                        .WithMany()
+                        .HasForeignKey("SourceKindId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("FK_ie_registration_form_versions_ie_registration_form_v_7E648D0B");
+
                     b.HasOne("Explore.Domain.RegistrationFormStatus", "Status")
                         .WithMany()
                         .HasForeignKey("StatusId")
@@ -34731,6 +35221,8 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasConstraintName("FK_ie_registration_form_versions_ie_registration_forms__73242A83");
+
+                    b.Navigation("SourceKind");
 
                     b.Navigation("Status");
                 });
@@ -35041,6 +35533,12 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                         .IsRequired()
                         .HasConstraintName("FK_ie_registration_provider_bindings_ie_registration_pr_C125C3CF");
 
+                    b.HasOne("Explore.Domain.Secrets.SecretBinding", null)
+                        .WithMany()
+                        .HasForeignKey("WebhookSecretBindingId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("FK_ie_registration_provider_bindings_ie_secret_bindings_69A51153");
+
                     b.HasOne("Explore.Domain.RegistrationProviderConnection", "Connection")
                         .WithMany()
                         .HasForeignKey("TenantId", "RegistrationProviderConnectionId")
@@ -35075,6 +35573,12 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
 
             modelBuilder.Entity("Explore.Domain.RegistrationProviderConnection", b =>
                 {
+                    b.HasOne("Explore.Domain.Secrets.SecretBinding", null)
+                        .WithMany()
+                        .HasForeignKey("ApiTokenSecretBindingId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("FK_ie_registration_provider_connections_ie_secret_bindi_5B68AC56");
+
                     b.HasOne("Explore.Domain.RegistrationProviderDeploymentKind", null)
                         .WithMany()
                         .HasForeignKey("DeploymentKindId")
@@ -35098,17 +35602,9 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
 
                     b.HasOne("Explore.Domain.Secrets.SecretBinding", null)
                         .WithMany()
-                        .HasForeignKey("TenantId", "ApiTokenSecretBindingId")
-                        .HasPrincipalKey("ScopeId", "Id")
+                        .HasForeignKey("WebhookSecretBindingId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("FK_ie_registration_provider_connections_ie_secret_bindi_D238C5F9");
-
-                    b.HasOne("Explore.Domain.Secrets.SecretBinding", null)
-                        .WithMany()
-                        .HasForeignKey("TenantId", "WebhookSecretBindingId")
-                        .HasPrincipalKey("ScopeId", "Id")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("FK_ie_registration_provider_connections_ie_secret_bindi_3DB329FD");
+                        .HasConstraintName("FK_ie_registration_provider_connections_ie_secret_bindi_C65A77CA");
                 });
 
             modelBuilder.Entity("Explore.Domain.RegistrationProviderFieldMapping", b =>
@@ -35147,6 +35643,13 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
 
             modelBuilder.Entity("Explore.Domain.RegistrationProviderSchemaRevision", b =>
                 {
+                    b.HasOne("Explore.Domain.RegistrationProviderDriftClass", null)
+                        .WithMany()
+                        .HasForeignKey("DriftClassId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("FK_ie_registration_provider_schema_revisions_ie_registr_A02373BB");
+
                     b.HasOne("Explore.Domain.RegistrationProviderSchemaAuthority", null)
                         .WithMany()
                         .HasForeignKey("SchemaAuthorityId")
@@ -35163,6 +35666,44 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                         .HasConstraintName("FK_ie_registration_provider_schema_revisions_ie_registr_FC3CC04F");
 
                     b.Navigation("Connection");
+                });
+
+            modelBuilder.Entity("Explore.Domain.RegistrationProviderSubmissionWriteEffect", b =>
+                {
+                    b.HasOne("Explore.Domain.Tenant", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("FK_ie_registration_provider_submission_write_effects_ie_9FAA9258");
+
+                    b.HasOne("Explore.Domain.RegistrationOrder", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "EventId", "RegistrationOrderId")
+                        .HasPrincipalKey("TenantId", "EventId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("FK_ie_registration_provider_submission_write_effects_ie_3967A088");
+                });
+
+            modelBuilder.Entity("Explore.Domain.RegistrationProviderSubscriptionState", b =>
+                {
+                    b.HasOne("Explore.Domain.Tenant", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("FK_ie_registration_provider_subscription_states_ie_tena_9A6DB097");
+
+                    b.HasOne("Explore.Domain.RegistrationProviderBinding", "Binding")
+                        .WithMany()
+                        .HasForeignKey("TenantId", "RegistrationProviderBindingId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("FK_ie_registration_provider_subscription_states_ie_regi_343A1C29");
+
+                    b.Navigation("Binding");
                 });
 
             modelBuilder.Entity("Explore.Domain.RegistrationRequirement", b =>

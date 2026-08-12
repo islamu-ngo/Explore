@@ -52,6 +52,20 @@ public class SecretBindingRepository : GenericRepository<SecretBinding, Guid>, I
             .ToListAsync(cancellationToken);
     }
 
+    public Task<SecretBinding?> GetByTenantAndIdAsync(
+        Guid tenantId,
+        Guid bindingId,
+        CancellationToken cancellationToken = default)
+    {
+        return _dbContext.SecretBindings
+            .AsNoTracking()
+            .FirstOrDefaultAsync(
+                binding => binding.Id == bindingId &&
+                           binding.SettingScopeId == ToSettingScopeId(SecretScope.Tenant) &&
+                           binding.ScopeId == tenantId,
+                cancellationToken);
+    }
+
     public async Task<IReadOnlyList<SecretBinding>> GetAllForKeyAsync(
         string settingKey,
         CancellationToken cancellationToken = default)

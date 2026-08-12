@@ -11,6 +11,7 @@ using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Notifications;
 using Explore.Application.Contracts.Scheduling;
 using Explore.Application.Contracts.Services;
+using Explore.Application.Contracts.Services.Registration;
 using Explore.Application.Contracts.Webhooks;
 using Explore.Application.Features.AiAssistant.Actors;
 using Explore.Application.Features.AiAssistant.Disclosure;
@@ -189,6 +190,9 @@ public static class ApplicationServicesRegistration
         services.AddSingleton<FormSchemaArtifactPublicationService>();
         services.AddSingleton<SchemaDriftClassifier>();
         services.AddScoped<RegistrationEffectiveCapabilityResolver>();
+        services.AddScoped<IRegistrationProviderManagedPublishPreflight, RegistrationProviderManagedPublishPreflightService>();
+        services.AddScoped<IRegistrationProviderConnectionCheckpoint, RegistrationProviderConnectionCheckpointService>();
+        services.AddScoped<RegistrationProviderSubscriptionLifecycleService>();
         services.AddSingleton(provider => new RegistrationFormPublishPreflightService(
             provider.GetRequiredService<Microsoft.Extensions.Options.IOptions<RegistrationFileAnswerOptions>>().Value));
         services.AddScoped<RegistrationFormAuthoringCommandService>();

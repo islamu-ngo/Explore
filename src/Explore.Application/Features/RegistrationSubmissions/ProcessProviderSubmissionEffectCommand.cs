@@ -25,12 +25,14 @@ public sealed record ProviderSubmissionEffectResult(ProviderSubmissionEffectOutc
 {
     public static ProviderSubmissionEffectResult Completed(string code = "completed") => new(ProviderSubmissionEffectOutcome.Completed, code);
     public static ProviderSubmissionEffectResult NeedsReconciliation(string code) => new(ProviderSubmissionEffectOutcome.NeedsReconciliation, code);
+    public static ProviderSubmissionEffectResult Retryable(string code) => new(ProviderSubmissionEffectOutcome.Retryable, code);
 }
 
 public enum ProviderSubmissionEffectOutcome
 {
     Completed = 1,
-    NeedsReconciliation = 2
+    NeedsReconciliation = 2,
+    Retryable = 3
 }
 
 public sealed class ProcessProviderSubmissionEffectCommandValidator : AbstractValidator<ProcessProviderSubmissionEffectCommand>
@@ -51,10 +53,13 @@ public sealed class ProcessProviderSubmissionEffectCommandHandler(
     IRegistrationSubmissionRepository submissionRepository,
     IRegistrationInventoryRepository inventoryRepository,
     IRegistrationFormAuthoringRepository formRepository,
+    IEventParticipationConfigurationRepository participationConfigurationRepository,
     IRegistrationParticipantRepository participantRepository,
     IRegistrationSensitiveValueProtector protector,
     ISender sender,
+    IRegistrationProviderRegistry providerRegistry,
     IRegistrationProviderCallbackReceiptProtector receiptProtector,
+    IGuestCapabilityTokenService capabilities,
     TimeProvider timeProvider)
     : IRequestHandler<ProcessProviderSubmissionEffectCommand, ProviderSubmissionEffectResult>
 {
@@ -79,6 +84,12 @@ public sealed class ProcessProviderSubmissionEffectCommandHandler(
             return await ParkAsync(request, null, "UNKNOWN_TUPLE", cancellationToken);
         }
 
+        if (!TryValidateReceipt(request, binding, tuple, out RegistrationProviderCallbackReceipt? receipt))
+        {
+            return await ParkAsync(request, null, "UNVERIFIABLE_EVIDENCE", cancellationToken);
+        }
+        RegistrationProviderCallbackReceipt verifiedReceipt = receipt!;
+
         ProviderSubmissionEnvelope envelope;
         try
         {
@@ -86,10 +97,51 @@ public sealed class ProcessProviderSubmissionEffectCommandHandler(
         }
         catch (JsonException)
         {
-            return ProviderSubmissionEffectResult.NeedsReconciliation("MALFORMED_EVIDENCE");
+            if (binding.Connection is null || providerRegistry.TryResolve(tuple) is not IRegistrationProviderSubmissionReader reader)
+            {
+                return await ParkAsync(request, null, "SUBMISSION_READ_UNSUPPORTED", cancellationToken);
+            }
+
+            try
+            {
+                RegistrationProviderSubmissionReadResult fetched = await reader.ReadSubmissionAsync(
+                    new RegistrationProviderSubmissionReadRequest(
+                        request.TenantId,
+                        binding,
+                        binding.Connection,
+                        tuple,
+                        verifiedReceipt.ProviderSubmissionId),
+                    cancellationToken);
+                if (fetched.AttemptId is not { } attemptId)
+                {
+                    return await ParkAsync(request, null, "PROVIDER_CORRELATION_MISSING", cancellationToken);
+                }
+
+                envelope = new ProviderSubmissionEnvelope(
+                    attemptId,
+                    fetched.ProviderSubmissionId,
+                    fetched.ProviderRevisionId,
+                    fetched.ReceivedAt,
+                    null,
+                    null,
+                    fetched.AttemptCapabilityToken,
+                    fetched.Answers);
+            }
+            catch (RegistrationProviderUnsupportedSubmissionException exception)
+            {
+                return await ParkAsync(request, null, exception.FailureCode, cancellationToken);
+            }
+            catch (Exception exception) when (exception is HttpRequestException or InvalidOperationException)
+            {
+                return ProviderSubmissionEffectResult.Retryable("SUBMISSION_FETCH_FAILED");
+            }
+            catch (Exception exception) when (exception is JsonException or FormatException)
+            {
+                return await ParkAsync(request, null, "SUBMISSION_FETCH_FAILED", cancellationToken);
+            }
         }
 
-        if (!TryValidateReceipt(request, binding, tuple, envelope.ProviderSubmissionId))
+        if (!string.Equals(verifiedReceipt.ProviderSubmissionId, envelope.ProviderSubmissionId, StringComparison.Ordinal))
         {
             return await ParkAsync(request, null, "UNVERIFIABLE_EVIDENCE", cancellationToken);
         }
@@ -99,6 +151,22 @@ public sealed class ProcessProviderSubmissionEffectCommandHandler(
         if (attempt is null || attempt.RegistrationProviderBindingId != request.BindingId)
         {
             return await ParkAsync(request, attempt, "ATTEMPT_NOT_FOUND", cancellationToken);
+        }
+        IRegistrationProviderDescriptor? descriptor = providerRegistry.TryResolve(tuple);
+        if (descriptor is IRegistrationProviderDelegatedAutomation &&
+            !capabilities.Matches(envelope.AttemptCapabilityToken, attempt.CapabilityTokenHash))
+        {
+            return await ParkAsync(request, attempt, "PROVIDER_CORRELATION_INVALID", cancellationToken);
+        }
+
+        if (IsGoogleTokenOnlyDelegatedCorrelation(tuple, descriptor, envelope))
+        {
+            EventParticipationConfiguration? participationConfiguration = await participationConfigurationRepository.GetByEventAndTenantAsync(
+                attempt.EventId, request.TenantId, cancellationToken);
+            if (participationConfiguration?.IdentityAccessModeId == (int)IdentityAccessModeEnum.AccountRequired)
+            {
+                return await ParkAsync(request, attempt, "TOKEN_ONLY_IDENTITY_BELOW_POLICY", cancellationToken);
+            }
         }
 
         RegistrationRequirement requirement = await submissionRepository.GetRequirementAsync(
@@ -146,6 +214,7 @@ public sealed class ProcessProviderSubmissionEffectCommandHandler(
             return await ParkAsync(request, attempt, "BELOW_MINIMUM_TRUST", cancellationToken);
         }
 
+        Guid expectedAttemptConcurrencyStamp = attempt.ConcurrencyStamp;
         RegistrationSubmission submission;
         try
         {
@@ -166,9 +235,10 @@ public sealed class ProcessProviderSubmissionEffectCommandHandler(
         RegistrationSubmissionPersistenceResult persisted = (RegistrationAnswerSyncModeEnum)requirement.AnswerSyncModeId switch
         {
             RegistrationAnswerSyncModeEnum.COMPLETION_ONLY => await PersistCompletionOnlyAsync(
-                attempt, submission, requirement, cancellationToken),
+                attempt, submission, requirement, expectedAttemptConcurrencyStamp, cancellationToken),
             RegistrationAnswerSyncModeEnum.SELECTED_FIELDS or RegistrationAnswerSyncModeEnum.FULL_CANONICAL =>
-                await PersistCanonicalAsync(attempt, submission, binding, envelope, cancellationToken),
+                await PersistCanonicalAsync(
+                    attempt, submission, binding, envelope, expectedAttemptConcurrencyStamp, cancellationToken),
             _ => await PersistEvidenceOnlyAsync(submission, "UNSUPPORTED_SYNC_MODE", cancellationToken)
         };
 
@@ -181,6 +251,7 @@ public sealed class ProcessProviderSubmissionEffectCommandHandler(
         RegistrationAttempt attempt,
         RegistrationSubmission submission,
         RegistrationRequirement requirement,
+        Guid expectedAttemptConcurrencyStamp,
         CancellationToken cancellationToken)
     {
         RegistrationOrder order = await inventoryRepository.GetOrderWithLinesAsync(
@@ -190,7 +261,7 @@ public sealed class ProcessProviderSubmissionEffectCommandHandler(
         return await submissionRepository.PersistAcceptedWithNormalizationAsync(
             attempt,
             submission,
-            attempt.ConcurrencyStamp,
+            expectedAttemptConcurrencyStamp,
             [],
             [],
             [],
@@ -209,6 +280,7 @@ public sealed class ProcessProviderSubmissionEffectCommandHandler(
         RegistrationSubmission submission,
         RegistrationProviderBinding binding,
         ProviderSubmissionEnvelope envelope,
+        Guid expectedAttemptConcurrencyStamp,
         CancellationToken cancellationToken)
     {
         RegistrationOrder order = await inventoryRepository.GetOrderWithLinesAsync(
@@ -226,7 +298,7 @@ public sealed class ProcessProviderSubmissionEffectCommandHandler(
         return await submissionRepository.PersistAcceptedWithNormalizationAsync(
             attempt,
             submission,
-            attempt.ConcurrencyStamp,
+            expectedAttemptConcurrencyStamp,
             draft.Answers,
             draft.ConsentRecords,
             draft.Issues,
@@ -313,14 +385,12 @@ public sealed class ProcessProviderSubmissionEffectCommandHandler(
 
     private static RegistrationProviderTuple ResolveTuple(RegistrationProviderBinding binding, string provider)
     {
-        RegistrationProviderCapability? capability = binding.Capabilities.FirstOrDefault(capability =>
-            !capability.IsDeleted &&
-            string.Equals(capability.ProviderCode, provider, StringComparison.OrdinalIgnoreCase) &&
-            string.Equals(capability.CapabilityCode, RegistrationProviderCapabilityCodes.CallbackVerification, StringComparison.OrdinalIgnoreCase));
-        return capability is null
-            ? new RegistrationProviderTuple(string.Empty, string.Empty, string.Empty, string.Empty, string.Empty)
-            : new RegistrationProviderTuple(capability.ProviderCode, capability.DeploymentKind, capability.ApiVersion,
-                capability.AdapterPolicyVersion, capability.ConformanceEvidenceRevision);
+        return binding.Connection is not null && string.Equals(binding.Connection.ProviderCode, provider, StringComparison.OrdinalIgnoreCase) &&
+               binding.Capabilities.Any(capability => !capability.IsDeleted &&
+                   string.Equals(capability.CapabilityCode, RegistrationProviderCapabilityCodes.CallbackVerification, StringComparison.OrdinalIgnoreCase))
+            ? new RegistrationProviderTuple(binding.Connection.ProviderCode, binding.Connection.ProviderDeploymentCode, binding.Connection.ApiVersion,
+                binding.Connection.AdapterPolicyVersion, binding.Connection.ConformanceEvidenceRevision)
+            : RegistrationProviderTuple.Empty;
     }
 
     private static bool BindingCannotAutoFinalize(RegistrationProviderBinding binding) =>
@@ -342,19 +412,27 @@ public sealed class ProcessProviderSubmissionEffectCommandHandler(
             !capability.IsDeleted &&
             string.Equals(capability.CapabilityCode, capabilityCode, StringComparison.OrdinalIgnoreCase));
 
+    private static bool IsGoogleTokenOnlyDelegatedCorrelation(
+        RegistrationProviderTuple tuple,
+        IRegistrationProviderDescriptor? descriptor,
+        ProviderSubmissionEnvelope envelope) =>
+        descriptor is IRegistrationProviderDelegatedAutomation &&
+        string.Equals(tuple.ProviderCode, "GOOGLE_FORMS", StringComparison.OrdinalIgnoreCase) &&
+        !string.IsNullOrWhiteSpace(envelope.AttemptCapabilityToken);
+
     private bool TryValidateReceipt(
         ProcessProviderSubmissionEffectCommand request,
         RegistrationProviderBinding binding,
         RegistrationProviderTuple tuple,
-        string providerSubmissionId)
+        out RegistrationProviderCallbackReceipt? receipt)
     {
+        receipt = null;
         if (!request.Headers.TryGetValue("X-Registration-Verification-Receipt", out string? protectedReceipt) ||
             string.IsNullOrWhiteSpace(protectedReceipt))
         {
             return false;
         }
 
-        RegistrationProviderCallbackReceipt receipt;
         try
         {
             receipt = receiptProtector.Unprotect(protectedReceipt);
@@ -365,16 +443,15 @@ public sealed class ProcessProviderSubmissionEffectCommandHandler(
         }
 
         DateTimeOffset now = timeProvider.GetUtcNow();
-        return receipt.TenantId == request.TenantId &&
+        return receipt is not null &&
+               receipt.TenantId == request.TenantId &&
                receipt.ConnectionId == binding.RegistrationProviderConnectionId &&
                receipt.BindingId == request.BindingId &&
                string.Equals(receipt.Provider, request.Provider, StringComparison.OrdinalIgnoreCase) &&
                string.Equals(receipt.TupleKey, tuple.Key, StringComparison.Ordinal) &&
                string.Equals(receipt.BodySha256, HashSha256Hex(request.PayloadBytes.Span), StringComparison.Ordinal) &&
-               string.Equals(receipt.ProviderSubmissionId, providerSubmissionId, StringComparison.Ordinal) &&
                !string.IsNullOrWhiteSpace(receipt.Nonce) &&
-               receipt.VerifiedAt <= now.AddMinutes(5) &&
-               receipt.VerifiedAt >= now.AddHours(-24);
+               receipt.VerifiedAt <= now.AddMinutes(5);
     }
 
     private static string HashBase64(ReadOnlySpan<byte> bytes) => Convert.ToBase64String(SHA256.HashData(bytes));
@@ -389,6 +466,7 @@ public sealed class ProcessProviderSubmissionEffectCommandHandler(
         DateTime? ReceivedAt,
         string? ProviderSubjectId,
         string? ProviderCorrelationId,
+        string? AttemptCapabilityToken,
         IReadOnlyDictionary<string, JsonElement> Answers)
     {
         public static ProviderSubmissionEnvelope Parse(ReadOnlySpan<byte> payload)
@@ -396,7 +474,10 @@ public sealed class ProcessProviderSubmissionEffectCommandHandler(
             using JsonDocument document = JsonDocument.Parse(payload.ToArray());
             JsonElement root = document.RootElement;
             Dictionary<string, JsonElement> answers = new(StringComparer.OrdinalIgnoreCase);
-            if (root.TryGetProperty("answers", out JsonElement answerObject) && answerObject.ValueKind == JsonValueKind.Object)
+            JsonElement answerObject = root.TryGetProperty("answers", out JsonElement answersProperty)
+                ? answersProperty
+                : root.TryGetProperty("mappedValues", out JsonElement mappedValues) ? mappedValues : default;
+            if (answerObject.ValueKind == JsonValueKind.Object)
             {
                 foreach (JsonProperty property in answerObject.EnumerateObject())
                 {
@@ -404,7 +485,10 @@ public sealed class ProcessProviderSubmissionEffectCommandHandler(
                 }
             }
 
-            if (!root.TryGetProperty("attemptId", out JsonElement attemptIdElement) ||
+            JsonElement attemptIdElement = root.TryGetProperty("attemptId", out JsonElement attemptIdProperty)
+                ? attemptIdProperty
+                : root.TryGetProperty("attemptTokenId", out JsonElement attemptTokenId) ? attemptTokenId : default;
+            if (attemptIdElement.ValueKind != JsonValueKind.String ||
                 !attemptIdElement.TryGetGuid(out Guid attemptId))
             {
                 throw new JsonException("Provider submission envelope is missing a valid attempt id.");
@@ -412,13 +496,14 @@ public sealed class ProcessProviderSubmissionEffectCommandHandler(
 
             return new(
                 attemptId,
-                Required(root, "providerSubmissionId"),
-                Required(root, "providerResponseRevision"),
-                root.TryGetProperty("receivedAt", out JsonElement receivedAt) && receivedAt.ValueKind == JsonValueKind.String
+                Optional(root, "providerSubmissionId") ?? Required(root, "responseId"),
+                Optional(root, "providerResponseRevision") ?? Required(root, "contractVersion"),
+                (root.TryGetProperty("receivedAt", out JsonElement receivedAt) || root.TryGetProperty("timestamp", out receivedAt)) && receivedAt.ValueKind == JsonValueKind.String
                     ? receivedAt.GetDateTime().ToUniversalTime()
                     : null,
                 Optional(root, "providerSubjectId"),
                 Optional(root, "providerCorrelationId"),
+                Optional(root, "attemptToken"),
                 answers);
         }
 

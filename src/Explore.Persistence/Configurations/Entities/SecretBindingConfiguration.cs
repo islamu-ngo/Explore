@@ -99,8 +99,6 @@ public class SecretBindingConfiguration : IEntityTypeConfiguration<SecretBinding
             .HasFilter("scope_id IS NOT NULL")
             .HasDatabaseName("ix_secret_bindings_setting_key_scope_id_tenant_unique");
 
-        builder.HasAlternateKey(e => new { e.ScopeId, e.Id });
-
         // Lookup index by scope for bulk listing
         builder.HasIndex(e => new { e.SettingScopeId, e.ScopeId })
             .HasDatabaseName("ix_secret_bindings_setting_scope_id_scope_id");

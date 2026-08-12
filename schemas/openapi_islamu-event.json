@@ -57993,6 +57993,141 @@
         "x-endpoint-class": "Public"
       }
     },
+    "/api/events/{eventId}/registration-orders/guest/{orderId}/provider-attempts": {
+      "post": {
+        "tags": [
+          "RegistrationOrder"
+        ],
+        "summary": "Launch guest registration provider attempt",
+        "operationId": "LaunchGuestRegistrationProviderAttempt",
+        "parameters": [
+          {
+            "name": "eventId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "orderId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "X-Registration-Order-Capability",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/LaunchRegistrationProviderAttemptRequest"
+              }
+            },
+            "text/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/LaunchRegistrationProviderAttemptRequest"
+              }
+            },
+            "application/*+json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/LaunchRegistrationProviderAttemptRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/HalResourceOfNativeRegistrationProviderLaunchDescriptorDto"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/HalResourceOfNativeRegistrationProviderLaunchDescriptorDto"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/HalResourceOfNativeRegistrationProviderLaunchDescriptorDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "x-endpoint-class": "PublicTransactional",
+        "x-rate-limit-policy": "public_transactional",
+        "x-idempotency-key-required": true
+      }
+    },
     "/api/events/{eventId}/registration-orders/guest/{orderId}/attempts/{attemptId}/skip": {
       "post": {
         "tags": [
@@ -60112,6 +60247,154 @@
           }
         },
         "x-endpoint-class": "Authenticated"
+      }
+    },
+    "/api/events/{eventId}/registration-orders/{orderId}/provider-attempts": {
+      "post": {
+        "tags": [
+          "RegistrationOrder"
+        ],
+        "summary": "Launch authenticated registration provider attempt",
+        "operationId": "LaunchAuthenticatedRegistrationProviderAttempt",
+        "parameters": [
+          {
+            "name": "eventId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "orderId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/LaunchRegistrationProviderAttemptRequest"
+              }
+            },
+            "text/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/LaunchRegistrationProviderAttemptRequest"
+              }
+            },
+            "application/*+json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/LaunchRegistrationProviderAttemptRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/HalResourceOfNativeRegistrationProviderLaunchDescriptorDto"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/HalResourceOfNativeRegistrationProviderLaunchDescriptorDto"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/HalResourceOfNativeRegistrationProviderLaunchDescriptorDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "x-endpoint-class": "Authenticated",
+        "x-rate-limit-policy": "Write",
+        "x-idempotency-key-required": true
       }
     },
     "/api/events/{eventId}/registration-orders/{orderId}/attempts/{attemptId}/skip": {
@@ -62783,6 +63066,149 @@
             "application/*+json; v=0.1": {
               "schema": {
                 "$ref": "#/components/schemas/ReplaceRegistrationProviderApprovedOriginsRequestDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          }
+        },
+        "x-endpoint-class": "Authenticated",
+        "x-rate-limit-policy": "Write"
+      }
+    },
+    "/api/tenants/{tenantId}/events/{eventId}/registration-providers/connections/{connectionId}/external-imports": {
+      "post": {
+        "tags": [
+          "RegistrationProviderManagement"
+        ],
+        "operationId": "ImportExternalRegistrationProviderFormVersion",
+        "parameters": [
+          {
+            "name": "tenantId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "eventId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "connectionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/ImportExternalRegistrationProviderFormVersionRequestDto"
+              }
+            },
+            "text/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/ImportExternalRegistrationProviderFormVersionRequestDto"
+              }
+            },
+            "application/*+json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/ImportExternalRegistrationProviderFormVersionRequestDto"
               }
             }
           },
@@ -95220,7 +95646,10 @@
         "type": "object",
         "properties": {
           "items": {
-            "type": "array"
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/HalResourceOfRegistrationChannelDto"
+            }
           }
         }
       },
@@ -95239,7 +95668,10 @@
         "type": "object",
         "properties": {
           "items": {
-            "type": "array"
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/HalResourceOfRegistrationProviderBindingDto"
+            }
           }
         }
       },
@@ -95247,7 +95679,10 @@
         "type": "object",
         "properties": {
           "items": {
-            "type": "array"
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/HalResourceOfRegistrationProviderBindingHealthDto"
+            }
           }
         }
       },
@@ -95255,7 +95690,10 @@
         "type": "object",
         "properties": {
           "items": {
-            "type": "array"
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/HalResourceOfRegistrationProviderConnectionDto"
+            }
           }
         }
       },
@@ -95263,7 +95701,10 @@
         "type": "object",
         "properties": {
           "items": {
-            "type": "array"
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/HalResourceOfRegistrationProviderParkedQueueItemDto"
+            }
           }
         }
       },
@@ -109523,6 +109964,183 @@
           }
         }
       },
+      "HalResourceOfNativeRegistrationProviderLaunchDescriptorDto": {
+        "required": [
+          "attemptId",
+          "requirementId",
+          "channelId",
+          "bindingId",
+          "formId",
+          "formVersionId",
+          "mode",
+          "available",
+          "url",
+          "title",
+          "openInNewTab",
+          "fallbackMode",
+          "reason",
+          "subjects",
+          "progress"
+        ],
+        "type": "object",
+        "properties": {
+          "attemptId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "requirementId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "channelId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "bindingId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "formId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "formVersionId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "mode": {
+            "type": "string"
+          },
+          "available": {
+            "type": "boolean"
+          },
+          "url": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "title": {
+            "type": "string"
+          },
+          "openInNewTab": {
+            "type": "boolean"
+          },
+          "fallbackMode": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "subjects": {
+            "type": "array",
+            "items": {
+              "required": [
+                "subjectType",
+                "subjectTypeCode",
+                "subjectId",
+                "subjectKey",
+                "ticketAssignmentOrderLineId",
+                "isCompleted",
+                "isSkipped"
+              ],
+              "type": "object",
+              "properties": {
+                "subjectType": {
+                  "type": "integer"
+                },
+                "subjectTypeCode": {
+                  "type": "string"
+                },
+                "subjectId": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "subjectKey": {
+                  "type": "string"
+                },
+                "ticketAssignmentOrderLineId": {
+                  "type": [
+                    "null",
+                    "string"
+                  ],
+                  "format": "uuid"
+                },
+                "isCompleted": {
+                  "type": "boolean"
+                },
+                "isSkipped": {
+                  "type": "boolean"
+                }
+              }
+            }
+          },
+          "progress": {
+            "required": [
+              "subjectCount",
+              "completedSubjectCount",
+              "skippedSubjectCount",
+              "pendingSubjectCount",
+              "isComplete"
+            ],
+            "type": "object",
+            "properties": {
+              "subjectCount": {
+                "pattern": "^-?(?:0|[1-9]\\d*)$",
+                "type": [
+                  "integer",
+                  "string"
+                ],
+                "format": "int32"
+              },
+              "completedSubjectCount": {
+                "pattern": "^-?(?:0|[1-9]\\d*)$",
+                "type": [
+                  "integer",
+                  "string"
+                ],
+                "format": "int32"
+              },
+              "skippedSubjectCount": {
+                "pattern": "^-?(?:0|[1-9]\\d*)$",
+                "type": [
+                  "integer",
+                  "string"
+                ],
+                "format": "int32"
+              },
+              "pendingSubjectCount": {
+                "pattern": "^-?(?:0|[1-9]\\d*)$",
+                "type": [
+                  "integer",
+                  "string"
+                ],
+                "format": "int32"
+              },
+              "isComplete": {
+                "type": "boolean"
+              }
+            }
+          },
+          "_links": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/HalLink"
+            },
+            "description": "HAL hypermedia links"
+          },
+          "_embedded": {
+            "type": [
+              "null",
+              "object"
+            ],
+            "description": "Embedded related resources"
+          }
+        }
+      },
       "HalResourceOfNativeRegistrationRequirementProgressCollectionDto": {
         "required": [
           "registrationOrderId",
@@ -109656,8 +110274,24 @@
                       "type": "boolean"
                     }
                   }
+                },
+                "bindingId": {
+                  "type": [
+                    "null",
+                    "string"
+                  ],
+                  "format": "uuid"
                 }
               }
+            }
+          },
+          "providerRequirements": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/NativeRegistrationProviderLaunchDescriptorDto"
             }
           },
           "_links": {
@@ -110853,6 +111487,63 @@
           }
         }
       },
+      "HalResourceOfRegistrationChannelDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "tenantId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "eventId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "registrationWorkflowId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "registrationRequirementId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "ordinal": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "isNative": {
+            "type": "boolean"
+          },
+          "registrationProviderBindingId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "_links": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/HalLink"
+            },
+            "description": "HAL hypermedia links"
+          },
+          "_embedded": {
+            "type": [
+              "null",
+              "object"
+            ],
+            "description": "Embedded related resources"
+          }
+        }
+      },
       "HalResourceOfRegistrationFormDto": {
         "required": [
           "id",
@@ -111482,9 +112173,520 @@
           }
         }
       },
-      "HalResourceOfRegistrationProviderBindingDto": { },
-      "HalResourceOfRegistrationProviderConnectionDto": { },
-      "HalResourceOfRegistrationProviderLaunchDescriptorDto": { },
+      "HalResourceOfRegistrationProviderBindingDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "tenantId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "eventId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "connectionId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "formId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "formVersionId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "providerSurveyId": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "providerSurveyRevisionId": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "providerWebhookId": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "webhookSecretBindingId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "presentationModeId": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "collectionModeId": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "completionModeId": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "trustLevelId": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "driftClassId": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "stateId": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "publishedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "capabilityCodes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "fieldMappings": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "platformFieldKey": {
+                  "type": "string"
+                },
+                "providerFieldKey": {
+                  "type": "string"
+                },
+                "isRequired": {
+                  "type": "boolean"
+                }
+              }
+            }
+          },
+          "optionMappings": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "platformFieldKey": {
+                  "type": "string"
+                },
+                "platformOptionKey": {
+                  "type": "string"
+                },
+                "providerOptionKey": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "_links": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/HalLink"
+            },
+            "description": "HAL hypermedia links"
+          },
+          "_embedded": {
+            "type": [
+              "null",
+              "object"
+            ],
+            "description": "Embedded related resources"
+          }
+        }
+      },
+      "HalResourceOfRegistrationProviderBindingHealthDto": {
+        "type": "object",
+        "properties": {
+          "tenantId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "eventId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "bindingId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "connectionId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "providerKind": {
+            "type": "string"
+          },
+          "bindingStatus": {
+            "type": "string"
+          },
+          "connectionValidity": {
+            "type": "string"
+          },
+          "lastCallbackAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "lastCallbackAgeSeconds": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "callbackAgeClass": {
+            "type": "string"
+          },
+          "driftClass": {
+            "type": "string"
+          },
+          "reconciliationLagSeconds": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "reconciliationLagClass": {
+            "type": "string"
+          },
+          "parkedQueueDepth": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "capabilityCodes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "_links": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/HalLink"
+            },
+            "description": "HAL hypermedia links"
+          },
+          "_embedded": {
+            "type": [
+              "null",
+              "object"
+            ],
+            "description": "Embedded related resources"
+          }
+        }
+      },
+      "HalResourceOfRegistrationProviderConnectionDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "tenantId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "eventId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "providerKindId": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "deploymentKindId": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "providerCode": {
+            "type": "string"
+          },
+          "providerDeploymentCode": {
+            "type": "string"
+          },
+          "apiVersion": {
+            "type": "string"
+          },
+          "adapterPolicyVersion": {
+            "type": "string"
+          },
+          "conformanceEvidenceRevision": {
+            "type": "string"
+          },
+          "managementApiBaseUrl": {
+            "type": "string"
+          },
+          "publicBaseUrl": {
+            "type": "string"
+          },
+          "providerWorkspaceId": {
+            "type": "string"
+          },
+          "grantedOAuthScopes": {
+            "type": "string"
+          },
+          "providerIdentity": {
+            "type": "string"
+          },
+          "pubSubConfigurationReference": {
+            "type": "string"
+          },
+          "lastCredentialRefreshAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "lastAccessValidatedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "apiTokenSecretBindingId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "webhookSecretBindingId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "approvedOrigins": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "_links": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/HalLink"
+            },
+            "description": "HAL hypermedia links"
+          },
+          "_embedded": {
+            "type": [
+              "null",
+              "object"
+            ],
+            "description": "Embedded related resources"
+          }
+        }
+      },
+      "HalResourceOfRegistrationProviderLaunchDescriptorDto": {
+        "type": "object",
+        "properties": {
+          "bindingId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "channelId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "tenantId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "eventId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "workflowId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "requirementId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "mode": {
+            "type": "string"
+          },
+          "available": {
+            "type": "boolean"
+          },
+          "url": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "title": {
+            "type": "string"
+          },
+          "openInNewTab": {
+            "type": "boolean"
+          },
+          "fallbackMode": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "_links": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/HalLink"
+            },
+            "description": "HAL hypermedia links"
+          },
+          "_embedded": {
+            "type": [
+              "null",
+              "object"
+            ],
+            "description": "Embedded related resources"
+          }
+        }
+      },
+      "HalResourceOfRegistrationProviderParkedQueueItemDto": {
+        "type": "object",
+        "properties": {
+          "tenantId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "eventId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "bindingId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "submissionId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "effectOutboxId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "status": {
+            "type": "string"
+          },
+          "failureCategory": {
+            "type": "string"
+          },
+          "issueCodes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nextAttemptAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "processingGeneration": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "_links": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/HalLink"
+            },
+            "description": "HAL hypermedia links"
+          },
+          "_embedded": {
+            "type": [
+              "null",
+              "object"
+            ],
+            "description": "Embedded related resources"
+          }
+        }
+      },
       "HalResourceOfRegistrationWorkflowDto": {
         "required": [
           "id",
@@ -114520,6 +115722,39 @@
           }
         }
       },
+      "ImportExternalRegistrationProviderFormVersionRequestDto": {
+        "type": "object",
+        "properties": {
+          "formId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "namespace": {
+            "type": "string"
+          },
+          "key": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "languageTag": {
+            "type": "string"
+          },
+          "providerSurveyId": {
+            "type": "string"
+          },
+          "providerSurveyRevisionId": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
       "ImportLocalizationBundleDto": {
         "type": "object",
         "properties": {
@@ -115916,6 +117151,45 @@
             "format": "uuid"
           },
           "channelId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "formId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "formVersionId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "bindingId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          }
+        }
+      },
+      "LaunchRegistrationProviderAttemptRequest": {
+        "required": [
+          "requirementId",
+          "channelId",
+          "bindingId",
+          "formId",
+          "formVersionId"
+        ],
+        "type": "object",
+        "properties": {
+          "requirementId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "channelId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "bindingId": {
             "type": "string",
             "format": "uuid"
           },
@@ -120039,6 +121313,169 @@
           }
         }
       },
+      "NativeRegistrationProviderLaunchDescriptorDto": {
+        "required": [
+          "attemptId",
+          "requirementId",
+          "channelId",
+          "bindingId",
+          "formId",
+          "formVersionId",
+          "mode",
+          "available",
+          "url",
+          "title",
+          "openInNewTab",
+          "fallbackMode",
+          "reason",
+          "subjects",
+          "progress"
+        ],
+        "type": "object",
+        "properties": {
+          "attemptId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "requirementId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "channelId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "bindingId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "formId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "formVersionId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "mode": {
+            "type": "string"
+          },
+          "available": {
+            "type": "boolean"
+          },
+          "url": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "title": {
+            "type": "string"
+          },
+          "openInNewTab": {
+            "type": "boolean"
+          },
+          "fallbackMode": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "subjects": {
+            "type": "array",
+            "items": {
+              "required": [
+                "subjectType",
+                "subjectTypeCode",
+                "subjectId",
+                "subjectKey",
+                "ticketAssignmentOrderLineId",
+                "isCompleted",
+                "isSkipped"
+              ],
+              "type": "object",
+              "properties": {
+                "subjectType": {
+                  "type": "integer"
+                },
+                "subjectTypeCode": {
+                  "type": "string"
+                },
+                "subjectId": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "subjectKey": {
+                  "type": "string"
+                },
+                "ticketAssignmentOrderLineId": {
+                  "type": [
+                    "null",
+                    "string"
+                  ],
+                  "format": "uuid"
+                },
+                "isCompleted": {
+                  "type": "boolean"
+                },
+                "isSkipped": {
+                  "type": "boolean"
+                }
+              }
+            }
+          },
+          "progress": {
+            "required": [
+              "subjectCount",
+              "completedSubjectCount",
+              "skippedSubjectCount",
+              "pendingSubjectCount",
+              "isComplete"
+            ],
+            "type": "object",
+            "properties": {
+              "subjectCount": {
+                "pattern": "^-?(?:0|[1-9]\\d*)$",
+                "type": [
+                  "integer",
+                  "string"
+                ],
+                "format": "int32"
+              },
+              "completedSubjectCount": {
+                "pattern": "^-?(?:0|[1-9]\\d*)$",
+                "type": [
+                  "integer",
+                  "string"
+                ],
+                "format": "int32"
+              },
+              "skippedSubjectCount": {
+                "pattern": "^-?(?:0|[1-9]\\d*)$",
+                "type": [
+                  "integer",
+                  "string"
+                ],
+                "format": "int32"
+              },
+              "pendingSubjectCount": {
+                "pattern": "^-?(?:0|[1-9]\\d*)$",
+                "type": [
+                  "integer",
+                  "string"
+                ],
+                "format": "int32"
+              },
+              "isComplete": {
+                "type": "boolean"
+              }
+            }
+          }
+        }
+      },
       "NativeRegistrationRequirementProgressCollectionDto": {
         "required": [
           "registrationOrderId",
@@ -120172,8 +121609,24 @@
                       "type": "boolean"
                     }
                   }
+                },
+                "bindingId": {
+                  "type": [
+                    "null",
+                    "string"
+                  ],
+                  "format": "uuid"
                 }
               }
+            }
+          },
+          "providerRequirements": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/NativeRegistrationProviderLaunchDescriptorDto"
             }
           }
         }
@@ -126861,6 +128314,232 @@
           }
         }
       },
+      "RegistrationProviderBindingDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "tenantId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "eventId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "connectionId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "formId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "formVersionId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "providerSurveyId": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "providerSurveyRevisionId": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "providerWebhookId": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "webhookSecretBindingId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "presentationModeId": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "collectionModeId": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "completionModeId": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "trustLevelId": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "driftClassId": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "stateId": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "publishedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "capabilityCodes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "fieldMappings": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "platformFieldKey": {
+                  "type": "string"
+                },
+                "providerFieldKey": {
+                  "type": "string"
+                },
+                "isRequired": {
+                  "type": "boolean"
+                }
+              }
+            }
+          },
+          "optionMappings": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "platformFieldKey": {
+                  "type": "string"
+                },
+                "platformOptionKey": {
+                  "type": "string"
+                },
+                "providerOptionKey": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      },
+      "RegistrationProviderBindingHealthDto": {
+        "type": "object",
+        "properties": {
+          "tenantId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "eventId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "bindingId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "connectionId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "providerKind": {
+            "type": "string"
+          },
+          "bindingStatus": {
+            "type": "string"
+          },
+          "connectionValidity": {
+            "type": "string"
+          },
+          "lastCallbackAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "lastCallbackAgeSeconds": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "callbackAgeClass": {
+            "type": "string"
+          },
+          "driftClass": {
+            "type": "string"
+          },
+          "reconciliationLagSeconds": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "reconciliationLagClass": {
+            "type": "string"
+          },
+          "parkedQueueDepth": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "capabilityCodes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
       "RegistrationProviderBindingRequestDto": {
         "type": "object",
         "properties": {
@@ -126874,6 +128553,31 @@
           },
           "formVersionId": {
             "type": "string",
+            "format": "uuid"
+          },
+          "providerSurveyId": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "providerSurveyRevisionId": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "providerWebhookId": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "webhookSecretBindingId": {
+            "type": [
+              "null",
+              "string"
+            ],
             "format": "uuid"
           },
           "presentationModeId": {
@@ -126910,6 +128614,109 @@
           }
         }
       },
+      "RegistrationProviderConnectionDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "tenantId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "eventId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "providerKindId": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "deploymentKindId": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "providerCode": {
+            "type": "string"
+          },
+          "providerDeploymentCode": {
+            "type": "string"
+          },
+          "apiVersion": {
+            "type": "string"
+          },
+          "adapterPolicyVersion": {
+            "type": "string"
+          },
+          "conformanceEvidenceRevision": {
+            "type": "string"
+          },
+          "managementApiBaseUrl": {
+            "type": "string"
+          },
+          "publicBaseUrl": {
+            "type": "string"
+          },
+          "providerWorkspaceId": {
+            "type": "string"
+          },
+          "grantedOAuthScopes": {
+            "type": "string"
+          },
+          "providerIdentity": {
+            "type": "string"
+          },
+          "pubSubConfigurationReference": {
+            "type": "string"
+          },
+          "lastCredentialRefreshAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "lastAccessValidatedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "apiTokenSecretBindingId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "webhookSecretBindingId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "approvedOrigins": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
       "RegistrationProviderConnectionRequestDto": {
         "type": "object",
         "properties": {
@@ -126931,6 +128738,39 @@
               "string"
             ],
             "format": "int32"
+          },
+          "providerCode": {
+            "type": "string"
+          },
+          "providerDeploymentCode": {
+            "type": "string"
+          },
+          "apiVersion": {
+            "type": "string"
+          },
+          "adapterPolicyVersion": {
+            "type": "string"
+          },
+          "conformanceEvidenceRevision": {
+            "type": "string"
+          },
+          "managementApiBaseUrl": {
+            "type": "string"
+          },
+          "publicBaseUrl": {
+            "type": "string"
+          },
+          "providerWorkspaceId": {
+            "type": "string"
+          },
+          "grantedOAuthScopes": {
+            "type": "string"
+          },
+          "providerIdentity": {
+            "type": "string"
+          },
+          "pubSubConfigurationReference": {
+            "type": "string"
           },
           "apiTokenSecretBindingId": {
             "type": "string",
@@ -126956,6 +128796,59 @@
           }
         }
       },
+      "RegistrationProviderLaunchDescriptorDto": {
+        "type": "object",
+        "properties": {
+          "bindingId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "channelId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "tenantId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "eventId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "workflowId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "requirementId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "mode": {
+            "type": "string"
+          },
+          "available": {
+            "type": "boolean"
+          },
+          "url": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "title": {
+            "type": "string"
+          },
+          "openInNewTab": {
+            "type": "boolean"
+          },
+          "fallbackMode": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          }
+        }
+      },
       "RegistrationProviderOptionMappingDto": {
         "type": "object",
         "properties": {
@@ -126967,6 +128860,68 @@
           },
           "providerOptionKey": {
             "type": "string"
+          }
+        }
+      },
+      "RegistrationProviderParkedQueueItemDto": {
+        "type": "object",
+        "properties": {
+          "tenantId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "eventId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "bindingId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "submissionId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "effectOutboxId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "status": {
+            "type": "string"
+          },
+          "failureCategory": {
+            "type": "string"
+          },
+          "issueCodes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nextAttemptAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "processingGeneration": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
           }
         }
       },

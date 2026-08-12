@@ -29,6 +29,8 @@ public sealed class BusinessMetrics : IDisposable
     private readonly Counter<long> _eventPublicActionEngagements;
     private readonly Counter<long> _registrationsCreated;
     private readonly Counter<long> _registrationProviderManagementActions;
+    private readonly Counter<long> _registrationProviderSubscriptionOperations;
+    private readonly Histogram<long> _registrationProviderSubscriptionWatches;
     private readonly Counter<long> _organizationsCreated;
     private readonly Counter<long> _authorizationDecisions;
     private readonly Counter<long> _supportAccessLifecycleEvents;
@@ -155,6 +157,16 @@ public sealed class BusinessMetrics : IDisposable
             "explore.registration_providers.management_actions",
             unit: "{action}",
             description: "Total registration-provider management actions by bounded action and outcome");
+
+        _registrationProviderSubscriptionOperations = meter.CreateCounter<long>(
+            "explore.registration_providers.subscription_operations",
+            unit: "{operation}",
+            description: "Total registration-provider subscription renewal and sweep outcomes by bounded operation/outcome");
+
+        _registrationProviderSubscriptionWatches = meter.CreateHistogram<long>(
+            "explore.registration_providers.subscription_watches",
+            unit: "{watch}",
+            description: "Registration-provider subscription watch counts by bounded watch status");
 
         _organizationsCreated = meter.CreateCounter<long>(
             "explore.organizations.created",
@@ -614,6 +626,19 @@ public sealed class BusinessMetrics : IDisposable
         _registrationProviderManagementActions.Add(1,
             new KeyValuePair<string, object?>("action", NormalizeTag(action)),
             new KeyValuePair<string, object?>("outcome", NormalizeTag(outcome)));
+    }
+
+    public void RecordRegistrationProviderSubscriptionOperation(string? operation, string? outcome)
+    {
+        _registrationProviderSubscriptionOperations.Add(1,
+            new KeyValuePair<string, object?>("operation", NormalizeRegistrationProviderSubscriptionOperation(operation)),
+            new KeyValuePair<string, object?>("outcome", NormalizeRegistrationProviderSubscriptionOutcome(outcome)));
+    }
+
+    public void RecordRegistrationProviderSubscriptionWatchCount(string? status, long count)
+    {
+        _registrationProviderSubscriptionWatches.Record(Math.Max(0, count),
+            new KeyValuePair<string, object?>("status", NormalizeRegistrationProviderWatchStatus(status)));
     }
 
     public void RecordOrganizationCreated(string? tenantId = null)
@@ -1251,6 +1276,29 @@ public sealed class BusinessMetrics : IDisposable
             ? "unknown"
             : value.Trim().ToLowerInvariant();
     }
+
+    private static string NormalizeRegistrationProviderSubscriptionOperation(string? operation) => NormalizeTag(operation) switch
+    {
+        "renewal" => "renewal",
+        "sweep" => "sweep",
+        _ => "unknown"
+    };
+
+    private static string NormalizeRegistrationProviderSubscriptionOutcome(string? outcome) => NormalizeTag(outcome) switch
+    {
+        "success" => "success",
+        "failure" => "failure",
+        "unsupported" => "unsupported",
+        "missing_binding" => "missing_binding",
+        _ => "unknown"
+    };
+
+    private static string NormalizeRegistrationProviderWatchStatus(string? status) => NormalizeTag(status) switch
+    {
+        "expiring" => "expiring",
+        "expired" => "expired",
+        _ => "unknown"
+    };
 
     private static string NormalizeEventPublicActionKind(EventPublicActionKindEnum actionKind)
     {

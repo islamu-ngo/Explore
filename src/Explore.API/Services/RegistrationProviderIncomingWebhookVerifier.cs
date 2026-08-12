@@ -13,7 +13,7 @@ namespace Explore.API.Services;
 
 public sealed class RegistrationProviderIncomingWebhookVerifier(
     IRegistrationProviderCallbackBindingResolver bindingResolver,
-    IRegistrationProviderCallbackVerifier callbackVerifier,
+    IRegistrationProviderRegistry providerRegistry,
     IRegistrationProviderCallbackReceiptProtector receiptProtector) : IIncomingWebhookVerifier
 {
     public const string IntakeProvider = "registration-provider";
@@ -38,22 +38,32 @@ public sealed class RegistrationProviderIncomingWebhookVerifier(
         }
 
         RegistrationProviderCallbackVerificationResult verified;
-        string providerSubmissionId;
         RegistrationProviderTuple tuple;
         try
         {
-            verified = await callbackVerifier.VerifyCallbackAsync(
-                new RegistrationProviderCallbackVerificationRequest(binding.TenantId, binding.RegistrationProviderConnectionId,
-                    context.RawPayloadBytes, context.Headers), cancellationToken);
-            providerSubmissionId = ReadProviderSubmissionId(context.RawPayloadBytes.Span);
             tuple = ResolveTuple(binding, provider);
+            if (binding.Connection is null || tuple.ProviderCode.Length == 0)
+            {
+                return IncomingWebhookVerificationResult.Rejected("registration_callback_binding_unknown", "The registration callback could not be verified.");
+            }
+
+            if (providerRegistry.TryResolve(tuple) is not IRegistrationProviderCallbackVerifier callbackVerifier)
+            {
+                return IncomingWebhookVerificationResult.Rejected("registration_callback_provider_unsupported", "The registration callback could not be verified.");
+            }
+
+            verified = await callbackVerifier.VerifyCallbackAsync(
+                new RegistrationProviderCallbackVerificationRequest(binding.TenantId, binding, binding.Connection, tuple,
+                    context.RawPayloadBytes, context.Headers), cancellationToken);
         }
         catch (Exception exception) when (exception is JsonException or FormatException or InvalidOperationException or ArgumentException or CryptographicException)
         {
             return IncomingWebhookVerificationResult.Rejected("registration_callback_format_invalid", "The registration callback could not be verified.");
         }
 
-        if (!verified.IsVerified || string.IsNullOrWhiteSpace(verified.Receipt) || tuple.ProviderCode.Length == 0)
+        string providerSubmissionId = verified.ProviderSubmissionId?.Trim() ?? string.Empty;
+        if (!verified.IsVerified || string.IsNullOrWhiteSpace(verified.Receipt) ||
+            providerSubmissionId.Length is 0 or > 200 || tuple.ProviderCode.Length == 0)
         {
             return IncomingWebhookVerificationResult.Rejected("registration_callback_unverified", "The registration callback could not be verified.");
         }
@@ -69,36 +79,25 @@ public sealed class RegistrationProviderIncomingWebhookVerifier(
             context.ReceivedAt,
             Guid.CreateVersion7().ToString("N")));
 
+        string effectKind = string.IsNullOrWhiteSpace(verified.EffectKind)
+            ? ProcessProviderSubmissionEffectCommandHandler.StableEffectKind
+            : verified.EffectKind.Trim();
         IncomingWebhookVerificationResult result = IncomingWebhookVerificationResult.VerifiedTenantCredential(
             binding.TenantId,
             $"{binding.Id:N}:{providerSubmissionId}",
-            ProcessProviderSubmissionEffectCommandHandler.StableEffectKind,
+            effectKind,
             $"{binding.Id:N}:{providerSubmissionId}");
         return result with { Receipt = protectedReceipt };
     }
 
-    private static string ReadProviderSubmissionId(ReadOnlySpan<byte> payload)
-    {
-        using JsonDocument document = JsonDocument.Parse(payload.ToArray());
-        string? value = document.RootElement.TryGetProperty("providerSubmissionId", out JsonElement property) &&
-            property.ValueKind == JsonValueKind.String
-            ? property.GetString()?.Trim()
-            : null;
-        return !string.IsNullOrWhiteSpace(value) && value.Length <= 200
-            ? value
-            : throw new JsonException("Provider submission identity is missing or too large.");
-    }
-
     private static RegistrationProviderTuple ResolveTuple(RegistrationProviderBinding binding, string provider)
     {
-        RegistrationProviderCapability? capability = binding.Capabilities.FirstOrDefault(capability =>
-            !capability.IsDeleted &&
-            string.Equals(capability.ProviderCode, provider, StringComparison.OrdinalIgnoreCase) &&
-            string.Equals(capability.CapabilityCode, RegistrationProviderCapabilityCodes.CallbackVerification, StringComparison.OrdinalIgnoreCase));
-        return capability is null
-            ? new RegistrationProviderTuple(string.Empty, string.Empty, string.Empty, string.Empty, string.Empty)
-            : new RegistrationProviderTuple(capability.ProviderCode, capability.DeploymentKind, capability.ApiVersion,
-                capability.AdapterPolicyVersion, capability.ConformanceEvidenceRevision);
+        return binding.Connection is not null && string.Equals(binding.Connection.ProviderCode, provider, StringComparison.OrdinalIgnoreCase) &&
+               binding.Capabilities.Any(capability => !capability.IsDeleted &&
+                   string.Equals(capability.CapabilityCode, RegistrationProviderCapabilityCodes.CallbackVerification, StringComparison.OrdinalIgnoreCase))
+            ? new RegistrationProviderTuple(binding.Connection.ProviderCode, binding.Connection.ProviderDeploymentCode, binding.Connection.ApiVersion,
+                binding.Connection.AdapterPolicyVersion, binding.Connection.ConformanceEvidenceRevision)
+            : RegistrationProviderTuple.Empty;
     }
 
     private static string ComputePayloadHash(ReadOnlySpan<byte> bodyBytes) =>

@@ -113,7 +113,7 @@ public sealed class LaunchAuthenticatedNativeRegistrationAttemptCommandHandler(
 
         return await sender.Send(new LaunchNativeRegistrationAttemptCommand(
             tenant.TenantId, request.EventId, request.OrderId, request.RequirementId,
-            request.ChannelId, request.FormId, request.FormVersionId), cancellationToken);
+            request.ChannelId, request.FormId, request.FormVersionId, request.BindingId), cancellationToken);
     }
 
     private static NativeRegistrationAttemptResult Missing(
@@ -142,6 +142,29 @@ public sealed class SubmitAuthenticatedNativeRegistrationAttemptCommandHandler(
         return await sender.Send(new SubmitNativeRegistrationAttemptCommand(
             tenant.TenantId, request.EventId, request.OrderId, request.RequirementId, request.AttemptId,
             request.AttemptCapabilityToken, request.IdempotencyKey, request.Answers), cancellationToken);
+    }
+}
+
+public sealed class LaunchAuthenticatedRegistrationProviderAttemptCommandHandler(
+    IRegistrationInventoryRepository inventory,
+    ITenantContext tenant,
+    ICurrentUserService currentUser,
+    ISender sender)
+    : IRequestHandler<LaunchAuthenticatedRegistrationProviderAttemptCommand, RegistrationProviderAttemptResult>
+{
+    public async Task<RegistrationProviderAttemptResult> Handle(
+        LaunchAuthenticatedRegistrationProviderAttemptCommand request,
+        CancellationToken cancellationToken)
+    {
+        if (await RegistrationOrderAccessGuard.GetCurrentAccountOrderAsync(
+                inventory, currentUser, tenant.TenantId, request.EventId, request.OrderId, cancellationToken) is null)
+        {
+            return new(false, Guid.Empty, null, "registration_order_not_found");
+        }
+
+        return await sender.Send(new LaunchRegistrationProviderAttemptCommand(
+            tenant.TenantId, request.EventId, request.OrderId, request.RequirementId,
+            request.ChannelId, request.BindingId, request.FormId, request.FormVersionId), cancellationToken);
     }
 }
 

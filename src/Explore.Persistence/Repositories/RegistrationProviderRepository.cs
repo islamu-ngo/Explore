@@ -86,6 +86,7 @@ public sealed class RegistrationProviderRepository(ExploreDbContext dbContext) :
     public Task<RegistrationProviderBinding?> GetBindingForCallbackAsync(Guid bindingId, CancellationToken cancellationToken) =>
         dbContext.RegistrationProviderBindings
             .IgnoreTenantFilter(TenantFilterBypassReasons.WebhookTenantOperation)
+            .Include(binding => binding.Connection)
             .Include(binding => binding.FieldMappings)
             .Include(binding => binding.OptionMappings)
             .Include(binding => binding.Capabilities)
@@ -114,6 +115,11 @@ public sealed class RegistrationProviderRepository(ExploreDbContext dbContext) :
             .AsNoTracking()
             .Where(effect => effect.TenantId == tenantId &&
                 effect.EffectKind == ProviderSubmissionEffectKind &&
+                effect.Status == OutboxMessageStatus.Completed &&
+                dbContext.IncomingWebhookMessages
+                    .IgnoreTenantFilter(TenantFilterBypassReasons.WebhookTenantOperation)
+                    .Any(message => message.Id == effect.IncomingWebhookMessageId &&
+                        message.EventType == ProviderSubmissionEffectKind) &&
                 EF.Functions.Like(effect.ProviderDecisionId, bindingId.ToString("N") + ":%"))
             .MaxAsync(effect => (DateTime?)effect.CreatedAt, cancellationToken);
 
@@ -146,6 +152,69 @@ public sealed class RegistrationProviderRepository(ExploreDbContext dbContext) :
             .MinAsync(row => (DateTime?)(row.NextAttemptAt ?? row.CreatedAt), cancellationToken);
         return submission is null ? effect : effect is null ? submission : submission < effect ? submission : effect;
     }
+
+    public Task<RegistrationForm?> GetFormForExternalImportAsync(Guid tenantId, Guid eventId, Guid formId, CancellationToken cancellationToken) =>
+        dbContext.RegistrationForms
+            .Include(form => form.Versions)
+            .ThenInclude(version => version.Sections)
+            .ThenInclude(section => section.Fields)
+            .ThenInclude(field => field.Options)
+            .Include(form => form.Versions)
+            .ThenInclude(version => version.Rules)
+            .FirstOrDefaultAsync(form => form.TenantId == tenantId && form.EventId == eventId && form.Id == formId, cancellationToken);
+
+    public Task<RegistrationForm?> GetExternalImportFormAsync(
+        Guid tenantId,
+        Guid eventId,
+        Guid connectionId,
+        string providerSurveyId,
+        CancellationToken cancellationToken) =>
+        dbContext.RegistrationForms
+            .Include(form => form.Versions)
+            .ThenInclude(version => version.Sections)
+            .ThenInclude(section => section.Fields)
+            .ThenInclude(field => field.Options)
+            .Include(form => form.Versions)
+            .ThenInclude(version => version.Rules)
+            .FirstOrDefaultAsync(form => form.TenantId == tenantId && form.EventId == eventId &&
+                form.Versions.Any(version => version.SourceKindId == (int)Explore.Domain.Enums.RegistrationFormVersionSourceKindEnum.ExternalImported &&
+                    version.ExternalRegistrationProviderConnectionId == connectionId &&
+                    version.ExternalProviderSurveyId == providerSurveyId), cancellationToken);
+
+    public Task<RegistrationProviderSchemaRevision?> GetLatestExternalImportSchemaRevisionAsync(
+        Guid tenantId,
+        Guid eventId,
+        Guid formId,
+        Guid connectionId,
+        string providerSurveyId,
+        CancellationToken cancellationToken) =>
+        dbContext.RegistrationFormVersions
+            .AsNoTracking()
+            .Where(version => version.TenantId == tenantId && version.EventId == eventId &&
+                version.RegistrationFormId == formId &&
+                version.SourceKindId == (int)Explore.Domain.Enums.RegistrationFormVersionSourceKindEnum.ExternalImported &&
+                version.ExternalRegistrationProviderConnectionId == connectionId &&
+                version.ExternalProviderSurveyId == providerSurveyId &&
+                version.ExternalRegistrationProviderSchemaRevisionId != null)
+            .OrderByDescending(version => version.Version)
+            .Join(dbContext.RegistrationProviderSchemaRevisions.AsNoTracking(),
+                version => new { version.TenantId, RevisionId = version.ExternalRegistrationProviderSchemaRevisionId!.Value },
+                revision => new { revision.TenantId, RevisionId = revision.Id },
+                (_, revision) => revision)
+            .FirstOrDefaultAsync(cancellationToken);
+
+    public Task<RegistrationProviderSchemaRevision?> GetSchemaRevisionByHashAsync(
+        Guid tenantId,
+        Guid connectionId,
+        string providerSurveyId,
+        RegistrationEvidenceHash revisionHash,
+        CancellationToken cancellationToken) =>
+        dbContext.RegistrationProviderSchemaRevisions
+            .AsNoTracking()
+            .FirstOrDefaultAsync(revision => revision.TenantId == tenantId &&
+                revision.RegistrationProviderConnectionId == connectionId &&
+                revision.ProviderSurveyId == providerSurveyId &&
+                revision.RevisionHash == revisionHash, cancellationToken);
 
     public async Task<IReadOnlyList<RegistrationProviderParkedItem>> GetParkedItemsForEventAsync(
         Guid tenantId,
@@ -232,6 +301,9 @@ public sealed class RegistrationProviderRepository(ExploreDbContext dbContext) :
 
     public async Task AddBindingAsync(RegistrationProviderBinding binding, CancellationToken cancellationToken) =>
         await dbContext.RegistrationProviderBindings.AddAsync(binding, cancellationToken);
+
+    public async Task AddFormAsync(RegistrationForm form, CancellationToken cancellationToken) =>
+        await dbContext.RegistrationForms.AddAsync(form, cancellationToken);
 
     public async Task AddChannelAsync(RegistrationChannel channel, CancellationToken cancellationToken) =>
         await dbContext.RegistrationChannels.AddAsync(channel, cancellationToken);

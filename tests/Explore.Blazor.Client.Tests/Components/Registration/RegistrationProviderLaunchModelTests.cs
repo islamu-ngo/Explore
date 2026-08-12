@@ -3,12 +3,13 @@
 
 using Explore.Blazor.Client.Components.Registration.FormRenderer;
 using Explore.Blazor.Client.Components.Registration.ProviderLaunch;
+using Explore.Blazor.Client.Services.Http;
 
 namespace Explore.Blazor.Client.Tests.Components.Registration;
 
 public sealed class RegistrationProviderLaunchModelTests
 {
-    private readonly IRegistrationProviderIntegrationService _integrationService = Substitute.For<IRegistrationProviderIntegrationService>();
+    private readonly IBffClient _bffClient = Substitute.For<IBffClient>();
     private readonly INativeRegistrationFormService _nativeRegistrationFormService = Substitute.For<INativeRegistrationFormService>();
     private readonly IRegistrationOrderService _registrationOrderService = Substitute.For<IRegistrationOrderService>();
     private readonly IBrowserActionInterop _browserActions = Substitute.For<IBrowserActionInterop>();
@@ -16,15 +17,14 @@ public sealed class RegistrationProviderLaunchModelTests
 
     public RegistrationProviderLaunchModelTests()
     {
-        _model = new RegistrationProviderLaunchState(_integrationService, _nativeRegistrationFormService, _registrationOrderService, _browserActions);
+        _model = new RegistrationProviderLaunchState(_bffClient, _nativeRegistrationFormService, _registrationOrderService, _browserActions);
     }
 
     [Test]
-    public async Task InitializeAsync_BuildsOnlySameOriginSixIdEmbedUrl()
+    public async Task InitializeAsync_UsesOpaqueSameOriginEmbedUrlReturnedByBff()
     {
         var context = CreateContext();
-        _integrationService.GetLaunchDescriptorAsync(context.Lineage, Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult(new HalResourceOfRegistrationProviderLaunchDescriptorDto()));
+        GivenBffLaunch("/bff/registration-provider-embed/launches/opaque-launch-id");
         _nativeRegistrationFormService.GetRequirementsAsync(context.EventId, context.OrderId, null, Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<NativeRegistrationRequirementCollectionView?>(IncompleteRequirements(context.Lineage.RequirementId)));
         _registrationOrderService.GetCurrentAsync(context.EventId, context.OrderId, Arg.Any<CancellationToken>())
@@ -32,8 +32,7 @@ public sealed class RegistrationProviderLaunchModelTests
 
         await _model.InitializeAsync(context);
 
-        await Assert.That(_model.EmbedUrl).IsEqualTo(
-            $"/bff/registration-provider-embed/tenants/{context.Lineage.TenantId:D}/events/{context.Lineage.EventId:D}/workflows/{context.Lineage.WorkflowId:D}/requirements/{context.Lineage.RequirementId:D}/channels/{context.Lineage.ChannelId:D}/bindings/{context.Lineage.BindingId:D}");
+        await Assert.That(_model.EmbedUrl).IsEqualTo("/bff/registration-provider-embed/launches/opaque-launch-id");
         await Assert.That(_model.EmbedUrl).DoesNotContain("?");
         await Assert.That(_model.IsComplete).IsFalse();
     }
@@ -42,8 +41,7 @@ public sealed class RegistrationProviderLaunchModelTests
     public async Task IframeCallbacks_DoNotMarkRequirementComplete()
     {
         var context = CreateContext();
-        _integrationService.GetLaunchDescriptorAsync(context.Lineage, Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult(new HalResourceOfRegistrationProviderLaunchDescriptorDto()));
+        GivenBffLaunch("/bff/registration-provider-embed/launches/opaque-launch-id");
         _nativeRegistrationFormService.GetRequirementsAsync(context.EventId, context.OrderId, null, Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<NativeRegistrationRequirementCollectionView?>(IncompleteRequirements(context.Lineage.RequirementId)));
         _registrationOrderService.GetCurrentAsync(context.EventId, context.OrderId, Arg.Any<CancellationToken>())
@@ -61,8 +59,7 @@ public sealed class RegistrationProviderLaunchModelTests
     public async Task PollAsync_MarksCompleteOnlyFromAuthoritativeRequirementStatus()
     {
         var context = CreateContext();
-        _integrationService.GetLaunchDescriptorAsync(context.Lineage, Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult(new HalResourceOfRegistrationProviderLaunchDescriptorDto()));
+        GivenBffLaunch("/bff/registration-provider-embed/launches/opaque-launch-id");
         _nativeRegistrationFormService.GetRequirementsAsync(context.EventId, context.OrderId, null, Arg.Any<CancellationToken>())
             .Returns(
                 Task.FromResult<NativeRegistrationRequirementCollectionView?>(IncompleteRequirements(context.Lineage.RequirementId)),
@@ -81,8 +78,7 @@ public sealed class RegistrationProviderLaunchModelTests
     public async Task OpenAuthorizedNewTabAsync_UsesSameOriginBffUrl()
     {
         var context = CreateContext();
-        _integrationService.GetLaunchDescriptorAsync(context.Lineage, Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult(new HalResourceOfRegistrationProviderLaunchDescriptorDto()));
+        GivenBffLaunch("/bff/registration-provider-embed/launches/opaque-launch-id");
         _nativeRegistrationFormService.GetRequirementsAsync(context.EventId, context.OrderId, null, Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<NativeRegistrationRequirementCollectionView?>(IncompleteRequirements(context.Lineage.RequirementId)));
         _registrationOrderService.GetCurrentAsync(context.EventId, context.OrderId, Arg.Any<CancellationToken>())
@@ -101,7 +97,14 @@ public sealed class RegistrationProviderLaunchModelTests
         Guid.CreateVersion7(),
         new RegistrationProviderLaunchLineage(
             Guid.CreateVersion7(), Guid.CreateVersion7(), Guid.CreateVersion7(),
-            Guid.CreateVersion7(), Guid.CreateVersion7(), Guid.CreateVersion7()));
+            Guid.CreateVersion7(), Guid.CreateVersion7(), Guid.CreateVersion7(),
+            Guid.CreateVersion7(), Guid.CreateVersion7()));
+
+    private void GivenBffLaunch(string embedUrl) =>
+        _bffClient.SendAsync<RegistrationProviderBffLaunch, RegistrationProviderBffTicket>(
+                HttpMethod.Post, "/bff/registration-provider-embed/launches",
+                Arg.Any<RegistrationProviderBffLaunch>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<RegistrationProviderBffTicket?>(new(embedUrl)));
 
     private static NativeRegistrationRequirementCollectionView IncompleteRequirements(Guid requirementId) => Requirements(requirementId, false);
 

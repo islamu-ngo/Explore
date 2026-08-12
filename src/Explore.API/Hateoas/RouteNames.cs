@@ -81,10 +81,12 @@ public static class RouteNames
     public const string GetOptionalQuestionnaire = "GetOptionalQuestionnaire";
     public const string GetRegistrationWorkflow = "GetRegistrationWorkflow";
     public const string LaunchAuthenticatedNativeRegistrationAttempt = "LaunchAuthenticatedNativeRegistrationAttempt";
+    public const string LaunchAuthenticatedRegistrationProviderAttempt = "LaunchAuthenticatedRegistrationProviderAttempt";
     public const string SubmitAuthenticatedNativeRegistrationAttempt = "SubmitAuthenticatedNativeRegistrationAttempt";
     public const string SkipAuthenticatedNativeRegistrationRequirement = "SkipAuthenticatedNativeRegistrationRequirement";
     public const string GetAuthenticatedNativeRegistrationRequirementProgress = "GetAuthenticatedNativeRegistrationRequirementProgress";
     public const string LaunchGuestNativeRegistrationAttempt = "LaunchGuestNativeRegistrationAttempt";
+    public const string LaunchGuestRegistrationProviderAttempt = "LaunchGuestRegistrationProviderAttempt";
     public const string SubmitGuestNativeRegistrationAttempt = "SubmitGuestNativeRegistrationAttempt";
     public const string SkipGuestNativeRegistrationRequirement = "SkipGuestNativeRegistrationRequirement";
     public const string GetGuestNativeRegistrationRequirementProgress = "GetGuestNativeRegistrationRequirementProgress";
@@ -123,6 +125,7 @@ public static class RouteNames
     public const string UpdateRegistrationProviderConnection = "UpdateRegistrationProviderConnection";
     public const string DeleteRegistrationProviderConnection = "DeleteRegistrationProviderConnection";
     public const string ReplaceRegistrationProviderApprovedOrigins = "ReplaceRegistrationProviderApprovedOrigins";
+    public const string ImportExternalRegistrationProviderFormVersion = "ImportExternalRegistrationProviderFormVersion";
     public const string GetRegistrationProviderBindings = "GetRegistrationProviderBindings";
     public const string GetRegistrationProviderBinding = "GetRegistrationProviderBinding";
     public const string CreateRegistrationProviderBinding = "CreateRegistrationProviderBinding";

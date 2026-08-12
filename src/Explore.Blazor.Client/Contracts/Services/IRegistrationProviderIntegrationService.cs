@@ -39,4 +39,6 @@ public readonly record struct RegistrationProviderLaunchLineage(
     Guid WorkflowId,
     Guid RequirementId,
     Guid ChannelId,
-    Guid BindingId);
+    Guid BindingId,
+    Guid FormId,
+    Guid FormVersionId);

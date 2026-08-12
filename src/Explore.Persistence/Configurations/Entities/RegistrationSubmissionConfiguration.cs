@@ -16,7 +16,7 @@ public sealed class RegistrationSubmissionConfiguration : IEntityTypeConfigurati
         {
             table.HasCheckConstraint("ck_registration_submissions_provider_tuple",
                 "(registration_provider_binding_id IS NULL AND provider_mapping_revision_hash IS NULL AND provider_submission_id IS NULL AND provider_response_revision IS NULL) OR " +
-                "(registration_provider_binding_id IS NOT NULL AND provider_mapping_revision_hash IS NOT NULL AND provider_submission_id IS NOT NULL AND provider_response_revision IS NOT NULL)");
+                "(registration_provider_binding_id IS NOT NULL AND provider_mapping_revision_hash IS NOT NULL AND ((provider_submission_id IS NULL AND provider_response_revision IS NULL) OR (provider_submission_id IS NOT NULL AND provider_response_revision IS NOT NULL)))");
             table.HasCheckConstraint("ck_registration_submissions_finalization_shape",
                 $"(status_id = {(int)RegistrationSubmissionStatusEnum.EvidenceOnly} AND is_finalizable = false AND attempt_consumption_claim_id IS NULL AND finalized_at IS NULL) OR " +
                 $"(status_id = {(int)RegistrationSubmissionStatusEnum.Received} AND is_finalizable = true AND attempt_consumption_claim_id IS NOT NULL AND finalized_at IS NULL) OR " +
@@ -92,11 +92,11 @@ public sealed class RegistrationSubmissionConfiguration : IEntityTypeConfigurati
         builder.HasIndex(submission => new
         { submission.TenantId, submission.RegistrationAttemptId, submission.BusinessDeduplicationKey })
             .HasDatabaseName("ux_registration_submissions_native_identity")
-            .IsUnique().HasFilter("registration_provider_binding_id IS NULL");
+            .IsUnique().HasFilter("provider_submission_id IS NULL");
         builder.HasIndex(submission => new
         { submission.TenantId, submission.RegistrationProviderBindingId, submission.ProviderSubmissionId, submission.ProviderResponseRevision })
             .HasDatabaseName("ux_registration_submissions_provider_identity")
-            .IsUnique().HasFilter("registration_provider_binding_id IS NOT NULL");
+            .IsUnique().HasFilter("provider_submission_id IS NOT NULL");
         builder.HasIndex(submission => new { submission.TenantId, submission.RegistrationAttemptId, submission.ReceivedAt });
         builder.HasIndex(submission => submission.HttpIdempotencyKeyHash);
     }

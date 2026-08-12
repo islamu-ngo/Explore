@@ -171,6 +171,7 @@ public partial class ExploreDbContext
     public DbSet<RegistrationProviderConnection> RegistrationProviderConnections { get; set; }
     public DbSet<RegistrationProviderApprovedOrigin> RegistrationProviderApprovedOrigins { get; set; }
     public DbSet<RegistrationProviderBinding> RegistrationProviderBindings { get; set; }
+    public DbSet<RegistrationProviderSubscriptionState> RegistrationProviderSubscriptionStates { get; set; }
     public DbSet<RegistrationProviderCapability> RegistrationProviderCapabilities { get; set; }
     public DbSet<RegistrationProviderFieldMapping> RegistrationProviderFieldMappings { get; set; }
     public DbSet<RegistrationProviderOptionMapping> RegistrationProviderOptionMappings { get; set; }
@@ -192,6 +193,7 @@ public partial class ExploreDbContext
     public DbSet<RegistrationSensitiveAnswerValue> RegistrationSensitiveAnswerValues { get; set; }
     public DbSet<RegistrationRequirementFulfillment> RegistrationRequirementFulfillments { get; set; }
     public DbSet<RegistrationFinalizationEffect> RegistrationFinalizationEffects { get; set; }
+    public DbSet<RegistrationProviderSubmissionWriteEffect> RegistrationProviderSubmissionWriteEffects { get; set; }
     public DbSet<RegistrationAnswerSubjectType> RegistrationAnswerSubjectTypes { get; set; }
 
     // ===== Event Lookup Tables =====
@@ -229,6 +231,7 @@ public partial class ExploreDbContext
     public DbSet<RegistrationAnswerSyncMode> RegistrationAnswerSyncModes { get; set; }
     public DbSet<RegistrationRequirementSubjectType> RegistrationRequirementSubjectTypes { get; set; }
     public DbSet<RegistrationFormStatus> RegistrationFormStatuses { get; set; }
+    public DbSet<RegistrationFormVersionSourceKind> RegistrationFormVersionSourceKinds { get; set; }
     public DbSet<RegistrationFieldType> RegistrationFieldTypes { get; set; }
     public DbSet<RegistrationOrganizerVisibility> RegistrationOrganizerVisibilities { get; set; }
     public DbSet<RegistrationAttemptStatus> RegistrationAttemptStatuses { get; set; }

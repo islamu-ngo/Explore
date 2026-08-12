@@ -88,6 +88,17 @@
                     <AppTextField T="string" Label="Connection name" Required="true" @bind-Value="_connectionDraft.Name" />
                     <AppTextField T="int?" Label="Provider kind ID" InputType="InputType.Number" Required="true" @bind-Value="_connectionDraft.ProviderKindId" />
                     <AppTextField T="int?" Label="Deployment kind ID" InputType="InputType.Number" Required="true" @bind-Value="_connectionDraft.DeploymentKindId" />
+                    <AppTextField T="string" Label="Provider code" Required="true" @bind-Value="_connectionDraft.ProviderCode" />
+                    <AppTextField T="string" Label="Provider deployment code" Required="true" @bind-Value="_connectionDraft.ProviderDeploymentCode" />
+                    <AppTextField T="string" Label="API version" Required="true" @bind-Value="_connectionDraft.ApiVersion" />
+                    <AppTextField T="string" Label="Adapter policy version" Required="true" @bind-Value="_connectionDraft.AdapterPolicyVersion" />
+                    <AppTextField T="string" Label="Conformance evidence revision" Required="true" @bind-Value="_connectionDraft.ConformanceEvidenceRevision" />
+                    <AppTextField T="string" Label="Management API base URL" Required="true" @bind-Value="_connectionDraft.ManagementApiBaseUrl" />
+                    <AppTextField T="string" Label="Public base URL" Required="true" @bind-Value="_connectionDraft.PublicBaseUrl" />
+                    <AppTextField T="string" Label="Provider workspace ID" Required="true" @bind-Value="_connectionDraft.ProviderWorkspaceId" />
+<AppTextField T="string" Label="Granted OAuth scopes" Lines="2" @bind-Value="_connectionDraft.GrantedOAuthScopes" />
+                    <AppTextField T="string" Label="Provider identity" @bind-Value="_connectionDraft.ProviderIdentity" />
+                    <AppTextField T="string" Label="Pub/Sub configuration reference" @bind-Value="_connectionDraft.PubSubConfigurationReference" />
                     <AppTextField T="Guid?" Label="API token secret binding ID" Required="true" @bind-Value="_connectionDraft.ApiTokenSecretBindingId" />
                     <AppTextField T="Guid?" Label="Webhook secret binding ID" Required="true" @bind-Value="_connectionDraft.WebhookSecretBindingId" />
                     <AppTextField T="string" Label="Approved origins, one per line" Lines="3" @bind-Value="_connectionDraft.OriginsText" />
@@ -110,6 +121,10 @@
                     </AppSelect>
                     <AppTextField T="Guid?" Label="Form ID" Required="true" @bind-Value="_bindingDraft.FormId" />
                     <AppTextField T="Guid?" Label="Form version ID" Required="true" @bind-Value="_bindingDraft.FormVersionId" />
+                    <AppTextField T="string" Label="Provider form ID" @bind-Value="_bindingDraft.ProviderSurveyId" />
+                    <AppTextField T="string" Label="Provider form revision" @bind-Value="_bindingDraft.ProviderSurveyRevisionId" />
+                    <AppTextField T="string" Label="Connector contract version" @bind-Value="_bindingDraft.ProviderWebhookId" />
+                    <AppTextField T="Guid?" Label="Callback secret binding ID" @bind-Value="_bindingDraft.WebhookSecretBindingId" />
                     <AppTextField T="int?" Label="Presentation mode ID" InputType="InputType.Number" Required="true" min="1" @bind-Value="_bindingDraft.PresentationModeId" />
                     <AppTextField T="int?" Label="Collection mode ID" InputType="InputType.Number" Required="true" min="1" @bind-Value="_bindingDraft.CollectionModeId" />
                     <AppTextField T="int?" Label="Completion mode ID" InputType="InputType.Number" Required="true" min="1" @bind-Value="_bindingDraft.CompletionModeId" />
@@ -381,6 +396,7 @@
         @{ var edit = item.Id is { } editId ? ConnectionEditFor(editId, item) : new ConnectionDraft(); }
         <MudText Typo="Typo.subtitle1" HtmlTag="h4">@item.Title("Connection")</MudText>
         <p>@item.Text("providerKindName", "providerKindCode", "Provider not reported") · @item.Text("deploymentKindName", "deploymentKindCode", "Deployment not reported")</p>
+        <p>OAuth identity: @item.Text(["providerIdentity"], "Not recorded") · Last refresh: @item.Text(["lastCredentialRefreshAt"], "never") · Last access: @item.Text(["lastAccessValidatedAt"], "never")</p>
         <p>Approved origins: @string.Join(", ", item.StringArray("approvedOrigins"))</p>
         @if (item.HasLink(EditRel))
         {
@@ -388,6 +404,17 @@
                 <AppTextField T="string" Label="Connection name" @bind-Value="edit.Name" />
                 <AppTextField T="int?" Label="Provider kind ID" InputType="InputType.Number" min="1" @bind-Value="edit.ProviderKindId" />
                 <AppTextField T="int?" Label="Deployment kind ID" InputType="InputType.Number" min="1" @bind-Value="edit.DeploymentKindId" />
+                <AppTextField T="string" Label="Provider code" Required="true" @bind-Value="edit.ProviderCode" />
+                <AppTextField T="string" Label="Provider deployment code" Required="true" @bind-Value="edit.ProviderDeploymentCode" />
+                <AppTextField T="string" Label="API version" Required="true" @bind-Value="edit.ApiVersion" />
+                <AppTextField T="string" Label="Adapter policy version" Required="true" @bind-Value="edit.AdapterPolicyVersion" />
+                <AppTextField T="string" Label="Conformance evidence revision" Required="true" @bind-Value="edit.ConformanceEvidenceRevision" />
+                <AppTextField T="string" Label="Management API base URL" Required="true" @bind-Value="edit.ManagementApiBaseUrl" />
+                <AppTextField T="string" Label="Public base URL" Required="true" @bind-Value="edit.PublicBaseUrl" />
+                <AppTextField T="string" Label="Provider workspace ID" Required="true" @bind-Value="edit.ProviderWorkspaceId" />
+                <AppTextField T="string" Label="Granted OAuth scopes" Lines="2" @bind-Value="edit.GrantedOAuthScopes" />
+                <AppTextField T="string" Label="Provider identity" @bind-Value="edit.ProviderIdentity" />
+                <AppTextField T="string" Label="Pub/Sub configuration reference" @bind-Value="edit.PubSubConfigurationReference" />
                 <AppTextField T="Guid?" Label="API token secret binding ID" @bind-Value="edit.ApiTokenSecretBindingId" />
                 <AppTextField T="Guid?" Label="Webhook secret binding ID" @bind-Value="edit.WebhookSecretBindingId" />
                 <AppButton ButtonType="ButtonType.Submit" Variant="Variant.Outlined" Disabled="_isSaving">Update connection</AppButton>
@@ -422,6 +449,10 @@
                 </AppSelect>
                 <AppTextField T="Guid?" Label="Form ID" Required="true" @bind-Value="edit.FormId" />
                 <AppTextField T="Guid?" Label="Form version ID" Required="true" @bind-Value="edit.FormVersionId" />
+                <AppTextField T="string" Label="Provider form ID" @bind-Value="edit.ProviderSurveyId" />
+                <AppTextField T="string" Label="Provider form revision" @bind-Value="edit.ProviderSurveyRevisionId" />
+                <AppTextField T="string" Label="Connector contract version" @bind-Value="edit.ProviderWebhookId" />
+                <AppTextField T="Guid?" Label="Callback secret binding ID" @bind-Value="edit.WebhookSecretBindingId" />
                 <AppTextField T="int?" Label="Presentation mode ID" InputType="InputType.Number" Required="true" min="1" @bind-Value="edit.PresentationModeId" />
                 <AppTextField T="int?" Label="Collection mode ID" InputType="InputType.Number" Required="true" min="1" @bind-Value="edit.CollectionModeId" />
                 <AppTextField T="int?" Label="Completion mode ID" InputType="InputType.Number" Required="true" min="1" @bind-Value="edit.CompletionModeId" />
@@ -502,7 +533,7 @@
 
     private async Task CreateConnectionAsync()
     {
-        if (!CanCreateConnection || !await ValidateAsync(_connectionDraft.Name, _connectionDraft.ProviderKindId, _connectionDraft.DeploymentKindId, _connectionDraft.ApiTokenSecretBindingId, _connectionDraft.WebhookSecretBindingId) || _connectionLinks?[ProviderCreateRel] is not { } createLink) return;
+        if (!CanCreateConnection || !await ValidateConnectionAsync(_connectionDraft) || _connectionLinks?[ProviderCreateRel] is not { } createLink) return;
         if (RawLines(_connectionDraft.OriginsText).Any() && !await ValidateOriginsAsync(_connectionDraft.OriginsText)) return;
         _isSaving = true;
         _validationMessage = null;
@@ -515,6 +546,17 @@
                 Name = _connectionDraft.Name,
                 ProviderKindId = _connectionDraft.ProviderKindId,
                 DeploymentKindId = _connectionDraft.DeploymentKindId,
+                ProviderCode = _connectionDraft.ProviderCode,
+                ProviderDeploymentCode = _connectionDraft.ProviderDeploymentCode,
+                ApiVersion = _connectionDraft.ApiVersion,
+                AdapterPolicyVersion = _connectionDraft.AdapterPolicyVersion,
+                ConformanceEvidenceRevision = _connectionDraft.ConformanceEvidenceRevision,
+                ManagementApiBaseUrl = _connectionDraft.ManagementApiBaseUrl,
+                PublicBaseUrl = _connectionDraft.PublicBaseUrl,
+                ProviderWorkspaceId = _connectionDraft.ProviderWorkspaceId,
+                GrantedOAuthScopes = _connectionDraft.GrantedOAuthScopes,
+                ProviderIdentity = _connectionDraft.ProviderIdentity,
+                PubSubConfigurationReference = _connectionDraft.PubSubConfigurationReference,
                 ApiTokenSecretBindingId = _connectionDraft.ApiTokenSecretBindingId,
                 WebhookSecretBindingId = _connectionDraft.WebhookSecretBindingId
             }, cancellationToken);
@@ -552,10 +594,21 @@
             Name = ConnectionEditFor(id, item).Name,
             ProviderKindId = ConnectionEditFor(id, item).ProviderKindId,
             DeploymentKindId = ConnectionEditFor(id, item).DeploymentKindId,
+            ProviderCode = ConnectionEditFor(id, item).ProviderCode,
+            ProviderDeploymentCode = ConnectionEditFor(id, item).ProviderDeploymentCode,
+            ApiVersion = ConnectionEditFor(id, item).ApiVersion,
+            AdapterPolicyVersion = ConnectionEditFor(id, item).AdapterPolicyVersion,
+            ConformanceEvidenceRevision = ConnectionEditFor(id, item).ConformanceEvidenceRevision,
+            ManagementApiBaseUrl = ConnectionEditFor(id, item).ManagementApiBaseUrl,
+            PublicBaseUrl = ConnectionEditFor(id, item).PublicBaseUrl,
+            ProviderWorkspaceId = ConnectionEditFor(id, item).ProviderWorkspaceId,
+            GrantedOAuthScopes = ConnectionEditFor(id, item).GrantedOAuthScopes,
+            ProviderIdentity = ConnectionEditFor(id, item).ProviderIdentity,
+            PubSubConfigurationReference = ConnectionEditFor(id, item).PubSubConfigurationReference,
             ApiTokenSecretBindingId = ConnectionEditFor(id, item).ApiTokenSecretBindingId,
             WebhookSecretBindingId = ConnectionEditFor(id, item).WebhookSecretBindingId
         };
-        if (!await ValidateAsync(request.Name, request.ProviderKindId, request.DeploymentKindId, request.ApiTokenSecretBindingId, request.WebhookSecretBindingId)) return;
+        if (!await ValidateConnectionAsync(ConnectionEditFor(id, item))) return;
         await SaveAsync(ct => Integrations.UpdateConnectionAsync(TenantId, EventId, id, link, request, ct), "Connection updated");
     }
 
@@ -567,6 +620,10 @@
             ConnectionId = _bindingDraft.ConnectionId,
             FormId = _bindingDraft.FormId,
             FormVersionId = _bindingDraft.FormVersionId,
+            ProviderSurveyId = _bindingDraft.ProviderSurveyId,
+            ProviderSurveyRevisionId = _bindingDraft.ProviderSurveyRevisionId,
+            ProviderWebhookId = _bindingDraft.ProviderWebhookId,
+            WebhookSecretBindingId = _bindingDraft.WebhookSecretBindingId,
             PresentationModeId = _bindingDraft.PresentationModeId,
             CollectionModeId = _bindingDraft.CollectionModeId,
             CompletionModeId = _bindingDraft.CompletionModeId,
@@ -583,6 +640,10 @@
             ConnectionId = edit.ConnectionId,
             FormId = edit.FormId,
             FormVersionId = edit.FormVersionId,
+            ProviderSurveyId = edit.ProviderSurveyId,
+            ProviderSurveyRevisionId = edit.ProviderSurveyRevisionId,
+            ProviderWebhookId = edit.ProviderWebhookId,
+            WebhookSecretBindingId = edit.WebhookSecretBindingId,
             PresentationModeId = edit.PresentationModeId,
             CollectionModeId = edit.CollectionModeId,
             CompletionModeId = edit.CompletionModeId,
@@ -790,6 +851,21 @@
         draft.CompletionModeId,
         draft.TrustLevelId);
 
+    private Task<bool> ValidateConnectionAsync(ConnectionDraft draft) => ValidateAsync(
+        draft.Name,
+        draft.ProviderKindId,
+        draft.DeploymentKindId,
+        draft.ProviderCode,
+        draft.ProviderDeploymentCode,
+        draft.ApiVersion,
+        draft.AdapterPolicyVersion,
+        draft.ConformanceEvidenceRevision,
+        draft.ManagementApiBaseUrl,
+        draft.PublicBaseUrl,
+        draft.ProviderWorkspaceId,
+        draft.ApiTokenSecretBindingId,
+        draft.WebhookSecretBindingId);
+
     private async Task<bool> ValidateMappingsAsync(BindingDraft draft)
     {
         var valid = draft.FieldMappings.All(mapping => !string.IsNullOrWhiteSpace(mapping.PlatformFieldKey) && !string.IsNullOrWhiteSpace(mapping.ProviderFieldKey))
@@ -822,6 +898,17 @@
             Name = item.Text("name", "displayName", null),
             ProviderKindId = item.Int("providerKindId"),
             DeploymentKindId = item.Int("deploymentKindId"),
+            ProviderCode = item.Text(["providerCode"], null),
+            ProviderDeploymentCode = item.Text(["providerDeploymentCode"], null),
+            ApiVersion = item.Text(["apiVersion"], null),
+            AdapterPolicyVersion = item.Text(["adapterPolicyVersion"], null),
+            ConformanceEvidenceRevision = item.Text(["conformanceEvidenceRevision"], null),
+            ManagementApiBaseUrl = item.Text(["managementApiBaseUrl"], null),
+            PublicBaseUrl = item.Text(["publicBaseUrl"], null),
+            ProviderWorkspaceId = item.Text(["providerWorkspaceId"], null),
+            GrantedOAuthScopes = item.Text(["grantedOAuthScopes"], null),
+            ProviderIdentity = item.Text(["providerIdentity"], null),
+            PubSubConfigurationReference = item.Text(["pubSubConfigurationReference"], null),
             ApiTokenSecretBindingId = item.Guid("apiTokenSecretBindingId"),
             WebhookSecretBindingId = item.Guid("webhookSecretBindingId")
         };
@@ -845,6 +932,10 @@
             ConnectionId = item.Guid("connectionId", "providerConnectionId"),
             FormId = item.Guid("formId", "registrationFormId"),
             FormVersionId = item.Guid("formVersionId", "registrationFormVersionId"),
+            ProviderSurveyId = item.Text(["providerSurveyId"], null),
+            ProviderSurveyRevisionId = item.Text(["providerSurveyRevisionId"], null),
+            ProviderWebhookId = item.Text(["providerWebhookId"], null),
+            WebhookSecretBindingId = item.Guid("webhookSecretBindingId"),
             PresentationModeId = item.Int("presentationModeId"),
             CollectionModeId = item.Int("collectionModeId"),
             CompletionModeId = item.Int("completionModeId"),
@@ -885,6 +976,17 @@
         public string? Name { get; set; }
         public int? ProviderKindId { get; set; }
         public int? DeploymentKindId { get; set; }
+        public string? ProviderCode { get; set; }
+        public string? ProviderDeploymentCode { get; set; }
+        public string? ApiVersion { get; set; }
+        public string? AdapterPolicyVersion { get; set; }
+        public string? ConformanceEvidenceRevision { get; set; }
+        public string? ManagementApiBaseUrl { get; set; }
+        public string? PublicBaseUrl { get; set; }
+        public string? ProviderWorkspaceId { get; set; }
+        public string? GrantedOAuthScopes { get; set; }
+        public string? ProviderIdentity { get; set; }
+        public string? PubSubConfigurationReference { get; set; }
         public Guid? ApiTokenSecretBindingId { get; set; }
         public Guid? WebhookSecretBindingId { get; set; }
         public string? OriginsText { get; set; }
@@ -896,6 +998,10 @@
         public Guid? ConnectionId { get; set; }
         public Guid? FormId { get; set; }
         public Guid? FormVersionId { get; set; }
+        public string? ProviderSurveyId { get; set; }
+        public string? ProviderSurveyRevisionId { get; set; }
+        public string? ProviderWebhookId { get; set; }
+        public Guid? WebhookSecretBindingId { get; set; }
         public int? PresentationModeId { get; set; }
         public int? CollectionModeId { get; set; }
         public int? CompletionModeId { get; set; }

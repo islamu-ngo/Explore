@@ -107,11 +107,17 @@ public sealed class RegistrationFinalizationRepository(ExploreDbContext dbContex
                     cancellationToken);
             }
 
-            dbContext.Attach(attempt);
-            dbContext.Entry(attempt).Property(value => value.ConcurrencyStamp).OriginalValue = expectedAttemptConcurrencyStamp;
-            dbContext.Entry(attempt).Property(value => value.StatusId).IsModified = true;
-            dbContext.Entry(attempt).Property(value => value.ConsumedAt).IsModified = true;
-            dbContext.Entry(attempt).Property(value => value.ConcurrencyStamp).IsModified = true;
+            RegistrationAttempt? trackedAttempt = await dbContext.RegistrationAttempts.SingleOrDefaultAsync(value =>
+                value.TenantId == attempt.TenantId && value.Id == attempt.Id,
+                cancellationToken);
+            if (trackedAttempt is null || trackedAttempt.ConcurrencyStamp != expectedAttemptConcurrencyStamp)
+            {
+                await transaction.RollbackAsync(cancellationToken);
+                dbContext.ChangeTracker.Clear();
+                return false;
+            }
+
+            trackedAttempt.Consume(recordedAt);
             foreach (RegistrationRequirementFulfillment fulfillment in fulfillments)
             {
                 bool exists = await dbContext.RegistrationRequirementFulfillments.AnyAsync(value =>

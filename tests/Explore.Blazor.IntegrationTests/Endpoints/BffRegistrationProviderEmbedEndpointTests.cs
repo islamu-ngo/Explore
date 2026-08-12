@@ -2,7 +2,10 @@
 // ABOUTME: Proves descriptor-derived iframe HTML never trusts browser-supplied provider URLs or titles.
 
 using System.Text.RegularExpressions;
+using System.Text.Json;
+using System.Net.Http.Json;
 using Explore.Blazor.Client.Clients;
+using Explore.Blazor.Client.Components.Registration.ProviderLaunch;
 using FluentAssertions;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -11,12 +14,13 @@ namespace Explore.Blazor.IntegrationTests.Endpoints;
 
 public sealed partial class BffRegistrationProviderEmbedEndpointTests : IAsyncDisposable
 {
-    private static readonly Guid TenantId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000001");
     private static readonly Guid EventId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000101");
-    private static readonly Guid WorkflowId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000201");
+    private static readonly Guid OrderId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000201");
     private static readonly Guid RequirementId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000301");
     private static readonly Guid ChannelId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000401");
     private static readonly Guid BindingId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000501");
+    private static readonly Guid FormId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000601");
+    private static readonly Guid FormVersionId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000701");
 
     private readonly IEventApiClient _apiClient = Substitute.For<IEventApiClient>();
     private readonly WebApplicationFactory<Program> _factory;
@@ -37,15 +41,14 @@ public sealed partial class BffRegistrationProviderEmbedEndpointTests : IAsyncDi
     }
 
     [Test]
-    public async Task EmbedHost_AnonymousRequest_ReturnsUnauthorized()
+    public async Task Launch_WithoutAntiforgery_ReturnsBadRequest()
     {
         GivenDescriptor(Descriptor());
-        using var response = await _client.GetAsync(Route());
+        using var response = await _client.PostAsJsonAsync(Route(), LaunchRequest());
 
-        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
-        await _apiClient.DidNotReceiveWithAnyArgs().GetRegistrationProviderLaunchDescriptorAsync(
-            default, default, default, default, default, default,
-            null, null, default);
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        await _apiClient.DidNotReceiveWithAnyArgs().LaunchAuthenticatedRegistrationProviderAttemptAsync(
+            default, default, default!, null, null, default);
     }
 
     [Test]
@@ -113,11 +116,11 @@ public sealed partial class BffRegistrationProviderEmbedEndpointTests : IAsyncDi
     }
 
     [Test]
-    public async Task EmbedHost_CrossTenantOrHttpDescriptor_ReturnsNotFound()
+    public async Task EmbedHost_TamperedFormOrHttpDescriptor_ReturnsNotFound()
     {
-        GivenDescriptor(Descriptor(tenantId: Guid.Parse("018e4e5c-7f00-7000-8000-000000000002")));
-        using var crossTenant = await SendAuthenticatedAsync(Route());
-        crossTenant.StatusCode.Should().Be(HttpStatusCode.NotFound);
+        GivenDescriptor(Descriptor(formId: Guid.Parse("018e4e5c-7f00-7000-8000-000000000602")));
+        using var tamperedForm = await SendAuthenticatedAsync(Route());
+        tamperedForm.StatusCode.Should().Be(HttpStatusCode.NotFound);
 
         GivenDescriptor(Descriptor(url: "http://forms.example.test/embed"));
         using var httpDescriptor = await SendAuthenticatedAsync(Route());
@@ -165,16 +168,39 @@ public sealed partial class BffRegistrationProviderEmbedEndpointTests : IAsyncDi
         using var response = await SendAuthenticatedAsync(Route());
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        await _apiClient.Received(1).GetRegistrationProviderLaunchDescriptorAsync(
-            TenantId,
+        await _apiClient.Received(1).LaunchAuthenticatedRegistrationProviderAttemptAsync(
             EventId,
-            WorkflowId,
-            RequirementId,
-            ChannelId,
-            BindingId,
+            OrderId,
+            Arg.Is<LaunchRegistrationProviderAttemptRequest>(request =>
+                request.RequirementId == RequirementId && request.ChannelId == ChannelId &&
+                request.BindingId == BindingId && request.FormId == FormId && request.FormVersionId == FormVersionId),
             null,
             null,
             Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task GuestLaunch_ForwardsCapabilityWithoutExposingItInOpaqueEmbedUrl()
+    {
+        const string capability = "guest-secret-capability";
+        _apiClient.LaunchGuestRegistrationProviderAttemptAsync(
+                Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<LaunchRegistrationProviderAttemptRequest>(),
+                Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(Descriptor()));
+        string token = await IssueAntiforgeryCookieAsync(null);
+        using var request = new HttpRequestMessage(HttpMethod.Post, Route())
+        {
+            Content = JsonContent.Create(LaunchRequest() with { GuestCapability = capability })
+        };
+        request.Headers.Add("X-CSRF-TOKEN", token);
+
+        using HttpResponseMessage response = await _client.SendAsync(request);
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        RegistrationProviderBffTicket? launch = await response.Content.ReadFromJsonAsync<RegistrationProviderBffTicket>();
+        launch!.EmbedUrl.Should().StartWith("/bff/registration-provider-embed/launches/").And.NotContain(capability);
+        await _apiClient.Received(1).LaunchGuestRegistrationProviderAttemptAsync(
+            EventId, OrderId, Arg.Any<LaunchRegistrationProviderAttemptRequest>(), capability,
+            null, null, Arg.Any<CancellationToken>());
     }
 
     public async ValueTask DisposeAsync()
@@ -185,20 +211,31 @@ public sealed partial class BffRegistrationProviderEmbedEndpointTests : IAsyncDi
 
     private async Task<HttpResponseMessage> SendAuthenticatedAsync(string path)
     {
-        using var request = new HttpRequestMessage(HttpMethod.Get, path);
-        request.Headers.Add(TestAuthHandler.AuthHeaderName, TestAuthHandler.CreateAuthHeaderValue(Guid.NewGuid()));
-        return await _client.SendAsync(request);
+        string authentication = TestAuthHandler.CreateAuthHeaderValue(Guid.NewGuid());
+        string token = await IssueAntiforgeryCookieAsync(authentication);
+        using var request = new HttpRequestMessage(HttpMethod.Post, path)
+        {
+            Content = JsonContent.Create(LaunchRequest())
+        };
+        request.Headers.Add(TestAuthHandler.AuthHeaderName, authentication);
+        request.Headers.Add("X-CSRF-TOKEN", token);
+        HttpResponseMessage launch = await _client.SendAsync(request);
+        if (!launch.IsSuccessStatusCode)
+        {
+            return launch;
+        }
+
+        RegistrationProviderBffTicket? result = await launch.Content.ReadFromJsonAsync<RegistrationProviderBffTicket>();
+        launch.Dispose();
+        return await _client.GetAsync(result!.EmbedUrl);
     }
 
-    private void GivenDescriptor(HalResourceOfRegistrationProviderLaunchDescriptorDto descriptor)
+    private void GivenDescriptor(HalResourceOfNativeRegistrationProviderLaunchDescriptorDto descriptor)
     {
-        _apiClient.GetRegistrationProviderLaunchDescriptorAsync(
+        _apiClient.LaunchAuthenticatedRegistrationProviderAttemptAsync(
                 Arg.Any<Guid>(),
                 Arg.Any<Guid>(),
-                Arg.Any<Guid>(),
-                Arg.Any<Guid>(),
-                Arg.Any<Guid>(),
-                Arg.Any<Guid>(),
+                Arg.Any<LaunchRegistrationProviderAttemptRequest>(),
                 Arg.Any<string?>(),
                 Arg.Any<string?>(),
                 Arg.Any<CancellationToken>())
@@ -216,13 +253,12 @@ public sealed partial class BffRegistrationProviderEmbedEndpointTests : IAsyncDi
         return string.Empty;
     }
 
-    private static HalResourceOfRegistrationProviderLaunchDescriptorDto Descriptor(
-        Guid? tenantId = null,
-        Guid? eventId = null,
-        Guid? workflowId = null,
+    private static HalResourceOfNativeRegistrationProviderLaunchDescriptorDto Descriptor(
         Guid? requirementId = null,
         Guid? channelId = null,
         Guid? bindingId = null,
+        Guid? formId = null,
+        Guid? formVersionId = null,
         string mode = "embed",
         bool available = true,
         string url = "https://forms.example.test/embed/form-1",
@@ -230,12 +266,11 @@ public sealed partial class BffRegistrationProviderEmbedEndpointTests : IAsyncDi
         {
             AdditionalProperties =
             {
-                ["tenantId"] = tenantId ?? TenantId,
-                ["eventId"] = eventId ?? EventId,
-                ["workflowId"] = workflowId ?? WorkflowId,
                 ["requirementId"] = requirementId ?? RequirementId,
                 ["channelId"] = channelId ?? ChannelId,
                 ["bindingId"] = bindingId ?? BindingId,
+                ["formId"] = formId ?? FormId,
+                ["formVersionId"] = formVersionId ?? FormVersionId,
                 ["mode"] = mode,
                 ["available"] = available,
                 ["url"] = url,
@@ -243,8 +278,35 @@ public sealed partial class BffRegistrationProviderEmbedEndpointTests : IAsyncDi
             }
         };
 
-    private static string Route() =>
-        $"/bff/registration-provider-embed/tenants/{TenantId}/events/{EventId}/workflows/{WorkflowId}/requirements/{RequirementId}/channels/{ChannelId}/bindings/{BindingId}";
+    private static RegistrationProviderBffLaunch LaunchRequest() => new(
+        EventId, OrderId, RequirementId, ChannelId, BindingId, FormId, FormVersionId, null);
+
+    private static string Route() => "/bff/registration-provider-embed/launches";
+
+    private async Task<string> IssueAntiforgeryCookieAsync(string? authentication)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Get, "/auth/status");
+        if (authentication is not null)
+        {
+            request.Headers.Add(TestAuthHandler.AuthHeaderName, authentication);
+        }
+        using var response = await _client.SendAsync(request);
+        response.Headers.TryGetValues("Set-Cookie", out var values).Should().BeTrue();
+        string token = values!.Select(ReadXsrfToken).First(value => !string.IsNullOrWhiteSpace(value))!;
+        return token;
+    }
+
+    private static string? ReadXsrfToken(string setCookie)
+    {
+        const string prefix = "XSRF-TOKEN=";
+        if (!setCookie.StartsWith(prefix, StringComparison.Ordinal))
+        {
+            return null;
+        }
+
+        int end = setCookie.IndexOf(';', prefix.Length);
+        return Uri.UnescapeDataString(end < 0 ? setCookie[prefix.Length..] : setCookie[prefix.Length..end]);
+    }
 
     [GeneratedRegex("src=\\\"[^\\\"]*\\\"[^>]*<", RegexOptions.CultureInvariant)]
     private static partial Regex DangerousAttributeBreakout();

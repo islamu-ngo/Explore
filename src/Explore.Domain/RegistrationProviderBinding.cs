@@ -20,6 +20,10 @@ public sealed class RegistrationProviderBinding : ITenantEntity, IAuditableEntit
     public RegistrationProviderConnection? Connection { get; private set; }
     public Guid RegistrationFormId { get; private set; }
     public Guid RegistrationFormVersionId { get; private set; }
+    public string? ProviderSurveyId { get; private set; }
+    public string? ProviderSurveyRevisionId { get; private set; }
+    public string? ProviderWebhookId { get; private set; }
+    public Guid? WebhookSecretBindingId { get; private set; }
     public int PresentationModeId { get; private set; }
     public int CollectionModeId { get; private set; }
     public int CompletionModeId { get; private set; }
@@ -43,9 +47,10 @@ public sealed class RegistrationProviderBinding : ITenantEntity, IAuditableEntit
 
     public static RegistrationProviderBinding Create(Guid tenantId, Guid connectionId, Guid formId, Guid formVersionId,
         RegistrationProviderPresentationModeEnum presentationMode, RegistrationProviderCollectionModeEnum collectionMode,
-        RegistrationProviderCompletionModeEnum completionMode, RegistrationProviderTrustLevelEnum trustLevel, DateTime createdAt)
+        RegistrationProviderCompletionModeEnum completionMode, RegistrationProviderTrustLevelEnum trustLevel,
+        Guid? webhookSecretBindingId, DateTime createdAt)
     {
-        if (new[] { tenantId, connectionId, formId, formVersionId }.Any(id => id == Guid.Empty) ||
+        if (new[] { tenantId, connectionId, formId, formVersionId }.Any(id => id == Guid.Empty) || webhookSecretBindingId == Guid.Empty ||
             !Enum.IsDefined(presentationMode) || !Enum.IsDefined(collectionMode) || !Enum.IsDefined(completionMode) || !Enum.IsDefined(trustLevel))
         {
             throw new ArgumentException("Provider binding identities and lookup values must be valid.");
@@ -56,6 +61,7 @@ public sealed class RegistrationProviderBinding : ITenantEntity, IAuditableEntit
             Id = Guid.CreateVersion7(), TenantId = tenantId, RegistrationProviderConnectionId = connectionId,
             RegistrationFormId = formId, RegistrationFormVersionId = formVersionId, PresentationModeId = (int)presentationMode,
             CollectionModeId = (int)collectionMode, CompletionModeId = (int)completionMode, TrustLevelId = (int)trustLevel,
+            WebhookSecretBindingId = webhookSecretBindingId,
             DriftClassId = (int)RegistrationProviderDriftClassEnum.NoDrift, StateId = (int)RegistrationProviderBindingStateEnum.Draft,
             CreatedAt = RegistrationProviderConnection.EnsureUtc(createdAt, nameof(createdAt))
         };
@@ -102,6 +108,15 @@ public sealed class RegistrationProviderBinding : ITenantEntity, IAuditableEntit
         _capabilities.Add(capability);
     }
 
+    public void ReplaceDraftCapabilities(IReadOnlyList<RegistrationProviderCapability> capabilities)
+    {
+        EnsureDraft();
+        ArgumentNullException.ThrowIfNull(capabilities);
+        _capabilities.Clear();
+        foreach (RegistrationProviderCapability capability in capabilities) AddCapability(capability);
+        ConcurrencyStamp = Guid.CreateVersion7();
+    }
+
     public void AddOptionMapping(RegistrationProviderOptionMapping mapping)
     {
         EnsureDraft();
@@ -126,10 +141,10 @@ public sealed class RegistrationProviderBinding : ITenantEntity, IAuditableEntit
 
     public void UpdateDraft(Guid connectionId, Guid formId, Guid formVersionId,
         RegistrationProviderPresentationModeEnum presentationMode, RegistrationProviderCollectionModeEnum collectionMode,
-        RegistrationProviderCompletionModeEnum completionMode, RegistrationProviderTrustLevelEnum trustLevel)
+        RegistrationProviderCompletionModeEnum completionMode, RegistrationProviderTrustLevelEnum trustLevel, Guid? webhookSecretBindingId)
     {
         EnsureDraft();
-        if (new[] { connectionId, formId, formVersionId }.Any(id => id == Guid.Empty) ||
+        if (new[] { connectionId, formId, formVersionId }.Any(id => id == Guid.Empty) || webhookSecretBindingId == Guid.Empty ||
             !Enum.IsDefined(presentationMode) || !Enum.IsDefined(collectionMode) || !Enum.IsDefined(completionMode) || !Enum.IsDefined(trustLevel))
         {
             throw new ArgumentException("Provider binding identities and lookup values must be valid.");
@@ -142,6 +157,34 @@ public sealed class RegistrationProviderBinding : ITenantEntity, IAuditableEntit
         CollectionModeId = (int)collectionMode;
         CompletionModeId = (int)completionMode;
         TrustLevelId = (int)trustLevel;
+        WebhookSecretBindingId = webhookSecretBindingId;
+        ConcurrencyStamp = Guid.CreateVersion7();
+    }
+
+    public void SetDraftProvisionedSurvey(string providerSurveyId, string? providerSurveyRevisionId)
+    {
+        EnsureDraft();
+        ProviderSurveyId = NormalizeProviderId(providerSurveyId, nameof(providerSurveyId), 200);
+        ProviderSurveyRevisionId = string.IsNullOrWhiteSpace(providerSurveyRevisionId)
+            ? null
+            : NormalizeProviderId(providerSurveyRevisionId, nameof(providerSurveyRevisionId), 200);
+        ConcurrencyStamp = Guid.CreateVersion7();
+    }
+
+    public void SetDraftProvisionedSubscription(string providerWebhookId, Guid webhookSecretBindingId)
+    {
+        EnsureDraft();
+        if (webhookSecretBindingId == Guid.Empty) throw new ArgumentException("Webhook secret binding id must be valid.", nameof(webhookSecretBindingId));
+        ProviderWebhookId = NormalizeProviderId(providerWebhookId, nameof(providerWebhookId), 200);
+        WebhookSecretBindingId = webhookSecretBindingId;
+        ConcurrencyStamp = Guid.CreateVersion7();
+    }
+
+    public void SetDraftProvisionedSubscription(string providerWebhookId)
+    {
+        EnsureDraft();
+        ProviderWebhookId = NormalizeProviderId(providerWebhookId, nameof(providerWebhookId), 200);
+        WebhookSecretBindingId = null;
         ConcurrencyStamp = Guid.CreateVersion7();
     }
 
@@ -169,4 +212,12 @@ public sealed class RegistrationProviderBinding : ITenantEntity, IAuditableEntit
         RegistrationProviderDriftClassEnum.TypeChanged or
         RegistrationProviderDriftClassEnum.OptionSetChanged or
         RegistrationProviderDriftClassEnum.UnsupportedChange;
+
+    private static string NormalizeProviderId(string value, string parameterName, int maxLength)
+    {
+        string normalized = value?.Trim() ?? string.Empty;
+        return normalized.Length is > 0 && normalized.Length <= maxLength && !normalized.Any(char.IsControl)
+            ? normalized
+            : throw new ArgumentException($"Provider id must be non-blank and at most {maxLength} characters.", parameterName);
+    }
 }

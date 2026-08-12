@@ -103,6 +103,14 @@ public sealed class StudioEventIntegrationsTests : IDisposable
         Guid webhookSecretBindingId = Guid.CreateVersion7();
         SetPrivateDraft(cut.Instance, "_connectionDraft", new Dictionary<string, object?>
         {
+            ["ProviderCode"] = "MICROSOFT_FORMS",
+            ["ProviderDeploymentCode"] = "MICROSOFT_365",
+            ["ApiVersion"] = "POWER_AUTOMATE_V1",
+            ["AdapterPolicyVersion"] = "ISLAMU_EVENT_MICROSOFT_FORMS_V1",
+            ["ConformanceEvidenceRevision"] = "2026-08-11",
+            ["ManagementApiBaseUrl"] = "https://forms.office.com",
+            ["PublicBaseUrl"] = "https://forms.office.com/Pages/ResponsePage.aspx",
+            ["ProviderWorkspaceId"] = "microsoft-365",
             ["ApiTokenSecretBindingId"] = apiSecretBindingId,
             ["WebhookSecretBindingId"] = webhookSecretBindingId
         });
@@ -161,6 +169,7 @@ public sealed class StudioEventIntegrationsTests : IDisposable
         WithEventLinks("manage-registration-channels", "view-registration-provider-health");
         var connectionId = Guid.CreateVersion7();
         var bindingId = Guid.CreateVersion7();
+        var webhookSecretBindingId = Guid.CreateVersion7();
         var workflowId = Guid.CreateVersion7();
         var requirementId = Guid.CreateVersion7();
         var channelId = Guid.CreateVersion7();
@@ -171,6 +180,14 @@ public sealed class StudioEventIntegrationsTests : IDisposable
                 name = "Listmonk",
                 providerKindId = 1,
                 deploymentKindId = 2,
+                providerCode = "MICROSOFT_FORMS",
+                providerDeploymentCode = "MICROSOFT_365",
+                apiVersion = "POWER_AUTOMATE_V1",
+                adapterPolicyVersion = "ISLAMU_EVENT_MICROSOFT_FORMS_V1",
+                conformanceEvidenceRevision = "2026-08-11",
+                managementApiBaseUrl = "https://forms.office.com",
+                publicBaseUrl = "https://forms.office.com/Pages/ResponsePage.aspx",
+                providerWorkspaceId = "microsoft-365",
                 apiTokenSecretBindingId = Guid.CreateVersion7(),
                 webhookSecretBindingId = Guid.CreateVersion7(),
                 approvedOrigins = new[] { "https://forms.example" }
@@ -222,10 +239,11 @@ public sealed class StudioEventIntegrationsTests : IDisposable
         WithEventLinks("manage-registration-channels");
         var connectionId = Guid.CreateVersion7();
         var bindingId = Guid.CreateVersion7();
+        var webhookSecretBindingId = Guid.CreateVersion7();
         _service.GetConnectionsAsync(_event.TenantId!.Value, _event.Id!.Value, Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(Connections(Item(new { id = connectionId, name = "Forms", providerKindId = 1, deploymentKindId = 2 }))));
         _service.GetBindingsAsync(_event.TenantId.Value, _event.Id.Value, Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult(Bindings(Item(new { id = bindingId, connectionId, formId = Guid.CreateVersion7(), formVersionId = Guid.CreateVersion7(), presentationModeId = 1, collectionModeId = 2, completionModeId = 3, trustLevelId = 4 }, "edit"))));
+            .Returns(Task.FromResult(Bindings(Item(new { id = bindingId, connectionId, formId = Guid.CreateVersion7(), formVersionId = Guid.CreateVersion7(), providerSurveyId = "form-123", providerSurveyRevisionId = "revision-1", providerWebhookId = "POWER_AUTOMATE_V1", webhookSecretBindingId, presentationModeId = 1, collectionModeId = 2, completionModeId = 3, trustLevelId = 4 }, "edit"))));
         var cut = Render();
         cut.WaitForElement("[data-testid='binding-edit-form']");
         SetDictionaryDraft(cut.Instance, "_bindingEdits", bindingId, new Dictionary<string, object?>
@@ -241,7 +259,7 @@ public sealed class StudioEventIntegrationsTests : IDisposable
 
         await cut.Find("form[data-testid='binding-edit-form']").SubmitAsync();
 
-        await _service.Received(1).UpdateBindingAsync(_event.TenantId.Value, _event.Id.Value, bindingId, Arg.Is<HalLink>(link => link.Method == "PUT"), Arg.Is<RegistrationProviderBindingRequestDto>(request => request.ConnectionId == connectionId && request.FormId != null && request.FormVersionId != null && request.PresentationModeId == 1 && request.CollectionModeId == 2 && request.CompletionModeId == 3 && request.TrustLevelId == 4 && request.AdditionalProperties.Count == 0), Arg.Any<CancellationToken>());
+        await _service.Received(1).UpdateBindingAsync(_event.TenantId.Value, _event.Id.Value, bindingId, Arg.Is<HalLink>(link => link.Method == "PUT"), Arg.Is<RegistrationProviderBindingRequestDto>(request => request.ConnectionId == connectionId && request.FormId != null && request.FormVersionId != null && request.ProviderSurveyId == "form-123" && request.ProviderSurveyRevisionId == "revision-1" && request.ProviderWebhookId == "POWER_AUTOMATE_V1" && request.WebhookSecretBindingId == webhookSecretBindingId && request.PresentationModeId == 1 && request.CollectionModeId == 2 && request.CompletionModeId == 3 && request.TrustLevelId == 4 && request.AdditionalProperties.Count == 0), Arg.Any<CancellationToken>());
     }
 
     [Test]
@@ -249,6 +267,7 @@ public sealed class StudioEventIntegrationsTests : IDisposable
     {
         WithEventLinks("manage-registration-channels");
         var connectionId = Guid.CreateVersion7();
+        var webhookSecretBindingId = Guid.CreateVersion7();
         _service.GetConnectionsAsync(_event.TenantId!.Value, _event.Id!.Value, Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(Connections(Item(new { id = connectionId, name = "Forms", providerKindId = 1, deploymentKindId = 2 }), "provider-create")));
         _service.GetBindingsAsync(_event.TenantId.Value, _event.Id.Value, Arg.Any<CancellationToken>())
@@ -260,6 +279,10 @@ public sealed class StudioEventIntegrationsTests : IDisposable
             ["ConnectionId"] = connectionId,
             ["FormId"] = Guid.CreateVersion7(),
             ["FormVersionId"] = Guid.CreateVersion7(),
+            ["ProviderSurveyId"] = "form-123",
+            ["ProviderSurveyRevisionId"] = "revision-1",
+            ["ProviderWebhookId"] = "POWER_AUTOMATE_V1",
+            ["WebhookSecretBindingId"] = webhookSecretBindingId,
             ["PresentationModeId"] = 1,
             ["CollectionModeId"] = 2,
             ["CompletionModeId"] = 3,
@@ -269,7 +292,7 @@ public sealed class StudioEventIntegrationsTests : IDisposable
         await cut.Find("form[data-testid='binding-form']").SubmitAsync();
 
         await _service.Received(1).CreateBindingAsync(_event.TenantId.Value, _event.Id.Value, Arg.Any<HalLink>(), Arg.Is<RegistrationProviderBindingRequestDto>(request =>
-            request.ConnectionId == connectionId && request.FormId != null && request.FormVersionId != null && request.PresentationModeId == 1 && request.CollectionModeId == 2 && request.CompletionModeId == 3 && request.TrustLevelId == 4 && request.AdditionalProperties.Count == 0), Arg.Any<CancellationToken>());
+            request.ConnectionId == connectionId && request.FormId != null && request.FormVersionId != null && request.ProviderSurveyId == "form-123" && request.ProviderSurveyRevisionId == "revision-1" && request.ProviderWebhookId == "POWER_AUTOMATE_V1" && request.WebhookSecretBindingId == webhookSecretBindingId && request.PresentationModeId == 1 && request.CollectionModeId == 2 && request.CompletionModeId == 3 && request.TrustLevelId == 4 && request.AdditionalProperties.Count == 0), Arg.Any<CancellationToken>());
     }
 
     [Test]
@@ -285,13 +308,7 @@ public sealed class StudioEventIntegrationsTests : IDisposable
             .Returns(Task.FromResult(ConnectionResource("origins")));
         var cut = Render();
         cut.WaitForElement("[data-testid='connection-form']");
-        var inputs = cut.Find("form[data-testid='connection-form']").QuerySelectorAll("input, textarea");
-        inputs[0].Change("Forms");
-        inputs[1].Change("1");
-        inputs[2].Change("2");
-        inputs[3].Change(Guid.CreateVersion7().ToString("D"));
-        inputs[4].Change(Guid.CreateVersion7().ToString("D"));
-        inputs[5].Change("https://forms.example\nhttps://checkout.example");
+        SetPrivateDraft(cut.Instance, "_connectionDraft", ValidConnectionDraft("Forms", "https://forms.example\nhttps://checkout.example"));
 
         await cut.Find("form[data-testid='connection-form']").SubmitAsync();
 
@@ -307,13 +324,7 @@ public sealed class StudioEventIntegrationsTests : IDisposable
             .Returns(Task.FromResult(Connections(collectionLinks: ["provider-create"])));
         var cut = Render();
         cut.WaitForElement("[data-testid='connection-form']");
-        var inputs = cut.Find("form[data-testid='connection-form']").QuerySelectorAll("input, textarea");
-        inputs[0].Change("Forms");
-        inputs[1].Change("1");
-        inputs[2].Change("2");
-        inputs[3].Change(Guid.CreateVersion7().ToString("D"));
-        inputs[4].Change(Guid.CreateVersion7().ToString("D"));
-        inputs[5].Change("https://forms.example\nnot-a-url");
+        SetPrivateDraft(cut.Instance, "_connectionDraft", ValidConnectionDraft("Forms", "https://forms.example\nnot-a-url"));
 
         await cut.Find("form[data-testid='connection-form']").SubmitAsync();
 
@@ -332,8 +343,8 @@ public sealed class StudioEventIntegrationsTests : IDisposable
         _service.GetConnectionsAsync(_event.TenantId!.Value, _event.Id!.Value, Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(Connections(new[]
             {
-                Item(new { id = firstId, name = "First", providerKindId = 1, deploymentKindId = 2, apiTokenSecretBindingId = Guid.CreateVersion7(), webhookSecretBindingId = Guid.CreateVersion7() }, "edit"),
-                Item(new { id = secondId, name = "Second", providerKindId = 1, deploymentKindId = 2, apiTokenSecretBindingId = Guid.CreateVersion7(), webhookSecretBindingId = Guid.CreateVersion7() }, "edit")
+                Item(new { id = firstId, name = "First", providerKindId = 1, deploymentKindId = 2, providerCode = "MICROSOFT_FORMS", providerDeploymentCode = "MICROSOFT_365", apiVersion = "POWER_AUTOMATE_V1", adapterPolicyVersion = "ISLAMU_EVENT_MICROSOFT_FORMS_V1", conformanceEvidenceRevision = "2026-08-11", managementApiBaseUrl = "https://forms.office.com", publicBaseUrl = "https://forms.office.com/Pages/ResponsePage.aspx", providerWorkspaceId = "microsoft-365", apiTokenSecretBindingId = Guid.CreateVersion7(), webhookSecretBindingId = Guid.CreateVersion7() }, "edit"),
+                Item(new { id = secondId, name = "Second", providerKindId = 1, deploymentKindId = 2, providerCode = "MICROSOFT_FORMS", providerDeploymentCode = "MICROSOFT_365", apiVersion = "POWER_AUTOMATE_V1", adapterPolicyVersion = "ISLAMU_EVENT_MICROSOFT_FORMS_V1", conformanceEvidenceRevision = "2026-08-11", managementApiBaseUrl = "https://forms.office.com", publicBaseUrl = "https://forms.office.com/Pages/ResponsePage.aspx", providerWorkspaceId = "microsoft-365", apiTokenSecretBindingId = Guid.CreateVersion7(), webhookSecretBindingId = Guid.CreateVersion7() }, "edit")
             })));
         var cut = Render();
         cut.WaitForElement("[data-testid='connection-edit-form']");
@@ -350,7 +361,7 @@ public sealed class StudioEventIntegrationsTests : IDisposable
         WithEventLinks("manage-registration-channels");
         var connectionId = Guid.CreateVersion7();
         _service.GetConnectionsAsync(_event.TenantId!.Value, _event.Id!.Value, Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult(Connections(Item(new { id = connectionId, name = "Missing secrets", providerKindId = 1, deploymentKindId = 2 }, "edit"))));
+            .Returns(Task.FromResult(Connections(Item(new { id = connectionId, name = "Missing secrets", providerKindId = 1, deploymentKindId = 2, providerCode = "MICROSOFT_FORMS", providerDeploymentCode = "MICROSOFT_365", apiVersion = "POWER_AUTOMATE_V1", adapterPolicyVersion = "ISLAMU_EVENT_MICROSOFT_FORMS_V1", conformanceEvidenceRevision = "2026-08-11", managementApiBaseUrl = "https://forms.office.com", publicBaseUrl = "https://forms.office.com/Pages/ResponsePage.aspx", providerWorkspaceId = "microsoft-365" }, "edit"))));
         var cut = Render();
         cut.WaitForElement("[data-testid='connection-edit-form']");
 
@@ -528,7 +539,7 @@ public sealed class StudioEventIntegrationsTests : IDisposable
     private static HalCollectionResourceOfRegistrationProviderConnectionDto Connections(object? item = null, params string[] collectionLinks) => new()
     {
         _links = Links(collectionLinks),
-        _embedded = new HalCollectionEmbeddedOfRegistrationProviderConnectionDto { Items = item is null ? [] : item is IEnumerable<JsonElement> items ? items.Cast<object>().ToList() : [item] }
+        _embedded = new HalCollectionEmbeddedOfRegistrationProviderConnectionDto { Items = Items<HalResourceOfRegistrationProviderConnectionDto>(item) }
     };
 
     private static HalResourceOfRegistrationProviderConnectionDto ConnectionResource(params string[] rels) => new()
@@ -539,24 +550,59 @@ public sealed class StudioEventIntegrationsTests : IDisposable
     private static HalCollectionResourceOfRegistrationProviderBindingDto Bindings(object? item = null, params string[] collectionLinks) => new()
     {
         _links = Links(collectionLinks),
-        _embedded = new HalCollectionEmbeddedOfRegistrationProviderBindingDto { Items = item is null ? [] : [item] }
+        _embedded = new HalCollectionEmbeddedOfRegistrationProviderBindingDto { Items = Items<HalResourceOfRegistrationProviderBindingDto>(item) }
     };
 
     private static HalCollectionResourceOfRegistrationChannelDto Channels(object? item = null, params string[] collectionLinks) => new()
     {
         _links = Links(collectionLinks),
-        _embedded = new HalCollectionEmbeddedOfRegistrationChannelDto { Items = item is null ? [] : [item] }
+        _embedded = new HalCollectionEmbeddedOfRegistrationChannelDto { Items = Items<HalResourceOfRegistrationChannelDto>(item) }
     };
 
     private static HalCollectionResourceOfRegistrationProviderBindingHealthDto Health(object? item = null) => new()
     {
-        _embedded = new HalCollectionEmbeddedOfRegistrationProviderBindingHealthDto { Items = item is null ? [] : [item] }
+        _embedded = new HalCollectionEmbeddedOfRegistrationProviderBindingHealthDto { Items = Items<HalResourceOfRegistrationProviderBindingHealthDto>(item) }
     };
 
     private static HalCollectionResourceOfRegistrationProviderParkedQueueItemDto Queue(object? item = null, params string[] collectionLinks) => new()
     {
         _links = Links(collectionLinks),
-        _embedded = new HalCollectionEmbeddedOfRegistrationProviderParkedQueueItemDto { Items = item is null ? [] : [item] }
+        _embedded = new HalCollectionEmbeddedOfRegistrationProviderParkedQueueItemDto { Items = Items<HalResourceOfRegistrationProviderParkedQueueItemDto>(item) }
+    };
+
+    private static List<T> Items<T>(object? item)
+    {
+        if (item is null)
+        {
+            return [];
+        }
+
+        if (item is IEnumerable<JsonElement> items)
+        {
+            return items.Select(ToItem<T>).ToList();
+        }
+
+        return [ToItem<T>((JsonElement)item)];
+    }
+
+    private static T ToItem<T>(JsonElement item) => item.Deserialize<T>()!;
+
+    private static Dictionary<string, object?> ValidConnectionDraft(string name, string? originsText = null) => new()
+    {
+        ["Name"] = name,
+        ["ProviderKindId"] = 1,
+        ["DeploymentKindId"] = 2,
+        ["ProviderCode"] = "MICROSOFT_FORMS",
+        ["ProviderDeploymentCode"] = "MICROSOFT_365",
+        ["ApiVersion"] = "POWER_AUTOMATE_V1",
+        ["AdapterPolicyVersion"] = "ISLAMU_EVENT_MICROSOFT_FORMS_V1",
+        ["ConformanceEvidenceRevision"] = "2026-08-11",
+        ["ManagementApiBaseUrl"] = "https://forms.office.com",
+        ["PublicBaseUrl"] = "https://forms.office.com/Pages/ResponsePage.aspx",
+        ["ProviderWorkspaceId"] = "microsoft-365",
+        ["ApiTokenSecretBindingId"] = Guid.CreateVersion7(),
+        ["WebhookSecretBindingId"] = Guid.CreateVersion7(),
+        ["OriginsText"] = originsText
     };
 
     private static Dictionary<string, HalLink>? Links(params string[] rels) => rels.Length == 0

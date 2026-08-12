@@ -368,6 +368,7 @@ public static class LinkRelations
     public const string Submit = "submit";
     public const string Skip = "skip";
     public const string LaunchAttempt = "launch-attempt";
+    public const string LaunchProviderAttempt = "launch-provider-attempt";
     public const string Attach = "attach";
     public const string Detach = "detach";
     public const string Livestream = "livestream";

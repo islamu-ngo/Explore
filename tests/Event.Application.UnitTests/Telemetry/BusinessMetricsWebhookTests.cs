@@ -222,6 +222,32 @@ public sealed class BusinessMetricsWebhookTests
         await Assert.That(tagSeries).IsEquivalentTo(["data_kind=unknown|mode=unknown"]);
     }
 
+    [Test]
+    public async Task RegistrationProviderSubscriptionLifecycleMetricsUseOnlyBoundedDimensions()
+    {
+        using var metricsCapture = new MetricsCapture();
+        using var metrics = CreateMetrics();
+
+        metrics.RecordRegistrationProviderSubscriptionOperation("renewal", "success");
+        metrics.RecordRegistrationProviderSubscriptionOperation("https://tenant.example/private", "raw exception text");
+        metrics.RecordRegistrationProviderSubscriptionWatchCount("expiring", 3);
+        metrics.RecordRegistrationProviderSubscriptionWatchCount("expired", 1);
+
+        IReadOnlyList<Measurement> operations = metricsCapture.All("explore.registration_providers.subscription_operations");
+        IReadOnlyList<Measurement> watches = metricsCapture.All("explore.registration_providers.subscription_watches");
+
+        await Assert.That(operations).Count().IsEqualTo(2);
+        await Assert.That(operations[0].Tags.Keys).IsEquivalentTo(["operation", "outcome"]);
+        await Assert.That(operations[0].Tags["operation"]?.ToString()).IsEqualTo("renewal");
+        await Assert.That(operations[0].Tags["outcome"]?.ToString()).IsEqualTo("success");
+        await Assert.That(operations[1].Tags["operation"]?.ToString()).IsEqualTo("unknown");
+        await Assert.That(operations[1].Tags["outcome"]?.ToString()).IsEqualTo("unknown");
+        await Assert.That(operations.SelectMany(measurement => measurement.Tags.Keys)).DoesNotContain("tenant_id");
+        await Assert.That(operations.SelectMany(measurement => measurement.Tags.Keys)).DoesNotContain("provider");
+        await Assert.That(operations.SelectMany(measurement => measurement.Tags.Keys)).DoesNotContain("error");
+        await Assert.That(watches.Select(measurement => measurement.Tags["status"]?.ToString())).IsEquivalentTo(["expiring", "expired"]);
+    }
+
     private static BusinessMetrics CreateMetrics()
     {
         var meterFactory = Substitute.For<IMeterFactory>();

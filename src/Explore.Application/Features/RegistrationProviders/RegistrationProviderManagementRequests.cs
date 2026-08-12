@@ -153,6 +153,14 @@ public sealed record ReplaceEventDraftRegistrationProviderMappingsCommand(Guid T
 }
 
 [AuthorizeResource(ResourceKinds.Event, AuthorizationActions.Events.ManageRegistrationChannels)]
+public sealed record ImportExternalRegistrationProviderFormVersionCommand(Guid TenantId, Guid EventId, Guid ConnectionId, ImportExternalRegistrationProviderFormVersionRequestDto Request)
+    : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
+{
+    string? ISecureRequest.ResourceId => EventId == Guid.Empty ? null : EventId.ToString("D");
+    IDictionary<string, object>? ISecureRequest.ResourceAttributes => TenantId == Guid.Empty || EventId == Guid.Empty ? null : RegistrationProviderAuthorization.EventAttributes(TenantId, EventId);
+}
+
+[AuthorizeResource(ResourceKinds.Event, AuthorizationActions.Events.ManageRegistrationChannels)]
 public sealed record GetRegistrationChannelsQuery(Guid TenantId, Guid EventId, Guid WorkflowId, Guid RequirementId)
     : IRequest<IReadOnlyList<RegistrationChannelDto>>, ISecureRequest
 {

@@ -64,6 +64,7 @@ public partial class ExploreDbContext
     {
         ValidateEventLocationCarrierConsistency();
         ValidateRegistrationProviderConnectionSecrets();
+        ValidateRegistrationProviderBindingSecrets();
         ValidateRegistrationAttemptProviderRevisions();
         PopulateMySqlPortableComputedValues();
         var userId = GetCurrentUserId();
@@ -156,6 +157,16 @@ public partial class ExploreDbContext
         }
     }
 
+    private void ValidateRegistrationProviderBindingSecrets()
+    {
+        foreach (var entry in ChangeTracker.Entries<RegistrationProviderBinding>()
+                     .Where(item => item.State is EntityState.Added or EntityState.Modified))
+        {
+            RegistrationProviderBinding binding = entry.Entity;
+            EnsureProviderBindingWebhookSecretPurpose(binding.TenantId, binding.Id, binding.WebhookSecretBindingId);
+        }
+    }
+
     private void EnsureProviderSecretPurpose(Guid tenantId, Guid? bindingId, string expectedKey, string parameterName)
     {
         if (bindingId is null)
@@ -172,6 +183,28 @@ public partial class ExploreDbContext
         if (binding is null || binding.ScopeId != tenantId || binding.SettingKey != expectedKey || string.IsNullOrWhiteSpace(binding.Qualifier))
         {
             throw new InvalidOperationException($"Registration provider connection {parameterName} must reference a tenant-qualified {expectedKey} SecretBinding.");
+        }
+    }
+
+    private void EnsureProviderBindingWebhookSecretPurpose(Guid tenantId, Guid bindingId, Guid? secretBindingId)
+    {
+        if (secretBindingId is null)
+        {
+            return;
+        }
+
+        string expectedQualifier = bindingId.ToString("N", CultureInfo.InvariantCulture);
+        SecretBinding? secret = ChangeTracker.Entries<SecretBinding>()
+            .Select(entry => entry.Entity)
+            .FirstOrDefault(candidate => candidate.Id == secretBindingId)
+            ?? SecretBindings
+                .IgnoreTenantFilter(TenantFilterBypassReasons.TenantScopedRepositoryExactTenantPredicate)
+                .FirstOrDefault(candidate => candidate.Id == secretBindingId);
+        if (secret is null || secret.ScopeId != tenantId ||
+            secret.SettingKey != SecretDefinitionRegistry.Keys.RegistrationProviders.WebhookSecret ||
+            !string.Equals(secret.Qualifier, expectedQualifier, StringComparison.Ordinal))
+        {
+            throw new InvalidOperationException("Registration provider binding WebhookSecretBindingId must reference its tenant-qualified registration provider webhook SecretBinding.");
         }
     }
 

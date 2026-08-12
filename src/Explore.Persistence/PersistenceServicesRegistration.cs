@@ -219,6 +219,7 @@ public static class PersistenceServicesRegistration
         services.AddScoped<IEventParticipationConfigurationRepository, EventParticipationConfigurationRepository>();
         services.AddScoped<IRegistrationFormAuthoringRepository, RegistrationFormAuthoringRepository>();
         services.AddScoped<IRegistrationProviderRepository, RegistrationProviderRepository>();
+        services.AddScoped<IRegistrationProviderSubscriptionStateRepository, RegistrationProviderSubscriptionStateRepository>();
         services.AddScoped<IParticipationRequirementAttachmentRepository, ParticipationRequirementAttachmentRepository>();
         services.AddScoped<IEventTicketCatalogRepository, EventTicketCatalogRepository>();
         services.AddScoped<IRegistrationInventoryRepository, RegistrationInventoryRepository>();
@@ -226,6 +227,7 @@ public static class PersistenceServicesRegistration
         services.AddScoped<IRegistrationSubmissionRepository, RegistrationSubmissionRepository>();
         services.AddScoped<IRegistrationAnswerFileRepository, RegistrationAnswerFileRepository>();
         services.AddScoped<IRegistrationFinalizationRepository, RegistrationFinalizationRepository>();
+        services.AddScoped<IRegistrationProviderSubmissionWriteEffectRepository, RegistrationProviderSubmissionWriteEffectRepository>();
         services.AddScoped<IPlatformFeePolicyRepository, PlatformFeePolicyRepository>();
         services.AddScoped<IPlatformContributionSettingRepository, PlatformContributionSettingRepository>();
         services.AddScoped<IEventPublicActionRepository, EventPublicActionRepository>();
@@ -416,6 +418,7 @@ public static class PersistenceServicesRegistration
         services.AddScoped<IEmailDispatchEligibilityEvaluator, EmailDispatchEligibilityEvaluator>();
         services.AddScoped<IWebPushDispatchOutboxRepository, WebPushDispatchOutboxRepository>();
         services.AddScoped<IIntegrationSyncOutboxRepository, IntegrationSyncOutboxRepository>();
+        services.AddScoped<IRegistrationProviderSubmissionWriteEffectRepository, RegistrationProviderSubmissionWriteEffectRepository>();
 
         // Webhook Repositories
         services.AddScoped<IWebhookConsumerRepository, WebhookConsumerRepository>();

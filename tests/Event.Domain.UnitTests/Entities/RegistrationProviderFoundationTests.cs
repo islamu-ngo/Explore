@@ -114,7 +114,9 @@ public sealed class RegistrationProviderFoundationTests
     {
         RegistrationProviderConnection connection = RegistrationProviderConnection.Create(
             Guid.CreateVersion7(), "provider", RegistrationProviderKindEnum.ExternalForm,
-            RegistrationProviderDeploymentKindEnum.HostedSaas, null, null, Now);
+            RegistrationProviderDeploymentKindEnum.HostedSaas, "FORMBRICKS", "HOSTED_SAAS", "v1", "formbricks-policy-v1",
+            "official-api-v1-2026-08", "https:/" + "/app.formbricks.com/api/v1/management", "https:/" + "/app.formbricks.com",
+            "workspace_1", null, null, Now);
 
         connection.ReplaceApprovedOrigins([" HTTPS://Forms.Example.Org:8443/ "], Now);
 
@@ -123,6 +125,93 @@ public sealed class RegistrationProviderFoundationTests
         await Assert.That(() => connection.ReplaceApprovedOrigins(["http://forms.example.org"], Now)).Throws<ArgumentException>();
         await Assert.That(() => connection.ReplaceApprovedOrigins(["https://127.0.0.1"], Now)).Throws<ArgumentException>();
         await Assert.That(() => connection.ReplaceApprovedOrigins(["https://forms.example.org/path"], Now)).Throws<ArgumentException>();
+    }
+
+    [Test]
+    public async Task Connection_RequiresTupleAndHttpsProviderBaseUrls()
+    {
+        RegistrationProviderConnection connection = RegistrationProviderConnection.Create(
+            Guid.CreateVersion7(), "provider", RegistrationProviderKindEnum.ExternalForm,
+            RegistrationProviderDeploymentKindEnum.HostedSaas, " FORMBRICKS ", "HOSTED_SAAS", "v1", "policy",
+            "evidence", "https:/" + "/app.formbricks.com/api/v1/management/", "https:/" + "/app.formbricks.com/",
+            "workspace", null, null, Now);
+
+        await Assert.That(connection.TupleKey).IsEqualTo("FORMBRICKS|HOSTED_SAAS|v1|policy|evidence");
+        await Assert.That(connection.ManagementApiBaseUrl).IsEqualTo("https://app.formbricks.com/api/v1/management");
+        await Assert.That(connection.PublicBaseUrl).IsEqualTo("https://app.formbricks.com");
+        await Assert.That(() => RegistrationProviderConnection.Create(
+                Guid.CreateVersion7(), "provider", RegistrationProviderKindEnum.ExternalForm,
+                RegistrationProviderDeploymentKindEnum.HostedSaas, "FORMBRICKS", "HOSTED_SAAS", "v1", "policy",
+                "evidence", "http:/" + "/app.formbricks.com", "https:/" + "/app.formbricks.com", "workspace", null, null, Now))
+            .Throws<ArgumentException>();
+    }
+
+    [Test]
+    public async Task Connection_MetadataIsBoundedAndCheckpointsRequireUtc()
+    {
+        RegistrationProviderConnection connection = RegistrationProviderConnection.Create(
+            Guid.CreateVersion7(), "provider", RegistrationProviderKindEnum.ExternalForm,
+            RegistrationProviderDeploymentKindEnum.HostedSaas, "GOOGLE_FORMS", "GOOGLE_WORKSPACE", "v1", "policy",
+            "evidence", "https:/" + "/forms.googleapis.com/v1", "https:/" + "/docs.google.com",
+            "workspace", null, null, Now);
+
+        connection.UpdateOAuthMetadata(
+            " https://www.googleapis.com/auth/forms.responses.readonly  openid https://www.googleapis.com/auth/forms.body.readonly ",
+            " user:forms-owner@example.test ",
+            " projects/forms-project/topics/registration-watch ");
+        connection.RecordCredentialRefresh(Now.AddMinutes(1));
+        connection.RecordAccessValidated(Now.AddMinutes(2));
+
+        await Assert.That(connection.GrantedOAuthScopes).IsEqualTo("https://www.googleapis.com/auth/forms.body.readonly https://www.googleapis.com/auth/forms.responses.readonly openid");
+        await Assert.That(connection.ProviderIdentity).IsEqualTo("user:forms-owner@example.test");
+        await Assert.That(connection.PubSubConfigurationReference).IsEqualTo("projects/forms-project/topics/registration-watch");
+        await Assert.That(connection.LastCredentialRefreshAt).IsEqualTo(Now.AddMinutes(1));
+        await Assert.That(connection.LastAccessValidatedAt).IsEqualTo(Now.AddMinutes(2));
+        await Assert.That(() => connection.RecordCredentialRefresh(DateTime.SpecifyKind(Now, DateTimeKind.Local))).Throws<ArgumentException>();
+        await Assert.That(() => connection.UpdateOAuthMetadata("openid\nemail", "identity", "pubsub")).Throws<ArgumentException>();
+    }
+
+    [Test]
+    public async Task Binding_ProvisionedProviderIdsAreDraftOnly()
+    {
+        RegistrationProviderBinding binding = Binding();
+        Guid webhookSecretBindingId = Guid.CreateVersion7();
+
+        binding.SetDraftProvisionedSurvey(" survey-1 ", " revision-1 ");
+        binding.SetDraftProvisionedSubscription(" webhook-1 ", webhookSecretBindingId);
+        binding.Publish(Hash(), Now.AddMinutes(1));
+
+        await Assert.That(binding.ProviderSurveyId).IsEqualTo("survey-1");
+        await Assert.That(binding.ProviderSurveyRevisionId).IsEqualTo("revision-1");
+        await Assert.That(binding.ProviderWebhookId).IsEqualTo("webhook-1");
+        await Assert.That(binding.WebhookSecretBindingId).IsEqualTo(webhookSecretBindingId);
+        await Assert.That(() => binding.SetDraftProvisionedSurvey("survey-2", null)).Throws<InvalidOperationException>();
+    }
+
+    [Test]
+    public async Task ExternalImportedFormVersionPinsImmutableProviderProvenance()
+    {
+        RegistrationForm form = RegistrationForm.Create(Guid.CreateVersion7(), Guid.CreateVersion7(), Guid.CreateVersion7(), "external", "survey", "Survey", Now);
+        Guid connectionId = Guid.CreateVersion7();
+        Guid revisionId = Guid.CreateVersion7();
+
+        RegistrationFormVersion version = RegistrationFormVersion.CreateExternalImported(
+            form,
+            1,
+            "en",
+            connectionId,
+            revisionId,
+            " survey-1 ",
+            " revision-1 ",
+            Convert.ToBase64String(new byte[32]),
+            Now);
+
+        await Assert.That(version.SourceKindId).IsEqualTo((int)RegistrationFormVersionSourceKindEnum.ExternalImported);
+        await Assert.That(version.ExternalRegistrationProviderConnectionId).IsEqualTo(connectionId);
+        await Assert.That(version.ExternalRegistrationProviderSchemaRevisionId).IsEqualTo(revisionId);
+        await Assert.That(version.ExternalProviderSurveyId).IsEqualTo("survey-1");
+        await Assert.That(version.ExternalProviderSurveyRevisionId).IsEqualTo("revision-1");
+        await Assert.That(version.ExternalImportMappingRevisionHash).IsEqualTo(Convert.ToBase64String(new byte[32]));
     }
 
     [Test]
@@ -141,7 +230,9 @@ public sealed class RegistrationProviderFoundationTests
     {
         RegistrationProviderConnection connection = RegistrationProviderConnection.Create(
             Guid.CreateVersion7(), "provider", RegistrationProviderKindEnum.ExternalForm,
-            RegistrationProviderDeploymentKindEnum.HostedSaas, null, null, Now);
+            RegistrationProviderDeploymentKindEnum.HostedSaas, "FORMBRICKS", "HOSTED_SAAS", "v1", "formbricks-policy-v1",
+            "official-api-v1-2026-08", "https:/" + "/app.formbricks.com/api/v1/management", "https:/" + "/app.formbricks.com",
+            "workspace_1", null, null, Now);
 
         await Assert.That(() => connection.ReplaceApprovedOrigins([origin], Now)).Throws<ArgumentException>();
     }
@@ -149,7 +240,7 @@ public sealed class RegistrationProviderFoundationTests
     private static RegistrationProviderBinding Binding() => RegistrationProviderBinding.Create(
         Guid.CreateVersion7(), Guid.CreateVersion7(), Guid.CreateVersion7(), Guid.CreateVersion7(),
         RegistrationProviderPresentationModeEnum.Redirect, RegistrationProviderCollectionModeEnum.ProviderHosted,
-        RegistrationProviderCompletionModeEnum.Callback, RegistrationProviderTrustLevelEnum.SelectedFields, Now);
+        RegistrationProviderCompletionModeEnum.Callback, RegistrationProviderTrustLevelEnum.SelectedFields, null, Now);
 
     private static RegistrationRequirement Requirement()
     {

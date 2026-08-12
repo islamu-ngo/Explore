@@ -31,6 +31,11 @@ public interface ISecretResolver
         Guid? tenantId,
         CancellationToken cancellationToken = default);
 
+    Task<ResolvedSecret?> ResolveTenantBindingAsync(
+        Guid tenantId,
+        Guid bindingId,
+        CancellationToken cancellationToken = default);
+
     /// <summary>
     /// Evicts the cached value (if any) for a given key/scope. Called by notification handlers when a
     /// <see cref="Explore.Domain.Secrets.SecretBinding"/> row changes.

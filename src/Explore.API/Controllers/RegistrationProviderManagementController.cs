@@ -147,6 +147,17 @@ public sealed class RegistrationProviderManagementController(
     public async Task<ActionResult<BaseCommandResponse<Guid>>> ReplaceApprovedOrigins(Guid tenantId, Guid eventId, Guid connectionId, [FromBody] ReplaceRegistrationProviderApprovedOriginsRequestDto request, CancellationToken cancellationToken = default) =>
         ToActionResult(await mediator.Send(new ReplaceRegistrationProviderApprovedOriginsCommand(tenantId, eventId, connectionId, request.Origins), cancellationToken));
 
+    [HttpPost("connections/{connectionId:guid}/external-imports", Name = RouteNames.ImportExternalRegistrationProviderFormVersion)]
+    [EnableRateLimiting(RateLimitingExtensions.WritePolicy)]
+    [RequestTimeout(RequestTimeoutExtensions.DefaultPolicy)]
+    [PrivateNoStore]
+    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    public async Task<ActionResult<BaseCommandResponse<Guid>>> ImportExternalFormVersion(Guid tenantId, Guid eventId, Guid connectionId, [FromBody] ImportExternalRegistrationProviderFormVersionRequestDto request, CancellationToken cancellationToken = default) =>
+        ToActionResult(await mediator.Send(new ImportExternalRegistrationProviderFormVersionCommand(tenantId, eventId, connectionId, request), cancellationToken));
+
     [HttpGet("bindings", Name = RouteNames.GetRegistrationProviderBindings)]
     [EnableRateLimiting(RateLimitingExtensions.AuthenticatedPolicy)]
     [RequestTimeout(RequestTimeoutExtensions.LookupPolicy)]

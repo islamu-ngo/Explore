@@ -1,0 +1,13 @@
+{
+  "data": {
+    "id": "resp_123",
+    "updatedAt": "2026-08-10T12:01:00.000Z",
+    "variables": {
+      "islamuEventAttemptId": "018e4e5c-7f00-7000-8000-000000000701"
+    },
+    "data": {
+      "profile.email": "attendee@example.test",
+      "profile.ticket": "standard"
+    }
+  }
+}

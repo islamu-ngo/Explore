@@ -1,18 +1,21 @@
 // ABOUTME: Provider-neutral registration capability contracts and typed D3 request/result records.
 // ABOUTME: Keeps provider operations segregated so downstream callbacks depend on capabilities, not provider names.
 
+using System.Text.Json;
 using Explore.Domain;
 
 namespace Explore.Application.Contracts.Services.Registration;
 
 public sealed record RegistrationProviderTuple(
     string ProviderCode,
-    string DeploymentKind,
+    string ProviderDeploymentCode,
     string ApiVersion,
     string AdapterPolicyVersion,
     string ConformanceEvidenceRevision)
 {
-    public string Key => string.Join('|', ProviderCode, DeploymentKind, ApiVersion, AdapterPolicyVersion, ConformanceEvidenceRevision);
+    public static RegistrationProviderTuple Empty { get; } = new(string.Empty, string.Empty, string.Empty, string.Empty, string.Empty);
+    public string DeploymentKind => ProviderDeploymentCode;
+    public string Key => string.Join('|', ProviderCode, ProviderDeploymentCode, ApiVersion, AdapterPolicyVersion, ConformanceEvidenceRevision);
 }
 
 public sealed record RegistrationProviderCapabilitySet(
@@ -63,6 +66,22 @@ public sealed record RegistrationProviderCapabilitySet(
             values.Contains(RegistrationProviderCapabilityCodes.SubmissionSink),
             values.Contains(RegistrationProviderCapabilityCodes.AutoFinalize));
     }
+
+    public IEnumerable<string> ToCodes()
+    {
+        if (Redirect) yield return RegistrationProviderCapabilityCodes.Redirect;
+        if (Embed) yield return RegistrationProviderCapabilityCodes.Embed;
+        if (Manual) yield return RegistrationProviderCapabilityCodes.Manual;
+        if (SchemaRead) yield return RegistrationProviderCapabilityCodes.SchemaRead;
+        if (FormProvision) yield return RegistrationProviderCapabilityCodes.FormProvision;
+        if (SubmissionWrite) yield return RegistrationProviderCapabilityCodes.SubmissionWrite;
+        if (SubmissionRead) yield return RegistrationProviderCapabilityCodes.SubmissionRead;
+        if (CallbackVerification) yield return RegistrationProviderCapabilityCodes.CallbackVerification;
+        if (SubscriptionManagement) yield return RegistrationProviderCapabilityCodes.SubscriptionManagement;
+        if (Reconciliation) yield return RegistrationProviderCapabilityCodes.Reconciliation;
+        if (SubmissionSink) yield return RegistrationProviderCapabilityCodes.SubmissionSink;
+        if (AutoFinalize) yield return RegistrationProviderCapabilityCodes.AutoFinalize;
+    }
 }
 
 public static class RegistrationProviderCapabilityCodes
@@ -102,6 +121,11 @@ public interface IRegistrationProviderFormProvisioner
     Task<RegistrationProviderFormProvisionResult> ProvisionFormAsync(RegistrationProviderFormProvisionRequest request, CancellationToken cancellationToken);
 }
 
+public interface IRegistrationProviderFormCompatibilityChecker
+{
+    RegistrationProviderFormCompatibilityResult CheckCompatibility(RegistrationFormVersion formVersion);
+}
+
 public interface IRegistrationProviderSubmissionWriter
 {
     Task<RegistrationProviderSubmissionWriteResult> WriteSubmissionAsync(RegistrationProviderSubmissionWriteRequest request, CancellationToken cancellationToken);
@@ -115,6 +139,12 @@ public interface IRegistrationProviderSubmissionReader
 public interface IRegistrationProviderCallbackVerifier
 {
     Task<RegistrationProviderCallbackVerificationResult> VerifyCallbackAsync(RegistrationProviderCallbackVerificationRequest request, CancellationToken cancellationToken);
+}
+
+public interface IRegistrationProviderDelegatedAutomation
+{
+    string ConnectorContractVersion { get; }
+    string RequiredCorrelationPlatformFieldKey { get; }
 }
 
 public interface IRegistrationProviderCallbackReceiptProtector
@@ -152,18 +182,71 @@ public interface IRegistrationProviderRegistry
     IRegistrationProviderDescriptor? TryResolve(RegistrationProviderTuple tuple);
 }
 
-public sealed record RegistrationProviderPresentationRequest(Guid TenantId, Guid BindingId);
+public interface IRegistrationProviderCallbackUriBuilder
+{
+    Uri Build(string providerCode, Guid bindingId);
+}
+
+public interface IRegistrationProviderManagedPublishPreflight
+{
+    Task<RegistrationProviderManagedPublishPreflightResult> RunAsync(
+        Guid tenantId,
+        Guid eventId,
+        RegistrationProviderBinding binding,
+        CancellationToken cancellationToken);
+}
+
+public interface IRegistrationProviderConnectionCheckpoint
+{
+    Task RecordCredentialRefreshAsync(Guid tenantId, Guid connectionId, CancellationToken cancellationToken);
+
+    Task RecordAccessValidatedAsync(Guid tenantId, Guid connectionId, CancellationToken cancellationToken);
+}
+
+public sealed record RegistrationProviderPresentationRequest(Guid TenantId, RegistrationProviderBinding Binding, RegistrationProviderConnection Connection, RegistrationProviderTuple Tuple, Guid? AttemptId = null, string? AttemptCapabilityToken = null);
 public sealed record RegistrationProviderPresentationResult(bool RedirectAvailable, bool EmbedAvailable, bool ManualAvailable, Uri? RedirectUri = null, Uri? EmbedUri = null);
-public sealed record RegistrationProviderSchemaReadRequest(Guid TenantId, Guid ConnectionId);
-public sealed record RegistrationProviderSchemaReadResult(RegistrationProviderSchemaSnapshot Snapshot);
-public sealed record RegistrationProviderFormProvisionRequest(Guid TenantId, Guid BindingId, Guid FormVersionId);
+public sealed record RegistrationProviderSchemaReadRequest(Guid TenantId, RegistrationProviderBinding Binding, RegistrationProviderConnection Connection, RegistrationProviderTuple Tuple);
+public sealed record RegistrationProviderSchemaReadResult(RegistrationProviderSchemaSnapshot Snapshot, bool IsActive = true, string? Fingerprint = null);
+public sealed record RegistrationProviderFormProvisionRequest(Guid TenantId, RegistrationProviderBinding Binding, RegistrationProviderConnection Connection, RegistrationProviderTuple Tuple, RegistrationFormVersion FormVersion);
 public sealed record RegistrationProviderFormProvisionResult(string ProviderFormId, string ProviderRevisionId);
-public sealed record RegistrationProviderSubmissionWriteRequest(Guid TenantId, Guid AttemptId, IReadOnlyDictionary<string, string> Answers);
+public sealed record RegistrationProviderFormCompatibilityResult(string Fingerprint, IReadOnlyList<RegistrationProviderPreflightIssue> Issues)
+{
+    public bool IsCompatible => Issues.Count == 0;
+}
+public sealed record RegistrationProviderPreflightIssue(string Code, string Message, Guid? FieldId = null);
+public sealed record RegistrationProviderManagedPublishPreflightResult(bool Succeeded, string? FailureCode, IReadOnlyList<string> Errors)
+{
+    public static RegistrationProviderManagedPublishPreflightResult Success() => new(true, null, []);
+    public static RegistrationProviderManagedPublishPreflightResult Failure(string code, IReadOnlyList<string>? errors = null) => new(false, code, errors ?? [code]);
+}
+public sealed record RegistrationProviderSubmissionWriteRequest(Guid TenantId, RegistrationProviderBinding Binding, RegistrationProviderConnection Connection, RegistrationProviderTuple Tuple, Guid AttemptId, IReadOnlyDictionary<string, string> Answers);
 public sealed record RegistrationProviderSubmissionWriteResult(string ProviderSubmissionId, string ProviderRevisionId);
-public sealed record RegistrationProviderSubmissionReadRequest(Guid TenantId, Guid BindingId, string ProviderSubmissionId);
-public sealed record RegistrationProviderSubmissionReadResult(string ProviderSubmissionId, string ProviderRevisionId, IReadOnlyDictionary<string, string> Answers);
-public sealed record RegistrationProviderCallbackVerificationRequest(Guid TenantId, Guid ConnectionId, ReadOnlyMemory<byte> Body, IReadOnlyDictionary<string, string> Headers);
-public sealed record RegistrationProviderCallbackVerificationResult(bool IsVerified, string? FailureCode = null, string? Receipt = null);
+public sealed class RegistrationProviderSubmissionDeliveryException(
+    RegistrationProviderSubmissionDeliveryFailureKind failureKind,
+    string failureCode,
+    string? message = null,
+    Exception? innerException = null) : Exception(message ?? failureCode, innerException)
+{
+    public RegistrationProviderSubmissionDeliveryFailureKind FailureKind { get; } = failureKind;
+    public string FailureCode { get; } = failureCode;
+}
+public sealed class RegistrationProviderUnsupportedSubmissionException(
+    string failureCode,
+    string? message = null,
+    Exception? innerException = null) : Exception(message ?? failureCode, innerException)
+{
+    public string FailureCode { get; } = failureCode;
+}
+public enum RegistrationProviderSubmissionDeliveryFailureKind
+{
+    RetryableBeforeHandoff = 1,
+    PermanentBeforeHandoff = 2,
+    AmbiguousAfterHandoff = 3
+}
+public sealed record RegistrationProviderSubmissionReadRequest(Guid TenantId, RegistrationProviderBinding Binding, RegistrationProviderConnection Connection, RegistrationProviderTuple Tuple, string ProviderSubmissionId);
+public sealed record RegistrationProviderSubmissionReadResult(string ProviderSubmissionId, string ProviderRevisionId, DateTime? ReceivedAt, Guid? AttemptId, IReadOnlyDictionary<string, JsonElement> Answers, string? AttemptCapabilityToken = null);
+public sealed record RegistrationProviderCallbackVerificationRequest(Guid TenantId, RegistrationProviderBinding Binding, RegistrationProviderConnection Connection, RegistrationProviderTuple Tuple, ReadOnlyMemory<byte> Body, IReadOnlyDictionary<string, string> Headers);
+public sealed record RegistrationProviderCallbackVerificationResult(bool IsVerified, string? FailureCode = null, string? Receipt = null, string? ProviderSubmissionId = null, string? EffectKind = null);
 public sealed record RegistrationProviderCallbackReceipt(
     Guid TenantId,
     Guid ConnectionId,
@@ -174,11 +257,20 @@ public sealed record RegistrationProviderCallbackReceipt(
     string ProviderSubmissionId,
     DateTimeOffset VerifiedAt,
     string Nonce);
-public sealed record RegistrationProviderSubscriptionRequest(Guid TenantId, Guid ConnectionId, Uri CallbackUri);
-public sealed record RegistrationProviderSubscriptionResult(bool IsActive, string? ProviderSubscriptionId);
-public sealed record RegistrationProviderReconciliationRequest(Guid TenantId, Guid BindingId, DateTime SinceUtc);
-public sealed record RegistrationProviderReconciliationResult(int ObservedSubmissionCount, bool HasMore);
-public sealed record RegistrationProviderSubmissionSinkRequest(Guid TenantId, Guid AttemptId, RegistrationEvidenceHash EvidenceHash, string? ProviderSubmissionId);
+public sealed record RegistrationProviderSubscriptionRequest(Guid TenantId, RegistrationProviderBinding Binding, RegistrationProviderConnection Connection, RegistrationProviderTuple Tuple, Uri CallbackUri);
+public sealed record RegistrationProviderSubscriptionResult(bool IsActive, string? ProviderSubscriptionId, string? ProviderWebhookSecret = null, DateTime? ExpiresAtUtc = null);
+public sealed record RegistrationProviderReconciliationRequest(Guid TenantId, RegistrationProviderBinding Binding, RegistrationProviderConnection Connection, RegistrationProviderTuple Tuple, DateTime SinceUtc, string? ContinuationCursor = null);
+public sealed record RegistrationProviderReconciledSubmission(
+    string ProviderSubmissionId,
+    string ProviderRevisionId,
+    DateTime? ReceivedAt);
+public sealed record RegistrationProviderReconciliationResult(
+    int ObservedSubmissionCount,
+    bool HasMore,
+    IReadOnlyList<RegistrationProviderReconciledSubmission>? Responses = null,
+    string? NextCheckpoint = null,
+    string? ContinuationCursor = null);
+public sealed record RegistrationProviderSubmissionSinkRequest(Guid TenantId, RegistrationProviderBinding Binding, RegistrationProviderConnection Connection, RegistrationProviderTuple Tuple, Guid AttemptId, IReadOnlyDictionary<string, string> Answers, string? ProviderSubmissionId);
 public sealed record RegistrationProviderSubmissionSinkResult(bool Accepted, Guid SubmissionId, bool AutoFinalizable);
 
 public sealed record RegistrationProviderSchemaSnapshot(IReadOnlyList<RegistrationProviderSchemaFieldSnapshot> Fields);

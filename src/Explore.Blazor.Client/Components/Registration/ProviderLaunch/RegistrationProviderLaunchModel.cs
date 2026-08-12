@@ -5,6 +5,7 @@ using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Client.Contracts.Interop;
 using Explore.Blazor.Client.Contracts.Services;
 using Explore.Blazor.Client.Components.Registration.FormRenderer;
+using Explore.Blazor.Client.Services.Http;
 
 namespace Explore.Blazor.Client.Components.Registration.ProviderLaunch;
 
@@ -14,18 +15,29 @@ public sealed record RegistrationProviderLaunchContext(
     RegistrationProviderLaunchLineage Lineage,
     GuestRegistrationOrderCapability? GuestCapability = null);
 
+public sealed record RegistrationProviderBffLaunch(
+    Guid EventId,
+    Guid OrderId,
+    Guid RequirementId,
+    Guid ChannelId,
+    Guid BindingId,
+    Guid FormId,
+    Guid FormVersionId,
+    string? GuestCapability);
+
+public sealed record RegistrationProviderBffTicket(string EmbedUrl);
+
 public sealed record RegistrationProviderPollingSnapshot(
     NativeRegistrationRequirementCollectionView? Requirements,
     object? OrderResource);
 
 public sealed class RegistrationProviderLaunchState(
-    IRegistrationProviderIntegrationService integrationService,
+    IBffClient bffClient,
     INativeRegistrationFormService nativeRegistrationFormService,
     IRegistrationOrderService registrationOrderService,
     IBrowserActionInterop browserActions)
 {
     public RegistrationProviderLaunchContext? Context { get; private set; }
-    public HalResourceOfRegistrationProviderLaunchDescriptorDto? Descriptor { get; private set; }
     public string? EmbedUrl { get; private set; }
     public RegistrationProviderPollingSnapshot? Snapshot { get; private set; }
     public bool IframeLoaded { get; private set; }
@@ -36,14 +48,17 @@ public sealed class RegistrationProviderLaunchState(
     public static bool CanLaunch(IReadOnlyDictionary<string, HalLink>? links) =>
         links?.ContainsKey("launch-descriptor") == true;
 
-    public static string BuildEmbedUrl(RegistrationProviderLaunchLineage lineage) =>
-        $"/bff/registration-provider-embed/tenants/{lineage.TenantId:D}/events/{lineage.EventId:D}/workflows/{lineage.WorkflowId:D}/requirements/{lineage.RequirementId:D}/channels/{lineage.ChannelId:D}/bindings/{lineage.BindingId:D}";
-
     public async Task InitializeAsync(RegistrationProviderLaunchContext context, CancellationToken cancellationToken = default)
     {
         Context = context;
-        Descriptor = await integrationService.GetLaunchDescriptorAsync(context.Lineage, cancellationToken);
-        EmbedUrl = BuildEmbedUrl(context.Lineage);
+        RegistrationProviderBffTicket? launch = await bffClient.SendAsync<RegistrationProviderBffLaunch, RegistrationProviderBffTicket>(
+            HttpMethod.Post,
+            "/bff/registration-provider-embed/launches",
+            new(context.EventId, context.OrderId, context.Lineage.RequirementId, context.Lineage.ChannelId,
+                context.Lineage.BindingId, context.Lineage.FormId, context.Lineage.FormVersionId,
+                context.GuestCapability?.Value),
+            cancellationToken);
+        EmbedUrl = launch?.EmbedUrl;
         await PollAsync(cancellationToken);
     }
 

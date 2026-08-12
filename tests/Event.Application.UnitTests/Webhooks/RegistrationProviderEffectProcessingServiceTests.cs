@@ -18,7 +18,9 @@ namespace Event.Application.UnitTests.Webhooks;
 public sealed class RegistrationProviderEffectProcessingServiceTests
 {
     [Test]
-    public async Task RegistrationProviderSubmissionEffect_ReachesMediatRWithoutCoopEnvelopeValidation()
+    [Arguments("registration.provider_submission")]
+    [Arguments("registration.provider_manual_import")]
+    public async Task RegistrationProviderSubmissionEffect_ReachesMediatRWithoutCoopEnvelopeValidation(string sourceEventType)
     {
         Guid tenantId = Guid.CreateVersion7();
         Guid bindingId = Guid.CreateVersion7();
@@ -28,7 +30,7 @@ public sealed class RegistrationProviderEffectProcessingServiceTests
         string hash = "sha256:" + Convert.ToHexString(SHA256.HashData(payload)).ToLowerInvariant();
         IncomingWebhookMessage message = IncomingWebhookMessage.CreateVerified(
             tenantId, "registration-provider", $"{bindingId:N}:s1", $"{bindingId:N}:s1",
-            ProcessProviderSubmissionEffectCommandHandler.StableEffectKind, payload, hash, "application/json", "utf-8",
+            sourceEventType, payload, hash, "application/json", "utf-8",
             "{\"X-Registration-Callback-Provider\":\"external-form\",\"X-Registration-Verification-Receipt\":\"receipt:v1:test\"}",
             now, now, now.AddDays(1), "test", now.AddDays(1), now.AddDays(1), now.AddDays(1), now.AddDays(1));
         IncomingWebhookEffectOutbox pointer = IncomingWebhookEffectOutbox.CreatePending(

@@ -27,6 +27,8 @@ public sealed class RegistrationFormVersion : ITenantEntity, IAuditableEntity, I
     public int Version { get; private set; }
     public int StatusId { get; private set; }
     public RegistrationFormStatus? Status { get; private set; }
+    public int SourceKindId { get; private set; }
+    public RegistrationFormVersionSourceKind? SourceKind { get; private set; }
     public string LanguageTag { get; private set; } = string.Empty;
     public string? SchemaHash { get; private set; }
     public string? DataSchemaArtifact { get; private set; }
@@ -37,6 +39,11 @@ public sealed class RegistrationFormVersion : ITenantEntity, IAuditableEntity, I
     public DateTime? RetiredAt { get; private set; }
     public Guid? SourceTemplateFormId { get; private set; }
     public Guid? SourceTemplateVersionId { get; private set; }
+    public Guid? ExternalRegistrationProviderConnectionId { get; private set; }
+    public Guid? ExternalRegistrationProviderSchemaRevisionId { get; private set; }
+    public string? ExternalProviderSurveyId { get; private set; }
+    public string? ExternalProviderSurveyRevisionId { get; private set; }
+    public string? ExternalImportMappingRevisionHash { get; private set; }
     public IReadOnlyCollection<RegistrationFormSection> Sections => _sections.AsReadOnly();
     public IReadOnlyCollection<RegistrationFormRule> Rules => _rules.AsReadOnly();
     public Guid ConcurrencyStamp { get; set; }
@@ -92,11 +99,41 @@ public sealed class RegistrationFormVersion : ITenantEntity, IAuditableEntity, I
             RegistrationFormId = form.Id,
             Version = version,
             StatusId = (int)RegistrationFormStatusEnum.Draft,
+            SourceKindId = sourceTemplateFormId is null
+                ? (int)RegistrationFormVersionSourceKindEnum.Authored
+                : (int)RegistrationFormVersionSourceKindEnum.TemplateClone,
             LanguageTag = FormVersionRules.NormalizeLanguageTag(languageTag),
             SourceTemplateFormId = sourceTemplateFormId,
             SourceTemplateVersionId = sourceTemplateVersionId,
             CreatedAt = createdAt
         };
+    }
+
+    public static RegistrationFormVersion CreateExternalImported(
+        RegistrationForm form,
+        int version,
+        string languageTag,
+        Guid connectionId,
+        Guid schemaRevisionId,
+        string providerSurveyId,
+        string? providerSurveyRevisionId,
+        string mappingRevisionHash,
+        DateTime createdAt)
+    {
+        RegistrationFormVersion imported = Create(Guid.CreateVersion7(), form, version, languageTag, null, null, createdAt);
+        imported.SourceKindId = (int)RegistrationFormVersionSourceKindEnum.ExternalImported;
+        imported.ExternalRegistrationProviderConnectionId = connectionId != Guid.Empty
+            ? connectionId
+            : throw new ArgumentException("External provider connection is required.", nameof(connectionId));
+        imported.ExternalRegistrationProviderSchemaRevisionId = schemaRevisionId != Guid.Empty
+            ? schemaRevisionId
+            : throw new ArgumentException("External schema revision is required.", nameof(schemaRevisionId));
+        imported.ExternalProviderSurveyId = NormalizeExternalProviderId(providerSurveyId, nameof(providerSurveyId));
+        imported.ExternalProviderSurveyRevisionId = string.IsNullOrWhiteSpace(providerSurveyRevisionId)
+            ? null
+            : NormalizeExternalProviderId(providerSurveyRevisionId, nameof(providerSurveyRevisionId));
+        imported.ExternalImportMappingRevisionHash = RegistrationSha256Hash.Normalize(mappingRevisionHash, nameof(mappingRevisionHash), "External import mapping revision hash");
+        return imported;
     }
 
     public void AddSection(RegistrationFormSection section)
@@ -484,6 +521,7 @@ public sealed class RegistrationFormVersion : ITenantEntity, IAuditableEntity, I
             RegistrationFormId = RegistrationFormId,
             Version = version,
             StatusId = (int)RegistrationFormStatusEnum.Draft,
+            SourceKindId = (int)RegistrationFormVersionSourceKindEnum.Authored,
             LanguageTag = LanguageTag,
             SourceTemplateFormId = SourceTemplateFormId,
             SourceTemplateVersionId = SourceTemplateVersionId,
@@ -506,6 +544,14 @@ public sealed class RegistrationFormVersion : ITenantEntity, IAuditableEntity, I
         }
 
         return clone;
+    }
+
+    private static string NormalizeExternalProviderId(string value, string parameterName)
+    {
+        string normalized = value?.Trim() ?? string.Empty;
+        return normalized.Length is > 0 and <= 200 && !normalized.Any(char.IsControl)
+            ? normalized
+            : throw new ArgumentException("External provider id must be non-blank and at most 200 characters.", parameterName);
     }
 
     private void EnsureDraft()

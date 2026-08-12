@@ -22,11 +22,31 @@ public sealed class IncomingWebhookEffectProcessingService(
     IIncomingWebhookEffectOutboxRepository pointerRepository,
     IIncomingWebhookMessageRepository messageRepository,
     IIncomingWebhookEffectReceiptRepository receiptRepository,
+    IRegistrationProviderSubscriptionStateRepository subscriptionStateRepository,
     IUnitOfWork unitOfWork,
     IMediator mediator,
     IOptions<IncomingWebhookProcessingSettings> settings,
     TimeProvider timeProvider) : IIncomingWebhookEffectProcessingService
 {
+    public IncomingWebhookEffectProcessingService(
+        IIncomingWebhookEffectOutboxRepository pointerRepository,
+        IIncomingWebhookMessageRepository messageRepository,
+        IIncomingWebhookEffectReceiptRepository receiptRepository,
+        IUnitOfWork unitOfWork,
+        IMediator mediator,
+        IOptions<IncomingWebhookProcessingSettings> settings,
+        TimeProvider timeProvider) : this(
+        pointerRepository,
+        messageRepository,
+        receiptRepository,
+        new MissingRegistrationProviderSubscriptionStateRepository(),
+        unitOfWork,
+        mediator,
+        settings,
+        timeProvider)
+    {
+    }
+
     private const string InvalidPayloadCategory = "coop_effect_payload_invalid";
     private const string TenantMismatchCategory = "coop_effect_tenant_mismatch";
     private const string IdentityMismatchCategory = "coop_effect_identity_mismatch";
@@ -75,6 +95,11 @@ public sealed class IncomingWebhookEffectProcessingService(
         if (string.Equals(active.EffectKind, ProcessProviderSubmissionEffectCommandHandler.StableEffectKind, StringComparison.Ordinal))
         {
             return await ProcessRegistrationProviderSubmissionAsync(claim, active, message, cancellationToken);
+        }
+
+        if (string.Equals(active.EffectKind, RegistrationProviderSubmissionIncomingWebhookHandler.ResponseSweepEffectKind, StringComparison.Ordinal))
+        {
+            return await ProcessRegistrationProviderResponseSweepAsync(claim, active, message, cancellationToken);
         }
 
         if (string.Equals(active.EffectKind, QueueManualRegistrationProviderImportCommandHandler.ManualImportEffectKind, StringComparison.Ordinal))
@@ -365,8 +390,11 @@ public sealed class IncomingWebhookEffectProcessingService(
         IncomingWebhookMessage message,
         CancellationToken cancellationToken)
     {
+        bool sourceEventTypeMatches = string.Equals(message.EventType, pointer.EffectKind, StringComparison.Ordinal) ||
+            string.Equals(pointer.EffectKind, ProcessProviderSubmissionEffectCommandHandler.StableEffectKind, StringComparison.Ordinal) &&
+            string.Equals(message.EventType, QueueManualRegistrationProviderImportCommandHandler.ManualImportEffectKind, StringComparison.Ordinal);
         if (!string.Equals(message.Provider, pointer.Provider, StringComparison.Ordinal) ||
-            !string.Equals(message.EventType, pointer.EffectKind, StringComparison.Ordinal) ||
+            !sourceEventTypeMatches ||
             !string.Equals(message.ProviderMessageId, pointer.ProviderDecisionId, StringComparison.Ordinal) ||
             !string.Equals(message.PayloadHash, pointer.PayloadSha256, StringComparison.Ordinal))
         {
@@ -391,14 +419,22 @@ public sealed class IncomingWebhookEffectProcessingService(
                     message.PayloadBytes,
                     ReadSafeHeaders(message.HeadersJson)),
                 cancellationToken);
-            return result.Outcome == ProviderSubmissionEffectOutcome.Completed
-                ? await CompleteAsync(claim, cancellationToken)
-                : await TransitionAsync(
+            return result.Outcome switch
+            {
+                ProviderSubmissionEffectOutcome.Completed => await CompleteAsync(claim, cancellationToken),
+                ProviderSubmissionEffectOutcome.Retryable => await TransitionAsync(
+                    claim,
+                    result.Code.ToLowerInvariant(),
+                    "The registration provider submission read failed transiently.",
+                    retry: true,
+                    cancellationToken),
+                _ => await TransitionAsync(
                     claim,
                     result.Code.ToLowerInvariant(),
                     "The registration provider submission needs reconciliation.",
                     retry: false,
-                    cancellationToken);
+                    cancellationToken)
+            };
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
@@ -442,12 +478,107 @@ public sealed class IncomingWebhookEffectProcessingService(
         }
     }
 
+    private async Task<IncomingWebhookClaimExecutionResult> ProcessRegistrationProviderResponseSweepAsync(
+        IncomingWebhookEffectClaim claim,
+        IncomingWebhookEffectOutbox pointer,
+        IncomingWebhookMessage message,
+        CancellationToken cancellationToken)
+    {
+        if (!string.Equals(message.Provider, pointer.Provider, StringComparison.Ordinal) ||
+            !string.Equals(message.EventType, pointer.EffectKind, StringComparison.Ordinal) ||
+            !string.Equals(message.ProviderMessageId, pointer.ProviderDecisionId, StringComparison.Ordinal) ||
+            !string.Equals(message.PayloadHash, pointer.PayloadSha256, StringComparison.Ordinal))
+        {
+            return await TransitionAsync(
+                claim,
+                "registration_sweep_effect_identity_mismatch",
+                "The retained registration callback identity does not match its sweep effect pointer.",
+                retry: false,
+                cancellationToken);
+        }
+
+        try
+        {
+            Guid bindingId = ParseBindingId(pointer.ProviderDecisionId);
+            RegistrationProviderSubscriptionState? state = await subscriptionStateRepository.GetAsync(
+                pointer.TenantId,
+                bindingId,
+                "RESPONSES",
+                cancellationToken);
+            if (state is null)
+            {
+                return await TransitionAsync(
+                    claim,
+                    "registration_subscription_state_missing",
+                    "The registration provider subscription state is missing.",
+                    retry: false,
+                    cancellationToken);
+            }
+
+            string? watchId = ReadPubSubWatchId(message.PayloadBytes.Span);
+            if (!string.Equals(watchId, state.WatchId, StringComparison.Ordinal))
+            {
+                return await TransitionAsync(
+                    claim,
+                    "registration_subscription_watch_mismatch",
+                    "The Google Pub/Sub watch identity does not match the persisted subscription state.",
+                    retry: false,
+                    cancellationToken);
+            }
+
+            state.ReceiveNotification(DateTime.SpecifyKind(message.ReceivedAt, DateTimeKind.Utc));
+            await subscriptionStateRepository.SaveChangesAsync(cancellationToken);
+            return await CompleteAsync(claim, cancellationToken);
+        }
+        catch (FormatException)
+        {
+            return await TransitionAsync(
+                claim,
+                "malformed_evidence",
+                "The retained registration callback evidence is malformed.",
+                retry: false,
+                cancellationToken);
+        }
+        catch (Exception) when (!cancellationToken.IsCancellationRequested)
+        {
+            return await TransitionAsync(
+                claim,
+                "registration_sweep_transient_failure",
+                "The registration provider response sweep could not be recorded because of a transient failure.",
+                retry: true,
+                cancellationToken);
+        }
+    }
+
     private static Guid ParseBindingId(string providerDecisionId)
     {
         string prefix = providerDecisionId.Split(':', 2)[0];
         return Guid.TryParseExact(prefix, "N", out Guid bindingId)
             ? bindingId
             : throw new InvalidOperationException("Registration callback binding identity is invalid.");
+    }
+
+    private static string? ReadPubSubWatchId(ReadOnlySpan<byte> payload)
+    {
+        using JsonDocument document = JsonDocument.Parse(payload.ToArray());
+        if (!document.RootElement.TryGetProperty("message", out JsonElement message)) return null;
+        if (message.TryGetProperty("attributes", out JsonElement attributes) &&
+            attributes.TryGetProperty("watchId", out JsonElement attribute) &&
+            attribute.ValueKind == JsonValueKind.String)
+        {
+            return attribute.GetString()?.Trim();
+        }
+
+        if (!message.TryGetProperty("data", out JsonElement data) || data.ValueKind != JsonValueKind.String ||
+            Convert.FromBase64String(data.GetString() ?? string.Empty) is not { Length: > 0 } decoded)
+        {
+            return null;
+        }
+
+        using JsonDocument body = JsonDocument.Parse(decoded);
+        return body.RootElement.TryGetProperty("watchId", out JsonElement value) && value.ValueKind == JsonValueKind.String
+            ? value.GetString()?.Trim()
+            : null;
     }
 
     private static IReadOnlyDictionary<string, string> ReadSafeHeaders(string? headersJson)
@@ -477,4 +608,23 @@ public sealed class IncomingWebhookEffectProcessingService(
     }
 
     private DateTime GetUtcNow() => timeProvider.GetUtcNow().UtcDateTime;
+
+    private sealed class MissingRegistrationProviderSubscriptionStateRepository : IRegistrationProviderSubscriptionStateRepository
+    {
+        public Task<RegistrationProviderSubscriptionState?> GetAsync(Guid tenantId, Guid registrationProviderBindingId, string providerEventType, CancellationToken cancellationToken) =>
+            Task.FromResult<RegistrationProviderSubscriptionState?>(null);
+
+        public Task<IReadOnlyList<RegistrationProviderSubscriptionState>> ClaimDueRenewalsAsync(int batchSize, DateTime renewBefore, DateTime claimedAt, TimeSpan leaseDuration, CancellationToken cancellationToken) =>
+            Task.FromResult<IReadOnlyList<RegistrationProviderSubscriptionState>>([]);
+
+        public Task<IReadOnlyList<RegistrationProviderSubscriptionState>> ClaimDueSweepsAsync(int batchSize, DateTime claimedAt, TimeSpan leaseDuration, CancellationToken cancellationToken) =>
+            Task.FromResult<IReadOnlyList<RegistrationProviderSubscriptionState>>([]);
+
+        public Task<IReadOnlyList<RegistrationProviderSubscriptionState>> GetExpiringAsync(DateTime expiresBefore, int limit, CancellationToken cancellationToken) =>
+            Task.FromResult<IReadOnlyList<RegistrationProviderSubscriptionState>>([]);
+
+        public Task AddAsync(RegistrationProviderSubscriptionState state, CancellationToken cancellationToken) => Task.CompletedTask;
+
+        public Task SaveChangesAsync(CancellationToken cancellationToken) => Task.CompletedTask;
+    }
 }

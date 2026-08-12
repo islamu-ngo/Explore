@@ -83,8 +83,27 @@ public sealed record NativeRegistrationLaunchDescriptorDto(
     Guid FormVersionId,
     bool CanSkip,
     IReadOnlyList<NativeRegistrationAnswerSubjectDto> Subjects,
+    NativeRegistrationRequirementProgressDto Progress,
+    Guid? BindingId = null);
+
+public sealed record NativeRegistrationProviderLaunchDescriptorDto(
+    Guid? AttemptId,
+    Guid RequirementId,
+    Guid ChannelId,
+    Guid BindingId,
+    Guid FormId,
+    Guid FormVersionId,
+    string Mode,
+    bool Available,
+    string? Url,
+    string Title,
+    bool OpenInNewTab,
+    string FallbackMode,
+    string Reason,
+    IReadOnlyList<NativeRegistrationAnswerSubjectDto> Subjects,
     NativeRegistrationRequirementProgressDto Progress);
 
 public sealed record NativeRegistrationRequirementProgressCollectionDto(
     Guid RegistrationOrderId,
-    IReadOnlyList<NativeRegistrationLaunchDescriptorDto> Requirements);
+    IReadOnlyList<NativeRegistrationLaunchDescriptorDto> Requirements,
+    IReadOnlyList<NativeRegistrationProviderLaunchDescriptorDto>? ProviderRequirements = null);

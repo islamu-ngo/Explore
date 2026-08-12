@@ -62,6 +62,12 @@ public static class TenantFilterBypassReasons
     public const string RegistrationFinalizationWorkerCrossTenantQueue =
         "Registration finalization worker polls and settles tenant-owned effects across tenants using explicit id/status/fence predicates.";
 
+    public const string RegistrationProviderSubmissionWriteWorkerCrossTenantQueue =
+        "Registration provider submission write worker polls and settles tenant-owned effects across tenants using explicit id/status/fence predicates.";
+
+    public const string RegistrationProviderSubscriptionStateWorkerCrossTenantQueue =
+        "Registration provider subscription workers poll and settle tenant-owned subscription state across tenants using explicit lease/fence predicates.";
+
     public const string AtprotoPdsWorkerCrossTenantQueue =
         "AT Protocol PDS worker polls and settles tenant-owned outbox rows across tenants using explicit id/status/fence predicates.";
 

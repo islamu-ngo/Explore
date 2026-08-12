@@ -1,0 +1,7 @@
+{
+  "type": "responseFinished",
+  "data": {
+    "id": "resp_123",
+    "surveyId": "survey_123"
+  }
+}

@@ -37,7 +37,8 @@ public sealed class RegistrationSubmissionRepository(ExploreDbContext dbContext)
         IReadOnlyCollection<RegistrationConsentRecord> consentRecords,
         IReadOnlyCollection<RegistrationSubmissionIssue> issues,
         IReadOnlyCollection<RegistrationRequirementFulfillment> fulfillments,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        RegistrationProviderSubmissionWriteEffect? providerWriteEffect = null)
     {
         ArgumentNullException.ThrowIfNull(attempt);
         ArgumentNullException.ThrowIfNull(submission);
@@ -124,6 +125,11 @@ public sealed class RegistrationSubmissionRepository(ExploreDbContext dbContext)
                 if (fulfillments.Count > 0)
                 {
                     await dbContext.RegistrationRequirementFulfillments.AddRangeAsync(fulfillments, cancellationToken);
+                }
+
+                if (providerWriteEffect is not null)
+                {
+                    await dbContext.RegistrationProviderSubmissionWriteEffects.AddAsync(providerWriteEffect, cancellationToken);
                 }
 
                 await dbContext.SaveChangesAsync(cancellationToken);

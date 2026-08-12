@@ -1,0 +1,24 @@
+{
+  "data": {
+    "id": "survey_123",
+    "updatedAt": "2026-08-10T12:00:00.000Z",
+    "questions": [
+      {
+        "id": "profile.email",
+        "type": "openText",
+        "headline": "Email",
+        "required": true
+      },
+      {
+        "id": "profile.ticket",
+        "type": "multipleChoiceSingle",
+        "headline": "Ticket",
+        "required": true,
+        "choices": [
+          { "id": "standard", "label": "Standard" },
+          { "id": "student", "label": "Student" }
+        ]
+      }
+    ]
+  }
+}

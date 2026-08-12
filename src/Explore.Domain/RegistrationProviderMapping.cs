@@ -83,15 +83,44 @@ public sealed class RegistrationProviderSchemaRevision : ITenantEntity, IAuditab
     public RegistrationProviderConnection? Connection { get; private set; }
     public int SchemaAuthorityId { get; private set; }
     public RegistrationEvidenceHash RevisionHash { get; private set; } = null!;
+    public string ProviderSurveyId { get; private set; } = string.Empty;
+    public string? ProviderSurveyRevisionId { get; private set; }
+    public string ProviderSnapshotJson { get; private set; } = string.Empty;
+    public string ProviderSnapshotSha256Hash { get; private set; } = string.Empty;
+    public int DriftClassId { get; private set; }
     public DateTime ObservedAt { get; private set; }
     public DateTime CreatedAt { get; set; }
     public Guid? CreatedBy { get; set; }
     public DateTime? UpdatedAt { get; set; }
     public Guid? UpdatedBy { get; set; }
     public bool IsDeleted { get; set; }
-    public static RegistrationProviderSchemaRevision Create(Guid tenantId, Guid connectionId, RegistrationProviderSchemaAuthorityEnum authority, RegistrationEvidenceHash revisionHash, DateTime observedAt)
+    public static RegistrationProviderSchemaRevision Create(
+        Guid tenantId,
+        Guid connectionId,
+        RegistrationProviderSchemaAuthorityEnum authority,
+        RegistrationEvidenceHash revisionHash,
+        string providerSurveyId,
+        string? providerSurveyRevisionId,
+        string providerSnapshotJson,
+        string providerSnapshotSha256Hash,
+        RegistrationProviderDriftClassEnum driftClass,
+        DateTime observedAt)
     {
-        if (tenantId == Guid.Empty || connectionId == Guid.Empty || !Enum.IsDefined(authority)) throw new ArgumentException("Schema revision identities and lookup values must be valid.");
-        return new() { Id = Guid.CreateVersion7(), TenantId = tenantId, RegistrationProviderConnectionId = connectionId, SchemaAuthorityId = (int)authority, RevisionHash = revisionHash, ObservedAt = RegistrationProviderConnection.EnsureUtc(observedAt, nameof(observedAt)), CreatedAt = RegistrationProviderConnection.EnsureUtc(observedAt, nameof(observedAt)) };
+        if (tenantId == Guid.Empty || connectionId == Guid.Empty || !Enum.IsDefined(authority) || !Enum.IsDefined(driftClass)) throw new ArgumentException("Schema revision identities and lookup values must be valid.");
+        ArgumentException.ThrowIfNullOrWhiteSpace(providerSnapshotJson);
+        if (providerSnapshotSha256Hash.Length != 64 || providerSnapshotSha256Hash.Any(value => !Uri.IsHexDigit(value))) throw new ArgumentException("Provider snapshot hash must be canonical lowercase SHA-256 hex.", nameof(providerSnapshotSha256Hash));
+        return new()
+        {
+            Id = Guid.CreateVersion7(), TenantId = tenantId, RegistrationProviderConnectionId = connectionId,
+            SchemaAuthorityId = (int)authority, RevisionHash = revisionHash,
+            ProviderSurveyId = Normalize(providerSurveyId, nameof(providerSurveyId), 200),
+            ProviderSurveyRevisionId = string.IsNullOrWhiteSpace(providerSurveyRevisionId) ? null : Normalize(providerSurveyRevisionId, nameof(providerSurveyRevisionId), 200),
+            ProviderSnapshotJson = providerSnapshotJson, ProviderSnapshotSha256Hash = providerSnapshotSha256Hash.ToLowerInvariant(),
+            DriftClassId = (int)driftClass,
+            ObservedAt = RegistrationProviderConnection.EnsureUtc(observedAt, nameof(observedAt)),
+            CreatedAt = RegistrationProviderConnection.EnsureUtc(observedAt, nameof(observedAt))
+        };
     }
+
+    private static string Normalize(string value, string parameterName, int max) => (value?.Trim() ?? string.Empty) is { Length: > 0 } text && text.Length <= max ? text : throw new ArgumentException($"Value must be non-blank and at most {max} characters.", parameterName);
 }

@@ -21,6 +21,7 @@ using Explore.Application.Contracts.Strategies;
 using Explore.Application.Contracts.Webhooks;
 using Explore.Application.Management;
 using Explore.Application.Models;
+using Explore.Application.Services.Registration;
 using Explore.Application.Services.Webhooks;
 using Explore.Application.Utilities;
 using Explore.Infrastructure.Ai;
@@ -42,6 +43,9 @@ using Explore.Infrastructure.Services.Keycloak;
 using Explore.Infrastructure.Services.Moderation;
 using Explore.Infrastructure.Services.Moderation.Coop;
 using Explore.Infrastructure.Services.Privacy;
+using Explore.Infrastructure.Services.Registration.Providers.Formbricks;
+using Explore.Infrastructure.Services.Registration.Providers.GoogleForms;
+using Explore.Infrastructure.Services.Registration.Providers.MicrosoftForms;
 using Explore.Infrastructure.Storage;
 using Explore.Infrastructure.Strategies;
 using Explore.Infrastructure.SupportAccess;
@@ -113,9 +117,44 @@ public static class InfrastructureServicesRegistration
         services.AddSingleton<IEmailDispatchDrainService, EmailDispatchDrainService>();
         services.AddScoped<IEmailUnsubscribeTokenService, EmailUnsubscribeTokenService>();
         services.AddSingleton<IGuestCapabilityTokenService, GuestCapabilityTokenService>();
-        services.AddSingleton<IRegistrationProviderDescriptor, NullRegistrationProviderDescriptor>();
-        services.AddSingleton<IRegistrationProviderDescriptor, NativeRegistrationProviderDescriptor>();
-        services.AddSingleton<IRegistrationProviderRegistry, RegistrationProviderRegistry>();
+        services.AddScoped<IRegistrationProviderDescriptor, NullRegistrationProviderDescriptor>();
+        services.AddScoped<IRegistrationProviderDescriptor, NativeRegistrationProviderDescriptor>();
+        services.AddScoped<IRegistrationProviderDescriptor, FormbricksCloudRegistrationProviderDescriptor>();
+        services.AddScoped<IRegistrationProviderDescriptor, FormbricksSelfHostedRegistrationProviderDescriptor>();
+        services.AddScoped<IRegistrationProviderDescriptor, GoogleFormsRegistrationProviderDescriptor>();
+        services.AddScoped<IRegistrationProviderDescriptor, MicrosoftFormsRegistrationProviderDescriptor>();
+        services.AddScoped<IRegistrationProviderRegistry, RegistrationProviderRegistry>();
+        services.AddSingleton<IGooglePubSubOidcTokenValidator, GooglePubSubOidcTokenValidator>();
+        services.AddScoped<RegistrationProviderSubscriptionLifecycleService>();
+        services.AddHttpClient(FormbricksRegistrationProviderAdapter.HttpClientName, client =>
+        {
+            client.Timeout = TimeSpan.FromSeconds(15);
+        })
+        .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler
+        {
+            AllowAutoRedirect = false,
+            UseCookies = false,
+            ConnectTimeout = TimeSpan.FromSeconds(10)
+        });
+        services.AddScoped<FormbricksRegistrationProviderAdapter>(sp => new FormbricksRegistrationProviderAdapter(
+            sp.GetRequiredService<IHttpClientFactory>().CreateClient(FormbricksRegistrationProviderAdapter.HttpClientName),
+            sp.GetRequiredService<Explore.Application.Contracts.Secrets.ISecretResolver>(),
+            sp.GetRequiredService<TimeProvider>()));
+        services.AddHttpClient(GoogleFormsRegistrationProviderAdapter.HttpClientName, client =>
+        {
+            client.Timeout = TimeSpan.FromSeconds(15);
+        })
+        .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler
+        {
+            AllowAutoRedirect = false,
+            UseCookies = false,
+            ConnectTimeout = TimeSpan.FromSeconds(10)
+        });
+        services.AddScoped<GoogleFormsRegistrationProviderAdapter>(sp => new GoogleFormsRegistrationProviderAdapter(
+            sp.GetRequiredService<IHttpClientFactory>().CreateClient(GoogleFormsRegistrationProviderAdapter.HttpClientName),
+            sp.GetRequiredService<Explore.Application.Contracts.Secrets.ISecretResolver>(),
+            sp.GetRequiredService<IRegistrationProviderConnectionCheckpoint>(),
+            sp.GetRequiredService<IGooglePubSubOidcTokenValidator>()));
 
         // Legacy S3-compatible object storage service. New local-first flows use IFileStorageProvider.
         services.AddScoped<IS3ConfigResolver, S3ConfigResolver>();

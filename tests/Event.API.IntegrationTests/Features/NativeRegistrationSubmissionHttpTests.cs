@@ -4,7 +4,9 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
+using Event.Api.IntegrationTests.Builders;
 using Event.Api.IntegrationTests.Fixtures;
+using Event.Api.IntegrationTests.Seeds;
 using Explore.API.Services;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services.Registration;
@@ -18,6 +20,7 @@ using Explore.Domain.Constants;
 using Explore.Domain.Enums;
 using Explore.Domain.ValueObjects;
 using Explore.Persistence;
+using Explore.Persistence.Seed;
 using MediatR;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -502,7 +505,7 @@ public sealed class NativeRegistrationSubmissionHttpTests
         }
 
         await using WebApplicationFactory<Program> factory = CreatePostgreSqlCallbackFactory(connectionString);
-        RealNativeFlow scenario = await SeedRealNativeFlowAsync(factory, publishedFormCount: 1);
+        RealNativeFlow scenario = await SeedRealNativeFlowAsync(factory, publishedFormCount: 1, consentField: false);
         Guid bindingId = await SeedRegistrationProviderBindingAsync(factory, "external-form", scenario);
         Guid attemptId = await SeedProviderAttemptAsync(factory, scenario, bindingId);
         using HttpClient client = factory.CreateClient();
@@ -535,16 +538,18 @@ public sealed class NativeRegistrationSubmissionHttpTests
             duplicateEffectResult = await effectProcessor.ProcessAsync(claim, CancellationToken.None);
         }
 
+        using IServiceScope verifyScope = factory.Services.CreateScope();
+        ExploreDbContext db = verifyScope.ServiceProvider.GetRequiredService<ExploreDbContext>();
+        IncomingWebhookEffectOutbox processedPointer = await db.IncomingWebhookEffectOutboxes.SingleAsync();
         await Assert.That(first.StatusCode).IsEqualTo(HttpStatusCode.Accepted);
         await Assert.That(duplicate.StatusCode).IsEqualTo(HttpStatusCode.Accepted);
         await Assert.That(firstPayload).DoesNotContain("super-secret-signature");
         await Assert.That(firstPayload).DoesNotContain("provider-submission-real");
+        await Assert.That(processedPointer.FailureCategory).IsNull();
         await Assert.That(effectResult.Outcome).IsEqualTo(IncomingWebhookClaimExecutionOutcome.Completed);
         await Assert.That(effectResult.FailureCategory).IsEqualTo("succeeded");
         await Assert.That(duplicateEffectResult.Outcome).IsEqualTo(IncomingWebhookClaimExecutionOutcome.LeaseLost);
 
-        using IServiceScope verifyScope = factory.Services.CreateScope();
-        ExploreDbContext db = verifyScope.ServiceProvider.GetRequiredService<ExploreDbContext>();
         await Assert.That(await db.RegistrationSubmissions.CountAsync(submission =>
             submission.ProviderSubmissionId == "provider-submission-real")).IsEqualTo(1);
         RegistrationAnswer answer = await db.RegistrationAnswers.SingleAsync(answer => answer.RegistrationFormFieldId == scenario.FieldId);
@@ -693,13 +698,13 @@ public sealed class NativeRegistrationSubmissionHttpTests
 
     private static WebApplicationFactory<Program> CreateCallbackFactory<TVerifier>(
         Action<IServiceCollection>? configureServices = null)
-        where TVerifier : class, IRegistrationProviderCallbackVerifier =>
+        where TVerifier : class, IRegistrationProviderDescriptor, IRegistrationProviderCallbackVerifier =>
         new AuthenticatedWebApplicationFactory().WithWebHostBuilder(builder =>
             builder.ConfigureTestServices(services =>
             {
                 services.RemoveAll<IRegistrationProviderCallbackVerifier>();
                 services.RemoveAll<IHostedService>();
-                services.AddSingleton<IRegistrationProviderCallbackVerifier, TVerifier>();
+                services.AddSingleton<IRegistrationProviderDescriptor, TVerifier>();
                 configureServices?.Invoke(services);
             }));
 
@@ -709,7 +714,7 @@ public sealed class NativeRegistrationSubmissionHttpTests
             configureTestServices: services =>
             {
                 services.RemoveAll<IRegistrationProviderCallbackVerifier>();
-                services.AddSingleton<IRegistrationProviderCallbackVerifier, FakeRegistrationProviderCallbackVerifier>();
+                services.AddSingleton<IRegistrationProviderDescriptor, FakeRegistrationProviderCallbackVerifier>();
             });
 
     private static async Task DrainIncomingWebhookMessagesAsync(WebApplicationFactory<Program> factory)
@@ -749,12 +754,13 @@ public sealed class NativeRegistrationSubmissionHttpTests
 
     private static async Task<RealNativeFlow> SeedRealNativeFlowAsync(
         WebApplicationFactory<Program> factory,
-        int publishedFormCount)
+        int publishedFormCount,
+        bool consentField = true)
     {
         Guid tenantId = PlatformDefaults.DefaultTenantId;
         Guid eventId = Guid.CreateVersion7();
         Guid orderId = Guid.CreateVersion7();
-        Guid userId = Guid.CreateVersion7();
+        Guid userId;
         Guid workflowId = Guid.CreateVersion7();
         Guid requirementId = Guid.CreateVersion7();
         Guid channelId = Guid.CreateVersion7();
@@ -765,6 +771,21 @@ public sealed class NativeRegistrationSubmissionHttpTests
 
         using IServiceScope scope = factory.Services.CreateScope();
         ExploreDbContext db = scope.ServiceProvider.GetRequiredService<ExploreDbContext>();
+        if (db.Database.IsRelational())
+        {
+            await LookupTableSeeder.SeedAsync(db);
+        }
+
+        TenantScenarioSeed.TenantScenarioResult tenant = await TenantScenarioSeed.SeedActiveTenantWithUserAsync(db);
+        userId = tenant.UserId;
+        db.Events.Add(new EventBuilder()
+            .WithId(eventId)
+            .WithTitle("Native registration test event")
+            .WithActorId(tenant.ActorId)
+            .WithTenantId(tenant.TenantId)
+            .WithStatus(EventStatusEnum.Published)
+            .WithVisibility(VisibilityTypeEnum.Public)
+            .Build());
         RegistrationWorkflow workflow = RegistrationWorkflow.Create(
             workflowId, tenantId, eventId, "registration", now);
         RegistrationRequirement requirement = RegistrationRequirement.Create(
@@ -786,23 +807,33 @@ public sealed class NativeRegistrationSubmissionHttpTests
                 currentVersionId, form, 1, "en", null, null, now);
             RegistrationFormSection section = RegistrationFormSection.Create(
                 Guid.CreateVersion7(), version, 1, "Contact permissions", now);
-            RegistrationFormField field = RegistrationFormField.Create(
-                index == 0 ? fieldId : Guid.CreateVersion7(), section, 1, "registration", "event_updates",
-                "Send event updates", RegistrationFieldTypeEnum.Consent, 1,
-                RegistrationOrganizerVisibilityEnum.Hidden, true, false, now,
-                "EVENT_UPDATES", "2026-08", "I agree to receive event updates by email.");
+            RegistrationFormField field = consentField
+                ? RegistrationFormField.Create(
+                    index == 0 ? fieldId : Guid.CreateVersion7(), section, 1, "registration", "event_updates",
+                    "Send event updates", RegistrationFieldTypeEnum.Consent, 1,
+                    RegistrationOrganizerVisibilityEnum.Hidden, true, false, now,
+                    "EVENT_UPDATES", "2026-08", "I agree to receive event updates by email.")
+                : RegistrationFormField.Create(
+                    index == 0 ? fieldId : Guid.CreateVersion7(), section, 1, "registration", "event_updates",
+                    "Send event updates", RegistrationFieldTypeEnum.Boolean, 1,
+                    RegistrationOrganizerVisibilityEnum.AuthorizedOrganizers, false, false, now);
             version.AddSection(section);
             version.AddField(section, field);
             form.AddVersion(version);
             db.RegistrationForms.Add(form);
             db.Entry(version).Property(value => value.StatusId).CurrentValue = (int)RegistrationFormStatusEnum.Published;
             db.Entry(version).Property(value => value.SchemaHash).CurrentValue = $"pinned-schema-hash-{index}";
+            db.Entry(version).Property(value => value.DataSchemaArtifact).CurrentValue = "{}";
+            db.Entry(version).Property(value => value.UiSchemaArtifact).CurrentValue = "{}";
+            db.Entry(version).Property(value => value.LogicSchemaArtifact).CurrentValue = "[]";
+            db.Entry(version).Property(value => value.MappingArtifact).CurrentValue = "{}";
             db.Entry(version).Property(value => value.PublishedAt).CurrentValue = now;
         }
 
+        EventTicketCatalogVersion catalog = EventTicketCatalogVersion.Create(tenantId, eventId, "EUR", 1);
         RegistrationOrder order = RegistrationOrder.Create(
             orderId, tenantId, eventId, userId, null, BookingPartyTypeEnum.Individual,
-            Guid.CreateVersion7(), RegistrationParticipationSnapshot.Create(
+            catalog.Id, RegistrationParticipationSnapshot.Create(
                 Guid.CreateVersion7(), (int)ParticipationHandlingModeEnum.PlatformManaged,
                 (int)AdvanceRegistrationObligationEnum.Required,
                 (int)IdentityAccessModeEnum.AccountRequired,
@@ -813,6 +844,7 @@ public sealed class NativeRegistrationSubmissionHttpTests
         order.TransitionTo(RegistrationOrderStatusEnum.AwaitingRequirements, now);
 
         db.RegistrationWorkflows.Add(workflow);
+        db.EventTicketCatalogVersions.Add(catalog);
         db.RegistrationOrders.Add(order);
         await db.SaveChangesAsync();
         return new(eventId, orderId, userId, workflowId, requirementId, channelId, formId, versionId, fieldId);
@@ -833,13 +865,15 @@ public sealed class NativeRegistrationSubmissionHttpTests
         ExploreDbContext db = scope.ServiceProvider.GetRequiredService<ExploreDbContext>();
         RegistrationProviderConnection connection = RegistrationProviderConnection.Create(
             tenantId, "Provider", RegistrationProviderKindEnum.ExternalForm,
-            RegistrationProviderDeploymentKindEnum.HostedSaas, null, null, now);
+            RegistrationProviderDeploymentKindEnum.HostedSaas, provider, "hosted", "v1", "policy", "evidence",
+            "https:/" + "/forms.example.org/api", "https:/" + "/forms.example.org", "workspace", null, null, now);
         RegistrationProviderBinding binding = RegistrationProviderBinding.Create(
             tenantId, connection.Id, scenario?.FormId ?? Guid.CreateVersion7(), scenario?.VersionId ?? Guid.CreateVersion7(),
             RegistrationProviderPresentationModeEnum.Redirect,
             RegistrationProviderCollectionModeEnum.ProviderHosted,
             RegistrationProviderCompletionModeEnum.Callback,
             RegistrationProviderTrustLevelEnum.FullCanonical,
+            null,
             now);
         binding.AddCapability(RegistrationProviderCapability.Create(
             binding, provider, "hosted", "v1", "policy", "evidence",
@@ -868,13 +902,17 @@ public sealed class NativeRegistrationSubmissionHttpTests
         using IServiceScope scope = factory.Services.CreateScope();
         ExploreDbContext db = scope.ServiceProvider.GetRequiredService<ExploreDbContext>();
         RegistrationProviderBinding binding = await db.RegistrationProviderBindings.SingleAsync(binding => binding.Id == bindingId);
+        RegistrationRequirement requirement = await db.RegistrationRequirements.SingleAsync(requirement => requirement.Id == scenario.RequirementId);
+        RegistrationChannel channel = RegistrationChannel.Create(requirement, 2, false, binding.Id, now);
+        db.RegistrationChannels.Add(channel);
+        await db.SaveChangesAsync();
         RegistrationAttempt attempt = RegistrationAttempt.Create(
             PlatformDefaults.DefaultTenantId,
             scenario.EventId,
             scenario.OrderId,
             scenario.WorkflowId,
             scenario.RequirementId,
-            scenario.ChannelId,
+            channel.Id,
             scenario.FormId,
             scenario.VersionId,
             CapabilityTokenHash.Create(Convert.ToBase64String(System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes("provider-capability")))),
@@ -968,18 +1006,37 @@ public sealed class NativeRegistrationSubmissionHttpTests
         return await client.SendAsync(request);
     }
 
-    private sealed class FakeRegistrationProviderCallbackVerifier : IRegistrationProviderCallbackVerifier
+    private sealed class FakeRegistrationProviderCallbackVerifier : IRegistrationProviderDescriptor, IRegistrationProviderCallbackVerifier
     {
+        public RegistrationProviderTuple Tuple { get; } =
+            new("external-form", "hosted", "v1", "policy", "evidence");
+
+        public RegistrationProviderCapabilitySet ProvenCapabilities { get; } =
+            RegistrationProviderCapabilitySet.FromCodes([RegistrationProviderCapabilityCodes.CallbackVerification]);
+
         public Task<RegistrationProviderCallbackVerificationResult> VerifyCallbackAsync(
             RegistrationProviderCallbackVerificationRequest request,
-            CancellationToken cancellationToken) => Task.FromResult(
-            request.Headers.ContainsKey("X-Provider-Signature")
-                ? new RegistrationProviderCallbackVerificationResult(true, Receipt: "raw-provider-receipt")
+            CancellationToken cancellationToken)
+        {
+            using JsonDocument body = JsonDocument.Parse(request.Body);
+            string? providerSubmissionId = body.RootElement.TryGetProperty("providerSubmissionId", out JsonElement value)
+                ? value.GetString()
+                : null;
+            return Task.FromResult(request.Headers.ContainsKey("X-Provider-Signature")
+                ? new RegistrationProviderCallbackVerificationResult(
+                    true, Receipt: "raw-provider-receipt", ProviderSubmissionId: providerSubmissionId)
                 : new RegistrationProviderCallbackVerificationResult(false, "missing_signature"));
+        }
     }
 
-    private sealed class ThrowingRegistrationProviderCallbackVerifier : IRegistrationProviderCallbackVerifier
+    private sealed class ThrowingRegistrationProviderCallbackVerifier : IRegistrationProviderDescriptor, IRegistrationProviderCallbackVerifier
     {
+        public RegistrationProviderTuple Tuple { get; } =
+            new("external-form", "hosted", "v1", "policy", "evidence");
+
+        public RegistrationProviderCapabilitySet ProvenCapabilities { get; } =
+            RegistrationProviderCapabilitySet.FromCodes([RegistrationProviderCapabilityCodes.CallbackVerification]);
+
         public Task<RegistrationProviderCallbackVerificationResult> VerifyCallbackAsync(
             RegistrationProviderCallbackVerificationRequest request,
             CancellationToken cancellationToken) => throw new System.Security.Cryptography.CryptographicException("bad signature envelope");

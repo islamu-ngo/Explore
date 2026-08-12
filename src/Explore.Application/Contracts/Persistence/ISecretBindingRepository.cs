@@ -39,6 +39,11 @@ public interface ISecretBindingRepository : IGenericRepository<SecretBinding, Gu
         Guid? scopeId,
         CancellationToken cancellationToken = default);
 
+    Task<SecretBinding?> GetByTenantAndIdAsync(
+        Guid tenantId,
+        Guid bindingId,
+        CancellationToken cancellationToken = default);
+
     /// <summary>
     /// Gets all bindings for a single setting key across all scopes - used by the
     /// resolver to walk the Tenant -> Instance hierarchy in one trip.

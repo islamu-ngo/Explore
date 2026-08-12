@@ -124,7 +124,7 @@ public static class ApiHostServiceCollectionExtensions
         builder.Services.AddScoped<IIncomingWebhookVerifier, RegistrationProviderIncomingWebhookVerifier>();
         builder.Services.AddScoped<IRegistrationProviderCallbackBindingResolver, RegistrationProviderCallbackBindingResolver>();
         builder.Services.AddScoped<IRegistrationProviderCallbackReceiptProtector, RegistrationProviderCallbackReceiptProtector>();
-        builder.Services.TryAddScoped<IRegistrationProviderCallbackVerifier, RejectingRegistrationProviderCallbackVerifier>();
+        builder.Services.AddScoped<IRegistrationProviderCallbackUriBuilder, RegistrationProviderCallbackUriBuilder>();
         builder.Services.AddScoped<IIncomingWebhookVerifierRegistry, IncomingWebhookVerifierRegistry>();
         builder.Services.AddScoped<IIncomingWebhookIntakeService, IncomingWebhookIntakeService>();
         builder.Services.AddScoped<IManagedEventHealthProbe, ManagedEventHealthProbe>();
@@ -302,8 +302,10 @@ public static class ApiHostServiceCollectionExtensions
                 builder.Services.AddHostedService<NotificationFanoutProcessor>();
                 builder.Services.AddHostedService<IdempotencyCleanupProcessor>();
                 builder.Services.AddHostedService<InventoryHoldExpiryWorker>();
-                builder.Services.AddHostedService<RegistrationFinalizationWorker>();
-                builder.Services.AddHostedService<PrivacyErasureCredentialCleanupProcessor>();
+            builder.Services.AddHostedService<RegistrationFinalizationWorker>();
+            builder.Services.AddHostedService<RegistrationProviderSubmissionWriteWorker>();
+            builder.Services.AddHostedService<RegistrationProviderSubscriptionLifecycleWorker>();
+            builder.Services.AddHostedService<PrivacyErasureCredentialCleanupProcessor>();
                 builder.Services.AddHostedService<EmailDispatchRetentionCleanupProcessor>();
                 builder.Services.AddHostedService<AiRetentionCleanupProcessor>();
                 builder.Services.AddHostedService<WebhookRetentionCleanupProcessor>();

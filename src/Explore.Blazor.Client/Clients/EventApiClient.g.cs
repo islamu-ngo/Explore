@@ -5185,6 +5185,14 @@ namespace Explore.Blazor.Client.Clients
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <summary>
+        /// Launch guest registration provider attempt
+        /// </summary>
+        /// <returns>Created</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        System.Threading.Tasks.Task<HalResourceOfNativeRegistrationProviderLaunchDescriptorDto> LaunchGuestRegistrationProviderAttemptAsync(System.Guid eventId, System.Guid orderId, LaunchRegistrationProviderAttemptRequest body, string? x_Registration_Order_Capability = null, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
         /// Skip guest optional native registration requirement
         /// </summary>
         /// <returns>OK</returns>
@@ -5320,6 +5328,14 @@ namespace Explore.Blazor.Client.Clients
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<HalResourceOfNativeRegistrationRequirementProgressCollectionDto> GetAuthenticatedNativeRegistrationRequirementProgressAsync(System.Guid eventId, System.Guid orderId, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Launch authenticated registration provider attempt
+        /// </summary>
+        /// <returns>Created</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        System.Threading.Tasks.Task<HalResourceOfNativeRegistrationProviderLaunchDescriptorDto> LaunchAuthenticatedRegistrationProviderAttemptAsync(System.Guid eventId, System.Guid orderId, LaunchRegistrationProviderAttemptRequest body, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <summary>
@@ -5471,6 +5487,11 @@ namespace Explore.Blazor.Client.Clients
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<BaseCommandResponseOfGuid> ReplaceRegistrationProviderApprovedOriginsAsync(System.Guid tenantId, System.Guid eventId, System.Guid connectionId, ReplaceRegistrationProviderApprovedOriginsRequestDto body, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        System.Threading.Tasks.Task<BaseCommandResponseOfGuid> ImportExternalRegistrationProviderFormVersionAsync(System.Guid tenantId, System.Guid eventId, System.Guid connectionId, ImportExternalRegistrationProviderFormVersionRequestDto body, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <returns>OK</returns>
@@ -69500,6 +69521,129 @@ namespace Explore.Blazor.Client.Clients
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <summary>
+        /// Launch guest registration provider attempt
+        /// </summary>
+        /// <returns>Created</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        public virtual async System.Threading.Tasks.Task<HalResourceOfNativeRegistrationProviderLaunchDescriptorDto> LaunchGuestRegistrationProviderAttemptAsync(System.Guid eventId, System.Guid orderId, LaunchRegistrationProviderAttemptRequest body, string? x_Registration_Order_Capability = null, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        {
+            if (eventId == null)
+                throw new System.ArgumentNullException("eventId");
+
+            if (orderId == null)
+                throw new System.ArgumentNullException("orderId");
+
+            if (body == null)
+                throw new System.ArgumentNullException("body");
+
+            var client_ = _httpClient;
+            var disposeClient_ = false;
+            try
+            {
+                using (var request_ = new System.Net.Http.HttpRequestMessage())
+                {
+
+                    if (x_Registration_Order_Capability != null)
+                        request_.Headers.TryAddWithoutValidation("X-Registration-Order-Capability", ConvertToString(x_Registration_Order_Capability, System.Globalization.CultureInfo.InvariantCulture));
+
+                    if (x_Api_Version != null)
+                        request_.Headers.TryAddWithoutValidation("X-Api-Version", ConvertToString(x_Api_Version, System.Globalization.CultureInfo.InvariantCulture));
+                    var json_ = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(body, JsonSerializerSettings);
+                    var content_ = new System.Net.Http.ByteArrayContent(json_);
+                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json; v=0.1");
+                    request_.Content = content_;
+                    request_.Method = new System.Net.Http.HttpMethod("POST");
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
+
+                    var urlBuilder_ = new System.Text.StringBuilder();
+
+                    // Operation Path: "api/events/{eventId}/registration-orders/guest/{orderId}/provider-attempts"
+                    urlBuilder_.Append("api/events/");
+                    urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(eventId, System.Globalization.CultureInfo.InvariantCulture)));
+                    urlBuilder_.Append("/registration-orders/guest/");
+                    urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(orderId, System.Globalization.CultureInfo.InvariantCulture)));
+                    urlBuilder_.Append("/provider-attempts");
+                    urlBuilder_.Append('?');
+                    if (api_version != null)
+                    {
+                        urlBuilder_.Append(System.Uri.EscapeDataString("api-version")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(api_version, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                    }
+                    urlBuilder_.Length--;
+
+                    PrepareRequest(client_, request_, urlBuilder_);
+
+                    var url_ = urlBuilder_.ToString();
+                    request_.RequestUri = new System.Uri(url_, System.UriKind.RelativeOrAbsolute);
+
+                    PrepareRequest(client_, request_, url_);
+
+                    var response_ = await client_.SendAsync(request_, System.Net.Http.HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+                    var disposeResponse_ = true;
+                    try
+                    {
+                        var headers_ = new System.Collections.Generic.Dictionary<string, System.Collections.Generic.IEnumerable<string>>();
+                        foreach (var item_ in response_.Headers)
+                            headers_[item_.Key] = item_.Value;
+                        if (response_.Content != null && response_.Content.Headers != null)
+                        {
+                            foreach (var item_ in response_.Content.Headers)
+                                headers_[item_.Key] = item_.Value;
+                        }
+
+                        ProcessResponse(client_, response_);
+
+                        var status_ = (int)response_.StatusCode;
+                        if (status_ == 201)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<HalResourceOfNativeRegistrationProviderLaunchDescriptorDto>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            return objectResponse_.Object;
+                        }
+                        else
+                        if (status_ == 400)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ValidationProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ValidationProblemDetails>("Bad Request", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 404)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Not Found", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        {
+                            var responseData_ = response_.Content == null ? null : await ReadAsStringAsync(response_.Content, cancellationToken).ConfigureAwait(false);
+                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                        }
+                    }
+                    finally
+                    {
+                        if (disposeResponse_)
+                            response_.Dispose();
+                    }
+                }
+            }
+            finally
+            {
+                if (disposeClient_)
+                    client_.Dispose();
+            }
+        }
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
         /// Skip guest optional native registration requirement
         /// </summary>
         /// <returns>OK</returns>
@@ -71368,6 +71512,136 @@ namespace Explore.Blazor.Client.Clients
                                 throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
                             }
                             return objectResponse_.Object;
+                        }
+                        else
+                        if (status_ == 401)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Unauthorized", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 404)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Not Found", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        {
+                            var responseData_ = response_.Content == null ? null : await ReadAsStringAsync(response_.Content, cancellationToken).ConfigureAwait(false);
+                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                        }
+                    }
+                    finally
+                    {
+                        if (disposeResponse_)
+                            response_.Dispose();
+                    }
+                }
+            }
+            finally
+            {
+                if (disposeClient_)
+                    client_.Dispose();
+            }
+        }
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Launch authenticated registration provider attempt
+        /// </summary>
+        /// <returns>Created</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        public virtual async System.Threading.Tasks.Task<HalResourceOfNativeRegistrationProviderLaunchDescriptorDto> LaunchAuthenticatedRegistrationProviderAttemptAsync(System.Guid eventId, System.Guid orderId, LaunchRegistrationProviderAttemptRequest body, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        {
+            if (eventId == null)
+                throw new System.ArgumentNullException("eventId");
+
+            if (orderId == null)
+                throw new System.ArgumentNullException("orderId");
+
+            if (body == null)
+                throw new System.ArgumentNullException("body");
+
+            var client_ = _httpClient;
+            var disposeClient_ = false;
+            try
+            {
+                using (var request_ = new System.Net.Http.HttpRequestMessage())
+                {
+
+                    if (x_Api_Version != null)
+                        request_.Headers.TryAddWithoutValidation("X-Api-Version", ConvertToString(x_Api_Version, System.Globalization.CultureInfo.InvariantCulture));
+                    var json_ = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(body, JsonSerializerSettings);
+                    var content_ = new System.Net.Http.ByteArrayContent(json_);
+                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json; v=0.1");
+                    request_.Content = content_;
+                    request_.Method = new System.Net.Http.HttpMethod("POST");
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
+
+                    var urlBuilder_ = new System.Text.StringBuilder();
+
+                    // Operation Path: "api/events/{eventId}/registration-orders/{orderId}/provider-attempts"
+                    urlBuilder_.Append("api/events/");
+                    urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(eventId, System.Globalization.CultureInfo.InvariantCulture)));
+                    urlBuilder_.Append("/registration-orders/");
+                    urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(orderId, System.Globalization.CultureInfo.InvariantCulture)));
+                    urlBuilder_.Append("/provider-attempts");
+                    urlBuilder_.Append('?');
+                    if (api_version != null)
+                    {
+                        urlBuilder_.Append(System.Uri.EscapeDataString("api-version")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(api_version, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                    }
+                    urlBuilder_.Length--;
+
+                    PrepareRequest(client_, request_, urlBuilder_);
+
+                    var url_ = urlBuilder_.ToString();
+                    request_.RequestUri = new System.Uri(url_, System.UriKind.RelativeOrAbsolute);
+
+                    PrepareRequest(client_, request_, url_);
+
+                    var response_ = await client_.SendAsync(request_, System.Net.Http.HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+                    var disposeResponse_ = true;
+                    try
+                    {
+                        var headers_ = new System.Collections.Generic.Dictionary<string, System.Collections.Generic.IEnumerable<string>>();
+                        foreach (var item_ in response_.Headers)
+                            headers_[item_.Key] = item_.Value;
+                        if (response_.Content != null && response_.Content.Headers != null)
+                        {
+                            foreach (var item_ in response_.Content.Headers)
+                                headers_[item_.Key] = item_.Value;
+                        }
+
+                        ProcessResponse(client_, response_);
+
+                        var status_ = (int)response_.StatusCode;
+                        if (status_ == 201)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<HalResourceOfNativeRegistrationProviderLaunchDescriptorDto>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            return objectResponse_.Object;
+                        }
+                        else
+                        if (status_ == 400)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ValidationProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ValidationProblemDetails>("Bad Request", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
                         }
                         else
                         if (status_ == 401)
@@ -73890,6 +74164,138 @@ namespace Explore.Blazor.Client.Clients
                     urlBuilder_.Append("/registration-providers/connections/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(connectionId, System.Globalization.CultureInfo.InvariantCulture)));
                     urlBuilder_.Append("/approved-origins");
+                    urlBuilder_.Append('?');
+                    if (api_version != null)
+                    {
+                        urlBuilder_.Append(System.Uri.EscapeDataString("api-version")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(api_version, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                    }
+                    urlBuilder_.Length--;
+
+                    PrepareRequest(client_, request_, urlBuilder_);
+
+                    var url_ = urlBuilder_.ToString();
+                    request_.RequestUri = new System.Uri(url_, System.UriKind.RelativeOrAbsolute);
+
+                    PrepareRequest(client_, request_, url_);
+
+                    var response_ = await client_.SendAsync(request_, System.Net.Http.HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+                    var disposeResponse_ = true;
+                    try
+                    {
+                        var headers_ = new System.Collections.Generic.Dictionary<string, System.Collections.Generic.IEnumerable<string>>();
+                        foreach (var item_ in response_.Headers)
+                            headers_[item_.Key] = item_.Value;
+                        if (response_.Content != null && response_.Content.Headers != null)
+                        {
+                            foreach (var item_ in response_.Content.Headers)
+                                headers_[item_.Key] = item_.Value;
+                        }
+
+                        ProcessResponse(client_, response_);
+
+                        var status_ = (int)response_.StatusCode;
+                        if (status_ == 200)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<BaseCommandResponseOfGuid>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            return objectResponse_.Object;
+                        }
+                        else
+                        if (status_ == 400)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ValidationProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ValidationProblemDetails>("Bad Request", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 401)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Unauthorized", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 403)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Forbidden", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        {
+                            var responseData_ = response_.Content == null ? null : await ReadAsStringAsync(response_.Content, cancellationToken).ConfigureAwait(false);
+                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                        }
+                    }
+                    finally
+                    {
+                        if (disposeResponse_)
+                            response_.Dispose();
+                    }
+                }
+            }
+            finally
+            {
+                if (disposeClient_)
+                    client_.Dispose();
+            }
+        }
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        public virtual async System.Threading.Tasks.Task<BaseCommandResponseOfGuid> ImportExternalRegistrationProviderFormVersionAsync(System.Guid tenantId, System.Guid eventId, System.Guid connectionId, ImportExternalRegistrationProviderFormVersionRequestDto body, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        {
+            if (tenantId == null)
+                throw new System.ArgumentNullException("tenantId");
+
+            if (eventId == null)
+                throw new System.ArgumentNullException("eventId");
+
+            if (connectionId == null)
+                throw new System.ArgumentNullException("connectionId");
+
+            if (body == null)
+                throw new System.ArgumentNullException("body");
+
+            var client_ = _httpClient;
+            var disposeClient_ = false;
+            try
+            {
+                using (var request_ = new System.Net.Http.HttpRequestMessage())
+                {
+
+                    if (x_Api_Version != null)
+                        request_.Headers.TryAddWithoutValidation("X-Api-Version", ConvertToString(x_Api_Version, System.Globalization.CultureInfo.InvariantCulture));
+                    var json_ = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(body, JsonSerializerSettings);
+                    var content_ = new System.Net.Http.ByteArrayContent(json_);
+                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json; v=0.1");
+                    request_.Content = content_;
+                    request_.Method = new System.Net.Http.HttpMethod("POST");
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
+
+                    var urlBuilder_ = new System.Text.StringBuilder();
+
+                    // Operation Path: "api/tenants/{tenantId}/events/{eventId}/registration-providers/connections/{connectionId}/external-imports"
+                    urlBuilder_.Append("api/tenants/");
+                    urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(tenantId, System.Globalization.CultureInfo.InvariantCulture)));
+                    urlBuilder_.Append("/events/");
+                    urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(eventId, System.Globalization.CultureInfo.InvariantCulture)));
+                    urlBuilder_.Append("/registration-providers/connections/");
+                    urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(connectionId, System.Globalization.CultureInfo.InvariantCulture)));
+                    urlBuilder_.Append("/external-imports");
                     urlBuilder_.Append('?');
                     if (api_version != null)
                     {
@@ -104727,7 +105133,7 @@ namespace Explore.Blazor.Client.Clients
     {
 
         [System.Text.Json.Serialization.JsonPropertyName("items")]
-        public System.Collections.Generic.ICollection<object>? Items { get; set; } = default!;
+        public System.Collections.Generic.ICollection<HalResourceOfRegistrationChannelDto>? Items { get; set; } = default!;
 
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
@@ -104763,7 +105169,7 @@ namespace Explore.Blazor.Client.Clients
     {
 
         [System.Text.Json.Serialization.JsonPropertyName("items")]
-        public System.Collections.Generic.ICollection<object>? Items { get; set; } = default!;
+        public System.Collections.Generic.ICollection<HalResourceOfRegistrationProviderBindingDto>? Items { get; set; } = default!;
 
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
@@ -104781,7 +105187,7 @@ namespace Explore.Blazor.Client.Clients
     {
 
         [System.Text.Json.Serialization.JsonPropertyName("items")]
-        public System.Collections.Generic.ICollection<object>? Items { get; set; } = default!;
+        public System.Collections.Generic.ICollection<HalResourceOfRegistrationProviderBindingHealthDto>? Items { get; set; } = default!;
 
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
@@ -104799,7 +105205,7 @@ namespace Explore.Blazor.Client.Clients
     {
 
         [System.Text.Json.Serialization.JsonPropertyName("items")]
-        public System.Collections.Generic.ICollection<object>? Items { get; set; } = default!;
+        public System.Collections.Generic.ICollection<HalResourceOfRegistrationProviderConnectionDto>? Items { get; set; } = default!;
 
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
@@ -104817,7 +105223,7 @@ namespace Explore.Blazor.Client.Clients
     {
 
         [System.Text.Json.Serialization.JsonPropertyName("items")]
-        public System.Collections.Generic.ICollection<object>? Items { get; set; } = default!;
+        public System.Collections.Generic.ICollection<HalResourceOfRegistrationProviderParkedQueueItemDto>? Items { get; set; } = default!;
 
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
@@ -112853,6 +113259,89 @@ namespace Explore.Blazor.Client.Clients
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class HalResourceOfNativeRegistrationProviderLaunchDescriptorDto
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("attemptId")]
+        public System.Guid? AttemptId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("requirementId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.Guid RequirementId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("channelId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.Guid ChannelId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("bindingId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.Guid BindingId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("formId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.Guid FormId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("formVersionId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.Guid FormVersionId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("mode")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string Mode { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("available")]
+        public bool Available { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("url")]
+        public string? Url { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("title")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string Title { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("openInNewTab")]
+        public bool OpenInNewTab { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("fallbackMode")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string FallbackMode { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("reason")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string Reason { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("subjects")]
+        [System.ComponentModel.DataAnnotations.Required]
+        public System.Collections.Generic.ICollection<Subjects2> Subjects { get; set; } = new System.Collections.Generic.List<Subjects2>();
+
+        [System.Text.Json.Serialization.JsonPropertyName("progress")]
+        [System.ComponentModel.DataAnnotations.Required]
+        public Progress2 Progress { get; set; } = new Progress2();
+
+        /// <summary>
+        /// HAL hypermedia links
+        /// </summary>
+        [System.Text.Json.Serialization.JsonPropertyName("_links")]
+        public System.Collections.Generic.IDictionary<string, HalLink>? _links { get; set; } = default!;
+
+        /// <summary>
+        /// Embedded related resources
+        /// </summary>
+        [System.Text.Json.Serialization.JsonPropertyName("_embedded")]
+        public object? _embedded { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class HalResourceOfNativeRegistrationRequirementProgressCollectionDto
     {
 
@@ -112863,6 +113352,9 @@ namespace Explore.Blazor.Client.Clients
         [System.Text.Json.Serialization.JsonPropertyName("requirements")]
         [System.ComponentModel.DataAnnotations.Required]
         public System.Collections.Generic.ICollection<Requirements> Requirements { get; set; } = new System.Collections.Generic.List<Requirements>();
+
+        [System.Text.Json.Serialization.JsonPropertyName("providerRequirements")]
+        public System.Collections.Generic.ICollection<NativeRegistrationProviderLaunchDescriptorDto>? ProviderRequirements { get; set; } = default!;
 
         /// <summary>
         /// HAL hypermedia links
@@ -113695,6 +114187,58 @@ namespace Explore.Blazor.Client.Clients
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class HalResourceOfRegistrationChannelDto
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("id")]
+        public System.Guid? Id { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("tenantId")]
+        public System.Guid? TenantId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("eventId")]
+        public System.Guid? EventId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("registrationWorkflowId")]
+        public System.Guid? RegistrationWorkflowId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("registrationRequirementId")]
+        public System.Guid? RegistrationRequirementId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("ordinal")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? Ordinal { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("isNative")]
+        public bool? IsNative { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("registrationProviderBindingId")]
+        public System.Guid? RegistrationProviderBindingId { get; set; } = default!;
+
+        /// <summary>
+        /// HAL hypermedia links
+        /// </summary>
+        [System.Text.Json.Serialization.JsonPropertyName("_links")]
+        public System.Collections.Generic.IDictionary<string, HalLink>? _links { get; set; } = default!;
+
+        /// <summary>
+        /// Embedded related resources
+        /// </summary>
+        [System.Text.Json.Serialization.JsonPropertyName("_embedded")]
+        public object? _embedded { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class HalResourceOfRegistrationFormDto
     {
 
@@ -114009,6 +114553,159 @@ namespace Explore.Blazor.Client.Clients
     public partial class HalResourceOfRegistrationProviderBindingDto
     {
 
+        [System.Text.Json.Serialization.JsonPropertyName("id")]
+        public System.Guid? Id { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("tenantId")]
+        public System.Guid? TenantId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("eventId")]
+        public System.Guid? EventId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("connectionId")]
+        public System.Guid? ConnectionId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("formId")]
+        public System.Guid? FormId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("formVersionId")]
+        public System.Guid? FormVersionId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("providerSurveyId")]
+        public string? ProviderSurveyId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("providerSurveyRevisionId")]
+        public string? ProviderSurveyRevisionId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("providerWebhookId")]
+        public string? ProviderWebhookId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("webhookSecretBindingId")]
+        public System.Guid? WebhookSecretBindingId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("presentationModeId")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? PresentationModeId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("collectionModeId")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? CollectionModeId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("completionModeId")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? CompletionModeId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("trustLevelId")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? TrustLevelId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("driftClassId")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? DriftClassId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("stateId")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? StateId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("publishedAt")]
+        public System.DateTimeOffset? PublishedAt { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("capabilityCodes")]
+        public System.Collections.Generic.ICollection<string>? CapabilityCodes { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("fieldMappings")]
+        public System.Collections.Generic.ICollection<FieldMappings>? FieldMappings { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("optionMappings")]
+        public System.Collections.Generic.ICollection<OptionMappings>? OptionMappings { get; set; } = default!;
+
+        /// <summary>
+        /// HAL hypermedia links
+        /// </summary>
+        [System.Text.Json.Serialization.JsonPropertyName("_links")]
+        public System.Collections.Generic.IDictionary<string, HalLink>? _links { get; set; } = default!;
+
+        /// <summary>
+        /// Embedded related resources
+        /// </summary>
+        [System.Text.Json.Serialization.JsonPropertyName("_embedded")]
+        public object? _embedded { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class HalResourceOfRegistrationProviderBindingHealthDto
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("tenantId")]
+        public System.Guid? TenantId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("eventId")]
+        public System.Guid? EventId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("bindingId")]
+        public System.Guid? BindingId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("connectionId")]
+        public System.Guid? ConnectionId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("providerKind")]
+        public string? ProviderKind { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("bindingStatus")]
+        public string? BindingStatus { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("connectionValidity")]
+        public string? ConnectionValidity { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("lastCallbackAt")]
+        public System.DateTimeOffset? LastCallbackAt { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("lastCallbackAgeSeconds")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? LastCallbackAgeSeconds { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("callbackAgeClass")]
+        public string? CallbackAgeClass { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("driftClass")]
+        public string? DriftClass { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("reconciliationLagSeconds")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? ReconciliationLagSeconds { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("reconciliationLagClass")]
+        public string? ReconciliationLagClass { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("parkedQueueDepth")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? ParkedQueueDepth { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("capabilityCodes")]
+        public System.Collections.Generic.ICollection<string>? CapabilityCodes { get; set; } = default!;
+
+        /// <summary>
+        /// HAL hypermedia links
+        /// </summary>
+        [System.Text.Json.Serialization.JsonPropertyName("_links")]
+        public System.Collections.Generic.IDictionary<string, HalLink>? _links { get; set; } = default!;
+
+        /// <summary>
+        /// Embedded related resources
+        /// </summary>
+        [System.Text.Json.Serialization.JsonPropertyName("_embedded")]
+        public object? _embedded { get; set; } = default!;
+
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
         [System.Text.Json.Serialization.JsonExtensionData]
@@ -114024,6 +114721,86 @@ namespace Explore.Blazor.Client.Clients
     public partial class HalResourceOfRegistrationProviderConnectionDto
     {
 
+        [System.Text.Json.Serialization.JsonPropertyName("id")]
+        public System.Guid? Id { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("tenantId")]
+        public System.Guid? TenantId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("eventId")]
+        public System.Guid? EventId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("name")]
+        public string? Name { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("providerKindId")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? ProviderKindId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("deploymentKindId")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? DeploymentKindId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("providerCode")]
+        public string? ProviderCode { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("providerDeploymentCode")]
+        public string? ProviderDeploymentCode { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("apiVersion")]
+        public string? ApiVersion { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("adapterPolicyVersion")]
+        public string? AdapterPolicyVersion { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("conformanceEvidenceRevision")]
+        public string? ConformanceEvidenceRevision { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("managementApiBaseUrl")]
+        public string? ManagementApiBaseUrl { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("publicBaseUrl")]
+        public string? PublicBaseUrl { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("providerWorkspaceId")]
+        public string? ProviderWorkspaceId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("grantedOAuthScopes")]
+        public string? GrantedOAuthScopes { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("providerIdentity")]
+        public string? ProviderIdentity { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("pubSubConfigurationReference")]
+        public string? PubSubConfigurationReference { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("lastCredentialRefreshAt")]
+        public System.DateTimeOffset? LastCredentialRefreshAt { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("lastAccessValidatedAt")]
+        public System.DateTimeOffset? LastAccessValidatedAt { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("apiTokenSecretBindingId")]
+        public System.Guid? ApiTokenSecretBindingId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("webhookSecretBindingId")]
+        public System.Guid? WebhookSecretBindingId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("approvedOrigins")]
+        public System.Collections.Generic.ICollection<string>? ApprovedOrigins { get; set; } = default!;
+
+        /// <summary>
+        /// HAL hypermedia links
+        /// </summary>
+        [System.Text.Json.Serialization.JsonPropertyName("_links")]
+        public System.Collections.Generic.IDictionary<string, HalLink>? _links { get; set; } = default!;
+
+        /// <summary>
+        /// Embedded related resources
+        /// </summary>
+        [System.Text.Json.Serialization.JsonPropertyName("_embedded")]
+        public object? _embedded { get; set; } = default!;
+
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
         [System.Text.Json.Serialization.JsonExtensionData]
@@ -114038,6 +114815,118 @@ namespace Explore.Blazor.Client.Clients
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class HalResourceOfRegistrationProviderLaunchDescriptorDto
     {
+
+        [System.Text.Json.Serialization.JsonPropertyName("bindingId")]
+        public System.Guid? BindingId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("channelId")]
+        public System.Guid? ChannelId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("tenantId")]
+        public System.Guid? TenantId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("eventId")]
+        public System.Guid? EventId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("workflowId")]
+        public System.Guid? WorkflowId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("requirementId")]
+        public System.Guid? RequirementId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("mode")]
+        public string? Mode { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("available")]
+        public bool? Available { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("url")]
+        public string? Url { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("title")]
+        public string? Title { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("openInNewTab")]
+        public bool? OpenInNewTab { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("fallbackMode")]
+        public string? FallbackMode { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("reason")]
+        public string? Reason { get; set; } = default!;
+
+        /// <summary>
+        /// HAL hypermedia links
+        /// </summary>
+        [System.Text.Json.Serialization.JsonPropertyName("_links")]
+        public System.Collections.Generic.IDictionary<string, HalLink>? _links { get; set; } = default!;
+
+        /// <summary>
+        /// Embedded related resources
+        /// </summary>
+        [System.Text.Json.Serialization.JsonPropertyName("_embedded")]
+        public object? _embedded { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class HalResourceOfRegistrationProviderParkedQueueItemDto
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("tenantId")]
+        public System.Guid? TenantId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("eventId")]
+        public System.Guid? EventId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("bindingId")]
+        public System.Guid? BindingId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("submissionId")]
+        public System.Guid? SubmissionId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("effectOutboxId")]
+        public System.Guid? EffectOutboxId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("status")]
+        public string? Status { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("failureCategory")]
+        public string? FailureCategory { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("issueCodes")]
+        public System.Collections.Generic.ICollection<string>? IssueCodes { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("createdAt")]
+        public System.DateTimeOffset? CreatedAt { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("nextAttemptAt")]
+        public System.DateTimeOffset? NextAttemptAt { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("processingGeneration")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? ProcessingGeneration { get; set; } = default!;
+
+        /// <summary>
+        /// HAL hypermedia links
+        /// </summary>
+        [System.Text.Json.Serialization.JsonPropertyName("_links")]
+        public System.Collections.Generic.IDictionary<string, HalLink>? _links { get; set; } = default!;
+
+        /// <summary>
+        /// Embedded related resources
+        /// </summary>
+        [System.Text.Json.Serialization.JsonPropertyName("_embedded")]
+        public object? _embedded { get; set; } = default!;
 
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
@@ -116267,6 +117156,42 @@ namespace Explore.Blazor.Client.Clients
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class ImportExternalRegistrationProviderFormVersionRequestDto
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("formId")]
+        public System.Guid? FormId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("namespace")]
+        public string? Namespace { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("key")]
+        public string? Key { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("name")]
+        public string? Name { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("languageTag")]
+        public string? LanguageTag { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("providerSurveyId")]
+        public string? ProviderSurveyId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("providerSurveyRevisionId")]
+        public string? ProviderSurveyRevisionId { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class ImportLocalizationBundleDto
     {
 
@@ -117375,6 +118300,44 @@ namespace Explore.Blazor.Client.Clients
         [System.Text.Json.Serialization.JsonPropertyName("channelId")]
         [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
         public System.Guid ChannelId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("formId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.Guid FormId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("formVersionId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.Guid FormVersionId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("bindingId")]
+        public System.Guid? BindingId { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class LaunchRegistrationProviderAttemptRequest
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("requirementId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.Guid RequirementId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("channelId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.Guid ChannelId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("bindingId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.Guid BindingId { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("formId")]
         [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
@@ -119602,11 +120565,82 @@ namespace Explore.Blazor.Client.Clients
 
         [System.Text.Json.Serialization.JsonPropertyName("subjects")]
         [System.ComponentModel.DataAnnotations.Required]
-        public System.Collections.Generic.ICollection<Subjects2> Subjects { get; set; } = new System.Collections.Generic.List<Subjects2>();
+        public System.Collections.Generic.ICollection<Subjects3> Subjects { get; set; } = new System.Collections.Generic.List<Subjects3>();
 
         [System.Text.Json.Serialization.JsonPropertyName("progress")]
         [System.ComponentModel.DataAnnotations.Required]
-        public Progress2 Progress { get; set; } = new Progress2();
+        public Progress3 Progress { get; set; } = new Progress3();
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class NativeRegistrationProviderLaunchDescriptorDto
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("attemptId")]
+        public System.Guid? AttemptId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("requirementId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.Guid RequirementId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("channelId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.Guid ChannelId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("bindingId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.Guid BindingId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("formId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.Guid FormId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("formVersionId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.Guid FormVersionId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("mode")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string Mode { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("available")]
+        public bool Available { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("url")]
+        public string? Url { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("title")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string Title { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("openInNewTab")]
+        public bool OpenInNewTab { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("fallbackMode")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string FallbackMode { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("reason")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string Reason { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("subjects")]
+        [System.ComponentModel.DataAnnotations.Required]
+        public System.Collections.Generic.ICollection<Subjects4> Subjects { get; set; } = new System.Collections.Generic.List<Subjects4>();
+
+        [System.Text.Json.Serialization.JsonPropertyName("progress")]
+        [System.ComponentModel.DataAnnotations.Required]
+        public Progress4 Progress { get; set; } = new Progress4();
 
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
@@ -119630,6 +120664,9 @@ namespace Explore.Blazor.Client.Clients
         [System.Text.Json.Serialization.JsonPropertyName("requirements")]
         [System.ComponentModel.DataAnnotations.Required]
         public System.Collections.Generic.ICollection<Requirements2> Requirements { get; set; } = new System.Collections.Generic.List<Requirements2>();
+
+        [System.Text.Json.Serialization.JsonPropertyName("providerRequirements")]
+        public System.Collections.Generic.ICollection<NativeRegistrationProviderLaunchDescriptorDto>? ProviderRequirements { get; set; } = default!;
 
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
@@ -125348,6 +126385,150 @@ namespace Explore.Blazor.Client.Clients
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class RegistrationProviderBindingDto
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("id")]
+        public System.Guid? Id { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("tenantId")]
+        public System.Guid? TenantId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("eventId")]
+        public System.Guid? EventId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("connectionId")]
+        public System.Guid? ConnectionId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("formId")]
+        public System.Guid? FormId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("formVersionId")]
+        public System.Guid? FormVersionId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("providerSurveyId")]
+        public string? ProviderSurveyId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("providerSurveyRevisionId")]
+        public string? ProviderSurveyRevisionId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("providerWebhookId")]
+        public string? ProviderWebhookId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("webhookSecretBindingId")]
+        public System.Guid? WebhookSecretBindingId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("presentationModeId")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? PresentationModeId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("collectionModeId")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? CollectionModeId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("completionModeId")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? CompletionModeId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("trustLevelId")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? TrustLevelId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("driftClassId")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? DriftClassId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("stateId")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? StateId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("publishedAt")]
+        public System.DateTimeOffset? PublishedAt { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("capabilityCodes")]
+        public System.Collections.Generic.ICollection<string>? CapabilityCodes { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("fieldMappings")]
+        public System.Collections.Generic.ICollection<FieldMappings2>? FieldMappings { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("optionMappings")]
+        public System.Collections.Generic.ICollection<OptionMappings2>? OptionMappings { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class RegistrationProviderBindingHealthDto
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("tenantId")]
+        public System.Guid? TenantId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("eventId")]
+        public System.Guid? EventId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("bindingId")]
+        public System.Guid? BindingId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("connectionId")]
+        public System.Guid? ConnectionId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("providerKind")]
+        public string? ProviderKind { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("bindingStatus")]
+        public string? BindingStatus { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("connectionValidity")]
+        public string? ConnectionValidity { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("lastCallbackAt")]
+        public System.DateTimeOffset? LastCallbackAt { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("lastCallbackAgeSeconds")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? LastCallbackAgeSeconds { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("callbackAgeClass")]
+        public string? CallbackAgeClass { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("driftClass")]
+        public string? DriftClass { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("reconciliationLagSeconds")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? ReconciliationLagSeconds { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("reconciliationLagClass")]
+        public string? ReconciliationLagClass { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("parkedQueueDepth")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? ParkedQueueDepth { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("capabilityCodes")]
+        public System.Collections.Generic.ICollection<string>? CapabilityCodes { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class RegistrationProviderBindingRequestDto
     {
 
@@ -125359,6 +126540,18 @@ namespace Explore.Blazor.Client.Clients
 
         [System.Text.Json.Serialization.JsonPropertyName("formVersionId")]
         public System.Guid? FormVersionId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("providerSurveyId")]
+        public string? ProviderSurveyId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("providerSurveyRevisionId")]
+        public string? ProviderSurveyRevisionId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("providerWebhookId")]
+        public string? ProviderWebhookId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("webhookSecretBindingId")]
+        public System.Guid? WebhookSecretBindingId { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("presentationModeId")]
         [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
@@ -125388,6 +126581,89 @@ namespace Explore.Blazor.Client.Clients
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class RegistrationProviderConnectionDto
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("id")]
+        public System.Guid? Id { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("tenantId")]
+        public System.Guid? TenantId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("eventId")]
+        public System.Guid? EventId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("name")]
+        public string? Name { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("providerKindId")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? ProviderKindId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("deploymentKindId")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? DeploymentKindId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("providerCode")]
+        public string? ProviderCode { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("providerDeploymentCode")]
+        public string? ProviderDeploymentCode { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("apiVersion")]
+        public string? ApiVersion { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("adapterPolicyVersion")]
+        public string? AdapterPolicyVersion { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("conformanceEvidenceRevision")]
+        public string? ConformanceEvidenceRevision { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("managementApiBaseUrl")]
+        public string? ManagementApiBaseUrl { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("publicBaseUrl")]
+        public string? PublicBaseUrl { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("providerWorkspaceId")]
+        public string? ProviderWorkspaceId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("grantedOAuthScopes")]
+        public string? GrantedOAuthScopes { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("providerIdentity")]
+        public string? ProviderIdentity { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("pubSubConfigurationReference")]
+        public string? PubSubConfigurationReference { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("lastCredentialRefreshAt")]
+        public System.DateTimeOffset? LastCredentialRefreshAt { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("lastAccessValidatedAt")]
+        public System.DateTimeOffset? LastAccessValidatedAt { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("apiTokenSecretBindingId")]
+        public System.Guid? ApiTokenSecretBindingId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("webhookSecretBindingId")]
+        public System.Guid? WebhookSecretBindingId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("approvedOrigins")]
+        public System.Collections.Generic.ICollection<string>? ApprovedOrigins { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class RegistrationProviderConnectionRequestDto
     {
 
@@ -125401,6 +126677,39 @@ namespace Explore.Blazor.Client.Clients
         [System.Text.Json.Serialization.JsonPropertyName("deploymentKindId")]
         [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
         public int? DeploymentKindId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("providerCode")]
+        public string? ProviderCode { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("providerDeploymentCode")]
+        public string? ProviderDeploymentCode { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("apiVersion")]
+        public string? ApiVersion { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("adapterPolicyVersion")]
+        public string? AdapterPolicyVersion { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("conformanceEvidenceRevision")]
+        public string? ConformanceEvidenceRevision { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("managementApiBaseUrl")]
+        public string? ManagementApiBaseUrl { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("publicBaseUrl")]
+        public string? PublicBaseUrl { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("providerWorkspaceId")]
+        public string? ProviderWorkspaceId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("grantedOAuthScopes")]
+        public string? GrantedOAuthScopes { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("providerIdentity")]
+        public string? ProviderIdentity { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("pubSubConfigurationReference")]
+        public string? PubSubConfigurationReference { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("apiTokenSecretBindingId")]
         public System.Guid? ApiTokenSecretBindingId { get; set; } = default!;
@@ -125444,6 +126753,60 @@ namespace Explore.Blazor.Client.Clients
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class RegistrationProviderLaunchDescriptorDto
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("bindingId")]
+        public System.Guid? BindingId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("channelId")]
+        public System.Guid? ChannelId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("tenantId")]
+        public System.Guid? TenantId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("eventId")]
+        public System.Guid? EventId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("workflowId")]
+        public System.Guid? WorkflowId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("requirementId")]
+        public System.Guid? RequirementId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("mode")]
+        public string? Mode { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("available")]
+        public bool? Available { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("url")]
+        public string? Url { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("title")]
+        public string? Title { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("openInNewTab")]
+        public bool? OpenInNewTab { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("fallbackMode")]
+        public string? FallbackMode { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("reason")]
+        public string? Reason { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class RegistrationProviderOptionMappingDto
     {
 
@@ -125455,6 +126818,55 @@ namespace Explore.Blazor.Client.Clients
 
         [System.Text.Json.Serialization.JsonPropertyName("providerOptionKey")]
         public string? ProviderOptionKey { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class RegistrationProviderParkedQueueItemDto
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("tenantId")]
+        public System.Guid? TenantId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("eventId")]
+        public System.Guid? EventId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("bindingId")]
+        public System.Guid? BindingId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("submissionId")]
+        public System.Guid? SubmissionId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("effectOutboxId")]
+        public System.Guid? EffectOutboxId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("status")]
+        public string? Status { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("failureCategory")]
+        public string? FailureCategory { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("issueCodes")]
+        public System.Collections.Generic.ICollection<string>? IssueCodes { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("createdAt")]
+        public System.DateTimeOffset? CreatedAt { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("nextAttemptAt")]
+        public System.DateTimeOffset? NextAttemptAt { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("processingGeneration")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? ProcessingGeneration { get; set; } = default!;
 
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
@@ -139180,6 +140592,83 @@ namespace Explore.Blazor.Client.Clients
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class Subjects2
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("subjectType")]
+        public int SubjectType { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("subjectTypeCode")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string SubjectTypeCode { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("subjectId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.Guid SubjectId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("subjectKey")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string SubjectKey { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("ticketAssignmentOrderLineId")]
+        public System.Guid? TicketAssignmentOrderLineId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("isCompleted")]
+        public bool IsCompleted { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("isSkipped")]
+        public bool IsSkipped { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class Progress2
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("subjectCount")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int SubjectCount { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("completedSubjectCount")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int CompletedSubjectCount { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("skippedSubjectCount")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int SkippedSubjectCount { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("pendingSubjectCount")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int PendingSubjectCount { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("isComplete")]
+        public bool IsComplete { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class Requirements
     {
 
@@ -139204,11 +140693,14 @@ namespace Explore.Blazor.Client.Clients
 
         [System.Text.Json.Serialization.JsonPropertyName("subjects")]
         [System.ComponentModel.DataAnnotations.Required]
-        public System.Collections.Generic.ICollection<Subjects3> Subjects { get; set; } = new System.Collections.Generic.List<Subjects3>();
+        public System.Collections.Generic.ICollection<Subjects5> Subjects { get; set; } = new System.Collections.Generic.List<Subjects5>();
 
         [System.Text.Json.Serialization.JsonPropertyName("progress")]
         [System.ComponentModel.DataAnnotations.Required]
-        public Progress3 Progress { get; set; } = new Progress3();
+        public Progress5 Progress { get; set; } = new Progress5();
+
+        [System.Text.Json.Serialization.JsonPropertyName("bindingId")]
+        public System.Guid? BindingId { get; set; } = default!;
 
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
@@ -139586,6 +141078,54 @@ namespace Explore.Blazor.Client.Clients
 
         [System.Text.Json.Serialization.JsonPropertyName("assignmentDeadline")]
         public System.DateTimeOffset? AssignmentDeadline { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class FieldMappings
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("platformFieldKey")]
+        public string? PlatformFieldKey { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("providerFieldKey")]
+        public string? ProviderFieldKey { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("isRequired")]
+        public bool? IsRequired { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class OptionMappings
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("platformFieldKey")]
+        public string? PlatformFieldKey { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("platformOptionKey")]
+        public string? PlatformOptionKey { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("providerOptionKey")]
+        public string? ProviderOptionKey { get; set; } = default!;
 
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
@@ -140537,7 +142077,7 @@ namespace Explore.Blazor.Client.Clients
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class Subjects2
+    public partial class Subjects3
     {
 
         [System.Text.Json.Serialization.JsonPropertyName("subjectType")]
@@ -140576,7 +142116,84 @@ namespace Explore.Blazor.Client.Clients
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class Progress2
+    public partial class Progress3
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("subjectCount")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int SubjectCount { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("completedSubjectCount")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int CompletedSubjectCount { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("skippedSubjectCount")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int SkippedSubjectCount { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("pendingSubjectCount")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int PendingSubjectCount { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("isComplete")]
+        public bool IsComplete { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class Subjects4
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("subjectType")]
+        public int SubjectType { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("subjectTypeCode")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string SubjectTypeCode { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("subjectId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.Guid SubjectId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("subjectKey")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string SubjectKey { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("ticketAssignmentOrderLineId")]
+        public System.Guid? TicketAssignmentOrderLineId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("isCompleted")]
+        public bool IsCompleted { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("isSkipped")]
+        public bool IsSkipped { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class Progress4
     {
 
         [System.Text.Json.Serialization.JsonPropertyName("subjectCount")]
@@ -140638,11 +142255,14 @@ namespace Explore.Blazor.Client.Clients
 
         [System.Text.Json.Serialization.JsonPropertyName("subjects")]
         [System.ComponentModel.DataAnnotations.Required]
-        public System.Collections.Generic.ICollection<Subjects4> Subjects { get; set; } = new System.Collections.Generic.List<Subjects4>();
+        public System.Collections.Generic.ICollection<Subjects6> Subjects { get; set; } = new System.Collections.Generic.List<Subjects6>();
 
         [System.Text.Json.Serialization.JsonPropertyName("progress")]
         [System.ComponentModel.DataAnnotations.Required]
-        public Progress4 Progress { get; set; } = new Progress4();
+        public Progress6 Progress { get; set; } = new Progress6();
+
+        [System.Text.Json.Serialization.JsonPropertyName("bindingId")]
+        public System.Guid? BindingId { get; set; } = default!;
 
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
@@ -141060,6 +142680,54 @@ namespace Explore.Blazor.Client.Clients
 
         [System.Text.Json.Serialization.JsonPropertyName("assignmentDeadline")]
         public System.DateTimeOffset? AssignmentDeadline { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class FieldMappings2
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("platformFieldKey")]
+        public string? PlatformFieldKey { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("providerFieldKey")]
+        public string? ProviderFieldKey { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("isRequired")]
+        public bool? IsRequired { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class OptionMappings2
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("platformFieldKey")]
+        public string? PlatformFieldKey { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("platformOptionKey")]
+        public string? PlatformOptionKey { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("providerOptionKey")]
+        public string? ProviderOptionKey { get; set; } = default!;
 
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
@@ -142380,7 +144048,7 @@ namespace Explore.Blazor.Client.Clients
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class Subjects3
+    public partial class Subjects5
     {
 
         [System.Text.Json.Serialization.JsonPropertyName("subjectType")]
@@ -142419,7 +144087,7 @@ namespace Explore.Blazor.Client.Clients
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class Progress3
+    public partial class Progress5
     {
 
         [System.Text.Json.Serialization.JsonPropertyName("subjectCount")]
@@ -142694,7 +144362,7 @@ namespace Explore.Blazor.Client.Clients
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class Subjects4
+    public partial class Subjects6
     {
 
         [System.Text.Json.Serialization.JsonPropertyName("subjectType")]
@@ -142733,7 +144401,7 @@ namespace Explore.Blazor.Client.Clients
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class Progress4
+    public partial class Progress6
     {
 
         [System.Text.Json.Serialization.JsonPropertyName("subjectCount")]
