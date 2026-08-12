@@ -124,7 +124,7 @@ Last Updated: 2026-07-10 Europe/Brussels
 - Browser/WASM never receives TMS API keys, bearer tokens, or secret values.
 - Tenant settings and cache keys must respect tenant context.
 - `MasterCode` is the canonical lookup translation identity.
-- Hosted/connected mode uses Tolgee/Weblate through the ISLAMU API; static bundles are fallback/no-TMS support.
+- Hosted/connected mode uses Tolgee/Weblate through the ISLAMU Event API; static bundles are fallback/no-TMS support.
 - Public translation reads accept only `CultureRegistry` languages (`en`, `fr`, `ar`) and normalize before provider access.
 - Provider calls must match generated clients from the checked-in provider-normalized OpenAPI slices.
 - All new files need two `ABOUTME:` lines.

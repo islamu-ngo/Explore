@@ -17,7 +17,7 @@ Last Updated: 2026-07-09 Europe/Brussels
 - **Paths in scope:** `Explore.Domain/Common/Localization/**`, `Explore.Domain/Constants/GovernanceSettingKeys.cs`, `Explore.Domain/Enums/TranslationManagementProviderEnum.cs`, lookup entities/DTOs exposing `MasterCode`, `Explore.Application/Contracts/Infrastructure/ITranslation*.cs`, `Explore.Application/Contracts/Infrastructure/IBundleFileWriter.cs`, `Explore.Application/DTOs/Localization/**`, `Explore.Application/Features/Localization/**`, `Explore.Application/Telemetry/TranslationMetrics.cs`, `Explore.Infrastructure/Localization/**`, `Explore.API/Controllers/*Translation*.cs`, `Explore.API/Controllers/LocalizationAdminController.cs`, `Explore.API/Program.cs`, `Explore.Blazor/**`, `Explore.Blazor.Client/**`, `Explore.Infrastructure/Localization/Bundles/**`, relevant tests/docs/dev docs.
 - **Minimum tests:** `dotnet build --configuration Release --verbosity quiet`, `Event.Architecture.Tests`, and targeted Domain/Application/Infrastructure/API/Blazor test projects based on changed files.
 - **Docs to update during implementation:** `docs/LOCALIZATION.md`, `docs/CONFIGURATION.md`, `docs/API.md`, `docs/BLAZOR.md`, `docs/OPERATIONS.md`, `docs/DEPLOYMENT_MODES.md`, this workstream's plan/context/tasks.
-- **Unique acceptance:** ISLAMU-hosted and connected instances resolve translations through the ISLAMU API and live Tolgee/Weblate provider path; lookup translations are keyed from `MasterCode` using `lookup.{entity_type}.{master_code}.{field}`; UI strings use `ui.*`; TMS credentials remain server-side; provider endpoints/auth match current Context7 docs; static bundles only serve `tms_provider=None` self-hosting and provider-failure fallback; no DB translation table and no unreleased compatibility shims.
+- **Unique acceptance:** ISLAMU Event-hosted and connected instances resolve translations through the ISLAMU Event API and live Tolgee/Weblate provider path; lookup translations are keyed from `MasterCode` using `lookup.{entity_type}.{master_code}.{field}`; UI strings use `ui.*`; TMS credentials remain server-side; provider endpoints/auth match current Context7 docs; static bundles only serve `tms_provider=None` self-hosting and provider-failure fallback; no DB translation table and no unreleased compatibility shims.
 - **Forbidden without approval:** DB translation tables, browser-visible TMS secrets, repository DTO returns, injected validators, compatibility shims for unreleased DTO/client/provider shapes, disabling tenant isolation, translating by database ID or localized label instead of `MasterCode`, generic new abstractions when existing provider/resolver/writer seams fit.
 - **Primary layers touched:** Domain / Application / Infrastructure / API / Blazor / Docs / DevOps / Tests.
 - **Estimated complexity:** L. The primary path crosses API, Application, Infrastructure providers, generated clients, Blazor cache, tenant config, TMS credentials, and provider-specific HTTP semantics. Static bundles still need hardening, but they are fallback/offline support rather than the main hosted runtime path.
@@ -25,7 +25,7 @@ Last Updated: 2026-07-09 Europe/Brussels
 ## 1. Executive Summary
 The repository is not greenfield for localization. It already has a culture registry, governance keys, translation contracts, runtime/offline/Tolgee/Weblate providers, bundle writer, public/admin controllers, Blazor translation services, a language picker, startup localization middleware, embedded bundles, metrics, and some tests. The plan is to correct and harden that existing stack around the intended runtime hierarchy.
 
-The corrected architecture is **API/TMS-primary**. Blazor and other clients obtain translations through the ISLAMU API. The API routes through `ITranslationResolver` and `RuntimeTranslationProvider`. In ISLAMU-hosted or connected self-hosted mode, `tms_provider=Tolgee|Weblate` makes Infrastructure call the configured TMS APIs using server-side secrets. Lookup translations are addressed by stable lookup `MasterCode` keys such as `lookup.tag.FIQH.full_name`; UI strings use `ui.{area}.{component}.{element}`.
+The corrected architecture is **API/TMS-primary**. Blazor and other clients obtain translations through the ISLAMU Event API. The API routes through `ITranslationResolver` and `RuntimeTranslationProvider`. In ISLAMU Event-hosted or connected self-hosted mode, `tms_provider=Tolgee|Weblate` makes Infrastructure call the configured TMS APIs using server-side secrets. Lookup translations are addressed by stable lookup `MasterCode` keys such as `lookup.tag.FIQH.full_name`; UI strings use `ui.{area}.{component}.{element}`.
 
 Static JSON bundles are still important, but they are not the primary hosted design. They are the offline provider for self-hosters that do not connect Tolgee/Weblate (`tms_provider=None`) and the graceful fallback when a connected provider fails. Static bundles must mirror the same key convention so disconnected mode behaves like connected mode.
 
@@ -106,7 +106,7 @@ Out of scope: adding a DB translation table, adding providers beyond Tolgee/Webl
 ```text
 Lookup rows expose stable MasterCode values
         ↓ key construction: lookup.{entity_type}.{master_code}.{field}
-Blazor/client calls ISLAMU API: GET /api/Translation/{languageCode}
+Blazor/client calls ISLAMU Event API: GET /api/Translation/{languageCode}
         ↓ TranslationController → GetTranslationsQuery
 ITranslationResolver / RuntimeTranslationProvider
         ↓ tms_provider = Tolgee or Weblate
@@ -157,7 +157,7 @@ Self-hosters can run without Tolgee/Weblate by shipping or editing static bundle
 - **Files/layers affected:** Existing localization paths across Domain, Application, Infrastructure, API, Blazor, docs, tests.
 
 ### Decision 2: API/TMS is the primary runtime path
-- **Why:** The corrected product requirement is that users get translations through the ISLAMU API, and hosted ISLAMU uses Tolgee/Weblate behind that API.
+- **Why:** The corrected product requirement is that users get translations through the ISLAMU Event API, and hosted ISLAMU Event uses Tolgee/Weblate behind that API.
 - **Alternatives considered:** Static-bundle-first runtime; DB lookup translation rows; browser-side TMS calls.
 - **Consequences:** Provider auth, provider endpoints, cache fill behavior, API tests, and metrics must prove live TMS mode works first.
 - **Files/layers affected:** `TranslationController`, `GetTranslationsQueryHandler`, `ITranslationResolver`, `RuntimeTranslationProvider`, Tolgee/Weblate providers, Blazor `TranslationService`, tests.
@@ -265,7 +265,7 @@ Self-hosters can run without Tolgee/Weblate by shipping or editing static bundle
 - **Type:** verify/modify/test
 - **Layer:** Blazor Client
 - **Files:** `Explore.Blazor.Client/Services/TranslationService.cs` (existing), `MudBlazorLocalizer.cs` (existing), Blazor client tests
-- **Description:** Ensure the client continues to fetch translations from the ISLAMU API and only uses in-memory cached dictionaries on the `T(key)` hot path.
+- **Description:** Ensure the client continues to fetch translations from the ISLAMU Event API and only uses in-memory cached dictionaries on the `T(key)` hot path.
 - **Acceptance Criteria:** No browser-side Tolgee/Weblate calls; no browser-side TMS secrets; `T(key)` remains synchronous/in-memory; cache refresh uses API client.
 - **Dependencies:** 1.2
 - **Effort:** S
@@ -591,7 +591,7 @@ Self-hosters can run without Tolgee/Weblate by shipping or editing static bundle
 | HA self-host writes are inconsistent across replicas. | Medium | Medium | Document shared-volume contract; defer object writer explicitly. | Different replicas return different translations. | 3.5, 6.2 |
 
 ## 14. Success Metrics And Definition Of Done
-- **Functional:** ISLAMU API returns translations for supported languages from live Tolgee/Weblate when configured; lookup translations use `MasterCode` keys; no browser-side TMS calls exist.
+- **Functional:** ISLAMU Event API returns translations for supported languages from live Tolgee/Weblate when configured; lookup translations use `MasterCode` keys; no browser-side TMS calls exist.
 - **Fallback:** `tms_provider=None` self-hosters get the same key/value contract from static bundles; provider failure falls back to static bundle and records fallback metric.
 - **Security:** TMS secrets are server-side only and absent from generated clients, admin read DTOs, logs, metrics, ProblemDetails, and OpenAPI examples.
 - **Quality:** Build passes; architecture tests pass; targeted Application/Infrastructure/API/Blazor tests pass; no temporary compatibility shim remains for localization DTO/client/provider shapes.
@@ -622,4 +622,4 @@ When an implementation agent finishes a slice, its final response should use thi
 - **Docs updated:** plan/context/tasks updated yes/no with reason.
 
 ## 17. Potential Risks & Unknowns
-The highest-risk part is the live provider boundary, not the static fallback. The API must reliably return TMS-backed translations keyed by lookup `MasterCode`, while Tolgee and Weblate each have different authentication, export/import, file/stream, and conflict semantics. Static bundles still matter, but only as the no-TMS/failure path; implementation should not let fallback convenience obscure whether hosted connected mode really calls Tolgee/Weblate and returns provider data through the ISLAMU API.
+The highest-risk part is the live provider boundary, not the static fallback. The API must reliably return TMS-backed translations keyed by lookup `MasterCode`, while Tolgee and Weblate each have different authentication, export/import, file/stream, and conflict semantics. Static bundles still matter, but only as the no-TMS/failure path; implementation should not let fallback convenience obscure whether hosted connected mode really calls Tolgee/Weblate and returns provider data through the ISLAMU Event API.
