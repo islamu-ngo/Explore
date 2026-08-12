@@ -44,19 +44,152 @@ public class SetupSecretProviderTests
     }
 
     [Test]
-    public async Task Constructor_EnvSecretMissing_UsesGeneratedSecretSource()
+    public async Task Constructor_EnvSecretMissing_UsesDefaultTemporaryFilePath()
     {
-        var provider = CreateProvider();
+        var provider = new SetupSecretProvider(
+            new ConfigurationBuilder().Build(),
+            CreateScopeFactory(null));
 
         await Assert.That(provider.IsSetupSecretRequired).IsEqualTo(true);
         await Assert.That(provider.IsFromEnvironmentVariable).IsEqualTo(false);
+        await Assert.That(provider.GeneratedSecretFilePath)
+            .IsEqualTo(Path.Combine(Path.GetTempPath(), "islamu-event", "setup-secret"));
         await Assert.That(provider.ValidateSecret("not-the-generated-secret")).IsEqualTo(false);
+    }
+
+    [Test]
+    public async Task InitializeAsync_EmptySecretWithFilePath_PersistsGeneratedSecretOnce()
+    {
+        using var directory = new TemporaryDirectory();
+        var secretPath = Path.Combine(directory.Path, "setup-secret");
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["SETUP_SECRET"] = string.Empty,
+                ["SETUP_SECRET_FILE"] = secretPath
+            })
+            .Build();
+
+        using var firstProvider = new SetupSecretProvider(
+            configuration,
+            CreateScopeFactory(new InstanceBootstrapState { IsCompleted = false }));
+        await firstProvider.InitializeAsync();
+        var generatedSecret = (await File.ReadAllTextAsync(secretPath)).Trim();
+
+        using var restartedProvider = new SetupSecretProvider(
+            configuration,
+            CreateScopeFactory(new InstanceBootstrapState { IsCompleted = false }));
+        await restartedProvider.InitializeAsync();
+
+        await Assert.That(generatedSecret.Length).IsEqualTo(32);
+        await Assert.That(firstProvider.GeneratedSecretFilePath).IsEqualTo(secretPath);
+        await Assert.That(firstProvider.ValidateSecret(generatedSecret)).IsTrue();
+        await Assert.That(restartedProvider.ValidateSecret(generatedSecret)).IsTrue();
+
+        if (!OperatingSystem.IsWindows())
+        {
+            await Assert.That(File.GetUnixFileMode(secretPath))
+                .IsEqualTo(UnixFileMode.UserRead | UnixFileMode.UserWrite);
+        }
+    }
+
+    [Test]
+    public async Task Constructor_ExplicitSecret_OverridesAndDeletesPersistedGeneratedSecret()
+    {
+        using var directory = new TemporaryDirectory();
+        var secretPath = Path.Combine(directory.Path, "setup-secret");
+        var generatedConfiguration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?> { ["SETUP_SECRET_FILE"] = secretPath })
+            .Build();
+        using (var generatedProvider = new SetupSecretProvider(
+                   generatedConfiguration,
+                   CreateScopeFactory(new InstanceBootstrapState { IsCompleted = false })))
+        {
+            await generatedProvider.InitializeAsync();
+        }
+
+        var explicitConfiguration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["SETUP_SECRET"] = "operator-provided-secret",
+                ["SETUP_SECRET_FILE"] = secretPath
+            })
+            .Build();
+        using var explicitProvider = new SetupSecretProvider(explicitConfiguration, CreateScopeFactory(null));
+
+        await Assert.That(File.Exists(secretPath)).IsFalse();
+        await Assert.That(explicitProvider.IsFromEnvironmentVariable).IsTrue();
+        await Assert.That(explicitProvider.GeneratedSecretFilePath).IsNull();
+        await Assert.That(explicitProvider.ValidateSecret("operator-provided-secret")).IsTrue();
+    }
+
+    [Test]
+    public async Task Lock_PersistedGeneratedSecret_DeletesFile()
+    {
+        using var directory = new TemporaryDirectory();
+        var secretPath = Path.Combine(directory.Path, "setup-secret");
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?> { ["SETUP_SECRET_FILE"] = secretPath })
+            .Build();
+        using var provider = new SetupSecretProvider(
+            configuration,
+            CreateScopeFactory(new InstanceBootstrapState { IsCompleted = false }));
+        await provider.InitializeAsync();
+
+        provider.Lock();
+
+        await Assert.That(File.Exists(secretPath)).IsFalse();
+    }
+
+    [Test]
+    public async Task InitializeAsync_CompletedBootstrap_DeletesPersistedGeneratedSecret()
+    {
+        using var directory = new TemporaryDirectory();
+        var secretPath = Path.Combine(directory.Path, "setup-secret");
+        await File.WriteAllTextAsync(secretPath, "stale-generated-secret");
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?> { ["SETUP_SECRET_FILE"] = secretPath })
+            .Build();
+        using var provider = new SetupSecretProvider(
+            configuration,
+            CreateScopeFactory(new InstanceBootstrapState { IsCompleted = true }));
+
+        await provider.InitializeAsync();
+
+        await Assert.That(provider.IsSetupModeActive).IsFalse();
+        await Assert.That(File.Exists(secretPath)).IsFalse();
+    }
+
+    [Test]
+    public async Task InitializeAsync_UnwritableGeneratedSecretPath_RequiresExplicitSecret()
+    {
+        using var directory = new TemporaryDirectory();
+        var blockingFile = Path.Combine(directory.Path, "not-a-directory");
+        await File.WriteAllTextAsync(blockingFile, "occupied");
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["SETUP_SECRET_FILE"] = Path.Combine(blockingFile, "setup-secret")
+            })
+            .Build();
+        using var provider = new SetupSecretProvider(
+            configuration,
+            CreateScopeFactory(new InstanceBootstrapState { IsCompleted = false }));
+
+        InvalidOperationException exception = await Assert.That(
+                async () => await provider.InitializeAsync())
+            .Throws<InvalidOperationException>();
+
+        await Assert.That(exception.Message).Contains("SETUP_SECRET");
+        await Assert.That(provider.IsSetupModeActive).IsTrue();
     }
 
     [Test]
     public async Task Constructor_SetupSecretRequiredOmitted_DefaultsToRequired()
     {
-        var provider = CreateProvider();
+        var provider = new SetupSecretProvider(
+            new ConfigurationBuilder().Build(),
+            CreateScopeFactory(null));
 
         await Assert.That(provider.IsSetupSecretRequired).IsEqualTo(true);
         await Assert.That(provider.IsFromEnvironmentVariable).IsEqualTo(false);
@@ -203,9 +336,7 @@ public class SetupSecretProviderTests
 
     private static SetupSecretProvider CreateProvider(InstanceBootstrapState? state = null)
     {
-        var configuration = new ConfigurationBuilder().Build();
-        var scopeFactory = CreateScopeFactory(state);
-        return new SetupSecretProvider(configuration, scopeFactory);
+        return CreateProvider(Convert.ToHexString(RandomNumberGenerator.GetBytes(16)), state);
     }
 
     private static SetupSecretProvider CreateProvider(string configuredSecret, InstanceBootstrapState? state = null)
@@ -228,5 +359,15 @@ public class SetupSecretProviderTests
         scopeFactory.CreateScope().Returns(scope);
 
         return scopeFactory;
+    }
+
+    private sealed class TemporaryDirectory : IDisposable
+    {
+        public string Path { get; } = Directory.CreateTempSubdirectory("islamu-setup-secret-").FullName;
+
+        public void Dispose()
+        {
+            Directory.Delete(Path, recursive: true);
+        }
     }
 }

@@ -12,7 +12,8 @@ namespace Explore.Infrastructure.Services;
 
 public class SetupSecretProvider : ISetupSecretProvider, IDisposable
 {
-    private readonly string _secret;
+    private string _secret;
+    private readonly string? _generatedSecretFilePath;
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly SemaphoreSlim _bootstrapCheckSemaphore = new(1, 1);
     private bool _isLocked;
@@ -21,6 +22,7 @@ public class SetupSecretProvider : ISetupSecretProvider, IDisposable
     public bool IsSetupSecretRequired { get; }
     public bool IsTrustedManagedProvisioningConfigured { get; }
     public bool IsFromEnvironmentVariable { get; }
+    public string? GeneratedSecretFilePath => IsFromEnvironmentVariable ? null : _generatedSecretFilePath;
 
     public bool IsSetupModeActive
     {
@@ -40,6 +42,7 @@ public class SetupSecretProvider : ISetupSecretProvider, IDisposable
     public SetupSecretProvider(IConfiguration configuration, IServiceScopeFactory scopeFactory)
     {
         _scopeFactory = scopeFactory;
+        _generatedSecretFilePath = ResolveGeneratedSecretFilePath(configuration["SETUP_SECRET_FILE"]);
         IsTrustedManagedProvisioningConfigured = HasTrustedManagedProvisioningConfiguration(configuration);
 
         var requestedSetupSecretRequired = ReadBoolean(configuration["SETUP_SECRET_REQUIRED"], defaultValue: true);
@@ -49,6 +52,7 @@ public class SetupSecretProvider : ISetupSecretProvider, IDisposable
         {
             _secret = string.Empty;
             IsFromEnvironmentVariable = false;
+            DeleteGeneratedSecretFile();
             return;
         }
 
@@ -57,10 +61,11 @@ public class SetupSecretProvider : ISetupSecretProvider, IDisposable
         {
             _secret = envSecret;
             IsFromEnvironmentVariable = true;
+            DeleteGeneratedSecretFile();
         }
         else
         {
-            _secret = GenerateCryptoRandomSecret();
+            _secret = string.Empty;
             IsFromEnvironmentVariable = false;
         }
     }
@@ -86,6 +91,7 @@ public class SetupSecretProvider : ISetupSecretProvider, IDisposable
     {
         _isLocked = true;
         _isBootstrapComplete = true;
+        DeleteGeneratedSecretFile();
     }
 
     public async Task InitializeAsync(CancellationToken cancellationToken = default)
@@ -103,6 +109,15 @@ public class SetupSecretProvider : ISetupSecretProvider, IDisposable
             var repository = scope.ServiceProvider.GetRequiredService<IInstanceBootstrapStateRepository>();
             var bootstrapState = await repository.GetCurrent(cancellationToken);
             _isBootstrapComplete = bootstrapState?.IsCompleted == true;
+
+            if (_isBootstrapComplete.Value)
+            {
+                DeleteGeneratedSecretFile();
+            }
+            else if (_generatedSecretFilePath is not null && !IsFromEnvironmentVariable)
+            {
+                _secret = LoadOrCreateGeneratedSecret(_generatedSecretFilePath);
+            }
         }
         finally
         {
@@ -117,13 +132,97 @@ public class SetupSecretProvider : ISetupSecretProvider, IDisposable
 
     private static string GenerateCryptoRandomSecret()
     {
-        // 48 bytes → 64 Base64 chars; after stripping +/=/  we still have ≥ 32 alphanumeric chars.
-        var bytes = RandomNumberGenerator.GetBytes(48);
-        var filtered = Convert.ToBase64String(bytes)
-            .Replace("+", "")
-            .Replace("/", "")
-            .Replace("=", "");
-        return filtered[..32];
+        return Convert.ToHexString(RandomNumberGenerator.GetBytes(16));
+    }
+
+    private static string ResolveGeneratedSecretFilePath(string? path)
+    {
+        var resolvedPath = string.IsNullOrWhiteSpace(path)
+            ? Path.Combine(Path.GetTempPath(), "islamu-event", "setup-secret")
+            : path;
+        return Path.GetFullPath(resolvedPath);
+    }
+
+    private static string LoadOrCreateGeneratedSecret(string path)
+    {
+        try
+        {
+            return LoadOrCreateGeneratedSecretCore(path);
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+        {
+            throw new InvalidOperationException(
+                "SETUP_SECRET must be provided because the generated setup-secret path is not writable.",
+                exception);
+        }
+    }
+
+    private static string LoadOrCreateGeneratedSecretCore(string path)
+    {
+        if (File.Exists(path))
+            return ReadGeneratedSecret(path);
+
+        var directory = Path.GetDirectoryName(path)
+            ?? throw new InvalidOperationException("SETUP_SECRET_FILE must include a parent directory.");
+        Directory.CreateDirectory(directory);
+
+        var secret = GenerateCryptoRandomSecret();
+        var temporaryPath = $"{path}.{Guid.NewGuid():N}.tmp";
+        try
+        {
+            var options = new FileStreamOptions
+            {
+                Mode = FileMode.CreateNew,
+                Access = FileAccess.Write,
+                Share = FileShare.None,
+                Options = FileOptions.WriteThrough
+            };
+            if (!OperatingSystem.IsWindows())
+                options.UnixCreateMode = UnixFileMode.UserRead | UnixFileMode.UserWrite;
+
+            using (var stream = new FileStream(temporaryPath, options))
+            using (var writer = new StreamWriter(stream, new UTF8Encoding(encoderShouldEmitUTF8Identifier: false)))
+            {
+                writer.WriteLine(secret);
+                writer.Flush();
+                stream.Flush(flushToDisk: true);
+            }
+
+            File.Move(temporaryPath, path);
+            EnsureOwnerOnlyPermissions(path);
+            return secret;
+        }
+        catch (IOException) when (File.Exists(path))
+        {
+            return ReadGeneratedSecret(path);
+        }
+        finally
+        {
+            if (File.Exists(temporaryPath))
+                File.Delete(temporaryPath);
+        }
+    }
+
+    private static string ReadGeneratedSecret(string path)
+    {
+        EnsureOwnerOnlyPermissions(path);
+        var secret = File.ReadAllText(path).Trim();
+        if (string.IsNullOrWhiteSpace(secret))
+            throw new InvalidDataException("The generated setup secret file is empty.");
+
+        return secret;
+    }
+
+    private static void EnsureOwnerOnlyPermissions(string path)
+    {
+        if (!OperatingSystem.IsWindows())
+            File.SetUnixFileMode(path, UnixFileMode.UserRead | UnixFileMode.UserWrite);
+    }
+
+    private void DeleteGeneratedSecretFile()
+    {
+        if (_generatedSecretFilePath is not null && File.Exists(_generatedSecretFilePath))
+            File.Delete(_generatedSecretFilePath);
     }
 
     private static bool HasTrustedManagedProvisioningConfiguration(IConfiguration configuration)

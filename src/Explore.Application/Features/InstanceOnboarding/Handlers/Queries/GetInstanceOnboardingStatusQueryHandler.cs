@@ -53,7 +53,7 @@ public class GetInstanceOnboardingStatusQueryHandler : IRequestHandler<GetInstan
             IsSetupModeActive = _setupSecretProvider.IsSetupModeActive,
             SetupSecretFromEnvironment = _setupSecretProvider.IsFromEnvironmentVariable
         };
-        ApplySetupSecretStatus(response);
+        ApplySetupSecretStatus(response, !string.IsNullOrWhiteSpace(_setupSecretProvider.GeneratedSecretFilePath));
 
         if (!_currentUserService.IsAuthenticated)
         {
@@ -64,7 +64,7 @@ public class GetInstanceOnboardingStatusQueryHandler : IRequestHandler<GetInstan
         return response;
     }
 
-    private static void ApplySetupSecretStatus(InstanceOnboardingStatusDto response)
+    private static void ApplySetupSecretStatus(InstanceOnboardingStatusDto response, bool generatedSecretCanBeRetrieved)
     {
         if (response.IsCompleted)
         {
@@ -88,7 +88,9 @@ public class GetInstanceOnboardingStatusQueryHandler : IRequestHandler<GetInstan
         }
 
         response.SetupSecretState = "Generated";
-        response.SetupSecretGuidance = "Setup secrets are never shown in startup output. Configure SETUP_SECRET and restart the application to continue.";
+        response.SetupSecretGuidance = generatedSecretCanBeRetrieved
+            ? "Retrieve the generated secret using the Docker-host instruction in the application logs. The secret value itself is never logged."
+            : "Setup secrets are never shown in startup output. Configure SETUP_SECRET and restart the application to continue.";
     }
 
     private static string DeserializeString(string? rawValue, string defaultValue)

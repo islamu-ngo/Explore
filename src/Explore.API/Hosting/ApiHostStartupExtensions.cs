@@ -129,9 +129,19 @@ public static class ApiHostStartupExtensions
                 }
                 else
                 {
-                    app.Logger.LogWarning(
-                        "[SetupMode] Instance is unclaimed. Auto-generated setup secret active. " +
-                        "Configure SETUP_SECRET and restart before visiting /setup.");
+                    if (setupSecretProvider.GeneratedSecretFilePath is not null)
+                    {
+                        app.Logger.LogWarning(
+                            "[SetupMode] Instance is unclaimed. Retrieve the generated setup secret from the Docker host with: " +
+                            "docker cp <container-name>:{SetupSecretFilePath} ./setup-secret",
+                            setupSecretProvider.GeneratedSecretFilePath);
+                    }
+                    else
+                    {
+                        app.Logger.LogWarning(
+                            "[SetupMode] Instance is unclaimed. Auto-generated setup secret active. " +
+                            "Configure SETUP_SECRET and restart before visiting /setup.");
+                    }
                 }
             }
             else

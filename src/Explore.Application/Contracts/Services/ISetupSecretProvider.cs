@@ -33,6 +33,8 @@ public interface ISetupSecretProvider
     /// </summary>
     bool IsFromEnvironmentVariable { get; }
 
+    string? GeneratedSecretFilePath => null;
+
     /// <summary>
     /// Validates the provided secret against the stored secret using timing-safe comparison.
     /// Returns false if the secret is wrong, null, or setup has been locked.

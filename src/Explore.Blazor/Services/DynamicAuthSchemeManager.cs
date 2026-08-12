@@ -327,7 +327,8 @@ public class DynamicAuthSchemeManager : IDynamicAuthSchemeManager, IDisposable
             authority,
             clientId,
             clientSecret,
-            metadataAddress));
+            metadataAddress,
+            _configuration.GetValue<bool?>("Keycloak:RequireHttpsMetadata")));
     }
 
     private void RegisterGoogleScheme(string clientId, string? clientSecret)

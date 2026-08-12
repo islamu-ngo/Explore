@@ -447,7 +447,7 @@
     private string GetSetupSecretHint() => _setupSecretState switch
     {
         "Environment" => "Check the SETUP_SECRET environment variable configured for this deployment.",
-        "Generated" => "Configure SETUP_SECRET and restart the API to use interactive setup.",
+        "Generated" => "Follow the Docker-host retrieval instruction in the application logs, or configure SETUP_SECRET and restart.",
         _ => "Check the SETUP_SECRET environment variable."
     };
 

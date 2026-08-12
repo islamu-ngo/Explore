@@ -61,6 +61,10 @@ public class StructuredDatabaseDeploymentInputTests
         compose.Should().Contain("PrivacyErasureAuthorityEmbedded__WriterReplicaCount:");
         compose.Should().Contain("PrivacyErasureAuthorityEmbedded__BusyTimeoutSeconds:");
         compose.Should().Contain("privacy_erasure_authority_data:/app/data");
+        compose.Should().Contain("SETUP_SECRET_FILE: ${SETUP_SECRET_FILE:-/app/bootstrap/setup-secret}");
+        compose.Should().Contain("setup_data:/app/bootstrap");
+        compose.Should().Contain("\n  setup_data:");
+        environmentExample.Should().Contain("SETUP_SECRET_FILE=");
         compose.Should().Contain("privacy-erasure-authority-volume-init:");
         compose.Should().Contain("event-migrationservice:");
         compose.Should().NotContain("event-migrationservice:\n    profiles:");

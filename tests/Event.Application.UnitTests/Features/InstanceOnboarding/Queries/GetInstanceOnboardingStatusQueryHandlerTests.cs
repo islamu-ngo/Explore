@@ -52,6 +52,21 @@ public class GetInstanceOnboardingStatusQueryHandlerTests
     }
 
     [Test]
+    public async Task Handle_WhenGeneratedSecretFileExists_ReturnsDockerHostRetrievalGuidance()
+    {
+        _deploymentModeProvider.GetConfiguredOnboardingModeAsync(Arg.Any<CancellationToken>()).Returns(DeploymentMode.SingleTenant);
+        _setupSecretProvider.IsSetupModeActive.Returns(true);
+        _setupSecretProvider.IsFromEnvironmentVariable.Returns(false);
+        _setupSecretProvider.GeneratedSecretFilePath.Returns("/app/data/setup-secret");
+
+        var result = await CreateHandler().Handle(new GetInstanceOnboardingStatusQuery(), CancellationToken.None);
+
+        await Assert.That(result.SetupSecretState).IsEqualTo("Generated");
+        await Assert.That(result.SetupSecretGuidance).Contains("Docker-host instruction");
+        await Assert.That(result.SetupSecretGuidance).DoesNotContain("/app/data/setup-secret");
+    }
+
+    [Test]
     public async Task Handle_WhenSetupModeInactive_ReturnsSafeRestartGuidance()
     {
         _deploymentModeProvider.GetConfiguredOnboardingModeAsync(Arg.Any<CancellationToken>()).Returns(DeploymentMode.SingleTenant);

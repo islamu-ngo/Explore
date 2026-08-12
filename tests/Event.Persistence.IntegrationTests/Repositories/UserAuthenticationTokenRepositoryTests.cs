@@ -314,6 +314,12 @@ public sealed class PostgreSqlUserAuthenticationTokenRepositoryTests(PostgreSqlC
                 null,
                 DateTimeOffset.UtcNow));
 
+        public Task<ResolvedSecret?> ResolveTenantBindingAsync(
+            Guid tenantId,
+            Guid bindingId,
+            CancellationToken cancellationToken = default) =>
+            ResolveAsync(bindingId.ToString("N"), tenantId, cancellationToken);
+
         public Task InvalidateAsync(
             string settingKey,
             SecretScope scope,

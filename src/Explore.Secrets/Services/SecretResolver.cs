@@ -84,74 +84,33 @@ public sealed class SecretResolver : ISecretResolver
                 return null;
             }
 
-            var cacheKey = BuildCacheKey(binding.SettingKey, binding.Scope, binding.ScopeId);
-
-            // 2) Fast path: cached value.
-            if (_cache.TryGetValue<ResolvedSecret>(cacheKey, out var cached) && cached is not null)
-            {
-                _metrics.RecordCacheHit(settingKey);
-                return cached;
-            }
-
-            _metrics.RecordCacheMiss(settingKey);
-
-            // 3) Dispatch to exactly one source. No fallback.
-            if (!_sources.TryGetValue(binding.SourceType, out var source))
-            {
-                _logger.LogError(
-                    "No ISecretSource registered for source type {SourceType} (settingKey={SettingKey}). " +
-                    "This indicates a missing DI registration.",
-                    binding.SourceType, settingKey);
-                _metrics.RecordError(settingKey, binding.SourceType);
-                return null;
-            }
-
-            string? value;
-            try
-            {
-                value = await source.GetSecretAsync(binding, cancellationToken).ConfigureAwait(false);
-            }
-            catch (OperationCanceledException)
-            {
-                throw;
-            }
-#pragma warning disable CA1031 // Do not catch general exception types - source boundary
-            catch (Exception ex)
-#pragma warning restore CA1031
-            {
-                _logger.LogError(
-                    ex,
-                    "Secret source {SourceType} threw resolving {SettingKey} at scope {Scope}/{ScopeId}. " +
-                    "Returning null (no fallback).",
-                    binding.SourceType, settingKey, binding.Scope, binding.ScopeId);
-                _metrics.RecordError(settingKey, binding.SourceType);
-                return null;
-            }
-
-            if (value is null)
-            {
-                _metrics.RecordMiss(settingKey, binding.SourceType);
-                return null;
-            }
-
-            var resolved = new ResolvedSecret(
-                SettingKey: binding.SettingKey,
-                Value: value,
-                Source: binding.SourceType,
-                Scope: binding.Scope,
-                ScopeId: binding.ScopeId,
-                ResolvedAt: DateTime.UtcNow);
-
-            // 4) Cache the resolved value (not the binding row).
-            _cache.Set(cacheKey, resolved, CacheTtl);
-            _metrics.RecordSuccess(settingKey, binding.SourceType);
-            return resolved;
+            return await ResolveBoundBindingAsync(binding, cancellationToken).ConfigureAwait(false);
         }
         finally
         {
             stopwatch.Stop();
             _metrics.RecordDuration(settingKey, stopwatch.Elapsed.TotalMilliseconds);
         }
+    }
+
+    public async Task<ResolvedSecret?> ResolveTenantBindingAsync(
+        Guid tenantId,
+        Guid bindingId,
+        CancellationToken cancellationToken = default)
+    {
+        if (tenantId == Guid.Empty || bindingId == Guid.Empty)
+        {
+            throw new ArgumentException("Tenant and binding identifiers are required.");
+        }
+
+        SecretBinding? binding = await _bindings.GetByTenantAndIdAsync(tenantId, bindingId, cancellationToken).ConfigureAwait(false);
+        if (binding is null)
+        {
+            _metrics.RecordMiss($"binding:{bindingId:N}", source: null);
+            return null;
+        }
+
+        return await ResolveBoundBindingAsync(binding, cancellationToken).ConfigureAwait(false);
     }
 
     /// <inheritdoc />
@@ -162,7 +121,7 @@ public sealed class SecretResolver : ISecretResolver
         CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(settingKey);
-        _cache.Remove(BuildCacheKey(settingKey, scope, scopeId));
+        _cache.Remove(BuildCacheKey(settingKey, scope, scopeId, qualifier: string.Empty));
         return Task.CompletedTask;
     }
 
@@ -192,8 +151,67 @@ public sealed class SecretResolver : ISecretResolver
             .ConfigureAwait(false);
     }
 
-    internal static string BuildCacheKey(string settingKey, SecretScope scope, Guid? scopeId) =>
+    private async Task<ResolvedSecret?> ResolveBoundBindingAsync(SecretBinding binding, CancellationToken cancellationToken)
+    {
+        var cacheKey = BuildCacheKey(binding.SettingKey, binding.Scope, binding.ScopeId, binding.Qualifier);
+        if (_cache.TryGetValue<ResolvedSecret>(cacheKey, out var cached) && cached is not null)
+        {
+            _metrics.RecordCacheHit(binding.SettingKey);
+            return cached;
+        }
+
+        _metrics.RecordCacheMiss(binding.SettingKey);
+        if (!_sources.TryGetValue(binding.SourceType, out var source))
+        {
+            _logger.LogError(
+                "No ISecretSource registered for source type {SourceType} (settingKey={SettingKey}). This indicates a missing DI registration.",
+                binding.SourceType, binding.SettingKey);
+            _metrics.RecordError(binding.SettingKey, binding.SourceType);
+            return null;
+        }
+
+        string? value;
+        try
+        {
+            value = await source.GetSecretAsync(binding, cancellationToken).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+#pragma warning disable CA1031 // Do not catch general exception types - source boundary
+        catch (Exception ex)
+#pragma warning restore CA1031
+        {
+            _logger.LogError(
+                ex,
+                "Secret source {SourceType} threw resolving {SettingKey} at scope {Scope}/{ScopeId}. Returning null (no fallback).",
+                binding.SourceType, binding.SettingKey, binding.Scope, binding.ScopeId);
+            _metrics.RecordError(binding.SettingKey, binding.SourceType);
+            return null;
+        }
+
+        if (value is null)
+        {
+            _metrics.RecordMiss(binding.SettingKey, binding.SourceType);
+            return null;
+        }
+
+        var resolved = new ResolvedSecret(
+            SettingKey: binding.SettingKey,
+            Value: value,
+            Source: binding.SourceType,
+            Scope: binding.Scope,
+            ScopeId: binding.ScopeId,
+            ResolvedAt: DateTime.UtcNow);
+
+        _cache.Set(cacheKey, resolved, CacheTtl);
+        _metrics.RecordSuccess(binding.SettingKey, binding.SourceType);
+        return resolved;
+    }
+
+    internal static string BuildCacheKey(string settingKey, SecretScope scope, Guid? scopeId, string qualifier = "") =>
         scopeId.HasValue
-            ? $"secret::{settingKey}::{scope}::{scopeId.Value:N}"
-            : $"secret::{settingKey}::{scope}::-";
+            ? $"secret::{settingKey}::{scope}::{scopeId.Value:N}::{qualifier}"
+            : $"secret::{settingKey}::{scope}::-::{qualifier}";
 }

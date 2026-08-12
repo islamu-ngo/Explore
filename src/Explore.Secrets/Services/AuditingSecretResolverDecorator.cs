@@ -73,6 +73,21 @@ public sealed class AuditingSecretResolverDecorator : ISecretResolver
         return result;
     }
 
+    public async Task<ResolvedSecret?> ResolveTenantBindingAsync(
+        Guid tenantId,
+        Guid bindingId,
+        CancellationToken cancellationToken = default)
+    {
+        var result = await _inner.ResolveTenantBindingAsync(tenantId, bindingId, cancellationToken)
+            .ConfigureAwait(false);
+        if (result is null)
+        {
+            _logger.LogDebug("Secret resolution miss: tenantId={TenantId} bindingId={BindingId}", tenantId, bindingId);
+        }
+
+        return result;
+    }
+
     /// <inheritdoc />
     public Task InvalidateAsync(
         string settingKey,

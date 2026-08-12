@@ -25,7 +25,8 @@ public sealed record EventBffOidcProviderOptions(
     string Authority,
     string ClientId,
     string? ClientSecret,
-    string? MetadataAddress = null);
+    string? MetadataAddress = null,
+    bool? RequireHttpsMetadata = null);
 
 public sealed class EventBffOidcOptionsFactory(
     IWebHostEnvironment environment,
@@ -39,7 +40,7 @@ public sealed class EventBffOidcOptionsFactory(
             callbackPath: "/signin-oidc",
             signedOutCallbackPath: "/signout-callback-oidc",
             nameClaimType: "preferred_username",
-            requireHttpsMetadata: !environment.IsDevelopment(),
+            requireHttpsMetadata: provider.RequireHttpsMetadata ?? !environment.IsDevelopment(),
             forceIpv4Backchannel: true);
 
         options.Scope.Clear();

@@ -81,6 +81,22 @@ public sealed class SafeAuthDiagnosticsPolicyTests
         await Assert.That(options.Scope).DoesNotContain("offline_access");
     }
 
+    [Test]
+    public async Task KeycloakOptions_HonorExplicitHttpMetadataOverrideInProduction()
+    {
+        var environment = Substitute.For<IWebHostEnvironment>();
+        environment.EnvironmentName.Returns(Environments.Production);
+        var factory = new EventBffOidcOptionsFactory(environment, new SafeAuthDiagnosticsPolicy());
+
+        var options = factory.CreateKeycloakOptions(new EventBffOidcProviderOptions(
+            "http://idp.example.test/realms/ISLAMU",
+            "islamu-event-blazor",
+            "super-secret-value",
+            RequireHttpsMetadata: false));
+
+        await Assert.That(options.RequireHttpsMetadata).IsFalse();
+    }
+
     private static OpenIdConnectOptions CreateKeycloakOptions()
     {
         var environment = Substitute.For<IWebHostEnvironment>();

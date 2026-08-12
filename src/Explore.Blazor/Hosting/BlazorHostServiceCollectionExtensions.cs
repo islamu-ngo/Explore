@@ -8,7 +8,6 @@ using Explore.Blazor.Client.Extensions;
 using Explore.Blazor.Extensions;
 using Explore.Blazor.HealthChecks;
 using Explore.Blazor.Services;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using MudBlazor.Services;
 using Serilog;
@@ -139,8 +138,7 @@ public static class BlazorHostServiceCollectionExtensions
                 new Microsoft.AspNetCore.Localization.AcceptLanguageHeaderRequestCultureProvider());
         });
 
-        builder.Services.AddControllersWithViews(options =>
-                options.Filters.Add(new AutoValidateAntiforgeryTokenAttribute()))
+        builder.Services.AddControllersWithViews()
             .AddApplicationPart(typeof(BlazorHostServiceCollectionExtensions).Assembly);
 
         var healthChecks = builder.Services.AddHealthChecks();

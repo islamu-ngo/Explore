@@ -318,7 +318,7 @@ public class SetupTests : IDisposable
     }
 
     [Test]
-    public async Task Setup_WhenGeneratedSecretActive_ShowsStartupLogGuidance()
+    public async Task Setup_WhenGeneratedSecretActive_ShowsDockerHostRetrievalGuidance()
     {
         // Arrange
         _instanceOnboardingService.GetStatusAsync().Returns(new InstanceOnboardingStatusDto
@@ -327,7 +327,7 @@ public class SetupTests : IDisposable
             IsAuthenticated = false,
             IsSetupModeActive = true,
             SetupSecretState = "Generated",
-            SetupSecretGuidance = "Configure SETUP_SECRET and restart the API to use interactive setup."
+            SetupSecretGuidance = "Retrieve the generated secret using the Docker-host instruction in the application logs."
         });
         SetupBffJsModule();
 
@@ -338,7 +338,7 @@ public class SetupTests : IDisposable
         // Assert
         cut.WaitForAssertion(() =>
         {
-            if (!cut.Markup.Contains("Configure SETUP_SECRET", StringComparison.OrdinalIgnoreCase))
+            if (!cut.Markup.Contains("Docker-host", StringComparison.OrdinalIgnoreCase))
             {
                 throw new InvalidOperationException("Expected generated setup-secret recovery guidance was not rendered.");
             }
