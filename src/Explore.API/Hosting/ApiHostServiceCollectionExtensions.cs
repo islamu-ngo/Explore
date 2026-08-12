@@ -308,6 +308,7 @@ public static class ApiHostServiceCollectionExtensions
             builder.Services.AddHostedService<PrivacyErasureCredentialCleanupProcessor>();
                 builder.Services.AddHostedService<EmailDispatchRetentionCleanupProcessor>();
                 builder.Services.AddHostedService<AiRetentionCleanupProcessor>();
+                builder.Services.AddHostedService<RegistrationRetentionCleanupProcessor>();
                 builder.Services.AddHostedService<WebhookRetentionCleanupProcessor>();
                 builder.Services.AddHostedService<WebhookBulkReplayProcessor>();
                 builder.Services.AddHostedService<StorageReconciliationProcessor>();
