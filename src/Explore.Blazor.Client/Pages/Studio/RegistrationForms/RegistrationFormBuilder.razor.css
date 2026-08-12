@@ -13,6 +13,7 @@
 .registration-form-builder__version,
 .registration-form-builder__section,
 .registration-form-builder__preflight,
+.registration-form-builder__template-picker,
 .registration-form-builder__option-editor {
     border: var(--isl-card-border);
     border-radius: var(--isl-radius-card);
@@ -28,6 +29,7 @@
 .registration-form-builder__version,
 .registration-form-builder__section,
 .registration-form-builder__field-summary,
+.registration-form-builder__template-picker,
 .registration-form-builder__option-editor {
     display: grid;
     gap: var(--isl-space-4);

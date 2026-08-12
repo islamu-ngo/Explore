@@ -1,0 +1,153 @@
+@* ABOUTME: Displays HAL-gated aggregate registration-answer analytics for Studio organizers. *@
+@* ABOUTME: Fetches only governed summary cells and never renders raw answer rows or subject identifiers. *@
+@using System.Globalization
+@inject IRegistrationFormAuthoringService Authoring
+
+<section class="studio-registration-analytics" data-testid="registration-analytics">
+    @if (_isLoading)
+    {
+        <div role="status">Loading analytics…</div>
+    }
+    else if (!string.IsNullOrWhiteSpace(_error))
+    {
+        <MudAlert Severity="Severity.Error" Variant="Variant.Outlined">@_error</MudAlert>
+    }
+    else if (_forms.Count == 0)
+    {
+        <MudAlert Severity="Severity.Info" Variant="Variant.Outlined">No registration forms are available for analytics.</MudAlert>
+    }
+    else
+    {
+        <div class="studio-registration-analytics__filters">
+            <MudSelect T="Guid" Label="Form" Value="_formId" ValueChanged="SelectFormAsync" Variant="Variant.Outlined">
+                @foreach (RegistrationFormAnalyticsChoice form in _forms)
+                {
+                    <MudSelectItem T="Guid" Value="form.Id">@form.Name</MudSelectItem>
+                }
+            </MudSelect>
+            <MudSelect T="Guid" Label="Version" Value="_versionId" ValueChanged="SelectVersionAsync" Variant="Variant.Outlined">
+                @foreach (RegistrationFormVersionAnalyticsChoice version in VersionsForSelectedForm())
+                {
+                    <MudSelectItem T="Guid" Value="version.Id">@version.Label</MudSelectItem>
+                }
+            </MudSelect>
+        </div>
+
+        @if (_analytics is null)
+        {
+            <MudAlert Severity="Severity.Info" Variant="Variant.Outlined">Select a form version to load governed aggregates.</MudAlert>
+        }
+        else if (_analytics.Fields.Count == 0)
+        {
+            <MudAlert Severity="Severity.Info" Variant="Variant.Outlined">No fields are opted into aggregate analytics for this version.</MudAlert>
+        }
+        else
+        {
+            <MudAlert Severity="Severity.Info" Variant="Variant.Outlined">
+                Cells smaller than @_analytics.MinimumCellSize responses are suppressed. Raw answers and participant identifiers are not returned.
+            </MudAlert>
+            @foreach (RegistrationAnswerFieldAggregateDto field in _analytics.Fields)
+            {
+                <MudPaper Class="pa-4 my-3" Outlined="true">
+                    <MudText Typo="Typo.h6" HtmlTag="h3">@field.Label</MudText>
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">@field.Namespace.@field.Key · @field.FieldTypeCode · @field.ResponseCount responses</MudText>
+                    @if (field.Numeric is not null)
+                    {
+                        <MudText Typo="Typo.body2">
+                            Min @field.Numeric.Min.ToString(CultureInfo.InvariantCulture), max @field.Numeric.Max.ToString(CultureInfo.InvariantCulture), average @field.Numeric.Average.ToString("0.##", CultureInfo.InvariantCulture)
+                        </MudText>
+                    }
+                    @if (field.Cells.Count > 0)
+                    {
+                        <MudTable Items="field.Cells" Dense="true" Hover="false">
+                            <HeaderContent>
+                                <MudTh>Value</MudTh>
+                                <MudTh>Responses</MudTh>
+                            </HeaderContent>
+                            <RowTemplate>
+                                <MudTd DataLabel="Value">@context.Value</MudTd>
+                                <MudTd DataLabel="Responses">@context.Count</MudTd>
+                            </RowTemplate>
+                        </MudTable>
+                    }
+                </MudPaper>
+            }
+        }
+    }
+</section>
+
+@code {
+    [Parameter, EditorRequired] public Guid EventId { get; set; }
+    [Parameter] public HalLink? AnalyticsLink { get; set; }
+
+    private readonly List<RegistrationFormAnalyticsChoice> _forms = [];
+    private Guid _formId;
+    private Guid _versionId;
+    private HalResourceOfRegistrationAnswerAnalyticsDto? _analytics;
+    private bool _isLoading;
+    private string? _error;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (_forms.Count > 0 || EventId == Guid.Empty || AnalyticsLink is null)
+        {
+            return;
+        }
+
+        _isLoading = true;
+        try
+        {
+            var workflow = await Authoring.GetWorkflowAsync(EventId);
+            _forms.AddRange(workflow.Forms.Select(form => new RegistrationFormAnalyticsChoice(
+                form.Id,
+                form.Name,
+                form.Versions
+                    .OrderByDescending(version => version.PublishedAt is not null)
+                    .ThenByDescending(version => version.Version)
+                    .Select(version => new RegistrationFormVersionAnalyticsChoice(version.Id, $"v{version.Version} · {version.StatusName}"))
+                    .ToList())));
+
+            _formId = _forms.FirstOrDefault()?.Id ?? Guid.Empty;
+            _versionId = VersionsForSelectedForm().FirstOrDefault()?.Id ?? Guid.Empty;
+            await LoadAnalyticsAsync();
+        }
+        catch (Exception)
+        {
+            _error = "Registration analytics could not be loaded.";
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task SelectFormAsync(Guid formId)
+    {
+        _formId = formId;
+        _versionId = VersionsForSelectedForm().FirstOrDefault()?.Id ?? Guid.Empty;
+        await LoadAnalyticsAsync();
+    }
+
+    private async Task SelectVersionAsync(Guid versionId)
+    {
+        _versionId = versionId;
+        await LoadAnalyticsAsync();
+    }
+
+    private IReadOnlyList<RegistrationFormVersionAnalyticsChoice> VersionsForSelectedForm() =>
+        _forms.FirstOrDefault(form => form.Id == _formId)?.Versions ?? [];
+
+    private async Task LoadAnalyticsAsync()
+    {
+        _analytics = null;
+        if (AnalyticsLink is null || _formId == Guid.Empty || _versionId == Guid.Empty)
+        {
+            return;
+        }
+
+        _analytics = await Authoring.GetAnalyticsAsync(EventId, _formId, _versionId, AnalyticsLink);
+    }
+
+    private sealed record RegistrationFormAnalyticsChoice(Guid Id, string Name, IReadOnlyList<RegistrationFormVersionAnalyticsChoice> Versions);
+    private sealed record RegistrationFormVersionAnalyticsChoice(Guid Id, string Label);
+}

@@ -27,7 +27,12 @@
             <MudCheckBox T="bool" Label="@T("field.multiple_values", "Multiple values")" @bind-Value="Model.IsMulti" Disabled="IsSaving" />
             <MudCheckBox T="bool" Label="@T("field.explicit_consent", "Requires explicit consent")" @bind-Value="Model.RequiresExplicitConsent" Disabled="@(IsSaving || Model.IsConsent)" />
             <MudCheckBox T="bool" Label="@T("field.provider_transfer", "Provider transfer allowed")" @bind-Value="Model.IsProviderTransferAllowed" Disabled="IsSaving" />
+            <MudCheckBox T="bool" Label="@T("field.analytics_relevant", "Analytics relevant")" @bind-Value="Model.IsAnalyticsRelevant" Disabled="@(IsSaving || !Model.CanUseForAnalytics)" />
+            <MudCheckBox T="bool" Label="@T("field.operational_filter", "Operational filter")" @bind-Value="Model.IsOperationallyFilterable" Disabled="@(IsSaving || !Model.CanUseForAnalytics)" />
         </div>
+        <MudText Typo="Typo.caption" Color="Color.Secondary">
+            @T("field.analytics_hint", "Only categorical, boolean, numeric, and date fields can opt into aggregate analytics or operational filters. Consent and free-text values stay excluded.")
+        </MudText>
     </fieldset>
 
     @if (Model.IsTextLike)

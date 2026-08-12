@@ -12,17 +12,33 @@ public sealed class RegistrationFormAuthoringService(IEventApiClient apiClient) 
     public Task<HalResourceOfRegistrationWorkflowDto> GetWorkflowAsync(Guid eventId, CancellationToken cancellationToken = default) =>
         apiClient.GetRegistrationWorkflowAsync(eventId, "registration", cancellationToken: cancellationToken);
 
+    public Task<HalCollectionResourceOfRegistrationFormTemplateDto> GetTemplatesAsync(CancellationToken cancellationToken = default) =>
+        apiClient.GetRegistrationFormTemplatesAsync(cancellationToken: cancellationToken);
+
     public Task<HalResourceOfRegistrationFormDto> GetFormAsync(Guid eventId, Guid formId, CancellationToken cancellationToken = default) =>
         apiClient.GetRegistrationFormAsync(eventId, formId, cancellationToken: cancellationToken);
 
     public Task<HalResourceOfRegistrationFormVersionDto> GetVersionAsync(Guid eventId, Guid formId, Guid versionId, CancellationToken cancellationToken = default) =>
         apiClient.GetRegistrationFormVersionAsync(eventId, formId, versionId, cancellationToken: cancellationToken);
 
+    public Task<HalResourceOfRegistrationAnswerAnalyticsDto> GetAnalyticsAsync(Guid eventId, Guid formId, Guid formVersionId, HalLink link, CancellationToken cancellationToken = default)
+    {
+        RegistrationFormHal.Require(link, "GET", $"/api/events/{eventId}/registration-answer-analytics");
+        return apiClient.GetRegistrationAnswerAnalyticsAsync(eventId, formId, formVersionId, cancellationToken: cancellationToken);
+    }
+
     public async Task<Guid> CreateFormAsync(Guid eventId, Guid workflowId, Guid stamp, RegistrationFormInput input, HalLink link, CancellationToken cancellationToken = default)
     {
         RegistrationFormHal.Require(link, "POST", $"/api/events/{eventId}/registration-workflows/{workflowId}/forms");
         return (await apiClient.CreateRegistrationFormAsync(eventId, workflowId, ETag(stamp), input, cancellationToken: cancellationToken)).Id
             ?? throw new InvalidOperationException("The form response did not contain an identifier.");
+    }
+
+    public async Task<Guid> InstantiateTemplateAsync(Guid templateId, InstantiateRegistrationFormTemplateInput input, HalLink link, CancellationToken cancellationToken = default)
+    {
+        RegistrationFormHal.Require(link, "POST", $"/api/registration-form-templates/{templateId}/instantiate");
+        return (await apiClient.InstantiateRegistrationFormTemplateAsync(templateId, input, cancellationToken: cancellationToken)).Id
+            ?? throw new InvalidOperationException("The template response did not contain an identifier.");
     }
 
     public async Task<Guid> CreateVersionAsync(Guid eventId, Guid formId, Guid stamp, RegistrationFormVersionInput input, HalLink link, CancellationToken cancellationToken = default)

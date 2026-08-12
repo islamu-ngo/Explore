@@ -5,7 +5,9 @@ using System.Text.Json;
 using Blazouter.Services;
 using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Client.Components.Shell.Workspaces;
+using Explore.Blazor.Client.Contracts.Services.Accessibility;
 using Explore.Blazor.Client.Contracts.Services;
+using Explore.Blazor.Client.Contracts.Interop;
 using Explore.Blazor.Client.Contracts.Services.Shell;
 using Explore.Blazor.Client.Pages.Studio;
 using Explore.Blazor.Client.Services;
@@ -18,11 +20,16 @@ public sealed class StudioAttendeesTests : IDisposable
     private readonly BlazorTestContext _ctx = new();
     private readonly IStudioContextService _studio;
     private readonly IEventService _events;
+    private readonly IContactShareConsentService _consents;
+    private readonly IAccessibilityAnnouncerService _announcer;
 
     public StudioAttendeesTests()
     {
         _studio = _ctx.AddMockService<IStudioContextService>();
         _events = _ctx.AddMockService<IEventService>();
+        _consents = _ctx.AddMockService<IContactShareConsentService>();
+        _announcer = _ctx.AddMockService<IAccessibilityAnnouncerService>();
+        _ctx.AddMockService<IBrowserActionInterop>();
         _ctx.Services.AddScoped<IWorkspaceRegistry, WorkspaceRegistry>();
         _ctx.Services.AddScoped<WorkspaceRouteClassifier>();
         _ctx.Services.AddScoped<UiShellState>();
@@ -92,6 +99,69 @@ public sealed class StudioAttendeesTests : IDisposable
         await Assert.That(cut.FindAll("h1").Count).IsEqualTo(1);
         await Assert.That(cut.FindAll("h2").Count).IsEqualTo(1);
         await Assert.That(cut.FindAll("h3")).IsEmpty();
+    }
+
+    [Test]
+    [Arguments(true, 1)]
+    [Arguments(false, 0)]
+    public async Task EventPage_ExportActionRequiresExactHalRelation(bool hasExportRelation, int expectedButtons)
+    {
+        Guid eventId = Guid.CreateVersion7();
+        EventDto resource = Event(eventId);
+        resource.OrganizerActorId = Guid.CreateVersion7();
+        var links = new Dictionary<string, object> { ["view-participants"] = new { href = "/participants" } };
+        if (hasExportRelation)
+        {
+            links["export-attendees"] = new { href = "/export", method = "POST" };
+        }
+
+        resource.AdditionalProperties["_links"] = JsonSerializer.SerializeToElement(links);
+        _events.GetEventByIdAsync(eventId).Returns(resource);
+        _studio.GetEventAttendeesAsync(eventId, Arg.Any<CancellationToken>()).Returns([]);
+
+        var cut = _ctx.RenderMudComponent<StudioEventAttendees>(parameters => parameters
+            .Add(component => component.EventId, eventId));
+
+        cut.WaitForAssertion(() =>
+        {
+            if (cut.FindAll("[data-testid='export-attendees']").Count != expectedButtons)
+            {
+                throw new InvalidOperationException("Export affordance did not match HAL state.");
+            }
+        });
+        await Assert.That(cut.FindAll("[data-testid='export-attendees']").Count).IsEqualTo(expectedButtons);
+        await _consents.DidNotReceive().ExportSharedContactsAsync(
+            Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<Guid?>(), Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task EventPage_ExportAction_AnnouncesSuccessfulDownload()
+    {
+        Guid eventId = Guid.CreateVersion7();
+        Guid organizerActorId = Guid.CreateVersion7();
+        EventDto resource = Event(eventId);
+        resource.OrganizerActorId = organizerActorId;
+        resource.AdditionalProperties["_links"] = JsonSerializer.SerializeToElement(
+            new Dictionary<string, object>
+            {
+                ["view-participants"] = new { href = "/participants" },
+                ["export-attendees"] = new { href = "/export", method = "POST" }
+            });
+        _events.GetEventByIdAsync(eventId).Returns(resource);
+        _studio.GetEventAttendeesAsync(eventId, Arg.Any<CancellationToken>()).Returns([]);
+        _consents.ExportSharedContactsAsync(organizerActorId, "csv", eventId, Arg.Any<CancellationToken>())
+            .Returns(((byte[] FileBytes, string FileName)?)([1, 2, 3], "attendees.csv"));
+        _ctx.Services.GetRequiredService<IBrowserActionInterop>()
+            .DownloadBase64FileAsync(Arg.Any<string>(), "attendees.csv", "text/csv", Arg.Any<CancellationToken>())
+            .Returns(true);
+
+        var cut = _ctx.RenderMudComponent<StudioEventAttendees>(parameters => parameters
+            .Add(component => component.EventId, eventId));
+
+        await cut.Find("[data-testid='export-attendees']").ClickAsync(new MouseEventArgs());
+
+        await _announcer.Received(1).AnnouncePoliteAsync("Export downloaded.");
+        await _announcer.DidNotReceive().AnnounceAssertiveAsync(Arg.Any<string>());
     }
 
     [Test]

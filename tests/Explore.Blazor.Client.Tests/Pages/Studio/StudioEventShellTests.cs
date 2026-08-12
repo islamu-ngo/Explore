@@ -133,6 +133,76 @@ public sealed class StudioEventShellTests : IDisposable
     }
 
     [Test]
+    public async Task AnalyticsRoute_WithoutAnalyticsRelation_FailsClosed()
+    {
+        var resource = CreateEvent();
+        _eventService.GetEventByIdAsync(resource.Id!.Value).Returns(resource);
+        _ctx.Services.GetRequiredService<NavigationManager>()
+            .NavigateTo($"/studio/events/{resource.Id}/analytics");
+
+        var cut = _ctx.RenderMudComponent<StudioEventShell>(parameters => parameters
+            .Add(component => component.EventId, resource.Id.Value));
+
+        cut.WaitForElement("[data-testid='registration-analytics-route-unavailable']");
+        await Assert.That(cut.FindAll("[data-testid='registration-analytics']")).IsEmpty();
+    }
+
+    [Test]
+    public async Task AnalyticsRoute_WithAnalyticsRelation_RendersAggregateCells()
+    {
+        var resource = CreateEvent("view-registration-analytics");
+        _eventService.GetEventByIdAsync(resource.Id!.Value).Returns(resource);
+        var formId = Guid.CreateVersion7();
+        var versionId = Guid.CreateVersion7();
+        var authoring = _ctx.Services.GetRequiredService<IRegistrationFormAuthoringService>();
+        authoring.GetWorkflowAsync(resource.Id.Value, Arg.Any<CancellationToken>()).Returns(new HalResourceOfRegistrationWorkflowDto
+        {
+            Id = Guid.CreateVersion7(),
+            EventId = resource.Id.Value,
+            Purpose = "registration",
+            Forms =
+            [
+                new RegistrationFormDto
+                {
+                    Id = formId,
+                    Name = "Registration",
+                    Versions = [new RegistrationFormVersionSummaryDto { Id = versionId, Version = 1, StatusName = "Published" }]
+                }
+            ]
+        });
+        authoring.GetAnalyticsAsync(resource.Id.Value, formId, versionId, Arg.Any<HalLink>(), Arg.Any<CancellationToken>())
+            .Returns(new HalResourceOfRegistrationAnswerAnalyticsDto
+            {
+                EventId = resource.Id.Value,
+                FormId = formId,
+                FormVersionId = versionId,
+                MinimumCellSize = 3,
+                Fields =
+                [
+                    new RegistrationAnswerFieldAggregateDto
+                    {
+                        Label = "Age band",
+                        Namespace = "person",
+                        Key = "age_band",
+                        FieldTypeCode = "SINGLE_CHOICE",
+                        ResponseCount = 3,
+                        Cells = [new RegistrationAnswerAggregateCellDto { Value = "adult", Count = 3 }]
+                    }
+                ]
+            });
+        _ctx.Services.GetRequiredService<NavigationManager>()
+            .NavigateTo($"/studio/events/{resource.Id}/analytics");
+
+        var cut = _ctx.RenderMudComponent<StudioEventShell>(parameters => parameters
+            .Add(component => component.EventId, resource.Id.Value));
+
+        cut.WaitForElement("[data-testid='registration-analytics']");
+        cut.WaitForAssertion(() => cut.Markup.Contains("Age band", StringComparison.Ordinal));
+        await Assert.That(cut.Markup).Contains("adult");
+        await Assert.That(cut.Markup).DoesNotContain("registration-analytics-route-unavailable");
+    }
+
+    [Test]
     public async Task IntegrationsRoute_WithoutProviderRelations_FailsClosed()
     {
         var resource = CreateEvent();

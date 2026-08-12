@@ -2,20 +2,38 @@
 @* ABOUTME: Reuses the shared attendee list and event context without local authorization inference. *@
 @page "/studio/events/{EventId:guid}/attendees"
 @using Blazouter.Services
+@using Explore.Blazor.Client.Contracts.Interop
+@using Explore.Blazor.Client.Contracts.Services.Accessibility
 @using Microsoft.AspNetCore.Authorization
 @attribute [Authorize]
 @rendermode InteractiveServer
 @inject RouterStateService RouterState
 @inject StudioEventContextState EventContext
+@inject IContactShareConsentService ConsentService
+@inject IBrowserActionInterop BrowserActionInterop
+@inject IAccessibilityAnnouncerService Announcer
+@inject ISnackbar Snackbar
 
 <PageTitle>@(Resource?.Title is { } title ? $"{title} attendees" : "Event attendees")</PageTitle>
 
 <MudContainer MaxWidth="MaxWidth.Large" Class="studio-event-attendees">
     <header class="studio-event-attendees__header">
-        <MudText Typo="Typo.h4" HtmlTag="h1">Event attendees</MudText>
-        @if (Resource is not null)
+        <div>
+            <MudText Typo="Typo.h4" HtmlTag="h1">Event attendees</MudText>
+            @if (Resource is not null)
+            {
+                <MudText Typo="Typo.body1" Color="Color.Secondary">@Resource.Title</MudText>
+            }
+        </div>
+        @if (Resource?.HasHalLink("export-attendees") == true)
         {
-            <MudText Typo="Typo.body1" Color="Color.Secondary">@Resource.Title</MudText>
+            <AppButton Variant="Variant.Outlined"
+                       StartIcon="@Icons.Material.Filled.Download"
+                       Disabled="_isExporting"
+                       OnClick="ExportAsync"
+                       data-testid="export-attendees">
+                Export consented contacts
+            </AppButton>
         }
     </header>
     <MudAlert Severity="Severity.Info" Variant="Variant.Outlined">
@@ -40,6 +58,7 @@
     [Parameter] public Guid EventId { get; set; }
 
     private EventDto? Resource => EventContext.EventId == EventId ? EventContext.Event : null;
+    private bool _isExporting;
 
     protected override async Task OnParametersSetAsync()
     {
@@ -51,6 +70,36 @@
         if (EventId != Guid.Empty)
         {
             await EventContext.LoadAsync(EventId);
+        }
+    }
+
+    private async Task ExportAsync()
+    {
+        if (Resource?.HasHalLink("export-attendees") != true || Resource.OrganizerActorId is not Guid organizerActorId)
+        {
+            return;
+        }
+
+        _isExporting = true;
+        try
+        {
+            var result = await ConsentService.ExportSharedContactsAsync(organizerActorId, "csv", EventId);
+            bool downloaded = result is { } export && await BrowserActionInterop.DownloadBase64FileAsync(
+                Convert.ToBase64String(export.FileBytes), export.FileName, "text/csv");
+            string message = downloaded ? "Export downloaded." : "Export failed. Please try again.";
+            Snackbar.Add(message, downloaded ? Severity.Success : Severity.Error);
+            if (downloaded)
+            {
+                await Announcer.AnnouncePoliteAsync(message);
+            }
+            else
+            {
+                await Announcer.AnnounceAssertiveAsync(message);
+            }
+        }
+        finally
+        {
+            _isExporting = false;
         }
     }
 }

@@ -113,6 +113,54 @@ public sealed class RegistrationFormBuilderTests : IDisposable
     }
 
     [Test]
+    public async Task EmptyWorkflowCanInstantiateAdvertisedTemplate()
+    {
+        Guid eventId = Guid.CreateVersion7();
+        Guid workflowId = Guid.CreateVersion7();
+        Guid workflowStamp = Guid.CreateVersion7();
+        Guid templateId = Guid.CreateVersion7();
+        Guid formId = Guid.CreateVersion7();
+        Guid versionId = Guid.CreateVersion7();
+        var instantiate = new HalLink { Href = $"/api/registration-form-templates/{templateId}/instantiate", Method = "POST" };
+        var workflow = new HalResourceOfRegistrationWorkflowDto
+        {
+            Id = workflowId,
+            EventId = eventId,
+            Purpose = "registration",
+            Forms = [],
+            ConcurrencyStamp = workflowStamp
+        };
+        var refreshed = new HalResourceOfRegistrationWorkflowDto
+        {
+            Id = workflowId,
+            EventId = eventId,
+            Purpose = "registration",
+            Forms = [new RegistrationFormDto { Id = formId, EventId = eventId, Name = "Template form", Namespace = "event", Key = "template-form", Versions = [new RegistrationFormVersionSummaryDto { Id = versionId, Version = 1, StatusCode = "DRAFT", StatusName = "Draft", LanguageTag = "en" }] }],
+            ConcurrencyStamp = workflowStamp
+        };
+        _service.GetWorkflowAsync(eventId, Arg.Any<CancellationToken>()).Returns(workflow, refreshed);
+        _service.GetTemplatesAsync(Arg.Any<CancellationToken>()).Returns(TemplateCollection(templateId, "Template form", instantiate));
+        _service.InstantiateTemplateAsync(templateId, Arg.Any<InstantiateRegistrationFormTemplateInput>(), Arg.Any<HalLink>(), Arg.Any<CancellationToken>()).Returns(formId);
+        _service.GetFormAsync(eventId, formId, Arg.Any<CancellationToken>()).Returns(new HalResourceOfRegistrationFormDto { Id = formId, EventId = eventId, Name = "Template form", Namespace = "event", Key = "template-form", Versions = [new RegistrationFormVersionSummaryDto { Id = versionId, Version = 1, StatusCode = "DRAFT", StatusName = "Draft", LanguageTag = "en" }] });
+        HalResourceOfRegistrationFormVersionDto version = VersionGraph(eventId, formId, "DRAFT");
+        version.Id = versionId;
+        _service.GetVersionAsync(eventId, formId, versionId, Arg.Any<CancellationToken>()).Returns(version);
+
+        var cut = _ctx.RenderMudComponent<RegistrationFormBuilder>(parameters => parameters.Add(component => component.EventId, eventId));
+
+        cut.WaitForElement("[data-testid='registration-form-template-picker']");
+        cut.Find("[data-testid='instantiate-registration-form-template']").Click();
+
+        cut.WaitForElement("[data-testid='registration-form-version']");
+        await _service.Received(1).InstantiateTemplateAsync(templateId,
+            Arg.Is<InstantiateRegistrationFormTemplateInput>(input =>
+                input.EventId == eventId && input.WorkflowId == workflowId && input.ExpectedWorkflowConcurrencyStamp == workflowStamp && input.Key == "template-form"),
+            Arg.Is<HalLink>(link => link.Href == instantiate.Href && link.Method == instantiate.Method),
+            Arg.Any<CancellationToken>());
+        await _announcer.Received(1).AnnouncePoliteAsync("Registration form created from template.");
+    }
+
+    [Test]
     public async Task LoadFailureRendersSafeErrorWithoutExceptionDetails()
     {
         Guid eventId = Guid.CreateVersion7();
@@ -355,6 +403,36 @@ public sealed class RegistrationFormBuilderTests : IDisposable
     }
 
     [Test]
+    public async Task FieldEditorSendsAnalyticsGovernanceOnlyForAggregatableFields()
+    {
+        var model = new RegistrationFormFieldEditModel
+        {
+            Ordinal = 1,
+            Namespace = "person",
+            Key = "age",
+            Label = "Age",
+            FieldTypeId = 3,
+            RetentionPolicyId = 1,
+            OrganizerVisibilityId = 2,
+            IsAnalyticsRelevant = true,
+            IsOperationallyFilterable = true
+        };
+
+        var cut = _ctx.RenderMudComponent<RegistrationFormFieldEditor>(parameters => parameters
+            .Add(component => component.Model, model));
+
+        await Assert.That(cut.Markup).Contains("Analytics relevant");
+        var input = model.ToCreateInput();
+        await Assert.That(input.AdditionalProperties["isAnalyticsRelevant"]).IsEqualTo(true);
+        await Assert.That(input.AdditionalProperties["isOperationallyFilterable"]).IsEqualTo(true);
+
+        model.SetFieldType(9);
+
+        await Assert.That(model.IsAnalyticsRelevant).IsFalse();
+        await Assert.That(model.IsOperationallyFilterable).IsFalse();
+    }
+
+    [Test]
     public async Task ExactNestedCrudRelationsRenderCompleteAuthoringSurface()
     {
         (Guid eventId, HalResourceOfRegistrationWorkflowDto workflow, HalResourceOfRegistrationFormDto form) = FormGraph("DRAFT");
@@ -593,4 +671,19 @@ public sealed class RegistrationFormBuilderTests : IDisposable
 
     private static Dictionary<string, HalLink> Links(params (string Rel, string Href, string Method)[] links) =>
         links.ToDictionary(item => item.Rel, item => new HalLink { Href = item.Href, Method = item.Method });
+
+    private static HalCollectionResourceOfRegistrationFormTemplateDto TemplateCollection(Guid id, string name, HalLink instantiate) => new()
+    {
+        _embedded = new HalCollectionEmbeddedOfRegistrationFormTemplateDto
+        {
+            Items = [new HalResourceOfRegistrationFormTemplateDto
+            {
+                Id = id,
+                Name = name,
+                Description = "Template",
+                Category = "General",
+                _links = new Dictionary<string, HalLink> { ["instantiate"] = instantiate }
+            }]
+        }
+    };
 }

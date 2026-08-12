@@ -43,6 +43,45 @@ public sealed class RegistrationFormAuthoringServiceTests
     }
 
     [Test]
+    public async Task InstantiateTemplateUsesAdvertisedTemplateRelationOnly()
+    {
+        IEventApiClient api = Substitute.For<IEventApiClient>();
+        var service = new RegistrationFormAuthoringService(api);
+        Guid templateId = Guid.CreateVersion7();
+        Guid formId = Guid.CreateVersion7();
+        var input = new InstantiateRegistrationFormTemplateInput
+        {
+            EventId = Guid.CreateVersion7(),
+            WorkflowId = Guid.CreateVersion7(),
+            Namespace = "event",
+            Key = "attendee",
+            Name = "Attendee",
+            ExpectedWorkflowConcurrencyStamp = Guid.CreateVersion7()
+        };
+        var link = new HalLink { Href = $"/api/registration-form-templates/{templateId}/instantiate", Method = "POST" };
+        api.InstantiateRegistrationFormTemplateAsync(templateId, input, cancellationToken: Arg.Any<CancellationToken>())
+            .Returns(new BaseCommandResponseOfGuid { Success = true, Id = formId });
+
+        Guid created = await service.InstantiateTemplateAsync(templateId, input, link);
+
+        await Assert.That(created).IsEqualTo(formId);
+        await api.Received(1).InstantiateRegistrationFormTemplateAsync(templateId, input, cancellationToken: Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task InstantiateTemplateWithMismatchedHrefDoesNotDispatch()
+    {
+        IEventApiClient api = Substitute.For<IEventApiClient>();
+        var service = new RegistrationFormAuthoringService(api);
+        var input = new InstantiateRegistrationFormTemplateInput { EventId = Guid.CreateVersion7(), WorkflowId = Guid.CreateVersion7(), Namespace = "event", Key = "attendee", Name = "Attendee", ExpectedWorkflowConcurrencyStamp = Guid.CreateVersion7() };
+        var stale = new HalLink { Href = $"/api/registration-form-templates/{Guid.CreateVersion7()}/instantiate", Method = "POST" };
+
+        await Assert.That(async () => await service.InstantiateTemplateAsync(Guid.CreateVersion7(), input, stale)).Throws<InvalidOperationException>();
+
+        await api.DidNotReceiveWithAnyArgs().InstantiateRegistrationFormTemplateAsync(default, default!, cancellationToken: default);
+    }
+
+    [Test]
     public async Task ReorderSectionsDispatchesOneAtomicPutWithAuthoritativeOrder()
     {
         IEventApiClient api = Substitute.For<IEventApiClient>();

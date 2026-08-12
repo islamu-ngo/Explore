@@ -7,6 +7,7 @@
 @page "/studio/events/{EventId:guid}/orders"
 @page "/studio/events/{EventId:guid}/integrations"
 @page "/studio/events/{EventId:guid}/forms"
+@page "/studio/events/{EventId:guid}/analytics"
 @page "/studio/events/{EventId:guid}/publication"
 @using Blazouter.Services
 @using Microsoft.AspNetCore.Authorization
@@ -111,6 +112,19 @@
                     <Explore.Blazor.Client.Pages.Studio.RegistrationForms.RegistrationFormBuilder EventId="EventId" />
                 }
             }
+            else if (Section == "analytics")
+            {
+                @if (!CanViewRegistrationAnalytics)
+                {
+                    <div class="studio-event-shell__state" role="alert" data-testid="registration-analytics-route-unavailable">
+                        Registration analytics are not available for this event.
+                    </div>
+                }
+                else
+                {
+                    <StudioRegistrationAnalytics EventId="EventId" AnalyticsLink="AnalyticsLink" />
+                }
+            }
             else if (Section == "integrations")
             {
                 @if (!CanViewIntegrations)
@@ -154,6 +168,7 @@
         "orders" => "Orders",
         "integrations" => "Integrations",
         "forms" => "Forms",
+        "analytics" => "Analytics",
         "publication" => "Publication",
         _ => "Details"
     };
@@ -165,6 +180,7 @@
         "orders" => "Review registration order status and server-calculated commercial snapshots.",
         "integrations" => "Connect registration providers, monitor health, and reconcile provider submissions.",
         "forms" => "Author versioned registration questions, conditional rules, and publication readiness.",
+        "analytics" => "Review privacy-bounded aggregates for governed registration answers.",
         "publication" => "Review and edit publication details in the existing event editor.",
         _ => "Edit this event using the existing event editor."
     };
@@ -178,6 +194,10 @@
     private bool CanViewIntegrations => Resource?.HasHalLink("manage-registration-channels") == true
         || Resource?.HasHalLink("view-registration-provider-health") == true;
     private bool CanManageRegistrationWorkflow => Resource?.HasHalLink("manage-registration-workflow") == true;
+    private bool CanViewRegistrationAnalytics => Resource?.HasHalLink("view-registration-analytics") == true;
+    private HalLink? AnalyticsLink => Resource is null
+        ? null
+        : Explore.Blazor.Client.Pages.Studio.RegistrationForms.RegistrationFormHal.Link(Resource.AdditionalProperties, "view-registration-analytics");
 
     protected override async Task OnParametersSetAsync()
     {
@@ -202,6 +222,7 @@
             : path.EndsWith("/orders", StringComparison.OrdinalIgnoreCase) ? "orders"
             : path.EndsWith("/integrations", StringComparison.OrdinalIgnoreCase) ? "integrations"
             : path.EndsWith("/forms", StringComparison.OrdinalIgnoreCase) ? "forms"
+            : path.EndsWith("/analytics", StringComparison.OrdinalIgnoreCase) ? "analytics"
             : path.EndsWith("/publication", StringComparison.OrdinalIgnoreCase) ? "publication"
             : "details";
     }

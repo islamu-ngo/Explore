@@ -3,8 +3,11 @@
 
 .studio-event-attendees,
 .studio-event-attendees__header {
-    display: grid;
+    display: flex;
+    align-items: start;
+    justify-content: space-between;
     gap: var(--isl-space-4);
+    flex-wrap: wrap;
 }
 
 .studio-event-attendees__state {

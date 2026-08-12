@@ -1,6 +1,7 @@
 @* ABOUTME: Event-scoped Studio registration-form builder driven by nested HAL affordances. *@
 @* ABOUTME: Owns cancellable authoring orchestration, authoritative ordering, and accessible outcomes. *@
 @using System.Globalization
+@using System.Text.Json
 @using Explore.Blazor.Client.Clients
 @using Explore.Blazor.Client.Contracts.Services.Accessibility
 @using Explore.Blazor.Client.Contracts.Services.Events
@@ -45,7 +46,20 @@
                         <AppButton OnClick="CreateFormAsync" Disabled="@(_mutating || string.IsNullOrWhiteSpace(_newFormName))">@T("form.create", "Create form")</AppButton>
                     </div>
                 }
-                else
+                @if (_templates.Count > 0)
+                {
+                    <div class="registration-form-builder__template-picker" data-testid="registration-form-template-picker">
+                        <MudSelect T="Guid" Label="@T("template.label", "Template")" Value="_templateId" ValueChanged="SelectTemplate" Variant="Variant.Outlined" Disabled="_mutating">
+                            @foreach (TemplateOption template in _templates)
+                            {
+                                <MudSelectItem T="Guid" Value="template.Id">@template.Name</MudSelectItem>
+                            }
+                        </MudSelect>
+                        <AppTextField T="string" Label="@T("template.form_name", "New form name")" @bind-Value="_templateFormName" Disabled="_mutating" />
+                        <AppButton OnClick="InstantiateTemplateAsync" Disabled="@(_mutating || _templateId == Guid.Empty || string.IsNullOrWhiteSpace(_templateFormName))" data-testid="instantiate-registration-form-template">@T("template.instantiate", "Use template")</AppButton>
+                    </div>
+                }
+                @if (WorkflowLink("create-form") is null && _templates.Count == 0)
                 {
                     <p>@T("workflow.read_only", "This workflow is read-only.")</p>
                 }
@@ -323,8 +337,10 @@
     private HalResourceOfRegistrationFormDto? _form;
     private HalResourceOfRegistrationFormVersionDto? _version;
     private HalResourceOfRegistrationFormPublishPreflightDto? _preflight;
+    private IReadOnlyList<TemplateOption> _templates = [];
     private Guid _formId;
     private Guid _versionId;
+    private Guid _templateId;
     private Guid _loadedEventId;
     private bool _loading;
     private bool _mutating;
@@ -332,6 +348,7 @@
     private string? _error;
     private string? _status;
     private string _newFormName = string.Empty;
+    private string _templateFormName = string.Empty;
     private string _newSectionTitle = string.Empty;
     private Guid? _editingSectionId;
     private string _editingSectionTitle = string.Empty;
@@ -380,6 +397,11 @@
             if (workflow.Forms.FirstOrDefault() is { } first)
             {
                 await SelectFormCoreAsync(eventId, first.Id, cancellationToken);
+            }
+            else
+            {
+                _templates = await LoadTemplatesAsync(cancellationToken);
+                SelectTemplate(_templates.FirstOrDefault()?.Id ?? Guid.Empty);
             }
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
@@ -484,6 +506,33 @@
         await SelectFormCoreAsync(eventId, id, token);
         _newFormName = string.Empty;
     }, T("status.form_created", "Registration form created."));
+
+    private void SelectTemplate(Guid templateId)
+    {
+        _templateId = templateId;
+        if (_templates.FirstOrDefault(item => item.Id == templateId) is { } template && string.IsNullOrWhiteSpace(_templateFormName))
+        {
+            _templateFormName = template.Name;
+        }
+    }
+
+    private Task InstantiateTemplateAsync() => MutateAsync(async (eventId, token) =>
+    {
+        TemplateOption template = _templates.Single(item => item.Id == _templateId);
+        Guid id = await Authoring.InstantiateTemplateAsync(template.Id,
+            new InstantiateRegistrationFormTemplateInput
+            {
+                EventId = eventId,
+                WorkflowId = _workflow!.Id,
+                Namespace = "event",
+                Key = Slug(_templateFormName),
+                Name = _templateFormName.Trim(),
+                ExpectedWorkflowConcurrencyStamp = _workflow.ConcurrencyStamp
+            }, template.InstantiateLink!, token);
+        _workflow = await Authoring.GetWorkflowAsync(eventId, token);
+        await SelectFormCoreAsync(eventId, id, token);
+        _templateFormName = string.Empty;
+    }, T("status.template_instantiated", "Registration form created from template."));
 
     private Task CloneVersionAsync() => MutateAsync(async (eventId, token) =>
     {
@@ -837,8 +886,10 @@
         _form = null;
         _version = null;
         _preflight = null;
+        _templates = [];
         _formId = Guid.Empty;
         _versionId = Guid.Empty;
+        _templateId = Guid.Empty;
         _error = null;
         _status = null;
         _mutating = false;
@@ -865,6 +916,20 @@
     private static string SectionMoveId(Guid id, int delta) => $"section-{id:N}-move-{(delta < 0 ? "up" : "down")}";
     private static string FieldMoveId(Guid id, int delta) => $"field-{id:N}-move-{(delta < 0 ? "up" : "down")}";
     private static string Slug(string value) => string.Join('-', value.Trim().ToLowerInvariant().Split(' ', StringSplitOptions.RemoveEmptyEntries));
+    private async Task<IReadOnlyList<TemplateOption>> LoadTemplatesAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            return ExtractTemplates(await Authoring.GetTemplatesAsync(cancellationToken));
+        }
+        catch (Exception) when (!cancellationToken.IsCancellationRequested)
+        {
+            return [];
+        }
+    }
+
+    private static IReadOnlyList<TemplateOption> ExtractTemplates(HalCollectionResourceOfRegistrationFormTemplateDto collection) =>
+        collection._embedded?.Items?.Select(TemplateOption.From).Where(item => item.InstantiateLink is not null).ToArray() ?? [];
     private string T(string key, string fallback) => Translation.T($"studio.registration_forms.{key}", fallback);
     private string F(string key, string fallback, params object?[] values) =>
         string.Format(CultureInfo.CurrentCulture, T(key, fallback), values);
@@ -896,5 +961,28 @@
         {
             Section = section, Field = field, Option = option, Ordinal = option.Ordinal, Key = option.Key, Label = option.Label
         };
+    }
+
+    private sealed class TemplateOption
+    {
+        private static readonly JsonSerializerOptions Options = new() { PropertyNameCaseInsensitive = true };
+        public Guid Id { get; init; }
+        public string Name { get; init; } = string.Empty;
+        public Dictionary<string, HalLink>? Links { get; init; }
+        public HalLink? InstantiateLink => Links?.TryGetValue("instantiate", out HalLink? link) == true ? link : null;
+
+        public static TemplateOption From(object item)
+        {
+            JsonElement element = item is JsonElement json ? json : JsonSerializer.SerializeToElement(item, Options);
+            Dictionary<string, HalLink>? links = element.TryGetProperty("_links", out JsonElement linkElement)
+                ? linkElement.Deserialize<Dictionary<string, HalLink>>(Options)
+                : null;
+            return new TemplateOption
+            {
+                Id = element.GetProperty("id").GetGuid(),
+                Name = element.GetProperty("name").GetString() ?? string.Empty,
+                Links = links
+            };
+        }
     }
 }

@@ -164,6 +164,23 @@ public sealed class StudioEventIntegrationsTests : IDisposable
     }
 
     [Test]
+    public async Task Channels_HideSwitchActionsWithoutEventOrItemHalLinks()
+    {
+        var workflowId = Guid.CreateVersion7();
+        var requirementId = Guid.CreateVersion7();
+        var channelId = Guid.CreateVersion7();
+        _service.GetChannelsAsync(_event.TenantId!.Value, _event.Id!.Value, workflowId, requirementId, Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(Channels(Item(new { id = channelId, ordinal = 1, isNative = true }))));
+
+        var cut = Render();
+
+        await Assert.That(cut.FindAll("[data-testid='channel-scope-form']")).IsEmpty();
+        await Assert.That(cut.FindAll("[data-testid='channel-edit-form']")).IsEmpty();
+        await _service.DidNotReceiveWithAnyArgs().GetChannelsAsync(default, default, default, default);
+        await _service.DidNotReceiveWithAnyArgs().UpdateChannelAsync(default, default, default, default, default, default!, default!, default);
+    }
+
+    [Test]
     public async Task FullWritePaths_UseItemAndCollectionHalLinks()
     {
         WithEventLinks("manage-registration-channels", "view-registration-provider-health");
