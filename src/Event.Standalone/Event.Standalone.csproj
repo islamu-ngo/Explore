@@ -27,4 +27,18 @@
     <ProjectReference Include="..\Explore.Blazor\Explore.Blazor.csproj" />
   </ItemGroup>
 
+  <Target Name="CopyProviderMigrationsToOutput" AfterTargets="Build">
+    <ItemGroup>
+      <ProviderMigrationAssembly Include="$(MSBuildProjectDirectory)/../Explore.Persistence*.Migrations.*/bin/$(Configuration)/$(TargetFramework)/Explore.Persistence*.Migrations.*.dll" />
+    </ItemGroup>
+    <Copy SourceFiles="@(ProviderMigrationAssembly)" DestinationFolder="$(OutDir)" SkipUnchangedFiles="true" />
+  </Target>
+
+  <Target Name="CopyProviderMigrationsToPublish" AfterTargets="Publish">
+    <ItemGroup>
+      <ProviderMigrationPublishAssembly Include="$(MSBuildProjectDirectory)/../Explore.Persistence*.Migrations.*/bin/$(Configuration)/$(TargetFramework)/Explore.Persistence*.Migrations.*.dll" />
+    </ItemGroup>
+    <Copy SourceFiles="@(ProviderMigrationPublishAssembly)" DestinationFolder="$(PublishDir)" SkipUnchangedFiles="true" />
+  </Target>
+
 </Project>

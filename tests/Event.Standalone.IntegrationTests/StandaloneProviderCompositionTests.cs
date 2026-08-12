@@ -17,7 +17,7 @@ namespace Event.Standalone.IntegrationTests;
 public sealed class StandaloneProviderCompositionTests
 {
     [Test]
-    public async Task StandaloneStorageContractUsesDedicatedPrimaryAndAuthorityVolumes()
+    public async Task StandaloneContainerContractUsesOneImageWithoutCompose()
     {
         var repositoryRoot = FindRepositoryRoot();
         IConfiguration settings = new ConfigurationBuilder()
@@ -25,20 +25,53 @@ public sealed class StandaloneProviderCompositionTests
                 Path.Combine(repositoryRoot, "src", "Event.Standalone", "appsettings.json"),
                 optional: false)
             .Build();
-        var compose = await File.ReadAllTextAsync(
-            Path.Combine(repositoryRoot, "docker-compose.standalone.yml"));
+        var dockerfile = await File.ReadAllTextAsync(
+            Path.Combine(repositoryRoot, "src", "Event.Standalone", "Dockerfile"));
 
         await Assert.That(settings["Database:Provider"]).IsEqualTo("Sqlite");
         await Assert.That(settings["Database:Database"]).IsEqualTo("/app/data/islamu_event.db");
-        await Assert.That(compose).Contains("Database__Database: ${DATABASE_DATABASE:-/app/data/islamu_event.db}");
-        await Assert.That(compose).DoesNotContain("DATABASE_NAME");
-        const string primaryMount = "event_standalone_data:/app/data";
-        const string authorityMount = "event_standalone_authority:/app/privacy-erasure-authority";
-        await Assert.That(compose.Split(primaryMount).Length - 1).IsEqualTo(3);
-        await Assert.That(compose.Split(authorityMount).Length - 1).IsEqualTo(3);
-        await Assert.That(compose).Contains("event_standalone_authority:");
-        await Assert.That(compose).Contains(
-            "PrivacyErasureAuthorityEmbedded__Path: /app/privacy-erasure-authority/privacy_erasure_authority.db");
+        await Assert.That(File.Exists(Path.Combine(repositoryRoot, "docker-compose.standalone.yml"))).IsFalse();
+        await Assert.That(dockerfile).Contains("EXPOSE 8080");
+        await Assert.That(dockerfile).Contains("USER $APP_UID");
+        await Assert.That(dockerfile).Contains("ENTRYPOINT [\"./Event.Standalone\"]");
+    }
+
+    [Test]
+    public async Task StandaloneContainerRestoreIncludesBlazorFrameworkAssetsBeforeRazorSourcesAreCopied()
+    {
+        var dockerfile = await File.ReadAllTextAsync(
+            Path.Combine(FindRepositoryRoot(), "src", "Event.Standalone", "Dockerfile"));
+
+        var razorCopyIndex = dockerfile.IndexOf(
+            "COPY [\"src/Explore.Blazor/Components/App.razor\", \"src/Explore.Blazor/Components/\"]",
+            StringComparison.Ordinal);
+        var restoreIndex = dockerfile.IndexOf("RUN dotnet restore", StringComparison.Ordinal);
+
+        await Assert.That(razorCopyIndex).IsGreaterThanOrEqualTo(0);
+        await Assert.That(razorCopyIndex).IsLessThan(restoreIndex);
+    }
+
+    [Test]
+    public async Task StandaloneEnvironmentAllowsHttpMetadataForLocalKeycloak()
+    {
+        var environment = await File.ReadAllTextAsync(Path.Combine(FindRepositoryRoot(), ".env"));
+
+        await Assert.That(environment).Contains("KEYCLOAK_ENDPOINT=http://keycloak.localhost:8080");
+        await Assert.That(environment).Contains("Keycloak__RequireHttpsMetadata=false");
+    }
+
+    [Test]
+    public async Task StandaloneSingleFileHostLoadsExternalMigrationAssembliesBeforeMigrating()
+    {
+        var repositoryRoot = FindRepositoryRoot();
+        var program = await File.ReadAllTextAsync(
+            Path.Combine(repositoryRoot, "src", "Event.Standalone", "Program.cs"));
+
+        var loadIndex = program.IndexOf("AssemblyLoadContext.Default.LoadFromAssemblyPath", StringComparison.Ordinal);
+        var migrationIndex = program.IndexOf("MigrateAndSeedAsync", StringComparison.Ordinal);
+
+        await Assert.That(loadIndex).IsGreaterThanOrEqualTo(0);
+        await Assert.That(loadIndex).IsLessThan(migrationIndex);
     }
 
     [Test]
@@ -184,7 +217,7 @@ public sealed class StandaloneProviderCompositionTests
     {
         for (var directory = new DirectoryInfo(AppContext.BaseDirectory); directory is not null; directory = directory.Parent)
         {
-            if (File.Exists(Path.Combine(directory.FullName, "docker-compose.standalone.yml")))
+            if (File.Exists(Path.Combine(directory.FullName, "src", "Event.Standalone", "Dockerfile")))
             {
                 return directory.FullName;
             }

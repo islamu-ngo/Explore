@@ -6,14 +6,26 @@ using Explore.Blazor.Extensions;
 using Explore.Blazor.Hosting;
 using Explore.Persistence;
 using Explore.Persistence.Database;
+using Explore.Persistence.Schema;
 using Explore.Secrets.Database;
 using Event.Standalone.Hosting;
 using Event.Standalone.Middleware;
+using System.Runtime.Loader;
 
 const BlazorHostProfile hostProfile = BlazorHostProfile.Combined;
 var shutdownState = new GracefulShutdownState();
 using var shutdownCts = shutdownState.CancellationTokenSource;
 var builder = WebApplication.CreateBuilder(args);
+if (!builder.Environment.IsEnvironment("Testing"))
+{
+    foreach (var migrationAssembly in Directory.EnumerateFiles(
+                 AppContext.BaseDirectory,
+                 "Explore.Persistence*.Migrations.*.dll"))
+    {
+        AssemblyLoadContext.Default.LoadFromAssemblyPath(migrationAssembly);
+    }
+}
+
 var apiHost = builder.AddApiHostServices(() => shutdownState.IsShuttingDown);
 builder.AddBlazorHostServices(hostProfile, shutdownState);
 builder.Services.AddCombinedApiBridge();
@@ -30,7 +42,20 @@ if (primaryDatabase.Provider == PrimaryDatabaseProvider.Sqlite &&
 await using (var scope = app.Services.CreateAsyncScope())
 {
     var database = scope.ServiceProvider.GetRequiredService<ExploreDbContext>();
-    await SqliteDatabaseInitializer.InitializeAsync(database, shutdownCts.Token);
+    if (app.Environment.IsEnvironment("Testing"))
+    {
+        await SqliteDatabaseInitializer.InitializeAsync(database, shutdownCts.Token);
+    }
+    else
+    {
+        await ExploreDatabaseMigrator.MigrateAndSeedAsync(
+            database,
+            app.Environment,
+            app.Configuration,
+            PrimaryDatabaseConfiguration.BindMigrator(app.Configuration),
+            app.Logger,
+            shutdownCts.Token);
+    }
 }
 
 await app.RunApiHostStartupAsync(

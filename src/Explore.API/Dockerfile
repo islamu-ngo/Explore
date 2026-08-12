@@ -18,6 +18,7 @@ WORKDIR /src
 COPY ["global.json", "Directory.Build.props", "Directory.Packages.props", "./"]
 COPY ["src/Explore.API/Explore.API.csproj", "src/Explore.API/packages.lock.json", "src/Explore.API/"]
 COPY ["src/Explore.Application/Explore.Application.csproj", "src/Explore.Application/packages.lock.json", "src/Explore.Application/"]
+COPY ["src/Explore.Atproto.Transport/Explore.Atproto.Transport.csproj", "src/Explore.Atproto.Transport/packages.lock.json", "src/Explore.Atproto.Transport/"]
 COPY ["src/Explore.Domain/Explore.Domain.csproj", "src/Explore.Domain/packages.lock.json", "src/Explore.Domain/"]
 COPY ["src/Explore.Infrastructure/Explore.Infrastructure.csproj", "src/Explore.Infrastructure/packages.lock.json", "src/Explore.Infrastructure/"]
 COPY ["src/Explore.Persistence/Explore.Persistence.csproj", "src/Explore.Persistence/packages.lock.json", "src/Explore.Persistence/"]
@@ -49,7 +50,9 @@ RUN dotnet publish "./Explore.API.csproj" -c $BUILD_CONFIGURATION -o /app/publis
       -p:UseCommercialLuckyPennyLibraries=$USE_COMMERCIAL_LUCKYPENNY_LIBS
 
 FROM base AS final
+USER root
 WORKDIR /app
+RUN mkdir -p /app/bootstrap && chown $APP_UID:$APP_UID /app/bootstrap
 
 # Copy published application
 COPY --from=publish /app/publish .
@@ -65,4 +68,5 @@ COPY --from=build /src/cerbos ./cerbos
 #   Licensing__AutoMapper__LicenseKey, Licensing__MediatR__LicenseKey (commercial builds only)
 # See docs/CONFIGURATION.md for full list of options
 
+USER $APP_UID
 ENTRYPOINT ["dotnet", "Explore.API.dll"]

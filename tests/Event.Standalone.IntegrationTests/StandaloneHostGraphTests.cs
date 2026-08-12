@@ -3,6 +3,7 @@
 
 using System.Net;
 using System.Net.Http.Headers;
+using System.Net.Http.Json;
 using System.Security.Claims;
 using Event.Web.BffHosting.Options;
 using Explore.API.Configuration;
@@ -212,6 +213,21 @@ public sealed class StandaloneHostGraphTests
         await Assert.That(atproto.BaseAddress).IsEqualTo(InProcessEventApiDispatcher.InternalBaseAddress);
         await Assert.That(adminResponse.StatusCode).IsEqualTo(HttpStatusCode.OK);
         await Assert.That(atprotoResponse.StatusCode).IsEqualTo(HttpStatusCode.OK);
+    }
+
+    [Test]
+    public async Task CombinedInternalApiMutationIsNotRejectedByBrowserAntiforgery()
+    {
+        await using var factory = new StandaloneWebApplicationFactory();
+        using var publicClient = factory.CreateClient();
+        var clientFactory = factory.Services.GetRequiredService<IHttpClientFactory>();
+        using var internalClient = clientFactory.CreateClient("AdminAuthority");
+
+        using var response = await internalClient.PostAsJsonAsync(
+            "api/InstanceOnboarding/validate-secret",
+            new { Secret = "test-secret" });
+
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Gone);
     }
 
     [Test]
