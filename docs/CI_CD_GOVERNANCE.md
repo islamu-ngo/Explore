@@ -195,6 +195,48 @@ Current visible exceptions are intentional debt, not blanket approvals:
 
 Product `package-lock.json` files outside excluded tooling directories fail until an npm license scanner is added. Deployable Dockerfiles fail if they introduce OS package-manager installs such as `apt-get install` or `apk add` before a container OS package license scanning path is documented.
 
+### Standalone And Optional Service License Boundary
+
+The minimum operational distribution is one `Event.Standalone` application
+image containing the ISLAMU Event API and Blazor BFF/UI, with SQLite
+persistence. It runs application, Data Protection, and embedded
+privacy-erasure migrations in-process. External database servers,
+`Event.MigrationService`, Redis or Valkey, Keycloak, Cerbos, MinIO/S3, SMTP or
+Mailpit, Svix, Weblate, Formbricks, Coop, Osprey, AI providers, federation
+services, and observability backends are optional deployment capabilities, not
+requirements of that standalone topology.
+
+This operational boundary does not erase the licenses of libraries and other
+third-party materials contained in the standalone image. The ISLAMU CLA and
+any alternative outgoing license cover only material ISLAMU owns or is
+separately authorized to license. Every third-party library, base image,
+container image, service, dataset, font, and asset remains governed by its
+respective license, public-domain status, or other applicable terms.
+Repository-owned integration code and deployment manifests do not relicense
+the software they reference.
+
+Release evidence must distinguish two delivery modes:
+
+1. **Operator-pulled optional service:** ISLAMU provides configuration or a
+   manifest, and the operator obtains the third-party artifact from its
+   upstream distributor. Documentation must identify the separate licensing
+   boundary and must not present the artifact as ISLAMU-licensed material.
+2. **ISLAMU-conveyed optional service:** ISLAMU mirrors, bundles, preloads, or
+   delivers the third-party binary or image, including in an air-gapped
+   package. Before release, retain its exact version and digest, upstream
+   license evidence, image/package SBOM, required notices and attributions,
+   corresponding-source or source-offer evidence where applicable,
+   modification provenance, and any commercial entitlement.
+
+The current dependency-license validator proves only its documented NuGet and
+repository guard scope; it is not a complete license audit of referenced
+Compose images or their transitive operating-system packages. A floating tag
+such as `latest` or an unqualified major tag is never sufficient commercial or
+offline redistribution evidence. Until a container-license inventory covers a
+third-party image, ISLAMU may reference it as an optional operator-pulled
+integration but must not represent a bundled copy as cleared for alternative-
+license distribution.
+
 ### Coverage Publication Policy
 
 Coverage collection is artifact-only. `Coverage Evidence` runs on schedule/manual dispatch and currently collects Cobertura coverage for the stable `Event.Domain.UnitTests` lane, retaining the coverage file, TRX, HTML report, build log, and test log as `coverage-evidence`.

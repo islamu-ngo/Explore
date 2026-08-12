@@ -478,6 +478,6 @@ If no intent matches, stop and propose a new one per `.claude/contract/README.md
 
 ### Context Maintenance
 
-- Benchmark scenarios live in `.claude/benchmarks/cold-start-tasks.yaml` to measure cold-start agent success.
+- Benchmark scenarios live in `.agents/benchmarks/cold-start-tasks.yaml` to measure cold-start agent success.
 
 If a rule in `.claude/rules/` appears to conflict with `QUICK_REFERENCE.md` or this file, the canonical doc wins and the rule file must be fixed per [`AGENTS.md`](../AGENTS.md) §4.

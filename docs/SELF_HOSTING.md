@@ -13,16 +13,19 @@ ABOUTME: Covers minimum viable stack, optional services, setup, migrations, heal
 
 ## Overview
 
-ISLAMU Event is designed for easy self-hosting. At its core, the platform
-requires the API, Blazor BFF, the one-shot `Event.MigrationService`, and one
-supported primary database:
+ISLAMU Event is designed for easy self-hosting. Its minimum operational stack
+is the standalone distribution:
 
-| Service | What It Does |
+| Component | What It Does |
 |---|---|
-| **Primary database** | PostgreSQL, SQLite, SQL Server, MariaDB, or MySQL |
-| **Migration Service** (`event-migrationservice`) | Applies the provider-specific application, Data Protection, and authority migrations before deployment |
-| **API** (`islamu-event-api`) | REST API, workers, health checks, metrics |
-| **Blazor BFF** (`islamu-event-ui`) | Web UI, embedded admin shell, and YARP reverse proxy to the API |
+| **`Event.Standalone`** | Runs the ISLAMU Event API, background workers, Blazor BFF/UI, health endpoints, and startup lifecycle in one process and one container |
+| **SQLite persistence** | Stores the primary application state and the separately governed embedded privacy-erasure authority in durable SQLite files; migrations run in-process before the HTTP listener starts |
+
+No external database server, migration helper container, identity provider,
+cache, object store, authorization PDP, SMTP server, webhook service, or other
+sidecar is required for this minimum topology. The split deployment is a
+separate packaging choice that runs `Event.MigrationService`, `Explore.API`,
+`Explore.Blazor`, and a selected database as distinct processes.
 
 ### Why Self-Host? (Data Sovereignty & Strategic Value)
 
@@ -40,7 +43,30 @@ Self-hosting ISLAMU Event delivers a superior alternative:
 > migrations in-process before its HTTP listener starts. The API separately owns
 > TickerQ operational migrations, and TickerQ is PostgreSQL-only.
 
-Everything else — Redis, Keycloak, Cerbos, MinIO, Svix, Coop, AI, federation — is **optional** and can be added when your deployment needs it.
+Everything outside `Event.Standalone` and its SQLite persistence — including
+server databases, Redis or Valkey, Keycloak, Cerbos, MinIO/S3, SMTP or Mailpit,
+Svix, Weblate, Formbricks, Coop, Osprey, AI providers, federation services, and
+external observability backends — is **optional** and can be added only when a
+deployment needs it.
+
+### Third-party software and license boundary
+
+The repository's AGPL-3.0-or-later license, and any alternative license offered
+by ISLAMU, cover only ISLAMU-owned or properly sublicensable material. SQLite,
+NuGet dependencies, base images, optional service images, datasets, fonts, and
+other third-party materials retain their respective licenses, public-domain
+status, and other applicable terms.
+An integration, Compose profile, image reference, or configuration example does
+not transfer ownership to ISLAMU or relicense the referenced software.
+
+Operators must review the exact version they select. Distributors that mirror,
+bundle, or deliver third-party binaries or container images must also satisfy
+the applicable attribution, notice, corresponding-source, patent, trademark,
+commercial-use, and redistribution obligations. An ISLAMU commercial agreement
+must identify those materials separately and must not restrict rights granted
+directly by their upstream licenses. See
+[CI/CD Governance](CI_CD_GOVERNANCE.md#standalone-and-optional-service-license-boundary)
+for the release evidence required before ISLAMU redistributes an optional image.
 
 Registration-provider support is provider-neutral and does not require an extra container unless an operator selects a self-hosted provider. Store provider API tokens and webhook secrets as tenant-scoped secret bindings (`registration_provider.api_token`, `registration_provider.webhook_secret`) with a bounded qualifier when multiple tenant connections use the same key. Approved browser/embed origins are managed as connection data through the API, not `.env` iframe snippets.
 
@@ -271,6 +297,22 @@ and Helm packaging are deferred; do not infer their support from this image.
 
 ## Architecture Overview
 
+The minimum standalone topology is deliberately small:
+
+```text
+Browser / API client
+        |
+        v
+Event.Standalone
+  - Blazor BFF/UI
+  - ISLAMU Event API and workers
+        |
+        v
+SQLite persistence
+```
+
+The following diagram describes the separate split topology:
+
 ```
                     ┌──────────────────────────────────────────────────┐
                     │              Browser / Clients                   │
@@ -321,9 +363,20 @@ and Helm packaging are deferred; do not infer their support from this image.
 
 ## Service Reference
 
-### Required Services
+### Standalone Minimum
 
-These services are the minimum to run ISLAMU Event:
+These are the only operational components required by the standalone
+distribution:
+
+| Component | Purpose | External process required? |
+|---|---|---|
+| `Event.Standalone` | Combined API, workers, Blazor BFF/UI, health, and in-process migration owner | One ISLAMU Event process |
+| SQLite persistence | Primary and embedded privacy-authority durable files | No; embedded in the standalone process |
+
+### Split Deployment Components
+
+The split packaging runs these components separately. They are not additional
+requirements of the standalone distribution:
 
 | Service | Compose Name | Purpose | Default Port |
 |---|---|---|---|
@@ -332,9 +385,10 @@ These services are the minimum to run ISLAMU Event:
 | API | `islamu-event-api` | REST API, workers, health, metrics | `7039:8080` |
 | Blazor BFF | `islamu-event-ui` | Web UI, admin shell, YARP proxy to API | `7002:8080` |
 
-### Default Services (started without profiles)
+### Compose Convenience Services (Optional Product Capabilities)
 
-These are included in the default `docker compose up` and are recommended for a functional deployment but not strictly required for the application to boot:
+These are included in the current split `docker compose up` convenience stack,
+but they are not requirements of ISLAMU Event or its standalone distribution:
 
 | Service | Compose Name | Purpose | Default Port | Notes |
 |---|---|---|---|---|
@@ -356,6 +410,8 @@ Enable these only when needed. Each has its own Compose profile:
 | `moderation` | `coop-db`, `coop-migrations`, `coop`, `coop-client` | Content moderation review queue |
 | `osprey` | `osprey` | Roost Osprey coordinator for signal evaluation |
 | `privacy-erasure-external` | `privacy-erasure-db` | External PostgreSQL topology for privacy-erasure authority |
+| `localization` | `weblate-db`, `weblate` | Optional translation-management service |
+| `formbricks` | Formbricks, Hub, Cube, PostgreSQL, and Valkey services | Optional registration-form mirror provider |
 
 ```bash
 # Example: add S3 storage
@@ -380,24 +436,25 @@ Choose the tier that matches your needs. The same application runs at every tier
 
 | Component | Required? |
 |---|---|
-| Supported primary database | ✅ Yes |
-| `Event.MigrationService` before API | ✅ Yes |
-| API | ✅ Yes |
-| Blazor BFF | ✅ Yes |
-| Keycloak | Recommended (or use external OIDC provider) |
-| Redis | Optional (not needed for single-node) |
-| SMTP / Mailpit | Optional (needed only for email features) |
-| Everything else | Not needed |
+| `Event.Standalone` API + Blazor BFF/UI process | ✅ Yes |
+| Durable SQLite volume | ✅ Yes |
+| External identity provider, including Keycloak | Optional; required only when interactive OIDC login is enabled |
+| Redis or Valkey | Optional |
+| SMTP or Mailpit | Optional; needed only for email delivery/testing |
+| External database server and every other service | Optional |
 
 ```bash
-# Minimal start — just the core + Keycloak for auth
-docker compose up -d postgres keycloak-db keycloak keycloak-init
-docker compose run --rm event-migrationservice
-docker compose up -d islamu-event-api islamu-event-ui
+# Minimal start — one application container and one durable SQLite volume
+docker build -t islamu/event-standalone -f src/Event.Standalone/Dockerfile .
+docker volume create event_standalone_data
+docker run --rm --name islamu-event-standalone \
+  --env-file .env \
+  --mount source=event_standalone_data,target=/app/data \
+  -p 8080:8080 islamu/event-standalone
 ```
 
 - **Deployment mode:** Single-tenant (default, `DEPLOYMENT_MODE` unset).
-- **Authorization:** Local RBAC (`AUTHORIZATION_PROVIDER` unset or `local`).
+- **Authorization:** Built-in local authorization (`AUTHORIZATION_PROVIDER` unset or `local`).
 - **Storage:** Local filesystem (no MinIO needed).
 - **Email:** Disabled or use Mailpit for testing.
 

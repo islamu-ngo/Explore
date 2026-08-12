@@ -59,7 +59,8 @@ The public ISLAMU instance is Islamic-focused, but the software itself is **purp
 ### Platform Owners & Self-Hosters
 
 - **🆓 100% Free & Open Source:** Licensed under AGPL-3.0-or-later. Fully Open Source, not open core !
-- **🐳 Deployment:** Docker ready; .NET Aspire for local development
+- **🐳 Minimal Standalone Deployment:** One `Event.Standalone` container combines the ISLAMU Event API and Blazor BFF/UI with SQLite persistence. No external service is required for this minimum operational topology
+- **🐳 Deployment:** Standalone Docker image, split Docker Compose topology, and .NET Aspire for local development
 - **💼 Multi-Tenancy:** Switch between single-tenant and SaaS modes at runtime without code changes — the most important adoption decision for self-hosters
 - **🛠️ White-Label Control:** Custom branding, domains, logos, navigation links, and policies per tenant
 - **🔧 Admin Hierarchy:** Instance admins, tenant admins, and organization admins with cascading settings
@@ -70,7 +71,7 @@ The public ISLAMU instance is Islamic-focused, but the software itself is **purp
 - **🗄️ Privacy Erasure Authority:** GDPR-compliant user data erasure with two topology options: **Co-located** (default — erasure authority shares the main database, simplest to operate) or **External Database** (a dedicated isolated PostgreSQL instance for stricter compliance separation). Operators choose topology at deployment time; the runtime erasure receipt flow and provider-work reconciliation behave identically in both modes.
 - **📬 Mailing List Integration (Listmonk):** Integrate with a self-hosted [Listmonk][listmonk-link] instance to sync attendee registrations as mailing-list subscribers. Connection, behavior, and privacy-erasure authority settings are independently configurable per tenant via grouped settings patches.
 - **📚 Comprehensive Docs:** Architecture, deployment, configuration, troubleshooting, and API reference
-- **🔐 Enterprise Security:** BFF pattern, Cerbos authorization, Infisical secrets, and HATEOAS REST API
+- **🔐 Enterprise Security:** BFF pattern, built-in local authorization, environment-first secrets, and HATEOAS REST API; Cerbos, Keycloak, and Infisical integrations remain optional
 - **🛡️ Absolute Data Sovereignty:** Self-host on your own infrastructure (Docker, Coolify, Aspire, On-Prem) with total control over user and attendee data.
 - **🎛️ ISLAMU Event Control Plane *(optional, commercial)*:** A separate commercial product for managed multi-instance operators. The Control Plane provides centralized fleet orchestration, automated instance provisioning, cross-instance telemetry, tenant quota management, and billing integration. ISLAMU Event itself remains fully self-hostable and open-source without it; the Control Plane is an add-on for operators running many instances at scale. (Still in development ! Not yet available)
 
@@ -303,11 +304,17 @@ You can find details [here][privacy-policy].
 
 This project is licensed under the terms of [GNU AGPL-3.0-or-later][license-link].
 
+### Standalone Core And Optional Services
+
+The minimum operational deployment is the single `Event.Standalone` image: the ISLAMU Event API and Blazor BFF/UI run in one process with SQLite persistence. Application, Data Protection, and embedded privacy-erasure migrations run in that process before it accepts traffic. PostgreSQL, SQL Server, MariaDB, MySQL, Redis, Keycloak, Cerbos, MinIO/S3, SMTP/Mailpit, Svix, Weblate, Formbricks, Coop, Osprey, AI providers, federation services, and external observability backends are optional capabilities, not requirements of the standalone core.
+
+The AGPL-3.0-or-later license and any alternative license offered by ISLAMU apply only to material that ISLAMU owns or is authorized to license. Third-party libraries, container images, services, datasets, fonts, and other assets retain their respective licenses, public-domain status, and other applicable terms. Including an optional integration or deployment manifest in this repository does not relicense that third-party material. See the [Self-Hosting Guide](docs/SELF_HOSTING.md#third-party-software-and-license-boundary) and [release dependency policy](docs/CI_CD_GOVERNANCE.md#standalone-and-optional-service-license-boundary).
+
 ### Contributor License Agreement
 
 ISLAMU Event inbound contributions are governed by the [ISLAMU Contributor License Agreement][cla-link] (CLA). Every non-bot contributor must sign the CLA before a pull request can be merged.
 
-**Why a CLA alongside AGPL-3.0-or-later?** ISLAMU Event remains publicly available under AGPL-3.0-or-later. The CLA gives the ISLAMU project steward an additional inbound license from contributors so the future nonprofit can also offer ISLAMU Event under alternative terms for sustainability, enterprise adoption, public-sector procurement, hosted-service, nonprofit, humanitarian, or special social-impact deployments.
+**Why a CLA alongside AGPL-3.0-or-later?** ISLAMU Event remains publicly available under AGPL-3.0-or-later. The CLA gives the ISLAMU project steward an additional inbound license from contributors so the future nonprofit can also offer ISLAMU-owned material under alternative terms for sustainability, enterprise adoption, public-sector procurement, hosted-service, nonprofit, humanitarian, or special social-impact deployments. It does not override any third-party license.
 
 The CLA is versioned. The current version and full legal text live in [`legal/CLA.md`][cla-link]. Signed contributor records (who, when, CLA version, pull request, comment) are stored in `signatures/v1.0/cla.json` on the `develop` branch and are committed automatically by the CLA workflow.
 

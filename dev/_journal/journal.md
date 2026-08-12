@@ -924,3 +924,40 @@ When startup is blocked by data that violates an earlier migration, do not try t
 - [ ] Stays in journal only (one-off debugging lesson)
 
 ---
+
+[2026-08-12 Europe/Brussels] — Clean-room governance dry run preserved a source-free implementation boundary
+
+**Context**: The new `ip-clean-room-governance` intent, canonical IP policy, and `ip-clean-room` skill required a dry run before being treated as usable context engineering. The exercise used a hypothetical waitlist-promotion feature and is not a roadmap commitment or production design.
+
+**Symptom / Observation**: A clean-room record is not auditable if it merely says “implemented independently.” A reviewer needs a source register, functional-only handoff, context-separation attestation, SSO review, dependency disposition, and an explicit decision without retaining the material the boundary is intended to exclude.
+
+**Root Cause**: The repository already protected inbound rights through the CLA and dependency metadata through CI, but it had no reusable source-free handoff or AFC/SSO evidence format connecting external observation to implementation review.
+
+**Resolution**: Executed this source-free dry run using `.agents/skills/ip-clean-room/resources/audit-record-template.md`:
+
+- **Source register**: synthetic benchmark fixtures A, B, and C created solely for this workflow test; no external product, source code, documentation excerpt, screenshot, or asset was accessed or retained.
+- **Functional specification**: when capacity is full, a user may request a waitlist position; an authorized organizer may offer a newly available place; an offer has an expiry; accepting an active offer is idempotent; expired or superseded offers cannot consume capacity; notifications contain no attendee-private data.
+- **Clean-room attestation**: the hypothetical implementation handoff contained only the preceding behavior and constraints. No code, snippet, AST, decompiled artifact, SQL, migration, test, comment, prose, or asset was supplied. An implementation would start in a fresh context.
+- **Independent design / SSO review**: a future implementation would derive its aggregate/state transitions from ISLAMU domain rules, execute mutations through Application-owned CQRS handlers, persist through repository/EF Core boundaries, expose organizer actions only through server-authored HAL links, and use the existing outbox for notifications. The review found no source expression to compare because the fixtures were synthetic; decision `pass for workflow validation only`, not approval to implement the feature.
+- **Dependency decision**: none. The dry run adds no runtime, build, test, image, asset, or dataset dependency.
+- **Evidence**: `docs/legal/IP_GOVERNANCE.md`, `.agents/skills/ip-clean-room/SKILL.md`, `.claude/rules/ip-clean-room.md`, and `.claude/contract/intents.yaml`.
+
+**Why This Matters for Future Work**: Future externally informed work can now provide evidence strong enough to reproduce the clean-room decision while keeping source expression out of the repository and implementation context. Real research must replace the synthetic fixtures with titles/URLs, access dates, access basis, and observed facts only.
+
+**References**:
+- `docs/legal/IP_GOVERNANCE.md`
+- `.agents/skills/ip-clean-room/SKILL.md`
+- `.agents/skills/ip-clean-room/resources/audit-record-template.md`
+- `.agents/skills/ip-clean-room/resources/sso-and-provenance-review.md`
+- `.claude/rules/ip-clean-room.md`
+- `.claude/contract/intents.yaml`
+- `.ci/scripts/validate-dependency-license-policy.cs`
+
+**Promotion Consideration**:
+- [x] Promoted in this change to `docs/QUICK_REFERENCE.md` (global invariant)
+- [x] Promoted in this change to `.claude/rules/ip-clean-room.md`
+- [x] Promoted in this change to `.agents/skills/ip-clean-room/SKILL.md`
+- [ ] Candidate for ADR / `MAJOR_DECISIONS.md`
+- [ ] Stays in journal only (one-off debugging lesson)
+
+---

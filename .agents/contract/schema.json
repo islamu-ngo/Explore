@@ -1,0 +1,158 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://islamu.event/.agents/contract/schema.json",
+  "title": "Contribution Contract Intents",
+  "description": "Canonical schema for intents.yaml. Enforced by Event.Architecture.Tests.AgentContextIntentManifestTests. Do not relax required fields without updating the matching test.",
+  "type": "object",
+  "required": ["version", "intents"],
+  "additionalProperties": false,
+  "properties": {
+    "version": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Schema major version. Bumped only when backward-incompatible changes are made."
+    },
+    "intents": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/intent" }
+    }
+  },
+  "$defs": {
+    "intent": {
+      "type": "object",
+      "required": [
+        "id",
+        "title",
+        "category",
+        "triggers",
+        "must_read_docs",
+        "load_skills",
+        "load_rules",
+        "paths_in_scope",
+        "minimum_tests",
+        "docs_to_update",
+        "unique_acceptance",
+        "forbidden_without_approval"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9]*(-[a-z0-9]+)*$",
+          "description": "Kebab-case slug. Unique within intents.yaml."
+        },
+        "title": {
+          "type": "string",
+          "minLength": 8,
+          "description": "One-line human-readable description."
+        },
+        "category": {
+          "type": "string",
+          "enum": [
+            "api",
+            "application",
+            "persistence",
+            "domain",
+            "blazor",
+            "auth",
+            "authorization",
+            "infrastructure",
+            "federation",
+            "cross-cutting"
+          ],
+          "description": "Broad grouping. Restricted enum so routing/reporting stays predictable."
+        },
+        "triggers": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "minLength": 3 },
+          "description": "Phrase patterns used to classify an incoming request to this intent."
+        },
+        "must_read_docs": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^(AGENTS\\.md|(?:docs|dev|schemas)/.+\\.md|\\.agents/skills/_SKILL_SCHEMA\\.md)$"
+          },
+          "description": "Repo-relative paths. AgentContextLinkTests verifies each exists."
+        },
+        "load_skills": {
+          "type": "array",
+          "items": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" },
+          "description": "Skill slugs under .agents/skills/."
+        },
+        "load_rules": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^\\.agents/rules/[a-z0-9-]+\\.md$"
+          },
+          "description": "Rule file paths under .agents/rules/. AgentContextLinkTests verifies each exists."
+        },
+        "paths_in_scope": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "description": "Glob allow-list of files the agent may modify for this intent."
+        },
+        "paths_forbidden": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "description": "Glob deny-list. Takes precedence over paths_in_scope when a file matches both."
+        },
+        "minimum_tests": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[A-Z][A-Za-z0-9.]*Tests?$"
+          },
+          "description": "Test project names (e.g. Event.API.IntegrationTests). AgentContextIntentManifestTests verifies each project exists."
+        },
+        "docs_to_update": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^((docs|dev|schemas)/.+\\.md|\\.agents/contract/intents\\.yaml|\\.agents/skills/_SKILL_SCHEMA\\.md)$"
+          },
+          "description": "Docs that SHOULD be updated in the same PR if the intent causes user-visible changes."
+        },
+        "unique_acceptance": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "minLength": 8 },
+          "description": "Intent-specific acceptance criteria that distinguish this change from related intents."
+        },
+        "pr_checklist": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "minLength": 8 },
+          "description": "Concrete, verifiable PR checklist items specific to this intent."
+        },
+        "forbidden_without_approval": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 8 },
+          "description": "Actions that require explicit user approval. If the change requires one of these, stop and ask."
+        },
+        "related_agents": {
+          "type": "array",
+          "items": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" },
+          "description": "Agents under .agents/agents/ that may be invoked for this intent."
+        },
+        "related_intents": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9]*(-[a-z0-9]+)*$"
+          },
+          "description": "Cross-references to sibling intents by id."
+        },
+        "verification_commands": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "minLength": 8 },
+          "description": "Shell commands the agent must run before declaring the change complete."
+        }
+      }
+    }
+  }
+}

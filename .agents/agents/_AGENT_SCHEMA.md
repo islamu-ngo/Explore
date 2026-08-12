@@ -1,0 +1,136 @@
+<!-- ABOUTME: Canonical schema every subagent file in this repo must satisfy. -->
+<!-- ABOUTME: Defines the required structure and content boundaries for repository subagent files. -->
+
+# Agent Schema (Authoritative)
+
+> Every `.agents/agents/*.md` (excluding `README.md`, `_AGENT_SCHEMA.md`) MUST conform to this schema.
+
+## 1. File Location
+
+```
+.agents/agents/<kebab-case-name>.md
+```
+
+One file per agent. No subfolders. No resources directory — agents are intentionally **small and rereadable**.
+
+## 2. Required YAML Frontmatter
+
+```yaml
+---
+name: <kebab-case>           # Must match filename (without .md)
+description: <one sentence>  # What this agent does + when to invoke it
+type: diagnostic | review | implementation | domain | research
+enforcement: suggest | inform
+priority: critical | high | medium | low
+tools: Read, Write, Edit, Bash, Glob, Grep   # Whitelist exact tools
+---
+```
+
+All six fields required. `tools` is a whitelist — the agent may not use tools outside the list.
+
+## 3. Required Sections (in order)
+
+### `## Purpose` (≤2 sentences)
+
+Role-scoped statement. No stack context, no project overview. Example: "Fixes 401/403 authentication bugs in BFF and API by tracing the token forwarding chain and comparing against the expected OIDC/JWT contract."
+
+### `## When to Use`
+
+Bulleted list. Triggers: issue categories, error signatures, code paths. If a task matches any line, this agent is a candidate.
+
+### `## When NOT to Use`
+
+Bulleted list. Explicit negatives. Example: "Not for general build errors — use `quality-verifier-agent`."
+
+### `## Mandatory Reads`
+
+Numbered list. Links to the canonical artifacts the agent MUST consult every invocation:
+- Always include: `AGENTS.md`
+- Always include: `docs/QUICK_REFERENCE.md`
+- Plus role-specific files (agent-specific docs, skills, rules).
+
+Every link MUST resolve.
+
+### `## Allowed Tools`
+
+Must mirror the `tools` list from frontmatter. Describe why each tool is allowed.
+
+### `## Forbidden Moves`
+
+Bulleted list. Explicit "never do this" items. Example: "Never modify files outside the intent's `paths_in_scope`." Example: "Never bypass `dotnet build` in favor of IDE build output."
+
+### `## Output Contract`
+
+Structured. What the agent returns to the orchestrator. Example:
+
+```
+- Summary: <2-5 sentences>
+- Evidence: <commands run, files read, findings>
+- Diffs: <applied or proposed>
+- Next actions: <for the user or next agent>
+```
+
+### `## Done Criteria`
+
+Numbered list. Objective, testable conditions. Example:
+1. `dotnet build --configuration Release` exits 0.
+2. Target test project passes locally.
+3. No new files created outside intent scope.
+
+### `## Anti-Patterns`
+
+Bulleted list. Failure modes this agent frequently produces if unchecked. Each item is prescriptive.
+
+### `## Related Agents`
+
+Bulleted cross-reference to sibling agents. Minimum 1 entry.
+
+## 4. File Length
+
+- **Target**: 50–120 lines.
+- **Hard max**: 160 lines. Agents are small and rereadable by design.
+
+## 5. Forbidden Content (DUPLICATION GUARD)
+
+Do not re-introduce any of the following in `.agents/agents/*.md`:
+
+- Stack overview ("This repo uses .NET 10 + Blazor ...").
+- Repetition of critical rules from `AGENTS.md` §5.
+- Verbatim test-project lists from `AGENTS.md` §7.
+- Verbatim 13-rule non-inferable list.
+- ASCII diagrams.
+
+Rule: If the content is in `AGENTS.md`, `docs/QUICK_REFERENCE.md`, or `docs/GOVERNANCE.md`, **link** — don't copy.
+
+Detection strategy: line-hash Jaccard similarity ≥ 0.85 between any two agent files on ≥ 15 consecutive lines triggers failure.
+
+## 6. Authoring Checklist
+
+Confirm that each agent file has:
+- YAML frontmatter with all 6 required fields.
+- All 10 required sections present in order.
+- `Mandatory Reads` contains links to at least `AGENTS.md` and `docs/QUICK_REFERENCE.md`.
+- Total line count ≤ 160.
+
+Confirm that agent files do not contain:
+- Line-hash Jaccard similarity across agent files.
+- Pattern-match against forbidden content (stack overview markers, etc.).
+
+## 7. Canonical Agent Registry
+
+The repository subagent portfolio is consolidated into 5 canonical role agents:
+
+- `architect-agent.md` — Strategic architecture, ADRs, Aspire orchestration, IP clean-room, task sequencing.
+- `backend-engineer-agent.md` — Domain, Application, Persistence, CQRS, EF Core, specifications, outbox.
+- `presentation-engineer-agent.md` — API controllers, HATEOAS policies, Blazor UI, HAL link affordance gating, BFF proxy.
+- `quality-verifier-agent.md` — TUnit tests, architecture verification, Release build compliance, CI diagnostics.
+- `librarian-agent.md` — Documentation maintenance, clean-room research, AI inventory docs, durable journal synthesis.
+
+*Note: All legacy v1 utility agents (`auth-route-debugger`, `auto-error-resolver`, etc.) are formally deprecated and purged in favor of these role-scoped domain agents.*
+
+## Related
+
+- Skill schema → [`.agents/skills/_SKILL_SCHEMA.md`](../skills/_SKILL_SCHEMA.md)
+- Contribution contract → [`.agents/contract/README.md`](../contract/README.md)
+- Documentation style → [`docs/DOCUMENTATION_STYLE_GUIDE.md`](../../docs/DOCUMENTATION_STYLE_GUIDE.md)
+

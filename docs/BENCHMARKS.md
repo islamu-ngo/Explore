@@ -7,14 +7,14 @@ ABOUTME: Defines run commands, interpretation rules, and limits so benchmark res
 > **Status:** Mixed
 > **Owner:** Contributor Experience
 > **Last Verified:** 2026-05-28
-> **Source Anchors:** `Event.Benchmarks/`, `Event.Benchmarks/Configuration/BenchmarkConfig.cs`, `Event.Benchmarks/Program.cs`, `Directory.Packages.props`, `.claude/benchmarks/README.md`, `dev/pause/performance-optimization/performance-optimization-context.md`
+> **Source Anchors:** `Event.Benchmarks/`, `Event.Benchmarks/Configuration/BenchmarkConfig.cs`, `Event.Benchmarks/Program.cs`, `Directory.Packages.props`, `.agents/benchmarks/README.md`, `dev/pause/performance-optimization/performance-optimization-context.md`
 
 This repository has two benchmark families with different goals:
 
 | Benchmark Family | Purpose | Primary Source |
 |---|---|---|
 | Runtime microbenchmarks | Compare hot-path implementation choices inside the product codebase. | `Event.Benchmarks/` |
-| Cold-start agent benchmarks | Evaluate whether a fresh AI agent can make architecture-compliant changes using only repo context. | `.claude/benchmarks/` |
+| Cold-start agent benchmarks | Evaluate whether a fresh AI agent can make architecture-compliant changes using only repo context. | `.agents/benchmarks/` |
 
 Do not mix these result types. Runtime benchmark numbers are controlled-run microbenchmark evidence. Cold-start benchmark results are contribution-context evidence.
 
@@ -107,9 +107,9 @@ Use [OPERATIONS.md](OPERATIONS.md), [TROUBLESHOOTING.md](TROUBLESHOOTING.md), an
 
 ## Cold-Start Agent Benchmarks
 
-`.claude/benchmarks/README.md` documents a separate manual benchmark suite for AI-agent contribution quality. Those scenarios test whether a fresh agent can classify intent, read required context, stay in scope, run expected verification, and satisfy acceptance criteria.
+`.agents/benchmarks/README.md` documents a separate manual benchmark suite for AI-agent contribution quality. Those scenarios test whether a fresh agent can classify intent, read required context, stay in scope, run expected verification, and satisfy acceptance criteria.
 
-Cold-start benchmark results should be recorded under `dev/_journal/benchmark-reports/` as described by `.claude/benchmarks/README.md`. They are not runtime performance measurements and should not be cited as product throughput or latency evidence.
+Cold-start benchmark results should be recorded under `dev/_journal/benchmark-reports/` as described by `.agents/benchmarks/README.md`. They are not runtime performance measurements and should not be cited as product throughput or latency evidence.
 
 ## Related Documentation
 
@@ -117,4 +117,4 @@ Cold-start benchmark results should be recorded under `dev/_journal/benchmark-re
 - [TROUBLESHOOTING.md](TROUBLESHOOTING.md) - issue diagnosis and practical recovery.
 - [TESTING.md](TESTING.md) - test project and verification command policy.
 - [GOVERNANCE.md](GOVERNANCE.md) - engineering governance and context-system benchmark references.
-- [../.claude/benchmarks/README.md](../.claude/benchmarks/README.md) - cold-start agent benchmark procedure.
+- [../.agents/benchmarks/README.md](../.agents/benchmarks/README.md) - cold-start agent benchmark procedure.

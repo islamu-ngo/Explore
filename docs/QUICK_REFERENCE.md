@@ -28,6 +28,8 @@ ABOUTME: Focuses on non-inferable constraints and project-specific behavior.
 22. Normalized lookup DTOs expose `*Id`, `*Code`, and `*Name`; do not expose persisted enum wrappers in API contracts.
 23. **Blazor is fully isolated from API implementation layers**: `Explore.Blazor`, `Explore.Blazor.Client`, and their tests must not reference Domain, Application, Infrastructure, or Persistence. Backend communication and backend/domain models come only from the generated `IEventApiClient` contract.
 24. **EF Core migrations and model snapshots are generated artifacts**: Never hand-edit them. Correct the entity/configuration or migration-generation extension, delete the unapplied development migration, and regenerate it with `dotnet ef migrations`.
+25. **External behavior research is clean-room only**: Implementation context may contain neutral functional requirements and repository-native design material, never third-party source, snippets, ASTs, SQL, migrations, tests, comments, or assets. Independently design the implementation's structure, sequence, and organization and record provenance under [`docs/legal/IP_GOVERNANCE.md`](legal/IP_GOVERNANCE.md).
+26. **Dependencies must preserve outbound licensing options**: Do not add a library, package, image, asset, or generated component whose terms prevent ISLAMU-owned material from being offered under any outbound license the Project Steward may select under the CLA. Third-party material always retains its own terms; commercial or exceptional use requires documented approval for each distribution mode.
 
 ## Multi-Tenancy Reminder
 Runtime tenant resolution:

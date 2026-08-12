@@ -101,6 +101,6 @@ New skills MUST NOT be added to the skip list. If a new skill needs more depth t
 
 ## Related
 
-- Agent schema → [`.claude/agents/_AGENT_SCHEMA.md`](../../.claude/agents/_AGENT_SCHEMA.md)
-- Intent registry → [`.claude/contract/intents.yaml`](../../.claude/contract/intents.yaml)
+- Agent schema → [`.agents/agents/_AGENT_SCHEMA.md`](../agents/_AGENT_SCHEMA.md)
+- Intent registry → [`.agents/contract/intents.yaml`](../contract/intents.yaml)
 - Documentation style → [`docs/DOCUMENTATION_STYLE_GUIDE.md`](../../docs/DOCUMENTATION_STYLE_GUIDE.md)

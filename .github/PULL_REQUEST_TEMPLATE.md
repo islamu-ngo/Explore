@@ -1,3 +1,6 @@
+<!-- ABOUTME: Pull request template for scope, verification, legal status, and clean-room provenance evidence. -->
+<!-- ABOUTME: Requires contributors to record docs, release, CLA, dependency, and AI handoff impact. -->
+
 ## Summary
 
 -
@@ -53,6 +56,15 @@ I have read and agree to the ISLAMU Event Contributor License Agreement v1.0, an
 To re-run the CLA check after signing, post a comment with `recheck`.
 
 Details:
+
+## IP / Clean-Room / Dependency Provenance
+
+- [ ] Not externally informed and no dependency changed
+- [ ] Externally informed work used only a sanitized functional specification; provenance and independent SSO review are linked below
+- [ ] New or changed dependencies passed the repository license audit and preserve every intended ISLAMU outbound licensing path, or separate-license approval is linked below
+- [ ] No third-party source, snippet, AST, SQL, migration, test, comment, or asset was copied or supplied to the implementation context
+
+Evidence:
 
 ## AI Agent / Dev Docs Handoff
 

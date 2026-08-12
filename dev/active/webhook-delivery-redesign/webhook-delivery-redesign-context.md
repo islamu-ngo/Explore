@@ -41,7 +41,7 @@ status, classification, and owner boundary.
 - The three clean-at-start governance files changed by todo 0.1 are excluded from
   the 134-path baseline and remain separately attributable:
   `.claude/contract/intents.yaml`, `.claude/contract/schema.json`, and
-  `.claude/benchmarks/cold-start-tasks.yaml`.
+  `.agents/benchmarks/cold-start-tasks.yaml`.
 - The current canonical Release baseline is red with 18 unique in-scope webhook
   compiler errors: 15 in `Explore.Persistence` and 3 in
   `Explore.Infrastructure`. The older WebAssembly task-host receipt is superseded.

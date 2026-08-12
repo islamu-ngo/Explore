@@ -23,6 +23,7 @@ Start with [README.md](../README.md) if you are new to the project. Use this pag
 | Integrate with the API | [API_COOKBOOK.md](API_COOKBOOK.md) | [API.md](API.md), [WEBHOOKS.md](WEBHOOKS.md), [INTEGRATIONS.md](INTEGRATIONS.md), [API_CHANGELOG.md](API_CHANGELOG.md), [SECURITY-MODEL.md](SECURITY-MODEL.md) |
 | Change authorization or Cerbos behavior | [AUTHORIZATION.md](AUTHORIZATION.md) | [AUTHORIZATION_PATTERNS.md](AUTHORIZATION_PATTERNS.md), [SECURITY-MODEL.md](SECURITY-MODEL.md), [OPERATIONS.md](OPERATIONS.md) |
 | Contribute code or docs | [FIRST_CONTRIBUTION.md](FIRST_CONTRIBUTION.md) | [CONTRIBUTING.md](CONTRIBUTING.md), [QUICK_REFERENCE.md](QUICK_REFERENCE.md), [TESTING.md](TESTING.md) |
+| Research external behavior or assess a dependency license | [IP Governance](legal/IP_GOVERNANCE.md) | [CLA](../legal/CLA.md), [Dual Versioning](DUAL_VERSIONING.md), [CI/CD Governance](CI_CD_GOVERNANCE.md) |
 | Work on Blazor UI | [BLAZOR.md](BLAZOR.md) | [DESIGN_SYSTEM.md](DESIGN_SYSTEM.md), [ACCESSIBILITY.md](ACCESSIBILITY.md), [RENDER_POLICIES.md](RENDER_POLICIES.md) |
 | Use an AI coding agent | [../AGENTS.md](../AGENTS.md) | [../.claude/contract/intents.yaml](../.claude/contract/intents.yaml), [QUICK_REFERENCE.md](QUICK_REFERENCE.md), [../dev/_journal/README.md](../dev/_journal/README.md) |
 
@@ -59,6 +60,7 @@ Start with [README.md](../README.md) if you are new to the project. Use this pag
 - [CI_CD_RUNBOOKS.md](CI_CD_RUNBOOKS.md) - maintainer runbooks for rerunning CI/CD gates without bypassing controls.
 - [legal/CLA.md](../legal/CLA.md) - active ISLAMU Event contributor license agreement.
 - [legal/CONTRIBUTION_GOVERNANCE.md](legal/CONTRIBUTION_GOVERNANCE.md) - CLA legal contribution decision record and automation threat model.
+- [legal/IP_GOVERNANCE.md](legal/IP_GOVERNANCE.md) - clean-room research, source isolation, dependency-license compatibility, and audit evidence policy.
 - [NAMING_CONVENTIONS.md](NAMING_CONVENTIONS.md) - naming rules for entities, CQRS, services, tests.
 - [TEMPLATE_GLOSSARY.md](TEMPLATE_GLOSSARY.md) - placeholder syntax used in generic templates.
 - [FIRST_CONTRIBUTION.md](FIRST_CONTRIBUTION.md) - shortest safe path for docs-only and small-bug PRs.
@@ -70,12 +72,12 @@ Start with [README.md](../README.md) if you are new to the project. Use this pag
 
 ## AI Agent Contribution Context
 - [../AGENTS.md](../AGENTS.md) - tool-neutral entrypoint, Contribution Contract, rule authority, cold-start flow.
-- [../.claude/contract/README.md](../.claude/contract/README.md) - Contribution Contract (eight questions every change must answer).
-- [../.claude/contract/intents.yaml](../.claude/contract/intents.yaml) - intent → context map (paths, rules, skills, tests, docs).
-- [../.claude/rules/README.md](../.claude/rules/README.md) - path-scoped rule files auto-loaded by editing scope.
+- [../.agents/contract/README.md](../.agents/contract/README.md) - Contribution Contract (eight questions every change must answer).
+- [../.agents/contract/intents.yaml](../.agents/contract/intents.yaml) - intent → context map (paths, rules, skills, tests, docs).
+- [../.agents/rules/README.md](../.agents/rules/README.md) - path-scoped rule files auto-loaded by editing scope.
 - [../.agents/skills/_SKILL_SCHEMA.md](../.agents/skills/_SKILL_SCHEMA.md) - schema every migrated `SKILL.md` follows.
-- [../.claude/agents/_AGENT_SCHEMA.md](../.claude/agents/_AGENT_SCHEMA.md) - schema every subagent file follows.
-- [../.claude/benchmarks/README.md](../.claude/benchmarks/README.md) - cold-start agent benchmark scenarios.
+- [../.agents/agents/_AGENT_SCHEMA.md](../.agents/agents/_AGENT_SCHEMA.md) - schema every subagent file follows.
+- [../.agents/benchmarks/README.md](../.agents/benchmarks/README.md) - cold-start agent benchmark scenarios.
 - [../dev/_journal/README.md](../dev/_journal/README.md) - durable findings log + promotion rules.
 
 ## Runtime And Operations

@@ -37,6 +37,8 @@ Upon incorporation and acceptance by the ISLAMU nonprofit, the Trustee may assig
 
 A communication is not a Contribution if You conspicuously mark it in writing as `Not a Contribution`.
 
+**Third-Party Materials** means software, libraries, container images, services, datasets, fonts, media, documentation, or other material whose rights are owned or controlled by someone other than You or the Project Steward.
+
 **You** means the individual contributor and, if applicable, the organization on whose behalf the Contribution is submitted.
 
 **Organization** means the ISLAMU nonprofit organization, once formally incorporated, and its successors and assigns.
@@ -50,6 +52,14 @@ A communication is not a Contribution if You conspicuously mark it in writing as
 ## Copyright License Grant
 
 Subject to this Agreement, You grant to the Project Steward and to recipients of software, services, or materials distributed or provided by or on behalf of the Project Steward a perpetual, worldwide, non-exclusive, no-charge, royalty-free, irrevocable, transferable, and sublicensable copyright license to reproduce, use, execute, host, operate, modify, prepare derivative works of, publicly display, publicly perform, publish, distribute, make available, sublicense, relicense, sell, offer for sale, and otherwise exploit Your Contributions and derivative works thereof, as part of ISLAMU Event or related offerings, under any license or commercial terms selected by the Project Steward.
+
+## Third-Party Materials And Outbound Licensing
+
+This Agreement grants rights only in Contributions and other rights that You own or are authorized to license. It does not grant, expand, restrict, supersede, or relicense any rights in Third-Party Materials.
+
+ISLAMU Event may interoperate with, reference, or be distributed alongside Third-Party Materials. Each Third-Party Material retains its respective license, public-domain status, or other applicable terms. Any alternative license or commercial terms selected by the Project Steward apply only to Contributions and other material the Project Steward owns or is separately authorized to license. Nothing in those alternative terms may be interpreted as removing rights that a recipient receives directly under an applicable third-party license or public-domain dedication.
+
+You must identify Third-Party Materials included in or required by a Contribution and provide the available source, license, notice, provenance, and modification information needed for the Project Steward to evaluate and comply with their terms. Signing this Agreement does not cure missing authority or make Third-Party Materials relicensable by the Project Steward.
 
 ## Patent License Grant
 

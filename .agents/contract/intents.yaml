@@ -1,0 +1,1265 @@
+# ABOUTME: Canonical intent catalog for the Contribution Contract.
+# ABOUTME: Each entry is a machine-readable answer to the 8 contract questions for one category of change.
+
+version: 1
+
+intents:
+  - id: add-get-endpoint
+    title: "Add a new GET endpoint to the public API"
+    category: api
+    triggers:
+      - "add a new GET endpoint"
+      - "expose a new read endpoint"
+      - "new query endpoint"
+    must_read_docs:
+      - docs/API.md
+      - docs/QUICK_REFERENCE.md
+    load_skills:
+      - cqrs-mediatr-guidelines
+    load_rules:
+      - .claude/rules/api-controllers.md
+    paths_in_scope:
+      - "src/Explore.API/Controllers/**/*.cs"
+      - "src/Explore.Application/Features/**/Queries/**/*.cs"
+    minimum_tests:
+      - Event.API.IntegrationTests
+      - Event.Architecture.Tests
+    docs_to_update:
+      - docs/API_CHANGELOG.md
+    unique_acceptance:
+      - "Output cache policy applied if appropriate"
+      - "HAL link policy updated if response is a resource"
+    forbidden_without_approval:
+      - "Removing or renaming an existing endpoint"
+    related_agents:
+      - architect-agent
+      - presentation-engineer-agent
+      - quality-verifier-agent
+
+  - id: add-write-endpoint
+    title: "Add a new POST/PUT/PATCH/DELETE endpoint to the public API"
+    category: api
+    triggers:
+      - "add a new POST endpoint"
+      - "add a create endpoint"
+      - "add an update endpoint"
+      - "add a delete endpoint"
+    must_read_docs:
+      - docs/API.md
+      - docs/QUICK_REFERENCE.md
+      - docs/SECURITY-MODEL.md
+    load_skills:
+      - cqrs-mediatr-guidelines
+      - auth-patterns
+    load_rules:
+      - .claude/rules/api-controllers.md
+    paths_in_scope:
+      - "src/Explore.API/Controllers/**/*.cs"
+      - "src/Explore.Application/Features/**/Commands/**/*.cs"
+    minimum_tests:
+      - Event.API.IntegrationTests
+      - Event.Architecture.Tests
+    docs_to_update:
+      - docs/API_CHANGELOG.md
+    unique_acceptance:
+      - "Rate limiter policy applied"
+      - "Idempotency considered"
+      - "HAL link policy updated to expose/hide this affordance"
+    forbidden_without_approval:
+      - "Removing [Authorize] from a write endpoint"
+    related_agents:
+      - architect-agent
+      - presentation-engineer-agent
+      - backend-engineer-agent
+      - quality-verifier-agent
+
+  - id: add-hal-link
+    title: "Add or modify a HAL link/affordance on an existing resource"
+    category: api
+    triggers:
+      - "add a HAL link"
+      - "expose edit affordance"
+      - "add hateoas link"
+    must_read_docs:
+      - docs/API.md
+      - docs/QUICK_REFERENCE.md
+    load_skills: []
+    load_rules:
+      - .claude/rules/api-hateoas.md
+    paths_in_scope:
+      - "src/Explore.API/Hateoas/**/*.cs"
+      - "src/Explore.Blazor.Client/**/*.razor"
+    minimum_tests:
+      - Event.API.IntegrationTests
+      - Explore.Blazor.Client.Tests
+    docs_to_update: []
+    unique_acceptance:
+      - "Separate detail and collection policies per entity (do not reuse)"
+      - "Authorization check encoded in the policy"
+    forbidden_without_approval:
+      - "Gating a UI button by role/claim instead of HAL link presence"
+    related_agents:
+      - presentation-engineer-agent
+      - quality-verifier-agent
+
+  - id: add-cqrs-handler
+    title: "Add a new Command or Query handler in the Application layer"
+    category: application
+    triggers:
+      - "add a new handler"
+      - "new CQRS handler"
+    must_read_docs:
+      - docs/ARCHITECTURE.md
+      - docs/QUICK_REFERENCE.md
+    load_skills:
+      - cqrs-mediatr-guidelines
+    load_rules:
+      - .claude/rules/application-layer.md
+    paths_in_scope:
+      - "src/Explore.Application/Features/**/*.cs"
+    minimum_tests:
+      - Event.Application.UnitTests
+      - Event.Architecture.Tests
+    docs_to_update: []
+    unique_acceptance:
+      - "Pipeline behaviors respected (validation, logging, caching, idempotency)"
+    forbidden_without_approval:
+      - "Cross-feature coupling (handler reaching into another feature's internals)"
+    related_agents:
+      - backend-engineer-agent
+      - quality-verifier-agent
+
+  - id: add-ef-migration
+    title: "Generate an Entity Framework Core migration from model changes"
+    category: persistence
+    triggers:
+      - "add an EF migration"
+      - "schema change"
+    must_read_docs:
+      - docs/QUICK_REFERENCE.md
+      - docs/DOMAIN.md
+    load_skills:
+      - dotnet-efcore-guidelines
+    load_rules:
+      - .claude/rules/efcore-migrations.md
+    paths_in_scope:
+      - "src/Explore.Persistence/Migrations/**/*.cs"
+      - "src/Explore.Domain/**/*.cs"
+    minimum_tests:
+      - Event.Persistence.IntegrationTests
+      - Event.Architecture.Tests
+    docs_to_update:
+      - schemas/islamu-event.md
+    unique_acceptance:
+      - "Migration and model snapshot are produced by dotnet ef; no generated file is hand-edited"
+      - "Incorrect generated output is fixed in entities, configurations, DbContext setup, lookup seeding, or the migration-generation extension before regeneration"
+      - "Migration is idempotent and reversible"
+      - "Stable enum IDs and codes stay synchronized with idempotent LookupTableSeeder repair and migration-local InsertData before dependent backfills"
+    forbidden_without_approval:
+      - "Manual edits to generated migration or model-snapshot files"
+      - "Destructive Down() that silently loses data"
+    related_agents:
+      - backend-engineer-agent
+      - quality-verifier-agent
+
+  - id: update-repository-query
+    title: "Modify an existing repository query or specification"
+    category: persistence
+    triggers:
+      - "update repository query"
+      - "change specification"
+    must_read_docs:
+      - docs/QUICK_REFERENCE.md
+    load_skills:
+      - dotnet-efcore-guidelines
+    load_rules:
+      - .claude/rules/efcore-persistence.md
+    paths_in_scope:
+      - "src/Explore.Persistence/Repositories/**/*.cs"
+    minimum_tests:
+      - Event.Persistence.IntegrationTests
+      - Event.Architecture.Tests
+    docs_to_update: []
+    unique_acceptance:
+      - "EventQuerySpecification mutations create new instances"
+      - "Navigation loading is explicit"
+    forbidden_without_approval:
+      - "IgnoreQueryFilters() without a test proving safety"
+    related_agents:
+      - backend-engineer-agent
+      - quality-verifier-agent
+
+  - id: blazor-component-affordance
+    title: "Toggle a Blazor component's mutation affordance"
+    category: blazor
+    triggers:
+      - "show edit button when"
+      - "hide delete button"
+    must_read_docs:
+      - docs/BLAZOR.md
+      - docs/QUICK_REFERENCE.md
+    load_skills:
+      - blazor-ui-conventions
+    load_rules:
+      - .claude/rules/blazor-client.md
+    paths_in_scope:
+      - "src/Explore.Blazor.Client/**/*.razor"
+    minimum_tests:
+      - Explore.Blazor.Client.Tests
+    docs_to_update: []
+    unique_acceptance:
+      - 'Button visibility gated by dto.HasHalLink("edit") / dto.HasHalLink("delete") helpers'
+    forbidden_without_approval:
+      - "Introducing ad-hoc role checks for per-resource actions"
+    related_agents:
+      - presentation-engineer-agent
+      - quality-verifier-agent
+
+  - id: bff-auth-bug
+    title: "Debug and fix a BFF authentication bug"
+    category: auth
+    triggers:
+      - "auth not working"
+      - "BFF auth bug"
+    must_read_docs:
+      - docs/SECURITY-MODEL.md
+      - docs/BLAZOR.md
+    load_skills:
+      - blazor-bff-patterns
+    load_rules:
+      - .claude/rules/blazor-server.md
+    paths_in_scope:
+      - "src/Explore.Blazor/**/*.cs"
+    minimum_tests:
+      - Explore.Blazor.IntegrationTests
+    docs_to_update: []
+    unique_acceptance:
+      - "UserId extraction fallback order preserved"
+      - "Token forwarding via YARP transform is intact"
+    forbidden_without_approval:
+      - "Disabling HTTPS or cookie SameSite protections"
+    related_agents:
+      - presentation-engineer-agent
+      - quality-verifier-agent
+
+  - id: cerbos-policy-change
+    title: "Change Cerbos authorization policies"
+    category: authorization
+    triggers:
+      - "cerbos policy"
+      - "update permission"
+    must_read_docs:
+      - docs/SECURITY-MODEL.md
+      - docs/AUTHORIZATION.md
+    load_skills: []
+    load_rules: []
+    paths_in_scope:
+      - "cerbos/**"
+    minimum_tests:
+      - Event.API.IntegrationTests
+      - Event.Architecture.Tests
+    docs_to_update:
+      - docs/AUTHORIZATION.md
+    unique_acceptance:
+      - "Cerbos policy-check workflow passes"
+      - "AuthorizationParityTests passes"
+    forbidden_without_approval:
+      - "Widening permissions without explicit user approval"
+    related_agents:
+      - backend-engineer-agent
+      - quality-verifier-agent
+
+  - id: openapi-contract-change
+    title: "Change the public API contract"
+    category: api
+    triggers:
+      - "api contract change"
+      - "openapi change"
+    must_read_docs:
+      - docs/API.md
+      - docs/QUICK_REFERENCE.md
+    load_skills: []
+    load_rules:
+      - .claude/rules/api-controllers.md
+    paths_in_scope:
+      - "src/Explore.API/Controllers/**/*.cs"
+      - "docs/API_CHANGELOG.md"
+    minimum_tests:
+      - Event.API.IntegrationTests
+      - Event.Architecture.Tests
+    docs_to_update:
+      - docs/API_CHANGELOG.md
+    unique_acceptance:
+      - "Operation IDs follow naming convention"
+    forbidden_without_approval:
+      - "Breaking change without explicit user approval"
+    related_agents:
+      - presentation-engineer-agent
+      - librarian-agent
+      - quality-verifier-agent
+
+  - id: ci-cd-change
+    title: "Change CI/CD workflows, deployment automation, or release governance"
+    category: infrastructure
+    triggers:
+      - "change GitHub Actions workflow"
+      - "update CI/CD pipeline"
+      - "harden deployment workflow"
+      - "change release governance"
+    must_read_docs:
+      - docs/CI_CD_GOVERNANCE.md
+      - docs/OPERATIONS.md
+      - docs/TESTING.md
+      - docs/RELEASE_CHECKLIST.md
+      - docs/QUICK_REFERENCE.md
+      - docs/legal/IP_GOVERNANCE.md
+      - docs/DUAL_VERSIONING.md
+    load_skills:
+      - ip-clean-room
+    load_rules:
+      - .claude/rules/ip-clean-room.md
+    paths_in_scope:
+      - ".github/**"
+      - "src/Explore.API/Dockerfile"
+      - "src/Explore.Blazor/Dockerfile"
+      - "Directory.Packages.props"
+      - "global.json"
+      - "docs/CI_CD_GOVERNANCE.md"
+      - "docs/OPERATIONS.md"
+      - "docs/TESTING.md"
+      - "docs/RELEASE_CHECKLIST.md"
+      - "docs/CONTRIBUTING.md"
+    minimum_tests:
+      - Event.Architecture.Tests
+    docs_to_update:
+      - docs/CI_CD_GOVERNANCE.md
+      - docs/OPERATIONS.md
+      - docs/RELEASE_CHECKLIST.md
+    unique_acceptance:
+      - "External GitHub Actions remain pinned to full commit SHAs with same-line version comments"
+      - "Required checks are always-present or explicitly documented as path-conditional"
+      - "Deployment changes retain protected environment approval and release evidence"
+    forbidden_without_approval:
+      - "Introducing pull_request_target outside a documented metadata-only legal/status workflow threat model"
+      - "Granting write-token, package, OIDC, registry, or deployment credentials to fork PR code"
+      - "Renaming required workflows or jobs without branch-protection migration evidence"
+    related_agents:
+      - architect-agent
+      - quality-verifier-agent
+
+  - id: external-infrastructure-bootstrap
+    title: "Automate external infrastructure bootstrap or onboarding"
+    category: infrastructure
+    triggers:
+      - "bootstrap external infrastructure"
+      - "automate Keycloak bootstrap"
+      - "configure existing Keycloak"
+      - "setup-time infrastructure onboarding"
+      - "external provider bootstrap"
+    must_read_docs:
+      - docs/QUICK_REFERENCE.md
+      - docs/GOVERNANCE.md
+      - docs/SECURITY-MODEL.md
+      - docs/SECRETS.md
+      - docs/CONFIGURATION.md
+      - docs/SELF_HOSTING.md
+      - docs/TESTING.md
+      - docs/legal/IP_GOVERNANCE.md
+    load_skills:
+      - auth-patterns
+      - blazor-bff-patterns
+      - clean-architecture-rules
+      - ip-clean-room
+    load_rules:
+      - .claude/rules/api-controllers.md
+      - .claude/rules/application-layer.md
+      - .claude/rules/blazor-server.md
+      - .claude/rules/blazor-client.md
+      - .claude/rules/tests.md
+      - .claude/rules/ip-clean-room.md
+    paths_in_scope:
+      - "docker-compose.yml"
+      - "docker/**"
+      - "src/Explore.Application/Contracts/Services/**/*.cs"
+      - "src/Explore.Application/DTOs/Onboarding/**/*.cs"
+      - "src/Explore.Application/Features/InstanceOnboarding/**/*.cs"
+      - "src/Explore.Infrastructure/Services/**/*.cs"
+      - "src/Explore.Infrastructure/InfrastructureServicesRegistration.cs"
+      - "src/Explore.API/Controllers/**/*Settings*.cs"
+      - "src/Explore.API/Controllers/**/*Onboarding*.cs"
+      - "src/Explore.API/Hateoas/RouteNames.cs"
+      - "src/Explore.Blazor/**/*.cs"
+      - "src/Explore.Blazor.Client/**/*.razor"
+      - "src/Explore.Blazor.Client/Services/**/*.cs"
+      - "Event.*Tests/**/*.cs"
+      - "Explore.*Tests/**/*.cs"
+      - "docs/CONFIGURATION.md"
+      - "docs/SECRETS.md"
+      - "docs/SELF_HOSTING.md"
+      - "docs/TROUBLESHOOTING.md"
+      - "dev/active/**"
+    minimum_tests:
+      - Event.Application.UnitTests
+      - Event.API.IntegrationTests
+      - Explore.Blazor.IntegrationTests
+      - Explore.Blazor.Client.Tests
+      - Event.Architecture.Tests
+    docs_to_update:
+      - docs/CONFIGURATION.md
+      - docs/SECRETS.md
+      - docs/SELF_HOSTING.md
+      - docs/TROUBLESHOOTING.md
+    unique_acceptance:
+      - "Bootstrap credentials are request-scoped or job-scoped and never persisted as runtime application secrets"
+      - "Browser-controlled privileged headers are stripped and replaced only from trusted BFF/server sources"
+      - "External-provider admin API responses, tokens, passwords, and client secrets stay out of logs, DTOs, traces, and support artifacts"
+      - "Existing external resources are patched additively; destructive delete/reimport workflows require explicit approval"
+      - "Operator docs cover rerun, rotation, backup, and failure recovery paths"
+    forbidden_without_approval:
+      - "Persisting provider admin credentials or service-account secrets for background reuse"
+      - "Deleting or reimporting an existing external realm/resource as a repair strategy"
+      - "Trusting browser-supplied setup/admin headers for bootstrap authority"
+      - "Silently overriding deployment-managed secrets with application-managed values"
+    related_agents:
+      - architect-agent
+      - backend-engineer-agent
+      - presentation-engineer-agent
+      - quality-verifier-agent
+
+  - id: ip-clean-room-governance
+    title: "Establish or apply IP clean-room and outbound-license governance"
+    category: cross-cutting
+    triggers:
+      - "IP protection"
+      - "clean-room governance"
+      - "external functional research"
+      - "SSO differentiation"
+      - "dependency license compatibility"
+      - "audit readiness"
+    must_read_docs:
+      - AGENTS.md
+      - docs/QUICK_REFERENCE.md
+      - docs/legal/IP_GOVERNANCE.md
+      - docs/legal/CONTRIBUTION_GOVERNANCE.md
+      - docs/DUAL_VERSIONING.md
+      - docs/CI_CD_GOVERNANCE.md
+      - .agents/skills/_SKILL_SCHEMA.md
+    load_skills:
+      - ip-clean-room
+      - skill-authoring
+      - agentic-research
+    load_rules:
+      - .claude/rules/ip-clean-room.md
+    paths_in_scope:
+      - "AGENTS.md"
+      - "docs/QUICK_REFERENCE.md"
+      - "docs/index.md"
+      - "docs/legal/IP_GOVERNANCE.md"
+      - ".agents/skills/ip-clean-room/**"
+      - ".claude/rules/ip-clean-room.md"
+      - ".claude/rules/README.md"
+      - ".claude/contract/intents.yaml"
+      - ".claude/commands/review-pr.md"
+      - ".github/PULL_REQUEST_TEMPLATE.md"
+      - "dev/_journal/journal.md"
+      - "tests/Event.Architecture.Tests/AgentContextGovernanceTests.cs"
+    minimum_tests:
+      - Event.Architecture.Tests
+    docs_to_update:
+      - docs/QUICK_REFERENCE.md
+      - docs/legal/IP_GOVERNANCE.md
+      - docs/index.md
+      - .claude/contract/intents.yaml
+    unique_acceptance:
+      - "Implementation contexts receive source-free functional handoffs and never third-party source or source-derived representations"
+      - "AFC/SSO review distinguishes constrained functional elements from independently designed expression without claiming legal certification"
+      - "Dependency review protects every intended ISLAMU outbound licensing path and never treats the CLA as authority over third-party material"
+      - "The clean-room skill and rule satisfy repository schemas without skip exceptions and link to reproducible audit templates"
+      - "PR review requires a provenance disposition and the journal contains a source-free dry-run record"
+    pr_checklist:
+      - "No third-party source, snippet, AST, decompiled artifact, SQL, migration, test, comment, prose, asset, or source-derived structure entered implementation context or the diff"
+      - "Externally informed work links a sanitized functional handoff, source register, fresh-context attestation, and independent AFC/SSO decision; otherwise the PR states Not externally informed"
+      - "Every dependency change passes the repository scanner and preserves every intended outbound model or links documented separate-license and distribution approval"
+      - "No report removes source identity to create false non-attribution, and no audit artifact retains restricted expression"
+      - "Agent-context schema, link, intent-manifest, diff, build, and architecture evidence is recorded with unrelated failures named separately"
+    forbidden_without_approval:
+      - "Ingesting third-party implementation source or source-derived representations into an implementation context"
+      - "Copying or translating third-party code, SQL, migrations, tests, comments, prose, assets, or expressive SSO"
+      - "Adding a dependency that blocks an intended ISLAMU outbound licensing path"
+      - "Treating a CLA signature, scanner result, optional loading, dynamic linking, or process isolation as automatic third-party license approval"
+      - "Continuing implementation after source contamination without discarding unmerged output and restarting from a sanitized handoff"
+    related_agents:
+      - architect-agent
+      - librarian-agent
+      - quality-verifier-agent
+
+  - id: create-agent-context-skill
+    title: "Create or update an agent-context skill"
+    category: cross-cutting
+    triggers:
+      - "create a skill"
+      - "write a skill"
+      - "add a .claude skill"
+      - "update skill resources"
+      - "agentic engineering"
+      - "context engineering"
+    must_read_docs:
+      - AGENTS.md
+      - docs/QUICK_REFERENCE.md
+      - docs/DOCUMENTATION_STYLE_GUIDE.md
+      - docs/OPERATIONS.md
+      - docs/TESTING.md
+      - docs/legal/IP_GOVERNANCE.md
+      - .agents/skills/_SKILL_SCHEMA.md
+    load_skills:
+      - skill-authoring
+      - agentic-research
+      - senior-cto-feedback
+      - ip-clean-room
+    load_rules:
+      - .claude/rules/ip-clean-room.md
+    paths_in_scope:
+      - ".agents/skills/"
+      - ".claude/contract/"
+      - "tests/Event.Architecture.Tests/"
+      - "dev/active/"
+    minimum_tests:
+      - Event.Architecture.Tests
+    docs_to_update:
+      - .claude/contract/intents.yaml
+      - .agents/skills/_SKILL_SCHEMA.md
+    unique_acceptance:
+      - "New SKILL.md satisfies the skill schema without adding a schema-test skip exception"
+      - "Every resource linked from SKILL.md or resources/index.md exists and has two ABOUTME lines"
+      - "The skill states activation boundaries, anti-patterns, verification hooks, and output contract clearly enough for another agent to use without rereading the originating chat"
+    forbidden_without_approval:
+      - "Creating a skill that claims authority beyond its evidence or domain scope"
+      - "Inlining long framework material in SKILL.md instead of resource files"
+    related_agents:
+      - architect-agent
+      - librarian-agent
+      - quality-verifier-agent
+
+  - id: update-ai-context-disclosure
+    title: "Update or extend the AI Context Disclosure Policy"
+    category: cross-cutting
+    triggers:
+      - ai context disclosure
+      - ai pii disclosure
+      - ai consent grant
+      - ai context gateway
+      - ai sensitivity classification
+      - "update.*ai.*disclosure"
+      - "ai.*redaction"
+      - "ai.*consent"
+    must_read_docs:
+      - docs/AI_CONTEXT_SECURITY.md
+      - docs/adr/ADR-012-ai-context-disclosure-policy.md
+      - dev/active/ai-context-disclosure-policy/field-classification-matrix.md
+      - dev/active/ai-context-disclosure-policy/ai-context-disclosure-policy-plan.md
+      - AGENTS.md
+      - docs/SECURITY-MODEL.md
+      - docs/AUTHORIZATION.md
+    load_skills:
+      - clean-architecture-rules
+      - cqrs-mediatr-guidelines
+      - auth-patterns
+    load_rules:
+      - .claude/rules/application-layer.md
+      - .claude/rules/efcore-persistence.md
+      - .claude/rules/tests.md
+    paths_in_scope:
+      - src/Explore.Domain/Enums/Ai*.cs
+      - src/Explore.Domain/AiConsentGrant.cs
+      - src/Explore.Application/Features/AiAssistant/Disclosure/**
+      - src/Explore.Application/Features/AiAssistant/Requests/Commands/Grant*Consent*.cs
+      - src/Explore.Application/Features/AiAssistant/Requests/Commands/Revoke*Consent*.cs
+      - src/Explore.Application/Features/AiAssistant/Handlers/Commands/Grant*Consent*.cs
+      - src/Explore.Application/Features/AiAssistant/Handlers/Commands/Revoke*Consent*.cs
+      - src/Explore.Application/Contracts/Persistence/IAiConsentGrantRepository.cs
+      - src/Explore.Persistence/Repositories/AiConsentGrantRepository.cs
+      - src/Explore.Persistence/EntityTypeConfigurations/AiConsentGrantConfiguration.cs
+      - src/Explore.Application/Features/AiAssistant/Handlers/Commands/ProcessAiRunCommandHandler.cs
+      - src/Explore.Application/Settings/Groups/AiAssistantSettingGroup.cs
+      - src/Explore.Domain/Constants/GovernanceSettingKeys.cs
+      - src/Explore.API/Mcp/AiAssistantMcp*.cs
+      - src/Explore.API/Mcp/McpAdapterTelemetry.cs
+      - tests/Event.Architecture.Tests/AiContextDisclosureSchemaTests.cs
+      - tests/Event.Architecture.Tests/AiContextGatewayBypassTests.cs
+      - docs/AI_CONTEXT_SECURITY.md
+      - docs/adr/ADR-012-ai-context-disclosure-policy.md
+    minimum_tests:
+      - Event.Architecture.Tests
+    docs_to_update:
+      - docs/AI_CONTEXT_SECURITY.md
+      - dev/active/ai-context-disclosure-policy/field-classification-matrix.md
+      - dev/active/ai-context-disclosure-policy/mcp-tool-audit.md
+    unique_acceptance:
+      - "AiContextDisclosureRegistry.CreateDefault() covers every public persisted property on every *Pii entity (reflection test passes)"
+      - "IAiContextGateway is the only path to disclose entity fields to the AI prompt (bypass test passes)"
+      - "No direct PII entity references in Features/AiAssistant/** or src/Explore.API/Mcp/** (architecture test passes)"
+      - "MaxAiContextSensitivity and PiiDisclosureEnabled settings exist and default to restrictive values"
+      - "Build is green across Domain, Application, Persistence, and Architecture.Tests"
+    forbidden_without_approval:
+      - "Removing a field from AiContextDisclosureRegistry without updating field-classification-matrix.md"
+      - "Setting PiiDisclosureEnabled default to true"
+      - "Bypassing IAiContextGateway in any AI flow path"
+      - "Adding a new *Pii entity without registering its fields"
+      - "Changing MaxAiContextSensitivity default above Internal"
+    related_agents:
+      - architect-agent
+      - backend-engineer-agent
+      - quality-verifier-agent
+
+  - id: registration-data-collection
+    title: "Implement registration data collection, participation, ticketing, and provider channels"
+    category: cross-cutting
+    triggers:
+      - "registration data collection"
+      - "implement the registration data collection plan"
+      - "registration provider architecture"
+      - "guest registration and ticketing"
+      - "registration forms provider"
+      - "event participation platform"
+    must_read_docs:
+      - AGENTS.md
+      - docs/QUICK_REFERENCE.md
+      - docs/GOVERNANCE.md
+      - docs/ARCHITECTURE.md
+      - docs/DOMAIN.md
+      - docs/API.md
+      - docs/AUTHORIZATION.md
+      - docs/SECURITY-MODEL.md
+      - docs/WEBHOOKS.md
+      - docs/CONTACT_SHARING.md
+      - docs/MULTI_TENANCY.md
+      - docs/OUTBOX_PATTERN.md
+      - docs/BLAZOR.md
+      - docs/TESTING.md
+      - docs/legal/IP_GOVERNANCE.md
+      - docs/adr/ADR-016-registration-data-collection-context.md
+      - docs/adr/ADR-017-event-participation-authority-model.md
+      - docs/adr/ADR-018-registration-order-ticketing-aggregate.md
+      - dev/active/registration-data-collection/registration-data-collection-plan.md
+      - dev/active/registration-data-collection/registration-data-collection-context.md
+      - dev/active/registration-data-collection/registration-data-collection-tasks.md
+    load_skills:
+      - clean-architecture-rules
+      - cqrs-mediatr-guidelines
+      - dotnet-efcore-guidelines
+      - outbox-pattern
+      - auth-patterns
+      - blazor-bff-patterns
+      - blazor-ui-conventions
+      - error-tracking
+      - ip-clean-room
+    load_rules:
+      - .claude/rules/domain.md
+      - .claude/rules/application-layer.md
+      - .claude/rules/efcore-persistence.md
+      - .claude/rules/efcore-migrations.md
+      - .claude/rules/api-controllers.md
+      - .claude/rules/api-hateoas.md
+      - .claude/rules/blazor-server.md
+      - .claude/rules/blazor-client.md
+      - .claude/rules/tests.md
+      - .claude/rules/ip-clean-room.md
+    paths_in_scope:
+      - ".claude/contract/intents.yaml"
+      - "src/Explore.Domain/**/*Registration*.cs"
+      - "src/Explore.Domain/**/*Participation*.cs"
+      - "src/Explore.Domain/**/*Ticket*.cs"
+      - "src/Explore.Domain/**/*Capacity*.cs"
+      - "src/Explore.Domain/**/*OrganizerClaim*.cs"
+      - "src/Explore.Domain/**/*PublicAction*.cs"
+      - "src/Explore.Domain/**/*Provenance*.cs"
+      - "src/Explore.Domain/PlatformFeePolicy.cs"
+      - "src/Explore.Domain/PlatformContribution*.cs"
+      - "src/Explore.Domain/Event.cs"
+      - "src/Explore.Domain/EventSession.cs"
+      - "src/Explore.Domain/EventContactShareConsent.cs"
+      - "src/Explore.Domain/Enums/**/*Registration*.cs"
+      - "src/Explore.Domain/Enums/**/*Participation*.cs"
+      - "src/Explore.Domain/Enums/**/*Ticket*.cs"
+      - "src/Explore.Domain/ValueObjects/**/*.cs"
+      - "src/Explore.Domain/Services/Registration/**/*.cs"
+      - "src/Explore.Domain/Secrets/SecretDefinitionRegistry.cs"
+      - "src/Explore.Application/**/*Registration*.cs"
+      - "src/Explore.Application/**/*Participation*.cs"
+      - "src/Explore.Application/**/*Ticket*.cs"
+      - "src/Explore.Application/**/*Capacity*.cs"
+      - "src/Explore.Application/**/*OrganizerClaim*.cs"
+      - "src/Explore.Application/**/*PublicAction*.cs"
+      - "src/Explore.Application/**/PlatformMonetization/**/*.cs"
+      - "src/Explore.Application/Authorization/*.cs"
+      - "src/Explore.Application/Features/AiAssistant/**/*.cs"
+      - "src/Explore.Application/Hateoas/LinkRelations.cs"
+      - "src/Explore.Application/**/*Outbox*.cs"
+      - "src/Explore.Application/Telemetry/BusinessMetrics.cs"
+      - "src/Explore.Application/ApplicationServicesRegistration.cs"
+      - "src/Explore.Persistence/**/*Registration*.cs"
+      - "src/Explore.Persistence/**/*Participation*.cs"
+      - "src/Explore.Persistence/**/*Ticket*.cs"
+      - "src/Explore.Persistence/**/*Capacity*.cs"
+      - "src/Explore.Persistence/**/*OrganizerClaim*.cs"
+      - "src/Explore.Persistence/**/*PublicAction*.cs"
+      - "src/Explore.Persistence/**/*PlatformMonetization*.cs"
+      - "src/Explore.Persistence/ExploreDbContext*.cs"
+      - "src/Explore.Persistence/Seed/LookupTableSeeder.cs"
+      - "src/Explore.Persistence/Migrations/**/*.cs"
+      - "src/Explore.Infrastructure/**/*Registration*.cs"
+      - "src/Explore.Infrastructure/**/*Formbricks*.cs"
+      - "src/Explore.Infrastructure/**/*GoogleForms*.cs"
+      - "src/Explore.Infrastructure/**/*MicrosoftForms*.cs"
+      - "src/Explore.Infrastructure/Messaging/CompositeOutboxMessageDispatcher.cs"
+      - "src/Explore.Infrastructure/InfrastructureServicesRegistration.cs"
+      - "src/Explore.API/Attributes/EndpointClass.cs"
+      - "src/Explore.API/Controllers/**/*Registration*.cs"
+      - "src/Explore.API/Controllers/**/*Participation*.cs"
+      - "src/Explore.API/Controllers/**/*Ticket*.cs"
+      - "src/Explore.API/Controllers/**/*OrganizerClaim*.cs"
+      - "src/Explore.API/Controllers/**/*PublicAction*.cs"
+      - "src/Explore.API/Controllers/**/*Studio*.cs"
+      - "src/Explore.API/Controllers/**/*Monetization*.cs"
+      - "src/Explore.API/Hateoas/**/*Registration*.cs"
+      - "src/Explore.API/Hateoas/**/*Participation*.cs"
+      - "src/Explore.API/Hateoas/**/*Ticket*.cs"
+      - "src/Explore.API/Hateoas/**/*OrganizerClaim*.cs"
+      - "src/Explore.API/Hateoas/**/*PublicAction*.cs"
+      - "src/Explore.API/Hateoas/RouteNames.cs"
+      - "src/Explore.API/Mcp/**/*.cs"
+      - "src/Explore.API/BackgroundServices/OutboxProcessor.cs"
+      - "src/Explore.API/Program.cs"
+      - "src/Explore.Blazor/**/*Registration*.cs"
+      - "src/Explore.Blazor/Program.cs"
+      - "src/Explore.Blazor.Client/**/*Registration*"
+      - "src/Explore.Blazor.Client/**/*Participation*"
+      - "src/Explore.Blazor.Client/**/*Ticket*"
+      - "src/Explore.Blazor.Client/Pages/Studio/**"
+      - "src/Explore.Blazor.Client/Components/Shell/Workspaces/Studio*.razor"
+      - "src/Explore.Blazor.Client/Clients/EventApiClient.g.cs"
+      - "src/Explore.Blazor.Client/nswag.json"
+      - "cerbos/policies/**/*registration*.yaml"
+      - "cerbos/policies/**/*ticket*.yaml"
+      - "cerbos/policies/**/*organizer_claim*.yaml"
+      - "cerbos/policies/islamuevent_event.yaml"
+      - "tests/**/*Registration*.cs"
+      - "tests/**/*Participation*.cs"
+      - "tests/**/*Ticket*.cs"
+      - "tests/**/*OrganizerClaim*.cs"
+      - "tests/**/*PublicTransactional*.cs"
+      - "tests/**/*Studio*.cs"
+      - "tests/**/*Mcp*.cs"
+      - "tests/**/*Ai*.cs"
+      - "tests/**/*Outbox*.cs"
+      - "schemas/openapi_islamu-event.json"
+      - "schemas/islamu-event.md"
+      - "docs/adr/ADR-016-registration-data-collection-context.md"
+      - "docs/adr/ADR-017-event-participation-authority-model.md"
+      - "docs/adr/ADR-018-registration-order-ticketing-aggregate.md"
+      - "docs/API.md"
+      - "docs/API_CHANGELOG.md"
+      - "docs/API_CONTRACT_INVENTORY.md"
+      - "docs/AUTHORIZATION.md"
+      - "docs/BLAZOR.md"
+      - "docs/CONFIGURATION.md"
+      - "docs/CONTACT_SHARING.md"
+      - "docs/CUSTOM_PROPERTIES.md"
+      - "docs/DOMAIN.md"
+      - "docs/INTEGRATIONS.md"
+      - "docs/LEXICONS.md"
+      - "docs/SECURITY-MODEL.md"
+      - "docs/SECRETS.md"
+      - "docs/SELF_HOSTING.md"
+      - "docs/WEBHOOKS.md"
+      - "dev/active/registration-data-collection/**"
+    paths_forbidden:
+      - ".claude/settings*.json"
+      - ".design-sync/**"
+      - "dev/next/**"
+      - "dev/report/**"
+    minimum_tests:
+      - Event.Domain.UnitTests
+      - Event.Application.UnitTests
+      - Event.Architecture.Tests
+      - Event.Persistence.IntegrationTests
+      - Explore.Infrastructure.Tests
+      - Event.API.IntegrationTests
+      - Explore.Blazor.IntegrationTests
+      - Explore.Blazor.Client.Tests
+      - Explore.Secrets.UnitTests
+    docs_to_update:
+      - docs/DOMAIN.md
+      - docs/API.md
+      - docs/API_CHANGELOG.md
+      - docs/AUTHORIZATION.md
+      - docs/SECURITY-MODEL.md
+      - docs/CONTACT_SHARING.md
+      - docs/WEBHOOKS.md
+      - docs/CUSTOM_PROPERTIES.md
+      - docs/CONFIGURATION.md
+      - docs/SECRETS.md
+      - docs/SELF_HOSTING.md
+      - docs/INTEGRATIONS.md
+      - docs/BLAZOR.md
+      - schemas/islamu-event.md
+      - dev/active/registration-data-collection/registration-data-collection-plan.md
+      - dev/active/registration-data-collection/registration-data-collection-context.md
+      - dev/active/registration-data-collection/registration-data-collection-tasks.md
+    unique_acceptance:
+      - "ISLAMU remains authoritative for workflow, normalized answers, capacity, approval, and confirmation; external completion is evidence only"
+      - "Every attempt pins the exact form, provider binding, mapping, participation, workflow, and ticket catalog versions it uses"
+      - "Canonical answers are typed atomic rows with database-enforced value and subject shape; JSON and provider payloads are not answer truth"
+      - "Guest writes use PublicTransactional controls: dedicated rate limit, antiforgery decision, idempotency, hashed scoped capability, and PII-free telemetry"
+      - "All participant and organizer UI affordances and Studio sections are authorized by server-authored HAL links, never local roles or capability booleans"
+      - "Provider calls execute outside business transactions; durable inbox, outbox, fencing, retry, and reconciliation coordinate every external effect"
+      - "Published forms and ticket catalogs are immutable; future edits create versions while active attempts and orders remain pinned"
+      - "Money uses integer minor units at persistence and API boundaries with no foreign-exchange conversion; platform monetization is instance-admin-only and defaults off or zero"
+    pr_checklist:
+      - "Verified zero third-party source or source-derived ingestion, a sanitized handoff and independent AFC/SSO review for external influence, and outbound-license compatibility for dependency changes"
+      - "Failing-first tests cover state transitions, malformed inputs, tenant isolation, guest capabilities, duplicate callbacks, duplicate finalization, and shared-capacity races"
+      - "Repositories return entities, handlers map DTOs, validators are manually instantiated, and all new lookups have enum, seeder, migration, and API metadata parity"
+      - "Every new tenant entity has central tenant and named soft-delete filters, auditing, concurrency, and cross-tenant negative tests"
+      - "No provider HTTP, email, webhook, broker, or storage call occurs inside a business transaction; required effects are durable and post-commit"
+      - "Cerbos policies, HAL policies, endpoint classifications, OpenAPI, and the generated client converge without client-side authorization inference"
+      - "Logs, metrics, traces, ProblemDetails, health, support artifacts, and ordinary webhooks contain no answers, PII, guest tokens, secrets, or raw provider payloads"
+      - "All minimum test projects execute nonzero tests and phase-specific real PostgreSQL concurrency tests prove hold/finalization correctness"
+      - "Product, security, authorization, provider, self-hosting, schema, and active development docs match the shipped behavior"
+    forbidden_without_approval:
+      - "Adding backward-compatibility aliases, dual writes, deprecated registration contracts, or data-migration shims"
+      - "Reusing Event custom-property rows for registration answers or storing canonical answers only as JSON"
+      - "Treating provider completion, redirect return, iframe navigation, or an external click as registration confirmation"
+      - "Using provider names as capability authority, silently switching active attempts, or silently accepting external schema drift"
+      - "Performing provider I/O inside a database transaction or letting callback controllers mutate registration aggregates"
+      - "Using public/display identifiers as guest authorization, storing plaintext capabilities, or logging tokens, PII, answers, or provider payloads"
+      - "Granting reported-listing contributors organizer, provider, commercial, or attendee-data authority"
+      - "Gating Blazor actions or Studio navigation with local role, claim, status, provenance, or capability-boolean checks"
+      - "Enabling platform fees or contributions at tenant scope, defaulting monetization on, using floating-point money, or mixing contributions with organizer earnings"
+      - "Building payment-provider, refund, tax, payout, or admission-credential integrations before their future ADRs are approved"
+      - "Copying code, SQL, migrations, snippets, or assets from Hi.Events; only the approved clean-room behavior report may be used"
+      - "Deleting or rewriting migration history, hand-editing generated EF designer/snapshot files, or bypassing the migration-baseline ordering decision"
+    related_agents:
+      - architect-agent
+      - backend-engineer-agent
+      - presentation-engineer-agent
+      - quality-verifier-agent
+    related_intents:
+      - add-get-endpoint
+      - add-write-endpoint
+      - add-hal-link
+      - add-cqrs-handler
+      - add-ef-migration
+      - update-repository-query
+      - blazor-component-affordance
+      - cerbos-policy-change
+      - openapi-contract-change
+    verification_commands:
+      - "dotnet build --configuration Release --verbosity quiet"
+      - "dotnet test --project tests/Event.Domain.UnitTests/Event.Domain.UnitTests.csproj --configuration Release --verbosity quiet"
+      - "dotnet test --project tests/Event.Application.UnitTests/Event.Application.UnitTests.csproj --configuration Release --verbosity quiet"
+      - "dotnet test --project tests/Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet"
+      - "dotnet test --project tests/Event.Persistence.IntegrationTests/Event.Persistence.IntegrationTests.csproj --configuration Release --verbosity quiet"
+      - "dotnet test --project tests/Explore.Infrastructure.Tests/Explore.Infrastructure.Tests.csproj --configuration Release --verbosity quiet"
+      - "dotnet test --project tests/Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity quiet"
+      - "dotnet test --project tests/Explore.Blazor.IntegrationTests/Explore.Blazor.IntegrationTests.csproj --configuration Release --verbosity quiet"
+      - "dotnet test --project tests/Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration Release --verbosity quiet"
+      - "dotnet test --project tests/Explore.Secrets.UnitTests/Explore.Secrets.UnitTests.csproj --configuration Release --verbosity quiet"
+      - "dotnet ef migrations has-pending-model-changes --context ExploreDbContext --project src/Explore.Persistence --startup-project src/Explore.API --configuration Release"
+
+  - id: webhook-delivery-redesign
+    title: "Redesign durable inbound and outbound webhook delivery across the platform"
+    category: cross-cutting
+    triggers:
+      - "webhook delivery redesign"
+      - "redesign webhook delivery"
+      - "implement the webhook delivery redesign"
+      - "replace the webhook delivery architecture"
+    must_read_docs:
+      - AGENTS.md
+      - docs/QUICK_REFERENCE.md
+      - docs/ARCHITECTURE.md
+      - docs/WEBHOOKS.md
+      - docs/SECURITY-MODEL.md
+      - docs/AUTHORIZATION.md
+      - docs/API.md
+      - docs/BLAZOR.md
+      - docs/MULTI_TENANCY.md
+      - docs/OUTBOX_PATTERN.md
+      - docs/OPERATIONS.md
+      - docs/TESTING.md
+      - docs/legal/IP_GOVERNANCE.md
+      - dev/active/webhook-delivery-redesign/webhook-delivery-redesign-context.md
+      - dev/active/webhook-delivery-redesign/webhook-delivery-redesign-plan.md
+      - dev/active/webhook-delivery-redesign/webhook-delivery-redesign-tasks.md
+    load_skills:
+      - clean-architecture-rules
+      - cqrs-mediatr-guidelines
+      - dotnet-efcore-guidelines
+      - outbox-pattern
+      - auth-patterns
+      - blazor-bff-patterns
+      - blazor-ui-conventions
+      - error-tracking
+      - ip-clean-room
+    load_rules:
+      - .claude/rules/domain.md
+      - .claude/rules/application-layer.md
+      - .claude/rules/efcore-persistence.md
+      - .claude/rules/efcore-migrations.md
+      - .claude/rules/api-controllers.md
+      - .claude/rules/api-hateoas.md
+      - .claude/rules/blazor-server.md
+      - .claude/rules/blazor-client.md
+      - .claude/rules/tests.md
+      - .claude/rules/ip-clean-room.md
+    paths_in_scope:
+      - "src/Explore.Domain/*Webhook*.cs"
+      - "src/Explore.Domain/**/*Webhook*.cs"
+      - "src/Explore.Domain/Constants/GovernanceSettingKeys.cs"
+      - "src/Explore.Domain/Settings/SettingRegistry.cs"
+      - "src/Explore.Application/**/*Webhook*.cs"
+      - "src/Explore.Application/**/Webhooks/**/*.cs"
+      - "src/Explore.Application/Authorization/AuthorizationActions.cs"
+      - "src/Explore.Application/Authorization/MachineScopeMapping.cs"
+      - "src/Explore.Application/Authorization/ResourceDescriptors.cs"
+      - "src/Explore.Application/Hateoas/LinkRelations.cs"
+      - "src/Explore.Application/Telemetry/BusinessMetrics.cs"
+      - "src/Explore.Application/ApplicationServicesRegistration.cs"
+      - "src/Explore.Persistence/**/*Webhook*.cs"
+      - "src/Explore.Persistence/ExploreDbContext.DbSets.cs"
+      - "src/Explore.Persistence/ExploreDbContext.QueryFilters.cs"
+      - "src/Explore.Persistence/ExploreDbContext.SaveChanges.cs"
+      - "src/Explore.Persistence/Seed/LookupTableSeeder.cs"
+      - "src/Explore.Persistence/Migrations/**/*.cs"
+      - "src/Explore.Infrastructure/**/*Webhook*.cs"
+      - "src/Explore.Infrastructure/InfrastructureServicesRegistration.cs"
+      - "src/Explore.API/Controllers/*Webhook*.cs"
+      - "src/Explore.API/Services/*Webhook*.cs"
+      - "src/Explore.API/BackgroundServices/*Webhook*.cs"
+      - "src/Explore.API/Hateoas/**/*Webhook*.cs"
+      - "src/Explore.API/Hateoas/RouteNames.cs"
+      - "src/Explore.API/Program.cs"
+      - "src/Explore.Blazor/**/*Webhook*.cs"
+      - "src/Explore.Blazor/Program.cs"
+      - "src/Explore.Blazor.Client/**/*Webhook*"
+      - "src/Explore.Blazor.Client/Clients/EventApiClient.g.cs"
+      - "src/Explore.AppHost/AppHost.cs"
+      - "src/Explore.AppHost/Properties/launchSettings.json"
+      - "cerbos/policies/islamuevent_webhook.yaml"
+      - "tests/**/*Webhook*.cs"
+      - "tests/**/Webhooks/**/*.cs"
+      - "schemas/openapi_islamu-event.json"
+      - "schemas/islamu-event.md"
+      - "docs/API.md"
+      - "docs/API_CHANGELOG.md"
+      - "docs/BLAZOR.md"
+      - "docs/WEBHOOKS.md"
+      - "docs/OPERATIONS.md"
+      - "docs/CONFIGURATION.md"
+      - "docs/SELF_HOSTING.md"
+      - "docs/BACKUP_RESTORE_UPGRADE.md"
+      - "docs/TROUBLESHOOTING.md"
+      - "dev/active/webhook-delivery-redesign/**"
+    paths_forbidden:
+      - ".claude/settings*.json"
+      - ".design-sync/**"
+      - "dev/next/**"
+      - "dev/report/**"
+      - "src/Explore.Application/Features/ControlPlane/**"
+      - "src/Explore.API/Hateoas/**/*ControlPlane*.cs"
+      - "src/Explore.Blazor.Client/**/*ControlPlane*"
+    minimum_tests:
+      - Event.Domain.UnitTests
+      - Event.Application.UnitTests
+      - Event.Architecture.Tests
+      - Event.Persistence.IntegrationTests
+      - Explore.Infrastructure.Tests
+      - Event.API.IntegrationTests
+      - Explore.Blazor.IntegrationTests
+      - Explore.Blazor.Client.Tests
+      - Explore.Secrets.UnitTests
+    docs_to_update:
+      - docs/API.md
+      - docs/API_CHANGELOG.md
+      - docs/BLAZOR.md
+      - docs/WEBHOOKS.md
+      - docs/OPERATIONS.md
+      - docs/CONFIGURATION.md
+      - docs/SELF_HOSTING.md
+      - docs/BACKUP_RESTORE_UPGRADE.md
+      - docs/TROUBLESHOOTING.md
+      - schemas/islamu-event.md
+      - dev/active/webhook-delivery-redesign/webhook-delivery-redesign-context.md
+      - dev/active/webhook-delivery-redesign/webhook-delivery-redesign-plan.md
+      - dev/active/webhook-delivery-redesign/webhook-delivery-redesign-tasks.md
+    unique_acceptance:
+      - "PostgreSQL exact bytes, SHA-256, and provenance are the sole payload, signing, idempotency, and transmission authority; parsed JSON is never authoritative"
+      - "Inbound acceptance, effect receipt or durable external outbox, attempt evidence, and settlement preserve one transaction boundary with verified tenant ownership"
+      - "Webhook lookup contracts expose stable normalized Id, Code, and Name values with enum, seeder, migration, and database parity"
+      - "Provider publication uncertainty fails closed and never retries a create unless conformance-proven lookup can reconcile the ambiguous result"
+      - "Every background item creates a fresh scope and executes under its persisted tenant; tenant or capability data supplied by callers is never authoritative"
+      - "Operational actions are authorized server-side, represented by HAL links, and rendered by Blazor only when the matching link exists"
+      - "Removed compatibility members, aliases, dual writes, legacy request authority, and new messaging infrastructure are absent"
+    pr_checklist:
+      - "Verified zero third-party source or source-derived ingestion, a sanitized handoff and independent AFC/SSO review for external influence, and outbound-license compatibility for dependency changes"
+      - "Failing-first evidence covers exact-byte mutation, duplicate processing, tenant substitution, ambiguous provider acceptance, and HAL omission before implementation"
+      - "Repositories still return entities, handlers map DTOs, validators are manually instantiated, and normalized lookup parity is verified"
+      - "Migrations are additive, deterministic, and reversible; legacy rows are classified without guessed success and the EF model has no pending changes"
+      - "Logs, traces, metrics, DTOs, and support artifacts exclude payloads, secrets, tokens, full destination URLs, raw provider responses, and tenant metric labels"
+      - "OpenAPI schemas and the generated NSwag client converge on a second generation and contain no removed compatibility fields"
+      - "All minimum test projects execute nonzero tests and the Local, optional Svix, API, BFF, HAL, browser, retention, and recovery surfaces have evidence"
+      - "Webhook, API, Blazor, operations, configuration, self-hosting, backup/restore, troubleshooting, schema, and active development docs match the shipped behavior"
+    forbidden_without_approval:
+      - "Restoring backward-compatibility properties, DTO aliases, deprecated methods, dual writes, or legacy request authority"
+      - "Adding Redis, RabbitMQ, Kafka, CDC, another reverse proxy, a generic provider plugin system, or any other new webhook infrastructure"
+      - "Treating caller-supplied tenant, binding, provider capability, or portal authority as trusted state"
+      - "Persisting or logging response bodies, payloads, secrets, tokens, full destination URLs, raw provider responses, or provider exception text"
+      - "Performing a network call inside a database transaction or migration"
+      - "Automatically retrying provider creation after ambiguous acceptance without conformance-proven reconciliation"
+      - "Editing an applied migration, bypassing tenant filters, hand-editing generated contracts, or gating UI actions by roles or claims"
+    related_agents:
+      - architect-agent
+      - backend-engineer-agent
+      - presentation-engineer-agent
+      - quality-verifier-agent
+    related_intents:
+      - add-write-endpoint
+      - add-hal-link
+      - add-cqrs-handler
+      - add-ef-migration
+      - update-repository-query
+      - bff-auth-bug
+      - openapi-contract-change
+    verification_commands:
+      - "dotnet build --configuration Release --verbosity quiet"
+      - "dotnet test --project tests/Event.Domain.UnitTests/Event.Domain.UnitTests.csproj --configuration Release --verbosity quiet"
+      - "dotnet test --project tests/Event.Application.UnitTests/Event.Application.UnitTests.csproj --configuration Release --verbosity quiet"
+      - "dotnet test --project tests/Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet"
+      - "dotnet test --project tests/Event.Persistence.IntegrationTests/Event.Persistence.IntegrationTests.csproj --configuration Release --verbosity quiet"
+      - "dotnet test --project tests/Explore.Infrastructure.Tests/Explore.Infrastructure.Tests.csproj --configuration Release --verbosity quiet"
+      - "dotnet test --project tests/Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity quiet"
+      - "dotnet test --project tests/Explore.Blazor.IntegrationTests/Explore.Blazor.IntegrationTests.csproj --configuration Release --verbosity quiet"
+      - "dotnet test --project tests/Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration Release --verbosity quiet"
+      - "dotnet test --project tests/Explore.Secrets.UnitTests/Explore.Secrets.UnitTests.csproj --configuration Release --verbosity quiet"
+      - "dotnet ef migrations has-pending-model-changes --project src/Explore.Persistence/Explore.Persistence.csproj --startup-project src/Explore.API/Explore.API.csproj --configuration Release --context ExploreDbContext"
+
+  - id: platform-privacy-erasure
+    title: "Implement platform-wide privacy erasure and restore-safe replay"
+    category: cross-cutting
+    triggers:
+      - "platform-wide privacy erasure"
+      - "platform privacy erasure"
+      - "privacy erasure authority"
+      - "implement account deletion erasure"
+    must_read_docs:
+      - AGENTS.md
+      - docs/QUICK_REFERENCE.md
+      - docs/GOVERNANCE.md
+      - docs/ARCHITECTURE.md
+      - docs/DOMAIN.md
+      - docs/API.md
+      - docs/AUTHORIZATION.md
+      - docs/SECURITY-MODEL.md
+      - docs/MULTI_TENANCY.md
+      - docs/OUTBOX_PATTERN.md
+      - docs/OPERATIONS.md
+      - docs/TESTING.md
+      - docs/CONFIGURATION.md
+      - docs/SECRETS.md
+      - docs/SELF_HOSTING.md
+      - docs/DEPLOYMENT_MODES.md
+      - docs/DEPLOYMENT_TIERS.md
+      - docs/BACKUP_RESTORE_UPGRADE.md
+      - docs/TROUBLESHOOTING.md
+      - docs/legal/IP_GOVERNANCE.md
+      - dev/active/optional-retained-erasure-authority/optional-retained-erasure-authority-plan.md
+      - dev/active/optional-retained-erasure-authority/optional-retained-erasure-authority-context.md
+      - dev/active/optional-retained-erasure-authority/optional-retained-erasure-authority-tasks.md
+      - .omo/plans/platform-wide-privacy-erasure-authority.md
+      - .omo/evidence/platform-wide-privacy-erasure-authority/rebaseline/migration-history-eligibility.md
+      - .omo/evidence/platform-wide-privacy-erasure-authority/rebaseline/migration-owned-sql-inventory.md
+      - .omo/evidence/platform-wide-privacy-erasure-authority/rebaseline/local-lite-authority-isolation-audit.md
+      - .omo/evidence/platform-wide-privacy-erasure-authority/rebaseline/clean-baseline-plan-review-v2.md
+    load_skills:
+      - clean-architecture-rules
+      - cqrs-mediatr-guidelines
+      - dotnet-efcore-guidelines
+      - outbox-pattern
+      - auth-patterns
+      - ip-clean-room
+    load_rules:
+      - .claude/rules/domain.md
+      - .claude/rules/application-layer.md
+      - .claude/rules/efcore-persistence.md
+      - .claude/rules/efcore-migrations.md
+      - .claude/rules/api-controllers.md
+      - .claude/rules/tests.md
+      - .claude/rules/ip-clean-room.md
+    paths_in_scope:
+      - ".claude/contract/intents.yaml"
+      - ".env"
+      - ".env.example"
+      - "docker-compose.yml"
+      - "docker/**"
+      - "src/Explore.Domain/**"
+      - "src/Explore.Application/**"
+      - "src/Explore.Persistence/ExploreDbContext*.cs"
+      - "src/Explore.Persistence/DataProtectionKeyContext*.cs"
+      - "src/Explore.Persistence/Privacy/**"
+      - "src/Explore.Persistence/Schema/ExploreDatabaseMigrator.cs"
+      - "src/Explore.Persistence/Migrations/*.cs"
+      - "src/Explore.Persistence/Migrations/DataProtection/**"
+      - "src/Explore.Persistence/Migrations/PrivacyErasureAuthority/**"
+      - "src/Explore.Persistence/Configurations/**"
+      - "src/Explore.Persistence/Repositories/**"
+      - "src/Explore.Persistence/Seed/LookupTableSeeder.cs"
+      - "src/Explore.Persistence/PersistenceServicesRegistration.cs"
+      - "src/Explore.Infrastructure/**"
+      - "src/Explore.API/**"
+      - "src/Event.MigrationService/**"
+      - "src/Explore.AppHost/**"
+      - "src/Explore.Blazor/**"
+      - "src/Explore.Blazor.Client/Clients/EventApiClient.g.cs"
+      - "tests/**"
+      - "schemas/openapi_islamu-event.json"
+      - "schemas/islamu-event.md"
+      - "docs/ARCHITECTURE.md"
+      - "docs/DOMAIN.md"
+      - "docs/API.md"
+      - "docs/API_CHANGELOG.md"
+      - "docs/AUTHORIZATION.md"
+      - "docs/SECURITY-MODEL.md"
+      - "docs/MULTI_TENANCY.md"
+      - "docs/OUTBOX_PATTERN.md"
+      - "docs/OPERATIONS.md"
+      - "docs/TESTING.md"
+      - "docs/CONFIGURATION.md"
+      - "docs/SECRETS.md"
+      - "docs/SELF_HOSTING.md"
+      - "docs/DEPLOYMENT_MODES.md"
+      - "docs/DEPLOYMENT_TIERS.md"
+      - "docs/BACKUP_RESTORE_UPGRADE.md"
+      - "docs/TROUBLESHOOTING.md"
+      - "docs/PRIVACY_ERASURE.md"
+      - "dev/active/optional-retained-erasure-authority/**"
+      - ".omo/evidence/optional-retained-erasure-authority/**"
+      - ".omo/evidence/platform-wide-privacy-erasure-authority/**"
+    minimum_tests:
+      - Event.Domain.UnitTests
+      - Event.Application.UnitTests
+      - Event.Architecture.Tests
+      - Event.Persistence.IntegrationTests
+      - Explore.Infrastructure.Tests
+      - Event.API.IntegrationTests
+      - Explore.Secrets.UnitTests
+    docs_to_update:
+      - docs/ARCHITECTURE.md
+      - docs/DOMAIN.md
+      - docs/API.md
+      - docs/API_CHANGELOG.md
+      - docs/AUTHORIZATION.md
+      - docs/SECURITY-MODEL.md
+      - docs/MULTI_TENANCY.md
+      - docs/OUTBOX_PATTERN.md
+      - docs/OPERATIONS.md
+      - docs/TESTING.md
+      - docs/CONFIGURATION.md
+      - docs/SECRETS.md
+      - docs/SELF_HOSTING.md
+      - docs/DEPLOYMENT_MODES.md
+      - docs/DEPLOYMENT_TIERS.md
+      - docs/BACKUP_RESTORE_UPGRADE.md
+      - docs/TROUBLESHOOTING.md
+      - docs/PRIVACY_ERASURE.md
+      - schemas/islamu-event.md
+    unique_acceptance:
+      - "Runtime, Domain, Application, Persistence, API, MigrationService, and AppHost authority surfaces use generalized PrivacyErasure* names; legacy LocationPrivacy* authority names remain only in migration-history evidence"
+      - "Exactly one authority-first workflow appends or reuses an immutable fact before application mutation; only the IPrivacyErasureAuthority storage adapter varies by topology"
+      - "PrivacyErasure:Authority:Topology accepts only EmbeddedSqlite, CoLocated, or ExternalDatabase; the default is EmbeddedSqlite, topology is never inferred from a connection string, EmbeddedSqlite never opens an external connection, CoLocated uses the primary PostgreSQL/SQLite database, and ExternalDatabase uses external PostgreSQL"
+      - "A present legacy PrivacyErasure:Durability:Mode key is rejected with actionable replacement-key and pre-v1 reset-only guidance; no compatibility shim or silent translation is allowed"
+      - "The application-side replay checkpoint remains active in all topologies and is atomically confirmed with local dispositions, provider work, cache authority, and receipt state"
+      - "User is the only executable subject kind; facts and work are typed and versioned, with no table, column, free-form JSON, or reflection-driven instruction surface"
+      - "The authority fact and User fence exist before PII enumeration; one serializable application transaction records local erasure state, policy coverage, specialized provider work, cache invalidation, and a fixed-time-verifiable hash of the once-revealed short-lived receipt"
+      - "All current durable User-PII copies have one machine-checked disposition, exact subject and tenant predicates, and canary proof that unrelated users and tenants remain unchanged"
+      - "Provider cleanup runs only after commit through specialized idempotent fenced outboxes with bounded retry, dead-letter or unknown settlement, and ownership checks"
+      - "Startup replay runs before API traffic and ordinary workers in all topologies; ExternalDatabase restore replay is protective only when its authority database has an independent restore lifecycle"
+      - "SQLite authority migrations solely own the ie_-prefixed authority tables in the selected embedded or co-located SQLite file, co-located PostgreSQL authority migrations solely own retained authority tables in the configured primary schema, application migrations solely own the replay checkpoint, and dedicated external authority migrations solely own external PostgreSQL tables, functions, roles, and grants"
+      - "For ExternalDatabase, API runtime and MigrationService receive separate runtime and migrator authority credentials mapped to structured privacy-prefixed database fields only in the owning process; EmbeddedSqlite and CoLocated receive no authority database credential and Blazor receives neither secret"
+      - "Authority identifiers are treated as linkable personal data, retained only through the maximum resurrection-capable backup horizon plus the approved safety margin, and protected by function-only least privilege, legal-hold pseudonymization, expiry cleanup, and redacted observability"
+      - "This workstream owns receipt/status, provider settlement, startup replay, retention, and restore behavior; Event Location contributes only its typed disposition and correction adapter"
+      - "Every minimum test project executes a nonzero test count; the Release build, MigrationService/AppHost builds, all pending-model checks, fresh migration apply, real-file EmbeddedSqlite, two-database external PostgreSQL, HTTP/SQL/provider, and old-backup restore rehearsals are evidenced"
+    pr_checklist:
+      - "Verified zero third-party source or source-derived ingestion, a sanitized handoff and independent AFC/SSO review for external influence, and outbound-license compatibility for dependency changes"
+      - "PIN, RED, and GREEN evidence covers completeness, malformed facts/receipts/config/catalogs, cross-tenant isolation, concurrent retries, provider ambiguity, stale restore, cancellation/resume, and PII canaries"
+      - "Clean Architecture remains inward-only; repositories return entities, handlers map DTOs, validators are manually instantiated, and only one dedicated Persistence adapter may cross tenant filters with a named reason and exact predicates"
+      - "PrivacyErasure* naming, PrivacyErasure:Authority:Topology, EmbeddedSqlite/CoLocated/PostgreSQL and external PostgreSQL semantics, structured privacy-prefixed database fields, OpenAPI, schemas, Compose, AppHost, MigrationService, active planning, and operator docs agree"
+      - "Application and dedicated authority migrations have non-overlapping topology ownership, carry every classified current PostgreSQL invariant, follow the approved reset-only policy, and leave no pending model changes"
+      - "No provider call occurs in a handler, database transaction, migration, or startup replay transaction; specialized outboxes prove idempotency, fencing, retries, unknown outcomes, and ownership limits"
+      - "Logs, metrics, traces, health, ProblemDetails, receipts, ledgers, evidence, and support artifacts contain no PII, identifiers, credentials, provider payloads/responses, URLs, or free-text errors"
+      - "EmbeddedSqlite proves old-application-backup replay from its untouched authority file; CoLocated reports restoreReplayProtection=false and is backed up and restored atomically with the primary database; ExternalDatabase proves old-application-backup replay from untouched independently restored external PostgreSQL, bounded retention, legal-hold pseudonymization, and unrelated-user preservation"
+      - "Opening and closing hashes attribute dirty work; no unrelated file, test, database, container, volume, backup, process, port, or temporary artifact is changed or left behind"
+    forbidden_without_approval:
+      - "Adding arbitrary JSON, table, column, SQL, reflection-driven, prompt-derived, or other executable erasure instructions"
+      - "Storing live PII in the authority database, joining it from normal request paths, or introducing a distributed transaction"
+      - "Bypassing tenant filters outside the one dedicated Persistence erasure adapter with a named reason and exact subject and tenant predicates"
+      - "Calling Keycloak, ATProto, Listmonk, SMTP, object storage, webhooks, or any provider inside a handler, database transaction, migration, or startup replay transaction"
+      - "Emitting PII, linkable identifiers, secrets, receipt credentials, provider payloads/responses, URLs, exception text, or unbounded values to logs, metrics, traces, health, ProblemDetails, evidence, or support artifacts"
+      - "Deleting an upstream identity or account the platform does not own, or claiming recipient-controlled, downloaded, federated, delivered, or third-party copies can always be recalled"
+      - "Adding executable Organization or Tenant erasure before its typed policy, handler, inventory, authorization, and verification ship atomically"
+      - "Restoring old migration IDs, hand-writing generated designer or snapshot files, or deleting, rewriting, or regenerating migration history outside the exact user-performed 2026-07-20 exception recorded below"
+      - "Deleting any database, container, volume, backup, unrelated file, or unrelated dirty-worktree change; agents have no such authority under the migration-history exception"
+      - "Adding a message broker, generic provider plugin, generic erasure interpreter, or new dependency for behavior the current platform already provides"
+      - "Weakening or deleting failing tests, tenant isolation, least-privilege ACLs, append-only guards, irreversible guards, legal holds, retention checks, receipt authorization, or HAL affordance rules"
+    migration_history_exception:
+      authorized_by_user_on: "2026-07-20"
+      evidence: ".omo/evidence/platform-wide-privacy-erasure-authority/rebaseline/migration-history-eligibility.md"
+      pre_deletion_manifest_sha256: "31f64320b5cd681e969eef13ee227bad9a50318869e60844da57708bcb4f03d8"
+      evidence_file_sha256_at_governance_pin: "349c447534aff035863a1ef635c219bf6faf795e49b32bb4bb07d7f23f9c1b3a"
+      dirty_ownership_at_evidence_pin: "16 artifacts across 3 contexts: 9 tracked, including 2 modified; 7 untracked-only"
+      release_and_disposability_caveat: "This recognizes the user's already-performed clean reset only; the discarded IDs are not an upgrade path, and no deployed or shared database may depend on either the upstream chain or local baseline IDs"
+      agent_authority: "Agents may validate the observed absence and later generate the three approved init lanes after the invariant inventory is complete; agents may not delete databases, containers, volumes, backups, these artifacts, or any unrelated file"
+      exact_user_deleted_artifacts:
+        - "src/Explore.Persistence/Migrations/20260720021848_AddApplicationDatabaseLocationPrivacyErasureLedger.Designer.cs"
+        - "src/Explore.Persistence/Migrations/20260720021848_AddApplicationDatabaseLocationPrivacyErasureLedger.cs"
+        - "src/Explore.Persistence/Migrations/20260720022047_RestoreEventLocationPrivacyDatabaseGuards.Designer.cs"
+        - "src/Explore.Persistence/Migrations/20260720022047_RestoreEventLocationPrivacyDatabaseGuards.cs"
+        - "src/Explore.Persistence/Migrations/LocationPrivacyAuthority/20260720072859_InitialLocationPrivacyAuthority.Designer.cs"
+        - "src/Explore.Persistence/Migrations/LocationPrivacyAuthority/20260720072859_InitialLocationPrivacyAuthority.cs"
+        - "src/Explore.Persistence/Migrations/LocationPrivacyAuthority/LocationPrivacyAuthorityDbContextModelSnapshot.cs"
+        - "src/Explore.Persistence/Migrations/20260719221539_init.Designer.cs"
+        - "src/Explore.Persistence/Migrations/20260719221539_init.cs"
+        - "src/Explore.Persistence/Migrations/20260719230250_AddEventReportDecisionExecution.Designer.cs"
+        - "src/Explore.Persistence/Migrations/20260719230250_AddEventReportDecisionExecution.cs"
+        - "src/Explore.Persistence/Migrations/20260720120000_MakeTrustSafetyPreferenceOptional.cs"
+        - "src/Explore.Persistence/Migrations/ExploreDbContextModelSnapshot.cs"
+        - "src/Explore.Persistence/Migrations/DataProtection/20260719221632_init.Designer.cs"
+        - "src/Explore.Persistence/Migrations/DataProtection/20260719221632_init.cs"
+        - "src/Explore.Persistence/Migrations/DataProtection/DataProtectionKeyContextModelSnapshot.cs"
+      exact_replacement_generation_commands:
+        - "dotnet ef migrations add init --context ExploreDbContext --project src/Explore.Persistence --startup-project src/Explore.API"
+        - "dotnet ef migrations add init --context DataProtectionKeyContext --project src/Explore.Persistence --startup-project src/Explore.API --output-dir Migrations/DataProtection"
+        - "dotnet ef migrations add init --context PrivacyErasureAuthorityDbContext --project src/Explore.Persistence --startup-project src/Explore.API --output-dir Migrations/PrivacyErasureAuthority"
+    related_agents:
+      - architect-agent
+      - backend-engineer-agent
+      - quality-verifier-agent
+    related_intents:
+      - add-write-endpoint
+      - add-cqrs-handler
+      - add-ef-migration
+      - update-repository-query
+      - openapi-contract-change
+    verification_commands:
+      - "dotnet build --configuration Release --verbosity quiet"
+      - "dotnet build src/Event.MigrationService/Event.MigrationService.csproj --configuration Release --verbosity quiet"
+      - "dotnet build src/Explore.AppHost/Explore.AppHost.csproj --configuration Release --verbosity quiet"
+      - "dotnet test --project tests/Event.Domain.UnitTests/Event.Domain.UnitTests.csproj --configuration Release --verbosity quiet"
+      - "dotnet test --project tests/Event.Application.UnitTests/Event.Application.UnitTests.csproj --configuration Release --verbosity quiet"
+      - "dotnet test --project tests/Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet"
+      - "dotnet test --project tests/Event.Persistence.IntegrationTests/Event.Persistence.IntegrationTests.csproj --configuration Release --verbosity quiet"
+      - "dotnet test --project tests/Explore.Infrastructure.Tests/Explore.Infrastructure.Tests.csproj --configuration Release --verbosity quiet -- --treenode-filter \"/*/*/*/*[Category!=Runtime]\" --minimum-expected-tests 1"
+      - "dotnet test --project tests/Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity quiet"
+      - "dotnet test --project tests/Explore.Secrets.UnitTests/Explore.Secrets.UnitTests.csproj --configuration Release --verbosity quiet"
+      - "dotnet ef migrations has-pending-model-changes --context ExploreDbContext --project src/Explore.Persistence --startup-project src/Explore.API --configuration Release"
+      - "dotnet ef migrations has-pending-model-changes --context DataProtectionKeyContext --project src/Explore.Persistence --startup-project src/Explore.API --configuration Release"
+      - "dotnet ef migrations has-pending-model-changes --context PrivacyErasureAuthorityDbContext --project src/Explore.Persistence --startup-project src/Explore.API --configuration Release"

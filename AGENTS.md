@@ -4,7 +4,7 @@
 # AGENTS.md — Canonical Agent Contract
 
 > **This is the canonical entrypoint for every AI tool contributing to this repository.**
-> Last Updated: 2026-05-17
+> Last Updated: 2026-08-12
 
 ---
 
@@ -68,6 +68,7 @@ Every change must answer these eight questions **before editing any file**:
 5. Every file must start with a two-line `ABOUTME:` comment summary.
 6. **HAL links are the single source of truth for UI**: Clients must gate action affordances (Edit/Delete) by checking `_links` presence, never local role/claim inspection.
 7. **EF Core migrations are generated artifacts**: Never hand-edit migration or model-snapshot files. Fix entities/configurations or the migration generator, then delete and regenerate an unapplied development migration with `dotnet ef migrations`.
+8. **IP, clean-room, and outbound-license protection**: Never ingest third-party copyleft, source-available, proprietary, or otherwise incompatible source code, snippets, ASTs, SQL, migrations, tests, comments, or assets into implementation context or copy them into this repository. Externally informed work must pass through a source-free functional specification and use independently designed project-native structure, sequence, and organization. A dependency is forbidden unless its terms preserve every intended ISLAMU outbound licensing path or the Project Steward has documented separate licensing and distribution approval. See [`docs/legal/IP_GOVERNANCE.md`](docs/legal/IP_GOVERNANCE.md).
 
 **Full list:** [`docs/QUICK_REFERENCE.md`](docs/QUICK_REFERENCE.md)
 
@@ -96,7 +97,8 @@ When a task touches a topic covered by docs / skills / rules, you **MUST open th
 - This file (`AGENTS.md`)
 - Relevant `docs/*.md` (see [`docs/index.md`](docs/index.md))
 - Matching `.agents/skills/*/SKILL.md`
-- Matching `.claude/rules/*.md` for the file paths you will edit
+- Matching `.agents/rules/*.md` for the file paths you will edit
+- [`.agents/skills/ip-clean-room/SKILL.md`](.agents/skills/ip-clean-room/SKILL.md) and [`docs/legal/IP_GOVERNANCE.md`](docs/legal/IP_GOVERNANCE.md) before external functional research, third-party design analysis, or dependency-license selection
 
 ---
 
@@ -115,7 +117,7 @@ dotnet build --configuration Release --verbosity quiet
 
 ## 9. Agent Operational Baseline
 
-- **Subagents**: Prefer delegation. Index: [`.claude/agents/README.md`](.claude/agents/README.md).
+- **Subagents**: Prefer delegation. Index: [`.agents/agents/README.md`](.agents/agents/README.md).
 - **Memory**: Short-term in `dev/active/`, Durable in `dev/_journal/`.
 - **Todos**: Create immediately for multi-step tasks.
 - **Rules**: See [`docs/OPERATIONS.md#ai-agent-operational-rules`](docs/OPERATIONS.md).

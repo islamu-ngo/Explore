@@ -48,8 +48,17 @@ Use `Not applicable` only when the change has no release-impact category. If the
 - [ ] Image digests, immutable promotion tag evidence, Docker base image digest pins, SBOM/provenance evidence, image scan artifacts, and attestation verification results are recorded when container images are published.
 - [ ] Coolify-side consumption evidence is retained for container deployments: application configuration, API output, deployment logs, smoke summary, or deploy summary proves the running resource consumed either `image@sha256:<digest>` or the verified full-commit immutable tag.
 - [ ] Deployment environment, approver, expected immutable image tag, expected image digest, webhook result, smoke-check result, whether smoke was required, deployment-freeze state, override reason if any, and rollback note are recorded for staging/production deployments.
-- [ ] Supported deployment modes are stated: single-tenant, multi-tenant, optional storage, optional Cerbos.
+- [ ] Supported deployment modes are stated: the minimum standalone API + Blazor + SQLite topology, the split topology, single-tenant or multi-tenant operation, and every enabled optional service.
 - [ ] Known incompatible versions are stated.
+
+## Third-Party Software And Outgoing License
+
+- [ ] Release notes and commercial terms apply the ISLAMU license only to ISLAMU-owned or separately sublicensable material and expressly preserve each third-party material's own license or terms.
+- [ ] The release inventory separates linked/runtime dependencies, base images, optional service images, datasets/assets/fonts, and hosted provider/API terms instead of treating them as one license surface.
+- [ ] The minimum standalone operational topology is documented as one `Event.Standalone` process/container containing the API and Blazor BFF/UI with SQLite persistence; no optional external service is described as a core requirement.
+- [ ] Every optional service is identified as operator-pulled or ISLAMU-conveyed. Referenced deployment manifests do not describe third-party artifacts as ISLAMU-licensed software.
+- [ ] Every ISLAMU-conveyed third-party binary or image has an exact version and digest, upstream license evidence, SBOM, required notices/attributions, corresponding-source or source-offer evidence where applicable, modification provenance, and any required commercial entitlement.
+- [ ] No floating tag (`latest`, an unqualified major tag, or equivalent mutable alias) is accepted as license, provenance, or offline redistribution evidence.
 
 ## Code And Test Gates
 
