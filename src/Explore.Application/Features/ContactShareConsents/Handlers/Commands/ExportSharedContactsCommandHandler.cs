@@ -2,7 +2,9 @@
 // ABOUTME: Validates org approval, builds file content, persists export + export item audit records.
 
 using System.Globalization;
+using System.Security.Cryptography;
 using System.Text;
+using System.Text.Json;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.ContactShareConsent;
 using Explore.Application.Features.ContactShareConsents.Requests.Commands;
@@ -52,7 +54,7 @@ public class ExportSharedContactsCommandHandler : IRequestHandler<ExportSharedCo
 
         // Validate actor is an approved organisation
         var actor = await _actorRepository.GetById(request.RecipientActorId);
-        if (actor?.OrganizationId == null)
+        if (actor?.OrganizationId == null || actor.OrganizationId != request.OrganizationId)
         {
             response.Success = false;
             response.Message = "Recipient actor is not an organisation.";
@@ -62,7 +64,8 @@ public class ExportSharedContactsCommandHandler : IRequestHandler<ExportSharedCo
 
         var org = await _organizationRepository.GetById(actor.OrganizationId.Value);
         if (org is null || !org.TenantParticipations.Any(
-                participation => participation.ApprovalStatusId == (int)ApprovalStatusEnum.Approved))
+                participation => participation.TenantId == request.TenantId &&
+                    participation.ApprovalStatusId == (int)ApprovalStatusEnum.Approved))
         {
             response.Success = false;
             response.Message = "Organisation is not approved.";
@@ -72,7 +75,7 @@ public class ExportSharedContactsCommandHandler : IRequestHandler<ExportSharedCo
 
         // Fetch granted consents
         var consents = await _consentRepository.GetGrantedForExport(
-            request.TenantId, request.RecipientActorId, request.EventId);
+            request.TenantId, request.RecipientActorId, request.EventId, request.ConsentPurposeCode);
 
         var separator = format == "tsv" ? '\t' : ',';
         var contentType = format == "tsv" ? "text/tab-separated-values" : "text/csv";
@@ -92,8 +95,8 @@ public class ExportSharedContactsCommandHandler : IRequestHandler<ExportSharedCo
             sb.AppendLine(string.Join(separator, [
                 EscapeField(consent.EmailSnapshot, separator),
                 consent.GrantedAt.ToString("o", CultureInfo.InvariantCulture),
-                consent.SourceEventId?.ToString() ?? "",
-                EscapeField(consent.SourceEvent?.Title ?? "", separator),
+                "",
+                "",
                 actor.OrganizationId.Value.ToString(),
                 EscapeField(orgName, separator),
                 consent.PurposeCode
@@ -102,22 +105,21 @@ public class ExportSharedContactsCommandHandler : IRequestHandler<ExportSharedCo
 
         var fileBytes = Encoding.UTF8.GetPreamble().Concat(Encoding.UTF8.GetBytes(sb.ToString())).ToArray();
 
-        // Record export audit
-        var export = new EventContactShareExport
+        var exportedAt = DateTime.UtcNow;
+        var export = EventContactShareExport.Request(request.TenantId, request.RecipientActorId, request.EventId,
+            request.ExportedByUserId, format, request.PurposeCode, "[\"Email\",\"GrantedAtUtc\",\"EventId\",\"EventTitle\",\"OrganizationId\",\"OrganizationName\",\"PurposeCode\"]",
+            request.PolicyVersion, exportedAt);
+        string includedFields = "[\"Email\",\"GrantedAtUtc\",\"EventId\",\"EventTitle\",\"OrganizationId\",\"OrganizationName\",\"PurposeCode\"]";
+        export.Complete(includedFields, Convert.ToHexStringLower(SHA256.HashData(fileBytes)), consents.Count, exportedAt);
+        foreach (EventContactShareConsent consent in consents)
         {
-            TenantId = request.TenantId,
-            RecipientActorId = request.RecipientActorId,
-            EventId = request.EventId,
-            ExportedByUserId = request.ExportedByUserId,
-            Format = format,
-            RowCount = consents.Count,
-            CreatedAt = DateTime.UtcNow,
-            Items = consents.Select(c => new EventContactShareExportItem
+            export.AddItem(EventContactShareExportItem.Create(export.Id, consent.Id, JsonSerializer.Serialize(new
             {
-                ConsentId = c.Id,
-                EmailSnapshot = c.EmailSnapshot
-            }).ToList()
-        };
+                Email = consent.EmailSnapshot,
+                consent.GrantedAt,
+                consent.PurposeCode
+            })));
+        }
 
         export = await _exportRepository.Create(export);
 

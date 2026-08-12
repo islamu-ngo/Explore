@@ -34,7 +34,7 @@ public class GetOrganizationSharedContactsQueryHandler : IRequestHandler<GetOrga
     {
         // Validate actor is an approved organisation
         var actor = await _actorRepository.GetById(request.RecipientActorId);
-        if (actor?.OrganizationId == null)
+        if (actor?.OrganizationId == null || actor.OrganizationId != request.OrganizationId)
         {
             _logger.LogWarning("Shared contacts query rejected: actor {ActorId} is not an organisation", request.RecipientActorId);
             return PaginatedResult<SharedContactDto>.Create([], 0, request.PageNumber, request.PageSize);
@@ -42,7 +42,8 @@ public class GetOrganizationSharedContactsQueryHandler : IRequestHandler<GetOrga
 
         var org = await _organizationRepository.GetById(actor.OrganizationId.Value);
         if (org is null || !org.TenantParticipations.Any(
-                participation => participation.ApprovalStatusId == (int)ApprovalStatusEnum.Approved))
+                participation => participation.TenantId == request.TenantId &&
+                    participation.ApprovalStatusId == (int)ApprovalStatusEnum.Approved))
         {
             _logger.LogWarning("Shared contacts query rejected: organisation {OrgId} is not approved", actor.OrganizationId);
             return PaginatedResult<SharedContactDto>.Create([], 0, request.PageNumber, request.PageSize);
@@ -59,8 +60,8 @@ public class GetOrganizationSharedContactsQueryHandler : IRequestHandler<GetOrga
             ConsentId = c.Id,
             Email = c.EmailSnapshot,
             GrantedAt = c.GrantedAt,
-            SourceEventId = c.SourceEventId,
-            SourceEventTitle = c.SourceEvent?.Title,
+            SourceEventId = null,
+            SourceEventTitle = null,
             PurposeCode = c.PurposeCode
         }).ToList();
 

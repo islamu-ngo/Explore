@@ -4,6 +4,7 @@
 using Explore.Application.Authorization;
 using Explore.Application.DTOs.ContactShareConsent;
 using Explore.Application.Responses;
+using Explore.Domain.Constants;
 using MediatR;
 
 namespace Explore.Application.Features.ContactShareConsents.Requests.Commands;
@@ -16,6 +17,9 @@ public class ExportSharedContactsCommand : IRequest<BaseCommandResponse<SharedCo
     public Guid? EventId { get; set; }
     public Guid TenantId { get; set; }
     public Guid ExportedByUserId { get; set; }
+    public string PurposeCode { get; set; } = "ORGANIZER_CONTACT_SHARE_EXPORT";
+    public string ConsentPurposeCode { get; set; } = ConsentPurposeCodes.OrganizerFutureCommunications;
+    public string PolicyVersion { get; set; } = "phase13.v1";
 
     /// <summary>
     /// Export format: "csv" or "tsv".

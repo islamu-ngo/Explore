@@ -94,6 +94,18 @@ public class ExportSharedContactsCommandHandlerTests
         await Assert.That(result.Message).Contains("not approved");
     }
 
+    [Test]
+    public async Task Handle_ActorOrganizationMismatch_ReturnsFailure()
+    {
+        var command = CreateCommand();
+        _actorRepository.GetById(_actorId).Returns(CreateActorEntity(_actorId, Guid.CreateVersion7()));
+
+        var result = await _handler.Handle(command, CancellationToken.None);
+
+        await Assert.That(result.Success).IsFalse();
+        await _exportRepository.DidNotReceive().Create(Arg.Any<EventContactShareExport>());
+    }
+
     #endregion
 
     #region CSV export
@@ -105,7 +117,8 @@ public class ExportSharedContactsCommandHandlerTests
         SetupValidOrgChain();
 
         var consents = CreateGrantedConsents(2);
-        _consentRepository.GetGrantedForExport(_tenantId, _actorId, null).Returns(consents);
+        _consentRepository.GetGrantedForExport(
+            _tenantId, _actorId, null, ConsentPurposeCodes.OrganizerFutureCommunications).Returns(consents);
         _exportRepository.Create(Arg.Any<EventContactShareExport>())
             .Returns(ci => ci.Arg<EventContactShareExport>());
 
@@ -132,10 +145,9 @@ public class ExportSharedContactsCommandHandlerTests
         _organizationRepository.GetById(_orgId)
             .Returns(CreateOrganizationEntity(_orgId, fullName: "=Approved/Org"));
 
-        var consents = CreateGrantedConsents(1);
-        consents[0].EmailSnapshot = "=cmd|' /C calc'!A0";
-        consents[0].SourceEvent!.Title = "+Follow up";
-        _consentRepository.GetGrantedForExport(_tenantId, _actorId, null).Returns(consents);
+        var consents = CreateGrantedConsents(1, "=cmd|' /C calc'!A0");
+        _consentRepository.GetGrantedForExport(
+            _tenantId, _actorId, null, ConsentPurposeCodes.OrganizerFutureCommunications).Returns(consents);
         _exportRepository.Create(Arg.Any<EventContactShareExport>())
             .Returns(ci => ci.Arg<EventContactShareExport>());
 
@@ -147,7 +159,6 @@ public class ExportSharedContactsCommandHandlerTests
 
         var content = System.Text.Encoding.UTF8.GetString(result.Id.FileContent!);
         await Assert.That(content).Contains("'=cmd|' /C calc'!A0");
-        await Assert.That(content).Contains("'+Follow up");
         await Assert.That(content).Contains("'=Approved/Org");
     }
 
@@ -162,7 +173,8 @@ public class ExportSharedContactsCommandHandlerTests
         SetupValidOrgChain();
 
         var consents = CreateGrantedConsents(1);
-        _consentRepository.GetGrantedForExport(_tenantId, _actorId, null).Returns(consents);
+        _consentRepository.GetGrantedForExport(
+            _tenantId, _actorId, null, ConsentPurposeCodes.OrganizerFutureCommunications).Returns(consents);
         _exportRepository.Create(Arg.Any<EventContactShareExport>())
             .Returns(ci => ci.Arg<EventContactShareExport>());
 
@@ -189,7 +201,8 @@ public class ExportSharedContactsCommandHandlerTests
         SetupValidOrgChain();
 
         var consents = CreateGrantedConsents(3);
-        _consentRepository.GetGrantedForExport(_tenantId, _actorId, null).Returns(consents);
+        _consentRepository.GetGrantedForExport(
+            _tenantId, _actorId, null, ConsentPurposeCodes.OrganizerFutureCommunications).Returns(consents);
         _exportRepository.Create(Arg.Any<EventContactShareExport>())
             .Returns(ci => ci.Arg<EventContactShareExport>());
 
@@ -209,7 +222,8 @@ public class ExportSharedContactsCommandHandlerTests
     {
         var command = CreateCommand();
         SetupValidOrgChain();
-        _consentRepository.GetGrantedForExport(_tenantId, _actorId, null).Returns([]);
+        _consentRepository.GetGrantedForExport(
+            _tenantId, _actorId, null, ConsentPurposeCodes.OrganizerFutureCommunications).Returns([]);
         _exportRepository.Create(Arg.Any<EventContactShareExport>())
             .Returns(ci => ci.Arg<EventContactShareExport>());
 
@@ -256,7 +270,7 @@ public class ExportSharedContactsCommandHandlerTests
         ActorType = CreateActorType()
     };
 
-    private static Organization CreateOrganizationEntity(Guid id, bool approved = true, string? fullName = null)
+    private Organization CreateOrganizationEntity(Guid id, bool approved = true, string? fullName = null)
     {
         var organization = new Organization
         {
@@ -264,6 +278,7 @@ public class ExportSharedContactsCommandHandlerTests
             Pii = new OrganizationPii { FullName = fullName ?? (approved ? "Approved Org" : "Unapproved Org") }
         };
         Tenant tenant = CreateTenant();
+        tenant.Id = _tenantId;
         organization.TenantParticipations.Add(new OrganizationTenant
         {
             Id = Guid.CreateVersion7(),
@@ -304,33 +319,13 @@ public class ExportSharedContactsCommandHandlerTests
         _organizationRepository.GetById(_orgId).Returns(CreateOrganizationEntity(_orgId, approved: true));
     }
 
-    private List<EventContactShareConsent> CreateGrantedConsents(int count)
+    private List<EventContactShareConsent> CreateGrantedConsents(int count, string? firstEmail = null)
     {
-        return Enumerable.Range(0, count).Select(i => new EventContactShareConsent
-        {
-            Id = Guid.NewGuid(),
-            TenantId = _tenantId,
-            UserId = Guid.NewGuid(),
-            RecipientActorId = _actorId,
-            SourceEventId = Guid.NewGuid(),
-            SourceEvent = new Explore.Domain.Event
-            {
-                Id = Guid.NewGuid(),
-                Title = $"Event {i}",
-                Actor = CreateActorEntity(_actorId, _orgId),
-                Tenant = CreateTenant(),
-                VisibilityType = new VisibilityType { MasterCode = "PUBLIC", FullName = "Public" },
-                EventStatus = new EventStatus { MasterCode = "PUBLISHED", FullName = "Published" },
-                EventFormat = new EventFormat { MasterCode = "IN_PERSON", FullName = "In Person" }
-            },
-            PurposeCode = ConsentPurposeCodes.OrganizerFutureCommunications,
-            Status = ConsentStatus.Granted,
-            EmailSnapshot = $"user{i}@example.com",
-            EmailNormalizedSnapshot = $"user{i}@example.com",
-            ConsentTextSnapshot = "consent text",
-            ConsentUiVersion = "v1",
-            GrantedAt = DateTime.UtcNow.AddDays(-i)
-        }).ToList();
+        return Enumerable.Range(0, count).Select(i => EventContactShareConsent.Grant(
+            _tenantId, ContactShareConsentSubjectTypeEnum.User, Guid.CreateVersion7(), _actorId,
+            ConsentPurposeCodes.OrganizerFutureCommunications,
+            i == 0 && firstEmail is not null ? firstEmail : $"user{i}@example.com",
+            "consent text", "v1", DateTime.UtcNow.AddDays(-i))).ToList();
     }
 
     #endregion

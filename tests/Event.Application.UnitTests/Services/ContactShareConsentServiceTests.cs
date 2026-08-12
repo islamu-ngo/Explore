@@ -66,8 +66,10 @@ public class ContactShareConsentServiceTests
 
         // Assert
         await Assert.That(result).IsNull();
-        await _consentRepository.DidNotReceive().Create(Arg.Any<EventContactShareConsent>());
-        await _consentRepository.DidNotReceive().Update(Arg.Any<EventContactShareConsent>());
+        await _consentRepository.DidNotReceive().CreateWithHistory(
+            Arg.Any<EventContactShareConsent>(), Arg.Any<EventContactShareConsentHistory>());
+        await _consentRepository.DidNotReceive().UpdateWithHistory(
+            Arg.Any<EventContactShareConsent>(), Arg.Any<EventContactShareConsentHistory>());
     }
 
     #endregion
@@ -80,24 +82,16 @@ public class ContactShareConsentServiceTests
         // Arrange
         var email = "User@Example.com";
         SetupValidChain(email);
-        _consentRepository.GetByScope(_tenantId, _userId, _actorId, ConsentPurposeCodes.OrganizerFutureCommunications)
+        _consentRepository.GetByScope(_tenantId, (int)ContactShareConsentSubjectTypeEnum.User, _userId, _actorId,
+                ConsentPurposeCodes.OrganizerFutureCommunications)
             .Returns((EventContactShareConsent?)null);
 
-        var createdConsent = new EventContactShareConsent
-        {
-            Id = Guid.NewGuid(),
-            TenantId = _tenantId,
-            UserId = _userId,
-            RecipientActorId = _actorId,
-            PurposeCode = ConsentPurposeCodes.OrganizerFutureCommunications,
-            Status = ConsentStatus.Granted,
-            EmailSnapshot = email,
-            EmailNormalizedSnapshot = email.ToLowerInvariant(),
-            ConsentTextSnapshot = "test",
-            ConsentUiVersion = "v1",
-            GrantedAt = DateTime.UtcNow
-        };
-        _consentRepository.Create(Arg.Any<EventContactShareConsent>()).Returns(createdConsent);
+        var createdConsent = EventContactShareConsent.Grant(
+            _tenantId, ContactShareConsentSubjectTypeEnum.User, _userId, _actorId,
+            ConsentPurposeCodes.OrganizerFutureCommunications, email, "test", "v1", DateTime.UtcNow);
+        _consentRepository.CreateWithHistory(
+                Arg.Any<EventContactShareConsent>(), Arg.Any<EventContactShareConsentHistory>())
+            .Returns(createdConsent);
 
         // Act
         var result = await _service.ProcessRegistrationConsent(
@@ -108,15 +102,18 @@ public class ContactShareConsentServiceTests
         await Assert.That(result).IsNotNull();
         await Assert.That(result).IsEqualTo(createdConsent.Id);
 
-        await _consentRepository.Received(1).Create(Arg.Is<EventContactShareConsent>(c =>
+        await _consentRepository.Received(1).CreateWithHistory(Arg.Is<EventContactShareConsent>(c =>
             c.TenantId == _tenantId &&
-            c.UserId == _userId &&
+            c.SubjectTypeId == (int)ContactShareConsentSubjectTypeEnum.User &&
+            c.SubjectId == _userId &&
             c.RecipientActorId == _actorId &&
             c.Status == ConsentStatus.Granted &&
             c.EmailSnapshot == email &&
-            c.EmailNormalizedSnapshot == email.ToLowerInvariant() &&
-            c.SourceEventId == _eventId &&
-                c.SourceRegistrationOrderId == _registrationOrderId));
+            c.EmailNormalizedSnapshot == email.ToLowerInvariant()),
+            Arg.Is<EventContactShareConsentHistory>(history =>
+                history.SourceEventId == _eventId &&
+                history.SourceRegistrationOrderId == _registrationOrderId &&
+                history.StatusSnapshot == ConsentStatus.Granted));
     }
 
     #endregion
@@ -131,7 +128,8 @@ public class ContactShareConsentServiceTests
         SetupValidChain(email);
 
         var existingConsent = CreateExistingConsent(ConsentStatus.Withdrawn);
-        _consentRepository.GetByScope(_tenantId, _userId, _actorId, ConsentPurposeCodes.OrganizerFutureCommunications)
+        _consentRepository.GetByScope(_tenantId, (int)ContactShareConsentSubjectTypeEnum.User, _userId, _actorId,
+                ConsentPurposeCodes.OrganizerFutureCommunications)
             .Returns(existingConsent);
 
         // Act
@@ -144,11 +142,11 @@ public class ContactShareConsentServiceTests
         await Assert.That(existingConsent.Status).IsEqualTo(ConsentStatus.Granted);
         await Assert.That(existingConsent.EmailSnapshot).IsEqualTo(email);
         await Assert.That(existingConsent.WithdrawnAt).IsNull();
-        await Assert.That(existingConsent.SourceEventId).IsEqualTo(_eventId);
-        await Assert.That(existingConsent.SourceRegistrationOrderId).IsEqualTo(_registrationOrderId);
-
-        await _consentRepository.Received(1).Update(existingConsent);
-        await _consentRepository.DidNotReceive().Create(Arg.Any<EventContactShareConsent>());
+        await _consentRepository.Received(1).UpdateWithHistory(
+            existingConsent, Arg.Is<EventContactShareConsentHistory>(history =>
+                history.SourceEventId == _eventId && history.SourceRegistrationOrderId == _registrationOrderId));
+        await _consentRepository.DidNotReceive().CreateWithHistory(
+            Arg.Any<EventContactShareConsent>(), Arg.Any<EventContactShareConsentHistory>());
     }
 
     #endregion
@@ -168,7 +166,8 @@ public class ContactShareConsentServiceTests
 
         // Assert
         await Assert.That(result).IsNull();
-        await _consentRepository.DidNotReceive().Create(Arg.Any<EventContactShareConsent>());
+        await _consentRepository.DidNotReceive().CreateWithHistory(
+            Arg.Any<EventContactShareConsent>(), Arg.Any<EventContactShareConsentHistory>());
     }
 
     [Test]
@@ -239,7 +238,8 @@ public class ContactShareConsentServiceTests
     {
         // Arrange
         var consent = CreateExistingConsent(ConsentStatus.Granted);
-        _consentRepository.GetByScope(_tenantId, _userId, _actorId, ConsentPurposeCodes.OrganizerFutureCommunications)
+        _consentRepository.GetByScope(_tenantId, (int)ContactShareConsentSubjectTypeEnum.User, _userId, _actorId,
+                ConsentPurposeCodes.OrganizerFutureCommunications)
             .Returns(consent);
 
         // Act
@@ -254,7 +254,8 @@ public class ContactShareConsentServiceTests
     {
         // Arrange
         var consent = CreateExistingConsent(ConsentStatus.Withdrawn);
-        _consentRepository.GetByScope(_tenantId, _userId, _actorId, ConsentPurposeCodes.OrganizerFutureCommunications)
+        _consentRepository.GetByScope(_tenantId, (int)ContactShareConsentSubjectTypeEnum.User, _userId, _actorId,
+                ConsentPurposeCodes.OrganizerFutureCommunications)
             .Returns(consent);
 
         // Act
@@ -268,7 +269,8 @@ public class ContactShareConsentServiceTests
     public async Task HasGrantedConsentForOrganizer_NoneExists_ReturnsFalse()
     {
         // Arrange
-        _consentRepository.GetByScope(_tenantId, _userId, _actorId, ConsentPurposeCodes.OrganizerFutureCommunications)
+        _consentRepository.GetByScope(_tenantId, (int)ContactShareConsentSubjectTypeEnum.User, _userId, _actorId,
+                ConsentPurposeCodes.OrganizerFutureCommunications)
             .Returns((EventContactShareConsent?)null);
 
         // Act
@@ -287,8 +289,6 @@ public class ContactShareConsentServiceTests
     {
         // Arrange
         var consent = CreateExistingConsent(ConsentStatus.Granted);
-        consent.TenantId = _tenantId;
-        consent.UserId = _userId;
         _consentRepository.GetById(consent.Id).Returns(consent);
 
         // Act
@@ -297,7 +297,8 @@ public class ContactShareConsentServiceTests
         // Assert
         await Assert.That(consent.Status).IsEqualTo(ConsentStatus.Withdrawn);
         await Assert.That(consent.WithdrawnAt).IsNotNull();
-        await _consentRepository.Received(1).Update(consent);
+        await _consentRepository.Received(1).UpdateWithHistory(
+            consent, Arg.Is<EventContactShareConsentHistory>(history => history.StatusSnapshot == ConsentStatus.Withdrawn));
     }
 
     [Test]
@@ -305,15 +306,14 @@ public class ContactShareConsentServiceTests
     {
         // Arrange
         var consent = CreateExistingConsent(ConsentStatus.Withdrawn);
-        consent.TenantId = _tenantId;
-        consent.UserId = _userId;
         _consentRepository.GetById(consent.Id).Returns(consent);
 
         // Act
         await _service.WithdrawConsent(_tenantId, _userId, consent.Id);
 
         // Assert — no update should occur
-        await _consentRepository.DidNotReceive().Update(Arg.Any<EventContactShareConsent>());
+        await _consentRepository.DidNotReceive().UpdateWithHistory(
+            Arg.Any<EventContactShareConsent>(), Arg.Any<EventContactShareConsentHistory>());
     }
 
     [Test]
@@ -332,9 +332,7 @@ public class ContactShareConsentServiceTests
     public async Task WithdrawConsent_BelongsToOtherUser_ThrowsUnauthorizedAccessException()
     {
         // Arrange
-        var consent = CreateExistingConsent(ConsentStatus.Granted);
-        consent.TenantId = _tenantId;
-        consent.UserId = Guid.NewGuid(); // Different user
+        var consent = CreateExistingConsent(ConsentStatus.Granted, Guid.NewGuid());
         _consentRepository.GetById(consent.Id).Returns(consent);
 
         // Act & Assert
@@ -389,7 +387,7 @@ public class ContactShareConsentServiceTests
         ActorType = CreateActorType()
     };
 
-    private static Organization CreateOrganizationEntity(Guid id, bool approved = true)
+    private Organization CreateOrganizationEntity(Guid id, bool approved = true)
     {
         var organization = new Organization
         {
@@ -397,6 +395,7 @@ public class ContactShareConsentServiceTests
             Pii = new OrganizationPii { FullName = approved ? "Approved Org" : "Unapproved Org" }
         };
         Tenant tenant = CreateTenant();
+        tenant.Id = _tenantId;
         organization.TenantParticipations.Add(new OrganizationTenant
         {
             Id = Guid.CreateVersion7(),
@@ -419,7 +418,9 @@ public class ContactShareConsentServiceTests
         return new Explore.Domain.Event
         {
             Id = _eventId,
+            TenantId = _tenantId,
             ActorId = _actorId,
+            OrganizerActorId = _actorId,
             Title = "Test Event",
             Actor = CreateActorEntity(_actorId, _orgId),
             Tenant = CreateTenant(),
@@ -451,24 +452,18 @@ public class ContactShareConsentServiceTests
         });
     }
 
-    private EventContactShareConsent CreateExistingConsent(ConsentStatus status)
+    private EventContactShareConsent CreateExistingConsent(ConsentStatus status, Guid? subjectId = null)
     {
-        return new EventContactShareConsent
+        EventContactShareConsent consent = EventContactShareConsent.Grant(
+            _tenantId, ContactShareConsentSubjectTypeEnum.User, subjectId ?? _userId, _actorId,
+            ConsentPurposeCodes.OrganizerFutureCommunications, "old@example.com", "old consent text", "v1",
+            DateTime.UtcNow.AddDays(-30));
+        if (status == ConsentStatus.Withdrawn)
         {
-            Id = Guid.NewGuid(),
-            TenantId = _tenantId,
-            UserId = _userId,
-            RecipientActorId = _actorId,
-            SourceEventId = Guid.NewGuid(),
-            PurposeCode = ConsentPurposeCodes.OrganizerFutureCommunications,
-            Status = status,
-            EmailSnapshot = "old@example.com",
-            EmailNormalizedSnapshot = "old@example.com",
-            ConsentTextSnapshot = "old consent text",
-            ConsentUiVersion = "v1",
-            GrantedAt = DateTime.UtcNow.AddDays(-30),
-            WithdrawnAt = status == ConsentStatus.Withdrawn ? DateTime.UtcNow.AddDays(-10) : null
-        };
+            consent.Withdraw(null, subjectId ?? _userId, DateTime.UtcNow.AddDays(-10));
+        }
+
+        return consent;
     }
 
     #endregion

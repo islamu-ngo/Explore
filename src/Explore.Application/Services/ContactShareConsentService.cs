@@ -54,13 +54,19 @@ public class ContactShareConsentService : IContactShareConsentService
 
         // Resolve event → actor → organisation
         var @event = await _eventRepository.GetById(eventId);
-        if (@event == null)
+        if (@event == null || @event.TenantId != tenantId)
         {
             _logger.LogWarning("Cannot process consent: event {EventId} not found", eventId);
             return null;
         }
 
-        var actor = await _actorRepository.GetById(@event.ActorId);
+        if (@event.OrganizerActorId is null)
+        {
+            _logger.LogWarning("Cannot process consent: event {EventId} has no organizer actor", eventId);
+            return null;
+        }
+
+        var actor = await _actorRepository.GetById(@event.OrganizerActorId.Value);
         if (actor?.OrganizationId == null)
         {
             _logger.LogWarning("Cannot process consent: event {EventId} actor {ActorId} has no organisation", eventId, @event.ActorId);
@@ -69,7 +75,8 @@ public class ContactShareConsentService : IContactShareConsentService
 
         var organization = await _organizationRepository.GetById(actor.OrganizationId.Value);
         if (organization is null || !organization.TenantParticipations.Any(
-                participation => participation.ApprovalStatusId == (int)ApprovalStatusEnum.Approved))
+                participation => participation.TenantId == tenantId &&
+                    participation.ApprovalStatusId == (int)ApprovalStatusEnum.Approved))
         {
             _logger.LogWarning("Cannot process consent: organisation {OrgId} is not approved", actor.OrganizationId);
             return null;
@@ -84,57 +91,39 @@ public class ContactShareConsentService : IContactShareConsentService
         }
 
         var email = user.Pii.Email;
-        var emailNormalized = email.ToLowerInvariant();
         var purposeCode = ConsentPurposeCodes.OrganizerFutureCommunications;
         var uiVersion = consentUiVersion ?? ConsentUiVersions.V1;
         var text = consentText ?? $"Share my email address with {organization.FullName} so they can contact me about future events and related updates.";
+        var grantedAt = DateTime.UtcNow;
 
         // Check for existing consent (per-organizer scope)
-        var existing = await _consentRepository.GetByScope(tenantId, userId, @event.ActorId, purposeCode);
+        var existing = await _consentRepository.GetByScope(tenantId, (int)ContactShareConsentSubjectTypeEnum.User, userId,
+            @event.OrganizerActorId.Value, purposeCode);
 
         if (existing != null)
         {
-            // Reactivate if withdrawn, or refresh snapshot if re-granting
-            existing.Status = ConsentStatus.Granted;
-            existing.EmailSnapshot = email;
-            existing.EmailNormalizedSnapshot = emailNormalized;
-            existing.ConsentTextSnapshot = text;
-            existing.ConsentUiVersion = uiVersion;
-            existing.GrantedAt = DateTime.UtcNow;
-            existing.WithdrawnAt = null;
-            existing.SourceEventId = eventId;
-            existing.SourceRegistrationOrderId = registrationOrderId;
-            await _consentRepository.Update(existing);
+            EventContactShareConsentHistory history = existing.Regrant(
+                email, text, uiVersion, eventId, registrationOrderId, null, userId, grantedAt);
+            await _consentRepository.UpdateWithHistory(existing, history);
 
             _logger.LogInformation(
                 "Reactivated contact share consent {ConsentId} for user {UserId} → actor {ActorId}",
-                existing.Id, userId, @event.ActorId);
+                existing.Id, userId, @event.OrganizerActorId.Value);
 
             return existing.Id;
         }
 
         // Create new consent
-        var consent = new EventContactShareConsent
-        {
-            TenantId = tenantId,
-            UserId = userId,
-            RecipientActorId = @event.ActorId,
-            SourceEventId = eventId,
-            SourceRegistrationOrderId = registrationOrderId,
-            PurposeCode = purposeCode,
-            Status = ConsentStatus.Granted,
-            EmailSnapshot = email,
-            EmailNormalizedSnapshot = emailNormalized,
-            ConsentTextSnapshot = text,
-            ConsentUiVersion = uiVersion,
-            GrantedAt = DateTime.UtcNow
-        };
+        var consent = EventContactShareConsent.Grant(tenantId, ContactShareConsentSubjectTypeEnum.User, userId,
+            @event.OrganizerActorId.Value, purposeCode, email, text, uiVersion, grantedAt);
+        EventContactShareConsentHistory grantHistory = consent.CreateGrantHistory(
+            eventId, registrationOrderId, null, userId, grantedAt);
 
-        consent = await _consentRepository.Create(consent);
+        consent = await _consentRepository.CreateWithHistory(consent, grantHistory);
 
         _logger.LogInformation(
             "Created contact share consent {ConsentId} for user {UserId} → actor {ActorId}",
-            consent.Id, userId, @event.ActorId);
+            consent.Id, userId, @event.OrganizerActorId.Value);
 
         return consent.Id;
     }
@@ -142,7 +131,7 @@ public class ContactShareConsentService : IContactShareConsentService
     public async Task<bool> HasGrantedConsentForOrganizer(Guid tenantId, Guid userId, Guid recipientActorId)
     {
         var existing = await _consentRepository.GetByScope(
-            tenantId, userId, recipientActorId, ConsentPurposeCodes.OrganizerFutureCommunications);
+            tenantId, (int)ContactShareConsentSubjectTypeEnum.User, userId, recipientActorId, ConsentPurposeCodes.OrganizerFutureCommunications);
         return existing?.Status == ConsentStatus.Granted;
     }
 
@@ -158,15 +147,14 @@ public class ContactShareConsentService : IContactShareConsentService
         if (consent == null)
             throw new KeyNotFoundException($"Consent {consentId} not found");
 
-        if (consent.TenantId != tenantId || consent.UserId != userId)
+        if (consent.TenantId != tenantId || consent.SubjectTypeId != (int)ContactShareConsentSubjectTypeEnum.User || consent.SubjectId != userId)
             throw new UnauthorizedAccessException("Cannot withdraw consent belonging to another user");
 
         if (consent.Status == ConsentStatus.Withdrawn)
             return; // Already withdrawn, idempotent
 
-        consent.Status = ConsentStatus.Withdrawn;
-        consent.WithdrawnAt = DateTime.UtcNow;
-        await _consentRepository.Update(consent);
+        EventContactShareConsentHistory history = consent.Withdraw(null, userId, DateTime.UtcNow);
+        await _consentRepository.UpdateWithHistory(consent, history);
 
         _logger.LogInformation(
             "Withdrawn contact share consent {ConsentId} for user {UserId}", consentId, userId);
@@ -182,8 +170,8 @@ public class ContactShareConsentService : IContactShareConsentService
             RecipientActorId = c.RecipientActorId,
             OrganizationName = c.RecipientActor?.Organization?.FullName
                             ?? c.RecipientActor?.Pii?.DisplayName,
-            SourceEventId = c.SourceEventId,
-            SourceEventTitle = c.SourceEvent?.Title,
+            SourceEventId = null,
+            SourceEventTitle = null,
             PurposeCode = c.PurposeCode,
             Status = (int)c.Status,
             EmailSnapshot = c.EmailSnapshot,

@@ -73,36 +73,27 @@ public class GetOrganizationSharedContactsQueryHandlerTests
     }
 
     [Test]
+    public async Task Handle_ActorOrganizationMismatch_ReturnsEmptyResult()
+    {
+        var query = CreateQuery();
+        _actorRepository.GetById(_actorId).Returns(CreateActorEntity(_actorId, Guid.CreateVersion7()));
+
+        var result = await _handler.Handle(query, CancellationToken.None);
+
+        await Assert.That(result.TotalCount).IsEqualTo(0);
+        await _consentRepository.DidNotReceive().GetGrantedForRecipient(
+            Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<Guid?>(), Arg.Any<string?>(), Arg.Any<int>(), Arg.Any<int>());
+    }
+
+    [Test]
     public async Task Handle_ApprovedOrganization_ReturnsContacts()
     {
         var query = CreateQuery();
         SetupValidOrgChain();
 
-        var consents = Enumerable.Range(0, 3).Select(i => new EventContactShareConsent
-        {
-            Id = Guid.NewGuid(),
-            TenantId = _tenantId,
-            UserId = Guid.NewGuid(),
-            RecipientActorId = _actorId,
-            SourceEventId = Guid.NewGuid(),
-            SourceEvent = new Explore.Domain.Event
-            {
-                Id = Guid.NewGuid(),
-                Title = $"Event {i}",
-                Actor = CreateActorEntity(_actorId, _orgId),
-                Tenant = CreateTenant(),
-                VisibilityType = new VisibilityType { MasterCode = "PUBLIC", FullName = "Public" },
-                EventStatus = new EventStatus { MasterCode = "PUBLISHED", FullName = "Published" },
-                EventFormat = new EventFormat { MasterCode = "IN_PERSON", FullName = "In Person" }
-            },
-            PurposeCode = ConsentPurposeCodes.OrganizerFutureCommunications,
-            Status = ConsentStatus.Granted,
-            EmailSnapshot = $"user{i}@example.com",
-            EmailNormalizedSnapshot = $"user{i}@example.com",
-            ConsentTextSnapshot = "text",
-            ConsentUiVersion = "v1",
-            GrantedAt = DateTime.UtcNow
-        }).ToList();
+        var consents = Enumerable.Range(0, 3).Select(i => EventContactShareConsent.Grant(
+            _tenantId, ContactShareConsentSubjectTypeEnum.User, Guid.CreateVersion7(), _actorId,
+            ConsentPurposeCodes.OrganizerFutureCommunications, $"user{i}@example.com", "text", "v1", DateTime.UtcNow)).ToList();
 
         _consentRepository.GetGrantedForRecipient(_tenantId, _actorId, null, null, 1, 20)
             .Returns((consents, 3));
@@ -148,7 +139,7 @@ public class GetOrganizationSharedContactsQueryHandlerTests
         ActorType = CreateActorType()
     };
 
-    private static Organization CreateOrganizationEntity(Guid id, bool approved = true)
+    private Organization CreateOrganizationEntity(Guid id, bool approved = true)
     {
         var organization = new Organization
         {
@@ -156,6 +147,7 @@ public class GetOrganizationSharedContactsQueryHandlerTests
             Pii = new OrganizationPii { FullName = approved ? "Approved Org" : "Unapproved Org" }
         };
         Tenant tenant = CreateTenant();
+        tenant.Id = _tenantId;
         organization.TenantParticipations.Add(new OrganizationTenant
         {
             Id = Guid.CreateVersion7(),
