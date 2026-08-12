@@ -1377,12 +1377,14 @@
           "Microsoft.Extensions.AI.Abstractions": "[10.8.3, )",
           "Microsoft.Extensions.AI.OpenAI": "[10.8.3, )",
           "Microsoft.Extensions.Http.Resilience": "[10.8.0, )",
+          "Microsoft.IdentityModel.Protocols.OpenIdConnect": "[8.22.0, )",
           "Npgsql": "[10.0.3, )",
           "OpenFeature": "[2.14.0, )",
           "Polly": "[8.7.0, )",
           "RabbitMQ.Client": "[7.2.1, )",
           "Refit.HttpClientFactory": "[14.0.1, )",
           "Svix": "[1.99.1, )",
+          "System.IdentityModel.Tokens.Jwt": "[8.22.0, )",
           "WebPush": "[1.0.13, )",
           "YamlDotNet": "[18.1.0, )"
         }
