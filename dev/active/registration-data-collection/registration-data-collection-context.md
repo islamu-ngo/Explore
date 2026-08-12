@@ -3,7 +3,39 @@
 
 # Registration Data Collection & Participation Platform — Context
 
-Last Updated: 2026-08-11 Europe/Brussels
+Last Updated: 2026-08-12 Europe/Brussels
+
+## PHASE 14 STARTED — TASK 14.8 COMPLETE (2026-08-12 Europe/Brussels)
+
+The user explicitly requested Phase 14, overriding its prior optional/deferrable status. Task 14.8 is complete in `deferred-design-records.md`: payment attempts/reconciliation, admission credentials/transfers, check-in/scanner capabilities, anti-enumeration recovery, reservation-aware promo codes, expiring waitlist offers, general products, and tax/fee/invoice snapshots each name their implementation trigger, the ISLAMU aggregates they extend, required trust boundaries, and the `hi-events-report.md` sections a future ADR supersedes. This is clean-room design evidence only and does not implement payment, refunds, admission credentials, check-in, promotions, or invoicing.
+
+The canonical Release baseline passes with 0 errors and 757 existing warnings. The shared worktree still contains Phase 13 and unrelated address-geocoding changes; preserve both. Context7 is available and was used for current ASP.NET Core, EF Core, and MudBlazor documentation. Tavily MCP is not registered in this session, so no Tavily research result is claimed.
+
+### ⏭️ NEXT
+
+Continue the dependency-safe Phase 14 runtime tasks after mapping existing primitives. Keep all new Studio actions HAL-gated and do not absorb the deferred commerce/admission records into implementation scope.
+
+## PHASE 14 TASK 14.7 COMPLETE (2026-08-12 Europe/Brussels)
+
+The existing Studio architecture already satisfied the route and authority contract: canonical event routes are registered, `StudioWorkspaceNavigation` replaces actor navigation with `StudioEventNavigation` on `/studio/events/{eventId}/...`, and each section/action is emitted from its exact HAL relation. The accessibility audit found one owned defect in `StudioEventAttendees.razor`: export completion was snackbar-only. The page now uses `IAccessibilityAnnouncerService`, announcing successful downloads politely and failed downloads assertively without changing the HAL gate or download flow.
+
+Focused bUnit coverage drives the rendered export button and passes 10/10 together with Studio shell/navigation replacement tests. The full Phase 14-selected Blazor Client project passes 2,333 tests with one governed skip, and the canonical Release build completes with 0 errors and 494 existing warnings. The changed C# test file has no LSP diagnostics; Razor LSP remains unavailable because installation was previously declined. Authenticated browser/visual capture is not claimed because the persisted PostgreSQL `28P01` and RabbitMQ `ACCESS_REFUSED` blocker remains unchanged.
+
+## PHASE 13 IMPLEMENTATION COMPLETE — API GATE PENDING (2026-08-12 Europe/Brussels)
+
+Phase 13 replaces user-only current consent identity with four normalized subject kinds: `User`, `RegistrationPurchaser`, `RegistrationParticipant`, and `GuestContact`. The database enforces exactly one matching subject FK and one current row per tenant/subject/recipient/purpose. Grant, regrant, and withdrawal persist append-only `EventContactShareConsentHistory` snapshots atomically with the current row. Recipient capture remains fail-closed unless the Event has a verified organization `OrganizerActorId`; source Event/order data is provenance and claim approval never reinterprets earlier consent.
+
+Native participant consent is independent. A participant submission can create consent only for that participant subject; purchaser consent is never copied. Child marketing consent is rejected as `CHILD_MARKETING_CONSENT_DISABLED`, while an adult participant remains independently eligible. Exports select granted consent for the exact purpose and optional source-event history, neutralize spreadsheet formulas, and persist `EventContactShareExport` plus per-consent item evidence with policy, included fields, row count, content hash, and exporter. Registration answers, sensitive ciphertext, order PII, and participant PII receive immutable retention deadlines; the daily bounded worker deletes expired rows while preserving consent and export evidence.
+
+The management Event HAL policy emits `export-attendees` only for platform-managed Events with a verified organization organizer and a successful `ExportSharedContacts` decision on the exact tenant/organization consent resource. Studio renders **Export consented contacts** only from that relation inside `/studio/events/{EventId}/attendees`; it adds no sidebar capability or local role/claim check.
+
+Final review found and repaired five Phase 13-owned seams: recipient approval now requires the exact request tenant; actor organization must equal the authorized organization resource; organization list Event filtering now uses consent-history provenance; multi-table retention cleanup runs through `IUnitOfWork`; and privacy erasure removes user-owned consent history before the restrictive current-consent FK while retaining/anonymizing the export header. Real PostgreSQL regressions cover retention evidence preservation, erasure ordering, and event provenance.
+
+Final verification: focused Domain 6, Application 10, API/HAL 1, Blazor 2, Architecture 26, and PostgreSQL retention/erasure/provenance 10 pass. All five provider models report no pending changes; OpenAPI and NSwag are regenerated; changed-file diagnostics report no errors; `git diff --check` is clean. The final full Release rebuild has 0 errors and exposes 5,138 existing analyzer warnings. The selected API project gate completed with 2,197 passed, 1 skipped, and 13 unrelated failures in pre-existing TickerQ schema, authorization/startup guardrail, and participation-migration fixtures; no Phase 13 consent/export/HAL test failed, so the broad gate remains honestly unchecked. Live Aspire started successfully, but persisted PostgreSQL rejected the generated password with `28P01` and RabbitMQ rejected credentials with `ACCESS_REFUSED`; migration/API/Blazor therefore never reached a usable state. AppHost was stopped without deleting or resetting volumes. The OpenAI Oracle request failed upstream; its unauthorized non-OpenAI fallback timed out and produced no finding. Graph-backed and direct final review have no unresolved Phase 13 finding after the repairs.
+
+### ⏭️ NEXT
+
+Phase 13 has no remaining owned implementation task. Clear the shared API fixtures and persisted infrastructure credential drift before checking the broad phase gate or claiming authenticated browser execution. Phase 14 remains optional/deferrable.
 
 ## PHASE 12 GOOGLE FORMS — TASKS 12.1–12.4 COMPLETE (2026-08-11 Europe/Brussels)
 

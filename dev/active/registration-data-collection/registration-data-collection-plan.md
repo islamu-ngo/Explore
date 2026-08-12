@@ -3,7 +3,25 @@
 
 # Registration Data Collection & Participation Platform — Implementation Plan
 
-Last Updated: 2026-08-11 Europe/Brussels
+Last Updated: 2026-08-12 Europe/Brussels
+
+---
+
+## Handoff — 2026-08-12 Europe/Brussels: Phase 13 Implementation Complete / API Gate Next
+
+### Current State
+- Tasks 13.1–13.4 are implemented: typed consent subjects with append-only history; independent participant consent and child-marketing rejection; purpose/event-provenance-filtered audited export; immutable retention deadlines and bounded cleanup; and permission-bound Studio `export-attendees` inside the Attendees page.
+- The shipped relation name is `export-attendees`. It describes the UI placement; the underlying API contract remains the consent-filtered `ExportSharedContacts` action and audited organization export route.
+
+### Validation
+- Release build is clean. Focused Domain, Application, API/HAL, Blazor, Architecture, PostgreSQL retention, five-provider EF-model, OpenAPI, and NSwag checks are green as recorded in the task/context ledgers.
+- The selected broad API gate executed 2,211 tests: 2,197 passed, 1 skipped, and 13 unrelated TickerQ schema, authorization/startup guardrail, and participation-migration fixtures failed. No Phase 13-owned test failed, but the phase checkbox remains open because the mandated project is not globally green.
+- Live Aspire/browser QA is blocked by persisted PostgreSQL `28P01` and RabbitMQ `ACCESS_REFUSED` credential drift. AppHost was stopped and named volumes were not reset.
+- Direct final review repaired exact-tenant recipient approval, actor/organization binding, organization-read event provenance, transactional cleanup, and privacy-erasure consent-history ordering. Final focused reruns pass Domain 6, Application 10, API/HAL 1, Blazor 2, Architecture 26, and PostgreSQL retention/erasure/provenance 10. The OpenAI Oracle request failed upstream and its non-OpenAI fallback timed out without a result; graph-backed and direct review report no unresolved owned finding.
+
+### Next Action
+1. Retain the exact broad-suite and environment caveats without weakening the implemented contracts.
+2. Clear shared API fixture debt and persisted local-infrastructure credential drift before claiming a globally green gate or browser proof; otherwise Phase 14 remains optional.
 
 ---
 
@@ -1613,7 +1631,7 @@ From the repository contract (AGENTS.md §5, QUICK_REFERENCE, GOVERNANCE):
 - **Files:** new `dev/active/registration-data-collection/deferred-design-records.md` (or `docs/adr/` notes when a decision is ripe)
 - **Description:** Concise deferred design records per report §11.4, each citing the relevant `hi-events-report.md` section so future agents do not re-research the same repository: `PaymentAttempt` + provider payment/refund identity + reconciliation (unique provider attempt identity, idempotency keys, provider calls outside transactions — report §7.3/§7.5); `AdmissionTicket` with a rotatable signed/hashed admission credential that is **never** the display/public ID, transfer revoking/rotating the credential (report §5.5/§7.10); check-in lists mapped to ticket entitlements/sessions with append-only admission events, unique-active-admission constraint, authenticated or scoped-expiring scanner capabilities, camera/HID scanner UX with partial batch results (report §5.6/§7.11); ticket lookup/resend/self-service via hashed, single-purpose, expiring recovery capabilities without email enumeration (report §5.5); promo codes whose usage counts include live unexpired reservations (report §4.8); waitlist offers with expiry; optional add-ons/general products kept out of the admission vocabulary; taxes/fees/invoices snapshots.
 - **Acceptance Criteria:**
-  - [ ] Each record names its trigger, the ISLAMU aggregates it extends, and the report sections it supersedes
+  - [x] Each record names its trigger, the ISLAMU aggregates it extends, and the report sections it supersedes
 - **Effort:** M
 
 ---

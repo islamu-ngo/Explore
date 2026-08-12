@@ -3,12 +3,12 @@
 
 # Registration Data Collection & Participation Platform — Task Checklist
 
-Last Updated: 2026-08-11 Europe/Brussels
+Last Updated: 2026-08-12 Europe/Brussels
 
 ## Status Summary
-- **Overall status:** Phase 12 Google Forms is complete and Phase12-owned verification is green.
-- **Current priority:** Start Phase 13 consent, attendee-data surfaces, and audited exports.
-- **Latest implementation evidence:** Google Forms is pinned to `GOOGLE_FORMS|GOOGLE_WORKSPACE|v1|ISLAMU_EVENT_GOOGLE_FORMS_PUBSUB_V1|2026-08-11`; OAuth-backed read/provisioning, descriptor-aware no-webhook-secret connection validation, Pub/Sub OIDC notify-only intake, fenced watch renewal, immediate initial sweep, six-hour recovery sweeps, opaque continuation cursors, independent failure backoff, and identifiers-only provider-submission queuing are implemented.
+- **Overall status:** Phase 13 implementation and direct final review are complete; Phase 14 is now explicitly requested and Task 14.8 is complete. Focused Phase 13 lanes and the Release build are green, while the selected broad API gate remains non-green on 13 unrelated baseline fixtures.
+- **Current priority:** Continue Phase 14's independent tasks without absorbing deferred payment/admission implementation. Tavily MCP is unavailable in this session; Context7 and repository evidence are available.
+- **Latest implementation evidence:** Typed consent subjects and append-only lifecycle history, independent adult participant consent with child-marketing rejection, purpose/event-provenance-filtered audited exports, immutable retention deadlines with atomic bounded cleanup, privacy-erasure-safe consent ordering, and HAL-authorized Studio `export-attendees` are implemented. Final review repaired exact-tenant recipient approval, actor/organization substitution, missing organization-read provenance filtering, cleanup partial-failure risk, and consent-history FK erasure ordering. Live Aspire/browser QA is blocked by persisted PostgreSQL `28P01` and RabbitMQ `ACCESS_REFUSED`; volumes were preserved and AppHost stopped.
 
 ## Handoff — 2026-08-01 Europe/Brussels: Task 7.5 Confirmed / Tasks 7.6–7.7 Current
 
@@ -326,15 +326,17 @@ Last Updated: 2026-08-11 Europe/Brussels
 - **Final review gate:** requirements, security, and quality implementation reviewers all returned `APPROVE`; see [Phase 12 Final Review Receipts](../../../.omo/start-work/artifacts/phase12/final-review.md).
 - **Broad-suite caveats:** Persistence reached 811/988 with 174 known cascade failures and 3 skips. API reached 2,192/2,210 before two Phase 12 contract fixes; focused owned failures were rerun green, but a full API rerun is not claimed. Browser verification was blocked by persisted PostgreSQL `28P01` and RabbitMQ `ACCESS_REFUSED`; resources were stopped safely.
 
-## Phase 13: Consent, Attendee-Data Surfaces, Audited Exports ⏳ NOT STARTED
-- [ ] **13.1 Typed consent subjects on `EventContactShareConsent`** — subject type/ID refactor; verified-recipient rule; `docs/CONTACT_SHARING.md` — **Acceptance:** four subject kinds; no prompt on unclaimed reported events — **Effort:** L — **Dependencies:** Phases 6, 8
-- [ ] **13.2 Per-participant consent independence** — per-participant prompts; guardian policy; child marketing off by default — **Acceptance:** purchaser consent never copied; §22.4 list asserted — **Effort:** M — **Dependencies:** 13.1
-- [ ] **13.3 Audited exports + retention execution** — purpose/exportable/consent-filtered exports + audit rows + retention sweep — **Acceptance:** withdrawn consent excluded; every export audited — **Effort:** L — **Dependencies:** 13.1
-- [ ] **13.4 Attendee-management HAL/Cerbos completion + Studio export action** — `export-consented-contacts` etc.; Phase 6 Studio attendee pages; §23 matrix parity/bUnit tests — **Acceptance:** §31.6 rows covered; export appears only from its relation and remains inside Attendees, not a sidebar item — **Effort:** M — **Dependencies:** 13.3
+## Phase 13: Consent, Attendee-Data Surfaces, Audited Exports 🟡 VERIFICATION
+- [x] **13.1 Typed consent subjects on `EventContactShareConsent`** — four typed subject shapes, verified-recipient capture, unique current scope, and atomic append-only history are implemented and documented.
+- [x] **13.2 Per-participant consent independence** — participant-subject consent is independent; child marketing consent fails closed without affecting adult participant consent.
+- [x] **13.3 Audited exports + retention execution** — active matching-purpose/event-provenance filtering, export/item audits, immutable deadlines, and bounded cleanup preserve consent/export evidence.
+- [x] **13.4 Attendee-management HAL/Cerbos completion + Studio export action** — permission-bound `export-attendees` is an Attendees-page action only; bUnit fails closed when the relation is absent.
 
 ### Phase 13 Verification — RUN ONCE AFTER ALL PHASE TASKS
-- [ ] `dotnet build --configuration Release --verbosity quiet`
-- [ ] `dotnet test --project tests/Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity quiet`
+- [x] `dotnet build --configuration Release --verbosity quiet` — 0 warnings, 0 errors
+- [ ] `dotnet test --project tests/Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity quiet` — executed: 2,197 passed, 1 skipped, 13 unrelated failures in TickerQ schema, authorization/startup guardrails, and a participation migration fixture; no Phase 13 consent/export/HAL test failed
+- **Affected-lane evidence:** final reruns passed Domain 6, Application 10, API/HAL 1, Blazor 2, Architecture 26, and real PostgreSQL retention/erasure/provenance 10. All five providers report no pending EF model changes. Release build has 0 errors; the final full rebuild surfaced the repository's existing 5,138 analyzer warnings. `git diff --check` is clean and changed-file diagnostics report no errors. Live UI/API execution is environment-blocked by persisted PostgreSQL/RabbitMQ credential drift; no volume reset was performed. Broad API failures: `DashboardDisabledDoesNotExposeSchedulerRoute`, `DashboardEnabledRequiresHostAuthentication`, five existing authorization expectation cases, three production guardrail startup cases blocked by privacy-erasure replay, two tenant-setting/storage authorization cases, and `PostgreSqlFilteredIndexesEnforceRequirementAndStandaloneUniqueness`.
+- **Review evidence:** graph risk/impact review plus direct requirements/security/tenant/privacy review completed with no unresolved Phase 13 finding after repairs. The requested OpenAI Oracle session failed upstream and an unauthorized non-OpenAI fallback timed out without producing a review; no fallback result is claimed.
 
 ## Phase 14: Advanced Orchestration & Deferred ⏳ NOT STARTED (each task independently deferrable)
 - [ ] **14.1 Guest order → account linking (verified, never silent)** — **Effort:** M
@@ -343,12 +345,12 @@ Last Updated: 2026-08-11 Europe/Brussels
 - [ ] **14.4 Governed analytics projections over answers** — **Effort:** L
 - [ ] **14.5 Company CSV bulk assignment + `RegistrationAmendment` flows** — **Effort:** L
 - [ ] **14.6 Generalized submission sinks (Excel/Sheets/webhooks)** — **Effort:** M
-- [ ] **14.7 Blazor affordance-gating + Studio route/sidebar + accessibility audit** — assert every mutation/section is link-gated, canonical `/studio/**` routes are registered, event navigation replaces actor navigation rather than stacking, and new surfaces pass keyboard/RTL/announcement checks — **Effort:** M
-- [ ] **14.8 Deferred commerce/admission design records (Hi.Events-informed)** — `deferred-design-records.md` (new): PaymentAttempt/provider reconciliation, AdmissionTicket + rotatable signed/hashed credential (never the display ID; transfer rotates), check-in lists with append-only admission events + unique-active constraint + scoped scanner capabilities + camera/HID UX, anti-enumeration ticket lookup/resend/self-service, promo codes counting live reservations, waitlist offers with expiry, add-ons/general products, taxes/fees/invoices — each citing `hi-events-report.md` sections — **Acceptance:** each record names trigger, extended aggregates, and report sections — **Effort:** M
+- [x] **14.7 Blazor affordance-gating + Studio route/sidebar + accessibility audit** — existing tests prove mutation/section HAL gates, canonical `/studio/**` route registration, and actor-navigation replacement on event routes. The audit repaired the attendee export's missing live-region feedback: successful downloads announce politely and failures announce assertively while the exact `export-attendees` relation remains the only affordance. Focused rendered interaction/navigation tests pass 10/10; the full Blazor Client gate passes 2,333 with 1 governed skip; Release build has 0 errors. CSS remains logical/RTL-safe. Authenticated browser capture remains unclaimed because the persisted PostgreSQL/RabbitMQ credential blocker is unchanged. — **Effort:** M
+- [x] **14.8 Deferred commerce/admission design records (Hi.Events-informed)** — `deferred-design-records.md` records PaymentAttempt/provider reconciliation, AdmissionTicket + rotatable signed/hashed credential (never the display ID; transfer rotates), check-in lists with append-only admission events + unique-active constraint + scoped scanner capabilities + camera/HID UX, anti-enumeration ticket lookup/resend/self-service, promo codes counting live reservations, waitlist offers with expiry, add-ons/general products, and taxes/fees/invoices. Every record names its trigger, extended aggregates, required boundary, and superseded `hi-events-report.md` sections. Context7 evidence is recorded; Tavily MCP is unavailable and no Tavily result is claimed. — **Effort:** M
 
 ### Phase 14 Verification — RUN ONCE AFTER ALL PHASE TASKS
-- [ ] `dotnet build --configuration Release --verbosity quiet`
-- [ ] `dotnet test --project tests/Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration Release --verbosity quiet`
+- [ ] `dotnet build --configuration Release --verbosity quiet` — current partial-phase run: 0 errors, 494 existing warnings; rerun after Tasks 14.1–14.6
+- [ ] `dotnet test --project tests/Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration Release --verbosity quiet` — current partial-phase run: 2,333 passed, 1 governed skip; rerun after Tasks 14.1–14.6
 
 ## Remaining / Deferred Work
 - **Migration application/runtime rollout** — `ff30795a2` and `20260729183118_RemoveLegacyEventPricing` provide source artifacts; EF reports no pending model changes, but no database application or runtime rollout evidence is recorded.
