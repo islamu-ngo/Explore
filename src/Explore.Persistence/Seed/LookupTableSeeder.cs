@@ -75,6 +75,8 @@ public static class LookupTableSeeder
         await SeedRegistrationOrderLookupsAsync(context, cancellationToken);
         await SeedRegistrationWorkflowLookupsAsync(context, cancellationToken);
         await SeedRegistrationFormLookupsAsync(context, cancellationToken);
+        await SeedRegistrationRetentionLookupsAsync(context, cancellationToken);
+        await SeedContactShareLookupsAsync(context, cancellationToken);
         await SeedRegistrationRuntimeLookupsAsync(context, cancellationToken);
         await SeedRegistrationProviderLookupsAsync(context, cancellationToken);
         await SeedPlatformMonetizationDefaultsAsync(context, cancellationToken);
@@ -1672,6 +1674,28 @@ public static class LookupTableSeeder
         [
             new RegistrationOrganizerVisibility { Id = (int)RegistrationOrganizerVisibilityEnum.Hidden, MasterCode = "HIDDEN", FullName = "Hidden" },
             new RegistrationOrganizerVisibility { Id = (int)RegistrationOrganizerVisibilityEnum.AuthorizedOrganizers, MasterCode = "AUTHORIZED_ORGANIZERS", FullName = "Authorized organizers" }
+        ], row => row.Id, ct);
+    }
+
+    internal static async Task SeedRegistrationRetentionLookupsAsync(ExploreDbContext context, CancellationToken ct)
+    {
+        await SeedMissingLookupRowsAsync(context,
+        [
+            new RegistrationRetentionPolicy { Id = (int)RegistrationRetentionPolicyEnum.StandardOperational, MasterCode = "STANDARD_OPERATIONAL", FullName = "Standard operational", DurationDays = 730 },
+            new RegistrationRetentionPolicy { Id = (int)RegistrationRetentionPolicyEnum.SensitiveShort, MasterCode = "SENSITIVE_SHORT", FullName = "Sensitive short", DurationDays = 90 },
+            new RegistrationRetentionPolicy { Id = (int)RegistrationRetentionPolicyEnum.MarketingConsentEvidence, MasterCode = "MARKETING_CONSENT_EVIDENCE", FullName = "Marketing consent evidence", DurationDays = 2555 },
+            new RegistrationRetentionPolicy { Id = (int)RegistrationRetentionPolicyEnum.LegalHold, MasterCode = "LEGAL_HOLD", FullName = "Legal hold", DurationDays = null, IsLegalHold = true }
+        ], row => row.Id, ct);
+    }
+
+    internal static async Task SeedContactShareLookupsAsync(ExploreDbContext context, CancellationToken ct)
+    {
+        await SeedMissingLookupRowsAsync(context,
+        [
+            new ContactShareConsentSubjectType { Id = (int)ContactShareConsentSubjectTypeEnum.User, MasterCode = "USER", FullName = "User" },
+            new ContactShareConsentSubjectType { Id = (int)ContactShareConsentSubjectTypeEnum.RegistrationPurchaser, MasterCode = "REGISTRATION_PURCHASER", FullName = "Registration purchaser" },
+            new ContactShareConsentSubjectType { Id = (int)ContactShareConsentSubjectTypeEnum.RegistrationParticipant, MasterCode = "REGISTRATION_PARTICIPANT", FullName = "Registration participant" },
+            new ContactShareConsentSubjectType { Id = (int)ContactShareConsentSubjectTypeEnum.GuestContact, MasterCode = "GUEST_CONTACT", FullName = "Guest contact" }
         ], row => row.Id, ct);
     }
 

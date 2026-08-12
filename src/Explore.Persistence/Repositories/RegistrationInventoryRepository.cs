@@ -50,6 +50,16 @@ public sealed class RegistrationInventoryRepository(ExploreDbContext dbContext) 
                 order => order.Id == orderId && order.TenantId == tenantId,
                 cancellationToken);
 
+    public Task<RegistrationOrder?> GetOrderForUpdateWithPiiAsync(
+        Guid orderId,
+        Guid tenantId,
+        CancellationToken cancellationToken) =>
+        dbContext.RegistrationOrders
+            .Include(order => order.Pii)
+            .FirstOrDefaultAsync(
+                order => order.Id == orderId && order.TenantId == tenantId,
+                cancellationToken);
+
     public async Task<IReadOnlyList<RegistrationInventoryHold>> GetHoldsByOrderAsync(
         Guid orderId,
         Guid tenantId,

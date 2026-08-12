@@ -105,7 +105,17 @@ public sealed class RegistrationFormPersistenceTests
         Guid tenantB = Guid.CreateVersion7();
         await using (ExploreDbContext seed = CreateInMemoryContext(database))
         {
-            seed.AddRange(Graph(tenantA, false), Graph(tenantA, true), Graph(tenantB, false));
+            RegistrationForm tenantAForm = Graph(tenantA, false);
+            RegistrationForm deletedTenantAForm = Graph(tenantA, true);
+            RegistrationForm tenantBForm = Graph(tenantB, false);
+            seed.AddRange(
+                tenantAForm,
+                deletedTenantAForm,
+                tenantBForm,
+                RegistrationFormTemplate.Create(null, "Platform", "Platform", "Registration", null, tenantAForm.Versions.Single(), Now),
+                RegistrationFormTemplate.Create(tenantA, "Tenant A", "Tenant", "Registration", null, tenantAForm.Versions.Single(), Now),
+                RegistrationFormTemplate.Create(tenantB, "Tenant B", "Tenant", "Registration", null, tenantBForm.Versions.Single(), Now),
+                DeletedTemplate(tenantA, deletedTenantAForm.Versions.Single()));
             await seed.SaveChangesAsync();
         }
 
@@ -116,7 +126,16 @@ public sealed class RegistrationFormPersistenceTests
         await Assert.That(await context.RegistrationFormSections.CountAsync()).IsEqualTo(1);
         await Assert.That(await context.RegistrationFormFields.CountAsync()).IsEqualTo(1);
         await Assert.That(await context.RegistrationFormFieldOptions.CountAsync()).IsEqualTo(1);
+        await Assert.That((await new RegistrationFormTemplateRepository(context).ListAsync(CancellationToken.None)).Count).IsEqualTo(2);
         await Assert.That(await context.RegistrationForms.IgnoreQueryFilters([QueryFilterNames.SoftDelete]).CountAsync()).IsEqualTo(2);
+    }
+
+    private static RegistrationFormTemplate DeletedTemplate(Guid tenantId, RegistrationFormVersion source)
+    {
+        RegistrationFormTemplate template = RegistrationFormTemplate.Create(
+            tenantId, "Deleted", "Deleted", "Registration", null, source, Now);
+        template.IsDeleted = true;
+        return template;
     }
 
     private static RegistrationForm Graph(Guid tenantId, bool deleted)
@@ -131,6 +150,7 @@ public sealed class RegistrationFormPersistenceTests
         version.AddSection(section);
         version.AddField(section, field);
         version.AddOption(field, RegistrationFormFieldOption.Create(Guid.CreateVersion7(), field, 1, "primary", "Primary", Now));
+        new FormSchemaArtifactPublicationService(new FormSchemaArtifactGenerator()).Publish(version, Now.AddMinutes(1));
         form.AddVersion(version);
         form.IsDeleted = deleted;
         version.IsDeleted = deleted;

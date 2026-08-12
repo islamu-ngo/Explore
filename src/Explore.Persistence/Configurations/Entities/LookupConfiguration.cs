@@ -11,7 +11,7 @@ public abstract class LookupConfiguration<TLookup> : IEntityTypeConfiguration<TL
 {
     protected abstract string TableName { get; }
 
-    public void Configure(EntityTypeBuilder<TLookup> builder)
+    public virtual void Configure(EntityTypeBuilder<TLookup> builder)
     {
         builder.ToTable(TableName);
         builder.Property("Id").ValueGeneratedNever();

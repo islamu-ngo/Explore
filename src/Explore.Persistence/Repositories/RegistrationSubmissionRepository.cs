@@ -22,6 +22,46 @@ public sealed class RegistrationSubmissionRepository(ExploreDbContext dbContext)
         await dbContext.SaveChangesAsync(cancellationToken);
     }
 
+    public async Task<bool> PersistReplacementAttemptAsync(
+        RegistrationAttempt attempt,
+        Guid supersededAttemptId,
+        string supersessionReason,
+        DateTime supersededAt,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(attempt);
+        if (supersededAttemptId == Guid.Empty)
+        {
+            throw new ArgumentException("Superseded attempt identity is required.", nameof(supersededAttemptId));
+        }
+
+        var strategy = dbContext.Database.CreateExecutionStrategy();
+        return await strategy.ExecuteAsync(async () =>
+        {
+            await using var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
+            RegistrationAttempt? superseded = await dbContext.RegistrationAttempts.SingleOrDefaultAsync(candidate =>
+                candidate.TenantId == attempt.TenantId &&
+                candidate.Id == supersededAttemptId &&
+                candidate.EventId == attempt.EventId &&
+                candidate.RegistrationOrderId == attempt.RegistrationOrderId &&
+                candidate.RegistrationWorkflowId == attempt.RegistrationWorkflowId &&
+                candidate.RegistrationRequirementId == attempt.RegistrationRequirementId &&
+                candidate.StatusId == (int)RegistrationAttemptStatusEnum.Active,
+                cancellationToken);
+            if (superseded is null)
+            {
+                await transaction.RollbackAsync(cancellationToken);
+                return false;
+            }
+
+            superseded.Supersede(attempt.Id, supersededAt, supersessionReason);
+            await dbContext.RegistrationAttempts.AddAsync(attempt, cancellationToken);
+            await dbContext.SaveChangesAsync(cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
+            return true;
+        });
+    }
+
     public Task<RegistrationSubmissionPersistenceResult> PersistAcceptedAsync(
         RegistrationAttempt attempt,
         RegistrationSubmission submission,

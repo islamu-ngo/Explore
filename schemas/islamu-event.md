@@ -4931,6 +4931,30 @@ Table "registration_organizer_visibilities" {
   }
 }
 
+Table "registration_retention_policies" {
+  "id" int [pk, not null]
+  "master_code" varchar(100) [not null]
+  "full_name" varchar(200) [not null]
+  "description" varchar(500)
+  "duration_days" int
+  "is_legal_hold" boolean [not null, default: false]
+
+  indexes {
+    master_code [unique]
+  }
+}
+
+Table "contact_share_consent_subject_types" {
+  "id" int [pk, not null]
+  "master_code" varchar(100) [not null]
+  "full_name" varchar(200) [not null]
+  "description" varchar(500)
+
+  indexes {
+    master_code [unique]
+  }
+}
+
 Table "registration_forms" {
   "id" uuid [pk, not null, note: 'uuidv7 app-side']
   "tenant_id" uuid [not null]
@@ -5029,6 +5053,8 @@ Table "registration_form_fields" {
   "consent_purpose_code" character varying(100)
   "consent_text_version" character varying(100)
   "is_provider_transfer_allowed" boolean [not null]
+  "is_exportable" boolean [not null]
+  "export_purpose_code" character varying(100)
   "is_required" boolean [not null]
   "is_multi" boolean [not null]
   "min_length" int
@@ -5147,6 +5173,7 @@ Table "registration_participant_pii" {
   "email" varchar(320)
   "normalized_email" varchar(320)
   "phone" varchar(50)
+  "retention_until" timestamptz
   "created_at" timestamptz [not null]
   "created_by" uuid
   "updated_at" timestamptz
@@ -5392,6 +5419,7 @@ Table "registration_sensitive_answer_values" {
   "tenant_id" uuid [not null]
   "ciphertext" varchar(131072) [not null]
   "key_version" int [not null]
+  "retention_until" timestamptz
   "created_at" timestamptz [not null]
   "created_by" uuid
   "updated_at" timestamptz
@@ -5589,6 +5617,7 @@ Table "registration_answers" {
   "instant_value" timestamptz
   "selected_option_id" uuid
   "sensitive_answer_value_id" uuid
+  "retention_until" timestamptz
   "created_at" timestamptz [not null]
   "created_by" uuid
   "updated_at" timestamptz
@@ -5822,8 +5851,9 @@ Table "registration_order_pii" {
   "contact_name" varchar(200)
   "email" varchar(320)
   "normalized_email" varchar(320)
-  "phone" varchar(64)
+  "phone" varchar(50)
   "organization_name" varchar(200)
+  "retention_until" timestamptz
   "created_at" timestamptz [not null]
   "created_by" uuid
   "updated_at" timestamptz
@@ -6050,10 +6080,13 @@ Table "event_session_tags" {
 Table "event_contact_share_consents" {
   "id" uuid [pk, not null, note: 'uuidv7()']
   "tenant_id" uuid [not null]
-  "source_event_id" uuid
-  "user_id" uuid [not null]
+  "subject_type_id" int [not null]
+  "subject_id" uuid [not null]
+  "user_subject_id" uuid
+  "registration_purchaser_order_id" uuid
+  "registration_participant_id" uuid
+  "guest_contact_order_id" uuid
   "recipient_actor_id" uuid [not null]
-  "source_registration_order_id" uuid
   "purpose_code" varchar(100) [not null]
   "status" int [not null]
   "email_snapshot" varchar(320) [not null]
@@ -6068,11 +6101,40 @@ Table "event_contact_share_consents" {
   "updated_by" uuid
 
   indexes {
-    (tenant_id, user_id, recipient_actor_id, purpose_code) [unique, name: 'ix_eventcontactshareconsents_scope_unique']
-    (tenant_id, recipient_actor_id, status) [name: 'ix_eventcontactshareconsents_recipient_status']
-    (tenant_id, user_id, status) [name: 'ix_eventcontactshareconsents_user_status']
-    (tenant_id, source_event_id) [name: 'ix_event_contact_share_consents_tenant_id_source_event_id']
-    (tenant_id, source_registration_order_id) [name: 'ix_event_contact_share_consents_tenant_id_source_registration_']
+    (tenant_id, subject_type_id, subject_id, recipient_actor_id, purpose_code) [unique, name: 'ux_event_contact_share_consents_current_scope']
+    (tenant_id, recipient_actor_id, status) [name: 'ix_event_contact_share_consents_recipient_status']
+    (tenant_id, subject_type_id, subject_id, status) [name: 'ix_event_contact_share_consents_subject_status']
+  }
+
+  Note: 'Current typed contact-share consent. Check ck_event_contact_share_consents_subject_shape requires exactly one subject-specific FK.'
+}
+
+Table "event_contact_share_consent_history" {
+  "id" uuid [pk, not null, note: 'uuidv7()']
+  "tenant_id" uuid [not null]
+  "consent_id" uuid [not null]
+  "operation_id" int [not null]
+  "status_snapshot" int [not null]
+  "subject_type_id" int [not null]
+  "subject_id" uuid [not null]
+  "recipient_actor_id" uuid [not null]
+  "purpose_code_snapshot" varchar(100) [not null]
+  "email_snapshot" varchar(320) [not null]
+  "email_normalized_snapshot" varchar(320) [not null]
+  "consent_text_snapshot" varchar(4000) [not null]
+  "consent_ui_version_snapshot" varchar(100) [not null]
+  "source_event_id" uuid
+  "source_registration_order_id" uuid
+  "actor_id" uuid
+  "user_id" uuid
+  "occurred_at" timestamptz [not null]
+  "created_at" timestamptz [not null]
+  "created_by" uuid
+  "updated_at" timestamptz
+  "updated_by" uuid
+
+  indexes {
+    (tenant_id, consent_id, occurred_at) [name: 'ix_event_contact_share_consent_history_tenant_id_consent_id_occurred_at']
   }
 }
 
@@ -6083,6 +6145,15 @@ Table "event_contact_share_exports" {
   "event_id" uuid
   "exported_by_user_id" uuid [not null]
   "format" varchar(20) [not null]
+  "purpose_code" varchar(100) [not null]
+  "status_id" int [not null]
+  "requested_field_keys_snapshot" varchar(2000) [not null]
+  "included_field_keys_snapshot" varchar(2000) [not null]
+  "policy_version" varchar(100) [not null]
+  "content_hash" varchar(64)
+  "failure_category_id" int
+  "completed_at" timestamptz
+  "failed_at" timestamptz
   "row_count" int [not null]
   "created_at" timestamptz [not null]
 
@@ -6097,7 +6168,7 @@ Table "event_contact_share_exports" {
 Table "event_contact_share_export_items" {
   "export_id" uuid [pk, not null]
   "consent_id" uuid [pk, not null]
-  "email_snapshot" varchar(320) [not null]
+  "exported_field_snapshot" varchar(4000) [not null]
 
   indexes {
     (consent_id) [name: 'ix_event_contact_share_export_items_consent_id']
@@ -6985,6 +7056,7 @@ Ref: "registration_form_fields"."tenant_id" > "tenants"."id" [delete: restrict]
 Ref: "registration_form_fields".("tenant_id", "event_id", "registration_form_id", "registration_form_version_id", "registration_form_section_id") > "registration_form_sections".("tenant_id", "event_id", "registration_form_id", "registration_form_version_id", "id") [delete: restrict]
 Ref: "registration_form_fields"."field_type_id" > "registration_field_types"."id" [delete: restrict]
 Ref: "registration_form_fields"."organizer_visibility_id" > "registration_organizer_visibilities"."id" [delete: restrict]
+Ref: "registration_form_fields"."retention_policy_id" > "registration_retention_policies"."id" [delete: restrict]
 Ref: "registration_form_field_options"."tenant_id" > "tenants"."id" [delete: restrict]
 Ref: "registration_form_field_options".("tenant_id", "event_id", "registration_form_id", "registration_form_version_id", "registration_form_section_id", "registration_form_field_id") > "registration_form_fields".("tenant_id", "event_id", "registration_form_id", "registration_form_version_id", "registration_form_section_id", "id") [delete: restrict]
 Ref: "registration_form_rules"."tenant_id" > "tenants"."id" [delete: restrict]
@@ -7099,10 +7171,17 @@ Ref: "notification_fanout_occurrences"."delivery_policy_id" > "notification_deli
 Ref: "notification_fanout_occurrences".("tenant_id", "superseded_by_occurrence_id") > "notification_fanout_occurrences".("tenant_id", "id") [delete: restrict]
 
 // Contact Share
-Ref: "event_contact_share_consents"."user_id" > "users"."id" [delete: restrict]
+Ref: "event_contact_share_consents"."subject_type_id" > "contact_share_consent_subject_types"."id" [delete: restrict]
+Ref: "event_contact_share_consents"."user_subject_id" > "users"."id" [delete: restrict]
+Ref: "event_contact_share_consents".("tenant_id", "registration_purchaser_order_id") > "registration_orders".("tenant_id", "id") [delete: restrict]
+Ref: "event_contact_share_consents".("tenant_id", "guest_contact_order_id") > "registration_orders".("tenant_id", "id") [delete: restrict]
+Ref: "event_contact_share_consents".("tenant_id", "registration_participant_id") > "registration_participants".("tenant_id", "id") [delete: restrict]
 Ref: "event_contact_share_consents".("tenant_id", "recipient_actor_id") > "actors".("tenant_id", "id") [delete: restrict]
-Ref: "event_contact_share_consents".("tenant_id", "source_event_id") > "events".("tenant_id", "id") [delete: restrict]
-Ref: "event_contact_share_consents".("tenant_id", "source_registration_order_id") > "registration_orders".("tenant_id", "id") [delete: restrict]
+Ref: "event_contact_share_consent_history".("tenant_id", "consent_id") > "event_contact_share_consents".("tenant_id", "id") [delete: restrict]
+Ref: "event_contact_share_consent_history".("tenant_id", "source_event_id") > "events".("tenant_id", "id") [delete: restrict]
+Ref: "event_contact_share_consent_history".("tenant_id", "source_registration_order_id") > "registration_orders".("tenant_id", "id") [delete: restrict]
+Ref: "event_contact_share_consent_history"."actor_id" > "actors"."id" [delete: restrict]
+Ref: "event_contact_share_consent_history"."user_id" > "users"."id" [delete: restrict]
 Ref: "event_contact_share_exports".("tenant_id", "recipient_actor_id") > "actors".("tenant_id", "id") [delete: restrict]
 Ref: "event_contact_share_exports".("tenant_id", "event_id") > "events".("tenant_id", "id") [delete: restrict]
 Ref: "event_contact_share_exports"."exported_by_user_id" > "users"."id" [delete: restrict]

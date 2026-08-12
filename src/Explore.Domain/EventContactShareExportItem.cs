@@ -1,22 +1,32 @@
-// ABOUTME: Individual item within an export audit record, linking to the specific consent row exported.
-// ABOUTME: Stores the email snapshot that was included in the export for full audit traceability.
-
-using System.ComponentModel.DataAnnotations.Schema;
+// ABOUTME: Immutable audit item linking an export to a consent and exported field snapshot.
+// ABOUTME: Stores necessary exported values so audit evidence survives later consent or PII changes.
 
 namespace Explore.Domain;
 
-public class EventContactShareExportItem
+public sealed class EventContactShareExportItem
 {
-    [ForeignKey("Export")]
-    public Guid ExportId { get; set; }
-    public EventContactShareExport? Export { get; set; }
+    private EventContactShareExportItem()
+    {
+    }
 
-    [ForeignKey("Consent")]
-    public Guid ConsentId { get; set; }
-    public EventContactShareConsent? Consent { get; set; }
+    public Guid ExportId { get; private set; }
+    public EventContactShareExport? Export { get; private set; }
+    public Guid ConsentId { get; private set; }
+    public EventContactShareConsent? Consent { get; private set; }
+    public string ExportedFieldSnapshot { get; private set; } = string.Empty;
 
-    /// <summary>
-    /// Snapshot of the email at the time of export — matches the consent record's snapshot.
-    /// </summary>
-    public required string EmailSnapshot { get; set; }
+    public static EventContactShareExportItem Create(Guid exportId, Guid consentId, string exportedFieldSnapshot)
+    {
+        if (exportId == Guid.Empty || consentId == Guid.Empty || string.IsNullOrWhiteSpace(exportedFieldSnapshot))
+        {
+            throw new ArgumentException("Export item requires export, consent, and immutable field snapshot.");
+        }
+
+        return new EventContactShareExportItem
+        {
+            ExportId = exportId,
+            ConsentId = consentId,
+            ExportedFieldSnapshot = exportedFieldSnapshot.Trim()
+        };
+    }
 }

@@ -16,7 +16,9 @@ public sealed class RegistrationParticipantPii : ITenantEntity, IAuditableEntity
         Guid tenantId,
         string? displayName,
         string? email,
-        string? phone)
+        string? phone,
+        int retentionPolicyId,
+        DateTime createdAt)
     {
         RegistrationParticipantId = registrationParticipantId;
         TenantId = tenantId;
@@ -24,6 +26,8 @@ public sealed class RegistrationParticipantPii : ITenantEntity, IAuditableEntity
         Email = Normalize(email);
         NormalizedEmail = Email?.ToUpperInvariant();
         Phone = Normalize(phone);
+        RetentionUntil = RegistrationRetentionDeadline.Resolve(retentionPolicyId, createdAt);
+        CreatedAt = createdAt;
     }
 
     public Guid RegistrationParticipantId { get; private set; }
@@ -40,6 +44,8 @@ public sealed class RegistrationParticipantPii : ITenantEntity, IAuditableEntity
 
     public string? Phone { get; private set; }
 
+    public DateTime? RetentionUntil { get; private set; }
+
     public DateTime CreatedAt { get; set; }
 
     public Guid? CreatedBy { get; set; }
@@ -53,23 +59,38 @@ public sealed class RegistrationParticipantPii : ITenantEntity, IAuditableEntity
         Guid tenantId,
         string? displayName,
         string? email,
-        string? phone)
+        string? phone) => Create(
+            registrationParticipantId, tenantId, displayName, email, phone,
+            (int)Enums.RegistrationRetentionPolicyEnum.StandardOperational, DateTime.UtcNow);
+
+    public static RegistrationParticipantPii Create(
+        Guid registrationParticipantId,
+        Guid tenantId,
+        string? displayName,
+        string? email,
+        string? phone,
+        int retentionPolicyId,
+        DateTime createdAt)
     {
         if (registrationParticipantId == Guid.Empty || tenantId == Guid.Empty)
         {
             throw new ArgumentException("Participant and tenant identifiers are required.");
         }
 
-        return new RegistrationParticipantPii(registrationParticipantId, tenantId, displayName, email, phone);
+        return new RegistrationParticipantPii(registrationParticipantId, tenantId, displayName, email, phone, retentionPolicyId, createdAt);
     }
 
-    public void Update(string? displayName, string? email, string? phone)
+    public void Update(string? displayName, string? email, string? phone, int retentionPolicyId, DateTime updatedAt)
     {
         DisplayName = Normalize(displayName);
         Email = Normalize(email);
         NormalizedEmail = Email?.ToUpperInvariant();
         Phone = Normalize(phone);
+        RetentionUntil = RegistrationRetentionDeadline.Resolve(retentionPolicyId, updatedAt);
     }
+
+    public void Update(string? displayName, string? email, string? phone) =>
+        Update(displayName, email, phone, (int)Enums.RegistrationRetentionPolicyEnum.StandardOperational, DateTime.UtcNow);
 
     private static string? Normalize(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 }

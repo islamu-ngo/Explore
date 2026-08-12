@@ -1,53 +1,50 @@
-// ABOUTME: EF Core configuration for EventContactShareConsent entity — per-organizer consent records.
-// ABOUTME: Defines unique scope index (tenant+user+actor+purpose), FK behaviour, and column constraints.
+// ABOUTME: Maps typed current contact-share consent scope and subject-specific nullable FKs.
+// ABOUTME: Enforces one subject identity shape plus unique active scope per recipient/purpose.
 
 using Explore.Domain;
+using Explore.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace Explore.Persistence.Configurations.Entities;
 
-public class EventContactShareConsentConfiguration : IEntityTypeConfiguration<EventContactShareConsent>
+public sealed class EventContactShareConsentConfiguration : IEntityTypeConfiguration<EventContactShareConsent>
 {
     public void Configure(EntityTypeBuilder<EventContactShareConsent> builder)
     {
-        builder.Property(e => e.Id).HasDefaultValueSql("uuidv7()");
+        builder.ToTable("event_contact_share_consents", table => table.HasCheckConstraint(
+            "ck_event_contact_share_consents_subject_shape",
+            "(CASE WHEN user_subject_id IS NULL THEN 0 ELSE 1 END + " +
+            "CASE WHEN registration_purchaser_order_id IS NULL THEN 0 ELSE 1 END + " +
+            "CASE WHEN registration_participant_id IS NULL THEN 0 ELSE 1 END + " +
+            "CASE WHEN guest_contact_order_id IS NULL THEN 0 ELSE 1 END) = 1"));
+        builder.Property(e => e.Id).ValueGeneratedNever();
+        builder.Property(e => e.EmailSnapshot).IsRequired().HasMaxLength(320);
+        builder.Property(e => e.EmailNormalizedSnapshot).IsRequired().HasMaxLength(320);
+        builder.Property(e => e.PurposeCode).IsRequired().HasMaxLength(100);
+        builder.Property(e => e.ConsentTextSnapshot).IsRequired().HasMaxLength(4000);
+        builder.Property(e => e.ConsentUiVersion).IsRequired().HasMaxLength(100);
+        builder.Property(e => e.ConcurrencyStamp).IsConcurrencyToken();
 
-        // Column constraints
-        builder.Property(e => e.EmailSnapshot).HasMaxLength(320);
-        builder.Property(e => e.EmailNormalizedSnapshot).HasMaxLength(320);
-        builder.Property(e => e.PurposeCode).HasMaxLength(100);
-        builder.Property(e => e.ConsentUiVersion).HasMaxLength(100);
+        builder.HasOne<Tenant>().WithMany().HasForeignKey(e => e.TenantId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne(e => e.SubjectType).WithMany().HasForeignKey(e => e.SubjectTypeId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne(e => e.UserSubject).WithMany().HasForeignKey(e => e.UserSubjectId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne(e => e.RecipientActor).WithMany().HasForeignKey(e => e.RecipientActorId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne(e => e.RegistrationPurchaserOrder).WithMany()
+            .HasForeignKey(e => new { e.TenantId, e.RegistrationPurchaserOrderId })
+            .HasPrincipalKey(e => new { e.TenantId, e.Id }).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne(e => e.GuestContactOrder).WithMany()
+            .HasForeignKey(e => new { e.TenantId, e.GuestContactOrderId })
+            .HasPrincipalKey(e => new { e.TenantId, e.Id }).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne(e => e.RegistrationParticipant).WithMany()
+            .HasForeignKey(e => new { e.TenantId, e.RegistrationParticipantId })
+            .HasPrincipalKey(e => new { e.TenantId, e.Id }).OnDelete(DeleteBehavior.Restrict);
 
-        // FK behaviour
-        builder.HasOne(e => e.Tenant).WithMany().HasForeignKey(e => e.TenantId).OnDelete(DeleteBehavior.Restrict);
-        builder.HasOne(e => e.SourceEvent)
-            .WithMany()
-            .HasForeignKey(e => new { e.TenantId, e.SourceEventId })
-            .HasPrincipalKey(e => new { e.TenantId, e.Id })
-            .OnDelete(DeleteBehavior.Restrict);
-        builder.HasOne(e => e.User).WithMany().HasForeignKey(e => e.UserId).OnDelete(DeleteBehavior.Restrict);
-        builder.HasOne(e => e.RecipientActor)
-            .WithMany()
-            .HasForeignKey(e => e.RecipientActorId)
-            .OnDelete(DeleteBehavior.Restrict);
-        builder.HasOne(e => e.SourceRegistrationOrder)
-            .WithMany()
-            .HasForeignKey(e => new { e.TenantId, e.SourceRegistrationOrderId })
-            .HasPrincipalKey(e => new { e.TenantId, e.Id })
-            .OnDelete(DeleteBehavior.Restrict);
-
-        // Unique index: one consent per tenant + user + recipient actor + purpose
-        builder.HasIndex(e => new { e.TenantId, e.UserId, e.RecipientActorId, e.PurposeCode })
-            .IsUnique()
-            .HasDatabaseName("ix_eventcontactshareconsents_scope_unique");
-
-        // Query index: organiser fetching granted consents for their org
+        builder.HasIndex(e => new { e.TenantId, e.SubjectTypeId, e.SubjectId, e.RecipientActorId, e.PurposeCode })
+            .IsUnique().HasDatabaseName("ux_event_contact_share_consents_current_scope");
         builder.HasIndex(e => new { e.TenantId, e.RecipientActorId, e.Status })
-            .HasDatabaseName("ix_eventcontactshareconsents_recipient_status");
-
-        // Query index: user viewing their own consents
-        builder.HasIndex(e => new { e.TenantId, e.UserId, e.Status })
-            .HasDatabaseName("ix_eventcontactshareconsents_user_status");
+            .HasDatabaseName("ix_event_contact_share_consents_recipient_status");
+        builder.HasIndex(e => new { e.TenantId, e.SubjectTypeId, e.SubjectId, e.Status })
+            .HasDatabaseName("ix_event_contact_share_consents_subject_status");
     }
 }

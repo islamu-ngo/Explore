@@ -13,7 +13,7 @@ public class EventContactShareExportItemConfiguration : IEntityTypeConfiguration
     {
         builder.HasKey(e => new { e.ExportId, e.ConsentId });
 
-        builder.Property(e => e.EmailSnapshot).HasMaxLength(320);
+        builder.Property(e => e.ExportedFieldSnapshot).IsRequired().HasMaxLength(4000);
 
         builder.HasOne(e => e.Export).WithMany(x => x.Items).HasForeignKey(e => e.ExportId).OnDelete(DeleteBehavior.Cascade);
         builder.HasOne(e => e.Consent).WithMany().HasForeignKey(e => e.ConsentId).OnDelete(DeleteBehavior.Restrict);

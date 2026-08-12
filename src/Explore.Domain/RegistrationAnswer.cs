@@ -48,6 +48,7 @@ public sealed class RegistrationAnswer : ITenantEntity, IAuditableEntity, ISoftD
     public Guid? SelectedOptionId { get; private set; }
     public Guid? SensitiveAnswerValueId { get; private set; }
     public RegistrationSensitiveAnswerValue? SensitiveAnswerValue { get; private set; }
+    public DateTime? RetentionUntil { get; private set; }
     public DateTime CreatedAt { get; set; }
     public Guid? CreatedBy { get; set; }
     public DateTime? UpdatedAt { get; set; }
@@ -185,6 +186,7 @@ public sealed class RegistrationAnswer : ITenantEntity, IAuditableEntity, ISoftD
             RegistrationFormSectionId = field.RegistrationFormSectionId,
             RegistrationFormFieldId = field.Id,
             FieldTypeId = field.FieldTypeId,
+            RetentionUntil = RegistrationRetentionDeadline.Resolve(field.RetentionPolicyId, createdAt),
             RequirementSubjectTypeId = requirement.AppliesToSubjectTypeId,
             RequirementSubjectId = requirement.AppliesToSubjectId,
             AnswerSubjectTypeId = (int)subjectType,

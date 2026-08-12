@@ -390,23 +390,11 @@ public class DatabaseSeederTests(PostgreSqlContainerFixture fixture)
                 Tenant = null!,
                 CreatedAt = now
             });
-            context.Set<EventContactShareConsent>().Add(new EventContactShareConsent
-            {
-                Id = consentId,
-                TenantId = SeedIds.DefaultTenantId,
-                SourceEventId = eventId,
-                UserId = SeedIds.RegularUserId,
-                RecipientActorId = recipientActorId,
-                SourceRegistrationOrderId = orderId,
-                PurposeCode = ConsentPurposeCodes.OrganizerFutureCommunications,
-                Status = ConsentStatus.Granted,
-                EmailSnapshot = "user@example.test",
-                EmailNormalizedSnapshot = "user@example.test",
-                ConsentTextSnapshot = "Share my email with the organizer.",
-                ConsentUiVersion = "v1",
-                GrantedAt = now,
-                CreatedAt = now
-            });
+            EventContactShareConsent consent = EventContactShareConsent.Grant(
+                SeedIds.DefaultTenantId, ContactShareConsentSubjectTypeEnum.User, SeedIds.RegularUserId,
+                recipientActorId, ConsentPurposeCodes.OrganizerFutureCommunications, "user@example.test",
+                "Share my email with the organizer.", "v1", now);
+            context.Set<EventContactShareConsent>().Add(consent);
             await context.SaveChangesAsync();
         }
 

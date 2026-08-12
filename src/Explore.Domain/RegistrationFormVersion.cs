@@ -253,11 +253,28 @@ public sealed class RegistrationFormVersion : ITenantEntity, IAuditableEntity, I
         bool isProviderTransferAllowed,
         string? consentPurposeCode = null,
         string? consentTextVersion = null,
+        string? consentText = null) => UpdateFieldGovernance(
+            field, retentionPolicyId, organizerVisibility, requiresExplicitConsent, isProviderTransferAllowed,
+            false, null, false, false, consentPurposeCode, consentTextVersion, consentText);
+
+    public void UpdateFieldGovernance(
+        RegistrationFormField field,
+        int retentionPolicyId,
+        RegistrationOrganizerVisibilityEnum organizerVisibility,
+        bool requiresExplicitConsent,
+        bool isProviderTransferAllowed,
+        bool isExportable,
+        string? exportPurposeCode,
+        bool isAnalyticsRelevant,
+        bool isOperationallyFilterable,
+        string? consentPurposeCode = null,
+        string? consentTextVersion = null,
         string? consentText = null)
     {
         EnsureDraft();
         EnsureContains(field);
         field.UpdateGovernance(retentionPolicyId, organizerVisibility, requiresExplicitConsent, isProviderTransferAllowed,
+            isExportable, exportPurposeCode, isAnalyticsRelevant, isOperationallyFilterable,
             consentPurposeCode, consentTextVersion, consentText);
         ConcurrencyStamp = Guid.CreateVersion7();
     }
@@ -541,6 +558,33 @@ public sealed class RegistrationFormVersion : ITenantEntity, IAuditableEntity, I
         foreach (RegistrationFormRule rule in _rules.Where(rule => !rule.IsDeleted))
         {
             clone._rules.Add(rule.CloneTo(clone.Id));
+        }
+
+        return clone;
+    }
+
+    public RegistrationFormVersion CloneToTemplateInstance(
+        RegistrationForm targetForm,
+        DateTime createdAt,
+        Guid sourceTemplateFormId,
+        Guid sourceTemplateVersionId)
+    {
+        ArgumentNullException.ThrowIfNull(targetForm);
+        if (StatusId != (int)RegistrationFormStatusEnum.Published)
+        {
+            throw new InvalidOperationException("Only a published form version can be instantiated from a template.");
+        }
+
+        RegistrationFormVersion clone = Create(
+            Guid.CreateVersion7(), targetForm, 1, LanguageTag, sourceTemplateFormId, sourceTemplateVersionId, createdAt);
+        foreach (RegistrationFormSection section in _sections.Where(section => !section.IsDeleted))
+        {
+            clone._sections.Add(section.CloneTo(clone));
+        }
+
+        foreach (RegistrationFormRule rule in _rules.Where(rule => !rule.IsDeleted))
+        {
+            clone._rules.Add(rule.CloneTo(clone));
         }
 
         return clone;

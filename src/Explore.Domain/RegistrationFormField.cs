@@ -28,6 +28,9 @@ public sealed class RegistrationFormField : ITenantEntity, IAuditableEntity, ISo
     public int FieldTypeId { get; private set; }
     public RegistrationFieldType? FieldType { get; private set; }
     public int RetentionPolicyId { get; private set; }
+    public RegistrationRetentionPolicy? RetentionPolicy { get; private set; }
+    public bool IsExportable { get; private set; }
+    public string? ExportPurposeCode { get; private set; }
     public int OrganizerVisibilityId { get; private set; }
     public RegistrationOrganizerVisibility? OrganizerVisibility { get; private set; }
     public bool RequiresExplicitConsent { get; private set; }
@@ -35,6 +38,8 @@ public sealed class RegistrationFormField : ITenantEntity, IAuditableEntity, ISo
     public string? ConsentText { get; private set; }
     public string? ConsentTextVersion { get; private set; }
     public bool IsProviderTransferAllowed { get; private set; }
+    public bool IsAnalyticsRelevant { get; private set; }
+    public bool IsOperationallyFilterable { get; private set; }
     public bool IsRequired { get; private set; }
     public bool IsMulti { get; private set; }
     public int? MinLength { get; private set; }
@@ -70,6 +75,30 @@ public sealed class RegistrationFormField : ITenantEntity, IAuditableEntity, ISo
         DateTime createdAt,
         string? consentPurposeCode = null,
         string? consentTextVersion = null,
+        string? consentText = null) => Create(
+            id, section, ordinal, @namespace, key, label, fieldType, retentionPolicyId, organizerVisibility,
+            requiresExplicitConsent, isProviderTransferAllowed, false, null, false, false, createdAt, consentPurposeCode,
+            consentTextVersion, consentText);
+
+    public static RegistrationFormField Create(
+        Guid id,
+        RegistrationFormSection section,
+        int ordinal,
+        string @namespace,
+        string key,
+        string label,
+        RegistrationFieldTypeEnum fieldType,
+        int retentionPolicyId,
+        RegistrationOrganizerVisibilityEnum organizerVisibility,
+        bool requiresExplicitConsent,
+        bool isProviderTransferAllowed,
+        bool isExportable,
+        string? exportPurposeCode,
+        bool isAnalyticsRelevant,
+        bool isOperationallyFilterable,
+        DateTime createdAt,
+        string? consentPurposeCode = null,
+        string? consentTextVersion = null,
         string? consentText = null)
     {
         ArgumentNullException.ThrowIfNull(section);
@@ -85,7 +114,8 @@ public sealed class RegistrationFormField : ITenantEntity, IAuditableEntity, ISo
 
         ArgumentException.ThrowIfNullOrWhiteSpace(label);
         FormVersionRules.ValidateGovernance(fieldType, retentionPolicyId, organizerVisibility,
-            requiresExplicitConsent, isProviderTransferAllowed);
+            requiresExplicitConsent, isProviderTransferAllowed, isExportable, exportPurposeCode,
+            isAnalyticsRelevant, isOperationallyFilterable);
         (string? normalizedPurposeCode, string? normalizedConsentText, string? normalizedTextVersion) =
             NormalizeConsentMetadata(requiresExplicitConsent, consentPurposeCode, consentTextVersion, consentText);
         FormVersionRules.RequireUtc(createdAt, nameof(createdAt));
@@ -109,6 +139,10 @@ public sealed class RegistrationFormField : ITenantEntity, IAuditableEntity, ISo
             ConsentText = normalizedConsentText,
             ConsentTextVersion = normalizedTextVersion,
             IsProviderTransferAllowed = isProviderTransferAllowed,
+            IsExportable = isExportable,
+            ExportPurposeCode = NormalizePurposeCode(exportPurposeCode),
+            IsAnalyticsRelevant = isAnalyticsRelevant,
+            IsOperationallyFilterable = isOperationallyFilterable,
             CreatedAt = createdAt
         };
     }
@@ -118,12 +152,17 @@ public sealed class RegistrationFormField : ITenantEntity, IAuditableEntity, ISo
         RegistrationOrganizerVisibilityEnum organizerVisibility,
         bool requiresExplicitConsent,
         bool isProviderTransferAllowed,
+        bool isExportable,
+        string? exportPurposeCode,
+        bool isAnalyticsRelevant,
+        bool isOperationallyFilterable,
         string? consentPurposeCode = null,
         string? consentTextVersion = null,
         string? consentText = null)
     {
         FormVersionRules.ValidateGovernance((RegistrationFieldTypeEnum)FieldTypeId, retentionPolicyId,
-            organizerVisibility, requiresExplicitConsent, isProviderTransferAllowed);
+            organizerVisibility, requiresExplicitConsent, isProviderTransferAllowed, isExportable, exportPurposeCode,
+            isAnalyticsRelevant, isOperationallyFilterable);
         (string? normalizedPurposeCode, string? normalizedConsentText, string? normalizedTextVersion) =
             NormalizeConsentMetadata(requiresExplicitConsent, consentPurposeCode, consentTextVersion, consentText);
         RetentionPolicyId = retentionPolicyId;
@@ -133,6 +172,10 @@ public sealed class RegistrationFormField : ITenantEntity, IAuditableEntity, ISo
         ConsentText = normalizedConsentText;
         ConsentTextVersion = normalizedTextVersion;
         IsProviderTransferAllowed = isProviderTransferAllowed;
+        IsExportable = isExportable;
+        ExportPurposeCode = NormalizePurposeCode(exportPurposeCode);
+        IsAnalyticsRelevant = isAnalyticsRelevant;
+        IsOperationallyFilterable = isOperationallyFilterable;
     }
 
     internal void UpdateDetails(int ordinal, string label)
@@ -262,6 +305,10 @@ public sealed class RegistrationFormField : ITenantEntity, IAuditableEntity, ISo
             ConsentText = ConsentText,
             ConsentTextVersion = ConsentTextVersion,
             IsProviderTransferAllowed = IsProviderTransferAllowed,
+            IsExportable = IsExportable,
+            ExportPurposeCode = ExportPurposeCode,
+            IsAnalyticsRelevant = IsAnalyticsRelevant,
+            IsOperationallyFilterable = IsOperationallyFilterable,
             IsRequired = IsRequired,
             IsMulti = IsMulti,
             MinLength = MinLength,
@@ -281,6 +328,54 @@ public sealed class RegistrationFormField : ITenantEntity, IAuditableEntity, ISo
 
         return clone;
     }
+
+    internal RegistrationFormField CloneTo(RegistrationFormVersion version, Guid sectionId)
+    {
+        RegistrationFormField clone = new()
+        {
+            Id = Guid.CreateVersion7(),
+            TenantId = version.TenantId,
+            EventId = version.EventId,
+            RegistrationFormId = version.RegistrationFormId,
+            RegistrationFormVersionId = version.Id,
+            RegistrationFormSectionId = sectionId,
+            Ordinal = Ordinal,
+            Namespace = Namespace,
+            Key = Key,
+            Label = Label,
+            FieldTypeId = FieldTypeId,
+            RetentionPolicyId = RetentionPolicyId,
+            OrganizerVisibilityId = OrganizerVisibilityId,
+            RequiresExplicitConsent = RequiresExplicitConsent,
+            IsProviderTransferAllowed = IsProviderTransferAllowed,
+            IsExportable = IsExportable,
+            ExportPurposeCode = ExportPurposeCode,
+            IsAnalyticsRelevant = IsAnalyticsRelevant,
+            IsOperationallyFilterable = IsOperationallyFilterable,
+            ConsentPurposeCode = ConsentPurposeCode,
+            ConsentTextVersion = ConsentTextVersion,
+            ConsentText = ConsentText,
+            IsRequired = IsRequired,
+            IsMulti = IsMulti,
+            MinLength = MinLength,
+            MaxLength = MaxLength,
+            RegexPattern = RegexPattern,
+            MinNumber = MinNumber,
+            MaxNumber = MaxNumber,
+            MinDateTime = MinDateTime,
+            MaxDateTime = MaxDateTime,
+            AllowedUrlSchemes = AllowedUrlSchemes,
+            CreatedAt = CreatedAt
+        };
+        foreach (RegistrationFormFieldOption option in _options.Where(option => !option.IsDeleted))
+        {
+            clone._options.Add(option.CloneTo(version, sectionId, clone.Id));
+        }
+
+        return clone;
+    }
+
+    private static string? NormalizePurposeCode(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim().ToUpperInvariant();
 
     private static (string? PurposeCode, string? Text, string? TextVersion) NormalizeConsentMetadata(
         bool requiresExplicitConsent,

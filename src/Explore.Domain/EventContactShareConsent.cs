@@ -1,76 +1,163 @@
-// ABOUTME: Records a user's explicit consent to share their email with an organisation for communications.
-// ABOUTME: Scoped per-organizer (not per-event). Stores an email snapshot at grant time; never uses live PII.
+// ABOUTME: Records explicit contact-sharing consent for typed registration/contact subjects.
+// ABOUTME: Current consent is uniquely scoped by tenant, subject, recipient actor, and purpose code.
 
-using System.ComponentModel.DataAnnotations.Schema;
 using Explore.Domain.Enums;
 using Explore.Domain.Interfaces;
 
 namespace Explore.Domain;
 
-public class EventContactShareConsent : ITenantEntity, IAuditableEntity
+public sealed class EventContactShareConsent : ITenantEntity, IAuditableEntity, IConcurrencyAware
 {
-    public Guid Id { get; set; }
+    private EventContactShareConsent()
+    {
+    }
 
-    [ForeignKey("Tenant")]
+    public Guid Id { get; private set; }
     public Guid TenantId { get; set; }
-    public Tenant? Tenant { get; set; }
-
-    /// <summary>
-    /// The event that triggered this consent. Informational only — not part of the uniqueness scope.
-    /// Updated to the most recent event when consent is re-granted.
-    /// </summary>
-    [ForeignKey("SourceEvent")]
-    public Guid? SourceEventId { get; set; }
-    public Event? SourceEvent { get; set; }
-
-    [ForeignKey("User")]
-    public Guid UserId { get; set; }
-    public User? User { get; set; }
-
-    /// <summary>
-    /// The actor receiving the shared email. Schema is actor-based for future extensibility,
-    /// but business logic currently restricts this to approved organisation actors only.
-    /// </summary>
-    [ForeignKey("RecipientActor")]
-    public Guid RecipientActorId { get; set; }
-    public Actor? RecipientActor { get; set; }
-
-    /// <summary>
-    /// The registration order that triggered this consent. Nullable because the order
-    /// lifecycle is distinct from the consent audit trail.
-    /// </summary>
-    [ForeignKey("SourceRegistrationOrder")]
-    public Guid? SourceRegistrationOrderId { get; set; }
-    public RegistrationOrder? SourceRegistrationOrder { get; set; }
-
-    public required string PurposeCode { get; set; }
-
-    public ConsentStatus Status { get; set; }
-
-    /// <summary>
-    /// Copy of the user's email at the moment consent was granted.
-    /// Never updated when the user changes their account email.
-    /// </summary>
-    public required string EmailSnapshot { get; set; }
-
-    /// <summary>
-    /// Lowercased version of EmailSnapshot for case-insensitive search/dedup.
-    /// </summary>
-    public required string EmailNormalizedSnapshot { get; set; }
-
-    /// <summary>
-    /// The exact consent text shown to the user at the time of granting.
-    /// </summary>
-    public required string ConsentTextSnapshot { get; set; }
-
-    public required string ConsentUiVersion { get; set; }
-
-    public DateTime GrantedAt { get; set; }
-    public DateTime? WithdrawnAt { get; set; }
-
-    // IAuditableEntity
+    public int SubjectTypeId { get; private set; }
+    public ContactShareConsentSubjectType? SubjectType { get; private set; }
+    public Guid SubjectId { get; private set; }
+    public Guid? UserSubjectId { get; private set; }
+    public User? UserSubject { get; private set; }
+    public Guid? RegistrationPurchaserOrderId { get; private set; }
+    public RegistrationOrder? RegistrationPurchaserOrder { get; private set; }
+    public Guid? RegistrationParticipantId { get; private set; }
+    public RegistrationParticipant? RegistrationParticipant { get; private set; }
+    public Guid? GuestContactOrderId { get; private set; }
+    public RegistrationOrder? GuestContactOrder { get; private set; }
+    public Guid RecipientActorId { get; private set; }
+    public Actor? RecipientActor { get; private set; }
+    public string PurposeCode { get; private set; } = string.Empty;
+    public ConsentStatus Status { get; private set; }
+    public string EmailSnapshot { get; private set; } = string.Empty;
+    public string EmailNormalizedSnapshot { get; private set; } = string.Empty;
+    public string ConsentTextSnapshot { get; private set; } = string.Empty;
+    public string ConsentUiVersion { get; private set; } = string.Empty;
+    public DateTime GrantedAt { get; private set; }
+    public DateTime? WithdrawnAt { get; private set; }
+    public Guid ConcurrencyStamp { get; set; }
     public DateTime CreatedAt { get; set; }
     public Guid? CreatedBy { get; set; }
     public DateTime? UpdatedAt { get; set; }
     public Guid? UpdatedBy { get; set; }
+
+    public static EventContactShareConsent Grant(
+        Guid tenantId,
+        ContactShareConsentSubjectTypeEnum subjectType,
+        Guid subjectId,
+        Guid recipientActorId,
+        string purposeCode,
+        string emailSnapshot,
+        string consentTextSnapshot,
+        string consentUiVersion,
+        DateTime grantedAt)
+    {
+        ValidateIdentity(tenantId, subjectType, subjectId, recipientActorId, purposeCode, emailSnapshot, consentTextSnapshot,
+            consentUiVersion, grantedAt);
+
+        EventContactShareConsent consent = new()
+        {
+            Id = Guid.CreateVersion7(),
+            TenantId = tenantId,
+            SubjectTypeId = (int)subjectType,
+            SubjectId = subjectId,
+            RecipientActorId = recipientActorId,
+            PurposeCode = NormalizeCode(purposeCode),
+            Status = ConsentStatus.Granted,
+            EmailSnapshot = emailSnapshot.Trim(),
+            EmailNormalizedSnapshot = NormalizeEmail(emailSnapshot),
+            ConsentTextSnapshot = consentTextSnapshot.Trim(),
+            ConsentUiVersion = consentUiVersion.Trim(),
+            GrantedAt = grantedAt,
+            ConcurrencyStamp = Guid.CreateVersion7(),
+            CreatedAt = grantedAt
+        };
+        consent.SetTypedSubject(subjectType, subjectId);
+        return consent;
+    }
+
+    public EventContactShareConsentHistory CreateGrantHistory(
+        Guid? sourceEventId,
+        Guid? sourceRegistrationOrderId,
+        Guid? actorId,
+        Guid? userId,
+        DateTime occurredAt) => EventContactShareConsentHistory.Create(this,
+        EventContactShareConsentHistoryOperationEnum.Grant, sourceEventId, sourceRegistrationOrderId, actorId, userId, occurredAt);
+
+    public EventContactShareConsentHistory Withdraw(Guid? actorId, Guid? userId, DateTime withdrawnAt)
+    {
+        if (withdrawnAt == default || withdrawnAt.Kind != DateTimeKind.Utc)
+        {
+            throw new ArgumentException("Withdraw time must be UTC.", nameof(withdrawnAt));
+        }
+
+        if (Status == ConsentStatus.Withdrawn)
+        {
+            return EventContactShareConsentHistory.Create(this, EventContactShareConsentHistoryOperationEnum.Withdraw,
+                null, null, actorId, userId, withdrawnAt);
+        }
+
+        Status = ConsentStatus.Withdrawn;
+        WithdrawnAt = withdrawnAt;
+        ConcurrencyStamp = Guid.CreateVersion7();
+        return EventContactShareConsentHistory.Create(this, EventContactShareConsentHistoryOperationEnum.Withdraw,
+            null, null, actorId, userId, withdrawnAt);
+    }
+
+    public EventContactShareConsentHistory Regrant(
+        string emailSnapshot,
+        string consentTextSnapshot,
+        string consentUiVersion,
+        Guid? sourceEventId,
+        Guid? sourceRegistrationOrderId,
+        Guid? actorId,
+        Guid? userId,
+        DateTime grantedAt)
+    {
+        ValidateSnapshot(emailSnapshot, consentTextSnapshot, consentUiVersion, grantedAt);
+        EmailSnapshot = emailSnapshot.Trim();
+        EmailNormalizedSnapshot = NormalizeEmail(emailSnapshot);
+        ConsentTextSnapshot = consentTextSnapshot.Trim();
+        ConsentUiVersion = consentUiVersion.Trim();
+        Status = ConsentStatus.Granted;
+        GrantedAt = grantedAt;
+        WithdrawnAt = null;
+        ConcurrencyStamp = Guid.CreateVersion7();
+        return EventContactShareConsentHistory.Create(this, EventContactShareConsentHistoryOperationEnum.Regrant,
+            sourceEventId, sourceRegistrationOrderId, actorId, userId, grantedAt);
+    }
+
+    private void SetTypedSubject(ContactShareConsentSubjectTypeEnum subjectType, Guid subjectId)
+    {
+        UserSubjectId = subjectType == ContactShareConsentSubjectTypeEnum.User ? subjectId : null;
+        RegistrationPurchaserOrderId = subjectType == ContactShareConsentSubjectTypeEnum.RegistrationPurchaser ? subjectId : null;
+        RegistrationParticipantId = subjectType == ContactShareConsentSubjectTypeEnum.RegistrationParticipant ? subjectId : null;
+        GuestContactOrderId = subjectType == ContactShareConsentSubjectTypeEnum.GuestContact ? subjectId : null;
+    }
+
+    private static void ValidateIdentity(Guid tenantId, ContactShareConsentSubjectTypeEnum subjectType, Guid subjectId,
+        Guid recipientActorId, string purposeCode, string emailSnapshot, string consentTextSnapshot, string consentUiVersion,
+        DateTime occurredAt)
+    {
+        if (tenantId == Guid.Empty || subjectId == Guid.Empty || recipientActorId == Guid.Empty || !Enum.IsDefined(subjectType) ||
+            string.IsNullOrWhiteSpace(purposeCode))
+        {
+            throw new ArgumentException("Consent scope requires tenant, typed subject, recipient actor, and purpose.");
+        }
+
+        ValidateSnapshot(emailSnapshot, consentTextSnapshot, consentUiVersion, occurredAt);
+    }
+
+    private static void ValidateSnapshot(string emailSnapshot, string consentTextSnapshot, string consentUiVersion, DateTime occurredAt)
+    {
+        if (occurredAt == default || occurredAt.Kind != DateTimeKind.Utc || string.IsNullOrWhiteSpace(emailSnapshot) ||
+            string.IsNullOrWhiteSpace(consentTextSnapshot) || string.IsNullOrWhiteSpace(consentUiVersion))
+        {
+            throw new ArgumentException("Consent snapshots and UTC time are required.");
+        }
+    }
+
+    private static string NormalizeEmail(string value) => value.Trim().ToLowerInvariant();
+
+    private static string NormalizeCode(string value) => value.Trim().ToUpperInvariant();
 }

@@ -2272,6 +2272,39 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                     b.ToTable("configuration_change_logs", "islamu_event");
                 });
 
+            modelBuilder.Entity("Explore.Domain.ContactShareConsentSubjectType", b =>
+                {
+                    b.Property<int>("Id")
+                        .HasColumnType("int")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)")
+                        .HasColumnName("description");
+
+                    b.Property<string>("FullName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)")
+                        .HasColumnName("full_name");
+
+                    b.Property<string>("MasterCode")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)")
+                        .HasColumnName("master_code");
+
+                    b.HasKey("Id")
+                        .HasName("pk_contact_share_consent_subject_types");
+
+                    b.HasIndex("MasterCode")
+                        .IsUnique()
+                        .HasDatabaseName("ix_contact_share_consent_subject_types_master_code");
+
+                    b.ToTable("contact_share_consent_subject_types", "islamu_event");
+                });
+
             modelBuilder.Entity("Explore.Domain.CustomPropertyDefinition", b =>
                 {
                     b.Property<Guid>("Id")
@@ -4111,13 +4144,18 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
             modelBuilder.Entity("Explore.Domain.EventContactShareConsent", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier")
                         .HasColumnName("id");
 
+                    b.Property<Guid>("ConcurrencyStamp")
+                        .IsConcurrencyToken()
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("concurrency_stamp");
+
                     b.Property<string>("ConsentTextSnapshot")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)")
+                        .HasMaxLength(4000)
+                        .HasColumnType("nvarchar(4000)")
                         .HasColumnName("consent_text_snapshot");
 
                     b.Property<string>("ConsentUiVersion")
@@ -4150,6 +4188,10 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         .HasColumnType("datetime2")
                         .HasColumnName("granted_at");
 
+                    b.Property<Guid?>("GuestContactOrderId")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("guest_contact_order_id");
+
                     b.Property<string>("PurposeCode")
                         .IsRequired()
                         .HasMaxLength(100)
@@ -4160,17 +4202,25 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         .HasColumnType("uniqueidentifier")
                         .HasColumnName("recipient_actor_id");
 
-                    b.Property<Guid?>("SourceEventId")
+                    b.Property<Guid?>("RegistrationParticipantId")
                         .HasColumnType("uniqueidentifier")
-                        .HasColumnName("source_event_id");
+                        .HasColumnName("registration_participant_id");
 
-                    b.Property<Guid?>("SourceRegistrationOrderId")
+                    b.Property<Guid?>("RegistrationPurchaserOrderId")
                         .HasColumnType("uniqueidentifier")
-                        .HasColumnName("source_registration_order_id");
+                        .HasColumnName("registration_purchaser_order_id");
 
                     b.Property<int>("Status")
                         .HasColumnType("int")
                         .HasColumnName("status");
+
+                    b.Property<Guid>("SubjectId")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("subject_id");
+
+                    b.Property<int>("SubjectTypeId")
+                        .HasColumnType("int")
+                        .HasColumnName("subject_type_id");
 
                     b.Property<Guid>("TenantId")
                         .HasColumnType("uniqueidentifier")
@@ -4184,9 +4234,9 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         .HasColumnType("uniqueidentifier")
                         .HasColumnName("updated_by");
 
-                    b.Property<Guid>("UserId")
+                    b.Property<Guid?>("UserSubjectId")
                         .HasColumnType("uniqueidentifier")
-                        .HasColumnName("user_id");
+                        .HasColumnName("user_subject_id");
 
                     b.Property<DateTime?>("WithdrawnAt")
                         .HasColumnType("datetime2")
@@ -4195,41 +4245,186 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                     b.HasKey("Id")
                         .HasName("pk_event_contact_share_consents");
 
+                    b.HasAlternateKey("TenantId", "Id")
+                        .HasName("ak_event_contact_share_consents_tenant_id_id");
+
                     b.HasIndex("RecipientActorId")
                         .HasDatabaseName("ix_event_contact_share_consents_recipient_actor_id");
 
-                    b.HasIndex("UserId")
-                        .HasDatabaseName("ix_event_contact_share_consents_user_id");
+                    b.HasIndex("SubjectTypeId")
+                        .HasDatabaseName("ix_event_contact_share_consents_subject_type_id");
 
-                    b.HasIndex("TenantId", "SourceEventId")
-                        .HasDatabaseName("ix_event_contact_share_consents_tenant_id_source_event_id");
+                    b.HasIndex("UserSubjectId")
+                        .HasDatabaseName("ix_event_contact_share_consents_user_subject_id");
 
-                    b.HasIndex("TenantId", "SourceRegistrationOrderId")
-                        .HasDatabaseName("ix_event_contact_share_consents_tenant_id_source_registration_order_id");
+                    b.HasIndex("TenantId", "GuestContactOrderId")
+                        .HasDatabaseName("ix_event_contact_share_consents_tenant_id_guest_contact_order_id");
+
+                    b.HasIndex("TenantId", "RegistrationParticipantId")
+                        .HasDatabaseName("ix_event_contact_share_consents_tenant_id_registration_participant_id");
+
+                    b.HasIndex("TenantId", "RegistrationPurchaserOrderId")
+                        .HasDatabaseName("ix_event_contact_share_consents_tenant_id_registration_purchaser_order_id");
 
                     b.HasIndex("TenantId", "RecipientActorId", "Status")
-                        .HasDatabaseName("ix_eventcontactshareconsents_recipient_status");
+                        .HasDatabaseName("ix_event_contact_share_consents_recipient_status");
 
-                    b.HasIndex("TenantId", "UserId", "Status")
-                        .HasDatabaseName("ix_eventcontactshareconsents_user_status");
+                    b.HasIndex("TenantId", "SubjectTypeId", "SubjectId", "Status")
+                        .HasDatabaseName("ix_event_contact_share_consents_subject_status");
 
-                    b.HasIndex("TenantId", "UserId", "RecipientActorId", "PurposeCode")
+                    b.HasIndex("TenantId", "SubjectTypeId", "SubjectId", "RecipientActorId", "PurposeCode")
                         .IsUnique()
-                        .HasDatabaseName("ix_eventcontactshareconsents_scope_unique");
+                        .HasDatabaseName("ux_event_contact_share_consents_current_scope");
 
-                    b.ToTable("event_contact_share_consents", "islamu_event");
+                    b.ToTable("event_contact_share_consents", "islamu_event", t =>
+                        {
+                            t.HasCheckConstraint("ck_event_contact_share_consents_subject_shape", "(CASE WHEN user_subject_id IS NULL THEN 0 ELSE 1 END + CASE WHEN registration_purchaser_order_id IS NULL THEN 0 ELSE 1 END + CASE WHEN registration_participant_id IS NULL THEN 0 ELSE 1 END + CASE WHEN guest_contact_order_id IS NULL THEN 0 ELSE 1 END) = 1");
+                        });
+                });
+
+            modelBuilder.Entity("Explore.Domain.EventContactShareConsentHistory", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("id");
+
+                    b.Property<Guid?>("ActorId")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("actor_id");
+
+                    b.Property<Guid>("ConsentId")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("consent_id");
+
+                    b.Property<string>("ConsentTextSnapshot")
+                        .IsRequired()
+                        .HasMaxLength(4000)
+                        .HasColumnType("nvarchar(4000)")
+                        .HasColumnName("consent_text_snapshot");
+
+                    b.Property<string>("ConsentUiVersionSnapshot")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)")
+                        .HasColumnName("consent_ui_version_snapshot");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("created_by");
+
+                    b.Property<string>("EmailNormalizedSnapshot")
+                        .IsRequired()
+                        .HasMaxLength(320)
+                        .HasColumnType("nvarchar(320)")
+                        .HasColumnName("email_normalized_snapshot");
+
+                    b.Property<string>("EmailSnapshot")
+                        .IsRequired()
+                        .HasMaxLength(320)
+                        .HasColumnType("nvarchar(320)")
+                        .HasColumnName("email_snapshot");
+
+                    b.Property<DateTime>("OccurredAt")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("occurred_at");
+
+                    b.Property<int>("OperationId")
+                        .HasColumnType("int")
+                        .HasColumnName("operation_id");
+
+                    b.Property<string>("PurposeCodeSnapshot")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)")
+                        .HasColumnName("purpose_code_snapshot");
+
+                    b.Property<Guid>("RecipientActorId")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("recipient_actor_id");
+
+                    b.Property<Guid?>("SourceEventId")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("source_event_id");
+
+                    b.Property<Guid?>("SourceRegistrationOrderId")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("source_registration_order_id");
+
+                    b.Property<int>("StatusSnapshot")
+                        .HasColumnType("int")
+                        .HasColumnName("status_snapshot");
+
+                    b.Property<Guid>("SubjectId")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("subject_id");
+
+                    b.Property<int>("SubjectTypeId")
+                        .HasColumnType("int")
+                        .HasColumnName("subject_type_id");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("updated_by");
+
+                    b.Property<Guid?>("UserId")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_event_contact_share_consent_history");
+
+                    b.HasIndex("ActorId")
+                        .HasDatabaseName("ix_event_contact_share_consent_history_actor_id");
+
+                    b.HasIndex("UserId")
+                        .HasDatabaseName("ix_event_contact_share_consent_history_user_id");
+
+                    b.HasIndex("TenantId", "SourceEventId")
+                        .HasDatabaseName("ix_event_contact_share_consent_history_tenant_id_source_event_id");
+
+                    b.HasIndex("TenantId", "SourceRegistrationOrderId")
+                        .HasDatabaseName("ix_event_contact_share_consent_history_tenant_id_source_registration_order_id");
+
+                    b.HasIndex("TenantId", "ConsentId", "OccurredAt")
+                        .HasDatabaseName("ix_event_contact_share_consent_history_tenant_id_consent_id_occurred_at");
+
+                    b.ToTable("event_contact_share_consent_history", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.EventContactShareExport", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier")
                         .HasColumnName("id");
+
+                    b.Property<DateTime?>("CompletedAt")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("completed_at");
+
+                    b.Property<string>("ContentHash")
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)")
+                        .HasColumnName("content_hash");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2")
                         .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("created_by");
 
                     b.Property<Guid?>("EventId")
                         .HasColumnType("uniqueidentifier")
@@ -4239,23 +4434,67 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         .HasColumnType("uniqueidentifier")
                         .HasColumnName("exported_by_user_id");
 
+                    b.Property<DateTime?>("FailedAt")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("failed_at");
+
+                    b.Property<int?>("FailureCategoryId")
+                        .HasColumnType("int")
+                        .HasColumnName("failure_category_id");
+
                     b.Property<string>("Format")
                         .IsRequired()
                         .HasMaxLength(20)
                         .HasColumnType("nvarchar(20)")
                         .HasColumnName("format");
 
+                    b.Property<string>("IncludedFieldKeysSnapshot")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)")
+                        .HasColumnName("included_field_keys_snapshot");
+
+                    b.Property<string>("PolicyVersion")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)")
+                        .HasColumnName("policy_version");
+
+                    b.Property<string>("PurposeCode")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)")
+                        .HasColumnName("purpose_code");
+
                     b.Property<Guid>("RecipientActorId")
                         .HasColumnType("uniqueidentifier")
                         .HasColumnName("recipient_actor_id");
+
+                    b.Property<string>("RequestedFieldKeysSnapshot")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)")
+                        .HasColumnName("requested_field_keys_snapshot");
 
                     b.Property<int>("RowCount")
                         .HasColumnType("int")
                         .HasColumnName("row_count");
 
+                    b.Property<int>("StatusId")
+                        .HasColumnType("int")
+                        .HasColumnName("status_id");
+
                     b.Property<Guid>("TenantId")
                         .HasColumnType("uniqueidentifier")
                         .HasColumnName("tenant_id");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("updated_by");
 
                     b.HasKey("Id")
                         .HasName("pk_event_contact_share_exports");
@@ -4285,11 +4524,11 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         .HasColumnType("uniqueidentifier")
                         .HasColumnName("consent_id");
 
-                    b.Property<string>("EmailSnapshot")
+                    b.Property<string>("ExportedFieldSnapshot")
                         .IsRequired()
-                        .HasMaxLength(320)
-                        .HasColumnType("nvarchar(320)")
-                        .HasColumnName("email_snapshot");
+                        .HasMaxLength(4000)
+                        .HasColumnType("nvarchar(4000)")
+                        .HasColumnName("exported_field_snapshot");
 
                     b.HasKey("ExportId", "ConsentId")
                         .HasName("pk_event_contact_share_export_items");
@@ -16462,6 +16701,115 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         });
                 });
 
+            modelBuilder.Entity("Explore.Domain.RegistrationAmendment", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("id");
+
+                    b.Property<Guid?>("ActorUserId")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("actor_user_id");
+
+                    b.Property<int>("AfterAssignmentStatusId")
+                        .HasColumnType("int")
+                        .HasColumnName("after_assignment_status_id");
+
+                    b.Property<Guid?>("AfterParticipantId")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("after_participant_id");
+
+                    b.Property<int?>("BeforeAssignmentStatusId")
+                        .HasColumnType("int")
+                        .HasColumnName("before_assignment_status_id");
+
+                    b.Property<Guid?>("BeforeParticipantId")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("before_participant_id");
+
+                    b.Property<string>("ChangeKind")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)")
+                        .HasColumnName("change_kind");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("created_by");
+
+                    b.Property<Guid>("EventId")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("event_id");
+
+                    b.Property<string>("LineageKey")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)")
+                        .HasColumnName("lineage_key");
+
+                    b.Property<DateTime>("OccurredAt")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("occurred_at");
+
+                    b.Property<int>("Ordinal")
+                        .HasColumnType("int")
+                        .HasColumnName("ordinal");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)")
+                        .HasColumnName("reason");
+
+                    b.Property<Guid>("RegistrationOrderId")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("registration_order_id");
+
+                    b.Property<Guid>("RegistrationOrderLineId")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("registration_order_line_id");
+
+                    b.Property<string>("Source")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)")
+                        .HasColumnName("source");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_registration_amendments");
+
+                    b.HasAlternateKey("TenantId", "Id")
+                        .HasName("ak_registration_amendments_tenant_id_id");
+
+                    b.HasIndex("TenantId", "RegistrationOrderLineId", "Ordinal")
+                        .HasDatabaseName("ix_registration_amendments_tenant_id_registration_order_line_id_ordinal");
+
+                    b.HasIndex("TenantId", "RegistrationOrderId", "Source", "LineageKey")
+                        .HasDatabaseName("ix_registration_amendments_tenant_id_registration_order_id_source_lineage_key");
+
+                    b.HasIndex("TenantId", "EventId", "RegistrationOrderId", "Source", "LineageKey", "RegistrationOrderLineId", "Ordinal")
+                        .IsUnique()
+                        .HasDatabaseName("ix_registration_amendments_tenant_id_event_id_registration_order_id_source_lineage_key_registration_order_line_id_ordinal");
+
+                    b.ToTable("registration_amendments", "islamu_event");
+                });
+
             modelBuilder.Entity("Explore.Domain.RegistrationAnswer", b =>
                 {
                     b.Property<Guid>("Id")
@@ -16594,6 +16942,10 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                     b.Property<int>("RequirementSubjectTypeId")
                         .HasColumnType("int")
                         .HasColumnName("requirement_subject_type_id");
+
+                    b.Property<DateTime?>("RetentionUntil")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("retention_until");
 
                     b.Property<Guid?>("SelectedOptionId")
                         .HasColumnType("uniqueidentifier")
@@ -17729,9 +18081,20 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         .HasColumnType("uniqueidentifier")
                         .HasColumnName("event_id");
 
+                    b.Property<string>("ExportPurposeCode")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)")
+                        .HasColumnName("export_purpose_code");
+
                     b.Property<int>("FieldTypeId")
                         .HasColumnType("int")
                         .HasColumnName("field_type_id");
+
+                    b.Property<bool>("IsAnalyticsRelevant")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_analytics_relevant");
 
                     b.Property<bool>("IsDeleted")
                         .ValueGeneratedOnAdd()
@@ -17739,9 +18102,19 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         .HasDefaultValue(false)
                         .HasColumnName("is_deleted");
 
+                    b.Property<bool>("IsExportable")
+                        .HasColumnType("bit")
+                        .HasColumnName("is_exportable");
+
                     b.Property<bool>("IsMulti")
                         .HasColumnType("bit")
                         .HasColumnName("is_multi");
+
+                    b.Property<bool>("IsOperationallyFilterable")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_operationally_filterable");
 
                     b.Property<bool>("IsProviderTransferAllowed")
                         .HasColumnType("bit")
@@ -17852,6 +18225,9 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
 
                     b.HasIndex("OrganizerVisibilityId")
                         .HasDatabaseName("ix_registration_form_fields_organizer_visibility_id");
+
+                    b.HasIndex("RetentionPolicyId")
+                        .HasDatabaseName("ix_registration_form_fields_retention_policy_id");
 
                     b.HasIndex("TenantId", "EventId", "RegistrationFormVersionId", "Namespace", "Key")
                         .IsUnique()
@@ -18189,6 +18565,98 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         .HasDatabaseName("ix_registration_form_statuses_master_code");
 
                     b.ToTable("registration_form_statuses", "islamu_event");
+                });
+
+            modelBuilder.Entity("Explore.Domain.RegistrationFormTemplate", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Category")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)")
+                        .HasColumnName("category");
+
+                    b.Property<Guid>("ConcurrencyStamp")
+                        .IsConcurrencyToken()
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("concurrency_stamp");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("deleted_by");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)")
+                        .HasColumnName("description");
+
+                    b.Property<bool>("IsDeleted")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_deleted");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)")
+                        .HasColumnName("name");
+
+                    b.Property<string>("PackKey")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)")
+                        .HasColumnName("pack_key");
+
+                    b.Property<Guid>("SourceEventId")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("source_event_id");
+
+                    b.Property<Guid>("SourceRegistrationFormId")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("source_registration_form_id");
+
+                    b.Property<Guid>("SourceRegistrationFormVersionId")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("source_registration_form_version_id");
+
+                    b.Property<Guid?>("TenantId")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_registration_form_templates");
+
+                    b.HasIndex("SourceRegistrationFormId", "SourceRegistrationFormVersionId")
+                        .HasDatabaseName("ix_registration_form_templates_source_registration_form_id_source_registration_form_version_id");
+
+                    b.HasIndex("TenantId", "Category", "Name")
+                        .HasDatabaseName("ix_registration_form_templates_tenant_id_category_name");
+
+                    b.ToTable("registration_form_templates", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.RegistrationFormVersion", b =>
@@ -18872,9 +19340,13 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         .HasColumnName("organization_name");
 
                     b.Property<string>("Phone")
-                        .HasMaxLength(64)
-                        .HasColumnType("nvarchar(64)")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)")
                         .HasColumnName("phone");
+
+                    b.Property<DateTime?>("RetentionUntil")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("retention_until");
 
                     b.Property<Guid>("TenantId")
                         .HasColumnType("uniqueidentifier")
@@ -19155,6 +19627,10 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)")
                         .HasColumnName("phone");
+
+                    b.Property<DateTime?>("RetentionUntil")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("retention_until");
 
                     b.Property<Guid>("TenantId")
                         .HasColumnType("uniqueidentifier")
@@ -20714,6 +21190,49 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                     b.ToTable("registration_requirement_subject_types", "islamu_event");
                 });
 
+            modelBuilder.Entity("Explore.Domain.RegistrationRetentionPolicy", b =>
+                {
+                    b.Property<int>("Id")
+                        .HasColumnType("int")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)")
+                        .HasColumnName("description");
+
+                    b.Property<int?>("DurationDays")
+                        .HasColumnType("int")
+                        .HasColumnName("duration_days");
+
+                    b.Property<string>("FullName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)")
+                        .HasColumnName("full_name");
+
+                    b.Property<bool>("IsLegalHold")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_legal_hold");
+
+                    b.Property<string>("MasterCode")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)")
+                        .HasColumnName("master_code");
+
+                    b.HasKey("Id")
+                        .HasName("pk_registration_retention_policies");
+
+                    b.HasIndex("MasterCode")
+                        .IsUnique()
+                        .HasDatabaseName("ix_registration_retention_policies_master_code");
+
+                    b.ToTable("registration_retention_policies", "islamu_event");
+                });
+
             modelBuilder.Entity("Explore.Domain.RegistrationScope", b =>
                 {
                     b.Property<int>("Id")
@@ -20784,6 +21303,10 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                     b.Property<int>("KeyVersion")
                         .HasColumnType("int")
                         .HasColumnName("key_version");
+
+                    b.Property<DateTime?>("RetentionUntil")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("retention_until");
 
                     b.Property<Guid>("TenantId")
                         .HasColumnType("uniqueidentifier")
@@ -29169,41 +29692,110 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         .IsRequired()
                         .HasConstraintName("fk_event_contact_share_consents_actors_recipient_actor_id");
 
-                    b.HasOne("Explore.Domain.Tenant", "Tenant")
+                    b.HasOne("Explore.Domain.ContactShareConsentSubjectType", "SubjectType")
+                        .WithMany()
+                        .HasForeignKey("SubjectTypeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_event_contact_share_consents_contact_share_consent_subject_types_subject_type_id");
+
+                    b.HasOne("Explore.Domain.Tenant", null)
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasConstraintName("fk_event_contact_share_consents_tenants_tenant_id");
 
+                    b.HasOne("Explore.Domain.User", "UserSubject")
+                        .WithMany()
+                        .HasForeignKey("UserSubjectId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_event_contact_share_consents_users_user_subject_id");
+
+                    b.HasOne("Explore.Domain.RegistrationOrder", "GuestContactOrder")
+                        .WithMany()
+                        .HasForeignKey("TenantId", "GuestContactOrderId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_event_contact_share_consents_registration_orders_tenant_id_guest_contact_order_id");
+
+                    b.HasOne("Explore.Domain.RegistrationParticipant", "RegistrationParticipant")
+                        .WithMany()
+                        .HasForeignKey("TenantId", "RegistrationParticipantId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_event_contact_share_consents_registration_participants_tenant_id_registration_participant_id");
+
+                    b.HasOne("Explore.Domain.RegistrationOrder", "RegistrationPurchaserOrder")
+                        .WithMany()
+                        .HasForeignKey("TenantId", "RegistrationPurchaserOrderId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_event_contact_share_consents_registration_orders_tenant_id_registration_purchaser_order_id");
+
+                    b.Navigation("GuestContactOrder");
+
+                    b.Navigation("RecipientActor");
+
+                    b.Navigation("RegistrationParticipant");
+
+                    b.Navigation("RegistrationPurchaserOrder");
+
+                    b.Navigation("SubjectType");
+
+                    b.Navigation("UserSubject");
+                });
+
+            modelBuilder.Entity("Explore.Domain.EventContactShareConsentHistory", b =>
+                {
+                    b.HasOne("Explore.Domain.Actor", "Actor")
+                        .WithMany()
+                        .HasForeignKey("ActorId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_event_contact_share_consent_history_actors_actor_id");
+
+                    b.HasOne("Explore.Domain.Tenant", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_event_contact_share_consent_history_tenants_tenant_id");
+
                     b.HasOne("Explore.Domain.User", "User")
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_event_contact_share_consent_history_users_user_id");
+
+                    b.HasOne("Explore.Domain.EventContactShareConsent", "Consent")
+                        .WithMany()
+                        .HasForeignKey("TenantId", "ConsentId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_event_contact_share_consents_users_user_id");
+                        .HasConstraintName("fk_event_contact_share_consent_history_event_contact_share_consents_tenant_id_consent_id");
 
                     b.HasOne("Explore.Domain.Event", "SourceEvent")
                         .WithMany()
                         .HasForeignKey("TenantId", "SourceEventId")
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_event_contact_share_consents_events_tenant_id_source_event_id");
+                        .HasConstraintName("fk_event_contact_share_consent_history_events_tenant_id_source_event_id");
 
                     b.HasOne("Explore.Domain.RegistrationOrder", "SourceRegistrationOrder")
                         .WithMany()
                         .HasForeignKey("TenantId", "SourceRegistrationOrderId")
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_event_contact_share_consents_registration_orders_tenant_id_source_registration_order_id");
+                        .HasConstraintName("fk_event_contact_share_consent_history_registration_orders_tenant_id_source_registration_order_id");
 
-                    b.Navigation("RecipientActor");
+                    b.Navigation("Actor");
+
+                    b.Navigation("Consent");
 
                     b.Navigation("SourceEvent");
 
                     b.Navigation("SourceRegistrationOrder");
-
-                    b.Navigation("Tenant");
 
                     b.Navigation("User");
                 });
@@ -34673,6 +35265,36 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         .HasConstraintName("fk_privacy_erasure_replay_checkpoints_privacy_erasure_replay_checkpoints_previous_checkpoint_id");
                 });
 
+            modelBuilder.Entity("Explore.Domain.RegistrationAmendment", b =>
+                {
+                    b.HasOne("Explore.Domain.Tenant", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_registration_amendments_tenants_tenant_id");
+
+                    b.HasOne("Explore.Domain.Event", "Event")
+                        .WithMany()
+                        .HasForeignKey("TenantId", "EventId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_registration_amendments_events_tenant_id_event_id");
+
+                    b.HasOne("Explore.Domain.RegistrationOrder", "RegistrationOrder")
+                        .WithMany()
+                        .HasForeignKey("TenantId", "RegistrationOrderId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_registration_amendments_registration_orders_tenant_id_registration_order_id");
+
+                    b.Navigation("Event");
+
+                    b.Navigation("RegistrationOrder");
+                });
+
             modelBuilder.Entity("Explore.Domain.RegistrationAnswer", b =>
                 {
                     b.HasOne("Explore.Domain.RegistrationAnswerSubjectType", "AnswerSubjectType")
@@ -35059,6 +35681,13 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         .IsRequired()
                         .HasConstraintName("fk_registration_form_fields_registration_organizer_visibilities_organizer_visibility_id");
 
+                    b.HasOne("Explore.Domain.RegistrationRetentionPolicy", "RetentionPolicy")
+                        .WithMany()
+                        .HasForeignKey("RetentionPolicyId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_registration_form_fields_registration_retention_policies_retention_policy_id");
+
                     b.HasOne("Explore.Domain.Tenant", null)
                         .WithMany()
                         .HasForeignKey("TenantId")
@@ -35077,6 +35706,8 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                     b.Navigation("FieldType");
 
                     b.Navigation("OrganizerVisibility");
+
+                    b.Navigation("RetentionPolicy");
                 });
 
             modelBuilder.Entity("Explore.Domain.RegistrationFormFieldOption", b =>
@@ -35131,6 +35762,15 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasConstraintName("fk_registration_form_sections_registration_form_versions_tenant_id_event_id_registration_form_id_registration_form_version_id");
+                });
+
+            modelBuilder.Entity("Explore.Domain.RegistrationFormTemplate", b =>
+                {
+                    b.HasOne("Explore.Domain.Tenant", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_registration_form_templates_tenants_tenant_id");
                 });
 
             modelBuilder.Entity("Explore.Domain.RegistrationFormVersion", b =>
@@ -35343,6 +35983,13 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
 
             modelBuilder.Entity("Explore.Domain.RegistrationOrderPii", b =>
                 {
+                    b.HasOne("Explore.Domain.Tenant", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_registration_order_pii_tenants_tenant_id");
+
                     b.HasOne("Explore.Domain.RegistrationOrder", "RegistrationOrder")
                         .WithOne("Pii")
                         .HasForeignKey("Explore.Domain.RegistrationOrderPii", "TenantId", "RegistrationOrderId")

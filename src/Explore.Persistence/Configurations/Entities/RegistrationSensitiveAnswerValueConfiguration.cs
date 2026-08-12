@@ -16,6 +16,7 @@ public sealed class RegistrationSensitiveAnswerValueConfiguration : IEntityTypeC
             "key_version > 0 AND length(btrim(ciphertext)) > 0"));
         builder.Property(value => value.Id).ValueGeneratedNever();
         builder.Property(value => value.Ciphertext).IsRequired().HasMaxLength(131072);
+        builder.Property(value => value.RetentionUntil).HasColumnType("timestamp with time zone");
         builder.Property(value => value.CreatedAt).IsRequired();
         builder.Property(value => value.IsDeleted).HasDefaultValue(false);
         builder.HasAlternateKey(value => new { value.TenantId, value.Id });

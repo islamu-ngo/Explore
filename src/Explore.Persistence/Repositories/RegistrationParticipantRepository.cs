@@ -70,6 +70,14 @@ public sealed class RegistrationParticipantRepository(ExploreDbContext dbContext
             .OrderBy(registration => registration.EventSessionId)
             .ToListAsync(cancellationToken);
 
+    public Task<bool> HasCompanyCsvAmendmentAsync(
+        Guid registrationOrderId,
+        Guid tenantId,
+        string lineageKey,
+        CancellationToken cancellationToken) =>
+        dbContext.RegistrationAmendments.AnyAsync(amendment => amendment.RegistrationOrderId == registrationOrderId &&
+            amendment.TenantId == tenantId && amendment.Source == "company-csv" && amendment.LineageKey == lineageKey, cancellationToken);
+
     public Task AddParticipantAsync(RegistrationParticipant participant, CancellationToken cancellationToken) =>
         dbContext.RegistrationParticipants.AddAsync(participant, cancellationToken).AsTask();
 
@@ -79,6 +87,15 @@ public sealed class RegistrationParticipantRepository(ExploreDbContext dbContext
     {
         ArgumentNullException.ThrowIfNull(assignments);
         await dbContext.RegistrationTicketAssignments.AddRangeAsync(assignments, cancellationToken);
+    }
+
+    public async Task AddAmendmentsAsync(IReadOnlyCollection<RegistrationAmendment> amendments, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(amendments);
+        if (amendments.Count > 0)
+        {
+            await dbContext.RegistrationAmendments.AddRangeAsync(amendments, cancellationToken);
+        }
     }
 
     public async Task AddParticipantsAsync(
@@ -96,11 +113,9 @@ public sealed class RegistrationParticipantRepository(ExploreDbContext dbContext
         if (participants.Any(participant => participant.Id == Guid.Empty ||
                 participant.TenantId != tenantId ||
                 participant.RegistrationOrderId != orderId ||
-                participant.ParticipantTypeId != (int)ParticipantTypeEnum.Unnamed ||
-                participant.LinkedUserId is not null ||
-                participant.Pii is not null))
+                participant.LinkedUserId is not null))
         {
-            throw new ArgumentException("Placeholder participants must be PII-free unnamed participants from one order.", nameof(participants));
+            throw new ArgumentException("Participants must belong to one order and cannot be pre-linked to users.", nameof(participants));
         }
 
         await dbContext.RegistrationParticipants.AddRangeAsync(participants, cancellationToken);

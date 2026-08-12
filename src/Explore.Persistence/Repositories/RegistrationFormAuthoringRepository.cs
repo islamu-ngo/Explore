@@ -4,6 +4,7 @@
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Exceptions;
 using Explore.Domain;
+using Explore.Persistence.QueryFilters;
 using Microsoft.EntityFrameworkCore;
 
 namespace Explore.Persistence.Repositories;
@@ -90,6 +91,19 @@ public sealed class RegistrationFormAuthoringRepository(ExploreDbContext dbConte
             version => version.EventId == eventId &&
                 version.RegistrationFormId == formId && version.Id == versionId,
             cancellationToken);
+
+    public Task<RegistrationFormVersion?> GetTemplateSourceVersionAsync(
+        Guid eventId,
+        Guid formId,
+        Guid versionId,
+        CancellationToken cancellationToken) =>
+        VersionGraph()
+            .IgnoreTenantFilter("registration-form-template-source-version")
+            .AsNoTracking()
+            .FirstOrDefaultAsync(
+                version => version.EventId == eventId &&
+                    version.RegistrationFormId == formId && version.Id == versionId,
+                cancellationToken);
 
     public Task<RegistrationFormVersion?> GetVersionForUpdateAsync(
         Guid eventId,

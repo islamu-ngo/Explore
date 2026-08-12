@@ -99,6 +99,35 @@ public sealed class RegistrationAttemptRuntimeContractTests
     }
 
     [Test]
+    public async Task SupersededProviderAttempt_RetainsLateCallbackEvidenceButNeverBecomesFinalizable()
+    {
+        RegistrationAttempt attempt = CreateAttempt(providerBindingId: Guid.CreateVersion7(), providerMappingRevisionHash: EvidenceHash(31));
+        attempt.Supersede(Guid.CreateVersion7(), CreatedAt.AddMinutes(2), "restart-with-fallback");
+
+        RegistrationSubmission lateCallback = RegistrationSubmission.CreateProviderEvidenceOnly(
+            attempt,
+            EvidenceHash(32),
+            CreatedAt.AddMinutes(3),
+            TransportHash(33),
+            "provider-submission",
+            "provider-revision",
+            "subject",
+            "correlation");
+
+        await Assert.That(lateCallback.StatusId).IsEqualTo((int)RegistrationSubmissionStatusEnum.EvidenceOnly);
+        await Assert.That(lateCallback.IsFinalizable).IsFalse();
+        await Assert.That(() => attempt.SubmitProvider(
+                EvidenceHash(34),
+                CreatedAt.AddMinutes(4),
+                TransportHash(35),
+                "provider-submission-2",
+                "provider-revision-2",
+                null,
+                null))
+            .Throws<InvalidOperationException>();
+    }
+
+    [Test]
     public async Task Submission_DedupIdentityIgnoresHttpIdempotencyAndInitialEvidenceIsImmutable()
     {
         RegistrationAttempt attempt = CreateAttempt();

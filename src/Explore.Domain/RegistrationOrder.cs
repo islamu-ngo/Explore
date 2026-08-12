@@ -216,7 +216,35 @@ public sealed class RegistrationOrder : ITenantEntity, IAuditableEntity, ISoftDe
             throw new ArgumentException("Purchaser PII does not belong to this order.", nameof(pii));
         }
 
+
         Pii = pii;
+    }
+
+    public bool TryLinkGuestOrderToAccount(Guid accountUserId, string verifiedNormalizedEmail)
+    {
+        if (accountUserId == Guid.Empty || string.IsNullOrWhiteSpace(verifiedNormalizedEmail) || GuestAccessTokenHash is null)
+        {
+            throw new ArgumentException("Guest order linking requires an account, verified email, and guest order capability.");
+        }
+
+        if (!string.Equals(Pii?.NormalizedEmail, verifiedNormalizedEmail.Trim().ToUpperInvariant(), StringComparison.Ordinal))
+        {
+            throw new InvalidOperationException("The verified account email does not match the registration order contact email.");
+        }
+
+        if (AccountUserId == accountUserId)
+        {
+            return false;
+        }
+
+        if (AccountUserId.HasValue)
+        {
+            throw new InvalidOperationException("Registration order is already linked to another account.");
+        }
+
+        AccountUserId = accountUserId;
+        BumpConcurrency(Guid.CreateVersion7());
+        return true;
     }
 
     public void SetPlatformContribution(RegistrationOrderPlatformContribution? contribution)

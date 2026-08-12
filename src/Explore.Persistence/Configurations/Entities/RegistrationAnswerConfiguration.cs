@@ -38,6 +38,7 @@ public sealed class RegistrationAnswerConfiguration : IEntityTypeConfiguration<R
         builder.Property(answer => answer.DateValue).HasColumnType("date");
         builder.Property(answer => answer.TimeValue).HasColumnType("time without time zone");
         builder.Property(answer => answer.InstantValue).HasColumnType("timestamp with time zone");
+        builder.Property(answer => answer.RetentionUntil).HasColumnType("timestamp with time zone");
         builder.Property(answer => answer.CreatedAt).IsRequired();
         builder.Property(answer => answer.IsDeleted).HasDefaultValue(false);
 

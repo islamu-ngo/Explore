@@ -54,7 +54,11 @@ public static class FormVersionRules
         int retentionPolicyId,
         RegistrationOrganizerVisibilityEnum organizerVisibility,
         bool requiresExplicitConsent,
-        bool isProviderTransferAllowed)
+        bool isProviderTransferAllowed,
+        bool isExportable = false,
+        string? exportPurposeCode = null,
+        bool isAnalyticsRelevant = false,
+        bool isOperationallyFilterable = false)
     {
         if (!Enum.IsDefined(fieldType))
         {
@@ -80,7 +84,36 @@ public static class FormVersionRules
         {
             throw new ArgumentException("Organizer-hidden fields cannot be transferred to a provider.", nameof(isProviderTransferAllowed));
         }
+
+        if (isExportable != !string.IsNullOrWhiteSpace(exportPurposeCode))
+        {
+            throw new ArgumentException("Exportable fields require one bounded export purpose code and non-exportable fields must not carry one.", nameof(exportPurposeCode));
+        }
+
+        if (exportPurposeCode is { Length: > 100 } || exportPurposeCode?.Any(char.IsControl) == true)
+        {
+            throw new ArgumentOutOfRangeException(nameof(exportPurposeCode));
+        }
+
+        if ((isAnalyticsRelevant || isOperationallyFilterable) && !IsAggregatableFieldType(fieldType))
+        {
+            throw new ArgumentException("Analytics and operational filters require categorical, boolean, numeric, or date fields.");
+        }
+
+        if ((isAnalyticsRelevant || isOperationallyFilterable) && requiresExplicitConsent)
+        {
+            throw new ArgumentException("Explicit-consent fields cannot be used for analytics or operational filters.");
+        }
     }
+
+    public static bool IsAggregatableFieldType(RegistrationFieldTypeEnum fieldType) => fieldType is
+        RegistrationFieldTypeEnum.Integer or
+        RegistrationFieldTypeEnum.Decimal or
+        RegistrationFieldTypeEnum.Boolean or
+        RegistrationFieldTypeEnum.Date or
+        RegistrationFieldTypeEnum.SingleChoice or
+        RegistrationFieldTypeEnum.MultipleChoice or
+        RegistrationFieldTypeEnum.Rating;
 
     public static void ValidateConstraints(
         int? minLength,

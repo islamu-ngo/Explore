@@ -2,6 +2,7 @@
 // ABOUTME: Reuses the shared provider-neutral lookup contract and runtime seeding model.
 
 using Explore.Domain;
+using Microsoft.EntityFrameworkCore;
 
 namespace Explore.Persistence.Configurations.Entities;
 
@@ -23,4 +24,21 @@ public sealed class RegistrationFieldTypeConfiguration : LookupConfiguration<Reg
 public sealed class RegistrationOrganizerVisibilityConfiguration : LookupConfiguration<RegistrationOrganizerVisibility>
 {
     protected override string TableName => "registration_organizer_visibilities";
+}
+
+public sealed class RegistrationRetentionPolicyConfiguration : LookupConfiguration<RegistrationRetentionPolicy>
+{
+    protected override string TableName => "registration_retention_policies";
+
+    public override void Configure(Microsoft.EntityFrameworkCore.Metadata.Builders.EntityTypeBuilder<RegistrationRetentionPolicy> builder)
+    {
+        base.Configure(builder);
+        builder.Property(policy => policy.DurationDays);
+        builder.Property(policy => policy.IsLegalHold).HasDefaultValue(false);
+    }
+}
+
+public sealed class ContactShareConsentSubjectTypeConfiguration : LookupConfiguration<ContactShareConsentSubjectType>
+{
+    protected override string TableName => "contact_share_consent_subject_types";
 }

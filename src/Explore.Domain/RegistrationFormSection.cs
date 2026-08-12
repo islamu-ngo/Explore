@@ -136,4 +136,15 @@ public sealed class RegistrationFormSection : ITenantEntity, IAuditableEntity, I
 
         return clone;
     }
+
+    internal RegistrationFormSection CloneTo(RegistrationFormVersion version)
+    {
+        RegistrationFormSection clone = Create(Guid.CreateVersion7(), version, Ordinal, Title, CreatedAt);
+        foreach (RegistrationFormField field in _fields.Where(field => !field.IsDeleted))
+        {
+            clone._fields.Add(field.CloneTo(version, clone.Id));
+        }
+
+        return clone;
+    }
 }

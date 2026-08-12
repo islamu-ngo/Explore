@@ -46,6 +46,12 @@ public interface IRegistrationFormAuthoringRepository
         Guid versionId,
         CancellationToken cancellationToken);
 
+    Task<RegistrationFormVersion?> GetTemplateSourceVersionAsync(
+        Guid eventId,
+        Guid formId,
+        Guid versionId,
+        CancellationToken cancellationToken);
+
     Task<RegistrationFormVersion?> GetVersionForUpdateAsync(
         Guid eventId,
         Guid formId,

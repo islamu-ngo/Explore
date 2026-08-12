@@ -2273,6 +2273,39 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                     b.ToTable("ie_configuration_change_logs", (string)null);
                 });
 
+            modelBuilder.Entity("Explore.Domain.ContactShareConsentSubjectType", b =>
+                {
+                    b.Property<int>("Id")
+                        .HasColumnType("int")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("varchar(500)")
+                        .HasColumnName("description");
+
+                    b.Property<string>("FullName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("varchar(200)")
+                        .HasColumnName("full_name");
+
+                    b.Property<string>("MasterCode")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)")
+                        .HasColumnName("master_code");
+
+                    b.HasKey("Id")
+                        .HasName("pk_ie_contact_share_consent_subject_types");
+
+                    b.HasIndex("MasterCode")
+                        .IsUnique()
+                        .HasDatabaseName("ix_ie_contact_share_consent_subject_types_master_code");
+
+                    b.ToTable("ie_contact_share_consent_subject_types", (string)null);
+                });
+
             modelBuilder.Entity("Explore.Domain.CustomPropertyDefinition", b =>
                 {
                     b.Property<Guid>("Id")
@@ -4111,13 +4144,18 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
             modelBuilder.Entity("Explore.Domain.EventContactShareConsent", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("char(36)")
                         .HasColumnName("id");
 
+                    b.Property<Guid>("ConcurrencyStamp")
+                        .IsConcurrencyToken()
+                        .HasColumnType("char(36)")
+                        .HasColumnName("concurrency_stamp");
+
                     b.Property<string>("ConsentTextSnapshot")
                         .IsRequired()
-                        .HasColumnType("longtext")
+                        .HasMaxLength(4000)
+                        .HasColumnType("varchar(4000)")
                         .HasColumnName("consent_text_snapshot");
 
                     b.Property<string>("ConsentUiVersion")
@@ -4150,6 +4188,10 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasColumnType("datetime(6)")
                         .HasColumnName("granted_at");
 
+                    b.Property<Guid?>("GuestContactOrderId")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("guest_contact_order_id");
+
                     b.Property<string>("PurposeCode")
                         .IsRequired()
                         .HasMaxLength(100)
@@ -4160,17 +4202,25 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasColumnType("char(36)")
                         .HasColumnName("recipient_actor_id");
 
-                    b.Property<Guid?>("SourceEventId")
+                    b.Property<Guid?>("RegistrationParticipantId")
                         .HasColumnType("char(36)")
-                        .HasColumnName("source_event_id");
+                        .HasColumnName("registration_participant_id");
 
-                    b.Property<Guid?>("SourceRegistrationOrderId")
+                    b.Property<Guid?>("RegistrationPurchaserOrderId")
                         .HasColumnType("char(36)")
-                        .HasColumnName("source_registration_order_id");
+                        .HasColumnName("registration_purchaser_order_id");
 
                     b.Property<int>("Status")
                         .HasColumnType("int")
                         .HasColumnName("status");
+
+                    b.Property<Guid>("SubjectId")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("subject_id");
+
+                    b.Property<int>("SubjectTypeId")
+                        .HasColumnType("int")
+                        .HasColumnName("subject_type_id");
 
                     b.Property<Guid>("TenantId")
                         .HasColumnType("char(36)")
@@ -4184,9 +4234,9 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasColumnType("char(36)")
                         .HasColumnName("updated_by");
 
-                    b.Property<Guid>("UserId")
+                    b.Property<Guid?>("UserSubjectId")
                         .HasColumnType("char(36)")
-                        .HasColumnName("user_id");
+                        .HasColumnName("user_subject_id");
 
                     b.Property<DateTime?>("WithdrawnAt")
                         .HasColumnType("datetime(6)")
@@ -4195,41 +4245,186 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                     b.HasKey("Id")
                         .HasName("pk_ie_event_contact_share_consents");
 
+                    b.HasAlternateKey("TenantId", "Id")
+                        .HasName("ak_event_contact_share_consents_tenant_id_id");
+
                     b.HasIndex("RecipientActorId")
                         .HasDatabaseName("ix_ie_event_contact_share_consents_recipient_actor_id");
 
-                    b.HasIndex("UserId")
-                        .HasDatabaseName("ix_ie_event_contact_share_consents_user_id");
+                    b.HasIndex("SubjectTypeId")
+                        .HasDatabaseName("ix_ie_event_contact_share_consents_subject_type_id");
 
-                    b.HasIndex("TenantId", "SourceEventId")
-                        .HasDatabaseName("ix_ie_event_contact_share_consents_tenant_id_source_event_id");
+                    b.HasIndex("UserSubjectId")
+                        .HasDatabaseName("ix_ie_event_contact_share_consents_user_subject_id");
 
-                    b.HasIndex("TenantId", "SourceRegistrationOrderId")
-                        .HasDatabaseName("IX_ie_event_contact_share_consents_tenant_id_source_reg_4A6C7413");
+                    b.HasIndex("TenantId", "GuestContactOrderId")
+                        .HasDatabaseName("IX_ie_event_contact_share_consents_tenant_id_guest_cont_FAEC890D");
+
+                    b.HasIndex("TenantId", "RegistrationParticipantId")
+                        .HasDatabaseName("IX_ie_event_contact_share_consents_tenant_id_registrati_73103DFB");
+
+                    b.HasIndex("TenantId", "RegistrationPurchaserOrderId")
+                        .HasDatabaseName("IX_ie_event_contact_share_consents_tenant_id_registrati_DF0EB375");
 
                     b.HasIndex("TenantId", "RecipientActorId", "Status")
                         .HasDatabaseName("IX_ie_event_contact_share_consents_tenant_id_recipient__4E305A77");
 
-                    b.HasIndex("TenantId", "UserId", "Status")
-                        .HasDatabaseName("ix_eventcontactshareconsents_user_status");
+                    b.HasIndex("TenantId", "SubjectTypeId", "SubjectId", "Status")
+                        .HasDatabaseName("IX_ie_event_contact_share_consents_tenant_id_subject_ty_B2643791");
 
-                    b.HasIndex("TenantId", "UserId", "RecipientActorId", "PurposeCode")
+                    b.HasIndex("TenantId", "SubjectTypeId", "SubjectId", "RecipientActorId", "PurposeCode")
                         .IsUnique()
-                        .HasDatabaseName("IX_ie_event_contact_share_consents_tenant_id_user_id_re_BAB74C81");
+                        .HasDatabaseName("IX_ie_event_contact_share_consents_tenant_id_subject_ty_C9677AB4");
 
-                    b.ToTable("ie_event_contact_share_consents", (string)null);
+                    b.ToTable("ie_event_contact_share_consents", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_event_contact_share_consents_subject_shape", "(CASE WHEN user_subject_id IS NULL THEN 0 ELSE 1 END + CASE WHEN registration_purchaser_order_id IS NULL THEN 0 ELSE 1 END + CASE WHEN registration_participant_id IS NULL THEN 0 ELSE 1 END + CASE WHEN guest_contact_order_id IS NULL THEN 0 ELSE 1 END) = 1");
+                        });
+                });
+
+            modelBuilder.Entity("Explore.Domain.EventContactShareConsentHistory", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("id");
+
+                    b.Property<Guid?>("ActorId")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("actor_id");
+
+                    b.Property<Guid>("ConsentId")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("consent_id");
+
+                    b.Property<string>("ConsentTextSnapshot")
+                        .IsRequired()
+                        .HasMaxLength(4000)
+                        .HasColumnType("varchar(4000)")
+                        .HasColumnName("consent_text_snapshot");
+
+                    b.Property<string>("ConsentUiVersionSnapshot")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)")
+                        .HasColumnName("consent_ui_version_snapshot");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("created_by");
+
+                    b.Property<string>("EmailNormalizedSnapshot")
+                        .IsRequired()
+                        .HasMaxLength(320)
+                        .HasColumnType("varchar(320)")
+                        .HasColumnName("email_normalized_snapshot");
+
+                    b.Property<string>("EmailSnapshot")
+                        .IsRequired()
+                        .HasMaxLength(320)
+                        .HasColumnType("varchar(320)")
+                        .HasColumnName("email_snapshot");
+
+                    b.Property<DateTime>("OccurredAt")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("occurred_at");
+
+                    b.Property<int>("OperationId")
+                        .HasColumnType("int")
+                        .HasColumnName("operation_id");
+
+                    b.Property<string>("PurposeCodeSnapshot")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)")
+                        .HasColumnName("purpose_code_snapshot");
+
+                    b.Property<Guid>("RecipientActorId")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("recipient_actor_id");
+
+                    b.Property<Guid?>("SourceEventId")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("source_event_id");
+
+                    b.Property<Guid?>("SourceRegistrationOrderId")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("source_registration_order_id");
+
+                    b.Property<int>("StatusSnapshot")
+                        .HasColumnType("int")
+                        .HasColumnName("status_snapshot");
+
+                    b.Property<Guid>("SubjectId")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("subject_id");
+
+                    b.Property<int>("SubjectTypeId")
+                        .HasColumnType("int")
+                        .HasColumnName("subject_type_id");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("updated_by");
+
+                    b.Property<Guid?>("UserId")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_ie_event_contact_share_consent_history");
+
+                    b.HasIndex("ActorId")
+                        .HasDatabaseName("ix_ie_event_contact_share_consent_history_actor_id");
+
+                    b.HasIndex("UserId")
+                        .HasDatabaseName("ix_ie_event_contact_share_consent_history_user_id");
+
+                    b.HasIndex("TenantId", "SourceEventId")
+                        .HasDatabaseName("IX_ie_event_contact_share_consent_history_tenant_id_sou_6A129E59");
+
+                    b.HasIndex("TenantId", "SourceRegistrationOrderId")
+                        .HasDatabaseName("IX_ie_event_contact_share_consent_history_tenant_id_sou_6F192E93");
+
+                    b.HasIndex("TenantId", "ConsentId", "OccurredAt")
+                        .HasDatabaseName("IX_ie_event_contact_share_consent_history_tenant_id_con_C29CC8BA");
+
+                    b.ToTable("ie_event_contact_share_consent_history", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.EventContactShareExport", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("char(36)")
                         .HasColumnName("id");
+
+                    b.Property<DateTime?>("CompletedAt")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("completed_at");
+
+                    b.Property<string>("ContentHash")
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64)")
+                        .HasColumnName("content_hash");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime(6)")
                         .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("created_by");
 
                     b.Property<Guid?>("EventId")
                         .HasColumnType("char(36)")
@@ -4239,23 +4434,67 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasColumnType("char(36)")
                         .HasColumnName("exported_by_user_id");
 
+                    b.Property<DateTime?>("FailedAt")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("failed_at");
+
+                    b.Property<int?>("FailureCategoryId")
+                        .HasColumnType("int")
+                        .HasColumnName("failure_category_id");
+
                     b.Property<string>("Format")
                         .IsRequired()
                         .HasMaxLength(20)
                         .HasColumnType("varchar(20)")
                         .HasColumnName("format");
 
+                    b.Property<string>("IncludedFieldKeysSnapshot")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("varchar(2000)")
+                        .HasColumnName("included_field_keys_snapshot");
+
+                    b.Property<string>("PolicyVersion")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)")
+                        .HasColumnName("policy_version");
+
+                    b.Property<string>("PurposeCode")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)")
+                        .HasColumnName("purpose_code");
+
                     b.Property<Guid>("RecipientActorId")
                         .HasColumnType("char(36)")
                         .HasColumnName("recipient_actor_id");
+
+                    b.Property<string>("RequestedFieldKeysSnapshot")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("varchar(2000)")
+                        .HasColumnName("requested_field_keys_snapshot");
 
                     b.Property<int>("RowCount")
                         .HasColumnType("int")
                         .HasColumnName("row_count");
 
+                    b.Property<int>("StatusId")
+                        .HasColumnType("int")
+                        .HasColumnName("status_id");
+
                     b.Property<Guid>("TenantId")
                         .HasColumnType("char(36)")
                         .HasColumnName("tenant_id");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("updated_by");
 
                     b.HasKey("Id")
                         .HasName("pk_ie_event_contact_share_exports");
@@ -4285,11 +4524,11 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasColumnType("char(36)")
                         .HasColumnName("consent_id");
 
-                    b.Property<string>("EmailSnapshot")
+                    b.Property<string>("ExportedFieldSnapshot")
                         .IsRequired()
-                        .HasMaxLength(320)
-                        .HasColumnType("varchar(320)")
-                        .HasColumnName("email_snapshot");
+                        .HasMaxLength(4000)
+                        .HasColumnType("varchar(4000)")
+                        .HasColumnName("exported_field_snapshot");
 
                     b.HasKey("ExportId", "ConsentId")
                         .HasName("pk_ie_event_contact_share_export_items");
@@ -16476,6 +16715,115 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         });
                 });
 
+            modelBuilder.Entity("Explore.Domain.RegistrationAmendment", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("id");
+
+                    b.Property<Guid?>("ActorUserId")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("actor_user_id");
+
+                    b.Property<int>("AfterAssignmentStatusId")
+                        .HasColumnType("int")
+                        .HasColumnName("after_assignment_status_id");
+
+                    b.Property<Guid?>("AfterParticipantId")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("after_participant_id");
+
+                    b.Property<int?>("BeforeAssignmentStatusId")
+                        .HasColumnType("int")
+                        .HasColumnName("before_assignment_status_id");
+
+                    b.Property<Guid?>("BeforeParticipantId")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("before_participant_id");
+
+                    b.Property<string>("ChangeKind")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64)")
+                        .HasColumnName("change_kind");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("created_by");
+
+                    b.Property<Guid>("EventId")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("event_id");
+
+                    b.Property<string>("LineageKey")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("varchar(128)")
+                        .HasColumnName("lineage_key");
+
+                    b.Property<DateTime>("OccurredAt")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("occurred_at");
+
+                    b.Property<int>("Ordinal")
+                        .HasColumnType("int")
+                        .HasColumnName("ordinal");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("varchar(500)")
+                        .HasColumnName("reason");
+
+                    b.Property<Guid>("RegistrationOrderId")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("registration_order_id");
+
+                    b.Property<Guid>("RegistrationOrderLineId")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("registration_order_line_id");
+
+                    b.Property<string>("Source")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64)")
+                        .HasColumnName("source");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_ie_registration_amendments");
+
+                    b.HasAlternateKey("TenantId", "Id")
+                        .HasName("ak_registration_amendments_tenant_id_id");
+
+                    b.HasIndex("TenantId", "RegistrationOrderLineId", "Ordinal")
+                        .HasDatabaseName("IX_ie_registration_amendments_tenant_id_registration_or_03271B3B");
+
+                    b.HasIndex("TenantId", "RegistrationOrderId", "Source", "LineageKey")
+                        .HasDatabaseName("IX_ie_registration_amendments_tenant_id_registration_or_F1F61E8F");
+
+                    b.HasIndex("TenantId", "EventId", "RegistrationOrderId", "Source", "LineageKey", "RegistrationOrderLineId", "Ordinal")
+                        .IsUnique()
+                        .HasDatabaseName("IX_ie_registration_amendments_tenant_id_event_id_regist_54C72C8E");
+
+                    b.ToTable("ie_registration_amendments", (string)null);
+                });
+
             modelBuilder.Entity("Explore.Domain.RegistrationAnswer", b =>
                 {
                     b.Property<Guid>("Id")
@@ -16606,6 +16954,10 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                     b.Property<int>("RequirementSubjectTypeId")
                         .HasColumnType("int")
                         .HasColumnName("requirement_subject_type_id");
+
+                    b.Property<DateTime?>("RetentionUntil")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("retention_until");
 
                     b.Property<Guid?>("SelectedOptionId")
                         .HasColumnType("char(36)")
@@ -17738,9 +18090,20 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasColumnType("char(36)")
                         .HasColumnName("event_id");
 
+                    b.Property<string>("ExportPurposeCode")
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)")
+                        .HasColumnName("export_purpose_code");
+
                     b.Property<int>("FieldTypeId")
                         .HasColumnType("int")
                         .HasColumnName("field_type_id");
+
+                    b.Property<bool>("IsAnalyticsRelevant")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("tinyint(1)")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_analytics_relevant");
 
                     b.Property<bool>("IsDeleted")
                         .ValueGeneratedOnAdd()
@@ -17748,9 +18111,19 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasDefaultValue(false)
                         .HasColumnName("is_deleted");
 
+                    b.Property<bool>("IsExportable")
+                        .HasColumnType("tinyint(1)")
+                        .HasColumnName("is_exportable");
+
                     b.Property<bool>("IsMulti")
                         .HasColumnType("tinyint(1)")
                         .HasColumnName("is_multi");
+
+                    b.Property<bool>("IsOperationallyFilterable")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("tinyint(1)")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_operationally_filterable");
 
                     b.Property<bool>("IsProviderTransferAllowed")
                         .HasColumnType("tinyint(1)")
@@ -17861,6 +18234,9 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
                     b.HasIndex("OrganizerVisibilityId")
                         .HasDatabaseName("ix_ie_registration_form_fields_organizer_visibility_id");
+
+                    b.HasIndex("RetentionPolicyId")
+                        .HasDatabaseName("ix_ie_registration_form_fields_retention_policy_id");
 
                     b.HasIndex("TenantId", "EventId", "RegistrationFormVersionId", "Namespace", "Key")
                         .IsUnique()
@@ -18198,6 +18574,98 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasDatabaseName("ix_ie_registration_form_statuses_master_code");
 
                     b.ToTable("ie_registration_form_statuses", (string)null);
+                });
+
+            modelBuilder.Entity("Explore.Domain.RegistrationFormTemplate", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Category")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)")
+                        .HasColumnName("category");
+
+                    b.Property<Guid>("ConcurrencyStamp")
+                        .IsConcurrencyToken()
+                        .HasColumnType("char(36)")
+                        .HasColumnName("concurrency_stamp");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("deleted_by");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("varchar(1000)")
+                        .HasColumnName("description");
+
+                    b.Property<bool>("IsDeleted")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("tinyint(1)")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_deleted");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("varchar(200)")
+                        .HasColumnName("name");
+
+                    b.Property<string>("PackKey")
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)")
+                        .HasColumnName("pack_key");
+
+                    b.Property<Guid>("SourceEventId")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("source_event_id");
+
+                    b.Property<Guid>("SourceRegistrationFormId")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("source_registration_form_id");
+
+                    b.Property<Guid>("SourceRegistrationFormVersionId")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("source_registration_form_version_id");
+
+                    b.Property<Guid?>("TenantId")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_ie_registration_form_templates");
+
+                    b.HasIndex("SourceRegistrationFormId", "SourceRegistrationFormVersionId")
+                        .HasDatabaseName("IX_ie_registration_form_templates_source_registration_f_A7F4723F");
+
+                    b.HasIndex("TenantId", "Category", "Name")
+                        .HasDatabaseName("ix_ie_registration_form_templates_tenant_id_category_name");
+
+                    b.ToTable("ie_registration_form_templates", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.RegistrationFormVersion", b =>
@@ -18880,9 +19348,13 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasColumnName("organization_name");
 
                     b.Property<string>("Phone")
-                        .HasMaxLength(64)
-                        .HasColumnType("varchar(64)")
+                        .HasMaxLength(50)
+                        .HasColumnType("varchar(50)")
                         .HasColumnName("phone");
+
+                    b.Property<DateTime?>("RetentionUntil")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("retention_until");
 
                     b.Property<Guid>("TenantId")
                         .HasColumnType("char(36)")
@@ -19163,6 +19635,10 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("varchar(50)")
                         .HasColumnName("phone");
+
+                    b.Property<DateTime?>("RetentionUntil")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("retention_until");
 
                     b.Property<Guid>("TenantId")
                         .HasColumnType("char(36)")
@@ -20721,6 +21197,49 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                     b.ToTable("ie_registration_requirement_subject_types", (string)null);
                 });
 
+            modelBuilder.Entity("Explore.Domain.RegistrationRetentionPolicy", b =>
+                {
+                    b.Property<int>("Id")
+                        .HasColumnType("int")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("varchar(500)")
+                        .HasColumnName("description");
+
+                    b.Property<int?>("DurationDays")
+                        .HasColumnType("int")
+                        .HasColumnName("duration_days");
+
+                    b.Property<string>("FullName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("varchar(200)")
+                        .HasColumnName("full_name");
+
+                    b.Property<bool>("IsLegalHold")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("tinyint(1)")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_legal_hold");
+
+                    b.Property<string>("MasterCode")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)")
+                        .HasColumnName("master_code");
+
+                    b.HasKey("Id")
+                        .HasName("pk_ie_registration_retention_policies");
+
+                    b.HasIndex("MasterCode")
+                        .IsUnique()
+                        .HasDatabaseName("ix_ie_registration_retention_policies_master_code");
+
+                    b.ToTable("ie_registration_retention_policies", (string)null);
+                });
+
             modelBuilder.Entity("Explore.Domain.RegistrationScope", b =>
                 {
                     b.Property<int>("Id")
@@ -20791,6 +21310,10 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                     b.Property<int>("KeyVersion")
                         .HasColumnType("int")
                         .HasColumnName("key_version");
+
+                    b.Property<DateTime?>("RetentionUntil")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("retention_until");
 
                     b.Property<Guid>("TenantId")
                         .HasColumnType("char(36)")
@@ -29206,41 +29729,110 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .IsRequired()
                         .HasConstraintName("fk_ie_event_contact_share_consents_ie_actors_recipient_actor_id");
 
-                    b.HasOne("Explore.Domain.Tenant", "Tenant")
+                    b.HasOne("Explore.Domain.ContactShareConsentSubjectType", "SubjectType")
+                        .WithMany()
+                        .HasForeignKey("SubjectTypeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("FK_ie_event_contact_share_consents_ie_contact_share_con_7D67DB77");
+
+                    b.HasOne("Explore.Domain.Tenant", null)
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasConstraintName("fk_ie_event_contact_share_consents_tenants_tenant_id");
 
+                    b.HasOne("Explore.Domain.User", "UserSubject")
+                        .WithMany()
+                        .HasForeignKey("UserSubjectId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_ie_event_contact_share_consents_users_user_subject_id");
+
+                    b.HasOne("Explore.Domain.RegistrationOrder", "GuestContactOrder")
+                        .WithMany()
+                        .HasForeignKey("TenantId", "GuestContactOrderId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("FK_ie_event_contact_share_consents_ie_registration_orde_3B19615A");
+
+                    b.HasOne("Explore.Domain.RegistrationParticipant", "RegistrationParticipant")
+                        .WithMany()
+                        .HasForeignKey("TenantId", "RegistrationParticipantId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("FK_ie_event_contact_share_consents_ie_registration_part_81B2237D");
+
+                    b.HasOne("Explore.Domain.RegistrationOrder", "RegistrationPurchaserOrder")
+                        .WithMany()
+                        .HasForeignKey("TenantId", "RegistrationPurchaserOrderId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("FK_ie_event_contact_share_consents_ie_registration_orde_401190BF");
+
+                    b.Navigation("GuestContactOrder");
+
+                    b.Navigation("RecipientActor");
+
+                    b.Navigation("RegistrationParticipant");
+
+                    b.Navigation("RegistrationPurchaserOrder");
+
+                    b.Navigation("SubjectType");
+
+                    b.Navigation("UserSubject");
+                });
+
+            modelBuilder.Entity("Explore.Domain.EventContactShareConsentHistory", b =>
+                {
+                    b.HasOne("Explore.Domain.Actor", "Actor")
+                        .WithMany()
+                        .HasForeignKey("ActorId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_ie_event_contact_share_consent_history_ie_actors_actor_id");
+
+                    b.HasOne("Explore.Domain.Tenant", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_ie_event_contact_share_consent_history_tenants_tenant_id");
+
                     b.HasOne("Explore.Domain.User", "User")
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_ie_event_contact_share_consent_history_users_user_id");
+
+                    b.HasOne("Explore.Domain.EventContactShareConsent", "Consent")
+                        .WithMany()
+                        .HasForeignKey("TenantId", "ConsentId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_ie_event_contact_share_consents_users_user_id");
+                        .HasConstraintName("FK_ie_event_contact_share_consent_history_ie_event_cont_0F3065C1");
 
                     b.HasOne("Explore.Domain.Event", "SourceEvent")
                         .WithMany()
                         .HasForeignKey("TenantId", "SourceEventId")
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("FK_ie_event_contact_share_consents_ie_events_tenant_id__A2B1E7A7");
+                        .HasConstraintName("FK_ie_event_contact_share_consent_history_ie_events_ten_0ED20075");
 
                     b.HasOne("Explore.Domain.RegistrationOrder", "SourceRegistrationOrder")
                         .WithMany()
                         .HasForeignKey("TenantId", "SourceRegistrationOrderId")
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("FK_ie_event_contact_share_consents_ie_registration_orde_31444032");
+                        .HasConstraintName("FK_ie_event_contact_share_consent_history_ie_registrati_121148CD");
 
-                    b.Navigation("RecipientActor");
+                    b.Navigation("Actor");
+
+                    b.Navigation("Consent");
 
                     b.Navigation("SourceEvent");
 
                     b.Navigation("SourceRegistrationOrder");
-
-                    b.Navigation("Tenant");
 
                     b.Navigation("User");
                 });
@@ -34711,6 +35303,36 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .HasConstraintName("FK_ie_privacy_erasure_replay_checkpoints_ie_privacy_era_4FEFB3F0");
                 });
 
+            modelBuilder.Entity("Explore.Domain.RegistrationAmendment", b =>
+                {
+                    b.HasOne("Explore.Domain.Tenant", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_ie_registration_amendments_tenants_tenant_id");
+
+                    b.HasOne("Explore.Domain.Event", "Event")
+                        .WithMany()
+                        .HasForeignKey("TenantId", "EventId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_ie_registration_amendments_ie_events_tenant_id_event_id");
+
+                    b.HasOne("Explore.Domain.RegistrationOrder", "RegistrationOrder")
+                        .WithMany()
+                        .HasForeignKey("TenantId", "RegistrationOrderId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("FK_ie_registration_amendments_ie_registration_orders_te_7BCC491D");
+
+                    b.Navigation("Event");
+
+                    b.Navigation("RegistrationOrder");
+                });
+
             modelBuilder.Entity("Explore.Domain.RegistrationAnswer", b =>
                 {
                     b.HasOne("Explore.Domain.RegistrationAnswerSubjectType", "AnswerSubjectType")
@@ -35097,6 +35719,13 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .IsRequired()
                         .HasConstraintName("FK_ie_registration_form_fields_ie_registration_organize_6A9AB0FC");
 
+                    b.HasOne("Explore.Domain.RegistrationRetentionPolicy", "RetentionPolicy")
+                        .WithMany()
+                        .HasForeignKey("RetentionPolicyId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("FK_ie_registration_form_fields_ie_registration_retentio_53D70441");
+
                     b.HasOne("Explore.Domain.Tenant", null)
                         .WithMany()
                         .HasForeignKey("TenantId")
@@ -35115,6 +35744,8 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                     b.Navigation("FieldType");
 
                     b.Navigation("OrganizerVisibility");
+
+                    b.Navigation("RetentionPolicy");
                 });
 
             modelBuilder.Entity("Explore.Domain.RegistrationFormFieldOption", b =>
@@ -35169,6 +35800,15 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasConstraintName("FK_ie_registration_form_sections_ie_registration_form_v_6DD10FE6");
+                });
+
+            modelBuilder.Entity("Explore.Domain.RegistrationFormTemplate", b =>
+                {
+                    b.HasOne("Explore.Domain.Tenant", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_ie_registration_form_templates_tenants_tenant_id");
                 });
 
             modelBuilder.Entity("Explore.Domain.RegistrationFormVersion", b =>
@@ -35381,6 +36021,13 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
 
             modelBuilder.Entity("Explore.Domain.RegistrationOrderPii", b =>
                 {
+                    b.HasOne("Explore.Domain.Tenant", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_ie_registration_order_pii_tenants_tenant_id");
+
                     b.HasOne("Explore.Domain.RegistrationOrder", "RegistrationOrder")
                         .WithOne("Pii")
                         .HasForeignKey("Explore.Domain.RegistrationOrderPii", "TenantId", "RegistrationOrderId")

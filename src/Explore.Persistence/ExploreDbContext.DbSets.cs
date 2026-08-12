@@ -165,6 +165,7 @@ public partial class ExploreDbContext
     public DbSet<RegistrationParticipant> RegistrationParticipants { get; set; }
     public DbSet<RegistrationParticipantPii> RegistrationParticipantPii { get; set; }
     public DbSet<RegistrationTicketAssignment> RegistrationTicketAssignments { get; set; }
+    public DbSet<RegistrationAmendment> RegistrationAmendments { get; set; }
     public DbSet<RegistrationWorkflow> RegistrationWorkflows { get; set; }
     public DbSet<RegistrationRequirement> RegistrationRequirements { get; set; }
     public DbSet<RegistrationChannel> RegistrationChannels { get; set; }
@@ -177,6 +178,7 @@ public partial class ExploreDbContext
     public DbSet<RegistrationProviderOptionMapping> RegistrationProviderOptionMappings { get; set; }
     public DbSet<RegistrationProviderSchemaRevision> RegistrationProviderSchemaRevisions { get; set; }
     public DbSet<RegistrationForm> RegistrationForms { get; set; }
+    public DbSet<RegistrationFormTemplate> RegistrationFormTemplates { get; set; }
     public DbSet<RegistrationFormVersion> RegistrationFormVersions { get; set; }
     public DbSet<RegistrationFormSection> RegistrationFormSections { get; set; }
     public DbSet<RegistrationFormField> RegistrationFormFields { get; set; }
@@ -195,6 +197,8 @@ public partial class ExploreDbContext
     public DbSet<RegistrationFinalizationEffect> RegistrationFinalizationEffects { get; set; }
     public DbSet<RegistrationProviderSubmissionWriteEffect> RegistrationProviderSubmissionWriteEffects { get; set; }
     public DbSet<RegistrationAnswerSubjectType> RegistrationAnswerSubjectTypes { get; set; }
+    public DbSet<ContactShareConsentSubjectType> ContactShareConsentSubjectTypes { get; set; }
+    public DbSet<RegistrationRetentionPolicy> RegistrationRetentionPolicies { get; set; }
 
     // ===== Event Lookup Tables =====
     public DbSet<EventType> EventTypes { get; set; }
@@ -377,6 +381,7 @@ public partial class ExploreDbContext
 
     // ===== Contact Share Consents =====
     public DbSet<EventContactShareConsent> EventContactShareConsents { get; set; }
+    public DbSet<EventContactShareConsentHistory> EventContactShareConsentHistory { get; set; }
     public DbSet<EventContactShareExport> EventContactShareExports { get; set; }
     public DbSet<EventContactShareExportItem> EventContactShareExportItems { get; set; }
 

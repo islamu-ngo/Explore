@@ -23,10 +23,13 @@ public sealed class RegistrationFormFieldConfiguration : IEntityTypeConfiguratio
         builder.Property(field => field.ConsentPurposeCode).HasMaxLength(100);
         builder.Property(field => field.ConsentText).HasMaxLength(4000);
         builder.Property(field => field.ConsentTextVersion).HasMaxLength(100);
+        builder.Property(field => field.ExportPurposeCode).HasMaxLength(100);
         builder.Property(field => field.RegexPattern).HasMaxLength(1000);
         builder.Property(field => field.AllowedUrlSchemes).HasMaxLength(200);
         builder.Property(field => field.CreatedAt).IsRequired();
         builder.Property(field => field.IsDeleted).HasDefaultValue(false);
+        builder.Property(field => field.IsAnalyticsRelevant).HasDefaultValue(false);
+        builder.Property(field => field.IsOperationallyFilterable).HasDefaultValue(false);
         builder.Property(field => field.ConcurrencyStamp).IsConcurrencyToken();
         builder.HasAlternateKey(field => new
         {
@@ -68,6 +71,8 @@ public sealed class RegistrationFormFieldConfiguration : IEntityTypeConfiguratio
         builder.HasOne(field => field.FieldType).WithMany().HasForeignKey(field => field.FieldTypeId)
             .OnDelete(DeleteBehavior.Restrict);
         builder.HasOne(field => field.OrganizerVisibility).WithMany().HasForeignKey(field => field.OrganizerVisibilityId)
+            .OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne(field => field.RetentionPolicy).WithMany().HasForeignKey(field => field.RetentionPolicyId)
             .OnDelete(DeleteBehavior.Restrict);
         builder.HasIndex(field => new
         {

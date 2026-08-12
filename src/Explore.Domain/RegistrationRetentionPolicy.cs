@@ -1,0 +1,14 @@
+// ABOUTME: Normalized registration retention policy lookup with stable IDs and durations.
+// ABOUTME: Null DurationDays means legal hold/no automatic deletion until policy authority changes.
+
+namespace Explore.Domain;
+
+public sealed class RegistrationRetentionPolicy
+{
+    public int Id { get; set; }
+    public string MasterCode { get; set; } = string.Empty;
+    public string FullName { get; set; } = string.Empty;
+    public string? Description { get; set; }
+    public int? DurationDays { get; set; }
+    public bool IsLegalHold { get; set; }
+}

@@ -132,6 +132,21 @@ public sealed class RegistrationFormRule : ITenantEntity, IAuditableEntity, ISof
         Condition = Condition,
         CreatedAt = CreatedAt
     };
+
+    internal RegistrationFormRule CloneTo(RegistrationFormVersion version) => new()
+    {
+        Id = Guid.CreateVersion7(),
+        TenantId = version.TenantId,
+        EventId = version.EventId,
+        RegistrationFormId = version.RegistrationFormId,
+        RegistrationFormVersionId = version.Id,
+        Ordinal = Ordinal,
+        TargetNamespace = TargetNamespace,
+        TargetKey = TargetKey,
+        Effect = Effect,
+        Condition = Condition,
+        CreatedAt = CreatedAt
+    };
 }
 
 public enum RegistrationFormRuleEffect

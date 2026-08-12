@@ -1,5 +1,5 @@
-// ABOUTME: Unit tests for EventContactShareConsent entity — interface compliance and property defaults.
-// ABOUTME: Follows the existing entity test pattern in Event.Domain.UnitTests.
+// ABOUTME: Verifies typed contact-share consent identity, lifecycle, and interface boundaries.
+// ABOUTME: Exercises the aggregate through its public grant, withdraw, and regrant operations.
 
 using Explore.Domain;
 using Explore.Domain.Enums;
@@ -31,116 +31,48 @@ public class EventContactShareConsentTests
     }
 
     [Test]
-    public async Task RequiredProperties_AreMarkedAsRequired_ExpectedBehavior()
+    public async Task Grant_CreatesTypedUserSubjectAndNormalizedScope()
     {
-        await Assert.That(IsRequiredProperty<EventContactShareConsent>(nameof(EventContactShareConsent.PurposeCode))).IsTrue();
-        await Assert.That(IsRequiredProperty<EventContactShareConsent>(nameof(EventContactShareConsent.EmailSnapshot))).IsTrue();
-        await Assert.That(IsRequiredProperty<EventContactShareConsent>(nameof(EventContactShareConsent.EmailNormalizedSnapshot))).IsTrue();
-        await Assert.That(IsRequiredProperty<EventContactShareConsent>(nameof(EventContactShareConsent.ConsentTextSnapshot))).IsTrue();
-        await Assert.That(IsRequiredProperty<EventContactShareConsent>(nameof(EventContactShareConsent.ConsentUiVersion))).IsTrue();
+        Guid userId = Guid.CreateVersion7();
+        EventContactShareConsent consent = CreateConsent(ContactShareConsentSubjectTypeEnum.User, userId);
+
+        await Assert.That(consent.SubjectTypeId).IsEqualTo((int)ContactShareConsentSubjectTypeEnum.User);
+        await Assert.That(consent.SubjectId).IsEqualTo(userId);
+        await Assert.That(consent.UserSubjectId).IsEqualTo(userId);
+        await Assert.That(consent.RegistrationPurchaserOrderId).IsNull();
+        await Assert.That(consent.PurposeCode).IsEqualTo("TEST");
+        await Assert.That(consent.EmailNormalizedSnapshot).IsEqualTo("test@example.com");
     }
 
     [Test]
-    public async Task NavigationProperties_AreNullable_NotRequired()
+    public async Task Grant_RepresentsAllFourSubjectKinds()
     {
-        // Nav properties use FK IDs for persistence; they're nullable for EF Core flexibility
-        await Assert.That(IsRequiredProperty<EventContactShareConsent>(nameof(EventContactShareConsent.Tenant))).IsFalse();
-        await Assert.That(IsRequiredProperty<EventContactShareConsent>(nameof(EventContactShareConsent.User))).IsFalse();
-        await Assert.That(IsRequiredProperty<EventContactShareConsent>(nameof(EventContactShareConsent.RecipientActor))).IsFalse();
-    }
-
-    [Test]
-    public async Task NullableNavigationProperties_AreNullByDefault()
-    {
-        var entity = CreateConsent();
-
-        await Assert.That(entity.SourceEvent).IsNull();
-        await Assert.That(entity.SourceRegistrationOrder).IsNull();
-    }
-
-    [Test]
-    public async Task NullableForeignKeys_AreNullByDefault()
-    {
-        var entity = CreateConsent();
-
-        await Assert.That(entity.SourceEventId).IsNull();
-        await Assert.That(entity.SourceRegistrationOrderId).IsNull();
-        await Assert.That(entity.WithdrawnAt).IsNull();
-    }
-
-    [Test]
-    public async Task ConsentStatus_DefaultsToZero()
-    {
-        var entity = CreateConsent();
-
-        // ConsentStatus enum: Granted=1, Withdrawn=2 — default 0 is "unset"
-        await Assert.That((int)entity.Status).IsEqualTo(0);
-    }
-
-    [Test]
-    public async Task ForeignKeyIds_WhenCreated_AreDefaultValue()
-    {
-        var entity = CreateConsent();
-
-        await Assert.That(entity.TenantId).IsEqualTo(Guid.Empty);
-        await Assert.That(entity.UserId).IsEqualTo(Guid.Empty);
-        await Assert.That(entity.RecipientActorId).IsEqualTo(Guid.Empty);
-    }
-
-    private static bool IsRequiredProperty<T>(string propertyName)
-    {
-        var property = typeof(T).GetProperty(propertyName);
-        return property is not null && property.GetCustomAttributes(inherit: false)
-            .Any(a => a.GetType().Name == "RequiredMemberAttribute");
-    }
-
-    private static EventContactShareConsent CreateConsent()
-    {
-        return new EventContactShareConsent
+        foreach (ContactShareConsentSubjectTypeEnum subjectType in Enum.GetValues<ContactShareConsentSubjectTypeEnum>())
         {
-            PurposeCode = "TEST",
-            EmailSnapshot = "test@example.com",
-            EmailNormalizedSnapshot = "test@example.com",
-            ConsentTextSnapshot = "Test consent",
-            ConsentUiVersion = "v1"
-        };
+            EventContactShareConsent consent = CreateConsent(subjectType, Guid.CreateVersion7());
+            await Assert.That(consent.SubjectTypeId).IsEqualTo((int)subjectType);
+        }
     }
 
-    private static Tenant CreateTenant()
+    [Test]
+    public async Task WithdrawAndRegrant_TransitionCurrentState()
     {
-        return new Tenant
-        {
-            FullName = "Test Tenant",
-            Slug = "test-tenant",
-            TenantStatus = new TenantStatus
-            {
-                Id = 2,
-                MasterCode = "ACTIVE",
-                FullName = "Active",
-                IsActiveState = true
-            }
-        };
+        EventContactShareConsent consent = CreateConsent(ContactShareConsentSubjectTypeEnum.User, Guid.CreateVersion7());
+        DateTime withdrawnAt = DateTime.UtcNow;
+
+        EventContactShareConsentHistory withdrawal = consent.Withdraw(null, consent.SubjectId, withdrawnAt);
+        await Assert.That(consent.Status).IsEqualTo(ConsentStatus.Withdrawn);
+        await Assert.That(withdrawal.StatusSnapshot).IsEqualTo(ConsentStatus.Withdrawn);
+
+        EventContactShareConsentHistory regrant = consent.Regrant(
+            "new@example.com", "Updated consent", "v2", null, null, null, consent.SubjectId,
+            withdrawnAt.AddMinutes(1));
+        await Assert.That(consent.Status).IsEqualTo(ConsentStatus.Granted);
+        await Assert.That(consent.WithdrawnAt).IsNull();
+        await Assert.That(regrant.StatusSnapshot).IsEqualTo(ConsentStatus.Granted);
     }
 
-    private static User CreateUser()
-    {
-        return new User
-        {
-            Pii = new UserPii
-            {
-                Email = "user@example.com",
-                FirstName = "Test",
-                LastName = "User"
-            }
-        };
-    }
-
-    private static Actor CreateActor()
-    {
-        return new Actor
-        {
-            Pii = new ActorPii { DisplayName = "Test Actor" },
-            ActorType = new ActorType { FullName = "Organization", MasterCode = "ORGANIZATION" }
-        };
-    }
+    private static EventContactShareConsent CreateConsent(ContactShareConsentSubjectTypeEnum subjectType, Guid subjectId) =>
+        EventContactShareConsent.Grant(Guid.CreateVersion7(), subjectType, subjectId, Guid.CreateVersion7(),
+            " test ", " Test@Example.com ", "Test consent", "v1", DateTime.UtcNow);
 }

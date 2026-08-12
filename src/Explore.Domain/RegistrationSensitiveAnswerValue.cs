@@ -15,6 +15,7 @@ public sealed class RegistrationSensitiveAnswerValue : ITenantEntity, IAuditable
     public Guid TenantId { get; set; }
     public string Ciphertext { get; private set; } = string.Empty;
     public int KeyVersion { get; private set; }
+    public DateTime? RetentionUntil { get; private set; }
     public DateTime CreatedAt { get; set; }
     public Guid? CreatedBy { get; set; }
     public DateTime? UpdatedAt { get; set; }
@@ -27,6 +28,14 @@ public sealed class RegistrationSensitiveAnswerValue : ITenantEntity, IAuditable
         Guid tenantId,
         string ciphertext,
         int keyVersion,
+        DateTime createdAt) => Create(
+            tenantId, ciphertext, keyVersion, (int)Enums.RegistrationRetentionPolicyEnum.SensitiveShort, createdAt);
+
+    public static RegistrationSensitiveAnswerValue Create(
+        Guid tenantId,
+        string ciphertext,
+        int keyVersion,
+        int retentionPolicyId,
         DateTime createdAt)
     {
         if (tenantId == Guid.Empty || keyVersion <= 0 || createdAt == default || createdAt.Kind != DateTimeKind.Utc)
@@ -58,6 +67,7 @@ public sealed class RegistrationSensitiveAnswerValue : ITenantEntity, IAuditable
             TenantId = tenantId,
             Ciphertext = ciphertext,
             KeyVersion = keyVersion,
+            RetentionUntil = RegistrationRetentionDeadline.Resolve(retentionPolicyId, createdAt),
             CreatedAt = createdAt
         };
     }

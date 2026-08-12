@@ -35,10 +35,20 @@ public interface IRegistrationParticipantRepository
         Guid tenantId,
         CancellationToken cancellationToken);
 
+    Task<bool> HasCompanyCsvAmendmentAsync(
+        Guid registrationOrderId,
+        Guid tenantId,
+        string lineageKey,
+        CancellationToken cancellationToken);
+
     Task AddParticipantAsync(RegistrationParticipant participant, CancellationToken cancellationToken);
 
     Task AddAssignmentsAsync(
         IReadOnlyCollection<RegistrationTicketAssignment> assignments,
+        CancellationToken cancellationToken);
+
+    Task AddAmendmentsAsync(
+        IReadOnlyCollection<RegistrationAmendment> amendments,
         CancellationToken cancellationToken);
 
     Task AddParticipantsAsync(

@@ -330,6 +330,11 @@ public sealed class UserLocationPrivacyErasureRepository(ExploreDbContext dbCont
             .Where(value => value.ExportedByUserId == subjectId)
             .ExecuteUpdateAsync(setters => setters
                 .SetProperty(value => value.ExportedByUserId, (Guid?)null), cancellationToken);
+        await dbContext.EventContactShareConsentHistory
+            .IgnoreAllFilters(reason)
+            .Where(value => value.UserId == subjectId)
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(value => value.UserId, (Guid?)null), cancellationToken);
         await dbContext.ConfigurationChangeLogs
             .Where(value => value.UserId == subjectId)
             .ExecuteUpdateAsync(setters => setters
@@ -489,11 +494,15 @@ public sealed class UserLocationPrivacyErasureRepository(ExploreDbContext dbCont
             .Where(value => value.RecipientUserId == subjectId)
             .ExecuteDeleteAsync(cancellationToken);
         await dbContext.EventContactShareExportItems
-            .Where(value => value.Consent != null && value.Consent.UserId == subjectId)
+            .Where(value => value.Consent != null && value.Consent.UserSubjectId == subjectId)
+            .ExecuteDeleteAsync(cancellationToken);
+        await dbContext.EventContactShareConsentHistory
+            .IgnoreAllFilters(reason)
+            .Where(value => value.Consent != null && value.Consent.UserSubjectId == subjectId)
             .ExecuteDeleteAsync(cancellationToken);
         await dbContext.EventContactShareConsents
             .IgnoreAllFilters(reason)
-            .Where(value => value.UserId == subjectId)
+            .Where(value => value.UserSubjectId == subjectId)
             .ExecuteDeleteAsync(cancellationToken);
         await dbContext.RegistrationParticipantPii
             .IgnoreAllFilters(reason)

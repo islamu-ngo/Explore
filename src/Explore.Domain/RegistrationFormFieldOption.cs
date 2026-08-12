@@ -103,4 +103,20 @@ public sealed class RegistrationFormFieldOption : ITenantEntity, IAuditableEntit
         RetiredAt = RetiredAt,
         CreatedAt = CreatedAt
     };
+
+    internal RegistrationFormFieldOption CloneTo(RegistrationFormVersion version, Guid sectionId, Guid fieldId) => new()
+    {
+        Id = Guid.CreateVersion7(),
+        TenantId = version.TenantId,
+        EventId = version.EventId,
+        RegistrationFormId = version.RegistrationFormId,
+        RegistrationFormVersionId = version.Id,
+        RegistrationFormSectionId = sectionId,
+        RegistrationFormFieldId = fieldId,
+        Ordinal = Ordinal,
+        Key = Key,
+        Label = Label,
+        RetiredAt = RetiredAt,
+        CreatedAt = CreatedAt
+    };
 }

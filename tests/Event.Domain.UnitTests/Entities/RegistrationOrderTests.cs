@@ -76,7 +76,7 @@ public sealed class RegistrationOrderTests
     {
         DateTime originalTimestamp = new(2026, 7, 30, 12, 0, 0, DateTimeKind.Utc);
         DateTime replayTimestamp = originalTimestamp.AddMinutes(1);
-        RegistrationOrder order = CreateOrder();
+        RegistrationOrder order = CreateGuestOnlyOrder();
         order.ApplyTotals(RegistrationOrderTotalsSnapshot.Create("USD", 0, 0, 0, 0));
         order.TransitionTo(RegistrationOrderStatusEnum.AwaitingRequirements, originalTimestamp);
         order.TransitionTo(RegistrationOrderStatusEnum.ReadyForCheckout, originalTimestamp);
@@ -85,6 +85,34 @@ public sealed class RegistrationOrderTests
         order.TransitionTo(RegistrationOrderStatusEnum.Confirmed, replayTimestamp);
 
         await Assert.That(order.ConfirmedAt).IsEqualTo(originalTimestamp);
+    }
+
+    [Test]
+    public async Task TryLinkGuestOrderToAccount_RequiresGuestCapabilityAndNormalizedVerifiedEmailMatch()
+    {
+        Guid accountUserId = Guid.CreateVersion7();
+        RegistrationOrder order = CreateGuestOnlyOrder();
+        order.SetPii(RegistrationOrderPii.Create(order.Id, order.TenantId, "Jane", "Jane.Doe@example.test", null, null));
+
+        bool linked = order.TryLinkGuestOrderToAccount(accountUserId, "jane.doe@example.test");
+        bool retry = order.TryLinkGuestOrderToAccount(accountUserId, "JANE.DOE@EXAMPLE.TEST");
+
+        await Assert.That(linked).IsTrue();
+        await Assert.That(retry).IsFalse();
+        await Assert.That(order.AccountUserId).IsEqualTo(accountUserId);
+        await Assert.That(() => order.TryLinkGuestOrderToAccount(Guid.CreateVersion7(), "JANE.DOE@EXAMPLE.TEST"))
+            .Throws<InvalidOperationException>();
+    }
+
+    [Test]
+    public async Task TryLinkGuestOrderToAccount_RejectsEmailMismatchWithoutChangingOwner()
+    {
+        RegistrationOrder order = CreateGuestOnlyOrder();
+        order.SetPii(RegistrationOrderPii.Create(order.Id, order.TenantId, "Jane", "Jane.Doe@example.test", null, null));
+
+        await Assert.That(() => order.TryLinkGuestOrderToAccount(Guid.CreateVersion7(), "other@example.test"))
+            .Throws<InvalidOperationException>();
+        await Assert.That(order.AccountUserId).IsNull();
     }
 
     [Test]
@@ -247,6 +275,20 @@ public sealed class RegistrationOrderTests
         BookingPartyTypeEnum.Individual,
         ticketCatalogVersionId ?? Guid.CreateVersion7(),
         participationSnapshot ?? RegistrationParticipationSnapshot.Create(Guid.CreateVersion7(), 4, 3, 2, GuestRecoveryPolicyEnum.VerifiedEmailRequired),
+        null,
+        CapabilityTokenHash.Create(Convert.ToBase64String(new byte[32])),
+        "USD",
+        new DateTime(2026, 7, 30, 12, 0, 0, DateTimeKind.Utc),
+        new DateTime(2026, 7, 30, 12, 15, 0, DateTimeKind.Utc));
+
+    private static RegistrationOrder CreateGuestOnlyOrder() => RegistrationOrder.Create(
+        Guid.CreateVersion7(),
+        Guid.CreateVersion7(),
+        accountUserId: null,
+        purchaserActorId: null,
+        BookingPartyTypeEnum.Individual,
+        Guid.CreateVersion7(),
+        RegistrationParticipationSnapshot.Create(Guid.CreateVersion7(), 4, 3, 2, GuestRecoveryPolicyEnum.VerifiedEmailRequired),
         null,
         CapabilityTokenHash.Create(Convert.ToBase64String(new byte[32])),
         "USD",

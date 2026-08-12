@@ -218,6 +218,7 @@ public static class PersistenceServicesRegistration
         services.AddScoped<IEventRepository, EventRepository>();
         services.AddScoped<IEventParticipationConfigurationRepository, EventParticipationConfigurationRepository>();
         services.AddScoped<IRegistrationFormAuthoringRepository, RegistrationFormAuthoringRepository>();
+        services.AddScoped<IRegistrationFormTemplateRepository, RegistrationFormTemplateRepository>();
         services.AddScoped<IRegistrationProviderRepository, RegistrationProviderRepository>();
         services.AddScoped<IRegistrationProviderSubscriptionStateRepository, RegistrationProviderSubscriptionStateRepository>();
         services.AddScoped<IParticipationRequirementAttachmentRepository, ParticipationRequirementAttachmentRepository>();
@@ -225,6 +226,8 @@ public static class PersistenceServicesRegistration
         services.AddScoped<IRegistrationInventoryRepository, RegistrationInventoryRepository>();
         services.AddScoped<IRegistrationParticipantRepository, RegistrationParticipantRepository>();
         services.AddScoped<IRegistrationSubmissionRepository, RegistrationSubmissionRepository>();
+        services.AddScoped<IRegistrationAnswerAnalyticsRepository, RegistrationAnswerAnalyticsRepository>();
+        services.AddScoped<IRegistrationRetentionCleanupRepository, RegistrationRetentionCleanupRepository>();
         services.AddScoped<IRegistrationAnswerFileRepository, RegistrationAnswerFileRepository>();
         services.AddScoped<IRegistrationFinalizationRepository, RegistrationFinalizationRepository>();
         services.AddScoped<IRegistrationProviderSubmissionWriteEffectRepository, RegistrationProviderSubmissionWriteEffectRepository>();

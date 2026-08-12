@@ -204,6 +204,15 @@ public sealed class RegistrationFormVersionTests
             Id(27), section, 1, "platform.registration", "email", "Email",
             RegistrationFieldTypeEnum.Email, 1, RegistrationOrganizerVisibilityEnum.AuthorizedOrganizers,
             false, true, Now, "EVENT_TERMS", null)).Throws<ArgumentException>();
+        await Assert.That(() => RegistrationFormField.Create(
+            Id(28), section, 1, "platform.registration", "email-analytics", "Email analytics",
+            RegistrationFieldTypeEnum.Email, 1, RegistrationOrganizerVisibilityEnum.AuthorizedOrganizers,
+            false, true, false, null, true, false, Now)).Throws<ArgumentException>();
+        await Assert.That(() => RegistrationFormField.Create(
+            Id(29), section, 1, "platform.registration", "consent-analytics", "Consent analytics",
+            RegistrationFieldTypeEnum.Boolean, 1, RegistrationOrganizerVisibilityEnum.AuthorizedOrganizers,
+            true, false, false, null, true, true, Now, "EVENT_TERMS", "v1", "I agree."))
+            .Throws<ArgumentException>();
 
         RegistrationFormField valid = RegistrationFormField.Create(
             Id(25), section, 1, "platform.registration", "consent", "Consent",
@@ -215,8 +224,15 @@ public sealed class RegistrationFormVersionTests
         await Assert.That(valid.ConsentTextVersion).IsEqualTo("v1");
         await Assert.That(valid.ConsentText).IsEqualTo("I agree to the event terms.");
 
+        RegistrationFormField analytics = RegistrationFormField.Create(
+            Id(30), section, 2, "platform.registration", "age", "Age",
+            RegistrationFieldTypeEnum.Integer, 1, RegistrationOrganizerVisibilityEnum.AuthorizedOrganizers,
+            false, true, false, null, true, true, Now);
+        await Assert.That((analytics.IsAnalyticsRelevant, analytics.IsOperationallyFilterable)).IsEqualTo((true, true));
+
         version.AddSection(section);
         version.AddField(section, valid);
+        version.AddField(section, analytics);
         await Assert.That(() => version.UpdateFieldGovernance(
             valid, 1, RegistrationOrganizerVisibilityEnum.AuthorizedOrganizers, true, false))
             .Throws<ArgumentException>();

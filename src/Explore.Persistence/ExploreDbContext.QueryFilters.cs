@@ -71,6 +71,9 @@ public partial class ExploreDbContext
             .HasQueryFilter(QueryFilterNames.Tenant, e => IsTenantFilterBypassed || e.TenantId == TenantFilterTenantId)
             .HasQueryFilter(QueryFilterNames.SoftDelete, e => !EF.Property<bool>(e, "IsDeleted"));
 
+        modelBuilder.Entity<RegistrationAmendment>()
+            .HasQueryFilter(QueryFilterNames.Tenant, e => IsTenantFilterBypassed || e.TenantId == TenantFilterTenantId);
+
         modelBuilder.Entity<RegistrationWorkflow>()
             .HasQueryFilter(QueryFilterNames.Tenant, e => IsTenantFilterBypassed || e.TenantId == TenantFilterTenantId)
             .HasQueryFilter(QueryFilterNames.SoftDelete, e => !e.IsDeleted);
@@ -169,6 +172,9 @@ public partial class ExploreDbContext
             .HasQueryFilter(QueryFilterNames.Tenant, e => IsTenantFilterBypassed || e.TenantId == TenantFilterTenantId)
             .HasQueryFilter(QueryFilterNames.SoftDelete, e => !e.IsDeleted);
 
+        modelBuilder.Entity<EventContactShareConsentHistory>()
+            .HasQueryFilter(QueryFilterNames.Tenant, e => IsTenantFilterBypassed || e.TenantId == TenantFilterTenantId);
+
         modelBuilder.Entity<RegistrationSubmissionIssue>()
             .HasQueryFilter(QueryFilterNames.Tenant, e => IsTenantFilterBypassed || e.TenantId == TenantFilterTenantId);
 
@@ -179,6 +185,9 @@ public partial class ExploreDbContext
             .HasQueryFilter(QueryFilterNames.Tenant, e => IsTenantFilterBypassed || e.TenantId == TenantFilterTenantId);
 
         modelBuilder.Entity<RegistrationProviderSubmissionWriteEffect>()
+            .HasQueryFilter(QueryFilterNames.Tenant, e => IsTenantFilterBypassed || e.TenantId == TenantFilterTenantId);
+
+        modelBuilder.Entity<RegistrationAmendment>()
             .HasQueryFilter(QueryFilterNames.Tenant, e => IsTenantFilterBypassed || e.TenantId == TenantFilterTenantId);
 
         modelBuilder.Entity<EventPublicAction>()
@@ -378,6 +387,11 @@ public partial class ExploreDbContext
                 e => e.TenantId == null
                     || IsTenantFilterBypassed
                     || e.TenantId == TenantFilterTenantId);
+
+        modelBuilder.Entity<RegistrationFormTemplate>()
+            .HasQueryFilter(QueryFilterNames.Tenant,
+                e => e.TenantId == null || IsTenantFilterBypassed || e.TenantId == TenantFilterTenantId)
+            .HasQueryFilter(QueryFilterNames.SoftDelete, e => !e.IsDeleted);
 
         // ===== Organization Entities =====
         // Entities with both Tenant and Soft Delete filters

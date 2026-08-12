@@ -23,6 +23,11 @@ public interface IRegistrationInventoryRepository
         Guid tenantId,
         CancellationToken cancellationToken);
 
+    Task<RegistrationOrder?> GetOrderForUpdateWithPiiAsync(
+        Guid orderId,
+        Guid tenantId,
+        CancellationToken cancellationToken);
+
     Task<IReadOnlyList<RegistrationInventoryHold>> GetHoldsByOrderAsync(
         Guid orderId,
         Guid tenantId,

@@ -9,6 +9,13 @@ public interface IRegistrationSubmissionRepository
 {
     Task PersistAttemptAsync(RegistrationAttempt attempt, CancellationToken cancellationToken);
 
+    Task<bool> PersistReplacementAttemptAsync(
+        RegistrationAttempt attempt,
+        Guid supersededAttemptId,
+        string supersessionReason,
+        DateTime supersededAt,
+        CancellationToken cancellationToken);
+
     Task<RegistrationSubmissionPersistenceResult> PersistAcceptedAsync(
         RegistrationAttempt attempt,
         RegistrationSubmission submission,
