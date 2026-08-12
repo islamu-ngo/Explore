@@ -9,6 +9,7 @@ using Explore.API.Hateoas;
 using Explore.API.Hateoas.Policies;
 using Explore.Application.Authorization;
 using Explore.Application.DTOs.Event;
+using Explore.Application.DTOs.RegistrationAnalytics;
 using Explore.Application.Hateoas;
 using Explore.Domain.Enums;
 using Microsoft.AspNetCore.Http;
@@ -101,6 +102,84 @@ public sealed class EventLinkPolicyTests
             await Assert.That(link.PermissionResourceAttributes["eventId"]).IsEqualTo(eventId.ToString());
             await Assert.That(link.PermissionResourceAttributes["authorizationPhase"]).IsEqualTo(AuthorizationPhases.PreCreate);
         }
+    }
+
+    [Test]
+    public async Task ManagedPlatformEvent_WithVerifiedOrganizationOrganizer_AdvertisesAuditedAttendeeExport()
+    {
+        Guid eventId = Guid.NewGuid();
+        Guid tenantId = Guid.NewGuid();
+        Guid organizerActorId = Guid.NewGuid();
+        Guid organizerOrganizationId = Guid.NewGuid();
+        EventDto dto = CreateEventDto(eventId, tenantId, organizerOrganizationId, organizerActorId: organizerActorId);
+        dto.OrganizerActorOrganizationId = organizerOrganizationId;
+        dto.IsManagementView = true;
+        dto.ParticipationConfiguration = new EventParticipationConfigurationDto
+        {
+            ParticipationHandlingModeId = (int)ParticipationHandlingModeEnum.PlatformManaged
+        };
+
+        LinkDefinition export = new EventDetailLinkPolicy()
+            .GetLinks(dto, new ClaimsPrincipal(new ClaimsIdentity("test")))
+            .Single(link => link.Rel == LinkRelations.ExportAttendees);
+
+        await Assert.That(export.RouteName).IsEqualTo(RouteNames.ExportOrganizationSharedContacts);
+        await Assert.That(export.Method).IsEqualTo(HttpMethods.Post);
+        await Assert.That(export.PermissionResourceKind).IsEqualTo(ResourceKinds.EventContactShareConsent);
+        await Assert.That(export.PermissionAction).IsEqualTo(AuthorizationActions.ExportSharedContacts);
+        await Assert.That(export.PermissionResourceId).IsEqualTo(organizerOrganizationId.ToString());
+        await Assert.That(export.PermissionResourceAttributes!["tenantId"]).IsEqualTo(tenantId);
+        await Assert.That(export.PermissionResourceAttributes["organizationId"]).IsEqualTo(organizerOrganizationId);
+    }
+
+    [Test]
+    public async Task ManagedPlatformEvent_AdvertisesRegistrationAnalyticsWithManageRegistrationAuthorization()
+    {
+        Guid eventId = Guid.NewGuid();
+        Guid tenantId = Guid.NewGuid();
+        EventDto dto = CreateEventDto(eventId, tenantId, Guid.NewGuid());
+        dto.IsManagementView = true;
+        dto.ParticipationConfiguration = new EventParticipationConfigurationDto
+        {
+            ParticipationHandlingModeId = (int)ParticipationHandlingModeEnum.PlatformManaged
+        };
+
+        LinkDefinition analytics = new EventDetailLinkPolicy()
+            .GetLinks(dto, new ClaimsPrincipal(new ClaimsIdentity("test")))
+            .Single(link => link.Rel == LinkRelations.ViewRegistrationAnalytics);
+        var routeValues = new RouteValueDictionary(analytics.RouteValues);
+
+        await Assert.That(analytics.RouteName).IsEqualTo(RouteNames.GetRegistrationAnswerAnalytics);
+        await Assert.That(analytics.Method).IsEqualTo(HttpMethods.Get);
+        await Assert.That(routeValues["eventId"]).IsEqualTo(eventId);
+        await Assert.That(analytics.PermissionAction).IsEqualTo(AuthorizationActions.Events.ManageRegistrations);
+        await Assert.That(analytics.PermissionResourceKind).IsEqualTo(ResourceKinds.Event);
+        await Assert.That(analytics.PermissionScope?.TenantId).IsEqualTo(tenantId.ToString());
+    }
+
+    [Test]
+    public async Task RegistrationAnalyticsResource_UsesExactScopedSelfLink()
+    {
+        Guid eventId = Guid.NewGuid();
+        Guid formId = Guid.NewGuid();
+        Guid versionId = Guid.NewGuid();
+        var dto = new RegistrationAnswerAnalyticsDto(eventId, formId, versionId, 3, []);
+
+        LinkDefinition self = new RegistrationAnswerAnalyticsLinkPolicy()
+            .GetLinks(dto, new ClaimsPrincipal(new ClaimsIdentity("test")))
+            .Single(link => link.Rel == LinkRelations.Self);
+        var routeValues = new RouteValueDictionary(self.RouteValues);
+
+        await Assert.That(self.RouteName).IsEqualTo(RouteNames.GetRegistrationAnswerAnalytics);
+        await Assert.That(self.Method).IsEqualTo(HttpMethods.Get);
+        await Assert.That(routeValues["eventId"]).IsEqualTo(eventId);
+        await Assert.That(routeValues["formId"]).IsEqualTo(formId);
+        await Assert.That(routeValues["formVersionId"]).IsEqualTo(versionId);
+        await Assert.That(self.PermissionAction).IsEqualTo(AuthorizationActions.Events.ManageRegistrations);
+        await Assert.That(self.PermissionResourceKind).IsEqualTo(ResourceKinds.Event);
+        await Assert.That(self.PermissionResourceId).IsEqualTo(eventId.ToString("D"));
+        await Assert.That(self.PermissionResourceAttributes!["formId"]).IsEqualTo(formId.ToString("D"));
+        await Assert.That(self.PermissionResourceAttributes!["formVersionId"]).IsEqualTo(versionId.ToString("D"));
     }
 
     [Test]

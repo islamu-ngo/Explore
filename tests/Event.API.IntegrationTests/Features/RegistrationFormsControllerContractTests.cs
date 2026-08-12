@@ -9,7 +9,9 @@ using Explore.API.Controllers;
 using Explore.API.Extensions;
 using Explore.API.Filters;
 using Explore.API.Hateoas;
+using Explore.Application.DTOs.RegistrationAnalytics;
 using Explore.Application.DTOs.RegistrationForms;
+using Explore.Application.Features.RegistrationAnalytics;
 using Explore.Application.Features.RegistrationForms.Requests.Queries;
 using Explore.Application.Hateoas;
 using MediatR;
@@ -98,11 +100,35 @@ public sealed class RegistrationFormsControllerContractTests
     }
 
     [Test]
+    public async Task GetAnswerAnalytics_UsesExactScopeAndHalAssembler()
+    {
+        Guid eventId = Guid.CreateVersion7();
+        Guid formId = Guid.CreateVersion7();
+        Guid versionId = Guid.CreateVersion7();
+        var mediator = Substitute.For<IMediator>();
+        var assembler = Substitute.For<IResourceAssembler<RegistrationAnswerAnalyticsDto, RegistrationAnswerAnalyticsDto>>();
+        var analytics = new RegistrationAnswerAnalyticsDto(eventId, formId, versionId, 3, []);
+        var resource = new HalResource<RegistrationAnswerAnalyticsDto>(analytics);
+        mediator.Send(Arg.Is<GetRegistrationAnswerAnalyticsQuery>(query =>
+                query.EventId == eventId && query.FormId == formId && query.FormVersionId == versionId),
+            Arg.Any<CancellationToken>()).Returns(analytics);
+        assembler.ToResource(analytics, Arg.Any<HttpContext>()).Returns(resource);
+        RegistrationFormsController controller = CreateController(mediator, analyticsAssembler: assembler);
+
+        ActionResult<HalResource<RegistrationAnswerAnalyticsDto>> result = await controller.GetAnswerAnalytics(eventId, formId, versionId, CancellationToken.None);
+
+        var response = result.Result as ObjectResult;
+        await Assert.That(response?.StatusCode).IsEqualTo(StatusCodes.Status200OK);
+        await Assert.That(response!.Value).IsEqualTo(resource);
+    }
+
+    [Test]
     public async Task Actions_UseStableNamedRoutesAndExplicitFailureContracts()
     {
         var routes = new Dictionary<string, string>
         {
             [nameof(RegistrationFormsController.GetWorkflow)] = RouteNames.GetRegistrationWorkflow,
+            [nameof(RegistrationFormsController.GetAnswerAnalytics)] = RouteNames.GetRegistrationAnswerAnalytics,
             [nameof(RegistrationFormsController.CreateWorkflow)] = RouteNames.CreateRegistrationWorkflow,
             [nameof(RegistrationFormsController.UpdateWorkflow)] = RouteNames.UpdateRegistrationWorkflow,
             [nameof(RegistrationFormsController.CreateRequirement)] = RouteNames.CreateRegistrationRequirement,
@@ -125,7 +151,11 @@ public sealed class RegistrationFormsControllerContractTests
             [nameof(RegistrationFormsController.UpdateRule)] = RouteNames.UpdateRegistrationFormRule,
             [nameof(RegistrationFormsController.DeleteRule)] = RouteNames.DeleteRegistrationFormRule,
             [nameof(RegistrationFormsController.Preflight)] = RouteNames.GetRegistrationFormPublishPreflight,
-            [nameof(RegistrationFormsController.Publish)] = RouteNames.PublishRegistrationFormVersion
+            [nameof(RegistrationFormsController.Publish)] = RouteNames.PublishRegistrationFormVersion,
+            [nameof(RegistrationFormsController.GetTemplates)] = RouteNames.GetRegistrationFormTemplates,
+            [nameof(RegistrationFormsController.GetTemplate)] = RouteNames.GetRegistrationFormTemplate,
+            [nameof(RegistrationFormsController.CreateTemplate)] = RouteNames.CreateRegistrationFormTemplate,
+            [nameof(RegistrationFormsController.InstantiateTemplate)] = RouteNames.InstantiateRegistrationFormTemplate
         };
 
         await Assert.That(typeof(RegistrationFormsController).GetCustomAttribute<EndpointClassificationAttribute>()!.Class)
@@ -139,7 +169,7 @@ public sealed class RegistrationFormsControllerContractTests
         }
 
         foreach (MethodInfo action in typeof(RegistrationFormsController).GetMethods(BindingFlags.Instance | BindingFlags.Public)
-                     .Where(method => method.DeclaringType == typeof(RegistrationFormsController) && method.Name is not nameof(RegistrationFormsController.GetWorkflow) and not nameof(RegistrationFormsController.GetForm) and not nameof(RegistrationFormsController.GetVersion) and not nameof(RegistrationFormsController.Preflight)))
+                     .Where(method => method.DeclaringType == typeof(RegistrationFormsController) && method.Name is not nameof(RegistrationFormsController.GetWorkflow) and not nameof(RegistrationFormsController.GetAnswerAnalytics) and not nameof(RegistrationFormsController.GetForm) and not nameof(RegistrationFormsController.GetVersion) and not nameof(RegistrationFormsController.Preflight) and not nameof(RegistrationFormsController.GetTemplates) and not nameof(RegistrationFormsController.GetTemplate) and not nameof(RegistrationFormsController.CreateTemplate) and not nameof(RegistrationFormsController.InstantiateTemplate)))
         {
             ParameterInfo header = action.GetParameters().Single(parameter => parameter.GetCustomAttribute<FromHeaderAttribute>()?.Name == "If-Match");
             await Assert.That(header.GetCustomAttribute<RequiredAttribute>()).IsNotNull();
@@ -147,7 +177,7 @@ public sealed class RegistrationFormsControllerContractTests
             await Assert.That(action.GetCustomAttributes<ProducesResponseTypeAttribute>().Any(value => value.StatusCode == StatusCodes.Status409Conflict)).IsTrue();
         }
 
-        foreach (string read in new[] { nameof(RegistrationFormsController.GetWorkflow), nameof(RegistrationFormsController.GetForm), nameof(RegistrationFormsController.GetVersion), nameof(RegistrationFormsController.Preflight) })
+        foreach (string read in new[] { nameof(RegistrationFormsController.GetWorkflow), nameof(RegistrationFormsController.GetAnswerAnalytics), nameof(RegistrationFormsController.GetForm), nameof(RegistrationFormsController.GetVersion), nameof(RegistrationFormsController.Preflight), nameof(RegistrationFormsController.GetTemplates), nameof(RegistrationFormsController.GetTemplate) })
             await Assert.That(typeof(RegistrationFormsController).GetMethod(read)!.IsDefined(typeof(PrivateNoStoreAttribute))).IsTrue();
     }
 
@@ -164,12 +194,15 @@ public sealed class RegistrationFormsControllerContractTests
     private static RegistrationFormsController CreateController(
         IMediator mediator,
         IResourceAssembler<RegistrationFormPublishPreflightDto, RegistrationFormPublishPreflightDto>? preflightAssembler = null,
-        IResourceAssembler<RegistrationWorkflowDto, RegistrationWorkflowDto>? workflowAssembler = null) =>
+        IResourceAssembler<RegistrationWorkflowDto, RegistrationWorkflowDto>? workflowAssembler = null,
+        IResourceAssembler<RegistrationAnswerAnalyticsDto, RegistrationAnswerAnalyticsDto>? analyticsAssembler = null) =>
         new(
             mediator,
             workflowAssembler ?? Substitute.For<IResourceAssembler<RegistrationWorkflowDto, RegistrationWorkflowDto>>(),
             Substitute.For<IResourceAssembler<RegistrationFormDto, RegistrationFormDto>>(),
             Substitute.For<IResourceAssembler<RegistrationFormVersionDto, RegistrationFormVersionDto>>(),
+            analyticsAssembler ?? Substitute.For<IResourceAssembler<RegistrationAnswerAnalyticsDto, RegistrationAnswerAnalyticsDto>>(),
+            Substitute.For<IResourceAssembler<RegistrationFormTemplateDto, RegistrationFormTemplateDto>>(),
             preflightAssembler ?? Substitute.For<IResourceAssembler<RegistrationFormPublishPreflightDto, RegistrationFormPublishPreflightDto>>())
         {
             ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() }

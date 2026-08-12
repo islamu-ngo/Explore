@@ -127,7 +127,7 @@ public sealed class RegistrationOrderController(
         CancellationToken cancellationToken = default) => await LaunchNativeAttempt(
         await mediator.Send(new LaunchGuestNativeRegistrationAttemptCommand(
             eventId, orderId, capability, request.RequirementId, request.ChannelId,
-            request.FormId, request.FormVersionId, request.BindingId), cancellationToken),
+            request.FormId, request.FormVersionId, request.BindingId, request.SupersededAttemptId), cancellationToken),
         eventId,
         orderId,
         guest: true);
@@ -164,7 +164,7 @@ public sealed class RegistrationOrderController(
         CancellationToken cancellationToken = default) => LaunchProviderAttempt(
         await mediator.Send(new LaunchGuestRegistrationProviderAttemptCommand(
             eventId, orderId, capability, request.RequirementId, request.ChannelId,
-            request.BindingId, request.FormId, request.FormVersionId), cancellationToken),
+            request.BindingId, request.FormId, request.FormVersionId, request.SupersededAttemptId), cancellationToken),
         eventId,
         orderId,
         guest: true);
@@ -412,6 +412,38 @@ public sealed class RegistrationOrderController(
     [Authorize]
     [EndpointClassification(EndpointClass.Authenticated)]
     [EnableRateLimiting(RateLimitingExtensions.WritePolicy)]
+    [RequireIdempotencyKey]
+    [HttpPost("guest/{orderId:guid}/claim", Name = RouteNames.ClaimGuestRegistrationOrder)]
+    [EndpointSummary("Claim guest registration order")]
+    [EndpointDescription("Links a guest registration order to the authenticated current account only when the guest capability and verified account email match.")]
+    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status429TooManyRequests)]
+    public async Task<ActionResult<BaseCommandResponse<Guid>>> ClaimGuest(
+        Guid eventId,
+        Guid orderId,
+        [FromHeader(Name = CapabilityHeader)] string? capability,
+        CancellationToken cancellationToken = default)
+    {
+        BaseCommandResponse<Guid> response = await mediator.Send(
+            new ClaimGuestRegistrationOrderCommand(eventId, orderId, capability), cancellationToken);
+        return response.Success
+            ? Ok(response)
+            : response.FailureCode switch
+            {
+                "registration_order_authentication_required" => this.ToAuthenticationRequiredProblem(),
+                "registration_order_not_found" => this.ToNotFoundProblem(RegistrationOrderNotFoundProblem),
+                "registration_order_already_linked" => Conflict(response),
+                _ => this.ToCommandValidationProblem(response, RegistrationOrderValidationProblem)
+            };
+    }
+
+    [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
+    [EnableRateLimiting(RateLimitingExtensions.WritePolicy)]
     [HttpPost("", Name = RouteNames.StartAuthenticatedRegistrationOrder)]
     [EndpointSummary("Start authenticated registration order")]
     [EndpointDescription("Creates a registration order owned by the authenticated current account.")]
@@ -463,7 +495,7 @@ public sealed class RegistrationOrderController(
         CancellationToken cancellationToken = default) => await LaunchNativeAttempt(
         await mediator.Send(new LaunchAuthenticatedNativeRegistrationAttemptCommand(
             eventId, orderId, request.RequirementId, request.ChannelId,
-            request.FormId, request.FormVersionId, request.BindingId), cancellationToken),
+            request.FormId, request.FormVersionId, request.BindingId, request.SupersededAttemptId), cancellationToken),
         eventId,
         orderId,
         guest: false);
@@ -500,7 +532,7 @@ public sealed class RegistrationOrderController(
         CancellationToken cancellationToken = default) => LaunchProviderAttempt(
         await mediator.Send(new LaunchAuthenticatedRegistrationProviderAttemptCommand(
             eventId, orderId, request.RequirementId, request.ChannelId,
-            request.BindingId, request.FormId, request.FormVersionId), cancellationToken),
+            request.BindingId, request.FormId, request.FormVersionId, request.SupersededAttemptId), cancellationToken),
         eventId,
         orderId,
         guest: false);
@@ -639,6 +671,29 @@ public sealed class RegistrationOrderController(
         CancellationToken cancellationToken = default) =>
         MutateAuthenticated(eventId, orderId,
             new BulkAssignRegistrationTicketsCommand(orderId, request.Assignments), cancellationToken);
+
+    [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
+    [EnableRateLimiting(RateLimitingExtensions.WritePolicy)]
+    [RequireIdempotencyKey]
+    [HttpPost("{orderId:guid}/assignments/company-csv", Name = RouteNames.ImportAuthenticatedRegistrationOrderCompanyAssignmentsCsv)]
+    [EndpointSummary("Import company registration ticket assignments from CSV")]
+    [ProducesResponseType(typeof(BaseCommandResponse<CompanyRegistrationAssignmentCsvResultDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<BaseCommandResponse<CompanyRegistrationAssignmentCsvResultDto>>> ImportAuthenticatedCompanyAssignmentsCsv(
+        Guid eventId, Guid orderId, [FromBody] RegistrationCompanyAssignmentCsvRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        BaseCommandResponse<CompanyRegistrationAssignmentCsvResultDto> response = await mediator.Send(
+            new ImportCompanyRegistrationAssignmentsCsvCommand(eventId, orderId, request.CsvUtf8, request.LineageKey), cancellationToken);
+        return response.Success
+            ? Ok(response)
+            : response.FailureCode == "registration_order_not_found"
+                ? this.ToNotFoundProblem(RegistrationOrderNotFoundProblem)
+                : this.ToCommandValidationProblem(response, RegistrationOrderValidationProblem);
+    }
 
     [Authorize]
     [EndpointClassification(EndpointClass.Authenticated)]
@@ -920,6 +975,12 @@ public sealed class RegistrationOrderController(
         });
         resource.WithLink(LinkRelations.AssignTickets, HalLink.CreateAction(
             Url.Link(guest ? RouteNames.AssignGuestRegistrationOrderTickets : RouteNames.AssignAuthenticatedRegistrationOrderTickets, values)!, HttpMethods.Put));
+        if (!guest && participants.CanImportCompanyCsv)
+        {
+            resource.WithLink(LinkRelations.ImportCompanyAssignmentsCsv, HalLink.CreateAction(
+                Url.Link(RouteNames.ImportAuthenticatedRegistrationOrderCompanyAssignmentsCsv, values)!, HttpMethods.Post));
+        }
+
         resource.WithLink(LinkRelations.DeferTickets, HalLink.CreateAction(
             Url.Link(guest ? RouteNames.DeferGuestRegistrationOrderTickets : RouteNames.DeferAuthenticatedRegistrationOrderTickets, values)!, HttpMethods.Put));
         return resource;
@@ -946,6 +1007,9 @@ public sealed class RegistrationOrderController(
         var values = new { eventId = order.EventId, orderId = order.Id };
         var resource = new HalResource<GuestRegistrationOrderDto>(order)
             .WithLink(LinkRelations.Self, HalLink.Create(Url.Link(RouteNames.GetGuestRegistrationOrder, values)!));
+
+        resource.WithLink(LinkRelations.ClaimRegistrationOrder, HalLink.CreateAction(
+            Url.Link(RouteNames.ClaimGuestRegistrationOrder, values)!, HttpMethods.Post));
 
         if (order.StatusCode is "AWAITING_REQUIREMENTS" or "READY_FOR_CHECKOUT")
         {

@@ -297,6 +297,37 @@ public sealed class EventDetailLinkPolicy : ILinkPolicy<EventDto>
                     "View participants",
                     RequiresAuth: true)
                     .RequirePermission(AuthorizationActions.Events.ManageRegistrations, ResourceDescriptors.Event, dto);
+
+                yield return new LinkDefinition(
+                    LinkRelations.ViewRegistrationAnalytics,
+                    RouteNames.GetRegistrationAnswerAnalytics,
+                    new { eventId = dto.Id },
+                    HttpMethods.Get,
+                    "View registration analytics",
+                    RequiresAuth: true)
+                    .RequirePermission(AuthorizationActions.Events.ManageRegistrations, ResourceDescriptors.Event, dto);
+
+                if (dto.OrganizerActorId is Guid organizerActorId
+                    && dto.OrganizerActorOrganizationId is Guid organizerOrganizationId)
+                {
+                    yield return new LinkDefinition(
+                        LinkRelations.ExportAttendees,
+                        RouteNames.ExportOrganizationSharedContacts,
+                        new { recipientActorId = organizerActorId, eventId = dto.Id, format = "csv" },
+                        HttpMethods.Post,
+                        "Export consented attendee contacts",
+                        RequiresAuth: true)
+                        .RequirePermission(
+                            AuthorizationActions.ExportSharedContacts,
+                            ResourceKinds.EventContactShareConsent,
+                            organizerOrganizationId.ToString(),
+                            new Dictionary<string, object>
+                            {
+                                ["tenantId"] = dto.TenantId,
+                                ["organizationId"] = organizerOrganizationId
+                            },
+                            eventAuthorizationScope);
+                }
             }
         }
 

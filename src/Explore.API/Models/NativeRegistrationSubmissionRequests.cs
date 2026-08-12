@@ -11,14 +11,16 @@ public sealed record LaunchNativeRegistrationAttemptRequest(
     Guid ChannelId,
     Guid FormId,
     Guid FormVersionId,
-    Guid? BindingId = null);
+    Guid? BindingId = null,
+    Guid? SupersededAttemptId = null);
 
 public sealed record LaunchRegistrationProviderAttemptRequest(
     Guid RequirementId,
     Guid ChannelId,
     Guid BindingId,
     Guid FormId,
-    Guid FormVersionId);
+    Guid FormVersionId,
+    Guid? SupersededAttemptId = null);
 
 public sealed record SubmitNativeRegistrationAttemptRequest(
     Guid RequirementId,

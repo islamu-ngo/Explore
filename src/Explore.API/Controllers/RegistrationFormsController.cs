@@ -8,7 +8,9 @@ using Explore.API.ExceptionHandling;
 using Explore.API.Extensions;
 using Explore.API.Filters;
 using Explore.API.Hateoas;
+using Explore.Application.DTOs.RegistrationAnalytics;
 using Explore.Application.DTOs.RegistrationForms;
+using Explore.Application.Features.RegistrationAnalytics;
 using Explore.Application.Features.RegistrationForms.Requests.Commands;
 using Explore.Application.Features.RegistrationForms.Requests.Queries;
 using Explore.Application.Hateoas;
@@ -30,6 +32,8 @@ public sealed class RegistrationFormsController(
     IResourceAssembler<RegistrationWorkflowDto, RegistrationWorkflowDto> workflowAssembler,
     IResourceAssembler<RegistrationFormDto, RegistrationFormDto> formAssembler,
     IResourceAssembler<RegistrationFormVersionDto, RegistrationFormVersionDto> versionAssembler,
+    IResourceAssembler<RegistrationAnswerAnalyticsDto, RegistrationAnswerAnalyticsDto> analyticsAssembler,
+    IResourceAssembler<RegistrationFormTemplateDto, RegistrationFormTemplateDto> templateAssembler,
     IResourceAssembler<RegistrationFormPublishPreflightDto, RegistrationFormPublishPreflightDto> preflightAssembler)
     : ControllerBase
 {
@@ -47,6 +51,20 @@ public sealed class RegistrationFormsController(
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<HalResource<RegistrationWorkflowDto>>> GetWorkflow(Guid eventId, [FromQuery] string purpose, CancellationToken ct)
         => await ToResource(await mediator.Send(new GetRegistrationWorkflowQuery(eventId, purpose), ct), workflowAssembler);
+
+    [HttpGet("registration-answer-analytics", Name = RouteNames.GetRegistrationAnswerAnalytics)]
+    [PrivateNoStore]
+    [ProducesResponseType(typeof(HalResource<RegistrationAnswerAnalyticsDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<HalResource<RegistrationAnswerAnalyticsDto>>> GetAnswerAnalytics(
+        Guid eventId,
+        [FromQuery] Guid formId,
+        [FromQuery] Guid formVersionId,
+        CancellationToken ct)
+        => await ToResource(await mediator.Send(new GetRegistrationAnswerAnalyticsQuery(eventId, formId, formVersionId), ct), analyticsAssembler);
 
     [HttpPost("registration-workflows", Name = RouteNames.CreateRegistrationWorkflow)]
     [EnableRateLimiting(RateLimitingExtensions.WritePolicy)]
@@ -198,7 +216,7 @@ public sealed class RegistrationFormsController(
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
     public Task<ActionResult<BaseCommandResponse<Guid>>> AddField(Guid eventId, Guid formId, Guid versionId, Guid sectionId, RegistrationFormFieldCreateInput input, [FromHeader(Name = "If-Match"), Required] string? ifMatch, CancellationToken ct)
-        => Send(ifMatch, stamp => new AddRegistrationFormFieldCommand(eventId, formId, versionId, sectionId, input.Ordinal, input.Namespace, input.Key, input.Label, input.FieldTypeId, input.RetentionPolicyId, input.OrganizerVisibilityId, input.RequiresExplicitConsent, input.IsProviderTransferAllowed, input.ConsentPurposeCode, input.ConsentTextVersion, input.ConsentText, stamp), RouteNames.GetRegistrationFormVersion, _ => new { eventId, formId, versionId }, ct);
+        => Send(ifMatch, stamp => new AddRegistrationFormFieldCommand(eventId, formId, versionId, sectionId, input.Ordinal, input.Namespace, input.Key, input.Label, input.FieldTypeId, input.RetentionPolicyId, input.OrganizerVisibilityId, input.RequiresExplicitConsent, input.IsProviderTransferAllowed, input.IsExportable, input.ExportPurposeCode, input.IsAnalyticsRelevant, input.IsOperationallyFilterable, input.ConsentPurposeCode, input.ConsentTextVersion, input.ConsentText, stamp), RouteNames.GetRegistrationFormVersion, _ => new { eventId, formId, versionId }, ct);
 
     [HttpPatch("registration-forms/{formId:guid}/versions/{versionId:guid}/sections/{sectionId:guid}/fields/{fieldId:guid}", Name = RouteNames.UpdateRegistrationFormField)]
     [EnableRateLimiting(RateLimitingExtensions.WritePolicy)]
@@ -209,7 +227,7 @@ public sealed class RegistrationFormsController(
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
     public Task<ActionResult<BaseCommandResponse<Guid>>> UpdateField(Guid eventId, Guid formId, Guid versionId, Guid sectionId, Guid fieldId, RegistrationFormFieldUpdateInput input, [FromHeader(Name = "If-Match"), Required] string? ifMatch, CancellationToken ct)
-        => Send(ifMatch, stamp => new UpdateRegistrationFormFieldCommand(eventId, formId, versionId, sectionId, fieldId, input.Ordinal, input.Label, input.RetentionPolicyId, input.OrganizerVisibilityId, input.RequiresExplicitConsent, input.IsProviderTransferAllowed, input.ConsentPurposeCode, input.ConsentTextVersion, input.ConsentText, input.IsRequired, input.IsMulti, input.MinLength, input.MaxLength, input.RegexPattern, input.MinNumber, input.MaxNumber, input.MinDateTime, input.MaxDateTime, input.AllowedUrlSchemes, stamp), null, null, ct);
+        => Send(ifMatch, stamp => new UpdateRegistrationFormFieldCommand(eventId, formId, versionId, sectionId, fieldId, input.Ordinal, input.Label, input.RetentionPolicyId, input.OrganizerVisibilityId, input.RequiresExplicitConsent, input.IsProviderTransferAllowed, input.IsExportable, input.ExportPurposeCode, input.IsAnalyticsRelevant, input.IsOperationallyFilterable, input.ConsentPurposeCode, input.ConsentTextVersion, input.ConsentText, input.IsRequired, input.IsMulti, input.MinLength, input.MaxLength, input.RegexPattern, input.MinNumber, input.MaxNumber, input.MinDateTime, input.MaxDateTime, input.AllowedUrlSchemes, stamp), null, null, ct);
 
     [HttpPut("registration-forms/{formId:guid}/versions/{versionId:guid}/sections/{sectionId:guid}/fields/reorder", Name = RouteNames.ReorderRegistrationFormFields)]
     [EnableRateLimiting(RateLimitingExtensions.WritePolicy)]
@@ -327,6 +345,62 @@ public sealed class RegistrationFormsController(
     public Task<ActionResult<BaseCommandResponse<Guid>>> Publish(Guid eventId, Guid formId, Guid versionId, [FromHeader(Name = "If-Match"), Required] string? ifMatch, CancellationToken ct)
         => Send(ifMatch, stamp => new PublishRegistrationFormVersionCommand(eventId, formId, versionId, stamp), null, null, ct);
 
+    [HttpGet("/api/registration-form-templates", Name = RouteNames.GetRegistrationFormTemplates)]
+    [PrivateNoStore]
+    [ProducesResponseType(typeof(HalCollectionResource<RegistrationFormTemplateDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<HalCollectionResource<RegistrationFormTemplateDto>>> GetTemplates(CancellationToken ct)
+    {
+        IReadOnlyList<RegistrationFormTemplateDto> templates = await mediator.Send(new ListRegistrationFormTemplatesQuery(), ct);
+        var result = new ObjectResult(await templateAssembler.ToCollectionResource(templates, RouteNames.GetRegistrationFormTemplates, HttpContext)) { StatusCode = StatusCodes.Status200OK };
+        result.ContentTypes.Add(HateoasConstants.HalJsonMediaType);
+        return result;
+    }
+
+    [HttpGet("/api/registration-form-templates/{templateId:guid}", Name = RouteNames.GetRegistrationFormTemplate)]
+    [PrivateNoStore]
+    [ProducesResponseType(typeof(HalResource<RegistrationFormTemplateDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<HalResource<RegistrationFormTemplateDto>>> GetTemplate(Guid templateId, CancellationToken ct)
+        => await ToResource(await mediator.Send(new GetRegistrationFormTemplateQuery(templateId), ct), templateAssembler);
+
+    [HttpPost("/api/registration-form-templates", Name = RouteNames.CreateRegistrationFormTemplate)]
+    [EnableRateLimiting(RateLimitingExtensions.WritePolicy)]
+    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<BaseCommandResponse<Guid>>> CreateTemplate(RegistrationFormTemplateInput input, CancellationToken ct)
+    {
+        BaseCommandResponse<Guid> response = await mediator.Send(new CreateRegistrationFormTemplateCommand(input), ct);
+        return response.Success
+            ? CreatedAtRoute(RouteNames.GetRegistrationFormTemplate, new { templateId = response.Id }, response)
+            : this.ToCommandValidationProblem(response, RegistrationValidationProblem);
+    }
+
+    [HttpPost("/api/registration-form-templates/{templateId:guid}/instantiate", Name = RouteNames.InstantiateRegistrationFormTemplate)]
+    [EnableRateLimiting(RateLimitingExtensions.WritePolicy)]
+    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    public async Task<ActionResult<BaseCommandResponse<Guid>>> InstantiateTemplate(Guid templateId, InstantiateRegistrationFormTemplateInput input, CancellationToken ct)
+    {
+        BaseCommandResponse<Guid> response = await mediator.Send(new InstantiateRegistrationFormTemplateCommand(templateId, input), ct);
+        return response.Success
+            ? CreatedAtRoute(RouteNames.GetRegistrationForm, new { eventId = input.EventId, formId = response.Id }, response)
+            : this.ToCommandValidationProblem(response, RegistrationValidationProblem);
+    }
+
     private async Task<ActionResult<HalResource<T>>> ToResource<T>(T? dto, IResourceAssembler<T, T> assembler) where T : class
     {
         if (dto is null) return this.ToNotFoundProblem(NotFoundProblem);
@@ -380,7 +454,7 @@ public sealed record RegistrationFormInput(string Namespace, string Key, string 
 public sealed record RegistrationFormVersionInput(Guid? CloneFromVersionId, string LanguageTag);
 public sealed record RegistrationFormSectionInput(int Ordinal, string Title);
 public sealed record RegistrationFormReorderInput(IReadOnlyList<Guid> OrderedIds);
-public sealed record RegistrationFormFieldCreateInput(int Ordinal, string Namespace, string Key, string Label, int FieldTypeId, int RetentionPolicyId, int OrganizerVisibilityId, bool RequiresExplicitConsent, bool IsProviderTransferAllowed, string? ConsentPurposeCode, string? ConsentTextVersion, string? ConsentText);
-public sealed record RegistrationFormFieldUpdateInput(int Ordinal, string Label, int RetentionPolicyId, int OrganizerVisibilityId, bool RequiresExplicitConsent, bool IsProviderTransferAllowed, string? ConsentPurposeCode, string? ConsentTextVersion, string? ConsentText, bool IsRequired, bool IsMulti, int? MinLength, int? MaxLength, string? RegexPattern, decimal? MinNumber, decimal? MaxNumber, DateTimeOffset? MinDateTime, DateTimeOffset? MaxDateTime, string? AllowedUrlSchemes);
+    public sealed record RegistrationFormFieldCreateInput(int Ordinal, string Namespace, string Key, string Label, int FieldTypeId, int RetentionPolicyId, int OrganizerVisibilityId, bool RequiresExplicitConsent, bool IsProviderTransferAllowed, bool IsExportable, string? ExportPurposeCode, bool IsAnalyticsRelevant, bool IsOperationallyFilterable, string? ConsentPurposeCode, string? ConsentTextVersion, string? ConsentText);
+    public sealed record RegistrationFormFieldUpdateInput(int Ordinal, string Label, int RetentionPolicyId, int OrganizerVisibilityId, bool RequiresExplicitConsent, bool IsProviderTransferAllowed, bool IsExportable, string? ExportPurposeCode, bool IsAnalyticsRelevant, bool IsOperationallyFilterable, string? ConsentPurposeCode, string? ConsentTextVersion, string? ConsentText, bool IsRequired, bool IsMulti, int? MinLength, int? MaxLength, string? RegexPattern, decimal? MinNumber, decimal? MaxNumber, DateTimeOffset? MinDateTime, DateTimeOffset? MaxDateTime, string? AllowedUrlSchemes);
 public sealed record RegistrationFormOptionInput(int Ordinal, string Key, string Label);
 public sealed record RegistrationFormRuleInput(int Ordinal, string TargetNamespace, string TargetKey, int Effect, RegistrationFormConditionInputDto Condition);

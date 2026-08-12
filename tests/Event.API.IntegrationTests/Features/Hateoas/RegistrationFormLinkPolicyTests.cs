@@ -149,7 +149,7 @@ public sealed class RegistrationFormLinkPolicyTests
         var option = new RegistrationFormFieldOptionDto(Guid.CreateVersion7(), 1, "yes", "Yes", null, Guid.CreateVersion7());
         var field = new RegistrationFormFieldDto(
             Guid.CreateVersion7(), 1, "person", "consent", "Consent", 1, "TEXT", "Text", 1, 1,
-            "ORGANIZER", "Organizer", false, false, null, null, null, true, false,
+            "ORGANIZER", "Organizer", false, false, false, null, false, false, null, null, null, true, false,
             null, null, null, null, null, null, null, null, Guid.CreateVersion7(), [option]);
         var section = new RegistrationFormSectionDto(Guid.CreateVersion7(), 1, "Details", Guid.CreateVersion7(), [field]);
         var condition = new RegistrationFormConditionInputDto("exists", "person", "consent");

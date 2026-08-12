@@ -12,8 +12,10 @@ using Explore.API.Models;
 using Explore.API.OpenApi;
 using Explore.Application.Contracts.Hateoas;
 using Explore.Application.DTOs.RegistrationOrders;
+using Explore.Application.DTOs.RegistrationSubmissions;
 using Explore.Application.Features.RegistrationOrders.Requests.Commands;
 using Explore.Application.Features.RegistrationOrders.Requests.Queries;
+using Explore.Application.Features.RegistrationSubmissions.Commands;
 using Explore.Application.Hateoas;
 using Explore.Application.Responses;
 using Explore.Domain.Enums;
@@ -52,6 +54,10 @@ public sealed class RegistrationOrderControllerTests
         await AssertRoute<RegistrationOrderController, HttpDeleteAttribute>(
             nameof(RegistrationOrderController.CancelGuest), "guest/{orderId:guid}", RouteNames.CancelGuestRegistrationOrder,
             EndpointClass.PublicTransactional, requiresIdempotency: true);
+
+        await AssertRoute<RegistrationOrderController, HttpPostAttribute>(
+            nameof(RegistrationOrderController.ClaimGuest), "guest/{orderId:guid}/claim", RouteNames.ClaimGuestRegistrationOrder,
+            EndpointClass.Authenticated, requiresIdempotency: true);
 
         MethodInfo guestRead = controller.GetMethod(nameof(RegistrationOrderController.GetGuest))!;
         await Assert.That(guestRead.GetCustomAttribute<PrivateNoStoreAttribute>()).IsNotNull();
@@ -93,6 +99,40 @@ public sealed class RegistrationOrderControllerTests
         await AssertNativeSubmissionRoute("SubmitAuthenticatedNativeAttempt", "{orderId:guid}/attempts/{attemptId:guid}/submissions", EndpointClass.Authenticated);
         await AssertNativeSubmissionRoute("LaunchGuestNativeAttempt", "guest/{orderId:guid}/attempts", EndpointClass.PublicTransactional);
         await AssertNativeSubmissionRoute("SubmitGuestNativeAttempt", "guest/{orderId:guid}/attempts/{attemptId:guid}/submissions", EndpointClass.PublicTransactional);
+    }
+
+    [Test]
+    public async Task AttemptLaunchRequests_ForwardOptionalSupersededAttemptForExplicitRestart()
+    {
+        var mediator = Substitute.For<IMediator>();
+        Guid oldAttemptId = Guid.CreateVersion7();
+        Guid eventId = Guid.CreateVersion7();
+        Guid orderId = Guid.CreateVersion7();
+        Guid requirementId = Guid.CreateVersion7();
+        Guid channelId = Guid.CreateVersion7();
+        Guid formId = Guid.CreateVersion7();
+        Guid versionId = Guid.CreateVersion7();
+        Guid bindingId = Guid.CreateVersion7();
+        mediator.Send(Arg.Any<LaunchAuthenticatedNativeRegistrationAttemptCommand>(), Arg.Any<CancellationToken>())
+            .Returns(new NativeRegistrationAttemptResult(true, Guid.CreateVersion7(), requirementId, channelId, formId, versionId,
+                DateTime.UtcNow.AddMinutes(10), new NativeRegistrationFormDefinitionDto(versionId, 1, "en", null, [], []), [],
+                new NativeRegistrationRequirementProgressDto(0, 0, 0, 0, false), false, "raw-token"));
+        mediator.Send(Arg.Any<LaunchAuthenticatedRegistrationProviderAttemptCommand>(), Arg.Any<CancellationToken>())
+            .Returns(new RegistrationProviderAttemptResult(true, Guid.CreateVersion7(), new NativeRegistrationProviderLaunchDescriptorDto(
+                Guid.CreateVersion7(), requirementId, channelId, bindingId, formId, versionId, "redirect", true,
+                "https://forms.example.test/start", "Provider registration", true, "manual", "ok", [],
+                new NativeRegistrationRequirementProgressDto(0, 0, 0, 0, false))));
+        var controller = CreateController(mediator);
+
+        await controller.LaunchAuthenticatedNativeAttempt(eventId, orderId, "idem", new LaunchNativeRegistrationAttemptRequest(
+            requirementId, channelId, formId, versionId, null, oldAttemptId));
+        await controller.LaunchAuthenticatedProviderAttempt(eventId, orderId, new LaunchRegistrationProviderAttemptRequest(
+            requirementId, channelId, bindingId, formId, versionId, oldAttemptId));
+
+        _ = mediator.Received(1).Send(Arg.Is<LaunchAuthenticatedNativeRegistrationAttemptCommand>(command =>
+            command.SupersededAttemptId == oldAttemptId), Arg.Any<CancellationToken>());
+        _ = mediator.Received(1).Send(Arg.Is<LaunchAuthenticatedRegistrationProviderAttemptCommand>(command =>
+            command.SupersededAttemptId == oldAttemptId), Arg.Any<CancellationToken>());
     }
 
     [Test]
@@ -333,7 +373,34 @@ public sealed class RegistrationOrderControllerTests
         var resource = (result.Result as OkObjectResult)?.Value as HalResource<GuestRegistrationOrderDto>;
         await Assert.That(resource?.Data).IsEqualTo(guestOrder);
         await Assert.That(resource?.Links).ContainsKey(LinkRelations.Self);
+        await Assert.That(resource?.Links).ContainsKey(LinkRelations.ClaimRegistrationOrder);
         await assembler.DidNotReceive().ToResource(Arg.Any<RegistrationOrderDto>(), Arg.Any<HttpContext>());
+    }
+
+    [Test]
+    public async Task ClaimGuest_DispatchesCapabilityScopedCommandAndMapsConflict()
+    {
+        var mediator = Substitute.For<IMediator>();
+        var orderId = Guid.CreateVersion7();
+        var eventId = Guid.CreateVersion7();
+        mediator.Send(Arg.Any<ClaimGuestRegistrationOrderCommand>(), Arg.Any<CancellationToken>())
+            .Returns(new BaseCommandResponse<Guid>
+            {
+                Id = orderId,
+                Success = false,
+                FailureCode = "registration_order_already_linked",
+                Message = "Registration order is already linked to another account."
+            });
+        var controller = CreateController(mediator);
+
+        ActionResult<BaseCommandResponse<Guid>> result = await controller.ClaimGuest(eventId, orderId, "guest-token");
+
+        var conflict = result.Result as ConflictObjectResult;
+        await Assert.That(conflict).IsNotNull();
+        _ = mediator.Received(1).Send(
+            Arg.Is<ClaimGuestRegistrationOrderCommand>(command =>
+                command.EventId == eventId && command.OrderId == orderId && command.CapabilityToken == "guest-token"),
+            Arg.Any<CancellationToken>());
     }
 
     private static RegistrationOrderController CreateController(

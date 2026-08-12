@@ -81,6 +81,8 @@ public static class LinkRelations
     /// </summary>
     public const string Payment = "payment";
 
+    public const string Instantiate = "instantiate";
+
     #endregion
 
     #region Common CRUD Operations
@@ -354,11 +356,15 @@ public static class LinkRelations
     public const string StartRegistration = "start-registration";
     public const string StartGuestRegistration = "start-guest-registration";
     public const string SignInToRegister = "sign-in-to-register";
+    public const string ClaimRegistrationOrder = "claim-registration-order";
     public const string ViewRegistrationOrders = "view-registration-orders";
     public const string ViewParticipants = "view-participants";
+    public const string ViewRegistrationAnalytics = "view-registration-analytics";
+    public const string ExportAttendees = "export-attendees";
     public const string AddParticipant = "add-participant";
     public const string UpdateParticipant = "update-participant";
     public const string AssignTickets = "assign-tickets";
+    public const string ImportCompanyAssignmentsCsv = "import-company-assignments-csv";
     public const string DeferTickets = "defer-tickets";
     public const string ViewOriginalSource = "view-original-source";
     public const string ExternalEventPage = "external-event-page";

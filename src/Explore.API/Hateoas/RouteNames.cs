@@ -80,6 +80,7 @@ public static class RouteNames
     public const string DetachRegistrationRequirement = "DetachRegistrationRequirement";
     public const string GetOptionalQuestionnaire = "GetOptionalQuestionnaire";
     public const string GetRegistrationWorkflow = "GetRegistrationWorkflow";
+    public const string GetRegistrationAnswerAnalytics = "GetRegistrationAnswerAnalytics";
     public const string LaunchAuthenticatedNativeRegistrationAttempt = "LaunchAuthenticatedNativeRegistrationAttempt";
     public const string LaunchAuthenticatedRegistrationProviderAttempt = "LaunchAuthenticatedRegistrationProviderAttempt";
     public const string SubmitAuthenticatedNativeRegistrationAttempt = "SubmitAuthenticatedNativeRegistrationAttempt";
@@ -115,6 +116,10 @@ public static class RouteNames
     public const string DeleteRegistrationFormRule = "DeleteRegistrationFormRule";
     public const string GetRegistrationFormPublishPreflight = "GetRegistrationFormPublishPreflight";
     public const string PublishRegistrationFormVersion = "PublishRegistrationFormVersion";
+    public const string GetRegistrationFormTemplates = "GetRegistrationFormTemplates";
+    public const string GetRegistrationFormTemplate = "GetRegistrationFormTemplate";
+    public const string CreateRegistrationFormTemplate = "CreateRegistrationFormTemplate";
+    public const string InstantiateRegistrationFormTemplate = "InstantiateRegistrationFormTemplate";
     public const string GetRegistrationAnswerFile = "GetRegistrationAnswerFile";
     public const string ReleaseRegistrationAnswerFile = "ReleaseRegistrationAnswerFile";
     public const string GetRegistrationProviderHealth = "GetRegistrationProviderHealth";
@@ -318,6 +323,7 @@ public static class RouteNames
     public const string ContinueGuestRegistrationOrder = "ContinueGuestRegistrationOrder";
     public const string FinalizeGuestRegistrationOrder = "FinalizeGuestRegistrationOrder";
     public const string CancelGuestRegistrationOrder = "CancelGuestRegistrationOrder";
+    public const string ClaimGuestRegistrationOrder = "ClaimGuestRegistrationOrder";
     public const string StartAuthenticatedRegistrationOrder = "StartAuthenticatedRegistrationOrder";
     public const string GetCurrentRegistrationOrder = "GetCurrentRegistrationOrder";
     public const string ContinueAuthenticatedRegistrationOrder = "ContinueAuthenticatedRegistrationOrder";
@@ -333,6 +339,7 @@ public static class RouteNames
     public const string AddAuthenticatedRegistrationOrderParticipant = "AddAuthenticatedRegistrationOrderParticipant";
     public const string UpdateAuthenticatedRegistrationOrderParticipant = "UpdateAuthenticatedRegistrationOrderParticipant";
     public const string AssignAuthenticatedRegistrationOrderTickets = "AssignAuthenticatedRegistrationOrderTickets";
+    public const string ImportAuthenticatedRegistrationOrderCompanyAssignmentsCsv = "ImportAuthenticatedRegistrationOrderCompanyAssignmentsCsv";
     public const string DeferAuthenticatedRegistrationOrderTickets = "DeferAuthenticatedRegistrationOrderTickets";
     public const string GetStudioContext = "GetStudioContext";
 
