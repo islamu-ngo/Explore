@@ -258,6 +258,34 @@ When startup is blocked by data that violates an earlier migration, do not try t
 - [2026-04-24 Europe/Brussels] **Narrow YAML reader vs full parser**. `intents.yaml` is structurally simple (records with Fields scalar-dict + Lists list-dict). Rather than add YamlDotNet, `AgentContextIntentManifestTests` carries a ~60-line YAML state machine specific to intent manifest shape: top-level array, `- id:` entry markers, nested scalars vs list-continuations recognized by indent. Dual-dict design (Fields vs Lists) means key-existence checks must hit both — discovered when `triggers` (a list) showed as "missing required key" because the initial check only looked in Fields. **Rule documented in test source comment** so future maintainers don't conflate.
 - [2026-04-24 Europe/Brussels] **User inversion of AGENTS.md ↔ AGENTS.md canonicality**. Phase 1 made `AGENTS.md` the canonical tool-neutral entrypoint (11 sections) and `AGENTS.md` a thin Claude-specific bootloader. After final verification passed, user (m0102) requested the inversion: move all content into `AGENTS.md`, reduce `AGENTS.md` to a 3-line pointer (`# AI Agents\n\nSee [AGENTS.md](AGENTS.md) for AI agent instructions.`). Merge preserved all 11 AGENTS.md sections + integrated all AGENTS.md Claude-specific operational rules (Subagent Delegation, MCP Tool Use, Session Memory, Todo Discipline), removed duplicated Verification Policy / Shell Behavior Rules blocks, and added a See Also footer. **Zero CI regressions** after the swap because (a) agents' `Mandatory Reads` still link to `AGENTS.md` which still exists (as a 3-line stub) and redirects to `AGENTS.md`; (b) `ContextSystemHelpers.RepoRoot` requires both files to find the repo root and both remain present; (c) no skill/agent/rule/intent/command file referenced AGENTS.md's CONTENT — only its path. **Insight:** One-hop redirects through pointer stubs are safe in a link-validated system as long as every referenced path still resolves.
 
+[2026-08-11 Europe/Brussels] — Google Forms Pub/Sub sweeps queue identifiers only
+
+**Context**: While reconciling Phase 12 Google Forms operator docs, the implemented Pub/Sub callback and recovery path needed to be documented without overstating callback trust or live Google proof.
+
+**Symptom / Observation**: Google Forms Pub/Sub push notifications do not carry canonical answers. The verifier returns `registration.provider_response_sweep`, and `RegistrationProviderSubscriptionLifecycleService.QueueResponsesAsync` stores `{}` plus a protected receipt for each response ID before creating the standard `registration.provider_submission` effect.
+
+**Root Cause**: Google Forms watches are notify-only, so durable processing must separate notification authentication from response fetching. Persisting full response bodies at sweep time would duplicate provider data and risk checkpoint advancement before the normal fenced provider-submission worker validates the exact tuple, binding, payload hash, and response identity.
+
+**Resolution**: The implemented path authenticates Pub/Sub with Google OIDC audience/service-account email checks, records only identifiers and receipt metadata during sweeps, and uses opaque continuation cursors plus independent renewal/sweep backoff so unfinished batches remain durable before checkpoint progress. The existing provider-submission effect then fetches and normalizes the response after pointer persistence. Verification is recorded in the Phase 12 focused infrastructure, persistence, API callback, contract, snapshot, parity, and inventory lanes.
+
+**Why This Matters for Future Work**: Notify-only providers should queue capability/identity pointers, not copied provider payloads. Also, Google Pub/Sub uses signed OIDC tokens rather than a shared webhook secret; do not add a parallel `registration_provider.webhook_secret` requirement for this adapter.
+
+**References**:
+- `src/Explore.Infrastructure/Services/Registration/Providers/GoogleForms/GoogleFormsRegistrationProviderDescriptor.cs:349`
+- `src/Explore.Infrastructure/Services/Registration/Providers/GoogleForms/GoogleFormsRegistrationProviderDescriptor.cs:912`
+- `src/Explore.Application/Services/Registration/RegistrationProviderSubscriptionLifecycleService.cs:113`
+- `src/Explore.Application/Services/Registration/RegistrationProviderSubscriptionLifecycleService.cs:169`
+- `docs/integrations/google-forms-pubsub.md`
+
+**Promotion Consideration**:
+- [ ] Candidate for `docs/QUICK_REFERENCE.md` (new non-inferable rule)
+- [ ] Candidate for new `.claude/rules/*.md` entry
+- [x] Candidate for skill update: `outbox-pattern`
+- [ ] Candidate for ADR / `MAJOR_DECISIONS.md`
+- [ ] Stays in journal only (one-off debugging lesson)
+
+---
+
 ## Technical Insights (2026-04-22 Hierarchical Settings — Appearance Phase 5 + 6 SHIPPED)
 
 - [2026-04-22 Europe/Brussels] **Hierarchical Settings Appearance: Phases 2/4/5 COMPLETE**. 33 files across backend + BFF + client. Key artefacts: `UpdateCurrentUserAppearancePreferencesCommandHandler` now persists `DefaultThemeId` via a single `UpsertOrRemoveOverrideAsync` helper (eliminated triple duplication); `UserAppearancePreferencesDto` converted to `record class` for lossless `with { }` updates; `BffPreferenceEndpoints.cs` full rewrite — authenticated flow is DB-backed with cookie mirror; `UiThemeAdminController` + `DeleteUiThemeCommand`; `AppearanceThemeService` consumes dynamic `AvailableThemeModel` palettes with built-in fallback; `SettingsAppearance.razor` user prefs UI + `UiThemeCatalogSection` shared admin UI wired into Instance & Tenant layouts.
