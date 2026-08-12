@@ -32,6 +32,24 @@ x-postgres-env: &postgres-env
   POSTGRES_PASSWORD: ${DATABASE_MIGRATOR_PASSWORD-explore}
   POSTGRES_DB: ${DATABASE_DATABASE:-islamu_event_db}
 
+x-formbricks-env: &formbricks-env
+  WEBAPP_URL: ${FORMBRICKS_WEBAPP_URL:-http://localhost:3005}
+  NEXTAUTH_URL: ${FORMBRICKS_WEBAPP_URL:-http://localhost:3005}
+  DATABASE_URL: postgresql://${FORMBRICKS_DATABASE_USER:-postgres}:${FORMBRICKS_DATABASE_PASSWORD:-postgres}@formbricks-postgres:5432/${FORMBRICKS_DATABASE_NAME:-formbricks}?schema=public
+  NEXTAUTH_SECRET: ${FORMBRICKS_NEXTAUTH_SECRET:-}
+  ENCRYPTION_KEY: ${FORMBRICKS_ENCRYPTION_KEY:-}
+  CRON_SECRET: ${FORMBRICKS_CRON_SECRET:-}
+  REDIS_URL: redis://formbricks-redis:6379
+  HUB_API_KEY: ${FORMBRICKS_HUB_API_KEY:-}
+  HUB_API_URL: http://formbricks-hub:8080
+  CUBEJS_API_URL: http://formbricks-cube:4000
+  CUBEJS_API_SECRET: ${FORMBRICKS_CUBEJS_API_SECRET:-}
+  CUBEJS_JWT_ISSUER: formbricks-web
+  CUBEJS_JWT_AUDIENCE: formbricks-cube
+  EMAIL_VERIFICATION_DISABLED: "1"
+  PASSWORD_RESET_DISABLED: "1"
+  TELEMETRY_DISABLED: "1"
+
 x-database-env: &database-env
   Database__Provider: ${DATABASE_PROVIDER:-PostgreSql}
   Database__Host: ${DATABASE_HOST-postgres}
@@ -91,6 +109,7 @@ x-api-runtime-env: &api-runtime-env
   DEPLOYMENT_MODE: ${DEPLOYMENT_MODE:-}
   CONTROL_PLANE_PUBLIC_ORIGIN: ${CONTROL_PLANE_PUBLIC_ORIGIN:-http://admin.localhost:7002}
   SETUP_SECRET: ${SETUP_SECRET:-}
+  SETUP_SECRET_FILE: ${SETUP_SECRET_FILE:-/app/bootstrap/setup-secret}
   SETUP_SECRET_REQUIRED: ${SETUP_SECRET_REQUIRED:-true}
   USE_COMMERCIAL_LUCKYPENNY: ${USE_COMMERCIAL_LUCKYPENNY:-false}
   LUCKYPENNY_LICENSE_KEY: ${LUCKYPENNY_LICENSE_KEY:-}
@@ -400,6 +419,7 @@ services:
       - "minio.localhost:host-gateway"
     volumes:
       - ./cerbos/policies:/app/cerbos/policies:ro
+      - setup_data:/app/bootstrap
       - local_storage_data:/app/storage-data/local
       - privacy_erasure_authority_data:/app/data
     deploy:
@@ -745,6 +765,122 @@ services:
       retries: 30
       start_period: 10s
 
+  formbricks-postgres:
+    image: pgvector/pgvector:pg18
+    profiles: ["formbricks"]
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${FORMBRICKS_DATABASE_USER:-postgres}
+      POSTGRES_PASSWORD: ${FORMBRICKS_DATABASE_PASSWORD:-postgres}
+      POSTGRES_DB: ${FORMBRICKS_DATABASE_NAME:-formbricks}
+    volumes:
+      - formbricks_postgres_data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${FORMBRICKS_DATABASE_USER:-postgres} -d ${FORMBRICKS_DATABASE_NAME:-formbricks}"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+      start_period: 30s
+
+  formbricks-redis:
+    image: valkey/valkey@sha256:12ba4f45a7c3e1d0f076acd616cb230834e75a77e8516dde382720af32832d6d
+    profiles: ["formbricks"]
+    restart: unless-stopped
+    command: valkey-server --appendonly yes --maxmemory-policy noeviction
+    volumes:
+      - formbricks_redis_data:/data
+    healthcheck:
+      test: ["CMD", "valkey-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+      start_period: 10s
+
+  formbricks-migrate:
+    image: ghcr.io/formbricks/formbricks:5.2.2@sha256:d6f635714a9c29620203ba29762f4746f5def86c346d6ad95fefa66adc21fd5e
+    profiles: ["formbricks"]
+    restart: "no"
+    entrypoint: ["sh", "-c"]
+    command: ["node /home/nextjs/validate-env.mjs && node packages/database/dist/scripts/apply-migrations.js"]
+    environment:
+      <<: *formbricks-env
+    depends_on:
+      formbricks-postgres:
+        condition: service_healthy
+
+  formbricks-hub-migrate:
+    image: ghcr.io/formbricks/hub:latest@sha256:4dc0c4f26cf999b3bf4a26d7b09634fc65ae23cbb30c9ad82042da019d231458
+    profiles: ["formbricks"]
+    restart: "no"
+    entrypoint: ["sh", "-c"]
+    command: ['goose -dir /app/migrations postgres "$$DATABASE_URL" up && river migrate-up --database-url "$$DATABASE_URL"']
+    environment:
+      DATABASE_URL: postgresql://${FORMBRICKS_DATABASE_USER:-postgres}:${FORMBRICKS_DATABASE_PASSWORD:-postgres}@formbricks-postgres:5432/${FORMBRICKS_DATABASE_NAME:-formbricks}?sslmode=disable
+    depends_on:
+      formbricks-migrate:
+        condition: service_completed_successfully
+
+  formbricks-hub:
+    image: ghcr.io/formbricks/hub:latest@sha256:4dc0c4f26cf999b3bf4a26d7b09634fc65ae23cbb30c9ad82042da019d231458
+    profiles: ["formbricks"]
+    restart: unless-stopped
+    environment:
+      API_KEY: ${FORMBRICKS_HUB_API_KEY:-}
+      DATABASE_URL: postgresql://${FORMBRICKS_DATABASE_USER:-postgres}:${FORMBRICKS_DATABASE_PASSWORD:-postgres}@formbricks-postgres:5432/${FORMBRICKS_DATABASE_NAME:-formbricks}?sslmode=disable
+    depends_on:
+      formbricks-hub-migrate:
+        condition: service_completed_successfully
+
+  formbricks-cube:
+    image: cubejs/cube:v1.6.6
+    profiles: ["formbricks"]
+    restart: unless-stopped
+    command: ["sh", "-c", "test -n \"$$CUBEJS_API_SECRET\" && exec cubejs server"]
+    environment:
+      CUBEJS_DB_TYPE: postgres
+      CUBEJS_DB_HOST: formbricks-postgres
+      CUBEJS_DB_NAME: ${FORMBRICKS_DATABASE_NAME:-formbricks}
+      CUBEJS_DB_USER: ${FORMBRICKS_DATABASE_USER:-postgres}
+      CUBEJS_DB_PASS: ${FORMBRICKS_DATABASE_PASSWORD:-postgres}
+      CUBEJS_DB_PORT: "5432"
+      CUBEJS_API_SECRET: ${FORMBRICKS_CUBEJS_API_SECRET:-}
+      CUBEJS_JWT_ISSUER: formbricks-web
+      CUBEJS_JWT_AUDIENCE: formbricks-cube
+      CUBEJS_DEFAULT_API_SCOPES: meta,data
+      CUBEJS_CACHE_AND_QUEUE_DRIVER: memory
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://127.0.0.1:4000/readyz',r=>{r.resume();process.exit(r.statusCode===200?0:1)}).on('error',()=>process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+    depends_on:
+      formbricks-hub-migrate:
+        condition: service_completed_successfully
+      formbricks-postgres:
+        condition: service_healthy
+
+  formbricks:
+    image: ghcr.io/formbricks/formbricks:5.2.2@sha256:d6f635714a9c29620203ba29762f4746f5def86c346d6ad95fefa66adc21fd5e
+    profiles: ["formbricks"]
+    restart: unless-stopped
+    ports:
+      - "${FORMBRICKS_HTTP_PORT:-3005}:3000"
+    environment:
+      <<: *formbricks-env
+      SKIP_STARTUP_MIGRATION: "true"
+    depends_on:
+      formbricks-migrate:
+        condition: service_completed_successfully
+      formbricks-postgres:
+        condition: service_healthy
+      formbricks-redis:
+        condition: service_healthy
+      formbricks-cube:
+        condition: service_healthy
+      formbricks-hub:
+        condition: service_started
+
   osprey:
     image: ${OSPREY_IMAGE:-ghcr.io/roostorg/osprey/osprey-coordinator:latest}
     profiles: ["osprey"]
@@ -759,6 +895,7 @@ services:
       - "${OSPREY_SYNC_ACTION_PORT:-19951}:19951"
 
 volumes:
+  setup_data:
   postgres_data:
   privacy_erasure_authority_data:
   privacy_erasure_postgres_data:
@@ -772,3 +909,5 @@ volumes:
   weblate_data:
   weblate_postgres_data:
   coop_postgres_data:
+  formbricks_postgres_data:
+  formbricks_redis_data:

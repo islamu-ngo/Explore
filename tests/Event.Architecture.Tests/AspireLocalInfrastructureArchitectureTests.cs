@@ -108,6 +108,22 @@ public sealed class AspireLocalInfrastructureArchitectureTests
     }
 
     [Test]
+    public async Task Formbricks_MustBeRegisteredOnlyForFullLocalMode()
+    {
+        string appHost = await File.ReadAllTextAsync(Path.Combine(RepoRoot, "src", "Explore.AppHost", "AppHost.cs"));
+
+        await Assert.That(appHost).Contains("if (runMode == AspireRunMode.FullLocal)\n{\n    AddLocalFormbricks(builder);\n}");
+        await Assert.That(appHost).Contains("static void AddLocalFormbricks(IDistributedApplicationBuilder builder)");
+        await Assert.That(appHost).Contains("\"formbricks-postgres\"");
+        await Assert.That(appHost).Contains("\"formbricks-redis\"");
+        await Assert.That(appHost).Contains("\"formbricks-migrate\"");
+        await Assert.That(appHost).Contains("\"formbricks-hub-migrate\"");
+        await Assert.That(appHost).Contains("\"formbricks-hub\"");
+        await Assert.That(appHost).Contains("\"formbricks-cube\"");
+        await Assert.That(appHost).Contains("\"formbricks\"");
+    }
+
+    [Test]
     public async Task PrivacyErasureAuthority_UsesTopologySpecificManagedResources()
     {
         string appHost = await File.ReadAllTextAsync(

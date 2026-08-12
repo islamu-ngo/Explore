@@ -3,6 +3,10 @@
 .worktrees
 .omo
 .codegraph
+.code-review-graph
+.tmp
+BenchmarkDotNet.Artifacts
+TestResults
 **/.classpath
 **/.dockerignore
 **/.env

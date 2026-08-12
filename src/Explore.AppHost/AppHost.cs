@@ -128,6 +128,11 @@ if (runMode is AspireRunMode.FullLocal or AspireRunMode.DefaultLocal)
         cache);
 }
 
+if (runMode == AspireRunMode.FullLocal)
+{
+    AddLocalFormbricks(builder);
+}
+
 var migrations = WithProfileSecretMode(
         builder.AddProject<Projects.Event_MigrationService>(
             "event-migrationservice",
@@ -892,6 +897,97 @@ static IResourceBuilder<ContainerResource> AddMailpit(IDistributedApplicationBui
             name: "smtp",
             protocol: ProtocolType.Tcp)
         .WithHttpEndpoint(targetPort: 8025, port: 8025, name: "http");
+}
+
+static void AddLocalFormbricks(IDistributedApplicationBuilder builder)
+{
+    const string formbricksImage = "ghcr.io/formbricks/formbricks";
+    const string formbricksTag = "5.2.2@sha256:d6f635714a9c29620203ba29762f4746f5def86c346d6ad95fefa66adc21fd5e";
+    const string hubImage = "ghcr.io/formbricks/hub";
+    const string hubTag = "latest@sha256:4dc0c4f26cf999b3bf4a26d7b09634fc65ae23cbb30c9ad82042da019d231458";
+    const string databaseUrl = "postgresql://postgres:postgres@formbricks-postgres:5432/formbricks?schema=public";
+    const string hubDatabaseUrl = "postgresql://postgres:postgres@formbricks-postgres:5432/formbricks?sslmode=disable";
+
+    IResourceBuilder<ParameterResource> Secret(string name, string key) =>
+        string.IsNullOrWhiteSpace(builder.Configuration[key])
+            ? builder.AddParameter(name, new GenerateParameterDefault { MinLength = 32, Special = false }, secret: true, persist: true)
+            : builder.AddParameter(name, () => builder.Configuration[key]!, publishValueAsDefault: false, secret: true);
+
+    var nextAuthSecret = Secret("formbricks-nextauth-secret", "FORMBRICKS_NEXTAUTH_SECRET");
+    var encryptionKey = Secret("formbricks-encryption-key", "FORMBRICKS_ENCRYPTION_KEY");
+    var cronSecret = Secret("formbricks-cron-secret", "FORMBRICKS_CRON_SECRET");
+    var hubApiKey = Secret("formbricks-hub-api-key", "FORMBRICKS_HUB_API_KEY");
+    var cubeApiSecret = Secret("formbricks-cube-api-secret", "FORMBRICKS_CUBEJS_API_SECRET");
+
+    var postgres = builder.AddContainer("formbricks-postgres", "pgvector/pgvector", "pg18")
+        .WithEnvironment("POSTGRES_USER", "postgres")
+        .WithEnvironment("POSTGRES_PASSWORD", "postgres")
+        .WithEnvironment("POSTGRES_DB", "formbricks")
+        .WithVolume("islamu-event-formbricks-postgres-data", "/var/lib/postgresql");
+
+    var redis = builder.AddContainer(
+            "formbricks-redis",
+            "valkey/valkey@sha256:12ba4f45a7c3e1d0f076acd616cb230834e75a77e8516dde382720af32832d6d")
+        .WithArgs("valkey-server", "--appendonly", "yes", "--maxmemory-policy", "noeviction")
+        .WithVolume("islamu-event-formbricks-redis-data", "/data");
+
+    IResourceBuilder<ContainerResource> Environment(IResourceBuilder<ContainerResource> resource) => resource
+        .WithEnvironment("WEBAPP_URL", builder.Configuration["FORMBRICKS_WEBAPP_URL"] ?? "http://localhost:3005")
+        .WithEnvironment("NEXTAUTH_URL", builder.Configuration["FORMBRICKS_WEBAPP_URL"] ?? "http://localhost:3005")
+        .WithEnvironment("DATABASE_URL", databaseUrl)
+        .WithEnvironment("NEXTAUTH_SECRET", nextAuthSecret)
+        .WithEnvironment("ENCRYPTION_KEY", encryptionKey)
+        .WithEnvironment("CRON_SECRET", cronSecret)
+        .WithEnvironment("REDIS_URL", "redis://formbricks-redis:6379")
+        .WithEnvironment("HUB_API_KEY", hubApiKey)
+        .WithEnvironment("HUB_API_URL", "http://formbricks-hub:8080")
+        .WithEnvironment("CUBEJS_API_URL", "http://formbricks-cube:4000")
+        .WithEnvironment("CUBEJS_API_SECRET", cubeApiSecret)
+        .WithEnvironment("CUBEJS_JWT_ISSUER", "formbricks-web")
+        .WithEnvironment("CUBEJS_JWT_AUDIENCE", "formbricks-cube")
+        .WithEnvironment("EMAIL_VERIFICATION_DISABLED", "1")
+        .WithEnvironment("PASSWORD_RESET_DISABLED", "1")
+        .WithEnvironment("TELEMETRY_DISABLED", "1");
+
+    var migrate = Environment(builder.AddContainer("formbricks-migrate", formbricksImage, formbricksTag))
+        .WithEntrypoint("sh")
+        .WithArgs("-c", "node /home/nextjs/validate-env.mjs && node packages/database/dist/scripts/apply-migrations.js")
+        .WaitFor(postgres);
+
+    var hubMigrate = builder.AddContainer("formbricks-hub-migrate", hubImage, hubTag)
+        .WithEntrypoint("sh")
+        .WithArgs("-c", "goose -dir /app/migrations postgres \"$DATABASE_URL\" up && river migrate-up --database-url \"$DATABASE_URL\"")
+        .WithEnvironment("DATABASE_URL", hubDatabaseUrl)
+        .WaitForCompletion(migrate);
+
+    var hub = builder.AddContainer("formbricks-hub", hubImage, hubTag)
+        .WithEnvironment("API_KEY", hubApiKey)
+        .WithEnvironment("DATABASE_URL", hubDatabaseUrl)
+        .WaitForCompletion(hubMigrate);
+
+    var cube = builder.AddContainer("formbricks-cube", "cubejs/cube", "v1.6.6")
+        .WithEnvironment("CUBEJS_DB_TYPE", "postgres")
+        .WithEnvironment("CUBEJS_DB_HOST", "formbricks-postgres")
+        .WithEnvironment("CUBEJS_DB_NAME", "formbricks")
+        .WithEnvironment("CUBEJS_DB_USER", "postgres")
+        .WithEnvironment("CUBEJS_DB_PASS", "postgres")
+        .WithEnvironment("CUBEJS_DB_PORT", "5432")
+        .WithEnvironment("CUBEJS_API_SECRET", cubeApiSecret)
+        .WithEnvironment("CUBEJS_JWT_ISSUER", "formbricks-web")
+        .WithEnvironment("CUBEJS_JWT_AUDIENCE", "formbricks-cube")
+        .WithEnvironment("CUBEJS_DEFAULT_API_SCOPES", "meta,data")
+        .WithEnvironment("CUBEJS_CACHE_AND_QUEUE_DRIVER", "memory")
+        .WithHttpEndpoint(targetPort: 4000, name: "http")
+        .WithHttpHealthCheck("/readyz", endpointName: "http")
+        .WaitForCompletion(hubMigrate);
+
+    Environment(builder.AddContainer("formbricks", formbricksImage, formbricksTag))
+        .WithEnvironment("SKIP_STARTUP_MIGRATION", "true")
+        .WithHttpEndpoint(targetPort: 3000, port: 3005, name: "http")
+        .WaitForCompletion(migrate)
+        .WaitFor(redis)
+        .WaitFor(hub)
+        .WaitFor(cube);
 }
 
 static void ExcludeProjectLaunchProfile(ProjectResourceOptions options)
