@@ -205,6 +205,43 @@ public sealed class RegistrationOrderAccessHandlerTests
     }
 
     [Test]
+    public async Task GuestProviderAttemptLaunchDispatchesOnlyAfterExistingOrderCapabilityMatches()
+    {
+        RegistrationOrder order = CreateGuestOrder();
+        var sender = Substitute.For<ISender>();
+        Guid requirementId = Guid.CreateVersion7();
+        Guid channelId = Guid.CreateVersion7();
+        Guid bindingId = Guid.CreateVersion7();
+        Guid formId = Guid.CreateVersion7();
+        Guid formVersionId = Guid.CreateVersion7();
+        var expected = new RegistrationProviderAttemptResult(true, Guid.CreateVersion7(), null);
+        _inventory.GetOrderWithLinesAsync(_orderId, _tenantId, Arg.Any<CancellationToken>()).Returns(order);
+        _capabilities.Matches("guest-token", order.GuestAccessTokenHash!).Returns(true);
+        sender.Send(Arg.Any<LaunchRegistrationProviderAttemptCommand>(), Arg.Any<CancellationToken>()).Returns(expected);
+        var handler = new LaunchGuestRegistrationProviderAttemptCommandHandler(
+            _inventory, _capabilities, _tenant, new FixedTimeProvider(UtcNow), sender);
+
+        RegistrationProviderAttemptResult missing = await handler.Handle(
+            new LaunchGuestRegistrationProviderAttemptCommand(
+                _eventId, _orderId, null, requirementId, channelId, bindingId, formId, formVersionId),
+            CancellationToken.None);
+        RegistrationProviderAttemptResult valid = await handler.Handle(
+            new LaunchGuestRegistrationProviderAttemptCommand(
+                _eventId, _orderId, "guest-token", requirementId, channelId, bindingId, formId, formVersionId),
+            CancellationToken.None);
+
+        await Assert.That(missing.Success).IsFalse();
+        await Assert.That(missing.FailureCode).IsEqualTo("registration_order_not_found");
+        await Assert.That(valid).IsEqualTo(expected);
+        _ = sender.Received(1).Send(
+            Arg.Is<LaunchRegistrationProviderAttemptCommand>(command =>
+                command.TenantId == _tenantId && command.EventId == _eventId && command.OrderId == _orderId &&
+                command.RequirementId == requirementId && command.ChannelId == channelId &&
+                command.BindingId == bindingId && command.FormId == formId && command.FormVersionId == formVersionId),
+            CancellationToken.None);
+    }
+
+    [Test]
     [Arguments(GuestLifecycleAction.Finalize)]
     [Arguments(GuestLifecycleAction.Cancel)]
     public async Task GuestLifecycleActionWhenCapabilityIsValidDelegatesToExistingLifecycleService(GuestLifecycleAction action)

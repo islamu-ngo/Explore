@@ -1139,8 +1139,8 @@ When a new response is submitted
   -> Get response details
   -> Construct canonical callback envelope
   -> Add form ID, response ID, attempt token, timestamp
-  -> Add ISLAMU API key or signature
-  -> POST to ISLAMU callback endpoint
+  -> Add ISLAMU Event API key or signature
+  -> POST to ISLAMU Event callback endpoint
 ```
 
 ISLAMU should publish a versioned Power Automate solution or documented flow template rather than asking every organizer to invent the integration independently.
@@ -1187,7 +1187,7 @@ An organizer may already depend on the Excel workbook generated from Microsoft F
 The real-time path should be:
 
 ```text
-Forms connector -> response details -> ISLAMU callback
+Forms connector -> response details -> ISLAMU Event callback
 ```
 
 Excel remains:

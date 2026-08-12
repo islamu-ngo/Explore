@@ -479,7 +479,13 @@ internal static class UserPiiInventory
             typeof(Explore.Infrastructure.Services.Moderation.OspreyModerationSignalProvider)),
         External("provider:coop:review-queue-copy", "EventReport.ReporterUserId", "Cooperative review queue adapter",
             UserPiiProviderAction.DeleteOrAnonymizeProviderCopy,
-            typeof(Explore.Infrastructure.Services.Moderation.Coop.CoopReviewQueueProvider))
+            typeof(Explore.Infrastructure.Services.Moderation.Coop.CoopReviewQueueProvider)),
+        External("provider:formbricks:registration-response", "RegistrationSubmission -> RegistrationOrder.AccountId or participant lineage", "Formbricks registration provider adapter",
+            UserPiiProviderAction.DeleteOrAnonymizeProviderCopy,
+            typeof(Explore.Infrastructure.Services.Registration.Providers.Formbricks.FormbricksRegistrationProviderAdapter)),
+        External("provider:google-forms:registration-response", "RegistrationSubmission -> RegistrationOrder.AccountId or participant lineage", "Google Forms registration provider adapter",
+            UserPiiProviderAction.DeleteOrAnonymizeProviderCopy,
+            typeof(Explore.Infrastructure.Services.Registration.Providers.GoogleForms.GoogleFormsRegistrationProviderAdapter))
     ];
 
     private static UserPiiInventoryEntry Local(

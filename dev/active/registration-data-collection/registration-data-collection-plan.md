@@ -3,7 +3,24 @@
 
 # Registration Data Collection & Participation Platform — Implementation Plan
 
-Last Updated: 2026-08-02 Europe/Brussels
+Last Updated: 2026-08-11 Europe/Brussels
+
+---
+
+## Handoff — 2026-08-11 Europe/Brussels: Phase 12 Complete / Phase 13 Next
+
+### Current State
+- Phase 12 Google Forms is complete. The implementation is pinned to `GOOGLE_FORMS|GOOGLE_WORKSPACE|v1|ISLAMU_EVENT_GOOGLE_FORMS_PUBSUB_V1|2026-08-11` and covers OAuth credential binding, scoped provider metadata, public origin pinning to `https://docs.google.com`, descriptor-aware no-webhook-secret connection validation, managed create/batchUpdate/publish verification, managed preflight provision/subscription execution, OIDC-authenticated Pub/Sub notify-only intake, seven-day watch create/renew, immediate initial sweep, six-hour missed-notification recovery sweeps, opaque continuation cursors, identifiers-only durable queueing, independent failure counters/backoff, server-derived binding capabilities, and explicit `system.registration_attempt_token -> entry.<digits>` mapping.
+- The adapter does not advertise submission sink, auto-finalize, Drive/file upload, or live Google tenant proof. `attemptId|attemptToken` is capability/correlation-only; `AccountRequired` parks.
+
+### Validation
+- Final green counts: build 0 warnings/errors; Domain 747; Application 3,568; Architecture 369 plus 1 governed skip; Secrets 224; Infrastructure 1,224; Blazor Integration 425; Blazor Client 2,330 plus 1 governed skip; focused Persistence provider 21; API callback 8; contract invariants 34; snapshots 4; parity 11; inventory 1; Google adapter 37; lifecycle 5; correlation 6. Current generated application migrations are PostgreSQL `20260811202610`, SQLite `20260811202805`, SQL Server `20260811202946`, MariaDB `20260811203009`, and MySQL `20260811203034`; EF has-pending checks pass for all five.
+- Broad Persistence reached 811/988 with 174 known cascade failures and 3 skips. Broad API reached 2,192/2,210 before two Phase 12 contract fixes; focused owned failures are green after repair, but no full API rerun is claimed. Browser verification was blocked by persisted PostgreSQL `28P01` and RabbitMQ `ACCESS_REFUSED`; resources were stopped safely.
+- Final implementation reviewers for requirements, security, and quality all returned `APPROVE`; see [Phase 12 Final Review Receipts](../../../.omo/start-work/artifacts/phase12/final-review.md).
+
+### Next Action
+1. Start Phase 13 consent, attendee-data surfaces, and audited exports.
+2. Preserve provider privacy boundaries: identifiers-only sweeps, no Drive metadata, no shared secret for Google Pub/Sub, no caller-supplied Google capabilities, and no live-Google claims without real tenant evidence.
 
 ---
 
@@ -1403,7 +1420,7 @@ From the repository contract (AGENTS.md §5, QUICK_REFERENCE, GOVERNANCE):
 #### Task 10.5: Headless mode (C) through ISLAMU backend
 - **Type:** create
 - **Layer:** Application + Infrastructure
-- **Files:** `FormbricksSubmissionWriter.cs`; native renderer submits to ISLAMU API (canonical validation/persistence first), optional post-commit Formbricks response write via outbox-driven sink call
+- **Files:** `FormbricksSubmissionWriter.cs`; native renderer submits to ISLAMU Event API (canonical validation/persistence first), optional post-commit Formbricks response write via outbox-driven sink call
 - **Acceptance Criteria:**
   - [ ] Browser never talks to Formbricks response endpoints for registration (no such URL in client DTOs); Formbricks write failure never affects finalized order
 - **Dependencies:** 10.3
@@ -1423,7 +1440,7 @@ From the repository contract (AGENTS.md §5, QUICK_REFERENCE, GOVERNANCE):
 ### Phase 11: Microsoft Forms Provider (Connector Channel)
 - **Goal:** Link/embed presentation + versioned Power Automate callback solution at `DelegatedAutomation` trust; org-account scope; Excel remains a sink/reconciliation source, never transaction authority.
 - **Depends on:** Phase 9 (Phase 10 not required — parallelizable after 9).
-- **Relevant files:** new Infrastructure — `Providers/Microsoft/{MicrosoftFormsDescriptor,MicrosoftFormsCallbackVerifier}.cs`; versioned flow template artifact `docs/integrations/microsoft-forms-flow-template.md` + exported solution file under `docs/integrations/` (path confirmed at implementation); manual mapping UI reuse from Phase 9; `docs/INTEGRATIONS.md`.
+- **Relevant files:** new Infrastructure — `Providers/MicrosoftForms/MicrosoftFormsRegistrationProviderDescriptor.cs`; versioned flow template artifact `docs/integrations/microsoft-forms-flow-template.md`; manual mapping UI reuse from Phase 9; `docs/INTEGRATIONS.md`. An importable solution export is a tenant-generated deployment artifact because Power Platform connection references, publisher identity, and the published flow require a real Microsoft 365/Dataverse environment; the repository must not fabricate one.
 - **Acceptance criteria:** Callback envelope per §16 (provider code, binding, form/response IDs, attempt token, timestamp, mapped values, contract version, idempotency key) with API-key or signature verification; `TrustLevel = DelegatedAutomation` policy gating (tenant/event decides auto-finalize vs review); personal-account forms offered only as redirect/iframe/manual-reconciliation; no undocumented Microsoft APIs anywhere.
 - **Phase-end verification (run once after all tasks):**
   - `dotnet build --configuration Release --verbosity quiet`
@@ -1452,7 +1469,7 @@ From the repository contract (AGENTS.md §5, QUICK_REFERENCE, GOVERNANCE):
 #### Task 11.3: Versioned Power Automate solution + setup wizard + manual mapping
 - **Type:** create
 - **Layer:** Docs + Application + Blazor
-- **Files:** flow template doc + export; setup wizard flow (create binding → download template → send test event → verify → activate); manual field-mapping UI (Phase 9 mapping surfaces) since schema read is unsupported
+- **Files:** versioned flow template doc; Studio setup flow (create binding → configure the documented template → send test event → verify → activate); manual field-mapping UI (Phase 9 mapping surfaces) since schema read is unsupported. A real tenant may export its validated solution through its deployment process.
 - **Acceptance Criteria:**
   - [ ] Test-event verification required before channel activation; mapping completeness enforced for required canonical fields
 - **Dependencies:** 11.2
@@ -1472,8 +1489,9 @@ From the repository contract (AGENTS.md §5, QUICK_REFERENCE, GOVERNANCE):
 ### Phase 12: Google Forms Provider (Pub/Sub Channel)
 - **Goal:** OAuth connection, form import/provision + explicit publication, field mapping, `RESPONSES` watch lifecycle with renewal, checkpointed response fetch, drift, Drive-file policy.
 - **Depends on:** Phase 9 (parallelizable with 10/11 after 9).
-- **Relevant files:** new Infrastructure — `Providers/Google/{GoogleFormsDescriptor,GoogleFormsSchemaReader,GoogleFormsProvisioner,GoogleFormsSubmissionReader,GoogleFormsSubscriptionManager (watch mgmt),GooglePubSubIntakeVerifier}.cs`; watch-renewal background job (extend existing background-service patterns); connection fields per §15 (OAuth secret ref, scopes, watch ID/expiry, checkpoint).
-- **Acceptance criteria:** Pub/Sub notification → authenticated intake → dedupe → list-responses-after-checkpoint → dedupe response IDs → map/normalize → finalize-or-reconcile; watch renewed before 7-day expiry with failure alerts; correlation via prefilled attempt token treated as correlation-only (stronger identity or `NeedsReconciliation` per §15); API-created forms explicitly published (post-2026-06-30 behavior); no headless-submission capability advertised.
+- **Status:** Complete as of 2026-08-11. Implementation uses `GoogleFormsRegistrationProviderDescriptor.cs`, `RegistrationProviderSubscriptionLifecycleService.cs`, `RegistrationProviderSubscriptionLifecycleWorker.cs`, and provider subscription state persistence rather than separate per-method files.
+- **Relevant files:** `src/Explore.Infrastructure/Services/Registration/Providers/GoogleForms/GoogleFormsRegistrationProviderDescriptor.cs`; `src/Explore.Application/Services/Registration/RegistrationProviderSubscriptionLifecycleService.cs`; `src/Explore.API/BackgroundServices/RegistrationProviderSubscriptionLifecycleWorker.cs`; `src/Explore.Domain/RegistrationProviderConnection.cs`; `src/Explore.Domain/RegistrationProviderSubscriptionState.cs`; focused tests in `tests/Explore.Infrastructure.Tests/Registration/GoogleForms/` and provider lifecycle/Application/API/Persistence lanes.
+- **Acceptance criteria:** managed preflight can provision the form and subscription before schema comparison; Pub/Sub notification → Google OIDC-authenticated intake → response-sweep effect → checkpointed list responses → identifiers-only queued provider-submission effects → standard `registration.provider_submission` worker. Watch renewal runs before seven-day expiry; the first recovery sweep is immediate, later sweeps run every six hours, and timestamp overlap plus opaque continuations preserve unfinished batches; correlation via prefilled attempt token is capability-only; API-created forms explicitly publish and verify accepting state; no headless-submission, auto-finalize, webhook-secret, or Drive/file capability is advertised.
 - **Phase-end verification (run once after all tasks):**
   - `dotnet build --configuration Release --verbosity quiet`
   - `dotnet test --project tests/Explore.Infrastructure.Tests/Explore.Infrastructure.Tests.csproj --configuration Release --verbosity quiet` *(repeat justified: Google adapter incl. watch lifecycle + Pub/Sub verification is new Infrastructure surface)*
@@ -1484,7 +1502,7 @@ From the repository contract (AGENTS.md §5, QUICK_REFERENCE, GOVERNANCE):
 - **Layer:** Infrastructure
 - **Files:** conformance evidence; connection entity fields per §15; Google OAuth secret definitions (tenant scope)
 - **Acceptance Criteria:**
-  - [ ] Evidence dated; scopes minimal and listed; token refresh recorded on connection
+  - [x] Evidence dated; scopes minimal and listed; token refresh recorded on connection
 - **Dependencies:** Phase 9
 - **Effort:** M
 
@@ -1493,7 +1511,7 @@ From the repository contract (AGENTS.md §5, QUICK_REFERENCE, GOVERNANCE):
 - **Layer:** Infrastructure + Application
 - **Files:** `GoogleFormsSchemaReader.cs`, `GoogleFormsProvisioner.cs`; import → frozen version; provision → explicit publish step with verification
 - **Acceptance Criteria:**
-  - [ ] Unpublished API-created form blocks binding activation with typed reason
+  - [x] Unpublished API-created form blocks activation with typed reason
 - **Dependencies:** 12.1
 - **Effort:** L
 
@@ -1502,7 +1520,7 @@ From the repository contract (AGENTS.md §5, QUICK_REFERENCE, GOVERNANCE):
 - **Layer:** Infrastructure + API + Application
 - **Files:** `GooglePubSubIntakeVerifier.cs` (intake auth), `GoogleFormsSubscriptionManager.cs` (watch create/renew), renewal background job, `GoogleFormsSubmissionReader.cs` (list after checkpoint, dedupe)
 - **Acceptance Criteria:**
-  - [ ] Notification-without-data flow fetches separately (fixture test); missed-notification reconciliation sweep recovers responses; watch expiry alert emitted at bounded metric
+  - [x] Notification-without-data flow fetches separately (fixture test); missed-notification reconciliation sweep recovers responses; watch expiry alert emitted at bounded metric
 - **Dependencies:** 12.2
 - **Effort:** XL
 
@@ -1511,7 +1529,7 @@ From the repository contract (AGENTS.md §5, QUICK_REFERENCE, GOVERNANCE):
 - **Layer:** Application
 - **Files:** prefilled-token correlation (single-use, expiring, not identity proof); below-threshold → `NeedsReconciliation`; Drive file policy (copy into ISLAMU storage + quarantine per 8.8, or capability off) — decide and implement minimal
 - **Acceptance Criteria:**
-  - [ ] Token-only correlation cannot auto-finalize when event policy requires authenticated respondent; decision recorded
+  - [x] Token-only correlation cannot auto-finalize when event policy requires authenticated respondent; decision recorded
 - **Dependencies:** 12.3
 - **Effort:** M
 

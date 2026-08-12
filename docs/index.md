@@ -87,6 +87,7 @@ Start with [README.md](../README.md) if you are new to the project. Use this pag
 - [WEBHOOKS.md](WEBHOOKS.md) - outgoing webhook providers, LocalProvider/SvixProvider setup, signatures, health, and rollout.
 - [WEBHOOK_OPERATIONS_RUNBOOK.md](WEBHOOK_OPERATIONS_RUNBOOK.md) - webhook readiness, bounded metrics, SLOs, alerts, and Local/self-hosted Svix incident recovery.
 - [INTEGRATIONS.md](INTEGRATIONS.md) - incoming provider callbacks, Coop/Osprey/Svix operational verification, and idempotency.
+- [Google Forms Pub/Sub Integration](integrations/google-forms-pubsub.md) - Google Forms OAuth scopes, Pub/Sub OIDC setup, renewal/sweep behavior, and unsupported Drive/file boundaries.
 - [SEO.md](SEO.md) - sitemap, robots, render-policy, and public-discovery SEO behavior.
 - [SECURITY.md](SECURITY.md) - auth/authz model and trust boundaries.
 - [SECURITY-MODEL.md](SECURITY-MODEL.md) - platform security invariants, privilege isolation, and privacy boundaries.
@@ -123,6 +124,8 @@ Start with [README.md](../README.md) if you are new to the project. Use this pag
 - [ERP_INTEGRATION_GUIDE.md](ERP_INTEGRATION_GUIDE.md) - operator & partner guide for integrating ISLAMU Event as a white-label module in enterprise ERP platforms.
 - [WEBHOOKS.md](WEBHOOKS.md) - outgoing webhook provider extension point and self-hosted Svix integration.
 - [INTEGRATIONS.md](INTEGRATIONS.md) - incoming integration callback boundary.
+- [Microsoft Forms Power Automate Template](integrations/microsoft-forms-flow-template.md) - organizational Forms callback setup, activation gates, and CSV reconciliation.
+- [Google Forms Pub/Sub Integration](integrations/google-forms-pubsub.md) - Google Forms managed provisioning and Pub/Sub response-sweep setup.
 - [COOP_INTEGRATION.md](COOP_INTEGRATION.md) - multi-tenant human review dashboard integration and escalation flow.
 - [OSPREY_INTEGRATION.md](OSPREY_INTEGRATION.md) - single-tenant machine moderation challenges and hybrid policy engine.
 - [MODULAR_EVENTS.md](MODULAR_EVENTS.md) - event aspect composition model.
@@ -151,4 +154,4 @@ Start with [README.md](../README.md) if you are new to the project. Use this pag
 - [adr/ADR-009-postgresql-partitioning-deferral.md](adr/ADR-009-postgresql-partitioning-deferral.md) - PostgreSQL partitioning deferral, activation gates, and runbook requirements.
 - [adr/ADR-010-mcp-adapter-hosting-strategy.md](adr/ADR-010-mcp-adapter-hosting-strategy.md) - MCP adapter hosting, transport, auth, tenancy, and disable posture.
 - [adr/ADR-011-local-mcp-stdio-diagnostic-host.md](adr/ADR-011-local-mcp-stdio-diagnostic-host.md) - local-only stdio diagnostic-host decision and deferral.
-- [adr/ADR-021-keycloak-authentication-standard.md](adr/ADR-021-keycloak-authentication-standard.md) - standardizing ERP authentication on Keycloak and authorization on Cerbos across all deployment tiers.
+- [adr/ADR-021-keycloak-authentication-standard.md](adr/ADR-021-keycloak-authentication-standard.md) - standardizing platform authentication on Keycloak and authorization on Cerbos.

@@ -3,7 +3,63 @@
 
 # Registration Data Collection & Participation Platform — Context
 
-Last Updated: 2026-08-10 Europe/Brussels
+Last Updated: 2026-08-11 Europe/Brussels
+
+## PHASE 12 GOOGLE FORMS — TASKS 12.1–12.4 COMPLETE (2026-08-11 Europe/Brussels)
+
+Google Forms is pinned to `GOOGLE_FORMS|GOOGLE_WORKSPACE|v1|ISLAMU_EVENT_GOOGLE_FORMS_PUBSUB_V1|2026-08-11`. The connection model persists the tenant OAuth credential secret binding, normalized granted scopes, provider identity, Pub/Sub configuration reference, and last credential/access validation timestamps. The allowed scope sets are read/import (`openid email https://www.googleapis.com/auth/forms.body.readonly https://www.googleapis.com/auth/forms.responses.readonly`) and managed provisioning (that set plus `https://www.googleapis.com/auth/forms.body`); no Drive scope is requested. Public launch is pinned to `https://docs.google.com`, and descriptor-aware Google connection validation requires `WebhookSecretBindingId` to remain unset.
+
+Managed publish preflight now performs the remote provision/subscription path when needed: Google Forms create, batchUpdate, explicit publish+accepting settings, read-back verification, Pub/Sub watch create, server-derived binding capability/state persistence, and remote schema comparison. Pub/Sub callbacks are notify-only: the verifier accepts only Google-signed OIDC bearer tokens with the configured audience and service-account email, checks form/watch/event binding, then queues `registration.provider_response_sweep` instead of trusting response answers in the push body. The lifecycle worker renews seven-day watches before expiry and performs an immediate initial recovery sweep, then six-hour recovery sweeps from the stored checkpoint minus a ten-minute overlap. Sweep queuing persists identifiers-only incoming messages/effects before checkpoint settlement; opaque `registration-provider-cursor:` continuation cursors keep unfinished Formbricks/Google batches durable and immediately due before progress advances. Renewal and sweep failures have independent persisted counters and exponential backoff.
+
+Correlation is explicit: `system.registration_attempt_token` must map to `entry.<digits>`, and the answer value is the prefilled `attemptId|attemptToken`. The token is capability/correlation-only, not identity proof; `AccountRequired` parks instead of auto-finalizing. File upload/Drive capability is off: file upload fields and fetched `fileUploadAnswers` are rejected, no Drive metadata is retained, and no submission sink or auto-finalize capability is advertised.
+
+Verification: Release build completed with zero warnings and zero errors. Final green counts are Domain 747, Application 3,568, Architecture 369 plus one governed skip, Secrets 224, Infrastructure 1,224, Blazor Integration 425, and Blazor Client 2,330 plus one governed skip. Focused Phase 12 lanes also passed: Persistence provider 21, API callback 8, contract invariants 34, snapshots 4, parity 11, inventory 1, Google adapter 37, lifecycle 5, and correlation 6. Current generated application migration IDs are PostgreSQL `20260811202610`, SQLite `20260811202805`, SQL Server `20260811202946`, MariaDB `20260811203009`, and MySQL `20260811203034`; actual EF has-pending checks pass for all five. Broad Persistence reached 811/988 with 174 known cascade failures and 3 skips. Broad API reached 2,192/2,210 before two Phase 12 contract fixes; focused owned failures are green after repair, but no full API rerun is claimed. Browser was blocked by persisted PostgreSQL `28P01` and RabbitMQ `ACCESS_REFUSED`; resources were stopped safely. No live Google tenant proof is claimed. Final requirements, security, and quality implementation reviewers all returned `APPROVE`; receipts are in [Phase 12 Final Review Receipts](../../../.omo/start-work/artifacts/phase12/final-review.md).
+
+### ⏭️ NEXT
+
+Start Phase 13 consent, attendee-data surfaces, and audited exports.
+
+## PHASE 11 MICROSOFT FORMS — TASKS 11.1–11.4 COMPLETE (2026-08-11 Europe/Brussels)
+
+Microsoft Forms is pinned to `MICROSOFT_FORMS|MICROSOFT_365|POWER_AUTOMATE_V1|ISLAMU_EVENT_MICROSOFT_FORMS_V1|2026-08-11`. The descriptor advertises only link, embed, manual import, callback verification, and bounded completion automation. It claims no Forms response API, native webhook, schema read, form provisioning, subscription management, or exactly-once delivery.
+
+The organizer creates one required short-answer correlation question. ISLAMU launches the Form with a visible `attemptId|attemptToken` value; Power Automate splits it into the callback envelope, and the fenced Application worker validates the raw capability token against the pinned attempt before completion-only persistence. Callback intake uses a binding-scoped `X-ISLAMU-Event-Callback-Key`, constant-time comparison, exact tuple/form/binding/contract checks, a five-minute timestamp window, and `formId:responseId` idempotency.
+
+Studio now round-trips the complete provider connection tuple, management/public URLs, workspace ID, provider form ID, provider revision, connector contract, and callback-secret fields instead of leaving Microsoft setup unreachable. The existing HAL-gated mapping editor remains the setup authority. Publish preflight requires callback mode, completion-only trust, `POWER_AUTOMATE_V1`, a valid tenant callback secret, all required canonical mappings, the correlation mapping, and one successfully processed verified callback. The persistence query excludes manual-import evidence and pending callback effects from that gate.
+
+Manual reconciliation reads an uploaded UTF-8 CSV through the storage-object query, accepts at most 1 MiB and 500 rows, requires `responseId`, `attemptId`, `attemptToken`, and `timestamp`, and skips existing binding/response identities. It validates and materializes every row before a Unit of Work transaction persists messages and `registration.provider_submission` effects, so an invalid later row leaves zero artifacts. Each retained import message carries `X-Registration-Callback-Provider` from the bound connection and the protected `X-Registration-Verification-Receipt`. The shared effect processor allows the explicit `registration.provider_manual_import` source event only for that submission effect and still requires exact provider, message ID, and payload hash identity before downstream tuple resolution. `docs/integrations/microsoft-forms-flow-template.md` records the operator flow and explains why a real tenant must generate its own Power Platform solution export.
+
+Verification: Release build completed with zero errors; Application 3,538/3,538, Infrastructure 1,184/1,184, Blazor Client 2,330 passed with one governed skip, and the targeted Persistence callback-gate regression passed 1/1. Changed C# files report no LSP errors and `git diff --check` is clean. Final independent Oracle review returned `APPROVE` after checking the repaired producer-to-worker path. A live browser attempt was blocked by pre-existing persisted PostgreSQL/RabbitMQ credential drift; those volumes were left untouched. A live Microsoft 365 tenant was not used, and no environment-generated Power Platform package is claimed.
+
+### ⏭️ NEXT
+
+Start Phase 12 Google Forms from its OAuth and current-API conformance re-verification gate.
+
+## PHASE 10 FORMBricks — TASKS 10.1–10.6 COMPLETE (2026-08-11 Europe/Brussels)
+
+Task 10.6 adds explicit `RegistrationProviderCollectionModeEnum.MirrorOnly = 4` with runtime lookup seeding. Mirror bindings use the native ISLAMU renderer and canonical submission transaction, then reuse the existing fenced provider write-effect worker after commit. Only mapped `IsProviderTransferAllowed` answers reach Formbricks; remote failure remains isolated from accepted ISLAMU state.
+
+The optional `formbricks` Compose profile and Aspire `FullLocal` graph contain isolated PostgreSQL, Valkey, Formbricks/Hub migrations, Hub, Cube, and Formbricks `5.2.2`. Formbricks, Hub, and Valkey are digest-pinned; PostgreSQL and Cube use explicit version tags. Default Compose and lighter Aspire modes remain unchanged. Required bootstrap secrets are documented in `.env.example`; Compose fails closed when they are blank, while local-full Aspire generates persistent secret parameters.
+
+Capability truth remains fail-closed: the pinned tuples do not advertise file upload or multilingual forms, the adapter rejects file fields, and a per-version language tag is not treated as multilingual provider provisioning. Focused Application, Infrastructure, and Architecture tests pass; Compose config/profile service enumeration passes; live profile startup completed both migrations, reached healthy dependencies, returned `200` from root/login, and returned `404` for an invalid route.
+
+### ⏭️ NEXT
+
+Start Phase 11 Microsoft Forms work from its own conformance re-verification task; Phase 10 is closed and green.
+
+## PHASE 10 FORMBricks — TASKS 10.1–10.5 COMPLETE (2026-08-10 Europe/Brussels)
+
+Formbricks cloud/self-hosted tuples are pinned and the callback, public launch, schema import, and managed-provisioning paths are implemented. Guest/auth provider launch persists a `RegistrationAttempt`, carries its ID through the `islamuEventAttemptId` Formbricks hidden field, and exposes only a five-minute opaque same-origin BFF iframe ticket. Standard Webhooks receipts are durable and submission fetch propagates provider timestamps into the existing normalization/finalization pipeline.
+
+External schema import creates a published immutable `RegistrationFormVersion` with `ExternalImported` provenance, provider connection/survey/revision lineage, a canonical snapshot revision, and deterministic mapping-revision hash. Exact replays return the existing version without writes; acceptable drift publishes the next frozen version; blocking drift stores one idempotent revision and publishes nothing. Revision identity is scoped by tenant, connection, survey, and canonical hash so equal schemas on different surveys coexist.
+
+Task 10.5 adds headless `ProviderApi` collection through the existing native ISLAMU renderer. Launch pins the provider binding on the attempt; accepted canonical answers, consent, fulfillment/finalization state, and an identifiers-only `RegistrationProviderSubmissionWriteEffect` commit atomically. The API worker claims that effect with a lease token and monotonic fence, rebuilds only mapped `IsProviderTransferAllowed` answers after commit, and invokes the Formbricks sink server-side. Retryable pre-handoff failures back off, permanent failures dead-letter, and ambiguous post-handoff outcomes park without automatic retry because Formbricks response creation has no proven idempotency contract. Remote failure never rolls back the accepted submission or finalized order.
+
+Verification: the full Release solution builds with zero errors. Domain 740/740, Application 3,531/3,531, Secrets 224/224, non-runtime Infrastructure 1,181/1,181, focused CQRS architecture 5/5, provider write-effect service 3/3, write-effect domain 2/2, Formbricks adapter 13/13, provider-effect handler 15/15, and native registration HTTP 15/15 pass. The HTTP lane includes a real PostgreSQL callback replay proving one canonical submission, typed answer, fulfillment, finalization effect, and completed effect pointer. That proof found and fixed a production concurrency-fence defect: provider callback processing now captures the attempt stamp before `SubmitProvider` mutates it and passes that expected stamp into the repository's atomic claim. PostgreSQL, MySQL, MariaDB, SQLite, and SQL Server migrations were generated with EF tooling and all five report no pending model changes. The broad persistence suite reached 798 passes and 3 governed skips but is not green in this shared workspace: unrelated provider-connection MySQL index width, secret-binding seed state, and cascading EF `ManyServiceProvidersCreatedWarning` failures account for the reported failures; runtime provider inputs are unavailable.
+
+### ⏭️ NEXT
+
+Implement Task 10.6 mirror sink/self-host profile and close the remaining file/multilingual conformance boundaries without weakening transfer governance.
 
 ## PHASE 9 COMPLETE — DOCS CLOSEOUT (2026-08-10 Europe/Brussels)
 

@@ -77,6 +77,20 @@ Non-negotiable safety boundary: doctor does **not** repair configuration, genera
 
 Sensitive values are redacted before output. Do not add checks that print raw connection strings, passwords, setup secrets, bearer tokens, cookies, authorization headers, or secret-provider responses.
 
+## Registration Provider Subscription Lifecycle
+
+`RegistrationProviderSubscriptionLifecycleWorker` polls every 30 seconds and delegates all work to `RegistrationProviderSubscriptionLifecycleService`. The service processes provider subscription renewals and response sweeps with two-minute leases, generation fencing, and bounded metrics (`explore.registration_provider_subscriptions.operations`).
+
+Current Google Forms behavior:
+
+- watches are created or renewed through the pinned Google Forms API origin and are renewed two days before their expected seven-day expiry;
+- Pub/Sub callbacks are notify-only and enqueue `registration.provider_response_sweep` after Google OIDC audience/email verification;
+- newly provisioned subscription state is marked sweep-due immediately, then normal recovery sweeps run six hours after each successful non-continuation sweep;
+- sweeps query responses from the stored checkpoint minus a ten-minute overlap, page up to five pages of 100 responses, persist identifiers-only submission effects before checkpoint settlement, and store an opaque `registration-provider-cursor:` when a continuation batch must run immediately;
+- renewal and sweep failures have independent persisted counters, back off exponentially up to 60 minutes, and health/queue surfaces expose only bounded status, lag, generation, timestamps, issue codes, failure category, and queue depth.
+
+Do not treat a green lifecycle worker as live Google proof. Operators must still configure OAuth, Pub/Sub topic IAM, push subscription OIDC audience, and service-account email in their Google Cloud/Workspace tenant. See [Google Forms Pub/Sub Integration](integrations/google-forms-pubsub.md).
+
 ## Local Startup Topology (Aspire)
 
 `Explore.AppHost/AppHost.cs` selects local infrastructure from `ISLAMU_ASPIRE_MODE`, normally through `Explore.AppHost/Properties/launchSettings.json`; `Hosting:Topology` separately selects the web-process topology:

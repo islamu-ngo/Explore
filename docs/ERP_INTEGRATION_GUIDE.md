@@ -145,7 +145,8 @@ Content-Type: application/json
 
 Per [ADR-021](adr/ADR-021-keycloak-authentication-standard.md), ISLAMU Event standardizes on Keycloak as the mandatory identity and authentication plane across all SaaS, BYOC, and on-premise deployment tiers (see also [SECURITY-MODEL.md](SECURITY-MODEL.md)):
 
-* **One Identity Plane per ERP Deployment**: All installed ERP modules (Accounting, CRM, Events) share a single Keycloak deployment and user session.
+* **Single Identity Plane**: When integrated into an enterprise platform or host application, ISLAMU Event shares the central Keycloak identity plane, providing seamless single sign-on (SSO).
+
 * **Seamless Session Passing**: When the user clicks the "Events" tab in the ERP, the browser passes the existing Keycloak session cookie, completing OIDC Authorization Code Flow with PKCE without requesting user credentials again.
 * **Separation of Concerns**: Keycloak manages authentication, enterprise IdP federation (OIDC/SAML/AD), MFA, and sessions; Cerbos manages fine-grained business action authorization PDP decisions; ERP domain databases manage tenant entitlements and module license keys.
 
