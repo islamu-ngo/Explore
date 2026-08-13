@@ -652,12 +652,14 @@ public sealed class RegistrationParticipantCommandService(
         }
 
         var parsed = new List<CompanyRegistrationAssignmentInputDto>(lines.Length - 1);
+        var assignmentKeys = new HashSet<(Guid RegistrationOrderLineId, int Ordinal)>();
         foreach (string line in lines.Skip(1))
         {
             string[] cells = line.Split(',', StringSplitOptions.TrimEntries);
             if (cells.Length != 6 || cells.Any(IsFormulaCell) ||
                 !Guid.TryParse(cells[0], out Guid lineId) || !int.TryParse(cells[1], out int ordinal) ||
-                !int.TryParse(cells[2], out int participantTypeId) || string.IsNullOrWhiteSpace(cells[3]))
+                !int.TryParse(cells[2], out int participantTypeId) || string.IsNullOrWhiteSpace(cells[3]) ||
+                !assignmentKeys.Add((lineId, ordinal)))
             {
                 error = "Company assignment CSV is invalid.";
                 return false;

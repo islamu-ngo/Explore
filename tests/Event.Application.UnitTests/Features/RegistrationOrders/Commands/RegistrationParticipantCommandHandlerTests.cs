@@ -220,6 +220,35 @@ public sealed class RegistrationParticipantCommandHandlerTests
         await Assert.That(fixture.AmendmentRows).IsEmpty();
     }
 
+    [Test]
+    public async Task CompanyCsvImport_DuplicateAssignmentKeyWritesNothing()
+    {
+        var fixture = new HandlerFixture(
+            1,
+            ParticipantDataCollectionModeEnum.DeferredAssignment,
+            1,
+            ParticipantDataCollectionModeEnum.PerTicketOptional,
+            bookingPartyType: BookingPartyTypeEnum.Company);
+        await fixture.BulkDefer.Handle(new BulkDeferRegistrationTicketsCommand(
+            fixture.Order.Id,
+            [new(fixture.FirstLine.Id, 1)],
+            fixture.UtcNow.AddDays(7)), CancellationToken.None);
+        await fixture.Lifecycle.FinalizeFreeAsync(fixture.Order.Id, fixture.TenantId, CancellationToken.None);
+        int originalAssignmentCount = fixture.AssignmentRows.Count;
+        string csv = string.Join('\n',
+            "registrationOrderLineId,ordinal,participantTypeId,displayName,email,phone",
+            $"{fixture.FirstLine.Id},1,{(int)ParticipantTypeEnum.Employee},Employee One,one@example.test,",
+            $"{fixture.FirstLine.Id},1,{(int)ParticipantTypeEnum.Employee},Employee Two,two@example.test,");
+
+        BaseCommandResponse<CompanyRegistrationAssignmentCsvResultDto> imported = await fixture.ImportCompanyCsv.Handle(
+            new ImportCompanyRegistrationAssignmentsCsvCommand(fixture.EventId, fixture.Order.Id, csv, "import-duplicate"), CancellationToken.None);
+
+        await Assert.That(imported.Success).IsFalse();
+        await Assert.That(fixture.ParticipantRows.Where(value => value.ParticipantTypeId == (int)ParticipantTypeEnum.Employee)).IsEmpty();
+        await Assert.That(fixture.AssignmentRows).Count().IsEqualTo(originalAssignmentCount);
+        await Assert.That(fixture.AmendmentRows).IsEmpty();
+    }
+
     private sealed class HandlerFixture
     {
         private readonly IRegistrationInventoryRepository _inventory = Substitute.For<IRegistrationInventoryRepository>();
