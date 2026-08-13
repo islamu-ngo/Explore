@@ -76,8 +76,6 @@ public sealed class RegistrationAttemptConfiguration : IEntityTypeConfiguration<
             nameof(RegistrationAttempt.RegistrationOrderId),
             nameof(RegistrationAttempt.RegistrationWorkflowId),
             nameof(RegistrationAttempt.RegistrationRequirementId),
-            nameof(RegistrationAttempt.RegistrationChannelId),
-            nameof(RegistrationAttempt.RegistrationFormId),
             nameof(RegistrationAttempt.Id));
         builder.HasOne<Tenant>().WithMany().HasForeignKey(attempt => attempt.TenantId).OnDelete(DeleteBehavior.Restrict);
         builder.HasOne<Event>().WithMany().HasForeignKey(attempt => new { attempt.TenantId, attempt.EventId })
@@ -109,8 +107,6 @@ public sealed class RegistrationAttemptConfiguration : IEntityTypeConfiguration<
                 attempt.RegistrationOrderId,
                 attempt.RegistrationWorkflowId,
                 attempt.RegistrationRequirementId,
-                attempt.RegistrationChannelId,
-                attempt.RegistrationFormId,
                 attempt.SupersededByRegistrationAttemptId
             })
             .HasPrincipalKey(replacement => new
@@ -120,8 +116,6 @@ public sealed class RegistrationAttemptConfiguration : IEntityTypeConfiguration<
                 replacement.RegistrationOrderId,
                 replacement.RegistrationWorkflowId,
                 replacement.RegistrationRequirementId,
-                replacement.RegistrationChannelId,
-                replacement.RegistrationFormId,
                 replacement.Id
             }).OnDelete(DeleteBehavior.Restrict);
         builder.HasIndex(attempt => new { attempt.TenantId, attempt.CapabilityTokenHash }).IsUnique();

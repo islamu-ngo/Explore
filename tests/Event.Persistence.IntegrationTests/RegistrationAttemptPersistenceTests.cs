@@ -102,7 +102,7 @@ public sealed class RegistrationAttemptPersistenceCharacterizationTests
     }
 
     [Test]
-    public async Task AttemptSupersessionAllowsReplacementFormVersion()
+    public async Task AttemptSupersessionAllowsReplacementChannelAndForm()
     {
         await using ExploreDbContext context = CreateModelContext();
         IForeignKey supersessionForeignKey = context.Model.FindEntityType(typeof(RegistrationAttempt))!.GetForeignKeys()
@@ -110,8 +110,7 @@ public sealed class RegistrationAttemptPersistenceCharacterizationTests
 
         await Assert.That(supersessionForeignKey.Properties.Select(property => property.Name).SequenceEqual([
                 "TenantId", "EventId", "RegistrationOrderId", "RegistrationWorkflowId",
-                "RegistrationRequirementId", "RegistrationChannelId", "RegistrationFormId",
-                "SupersededByRegistrationAttemptId"
+                "RegistrationRequirementId", "SupersededByRegistrationAttemptId"
             ])).IsTrue();
     }
 

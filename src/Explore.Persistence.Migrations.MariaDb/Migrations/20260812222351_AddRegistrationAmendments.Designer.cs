@@ -10,10 +10,10 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 #nullable disable
 
-namespace Explore.Persistence.Migrations.MySql.Migrations
+namespace Explore.Persistence.Migrations.MariaDb.Migrations
 {
     [DbContext(typeof(ExploreDbContext))]
-    [Migration("20260812201838_AddRegistrationAmendments")]
+    [Migration("20260812222351_AddRegistrationAmendments")]
     partial class AddRegistrationAmendments
     {
         /// <inheritdoc />
@@ -17468,8 +17468,8 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                     b.HasAlternateKey("TenantId", "Id")
                         .HasName("ak_registration_attempts_tenant_id_id");
 
-                    b.HasAlternateKey("TenantId", "EventId", "RegistrationOrderId", "RegistrationWorkflowId", "RegistrationRequirementId", "RegistrationChannelId", "RegistrationFormId", "Id")
-                        .HasName("AK_ie_registration_attempts_tenant_id_event_id_registra_AA07630B");
+                    b.HasAlternateKey("TenantId", "EventId", "RegistrationOrderId", "RegistrationWorkflowId", "RegistrationRequirementId", "Id")
+                        .HasName("AK_ie_registration_attempts_tenant_id_event_id_registra_6204DEE0");
 
                     b.HasAlternateKey("TenantId", "EventId", "RegistrationOrderId", "RegistrationWorkflowId", "RegistrationRequirementId", "RegistrationChannelId", "RegistrationFormId", "RegistrationFormVersionId", "Id")
                         .HasName("AK_ie_registration_attempts_tenant_id_event_id_registra_B2C42B3B");
@@ -17493,11 +17493,11 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                     b.HasIndex("TenantId", "EventId", "RegistrationWorkflowId", "RegistrationOrderId")
                         .HasDatabaseName("IX_ie_registration_attempts_tenant_id_event_id_registra_EB2E7BB5");
 
+                    b.HasIndex("TenantId", "EventId", "RegistrationOrderId", "RegistrationWorkflowId", "RegistrationRequirementId", "SupersededByRegistrationAttemptId")
+                        .HasDatabaseName("IX_ie_registration_attempts_tenant_id_event_id_registra_645AF02E");
+
                     b.HasIndex("TenantId", "EventId", "RegistrationWorkflowId", "RegistrationRequirementId", "RegistrationChannelId", "RegistrationProviderBindingKey")
                         .HasDatabaseName("IX_ie_registration_attempts_tenant_id_event_id_registra_2F95627C");
-
-                    b.HasIndex("TenantId", "EventId", "RegistrationOrderId", "RegistrationWorkflowId", "RegistrationRequirementId", "RegistrationChannelId", "RegistrationFormId", "SupersededByRegistrationAttemptId")
-                        .HasDatabaseName("IX_ie_registration_attempts_tenant_id_event_id_registra_0925A19F");
 
                     b.ToTable("ie_registration_attempts", null, t =>
                         {
@@ -35547,6 +35547,13 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                         .IsRequired()
                         .HasConstraintName("FK_ie_registration_attempts_ie_registration_requirement_FE81F248");
 
+                    b.HasOne("Explore.Domain.RegistrationAttempt", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "EventId", "RegistrationOrderId", "RegistrationWorkflowId", "RegistrationRequirementId", "SupersededByRegistrationAttemptId")
+                        .HasPrincipalKey("TenantId", "EventId", "RegistrationOrderId", "RegistrationWorkflowId", "RegistrationRequirementId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("FK_ie_registration_attempts_ie_registration_attempts_te_D463DCF8");
+
                     b.HasOne("Explore.Domain.RegistrationChannel", null)
                         .WithMany()
                         .HasForeignKey("TenantId", "EventId", "RegistrationWorkflowId", "RegistrationRequirementId", "RegistrationChannelId", "RegistrationProviderBindingKey")
@@ -35554,13 +35561,6 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasConstraintName("FK_ie_registration_attempts_ie_registration_channels_te_E4B9BB9A");
-
-                    b.HasOne("Explore.Domain.RegistrationAttempt", null)
-                        .WithMany()
-                        .HasForeignKey("TenantId", "EventId", "RegistrationOrderId", "RegistrationWorkflowId", "RegistrationRequirementId", "RegistrationChannelId", "RegistrationFormId", "SupersededByRegistrationAttemptId")
-                        .HasPrincipalKey("TenantId", "EventId", "RegistrationOrderId", "RegistrationWorkflowId", "RegistrationRequirementId", "RegistrationChannelId", "RegistrationFormId", "Id")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("FK_ie_registration_attempts_ie_registration_attempts_te_CFDDF9A3");
 
                     b.Navigation("Status");
                 });

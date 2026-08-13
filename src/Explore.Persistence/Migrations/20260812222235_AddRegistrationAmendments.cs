@@ -11,6 +11,27 @@ namespace Explore.Persistence.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
+            migrationBuilder.DropForeignKey(
+                name: "fk_registration_attempts_registration_attempts_tenant_id_event",
+                schema: "islamu_event",
+                table: "registration_attempts");
+
+            migrationBuilder.DropUniqueConstraint(
+                name: "ak_registration_attempts_tenant_id_event_id_registration_order",
+                schema: "islamu_event",
+                table: "registration_attempts");
+
+            migrationBuilder.DropIndex(
+                name: "ix_registration_attempts_tenant_id_event_id_registration_order",
+                schema: "islamu_event",
+                table: "registration_attempts");
+
+            migrationBuilder.AddUniqueConstraint(
+                name: "ak_registration_attempts_tenant_id_event_id_registration_order",
+                schema: "islamu_event",
+                table: "registration_attempts",
+                columns: new[] { "tenant_id", "event_id", "registration_order_id", "registration_workflow_id", "registration_requirement_id", "id" });
+
             migrationBuilder.CreateTable(
                 name: "registration_amendments",
                 schema: "islamu_event",
@@ -65,6 +86,12 @@ namespace Explore.Persistence.Migrations
                 });
 
             migrationBuilder.CreateIndex(
+                name: "ix_registration_attempts_tenant_id_event_id_registration_order",
+                schema: "islamu_event",
+                table: "registration_attempts",
+                columns: new[] { "tenant_id", "event_id", "registration_order_id", "registration_workflow_id", "registration_requirement_id", "superseded_by_registration_attempt_id" });
+
+            migrationBuilder.CreateIndex(
                 name: "ix_registration_amendments_tenant_id_event_id_registration_ord",
                 schema: "islamu_event",
                 table: "registration_amendments",
@@ -82,14 +109,61 @@ namespace Explore.Persistence.Migrations
                 schema: "islamu_event",
                 table: "registration_amendments",
                 columns: new[] { "tenant_id", "registration_order_line_id", "ordinal" });
+
+            migrationBuilder.AddForeignKey(
+                name: "fk_registration_attempts_registration_attempts_tenant_id_event",
+                schema: "islamu_event",
+                table: "registration_attempts",
+                columns: new[] { "tenant_id", "event_id", "registration_order_id", "registration_workflow_id", "registration_requirement_id", "superseded_by_registration_attempt_id" },
+                principalSchema: "islamu_event",
+                principalTable: "registration_attempts",
+                principalColumns: new[] { "tenant_id", "event_id", "registration_order_id", "registration_workflow_id", "registration_requirement_id", "id" },
+                onDelete: ReferentialAction.Restrict);
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
+            migrationBuilder.DropForeignKey(
+                name: "fk_registration_attempts_registration_attempts_tenant_id_event",
+                schema: "islamu_event",
+                table: "registration_attempts");
+
             migrationBuilder.DropTable(
                 name: "registration_amendments",
                 schema: "islamu_event");
+
+            migrationBuilder.DropUniqueConstraint(
+                name: "ak_registration_attempts_tenant_id_event_id_registration_order",
+                schema: "islamu_event",
+                table: "registration_attempts");
+
+            migrationBuilder.DropIndex(
+                name: "ix_registration_attempts_tenant_id_event_id_registration_order",
+                schema: "islamu_event",
+                table: "registration_attempts");
+
+            migrationBuilder.AddUniqueConstraint(
+                name: "ak_registration_attempts_tenant_id_event_id_registration_order",
+                schema: "islamu_event",
+                table: "registration_attempts",
+                columns: new[] { "tenant_id", "event_id", "registration_order_id", "registration_workflow_id", "registration_requirement_id", "registration_channel_id", "registration_form_id", "id" });
+
+            migrationBuilder.CreateIndex(
+                name: "ix_registration_attempts_tenant_id_event_id_registration_order",
+                schema: "islamu_event",
+                table: "registration_attempts",
+                columns: new[] { "tenant_id", "event_id", "registration_order_id", "registration_workflow_id", "registration_requirement_id", "registration_channel_id", "registration_form_id", "superseded_by_registration_attempt_id" });
+
+            migrationBuilder.AddForeignKey(
+                name: "fk_registration_attempts_registration_attempts_tenant_id_event",
+                schema: "islamu_event",
+                table: "registration_attempts",
+                columns: new[] { "tenant_id", "event_id", "registration_order_id", "registration_workflow_id", "registration_requirement_id", "registration_channel_id", "registration_form_id", "superseded_by_registration_attempt_id" },
+                principalSchema: "islamu_event",
+                principalTable: "registration_attempts",
+                principalColumns: new[] { "tenant_id", "event_id", "registration_order_id", "registration_workflow_id", "registration_requirement_id", "registration_channel_id", "registration_form_id", "id" },
+                onDelete: ReferentialAction.Restrict);
         }
     }
 }

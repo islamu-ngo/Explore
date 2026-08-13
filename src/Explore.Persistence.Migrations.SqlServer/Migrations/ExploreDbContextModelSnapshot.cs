@@ -17453,11 +17453,11 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                     b.HasAlternateKey("TenantId", "Id")
                         .HasName("ak_registration_attempts_tenant_id_id");
 
-                    b.HasAlternateKey("TenantId", "EventId", "RegistrationOrderId", "RegistrationWorkflowId", "RegistrationRequirementId", "RegistrationChannelId", "RegistrationFormId", "Id")
-                        .HasName("ak_registration_attempts_tenant_id_event_id_registration_order_id_registration_workflow_id_registration_requirement_id_registra");
+                    b.HasAlternateKey("TenantId", "EventId", "RegistrationOrderId", "RegistrationWorkflowId", "RegistrationRequirementId", "Id")
+                        .HasName("ak_registration_attempts_tenant_id_event_id_registration_order_id_registration_workflow_id_registration_requirement_id_id");
 
                     b.HasAlternateKey("TenantId", "EventId", "RegistrationOrderId", "RegistrationWorkflowId", "RegistrationRequirementId", "RegistrationChannelId", "RegistrationFormId", "RegistrationFormVersionId", "Id")
-                        .HasName("ak_registration_attempts_tenant_id_event_id_registration_order_id_registration_workflow_id_registration_requirement_id_registra1");
+                        .HasName("ak_registration_attempts_tenant_id_event_id_registration_order_id_registration_workflow_id_registration_requirement_id_registra");
 
                     b.HasIndex("StatusId")
                         .HasDatabaseName("ix_registration_attempts_status_id");
@@ -17478,11 +17478,11 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                     b.HasIndex("TenantId", "EventId", "RegistrationWorkflowId", "RegistrationOrderId")
                         .HasDatabaseName("ix_registration_attempts_tenant_id_event_id_registration_workflow_id_registration_order_id");
 
+                    b.HasIndex("TenantId", "EventId", "RegistrationOrderId", "RegistrationWorkflowId", "RegistrationRequirementId", "SupersededByRegistrationAttemptId")
+                        .HasDatabaseName("ix_registration_attempts_tenant_id_event_id_registration_order_id_registration_workflow_id_registration_requirement_id_supersed");
+
                     b.HasIndex("TenantId", "EventId", "RegistrationWorkflowId", "RegistrationRequirementId", "RegistrationChannelId", "RegistrationProviderBindingKey")
                         .HasDatabaseName("ix_registration_attempts_tenant_id_event_id_registration_workflow_id_registration_requirement_id_registration_channel_id_regist");
-
-                    b.HasIndex("TenantId", "EventId", "RegistrationOrderId", "RegistrationWorkflowId", "RegistrationRequirementId", "RegistrationChannelId", "RegistrationFormId", "SupersededByRegistrationAttemptId")
-                        .HasDatabaseName("ix_registration_attempts_tenant_id_event_id_registration_order_id_registration_workflow_id_registration_requirement_id_registra");
 
                     b.ToTable("registration_attempts", "islamu_event", t =>
                         {
@@ -35506,6 +35506,13 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         .IsRequired()
                         .HasConstraintName("fk_registration_attempts_registration_requirements_tenant_id_event_id_registration_workflow_id_registration_requirement_id");
 
+                    b.HasOne("Explore.Domain.RegistrationAttempt", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "EventId", "RegistrationOrderId", "RegistrationWorkflowId", "RegistrationRequirementId", "SupersededByRegistrationAttemptId")
+                        .HasPrincipalKey("TenantId", "EventId", "RegistrationOrderId", "RegistrationWorkflowId", "RegistrationRequirementId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_registration_attempts_registration_attempts_tenant_id_event_id_registration_order_id_registration_workflow_id_registration_r");
+
                     b.HasOne("Explore.Domain.RegistrationChannel", null)
                         .WithMany()
                         .HasForeignKey("TenantId", "EventId", "RegistrationWorkflowId", "RegistrationRequirementId", "RegistrationChannelId", "RegistrationProviderBindingKey")
@@ -35513,13 +35520,6 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasConstraintName("fk_registration_attempts_registration_channels_tenant_id_event_id_registration_workflow_id_registration_requirement_id_registra");
-
-                    b.HasOne("Explore.Domain.RegistrationAttempt", null)
-                        .WithMany()
-                        .HasForeignKey("TenantId", "EventId", "RegistrationOrderId", "RegistrationWorkflowId", "RegistrationRequirementId", "RegistrationChannelId", "RegistrationFormId", "SupersededByRegistrationAttemptId")
-                        .HasPrincipalKey("TenantId", "EventId", "RegistrationOrderId", "RegistrationWorkflowId", "RegistrationRequirementId", "RegistrationChannelId", "RegistrationFormId", "Id")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_registration_attempts_registration_attempts_tenant_id_event_id_registration_order_id_registration_workflow_id_registration_r");
 
                     b.Navigation("Status");
                 });

@@ -11,6 +11,23 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
+            migrationBuilder.DropForeignKey(
+                name: "FK_ie_registration_attempts_ie_registration_attempts_te_CFDDF9A3",
+                table: "ie_registration_attempts");
+
+            migrationBuilder.DropUniqueConstraint(
+                name: "AK_ie_registration_attempts_tenant_id_event_id_registra_AA07630B",
+                table: "ie_registration_attempts");
+
+            migrationBuilder.DropIndex(
+                name: "IX_ie_registration_attempts_tenant_id_event_id_registra_0925A19F",
+                table: "ie_registration_attempts");
+
+            migrationBuilder.AddUniqueConstraint(
+                name: "AK_ie_registration_attempts_tenant_id_event_id_registra_6204DEE0",
+                table: "ie_registration_attempts",
+                columns: new[] { "tenant_id", "event_id", "registration_order_id", "registration_workflow_id", "registration_requirement_id", "id" });
+
             migrationBuilder.CreateTable(
                 name: "ie_registration_amendments",
                 columns: table => new
@@ -66,6 +83,11 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                 .Annotation("MySql:CharSet", "utf8mb4");
 
             migrationBuilder.CreateIndex(
+                name: "IX_ie_registration_attempts_tenant_id_event_id_registra_645AF02E",
+                table: "ie_registration_attempts",
+                columns: new[] { "tenant_id", "event_id", "registration_order_id", "registration_workflow_id", "registration_requirement_id", "superseded_by_registration_attempt_id" });
+
+            migrationBuilder.CreateIndex(
                 name: "IX_ie_registration_amendments_tenant_id_event_id_regist_54C72C8E",
                 table: "ie_registration_amendments",
                 columns: new[] { "tenant_id", "event_id", "registration_order_id", "source", "lineage_key", "registration_order_line_id", "ordinal" },
@@ -80,13 +102,51 @@ namespace Explore.Persistence.Migrations.MariaDb.Migrations
                 name: "IX_ie_registration_amendments_tenant_id_registration_or_F1F61E8F",
                 table: "ie_registration_amendments",
                 columns: new[] { "tenant_id", "registration_order_id", "source", "lineage_key" });
+
+            migrationBuilder.AddForeignKey(
+                name: "FK_ie_registration_attempts_ie_registration_attempts_te_D463DCF8",
+                table: "ie_registration_attempts",
+                columns: new[] { "tenant_id", "event_id", "registration_order_id", "registration_workflow_id", "registration_requirement_id", "superseded_by_registration_attempt_id" },
+                principalTable: "ie_registration_attempts",
+                principalColumns: new[] { "tenant_id", "event_id", "registration_order_id", "registration_workflow_id", "registration_requirement_id", "id" },
+                onDelete: ReferentialAction.Restrict);
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
+            migrationBuilder.DropForeignKey(
+                name: "FK_ie_registration_attempts_ie_registration_attempts_te_D463DCF8",
+                table: "ie_registration_attempts");
+
             migrationBuilder.DropTable(
                 name: "ie_registration_amendments");
+
+            migrationBuilder.DropUniqueConstraint(
+                name: "AK_ie_registration_attempts_tenant_id_event_id_registra_6204DEE0",
+                table: "ie_registration_attempts");
+
+            migrationBuilder.DropIndex(
+                name: "IX_ie_registration_attempts_tenant_id_event_id_registra_645AF02E",
+                table: "ie_registration_attempts");
+
+            migrationBuilder.AddUniqueConstraint(
+                name: "AK_ie_registration_attempts_tenant_id_event_id_registra_AA07630B",
+                table: "ie_registration_attempts",
+                columns: new[] { "tenant_id", "event_id", "registration_order_id", "registration_workflow_id", "registration_requirement_id", "registration_channel_id", "registration_form_id", "id" });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_ie_registration_attempts_tenant_id_event_id_registra_0925A19F",
+                table: "ie_registration_attempts",
+                columns: new[] { "tenant_id", "event_id", "registration_order_id", "registration_workflow_id", "registration_requirement_id", "registration_channel_id", "registration_form_id", "superseded_by_registration_attempt_id" });
+
+            migrationBuilder.AddForeignKey(
+                name: "FK_ie_registration_attempts_ie_registration_attempts_te_CFDDF9A3",
+                table: "ie_registration_attempts",
+                columns: new[] { "tenant_id", "event_id", "registration_order_id", "registration_workflow_id", "registration_requirement_id", "registration_channel_id", "registration_form_id", "superseded_by_registration_attempt_id" },
+                principalTable: "ie_registration_attempts",
+                principalColumns: new[] { "tenant_id", "event_id", "registration_order_id", "registration_workflow_id", "registration_requirement_id", "registration_channel_id", "registration_form_id", "id" },
+                onDelete: ReferentialAction.Restrict);
         }
     }
 }

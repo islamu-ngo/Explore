@@ -12,7 +12,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Explore.Persistence.Migrations.Sqlite.Migrations
 {
     [DbContext(typeof(ExploreDbContext))]
-    [Migration("20260812201705_AddRegistrationAmendments")]
+    [Migration("20260812222358_AddRegistrationAmendments")]
     partial class AddRegistrationAmendments
     {
         /// <inheritdoc />
@@ -17439,8 +17439,8 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                     b.HasAlternateKey("TenantId", "Id")
                         .HasName("ak_registration_attempts_tenant_id_id");
 
-                    b.HasAlternateKey("TenantId", "EventId", "RegistrationOrderId", "RegistrationWorkflowId", "RegistrationRequirementId", "RegistrationChannelId", "RegistrationFormId", "Id")
-                        .HasName("ak_registration_attempts_tenant_id_event_id_registration_order_id_registration_workflow_id_registration_requirement_id_registration_channel_id_registration_form_id_id");
+                    b.HasAlternateKey("TenantId", "EventId", "RegistrationOrderId", "RegistrationWorkflowId", "RegistrationRequirementId", "Id")
+                        .HasName("ak_registration_attempts_tenant_id_event_id_registration_order_id_registration_workflow_id_registration_requirement_id_id");
 
                     b.HasAlternateKey("TenantId", "EventId", "RegistrationOrderId", "RegistrationWorkflowId", "RegistrationRequirementId", "RegistrationChannelId", "RegistrationFormId", "RegistrationFormVersionId", "Id")
                         .HasName("ak_registration_attempts_tenant_id_event_id_registration_order_id_registration_workflow_id_registration_requirement_id_registration_channel_id_registration_form_id_registration_form_version_id_id");
@@ -17464,11 +17464,11 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                     b.HasIndex("TenantId", "EventId", "RegistrationWorkflowId", "RegistrationOrderId")
                         .HasDatabaseName("ix_ie_registration_attempts_tenant_id_event_id_registration_workflow_id_registration_order_id");
 
+                    b.HasIndex("TenantId", "EventId", "RegistrationOrderId", "RegistrationWorkflowId", "RegistrationRequirementId", "SupersededByRegistrationAttemptId")
+                        .HasDatabaseName("ix_ie_registration_attempts_tenant_id_event_id_registration_order_id_registration_workflow_id_registration_requirement_id_superseded_by_registration_attempt_id");
+
                     b.HasIndex("TenantId", "EventId", "RegistrationWorkflowId", "RegistrationRequirementId", "RegistrationChannelId", "RegistrationProviderBindingKey")
                         .HasDatabaseName("ix_ie_registration_attempts_tenant_id_event_id_registration_workflow_id_registration_requirement_id_registration_channel_id_registration_provider_binding_key");
-
-                    b.HasIndex("TenantId", "EventId", "RegistrationOrderId", "RegistrationWorkflowId", "RegistrationRequirementId", "RegistrationChannelId", "RegistrationFormId", "SupersededByRegistrationAttemptId")
-                        .HasDatabaseName("ix_ie_registration_attempts_tenant_id_event_id_registration_order_id_registration_workflow_id_registration_requirement_id_registration_channel_id_registration_form_id_superseded_by_registration_attempt_id");
 
                     b.ToTable("ie_registration_attempts", null, t =>
                         {
@@ -35493,6 +35493,13 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .IsRequired()
                         .HasConstraintName("fk_ie_registration_attempts_registration_requirements_tenant_id_event_id_registration_workflow_id_registration_requirement_id");
 
+                    b.HasOne("Explore.Domain.RegistrationAttempt", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "EventId", "RegistrationOrderId", "RegistrationWorkflowId", "RegistrationRequirementId", "SupersededByRegistrationAttemptId")
+                        .HasPrincipalKey("TenantId", "EventId", "RegistrationOrderId", "RegistrationWorkflowId", "RegistrationRequirementId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_ie_registration_attempts_ie_registration_attempts_tenant_id_event_id_registration_order_id_registration_workflow_id_registration_requirement_id_superseded_by_registration_attempt_id");
+
                     b.HasOne("Explore.Domain.RegistrationChannel", null)
                         .WithMany()
                         .HasForeignKey("TenantId", "EventId", "RegistrationWorkflowId", "RegistrationRequirementId", "RegistrationChannelId", "RegistrationProviderBindingKey")
@@ -35500,13 +35507,6 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasConstraintName("fk_ie_registration_attempts_registration_channels_tenant_id_event_id_registration_workflow_id_registration_requirement_id_registration_channel_id_registration_provider_binding_key");
-
-                    b.HasOne("Explore.Domain.RegistrationAttempt", null)
-                        .WithMany()
-                        .HasForeignKey("TenantId", "EventId", "RegistrationOrderId", "RegistrationWorkflowId", "RegistrationRequirementId", "RegistrationChannelId", "RegistrationFormId", "SupersededByRegistrationAttemptId")
-                        .HasPrincipalKey("TenantId", "EventId", "RegistrationOrderId", "RegistrationWorkflowId", "RegistrationRequirementId", "RegistrationChannelId", "RegistrationFormId", "Id")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_ie_registration_attempts_ie_registration_attempts_tenant_id_event_id_registration_order_id_registration_workflow_id_registration_requirement_id_registration_channel_id_registration_form_id_superseded_by_registration_attempt_id");
 
                     b.Navigation("Status");
                 });
