@@ -69,7 +69,7 @@ Use source anchors for exact facts:
 | Configuration keys | binding and compatibility code, then `docs/CONFIGURATION.md` |
 | Secrets | `Explore.Domain/Secrets/SecretDefinitionRegistry.cs`, secret provider code, then `docs/SECRETS.md` |
 | Test commands | `docs/TESTING.md`, `.github/workflows/`, test project files |
-| AI-agent behavior | `AGENTS.md`, `AGENTS.md`, `.claude/contract/` |
+| AI-agent behavior | `AGENTS.md`, `AGENTS.md`, `.agents/contract/` |
 
 If an anchor and doc disagree, update the doc or explicitly mark the mismatch as a follow-up. Do not preserve stale examples.
 

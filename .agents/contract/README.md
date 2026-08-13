@@ -59,5 +59,5 @@ The **Contribution Contract** is this repository's operating model for AI-assist
 - `AGENTS.md` — tool-neutral root entrypoint for any AI agent or contributor
 - `AGENTS.md` — Claude-specific bootloader shim
 - `docs/index.md` — canonical navigation root for the docs tree
-- `.claude/rules/` — path-scoped rule files, referenced from `intents.yaml`
+- `.agents/rules/` — path-scoped rule files, referenced from `intents.yaml`
 - `.agents/benchmarks/cold-start-tasks.yaml` — evaluation harness validating cold-start agent performance against these intents

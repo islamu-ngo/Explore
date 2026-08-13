@@ -442,42 +442,42 @@ For detailed code patterns and examples, see:
 
 ## AI Contribution Routing
 
-Every change — human or agent — routes through the Contribution Contract before editing. The contract answers **eight** deterministic questions (intent, rules, must-read files, may-change paths, must-run tests, docs-to-update, PR checklist, forbidden-without-approval). See [`AGENTS.md`](../AGENTS.md) §1 and [`.claude/contract/README.md`](../.claude/contract/README.md).
+Every change — human or agent — routes through the Contribution Contract before editing. The contract answers **eight** deterministic questions (intent, rules, must-read files, may-change paths, must-run tests, docs-to-update, PR checklist, forbidden-without-approval). See [`AGENTS.md`](../AGENTS.md) §1 and [`.agents/contract/README.md`](../.agents/contract/README.md).
 
 ### Intent Classification (Decision Table)
 
 | Signal You Observe | Primary Intent | Must-Read Starts With |
 |---|---|---|
-| Adding read endpoint | `add-get-endpoint` | `docs/API.md`, `.claude/rules/api-controllers.md` |
-| Adding/modifying mutation endpoint | `add-write-endpoint` | `docs/API.md`, `.claude/rules/api-controllers.md`, `auth-patterns` |
-| Adding HAL affordance / link-based button | `add-hal-link` | `.claude/rules/api-hateoas.md`, `auth-patterns` |
-| New MediatR command/query | `add-cqrs-handler` | `cqrs-mediatr-guidelines`, `.claude/rules/application-layer.md` |
-| New EF Core migration | `add-ef-migration` | `dotnet-efcore-guidelines`, `.claude/rules/efcore-migrations.md` |
-| Repository query change | `update-repository-query` | `dotnet-efcore-guidelines`, `.claude/rules/efcore-persistence.md` |
+| Adding read endpoint | `add-get-endpoint` | `docs/API.md`, `.agents/rules/api-controllers.md` |
+| Adding/modifying mutation endpoint | `add-write-endpoint` | `docs/API.md`, `.agents/rules/api-controllers.md`, `auth-patterns` |
+| Adding HAL affordance / link-based button | `add-hal-link` | `.agents/rules/api-hateoas.md`, `auth-patterns` |
+| New MediatR command/query | `add-cqrs-handler` | `cqrs-mediatr-guidelines`, `.agents/rules/application-layer.md` |
+| New EF Core migration | `add-ef-migration` | `dotnet-efcore-guidelines`, `.agents/rules/efcore-migrations.md` |
+| Repository query change | `update-repository-query` | `dotnet-efcore-guidelines`, `.agents/rules/efcore-persistence.md` |
 | Blazor component affordance gated by HAL links | `blazor-component-affordance` | `blazor-ui-conventions`, `blazor-bff-patterns` |
 | 401/403 BFF/API auth issue | `bff-auth-bug` | `auth-patterns`, `blazor-bff-patterns`, `docs/SECURITY-MODEL.md` |
 | Cerbos policy change | `cerbos-policy-change` | `docs/AUTHORIZATION_PATTERNS.md`, `auth-patterns` |
 | OpenAPI contract / breaking change | `openapi-contract-change` | `docs/API.md`, `docs/API_CHANGELOG.md` |
 | Setup-time external provider or infrastructure bootstrap | `external-infrastructure-bootstrap` | `docs/SECURITY-MODEL.md`, `docs/SECRETS.md`, `auth-patterns` |
 
-If no intent matches, stop and propose a new one per `.claude/contract/README.md`. Do not improvise.
+If no intent matches, stop and propose a new one per `.agents/contract/README.md`. Do not improvise.
 
 ### Path → Rule File (Auto-Loaded)
 
 | File You Edit | Rule File |
 |---|---|
-| `Explore.API/Controllers/**/*.cs` | [`.claude/rules/api-controllers.md`](../.claude/rules/api-controllers.md) |
-| `Explore.API/Hateoas/**/*.cs` | [`.claude/rules/api-hateoas.md`](../.claude/rules/api-hateoas.md) |
-| `Explore.Application/**/*.cs` | [`.claude/rules/application-layer.md`](../.claude/rules/application-layer.md) |
-| `Explore.Domain/**/*.cs` | [`.claude/rules/domain.md`](../.claude/rules/domain.md) |
-| `Explore.Persistence/**/*.cs` (non-migration) | [`.claude/rules/efcore-persistence.md`](../.claude/rules/efcore-persistence.md) |
-| `Explore.Persistence/Migrations/**/*.cs` | [`.claude/rules/efcore-migrations.md`](../.claude/rules/efcore-migrations.md) |
-| `Explore.Blazor/**/*` (BFF) | [`.claude/rules/blazor-server.md`](../.claude/rules/blazor-server.md) |
-| `Explore.Blazor.Client/**/*` (WASM) | [`.claude/rules/blazor-client.md`](../.claude/rules/blazor-client.md) |
-| `**/*Tests/**/*.cs`, `**/*UnitTests/**/*.cs`, `**/*IntegrationTests/**/*.cs` | [`.claude/rules/tests.md`](../.claude/rules/tests.md) |
+| `Explore.API/Controllers/**/*.cs` | [`.agents/rules/api-controllers.md`](../.agents/rules/api-controllers.md) |
+| `Explore.API/Hateoas/**/*.cs` | [`.agents/rules/api-hateoas.md`](../.agents/rules/api-hateoas.md) |
+| `Explore.Application/**/*.cs` | [`.agents/rules/application-layer.md`](../.agents/rules/application-layer.md) |
+| `Explore.Domain/**/*.cs` | [`.agents/rules/domain.md`](../.agents/rules/domain.md) |
+| `Explore.Persistence/**/*.cs` (non-migration) | [`.agents/rules/efcore-persistence.md`](../.agents/rules/efcore-persistence.md) |
+| `Explore.Persistence/Migrations/**/*.cs` | [`.agents/rules/efcore-migrations.md`](../.agents/rules/efcore-migrations.md) |
+| `Explore.Blazor/**/*` (BFF) | [`.agents/rules/blazor-server.md`](../.agents/rules/blazor-server.md) |
+| `Explore.Blazor.Client/**/*` (WASM) | [`.agents/rules/blazor-client.md`](../.agents/rules/blazor-client.md) |
+| `**/*Tests/**/*.cs`, `**/*UnitTests/**/*.cs`, `**/*IntegrationTests/**/*.cs` | [`.agents/rules/tests.md`](../.agents/rules/tests.md) |
 
 ### Context Maintenance
 
 - Benchmark scenarios live in `.agents/benchmarks/cold-start-tasks.yaml` to measure cold-start agent success.
 
-If a rule in `.claude/rules/` appears to conflict with `QUICK_REFERENCE.md` or this file, the canonical doc wins and the rule file must be fixed per [`AGENTS.md`](../AGENTS.md) §4.
+If a rule in `.agents/rules/` appears to conflict with `QUICK_REFERENCE.md` or this file, the canonical doc wins and the rule file must be fixed per [`AGENTS.md`](../AGENTS.md) §4.

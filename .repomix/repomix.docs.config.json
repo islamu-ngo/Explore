@@ -1,15 +1,14 @@
 {
   "include": [
-    "schemas/**/*",
+    "schemas/lexicons",
+    "schemas/islamu-event.md",
     "docs/**/*",
     "README.md",
-    "AGENTS.md",
     "AGENTS.md",
     "docker-compose.yml",
     "global.json",
     "Directory.Build.props",
-    "Directory.Packages.props",
-    "dotnet-tools.json"
+    "Directory.Packages.props"
   ],
   "output": {
     "style": "markdown",

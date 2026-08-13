@@ -36,7 +36,7 @@ Use `README.md` as the public entry point. It should route new readers by task a
 | Instance and tenant admins | `ADMIN_GUIDE.md` | `ADMIN_HIERARCHY.md`, `DEPLOYMENT_MODES.md`, `AUTHORIZATION_PATTERNS.md`, product feature docs |
 | Integrators | `API_COOKBOOK.md` | `API.md`, `API_CHANGELOG.md`, `SECURITY-MODEL.md`, `CONFIGURATION.md` |
 | Contributors | `FIRST_CONTRIBUTION.md` | `CONTRIBUTING.md`, `TESTING.md`, `QUICK_REFERENCE.md`, `DOCUMENTATION_STYLE_GUIDE.md` |
-| AI agents | `AGENTS.md` | `.claude/contract/README.md`, `.claude/contract/intents.yaml`, `dev/_journal/README.md` |
+| AI agents | `AGENTS.md` | `.agents/contract/README.md`, `.agents/contract/intents.yaml`, `dev/_journal/README.md` |
 
 ## Canonical Docs And Owners
 
@@ -50,7 +50,7 @@ Each canonical doc has an owner category. Ownership means the category is respon
 | Frontend | `BLAZOR.md`, `DESIGN_SYSTEM.md`, `ACCESSIBILITY.md`, `RENDER_POLICIES.md` |
 | Product/Admin | `ADMIN_HIERARCHY.md`, feature/admin workflow docs |
 | Contributor Experience | `CONTRIBUTING.md`, `TESTING.md`, `DOCUMENTATION_STYLE_GUIDE.md`, this document |
-| Agent Context | `AGENTS.md`, `.claude/contract/`, `.agents/skills/`, `dev/_journal/` |
+| Agent Context | `AGENTS.md`, `.agents/contract/`, `.agents/skills/`, `dev/_journal/` |
 
 ## Metadata Policy
 

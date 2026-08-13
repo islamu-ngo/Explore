@@ -17,7 +17,7 @@ intents:
     load_skills:
       - cqrs-mediatr-guidelines
     load_rules:
-      - .claude/rules/api-controllers.md
+      - .agents/rules/api-controllers.md
     paths_in_scope:
       - "src/Explore.API/Controllers/**/*.cs"
       - "src/Explore.Application/Features/**/Queries/**/*.cs"
@@ -35,6 +35,7 @@ intents:
       - architect-agent
       - presentation-engineer-agent
       - quality-verifier-agent
+      - change-reviewer-agent
 
   - id: add-write-endpoint
     title: "Add a new POST/PUT/PATCH/DELETE endpoint to the public API"
@@ -52,7 +53,7 @@ intents:
       - cqrs-mediatr-guidelines
       - auth-patterns
     load_rules:
-      - .claude/rules/api-controllers.md
+      - .agents/rules/api-controllers.md
     paths_in_scope:
       - "src/Explore.API/Controllers/**/*.cs"
       - "src/Explore.Application/Features/**/Commands/**/*.cs"
@@ -71,7 +72,9 @@ intents:
       - architect-agent
       - presentation-engineer-agent
       - backend-engineer-agent
+      - security-privacy-agent
       - quality-verifier-agent
+      - change-reviewer-agent
 
   - id: add-hal-link
     title: "Add or modify a HAL link/affordance on an existing resource"
@@ -85,7 +88,7 @@ intents:
       - docs/QUICK_REFERENCE.md
     load_skills: []
     load_rules:
-      - .claude/rules/api-hateoas.md
+      - .agents/rules/api-hateoas.md
     paths_in_scope:
       - "src/Explore.API/Hateoas/**/*.cs"
       - "src/Explore.Blazor.Client/**/*.razor"
@@ -100,7 +103,9 @@ intents:
       - "Gating a UI button by role/claim instead of HAL link presence"
     related_agents:
       - presentation-engineer-agent
+      - security-privacy-agent
       - quality-verifier-agent
+      - change-reviewer-agent
 
   - id: add-cqrs-handler
     title: "Add a new Command or Query handler in the Application layer"
@@ -114,7 +119,7 @@ intents:
     load_skills:
       - cqrs-mediatr-guidelines
     load_rules:
-      - .claude/rules/application-layer.md
+      - .agents/rules/application-layer.md
     paths_in_scope:
       - "src/Explore.Application/Features/**/*.cs"
     minimum_tests:
@@ -128,6 +133,7 @@ intents:
     related_agents:
       - backend-engineer-agent
       - quality-verifier-agent
+      - change-reviewer-agent
 
   - id: add-ef-migration
     title: "Generate an Entity Framework Core migration from model changes"
@@ -141,7 +147,7 @@ intents:
     load_skills:
       - dotnet-efcore-guidelines
     load_rules:
-      - .claude/rules/efcore-migrations.md
+      - .agents/rules/efcore-migrations.md
     paths_in_scope:
       - "src/Explore.Persistence/Migrations/**/*.cs"
       - "src/Explore.Domain/**/*.cs"
@@ -160,7 +166,9 @@ intents:
       - "Destructive Down() that silently loses data"
     related_agents:
       - backend-engineer-agent
+      - platform-operations-agent
       - quality-verifier-agent
+      - change-reviewer-agent
 
   - id: update-repository-query
     title: "Modify an existing repository query or specification"
@@ -173,7 +181,7 @@ intents:
     load_skills:
       - dotnet-efcore-guidelines
     load_rules:
-      - .claude/rules/efcore-persistence.md
+      - .agents/rules/efcore-persistence.md
     paths_in_scope:
       - "src/Explore.Persistence/Repositories/**/*.cs"
     minimum_tests:
@@ -187,7 +195,9 @@ intents:
       - "IgnoreQueryFilters() without a test proving safety"
     related_agents:
       - backend-engineer-agent
+      - security-privacy-agent
       - quality-verifier-agent
+      - change-reviewer-agent
 
   - id: blazor-component-affordance
     title: "Toggle a Blazor component's mutation affordance"
@@ -201,7 +211,7 @@ intents:
     load_skills:
       - blazor-ui-conventions
     load_rules:
-      - .claude/rules/blazor-client.md
+      - .agents/rules/blazor-client.md
     paths_in_scope:
       - "src/Explore.Blazor.Client/**/*.razor"
     minimum_tests:
@@ -214,6 +224,7 @@ intents:
     related_agents:
       - presentation-engineer-agent
       - quality-verifier-agent
+      - change-reviewer-agent
 
   - id: bff-auth-bug
     title: "Debug and fix a BFF authentication bug"
@@ -227,7 +238,7 @@ intents:
     load_skills:
       - blazor-bff-patterns
     load_rules:
-      - .claude/rules/blazor-server.md
+      - .agents/rules/blazor-server.md
     paths_in_scope:
       - "src/Explore.Blazor/**/*.cs"
     minimum_tests:
@@ -240,7 +251,9 @@ intents:
       - "Disabling HTTPS or cookie SameSite protections"
     related_agents:
       - presentation-engineer-agent
+      - security-privacy-agent
       - quality-verifier-agent
+      - change-reviewer-agent
 
   - id: cerbos-policy-change
     title: "Change Cerbos authorization policies"
@@ -267,7 +280,9 @@ intents:
       - "Widening permissions without explicit user approval"
     related_agents:
       - backend-engineer-agent
+      - security-privacy-agent
       - quality-verifier-agent
+      - change-reviewer-agent
 
   - id: openapi-contract-change
     title: "Change the public API contract"
@@ -280,7 +295,7 @@ intents:
       - docs/QUICK_REFERENCE.md
     load_skills: []
     load_rules:
-      - .claude/rules/api-controllers.md
+      - .agents/rules/api-controllers.md
     paths_in_scope:
       - "src/Explore.API/Controllers/**/*.cs"
       - "docs/API_CHANGELOG.md"
@@ -297,6 +312,7 @@ intents:
       - presentation-engineer-agent
       - librarian-agent
       - quality-verifier-agent
+      - change-reviewer-agent
 
   - id: ci-cd-change
     title: "Change CI/CD workflows, deployment automation, or release governance"
@@ -317,7 +333,7 @@ intents:
     load_skills:
       - ip-clean-room
     load_rules:
-      - .claude/rules/ip-clean-room.md
+      - .agents/rules/ip-clean-room.md
     paths_in_scope:
       - ".github/**"
       - "src/Explore.API/Dockerfile"
@@ -345,7 +361,10 @@ intents:
       - "Renaming required workflows or jobs without branch-protection migration evidence"
     related_agents:
       - architect-agent
+      - platform-operations-agent
+      - security-privacy-agent
       - quality-verifier-agent
+      - change-reviewer-agent
 
   - id: external-infrastructure-bootstrap
     title: "Automate external infrastructure bootstrap or onboarding"
@@ -371,12 +390,12 @@ intents:
       - clean-architecture-rules
       - ip-clean-room
     load_rules:
-      - .claude/rules/api-controllers.md
-      - .claude/rules/application-layer.md
-      - .claude/rules/blazor-server.md
-      - .claude/rules/blazor-client.md
-      - .claude/rules/tests.md
-      - .claude/rules/ip-clean-room.md
+      - .agents/rules/api-controllers.md
+      - .agents/rules/application-layer.md
+      - .agents/rules/blazor-server.md
+      - .agents/rules/blazor-client.md
+      - .agents/rules/tests.md
+      - .agents/rules/ip-clean-room.md
     paths_in_scope:
       - "docker-compose.yml"
       - "docker/**"
@@ -424,7 +443,10 @@ intents:
       - architect-agent
       - backend-engineer-agent
       - presentation-engineer-agent
+      - platform-operations-agent
+      - security-privacy-agent
       - quality-verifier-agent
+      - change-reviewer-agent
 
   - id: ip-clean-room-governance
     title: "Establish or apply IP clean-room and outbound-license governance"
@@ -449,17 +471,17 @@ intents:
       - skill-authoring
       - agentic-research
     load_rules:
-      - .claude/rules/ip-clean-room.md
+      - .agents/rules/ip-clean-room.md
     paths_in_scope:
       - "AGENTS.md"
       - "docs/QUICK_REFERENCE.md"
       - "docs/index.md"
       - "docs/legal/IP_GOVERNANCE.md"
       - ".agents/skills/ip-clean-room/**"
-      - ".claude/rules/ip-clean-room.md"
-      - ".claude/rules/README.md"
-      - ".claude/contract/intents.yaml"
-      - ".claude/commands/review-pr.md"
+      - ".agents/rules/ip-clean-room.md"
+      - ".agents/rules/README.md"
+      - ".agents/contract/intents.yaml"
+      - ".agents/skills/review-pr/SKILL.md"
       - ".github/PULL_REQUEST_TEMPLATE.md"
       - "dev/_journal/journal.md"
       - "tests/Event.Architecture.Tests/AgentContextGovernanceTests.cs"
@@ -469,7 +491,7 @@ intents:
       - docs/QUICK_REFERENCE.md
       - docs/legal/IP_GOVERNANCE.md
       - docs/index.md
-      - .claude/contract/intents.yaml
+      - .agents/contract/intents.yaml
     unique_acceptance:
       - "Implementation contexts receive source-free functional handoffs and never third-party source or source-derived representations"
       - "AFC/SSO review distinguishes constrained functional elements from independently designed expression without claiming legal certification"
@@ -491,7 +513,9 @@ intents:
     related_agents:
       - architect-agent
       - librarian-agent
+      - security-privacy-agent
       - quality-verifier-agent
+      - change-reviewer-agent
 
   - id: create-agent-context-skill
     title: "Create or update an agent-context skill"
@@ -517,16 +541,16 @@ intents:
       - senior-cto-feedback
       - ip-clean-room
     load_rules:
-      - .claude/rules/ip-clean-room.md
+      - .agents/rules/ip-clean-room.md
     paths_in_scope:
       - ".agents/skills/"
-      - ".claude/contract/"
+      - ".agents/contract/"
       - "tests/Event.Architecture.Tests/"
       - "dev/active/"
     minimum_tests:
       - Event.Architecture.Tests
     docs_to_update:
-      - .claude/contract/intents.yaml
+      - .agents/contract/intents.yaml
       - .agents/skills/_SKILL_SCHEMA.md
     unique_acceptance:
       - "New SKILL.md satisfies the skill schema without adding a schema-test skip exception"
@@ -539,6 +563,7 @@ intents:
       - architect-agent
       - librarian-agent
       - quality-verifier-agent
+      - change-reviewer-agent
 
   - id: update-ai-context-disclosure
     title: "Update or extend the AI Context Disclosure Policy"
@@ -565,9 +590,9 @@ intents:
       - cqrs-mediatr-guidelines
       - auth-patterns
     load_rules:
-      - .claude/rules/application-layer.md
-      - .claude/rules/efcore-persistence.md
-      - .claude/rules/tests.md
+      - .agents/rules/application-layer.md
+      - .agents/rules/efcore-persistence.md
+      - .agents/rules/tests.md
     paths_in_scope:
       - src/Explore.Domain/Enums/Ai*.cs
       - src/Explore.Domain/AiConsentGrant.cs
@@ -609,7 +634,9 @@ intents:
     related_agents:
       - architect-agent
       - backend-engineer-agent
+      - security-privacy-agent
       - quality-verifier-agent
+      - change-reviewer-agent
 
   - id: registration-data-collection
     title: "Implement registration data collection, participation, ticketing, and provider channels"
@@ -640,6 +667,10 @@ intents:
       - docs/adr/ADR-016-registration-data-collection-context.md
       - docs/adr/ADR-017-event-participation-authority-model.md
       - docs/adr/ADR-018-registration-order-ticketing-aggregate.md
+      - docs/adr/ADR-022-paid-event-commerce-and-stripe-connect.md
+      - docs/adr/ADR-023-admission-credential-check-in-transfer-recovery.md
+      - docs/adr/ADR-024-external-business-integrations-and-protected-payout-boundaries.md
+      - islamic-value-sensitive-design/i-vsd-paid-event-payments-consultation.md
       - dev/active/registration-data-collection/registration-data-collection-plan.md
       - dev/active/registration-data-collection/registration-data-collection-context.md
       - dev/active/registration-data-collection/registration-data-collection-tasks.md
@@ -654,18 +685,30 @@ intents:
       - error-tracking
       - ip-clean-room
     load_rules:
-      - .claude/rules/domain.md
-      - .claude/rules/application-layer.md
-      - .claude/rules/efcore-persistence.md
-      - .claude/rules/efcore-migrations.md
-      - .claude/rules/api-controllers.md
-      - .claude/rules/api-hateoas.md
-      - .claude/rules/blazor-server.md
-      - .claude/rules/blazor-client.md
-      - .claude/rules/tests.md
-      - .claude/rules/ip-clean-room.md
+      - .agents/rules/domain.md
+      - .agents/rules/application-layer.md
+      - .agents/rules/efcore-persistence.md
+      - .agents/rules/efcore-migrations.md
+      - .agents/rules/api-controllers.md
+      - .agents/rules/api-hateoas.md
+      - .agents/rules/blazor-server.md
+      - .agents/rules/blazor-client.md
+      - .agents/rules/tests.md
+      - .agents/rules/ip-clean-room.md
     paths_in_scope:
-      - ".claude/contract/intents.yaml"
+      - ".agents/contract/intents.yaml"
+      - "Directory.Packages.props"
+      - "src/Explore.Infrastructure/Explore.Infrastructure.csproj"
+      - "src/Explore.Domain/**/*Payment*.cs"
+      - "src/Explore.Domain/**/*Promotion*.cs"
+      - "src/Explore.Domain/**/*Refund*.cs"
+      - "src/Explore.Domain/**/*Dispute*.cs"
+      - "src/Explore.Domain/**/*Admission*.cs"
+      - "src/Explore.Domain/**/*CheckIn*.cs"
+      - "src/Explore.Domain/**/*Transfer*.cs"
+      - "src/Explore.Domain/**/*Waitlist*.cs"
+      - "src/Explore.Domain/**/*AddOn*.cs"
+      - "src/Explore.Domain/**/*Payout*.cs"
       - "src/Explore.Domain/**/*Registration*.cs"
       - "src/Explore.Domain/**/*Participation*.cs"
       - "src/Explore.Domain/**/*Ticket*.cs"
@@ -711,6 +754,10 @@ intents:
       - "src/Explore.Infrastructure/**/*Formbricks*.cs"
       - "src/Explore.Infrastructure/**/*GoogleForms*.cs"
       - "src/Explore.Infrastructure/**/*MicrosoftForms*.cs"
+      - "src/Explore.Infrastructure/**/*Stripe*.cs"
+      - "src/Explore.Infrastructure/**/*Payment*.cs"
+      - "src/Explore.Infrastructure/**/*Refund*.cs"
+      - "src/Explore.Infrastructure/**/*Admission*.cs"
       - "src/Explore.Infrastructure/Messaging/CompositeOutboxMessageDispatcher.cs"
       - "src/Explore.Infrastructure/InfrastructureServicesRegistration.cs"
       - "src/Explore.API/Attributes/EndpointClass.cs"
@@ -752,11 +799,24 @@ intents:
       - "tests/**/*Mcp*.cs"
       - "tests/**/*Ai*.cs"
       - "tests/**/*Outbox*.cs"
+      - "tests/**/*Payment*.cs"
+      - "tests/**/*Promotion*.cs"
+      - "tests/**/*Refund*.cs"
+      - "tests/**/*Admission*.cs"
+      - "tests/**/*CheckIn*.cs"
+      - "tests/**/*Transfer*.cs"
+      - "tests/**/*Waitlist*.cs"
+      - "tests/**/*AddOn*.cs"
+      - "tests/**/*Payout*.cs"
       - "schemas/openapi_islamu-event.json"
       - "schemas/islamu-event.md"
       - "docs/adr/ADR-016-registration-data-collection-context.md"
       - "docs/adr/ADR-017-event-participation-authority-model.md"
       - "docs/adr/ADR-018-registration-order-ticketing-aggregate.md"
+      - "docs/adr/ADR-022-paid-event-commerce-and-stripe-connect.md"
+      - "docs/adr/ADR-023-admission-credential-check-in-transfer-recovery.md"
+      - "docs/adr/ADR-024-external-business-integrations-and-protected-payout-boundaries.md"
+      - "islamic-value-sensitive-design/i-vsd-paid-event-payments-consultation.md"
       - "docs/API.md"
       - "docs/API_CHANGELOG.md"
       - "docs/API_CONTRACT_INVENTORY.md"
@@ -815,6 +875,9 @@ intents:
       - "Provider calls execute outside business transactions; durable inbox, outbox, fencing, retry, and reconciliation coordinate every external effect"
       - "Published forms and ticket catalogs are immutable; future edits create versions while active attempts and orders remain pinned"
       - "Money uses integer minor units at persistence and API boundaries with no foreign-exchange conversion; platform monetization is instance-admin-only and defaults off or zero"
+      - "OrganizerDirect binds each payment to the event organizer actor's connected account; no administrator fallback merchant or historical recipient rewrite exists"
+      - "Admission credentials are opaque, hashed, rotatable, PII-free, and independent from display IDs, orders, payment, and append-only check-in history"
+      - "Marketing, accounting, tax determination, and legal invoice/credit-note issuance remain external specialist-system responsibilities"
     pr_checklist:
       - "Verified zero third-party source or source-derived ingestion, a sanitized handoff and independent AFC/SSO review for external influence, and outbound-license compatibility for dependency changes"
       - "Failing-first tests cover state transitions, malformed inputs, tenant isolation, guest capabilities, duplicate callbacks, duplicate finalization, and shared-capacity races"
@@ -835,14 +898,21 @@ intents:
       - "Granting reported-listing contributors organizer, provider, commercial, or attendee-data authority"
       - "Gating Blazor actions or Studio navigation with local role, claim, status, provenance, or capability-boolean checks"
       - "Enabling platform fees or contributions at tenant scope, defaulting monetization on, using floating-point money, or mixing contributions with organizer earnings"
-      - "Building payment-provider, refund, tax, payout, or admission-credential integrations before their future ADRs are approved"
+      - "Implementing payment, promotion, refund, dispute, admission, check-in, transfer, recovery, waitlist, or add-on behavior outside ADR-022 through ADR-024 and the approved phase order"
+      - "Redirecting organizer proceeds to an instance or tenant administrator, rewriting historical merchant recipients, or treating browser/provider return URLs as readiness or payment proof"
+      - "Building Event-owned email marketing, bookkeeping, accounting, tax determination, or legal invoice/credit-note issuance"
+      - "Implementing ProtectedDelayedPayout without current Stripe, legal, Islamic-finance, and accountable-operator approvals, or describing payout controls as escrow"
+      - "Allowing Stripe SDK types outside Infrastructure, using preview or undocumented Stripe APIs, or introducing a speculative payment-provider factory before a second provider is approved"
       - "Copying code, SQL, migrations, snippets, or assets from Hi.Events; only the approved clean-room behavior report may be used"
       - "Deleting or rewriting migration history, hand-editing generated EF designer/snapshot files, or bypassing the migration-baseline ordering decision"
     related_agents:
       - architect-agent
       - backend-engineer-agent
       - presentation-engineer-agent
+      - platform-operations-agent
+      - security-privacy-agent
       - quality-verifier-agent
+      - change-reviewer-agent
     related_intents:
       - add-get-endpoint
       - add-write-endpoint
@@ -902,16 +972,16 @@ intents:
       - error-tracking
       - ip-clean-room
     load_rules:
-      - .claude/rules/domain.md
-      - .claude/rules/application-layer.md
-      - .claude/rules/efcore-persistence.md
-      - .claude/rules/efcore-migrations.md
-      - .claude/rules/api-controllers.md
-      - .claude/rules/api-hateoas.md
-      - .claude/rules/blazor-server.md
-      - .claude/rules/blazor-client.md
-      - .claude/rules/tests.md
-      - .claude/rules/ip-clean-room.md
+      - .agents/rules/domain.md
+      - .agents/rules/application-layer.md
+      - .agents/rules/efcore-persistence.md
+      - .agents/rules/efcore-migrations.md
+      - .agents/rules/api-controllers.md
+      - .agents/rules/api-hateoas.md
+      - .agents/rules/blazor-server.md
+      - .agents/rules/blazor-client.md
+      - .agents/rules/tests.md
+      - .agents/rules/ip-clean-room.md
     paths_in_scope:
       - "src/Explore.Domain/*Webhook*.cs"
       - "src/Explore.Domain/**/*Webhook*.cs"
@@ -1021,7 +1091,10 @@ intents:
       - architect-agent
       - backend-engineer-agent
       - presentation-engineer-agent
+      - platform-operations-agent
+      - security-privacy-agent
       - quality-verifier-agent
+      - change-reviewer-agent
     related_intents:
       - add-write-endpoint
       - add-hal-link
@@ -1088,15 +1161,15 @@ intents:
       - auth-patterns
       - ip-clean-room
     load_rules:
-      - .claude/rules/domain.md
-      - .claude/rules/application-layer.md
-      - .claude/rules/efcore-persistence.md
-      - .claude/rules/efcore-migrations.md
-      - .claude/rules/api-controllers.md
-      - .claude/rules/tests.md
-      - .claude/rules/ip-clean-room.md
+      - .agents/rules/domain.md
+      - .agents/rules/application-layer.md
+      - .agents/rules/efcore-persistence.md
+      - .agents/rules/efcore-migrations.md
+      - .agents/rules/api-controllers.md
+      - .agents/rules/tests.md
+      - .agents/rules/ip-clean-room.md
     paths_in_scope:
-      - ".claude/contract/intents.yaml"
+      - ".agents/contract/intents.yaml"
       - ".env"
       - ".env.example"
       - "docker-compose.yml"
@@ -1242,7 +1315,10 @@ intents:
     related_agents:
       - architect-agent
       - backend-engineer-agent
+      - platform-operations-agent
+      - security-privacy-agent
       - quality-verifier-agent
+      - change-reviewer-agent
     related_intents:
       - add-write-endpoint
       - add-cqrs-handler

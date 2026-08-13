@@ -1,136 +1,119 @@
-<!-- ABOUTME: Canonical schema every subagent file in this repo must satisfy. -->
-<!-- ABOUTME: Defines the required structure and content boundaries for repository subagent files. -->
+<!-- ABOUTME: Canonical schema every repository subagent profile must satisfy. -->
+<!-- ABOUTME: Defines narrow ownership, skill routing, tool limits, handoffs, and evidence-based completion. -->
 
 # Agent Schema (Authoritative)
 
-> Every `.agents/agents/*.md` (excluding `README.md`, `_AGENT_SCHEMA.md`) MUST conform to this schema.
+> Every `.agents/agents/*.md` except `README.md` and `_AGENT_SCHEMA.md` MUST conform to this schema.
 
-## 1. File Location
+## 1. Design Rules
 
-```
-.agents/agents/<kebab-case-name>.md
-```
+1. Create an agent only for a recurring responsibility with distinct knowledge, tools, and verification.
+2. Keep the role narrow and opinionated; skills provide task-specific procedures inside that role.
+3. Prefer built-in `default`, `worker`, or `explorer` agents for generic work instead of duplicating them.
+4. Give mutating tools only to agents that own implementation files. Review and verification agents stay read-only.
+5. One agent owns a changed path at a time. Other agents may investigate or review but must not make overlapping edits.
 
-One file per agent. No subfolders. No resources directory — agents are intentionally **small and rereadable**.
+## 2. File And Frontmatter
 
-## 2. Required YAML Frontmatter
+Use `.agents/agents/<kebab-case-name>.md`. The filename and `name` must match.
 
 ```yaml
 ---
-name: <kebab-case>           # Must match filename (without .md)
-description: <one sentence>  # What this agent does + when to invoke it
+name: <kebab-case>
+description: <one sentence stating the job and invocation boundary>
 type: diagnostic | review | implementation | domain | research
 enforcement: suggest | inform
 priority: critical | high | medium | low
-tools: Read, Write, Edit, Bash, Glob, Grep   # Whitelist exact tools
+tools: Read, Write, Edit, Bash, Glob, Grep
 ---
 ```
 
-All six fields required. `tools` is a whitelist — the agent may not use tools outside the list.
+All six fields are required. `tools` is an allow-list. Read-only agents use `Read, Bash, Glob, Grep`; mutating agents add `Write, Edit`; research agents may add `WebSearch, WebFetch` when their workflow requires external sources.
 
-## 3. Required Sections (in order)
+## 3. Required Sections In Order
 
-### `## Purpose` (≤2 sentences)
+### `## Purpose`
 
-Role-scoped statement. No stack context, no project overview. Example: "Fixes 401/403 authentication bugs in BFF and API by tracing the token forwarding chain and comparing against the expected OIDC/JWT contract."
+One or two sentences defining the owned outcome and the boundary it protects.
 
 ### `## When to Use`
 
-Bulleted list. Triggers: issue categories, error signatures, code paths. If a task matches any line, this agent is a candidate.
+Concrete triggers: change categories, failure signatures, or owned paths.
 
 ### `## When NOT to Use`
 
-Bulleted list. Explicit negatives. Example: "Not for general build errors — use `quality-verifier-agent`."
+Explicit negatives and the correct alternate agent or built-in role.
 
 ### `## Mandatory Reads`
 
-Numbered list. Links to the canonical artifacts the agent MUST consult every invocation:
-- Always include: `AGENTS.md`
-- Always include: `docs/QUICK_REFERENCE.md`
-- Plus role-specific files (agent-specific docs, skills, rules).
+Always link `AGENTS.md`, `docs/QUICK_REFERENCE.md`, and `.agents/contract/intents.yaml`, followed by the smallest role-specific canonical docs. Every link must resolve.
 
-Every link MUST resolve.
+### `## Skill Routing`
+
+Map task signals to existing `SKILL.md` files. Load only matching skills; do not duplicate their rules in the agent profile.
+
+### `## Operating Workflow`
+
+Numbered, executable loop from intent classification through evidence collection, implementation or review, verification, and handoff. It must state the agent's stop condition.
 
 ### `## Allowed Tools`
 
-Must mirror the `tools` list from frontmatter. Describe why each tool is allowed.
+Mirror the frontmatter allow-list and explain the permitted purpose of each tool group.
+
+### `## Ownership And Handoffs`
+
+State owned files or decisions, adjacent responsibilities, handoff inputs, and what the agent must never edit concurrently.
 
 ### `## Forbidden Moves`
 
-Bulleted list. Explicit "never do this" items. Example: "Never modify files outside the intent's `paths_in_scope`." Example: "Never bypass `dotnet build` in favor of IDE build output."
+List role-specific safety failures. Link global rules instead of copying them.
 
 ### `## Output Contract`
 
-Structured. What the agent returns to the orchestrator. Example:
-
-```
-- Summary: <2-5 sentences>
-- Evidence: <commands run, files read, findings>
-- Diffs: <applied or proposed>
-- Next actions: <for the user or next agent>
-```
+Require a compact result containing outcome, changed or reviewed paths, evidence, risks, and handoffs. Read-only agents must lead with findings.
 
 ### `## Done Criteria`
 
-Numbered list. Objective, testable conditions. Example:
-1. `dotnet build --configuration Release` exits 0.
-2. Target test project passes locally.
-3. No new files created outside intent scope.
+Objective conditions tied to the matched intent, targeted tests, Release build policy, and observable behavior where applicable.
 
 ### `## Anti-Patterns`
 
-Bulleted list. Failure modes this agent frequently produces if unchecked. Each item is prescriptive.
+Name the role's most likely drift or failure modes and the corrective behavior.
 
 ### `## Related Agents`
 
-Bulleted cross-reference to sibling agents. Minimum 1 entry.
+Link at least one sibling agent and describe the handoff boundary.
 
-## 4. File Length
+## 4. Size And Duplication
 
-- **Target**: 50–120 lines.
-- **Hard max**: 160 lines. Agents are small and rereadable by design.
+- Target 80–140 lines; hard maximum 180 lines.
+- No stack overview, generic persona prose, ASCII diagrams, or copied rule catalogs.
+- Do not hard-code the full test-project list; derive checks from the matched intent and `docs/OPERATIONS.md`.
+- If guidance already exists in `AGENTS.md`, canonical docs, rules, or a skill, link it.
+- Fifteen substantially identical consecutive lines across agent files is a duplication failure.
 
-## 5. Forbidden Content (DUPLICATION GUARD)
+## 5. Portfolio Gate
 
-Do not re-introduce any of the following in `.agents/agents/*.md`:
+A proposed agent is rejected when any answer is "no":
 
-- Stack overview ("This repo uses .NET 10 + Blazor ...").
-- Repetition of critical rules from `AGENTS.md` §5.
-- Verbatim test-project lists from `AGENTS.md` §7.
-- Verbatim 13-rule non-inferable list.
-- ASCII diagrams.
-
-Rule: If the content is in `AGENTS.md`, `docs/QUICK_REFERENCE.md`, or `docs/GOVERNANCE.md`, **link** — don't copy.
-
-Detection strategy: line-hash Jaccard similarity ≥ 0.85 between any two agent files on ≥ 15 consecutive lines triggers failure.
+1. Does it own a recurring repository concern rather than one feature or command?
+2. Is its responsibility materially different from an existing agent, built-in agent, or skill?
+3. Can the router choose it from a one-sentence description without ambiguity?
+4. Does it have a distinct evidence or verification contract?
+5. Does its addition reduce context/tool overload enough to justify orchestration cost?
 
 ## 6. Authoring Checklist
 
-Confirm that each agent file has:
-- YAML frontmatter with all 6 required fields.
-- All 10 required sections present in order.
-- `Mandatory Reads` contains links to at least `AGENTS.md` and `docs/QUICK_REFERENCE.md`.
-- Total line count ≤ 160.
-
-Confirm that agent files do not contain:
-- Line-hash Jaccard similarity across agent files.
-- Pattern-match against forbidden content (stack overview markers, etc.).
-
-## 7. Canonical Agent Registry
-
-The repository subagent portfolio is consolidated into 5 canonical role agents:
-
-- `architect-agent.md` — Strategic architecture, ADRs, Aspire orchestration, IP clean-room, task sequencing.
-- `backend-engineer-agent.md` — Domain, Application, Persistence, CQRS, EF Core, specifications, outbox.
-- `presentation-engineer-agent.md` — API controllers, HATEOAS policies, Blazor UI, HAL link affordance gating, BFF proxy.
-- `quality-verifier-agent.md` — TUnit tests, architecture verification, Release build compliance, CI diagnostics.
-- `librarian-agent.md` — Documentation maintenance, clean-room research, AI inventory docs, durable journal synthesis.
-
-*Note: All legacy v1 utility agents (`auth-route-debugger`, `auto-error-resolver`, etc.) are formally deprecated and purged in favor of these role-scoped domain agents.*
+- Frontmatter and filename agree; tools follow least privilege.
+- All 13 required sections exist in order.
+- Mandatory links resolve and skill names exist.
+- Workflow has an observable stop condition and handoff boundary.
+- The profile is within 180 lines and does not restate global rules.
+- `README.md` registry and selection guidance include the role.
+- Validate agent and chat configuration as documentation/configuration; do not add automated tests for it.
 
 ## Related
 
-- Skill schema → [`.agents/skills/_SKILL_SCHEMA.md`](../skills/_SKILL_SCHEMA.md)
-- Contribution contract → [`.agents/contract/README.md`](../contract/README.md)
-- Documentation style → [`docs/DOCUMENTATION_STYLE_GUIDE.md`](../../docs/DOCUMENTATION_STYLE_GUIDE.md)
-
+- [Skill schema](../skills/_SKILL_SCHEMA.md)
+- [Contribution contract](../contract/README.md)
+- [Documentation style](../../docs/DOCUMENTATION_STYLE_GUIDE.md)

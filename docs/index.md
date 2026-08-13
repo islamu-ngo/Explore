@@ -25,7 +25,7 @@ Start with [README.md](../README.md) if you are new to the project. Use this pag
 | Contribute code or docs | [FIRST_CONTRIBUTION.md](FIRST_CONTRIBUTION.md) | [CONTRIBUTING.md](CONTRIBUTING.md), [QUICK_REFERENCE.md](QUICK_REFERENCE.md), [TESTING.md](TESTING.md) |
 | Research external behavior or assess a dependency license | [IP Governance](legal/IP_GOVERNANCE.md) | [CLA](../legal/CLA.md), [Dual Versioning](DUAL_VERSIONING.md), [CI/CD Governance](CI_CD_GOVERNANCE.md) |
 | Work on Blazor UI | [BLAZOR.md](BLAZOR.md) | [DESIGN_SYSTEM.md](DESIGN_SYSTEM.md), [ACCESSIBILITY.md](ACCESSIBILITY.md), [RENDER_POLICIES.md](RENDER_POLICIES.md) |
-| Use an AI coding agent | [../AGENTS.md](../AGENTS.md) | [../.claude/contract/intents.yaml](../.claude/contract/intents.yaml), [QUICK_REFERENCE.md](QUICK_REFERENCE.md), [../dev/_journal/README.md](../dev/_journal/README.md) |
+| Use an AI coding agent | [../AGENTS.md](../AGENTS.md) | [../.agents/contract/intents.yaml](../.agents/contract/intents.yaml), [QUICK_REFERENCE.md](QUICK_REFERENCE.md), [../dev/_journal/README.md](../dev/_journal/README.md) |
 
 ## How To Use This Index
 

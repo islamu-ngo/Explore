@@ -14,8 +14,8 @@ Every change must answer these eight questions **before editing any file**:
 
 | # | Question | Source of Truth |
 |---|---|---|
-| 1 | What kind of change is this? (the *intent*) | [`.claude/contract/intents.yaml`](.claude/contract/intents.yaml) |
-| 2 | Which rules are authoritative? | [`docs/QUICK_REFERENCE.md`](docs/QUICK_REFERENCE.md) + [`.claude/rules/*.md`](.claude/rules/) |
+| 1 | What kind of change is this? (the *intent*) | [`.agents/contract/intents.yaml`](.agents/contract/intents.yaml) |
+| 2 | Which rules are authoritative? | [`docs/QUICK_REFERENCE.md`](docs/QUICK_REFERENCE.md) + [`.agents/rules/*.md`](.agents/rules/) |
 | 3 | Which files must be read first? | The intent's `must_read_docs` field |
 | 4 | Which files may be changed? | The intent's `paths_in_scope` field |
 | 5 | Which tests must run at minimum? | The intent's `minimum_tests` field |
@@ -32,7 +32,7 @@ Every change must answer these eight questions **before editing any file**:
 | AI agent contract | `AGENTS.md` (this) | Every agent starts here |
 | Invariant reference | `docs/QUICK_REFERENCE.md` | Global hard constraints |
 | Governance | `docs/GOVERNANCE.md` | Conventions, design patterns |
-| Intent registry | `.claude/contract/intents.yaml` | Machine-readable task mapping |
+| Intent registry | `.agents/contract/intents.yaml` | Machine-readable task mapping |
 | Operations | `docs/OPERATIONS.md` | Build/Test details, AI operational rules |
 | Durable findings | `dev/_journal/journal.md` | Decisions, non-obvious patterns |
 
@@ -40,8 +40,8 @@ Every change must answer these eight questions **before editing any file**:
 
 ## 3. Cold-Start Flow (Zero-Knowledge Agent)
 
-1. **CLASSIFY**: Find matching intent in [`.claude/contract/intents.yaml`](.claude/contract/intents.yaml).
-2. **LOAD**: Read `must_read_docs` and matching [`.claude/rules/*.md`](.claude/rules/).
+1. **CLASSIFY**: Find matching intent in [`.agents/contract/intents.yaml`](.agents/contract/intents.yaml).
+2. **LOAD**: Read `must_read_docs` and matching [`.agents/rules/*.md`](.agents/rules/).
 3. **EDIT**: Work within `paths_in_scope`. Follow Clean Architecture: Domain → App → Infra → API.
 4. **VERIFY**: Run minimum tests. Build and architecture tests must pass.
 5. **ESCALATE**: If any rule conflicts with the request, stop and ask the user.
@@ -53,7 +53,7 @@ Every change must answer these eight questions **before editing any file**:
 1. **CRITICAL RULES** (Section 5 below)
 2. **`docs/QUICK_REFERENCE.md`** — Global project invariants
 3. **`docs/GOVERNANCE.md`** — Coding conventions and patterns
-4. **Matching `.claude/rules/*.md`** — Path-scoped deltas
+4. **Matching `.agents/rules/*.md`** — Path-scoped deltas
 
 ---
 
@@ -78,14 +78,14 @@ Every change must answer these eight questions **before editing any file**:
 
 | Starting Point | Go To |
 |---|---|
-| New request | [`.claude/contract/intents.yaml`](.claude/contract/intents.yaml) — find `triggers` |
-| Known path | [`.claude/rules/`](.claude/rules/) — find matching `paths` |
+| New request | [`.agents/contract/intents.yaml`](.agents/contract/intents.yaml) — find `triggers` |
+| Known path | [`.agents/rules/`](.agents/rules/) — find matching `paths` |
 | Pattern/Skill | [`.agents/skills/`](.agents/skills/) — load relevant `SKILL.md` |
 | Build/Test | [`docs/OPERATIONS.md#verification-policy`](docs/OPERATIONS.md) |
 | UI Workflow | [`docs/BLAZOR_DEV_WORKFLOW.md`](docs/BLAZOR_DEV_WORKFLOW.md) |
 | Agent Ops | [`docs/OPERATIONS.md#ai-agent-operational-rules`](docs/OPERATIONS.md) |
-| PR Review | [`.claude/commands/review-pr.md`](.claude/commands/review-pr.md) |
-| Log Finding | [`.claude/commands/finding.md`](.claude/commands/finding.md) |
+| PR Review | [`.agents/skills/review-pr/SKILL.md`](.agents/skills/review-pr/SKILL.md) |
+| Log Finding | [`.agents/skills/finding/SKILL.md`](.agents/skills/finding/SKILL.md) |
 
 ---
 

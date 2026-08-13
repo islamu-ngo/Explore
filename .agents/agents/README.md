@@ -1,42 +1,70 @@
 ---
 name: Agents Documentation
-description: Documentation index for repository subagent operational contracts
+description: Selection and coordination registry for repository subagent operational contracts
 disabled: true
 ---
 
-<!-- ABOUTME: Index and selection guide for repository role subagents in .agents/agents/. -->
-<!-- ABOUTME: Documents agent selection, invocation rules, schema boundaries, and skill vs agent usage. -->
+<!-- ABOUTME: Canonical registry and routing guide for repository role subagents. -->
+<!-- ABOUTME: Defines role selection, coordination, provenance, and the boundary between agents and skills. -->
 
 # Repository Subagent Registry
 
-These agent files are **small, rereadable operational contracts** (50–120 lines target, 160 max). Every subagent file in this directory MUST conform to [`_AGENT_SCHEMA.md`](_AGENT_SCHEMA.md).
+Agent profiles are small operational contracts governed by [`_AGENT_SCHEMA.md`](_AGENT_SCHEMA.md). They specialize recurring repository work; they do not replace the root [Contribution Contract](../../AGENTS.md), the [intent registry](../contract/intents.yaml), or task-specific skills.
 
-## Agent Selection Guide
+## Role Matrix
 
-| Role | Subagent File | Core Domain & Responsibility |
-|------|---------------|------------------------------|
-| **Architect** | [`architect-agent.md`](architect-agent.md) | High-level system design, dev-docs plan creation, ADRs, Aspire orchestration, IP clean-room verification. |
-| **Backend Engineer** | [`backend-engineer-agent.md`](backend-engineer-agent.md) | Domain, Application, Persistence, CQRS (MediatR), EF Core, specification builders, transactional outbox. |
-| **Presentation Engineer** | [`presentation-engineer-agent.md`](presentation-engineer-agent.md) | API controllers, HATEOAS link policies, Blazor UI, HAL link presence UI affordance gating, BFF proxy. |
-| **Quality Verifier** | [`quality-verifier-agent.md`](quality-verifier-agent.md) | TUnit test suite execution, `Event.Architecture.Tests` validation, Release build profile checks, CI failure diagnosis. |
-| **Librarian** | [`librarian-agent.md`](librarian-agent.md) | Documentation maintenance, clean-room research, AI tool contract inventory, durable journal synthesis (`dev/_journal/`). |
+| Agent | Invoke for | Owns | Mode |
+|---|---|---|---|
+| [Architect](architect-agent.md) | Cross-layer design, ADRs, implementation sequencing | Architecture decisions and planning artifacts | Docs-only mutation |
+| [Backend Engineer](backend-engineer-agent.md) | Domain, Application, Persistence, Infrastructure business flows | Backend implementation and focused tests | Mutation |
+| [Presentation Engineer](presentation-engineer-agent.md) | API/HAL contracts, BFF, generated-client consumption, Blazor UX | Presentation vertical slices and visual behavior | Mutation |
+| [Security & Privacy](security-privacy-agent.md) | Identity, authorization, tenancy, secrets, privacy, abuse boundaries | Security-sensitive implementation and threat evidence | Mutation |
+| [Platform Operations](platform-operations-agent.md) | Aspire, hosting, CI/CD, deployment, observability, recovery | Operational implementation and runbooks | Mutation |
+| [Quality Verifier](quality-verifier-agent.md) | Reproduce failures and run proportional verification | Build, tests, runtime evidence, failure classification | Read-only |
+| [Change Reviewer](change-reviewer-agent.md) | Review a diff or PR for real regressions and missing evidence | Risk-ranked review and merge recommendation | Read-only |
+| [Librarian](librarian-agent.md) | Repository docs, clean-room research, inventories, durable findings | Documentation truth and provenance | Docs-only mutation |
 
-## Usage & Execution Rules
+## Selection Rules
 
-1. **Open the File Before Invoking**: Subagent files are small and contain authoritative constraints. Always read the target `.agents/agents/<name>.md` file first.
-2. **Strict Schema Compliance**: Every subagent file must contain all 10 required sections in order as defined in [`_AGENT_SCHEMA.md`](_AGENT_SCHEMA.md).
-3. **Single Mutating Agent**: Do not invoke multiple subagents concurrently if they modify the same file paths.
-4. **Layered Context**: Subagents must link to [`AGENTS.md`](../../AGENTS.md), [`docs/QUICK_REFERENCE.md`](../../docs/QUICK_REFERENCE.md), and relevant `.agents/rules/*.md` rather than duplicating invariant text.
-5. **Clean Room IP Protection**: Subagents must never ingest or copy third-party copyleft/proprietary source code. Follow [`docs/legal/IP_GOVERNANCE.md`](../../docs/legal/IP_GOVERNANCE.md).
+1. Use the lowest-complexity path that works. Direct work or a built-in `worker`/`explorer` is preferable for an atomic task.
+2. Select one primary agent by the highest-risk owned boundary, then add read-only specialists only for independent evidence.
+3. A cross-layer feature normally stays with one mutating agent until a real ownership boundary is reached; do not split files merely to use more agents.
+4. Use `quality-verifier-agent` after implementation for empirical checks and `change-reviewer-agent` for independent semantic review. Neither edits the fix.
+5. Never run mutating agents concurrently on overlapping paths. Handoffs name the exact files, decisions, and remaining acceptance criteria.
 
-## When to Use Agents vs Skills
+## Common Routing
 
-- **Use Subagents** for multi-step or autonomous tasks requiring role-scoped investigation, planning, TDD verification, or architectural governance.
-- **Use Skills** for inline patterns, specific code templates, and contextual cheatsheets during active editing.
+| Signal | Primary agent | Typical supporting agent |
+|---|---|---|
+| New aggregate, handler, repository, outbox flow | Backend Engineer | Security & Privacy when authority or tenant scope changes |
+| Controller + HAL + generated client + Blazor affordance | Presentation Engineer | Change Reviewer |
+| 401/403, Cerbos, tenant leakage, erasure, secret exposure | Security & Privacy | Quality Verifier |
+| AppHost, topology, container, workflow, telemetry, incident recovery | Platform Operations | Security & Privacy for credential/trust changes |
+| Major design or breaking cross-layer refactor | Architect | Owning implementation agent after approval |
+| Failing build/test or uncertain runtime behavior | Quality Verifier | Owning implementation agent after root cause is proven |
+| PR approval or regression audit | Change Reviewer | Quality Verifier for commands and runtime evidence |
+| Documentation drift or externally informed specification | Librarian | Architect for durable architecture decisions |
 
-## When NOT to Use Subagents
+## Agents Versus Skills
 
-- Single-file edits with known file paths — use direct tools (`replace_file_content`).
-- Simple grep or file search — use direct search tools (`grep_search`).
-- Trivial questions answered directly in [`docs/QUICK_REFERENCE.md`](../../docs/QUICK_REFERENCE.md).
+- An **agent** owns a recurring outcome, tool boundary, workflow, and handoff contract.
+- A **skill** supplies a focused procedure or rule set inside that role. Agents load only the skills matching the classified intent.
+- Do not create agents for generic exploration, generic implementation, one command, one library, or one current feature. Built-in agents and existing skills already cover those shapes.
 
+## Coordination Contract
+
+Every delegated task must state: goal, owned paths or read-only mode, required evidence, expected output, and stop condition. The primary agent remains accountable for synthesis and must verify returned claims against repository evidence before acting.
+
+Parallel work is preferred for independent read-heavy exploration, test execution, log analysis, and review. Write-heavy work is sequential unless file ownership is disjoint and explicitly assigned.
+
+Agent profiles and chat configuration are documentation/configuration artifacts. Validate their schema, links, and routing directly; do not add automated tests for them.
+
+## Design Basis And Provenance
+
+Source register, accessed 2026-08-13 Europe/Brussels:
+
+- [OpenAI Codex Subagents](https://developers.openai.com/codex/subagents) — custom agents should be narrow, opinionated, tool-scoped, and used carefully for parallel writes.
+- [GitHub custom agents configuration](https://docs.github.com/en/copilot/reference/custom-agents-configuration) — agent descriptions drive routing and tool allow-lists enforce capability boundaries.
+- [Microsoft AI agent orchestration patterns](https://learn.microsoft.com/en-us/azure/architecture/ai-ml/guide/ai-agent-design-patterns) — use the lowest sufficient orchestration complexity and specialize only when coordination cost is justified.
+
+Repository-native design decisions are the eight-role matrix, intent-first skill routing, Clean Architecture ownership, read-only reviewer/verifier separation, and evidence-based handoffs. No third-party implementation source, prompt text, or agent manifest was copied; no dependency changed.

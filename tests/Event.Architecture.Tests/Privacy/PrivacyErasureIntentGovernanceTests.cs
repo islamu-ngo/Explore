@@ -54,7 +54,7 @@ public sealed class PrivacyErasureIntentGovernanceTests
     public async Task PlatformPrivacyErasureIntent_OwnsAuthorityFirstTopologyContract()
     {
         string catalog = await File.ReadAllTextAsync(ContextSystemHelpers.RepoPath(
-            ".claude", "contract", "intents.yaml"));
+            ".agents", "contract", "intents.yaml"));
 
         RequireAuthorityFirstContract(SelectIntent(catalog, "platform-privacy-erasure"));
     }
@@ -67,7 +67,7 @@ public sealed class PrivacyErasureIntentGovernanceTests
     public async Task AuthorityFirstContract_RejectsMissingTopologyTerm(string requiredTerm)
     {
         string catalog = await File.ReadAllTextAsync(ContextSystemHelpers.RepoPath(
-            ".claude", "contract", "intents.yaml"));
+            ".agents", "contract", "intents.yaml"));
         string intent = SelectIntent(catalog, "platform-privacy-erasure")
             .Replace(requiredTerm, string.Empty, StringComparison.Ordinal);
 
@@ -81,7 +81,7 @@ public sealed class PrivacyErasureIntentGovernanceTests
         const string credentialAcceptance =
             "For ExternalDatabase, API runtime and MigrationService receive separate runtime and migrator authority credentials mapped to structured privacy-prefixed database fields only in the owning process; EmbeddedSqlite and CoLocated receive no authority database credential and Blazor receives neither secret";
         string catalog = await File.ReadAllTextAsync(ContextSystemHelpers.RepoPath(
-            ".claude", "contract", "intents.yaml"));
+            ".agents", "contract", "intents.yaml"));
         string intent = SelectIntent(catalog, "platform-privacy-erasure");
         string mutatedIntent = intent.Replace(credentialAcceptance, string.Empty, StringComparison.Ordinal);
 

@@ -118,4 +118,4 @@ All disabled in `Testing` environment.
 | 9 | Command response | `Task<BaseCommandResponse<Guid>> Handle(CreateEventCommand cmd, CancellationToken ct)` | `Task<EventDto> Handle(CreateEventCommand cmd)` (missing wrapper + no CT) |
 | 10 | HAL link policy | `yield return new LinkDefinition("edit", Url.Link(RouteNames.EditEvent, new { id })!, HttpMethods.Put);` | `links.Add(new LinkDefinition(...))` (list mutation instead of `yield return`) |
 
-These are enforced by `Event.Architecture.Tests` and the `.claude/rules/` path-scoped rule files — see [`.claude/rules/README.md`](../.claude/rules/README.md).
+These are enforced by `Event.Architecture.Tests` and the `.agents/rules/` path-scoped rule files — see [`.agents/rules/README.md`](../.agents/rules/README.md).
