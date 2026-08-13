@@ -24,14 +24,16 @@ Use this skill for browser-to-BFF-to-API authentication flow, endpoint protectio
 - [../../../docs/SECURITY-MODEL.md](../../../docs/SECURITY-MODEL.md)
 - [../../../docs/API.md](../../../docs/API.md)
 - [../../../docs/AUTHORIZATION.md](../../../docs/AUTHORIZATION.md)
+- [../../../docs/AUTHORIZATION_PATTERNS.md](../../../docs/AUTHORIZATION_PATTERNS.md)
 - [../../../docs/QUICK_REFERENCE.md](../../../docs/QUICK_REFERENCE.md)
+- [resources/local-authorization-provider.md](resources/local-authorization-provider.md)
 
 ## Top 5 Invariants
 1. The browser never sees tokens because the BFF stores them in HttpOnly cookies and forwards a `Bearer` token to the API.
 2. User ID extraction follows `sub` then `nameidentifier` then `sid`, and a missing user identifier yields `401 Unauthorized`.
 3. JWT validation checks both `aud` and `azp` with a five-minute clock skew, and authorized audiences include `islamu-event-api` and `islamu-event-blazor`.
-4. Endpoint defaults are `GET` with `[AllowAnonymous]`, writes with `[Authorize]`, and admin operations with `[Authorize(Roles = "Admin")]`, while ownership checks stay in handlers through `IAuthorizedRequest`, `[AuthorizeResource]`, or `ISecureRequest`.
-5. HATEOAS authorization follows the Candidate, Normalize, Batch, and Materialize pipeline and fails closed, making `_links` the only client-side source of truth for action gating.
+4. Endpoint defaults are `GET` with `[AllowAnonymous]`, writes with `[Authorize]`, while resource/action checks route through `AuthorizationBehavior` to `RuntimeAuthorizationProvider` (which delegates to Cerbos gRPC PDP or `FallbackAuthorizationService`).
+5. HATEOAS authorization follows the Candidate, Normalize, Batch, and Materialize pipeline and fails closed, leveraging `AuthorityProfile` pre-resolution in local mode and making `_links` the only client-side source of truth for action gating.
 
 ## Top 5 Anti-Patterns
 1. Storing tokens in `localStorage` or `sessionStorage` bypasses the BFF boundary and weakens browser-side security.

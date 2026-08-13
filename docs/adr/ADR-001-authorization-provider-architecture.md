@@ -23,10 +23,11 @@ Use one runtime wrapper (`RuntimeAuthorizationProvider`) that delegates to:
 
 Provider resolution order:
 1. tenant BYO Cerbos config (if present),
-2. otherwise instance-level `AuthorizationProvider` setting (`"cerbos"` or local default).
+2. handler-owned local check bypasses (`user:update` self-service, `event:create` pre-create, `organization:create` pre-create, `event_session:create` pre-create, `ai_conversation` route directly to `FallbackAuthorizationService` to ensure PDP package latency cannot block self-service),
+3. otherwise instance-level `AuthorizationProvider` setting (`"cerbos"` or local default).
 
-When `authorization.provider=cerbos`: all-in on Cerbos. If Cerbos is down, deny all (fail-closed).
-When `authorization.provider=local`: use FallbackAuthorizationService exclusively.
+When `authorization.provider=cerbos`: all-in on Cerbos PDP for non-bypassed checks. If Cerbos is down, deny all (fail-closed).
+When `authorization.provider=local`: use `FallbackAuthorizationService` exclusively. Batch checks use single-pass `AuthorityProfile` pre-resolution and `EventAuthoritySnapshotService` batch pre-fetching.
 
 ## gRPC Transport
 

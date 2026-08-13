@@ -41,31 +41,35 @@ This project enforces fine-grained authorization in `Explore.Application.Behavio
 `RuntimeAuthorizationProvider` routes checks in this order:
 
 1. Tenant BYO Cerbos config (if configured through `ICerbosConfigResolver`).
-2. Otherwise, instance-level mode from `SystemSetting` key `AuthorizationProvider` (cached for 1 minute):
+2. Handler-owned local check bypasses (`GetHandlerOwnedLocalCheckIndexes`): self-service `user:update`, pre-create `event:create`, `organization:create`, `event_session:create`, `ai_conversation` route directly to `FallbackAuthorizationService` to ensure stale PDP policy packages cannot block self-service or pre-create handlers.
+3. Instance-level mode from `SystemSetting` key `AuthorizationProvider` (cached for 1 minute):
    - `"cerbos"` -> `CerbosAuthorizationService`
-   - any other value -> `FallbackAuthorizationService`
-3. If the instance provider setting cannot be read, the runtime uses the Cerbos fail-closed path and logs safe `FailureType` metadata only.
+   - any other value / `"local"` -> `FallbackAuthorizationService`
+4. If the instance provider setting cannot be read, the runtime uses the Cerbos fail-closed path and logs safe `FailureType` metadata only.
 
 Instance Cerbos failures are fail-closed. Network, timeout, or PDP-unavailable failures deny rather than falling back to `FallbackAuthorizationService`; switching back to local RBAC requires an explicit provider configuration change.
 
 BYO Cerbos failure handling:
 
-- `failure_mode=closed`: fallback runs in `SafeMode` (non-instance-admin traffic denied).
-- `failure_mode=open`: fallback runs in standard RBAC mode.
+- `failure_mode=closed`: fallback provider activates `SafeMode` (one-way latch: non-instance-admin traffic denied).
+- `failure_mode=open`: fallback provider runs standard RBAC mode.
 
 BYO config resolver failures activate provider-instance `SafeMode` instead of silently using local RBAC. A tenant configured with `cerbos.mode=custom_endpoint` but no custom PDP endpoint remains in BYO mode: runtime authorization applies the configured failure mode, while explicit BYO Admin API configuration remains available for package sync/status operations.
 
 ## Fallback RBAC Facts
 
-`FallbackAuthorizationService` is deny-by-default for unknown resource kinds and includes explicit rules for known kinds (`tenant_setting`, `organization`, `event`, `event_registration`, `storage_object`, `user`, etc.).
+`FallbackAuthorizationService` is a 4-part partial class (`.cs`, `.Evaluators.cs`, `.Batch.cs`, `.MachineCaller.cs`) that is deny-by-default for unknown resource kinds and includes explicit rules across all 40 domain resource kinds (`tenant_setting`, `organization`, `event`, `event_registration`, `storage_object`, `user`, `webhook`, `support_access_session`, etc.).
 
 Notable behavior:
 
-- Instance admins bypass normal checks.
-- Tenant-setting updates can be denied when `isLockedByInstance=true`.
-- `user` resource supports self-service `view`/`update` when `resourceId == current user`.
+- Instance admins bypass normal checks except for direct event authority rules (`event:manage-tickets` requires explicit event authority).
+- Tenant-setting updates are denied when `isLockedByInstance=true` (unless document is `tenant.branding`).
+- `user` resource supports self-service `view`/`update` when `targetUserId == current user`.
+- Machine callers (API keys) evaluate via `EvaluateMachineCallerAccessAsync`: barred from registration workflows, gated by `MachineScopeMapping` scope ceilings, and scoped by `ExternalApiKeyOwnerType`.
+- Batch evaluation (`IsAllowedBatchAsync`) pre-resolves an `AuthorityProfile` and fetches active event role snapshots via `IEventAuthoritySnapshotService` in **a single pass**, executing batch link checks in $O(1)$ database queries.
 
 ## Related
 
 - [SECURITY.md](SECURITY.md)
+- [AUTHORIZATION.md](AUTHORIZATION.md)
 - [adr/ADR-001-authorization-provider-architecture.md](adr/ADR-001-authorization-provider-architecture.md)

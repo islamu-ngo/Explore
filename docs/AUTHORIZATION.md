@@ -119,6 +119,8 @@ Event ticket management is implemented through `AuthorizationActions.Events.Mana
 
 Platform monetization uses `ResourceKinds.InstanceSetting` with setting key `platform-monetization` and `InstanceSettings.View` or `InstanceSettings.Update`. Endpoint classification, MediatR authorization metadata, and HAL filtering provide the normal server boundary. The query and command handlers add defense in depth by calling `IAdminContext.IsInstanceAdminAsync` before repository access. Tenant administrators, organizers, curators, and regular users cannot read or update this management resource, and the Blazor save controls appear only when the HAL document contains `edit`.
 
+Paid-event authority follows ADR-022 through ADR-024 and is not implied by administration. The event organizer actor with explicit commercial authority is the only normal payment recipient; listing contributors, tenant administrators, and instance administrators receive no fallback merchant authority. Future connect, paid-publish, promotion, checkout, cancel, refund, reconcile, ticket, check-in, transfer, waitlist, and add-on actions require dedicated resource decisions and matching HAL relations. Scanner capabilities are separate, narrow, expiring authorities and do not grant roster, order, payment, refund, or attendee-answer access. `ProtectedDelayedPayout` cannot be authorized until its external approval evidence gate is current.
+
 Managed reporting routing actions use settings resources rather than event resources. Tenant routing-state reads, tenant routing updates, tenant provider readiness tests, and tenant moderation-reporting dashboard reads authorize as `AuthorizationActions.TenantSettings.View` or `.Update` on `ResourceKinds.TenantSetting` with resource id `<tenantId>:moderation-reporting` and tenant scope. Instance reporting-provider lock updates authorize as `AuthorizationActions.InstanceSettings.Update` on `ResourceKinds.InstanceSetting` with resource id `moderation-reporting-locks`, then the handler rechecks instance-admin authority. UI affordances must come from HAL rels (`routing-state`, `edit`, `test-osprey-provider`, `test-coop-provider`); hidden links stay hidden and clients must not recreate them from role claims.
 
 Control-plane tenant fleet governance uses the instance-setting authorization boundary, not tenant membership authority. Fleet list and detail requests authorize with `ResourceKinds.InstanceSetting` and `AuthorizationActions.InstanceSettings.View` for resource id `control-plane.tenants`; activate, suspend, archive, reactivate, and schedule-purge commands use the same resource with `AuthorizationActions.InstanceSettings.Update`. Bundled Cerbos policy for `islamuevent_instance_setting` and the local fallback both allow these checks only for instance administrators, so regular users and tenant administrators are denied direct API reads as well as lifecycle writes. Tenant HAL resources evaluate the same kind, id, and action metadata before emitting lifecycle links; clients must use `_links` as the action source of truth and must not reconstruct controls from roles or claims.
@@ -161,37 +163,65 @@ If the password contains spaces, wrap it in quotes:
 --password="password with spaces"
 ```
 
-### 4.2. Fallback RBAC Service
+### 4.2. Fallback RBAC Service (`FallbackAuthorizationService`)
 
--   **Description**: A local, in-database implementation of Role-Based Access Control. It serves as the default authorization provider. It is not used as an automatic fallback when the instance-level Cerbos provider is selected and unavailable.
--   **Logic**: The `FallbackAuthorizationService` contains hardcoded rules for known resources (`event`, `organization`, `tenant_setting`, etc.) and denies access by default for any unknown resource type.
--   **Notable Rules**:
-    -   Instance administrators bypass most checks.
-    -   Users can always view/update their own `user` resource.
-    -   Updates to tenant settings can be denied if the setting is locked by an instance administrator.
+-   **Description**: A local, in-database implementation of Role-Based Access Control (RBAC) and Attribute-Based Access Control (ABAC). It serves as the primary authorization engine when running without an external Cerbos PDP container (e.g., local development, single-tenant deployments, ATProto/PDS standalone nodes). It is not used as an automatic fallback when the instance-level Cerbos provider is selected and unavailable.
+-   **Class Architecture**: The service is decomposed into four partial classes in `src/Explore.Infrastructure/Services/`:
+    -   `FallbackAuthorizationService.cs`: Entry point, primary switch dispatcher, safe-mode latch, and Activity correlation logging.
+    -   `FallbackAuthorizationService.Evaluators.cs`: Granular evaluator logic across all 40 domain resource kinds (`organization`, `event`, `storage_object`, `user`, `webhook`, `support_access_session`, etc.).
+    -   `FallbackAuthorizationService.Batch.cs`: High-throughput batch evaluation engine utilizing single-pass `AuthorityProfile` pre-resolution and `EventAuthoritySnapshotService` batch querying.
+    -   `FallbackAuthorizationService.MachineCaller.cs`: Scope-ceiling and owner-type evaluation for API key machine principals.
+-   **Notable Evaluation Rules**:
+    -   **Instance Admin Bypass**: Instance administrators bypass standard checks except for direct event authority requirements (e.g., `event:manage-tickets` requires explicit event authority).
+    -   **Tenant Settings & Governance Locks**: Updates check `isLockedByInstance == true`. If locked by infrastructure operators, non-instance admin update attempts are denied. `tenant.branding` document updates are explicitly exempted from instance locks.
+    -   **Event Moderation**: `moderate-light`, `moderate-heavy`, and `unmoderate` actions require Instance Admin or Tenant Admin authority in scope. Event managers, owners, and organization admins cannot moderate events.
+    -   **User Profiles**: Authenticated users can view/update their own profile (`targetUserId == currentUserId`); other targets require Tenant Admin or Instance Admin authority.
+    -   **Storage Objects**: Downloads are allowed if active and visibility is `PublicImage` or `AuthenticatedTenant`, or if private and `createdBy == currentUserId`.
+    -   **Support Access Sessions**: Active support sessions tag OpenTelemetry traces, enforce tenant isolation (`support_access_target_tenant_mismatch`), and block write actions when in read-only mode (`support_access_read_only`).
 
-### 4.3. Provider Resolution Flow
+### 4.3. Provider Resolution Flow (`RuntimeAuthorizationProvider`)
 
 The `RuntimeAuthorizationProvider` selects the authorization engine for a given check in the following order:
 
-1.  **Tenant BYO Cerbos**: If the current tenant has a specific "Bring Your Own" Cerbos instance configured, it is used.
-2.  **Instance-Level Setting**: If not, the system checks the instance-wide `AuthorizationProvider` setting (from the `SystemSetting` table).
-    -   If `"cerbos"`, it uses the instance's shared `CerbosAuthorizationService` and fails closed if the PDP is unavailable.
-    -   If any other value (or null), it uses the local `FallbackAuthorizationService`.
+1.  **Tenant BYO Cerbos**: If the current tenant has a specific "Bring Your Own" Cerbos instance configured via `ICerbosConfigResolver`, all resource checks route to that endpoint.
+2.  **Handler-Owned Local Parity Bypasses**: Specific requests (self-service `user:update`, pre-create `event:create`, `organization:create`, `event_session:create`, `ai_conversation`) are identified via `GetHandlerOwnedLocalCheckIndexes()` and routed directly to `FallbackAuthorizationService`. This guarantees that stale external PDP policy packages cannot block canonical self-service or pre-create handlers.
+3.  **Instance-Level Setting**: If not bypassed, the system checks the instance-wide `AuthorizationProvider` setting (`SystemSetting` key `GovernanceSettingKeys.Security.AuthorizationProvider`, cached for 1 minute):
+    -   If `"cerbos"`, it routes to the shared instance `CerbosAuthorizationService` and fails closed if the PDP is unavailable.
+    -   If any other value (or null / `"local"`), it routes to `FallbackAuthorizationService`.
 
 If reading the instance provider setting fails, runtime authorization uses the Cerbos fail-closed path and logs only safe `FailureType` metadata. It does not default open to local RBAC.
 
-### 4.4. Failure Modes
+### 4.4. Failure Modes & The One-Way Safe-Mode Latch
 
 The system is designed to fail safely — deny by default when the configured provider is unavailable.
 
 -   **Instance Cerbos Failure**: If the connection to the instance-level Cerbos PDP fails (e.g., network error, timeout), all authorization checks are denied. The operator explicitly chose Cerbos; falling back to a potentially more permissive local RBAC would silently bypass intended policies. Restore Cerbos connectivity or explicitly switch the authorization provider setting to local RBAC through instance administration to recover without Cerbos.
--   **BYO Cerbos Failure**:
-    -   If the tenant's BYO configuration has `failure_mode=closed`, the fallback provider runs in provider-instance-scoped `SafeMode`, denying all requests except for those from an instance administrator.
+-   **BYO Cerbos Failure & The Safe-Mode Latch**:
+    -   If the tenant's BYO configuration has `failure_mode=closed`, `FallbackAuthorizationService.ActivateSafeMode()` is triggered. Safe mode is a **one-way, thread-safe latch** for the provider instance: once activated, it logs a critical alert and denies all non-instance-admin requests to prevent bypassing stricter tenant policies.
     -   If `failure_mode=open`, the fallback provider runs its standard RBAC logic.
 -   **BYO Configuration Failure**: If tenant BYO configuration cannot be resolved, runtime authorization activates provider-instance safe mode instead of silently using local RBAC.
 -   **Blank BYO PDP Endpoint**: If a tenant explicitly sets `cerbos.mode=custom_endpoint` but leaves the custom PDP endpoint blank, the resolver preserves BYO mode, failure mode, and explicit BYO Admin API config. Runtime authorization then applies the configured `failure_mode`; it does not fall back to the instance PDP.
 -   **Safe Logging**: Runtime failure logs avoid raw endpoints, Admin API credentials, JWTs/tokens, response bodies, and exception objects/messages. They keep safe operational metadata such as failure type, action, mode, counts, request id, and correlation id.
+
+### 4.5. Machine Principal (API Key) Security Architecture
+
+API key machine callers evaluate authorization through `EvaluateMachineCallerAccessAsync`:
+
+1.  **Registration Workflow Prohibition**: Machine callers are strictly barred from modifying registration forms, registration workflows, or managing event tickets.
+2.  **Scope Ceiling (`MachineScopeMapping`)**: External API key scopes (`events:write`, `organizations:read`, `admin:tenant`, `mcp:propose`, etc.) establish a maximum capability ceiling. A machine caller must satisfy this scope ceiling in addition to owner-type authority.
+3.  **Owner-Type Boundaries (`ExternalApiKeyOwnerType`)**:
+    -   `InstanceAdmin`: Unrestricted platform-wide access.
+    -   `Tenant`: Bound to the key's `TenantId`. Cannot access instance settings, ATProto records, or platform namespaces.
+    -   `Organization` / `Group`: Bound strictly to resources owned by `context.OwnerId`.
+    -   `User`: Bound to user-owned resources or tenant resources where the user holds Tenant Admin or Organization Admin authority.
+
+### 4.6. Batch Capability Planning Engine
+
+To prevent $N+1$ database queries during HATEOAS link evaluation for paginated resource lists:
+
+1.  **Authority Profile Pre-Resolution**: `FallbackAuthorizationService.Batch.cs` resolves an immutable `AuthorityProfile` (Instance Admin, Tenant Admin, Admin Org IDs, Admin Group IDs, Event Create Org/Group IDs) in **a single pass** at the start of a batch check.
+2.  **Batch Event Authority Snapshots**: `IEventAuthoritySnapshotService.GetForUserAndEventsAsync()` extracts distinct event IDs from all event-scoped checks and loads active `EventRoleAssignment` records in **a single SQL query**.
+3.  **In-Memory Evaluation Loop**: `EvaluateWithProfile()` evaluates all checks in CPU memory against the pre-resolved `AuthorityProfile` and event authority snapshot, executing batch checks in **$O(1)$ database calls**.
 
 ## 5. Roles and Permissions
 
