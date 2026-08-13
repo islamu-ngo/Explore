@@ -245,6 +245,8 @@ Authenticated event-scoped ticket catalog versions, draft authoring, ticket type
 
 Ticketing money fields use integer minor units in `long ...Minor` properties. Percentages use integer basis points, where `10_000 = 100%`. Catalog, ticket-type, and capacity-pool mutations must follow the exact relation on the returned HAL resource, including `create-draft`, `clone-draft`, `create-type`, `create-pool`, `publish`, `edit`, and `delete`.
 
+Paid commerce and admission endpoints are not yet implemented. ADR-022 through ADR-024 reserve future surfaces for actor-bound Stripe onboarding/readiness, local promotions, direct-charge Checkout/payment/refund/dispute reconciliation, opaque admission tickets, recovery, entitlement-targeted check-in/undo, transfer, waitlist offers, and event-bound add-ons. Those surfaces must use explicit endpoint classifications, private/no-store where identities or commercial state are returned, idempotent `PublicTransactional` controls for guest writes, and HAL relations as the only client action authority. Marketing, accounting, tax determination, and legal invoice/credit-note endpoints remain outside the Event API.
+
 ### Registration Form Authoring Endpoints
 
 Authenticated registration-form authoring is rooted at `/api/events/{eventId:guid}/registration-workflows`. The event `manage-registration-workflow` relation is emitted only after server-side authorization confirms a verified organizer controller or an explicit event registration-manager assignment. Community contributors, listing submitters, tenant-only curators, machine principals, ambiguous organizers, and unrelated tenants receive neither the relation nor authoring data.

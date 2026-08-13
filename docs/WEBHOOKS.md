@@ -338,6 +338,10 @@ Svix to Local:
 
 Do not promise perfect migration of Svix-only features such as transformations, OAuth, mTLS, endpoint throttling, or portal-only endpoint configuration.
 
+## Planned Stripe Connect Intake
+
+ADR-022 approves a future Stripe Connect intake on the existing durable incoming-message pattern; no Stripe webhook endpoint is implemented yet. The future controller must verify `Stripe-Signature` against the exact raw body before parsing, deduplicate provider event IDs, bind events to the expected connected account and pinned API/webhook version, persist a minimal normalized envelope plus one durable effect, and acknowledge promptly. Payment, refund, dispute, and account state transitions occur in fenced Application processing after intake, never directly in the callback controller or inside a provider call transaction. Duplicate, delayed, out-of-order, and ambiguous deliveries are reconciled rather than treated as exceptional one-off failures.
+
 ## Related
 
 - [API.md](API.md#webhook-management)

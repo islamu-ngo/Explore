@@ -322,6 +322,8 @@ Do not add new unsafe `/bff/*` endpoints without either `.ValidateAntiforgery()`
 
 Future public transactional capabilities are opaque, scoped, single-purpose, expiring bearer values and never prove user identity. A future implementation must persist only hashes, use constant-time comparison, support expiry and rotation, and reveal plaintext exactly once; plaintext values must never be persisted, logged, returned after issuance, or turned into browser-visible authority claims. This traffic-controls phase adds no capability endpoint or capability claim.
 
+ADR-022 and ADR-023 apply the same foundation to paid checkout, ticket recovery, transfer acceptance, admission credentials, and scanner operation. Stripe onboarding and Checkout return URLs are navigation only; raw signed webhook evidence plus account/payment retrieval and reconciliation determine provider truth. Admission QR content is a versioned high-entropy opaque credential with no PII, amount, email, display ID, or authorization claims, and persistence keeps only a keyed lookup digest. Transfer and reissue rotate the credential. Scanner capabilities are separately hashed, tenant/event/target/action/expiry scoped, revocable, and excluded from ordinary logs and metrics. Initial admission validation is online; offline signing remains deferred pending key-custody and revocation design.
+
 ## Storage Upload Session Binding
 
 The Blazor BFF upload proxy is an SSRF-sensitive boundary because browser uploads could otherwise try to make the server send bytes to attacker-chosen destinations. Browser callers must not control provider, tenant, destination URL, object key, local path, or max-size policy.

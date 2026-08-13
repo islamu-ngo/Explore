@@ -9,7 +9,7 @@
 | **Date** | 2026-07-26 |
 | **Deciders** | ISLAMU Event Platform — Architecture, Security, Registration workstreams |
 | **Supersedes** | User-centric `EventRegistrationIntent` and decorative event/session prices |
-| **Superseded by** | A future payment architecture ADR for provider attempts, capture, refund, tax, and payout |
+| **Superseded by** | ADR-022 for payment, refund, dispute, and Stripe Connect behavior; ADR-024 for external tax/invoice ownership and protected payout |
 
 ## Context
 

@@ -3,7 +3,84 @@
 
 # Registration Data Collection & Participation Platform — Context
 
-Last Updated: 2026-08-12 Europe/Brussels
+Last Updated: 2026-08-13 Europe/Brussels
+
+## PHASE 16.2 COMPLETE (2026-08-13 Europe/Brussels)
+
+Phase 16 remains in progress and Task 16.2 is independently confirmed complete. `OrganizerPaymentProviderConnection` is a separate money-recipient aggregate, not a form provider connection. It immutably binds tenant, organizer actor, payment provider, Connect platform, and external account identity. Status is explicit: `PendingOnboarding`, `Restricted`, `Ready`, `Disabled`, and `Replaced`; only bounded readiness evidence can mark `Ready`. The model stores no raw KYC, bank, or provider payload.
+
+Historical external-account ownership is permanent. Disabled or replaced accounts cannot be rebound; replacement creates a new future-only aggregate and preserves the old external account identity. `OrganizerPaymentRecipientSnapshot` is factory-only and pins actor, connection, account, country, currency, `OrganizerDirect`, policy versions, and truthful UTC time. The repository returns entities and declares historical account lookup.
+
+Local CQRS record, replace, disable, get, and list use explicit actor identity and `ClaimantActorAccessEvaluator`, including query authorization. They never substitute an admin or session recipient. No persistence implementation, index, migration, secrets/config, `Stripe.net` package, provider I/O, onboarding, callback, reconciliation, API, Cerbos, HAL, UI, or publication wiring was added.
+
+TDD and review evidence: first implementation focused Domain 8 and Application 11; adversarial review rejected query authorization gaps, historical rebinding, and public snapshot constructor/timestamps; RED regressions were added and repaired. Focused repair passed Domain 11/11 and Application 19/19. Full Domain passed 778/778. Full Application passed 3609/3610 with only the unchanged unrelated FormSchema golden hash failure. Final Release build exited 0 warnings and 0 errors, `git diff --check` was clean, and the final independent verdict confirmed.
+
+### NEXT
+
+Start Task 16.3: persistence, instance secrets, configuration, and generated migrations. Tasks 16.3-16.5 and Phase 16 verification remain unchecked; Phase 16 is not complete.
+
+## PHASE 16.1 COMPLETE (2026-08-13 Europe/Brussels)
+
+Phase 16 is in progress and Task 16.1 is independently confirmed complete. `PaidEventPolicyVersion` models instance and tenant versioned ceilings with nullable `TenantId` plus active revisions. `PaidEventPolicyRules` validates tenant subset/narrowing. Allowed organizer kinds reuse `ActorTypeEnum`. Currencies reuse `CurrencyMetadata`, preserve EUR/USD/MAD/SAR/AED order, and require explicit confirmation. Disabled, inactive, or invalid policies fail closed; venue suggestion never authorizes. The refund hard floor uses source-named `PaidEventRefundProtection` values and cannot be removed. Risk ceilings are currency-qualified through `PaidEventPolicyCurrencyRiskLimit`. First-paid-event and far-future review thresholds narrow only.
+
+No `EventTicketCatalog` publication wiring, Stripe package, persistence, migration, connection, provider, API, or UI work was added.
+
+TDD and review evidence: initial RED for missing types; adversarial review rejected the first version for fail-open currency/refund handling, ambiguous thresholds, and enumerable exposure; repairs added regressions; second review found a hard-floor bypass and false-positive test; final repair captured RED. Focused paid-policy Domain tests passed 18/18, full Domain passed 767/767, Release build exited 0 errors with 758 existing warnings, `git diff --check` was clean, and the final independent verifier confirmed the result.
+
+### NEXT
+
+Start Task 16.2: actor-bound organizer payment-provider connection and historical snapshots. Tasks 16.2-16.5 and Phase 16 verification remain unchecked; Phase 16 is not complete.
+
+## PHASE 15 COMPLETE (2026-08-13 Europe/Brussels)
+
+Phase 15 tasks 15.1-15.4 are complete. ADR-022 now teaches the commerce shape implementers must follow: Stripe Connect `OrganizerDirect`, an event organizer actor as the merchant authority, actor-bound connected accounts, immutable commercial snapshots, an Infrastructure-only Stripe SDK boundary, and no provider I/O inside database transactions. ADR-023 now teaches the admission shape: `AdmissionTicket` owns an opaque rotatable credential, the keyed digest is the lookup authority, display IDs/email/PII never authorize, and online-first check-in/undo is append-only against entitlement targets. ADR-024 now teaches the product boundary: specialist business domains remain external, waitlists/add-ons stay event-bound, and `ProtectedDelayedPayout` is approval-gated by Stripe, legal, Islamic-finance, and operator evidence.
+
+The agent governance repair is complete for this phase. `.agents/contract` and `.agents/rules` are canonical; `.claude` paths remain historical compatibility references only. Focused `PrivacyErasureIntentGovernanceTests` passed 7/7. The concurrently deleted `AgentContextGovernanceTests.cs` was intentionally not restored.
+
+Verification is honest and split by ownership. Final `dotnet build --configuration Release --verbosity quiet` exited 0 with 0 warnings and 0 errors. Focused governance passed 7/7. `.agents/contract/intents.yaml` parses and the intent validation names ADR-022, ADR-023, and ADR-024. Full `Event.Architecture.Tests` remains non-green with 370 total, 365 succeeded, 1 skipped, and 4 unrelated dirty-worktree failures: `BlazorProductionBackendContracts_ShouldComeFromGeneratedApiClient`, `DTOs_ShouldEndWith_Dto`, `Runtime tenant-filter bypasses must use approved reason constants`, and `InventoryCoversCurrentEfAndDesignatedProviderSurfaces`. `git diff --check` is clean.
+
+Research attribution is corrected. Tavily MCP was unavailable, so no Tavily research is claimed. Context7/official documentation evidence was used instead: `/stripe/stripe-dotnet`, `/websites/stripe`, and `/mdn/content`; official NuGet/Stripe evidence plus an isolated metadata probe established `Stripe.net` 52.3.0, Apache-2.0, `net10.0` compatibility, assembly `52.3.0.0`, API `2026-07-29.dahlia`, and transitives `Newtonsoft.Json` 13.0.3, `System.Configuration.ConfigurationManager` 9.0.0, `System.Diagnostics.EventLog` 9.0.0, and `System.Security.Cryptography.ProtectedData` 9.0.0. The dependency policy command exposed pre-existing metadata failures for `FluentAssertions` 8.10.0 and `Microsoft.Data.SqlClient.SNI.runtime` 6.0.2, so global policy is not green.
+
+### NEXT
+
+Task 16.1 is now complete and Phase 16 is in progress. Start Task 16.2 next; no runtime code, package addition, migration, provider configuration, payment/admission implementation, or payout approval work has started.
+
+## STRIPE.NET / EVENT-PLATFORM RE-BASELINE PLANNED (2026-08-13 Europe/Brussels)
+
+The user approved expanding this workstream beyond completed Phase 14. Phases 15–25 now planned the full safe sequence: accepted ADR/contract gate; paid-event policy and actor-bound Stripe onboarding; local reservation-aware promotion codes; Stripe Connect direct-charge Checkout; refund/cancellation/dispute reconciliation; `AdmissionTicket` with opaque QR credential; ticket recovery/self-service; event/day/session check-in; transfer/reissue; waitlist offers; event-bound add-ons kept outside admission; an approval-only protected delayed-payout profile; and self-hosted/official-instance hardening. Phase 15 is complete; Phase 16 is in progress.
+
+Stripe support is now explicitly based on Stripe's official `Stripe.net` NuGet package. Context7/official documentation and an isolated metadata probe on 2026-08-13 identify **52.3.0** as the current stable Apache-2.0 release, compatible with the repository's `net10.0` target, with assembly `52.3.0.0` and API `2026-07-29.dahlia`. The transitive graph is `Newtonsoft.Json` 13.0.3, `System.Configuration.ConfigurationManager` 9.0.0, `System.Diagnostics.EventLog` 9.0.0, and `System.Security.Cryptography.ProtectedData` 9.0.0. This is a dated Phase 15 evidence baseline, not a package addition.
+
+The SOLID boundary is concrete and intentionally small. Application owns separate use-case capabilities for connected-account readiness, Checkout/payment retrieval, refund retrieval, and the conditional payout profile; Infrastructure alone owns `StripeClient`, `RequestOptions`, `EventUtility`, Stripe models, and `StripeException` mapping. The implementation uses the instance-based client, shared HTTP transport, request-scoped connected-account/idempotency options, strict webhook/API-version matching, deterministic transport/signature fixtures, and durable reconciliation. There is no legacy global key, generic Stripe god service, provider factory, SDK type leakage, preview package, undocumented parameter, raw Stripe API request, or extra mocking dependency.
+
+No runtime code, dependency, migration, or provider configuration was changed by this re-baseline or by Phase 15 closeout. ADR-022 through ADR-024 and `.agents/contract/intents.yaml` now provide the docs/contract gate for Phase 16. Starting package, migration, provider, or payment/admission runtime work beyond the current Phase 16 task scope remains a contract violation.
+
+ISLAMU Event remains an event platform and management system. Email marketing stays in Listmonk; bookkeeping, accounting, tax determination, and legal invoice/credit-note issuance stay in Qonto or another approved external system. The former five-task tax/invoice phase was removed from the active plan without losing its design: it is preserved with the future optional integration architecture in [`dev/report/event-platform-boundary-and-external-business-integrations.md`](../../report/event-platform-boundary-and-external-business-integrations.md).
+
+[`islamic-value-sensitive-design/i-vsd-paid-event-payments-consultation.md`](../../../islamic-value-sensitive-design/i-vsd-paid-event-payments-consultation.md) is the authoritative payment-risk/product input. Its safe default is Stripe Connect `OrganizerDirect`: direct charges on the event organizer actor's connected account, no tenant/instance-admin fallback merchant, each self-hoster owns its Connect platform credentials, tenant policy only narrows instance policy, one explicit immutable order currency, runtime refund protection, asynchronous provider truth, and no promise that normal payouts are held until the event. `ProtectedDelayedPayout` is Phase 24 only after Stripe, legal, Islamic-finance, and operator approvals; it is never called escrow and never blocks the default profile.
+
+Admission decisions are online-first: one `AdmissionTicket` per confirmed ticket assignment; QR contains only a versioned high-entropy opaque credential; persistence stores a keyed lookup digest; display IDs/email/PII never authorize; reissue/transfer rotates; check-in/undo is append-only and entitlement-targeted; scanner/transfer/recovery capabilities are scoped, expiring, revocable, and redacted. Offline-verifiable credentials remain outside scope until ADR-023 is extended with signing-key and revocation-distribution rules.
+
+Tavily MCP was unavailable on 2026-08-13, so no Tavily research is claimed. Context7/official documentation evidence was used instead and recorded for `/stripe/stripe-dotnet`, `/websites/stripe`, and `/mdn/content`. Official Stripe, NuGet, OWASP, Microsoft, MDN, and Qonto documentation established the current `Stripe.net` package/license/version, recommended `StripeClient`, per-request `StripeAccount`/`IdempotencyKey`, built-in network retries, SDK/API/webhook version coupling, raw-body signature verification, signed fixture helper, request-ID/error mapping, connected-account direct-charge ownership, capability/readiness checks, asynchronous duplicate-safe webhooks, minor-unit currencies, pending refund truth, secure random single-use recovery tokens, browser `BarcodeDetector` non-Baseline status, and Qonto's OAuth/scopes/client-invoice/credit-note/webhook/idempotency/rate-limit boundaries. Qonto evidence informs the deferred report only. No third-party implementation source was inspected or copied.
+
+### ⏭️ NEXT
+
+1. Start Phase 16.2 only: actor-bound organizer payment-provider connection and historical snapshots.
+2. Keep Phase 14 and Phase 15 complete, preserve all concurrent worktree changes, and keep remaining Phase 16 checkboxes unchecked until implementation evidence exists.
+
+## PHASE 14 COMPLETE (2026-08-13 Europe/Brussels)
+
+Tasks 14.1–14.8 are complete. Guest order ownership changes only through the authenticated `claim` flow after capability validation and verified normalized-email equality. Tenant and platform form templates point to immutable published versions and instantiate fresh draft graphs with provenance. Channel updates govern future launches; explicit restart persists a replacement attempt and supersedes the retained attempt without allowing late callbacks to advance canonical fulfillment. Analytics expose aggregate projections only for approved non-sensitive fields with a minimum cell size of three. Company CSV import validates the full bounded batch, runs serializably, records PII-free amendments, and uses lineage idempotency. CSV, Google Sheets, and webhook sinks reuse the durable post-commit write-effect worker and transfer only approved formula-neutralized bounded values.
+
+Final Oracle review found two owned defects. The supersession relationship still required the replacement attempt to reuse the old channel/form, and duplicate CSV line/ordinal keys could create an unassigned participant with PII. The relationship now pins tenant/event/order/workflow/requirement only, duplicate assignment keys fail during parsing before any IDs or PII are created, all five latest `AddRegistrationAmendments` migrations were regenerated with `dotnet ef`, and the Oracle recheck returned `APPROVE` with no findings.
+
+Validation is green: Release build 0 errors with 5,644 existing warnings; full Blazor Client 2,340 passed with one governed skip; focused Domain 11, guest claim 23, templates 4, analytics 2, CSV/amendments 8, provider management 37, restart normalization 6, sink worker 7, sink adapters 3, API/HAL 16, Studio 10, persistence analytics 2/templates 3/supersession 1, and architecture 15. PostgreSQL, SQLite, SQL Server, MariaDB, and MySQL report no pending model changes. Current regenerated amendment migration IDs are PostgreSQL `20260812222235`, SQLite `20260812222358`, SQL Server `20260812222356`, MariaDB `20260812222351`, and MySQL `20260812222353`. Changed C# diagnostics and `git diff --check` are clean.
+
+Phase 14's plan explicitly excludes browser, Aspire, Docker, and live-service verification, so none is claimed. Task 14.8 remains design-only: payment, admission, check-in, promotions, taxes, and invoices were not added to runtime scope. Preserve concurrent Phase 13, address-geocoding, and agent-governance changes.
+
+### ⏭️ NEXT
+
+No Phase 14 work remains. Start any deferred commerce/admission capability as a separately approved workstream using `deferred-design-records.md` as the trigger/boundary record.
 
 ## PHASE 14 STARTED — TASK 14.8 COMPLETE (2026-08-12 Europe/Brussels)
 
@@ -344,7 +421,7 @@ The shared content reader and presigned-download handler deny provider access wh
 1. Read this context and `registration-data-collection-tasks.md`.
 2. Read only the current phase, §4 constraints, and any changed decisions from `registration-data-collection-plan.md`; do not reread the full plan on every resume.
 3. The consultation file (`registration-data-collection-consultation.md`) is the deep reference — open a specific section only when a task cites it (§ references appear throughout the plan/tasks).
-4. Start from the first unchecked high-priority task unless the user overrides.
+4. Start from Task 16.3 unless the user overrides. Do not start package, migration, provider, or runtime commerce/admission work outside the current Phase 16 task scope.
 5. Keep `tasks.md` current during implementation; update this context/plan only at their defined triggers (see plan §15).
 
 ## Key Files And Responsibilities
@@ -353,6 +430,13 @@ The shared content reader and presigned-download handler deny provider access wh
 |---|---|---|---|---|
 | `dev/active/registration-data-collection/registration-data-collection-consultation.md` | Existing | Docs | Combined CTO consultation (Reports 1+2) — authoritative product/architecture source | Do not edit |
 | `dev/active/registration-data-collection/hi-events-report.md` | Existing | Docs | Hi.Events research — behavior catalog, §7 defect-derived acceptance criteria, §9 adopt/adapt/reject, §11.4 deferred inventory | Do not edit; cited from Phases 4–8 + Task 14.8; never an architecture authority; **its §10 code-reuse permission is overridden — no Hi.Events code copy ever (CLA/dual-licensing, plan §4.13)** |
+| `islamic-value-sensitive-design/i-vsd-paid-event-payments-consultation.md` | Existing | Docs | Paid-event organizer-recipient, Stripe Connect, currency, refund, payout, malicious-fork, legal, and Islamic-finance design authority | Reference from ADR-022/024 and Phases 15–19, 23–25; do not treat as legal/fatwa/certification |
+| `dev/report/event-platform-boundary-and-external-business-integrations.md` | Existing | Docs | Approved Event-only product boundary, future Listmonk/Qonto integration paths, Qonto evidence, and preserved removed tax/invoice design | Required by ADR-024; Qonto/accounting runtime stays outside this workstream |
+| `dev/active/registration-data-collection/deferred-design-records.md` | Existing | Docs | Source-free triggers/boundaries for commerce/admission breadth | Superseded per record only after ADR acceptance and implementation evidence |
+| `docs/adr/ADR-022..024-*.md` | Planned P15 | Docs | Paid commerce, admission/security, external-business-system/event-breadth/protected-payout authority | Runtime phases blocked until Accepted |
+| `Directory.Packages.props` | Existing → modified P16 | Dependency | Exact central `Stripe.net` stable-version pin | 2026-08-13 baseline `52.3.0`; revalidate in 15.4; do not add in planning/P15 |
+| `src/Explore.Infrastructure/Explore.Infrastructure.csproj` | Existing → modified P16 | Infrastructure | Sole project-level `Stripe.net` reference | No Domain/Application/API/Blazor reference |
+| `src/Explore.Infrastructure/Payments/Stripe/**` | Planned P16/P18/P19/P24 | Infrastructure | Responsibility-separated Connect, Checkout, webhook, refund/dispute, and conditional payout adapters | SDK models/options/exceptions stop here; no provider factory or god service |
 | `src/Explore.Domain/Event.cs` | Existing | Domain | Aggregate root; loses `IsUserReported`/`EventUrl` (P1), `IsRegistrationRequired` (P2), `Price`/`CurrencyCode` (P4); gains provenance fields | 219 lines today |
 | `src/Explore.Domain/EventRegistrationIntent.cs` | Existing → deleted P5 | Domain | User-centric intent aggregate being replaced by `RegistrationOrder` | |
 | `src/Explore.Domain/EventRegistration.cs` | Existing → rewired P5/P6 | Domain | Survives as materialized per-session admission row, participant-linked | Has `AtprotoRecordId` — federation decision in Task 5.9 |
@@ -394,8 +478,18 @@ Synchronized with plan §5 (D1–D20). Highest-consequence:
 - **D18** Instance monetization: `PlatformFeePolicy` (organizer-earnings transparency) + `PlatformContributionSetting` (LaunchGood-style tip — DB-stored heading/body, options `0` default + `5/10/15/20%` shown as "percentage — computed amount"); **instance-admin-only**, versioned, defaults off/zero; contribution money is instance-directed and never mixes with organizer earnings; positive total → `AwaitingPayment`, all-zero → free path.
 - **D19** Hi.Events = behavior catalog only, **code source never**: adopt UX/workflow lessons, adapt concepts, reject its persistence/authorization/money/idempotency machinery; **zero code copy** — ISLAMU's CLA-based dual-licensing would be destroyed by third-party AGPLv3 code (authors are not CLA signatories); clean-room implementation from the report + plan only; report §10's code-reuse permission overridden; deferred breadth lives only in Task 14.8.
 - **D20** Organizer registration operations extend the implemented Studio workspace and single contextual sidebar. Event sections are gated only by the shared event `_links`; cross-event Orders/Attendees use one authenticated `StudioContextDto` from `GET /api/studio/context?actorId={optionalActorHint}`. Public/guest checkout remains under `/registration/**`; no role-derived links, per-link probe calls, dead placeholders, or parallel management shell.
+- **D21** `OrganizerDirect` first: Stripe Connect direct charge on the snapshotted organizer actor's account; no administrator fallback recipient; each self-hoster owns its platform credentials.
+- **D22** Effective paid-event policy is hard invariant ∩ instance ceiling ∩ tenant narrowing ∩ organizer choice ∩ live provider/account capability; one organizer-confirmed ISO currency, no location authority or internal FX.
+- **D23** `PaymentAttempt` is independent, durable, idempotent, and reconciled. Exact-pinned stable `Stripe.net` lives only in Infrastructure behind small Application capability ports; instance-based `StripeClient`, request-scoped account/idempotency, strict webhook/API-version matching, bounded SDK retries, provider-neutral error mapping, and deterministic conformance fixtures are mandatory. Stripe is the only adapter, not a speculative provider factory; return navigation is not success.
+- **D24** Refund protection is runtime policy with independent `RefundAttempt`/dispute truth; cancellation stops sales and fans out outbox work; requested/pending never means succeeded.
+- **D25** Promotions are local versioned commercial truth; live redemption reservations count with confirmed use; orders snapshot deterministic integer-minor discounts before provider handoff.
+- **D26** `AdmissionTicket` owns a rotatable opaque QR credential stored as a keyed digest; display/public ticket IDs and PII never authorize; online validation first.
+- **D27** Check-in is append-only per event/day/session entitlement target; undo compensates; scanner capability is narrow/expiring/revocable; batch results are per item.
+- **D28** Transfer/recovery are capability workflows; acceptance rotates QR and preserves order/payment/consent history; lookup/resend is generic and anti-enumeration.
+- **D29** Waitlists/add-ons stay event-bound and separate from admission; Listmonk owns email marketing; Qonto or another approved external system owns bookkeeping, tax determination, legal invoices/credit notes, and accounting. Event emits only bounded post-commit facts and sync references.
+- **D30** `ProtectedDelayedPayout` is optional and approval-only, uses explicit `SettlementReleaseAt`, is never escrow, and never blocks `OrganizerDirect`.
 
-Pending decisions owned by tasks: `ActorId` rename vs narrowing (1.1), BFF antiforgery mechanism for guests (3.2), form localization model (7.8), Drive-file policy (12.4), AT Proto order federation (5.9 — default: defer).
+Pending external decisions/gates owned by tasks: revalidation of the current `Stripe.net` stable pin/API/webhook/license/transitive audit and exact Stripe platform/controller/account country support (15.4/16.4); QR encoder/decoder package and license (15.4/20.3); protected-profile Stripe/legal/Islamic-finance/operator approvals (24.1). Qonto production/API details belong to a separate future workstream described in the report. Historical registration decisions remain recorded in their completed tasks.
 
 ## Constraints And Rules To Remember
 
@@ -412,7 +506,7 @@ Pending decisions owned by tasks: `ActorId` rename vs narrowing (1.1), BFF antif
 
 ## Validation Baseline
 
-Every phase: `dotnet build --configuration Release --verbosity quiet` once, plus at most one `dotnet test --project tests/<selected>/<selected>.csproj --configuration Release --verbosity quiet` — selections per phase (plan §7): P0 Architecture, P1 Domain, P2 API, P3 Architecture, P4 Persistence, P5 Persistence, P6 Application, P7 Domain, P8 Application, P9 API, P10–P12 Infrastructure, P13 API, P14 Blazor.Client. Run only after all phase tasks complete. Never start the app, browser, Docker, Aspire, or live services for verification.
+Every phase: `dotnet build --configuration Release --verbosity quiet` once, plus at most one `dotnet test --project tests/<selected>/<selected>.csproj --configuration Release --verbosity quiet` — selections per phase (plan §7): P0 Architecture, P1 Domain, P2 API, P3 Architecture, P4 Persistence, P5 Persistence, P6 Application, P7 Domain, P8 Application, P9 API, P10–P12 Infrastructure, P13 API, P14 Blazor.Client, P15 Architecture, P16 Infrastructure, P17 Persistence, P18 Infrastructure, P19 Application, P20 Domain, P21 API, P22 Application, P23 Persistence, P24 Infrastructure conditional, P25 API. Run only after all phase tasks complete. Never start the app, browser, Docker, Aspire, or live services for verification.
 
 ## Current Known Risks / Unknowns
 
@@ -421,6 +515,7 @@ Every phase: `dotnet build --configuration Release --verbosity quiet` once, plus
 - Provider API drift vs 2026-07 citations (Tasks 10.1/11.1/12.1).
 - Actor-level Studio context authority (Task 5.7): optional actor hints must fail closed and must not disclose role booleans or tenant-wide event data.
 - Schema-hash and CHECK-constraint artifacts become frozen contracts at first publish (7.4/8.2).
+- Product-scope creep is a standing risk: no Event-owned campaign, ledger, tax engine, invoice numbering/document lifecycle, accounting, or Qonto runtime work belongs to this plan (D29/report).
 - Full register in plan §13.
 
 ## Handoff Notes

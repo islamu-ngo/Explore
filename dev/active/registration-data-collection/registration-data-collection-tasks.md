@@ -3,12 +3,14 @@
 
 # Registration Data Collection & Participation Platform — Task Checklist
 
-Last Updated: 2026-08-12 Europe/Brussels
+Last Updated: 2026-08-13 Europe/Brussels
 
 ## Status Summary
-- **Overall status:** Phase 13 implementation and direct final review are complete; Phase 14 is now explicitly requested and Task 14.8 is complete. Focused Phase 13 lanes and the Release build are green, while the selected broad API gate remains non-green on 13 unrelated baseline fixtures.
-- **Current priority:** Continue Phase 14's independent tasks without absorbing deferred payment/admission implementation. Tavily MCP is unavailable in this session; Context7 and repository evidence are available.
-- **Latest implementation evidence:** Typed consent subjects and append-only lifecycle history, independent adult participant consent with child-marketing rejection, purpose/event-provenance-filtered audited exports, immutable retention deadlines with atomic bounded cleanup, privacy-erasure-safe consent ordering, and HAL-authorized Studio `export-attendees` are implemented. Final review repaired exact-tenant recipient approval, actor/organization substitution, missing organization-read provenance filtering, cleanup partial-failure risk, and consent-history FK erasure ordering. Live Aspire/browser QA is blocked by persisted PostgreSQL `28P01` and RabbitMQ `ACCESS_REFUSED`; volumes were preserved and AppHost stopped.
+- **Overall status:** Phase 16 is in progress: **94/141 implementation tasks are complete; 47 tasks remain unchecked**. No runtime/package/migration/provider implementation is claimed.
+- **Current priority:** Phase 16.3 persistence, instance secrets, configuration, and generated migrations. Keep Tasks 16.3-16.5 and Phase 16 verification unchecked until implementation evidence exists; do not add provider I/O, onboarding, callbacks, reconciliation, payment, admission, QR, check-in, transfer, payout runtime code, or publication wiring outside the declared task scope.
+- **Latest implementation evidence:** Task 16.2 is independently confirmed. `OrganizerPaymentProviderConnection` is a separate money-recipient aggregate, not a form provider connection, with immutable tenant + organizer actor + payment provider + Connect platform + external account identity. Status is explicit (`PendingOnboarding`, `Restricted`, `Ready`, `Disabled`, `Replaced`); only bounded readiness evidence can mark `Ready`; raw KYC, bank, and provider payloads are not stored. Disabled/replaced external accounts cannot be rebound; replacement creates a new future-only aggregate while preserving old identity. Factory-only `OrganizerPaymentRecipientSnapshot` pins actor, connection, account, country, currency, `OrganizerDirect`, policy versions, and truthful UTC time. Repositories return entities and declare historical account lookup. Local CQRS record/replace/disable/get/list uses explicit actor identity and `ClaimantActorAccessEvaluator`, including query authorization, with no admin/session recipient substitution. No persistence implementation, index, migration, secrets/config, `Stripe.net` package, provider I/O, onboarding, callback, reconciliation, API, Cerbos, HAL, UI, or publication wiring was added.
+- **Verification evidence:** TDD began with focused Domain 8 and Application 11; adversarial review rejected query authorization gaps, historical rebinding, and public snapshot constructor/timestamps; RED regressions were added and repaired. Focused repair passed Domain 11/11 and Application 19/19; full Domain passed 778/778; full Application passed 3609/3610 with only the unchanged unrelated FormSchema golden hash failure. Final Release build exited 0 warnings and 0 errors, `git diff --check` is clean, and the final independent verdict confirmed.
+- **Research evidence:** Tavily MCP was unavailable, so no Tavily research is claimed. Context7/official documentation evidence was used with IDs `/stripe/stripe-dotnet`, `/websites/stripe`, and `/mdn/content`. Official NuGet/Stripe evidence plus an isolated metadata probe established `Stripe.net` 52.3.0, Apache-2.0, `net10.0` compatibility, assembly `52.3.0.0`, API `2026-07-29.dahlia`, and transitives `Newtonsoft.Json` 13.0.3, `System.Configuration.ConfigurationManager` 9.0.0, `System.Diagnostics.EventLog` 9.0.0, and `System.Security.Cryptography.ProtectedData` 9.0.0. The dependency policy command exposed pre-existing metadata failures for `FluentAssertions` 8.10.0 and `Microsoft.Data.SqlClient.SNI.runtime` 6.0.2; global policy is not green.
 
 ## Handoff — 2026-08-01 Europe/Brussels: Task 7.5 Confirmed / Tasks 7.6–7.7 Current
 
@@ -338,29 +340,150 @@ Last Updated: 2026-08-12 Europe/Brussels
 - **Affected-lane evidence:** final reruns passed Domain 6, Application 10, API/HAL 1, Blazor 2, Architecture 26, and real PostgreSQL retention/erasure/provenance 10. All five providers report no pending EF model changes. Release build has 0 errors; the final full rebuild surfaced the repository's existing 5,138 analyzer warnings. `git diff --check` is clean and changed-file diagnostics report no errors. Live UI/API execution is environment-blocked by persisted PostgreSQL/RabbitMQ credential drift; no volume reset was performed. Broad API failures: `DashboardDisabledDoesNotExposeSchedulerRoute`, `DashboardEnabledRequiresHostAuthentication`, five existing authorization expectation cases, three production guardrail startup cases blocked by privacy-erasure replay, two tenant-setting/storage authorization cases, and `PostgreSqlFilteredIndexesEnforceRequirementAndStandaloneUniqueness`.
 - **Review evidence:** graph risk/impact review plus direct requirements/security/tenant/privacy review completed with no unresolved Phase 13 finding after repairs. The requested OpenAI Oracle session failed upstream and an unauthorized non-OpenAI fallback timed out without producing a review; no fallback result is claimed.
 
-## Phase 14: Advanced Orchestration & Deferred ⏳ NOT STARTED (each task independently deferrable)
-- [ ] **14.1 Guest order → account linking (verified, never silent)** — **Effort:** M
-- [ ] **14.2 Form templates/packs with provenance** — **Effort:** L
-- [ ] **14.3 Provider switching + supersession tooling** — **Effort:** M
-- [ ] **14.4 Governed analytics projections over answers** — **Effort:** L
-- [ ] **14.5 Company CSV bulk assignment + `RegistrationAmendment` flows** — **Effort:** L
-- [ ] **14.6 Generalized submission sinks (Excel/Sheets/webhooks)** — **Effort:** M
-- [x] **14.7 Blazor affordance-gating + Studio route/sidebar + accessibility audit** — existing tests prove mutation/section HAL gates, canonical `/studio/**` route registration, and actor-navigation replacement on event routes. The audit repaired the attendee export's missing live-region feedback: successful downloads announce politely and failures announce assertively while the exact `export-attendees` relation remains the only affordance. Focused rendered interaction/navigation tests pass 10/10; the full Blazor Client gate passes 2,333 with 1 governed skip; Release build has 0 errors. CSS remains logical/RTL-safe. Authenticated browser capture remains unclaimed because the persisted PostgreSQL/RabbitMQ credential blocker is unchanged. — **Effort:** M
+## Phase 14: Advanced Orchestration & Deferred ✅ COMPLETE
+- [x] **14.1 Guest order → account linking (verified, never silent)** — authenticated capability-scoped claim requires a verified normalized-email match, rejects another owner, and is idempotent for the same account. — **Effort:** M
+- [x] **14.2 Form templates/packs with provenance** — tenant/platform templates pin published source versions; instance-admin authority protects platform templates; instantiation deep-clones an independent draft with source template provenance. — **Effort:** L
+- [x] **14.3 Provider switching + supersession tooling** — channel updates affect future launches, explicit restart supersedes retained attempts, late callbacks cannot advance canonical fulfillment, and the corrected FK permits replacement channel/form changes. — **Effort:** M
+- [x] **14.4 Governed analytics projections over answers** — analytics/operational flags drive aggregate-only projections; sensitive, free-text, and consent fields are excluded; minimum cell size is 3; Studio is HAL-gated. — **Effort:** L
+- [x] **14.5 Company CSV bulk assignment + `RegistrationAmendment` flows** — bounded UTF-8 whole-batch validation, duplicate-key rejection before PII creation, serializable writes, lineage idempotency, admission reassignment, and PII-free amendment audit are implemented. — **Effort:** L
+- [x] **14.6 Generalized submission sinks (Excel/Sheets/webhooks)** — CSV, Google Sheets, and webhook adapters reuse the durable post-commit effect worker, transfer only approved fields, neutralize formulas, bound payloads, and preserve retry/idempotency policy. — **Effort:** M
+- [x] **14.7 Blazor affordance-gating + Studio route/sidebar + accessibility audit** — existing tests prove mutation/section HAL gates, canonical `/studio/**` route registration, and actor-navigation replacement on event routes. The audit repaired the attendee export's missing live-region feedback: successful downloads announce politely and failures announce assertively while the exact `export-attendees` relation remains the only affordance. Focused rendered interaction/navigation tests pass 10/10; the final full Blazor Client gate passes 2,340 with 1 governed skip; Release build has 0 errors. CSS remains logical/RTL-safe. Browser execution is excluded by the Phase 14 verification strategy. — **Effort:** M
 - [x] **14.8 Deferred commerce/admission design records (Hi.Events-informed)** — `deferred-design-records.md` records PaymentAttempt/provider reconciliation, AdmissionTicket + rotatable signed/hashed credential (never the display ID; transfer rotates), check-in lists with append-only admission events + unique-active constraint + scoped scanner capabilities + camera/HID UX, anti-enumeration ticket lookup/resend/self-service, promo codes counting live reservations, waitlist offers with expiry, add-ons/general products, and taxes/fees/invoices. Every record names its trigger, extended aggregates, required boundary, and superseded `hi-events-report.md` sections. Context7 evidence is recorded; Tavily MCP is unavailable and no Tavily result is claimed. — **Effort:** M
 
 ### Phase 14 Verification — RUN ONCE AFTER ALL PHASE TASKS
-- [ ] `dotnet build --configuration Release --verbosity quiet` — current partial-phase run: 0 errors, 494 existing warnings; rerun after Tasks 14.1–14.6
-- [ ] `dotnet test --project tests/Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration Release --verbosity quiet` — current partial-phase run: 2,333 passed, 1 governed skip; rerun after Tasks 14.1–14.6
+- [x] `dotnet build --configuration Release --verbosity quiet` — 0 errors, 5,644 existing warnings after final migration regeneration
+- [x] `dotnet test --project tests/Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration Release --verbosity quiet` — 2,340 passed, 1 governed skip
+- **Affected-lane evidence:** Domain 11; guest claim 23; templates 4; analytics 2; CSV/amendments 8; provider management 37; restart normalization 6; sink worker 7; sink adapters 3; API/HAL 16; Studio 10; persistence analytics 2, templates 3, supersession 1; architecture 15. PostgreSQL, SQLite, SQL Server, MariaDB, and MySQL report no pending model changes.
+- **Final review:** Oracle initially found a cross-channel supersession FK defect and duplicate CSV assignment-key PII risk. Both were repaired, migrations regenerated through EF, regressions added, and the recheck returned `APPROVE` with no findings.
+
+## Phase 15: Commerce And Admission ADR / Contract Gate COMPLETE
+- [x] **15.1 Accept ADR-022 for paid-event commerce, merchant authority, and Stripe Connect** - locks `OrganizerDirect`, actor-bound recipient, policy/currency narrowing, local promotions, payment/refund/dispute/reconciliation, Infrastructure-only Stripe boundary, and no provider I/O in transactions. - **Effort:** M
+- [x] **15.2 Accept ADR-023 for admission credentials, check-in, transfer, and recovery** - locks online opaque QR, keyed digest authority, append-only entitlement-targeted check-in/undo, scoped scanner capabilities, transfer rotation, anti-enumeration recovery, and offline-signing deferral. - **Effort:** M
+- [x] **15.3 Accept ADR-024 for external business integrations, event-bound breadth, and protected payout** - keeps Listmonk/Qonto specialist domains outside Event, keeps waitlists/add-ons event-bound, and preserves exact Stripe/legal/Islamic-finance/operator gates; never escrow. - **Effort:** M
+- [x] **15.4 Re-baseline contract, primary-doc evidence, and dependency gates** - `.agents/contract`/`.agents/rules` are canonical; intent parses and names ADR-022..024; Context7/official docs plus metadata probe recorded `Stripe.net` 52.3.0, Apache-2.0, `net10.0`, assembly `52.3.0.0`, API `2026-07-29.dahlia`, and transitives; Tavily unavailable; dependency policy is not globally green because of pre-existing metadata failures. - **Effort:** M
+
+### Phase 15 Verification — RUN ONCE AFTER ALL PHASE TASKS
+- [x] `dotnet build --configuration Release --verbosity quiet` — final rerun exited 0 with 0 warnings and 0 errors
+- [x] `dotnet test --project tests/Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet` — executed and phase-owned acceptance complete, but global architecture is not green: 370 total, 365 succeeded, 1 skipped, 4 unrelated dirty-worktree failures
+- **Unrelated architecture failures:** `BlazorProductionBackendContracts_ShouldComeFromGeneratedApiClient`, `DTOs_ShouldEndWith_Dto`, `Runtime tenant-filter bypasses must use approved reason constants`, and `InventoryCoversCurrentEfAndDesignatedProviderSurfaces`.
+- **Focused gate evidence:** `PrivacyErasureIntentGovernanceTests` 7/7 passed; YAML parse/intent validation passed; `git diff --check` is clean.
+
+## Phase 16: Paid-Event Policy, Organizer Stripe Connection, And Currency Readiness 🟡 IN PROGRESS
+- [x] **16.1 Versioned paid-event policy hierarchy and currency rules** — instance ceiling, tenant narrowing, organizer kinds/verification/risk/refund/currency controls; location suggests only; exact ISO code confirmation. Evidence: Domain-only `PaidEventPolicyVersion`/`PaidEventPolicyRules`, `CurrencyMetadata` reuse with explicit confirmation, non-removable source-named refund hard floor, currency-qualified risk limits, fail-closed inactive/invalid policies, and 18/18 focused + 767/767 full Domain passes. No publication wiring, Stripe package, persistence, migration, connection, provider, API, or UI added. — **Effort:** L
+- [x] **16.2 Actor-bound organizer payment-provider connection and historical snapshots** — separate money-recipient aggregate with immutable tenant/organizer actor/provider/Connect platform/external account identity; explicit PendingOnboarding/Restricted/Ready/Disabled/Replaced statuses; bounded readiness only; no raw KYC/bank/provider payload; permanent historical account ownership; future-only replacement; factory-only `OrganizerPaymentRecipientSnapshot`; entity-returning repository with historical lookup; CQRS record/replace/disable/get/list with explicit actor identity, `ClaimantActorAccessEvaluator`, and query authorization. Evidence: focused repair Domain 11/11 and Application 19/19, full Domain 778/778, full Application 3609/3610 with only unchanged unrelated FormSchema golden hash failure, final Release build 0 warnings/0 errors, clean diff check, independent verdict confirmed. No persistence/index/migration/secrets/config/package/provider I/O/onboarding/callback/reconciliation/API/Cerbos/HAL/UI/publication wiring added. — **Effort:** L
+- [ ] **16.3 Persistence, instance secrets, configuration, and generated migrations** — instance `SecretBinding`, portable constraints/filters, all-provider EF generation/parity, no hand edits. — **Effort:** L
+- [ ] **16.4 Official `Stripe.net` hosted onboarding, account events, and readiness reconciliation** — centrally pin stable SDK in Infrastructure only; instance-based `StripeClient` over shared HTTP transport; bounded SDK timeout/retries; provider-neutral error/request-ID mapping; minimum capabilities; return URL is navigation; strict signed/versioned duplicate-safe account events; ambiguity reconciliation; deterministic custom-transport fixtures. — **Effort:** XL
+- [ ] **16.5 Admin/Studio configuration, publication preflight, Cerbos, and HAL** — relation-gated instance/tenant/organizer surfaces; publish-paid only when all authority/policy/account/currency/disclosure checks pass. — **Effort:** XL
+
+### Phase 16 Verification — RUN ONCE AFTER ALL PHASE TASKS
+- [ ] `dotnet build --configuration Release --verbosity quiet`
+- [ ] `dotnet test --project tests/Explore.Infrastructure.Tests/Explore.Infrastructure.Tests.csproj --configuration Release --verbosity quiet`
+
+## Phase 17: Promotion Codes And Immutable Checkout Pricing ⏳ NOT STARTED
+- [ ] **17.1 Promotion definitions, code secrecy, and discount rules** — versioned fixed/basis-point definitions, limits/eligibility/windows, keyed lookup digest + masked suffix, deterministic integer-minor allocation. — **Effort:** L
+- [ ] **17.2 Reservation-aware redemption and immutable order snapshots** — count live reservations + confirmed uses, atomic consume/release, immutable applied-promotion allocation, honest verified-purchaser limits. — **Effort:** L
+- [ ] **17.3 Persistence constraints, locking, and generated migrations** — last-use and expiry/confirm races, cross-tenant isolation, portable EF model parity. — **Effort:** L
+- [ ] **17.4 Promotion CQRS, API, authorization, rate limits, and HAL** — commercial-authority CRUD/publish/revoke plus generic, order-capability-scoped apply/remove; regenerate contracts. — **Effort:** L
+- [ ] **17.5 Studio and checkout promotion UX** — relation-gated management; accessible apply/remove and separate organizer/discount/fee/contribution/final totals. — **Effort:** M
+
+### Phase 17 Verification — RUN ONCE AFTER ALL PHASE TASKS
+- [ ] `dotnet build --configuration Release --verbosity quiet`
+- [ ] `dotnet test --project tests/Event.Persistence.IntegrationTests/Event.Persistence.IntegrationTests.csproj --configuration Release --verbosity quiet`
+
+## Phase 18: Payment Attempts, Stripe Direct-Charge Checkout, And Reconciliation ⏳ NOT STARTED
+- [ ] **18.1 `PaymentAttempt` aggregate, snapshots, and monotonic rules** — immutable recipient/account/currency/composition/idempotency/provider facts and independent payment status. — **Effort:** L
+- [ ] **18.2 Durable creation claim, persistence, outbox, and generated migrations** — atomically claim/reuse one active attempt and persist retry identity before provider I/O. — **Effort:** L
+- [ ] **18.3 `Stripe.net` direct-charge Checkout adapter** — typed async Checkout/retrieval; immutable `RequestOptions.StripeAccount` + durable `IdempotencyKey`; bounded SDK retry/timeout with no second blind retry layer; provider-neutral `StripeException` mapping/request IDs; no SDK leakage, card/PII metadata, adaptive pricing, or raw/preview access; timeout ambiguity → reconcile; custom-`HttpClient` conformance fixtures. — **Effort:** XL
+- [ ] **18.4 Signed Connect webhook intake and payment reconciliation** — raw-body `EventUtility.ConstructEvent`; strict signature/tolerance/livemode/account/API-version/allowlist checks; minimal durable normalized envelope before `2xx`; event + object-transition dedupe; authoritative connected-account retrieval; monotonic recovery; signed `GenerateSignatureHeader` fixtures. — **Effort:** XL
+- [ ] **18.5 Paid-order finalization and capacity race integration** — payment success is one input to requirements/approval/capacity; conditional/idempotent finalization; admission issuance effect only. — **Effort:** L
+- [ ] **18.6 Checkout/status API, BFF, Blazor, HAL, and generated contracts** — PublicTransactional start, safe same-origin redirect, authoritative processing/unknown/failure/retry UI, bounded Studio status. — **Effort:** XL
+
+### Phase 18 Verification — RUN ONCE AFTER ALL PHASE TASKS
+- [ ] `dotnet build --configuration Release --verbosity quiet`
+- [ ] `dotnet test --project tests/Explore.Infrastructure.Tests/Explore.Infrastructure.Tests.csproj --configuration Release --verbosity quiet` — repeat justified by money-moving Checkout/webhook adapter distinct from Phase 16 onboarding
+
+## Phase 19: Refunds, Cancellation, Rescheduling, Disputes, And Buyer Protection ⏳ NOT STARTED
+- [ ] **19.1 Versioned refund floor and order acceptance snapshot** — mandatory remedies, organizer-more-generous-only policy, exact buyer disclosures/text/language retained. — **Effort:** L
+- [ ] **19.2 `RefundAttempt` and dispute projection domain/persistence** — independent capped amount/status/provider/account/idempotency/audit, monotonic provider truth, generated migrations. — **Effort:** L
+- [ ] **19.3 Cancellation/reschedule workflow and transactional refund fanout** — stop sales first, bounded restart-safe outbox per captured payment, no delete with paid orders, accept-new-terms or refund. — **Effort:** XL
+- [ ] **19.4 `Stripe.net` refunds/disputes, webhooks, and reconciliation** — typed create/retrieve on original `StripeAccount`, durable idempotency, provider-neutral errors/request IDs, allowlisted observations, explicit fee/contribution allocation, and transport/signed fixtures for pending balance, partial/full, rate limit, timeout, late success, and dispute lifecycle. — **Effort:** XL
+- [ ] **19.5 Buyer/organizer surfaces, HAL, metrics, and runbook** — policy-authorized request/refund/cancel/reconcile, truthful pending/succeeded UI, audit, bounded telemetry, generated contracts/docs. — **Effort:** XL
+
+### Phase 19 Verification — RUN ONCE AFTER ALL PHASE TASKS
+- [ ] `dotnet build --configuration Release --verbosity quiet`
+- [ ] `dotnet test --project tests/Event.Application.UnitTests/Event.Application.UnitTests.csproj --configuration Release --verbosity quiet`
+
+## Phase 20: `AdmissionTicket`, QR Credential, Delivery, Lookup, And Self-Service ⏳ NOT STARTED
+- [ ] **20.1 Admission ticket and credential lifecycle domain** — one per confirmed assignment; separate display reference; Active/Suspended/Revoked/Cancelled/Transferred/Expired; one live credential. — **Effort:** L
+- [ ] **20.2 Idempotent issuance, persistence, and generated migrations** — confirmation effect, CSPRNG credential, keyed digest/key version, retry-stable uniqueness, no stored plaintext. — **Effort:** L
+- [ ] **20.3 QR representation and clean-room encoder/decoder gate** — compatible dependency evidence, version+opaque-token only, native feature detection plus supported decoder/HID/manual fallback. — **Effort:** L
+- [ ] **20.4 Ticket lookup, resend, and account/guest recovery** — account list plus uniform, rate-limited, single-use expiring hashed recovery capabilities and side-channel email. — **Effort:** L
+- [ ] **20.5 Ticket API/HAL/BFF/Blazor delivery and self-service** — private/no-store QR/print/detail, accessible manual text, exact support/refund/transfer relations, generated contracts/docs. — **Effort:** XL
+
+### Phase 20 Verification — RUN ONCE AFTER ALL PHASE TASKS
+- [ ] `dotnet build --configuration Release --verbosity quiet`
+- [ ] `dotnet test --project tests/Event.Domain.UnitTests/Event.Domain.UnitTests.csproj --configuration Release --verbosity quiet`
+
+## Phase 21: Admission Targets, Online Check-In, Scanner Capabilities, And Undo ⏳ NOT STARTED
+- [ ] **21.1 Admission targets, policies, and append-only event model** — event/day/session entitlements, window/re-entry, CheckIn/Undo facts with actor/scanner/reason/time. — **Effort:** L
+- [ ] **21.2 Atomic persistence and check-in/undo concurrency** — keyed credential lookup, active-state lock, idempotent duplicate, deterministic undo race, bounded partial batch, model parity. — **Effort:** XL
+- [ ] **21.3 Check-in API, Cerbos, HAL, and scanner capability issuance** — authenticated staff or tenant/event/target/action/expiry/device-scoped revocable capability; bounded door data. — **Effort:** XL
+- [ ] **21.4 Camera, HID, and manual scanner client flow** — approved decoder, permissions/fallback, rapid-duplicate suppression, accessible non-color results, relation gate, no token persistence. — **Effort:** XL
+- [ ] **21.5 Check-in summary, export-safe audit, observability, and runbook** — bounded target/status counts and procedures for device loss, bad scan, undo, queue/connectivity failures. — **Effort:** M
+
+### Phase 21 Verification — RUN ONCE AFTER ALL PHASE TASKS
+- [ ] `dotnet build --configuration Release --verbosity quiet`
+- [ ] `dotnet test --project tests/Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity quiet`
+
+## Phase 22: Ticket Transfer, Reissue, Reassignment, And Holder Self-Service ⏳ NOT STARTED
+- [ ] **22.1 Published transfer policy and domain rules** — allowed/deadline/max/checked-in/guardian/company/approval constraints immutable for sold tickets. — **Effort:** M
+- [ ] **22.2 Transfer offer, recipient PII, capability, persistence, and migrations** — encrypted/split contact, one active offer, single-use expiring keyed-hash acceptance, atomic terminal race. — **Effort:** L
+- [ ] **22.3 Atomic acceptance, participant requirements, and credential rotation** — recollect required data/consent, reassign future holder, revoke old QR, issue new, preserve purchase/payment history. — **Effort:** XL
+- [ ] **22.4 Organizer correction/reissue versus holder transfer** — distinct audited reasoned actions; commercial/admission authority; explicit checked-in override policy. — **Effort:** L
+- [ ] **22.5 Transfer/self-service API, notifications, and Blazor surfaces** — capability-scoped recipient flow, holder ticket HAL, Studio actions, outbox email, anti-enumeration, generated contracts/docs. — **Effort:** XL
+
+### Phase 22 Verification — RUN ONCE AFTER ALL PHASE TASKS
+- [ ] `dotnet build --configuration Release --verbosity quiet`
+- [ ] `dotnet test --project tests/Event.Application.UnitTests/Event.Application.UnitTests.csproj --configuration Release --verbosity quiet`
+
+## Phase 23: Waitlist Offers, Event-Bound Add-Ons, And Separate Fulfillment ⏳ NOT STARTED
+- [ ] **23.1 Waitlist policy, entry, and offer domain** — explicit fair ordering, scoped identity/privacy, bounded expiry, separate from order/admission. — **Effort:** L
+- [ ] **23.2 Capacity-triggered offer reservation and persistence races** — capacity release → bounded offer → normal hold; atomic accept/expire/queue advance without oversell. — **Effort:** XL
+- [ ] **23.3 Waitlist API, HAL, notifications, and self-service** — account/capability join/leave/accept, bounded organizer health, same-origin email, accessible countdown. — **Effort:** L
+- [ ] **23.4 Event-add-on catalog and mixed-order snapshots** — event-scoped immutable add-on/final-price/promotion/fulfillment facts, separate inventory, one merchant/currency, never admission, no Event tax/invoice aggregate or general storefront. — **Effort:** XL
+- [ ] **23.5 Event-add-on inventory, fulfillment, promotion, payment, and UI integration** — reserve/consume/release, existing money snapshots, independent fulfillment, HAL-gated Studio/checkout, no marketing/accounting/invoice UI. — **Effort:** XL
+
+### Phase 23 Verification — RUN ONCE AFTER ALL PHASE TASKS
+- [ ] `dotnet build --configuration Release --verbosity quiet`
+- [ ] `dotnet test --project tests/Event.Persistence.IntegrationTests/Event.Persistence.IntegrationTests.csproj --configuration Release --verbosity quiet`
+
+## Phase 24: Conditional `ProtectedDelayedPayout` Profile ⛔ APPROVAL-GATED
+- [ ] **24.1 Approval evidence and exact Stripe control contract** — dated Stripe/platform/country/controller/dashboard/holding-limit plus legal, Islamic-finance, reserve, complaint, dispute, and operator evidence; missing means disabled. — **Effort:** L
+- [ ] **24.2 Settlement milestone, hold-limit, and release domain/persistence** — explicit `SettlementReleaseAt`, public schedule independence, blocker state, release-once rules, portable migrations. — **Effort:** XL
+- [ ] **24.3 Stable typed `Stripe.net` payout controls, release worker, and reconciliation** — separate conditional capability; request-scoped account/idempotency outside transactions; fenced worker; provider/error/request-ID reconciliation and control drift; never release with blockers; remain disabled if preview/raw/undocumented SDK access would be required. — **Effort:** XL
+- [ ] **24.4 Protected-profile publication, disclosure, HAL/UI, and incident operations** — approved-only instance surface, non-escrow/milestone/remedy acceptance, separation of duties, audit, alerts, contracts/docs. — **Effort:** XL
+
+### Phase 24 Verification — RUN ONCE AFTER ALL PHASE TASKS AND ONLY WHEN UNBLOCKED
+- [ ] `dotnet build --configuration Release --verbosity quiet`
+- [ ] `dotnet test --project tests/Explore.Infrastructure.Tests/Explore.Infrastructure.Tests.csproj --configuration Release --verbosity quiet`
+
+## Phase 25: Self-Hosted Safety, Official-Instance Trust, Pilot Hardening, And Closeout ⏳ NOT STARTED
+- [ ] **25.1 Self-hosted configuration, secret rotation, and operator-origin disclosure** — own Connect credentials, test/live separation, public-origin validation, overlap rotation, official marker outside tenant control. — **Effort:** L
+- [ ] **25.2 Organizer/event risk limits, review, complaints, and stop-sale** — verification/evidence/velocity/value ceilings, reviewer separation, suspension while refunds/webhooks continue. — **Effort:** XL
+- [ ] **25.3 Reconciliation, observability, SDK upgrade drills, and full in-scope Stripe fixture matrix** — custom-transport + signed-event evidence for SCA, duplicate/delay/order, signature/API-version/mode mismatch, SDK retry/rate-limit/timeout, pending/partial refund, cancel restart, dispute, restriction, recipient/currency and conditional-payout scenarios; bounded request-ID alerts and audited recovery; exact package/API/webhook pin documented. — **Effort:** XL
+- [ ] **25.4 Canonical contract/docs synchronization and workstream completion audit** — intent, docs, OpenAPI/NSwag/DBML, D21–D30 and Event/external-system-boundary traceability, external launch gaps, deferred-record retirement, ledger parity. — **Effort:** L
+
+### Phase 25 Verification — RUN ONCE AFTER ALL PHASE TASKS
+- [ ] `dotnet build --configuration Release --verbosity quiet`
+- [ ] `dotnet test --project tests/Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity quiet`
 
 ## Remaining / Deferred Work
-- **Migration application/runtime rollout** — `ff30795a2` and `20260729183118_RemoveLegacyEventPricing` provide source artifacts; EF reports no pending model changes, but no database application or runtime rollout evidence is recorded.
-- **Broad verification outcome** — execution is complete. Owned focused lanes are green; broad Application, Architecture, Persistence, API, and Blazor Client remain non-green for the exact unrelated/environment results recorded in Phase 4.
-- **Final review gate** — the corrected diff was reviewed directly after the user disabled delegation; no unresolved High or Major finding remains. The Docker-backed PostgreSQL row-lock proof is still required when the environment becomes available.
-- **Payment integration** — deliberately out of scope; unblocked once orders stop at `AwaitingPayment` (Phase 5). Trigger: separate payment consultation (consultation Report 2 §32 Phase 8). Design record via Task 14.8 (Hi.Events §7.3/§7.5 idempotency/reconciliation lessons). Owner: future workstream.
-- **`AdmissionTicket` / QR / check-in / transfers / ticket lookup & self-service** — documented future entities (§16.6; design records via Task 14.8 citing `hi-events-report.md` §5.5/§5.6/§7.10/§7.11); trigger: post-payment or free-event check-in demand. Hard rules already fixed: admission credential ≠ display ID; transfer rotates/revokes; scanner access is authenticated or a scoped expiring capability.
-- **Promo codes / affiliates / invoices / taxes & fees / general-product add-ons / waitlist offers** — Hi.Events commercial breadth deliberately deferred (D19 scope discipline); inventory recorded in Task 14.8 only.
-- **Organization/group-scoped provider connections** — blocked on `SecretScope` extension (D15). Trigger: org-level Formbricks demand.
-- **Malware scanning for file answers** — quarantine-by-default ships in 8.8; scanner integration deferred until infrastructure decision.
-- **AT Proto federation of orders/participants** — decision recorded in 5.9; trigger: federation roadmap.
 - **Form content multilingual translation tables** — minimal model in 7.8; full translation deferred.
 - **Explore.Blazor.IntegrationTests / Explore.Secrets.UnitTests** — contract-mandated projects folded into task acceptance (9.1) or conditional substitution (3.2); see plan §7.
+- **Second payment provider / provider factory** — deferred until a real second provider is selected; Stripe is the only adapter in this re-baseline.
+- **Unrelated Stripe product families** — “full Stripe support” is the Event-owned capability matrix only. Billing/subscriptions, Tax, Invoicing, Payment Links, Terminal, Issuing, Treasury, previews, undocumented parameters, and raw SDK requests remain out of scope.
+- **Offline signed admission credentials** — deferred until ADR-023 gains signing-key custody/rotation, offline revocation distribution, clock-skew, and compromised-device recovery.
+- **Adaptive pricing / internal FX / mixed-currency orders** — explicitly excluded; one immutable order currency remains authoritative.
+- **Affiliates, resale, and marketplace settlement** — not aliases for promotion or transfer and not planned here.
+- **Marketing/accounting/tax/invoicing integrations** — Event does not implement these specialist products. The removed tax/invoice phase and future optional Listmonk/Qonto paths are preserved in `dev/report/event-platform-boundary-and-external-business-integrations.md` for a separate workstream.
+- **Production launch approvals** — Stripe platform/country/currency contract, Belgian/EU legal, external tax/accounting obligations, Islamic-finance, and staffed incident/complaint/dispute operations remain external evidence; fixture-green code cannot close them.

@@ -1455,6 +1455,10 @@ Generate one P-256 VAPID key pair with a trusted Web Push tool, store it in depl
 
 Delivery policy is server-owned. Account-security refreshes retain for 5 minutes at high urgency; trust-safety for 1 hour at high urgency; registration/event updates for 6 hours at normal urgency; billing/legal and organization/group/product updates for 24 hours at normal or low urgency; marketing for 6 hours at very-low urgency. Every message sets a category `Topic` so the push service can coalesce pending refreshes, and retries stop at the TTL boundary.
 
+## Planned Paid-Event Configuration Boundary
+
+ADR-022 through ADR-024 approve the configuration hierarchy but add no runtime keys yet. Future Stripe Connect settings are instance-owned secrets and safe ceilings; tenants may only narrow enabled organizer kinds, currencies, verification, and risk limits. Organizers connect only their own eligible actor merchant account and choose one permitted event currency. Every self-hoster supplies separate Stripe platform credentials, and ISLAMU-hosted credentials are never distributed. No administrator fallback merchant exists. `ProtectedDelayedPayout` remains absent unless Stripe, legal, Islamic-finance, and operator approval evidence is configured and current. Exact keys will be documented only when Phase 16 introduces them.
+
 ## Related
 
 - [SECRETS.md](SECRETS.md)

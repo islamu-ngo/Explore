@@ -1107,6 +1107,10 @@ For comprehensive troubleshooting, see [TROUBLESHOOTING.md](TROUBLESHOOTING.md).
 
 ## Planned Features
 
+### Paid Events And Stripe Connect
+
+ADR-022 approves Stripe Connect `OrganizerDirect` as the first paid-event profile, but Phase 15 adds no package, secret, endpoint, migration, or runtime capability. Each deployment must register and operate its own Stripe Connect platform; unrelated self-hosters never receive ISLAMU credentials or financial guarantees. Future checkout must disclose the independent instance operator and organizer merchant, use the organizer's connected-account direct-charge context, and keep provider calls outside Event transactions. Marketing, accounting, tax determination, and legal invoicing remain optional external integrations. `ProtectedDelayedPayout` is not escrow and stays unavailable without its separate Stripe, legal, Islamic-finance, and operator approvals.
+
 ### PostGIS Proximity Discovery
 
 Exact proximity discovery is **planned, not implemented**. The current database uses plain `postgres:18-alpine` — no PostGIS extension or spatial endpoints ship today. No operator action is needed.

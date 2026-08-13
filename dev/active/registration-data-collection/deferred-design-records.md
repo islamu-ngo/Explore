@@ -3,9 +3,9 @@
 
 # Registration Data Collection — Deferred Commerce And Admission Design Records
 
-Last Updated: 2026-08-12 Europe/Brussels
+Last Updated: 2026-08-13 Europe/Brussels
 
-These records preserve the approved behavior lessons from `hi-events-report.md` without copying third-party code, SQL, migrations, snippets, or assets. They are not implementation approval. Each record requires a separate workstream and ADR review when its trigger occurs.
+These records preserve the approved behavior lessons from `hi-events-report.md` without copying third-party code, SQL, migrations, snippets, or assets. ADR-022 through ADR-024 now supersede the payment, admission, recovery, promotion, waitlist, add-on, external-business-system, and protected-payout boundaries below. Implementation still follows the phase order and gates in the active plan.
 
 ## Payment Attempts, Provider Identity, Refunds, And Reconciliation
 
@@ -68,3 +68,22 @@ These records preserve the approved behavior lessons from `hi-events-report.md` 
 - Repository evidence: `registration-data-collection-plan.md` §Phase 14.8 and `hi-events-report.md` §§4.8, 5.5, 5.6, 7.3, 7.5, 7.10, 7.11, 8, 9.1, and 11.4.
 - Context7 was available for current ASP.NET Core, EF Core, and MudBlazor documentation relevant to the wider Phase 14 work.
 - Tavily MCP was requested but is not registered in this session; no Tavily result or external re-verification is claimed.
+
+## Phase 15 Source Register And Independent-Design Record
+
+### Official interface evidence accessed 2026-08-13
+
+- NuGet Gallery `Stripe.net` 52.3.0 package metadata and license: latest stable release, Apache-2.0, compatible with the repository's `net10.0` target through its supported target frameworks.
+- NuGet v3 package index: 52.3.0 is stable; 52.4.0 is prerelease only.
+- Stripe.net 52.2.0 and 52.3.0 release records: 52.2.0 pins API `2026-07-29.dahlia`; 52.3.0 adds event parsing helpers and test signature generation without changing that API line.
+- Context7 `/stripe/stripe-dotnet` and `/websites/stripe`: instance-based `StripeClient`, per-request `StripeAccount` and `IdempotencyKey`, bounded network retries, raw-body signature verification, connected-account direct-charge Checkout, and asynchronous provider reconciliation facts.
+- Context7 `/mdn/content`: browser `BarcodeDetector` requires feature detection and cannot be the only scanner path.
+- A temporary isolated `net10.0` restore/probe confirmed assembly `52.3.0.0`, `StripeConfiguration.ApiVersion = 2026-07-29.dahlia`, and the transitive graph `Newtonsoft.Json 13.0.3`, `System.Configuration.ConfigurationManager 9.0.0`, `System.Diagnostics.EventLog 9.0.0`, and `System.Security.Cryptography.ProtectedData 9.0.0`. No package was added to the repository.
+
+Tavily MCP is not registered in this implementation session. Earlier dated Tavily evidence already preserved in the plan/context remains provenance history, but no new Tavily result is claimed.
+
+### AFC/SSO decision
+
+External material was filtered to public interface facts, observable provider constraints, standards, and license metadata. The accepted ADRs independently use ISLAMU's existing aggregate separation, CQRS/Application ports, EF tenant isolation, transactional outbox/inbox, HAL affordances, BFF boundary, integer-minor-unit money, and explicit state machines. Naming, decomposition, operation ordering, persistence relationships, UI authority, tests, and failure taxonomy are repository-native. No third-party source, AST, SQL, migration, test, comment, copied prose, asset, or implementation organization entered the design.
+
+The repository dependency-license policy command currently exits 1 on pre-existing metadata handling for `FluentAssertions 8.10.0` and `Microsoft.Data.SqlClient.SNI.runtime 6.0.2`; neither package is introduced or changed by Phase 15. Stripe.net remains planned only until Phase 16 repeats the policy gate with the package centrally pinned.
