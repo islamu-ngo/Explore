@@ -20,15 +20,8 @@ namespace Explore.API.Controllers;
 [Route("api/[controller]")]
 [ApiController]
 [EndpointClassification(EndpointClass.Public)]
-public class AudienceAgeController : ControllerBase
+public class AudienceAgeController(IMediator mediator) : ControllerBase
 {
-    private readonly IMediator _mediator;
-
-    public AudienceAgeController(IMediator mediator)
-    {
-        _mediator = mediator;
-    }
-
     // GET: api/audienceage
     [HttpGet(Name = RouteNames.GetAudienceAgeOptions)]
     [EndpointSummary("Get all Audience Age groups")]
@@ -36,11 +29,8 @@ public class AudienceAgeController : ControllerBase
     [AllowAnonymous]
     [ProducesResponseType(typeof(List<AudienceAgeListDto>), StatusCodes.Status200OK)]
     [OutputCache(PolicyName = "LookupData")]
-    public async Task<ActionResult<List<AudienceAgeListDto>>> GetAll(CancellationToken cancellationToken = default)
-    {
-        var audienceAges = await _mediator.Send(new GetAudienceAgeListRequest(), cancellationToken);
-        return Ok(audienceAges);
-    }
+    public async Task<ActionResult<List<AudienceAgeListDto>>> GetAll(CancellationToken cancellationToken = default) =>
+        Ok(await mediator.Send(new GetAudienceAgeListRequest(), cancellationToken));
 
     // GET: api/audienceage/{id}
     [HttpGet("{id}", Name = RouteNames.GetAudienceAgeOptionById)]
@@ -50,10 +40,6 @@ public class AudienceAgeController : ControllerBase
     [ProducesResponseType(typeof(AudienceAgeDto), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     [OutputCache(PolicyName = "DetailData")]
-    public async Task<ActionResult<AudienceAgeDto>> GetById(int id, CancellationToken cancellationToken = default)
-    {
-        var audienceAge = await _mediator.Send(new GetAudienceAgeDetailsRequest { Id = id }, cancellationToken);
-
-        return Ok(audienceAge);
-    }
+    public async Task<ActionResult<AudienceAgeDto>> GetById(int id, CancellationToken cancellationToken = default) =>
+        Ok(await mediator.Send(new GetAudienceAgeDetailsRequest { Id = id }, cancellationToken));
 }

@@ -20,15 +20,8 @@ namespace Explore.API.Controllers;
 [Route("api/[controller]")]
 [ApiController]
 [EndpointClassification(EndpointClass.Public)]
-public class EventStatusController : ControllerBase
+public class EventStatusController(IMediator mediator) : ControllerBase
 {
-    private readonly IMediator _mediator;
-
-    public EventStatusController(IMediator mediator)
-    {
-        _mediator = mediator;
-    }
-
     // GET: api/eventstatus
     [HttpGet(Name = RouteNames.GetEventStatuses)]
     [EndpointSummary("Get all Event Statuses")]
@@ -36,11 +29,8 @@ public class EventStatusController : ControllerBase
     [AllowAnonymous]
     [ProducesResponseType(typeof(List<EventStatusListDto>), StatusCodes.Status200OK)]
     [OutputCache(PolicyName = "LookupData")]
-    public async Task<ActionResult<List<EventStatusListDto>>> GetAll(CancellationToken cancellationToken = default)
-    {
-        var eventStatuses = await _mediator.Send(new GetEventStatusListRequest(), cancellationToken);
-        return Ok(eventStatuses);
-    }
+    public async Task<ActionResult<List<EventStatusListDto>>> GetAll(CancellationToken cancellationToken = default) =>
+        Ok(await mediator.Send(new GetEventStatusListRequest(), cancellationToken));
 
     // GET: api/eventstatus/{id}
     [HttpGet("{id}", Name = RouteNames.GetEventStatusById)]
@@ -50,9 +40,6 @@ public class EventStatusController : ControllerBase
     [ProducesResponseType(typeof(EventStatusDto), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     [OutputCache(PolicyName = "DetailData")]
-    public async Task<ActionResult<EventStatusDto>> GetById(int id, CancellationToken cancellationToken = default)
-    {
-        var eventStatus = await _mediator.Send(new GetEventStatusDetailsRequest { Id = id }, cancellationToken);
-        return Ok(eventStatus);
-    }
+    public async Task<ActionResult<EventStatusDto>> GetById(int id, CancellationToken cancellationToken = default) =>
+        Ok(await mediator.Send(new GetEventStatusDetailsRequest { Id = id }, cancellationToken));
 }

@@ -20,15 +20,8 @@ namespace Explore.API.Controllers;
 [Route("api/[controller]")]
 [ApiController]
 [EndpointClassification(EndpointClass.Public)]
-public class ActorTypeController : ControllerBase
+public class ActorTypeController(IMediator mediator) : ControllerBase
 {
-    private readonly IMediator _mediator;
-
-    public ActorTypeController(IMediator mediator)
-    {
-        _mediator = mediator;
-    }
-
     // GET: api/actortype
     [HttpGet(Name = RouteNames.GetActorTypes)]
     [EndpointSummary("Get all Actor Types")]
@@ -36,11 +29,8 @@ public class ActorTypeController : ControllerBase
     [AllowAnonymous]
     [ProducesResponseType(typeof(List<ActorTypeListDto>), StatusCodes.Status200OK)]
     [OutputCache(PolicyName = "LookupData")]
-    public async Task<ActionResult<List<ActorTypeListDto>>> GetAll(CancellationToken cancellationToken = default)
-    {
-        var actorTypes = await _mediator.Send(new GetActorTypeListRequest(), cancellationToken);
-        return Ok(actorTypes);
-    }
+    public async Task<ActionResult<List<ActorTypeListDto>>> GetAll(CancellationToken cancellationToken = default) =>
+        Ok(await mediator.Send(new GetActorTypeListRequest(), cancellationToken));
 
     // GET: api/actortype/{id}
     [HttpGet("{id}", Name = RouteNames.GetActorTypeById)]
@@ -50,9 +40,6 @@ public class ActorTypeController : ControllerBase
     [ProducesResponseType(typeof(ActorTypeDto), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     [OutputCache(PolicyName = "DetailData")]
-    public async Task<ActionResult<ActorTypeDto>> GetById(int id, CancellationToken cancellationToken = default)
-    {
-        var actorType = await _mediator.Send(new GetActorTypeDetailsRequest { Id = id }, cancellationToken);
-        return Ok(actorType);
-    }
+    public async Task<ActionResult<ActorTypeDto>> GetById(int id, CancellationToken cancellationToken = default) =>
+        Ok(await mediator.Send(new GetActorTypeDetailsRequest { Id = id }, cancellationToken));
 }
