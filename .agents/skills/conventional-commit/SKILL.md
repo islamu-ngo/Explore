@@ -1,239 +1,170 @@
 ---
 name: conventional-commit
-description: Conventional Commits format plus atomic, monorepo-aware commit composition rules.
-type: convention
-enforcement: enforce
+description: Write and group Conventional Commits as clear, user-facing release-note entries.
+type: guardrail
+enforcement: block
 priority: high
 ---
-
-ABOUTME: Conventional Commits convention with monorepo scope refinement.
-ABOUTME: Enforces atomic, intent-matched commit composition and messages.
-
-# Conventional Commits
-
-> **Monorepo-Aware Commit Convention**
->
-> Based on [Conventional Commits v1.0.0](https://www.conventionalcommits.org/en/v1.0.0/).
-> Extends the spec with a project-scoped convention for this monorepo.
+<!-- ABOUTME: Changelog-first Conventional Commits policy for reader-friendly release notes. -->
+<!-- ABOUTME: Groups commits by product outcome instead of code layer or file type. -->
 
 ## Purpose
 
-Enforce a consistent, parseable commit message format that:
-- Makes git history scannable per project and module
-- Enables automated changelog generation
-- Communicates intent (feature, fix, refactor, etc.) at a glance
-- Prevents oversized mixed-purpose commits by requiring atomic, fully related changes
-- Defaults commit work to multiple atomic commits rather than a single large catch-all commit
+Make release notes useful by treating every release-visible commit subject as
+a reader-facing entry. Preserve Conventional Commits parsing while grouping
+all work for one product outcome into one coherent commit.
 
-## When This Skill Activates
+## When to Load
 
-- Any commit operation (`git commit`, `git_add_or_commit`, `gitlens_commit_composer`)
-- Keywords: commit, commit message, staging, changelog, versioning, split commits
-- When the `gitkraken-cli` skill is active (auto-loads this skill for composition and formatting)
+- Before staging, composing, amending, squashing, or creating a commit.
+- When splitting a working tree, ticket, pull request, or feature into commits.
+- When reviewing commit messages, release notes, versioning, or changelog output.
+- When `gitkraken-cli` or another commit-composition tool is active.
+- Keywords: commit, commit message, staging, changelog, release note, versioning.
 
-## Commit Message Format
+## When NOT to Load
 
+- Not for choosing product requirements or deciding whether a behavior should ship.
+- Not for branch naming unless the branch will also be converted into commit text.
+- Not for merge commits or automation-generated commits outside contributor control.
+- Not for rewriting published history without explicit user approval.
+- Not as permission to combine unrelated outcomes merely because they share a ticket.
+
+## Must-Read Docs
+
+- [Contribution Contract](../../../AGENTS.md)
+- [Conventional Commits v1.0.0](https://www.conventionalcommits.org/en/v1.0.0/)
+- [Release Checklist](../../../docs/RELEASE_CHECKLIST.md)
+
+## Top 5 Invariants
+
+1. A release-visible commit is intentionally included in release notes; repository visibility alone does not make it release-visible, and the current manual release process makes that decision during release curation.
+2. Scope uses the narrowest existing canonical product capability and never names a code layer, project, file type, or ticket ID.
+3. One commit represents one releasable outcome and includes all directly supporting code, tests, documentation, migrations, and generated artifacts across layers when they share that outcome.
+4. Descriptions use lowercase imperative language, lead with the benefit or restored behavior, avoid implementation mechanics and hype, and have no trailing period.
+5. Every breaking commit uses both `!` after its type or scope and a `BREAKING CHANGE:` footer that states the required reader action.
+
+## Top 5 Anti-Patterns
+
+1. **Layer split:** Separate API, Application, Persistence, and UI commits turn one feature into duplicate changelog entries.
+2. **File-type split:** Separate test, documentation, migration, or generated-code commits clutter history when those files only support the same outcome.
+3. **Ticket dump:** One commit for every change under a broad ticket hides distinct user outcomes behind an internal planning boundary.
+4. **Implementation subject:** Messages such as `add endpoint`, `update handler`, or `fix query filter` tell users how the code changed instead of what improves for them.
+5. **Marketing fluff:** Claims such as `revolutionize`, `seamless`, `best`, or `massively faster` make changelogs untrustworthy unless the exact claim is proven.
+
+## Minimal Examples
+
+Use this format:
+
+```text
+type(scope): benefit-led release note
+
+[optional user-facing context: what changed and why]
+
+[optional BREAKING CHANGE, Refs/Closes, or co-author footer]
 ```
-type(project/module): description
 
-[optional body]
+Choose the type from the released outcome, not the files changed:
 
-[optional footer(s)]
-```
-
-### Structure Rules
-
-1. **`type` is always the first word** — no project prefix before the type.
-2. **Scope** is `(project/module)` — slash-separated, in parentheses.
-3. **Description** starts lowercase, no trailing period, imperative mood.
-4. **Body** (optional) explains *what* and *why*, not *how*. Wrap at 72 chars.
-5. **Footer** (optional) for `BREAKING CHANGE:`, issue refs (`Closes #123`), co-authors.
-
-### Types
-
-| Type | When to Use |
+| Type | Changelog meaning |
 |---|---|
-| `feat` | New feature or capability |
-| `fix` | Bug fix |
-| `refactor` | Code change that neither fixes a bug nor adds a feature |
-| `docs` | Documentation only |
-| `test` | Adding or correcting tests |
-| `chore` | Build, CI, tooling, dependency updates |
-| `style` | Formatting, whitespace (no logic change) |
-| `perf` | Performance improvement |
-| `ci` | CI/CD pipeline changes |
-| `build` | Build system or external dependency changes |
-| `revert` | Reverts a previous commit |
+| `feat` | A new capability or meaningful improvement users can notice. |
+| `fix` | Expected behavior is restored or users are protected from a defect. |
+| `perf` | A noticeable speed, capacity, or resource-use improvement. |
+| `revert` | A released behavior is intentionally undone; state the resulting experience. |
+| `docs` | Documentation-only work; omit it by default, but manually include it when changed instructions alter a user or operator action. |
+| `test`, `refactor`, `style`, `build`, `ci`, `chore` | Internal-only work with no product outcome; omit it from release notes unless marked as breaking. |
 
-### Project Scopes
+Do not relabel a documentation-only correction as `fix` unless runtime behavior
+also changed. The repository currently curates semantic-version tags and GitHub
+Release notes manually; Conventional Commits inform that process but do not
+publish or version a release automatically.
 
-The first segment of scope identifies the project boundary:
-
-| Scope Prefix | Maps To |
-|---|---|
-| `api` | `Explore.API/` — REST endpoints, middleware, filters |
-| `blazor` | `Explore.Blazor/` + `Explore.Blazor.Client/` — UI layer |
-| `app` | `Explore.Application/` — CQRS handlers, DTOs, validators |
-| `domain` | `Explore.Domain/` — entities, value objects, invariants |
-| `persistence` | `Explore.Persistence/` — EF Core, migrations, repositories |
-| `infra` | `Explore.Infrastructure/` — external services, email, storage |
-| `apphost` | `Explore.AppHost/` — Aspire orchestration |
-| `test` | All test projects |
-| `docs` | Documentation, skills, agents |
-| `config` | Solution-level config, CI/CD, `.Codex/` |
-
-The second segment (after `/`) is the module or feature area. Keep it short — a noun, not a sentence.
-
-### Examples
-
-```
-feat(api/taxonomy): implement category CRUD endpoints
-fix(persistence/events): correct soft-delete filter on EventQuery
-refactor(app/rsvp): extract validation into specification
-docs(config/skills): add conventional-commit skill
-test(api/events): add integration tests for event creation
-chore(apphost): upgrade Aspire SDK to 9.2
-style(blazor/components): fix inconsistent BEM class names
-perf(persistence/queries): add covering index for event listing
-```
-
-## Commit Composition Rules
-
-Commit composition is part of this skill, not a tool-specific workflow. Before
-staging or committing, split the working tree by **intent**, **scope**, and
-**work unit**. The question is not "can these files compile together?" but
-"would reverting this commit revert exactly one coherent change?"
-
-Default expectation: when a working tree contains more than one independently
-understandable change, the result should be **multiple atomic commits**. A
-single large commit that regroups everything is a failure unless the changes
-are demonstrably one indivisible work unit.
-
-### Atomicity Gate
-
-Every commit must pass all of these checks:
-
-1. **One intent only** — feature, fix, refactor, docs, tests, config, or chore.
-2. **One work unit only** — files all serve the same user-visible or technical outcome.
-3. **Fully related files only** — no "while I was here" edits, opportunistic cleanup, unrelated formatting, or nearby fixes.
-4. **Same reason to change** — every file should answer the same "why is this in the commit?" question.
-5. **Revert-safe** — reverting the commit should not remove unrelated behavior or leave unrelated work half-applied.
-6. **Reviewable size** — prefer small commits; if the file list feels broad, split unless there is a concrete dependency.
-
-### File-Count Guidance
-
-- Treat **10–15 files per commit** as the practical upper warning limit.
-- Prefer commits with fewer files whenever the change can still be understood and reverted cleanly.
-- If a commit would exceed 15 files, stop and ask whether the work can be split into smaller logical steps.
-- Large file counts are acceptable only when the files are all required for one indivisible work unit.
-- Typical exceptions include:
-  - coordinated renames/refactors that must touch many references;
-  - dependency updates or lockfile regeneration;
-  - generated/scaffolded boilerplate or codegen output;
-  - one vertical slice that is genuinely inseparable across layers.
-- If a commit has to rely on an exception, explain that in the commit body so reviewers understand why the file count is large.
-
-### Split Triggers
-
-Split into separate commits whenever any of these are true:
-
-- The change touches unrelated feature areas, modules, tenants, pages, handlers, or services.
-- Code and tests cover multiple behaviors that can be understood independently.
-- Documentation describes a different change than the code implements.
-- Formatting or mechanical cleanup appears alongside behavior changes.
-- Generated files, migrations, snapshots, or lockfiles accompany source changes that can be isolated.
-- A single commit would include files whose best commit types differ (`feat` + `fix`, `refactor` + `docs`, etc.).
-- The commit would need "and" in the subject to describe it accurately.
-
-Large file count is a warning sign, not an automatic failure. A broad commit is
-allowed only when every file is required for the same indivisible work unit
-(for example, a coordinated rename or generated migration plus its model
-change). Otherwise, split it.
-
-### Staging Discipline
-
-1. Inspect the full working tree before staging.
-2. Group files by shared intent and same work unit.
-3. Plan for **multiple commits by default**, not one final umbrella commit.
-4. Stage only the files for the next atomic commit.
-5. Re-check staged diff before committing.
-6. Commit that slice, then repeat until each remaining group is independently understandable.
-
-Never stage all changes merely because they are present. Never use an AI commit
-composer as permission to create a mixed commit; its output must still satisfy
-the Atomicity Gate above.
-
-### Commit Grouping Examples
-
-Prefer these splits:
+Use this canonical initial scope vocabulary:
 
 ```text
-feat(api/events): add event publish endpoint
-test(api/events): cover event publish authorization
-docs(api/events): document publish endpoint behavior
+events          registration    ticketing       discovery
+notifications   privacy         access          storage
+onboarding       federation      webhooks        localization
+accessibility   self-hosting
 ```
 
-Over this mixed commit:
+Reuse the narrowest matching scope. Introduce a new product-capability scope
+only when none fits; do not create aliases or layer-qualified variants such as
+`api/registration`, `blazor/events`, or `persistence/privacy`.
+
+Prefer outcome-led subjects:
 
 ```text
-feat(api/events): add publish endpoint and tests and docs
+feat(registration): let attendees correct their registration details
+fix(events): keep draft events private until organizers publish them
+perf(discovery): show event search results faster
+fix(self-hosting): preserve custom email settings during upgrades
 ```
 
-Prefer these splits:
+Reject implementation-led equivalents:
 
 ```text
-refactor(app/organizations): extract membership policy
-fix(blazor/organizations): preserve selected organization filter
+feat(api/registration): add PATCH endpoint
+fix(persistence/events): correct query filter
+perf(persistence/queries): add covering index
+fix(config): update email migration
 ```
 
-Over this partially related commit:
+Keep one vertical outcome together:
 
 ```text
-refactor(app/organizations): update organization handling
+feat(registration): let attendees correct their registration details
+
+Allow attendees to fix submitted details before the registration deadline so
+organizers receive accurate information without manual support.
+
+Closes #482
 ```
 
-### Breaking Changes
+That commit may include the UI, API contract, handler, persistence, tests, and
+user documentation. Do not emit separate `feat(api)`, `feat(blazor)`, `test`,
+and `docs` commits for those supporting parts.
 
-Append `!` after the scope, and include a `BREAKING CHANGE:` footer:
+Split only when a ticket contains independently releasable outcomes:
 
-```
-feat(api/events)!: replace EventDto with EventResource
+```text
+feat(registration): let attendees correct their registration details
 
-BREAKING CHANGE: EventDto removed. All consumers must use EventResource.
-```
+Refs #482
 
-## Non-Inferable Rules (Must Follow)
+fix(notifications): confirm registration changes immediately
 
-1. **Type is always first** — `feat(api/events)` not `api feat(events)`.
-2. **Scope is always `project/module`** — both segments required unless the change is project-wide (then just `project`).
-3. **One atomic work unit per commit** — don't mix a feature and a refactor, a bug fix and cleanup, or partially related files.
-4. **Description is imperative mood** — "add" not "added" or "adds".
-5. **No trailing period** in the description line.
-6. **50-char soft limit** on the first line (type + scope + description).
-7. **72-char hard wrap** on body lines.
-8. **`BREAKING CHANGE:` in footer** — not just the `!` suffix alone.
-9. When a commit spans multiple projects, use the *primary* project as scope and mention others in the body.
-10. **Never commit the entire working tree by default** — explicitly select the atomic file group being committed.
-11. **Multiple atomic commits are the default outcome** whenever the worktree contains more than one separable change.
-12. **Merge commits and automated commits** are exempt from this format.
-
-## Multi-Project Commits
-
-If a change necessarily spans projects (e.g., adding a new API endpoint with its handler):
-
-```
-feat(api/taxonomy): add category endpoints
-
-Handler and DTOs added in Application layer.
-Repository method added in Persistence layer.
+Closes #482
 ```
 
-Use the outermost/entrypoint project as the scope. Prefer splitting into separate commits when possible, but do not split a single indivisible vertical slice merely to satisfy project boundaries.
+Use the grouping test: if one release-note bullet and one product rollback
+decision cannot accurately describe every staged line, split the commit by
+outcome. File count and project boundaries are warning signals, never grouping
+rules.
 
-## Related Documentation
+For breaking changes, explain the reader action rather than only the technical
+contract change:
 
-- [Conventional Commits v1.0.0 Spec](https://www.conventionalcommits.org/en/v1.0.0/)
-- `.agents/skills/gitkraken-cli/SKILL.md` — uses this skill for commit composition and formatting
-- `docs/CONTRIBUTING.md` — contributor workflow
+```text
+feat(registration)!: simplify attendee check-in credentials
 
-**Enforcement Level**: ENFORCE
+BREAKING CHANGE: Check-in integrations must send `credential` instead of
+`ticketCode` after upgrading.
+```
+
+The subject must remain understandable when the changelog tool omits the body.
+Prefer clarity over the old 50-character convention; keep the full subject
+within 100 characters when practical and wrap body lines at 72 characters.
+
+## Verification Hooks
+
+- `dotnet test --project tests/Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet`
+- `git diff --check -- .agents/skills/conventional-commit/SKILL.md`
+- `git log --format='- %s' "$(git merge-base HEAD origin/develop)"..HEAD`
+- Manual: curate the Git subject preview using `docs/RELEASE_CHECKLIST.md`; confirm one plain-language entry per releasable outcome, include release-relevant `docs` deliberately, and exclude layer/file-type noise.
+
+## Related Skills
+
+- [GitKraken CLI](../gitkraken-cli/SKILL.md)
+- [PR Review](../review-pr/SKILL.md)
