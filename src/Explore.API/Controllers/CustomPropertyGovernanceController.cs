@@ -24,14 +24,8 @@ namespace Explore.API.Controllers;
 [ApiController]
 [Authorize]
 [EndpointClassification(EndpointClass.Authenticated)]
-public class CustomPropertyGovernanceController : ControllerBase
+public class CustomPropertyGovernanceController(IMediator mediator) : ControllerBase
 {
-    private readonly IMediator _mediator;
-
-    public CustomPropertyGovernanceController(IMediator mediator)
-    {
-        _mediator = mediator;
-    }
 
     /// <summary>
     /// Get governance report listing all active Layer 3 definitions with promotion recommendations.
@@ -45,7 +39,7 @@ public class CustomPropertyGovernanceController : ControllerBase
         [FromQuery] CustomPropertyGovernanceReportQueryRequest query,
         CancellationToken cancellationToken = default)
     {
-        var result = await _mediator.Send(
+        var result = await mediator.Send(
             new GetCustomPropertyGovernanceReportQuery
             {
                 TenantId = query.TenantId,

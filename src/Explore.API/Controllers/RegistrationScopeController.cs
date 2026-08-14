@@ -17,14 +17,8 @@ namespace Explore.API.Controllers;
 [Route("api/[controller]")]
 [ApiController]
 [EndpointClassification(EndpointClass.Public)]
-public class RegistrationScopeController : ControllerBase
+public class RegistrationScopeController(IMediator mediator) : ControllerBase
 {
-    private readonly IMediator _mediator;
-
-    public RegistrationScopeController(IMediator mediator)
-    {
-        _mediator = mediator;
-    }
 
     // GET: api/registrationscope
     [HttpGet(Name = RouteNames.GetRegistrationScopes)]
@@ -35,7 +29,7 @@ public class RegistrationScopeController : ControllerBase
     [OutputCache(PolicyName = "LookupData")]
     public async Task<ActionResult<List<RegistrationScopeListDto>>> GetAll(CancellationToken cancellationToken = default)
     {
-        var scopes = await _mediator.Send(new GetRegistrationScopeListRequest(), cancellationToken);
+        var scopes = await mediator.Send(new GetRegistrationScopeListRequest(), cancellationToken);
         return Ok(scopes);
     }
 }

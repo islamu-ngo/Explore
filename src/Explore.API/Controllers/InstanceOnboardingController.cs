@@ -55,6 +55,7 @@ public class InstanceOnboardingController : ExploreControllerBase
     private readonly IMediator _mediator;
     private readonly ISetupSecretProvider _setupSecretProvider;
     private readonly IInstanceBootstrapAuditLogger _bootstrapAuditLogger;
+    private readonly IAuthProviderConfigurationService _authProviderConfigurationService;
     private readonly ILogger<InstanceOnboardingController> _logger;
     private readonly IResourceAssembler<InstanceOnboardingStatusDto, InstanceOnboardingStatusDto> _statusAssembler;
 
@@ -62,12 +63,14 @@ public class InstanceOnboardingController : ExploreControllerBase
         IMediator mediator,
         ISetupSecretProvider setupSecretProvider,
         IInstanceBootstrapAuditLogger bootstrapAuditLogger,
+        IAuthProviderConfigurationService authProviderConfigurationService,
         ILogger<InstanceOnboardingController> logger,
         IResourceAssembler<InstanceOnboardingStatusDto, InstanceOnboardingStatusDto> statusAssembler)
     {
         _mediator = mediator;
         _setupSecretProvider = setupSecretProvider;
         _bootstrapAuditLogger = bootstrapAuditLogger;
+        _authProviderConfigurationService = authProviderConfigurationService;
         _logger = logger;
         _statusAssembler = statusAssembler;
     }
@@ -229,8 +232,7 @@ public class InstanceOnboardingController : ExploreControllerBase
     [ProducesResponseType(typeof(AuthProviderConfigurationDto), StatusCodes.Status200OK)]
     public async Task<ActionResult<AuthProviderConfigurationDto>> GetAuthProviderConfiguration(CancellationToken cancellationToken = default)
     {
-        var service = HttpContext.RequestServices.GetRequiredService<IAuthProviderConfigurationService>();
-        var configuration = await service.ReadConfigurationAsync();
+        var configuration = await _authProviderConfigurationService.ReadConfigurationAsync();
         return Ok(configuration);
     }
 
@@ -247,8 +249,7 @@ public class InstanceOnboardingController : ExploreControllerBase
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status429TooManyRequests)]
     public async Task<ActionResult<AuthProviderConfigurationDto>> GetAuthProviderConfigurationInternal(CancellationToken cancellationToken = default)
     {
-        var service = HttpContext.RequestServices.GetRequiredService<IAuthProviderConfigurationService>();
-        var configuration = await service.ReadConfigurationWithSecretsAsync();
+        var configuration = await _authProviderConfigurationService.ReadConfigurationWithSecretsAsync();
         return Ok(configuration);
     }
 

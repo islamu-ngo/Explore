@@ -296,7 +296,6 @@ These tests verify structural accessibility requirements:
 
 - `RegisteredResourceKinds_ShouldHave_FallbackCase` — every resource kind handles unknown permissions
 - `RegisteredResourceKinds_ShouldHave_CerbosPolicy` — policy file exists per resource
-- `AllPermissionActions_ShouldBe_MappedInToActionString` — enum-to-string mapping is complete
 - `CerbosPolicies_ShouldHave_FallbackCase` — Cerbos YAML includes default deny
 
 ## TDD Workflow

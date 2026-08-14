@@ -17,14 +17,8 @@ namespace Explore.API.Controllers;
 [Route("api/[controller]")]
 [ApiController]
 [EndpointClassification(EndpointClass.Public)]
-public class EventTypeController : ControllerBase
+public class EventTypeController(IMediator mediator) : ControllerBase
 {
-    private readonly IMediator _mediator;
-
-    public EventTypeController(IMediator mediator)
-    {
-        _mediator = mediator;
-    }
 
     [HttpGet(Name = RouteNames.GetEventTypes)]
     [EndpointSummary("Get all Event Types")]
@@ -33,7 +27,7 @@ public class EventTypeController : ControllerBase
     [OutputCache(PolicyName = "LookupData")]
     public async Task<ActionResult<List<EventTypeListDto>>> GetAll(CancellationToken cancellationToken = default)
     {
-        var eventTypes = await _mediator.Send(new GetEventTypeListRequest { FullName = string.Empty }, cancellationToken);
+        var eventTypes = await mediator.Send(new GetEventTypeListRequest { FullName = string.Empty }, cancellationToken);
         return Ok(eventTypes);
     }
 }

@@ -16,14 +16,8 @@ namespace Explore.API.Controllers;
 [Route("api/[controller]")]
 [ApiController]
 [EndpointClassification(EndpointClass.Public)]
-public class TranslationController : ControllerBase
+public class TranslationController(IMediator mediator) : ControllerBase
 {
-    private readonly IMediator _mediator;
-
-    public TranslationController(IMediator mediator)
-    {
-        _mediator = mediator;
-    }
 
     /// <summary>
     /// Get all translations for a language.
@@ -38,7 +32,7 @@ public class TranslationController : ControllerBase
         string languageCode,
         CancellationToken cancellationToken = default)
     {
-        var translations = await _mediator.Send(
+        var translations = await mediator.Send(
             new GetTranslationsQuery { LanguageCode = languageCode },
             cancellationToken);
         return Ok(translations);
@@ -54,7 +48,7 @@ public class TranslationController : ControllerBase
     [ProducesResponseType(typeof(List<string>), StatusCodes.Status200OK)]
     public async Task<ActionResult<List<string>>> GetLanguages(CancellationToken cancellationToken = default)
     {
-        var languages = await _mediator.Send(new GetAvailableLanguagesQuery(), cancellationToken);
+        var languages = await mediator.Send(new GetAvailableLanguagesQuery(), cancellationToken);
         return Ok(languages);
     }
 }

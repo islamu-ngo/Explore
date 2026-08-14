@@ -20,14 +20,8 @@ namespace Explore.API.Controllers;
 [Route("api/[controller]")]
 [ApiController]
 [EndpointClassification(EndpointClass.Public)]
-public class OrganizationPositionController : ControllerBase
+public class OrganizationPositionController(IMediator mediator) : ControllerBase
 {
-    private readonly IMediator _mediator;
-
-    public OrganizationPositionController(IMediator mediator)
-    {
-        _mediator = mediator;
-    }
 
     // GET: api/organizationposition
     [HttpGet(Name = RouteNames.GetOrganizationPositions)]
@@ -38,7 +32,7 @@ public class OrganizationPositionController : ControllerBase
     [OutputCache(PolicyName = "LookupData")]
     public async Task<ActionResult<List<OrganizationPositionListDto>>> GetAll(CancellationToken cancellationToken = default)
     {
-        var organizationPositions = await _mediator.Send(new GetOrganizationPositionListRequest(), cancellationToken);
+        var organizationPositions = await mediator.Send(new GetOrganizationPositionListRequest(), cancellationToken);
         return Ok(organizationPositions);
     }
 
@@ -52,7 +46,7 @@ public class OrganizationPositionController : ControllerBase
     [OutputCache(PolicyName = "DetailData")]
     public async Task<ActionResult<OrganizationPositionDto>> GetById(int id, CancellationToken cancellationToken = default)
     {
-        var organizationPosition = await _mediator.Send(new GetOrganizationPositionDetailsRequest { Id = id }, cancellationToken);
+        var organizationPosition = await mediator.Send(new GetOrganizationPositionDetailsRequest { Id = id }, cancellationToken);
         return Ok(organizationPosition);
     }
 }

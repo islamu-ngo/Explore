@@ -161,25 +161,4 @@ public static class ResourceDescriptorRegistry
 
         throw new InvalidOperationException($"No resource kind mapping configured for type '{resourceType.Name}'.");
     }
-
-    /// <summary>
-    /// Converts a <see cref="PermissionAction"/> enum value to its Cerbos-compatible string representation.
-    /// Prefer using <see cref="AuthorizationActions"/> constants directly instead of this method.
-    /// </summary>
-#pragma warning disable CS0618 // Intentional: bridge method for legacy PermissionAction callers
-    public static string ToActionString(PermissionAction action)
-    {
-        return action switch
-        {
-            PermissionAction.Read => AuthorizationActions.View,
-            PermissionAction.Create => AuthorizationActions.Create,
-            PermissionAction.Update => AuthorizationActions.Update,
-            PermissionAction.Delete => AuthorizationActions.Delete,
-            PermissionAction.ManageMembers => AuthorizationActions.ManageMembers,
-            PermissionAction.ViewSharedContacts => AuthorizationActions.ViewSharedContacts,
-            PermissionAction.ExportSharedContacts => AuthorizationActions.ExportSharedContacts,
-            _ => throw new ArgumentOutOfRangeException(nameof(action), action, null)
-        };
-    }
-#pragma warning restore CS0618
 }

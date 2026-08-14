@@ -19,14 +19,8 @@ namespace Explore.API.Controllers;
 [Route("api/[controller]")]
 [ApiController]
 [EndpointClassification(EndpointClass.Public)]
-public class EventSessionStatusController : ControllerBase
+public class EventSessionStatusController(IMediator mediator) : ControllerBase
 {
-    private readonly IMediator _mediator;
-
-    public EventSessionStatusController(IMediator mediator)
-    {
-        _mediator = mediator;
-    }
 
     [HttpGet(Name = RouteNames.GetEventSessionStatuses)]
     [EndpointSummary("Get all Event Session Statuses")]
@@ -36,7 +30,7 @@ public class EventSessionStatusController : ControllerBase
     [OutputCache(PolicyName = "LookupData")]
     public async Task<ActionResult<List<EventSessionStatusListDto>>> GetAll(CancellationToken cancellationToken = default)
     {
-        var statuses = await _mediator.Send(new GetEventSessionStatusListRequest(), cancellationToken);
+        var statuses = await mediator.Send(new GetEventSessionStatusListRequest(), cancellationToken);
         return Ok(statuses);
     }
 
@@ -49,7 +43,7 @@ public class EventSessionStatusController : ControllerBase
     [OutputCache(PolicyName = "DetailData")]
     public async Task<ActionResult<EventSessionStatusDto>> GetById(int id, CancellationToken cancellationToken = default)
     {
-        var status = await _mediator.Send(new GetEventSessionStatusDetailsRequest { Id = id }, cancellationToken);
+        var status = await mediator.Send(new GetEventSessionStatusDetailsRequest { Id = id }, cancellationToken);
         return Ok(status);
     }
 }

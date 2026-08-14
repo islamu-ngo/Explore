@@ -20,14 +20,8 @@ namespace Explore.API.Controllers;
 [Route("api/[controller]")]
 [ApiController]
 [EndpointClassification(EndpointClass.Public)]
-public class EventFormatController : ControllerBase
+public class EventFormatController(IMediator mediator) : ControllerBase
 {
-    private readonly IMediator _mediator;
-
-    public EventFormatController(IMediator mediator)
-    {
-        _mediator = mediator;
-    }
 
     // GET: api/eventformat
     [HttpGet(Name = RouteNames.GetEventFormatOptions)]
@@ -38,7 +32,7 @@ public class EventFormatController : ControllerBase
     [OutputCache(PolicyName = "LookupData")]
     public async Task<ActionResult<List<EventFormatListDto>>> GetAll(CancellationToken cancellationToken = default)
     {
-        var eventFormats = await _mediator.Send(new GetEventFormatListRequest(), cancellationToken);
+        var eventFormats = await mediator.Send(new GetEventFormatListRequest(), cancellationToken);
         return Ok(eventFormats);
     }
 
@@ -52,7 +46,7 @@ public class EventFormatController : ControllerBase
     [OutputCache(PolicyName = "DetailData")]
     public async Task<ActionResult<EventFormatDto>> GetById(int id, CancellationToken cancellationToken = default)
     {
-        var eventFormat = await _mediator.Send(new GetEventFormatDetailsRequest { Id = id }, cancellationToken);
+        var eventFormat = await mediator.Send(new GetEventFormatDetailsRequest { Id = id }, cancellationToken);
         return Ok(eventFormat);
     }
 }

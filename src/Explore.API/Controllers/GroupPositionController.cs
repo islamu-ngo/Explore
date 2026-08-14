@@ -20,14 +20,8 @@ namespace Explore.API.Controllers;
 [Route("api/[controller]")]
 [ApiController]
 [EndpointClassification(EndpointClass.Public)]
-public class GroupPositionController : ControllerBase
+public class GroupPositionController(IMediator mediator) : ControllerBase
 {
-    private readonly IMediator _mediator;
-
-    public GroupPositionController(IMediator mediator)
-    {
-        _mediator = mediator;
-    }
 
     [HttpGet(Name = RouteNames.GetGroupPositions)]
     [EndpointSummary("Get all Group Positions")]
@@ -37,7 +31,7 @@ public class GroupPositionController : ControllerBase
     [OutputCache(PolicyName = "LookupData")]
     public async Task<ActionResult<List<GroupPositionListDto>>> GetAll(CancellationToken cancellationToken = default)
     {
-        var groupPositions = await _mediator.Send(new GetGroupPositionListRequest(), cancellationToken);
+        var groupPositions = await mediator.Send(new GetGroupPositionListRequest(), cancellationToken);
         return Ok(groupPositions);
     }
 
@@ -50,7 +44,7 @@ public class GroupPositionController : ControllerBase
     [OutputCache(PolicyName = "DetailData")]
     public async Task<ActionResult<GroupPositionDto>> GetById(int id, CancellationToken cancellationToken = default)
     {
-        var groupPosition = await _mediator.Send(new GetGroupPositionDetailsRequest { Id = id }, cancellationToken);
+        var groupPosition = await mediator.Send(new GetGroupPositionDetailsRequest { Id = id }, cancellationToken);
         return Ok(groupPosition);
     }
 }

@@ -17,14 +17,8 @@ namespace Explore.API.Controllers;
 [Route("api/[controller]")]
 [ApiController]
 [EndpointClassification(EndpointClass.Public)]
-public class ScheduleItemKindController : ControllerBase
+public class ScheduleItemKindController(IMediator mediator) : ControllerBase
 {
-    private readonly IMediator _mediator;
-
-    public ScheduleItemKindController(IMediator mediator)
-    {
-        _mediator = mediator;
-    }
 
     // GET: api/scheduleitemkind
     [HttpGet(Name = RouteNames.GetScheduleItemKinds)]
@@ -35,7 +29,7 @@ public class ScheduleItemKindController : ControllerBase
     [OutputCache(PolicyName = "LookupData")]
     public async Task<ActionResult<List<ScheduleItemKindListDto>>> GetAll(CancellationToken cancellationToken = default)
     {
-        var kinds = await _mediator.Send(new GetScheduleItemKindListRequest(), cancellationToken);
+        var kinds = await mediator.Send(new GetScheduleItemKindListRequest(), cancellationToken);
         return Ok(kinds);
     }
 }

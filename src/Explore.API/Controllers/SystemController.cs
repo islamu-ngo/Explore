@@ -16,15 +16,8 @@ namespace Explore.API.Controllers;
 [ApiVersion("0.1")]
 [Route("api/[controller]")]
 [ApiController]
-public sealed class SystemController : ExploreControllerBase
+public sealed class SystemController(IMediator mediator) : ExploreControllerBase
 {
-    private readonly IMediator _mediator;
-
-    public SystemController(IMediator mediator)
-    {
-        _mediator = mediator;
-    }
-
     [AllowAnonymous]
     [EndpointClassification(EndpointClass.Public)]
     [HttpGet("onboarding-status", Name = RouteNames.GetSystemOnboardingStatus)]
@@ -34,7 +27,7 @@ public sealed class SystemController : ExploreControllerBase
     [ProducesResponseType(typeof(SystemOnboardingStatusDto), StatusCodes.Status200OK)]
     public async Task<ActionResult<SystemOnboardingStatusDto>> GetOnboardingStatus(CancellationToken cancellationToken = default)
     {
-        var status = await _mediator.Send(new GetSystemOnboardingStatusQuery(), cancellationToken);
+        var status = await mediator.Send(new GetSystemOnboardingStatusQuery(), cancellationToken);
         return Ok(status);
     }
 
@@ -46,7 +39,7 @@ public sealed class SystemController : ExploreControllerBase
     [ProducesResponseType(typeof(OnboardingPreflightDto), StatusCodes.Status200OK)]
     public async Task<ActionResult<OnboardingPreflightDto>> GetOnboardingPreflight(CancellationToken cancellationToken = default)
     {
-        var preflight = await _mediator.Send(new GetOnboardingPreflightQuery(), cancellationToken);
+        var preflight = await mediator.Send(new GetOnboardingPreflightQuery(), cancellationToken);
         return Ok(preflight);
     }
 }

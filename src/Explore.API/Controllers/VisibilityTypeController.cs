@@ -20,14 +20,8 @@ namespace Explore.API.Controllers;
 [Route("api/[controller]")]
 [ApiController]
 [EndpointClassification(EndpointClass.Public)]
-public class VisibilityTypeController : ControllerBase
+public class VisibilityTypeController(IMediator mediator) : ControllerBase
 {
-    private readonly IMediator _mediator;
-
-    public VisibilityTypeController(IMediator mediator)
-    {
-        _mediator = mediator;
-    }
 
     // GET: api/visibilitytype
     [HttpGet(Name = RouteNames.GetVisibilityTypes)]
@@ -38,7 +32,7 @@ public class VisibilityTypeController : ControllerBase
     [OutputCache(PolicyName = "LookupData")]
     public async Task<ActionResult<List<VisibilityTypeListDto>>> GetAll(CancellationToken cancellationToken = default)
     {
-        var visibilityTypes = await _mediator.Send(new GetVisibilityTypeListRequest(), cancellationToken);
+        var visibilityTypes = await mediator.Send(new GetVisibilityTypeListRequest(), cancellationToken);
         return Ok(visibilityTypes);
     }
 
@@ -52,7 +46,7 @@ public class VisibilityTypeController : ControllerBase
     [OutputCache(PolicyName = "DetailData")]
     public async Task<ActionResult<VisibilityTypeDto>> GetById(int id, CancellationToken cancellationToken = default)
     {
-        var visibilityType = await _mediator.Send(new GetVisibilityTypeDetailsRequest { Id = id }, cancellationToken);
+        var visibilityType = await mediator.Send(new GetVisibilityTypeDetailsRequest { Id = id }, cancellationToken);
         return Ok(visibilityType);
     }
 }

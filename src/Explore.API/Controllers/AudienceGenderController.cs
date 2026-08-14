@@ -20,14 +20,8 @@ namespace Explore.API.Controllers;
 [Route("api/[controller]")]
 [ApiController]
 [EndpointClassification(EndpointClass.Public)]
-public class AudienceGenderController : ControllerBase
+public class AudienceGenderController(IMediator mediator) : ControllerBase
 {
-    private readonly IMediator _mediator;
-
-    public AudienceGenderController(IMediator mediator)
-    {
-        _mediator = mediator;
-    }
 
     // GET: api/audiencegender
     [HttpGet(Name = RouteNames.GetAudienceGenderOptions)]
@@ -38,7 +32,7 @@ public class AudienceGenderController : ControllerBase
     [OutputCache(PolicyName = "LookupData")]
     public async Task<ActionResult<List<AudienceGenderListDto>>> GetAll(CancellationToken cancellationToken = default)
     {
-        var audienceGenders = await _mediator.Send(new GetAudienceGenderListRequest(), cancellationToken);
+        var audienceGenders = await mediator.Send(new GetAudienceGenderListRequest(), cancellationToken);
         return Ok(audienceGenders);
     }
 
@@ -52,7 +46,7 @@ public class AudienceGenderController : ControllerBase
     [OutputCache(PolicyName = "DetailData")]
     public async Task<ActionResult<AudienceGenderDto>> GetById(int id, CancellationToken cancellationToken = default)
     {
-        var audienceGender = await _mediator.Send(new GetAudienceGenderDetailsRequest { Id = id }, cancellationToken);
+        var audienceGender = await mediator.Send(new GetAudienceGenderDetailsRequest { Id = id }, cancellationToken);
 
         return Ok(audienceGender);
     }

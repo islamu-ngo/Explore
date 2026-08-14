@@ -198,32 +198,6 @@ public partial class AuthorizationParityTests
                      $"cerbos/policies/: [{string.Join(", ", missing)}]");
     }
 
-#pragma warning disable CS0618 // PermissionAction is obsolete — bridge tests must still exercise it
-    [Test]
-    [DisplayName("Every PermissionAction enum value has a mapping in ToActionString")]
-    public async Task AllPermissionActions_ShouldBe_MappedInToActionString()
-    {
-        var unmapped = new List<PermissionAction>();
-
-        foreach (var action in Enum.GetValues<PermissionAction>())
-        {
-            try
-            {
-                ResourceDescriptorRegistry.ToActionString(action);
-            }
-            catch (ArgumentOutOfRangeException)
-            {
-                unmapped.Add(action);
-            }
-        }
-
-        await Assert.That(unmapped)
-            .IsEmpty()
-            .Because($"These PermissionAction values are not mapped in ToActionString: " +
-                     $"[{string.Join(", ", unmapped)}]");
-    }
-#pragma warning restore CS0618
-
     [Test]
     [DisplayName("FallbackAuthorizationService handles all resource kinds that have Cerbos policies")]
     public async Task CerbosPolicies_ShouldHave_FallbackCase()

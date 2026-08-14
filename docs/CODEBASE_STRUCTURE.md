@@ -280,7 +280,7 @@ Explore.API/
 ├── Models/                        — API transport models (not DTOs)
 │   └── EventFilterRequest.cs      — 42-property filter model for [FromQuery] binding
 ├── Services/                      — API-layer services
-│   └── TenantContext.cs           — Legacy/request tenant context bridge; middleware is the tenant-resolution authority
+│   └── RegistrationProviderIncomingWebhookVerifier.cs — Provider callback signature verification
 ├── Middleware/                     — HTTP pipeline middleware
 │   ├── SecurityHeadersMiddleware.cs   — X-Content-Type-Options, X-Frame-Options, CSP, etc.
 │   ├── ApiTenantResolutionMiddleware.cs — Tenant resolution (BFF hint → admin-host exclusion → custom domain → subdomain)
@@ -327,7 +327,7 @@ Explore.API/
 │   ├── StorageReconciliationWorker.cs — Periodic S3 storage object reconciliation worker
 │   └── WebhookDeliveryProcessor.cs — Outgoing product webhooks delivery worker
 ├── Static/                        — Static file serving configuration
-├── schemas/openapi.json           — Generated OpenAPI specification
+├── schemas/openapi_islamu-event.json — Generated OpenAPI specification
 └── Properties/
     └── launchSettings.json        — Development server URLs and profiles
 ```
@@ -606,7 +606,7 @@ _bmad-output/                      — BMAD workflow outputs
 | Add client service | `Explore.Blazor.Client/Services/EntityNameService.cs` |
 | Register DI services | `Explore.Persistence/PersistenceServicesRegistration.cs` (repos) or `Explore.Blazor.Client/Program.cs` (client) |
 | Add seed data | `Explore.Persistence/Seed/SeedData.cs` (runtime) or entity configuration `HasData()` (lookup) |
-| Multi-tenancy logic | `Explore.API/Services/TenantContext.cs` + `Explore.Persistence/ExploreDbContext.cs` |
+| Multi-tenancy logic | `Explore.API/Middleware/ApiTenantResolutionMiddleware.cs` + `Explore.Infrastructure/Services/TenantContext.cs` + `Explore.Persistence/ExploreDbContext.cs` |
 | Authentication | `Explore.Blazor/Program.cs` (OIDC) + `Explore.Infrastructure/Services/CurrentUserService.cs` |
 | Secret management | `Explore.Secrets/` (API-side) or `Explore.Blazor/Configuration/` (BFF startup only) |
 | Database migrations | `dotnet ef` via `Event.MigrationService/` |

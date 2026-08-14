@@ -118,10 +118,10 @@ Checks:
 3. Confirm only intentional generated artifacts changed:
 
    ```bash
-   git diff -- schemas/openapi.json Explore.Blazor.Client/Clients/EventApiClient.g.cs
+   git diff -- schemas/openapi_islamu-event.json Explore.Blazor.Client/Clients/EventApiClient.g.cs
    ```
 
-4. Commit `schemas/openapi.json` and `Explore.Blazor.Client/Clients/EventApiClient.g.cs` only when the API-surface change is intentional. Do not hand-edit either file.
+4. Commit `schemas/openapi_islamu-event.json` and `Explore.Blazor.Client/Clients/EventApiClient.g.cs` only when the API-surface change is intentional. Do not hand-edit either file.
 
 If CI reports drift on an unrelated PR, check `.github/workflows/openapi-contract.yml` job summary. The guard has an internal no-op detector; unrelated changes should pass without regeneration.
 

@@ -20,14 +20,8 @@ namespace Explore.API.Controllers;
 [Route("api/[controller]")]
 [ApiController]
 [EndpointClassification(EndpointClass.Public)]
-public class FileTypeController : ControllerBase
+public class FileTypeController(IMediator mediator) : ControllerBase
 {
-    private readonly IMediator _mediator;
-
-    public FileTypeController(IMediator mediator)
-    {
-        _mediator = mediator;
-    }
 
     // GET: api/filetype
     [HttpGet(Name = RouteNames.GetFileTypes)]
@@ -38,7 +32,7 @@ public class FileTypeController : ControllerBase
     [OutputCache(PolicyName = "LookupData")]
     public async Task<ActionResult<List<FileTypeListDto>>> GetAll(CancellationToken cancellationToken = default)
     {
-        var fileTypes = await _mediator.Send(new GetFileTypeListRequest(), cancellationToken);
+        var fileTypes = await mediator.Send(new GetFileTypeListRequest(), cancellationToken);
         return Ok(fileTypes);
     }
 
@@ -52,7 +46,7 @@ public class FileTypeController : ControllerBase
     [OutputCache(PolicyName = "DetailData")]
     public async Task<ActionResult<FileTypeDto>> GetById(int id, CancellationToken cancellationToken = default)
     {
-        var fileType = await _mediator.Send(new GetFileTypeDetailsRequest { Id = id }, cancellationToken);
+        var fileType = await mediator.Send(new GetFileTypeDetailsRequest { Id = id }, cancellationToken);
         return Ok(fileType);
     }
 }

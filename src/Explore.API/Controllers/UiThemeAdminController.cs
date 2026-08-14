@@ -21,7 +21,7 @@ namespace Explore.API.Controllers;
 [ApiController]
 [Authorize]
 [EndpointClassification(EndpointClass.Authenticated)]
-public class UiThemeAdminController : ControllerBase
+public class UiThemeAdminController(IMediator mediator) : ControllerBase
 {
     private static readonly ApiValidationProblemDescriptor CreateValidationProblem = new(
         "uiTheme",
@@ -37,13 +37,6 @@ public class UiThemeAdminController : ControllerBase
         "UI theme not found",
         "UI theme not found.");
 
-    private readonly IMediator _mediator;
-
-    public UiThemeAdminController(IMediator mediator)
-    {
-        _mediator = mediator;
-    }
-
     [HttpGet(Name = RouteNames.GetUiThemeCatalog)]
     [EndpointSummary("Get UI Theme Catalog")]
     [EndpointDescription("Returns the platform or tenant-owned UI theme catalog. Scope is controlled by the isPlatformCatalog query parameter.")]
@@ -54,7 +47,7 @@ public class UiThemeAdminController : ControllerBase
         [FromQuery] bool activeOnly = false,
         CancellationToken cancellationToken = default)
     {
-        var themes = await _mediator.Send(new GetUiThemeCatalogQuery
+        var themes = await mediator.Send(new GetUiThemeCatalogQuery
         {
             IsPlatformCatalog = isPlatformCatalog,
             ActiveOnly = activeOnly,
@@ -73,7 +66,7 @@ public class UiThemeAdminController : ControllerBase
         [FromRoute] Guid id,
         CancellationToken cancellationToken = default)
     {
-        var theme = await _mediator.Send(new GetUiThemeDetailsQuery { Id = id }, cancellationToken);
+        var theme = await mediator.Send(new GetUiThemeDetailsQuery { Id = id }, cancellationToken);
         if (theme is null)
         {
             return this.ToNotFoundProblem(UiThemeNotFoundProblem);
@@ -92,7 +85,7 @@ public class UiThemeAdminController : ControllerBase
         [FromBody] CreateUiThemeDto dto,
         CancellationToken cancellationToken = default)
     {
-        var response = await _mediator.Send(new CreateUiThemeCommand { UiThemeDto = dto }, cancellationToken);
+        var response = await mediator.Send(new CreateUiThemeCommand { UiThemeDto = dto }, cancellationToken);
 
         if (response.Success)
         {
@@ -119,7 +112,7 @@ public class UiThemeAdminController : ControllerBase
         [FromBody] UpdateUiThemeDto dto,
         CancellationToken cancellationToken = default)
     {
-        var response = await _mediator.Send(new UpdateUiThemeCommand { Id = id, UiThemeDto = dto }, cancellationToken);
+        var response = await mediator.Send(new UpdateUiThemeCommand { Id = id, UiThemeDto = dto }, cancellationToken);
 
         if (response.Success)
         {
@@ -151,7 +144,7 @@ public class UiThemeAdminController : ControllerBase
         [FromRoute] Guid id,
         CancellationToken cancellationToken = default)
     {
-        var deleted = await _mediator.Send(new DeleteUiThemeCommand { Id = id }, cancellationToken);
+        var deleted = await mediator.Send(new DeleteUiThemeCommand { Id = id }, cancellationToken);
         if (!deleted)
         {
             return this.ToNotFoundProblem(UiThemeNotFoundProblem);

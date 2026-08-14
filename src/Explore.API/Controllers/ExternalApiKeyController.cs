@@ -23,7 +23,7 @@ namespace Explore.API.Controllers;
 [ApiController]
 [Authorize]
 [EndpointClassification(EndpointClass.Authenticated)]
-public class ExternalApiKeyController : ControllerBase
+public class ExternalApiKeyController(IMediator mediator) : ControllerBase
 {
     private static readonly ApiValidationProblemDescriptor CreateValidationProblem = new(
         "externalApiKey",
@@ -39,13 +39,6 @@ public class ExternalApiKeyController : ControllerBase
         "External API key not found",
         "External API key not found.");
 
-    private readonly IMediator _mediator;
-
-    public ExternalApiKeyController(IMediator mediator)
-    {
-        _mediator = mediator;
-    }
-
     [HttpGet(Name = RouteNames.GetExternalApiKeys)]
     [EndpointSummary("Get visible external API keys")]
     [EndpointDescription("Retrieve API keys owned by the current user or organizations they can manage.")]
@@ -56,7 +49,7 @@ public class ExternalApiKeyController : ControllerBase
     [EnableRateLimiting(RateLimitingExtensions.AuthenticatedPolicy)]
     public async Task<ActionResult<List<ExternalApiKeyListDto>>> GetAll(CancellationToken cancellationToken = default)
     {
-        var keys = await _mediator.Send(new GetExternalApiKeyListRequest(), cancellationToken);
+        var keys = await mediator.Send(new GetExternalApiKeyListRequest(), cancellationToken);
         return Ok(keys);
     }
 
@@ -71,7 +64,7 @@ public class ExternalApiKeyController : ControllerBase
     [EnableRateLimiting(RateLimitingExtensions.AuthenticatedPolicy)]
     public async Task<ActionResult<ExternalApiKeyListDto>> GetById(Guid id, CancellationToken cancellationToken = default)
     {
-        var key = await _mediator.Send(new GetExternalApiKeyDetailsRequest { Id = id }, cancellationToken);
+        var key = await mediator.Send(new GetExternalApiKeyDetailsRequest { Id = id }, cancellationToken);
         if (key == null)
             return this.ToNotFoundProblem(ExternalApiKeyNotFoundProblem);
 
@@ -90,7 +83,7 @@ public class ExternalApiKeyController : ControllerBase
     public async Task<ActionResult<CreateExternalApiKeyCommandResponse>> Create([FromBody] CreateExternalApiKeyDto dto, CancellationToken cancellationToken = default)
     {
         var command = new CreateExternalApiKeyCommand { ExternalApiKeyDto = dto };
-        var response = await _mediator.Send(command, cancellationToken);
+        var response = await mediator.Send(command, cancellationToken);
 
         if (!response.Success)
         {
@@ -117,7 +110,7 @@ public class ExternalApiKeyController : ControllerBase
             ExternalApiKeyId = id,
             ExternalApiKeyPolicyDto = dto
         };
-        var response = await _mediator.Send(command, cancellationToken);
+        var response = await mediator.Send(command, cancellationToken);
 
         if (!response.Success)
         {
@@ -143,7 +136,7 @@ public class ExternalApiKeyController : ControllerBase
     [EnableRateLimiting(RateLimitingExtensions.WritePolicy)]
     public async Task<ActionResult> Delete(Guid id, CancellationToken cancellationToken = default)
     {
-        var revoked = await _mediator.Send(new RevokeExternalApiKeyCommand { Id = id }, cancellationToken);
+        var revoked = await mediator.Send(new RevokeExternalApiKeyCommand { Id = id }, cancellationToken);
 
         return revoked ? NoContent() : this.ToNotFoundProblem(ExternalApiKeyNotFoundProblem);
     }
@@ -160,7 +153,7 @@ public class ExternalApiKeyController : ControllerBase
         [FromQuery] ExternalApiKeyUsageReportQueryRequest query,
         CancellationToken cancellationToken = default)
     {
-        var report = await _mediator.Send(new GetExternalApiKeyUsageReportRequest
+        var report = await mediator.Send(new GetExternalApiKeyUsageReportRequest
         {
             From = query.From,
             To = query.To,

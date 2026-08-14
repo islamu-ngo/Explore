@@ -6,7 +6,7 @@ ABOUTME: Authoritative source for Explore.API patterns — middleware order, req
 > **Audience:** Integrators | Contributors | AI agents
 > **Status:** Implemented
 > **Owner:** API
-> **Last Verified:** 2026-07-29
+> **Last Verified:** 2026-08-14
 > **Source Anchors:** `Explore.API/Program.cs`, `Explore.API/Controllers/`, `Explore.API/Middleware/`, `Explore.API/Hateoas/`, `Explore.API/Authentication/`, `Explore.API/Extensions/`, `Explore.API/OpenApi/`, `Explore.API/Explore.API.csproj`, `Explore.Blazor.Client/Explore.Blazor.Client.csproj`, `Event.API.IntegrationTests/Features/ContractInvariantsTests.cs`, `Event.API.IntegrationTests/Features/OpenApiParityTests.cs`
 
 ## Scope
@@ -1171,7 +1171,7 @@ dotnet msbuild Explore.Blazor.Client/Explore.Blazor.Client.csproj /t:GenerateApi
 
 The generated contract now includes `ImportEvent`, `CreateDraftEventSession`, `ScheduleEventSession`, `PublishEventSession`, `CancelEventSession`, `CompleteEventSession`, and `ArchiveEventSession` operations. NSwag emits nullable client properties for draft-capable session schedule fields, so callers must handle `DateTimeOffset?` and `TimeSpan?` for session schedule/local projections.
 
-Before v1.0, intentional breaking API contract changes may be accepted when they make the API, HAL affordances, or generated OpenAPI contract cleaner. They still require an entry in [API_CHANGELOG.md](API_CHANGELOG.md), regenerated OpenAPI/inventory/generated-client artifacts through the documented workflow when applicable, and retained contract-governance evidence. Do not hand-edit `schemas/openapi.json`, `docs/API_CONTRACT_INVENTORY.md`, or generated NSwag client output. At v1.0, breaking schema diffs become blocking per governance.
+Before v1.0, intentional breaking API contract changes may be accepted when they make the API, HAL affordances, or generated OpenAPI contract cleaner. They still require an entry in [API_CHANGELOG.md](API_CHANGELOG.md), regenerated OpenAPI/inventory/generated-client artifacts through the documented workflow when applicable, and retained contract-governance evidence. Do not hand-edit `schemas/openapi_islamu-event.json`, `docs/API_CONTRACT_INVENTORY.md`, or generated NSwag client output. At v1.0, breaking schema diffs become blocking per governance.
 
 ---
 

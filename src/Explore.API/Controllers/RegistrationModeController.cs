@@ -20,14 +20,8 @@ namespace Explore.API.Controllers;
 [Route("api/[controller]")]
 [ApiController]
 [EndpointClassification(EndpointClass.Public)]
-public class RegistrationModeController : ControllerBase
+public class RegistrationModeController(IMediator mediator) : ControllerBase
 {
-    private readonly IMediator _mediator;
-
-    public RegistrationModeController(IMediator mediator)
-    {
-        _mediator = mediator;
-    }
 
     // GET: api/registrationmode
     [HttpGet(Name = RouteNames.GetRegistrationModes)]
@@ -38,7 +32,7 @@ public class RegistrationModeController : ControllerBase
     [OutputCache(PolicyName = "LookupData")]
     public async Task<ActionResult<List<RegistrationModeListDto>>> GetAll(CancellationToken cancellationToken = default)
     {
-        var registrationModes = await _mediator.Send(new GetRegistrationModeListRequest(), cancellationToken);
+        var registrationModes = await mediator.Send(new GetRegistrationModeListRequest(), cancellationToken);
         return Ok(registrationModes);
     }
 
@@ -52,7 +46,7 @@ public class RegistrationModeController : ControllerBase
     [OutputCache(PolicyName = "DetailData")]
     public async Task<ActionResult<RegistrationModeDto>> GetById(int id, CancellationToken cancellationToken = default)
     {
-        var registrationMode = await _mediator.Send(new GetRegistrationModeDetailsRequest { Id = id }, cancellationToken);
+        var registrationMode = await mediator.Send(new GetRegistrationModeDetailsRequest { Id = id }, cancellationToken);
         return Ok(registrationMode);
     }
 }

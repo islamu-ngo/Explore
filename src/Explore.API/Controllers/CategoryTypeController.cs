@@ -18,14 +18,8 @@ namespace Explore.API.Controllers;
 [Route("api/[controller]")]
 [ApiController]
 [EndpointClassification(EndpointClass.Public)]
-public class CategoryTypeController : ControllerBase
+public class CategoryTypeController(IMediator mediator) : ControllerBase
 {
-    private readonly IMediator _mediator;
-
-    public CategoryTypeController(IMediator mediator)
-    {
-        _mediator = mediator;
-    }
 
     // GET: api/categorytype
     [HttpGet(Name = RouteNames.GetCategoryTypeOptions)]
@@ -33,7 +27,7 @@ public class CategoryTypeController : ControllerBase
     [OutputCache(PolicyName = "LookupData")]
     public async Task<ActionResult<List<CategoryTypeListDto>>> GetAll(CancellationToken cancellationToken = default)
     {
-        var categoryTypes = await _mediator.Send(new GetCategoryTypeListRequest(), cancellationToken);
+        var categoryTypes = await mediator.Send(new GetCategoryTypeListRequest(), cancellationToken);
         return Ok(categoryTypes);
     }
 
@@ -43,7 +37,7 @@ public class CategoryTypeController : ControllerBase
     [OutputCache(PolicyName = "DetailData")]
     public async Task<ActionResult<CategoryTypeDto>> GetById(int id, CancellationToken cancellationToken = default)
     {
-        var categoryType = await _mediator.Send(new GetCategoryTypeDetailsRequest { Id = id }, cancellationToken);
+        var categoryType = await mediator.Send(new GetCategoryTypeDetailsRequest { Id = id }, cancellationToken);
         return Ok(categoryType);
     }
 
@@ -56,7 +50,7 @@ public class CategoryTypeController : ControllerBase
     [ProducesResponseType(typeof(List<CategoryTypeWithCategoriesDto>), StatusCodes.Status200OK)]
     public async Task<ActionResult<List<CategoryTypeWithCategoriesDto>>> GetWithCategories(CancellationToken cancellationToken = default)
     {
-        var result = await _mediator.Send(new GetCategoriesGroupedByCategoryTypeRequest(), cancellationToken);
+        var result = await mediator.Send(new GetCategoriesGroupedByCategoryTypeRequest(), cancellationToken);
         return Ok(result);
     }
 }

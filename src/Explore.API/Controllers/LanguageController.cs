@@ -17,14 +17,8 @@ namespace Explore.API.Controllers;
 [Route("api/[controller]")]
 [ApiController]
 [EndpointClassification(EndpointClass.Public)]
-public class LanguageController : ControllerBase
+public class LanguageController(IMediator mediator) : ControllerBase
 {
-    private readonly IMediator _mediator;
-
-    public LanguageController(IMediator mediator)
-    {
-        _mediator = mediator;
-    }
 
     // GET: api/language
     [HttpGet(Name = RouteNames.GetLanguages)]
@@ -34,7 +28,7 @@ public class LanguageController : ControllerBase
     [OutputCache(PolicyName = "LookupData")]
     public async Task<ActionResult<List<LanguageListDto>>> GetAll(CancellationToken cancellationToken = default)
     {
-        var languages = await _mediator.Send(new GetLanguageListRequest(), cancellationToken);
+        var languages = await mediator.Send(new GetLanguageListRequest(), cancellationToken);
         return Ok(languages);
     }
 
@@ -46,7 +40,7 @@ public class LanguageController : ControllerBase
     [OutputCache(PolicyName = "DetailData")]
     public async Task<ActionResult<LanguageDto>> GetById(int id, CancellationToken cancellationToken = default)
     {
-        var language = await _mediator.Send(new GetLanguageDetailsRequest { Id = id }, cancellationToken);
+        var language = await mediator.Send(new GetLanguageDetailsRequest { Id = id }, cancellationToken);
 
         return Ok(language);
     }

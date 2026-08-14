@@ -18,14 +18,8 @@ namespace Explore.API.Controllers;
 [Route("api/[controller]")]
 [ApiController]
 [EndpointClassification(EndpointClass.Public)]
-public class TagTypeController : ControllerBase
+public class TagTypeController(IMediator mediator) : ControllerBase
 {
-    private readonly IMediator _mediator;
-
-    public TagTypeController(IMediator mediator)
-    {
-        _mediator = mediator;
-    }
 
     // GET: api/tagtype
     [HttpGet(Name = RouteNames.GetTagTypes)]
@@ -33,7 +27,7 @@ public class TagTypeController : ControllerBase
     [OutputCache(PolicyName = "LookupData")]
     public async Task<ActionResult<List<TagTypeListDto>>> GetAll(CancellationToken cancellationToken = default)
     {
-        var tagTypes = await _mediator.Send(new GetTagTypeListRequest(), cancellationToken);
+        var tagTypes = await mediator.Send(new GetTagTypeListRequest(), cancellationToken);
         return Ok(tagTypes);
     }
 
@@ -43,7 +37,7 @@ public class TagTypeController : ControllerBase
     [OutputCache(PolicyName = "DetailData")]
     public async Task<ActionResult<TagTypeDto>> GetById(int id, CancellationToken cancellationToken = default)
     {
-        var tagType = await _mediator.Send(new GetTagTypeDetailsRequest { Id = id }, cancellationToken);
+        var tagType = await mediator.Send(new GetTagTypeDetailsRequest { Id = id }, cancellationToken);
         return Ok(tagType);
     }
 
@@ -56,7 +50,7 @@ public class TagTypeController : ControllerBase
     [ProducesResponseType(typeof(List<TagTypeWithTagsDto>), StatusCodes.Status200OK)]
     public async Task<ActionResult<List<TagTypeWithTagsDto>>> GetWithTags(CancellationToken cancellationToken = default)
     {
-        var result = await _mediator.Send(new GetTagsGroupedByTagTypeRequest(), cancellationToken);
+        var result = await mediator.Send(new GetTagsGroupedByTagTypeRequest(), cancellationToken);
         return Ok(result);
     }
 }

@@ -18,14 +18,8 @@ namespace Explore.API.Controllers;
 [Route("api/[controller]")]
 [ApiController]
 [EndpointClassification(EndpointClass.Public)]
-public class RoleController : ControllerBase
+public class RoleController(IMediator mediator) : ControllerBase
 {
-    private readonly IMediator _mediator;
-
-    public RoleController(IMediator mediator)
-    {
-        _mediator = mediator;
-    }
 
     // GET: api/role?roleScopeId=2
     [HttpGet(Name = RouteNames.GetRoles)]
@@ -38,7 +32,7 @@ public class RoleController : ControllerBase
         [FromQuery] int? roleScopeId = null,
         CancellationToken cancellationToken = default)
     {
-        var roles = await _mediator.Send(new GetRoleListRequest { RoleScopeId = roleScopeId }, cancellationToken);
+        var roles = await mediator.Send(new GetRoleListRequest { RoleScopeId = roleScopeId }, cancellationToken);
         return Ok(roles);
     }
 
@@ -52,7 +46,7 @@ public class RoleController : ControllerBase
     [OutputCache(PolicyName = "DetailData")]
     public async Task<ActionResult<RoleDto>> GetById(int id, CancellationToken cancellationToken = default)
     {
-        var role = await _mediator.Send(new GetRoleDetailsRequest { Id = id }, cancellationToken);
+        var role = await mediator.Send(new GetRoleDetailsRequest { Id = id }, cancellationToken);
 
         return Ok(role);
     }

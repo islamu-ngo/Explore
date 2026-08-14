@@ -21,18 +21,11 @@ namespace Explore.API.Controllers;
 [Route("api/[controller]")]
 [ApiController]
 [EndpointClassification(EndpointClass.Authenticated)]
-public class UserAuthenticationTokenController : ControllerBase
+public class UserAuthenticationTokenController(IMediator mediator) : ControllerBase
 {
     private static readonly ApiNotFoundProblemDescriptor UserAuthenticationTokenNotFoundProblem = new(
         "User authentication token not found",
         "User authentication token not found.");
-
-    private readonly IMediator _mediator;
-
-    public UserAuthenticationTokenController(IMediator mediator)
-    {
-        _mediator = mediator;
-    }
 
     // GET: api/userauthenticationtoken
     [HttpGet(Name = RouteNames.GetUserAuthenticationTokens)]
@@ -45,7 +38,7 @@ public class UserAuthenticationTokenController : ControllerBase
     [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
     public async Task<ActionResult<List<UserAuthenticationTokenListDto>>> GetAll(CancellationToken cancellationToken = default)
     {
-        var tokens = await _mediator.Send(new GetUserAuthenticationTokenListRequest(), cancellationToken);
+        var tokens = await mediator.Send(new GetUserAuthenticationTokenListRequest(), cancellationToken);
         return Ok(tokens);
     }
 
@@ -61,7 +54,7 @@ public class UserAuthenticationTokenController : ControllerBase
     [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
     public async Task<ActionResult<UserAuthenticationTokenDto>> GetById(Guid id, CancellationToken cancellationToken = default)
     {
-        var token = await _mediator.Send(new GetUserAuthenticationTokenDetailsRequest { Id = id }, cancellationToken);
+        var token = await mediator.Send(new GetUserAuthenticationTokenDetailsRequest { Id = id }, cancellationToken);
 
         return token is null ? this.ToNotFoundProblem(UserAuthenticationTokenNotFoundProblem) : Ok(token);
     }
@@ -77,7 +70,7 @@ public class UserAuthenticationTokenController : ControllerBase
     public async Task<ActionResult> Delete(Guid id, CancellationToken cancellationToken = default)
     {
         var command = new DeleteUserAuthenticationTokenCommand { Id = id };
-        await _mediator.Send(command, cancellationToken);
+        await mediator.Send(command, cancellationToken);
 
         return NoContent();
     }

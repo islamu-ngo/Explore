@@ -260,7 +260,7 @@ The browser authentication state is intentionally display-only:
 `Explore.Blazor.Client/Explore.Blazor.Client.csproj` runs the NSwag generation target before `CoreCompile`:
 
 1. API DTO/controller contract changes are made first.
-2. The API build refreshes the checked-in build-time OpenAPI contract at `schemas/openapi.json`.
+2. The API build refreshes the checked-in build-time OpenAPI contract at `schemas/openapi_islamu-event.json`.
 3. The Blazor client build regenerates `Explore.Blazor.Client/Clients/EventApiClient.g.cs`.
 4. Pages/components consume application services, not `EventApiClient` directly.
 
@@ -421,7 +421,7 @@ Do not duplicate the specialized docs in this guide.
 2. Gating edit/delete buttons with client roles instead of API-emitted HAL links.
 3. Storing tokens or setup secrets in browser storage.
 4. Adding custom correlation headers where .NET/OpenTelemetry `Activity` flow already handles trace propagation.
-5. Updating DTOs without refreshing `schemas/openapi.json` and rebuilding the generated client.
+5. Updating DTOs without refreshing `schemas/openapi_islamu-event.json` and rebuilding the generated client.
 6. Repeating render-policy, design-system, localization, or accessibility reference tables inside Blazor-specific docs.
 7. Enabling an AI assistant button without the corresponding HAL link from the API.
 8. Reconstructing onboarding tasks, authority, deployment-mode choices, or completion state from claims or browser-local state instead of server status/HAL resources.

@@ -18,19 +18,12 @@ namespace Explore.API.Controllers;
 [Route("api/a/t")]
 [ApiController]
 [EndpointClassification(EndpointClass.Public)]
-public class AnalyticsRelayController : ExploreControllerBase
+public class AnalyticsRelayController(IMediator mediator) : ExploreControllerBase
 {
     private static readonly ApiValidationProblemDescriptor RelayValidationProblem = new(
         "analyticsRelay",
         "Analytics relay validation failed",
         "Analytics relay rejected the submitted event.");
-
-    private readonly IMediator _mediator;
-
-    public AnalyticsRelayController(IMediator mediator)
-    {
-        _mediator = mediator;
-    }
 
     [HttpPost(Name = RouteNames.RelayAnalyticsEvent)]
     [AllowAnonymous]
@@ -41,7 +34,7 @@ public class AnalyticsRelayController : ExploreControllerBase
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> Relay([FromBody] RelayAnalyticsEventDto payload, CancellationToken cancellationToken)
     {
-        var accepted = await _mediator.Send(new RelayAnalyticsEventCommand
+        var accepted = await mediator.Send(new RelayAnalyticsEventCommand
         {
             AuthenticatedUserId = CurrentUserId,
             Payload = payload

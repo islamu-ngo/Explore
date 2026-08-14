@@ -17,14 +17,8 @@ namespace Explore.API.Controllers;
 [Route("api/[controller]")]
 [ApiController]
 [EndpointClassification(EndpointClass.Public)]
-public class EventRegistrationPolicyController : ControllerBase
+public class EventRegistrationPolicyController(IMediator mediator) : ControllerBase
 {
-    private readonly IMediator _mediator;
-
-    public EventRegistrationPolicyController(IMediator mediator)
-    {
-        _mediator = mediator;
-    }
 
     // GET: api/eventregistrationpolicy
     [HttpGet(Name = RouteNames.GetEventRegistrationPolicies)]
@@ -35,7 +29,7 @@ public class EventRegistrationPolicyController : ControllerBase
     [OutputCache(PolicyName = "LookupData")]
     public async Task<ActionResult<List<EventRegistrationPolicyListDto>>> GetAll(CancellationToken cancellationToken = default)
     {
-        var policies = await _mediator.Send(new GetEventRegistrationPolicyListRequest(), cancellationToken);
+        var policies = await mediator.Send(new GetEventRegistrationPolicyListRequest(), cancellationToken);
         return Ok(policies);
     }
 }

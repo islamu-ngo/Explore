@@ -53,6 +53,8 @@ public class InstanceSettingsController : ExploreControllerBase
     private readonly IAdminContext _adminContext;
     private readonly ISetupSecretProvider _setupSecretProvider;
     private readonly IDeploymentModeProvider _deploymentModeProvider;
+    private readonly IAuthProviderConfigurationService _authProviderConfigurationService;
+    private readonly IAuthorizationProviderConfigurationService _authorizationProviderConfigurationService;
     private readonly IResourceAssembler<InstanceStorageSettingsDto, InstanceStorageSettingsDto> _storageSettingsAssembler;
 
     public InstanceSettingsController(
@@ -60,12 +62,16 @@ public class InstanceSettingsController : ExploreControllerBase
         IAdminContext adminContext,
         ISetupSecretProvider setupSecretProvider,
         IDeploymentModeProvider deploymentModeProvider,
+        IAuthProviderConfigurationService authProviderConfigurationService,
+        IAuthorizationProviderConfigurationService authorizationProviderConfigurationService,
         IResourceAssembler<InstanceStorageSettingsDto, InstanceStorageSettingsDto> storageSettingsAssembler)
     {
         _mediator = mediator;
         _adminContext = adminContext;
         _setupSecretProvider = setupSecretProvider;
         _deploymentModeProvider = deploymentModeProvider;
+        _authProviderConfigurationService = authProviderConfigurationService;
+        _authorizationProviderConfigurationService = authorizationProviderConfigurationService;
         _storageSettingsAssembler = storageSettingsAssembler;
     }
 
@@ -703,8 +709,7 @@ public class InstanceSettingsController : ExploreControllerBase
     [ProducesResponseType(typeof(ProviderConfigurationStatusDto), StatusCodes.Status200OK)]
     public async Task<ActionResult<ProviderConfigurationStatusDto>> IsAuthProviderConfigured(CancellationToken cancellationToken = default)
     {
-        var service = HttpContext.RequestServices.GetRequiredService<IAuthProviderConfigurationService>();
-        var isConfigured = await service.IsConfiguredAsync();
+        var isConfigured = await _authProviderConfigurationService.IsConfiguredAsync();
         return Ok(new ProviderConfigurationStatusDto(isConfigured));
     }
 
@@ -795,8 +800,7 @@ public class InstanceSettingsController : ExploreControllerBase
     [ProducesResponseType(typeof(ProviderConfigurationStatusDto), StatusCodes.Status200OK)]
     public async Task<ActionResult<ProviderConfigurationStatusDto>> IsAuthorizationProviderConfigured(CancellationToken cancellationToken = default)
     {
-        var service = HttpContext.RequestServices.GetRequiredService<IAuthorizationProviderConfigurationService>();
-        var configuration = await service.ReadConfigurationAsync();
+        var configuration = await _authorizationProviderConfigurationService.ReadConfigurationAsync();
         return Ok(new ProviderConfigurationStatusDto(
             configuration.AuthorizationProviderConfigured,
             configuration.AuthorizationProviderManagedByDeployment,

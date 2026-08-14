@@ -378,7 +378,7 @@ Callers passing `CancellationToken` must use a **named argument** (`cancellation
 
 ### Contract Ownership & Change Control
 
-- **OpenAPI changes require PR review.** The checked-in `schemas/openapi.json` is an artifact of CI regeneration — it must never be hand-edited. Any PR touching controller signatures, route attributes, `[ApiVersion]`, or `[ProducesResponseType]` is implicitly a contract change.
+- **OpenAPI changes require PR review.** The checked-in `schemas/openapi_islamu-event.json` is an artifact of CI regeneration — it must never be hand-edited. Any PR touching controller signatures, route attributes, `[ApiVersion]`, or `[ProducesResponseType]` is implicitly a contract change.
 - **Schema-diff is surfaced in CI.** Before 1.0 it is non-blocking (visibility only). At 1.0 it flips to blocking for breaking diffs.
 - **Regeneration is a discrete step.** Do not regenerate `Explore.Blazor.Client/Clients/EventApiClient.g.cs` casually. Regenerate only when the API-side contract is stable and a tracked change-set justifies it.
 

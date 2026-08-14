@@ -17,14 +17,8 @@ namespace Explore.API.Controllers;
 [Route("api/[controller]")]
 [ApiController]
 [EndpointClassification(EndpointClass.Public)]
-public class EventSessionKindController : ControllerBase
+public class EventSessionKindController(IMediator mediator) : ControllerBase
 {
-    private readonly IMediator _mediator;
-
-    public EventSessionKindController(IMediator mediator)
-    {
-        _mediator = mediator;
-    }
 
     // GET: api/eventsessionkind
     [HttpGet(Name = RouteNames.GetEventSessionKinds)]
@@ -35,7 +29,7 @@ public class EventSessionKindController : ControllerBase
     [OutputCache(PolicyName = "LookupData")]
     public async Task<ActionResult<List<EventSessionKindListDto>>> GetAll(CancellationToken cancellationToken = default)
     {
-        var kinds = await _mediator.Send(new GetEventSessionKindListRequest(), cancellationToken);
+        var kinds = await mediator.Send(new GetEventSessionKindListRequest(), cancellationToken);
         return Ok(kinds);
     }
 }

@@ -20,14 +20,8 @@ namespace Explore.API.Controllers;
 [Route("api/[controller]")]
 [ApiController]
 [EndpointClassification(EndpointClass.Public)]
-public class MadhabController : ControllerBase
+public class MadhabController(IMediator mediator) : ControllerBase
 {
-    private readonly IMediator _mediator;
-
-    public MadhabController(IMediator mediator)
-    {
-        _mediator = mediator;
-    }
 
     // GET: api/madhab
     [HttpGet(Name = RouteNames.GetMadhabs)]
@@ -38,7 +32,7 @@ public class MadhabController : ControllerBase
     [OutputCache(PolicyName = "LookupData")]
     public async Task<ActionResult<List<MadhabListDto>>> GetAll(CancellationToken cancellationToken = default)
     {
-        var madhabs = await _mediator.Send(new GetMadhabListRequest(), cancellationToken);
+        var madhabs = await mediator.Send(new GetMadhabListRequest(), cancellationToken);
         return Ok(madhabs);
     }
 
@@ -52,7 +46,7 @@ public class MadhabController : ControllerBase
     [OutputCache(PolicyName = "DetailData")]
     public async Task<ActionResult<MadhabDto>> GetById(int id, CancellationToken cancellationToken = default)
     {
-        var madhab = await _mediator.Send(new GetMadhabDetailsRequest { Id = id }, cancellationToken);
+        var madhab = await mediator.Send(new GetMadhabDetailsRequest { Id = id }, cancellationToken);
         return Ok(madhab);
     }
 }

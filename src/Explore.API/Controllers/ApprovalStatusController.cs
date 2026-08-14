@@ -17,14 +17,8 @@ namespace Explore.API.Controllers;
 [Route("api/[controller]")]
 [ApiController]
 [EndpointClassification(EndpointClass.Public)]
-public class ApprovalStatusController : ControllerBase
+public class ApprovalStatusController(IMediator mediator) : ControllerBase
 {
-    private readonly IMediator _mediator;
-
-    public ApprovalStatusController(IMediator mediator)
-    {
-        _mediator = mediator;
-    }
 
     [HttpGet(Name = RouteNames.GetApprovalStatusOptions)]
     [EndpointSummary("Get all Status Types")]
@@ -33,7 +27,7 @@ public class ApprovalStatusController : ControllerBase
     [OutputCache(PolicyName = "LookupData")]
     public async Task<ActionResult<List<StatusTypeListDto>>> GetAll(CancellationToken cancellationToken = default)
     {
-        var statusTypes = await _mediator.Send(new GetStatusTypeListRequest { FullName = string.Empty }, cancellationToken);
+        var statusTypes = await mediator.Send(new GetStatusTypeListRequest { FullName = string.Empty }, cancellationToken);
         return Ok(statusTypes);
     }
 }

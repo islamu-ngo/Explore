@@ -13,7 +13,6 @@ public static class SeedIds
     // ===== Tenants =====
     /// <summary>
     /// Default tenant ID used as fallback across the system.
-    /// Referenced by TenantContext (API), TenantConfiguration and TenantConstants (Blazor).
     /// </summary>
     public static readonly Guid DefaultTenantId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000001");
 

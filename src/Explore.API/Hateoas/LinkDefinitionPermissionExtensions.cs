@@ -93,43 +93,4 @@ public static class LinkDefinitionPermissionExtensions
             descriptor.GetResourceAttributes(resource),
             descriptor.GetScope(resource));
     }
-
-#pragma warning disable CS0618 // PermissionAction is obsolete — bridge overloads for gradual migration
-
-    /// <inheritdoc cref="RequirePermission{TResource}(LinkDefinition, string, TResource, string?, IReadOnlyDictionary{string, object}?)"/>
-    [Obsolete("Use the string action overload with AuthorizationActions constants instead.")]
-    public static LinkDefinition RequirePermission<TResource>(
-        this LinkDefinition definition,
-        PermissionAction action,
-        TResource resource,
-        string? resourceId = null,
-        IReadOnlyDictionary<string, object>? resourceAttributes = null,
-        AuthorizationScope? scope = null)
-        where TResource : class
-    {
-        ArgumentNullException.ThrowIfNull(resource);
-
-        var resourceKind = ResourceDescriptorRegistry.ResolveResourceKind(typeof(TResource));
-        var actionName = ResourceDescriptorRegistry.ToActionString(action);
-
-        return definition.WithPermission(resourceKind, actionName, resourceId, resourceAttributes, scope);
-    }
-
-    /// <inheritdoc cref="RequirePermission(LinkDefinition, string, Type, string?, IReadOnlyDictionary{string, object}?)"/>
-    [Obsolete("Use the string action overload with AuthorizationActions constants instead.")]
-    public static LinkDefinition RequirePermission(
-        this LinkDefinition definition,
-        PermissionAction action,
-        Type resourceType,
-        string? resourceId = null,
-        IReadOnlyDictionary<string, object>? resourceAttributes = null,
-        AuthorizationScope? scope = null)
-    {
-        var resourceKind = ResourceDescriptorRegistry.ResolveResourceKind(resourceType);
-        var actionName = ResourceDescriptorRegistry.ToActionString(action);
-
-        return definition.WithPermission(resourceKind, actionName, resourceId, resourceAttributes, scope);
-    }
-
-#pragma warning restore CS0618
 }

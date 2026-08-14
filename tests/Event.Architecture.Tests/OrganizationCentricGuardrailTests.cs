@@ -106,7 +106,6 @@ public class OrganizationCentricGuardrailTests
             "Explore.Application/Contracts/Services/ITenantResolver.cs",
             "Explore.Application/Contracts/Services/ITenantResolverService.cs",
             "Explore.Infrastructure/Services/TenantResolverService.cs",
-            "Explore.API/Services/HeaderTenantResolver.cs",
             "Explore.Blazor/Services/BlazorHeaderTenantResolver.cs",
             "Explore.Blazor/Services/Resolvers/SubdomainTenantResolver.cs",
             "Explore.Blazor/Services/Resolvers/CustomDomainTenantResolver.cs",

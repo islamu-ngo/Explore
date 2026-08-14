@@ -20,14 +20,8 @@ namespace Explore.API.Controllers;
 [Route("api/[controller]")]
 [ApiController]
 [EndpointClassification(EndpointClass.Public)]
-public class DidCustodyTypeController : ControllerBase
+public class DidCustodyTypeController(IMediator mediator) : ControllerBase
 {
-    private readonly IMediator _mediator;
-
-    public DidCustodyTypeController(IMediator mediator)
-    {
-        _mediator = mediator;
-    }
 
     // GET: api/didcustodytype
     [HttpGet(Name = RouteNames.GetDidCustodyTypeOptions)]
@@ -38,7 +32,7 @@ public class DidCustodyTypeController : ControllerBase
     [OutputCache(PolicyName = "LookupData")]
     public async Task<ActionResult<List<DidCustodyTypeListDto>>> GetAll(CancellationToken cancellationToken = default)
     {
-        var didCustodyTypes = await _mediator.Send(new GetDidCustodyTypeListRequest(), cancellationToken);
+        var didCustodyTypes = await mediator.Send(new GetDidCustodyTypeListRequest(), cancellationToken);
         return Ok(didCustodyTypes);
     }
 
@@ -52,7 +46,7 @@ public class DidCustodyTypeController : ControllerBase
     [OutputCache(PolicyName = "DetailData")]
     public async Task<ActionResult<DidCustodyTypeDto>> GetById(int id, CancellationToken cancellationToken = default)
     {
-        var didCustodyType = await _mediator.Send(new GetDidCustodyTypeDetailsRequest { Id = id }, cancellationToken);
+        var didCustodyType = await mediator.Send(new GetDidCustodyTypeDetailsRequest { Id = id }, cancellationToken);
         return Ok(didCustodyType);
     }
 }
