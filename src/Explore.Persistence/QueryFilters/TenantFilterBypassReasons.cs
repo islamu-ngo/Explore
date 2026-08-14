@@ -8,6 +8,9 @@ public static class TenantFilterBypassReasons
     public const string TenantScopedRepositoryExactTenantPredicate =
         "Repository bypasses the ambient tenant filter only after applying an explicit tenant predicate.";
 
+    public const string OrganizerPaymentExternalAccountOwnershipCheck =
+        "Organizer payment connection repository checks historical external-account ownership across tenants using the exact provider identity tuple.";
+
     public const string UserTenantMembershipEnumeration =
         "Repository enumerates all tenant memberships for one global user using an explicit user predicate.";
 
@@ -55,6 +58,9 @@ public static class TenantFilterBypassReasons
 
     public const string EmailDispatchWorkerCrossTenantQueue =
         "Email dispatch worker polls and updates durable outbox rows across tenants using explicit id/status predicates.";
+
+    public const string OrganizerPaymentReadinessWorkerCrossTenantQueue =
+        "Organizer payment readiness worker polls bounded due connection rows across tenants while preserving soft-delete filtering.";
 
     public const string IntegrationSyncWorkerCrossTenantQueue =
         "Integration sync worker polls and updates durable integration outbox rows across tenants using explicit id/status predicates.";

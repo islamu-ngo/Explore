@@ -3,11 +3,14 @@
 
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
+using Explore.Application.Contracts.Services;
 using Explore.Application.Exceptions;
 using Explore.Application.Features.EventTicketing.Handlers.Commands;
 using Explore.Application.Features.EventTicketing.Requests.Commands;
+using Explore.Application.Features.EventTicketing.Services;
 using Explore.Domain;
 using Explore.Domain.Enums;
+using Explore.Domain.ValueObjects;
 using Microsoft.Extensions.Caching.Hybrid;
 using NSubstitute;
 using TUnit.Assertions;
@@ -25,6 +28,12 @@ public sealed class PublishEventTicketCatalogCommandHandlerTests
     private readonly IEventTicketCatalogRepository _catalogs = Substitute.For<IEventTicketCatalogRepository>();
     private readonly IEventDayRepository _eventDays = Substitute.For<IEventDayRepository>();
     private readonly IEventSessionRepository _eventSessions = Substitute.For<IEventSessionRepository>();
+    private readonly IPaidEventPolicyRepository _policies = Substitute.For<IPaidEventPolicyRepository>();
+    private readonly IOrganizerPaymentProviderConnectionRepository _connections = Substitute.For<IOrganizerPaymentProviderConnectionRepository>();
+    private readonly IOrganizationTenantRepository _organizationTenants = Substitute.For<IOrganizationTenantRepository>();
+    private readonly IGroupTenantRepository _groupTenants = Substitute.For<IGroupTenantRepository>();
+    private readonly IAuthorizationProvider _authorization = Substitute.For<IAuthorizationProvider>();
+    private readonly IOrganizerPaymentCommerceConfiguration _commerceConfiguration = Substitute.For<IOrganizerPaymentCommerceConfiguration>();
     private readonly ITenantContext _tenant = Substitute.For<ITenantContext>();
     private readonly HybridCache _cache = Substitute.For<HybridCache>();
 
@@ -197,6 +206,48 @@ public sealed class PublishEventTicketCatalogCommandHandlerTests
     }
 
     [Test]
+    public async Task Handle_WhenPaidDraftLacksDisclosures_ReturnsValidationFailureWithoutPublication()
+    {
+        Actor organizer = CreateOrganizerActor();
+        EventTicketCatalogVersion draft = CreateValidPaidDraftCatalog();
+        var unitOfWork = new RecordingUnitOfWork();
+        _events.GetAuthorizationTargetByIdAsync(_eventId, Arg.Any<CancellationToken>()).Returns(CreatePlatformEvent(organizer));
+        _catalogs.GetDraftCatalogForUpdateAsync(_eventId, _tenantId, Arg.Any<CancellationToken>()).Returns(draft);
+        ConfigureEnabledPaidPolicy();
+
+        var result = await CreateHandler(unitOfWork).Handle(new PublishEventTicketCatalogCommand { EventId = _eventId }, CancellationToken.None);
+
+        await Assert.That(result.FailureCode).IsEqualTo("event_ticketing_validation_failed");
+        await Assert.That(result.Errors.Single()).Contains("disclosures");
+        await _catalogs.DidNotReceive().SaveChangesAsync(Arg.Any<CancellationToken>());
+        await _cache.DidNotReceive().RemoveAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task Handle_WhenPaidDraftCommerceAuthorizationIsDenied_ThrowsBeforePublication()
+    {
+        Actor organizer = CreateOrganizerActor();
+        EventTicketCatalogVersion draft = CreateValidPaidDraftCatalog();
+        draft.UpdateCommercialDisclosures("Merchant", "Refund", "Support");
+        var unitOfWork = new RecordingUnitOfWork();
+        _events.GetAuthorizationTargetByIdAsync(_eventId, Arg.Any<CancellationToken>()).Returns(CreatePlatformEvent(organizer));
+        _catalogs.GetDraftCatalogForUpdateAsync(_eventId, _tenantId, Arg.Any<CancellationToken>()).Returns(draft);
+        ConfigureEnabledPaidPolicy();
+        ConfigurePaymentPlatform();
+        _connections.GetActiveByScopeAsync(_tenantId, organizer.Id, "stripe", "platform-live-eu", Arg.Any<CancellationToken>())
+            .Returns(CreateReadyConnection(organizer.Id));
+        _authorization.IsAllowedAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<IDictionary<string, object>?>(), Arg.Any<CancellationToken>())
+            .Returns(false);
+
+        await Assert.ThrowsAsync<AuthorizationException>(() => CreateHandler(unitOfWork).Handle(
+            new PublishEventTicketCatalogCommand { EventId = _eventId },
+            CancellationToken.None));
+
+        await _catalogs.DidNotReceive().SaveChangesAsync(Arg.Any<CancellationToken>());
+        await _cache.DidNotReceive().RemoveAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
+
+    [Test]
     public async Task Handle_WhenUnitOfWorkRetries_ReloadsTrackedCatalogsForEachAttemptAndInvalidatesCacheOnce()
     {
         EventTicketCatalogVersion firstDraft = CreateValidDraftCatalog();
@@ -239,14 +290,28 @@ public sealed class PublishEventTicketCatalogCommandHandlerTests
     }
 
     private PublishEventTicketCatalogCommandHandler CreateHandler(IUnitOfWork unitOfWork) =>
-        new(_events, _catalogs, _eventDays, _eventSessions, _tenant, unitOfWork, _cache);
+        new(_events, _catalogs, _eventDays, _eventSessions, _tenant, unitOfWork, CreatePreflight(), _cache);
 
-    private DomainEvent CreatePlatformEvent() => new()
+    private PaidEventPublicationPreflightService CreatePreflight() => new(
+        _events,
+        _catalogs,
+        _policies,
+        _connections,
+        _organizationTenants,
+        _groupTenants,
+        _authorization,
+        _tenant,
+        _commerceConfiguration);
+
+    private DomainEvent CreatePlatformEvent(Actor? organizer = null) => new()
     {
         Id = _eventId,
         TenantId = _tenantId,
+        ActorId = Guid.CreateVersion7(),
         Title = "Ticketing event",
         Actor = null!,
+        OrganizerActorId = organizer?.Id,
+        OrganizerActor = organizer,
         Tenant = null!,
         VisibilityType = null!,
         EventStatus = null!,
@@ -268,6 +333,34 @@ public sealed class PublishEventTicketCatalogCommandHandlerTests
     {
         EventTicketCatalogVersion catalog = CreateDraftCatalog(versionNumber);
         EventTicketType ticketType = CreateFreeTicket(catalog);
+        catalog.AddTicketType(ticketType, capacityPool: null);
+        catalog.AddEntitlement(ticketType, TicketTypeEntitlement.CreateForEvent(ticketType.Id, _tenantId, _eventId, 1));
+        return catalog;
+    }
+
+    private EventTicketCatalogVersion CreateValidPaidDraftCatalog(int versionNumber = 1)
+    {
+        EventTicketCatalogVersion catalog = CreateDraftCatalog(versionNumber);
+        EventTicketType ticketType = EventTicketType.Create(
+            Guid.CreateVersion7(),
+            catalog.TenantId,
+            catalog.Id,
+            "Paid admission",
+            catalog.CurrencyCode,
+            TicketPricingModeEnum.Fixed,
+            fixedPriceMinor: 2_500,
+            minimumPriceMinor: null,
+            suggestedPriceMinor: null,
+            participantDataCollectionMode: ParticipantDataCollectionModeEnum.None,
+            capacityPoolId: null,
+            minimumAge: null,
+            maximumAge: null,
+            requiresGuardian: false,
+            requiresApproval: false,
+            perOrderLimit: null,
+            perAccountLimit: null,
+            perVerifiedContactLimit: null,
+            perBookingPartyLimit: null);
         catalog.AddTicketType(ticketType, capacityPool: null);
         catalog.AddEntitlement(ticketType, TicketTypeEntitlement.CreateForEvent(ticketType.Id, _tenantId, _eventId, 1));
         return catalog;
@@ -303,6 +396,70 @@ public sealed class PublishEventTicketCatalogCommandHandlerTests
         perAccountLimit: null,
         perVerifiedContactLimit: null,
         perBookingPartyLimit: null);
+
+    private void ConfigureEnabledPaidPolicy()
+    {
+        PaidEventPolicyVersion instancePolicy = PaidEventPolicyVersion.CreateDefaultInstance().CreateRevision(
+            isPaymentsEnabled: true,
+            allowedOrganizerKinds: [ActorTypeEnum.Organization],
+            requiresLocalVerification: false,
+            allowedCurrencyCodes: ["USD"],
+            defaultCurrencyCode: "USD",
+            refundProtections: RefundProtections(),
+            currencyRiskLimits: [],
+            requiresFirstPaidEventReview: false,
+            farFutureReviewThresholdDays: null);
+        PaidEventPolicyVersion tenantPolicy = PaidEventPolicyVersion.CreateTenant(
+            _tenantId,
+            isPaymentsEnabled: true,
+            allowedOrganizerKinds: [ActorTypeEnum.Organization],
+            requiresLocalVerification: false,
+            allowedCurrencyCodes: ["USD"],
+            defaultCurrencyCode: "USD",
+            refundProtections: RefundProtections(),
+            currencyRiskLimits: [],
+            requiresFirstPaidEventReview: false,
+            farFutureReviewThresholdDays: null);
+        _policies.GetActiveInstanceAsync(Arg.Any<CancellationToken>()).Returns(instancePolicy);
+        _policies.GetActiveTenantAsync(_tenantId, Arg.Any<CancellationToken>()).Returns(tenantPolicy);
+    }
+
+    private void ConfigurePaymentPlatform()
+    {
+        _commerceConfiguration.ProviderCode.Returns("stripe");
+        _commerceConfiguration.ConnectPlatformId.Returns("platform-live-eu");
+    }
+
+    private OrganizerPaymentProviderConnection CreateReadyConnection(Guid organizerActorId)
+    {
+        OrganizerPaymentProviderConnection connection = OrganizerPaymentProviderConnection.Create(
+            Guid.CreateVersion7(),
+            _tenantId,
+            organizerActorId,
+            "stripe",
+            "platform-live-eu",
+            "acct_ready",
+            DateTime.UtcNow.AddMinutes(-5));
+        connection.ApplyReadiness(OrganizerPaymentProviderReadinessObservation.Create(
+            "BE",
+            ChargeCapabilityState.Active,
+            ProviderRequirementsState.Satisfied,
+            ["USD"],
+            DateTime.UtcNow,
+            "ready-1"));
+        return connection;
+    }
+
+    private static Actor CreateOrganizerActor() => new()
+    {
+        Id = Guid.CreateVersion7(),
+        ActorTypeId = (int)ActorTypeEnum.Organization,
+        ActorType = new ActorType { Id = (int)ActorTypeEnum.Organization, MasterCode = "ORGANIZATION", FullName = "Organization" },
+        OrganizationId = Guid.CreateVersion7(),
+        Pii = new ActorPii { DisplayName = "Organizer" }
+    };
+
+    private static PaidEventRefundProtection[] RefundProtections() => Enum.GetValues<PaidEventRefundProtection>();
 
     private sealed class RecordingUnitOfWork(int attempts = 1, Exception? commitFailure = null) : IUnitOfWork
     {

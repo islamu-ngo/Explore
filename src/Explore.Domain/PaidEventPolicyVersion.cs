@@ -9,10 +9,12 @@ namespace Explore.Domain;
 
 public sealed class PaidEventPolicyVersion : IAuditableEntity
 {
-    private readonly List<ActorTypeEnum> _allowedOrganizerKinds = [];
-    private readonly List<string> _allowedCurrencyCodes = [];
-    private readonly List<PaidEventRefundProtection> _refundProtections = [];
-    private readonly List<PaidEventPolicyCurrencyRiskLimit> _currencyRiskLimits = [];
+    private const int ActivePolicyUniquenessSlot = 0;
+
+    private readonly List<PaidEventPolicyAllowedOrganizerKind> _allowedOrganizerKinds = [];
+    private readonly List<PaidEventPolicyAllowedCurrency> _allowedCurrencyCodes = [];
+    private readonly List<PaidEventPolicyRefundProtection> _refundProtections = [];
+    private readonly List<PaidEventPolicyCurrencyRiskLimitRow> _currencyRiskLimits = [];
 
     private PaidEventPolicyVersion()
     {
@@ -38,17 +40,23 @@ public sealed class PaidEventPolicyVersion : IAuditableEntity
 
         Id = Guid.CreateVersion7();
         TenantId = tenantId;
+        PolicyScopeKey = CreatePolicyScopeKey(tenantId);
         VersionNumber = versionNumber;
         IsActive = true;
+        ActiveUniquenessSlot = ActivePolicyUniquenessSlot;
         IsPaymentsEnabled = isPaymentsEnabled;
         RequiresLocalVerification = requiresLocalVerification;
         DefaultCurrencyCode = NormalizeDefaultCurrency(defaultCurrencyCode, normalizedCurrencyCodes);
         RequiresFirstPaidEventReview = requiresFirstPaidEventReview;
         FarFutureReviewThresholdDays = farFutureReviewThresholdDays;
-        _allowedOrganizerKinds.AddRange(normalizedOrganizerKinds);
-        _allowedCurrencyCodes.AddRange(normalizedCurrencyCodes);
-        _refundProtections.AddRange(normalizedRefundProtections);
-        _currencyRiskLimits.AddRange(normalizedRiskLimits);
+        _allowedOrganizerKinds.AddRange(normalizedOrganizerKinds.Select((kind, index) =>
+            PaidEventPolicyAllowedOrganizerKind.Create(TenantId, PolicyScopeKey, Id, index, kind)));
+        _allowedCurrencyCodes.AddRange(normalizedCurrencyCodes.Select((currencyCode, index) =>
+            PaidEventPolicyAllowedCurrency.Create(TenantId, PolicyScopeKey, Id, index, currencyCode)));
+        _refundProtections.AddRange(normalizedRefundProtections.Select((protection, index) =>
+            PaidEventPolicyRefundProtection.Create(TenantId, PolicyScopeKey, Id, index, protection)));
+        _currencyRiskLimits.AddRange(normalizedRiskLimits.Select((limit, index) =>
+            PaidEventPolicyCurrencyRiskLimitRow.Create(TenantId, PolicyScopeKey, Id, index, limit)));
         ValidateFarFutureThreshold(farFutureReviewThresholdDays);
     }
 
@@ -56,21 +64,45 @@ public sealed class PaidEventPolicyVersion : IAuditableEntity
 
     public Guid? TenantId { get; private set; }
 
+    public string PolicyScopeKey { get; private set; } = string.Empty;
+
     public int VersionNumber { get; private set; }
 
     public bool IsActive { get; private set; }
+
+    public int ActiveUniquenessSlot { get; private set; }
 
     public bool IsPaymentsEnabled { get; private set; }
 
     public bool RequiresLocalVerification { get; private set; }
 
-    public IReadOnlyCollection<ActorTypeEnum> AllowedOrganizerKinds => _allowedOrganizerKinds.AsReadOnly();
+    public IReadOnlyCollection<ActorTypeEnum> AllowedOrganizerKinds => _allowedOrganizerKinds
+        .OrderBy(row => row.Ordinal)
+        .Select(row => row.ActorType)
+        .ToArray();
 
-    public IReadOnlyCollection<string> AllowedCurrencyCodes => _allowedCurrencyCodes.AsReadOnly();
+    public IReadOnlyCollection<string> AllowedCurrencyCodes => _allowedCurrencyCodes
+        .OrderBy(row => row.Ordinal)
+        .Select(row => row.CurrencyCode)
+        .ToArray();
 
-    public IReadOnlyCollection<PaidEventRefundProtection> RefundProtections => _refundProtections.AsReadOnly();
+    public IReadOnlyCollection<PaidEventRefundProtection> RefundProtections => _refundProtections
+        .OrderBy(row => row.Ordinal)
+        .Select(row => row.Protection)
+        .ToArray();
 
-    public IReadOnlyCollection<PaidEventPolicyCurrencyRiskLimit> CurrencyRiskLimits => _currencyRiskLimits.AsReadOnly();
+    public IReadOnlyCollection<PaidEventPolicyCurrencyRiskLimit> CurrencyRiskLimits => _currencyRiskLimits
+        .OrderBy(row => row.Ordinal)
+        .Select(row => row.ToValueObject())
+        .ToArray();
+
+    private IReadOnlyCollection<PaidEventPolicyAllowedOrganizerKind> AllowedOrganizerKindRows => _allowedOrganizerKinds;
+
+    private IReadOnlyCollection<PaidEventPolicyAllowedCurrency> AllowedCurrencyRows => _allowedCurrencyCodes;
+
+    private IReadOnlyCollection<PaidEventPolicyRefundProtection> RefundProtectionRows => _refundProtections;
+
+    private IReadOnlyCollection<PaidEventPolicyCurrencyRiskLimitRow> CurrencyRiskLimitRows => _currencyRiskLimits;
 
     public string? DefaultCurrencyCode { get; private set; }
 
@@ -154,15 +186,25 @@ public sealed class PaidEventPolicyVersion : IAuditableEntity
             currencyRiskLimits,
             requiresFirstPaidEventReview,
             farFutureReviewThresholdDays);
-        IsActive = false;
+        RetireActiveSlot();
         return revision;
     }
 
     public void Retire()
     {
         EnsureActive();
-        IsActive = false;
+        RetireActiveSlot();
     }
+
+    private void RetireActiveSlot()
+    {
+        IsActive = false;
+        ActiveUniquenessSlot = VersionNumber;
+    }
+
+    private static string CreatePolicyScopeKey(Guid? tenantId) => tenantId is { } value
+        ? $"tenant:{value:N}"
+        : "instance";
 
     private void EnsureActive()
     {
@@ -280,4 +322,144 @@ public sealed class PaidEventPolicyVersion : IAuditableEntity
             throw new ArgumentOutOfRangeException(nameof(farFutureReviewThresholdDays));
         }
     }
+}
+
+public sealed class PaidEventPolicyAllowedOrganizerKind
+{
+    private PaidEventPolicyAllowedOrganizerKind()
+    {
+    }
+
+    private PaidEventPolicyAllowedOrganizerKind(Guid? tenantId, string policyScopeKey, Guid policyVersionId, int ordinal, ActorTypeEnum actorType)
+    {
+        TenantId = tenantId;
+        PolicyScopeKey = policyScopeKey;
+        PaidEventPolicyVersionId = policyVersionId;
+        Ordinal = ordinal;
+        ActorTypeId = (int)actorType;
+    }
+
+    public Guid? TenantId { get; private set; }
+
+    public string PolicyScopeKey { get; private set; } = string.Empty;
+
+    public Guid PaidEventPolicyVersionId { get; private set; }
+
+    public int Ordinal { get; private set; }
+
+    public int ActorTypeId { get; private set; }
+
+    public ActorTypeEnum ActorType => (ActorTypeEnum)ActorTypeId;
+
+    internal static PaidEventPolicyAllowedOrganizerKind Create(Guid? tenantId, string policyScopeKey, Guid policyVersionId, int ordinal, ActorTypeEnum actorType) =>
+        new(tenantId, policyScopeKey, policyVersionId, ordinal, actorType);
+}
+
+public sealed class PaidEventPolicyAllowedCurrency
+{
+    private PaidEventPolicyAllowedCurrency()
+    {
+    }
+
+    private PaidEventPolicyAllowedCurrency(Guid? tenantId, string policyScopeKey, Guid policyVersionId, int ordinal, string currencyCode)
+    {
+        TenantId = tenantId;
+        PolicyScopeKey = policyScopeKey;
+        PaidEventPolicyVersionId = policyVersionId;
+        Ordinal = ordinal;
+        CurrencyCode = currencyCode;
+    }
+
+    public Guid? TenantId { get; private set; }
+
+    public string PolicyScopeKey { get; private set; } = string.Empty;
+
+    public Guid PaidEventPolicyVersionId { get; private set; }
+
+    public int Ordinal { get; private set; }
+
+    public string CurrencyCode { get; private set; } = string.Empty;
+
+    internal static PaidEventPolicyAllowedCurrency Create(Guid? tenantId, string policyScopeKey, Guid policyVersionId, int ordinal, string currencyCode) =>
+        new(tenantId, policyScopeKey, policyVersionId, ordinal, currencyCode);
+}
+
+public sealed class PaidEventPolicyRefundProtection
+{
+    private PaidEventPolicyRefundProtection()
+    {
+    }
+
+    private PaidEventPolicyRefundProtection(Guid? tenantId, string policyScopeKey, Guid policyVersionId, int ordinal, PaidEventRefundProtection protection)
+    {
+        TenantId = tenantId;
+        PolicyScopeKey = policyScopeKey;
+        PaidEventPolicyVersionId = policyVersionId;
+        Ordinal = ordinal;
+        RefundProtectionId = (int)protection;
+    }
+
+    public Guid? TenantId { get; private set; }
+
+    public string PolicyScopeKey { get; private set; } = string.Empty;
+
+    public Guid PaidEventPolicyVersionId { get; private set; }
+
+    public int Ordinal { get; private set; }
+
+    public int RefundProtectionId { get; private set; }
+
+    public PaidEventRefundProtection Protection => (PaidEventRefundProtection)RefundProtectionId;
+
+    internal static PaidEventPolicyRefundProtection Create(Guid? tenantId, string policyScopeKey, Guid policyVersionId, int ordinal, PaidEventRefundProtection protection) =>
+        new(tenantId, policyScopeKey, policyVersionId, ordinal, protection);
+}
+
+public sealed class PaidEventPolicyCurrencyRiskLimitRow
+{
+    private PaidEventPolicyCurrencyRiskLimitRow()
+    {
+    }
+
+    private PaidEventPolicyCurrencyRiskLimitRow(
+        string policyScopeKey,
+        Guid? tenantId,
+        Guid policyVersionId,
+        int ordinal,
+        PaidEventPolicyCurrencyRiskLimit limit)
+    {
+        TenantId = tenantId;
+        PolicyScopeKey = policyScopeKey;
+        PaidEventPolicyVersionId = policyVersionId;
+        Ordinal = ordinal;
+        CurrencyCode = limit.CurrencyCode;
+        PerEventSalesCeilingMinor = limit.PerEventSalesCeilingMinor;
+        RollingOrganizerSalesCeilingMinor = limit.RollingOrganizerSalesCeilingMinor;
+        HighValueReviewThresholdMinor = limit.HighValueReviewThresholdMinor;
+    }
+
+    public Guid? TenantId { get; private set; }
+
+    public string PolicyScopeKey { get; private set; } = string.Empty;
+
+    public Guid PaidEventPolicyVersionId { get; private set; }
+
+    public int Ordinal { get; private set; }
+
+    public string CurrencyCode { get; private set; } = string.Empty;
+
+    public long? PerEventSalesCeilingMinor { get; private set; }
+
+    public long? RollingOrganizerSalesCeilingMinor { get; private set; }
+
+    public long? HighValueReviewThresholdMinor { get; private set; }
+
+    internal static PaidEventPolicyCurrencyRiskLimitRow Create(Guid? tenantId, string policyScopeKey, Guid policyVersionId, int ordinal, PaidEventPolicyCurrencyRiskLimit limit) =>
+        new(policyScopeKey, tenantId, policyVersionId, ordinal, limit);
+
+    internal PaidEventPolicyCurrencyRiskLimit ToValueObject() => PaidEventPolicyCurrencyRiskLimit.Create(
+        CurrencyCode,
+        PerEventSalesCeilingMinor,
+        RollingOrganizerSalesCeilingMinor,
+        HighValueReviewThresholdMinor);
 }

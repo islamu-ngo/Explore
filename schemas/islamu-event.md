@@ -4387,6 +4387,9 @@ Table "event_ticket_catalog_versions" {
   "currency_code" varchar(3) [not null]
   "version_number" int [not null]
   "ticket_catalog_status_id" int [not null]
+  "merchant_disclosure_text" varchar(2000)
+  "refund_policy_disclosure_text" varchar(2000)
+  "support_contact_disclosure_text" varchar(2000)
   "concurrency_stamp" uuid [not null]
   "created_at" timestamptz [not null]
   "created_by" uuid
@@ -5956,6 +5959,189 @@ Table "platform_contribution_options" {
   Note: 'Ordered basis-point contribution option belonging to a versioned contribution setting.'
 }
 
+// ============================================================
+// Payment Policies & Provider Connections
+// ============================================================
+
+Table "paid_event_policy_versions" {
+  "id" uuid [pk, not null]
+  "tenant_id" uuid
+  "policy_scope_key" varchar(48) [not null]
+  "version_number" int [not null]
+  "is_active" boolean [not null]
+  "active_uniqueness_slot" int [not null]
+  "is_payments_enabled" boolean [not null]
+  "requires_local_verification" boolean [not null]
+  "default_currency_code" varchar(3)
+  "requires_first_paid_event_review" boolean [not null]
+  "far_future_review_threshold_days" int
+  "created_at" timestamptz [not null]
+  "created_by" uuid
+  "updated_at" timestamptz
+  "updated_by" uuid
+
+  indexes {
+    (policy_scope_key, id) [unique, name: 'ak_paid_event_policy_versions_policy_scope_key_id']
+    (policy_scope_key, active_uniqueness_slot) [unique, name: 'ix_paid_event_policy_versions_policy_scope_key_active_uniquene']
+    (policy_scope_key, version_number) [unique, name: 'ix_paid_event_policy_versions_policy_scope_key_version_number']
+    tenant_id [name: 'ix_paid_event_policy_versions_tenant_id']
+  }
+
+  Note: 'Versioned paid-event policy. Domain transitions and the unfiltered unique slot index enforce one active version per scope; the generated composite alternate key is (policy_scope_key, id).'
+}
+
+Table "paid_event_policy_allowed_organizer_kinds" {
+  "policy_scope_key" varchar(48) [not null]
+  "paid_event_policy_version_id" uuid [not null]
+  "ordinal" int [not null]
+  "tenant_id" uuid
+  "actor_type_id" int [not null]
+
+  indexes {
+    (policy_scope_key, paid_event_policy_version_id, actor_type_id) [unique, name: 'ix_paid_event_policy_allowed_organizer_kinds_policy_scope_key_']
+  }
+
+  Note: 'Allowed organizer kinds for a paid-event policy version.'
+}
+
+Table "paid_event_policy_allowed_currencies" {
+  "policy_scope_key" varchar(48) [not null]
+  "paid_event_policy_version_id" uuid [not null]
+  "ordinal" int [not null]
+  "tenant_id" uuid
+  "currency_code" varchar(3) [not null]
+
+  indexes {
+    (policy_scope_key, paid_event_policy_version_id, currency_code) [unique, name: 'ix_paid_event_policy_allowed_currencies_policy_scope_key_paid_']
+  }
+
+  Note: 'Allowed currencies for a paid-event policy version.'
+}
+
+Table "paid_event_policy_refund_protections" {
+  "policy_scope_key" varchar(48) [not null]
+  "paid_event_policy_version_id" uuid [not null]
+  "ordinal" int [not null]
+  "tenant_id" uuid
+  "refund_protection_id" int [not null]
+
+  indexes {
+    (policy_scope_key, paid_event_policy_version_id, refund_protection_id) [unique, name: 'ix_paid_event_policy_refund_protections_policy_scope_key_paid_']
+  }
+
+  Note: 'Allowed refund protections for a paid-event policy version.'
+}
+
+Table "paid_event_policy_currency_risk_limits" {
+  "policy_scope_key" varchar(48) [not null]
+  "paid_event_policy_version_id" uuid [not null]
+  "ordinal" int [not null]
+  "tenant_id" uuid
+  "currency_code" varchar(3) [not null]
+  "per_event_sales_ceiling_minor" bigint
+  "rolling_organizer_sales_ceiling_minor" bigint
+  "high_value_review_threshold_minor" bigint
+
+  indexes {
+    (policy_scope_key, paid_event_policy_version_id, currency_code) [unique, name: 'ix_paid_event_policy_currency_risk_limits_policy_scope_key_pai']
+  }
+
+  Note: 'Per-currency risk ceilings for a paid-event policy version.'
+}
+
+Table "organizer_payment_provider_connections" {
+  "id" uuid [pk, not null]
+  "tenant_id" uuid [not null]
+  "organizer_actor_id" uuid [not null]
+  "provider_code" varchar(40) [not null]
+  "connect_platform_id" varchar(120) [not null]
+  "external_account_id" varchar(200) [not null]
+  "active_scope_key" varchar(232) [not null]
+  "active_uniqueness_slot" varchar(48) [not null]
+  "status_id" int [not null]
+  "merchant_country_code" varchar(2)
+  "charge_capability_state_id" int [not null]
+  "requirements_state_id" int [not null]
+  "last_readiness_observed_at" timestamptz
+  "last_readiness_evidence_revision" varchar(120)
+  "replaces_connection_id" uuid
+  "replaced_by_connection_id" uuid
+  "replaced_at" timestamptz
+  "disabled_at" timestamptz
+  "disabled_reason_code" varchar(80)
+  "created_at" timestamptz [not null]
+  "created_by" uuid
+  "updated_at" timestamptz
+  "updated_by" uuid
+  "is_deleted" boolean [not null, default: false]
+  "deleted_at" timestamptz
+  "deleted_by" uuid
+  "concurrency_stamp" uuid [not null]
+
+  indexes {
+    (tenant_id, id) [unique, name: 'ak_organizer_payment_provider_connections_tenant_id_id']
+    (active_scope_key, active_uniqueness_slot) [unique, name: 'ix_organizer_payment_provider_connections_active_scope_key_act']
+    organizer_actor_id [name: 'ix_organizer_payment_provider_connections_organizer_actor_id']
+    (provider_code, connect_platform_id, external_account_id) [unique, name: 'ix_organizer_payment_provider_connections_provider_code_connec']
+    (tenant_id, organizer_actor_id, provider_code, connect_platform_id, status_id) [name: 'ix_organizer_payment_provider_connections_tenant_id_organizer_']
+    (tenant_id, replaced_by_connection_id) [name: 'ix_organizer_payment_provider_connections_tenant_id_replaced_b']
+    (tenant_id, replaces_connection_id) [name: 'ix_organizer_payment_provider_connections_tenant_id_replaces_c']
+  }
+
+  Note: 'Organizer payment provider connection. Checks enforce status/charge-capability/requirements ranges; active uniqueness uses the portable slot column.'
+}
+
+Table "organizer_payment_provider_account_operations" {
+  "id" uuid [pk, not null]
+  "tenant_id" uuid [not null]
+  "organizer_actor_id" uuid [not null]
+  "provider_code" varchar(40) [not null]
+  "connect_platform_id" varchar(120) [not null]
+  "provider_idempotency_key" varchar(80) [not null]
+  "status_id" int [not null]
+  "active_scope_key" varchar(232) [not null]
+  "active_uniqueness_slot" varchar(80) [not null]
+  "external_account_id" varchar(200)
+  "connection_id" uuid
+  "failure_code" varchar(120)
+  "provider_request_id" varchar(120)
+  "resolution_reason" varchar(160)
+  "requested_at" timestamptz [not null]
+  "manual_reconciliation_required_at" timestamptz
+  "bound_at" timestamptz
+  "no_provider_account_confirmed_at" timestamptz
+  "provider_rejected_at" timestamptz
+  "created_at" timestamptz [not null]
+  "created_by" uuid
+  "updated_at" timestamptz
+  "updated_by" uuid
+  "concurrency_stamp" uuid [not null]
+
+  indexes {
+    (tenant_id, id) [unique, name: 'ak_organizer_payment_provider_account_operations_tenant_id_id']
+    (active_scope_key, active_uniqueness_slot) [unique, name: 'ix_organizer_payment_provider_account_operations_active_scope_']
+    organizer_actor_id [name: 'ix_organizer_payment_provider_account_operations_organizer_act']
+    provider_idempotency_key [unique, name: 'ix_organizer_payment_provider_account_operations_provider_idem']
+    (tenant_id, connection_id) [name: 'ix_organizer_payment_provider_account_operations_tenant_id_con']
+    (tenant_id, organizer_actor_id, provider_code, connect_platform_id, status_id) [name: 'ix_organizer_payment_provider_account_operations_tenant_id_org']
+  }
+
+  Note: 'Durable organizer payment account-create operation fence. Checks enforce status_id BETWEEN 1 AND 5; provider idempotency is globally unique, and active scope-slot uniqueness permits one unresolved operation per tenant/organizer/provider/platform scope.'
+}
+
+Table "organizer_payment_provider_connection_supported_currencies" {
+  "tenant_id" uuid [not null]
+  "organizer_payment_provider_connection_id" uuid [not null]
+  "ordinal" int [not null]
+  "currency_code" varchar(3) [not null]
+
+  indexes {
+    (tenant_id, organizer_payment_provider_connection_id, currency_code) [unique, name: 'ix_organizer_payment_provider_connection_supported_currencies_']
+  }
+
+  Note: 'Supported currencies for an organizer payment provider connection.'
+}
+
 Table "event_public_actions" {
   "id" uuid [pk, not null, note: 'uuidv7 app-side']
   "tenant_id" uuid [not null]
@@ -6815,6 +7001,21 @@ Ref: "actor_subscriptions"."target_actor_id" > "actors"."id" [delete: restrict]
 Ref: "actor_subscriptions"."target_actor_type_id" > "actor_types"."id" [delete: restrict]
 Ref: "actor_subscriptions"."status_id" > "actor_subscription_statuses"."id" [delete: restrict]
 Ref: "actor_subscriptions"."notification_level_id" > "actor_subscription_notification_levels"."id" [delete: restrict]
+
+// Payment Policies & Provider Connections
+Ref: "paid_event_policy_versions"."tenant_id" > "tenants"."id" [delete: restrict]
+Ref: "paid_event_policy_allowed_organizer_kinds".("policy_scope_key", "paid_event_policy_version_id") > "paid_event_policy_versions".("policy_scope_key", "id") [delete: cascade]
+Ref: "paid_event_policy_allowed_currencies".("policy_scope_key", "paid_event_policy_version_id") > "paid_event_policy_versions".("policy_scope_key", "id") [delete: cascade]
+Ref: "paid_event_policy_refund_protections".("policy_scope_key", "paid_event_policy_version_id") > "paid_event_policy_versions".("policy_scope_key", "id") [delete: cascade]
+Ref: "paid_event_policy_currency_risk_limits".("policy_scope_key", "paid_event_policy_version_id") > "paid_event_policy_versions".("policy_scope_key", "id") [delete: cascade]
+Ref: "organizer_payment_provider_connections"."tenant_id" > "tenants"."id" [delete: restrict]
+Ref: "organizer_payment_provider_connections"."organizer_actor_id" > "actors"."id" [delete: restrict]
+Ref: "organizer_payment_provider_connections".("tenant_id", "replaced_by_connection_id") > "organizer_payment_provider_connections".("tenant_id", "id") [delete: restrict]
+Ref: "organizer_payment_provider_connections".("tenant_id", "replaces_connection_id") > "organizer_payment_provider_connections".("tenant_id", "id") [delete: restrict]
+Ref: "organizer_payment_provider_account_operations"."tenant_id" > "tenants"."id" [delete: restrict]
+Ref: "organizer_payment_provider_account_operations"."organizer_actor_id" > "actors"."id" [delete: restrict]
+Ref: "organizer_payment_provider_account_operations".("tenant_id", "connection_id") > "organizer_payment_provider_connections".("tenant_id", "id") [delete: restrict]
+Ref: "organizer_payment_provider_connection_supported_currencies".("tenant_id", "organizer_payment_provider_connection_id") > "organizer_payment_provider_connections".("tenant_id", "id") [delete: cascade]
 
 // Organizations & Groups
 Ref: "organization_pii"."organization_id" - "organizations"."id" [delete: cascade]

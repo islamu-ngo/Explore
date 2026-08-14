@@ -34,6 +34,7 @@ public sealed class WebhookOptionsValidator : IValidateOptions<WebhookOptions>
         }
 
         ValidateSvixOperationalOptions(options.Svix, failures);
+        ValidateStripeOptions(options.Stripe, failures);
 
         if (!options.IsDisabled && (options.IsProvider(WebhookOptions.ProviderSvix) || options.IsProvider(WebhookOptions.ProviderComposite)))
         {
@@ -222,6 +223,30 @@ public sealed class WebhookOptionsValidator : IValidateOptions<WebhookOptions>
             {
                 failures.Add("Webhooks:Svix:OperationalWebhookSecretRef must reference the dedicated Svix operational-webhook secret definition.");
             }
+        }
+    }
+
+    private static void ValidateStripeOptions(WebhookStripeOptions options, List<string> failures)
+    {
+        if (options.ConnectWebhookMaxBodyBytes <= 0)
+        {
+            failures.Add("Webhooks:Stripe:ConnectWebhookMaxBodyBytes must be greater than zero.");
+        }
+
+        if (string.IsNullOrWhiteSpace(options.ConnectWebhookSecretRef))
+        {
+            failures.Add("Webhooks:Stripe:ConnectWebhookSecretRef is required.");
+            return;
+        }
+
+        var secretRef = options.ConnectWebhookSecretRef.Trim();
+        if (!SecretDefinitionRegistry.IsKnown(secretRef))
+        {
+            failures.Add("Webhooks:Stripe:ConnectWebhookSecretRef must reference a known secret definition.");
+        }
+        else if (!string.Equals(secretRef, SecretDefinitionRegistry.Keys.Stripe.WebhookSecret, StringComparison.Ordinal))
+        {
+            failures.Add("Webhooks:Stripe:ConnectWebhookSecretRef must reference the dedicated Stripe webhook secret definition.");
         }
     }
 }

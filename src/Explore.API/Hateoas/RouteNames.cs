@@ -210,6 +210,7 @@ public static class RouteNames
     public const string ModerationIntegrationOspreyCallback = "ModerationIntegrationOspreyCallback";
     public const string ModerationIntegrationCoopCallback = "ModerationIntegrationCoopCallback";
     public const string IntegrationSvixOperationalCallback = "IntegrationSvixOperationalCallback";
+    public const string IntegrationStripeConnectCallback = "IntegrationStripeConnectCallback";
     public const string RegistrationProviderCallback = "RegistrationProviderCallback";
 
     public const string GetListmonkIntegrationSettings = "GetListmonkIntegrationSettings";

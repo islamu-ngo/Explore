@@ -43,6 +43,32 @@ public partial class ExploreDbContext
             .HasQueryFilter(QueryFilterNames.Tenant, e => IsTenantFilterBypassed || e.TenantId == TenantFilterTenantId)
             .HasQueryFilter(QueryFilterNames.SoftDelete, e => !e.IsDeleted);
 
+        modelBuilder.Entity<PaidEventPolicyVersion>()
+            .HasQueryFilter(QueryFilterNames.Tenant, e => e.TenantId == null || IsTenantFilterBypassed || e.TenantId == TenantFilterTenantId);
+
+        modelBuilder.Entity<PaidEventPolicyAllowedOrganizerKind>()
+            .HasQueryFilter(QueryFilterNames.Tenant, e => e.TenantId == null || IsTenantFilterBypassed || e.TenantId == TenantFilterTenantId);
+
+        modelBuilder.Entity<PaidEventPolicyAllowedCurrency>()
+            .HasQueryFilter(QueryFilterNames.Tenant, e => e.TenantId == null || IsTenantFilterBypassed || e.TenantId == TenantFilterTenantId);
+
+        modelBuilder.Entity<PaidEventPolicyRefundProtection>()
+            .HasQueryFilter(QueryFilterNames.Tenant, e => e.TenantId == null || IsTenantFilterBypassed || e.TenantId == TenantFilterTenantId);
+
+        modelBuilder.Entity<PaidEventPolicyCurrencyRiskLimitRow>()
+            .HasQueryFilter(QueryFilterNames.Tenant, e => e.TenantId == null || IsTenantFilterBypassed || e.TenantId == TenantFilterTenantId);
+
+        modelBuilder.Entity<OrganizerPaymentProviderAccountOperation>()
+            .HasQueryFilter(QueryFilterNames.Tenant, e => IsTenantFilterBypassed || e.TenantId == TenantFilterTenantId);
+
+        modelBuilder.Entity<OrganizerPaymentProviderConnection>()
+            .HasQueryFilter(QueryFilterNames.Tenant, e => IsTenantFilterBypassed || e.TenantId == TenantFilterTenantId)
+            .HasQueryFilter(QueryFilterNames.SoftDelete, e => !e.IsDeleted);
+
+        modelBuilder.Entity<OrganizerPaymentProviderConnectionSupportedCurrency>()
+            .HasQueryFilter(QueryFilterNames.Tenant, e => IsTenantFilterBypassed || e.TenantId == TenantFilterTenantId)
+            .HasQueryFilter(QueryFilterNames.SoftDelete, e => e.Connection != null && !e.Connection.IsDeleted);
+
         modelBuilder.Entity<RegistrationOrder>()
             .HasQueryFilter(QueryFilterNames.Tenant, e => IsTenantFilterBypassed || e.TenantId == TenantFilterTenantId)
             .HasQueryFilter(QueryFilterNames.SoftDelete, e => !e.IsDeleted);

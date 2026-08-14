@@ -86,6 +86,7 @@ public sealed class GetEventTicketCatalogManagementQueryHandlerTests
     public async Task Handle_WhenDraftExists_PrefersDraftAndMapsIt()
     {
         EventTicketCatalogVersion draft = EventTicketCatalogVersion.Create(_tenantId, _eventId, "USD", 2);
+        draft.UpdateCommercialDisclosures(" Merchant ", " Refunds ", " Support ");
         _events.GetAuthorizationTargetByIdAsync(_eventId, Arg.Any<CancellationToken>())
             .Returns(CreatePlatformEvent(_tenantId, _eventId));
         _catalogs.GetManagementCatalogAsync(_eventId, _tenantId, Arg.Any<CancellationToken>()).Returns(draft);
@@ -95,6 +96,9 @@ public sealed class GetEventTicketCatalogManagementQueryHandlerTests
         await Assert.That(result!.CatalogId).IsEqualTo(draft.Id);
         await Assert.That(result.VersionNumber).IsEqualTo(2);
         await Assert.That(result.StatusId).IsEqualTo((int)TicketCatalogStatusEnum.Draft);
+        await Assert.That(result.MerchantDisclosureText).IsEqualTo("Merchant");
+        await Assert.That(result.RefundPolicyDisclosureText).IsEqualTo("Refunds");
+        await Assert.That(result.SupportContactDisclosureText).IsEqualTo("Support");
         await _catalogs.DidNotReceive().GetPublishedCatalogAsync(_eventId, _tenantId, Arg.Any<CancellationToken>());
     }
 

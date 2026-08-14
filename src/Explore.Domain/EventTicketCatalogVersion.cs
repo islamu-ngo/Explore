@@ -10,6 +10,8 @@ namespace Explore.Domain;
 
 public sealed class EventTicketCatalogVersion : ITenantEntity, IAuditableEntity, ISoftDeletable, IConcurrencyAware
 {
+    public const int MaxCommercialDisclosureTextLength = 2000;
+
     private readonly List<EventTicketType> _ticketTypes = [];
 
     private EventTicketCatalogVersion()
@@ -39,6 +41,12 @@ public sealed class EventTicketCatalogVersion : ITenantEntity, IAuditableEntity,
     public int TicketCatalogStatusId { get; private set; }
 
     public TicketCatalogStatus? TicketCatalogStatus { get; private set; }
+
+    public string? MerchantDisclosureText { get; private set; }
+
+    public string? RefundPolicyDisclosureText { get; private set; }
+
+    public string? SupportContactDisclosureText { get; private set; }
 
     public Guid ConcurrencyStamp { get; set; }
 
@@ -120,6 +128,18 @@ public sealed class EventTicketCatalogVersion : ITenantEntity, IAuditableEntity,
         ticketType.AddEntitlement(entitlement);
     }
 
+    public void UpdateCommercialDisclosures(
+        string? merchantDisclosureText,
+        string? refundPolicyDisclosureText,
+        string? supportContactDisclosureText)
+    {
+        EnsureDraft();
+        MerchantDisclosureText = NormalizeCommercialDisclosure(merchantDisclosureText, nameof(merchantDisclosureText));
+        RefundPolicyDisclosureText = NormalizeCommercialDisclosure(refundPolicyDisclosureText, nameof(refundPolicyDisclosureText));
+        SupportContactDisclosureText = NormalizeCommercialDisclosure(supportContactDisclosureText, nameof(supportContactDisclosureText));
+        ConcurrencyStamp = Guid.CreateVersion7();
+    }
+
     public void UpdateTicketType(EventTicketType ticketType, string name, TicketPricingModeEnum pricingMode, long? fixedPriceMinor, long? minimumPriceMinor, long? suggestedPriceMinor, ParticipantDataCollectionModeEnum participantDataCollectionMode, EventCapacityPool? capacityPool, int? minimumAge, int? maximumAge, bool requiresGuardian, bool requiresApproval, int? perOrderLimit, int? perAccountLimit, int? perVerifiedContactLimit, int? perBookingPartyLimit, IEnumerable<TicketTypeEntitlement> entitlements)
     {
         EnsureDraft(); EnsureContains(ticketType); TicketCatalogRules.ValidateCapacityPool(this, capacityPool);
@@ -167,6 +187,7 @@ public sealed class EventTicketCatalogVersion : ITenantEntity, IAuditableEntity,
         }
 
         EventTicketCatalogVersion clone = Create(TenantId, EventId, CurrencyCode, checked(VersionNumber + 1));
+        clone.UpdateCommercialDisclosures(MerchantDisclosureText, RefundPolicyDisclosureText, SupportContactDisclosureText);
         foreach (EventTicketType ticketType in _ticketTypes.Where(ticketType => !ticketType.IsDeleted))
         {
             clone._ticketTypes.Add(ticketType.CloneTo(clone.Id));
@@ -190,5 +211,18 @@ public sealed class EventTicketCatalogVersion : ITenantEntity, IAuditableEntity,
         {
             throw new ArgumentException("Ticket type does not belong to this catalog.", nameof(ticketType));
         }
+    }
+
+    private static string? NormalizeCommercialDisclosure(string? value, string parameterName)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return null;
+        }
+
+        string normalized = value.Trim();
+        return normalized.Length <= MaxCommercialDisclosureTextLength
+            ? normalized
+            : throw new ArgumentException($"Commercial disclosure text must be at most {MaxCommercialDisclosureTextLength} characters.", parameterName);
     }
 }

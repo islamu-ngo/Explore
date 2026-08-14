@@ -21,6 +21,7 @@ public sealed class WebhookOptions
     public int DefaultPayloadRetentionDays { get; set; } = 14;
     public WebhookLocalOptions Local { get; set; } = new();
     public WebhookSvixOptions Svix { get; set; } = new();
+    public WebhookStripeOptions Stripe { get; set; } = new();
 
     public bool IsDisabled => !Enabled || IsProvider(ProviderDisabled);
     public bool IsProvider(string provider) =>
@@ -53,6 +54,12 @@ public sealed class WebhookSvixOptions
     public long OperationalWebhookMaxBodyBytes { get; set; } = 65_536;
     public bool AppPortalEnabled { get; set; } = true;
     public bool SyncEventTypesOnStartup { get; set; } = true;
+}
+
+public sealed class WebhookStripeOptions
+{
+    public string? ConnectWebhookSecretRef { get; set; } = SecretDefinitionRegistry.Keys.Stripe.WebhookSecret;
+    public long ConnectWebhookMaxBodyBytes { get; set; } = 65_536;
 }
 
 public sealed class WebhookTenantSettings

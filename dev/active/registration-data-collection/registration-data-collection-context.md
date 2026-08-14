@@ -3,7 +3,31 @@
 
 # Registration Data Collection & Participation Platform — Context
 
-Last Updated: 2026-08-13 Europe/Brussels
+Last Updated: 2026-08-14 Europe/Brussels
+
+## PHASE 16.4 COMPLETE (2026-08-14 Europe/Brussels)
+
+Phase 16 remains in progress and Task 16.4 is independently confirmed complete. `Stripe.net` 52.3.0 is centrally pinned and referenced only by Infrastructure. The provider-neutral Application port orchestrates connected-account creation, hosted onboarding links, and readiness retrieval while Infrastructure alone owns `StripeClient`, Stripe models, signature verification, retries, secrets, and bounded error/request-ID mapping. Account creation is fenced by a durable `OrganizerPaymentProviderAccountOperation` persisted before remote I/O; deterministic rejection releases the active slot, while network, cancellation, interrupted handoff, and unknown outcomes become explicit manual-reconciliation fences rather than blind retries.
+
+`Payments:Stripe:Mode` accepts only `Test` or `Live`, validates the matching platform-secret prefix before HTTP, and requires matching account/event `livemode` evidence. `POST /api/integrations/stripe/connect` verifies the exact raw signed body, strict API version, mode, event identity, timestamp, and exactly one historical account owner before durable inbox capture. Its asynchronous handler is duplicate-safe and monotonic, fails closed on incomplete evidence, and never reactivates disabled/replaced connections. The reconciliation worker polls bounded due rows across tenants through a named tenant-filter bypass that preserves soft delete, performs provider I/O outside transactions, and applies each observation through a tenant-scoped serializable reload.
+
+Final evidence: operation Domain 4/4, organizer payment Application 35/35, payment persistence 26/26, Stripe Infrastructure 45/45, incoming webhook API 14/14, readiness worker API 2/2, endpoint classification 4/4, Stripe dependency boundary 3/3, provider migration ownership 5/5, Release build 0 errors with 6,319 existing warnings, dependency policy 646 package/version pairs, and clean `git diff --check`. Independent goal, QA, quality, security, and repository-context reviews pass after repairing tenant-worker visibility, interrupted operation settlement, strict mode isolation, the signed-ingestion exception, and webhook documentation.
+
+### NEXT
+
+Start Task 16.5 only: Admin/Studio configuration, publication preflight, Cerbos, and HAL relation gating. Keep Phase 16 verification unchecked until Task 16.5 is complete. Do not start Checkout/payment, refund/dispute, admission, QR, check-in, transfer, or payout runtime work.
+
+## PHASE 16.3 COMPLETE (2026-08-14 Europe/Brussels)
+
+Phase 16 remains in progress and Task 16.3 is independently confirmed complete. Paid policy organizer kinds, currencies, refund protections, and currency risk limits plus organizer connection readiness currencies are normalized child rows. Portable active-slot uniqueness, tenant/soft-delete filters, entity-returning repository composition, permanent historical provider-account ownership, five generated provider migration/snapshot sets, and DBML are present.
+
+Organizer connection replacement now retires the old active slot, inserts the successor, and records `ReplacedByConnectionId` in three saves inside the existing serializable unit of work, preserving both self-FKs without weakening uniqueness. Cross-tenant historical account conflicts return `Guid.Empty` for record and the caller-owned current ID for replace, never the foreign connection ID. The two Stripe definitions are instance/server-only and documented under `/stripe`; connected account IDs remain provider identity. No default policy seed or required Stripe startup validator was added because the domain default is safely disabled and no runtime Stripe consumer exists before Task 16.4.
+
+Final focused evidence: organizer connection Domain 12/12, paid-policy Domain 18/18, organizer connection Application 19/19, payment persistence 23/23, provider model construction/parity 29/29, Stripe secrets 1/1, CQRS architecture 5/5, Release build exit 0 with 758 existing warnings and no errors, and clean `git diff --check`. PostgreSQL reports no pending model changes; alternate-provider CLI retries were configuration-invalid before comparison, while their generated artifacts were unchanged by the repair and five-provider model tests passed. Independent goal, QA, quality, security, and repository-context reviews pass after repair.
+
+### NEXT
+
+Start Task 16.4: add the approved stable `Stripe.net` package in Infrastructure only, implement hosted onboarding/account-event/readiness reconciliation through provider-neutral Application capabilities, and keep provider I/O outside database transactions. Tasks 16.4-16.5 and Phase 16 verification remain unchecked.
 
 ## PHASE 16.2 COMPLETE (2026-08-13 Europe/Brussels)
 
@@ -39,7 +63,7 @@ The agent governance repair is complete for this phase. `.agents/contract` and `
 
 Verification is honest and split by ownership. Final `dotnet build --configuration Release --verbosity quiet` exited 0 with 0 warnings and 0 errors. Focused governance passed 7/7. `.agents/contract/intents.yaml` parses and the intent validation names ADR-022, ADR-023, and ADR-024. Full `Event.Architecture.Tests` remains non-green with 370 total, 365 succeeded, 1 skipped, and 4 unrelated dirty-worktree failures: `BlazorProductionBackendContracts_ShouldComeFromGeneratedApiClient`, `DTOs_ShouldEndWith_Dto`, `Runtime tenant-filter bypasses must use approved reason constants`, and `InventoryCoversCurrentEfAndDesignatedProviderSurfaces`. `git diff --check` is clean.
 
-Research attribution is corrected. Tavily MCP was unavailable, so no Tavily research is claimed. Context7/official documentation evidence was used instead: `/stripe/stripe-dotnet`, `/websites/stripe`, and `/mdn/content`; official NuGet/Stripe evidence plus an isolated metadata probe established `Stripe.net` 52.3.0, Apache-2.0, `net10.0` compatibility, assembly `52.3.0.0`, API `2026-07-29.dahlia`, and transitives `Newtonsoft.Json` 13.0.3, `System.Configuration.ConfigurationManager` 9.0.0, `System.Diagnostics.EventLog` 9.0.0, and `System.Security.Cryptography.ProtectedData` 9.0.0. The dependency policy command exposed pre-existing metadata failures for `FluentAssertions` 8.10.0 and `Microsoft.Data.SqlClient.SNI.runtime` 6.0.2, so global policy is not green.
+Research attribution is corrected. Tavily MCP was unavailable, so no Tavily research is claimed. Context7/official documentation evidence was used instead: `/stripe/stripe-dotnet`, `/websites/stripe`, and `/mdn/content`; official NuGet/Stripe evidence plus an isolated metadata probe established `Stripe.net` 52.3.0, Apache-2.0, `net10.0` compatibility, assembly `52.3.0.0`, API `2026-07-29.dahlia`, and transitives `Newtonsoft.Json` 13.0.3, `System.Configuration.ConfigurationManager` 9.0.0, `System.Diagnostics.EventLog` 9.0.0, and `System.Security.Cryptography.ProtectedData` 9.0.0. The earlier dependency-policy failures were remediated on 2026-08-14 by removing `FluentAssertions`; the policy now passes, with the approved `Microsoft.Data.SqlClient.SNI.runtime 6.0.2` exception still visible.
 
 ### NEXT
 
@@ -421,7 +445,7 @@ The shared content reader and presigned-download handler deny provider access wh
 1. Read this context and `registration-data-collection-tasks.md`.
 2. Read only the current phase, §4 constraints, and any changed decisions from `registration-data-collection-plan.md`; do not reread the full plan on every resume.
 3. The consultation file (`registration-data-collection-consultation.md`) is the deep reference — open a specific section only when a task cites it (§ references appear throughout the plan/tasks).
-4. Start from Task 16.3 unless the user overrides. Do not start package, migration, provider, or runtime commerce/admission work outside the current Phase 16 task scope.
+4. Start from Task 16.5 unless the user overrides. Do not start Checkout/payment, refund/dispute, admission, QR, check-in, transfer, or payout work outside the current Phase 16 task scope.
 5. Keep `tasks.md` current during implementation; update this context/plan only at their defined triggers (see plan §15).
 
 ## Key Files And Responsibilities

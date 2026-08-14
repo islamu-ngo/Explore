@@ -86,6 +86,14 @@ public class CerbosPrincipalBuilder
             userId,
             PermissionCodes.EventCreate,
             cancellationToken) ?? [];
+        var eventFinanceOrganizationIds = await _organizationMemberRepository.GetOrganizationIdsWhereUserHasPermission(
+            userId,
+            PermissionCodes.EventManageFinance,
+            cancellationToken) ?? [];
+        var eventFinanceGroupIds = await _groupMemberRepository.GetGroupIdsWhereUserHasPermission(
+            userId,
+            PermissionCodes.EventManageFinance,
+            cancellationToken) ?? [];
 
         var tenantMemberships = adminTenantIds
             .ToDictionary(id => id.ToString(), _ => AttributeValue.StringValue("admin"));
@@ -104,7 +112,11 @@ public class CerbosPrincipalBuilder
             .WithAttribute("eventCreateOrganizations", AttributeValue.ListValue(
                 eventCreateOrganizationIds.Select(id => AttributeValue.StringValue(id.ToString())).ToArray()))
             .WithAttribute("eventCreateGroups", AttributeValue.ListValue(
-                eventCreateGroupIds.Select(id => AttributeValue.StringValue(id.ToString())).ToArray()));
+                eventCreateGroupIds.Select(id => AttributeValue.StringValue(id.ToString())).ToArray()))
+            .WithAttribute("eventFinanceOrganizations", AttributeValue.ListValue(
+                eventFinanceOrganizationIds.Select(id => AttributeValue.StringValue(id.ToString())).ToArray()))
+            .WithAttribute("eventFinanceGroups", AttributeValue.ListValue(
+                eventFinanceGroupIds.Select(id => AttributeValue.StringValue(id.ToString())).ToArray()));
     }
 
     /// <summary>
@@ -135,6 +147,8 @@ public class CerbosPrincipalBuilder
             .WithAttribute("groupMemberships", AttributeValue.MapValue(groupMemberships))
             .WithAttribute("eventCreateOrganizations", AttributeValue.ListValue([]))
             .WithAttribute("eventCreateGroups", AttributeValue.ListValue([]))
+            .WithAttribute("eventFinanceOrganizations", AttributeValue.ListValue([]))
+            .WithAttribute("eventFinanceGroups", AttributeValue.ListValue([]))
             .WithAttribute("is_machine", AttributeValue.BoolValue(true))
             .WithAttribute("api_key_id", AttributeValue.StringValue(machineContext.KeyId))
             .WithAttribute("owner_type", AttributeValue.StringValue(machineContext.OwnerType.ToString().ToLowerInvariant()))

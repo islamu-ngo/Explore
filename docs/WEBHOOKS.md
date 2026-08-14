@@ -1,12 +1,12 @@
 ABOUTME: Operator and integrator guide for outgoing ISLAMU Event webhooks.
-ABOUTME: Covers LocalProvider, SvixProvider, signatures, security, configuration, and rollout behavior.
+ABOUTME: Covers outgoing providers plus signed Svix and Stripe Connect incoming callback behavior.
 
 # Webhooks
 
 > **Audience:** Operators | Integrators | Contributors | AI agents
 > **Status:** Implemented
 > **Owner:** Platform/Ops
-> **Last Verified:** 2026-07-14
+> **Last Verified:** 2026-08-14
 > **Source Anchors:** `Explore.Application/Webhooks/`, `Explore.Infrastructure/Webhooks/`, `Explore.Infrastructure/HealthChecks/`, `Explore.API/Controllers/WebhooksController.cs`, `Explore.API/Controllers/IncomingWebhooksController.cs`, `Explore.AppHost/AppHost.cs`, `docker-compose.yml`, `.env.example`, `docs/API.md`, `docs/SECURITY-MODEL.md`
 
 Webhooks in this document are outgoing product notifications sent by ISLAMU Event to external systems. Incoming provider callbacks are separate API ingestion routes; see [INTEGRATIONS.md](INTEGRATIONS.md).
@@ -338,9 +338,11 @@ Svix to Local:
 
 Do not promise perfect migration of Svix-only features such as transformations, OAuth, mTLS, endpoint throttling, or portal-only endpoint configuration.
 
-## Planned Stripe Connect Intake
+## Stripe Connect Account Intake
 
-ADR-022 approves a future Stripe Connect intake on the existing durable incoming-message pattern; no Stripe webhook endpoint is implemented yet. The future controller must verify `Stripe-Signature` against the exact raw body before parsing, deduplicate provider event IDs, bind events to the expected connected account and pinned API/webhook version, persist a minimal normalized envelope plus one durable effect, and acknowledge promptly. Payment, refund, dispute, and account state transitions occur in fenced Application processing after intake, never directly in the callback controller or inside a provider call transaction. Duplicate, delayed, out-of-order, and ambiguous deliveries are reconciled rather than treated as exceptional one-off failures.
+`POST /api/integrations/stripe/connect` accepts signed Stripe Connect account callbacks through the durable incoming-message framework. The verifier checks `Stripe-Signature` against the exact raw body, requires the pinned API version and configured `Payments:Stripe:Mode`, resolves exactly one historical connected-account owner, and persists the normalized inbox message before acknowledgment. The asynchronous effect handler applies only monotonic account readiness evidence; duplicate events are idempotent, stale events are ignored, incomplete evidence fails closed, and disabled or replaced connections are not reactivated.
+
+This endpoint handles account readiness and deauthorization only. Checkout, payment, refund, and dispute webhook processing remains deferred to Phase 18 and must use separately fenced Application processing rather than performing provider state transitions in the callback controller or inside a provider-call transaction.
 
 ## Related
 

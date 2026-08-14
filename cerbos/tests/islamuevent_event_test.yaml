@@ -59,6 +59,27 @@ principals:
       tenantMemberships: {}
       orgMemberships: {}
 
+  finance_organizer_org_controller:
+    id: "user-finance-org"
+    roles: ["islamuevent_authenticated_user"]
+    attr:
+      userId: "user-finance-org"
+      isInstanceAdmin: false
+      tenantMemberships: {}
+      orgMemberships: {}
+      eventFinanceOrganizations: ["org-1"]
+
+  finance_organizer_group_controller:
+    id: "user-finance-group"
+    roles: ["islamuevent_authenticated_user"]
+    attr:
+      userId: "user-finance-group"
+      isInstanceAdmin: false
+      tenantMemberships: {}
+      orgMemberships: {}
+      groupMemberships: {}
+      eventFinanceGroups: ["group-1"]
+
   machine_user:
     id: "api-key-machine"
     roles: ["islamuevent_authenticated_user"]
@@ -136,6 +157,28 @@ resources:
       actorId: "actor-publisher-org-1"
       organizationId: "org-1"
       organizerActorId: "actor-verified-organizer-org-1"
+      organizerOrganizationId: "org-1"
+
+  event_verified_organizer_group1:
+    kind: "islamuevent_event"
+    id: "event-verified-organizer-group1"
+    attr:
+      tenantId: "tenant-1"
+      eventId: "event-verified-organizer-group1"
+      actorId: "actor-publisher-group-1"
+      groupId: "group-1"
+      organizerActorId: "actor-verified-organizer-group-1"
+      organizerGroupId: "group-1"
+
+  event_ambiguous_verified_organizer:
+    kind: "islamuevent_event"
+    id: "event-ambiguous-verified-organizer"
+    attr:
+      tenantId: "tenant-1"
+      eventId: "event-ambiguous-verified-organizer"
+      actorId: "actor-ambiguous"
+      organizerActorId: "actor-ambiguous-organizer"
+      organizerUserId: "user-owner"
       organizerOrganizationId: "org-1"
 
   event_pre_create:
@@ -268,6 +311,45 @@ tests:
           claim-organizer: EFFECT_DENY
           manage-registrations: EFFECT_DENY
           manage-tickets: EFFECT_DENY
+
+  - name: "Paid event commerce requires exact human organizer finance authority"
+    input:
+      principals: ["owning_user", "finance_organizer_org_controller", "finance_organizer_group_controller", "islamuevent_instance_admin", "islamuevent_tenant_admin", "machine_user"]
+      resources: ["event_user_owned_with_verified_organizer", "event_publisher_org1_verified_organizer_org1", "event_verified_organizer_group1", "event_user_owned", "event_ambiguous_verified_organizer"]
+      actions: ["manage-paid-event-commerce"]
+    expected:
+      - principal: "owning_user"
+        resource: "event_user_owned_with_verified_organizer"
+        actions:
+          manage-paid-event-commerce: EFFECT_ALLOW
+      - principal: "finance_organizer_org_controller"
+        resource: "event_publisher_org1_verified_organizer_org1"
+        actions:
+          manage-paid-event-commerce: EFFECT_ALLOW
+      - principal: "finance_organizer_group_controller"
+        resource: "event_verified_organizer_group1"
+        actions:
+          manage-paid-event-commerce: EFFECT_ALLOW
+      - principal: "owning_user"
+        resource: "event_user_owned"
+        actions:
+          manage-paid-event-commerce: EFFECT_DENY
+      - principal: "owning_user"
+        resource: "event_ambiguous_verified_organizer"
+        actions:
+          manage-paid-event-commerce: EFFECT_DENY
+      - principal: "islamuevent_instance_admin"
+        resource: "event_user_owned_with_verified_organizer"
+        actions:
+          manage-paid-event-commerce: EFFECT_DENY
+      - principal: "islamuevent_tenant_admin"
+        resource: "event_publisher_org1_verified_organizer_org1"
+        actions:
+          manage-paid-event-commerce: EFFECT_DENY
+      - principal: "machine_user"
+        resource: "event_user_owned_with_verified_organizer"
+        actions:
+          manage-paid-event-commerce: EFFECT_DENY
 
   - name: "Only the verified organizer actor controller receives participation management"
     input:

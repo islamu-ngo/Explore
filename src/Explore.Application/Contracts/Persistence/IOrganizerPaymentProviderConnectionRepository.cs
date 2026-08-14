@@ -20,6 +20,23 @@ public interface IOrganizerPaymentProviderConnectionRepository
         string externalAccountId,
         CancellationToken cancellationToken);
 
+    Task<IReadOnlyList<OrganizerPaymentProviderConnection>> ListHistoricalByExternalAccountAsync(
+        string providerCode,
+        string externalAccountId,
+        int limit,
+        CancellationToken cancellationToken);
+
+    Task<IReadOnlyList<OrganizerPaymentProviderConnection>> ListDueReadinessChecksAsync(
+        DateTime observedBefore,
+        int limit,
+        CancellationToken cancellationToken);
+
+    Task<OrganizerPaymentProviderConnection?> GetByTenantProviderAndExternalAccountForUpdateAsync(
+        Guid tenantId,
+        string providerCode,
+        string externalAccountId,
+        CancellationToken cancellationToken);
+
     Task<OrganizerPaymentProviderConnection?> GetByTenantAndIdForUpdateAsync(
         Guid tenantId,
         Guid connectionId,

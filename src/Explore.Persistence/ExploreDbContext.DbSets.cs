@@ -251,6 +251,14 @@ public partial class ExploreDbContext
     public DbSet<RegistrationProviderBindingState> RegistrationProviderBindingStates { get; set; }
 
     // ===== Instance Monetization =====
+    public DbSet<PaidEventPolicyVersion> PaidEventPolicyVersions { get; set; }
+    public DbSet<PaidEventPolicyAllowedOrganizerKind> PaidEventPolicyAllowedOrganizerKinds { get; set; }
+    public DbSet<PaidEventPolicyAllowedCurrency> PaidEventPolicyAllowedCurrencies { get; set; }
+    public DbSet<PaidEventPolicyRefundProtection> PaidEventPolicyRefundProtections { get; set; }
+    public DbSet<PaidEventPolicyCurrencyRiskLimitRow> PaidEventPolicyCurrencyRiskLimits { get; set; }
+    public DbSet<OrganizerPaymentProviderAccountOperation> OrganizerPaymentProviderAccountOperations { get; set; }
+    public DbSet<OrganizerPaymentProviderConnection> OrganizerPaymentProviderConnections { get; set; }
+    public DbSet<OrganizerPaymentProviderConnectionSupportedCurrency> OrganizerPaymentProviderConnectionSupportedCurrencies { get; set; }
     public DbSet<PlatformFeePolicy> PlatformFeePolicies { get; set; }
     public DbSet<PlatformFeeFixedCharge> PlatformFeeFixedCharges { get; set; }
     public DbSet<PlatformContributionSetting> PlatformContributionSettings { get; set; }

@@ -36099,6 +36099,97 @@
         "x-rate-limit-policy": "PublicIngestion"
       }
     },
+    "/api/integrations/stripe/connect": {
+      "post": {
+        "tags": [
+          "IncomingWebhooks"
+        ],
+        "summary": "Record Stripe Connect Webhook",
+        "description": "Accepts signed Stripe Connect account callbacks for organizer payment readiness projection.",
+        "operationId": "IntegrationStripeConnectCallback",
+        "parameters": [
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Accepted",
+            "content": {
+              "application/json": { }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { }
+            }
+          },
+          "413": {
+            "description": "Payload Too Large",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { }
+            }
+          }
+        },
+        "x-endpoint-class": "Public",
+        "x-rate-limit-policy": "PublicIngestion"
+      }
+    },
     "/api/instance/settings/moderation-reporting/locks": {
       "patch": {
         "tags": [
@@ -95032,6 +95123,24 @@
               "null",
               "string"
             ]
+          },
+          "merchantDisclosureText": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "refundPolicyDisclosureText": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "supportContactDisclosureText": {
+            "type": [
+              "null",
+              "string"
+            ]
           }
         }
       },
@@ -107685,6 +107794,24 @@
             ]
           },
           "statusName": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "merchantDisclosureText": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "refundPolicyDisclosureText": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "supportContactDisclosureText": {
             "type": [
               "null",
               "string"

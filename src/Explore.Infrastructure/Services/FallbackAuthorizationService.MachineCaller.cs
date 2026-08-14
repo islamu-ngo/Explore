@@ -19,7 +19,8 @@ public partial class FallbackAuthorizationService
             resourceKind == ResourceKinds.Event &&
             action is AuthorizationActions.Events.ManageRegistrations
                 or AuthorizationActions.Events.ManageRegistrationWorkflow
-                or AuthorizationActions.Events.ManageTickets)
+                or AuthorizationActions.Events.ManageTickets
+                or AuthorizationActions.Events.ManagePaidEventCommerce)
         {
             return false;
         }

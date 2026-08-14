@@ -87,6 +87,27 @@ public partial class AuthorizationParityTests
     }
 
     [Test]
+    [Category("PaidEventCommerceAuthorization")]
+    [DisplayName("Paid event commerce uses the canonical event action catalog and finance principal attrs")]
+    public async Task PaidEventCommerce_ShouldUse_CanonicalEventActionAndFinancePrincipalAttributes()
+    {
+        await Assert.That(AuthorizationActions.Events.ManagePaidEventCommerce)
+            .IsEqualTo("manage-paid-event-commerce");
+
+        var principalSchemaPath = Path.Combine(CerbosSchemasPath, NamespacedPrincipalSchemaFileName);
+        var principalSchema = JsonDocument.Parse(File.ReadAllText(principalSchemaPath));
+        var principalProperties = principalSchema.RootElement.GetProperty("properties");
+
+        await Assert.That(principalProperties.TryGetProperty("eventFinanceOrganizations", out _)).IsTrue();
+        await Assert.That(principalProperties.TryGetProperty("eventFinanceGroups", out _)).IsTrue();
+
+        var policy = File.ReadAllText(Path.Combine(CerbosPoliciesPath, "islamuevent_event.yaml"));
+        await Assert.That(policy).Contains("manage-paid-event-commerce");
+        await Assert.That(policy).Contains("eventFinanceOrganizations");
+        await Assert.That(policy).Contains("eventFinanceGroups");
+    }
+
+    [Test]
     [Category("RegistrationFormAuthorization")]
     [DisplayName("Event-family policies import the derived roles set")]
     public async Task EventFamilyPolicies_ShouldImport_DerivedRoles()

@@ -125,6 +125,31 @@ resourcePolicy:
               has(request.principal.attr.eventCreateGroups) &&
               request.resource.attr.organizerGroupId in request.principal.attr.eventCreateGroups))
 
+    - actions: ["manage-paid-event-commerce"]
+      effect: EFFECT_ALLOW
+      roles:
+        - islamuevent_authenticated_user
+      condition:
+        match:
+          expr: >
+            has(request.resource.attr.organizerActorId) &&
+            (!has(request.principal.attr.is_machine) || request.principal.attr.is_machine != true) &&
+            ((has(request.resource.attr.organizerUserId) &&
+              !has(request.resource.attr.organizerOrganizationId) &&
+              !has(request.resource.attr.organizerGroupId) &&
+              has(request.principal.attr.userId) &&
+              request.resource.attr.organizerUserId == request.principal.attr.userId) ||
+             (has(request.resource.attr.organizerOrganizationId) &&
+              !has(request.resource.attr.organizerUserId) &&
+              !has(request.resource.attr.organizerGroupId) &&
+              has(request.principal.attr.eventFinanceOrganizations) &&
+              request.resource.attr.organizerOrganizationId in request.principal.attr.eventFinanceOrganizations) ||
+             (has(request.resource.attr.organizerGroupId) &&
+              !has(request.resource.attr.organizerUserId) &&
+              !has(request.resource.attr.organizerOrganizationId) &&
+              has(request.principal.attr.eventFinanceGroups) &&
+              request.resource.attr.organizerGroupId in request.principal.attr.eventFinanceGroups))
+
     # All authenticated users can view public events
     - actions: ["view"]
       effect: EFFECT_ALLOW

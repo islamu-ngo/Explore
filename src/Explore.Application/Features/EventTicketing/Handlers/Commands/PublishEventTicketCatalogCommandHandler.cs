@@ -1,10 +1,13 @@
 // ABOUTME: Publishes a validated draft ticket catalog for a platform-managed event.
 // ABOUTME: Maps ticketing failures and invalidates the event detail cache after successful publication.
 
+using Explore.Application.Authorization;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
+using Explore.Application.DTOs.EventTicketing;
 using Explore.Application.Exceptions;
 using Explore.Application.Features.EventTicketing.Requests.Commands;
+using Explore.Application.Features.EventTicketing.Services;
 using Explore.Application.Responses;
 using Explore.Domain;
 using Explore.Domain.Enums;
@@ -20,6 +23,7 @@ public sealed class PublishEventTicketCatalogCommandHandler(
     IEventSessionRepository eventSessions,
     ITenantContext tenant,
     IUnitOfWork unitOfWork,
+    PaidEventPublicationPreflightService paidPreflight,
     HybridCache cache) : IRequestHandler<PublishEventTicketCatalogCommand, BaseCommandResponse<Guid>>
 {
     public async Task<BaseCommandResponse<Guid>> Handle(
@@ -38,6 +42,12 @@ public sealed class PublishEventTicketCatalogCommandHandler(
         {
             catalogId = await unitOfWork.ExecuteInTransactionAsync<Guid?>(async token =>
             {
+                Event? trustedEventTarget = await events.GetEventWithDetails(request.EventId);
+                if (!IsPlatformManaged(trustedEventTarget, tenant.TenantId))
+                {
+                    return null;
+                }
+
                 EventTicketCatalogVersion? draft = await catalogs.GetDraftCatalogForUpdateAsync(
                     request.EventId,
                     tenant.TenantId,
@@ -54,6 +64,17 @@ public sealed class PublishEventTicketCatalogCommandHandler(
                     token);
 
                 await ValidateEntitlementTargetsAsync(draft, token);
+
+                PaidEventPublicationPreflightDto preflight = await paidPreflight.AssessAsync(request.EventId, trustedEventTarget, draft, token);
+                if (preflight.IsPaidCatalog && !preflight.IsReady)
+                {
+                    if (preflight.Blockers.Any(blocker => blocker.Code == "commerce_authorization_denied"))
+                    {
+                        throw new AuthorizationException(ResourceKinds.Event, AuthorizationActions.Events.ManagePaidEventCommerce);
+                    }
+
+                    throw new ArgumentException(string.Join(" ", preflight.Blockers.Select(blocker => blocker.Explanation)));
+                }
 
                 try
                 {

@@ -1337,6 +1337,7 @@
           "Polly": "[8.7.0, )",
           "RabbitMQ.Client": "[7.2.1, )",
           "Refit.HttpClientFactory": "[14.0.1, )",
+          "Stripe.net": "[52.3.0, )",
           "Svix": "[1.99.1, )",
           "System.IdentityModel.Tokens.Jwt": "[8.22.0, )",
           "WebPush": "[1.0.13, )",
@@ -2133,8 +2134,8 @@
       "Newtonsoft.Json": {
         "type": "CentralTransitive",
         "requested": "[13.0.5-beta1, )",
-        "resolved": "13.0.1",
-        "contentHash": "ppPFpBcvxdsfUonNcvITKqLl3bqxWbDCZIzDWHzjpdAHRFfZe0Dw9HmA0+za13IdyrgJwpkDTDA9fHaxOrt20A=="
+        "resolved": "13.0.3",
+        "contentHash": "HrC5BXdl00IP9zeV+0Z848QWPAoCr9P3bDEZguI+gkLcBKAOxix/tLEAAHC+UvDNPv4a2d18lOReHMOagPa+zQ=="
       },
       "Npgsql": {
         "type": "CentralTransitive",
@@ -2384,6 +2385,16 @@
         "dependencies": {
           "SQLitePCLRaw.lib.e_sqlite3": "2.1.12",
           "SQLitePCLRaw.provider.e_sqlite3": "2.1.12"
+        }
+      },
+      "Stripe.net": {
+        "type": "CentralTransitive",
+        "requested": "[52.3.0, )",
+        "resolved": "52.3.0",
+        "contentHash": "zqaHgeEITTvRGLk9QlxG4GoJ8aQlM17pJeqea6z4uge4cddTgJ5HyTd3znKqfJARxu1rR2pcHFjFbSBlQbYsnQ==",
+        "dependencies": {
+          "Newtonsoft.Json": "13.0.3",
+          "System.Configuration.ConfigurationManager": "9.0.0"
         }
       },
       "Svix": {

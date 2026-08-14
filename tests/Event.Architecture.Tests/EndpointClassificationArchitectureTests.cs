@@ -47,6 +47,7 @@ public class EndpointClassificationArchitectureTests
         "AnalyticsRelayController.Relay",
         "EmailUnsubscribeController.Post",
         "IncomingWebhooksController.RecordSvixOperationalCallback",
+        "IncomingWebhooksController.RecordStripeConnectCallback",
         "RegistrationProviderCallbackController.RecordCallback"
     };
 

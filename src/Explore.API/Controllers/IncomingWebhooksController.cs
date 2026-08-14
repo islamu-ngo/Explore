@@ -84,4 +84,58 @@ public sealed class IncomingWebhooksController(
         return Accepted();
     }
 
+    [HttpPost("stripe/connect", Name = RouteNames.IntegrationStripeConnectCallback)]
+    [EndpointSummary("Record Stripe Connect Webhook")]
+    [EndpointDescription("Accepts signed Stripe Connect account callbacks for organizer payment readiness projection.")]
+    [AllowAnonymous]
+    [Consumes(HateoasConstants.JsonMediaType)]
+    [ProducesResponseType(StatusCodes.Status202Accepted)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status413PayloadTooLarge)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status503ServiceUnavailable)]
+    [EnableRateLimiting(RateLimitingExtensions.PublicIngestionPolicy)]
+    public async Task<IActionResult> RecordStripeConnectCallback(
+        CancellationToken cancellationToken = default)
+    {
+        var incoming = await incomingWebhookIntakeService.ReadAndVerifyAsync(
+            Request,
+            "stripe-connect",
+            webhookOptions.CurrentValue.Stripe.ConnectWebhookMaxBodyBytes,
+            cancellationToken);
+        if (!incoming.Succeeded)
+        {
+            metrics.RecordEventReportProviderCallback("stripe-connect", "failed", incoming.Code);
+            logger.LogWarning(
+                "Stripe Connect webhook rejected with status {StatusCode} failure {FailureCategory}",
+                incoming.StatusCode,
+                incoming.Code);
+
+            return ApiProblemFactory.ToProblemResult(ApiProblemFactory.CreateProblem(
+                HttpContext,
+                incoming.StatusCode,
+                incoming.Title,
+                incoming.Type,
+                incoming.Detail,
+                incoming.Code));
+        }
+
+        var capture = await incomingWebhookIntakeService.CaptureAsync(incoming, cancellationToken);
+        if (!capture.Succeeded)
+        {
+            metrics.RecordEventReportProviderCallback("stripe-connect", "failed", capture.Code);
+            return ApiProblemFactory.ToProblemResult(ApiProblemFactory.CreateProblem(
+                HttpContext,
+                capture.StatusCode,
+                capture.Title,
+                capture.Type,
+                capture.Detail,
+                capture.Code));
+        }
+
+        metrics.RecordEventReportProviderCallback("stripe-connect", "succeeded", "none");
+        return Accepted();
+    }
+
 }

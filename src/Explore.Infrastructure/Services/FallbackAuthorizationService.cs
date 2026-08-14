@@ -329,6 +329,7 @@ public partial class FallbackAuthorizationService : IAuthorizationProvider
             or AuthorizationActions.Events.ManageRegistrationChannels
             or AuthorizationActions.Events.ViewRegistrationProviderHealth
             or AuthorizationActions.Events.ManageTickets
+            or AuthorizationActions.Events.ManagePaidEventCommerce
             or AuthorizationActions.Events.ClaimOrganizer
             or AuthorizationActions.Events.WithdrawOrganizerClaim
             or AuthorizationActions.Events.ViewOrganizerClaims
@@ -378,7 +379,8 @@ public partial class FallbackAuthorizationService : IAuthorizationProvider
             or AuthorizationActions.Events.ManageRegistrationWorkflow
             or AuthorizationActions.Events.ManageRegistrationChannels
             or AuthorizationActions.Events.ViewRegistrationProviderHealth
-            or AuthorizationActions.Events.ManageTickets;
+            or AuthorizationActions.Events.ManageTickets
+            or AuthorizationActions.Events.ManagePaidEventCommerce;
 
     private static bool IsTenantAdminEventAction(string action) =>
         action is AuthorizationActions.View
@@ -421,6 +423,8 @@ public partial class FallbackAuthorizationService : IAuthorizationProvider
             return PermissionCodes.EventRegistrationManage;
         if (resourceKind == ResourceKinds.Event && action == AuthorizationActions.Events.ManageTickets)
             return PermissionCodes.EventManageTickets;
+        if (resourceKind == ResourceKinds.Event && action == AuthorizationActions.Events.ManagePaidEventCommerce)
+            return PermissionCodes.EventManageFinance;
 
         var permissionAction = resourceKind == ResourceKinds.Event && action == AuthorizationActions.Events.ViewManagement
             ? AuthorizationActions.View

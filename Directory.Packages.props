@@ -158,6 +158,7 @@
     <PackageVersion Include="SonarAnalyzer.CSharp" Version="10.31.0.145097" />
     <PackageVersion Include="Swashbuckle.AspNetCore" Version="10.2.3" />
     <PackageVersion Include="Svix" Version="1.99.1" />
+    <PackageVersion Include="Stripe.net" Version="52.3.0" />
     <PackageVersion Include="System.IdentityModel.Tokens.Jwt" Version="8.22.0" />
     <PackageVersion Include="Testcontainers.Keycloak" Version="4.13.0" />
     <PackageVersion Include="Testcontainers.PostgreSql" Version="4.13.0" />

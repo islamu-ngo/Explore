@@ -3,24 +3,40 @@
 
 # Registration Data Collection & Participation Platform — Implementation Plan
 
-Last Updated: 2026-08-13 Europe/Brussels
+Last Updated: 2026-08-14 Europe/Brussels
 
 ---
 
-## Handoff - 2026-08-13 Europe/Brussels: Phase 16.2 Complete
+## Handoff - 2026-08-14 Europe/Brussels: Phase 16.4 Complete
 
 ### Current State
-- Phase 16 remains in progress and Task 16.2 is independently confirmed complete. The implementation adds a separate `OrganizerPaymentProviderConnection` money-recipient aggregate, not a form provider connection. Its identity is immutable across tenant, organizer actor, payment provider, Connect platform, and external account. Status is explicit: `PendingOnboarding`, `Restricted`, `Ready`, `Disabled`, `Replaced`; only bounded readiness evidence can mark a connection `Ready`, and no raw KYC, bank, or provider payload is stored.
-- Historical external-account ownership is permanent: a disabled or replaced account cannot be rebound, replacement creates a new future-only aggregate, and the old external account identity remains preserved. `OrganizerPaymentRecipientSnapshot` is factory-only and pins actor, connection, external account, country, currency, `OrganizerDirect`, policy versions, and truthful UTC time. The repository returns entities and declares historical account lookup. Local CQRS record/replace/disable/get/list flows use explicit actor identity plus `ClaimantActorAccessEvaluator`, including query authorization, and never substitute an admin or session recipient.
-- No persistence implementation, index, migration, secrets/config, `Stripe.net` package, provider I/O, onboarding, callback, reconciliation, API, Cerbos, HAL, UI, or publication wiring was added.
+- Phase 16 remains in progress and Task 16.4 is independently confirmed complete. `Stripe.net` 52.3.0 is centrally pinned and Infrastructure-only; provider-neutral Application contracts orchestrate connected-account creation, hosted onboarding links, and readiness while provider I/O stays outside database transactions.
+- A durable account-create operation fence is persisted before remote I/O. Deterministic rejection releases its active slot; ambiguous, canceled, interrupted, or unknown dispatch becomes explicit manual reconciliation rather than blind retry. Signed Connect account events use strict raw-body signature, API-version, Test/Live-mode, identity, timestamp, and historical ownership checks before durable inbox capture and monotonic asynchronous readiness projection.
+- The global readiness worker polls bounded Pending/Restricted connections through a named tenant-filter bypass that preserves soft delete, then applies provider observations through tenant-scoped serializable reloads. Checkout/payment, refund/dispute, publication, Cerbos, HAL, and UI remain outside Task 16.4.
 
 ### Validation
-- TDD and review evidence: first implementation focused Domain 8 and Application 11; adversarial review rejected query authorization gaps, historical rebinding, and public snapshot constructor/timestamps; RED regressions were added and repaired.
-- Final focused repair passed Domain 11/11 and Application 19/19; full Domain passed 778/778; full Application passed 3609/3610 with only the unchanged unrelated FormSchema golden hash failure. Final Release build exited 0 warnings and 0 errors, `git diff --check` was clean, and the final independent verdict confirmed the result.
+- Focused final gates passed: operation Domain 4/4, organizer payment Application 35/35, payment persistence 26/26, Stripe Infrastructure 45/45, incoming webhook API 14/14, readiness worker API 2/2, endpoint classification 4/4, Stripe dependency boundary 3/3, and provider migration ownership 5/5.
+- Release build exited 0 with 6,319 existing warnings and no errors; dependency policy passed for 646 package/version pairs; `git diff --check` is clean. Independent goal, QA, quality, security, and repository-context reviews pass after the tenant-worker, interrupted-fence, mode-isolation, signed-ingestion, and webhook-documentation repairs.
 
 ### Next Action
-1. Start Task 16.3: persistence, instance secrets, configuration, and generated migrations.
-2. Keep Phase 16 open and leave Tasks 16.3-16.5 plus Phase 16 verification unchecked until their implementation evidence exists.
+1. Start Task 16.5: Admin/Studio configuration, publication preflight, Cerbos, and HAL relation gating.
+2. Keep Phase 16 verification unchecked until Task 16.5 is complete; do not start Phase 18 Checkout/payment or later admission/payout scope.
+
+## Handoff - 2026-08-14 Europe/Brussels: Phase 16.3 Complete
+
+### Current State
+- Phase 16 remains in progress and Task 16.3 is independently confirmed complete. Paid-event policy collections and organizer payment readiness currencies use normalized child rows; portable active-slot uniqueness, tenant/soft-delete filters, entity-returning repository composition, permanent historical provider-account ownership, and tenant-safe replacement lineage are persisted.
+- Organizer connection replacement retires the old active slot, inserts the successor, and records the reverse lineage in three saves inside one serializable unit of work. Cross-tenant historical ownership conflicts return only neutral or caller-owned identifiers.
+- `payments.stripe.platform_secret_key` and `payments.stripe.webhook_secret` are instance/server-only, non-bootstrap secret definitions under `/stripe`; connected account IDs remain provider identity. PostgreSQL, SQLite, SQL Server, MariaDB, and MySQL generated migrations/snapshots and DBML describe the same seven-table shape. No Stripe package, provider I/O, onboarding, webhook intake, reconciliation, API, Cerbos, HAL, UI, or publication wiring was added.
+
+### Validation
+- Focused final gates passed: organizer connection Domain 12/12, paid-policy Domain 18/18, organizer connection Application 19/19, payment persistence 23/23, provider model construction/parity 29/29, Stripe secrets 1/1, and CQRS architecture 5/5.
+- Release build exited 0 with 758 existing warnings and no errors; `git diff --check` is clean. PostgreSQL reports no pending model changes. The four alternate-provider CLI reruns were configuration-invalid before comparison, while their generated snapshots were unchanged by the repair and the five-provider model suite passed.
+- Independent goal, QA, quality, security, and repository-context reviews pass after the replacement-order, identifier-disclosure, and secret-documentation repairs.
+
+### Next Action
+1. Start Task 16.4: official `Stripe.net` hosted onboarding, account events, and readiness reconciliation.
+2. Keep Phase 16 open and leave Tasks 16.4-16.5 plus Phase 16 verification unchecked until their implementation evidence exists.
 
 ## Handoff - 2026-08-13 Europe/Brussels: Phase 16.1 Complete
 
@@ -49,7 +65,7 @@ Last Updated: 2026-08-13 Europe/Brussels
 - Final Release build rerun exited 0 with 0 warnings and 0 errors.
 - Focused governance passed 7/7; `.agents/contract/intents.yaml` parsed and the intent validation names ADR-022, ADR-023, and ADR-024.
 - Full `Event.Architecture.Tests` was executed and is not globally green: 370 total, 365 succeeded, 1 skipped, 4 failed. The four unrelated dirty-worktree failures are `BlazorProductionBackendContracts_ShouldComeFromGeneratedApiClient`, `DTOs_ShouldEndWith_Dto`, `Runtime tenant-filter bypasses must use approved reason constants`, and `InventoryCoversCurrentEfAndDesignatedProviderSurfaces`.
-- Phase 15-owned verification is green under the selected gate. `git diff --check` is clean for the three workstream files, and YAML parse/intent validation passed. The dependency policy command is not globally green because it exposed pre-existing metadata failures for `FluentAssertions` 8.10.0 and `Microsoft.Data.SqlClient.SNI.runtime` 6.0.2.
+- Phase 15-owned verification is green under the selected gate. `git diff --check` is clean for the three workstream files, and YAML parse/intent validation passed. The dependency-policy failures found during Phase 15 were remediated on 2026-08-14 by removing `FluentAssertions`; the policy now passes, with the approved `Microsoft.Data.SqlClient.SNI.runtime 6.0.2` exception still visible.
 
 ### Research And Tool Evidence
 - Tavily MCP was unavailable; no Tavily research is claimed. Context7 and official documentation evidence were used instead, with Context7 IDs `/stripe/stripe-dotnet`, `/websites/stripe`, and `/mdn/content`.
@@ -73,7 +89,7 @@ Last Updated: 2026-08-13 Europe/Brussels
 - Tavily MCP was unavailable on 2026-08-13; no Tavily research is claimed. Context7 and official documentation evidence were used instead, with Context7 IDs `/stripe/stripe-dotnet`, `/websites/stripe`, and `/mdn/content`.
 - Official NuGet/Stripe evidence plus an isolated metadata probe identified `Stripe.net` **52.3.0** as the current stable release (Apache-2.0; compatible with `net10.0`; assembly `52.3.0.0`), the instance-based `StripeClient` as the recommended API, `RequestOptions.StripeAccount`/`IdempotencyKey` as the per-request Connect/idempotency controls, built-in bounded network retries, and `2026-07-29.dahlia` as the pinned stable API line. The transitive graph is `Newtonsoft.Json` 13.0.3, `System.Configuration.ConfigurationManager` 9.0.0, `System.Diagnostics.EventLog` 9.0.0, and `System.Security.Cryptography.ProtectedData` 9.0.0.
 - Official Qonto documentation confirmed customer-facing OAuth, least-privilege invoice/client scopes, client-invoice finalization and linked credit-note operations, signed retrying webhooks, bounded provider idempotency, rate limits, and Qonto's non-global account footprint. These facts inform the deferred report only; no Qonto runtime phase is added here.
-- The dependency policy command exposed pre-existing metadata failures for `FluentAssertions` 8.10.0 and `Microsoft.Data.SqlClient.SNI.runtime` 6.0.2, so the global dependency policy is not claimed green.
+- That dependency-policy run exposed metadata failures for `FluentAssertions 8.10.0` and `Microsoft.Data.SqlClient.SNI.runtime 6.0.2`. The assertion dependency was removed on 2026-08-14; the policy now passes and retains the approved SNI runtime exception in its output.
 - The browser `BarcodeDetector` API is experimental and non-Baseline. It may be feature-detected as an optimization, but the QR phase requires a clean-room, outbound-license-compatible encoder/decoder decision plus HID and manual-entry fallbacks.
 
 ### Next Action
@@ -384,7 +400,7 @@ Clean-room scope: only public functional constraints were retained. No external 
 | [.NET cryptography model](https://learn.microsoft.com/en-us/dotnet/standard/security/cryptography-model) | `RandomNumberGenerator` and HMAC primitives are native platform capabilities | Prefer .NET cryptographic primitives over a custom token framework |
 | [MDN BarcodeDetector](https://developer.mozilla.org/en-US/docs/Web/API/BarcodeDetector) | Browser detection is experimental, secure-context-only, and not universally available | Feature detection only; dependency/license gate plus HID/manual fallback |
 
-**Documentation tooling:** Tavily MCP was unavailable, so no Tavily research is claimed. Context7 and official documentation evidence were used instead, including Context7 IDs `/stripe/stripe-dotnet`, `/websites/stripe`, and `/mdn/content`; official NuGet/Stripe evidence plus an isolated metadata probe established `Stripe.net` 52.3.0, Apache-2.0, `net10.0` compatibility, assembly `52.3.0.0`, API `2026-07-29.dahlia`, and transitives `Newtonsoft.Json` 13.0.3, `System.Configuration.ConfigurationManager` 9.0.0, `System.Diagnostics.EventLog` 9.0.0, and `System.Security.Cryptography.ProtectedData` 9.0.0. No Stripe implementation source was inspected or copied; only package metadata, licensing, public SDK usage/versioning documentation, and release notes informed this source-free contract. The dependency policy command exposed pre-existing metadata failures for `FluentAssertions` 8.10.0 and `Microsoft.Data.SqlClient.SNI.runtime` 6.0.2, so global dependency policy is not claimed green.
+**Documentation tooling:** Tavily MCP was unavailable, so no Tavily research is claimed. Context7 and official documentation evidence were used instead, including Context7 IDs `/stripe/stripe-dotnet`, `/websites/stripe`, and `/mdn/content`; official NuGet/Stripe evidence plus an isolated metadata probe established `Stripe.net` 52.3.0, Apache-2.0, `net10.0` compatibility, assembly `52.3.0.0`, API `2026-07-29.dahlia`, and transitives `Newtonsoft.Json` 13.0.3, `System.Configuration.ConfigurationManager` 9.0.0, `System.Diagnostics.EventLog` 9.0.0, and `System.Security.Cryptography.ProtectedData` 9.0.0. No Stripe implementation source was inspected or copied; only package metadata, licensing, public SDK usage/versioning documentation, and release notes informed this source-free contract. The earlier dependency-policy failures were remediated on 2026-08-14 by removing `FluentAssertions`; the policy now passes and retains the approved `Microsoft.Data.SqlClient.SNI.runtime 6.0.2` exception in its output.
 
 ### 2.2 Existing Implementation (by owning layer)
 
@@ -1932,6 +1948,7 @@ This matrix is the meaning of full Stripe support here. Stripe Billing/subscript
 - **Effort:** L
 
 #### Task 16.3: Persistence, instance secrets, configuration, and generated migrations
+- **Status:** Complete. Normalized policy/connection persistence, portable uniqueness and filters, repository/DI, two instance Stripe secret definitions, five generated provider migrations/snapshots, DBML, staged replacement persistence, and cross-tenant identifier-safe conflicts are independently confirmed. No Task 16.4 runtime Stripe scope was added.
 - **Type:** create/modify
 - **Layer:** Persistence/Secrets/DevOps
 - **Files:** entity configurations/DbSets/query filters/repositories/seeder, `SecretDefinitionRegistry`, configuration validation, generated provider migrations, DBML.

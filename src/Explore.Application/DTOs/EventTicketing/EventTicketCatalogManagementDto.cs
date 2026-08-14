@@ -13,6 +13,9 @@ public sealed class EventTicketCatalogManagementDto
     public int? StatusId { get; init; }
     public string? StatusCode { get; init; }
     public string? StatusName { get; init; }
+    public string? MerchantDisclosureText { get; init; }
+    public string? RefundPolicyDisclosureText { get; init; }
+    public string? SupportContactDisclosureText { get; init; }
     [JsonIgnore]
     public IReadOnlyList<EventTicketTypeDto> TicketTypes { get; init; } = [];
     [JsonIgnore]

@@ -3,11 +3,15 @@
 
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
+using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.OrganizerPaymentConnections;
 using Explore.Application.Features.OrganizerPaymentConnections;
+using Explore.Application.Features.OrganizerPaymentConnections.Commands;
 using Explore.Application.Responses;
 using Explore.Domain;
 using Explore.Domain.Enums;
+using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 using NSubstitute;
 
 namespace Event.Application.UnitTests.Features.OrganizerPaymentConnections;
@@ -15,6 +19,7 @@ namespace Event.Application.UnitTests.Features.OrganizerPaymentConnections;
 public sealed class OrganizerPaymentConnectionHandlerTests
 {
     private static readonly Guid TenantId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000001");
+    private static readonly Guid ForeignTenantId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000002");
     private static readonly Guid UserId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000010");
     private static readonly Guid ActorId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000020");
     private static readonly DateTime Now = new(2026, 8, 13, 12, 0, 0, DateTimeKind.Utc);
@@ -114,7 +119,9 @@ public sealed class OrganizerPaymentConnectionHandlerTests
         await Assert.That(result.Success).IsTrue();
         await Assert.That(current.ExternalAccountId).IsEqualTo("acct_old");
         await Assert.That(current.StatusId).IsEqualTo((int)OrganizerPaymentProviderConnectionStatusEnum.Replaced);
+        await Assert.That(current.ReplacedByConnectionId).IsEqualTo(result.Id);
         await Assert.That(harness.Repository.Connections.Single(connection => connection.Id == result.Id).ReplacesConnectionId).IsEqualTo(current.Id);
+        await Assert.That(harness.Repository.SaveChangesCount).IsEqualTo(3);
     }
 
     [Test]
@@ -132,16 +139,20 @@ public sealed class OrganizerPaymentConnectionHandlerTests
     }
 
     [Test]
-    public async Task RecordConnection_HistoricalDisabledExternalAccountBoundToAnotherActorIsRejected()
+    public async Task RecordConnection_CrossTenantHistoricalDisabledExternalAccountBoundIsRejectedWithoutReturningForeignId()
     {
         Harness harness = new();
-        OrganizerPaymentProviderConnection historical = harness.Repository.AddExisting("acct_1", organizerActorId: Guid.Parse("018e4e5c-7f00-7000-8000-000000000099"));
+        OrganizerPaymentProviderConnection historical = harness.Repository.AddExisting(
+            "acct_1",
+            organizerActorId: Guid.Parse("018e4e5c-7f00-7000-8000-000000000099"),
+            tenantId: ForeignTenantId);
         historical.Disable("operator_disabled", Now.AddMinutes(1));
 
         BaseCommandResponse<Guid> result = await harness.RecordHandler.Handle(harness.RecordCommand("acct_1"), CancellationToken.None);
 
         await Assert.That(result.Success).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("organizer_payment_external_account_bound");
+        await Assert.That(result.Id).IsNotEqualTo(historical.Id);
     }
 
     [Test]
@@ -184,32 +195,40 @@ public sealed class OrganizerPaymentConnectionHandlerTests
     }
 
     [Test]
-    public async Task ReplaceConnection_HistoricalDisabledExternalAccountBoundToAnotherActorIsRejected()
+    public async Task ReplaceConnection_CrossTenantHistoricalReplacedExternalAccountBoundIsRejectedWithoutReturningForeignId()
     {
         Harness harness = new();
         OrganizerPaymentProviderConnection current = harness.Repository.AddExisting("acct_old");
-        OrganizerPaymentProviderConnection historical = harness.Repository.AddExisting("acct_new", organizerActorId: Guid.Parse("018e4e5c-7f00-7000-8000-000000000099"));
+        OrganizerPaymentProviderConnection historical = harness.Repository.AddExisting(
+            "acct_new",
+            organizerActorId: Guid.Parse("018e4e5c-7f00-7000-8000-000000000099"),
+            tenantId: ForeignTenantId);
         historical.Disable("operator_disabled", Now.AddMinutes(1));
 
         BaseCommandResponse<Guid> result = await harness.ReplaceHandler.Handle(new ReplaceOrganizerPaymentConnectionCommand(TenantId, ActorId, current.Id, "acct_new"), CancellationToken.None);
 
         await Assert.That(result.Success).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("organizer_payment_external_account_bound");
+        await Assert.That(result.Id).IsNotEqualTo(historical.Id);
         await Assert.That(current.StatusId).IsEqualTo((int)OrganizerPaymentProviderConnectionStatusEnum.PendingOnboarding);
     }
 
     [Test]
-    public async Task ReplaceConnection_HistoricalReplacedExternalAccountBoundToAnotherActorIsRejected()
+    public async Task ReplaceConnection_CrossTenantHistoricalDisabledExternalAccountBoundIsRejectedWithoutReturningForeignId()
     {
         Harness harness = new();
         OrganizerPaymentProviderConnection current = harness.Repository.AddExisting("acct_old");
-        OrganizerPaymentProviderConnection historical = harness.Repository.AddExisting("acct_new", organizerActorId: Guid.Parse("018e4e5c-7f00-7000-8000-000000000099"));
+        OrganizerPaymentProviderConnection historical = harness.Repository.AddExisting(
+            "acct_new",
+            organizerActorId: Guid.Parse("018e4e5c-7f00-7000-8000-000000000099"),
+            tenantId: ForeignTenantId);
         _ = historical.ReplaceWith(Guid.CreateVersion7(), "acct_other", Now.AddMinutes(1));
 
         BaseCommandResponse<Guid> result = await harness.ReplaceHandler.Handle(new ReplaceOrganizerPaymentConnectionCommand(TenantId, ActorId, current.Id, "acct_new"), CancellationToken.None);
 
         await Assert.That(result.Success).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("organizer_payment_external_account_bound");
+        await Assert.That(result.Id).IsNotEqualTo(historical.Id);
         await Assert.That(current.StatusId).IsEqualTo((int)OrganizerPaymentProviderConnectionStatusEnum.PendingOnboarding);
     }
 
@@ -276,11 +295,331 @@ public sealed class OrganizerPaymentConnectionHandlerTests
         await Assert.That(harness.Repository.ReadCount).IsEqualTo(0);
     }
 
+    [Test]
+    public async Task CreateOnboardingLink_ReusesActiveConnectionAndOnlyCreatesHostedLinkOutsideTransaction()
+    {
+        Harness harness = new();
+        OrganizerPaymentProviderConnection existing = harness.Repository.AddExisting("acct_existing");
+        harness.Provider.NextLinkUrl = new Uri("https://payments.example/onboard/existing");
+
+        BaseCommandResponse<OrganizerPaymentOnboardingLinkResult> result = await harness.OnboardingHandler.Handle(harness.OnboardingCommand(), CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.Id!.ConnectionId).IsEqualTo(existing.Id);
+        await Assert.That(result.Id.OnboardingUrl).IsEqualTo(new Uri("https://payments.example/onboard/existing"));
+        await Assert.That(result.Id.ReusedExistingConnection).IsTrue();
+        await Assert.That(harness.Provider.AccountCreateCalls).IsEqualTo(0);
+        await Assert.That(harness.Provider.LinkCreateCalls).IsEqualTo(1);
+        await Assert.That(harness.UnitOfWork.SerializableCalls).IsEqualTo(0);
+        await Assert.That(harness.Provider.CalledInsideTransaction).IsFalse();
+        await Assert.That(harness.Repository.Connections.Count).IsEqualTo(1);
+    }
+
+    [Test]
+    public async Task CreateOnboardingLink_PersistsConnectionBeforeCreatingHostedLinkOutsideTransaction()
+    {
+        Harness harness = new();
+        harness.Provider.NextAccountResult = OrganizerPaymentProviderAccountCreationResult.Created("acct_new");
+        harness.Provider.NextLinkUrl = new Uri("https://payments.example/onboard/new");
+
+        BaseCommandResponse<OrganizerPaymentOnboardingLinkResult> result = await harness.OnboardingHandler.Handle(harness.OnboardingCommand(), CancellationToken.None);
+
+        OrganizerPaymentProviderConnection created = harness.Repository.Connections.Single();
+        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.Id!.ConnectionId).IsEqualTo(created.Id);
+        await Assert.That(result.Id.ExternalAccountId).IsEqualTo("acct_new");
+        await Assert.That(result.Id.OnboardingUrl).IsEqualTo(new Uri("https://payments.example/onboard/new"));
+        await Assert.That(result.Id.ReusedExistingConnection).IsFalse();
+        await Assert.That(created.OrganizerActorId).IsEqualTo(ActorId);
+        await Assert.That(created.ExternalAccountId).IsEqualTo("acct_new");
+        await Assert.That(harness.UnitOfWork.SerializableCalls).IsEqualTo(2);
+        await Assert.That(harness.Provider.CalledInsideTransaction).IsFalse();
+        OrganizerPaymentProviderAccountOperation operation = harness.OperationRepository.Operations.Single();
+        await Assert.That(operation.StatusId).IsEqualTo((int)OrganizerPaymentProviderAccountOperationStatus.BoundToConnection);
+        await Assert.That(operation.ConnectionId).IsEqualTo(created.Id);
+        await Assert.That(harness.Provider.LastAccountRequest!.ProviderIdempotencyKey).IsEqualTo(operation.ProviderIdempotencyKey);
+        await Assert.That(harness.Events).IsEquivalentTo(["persist-operation", "save-operation", "create-account", "persist", "save", "create-link"]);
+        await Assert.That(harness.Repository.SaveChangesCount).IsEqualTo(1);
+    }
+
+    [Test]
+    public async Task CreateOnboardingLink_AmbiguousAccountCreationPersistsManualFenceAndBlocksRetry()
+    {
+        Harness harness = new();
+        harness.Provider.NextAccountResult = OrganizerPaymentProviderAccountCreationResult.ManualReconciliationRequired();
+
+        BaseCommandResponse<OrganizerPaymentOnboardingLinkResult> result = await harness.OnboardingHandler.Handle(harness.OnboardingCommand(), CancellationToken.None);
+        BaseCommandResponse<OrganizerPaymentOnboardingLinkResult> retry = await harness.OnboardingHandler.Handle(harness.OnboardingCommand(), CancellationToken.None);
+
+        await Assert.That(result.Success).IsFalse();
+        await Assert.That(retry.Success).IsFalse();
+        await Assert.That(result.FailureCode).IsEqualTo("organizer_payment_provider_manual_reconciliation_required");
+        await Assert.That(harness.Provider.AccountCreateCalls).IsEqualTo(1);
+        await Assert.That(harness.Provider.LinkCreateCalls).IsEqualTo(0);
+        await Assert.That(harness.OperationRepository.Operations.Single().StatusId).IsEqualTo((int)OrganizerPaymentProviderAccountOperationStatus.ManualReconciliationRequired);
+        await Assert.That(harness.Repository.Connections).IsEmpty();
+    }
+
+    [Test]
+    public async Task CreateOnboardingLink_ProviderThrowAfterHandoffSettlesManualAndReturnsControlledFailure()
+    {
+        Harness harness = new();
+        harness.Provider.AccountCreateExceptionFactory = _ => new InvalidOperationException("provider transport failed");
+
+        BaseCommandResponse<OrganizerPaymentOnboardingLinkResult> result = await harness.OnboardingHandler.Handle(harness.OnboardingCommand(), CancellationToken.None);
+
+        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.FailureCode).IsEqualTo("organizer_payment_provider_manual_reconciliation_required");
+        await Assert.That(harness.Provider.AccountCreateCalls).IsEqualTo(1);
+        await Assert.That(harness.Provider.LinkCreateCalls).IsEqualTo(0);
+        await Assert.That(harness.Repository.Connections).IsEmpty();
+        OrganizerPaymentProviderAccountOperation operation = harness.OperationRepository.Operations.Single();
+        await Assert.That(operation.StatusId).IsEqualTo((int)OrganizerPaymentProviderAccountOperationStatus.ManualReconciliationRequired);
+        await Assert.That(operation.FailureCode).IsEqualTo("organizer_payment_provider_account_creation_exception");
+        await Assert.That(harness.Events).IsEquivalentTo(["persist-operation", "save-operation", "create-account", "save-operation"]);
+    }
+
+    [Test]
+    public async Task CreateOnboardingLink_CallerCancellationAfterHandoffSettlesManualAndPropagatesCancellation()
+    {
+        Harness harness = new();
+        using var cts = new CancellationTokenSource();
+        harness.Provider.AccountCreateExceptionFactory = token =>
+        {
+            cts.Cancel();
+            return new OperationCanceledException(token);
+        };
+
+        await Assert.That(async () => await harness.OnboardingHandler.Handle(harness.OnboardingCommand(), cts.Token))
+            .Throws<OperationCanceledException>();
+
+        await Assert.That(harness.Provider.AccountCreateCalls).IsEqualTo(1);
+        await Assert.That(harness.Provider.LinkCreateCalls).IsEqualTo(0);
+        await Assert.That(harness.Repository.Connections).IsEmpty();
+        OrganizerPaymentProviderAccountOperation operation = harness.OperationRepository.Operations.Single();
+        await Assert.That(operation.StatusId).IsEqualTo((int)OrganizerPaymentProviderAccountOperationStatus.ManualReconciliationRequired);
+        await Assert.That(operation.FailureCode).IsEqualTo("organizer_payment_provider_account_creation_canceled");
+        await Assert.That(harness.Events).IsEquivalentTo(["persist-operation", "save-operation", "create-account", "save-operation"]);
+    }
+
+    [Test]
+    public async Task CreateOnboardingLink_StaleRequestedResidueSettlesManualAndBlocksProviderRetry()
+    {
+        Harness harness = new();
+        OrganizerPaymentProviderAccountOperation operation = harness.OperationRepository.AddRequested();
+
+        BaseCommandResponse<OrganizerPaymentOnboardingLinkResult> result = await harness.OnboardingHandler.Handle(harness.OnboardingCommand(), CancellationToken.None);
+
+        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.FailureCode).IsEqualTo("organizer_payment_provider_manual_reconciliation_required");
+        await Assert.That(harness.Provider.AccountCreateCalls).IsEqualTo(0);
+        await Assert.That(harness.Repository.Connections).IsEmpty();
+        await Assert.That(operation.StatusId).IsEqualTo((int)OrganizerPaymentProviderAccountOperationStatus.ManualReconciliationRequired);
+        await Assert.That(operation.FailureCode).IsEqualTo("organizer_payment_provider_create_requested_recovered");
+    }
+
+    [Test]
+    public async Task CreateOnboardingLink_DefinitiveRejectionTerminatesOperationAndLaterCallCreatesNewOperation()
+    {
+        Harness harness = new();
+        harness.Provider.NextAccountResult = OrganizerPaymentProviderAccountCreationResult.Failed("organizer_payment_provider_account_invalid");
+
+        BaseCommandResponse<OrganizerPaymentOnboardingLinkResult> rejected = await harness.OnboardingHandler.Handle(harness.OnboardingCommand(), CancellationToken.None);
+        harness.Provider.NextAccountResult = OrganizerPaymentProviderAccountCreationResult.ManualReconciliationRequired();
+        BaseCommandResponse<OrganizerPaymentOnboardingLinkResult> later = await harness.OnboardingHandler.Handle(harness.OnboardingCommand(), CancellationToken.None);
+
+        await Assert.That(rejected.Success).IsFalse();
+        await Assert.That(later.Success).IsFalse();
+        await Assert.That(harness.Provider.AccountCreateCalls).IsEqualTo(2);
+        await Assert.That(harness.OperationRepository.Operations.Count).IsEqualTo(2);
+        await Assert.That(harness.OperationRepository.Operations.Any(operation => operation.StatusId == (int)OrganizerPaymentProviderAccountOperationStatus.ProviderRejected)).IsTrue();
+        await Assert.That(harness.OperationRepository.Operations.Any(operation => operation.StatusId == (int)OrganizerPaymentProviderAccountOperationStatus.ManualReconciliationRequired)).IsTrue();
+    }
+
+    [Test]
+    public async Task CreateOnboardingLink_RereadsActiveConnectionInsideSerializableTransactionAndDoesNotCreateDuplicateAfterRace()
+    {
+        Harness harness = new();
+        OrganizerPaymentProviderConnection raced = null!;
+        harness.Provider.NextAccountResult = OrganizerPaymentProviderAccountCreationResult.Created("acct_new");
+        harness.Provider.NextLinkUrl = new Uri("https://payments.example/onboard/race");
+        harness.UnitOfWork.BeforeSerializableOperationCallNumber = 2;
+        harness.UnitOfWork.BeforeSerializableOperation = () => raced = harness.Repository.AddExisting("acct_new");
+
+        BaseCommandResponse<OrganizerPaymentOnboardingLinkResult> result = await harness.OnboardingHandler.Handle(harness.OnboardingCommand(), CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.Id!.ConnectionId).IsEqualTo(raced.Id);
+        await Assert.That(result.Id.ReusedExistingConnection).IsTrue();
+        await Assert.That(harness.Repository.Connections.Count).IsEqualTo(1);
+        await Assert.That(harness.Repository.HistoricalReadCount).IsGreaterThanOrEqualTo(1);
+        await Assert.That(harness.Provider.LinkCreateCalls).IsEqualTo(1);
+        await Assert.That(harness.Events).IsEquivalentTo(["persist-operation", "save-operation", "create-account", "save-operation", "create-link"]);
+        await Assert.That(harness.Provider.CalledInsideTransaction).IsFalse();
+    }
+
+    [Test]
+    public async Task CreateOnboardingLink_RacedActiveConnectionWithDifferentAccountFailsWithoutCreatingHostedLink()
+    {
+        Harness harness = new();
+        harness.Provider.NextAccountResult = OrganizerPaymentProviderAccountCreationResult.Created("acct_new");
+        harness.UnitOfWork.BeforeSerializableOperationCallNumber = 2;
+        harness.UnitOfWork.BeforeSerializableOperation = () => harness.Repository.AddExisting("acct_other");
+
+        BaseCommandResponse<OrganizerPaymentOnboardingLinkResult> result = await harness.OnboardingHandler.Handle(harness.OnboardingCommand(), CancellationToken.None);
+
+        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.FailureCode).IsEqualTo("organizer_payment_provider_manual_reconciliation_required");
+        await Assert.That(harness.Provider.LinkCreateCalls).IsEqualTo(0);
+        await Assert.That(harness.OperationRepository.Operations.Single().StatusId).IsEqualTo((int)OrganizerPaymentProviderAccountOperationStatus.ManualReconciliationRequired);
+        await Assert.That(harness.Events).IsEquivalentTo(["persist-operation", "save-operation", "create-account", "save-operation"]);
+        await Assert.That(harness.Provider.CalledInsideTransaction).IsFalse();
+    }
+
+    [Test]
+    public async Task CreateOnboardingLink_RereadsHistoricalExternalIdentityInsideTransactionAndFailsClosed()
+    {
+        Harness harness = new();
+        harness.Provider.NextAccountResult = OrganizerPaymentProviderAccountCreationResult.Created("acct_new");
+        harness.Provider.NextLinkUrl = new Uri("https://payments.example/onboard/bound");
+        harness.UnitOfWork.BeforeSerializableOperationCallNumber = 2;
+        harness.UnitOfWork.BeforeSerializableOperation = () => harness.Repository.AddExisting("acct_new", organizerActorId: Guid.Parse("018e4e5c-7f00-7000-8000-000000000099"));
+
+        BaseCommandResponse<OrganizerPaymentOnboardingLinkResult> result = await harness.OnboardingHandler.Handle(harness.OnboardingCommand(), CancellationToken.None);
+
+        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.FailureCode).IsEqualTo("organizer_payment_provider_manual_reconciliation_required");
+        await Assert.That(harness.Repository.Connections.Count).IsEqualTo(1);
+        await Assert.That(harness.Repository.Connections.Single().OrganizerActorId).IsNotEqualTo(ActorId);
+        await Assert.That(harness.Provider.LinkCreateCalls).IsEqualTo(0);
+        await Assert.That(harness.OperationRepository.Operations.Single().StatusId).IsEqualTo((int)OrganizerPaymentProviderAccountOperationStatus.ManualReconciliationRequired);
+        await Assert.That(harness.Events).IsEquivalentTo(["persist-operation", "save-operation", "create-account", "save-operation"]);
+        await Assert.That(harness.Provider.CalledInsideTransaction).IsFalse();
+    }
+
+    [Test]
+    public async Task CreateOnboardingLink_TreatsReturnAndRefreshUrlsAsNavigationOnly()
+    {
+        Harness harness = new();
+        Uri returnUrl = new("https://app.example/return?state=client-only");
+        Uri refreshUrl = new("https://app.example/refresh?state=client-only");
+
+        BaseCommandResponse<OrganizerPaymentOnboardingLinkResult> result = await harness.OnboardingHandler.Handle(harness.OnboardingCommand(returnUrl, refreshUrl), CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await Assert.That(harness.Provider.LastLinkRequest!.ReturnUrl).IsEqualTo(returnUrl);
+        await Assert.That(harness.Provider.LastLinkRequest.RefreshUrl).IsEqualTo(refreshUrl);
+        await Assert.That(typeof(OrganizerPaymentProviderConnection).GetProperties().Any(property => property.Name.Contains("Url", StringComparison.Ordinal))).IsFalse();
+        await Assert.That(harness.Repository.Connections.Single().StatusId).IsEqualTo((int)OrganizerPaymentProviderConnectionStatusEnum.PendingOnboarding);
+    }
+
+    [Test]
+    public async Task ReadinessMapper_RequiresChargesBothCapabilitiesAndSatisfiedRequirementsForReady()
+    {
+        OrganizerPaymentProviderReadiness ready = Readiness(true, OrganizerPaymentProviderCapabilityState.Active, OrganizerPaymentProviderCapabilityState.Active, OrganizerPaymentProviderRequirementsState.Satisfied, Now);
+        OrganizerPaymentProviderReadiness missingCharges = Readiness(false, OrganizerPaymentProviderCapabilityState.Active, OrganizerPaymentProviderCapabilityState.Active, OrganizerPaymentProviderRequirementsState.Satisfied, Now.AddMinutes(1));
+        OrganizerPaymentProviderReadiness due = Readiness(true, OrganizerPaymentProviderCapabilityState.Active, OrganizerPaymentProviderCapabilityState.Active, OrganizerPaymentProviderRequirementsState.CurrentlyDue, Now.AddMinutes(2));
+
+        OrganizerPaymentProviderReadinessObservation readyObservation = OrganizerPaymentReadinessMapper.ToObservation(ready);
+        OrganizerPaymentProviderReadinessObservation missingChargesObservation = OrganizerPaymentReadinessMapper.ToObservation(missingCharges);
+        OrganizerPaymentProviderReadinessObservation dueObservation = OrganizerPaymentReadinessMapper.ToObservation(due);
+
+        await Assert.That(readyObservation.IsReady).IsTrue();
+        await Assert.That(missingChargesObservation.IsReady).IsFalse();
+        await Assert.That(missingChargesObservation.ChargeCapabilityState).IsEqualTo(ChargeCapabilityState.Inactive);
+        await Assert.That(dueObservation.IsReady).IsFalse();
+        await Assert.That(dueObservation.RequirementsState).IsEqualTo(ProviderRequirementsState.CurrentlyDue);
+    }
+
+    [Test]
+    public async Task ReadinessReconciliation_CallsProviderOutsideTransactionAndAppliesReadyObservationInsideSerializableReload()
+    {
+        Harness harness = new();
+        OrganizerPaymentProviderConnection connection = harness.Repository.AddExisting("acct_due");
+        harness.Provider.EnqueueReadiness(Readiness(true, OrganizerPaymentProviderCapabilityState.Active, OrganizerPaymentProviderCapabilityState.Active, OrganizerPaymentProviderRequirementsState.Satisfied, Now.AddMinutes(10)));
+
+        OrganizerPaymentReadinessReconciliationResult result = await harness.ReadinessService().ReconcileOnceAsync(CancellationToken.None);
+
+        await Assert.That(result.UpdatedCount).IsEqualTo(1);
+        await Assert.That(connection.StatusId).IsEqualTo((int)OrganizerPaymentProviderConnectionStatusEnum.Ready);
+        await Assert.That(harness.Provider.ReadinessCalls).IsEqualTo(1);
+        await Assert.That(harness.Provider.CalledInsideTransaction).IsFalse();
+        await Assert.That(harness.UnitOfWork.SerializableCalls).IsEqualTo(1);
+    }
+
+    [Test]
+    public async Task ReadinessReconciliation_ProviderFailureDoesNotSaveAndNextDueRowContinues()
+    {
+        Harness harness = new();
+        OrganizerPaymentProviderConnection failed = harness.Repository.AddExisting("acct_failed");
+        OrganizerPaymentProviderConnection next = harness.Repository.AddExisting("acct_next");
+        harness.Provider.EnqueueReadinessFailure("organizer_payment_provider_network_failure", OrganizerPaymentProviderFailureKind.Network, "req_1");
+        harness.Provider.EnqueueReadiness(Readiness(true, OrganizerPaymentProviderCapabilityState.Active, OrganizerPaymentProviderCapabilityState.Active, OrganizerPaymentProviderRequirementsState.Satisfied, Now.AddMinutes(10)));
+
+        OrganizerPaymentReadinessReconciliationResult result = await harness.ReadinessService().ReconcileOnceAsync(CancellationToken.None);
+
+        await Assert.That(result.FailureCount).IsEqualTo(1);
+        await Assert.That(result.UpdatedCount).IsEqualTo(1);
+        await Assert.That(failed.StatusId).IsEqualTo((int)OrganizerPaymentProviderConnectionStatusEnum.PendingOnboarding);
+        await Assert.That(next.StatusId).IsEqualTo((int)OrganizerPaymentProviderConnectionStatusEnum.Ready);
+        await Assert.That(harness.Repository.SaveChangesCount).IsEqualTo(1);
+        await Assert.That(result.Failures.Single().ProviderRequestId).IsEqualTo("req_1");
+    }
+
+    [Test]
+    public async Task ReadinessReconciliation_StaleObservationAndTerminalRaceAreSkippedWithoutMutation()
+    {
+        Harness staleHarness = new();
+        OrganizerPaymentProviderConnection stale = staleHarness.Repository.AddExisting("acct_stale");
+        stale.ApplyReadiness(OrganizerPaymentReadinessMapper.ToObservation(Readiness(false, OrganizerPaymentProviderCapabilityState.Pending, OrganizerPaymentProviderCapabilityState.Pending, OrganizerPaymentProviderRequirementsState.CurrentlyDue, Now.AddMinutes(10))));
+        staleHarness.Provider.EnqueueReadiness(Readiness(true, OrganizerPaymentProviderCapabilityState.Active, OrganizerPaymentProviderCapabilityState.Active, OrganizerPaymentProviderRequirementsState.Satisfied, Now.AddMinutes(9)));
+
+        OrganizerPaymentReadinessReconciliationResult staleResult = await staleHarness.ReadinessService(staleIntervalMinutes: 1).ReconcileOnceAsync(CancellationToken.None);
+
+        Harness terminalHarness = new();
+        OrganizerPaymentProviderConnection terminal = terminalHarness.Repository.AddExisting("acct_terminal");
+        terminalHarness.Provider.EnqueueReadiness(Readiness(true, OrganizerPaymentProviderCapabilityState.Active, OrganizerPaymentProviderCapabilityState.Active, OrganizerPaymentProviderRequirementsState.Satisfied, Now.AddMinutes(10)));
+        terminalHarness.UnitOfWork.BeforeSerializableOperation = () => terminal.Disable("operator_disabled", Now.AddMinutes(8));
+
+        OrganizerPaymentReadinessReconciliationResult terminalResult = await terminalHarness.ReadinessService().ReconcileOnceAsync(CancellationToken.None);
+
+        await Assert.That(staleResult.SkippedCount).IsEqualTo(1);
+        await Assert.That(stale.StatusId).IsEqualTo((int)OrganizerPaymentProviderConnectionStatusEnum.Restricted);
+        await Assert.That(terminalResult.SkippedCount).IsEqualTo(1);
+        await Assert.That(terminal.StatusId).IsEqualTo((int)OrganizerPaymentProviderConnectionStatusEnum.Disabled);
+        await Assert.That(staleHarness.Repository.SaveChangesCount + terminalHarness.Repository.SaveChangesCount).IsEqualTo(0);
+    }
+
+    [Test]
+    public async Task ReadinessReconciliation_CancellationPropagatesAndBatchLimitIsRespected()
+    {
+        Harness canceled = new();
+        canceled.Repository.AddExisting("acct_cancel");
+        using var cts = new CancellationTokenSource();
+        await cts.CancelAsync();
+
+        await Assert.That(async () => await canceled.ReadinessService().ReconcileOnceAsync(cts.Token))
+            .Throws<OperationCanceledException>();
+
+        Harness limited = new();
+        limited.Repository.AddExisting("acct_one");
+        limited.Repository.AddExisting("acct_two");
+        limited.Provider.EnqueueReadiness(Readiness(true, OrganizerPaymentProviderCapabilityState.Active, OrganizerPaymentProviderCapabilityState.Active, OrganizerPaymentProviderRequirementsState.Satisfied, Now.AddMinutes(10)));
+
+        OrganizerPaymentReadinessReconciliationResult result = await limited.ReadinessService(batchSize: 1).ReconcileOnceAsync(CancellationToken.None);
+
+        await Assert.That(result.DueCount).IsEqualTo(1);
+        await Assert.That(limited.Provider.ReadinessCalls).IsEqualTo(1);
+        await Assert.That(limited.Repository.LastReadinessLimit).IsEqualTo(1);
+    }
+
     private sealed class Harness
     {
         public Harness(bool authenticated = true, bool controlled = true, bool activeTenantUser = true)
         {
             Repository = new FakeOrganizerPaymentConnectionRepository();
+            OperationRepository = new FakeOrganizerPaymentAccountOperationRepository();
+            Events = [];
             IActorRepository actorRepository = Substitute.For<IActorRepository>();
             actorRepository.GetActorWithDetails(ActorId, Arg.Any<CancellationToken>()).Returns(UserActor());
             ITenantUserRepository tenantUserRepository = Substitute.For<ITenantUserRepository>();
@@ -300,23 +639,49 @@ public sealed class OrganizerPaymentConnectionHandlerTests
             ITenantContext tenantContext = Substitute.For<ITenantContext>();
             tenantContext.TenantId.Returns(TenantId);
             IUnitOfWork unitOfWork = new InlineSerializableUnitOfWork();
+            UnitOfWork = new RecordingSerializableUnitOfWork();
             TimeProvider timeProvider = new FixedTimeProvider(Now);
             RecordHandler = new RecordOrganizerPaymentConnectionCommandHandler(Repository, actorRepository, tenantUserRepository, organizationTenantRepository, groupTenantRepository, organizationMemberRepository, groupMemberRepository, unitOfWork, tenantContext, currentUser, timeProvider);
             ReplaceHandler = new ReplaceOrganizerPaymentConnectionCommandHandler(Repository, actorRepository, tenantUserRepository, organizationTenantRepository, groupTenantRepository, organizationMemberRepository, groupMemberRepository, unitOfWork, tenantContext, currentUser, timeProvider);
             DisableHandler = new DisableOrganizerPaymentConnectionCommandHandler(Repository, actorRepository, tenantUserRepository, organizationTenantRepository, groupTenantRepository, organizationMemberRepository, groupMemberRepository, unitOfWork, tenantContext, currentUser, timeProvider);
             ListHandler = new ListOrganizerPaymentConnectionsQueryHandler(Repository, actorRepository, tenantUserRepository, organizationTenantRepository, groupTenantRepository, organizationMemberRepository, groupMemberRepository, tenantContext, currentUser);
             GetHandler = new GetOrganizerPaymentConnectionQueryHandler(Repository, actorRepository, tenantUserRepository, organizationTenantRepository, groupTenantRepository, organizationMemberRepository, groupMemberRepository, tenantContext, currentUser);
+            Repository.Events = Events;
+            OperationRepository.Events = Events;
+            Provider = new RecordingOrganizerPaymentOnboardingProvider(() => UnitOfWork.InSerializableOperation, Events);
+            OnboardingHandler = new CreateOrganizerPaymentOnboardingLinkCommandHandler(Repository, OperationRepository, Provider, actorRepository, tenantUserRepository, organizationTenantRepository, groupTenantRepository, organizationMemberRepository, groupMemberRepository, UnitOfWork, tenantContext, currentUser, timeProvider, NullLogger<CreateOrganizerPaymentOnboardingLinkCommandHandler>.Instance);
         }
 
         public FakeOrganizerPaymentConnectionRepository Repository { get; }
+        public FakeOrganizerPaymentAccountOperationRepository OperationRepository { get; }
+        public RecordingOrganizerPaymentOnboardingProvider Provider { get; }
+        public RecordingSerializableUnitOfWork UnitOfWork { get; }
+        public List<string> Events { get; }
         public RecordOrganizerPaymentConnectionCommandHandler RecordHandler { get; }
         public ReplaceOrganizerPaymentConnectionCommandHandler ReplaceHandler { get; }
         public DisableOrganizerPaymentConnectionCommandHandler DisableHandler { get; }
+        public CreateOrganizerPaymentOnboardingLinkCommandHandler OnboardingHandler { get; }
         public ListOrganizerPaymentConnectionsQueryHandler ListHandler { get; }
         public GetOrganizerPaymentConnectionQueryHandler GetHandler { get; }
 
+        public OrganizerPaymentReadinessReconciliationService ReadinessService(int batchSize = 25, int staleIntervalMinutes = 5) => new(
+            Repository,
+            Provider,
+            UnitOfWork,
+            Options.Create(new OrganizerPaymentReadinessReconciliationOptions
+            {
+                BatchSize = batchSize,
+                StaleIntervalMinutes = staleIntervalMinutes,
+                PollingIntervalSeconds = 60,
+                InitialDelaySeconds = 0
+            }),
+            new FixedTimeProvider(Now.AddMinutes(20)));
+
         public RecordOrganizerPaymentConnectionCommand RecordCommand(string externalAccountId) =>
             new(TenantId, ActorId, "stripe", "platform-live-eu", externalAccountId);
+
+        public CreateOrganizerPaymentOnboardingLinkCommand OnboardingCommand(Uri? returnUrl = null, Uri? refreshUrl = null) =>
+            new(TenantId, ActorId, "stripe", "platform-live-eu", returnUrl ?? new Uri("https://app.example/return"), refreshUrl ?? new Uri("https://app.example/refresh"));
     }
 
     private sealed class InlineSerializableUnitOfWork : IUnitOfWork
@@ -326,16 +691,108 @@ public sealed class OrganizerPaymentConnectionHandlerTests
         public Task<T> ExecuteSerializableAsync<T>(Func<CancellationToken, Task<T>> operation, CancellationToken ct = default) => operation(ct);
     }
 
+    private sealed class RecordingSerializableUnitOfWork : IUnitOfWork
+    {
+        public int SerializableCalls { get; private set; }
+        public bool InSerializableOperation { get; private set; }
+        public Action? BeforeSerializableOperation { get; set; }
+        public int BeforeSerializableOperationCallNumber { get; set; } = 1;
+
+        public Task ExecuteInTransactionAsync(Func<CancellationToken, Task> operation, CancellationToken ct = default) => operation(ct);
+        public Task<T> ExecuteInTransactionAsync<T>(Func<CancellationToken, Task<T>> operation, CancellationToken ct = default) => operation(ct);
+
+        public async Task<T> ExecuteSerializableAsync<T>(Func<CancellationToken, Task<T>> operation, CancellationToken ct = default)
+        {
+            SerializableCalls++;
+            if (SerializableCalls == BeforeSerializableOperationCallNumber)
+            {
+                BeforeSerializableOperation?.Invoke();
+            }
+            InSerializableOperation = true;
+            try
+            {
+                return await operation(ct);
+            }
+            finally
+            {
+                InSerializableOperation = false;
+            }
+        }
+    }
+
+    private sealed class RecordingOrganizerPaymentOnboardingProvider(Func<bool> isInsideTransaction, List<string> events) : IOrganizerPaymentOnboardingProvider
+    {
+        private readonly Queue<OrganizerPaymentProviderReadinessResult> _readinessResults = [];
+
+        public int AccountCreateCalls { get; private set; }
+        public int LinkCreateCalls { get; private set; }
+        public int ReadinessCalls { get; private set; }
+        public bool CalledInsideTransaction { get; private set; }
+        public OrganizerPaymentProviderAccountCreationResult NextAccountResult { get; set; } = OrganizerPaymentProviderAccountCreationResult.Created("acct_new");
+        public Func<CancellationToken, Exception?>? AccountCreateExceptionFactory { get; set; }
+        public Uri NextLinkUrl { get; set; } = new("https://payments.example/onboard/default");
+        public OrganizerPaymentProviderAccountCreationRequest? LastAccountRequest { get; private set; }
+        public OrganizerPaymentOnboardingLinkRequest? LastLinkRequest { get; private set; }
+
+        public void EnqueueReadiness(OrganizerPaymentProviderReadiness readiness) =>
+            _readinessResults.Enqueue(OrganizerPaymentProviderReadinessResult.Retrieved(readiness, readiness.EvidenceRevision));
+
+        public void EnqueueReadinessFailure(
+            string failureCode,
+            OrganizerPaymentProviderFailureKind failureKind,
+            string? providerRequestId) =>
+            _readinessResults.Enqueue(OrganizerPaymentProviderReadinessResult.Failed(failureCode, failureKind, providerRequestId));
+
+        public Task<OrganizerPaymentProviderAccountCreationResult> CreateAccountAsync(OrganizerPaymentProviderAccountCreationRequest request, CancellationToken cancellationToken)
+        {
+            AccountCreateCalls++;
+            CalledInsideTransaction |= isInsideTransaction();
+            LastAccountRequest = request;
+            events.Add("create-account");
+            Exception? exception = AccountCreateExceptionFactory?.Invoke(cancellationToken);
+            if (exception is not null)
+            {
+                throw exception;
+            }
+
+            return Task.FromResult(NextAccountResult);
+        }
+
+        public Task<OrganizerPaymentOnboardingLinkCreationResult> CreateOnboardingLinkAsync(OrganizerPaymentOnboardingLinkRequest request, CancellationToken cancellationToken)
+        {
+            LinkCreateCalls++;
+            CalledInsideTransaction |= isInsideTransaction();
+            LastLinkRequest = request;
+            events.Add("create-link");
+            return Task.FromResult(OrganizerPaymentOnboardingLinkCreationResult.Created(NextLinkUrl));
+        }
+
+        public Task<OrganizerPaymentProviderReadinessResult> GetReadinessAsync(OrganizerPaymentProviderReadinessRequest request, CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            ReadinessCalls++;
+            CalledInsideTransaction |= isInsideTransaction();
+            events.Add("get-readiness");
+            return Task.FromResult(_readinessResults.Count == 0
+                ? OrganizerPaymentProviderReadinessResult.Failed("not_used")
+                : _readinessResults.Dequeue());
+        }
+    }
+
     private sealed class FakeOrganizerPaymentConnectionRepository : IOrganizerPaymentProviderConnectionRepository
     {
         public List<OrganizerPaymentProviderConnection> Connections { get; } = [];
+        public List<string> Events { get; set; } = [];
         public int ReadCount { get; private set; }
+        public int HistoricalReadCount { get; private set; }
+        public int SaveChangesCount { get; private set; }
+        public int LastReadinessLimit { get; private set; }
 
-        public OrganizerPaymentProviderConnection AddExisting(string externalAccountId, Guid? organizerActorId = null)
+        public OrganizerPaymentProviderConnection AddExisting(string externalAccountId, Guid? organizerActorId = null, Guid? tenantId = null)
         {
             OrganizerPaymentProviderConnection connection = OrganizerPaymentProviderConnection.Create(
                 Guid.CreateVersion7(),
-                TenantId,
+                tenantId ?? TenantId,
                 organizerActorId ?? ActorId,
                 "stripe",
                 "platform-live-eu",
@@ -353,11 +810,48 @@ public sealed class OrganizerPaymentConnectionHandlerTests
                 && connection.ConnectPlatformId == connectPlatformId
                 && connection.StatusId is not (int)OrganizerPaymentProviderConnectionStatusEnum.Disabled and not (int)OrganizerPaymentProviderConnectionStatusEnum.Replaced));
 
-        public Task<OrganizerPaymentProviderConnection?> GetHistoricalByExternalAccountAsync(string providerCode, string connectPlatformId, string externalAccountId, CancellationToken cancellationToken) =>
-            Task.FromResult(Connections.SingleOrDefault(connection =>
+        public Task<OrganizerPaymentProviderConnection?> GetHistoricalByExternalAccountAsync(string providerCode, string connectPlatformId, string externalAccountId, CancellationToken cancellationToken)
+        {
+            HistoricalReadCount++;
+            return Task.FromResult(Connections.SingleOrDefault(connection =>
                 connection.ProviderCode == providerCode
                 && connection.ConnectPlatformId == connectPlatformId
                 && connection.ExternalAccountId == externalAccountId));
+        }
+
+        public Task<IReadOnlyList<OrganizerPaymentProviderConnection>> ListHistoricalByExternalAccountAsync(string providerCode, string externalAccountId, int limit, CancellationToken cancellationToken)
+        {
+            HistoricalReadCount++;
+            return Task.FromResult<IReadOnlyList<OrganizerPaymentProviderConnection>>(Connections
+                .Where(connection => connection.ProviderCode == providerCode && connection.ExternalAccountId == externalAccountId)
+                .Take(limit)
+                .ToArray());
+        }
+
+        public Task<IReadOnlyList<OrganizerPaymentProviderConnection>> ListDueReadinessChecksAsync(DateTime observedBefore, int limit, CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            LastReadinessLimit = limit;
+            return Task.FromResult<IReadOnlyList<OrganizerPaymentProviderConnection>>(Connections
+                .Where(connection =>
+                    !connection.IsDeleted
+                    && connection.StatusId is (int)OrganizerPaymentProviderConnectionStatusEnum.PendingOnboarding or (int)OrganizerPaymentProviderConnectionStatusEnum.Restricted
+                    && (connection.LastReadinessObservedAt is null || connection.LastReadinessObservedAt < observedBefore))
+                .OrderBy(connection => connection.LastReadinessObservedAt is null ? 0 : 1)
+                .ThenBy(connection => connection.LastReadinessObservedAt)
+                .ThenBy(connection => connection.CreatedAt)
+                .Take(limit)
+                .ToArray());
+        }
+
+        public Task<OrganizerPaymentProviderConnection?> GetByTenantProviderAndExternalAccountForUpdateAsync(Guid tenantId, string providerCode, string externalAccountId, CancellationToken cancellationToken)
+        {
+            ReadCount++;
+            return Task.FromResult(Connections.SingleOrDefault(connection =>
+                connection.TenantId == tenantId
+                && connection.ProviderCode == providerCode
+                && connection.ExternalAccountId == externalAccountId));
+        }
 
         public Task<OrganizerPaymentProviderConnection?> GetByTenantAndIdForUpdateAsync(Guid tenantId, Guid connectionId, CancellationToken cancellationToken)
         {
@@ -374,10 +868,86 @@ public sealed class OrganizerPaymentConnectionHandlerTests
         public Task CreateAsync(OrganizerPaymentProviderConnection connection, CancellationToken cancellationToken)
         {
             Connections.Add(connection);
+            Events.Add("persist");
             return Task.CompletedTask;
         }
 
-        public Task SaveChangesAsync(CancellationToken cancellationToken) => Task.CompletedTask;
+        public Task SaveChangesAsync(CancellationToken cancellationToken)
+        {
+            SaveChangesCount++;
+            Events.Add("save");
+            return Task.CompletedTask;
+        }
+    }
+
+    private static OrganizerPaymentProviderReadiness Readiness(
+        bool chargesEnabled,
+        OrganizerPaymentProviderCapabilityState cardPayments,
+        OrganizerPaymentProviderCapabilityState transfers,
+        OrganizerPaymentProviderRequirementsState requirements,
+        DateTime observedAt) => new(
+            chargesEnabled,
+            cardPayments,
+            transfers,
+            requirements,
+            requirements == OrganizerPaymentProviderRequirementsState.CurrentlyDue ? ["business_profile.url"] : [],
+            [],
+            [],
+            null,
+            "BE",
+            ["EUR"],
+            observedAt,
+            $"readiness-{observedAt.Ticks}");
+
+    private sealed class FakeOrganizerPaymentAccountOperationRepository : IOrganizerPaymentProviderAccountOperationRepository
+    {
+        public List<OrganizerPaymentProviderAccountOperation> Operations { get; } = [];
+        public List<string> Events { get; set; } = [];
+
+        public OrganizerPaymentProviderAccountOperation AddRequested()
+        {
+            OrganizerPaymentProviderAccountOperation operation = OrganizerPaymentProviderAccountOperation.CreateRequested(
+                Guid.CreateVersion7(),
+                TenantId,
+                ActorId,
+                "stripe",
+                "platform-live-eu",
+                Now);
+            Operations.Add(operation);
+            return operation;
+        }
+
+        public Task<OrganizerPaymentProviderAccountOperation?> GetActiveByScopeAsync(Guid tenantId, Guid organizerActorId, string providerCode, string connectPlatformId, CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            return Task.FromResult(Operations.SingleOrDefault(operation =>
+                operation.TenantId == tenantId
+                && operation.OrganizerActorId == organizerActorId
+                && operation.ProviderCode == providerCode
+                && operation.ConnectPlatformId == connectPlatformId
+                && operation.ActiveUniquenessSlot == "active"));
+        }
+
+        public Task<OrganizerPaymentProviderAccountOperation?> GetByTenantAndIdForUpdateAsync(Guid tenantId, Guid operationId, CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            return Task.FromResult(Operations.SingleOrDefault(operation => operation.TenantId == tenantId && operation.Id == operationId));
+        }
+
+        public Task CreateAsync(OrganizerPaymentProviderAccountOperation operation, CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            Operations.Add(operation);
+            Events.Add("persist-operation");
+            return Task.CompletedTask;
+        }
+
+        public Task SaveChangesAsync(CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            Events.Add("save-operation");
+            return Task.CompletedTask;
+        }
     }
 
     private sealed class FixedTimeProvider(DateTime now) : TimeProvider

@@ -46,6 +46,64 @@ public sealed class IncomingWebhookFrameworkTests
     }
 
     [Test]
+    public async Task StripeConnectRoute_UsesStableAnonymousSignedCallbackMetadata()
+    {
+        var controllerType = typeof(IncomingWebhooksController);
+        var action = controllerType.GetMethod(nameof(IncomingWebhooksController.RecordStripeConnectCallback))!;
+
+        await Assert.That(controllerType.GetCustomAttribute<EndpointClassificationAttribute>()?.Class).IsEqualTo(EndpointClass.Public);
+        await Assert.That(controllerType.GetCustomAttribute<RouteAttribute>()?.Template).IsEqualTo("api/integrations");
+        await AssertRoute(action, typeof(HttpPostAttribute), "stripe/connect", RouteNames.IntegrationStripeConnectCallback);
+        await Assert.That(action.GetCustomAttribute<AllowAnonymousAttribute>()).IsNotNull();
+        await Assert.That(action.GetCustomAttribute<EnableRateLimitingAttribute>()?.PolicyName).IsEqualTo(RateLimitingExtensions.PublicIngestionPolicy);
+    }
+
+    [Test]
+    public async Task RecordStripeConnectCallback_UsesStripeConnectProviderAndExactConfiguredLimit()
+    {
+        var tenantId = Guid.Parse("018f0000-0000-7000-8000-000000000001");
+        var rawPayload = "{\"id\":\"evt_123\",\"object\":\"event\"}";
+        var verification = IncomingWebhookVerificationResult.VerifiedTenantCredential(
+            tenantId,
+            "evt_123",
+            "account.updated",
+            "evt_123");
+        var read = IncomingWebhookReadResult.Success(
+            "stripe-connect",
+            rawPayload,
+            Encoding.UTF8.GetBytes(rawPayload),
+            DateTimeOffset.UtcNow,
+            ComputePayloadHash(rawPayload),
+            "application/json",
+            "utf-8",
+            new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase),
+            verification);
+        var intakeService = Substitute.For<IIncomingWebhookIntakeService>();
+        intakeService.ReadAndVerifyAsync(
+                Arg.Any<HttpRequest>(),
+                "stripe-connect",
+                12_345,
+                Arg.Any<CancellationToken>())
+            .Returns(read);
+        intakeService.CaptureAsync(read, Arg.Any<CancellationToken>())
+            .Returns(IncomingWebhookCaptureResult.Captured(Guid.CreateVersion7(), "evt_123", "evt_123"));
+        var controller = CreateController(intakeService, options: new WebhookOptions
+        {
+            Stripe = new WebhookStripeOptions { ConnectWebhookMaxBodyBytes = 12_345 }
+        });
+
+        var result = await controller.RecordStripeConnectCallback();
+
+        await Assert.That(result).IsTypeOf<AcceptedResult>();
+        await intakeService.Received(1).ReadAndVerifyAsync(
+            Arg.Any<HttpRequest>(),
+            "stripe-connect",
+            12_345,
+            Arg.Any<CancellationToken>());
+        await intakeService.Received(1).CaptureAsync(read, Arg.Any<CancellationToken>());
+    }
+
+    [Test]
     public async Task RecordSvixOperationalCallback_WhenVerificationFails_ReturnsSafeProblemDetails()
     {
         const string unsafePayload = "{\"tenantId\":\"018f0000-0000-7000-8000-000000000001\",\"secret\":\"raw-provider-secret\"}";
@@ -462,9 +520,11 @@ public sealed class IncomingWebhookFrameworkTests
         await Assert.That(attribute.Name).IsEqualTo(routeName);
     }
 
-    private static IncomingWebhooksController CreateController(IIncomingWebhookIntakeService intakeService) => new(
+    private static IncomingWebhooksController CreateController(
+        IIncomingWebhookIntakeService intakeService,
+        WebhookOptions? options = null) => new(
         intakeService,
-        new StaticOptionsMonitor<WebhookOptions>(new WebhookOptions
+        new StaticOptionsMonitor<WebhookOptions>(options ?? new WebhookOptions
         {
             Svix = new WebhookSvixOptions
             {

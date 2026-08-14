@@ -453,6 +453,12 @@ public partial class FallbackAuthorizationService
             return await EvaluateManageTicketsAccessAsync(resourceKind, resourceId, resourceAttributes, tenantId, eventId, cancellationToken);
         }
 
+        if (resourceKind == ResourceKinds.Event
+            && action == AuthorizationActions.Events.ManagePaidEventCommerce)
+        {
+            return await EvaluateManagePaidEventCommerceAccessAsync(resourceAttributes, cancellationToken);
+        }
+
         if (resourceKind == ResourceKinds.EventOrganizerClaim && !IsOrganizerClaimAction(action))
         {
             LogDecision("deny", "unknown_organizer_claim_action", resourceKind, resourceId, action);
@@ -561,6 +567,35 @@ public partial class FallbackAuthorizationService
         return await EvaluateEventRolePermissionAsync(resourceKind, resourceId, AuthorizationActions.Events.ManageTickets, tenantId, eventId, cancellationToken);
     }
 
+    private async Task<bool> EvaluateManagePaidEventCommerceAccessAsync(
+        IDictionary<string, object>? resourceAttributes,
+        CancellationToken cancellationToken)
+    {
+        if (_machinePrincipalAccessor.IsMachineCaller || !HasExactlyOneOrganizerActor(resourceAttributes))
+            return false;
+
+        var currentUserId = _adminContext.UserId ?? await _adminContext.ResolveUserIdAsync(cancellationToken);
+        if (!currentUserId.HasValue)
+            return false;
+
+        if (TryResolveGuidAttribute(resourceAttributes, "organizerUserId", out var organizerUserId))
+            return organizerUserId == currentUserId.Value;
+
+        if (TryResolveGuidAttribute(resourceAttributes, "organizerOrganizationId", out var organizerOrganizationId))
+        {
+            return await _organizationMemberRepository.HasPermissionInOrganization(
+                organizerOrganizationId,
+                currentUserId.Value,
+                PermissionCodes.EventManageFinance);
+        }
+
+        return TryResolveGuidAttribute(resourceAttributes, "organizerGroupId", out var organizerGroupId)
+            && await _groupMemberRepository.HasPermissionInGroup(
+                organizerGroupId,
+                currentUserId.Value,
+                PermissionCodes.EventManageFinance);
+    }
+
     private async Task<bool> IsVerifiedOrganizerControllerAsync(
         IDictionary<string, object>? resourceAttributes,
         CancellationToken cancellationToken)
@@ -589,6 +624,18 @@ public partial class FallbackAuthorizationService
                 organizerGroupId,
                 currentUserId.Value,
                 PermissionCodes.EventCreate);
+    }
+
+    private static bool HasExactlyOneOrganizerActor(IDictionary<string, object>? resourceAttributes)
+    {
+        if (!TryResolveGuidAttribute(resourceAttributes, "organizerActorId", out _))
+            return false;
+
+        var count = 0;
+        if (TryResolveGuidAttribute(resourceAttributes, "organizerUserId", out _)) count++;
+        if (TryResolveGuidAttribute(resourceAttributes, "organizerOrganizationId", out _)) count++;
+        if (TryResolveGuidAttribute(resourceAttributes, "organizerGroupId", out _)) count++;
+        return count == 1;
     }
 
     private async Task<bool> EvaluateEventCreateAccessAsync(

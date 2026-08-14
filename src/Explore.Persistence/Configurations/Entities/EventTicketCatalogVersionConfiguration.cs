@@ -14,6 +14,9 @@ public sealed class EventTicketCatalogVersionConfiguration : IEntityTypeConfigur
         builder.ToTable("event_ticket_catalog_versions");
         builder.Property(catalog => catalog.Id).ValueGeneratedNever();
         builder.Property(catalog => catalog.CurrencyCode).IsRequired().HasMaxLength(3);
+        builder.Property(catalog => catalog.MerchantDisclosureText).HasMaxLength(EventTicketCatalogVersion.MaxCommercialDisclosureTextLength);
+        builder.Property(catalog => catalog.RefundPolicyDisclosureText).HasMaxLength(EventTicketCatalogVersion.MaxCommercialDisclosureTextLength);
+        builder.Property(catalog => catalog.SupportContactDisclosureText).HasMaxLength(EventTicketCatalogVersion.MaxCommercialDisclosureTextLength);
         builder.Property(catalog => catalog.CreatedAt).IsRequired();
         builder.Property(catalog => catalog.IsDeleted).HasDefaultValue(false);
         builder.Property(catalog => catalog.ConcurrencyStamp).IsConcurrencyToken();

@@ -2,6 +2,7 @@
 // ABOUTME: Uses design-time Npgsql metadata and InMemory repositories without Docker or Testcontainers.
 
 using Explore.Application.Contracts.Infrastructure;
+using Explore.Application.Contracts.Persistence;
 using Explore.Application.Exceptions;
 using Explore.Domain;
 using Explore.Domain.Enums;
@@ -9,10 +10,14 @@ using Explore.Persistence;
 using Explore.Persistence.QueryFilters;
 using Explore.Persistence.Repositories;
 using Explore.Persistence.Seed;
+using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Storage;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using Npgsql;
 using DomainEvent = Explore.Domain.Event;
 
@@ -137,6 +142,559 @@ public sealed class TicketingMonetizationPersistenceTests
             index.IsUnique
             && index.Properties.Select(property => property.Name).SequenceEqual(["TenantId", "EventId"])
             && index.GetFilter() == "ticket_catalog_status_id = 2 AND is_deleted = false")).IsTrue();
+        await Assert.That(model.FindEntityType(typeof(EventTicketCatalogVersion))!.FindProperty(nameof(EventTicketCatalogVersion.MerchantDisclosureText))!.GetMaxLength())
+            .IsEqualTo(EventTicketCatalogVersion.MaxCommercialDisclosureTextLength);
+        await Assert.That(model.FindEntityType(typeof(EventTicketCatalogVersion))!.FindProperty(nameof(EventTicketCatalogVersion.RefundPolicyDisclosureText))!.GetMaxLength())
+            .IsEqualTo(EventTicketCatalogVersion.MaxCommercialDisclosureTextLength);
+        await Assert.That(model.FindEntityType(typeof(EventTicketCatalogVersion))!.FindProperty(nameof(EventTicketCatalogVersion.SupportContactDisclosureText))!.GetMaxLength())
+            .IsEqualTo(EventTicketCatalogVersion.MaxCommercialDisclosureTextLength);
+    }
+
+    [Test]
+    public async Task EfModel_MapsPaidEventPolicyAndOrganizerPaymentConnectionContractsWithoutSensitivePayloads()
+    {
+        await using var context = CreateModelContext();
+        IModel model = context.GetService<IDesignTimeModel>().Model;
+
+        IEntityType policy = model.FindEntityType(typeof(PaidEventPolicyVersion))!;
+        IEntityType accountOperation = model.FindEntityType(typeof(OrganizerPaymentProviderAccountOperation))!;
+        IEntityType connection = model.FindEntityType(typeof(OrganizerPaymentProviderConnection))!;
+        IEntityType policyOrganizerKind = model.FindEntityType(typeof(PaidEventPolicyAllowedOrganizerKind))!;
+        IEntityType policyCurrency = model.FindEntityType(typeof(PaidEventPolicyAllowedCurrency))!;
+        IEntityType policyRefundProtection = model.FindEntityType(typeof(PaidEventPolicyRefundProtection))!;
+        IEntityType policyRiskLimit = model.FindEntityType(typeof(PaidEventPolicyCurrencyRiskLimitRow))!;
+        IEntityType connectionCurrency = model.FindEntityType(typeof(OrganizerPaymentProviderConnectionSupportedCurrency))!;
+
+        await Assert.That(policy.GetTableName()).IsEqualTo("paid_event_policy_versions");
+        await Assert.That(policy.FindDeclaredQueryFilter(QueryFilterNames.Tenant)).IsNotNull();
+        await Assert.That(policyOrganizerKind.GetTableName()).IsEqualTo("paid_event_policy_allowed_organizer_kinds");
+        await Assert.That(policyCurrency.GetTableName()).IsEqualTo("paid_event_policy_allowed_currencies");
+        await Assert.That(policyRefundProtection.GetTableName()).IsEqualTo("paid_event_policy_refund_protections");
+        await Assert.That(policyRiskLimit.GetTableName()).IsEqualTo("paid_event_policy_currency_risk_limits");
+        await Assert.That(policyOrganizerKind.FindDeclaredQueryFilter(QueryFilterNames.Tenant)).IsNotNull();
+        await Assert.That(policyCurrency.FindDeclaredQueryFilter(QueryFilterNames.Tenant)).IsNotNull();
+        await Assert.That(policyRefundProtection.FindDeclaredQueryFilter(QueryFilterNames.Tenant)).IsNotNull();
+        await Assert.That(policyRiskLimit.FindDeclaredQueryFilter(QueryFilterNames.Tenant)).IsNotNull();
+        await Assert.That(connection.GetTableName()).IsEqualTo("organizer_payment_provider_connections");
+        await Assert.That(accountOperation.GetTableName()).IsEqualTo("organizer_payment_provider_account_operations");
+        await Assert.That(accountOperation.FindDeclaredQueryFilter(QueryFilterNames.Tenant)).IsNotNull();
+        await Assert.That(connectionCurrency.GetTableName()).IsEqualTo("organizer_payment_provider_connection_supported_currencies");
+        await Assert.That(connection.FindDeclaredQueryFilter(QueryFilterNames.Tenant)).IsNotNull();
+        await Assert.That(connection.FindDeclaredQueryFilter(QueryFilterNames.SoftDelete)).IsNotNull();
+        await Assert.That(connectionCurrency.FindDeclaredQueryFilter(QueryFilterNames.Tenant)).IsNotNull();
+        await Assert.That(connectionCurrency.FindDeclaredQueryFilter(QueryFilterNames.SoftDelete)).IsNotNull();
+        await Assert.That(policy.FindProperty(nameof(PaidEventPolicyVersion.PolicyScopeKey))!.GetMaxLength()).IsEqualTo(48);
+        await Assert.That(policy.FindProperty("MerchantDisclosureText")).IsNull();
+        await Assert.That(policy.FindProperty("RefundPolicyDisclosureText")).IsNull();
+        await Assert.That(policy.FindProperty("SupportContactDisclosureText")).IsNull();
+        await Assert.That(policy.FindProperty(nameof(PaidEventPolicyVersion.ActiveUniquenessSlot))!.IsNullable).IsFalse();
+        await Assert.That(policy.FindProperty("_allowedOrganizerKinds")).IsNull();
+        await Assert.That(policy.FindProperty("_allowedCurrencyCodes")).IsNull();
+        await Assert.That(policy.FindProperty("_refundProtections")).IsNull();
+        await Assert.That(policy.FindProperty("_currencyRiskLimits")).IsNull();
+        await Assert.That(connection.FindProperty(nameof(OrganizerPaymentProviderConnection.MerchantCountryCode))!.GetMaxLength()).IsEqualTo(2);
+        await Assert.That(connection.FindProperty(nameof(OrganizerPaymentProviderConnection.LastReadinessEvidenceRevision))!.GetMaxLength()).IsEqualTo(120);
+        await Assert.That(connection.FindProperty(nameof(OrganizerPaymentProviderConnection.ProviderCode))!.GetMaxLength()).IsEqualTo(40);
+        await Assert.That(connection.FindProperty(nameof(OrganizerPaymentProviderConnection.ConnectPlatformId))!.GetMaxLength()).IsEqualTo(120);
+        await Assert.That(connection.FindProperty(nameof(OrganizerPaymentProviderConnection.ExternalAccountId))!.GetMaxLength()).IsEqualTo(200);
+        await Assert.That(connection.FindProperty(nameof(OrganizerPaymentProviderConnection.ActiveScopeKey))!.GetMaxLength()).IsEqualTo(232);
+        await Assert.That(connection.FindProperty(nameof(OrganizerPaymentProviderConnection.ActiveUniquenessSlot))!.GetMaxLength()).IsEqualTo(48);
+        await Assert.That(connection.FindProperty("_supportedCurrencyCodes")).IsNull();
+        await Assert.That(connection.FindProperty(nameof(OrganizerPaymentProviderConnection.DisabledReasonCode))!.GetMaxLength()).IsEqualTo(80);
+        await Assert.That(accountOperation.FindProperty(nameof(OrganizerPaymentProviderAccountOperation.ProviderIdempotencyKey))!.GetMaxLength()).IsEqualTo(80);
+        await Assert.That(accountOperation.FindProperty(nameof(OrganizerPaymentProviderAccountOperation.ActiveScopeKey))!.GetMaxLength()).IsEqualTo(232);
+        await Assert.That(accountOperation.FindProperty(nameof(OrganizerPaymentProviderAccountOperation.ActiveUniquenessSlot))!.GetMaxLength()).IsEqualTo(80);
+        await Assert.That(accountOperation.FindProperty(nameof(OrganizerPaymentProviderAccountOperation.ExternalAccountId))!.GetMaxLength()).IsEqualTo(200);
+        await Assert.That(accountOperation.FindProperty(nameof(OrganizerPaymentProviderAccountOperation.FailureCode))!.GetMaxLength()).IsEqualTo(120);
+        await Assert.That(accountOperation.FindProperty(nameof(OrganizerPaymentProviderAccountOperation.ProviderRequestId))!.GetMaxLength()).IsEqualTo(120);
+        await Assert.That(policy.GetIndexes().Any(index =>
+            index.IsUnique
+            && HasProperties(index, nameof(PaidEventPolicyVersion.PolicyScopeKey), nameof(PaidEventPolicyVersion.ActiveUniquenessSlot))
+            && string.IsNullOrWhiteSpace(index.GetFilter()))).IsTrue();
+        await Assert.That(accountOperation.GetIndexes().Any(index =>
+            index.IsUnique
+            && HasProperties(index, nameof(OrganizerPaymentProviderAccountOperation.ActiveScopeKey), nameof(OrganizerPaymentProviderAccountOperation.ActiveUniquenessSlot))
+            && string.IsNullOrWhiteSpace(index.GetFilter()))).IsTrue();
+        await Assert.That(accountOperation.GetIndexes().Any(index =>
+            index.IsUnique
+            && HasProperties(index, nameof(OrganizerPaymentProviderAccountOperation.ProviderIdempotencyKey))
+            && string.IsNullOrWhiteSpace(index.GetFilter()))).IsTrue();
+        await Assert.That(connection.GetIndexes().Any(index =>
+            index.IsUnique
+            && HasProperties(index, nameof(OrganizerPaymentProviderConnection.ActiveScopeKey), nameof(OrganizerPaymentProviderConnection.ActiveUniquenessSlot))
+            && string.IsNullOrWhiteSpace(index.GetFilter()))).IsTrue();
+        await Assert.That(connection.GetIndexes().Any(index =>
+            index.IsUnique
+            && HasProperties(index,
+                nameof(OrganizerPaymentProviderConnection.ProviderCode),
+                nameof(OrganizerPaymentProviderConnection.ConnectPlatformId),
+                nameof(OrganizerPaymentProviderConnection.ExternalAccountId))
+            && string.IsNullOrWhiteSpace(index.GetFilter()))).IsTrue();
+        await Assert.That(connection.GetForeignKeys().Any(foreignKey =>
+            foreignKey.PrincipalEntityType.ClrType == typeof(OrganizerPaymentProviderConnection)
+            && foreignKey.Properties.Select(property => property.Name).SequenceEqual([
+                nameof(OrganizerPaymentProviderConnection.TenantId),
+                nameof(OrganizerPaymentProviderConnection.ReplacesConnectionId)])
+            && foreignKey.PrincipalKey.Properties.Select(property => property.Name).SequenceEqual([
+                nameof(OrganizerPaymentProviderConnection.TenantId),
+                nameof(OrganizerPaymentProviderConnection.Id)]))).IsTrue();
+        await Assert.That(connection.GetForeignKeys().Any(foreignKey =>
+            foreignKey.PrincipalEntityType.ClrType == typeof(OrganizerPaymentProviderConnection)
+            && foreignKey.Properties.Select(property => property.Name).SequenceEqual([
+                nameof(OrganizerPaymentProviderConnection.TenantId),
+                nameof(OrganizerPaymentProviderConnection.ReplacedByConnectionId)])
+            && foreignKey.PrincipalKey.Properties.Select(property => property.Name).SequenceEqual([
+                nameof(OrganizerPaymentProviderConnection.TenantId),
+                nameof(OrganizerPaymentProviderConnection.Id)]))).IsTrue();
+        await Assert.That(accountOperation.GetForeignKeys().Any(foreignKey =>
+            foreignKey.PrincipalEntityType.ClrType == typeof(OrganizerPaymentProviderConnection)
+            && foreignKey.Properties.Select(property => property.Name).SequenceEqual([
+                nameof(OrganizerPaymentProviderAccountOperation.TenantId),
+                nameof(OrganizerPaymentProviderAccountOperation.ConnectionId)])
+            && foreignKey.PrincipalKey.Properties.Select(property => property.Name).SequenceEqual([
+                nameof(OrganizerPaymentProviderConnection.TenantId),
+                nameof(OrganizerPaymentProviderConnection.Id)]))).IsTrue();
+        await Assert.That(connectionCurrency.GetForeignKeys().Any(foreignKey =>
+            foreignKey.PrincipalEntityType.ClrType == typeof(OrganizerPaymentProviderConnection)
+            && foreignKey.Properties.Select(property => property.Name).SequenceEqual([
+                nameof(OrganizerPaymentProviderConnectionSupportedCurrency.TenantId),
+                nameof(OrganizerPaymentProviderConnectionSupportedCurrency.OrganizerPaymentProviderConnectionId)])
+            && foreignKey.DeleteBehavior == DeleteBehavior.Cascade)).IsTrue();
+        await Assert.That(policyRiskLimit.FindProperty(nameof(PaidEventPolicyCurrencyRiskLimitRow.PerEventSalesCeilingMinor))!.GetColumnType()).IsEqualTo("bigint");
+        await Assert.That(connectionCurrency.FindProperty(nameof(OrganizerPaymentProviderConnectionSupportedCurrency.CurrencyCode))!.GetMaxLength()).IsEqualTo(3);
+
+        string[] sensitiveFragments = ["Secret", "Token", "Kyc", "Bank", "Payload", "Raw", "Json"];
+        await Assert.That(new[] { policy, accountOperation, connection, policyOrganizerKind, policyCurrency, policyRefundProtection, policyRiskLimit, connectionCurrency }.SelectMany(entity => entity.GetProperties()).Any(property =>
+            sensitiveFragments.Any(fragment => property.Name.Contains(fragment, StringComparison.OrdinalIgnoreCase)))).IsFalse();
+    }
+
+    [Test]
+    public async Task PaidEventPolicyVersion_PersistsAndReloadsNormalizedPolicyChildren()
+    {
+        await using var context = CreateInMemoryContext("paid-event-policy-reload");
+        Guid tenantId = Guid.CreateVersion7();
+        PaidEventPolicyVersion policy = PaidEventPolicyVersion.CreateTenant(
+            tenantId,
+            isPaymentsEnabled: true,
+            allowedOrganizerKinds: [ActorTypeEnum.Group, ActorTypeEnum.Organization],
+            requiresLocalVerification: true,
+            allowedCurrencyCodes: ["usd", "EUR"],
+            defaultCurrencyCode: "eur",
+            refundProtections: Enum.GetValues<PaidEventRefundProtection>(),
+            currencyRiskLimits:
+            [
+                PaidEventPolicyCurrencyRiskLimit.Create("usd", 100_00, 500_00, 75_00),
+                PaidEventPolicyCurrencyRiskLimit.Create("eur", 90_00, 450_00, 70_00)
+            ],
+            requiresFirstPaidEventReview: true,
+            farFutureReviewThresholdDays: 180);
+
+        context.Set<PaidEventPolicyVersion>().Add(policy);
+        await context.SaveChangesAsync();
+        context.TenantContext = new TestTenantContext(tenantId);
+        await Assert.That(await context.Set<PaidEventPolicyAllowedOrganizerKind>().CountAsync()).IsEqualTo(2);
+        await Assert.That(await context.Set<PaidEventPolicyAllowedCurrency>().CountAsync()).IsEqualTo(2);
+        await Assert.That(await context.Set<PaidEventPolicyRefundProtection>().CountAsync()).IsEqualTo(Enum.GetValues<PaidEventRefundProtection>().Length);
+        await Assert.That(await context.Set<PaidEventPolicyCurrencyRiskLimitRow>().CountAsync()).IsEqualTo(2);
+        context.ChangeTracker.Clear();
+
+        PaidEventPolicyVersion reloaded = await context.Set<PaidEventPolicyVersion>().SingleAsync(value => value.Id == policy.Id);
+
+        await Assert.That(reloaded.TenantId).IsEqualTo(tenantId);
+        await Assert.That(reloaded.PolicyScopeKey).IsEqualTo($"tenant:{tenantId:N}");
+        await Assert.That(reloaded.ActiveUniquenessSlot).IsEqualTo(0);
+        await Assert.That(reloaded.AllowedOrganizerKinds.Order().SequenceEqual([ActorTypeEnum.Organization, ActorTypeEnum.Group])).IsTrue();
+        await Assert.That(reloaded.AllowedCurrencyCodes.Order(StringComparer.Ordinal).SequenceEqual(["EUR", "USD"])).IsTrue();
+        await Assert.That(reloaded.DefaultCurrencyCode).IsEqualTo("EUR");
+        await Assert.That(reloaded.RefundProtections.Order().SequenceEqual(Enum.GetValues<PaidEventRefundProtection>().Order())).IsTrue();
+        await Assert.That(reloaded.CurrencyRiskLimits.OrderBy(limit => limit.CurrencyCode).Select(limit => limit.CurrencyCode).SequenceEqual(["EUR", "USD"])).IsTrue();
+        await Assert.That(reloaded.CurrencyRiskLimits.Single(limit => limit.CurrencyCode == "USD").PerEventSalesCeilingMinor).IsEqualTo(100_00);
+    }
+
+    [Test]
+    public async Task PaidEventPolicyRepository_ReadsActiveInstanceAndTenantVersionsWithChildrenAndPersistsRevisions()
+    {
+        string databaseName = $"paid-policy-repository-{Guid.NewGuid():N}";
+        var root = new InMemoryDatabaseRoot();
+        Guid tenantId = Guid.CreateVersion7();
+        PaidEventPolicyVersion instance = PaidEventPolicyVersion.CreateDefaultInstance().CreateRevision(
+            true,
+            [ActorTypeEnum.Organization, ActorTypeEnum.Group],
+            true,
+            ["EUR", "USD"],
+            "EUR",
+            Enum.GetValues<PaidEventRefundProtection>(),
+            [PaidEventPolicyCurrencyRiskLimit.Create("EUR", 500_000, 1_000_000, 250_000)],
+            true,
+            180);
+        PaidEventPolicyVersion tenant = PaidEventPolicyVersion.CreateTenant(
+            tenantId,
+            true,
+            [ActorTypeEnum.Organization],
+            true,
+            ["EUR"],
+            "EUR",
+            Enum.GetValues<PaidEventRefundProtection>(),
+            [PaidEventPolicyCurrencyRiskLimit.Create("EUR", 250_000, 750_000, 100_000)],
+            true,
+            90);
+
+        await using (ExploreDbContext seed = CreateNamedInMemoryContext(databaseName, root))
+        {
+            seed.EnableTenantFilterBypass("Seeds paid policy repository rows.");
+            seed.Set<PaidEventPolicyVersion>().AddRange(instance, tenant);
+            await seed.SaveChangesAsync();
+        }
+
+        await using ExploreDbContext context = CreateNamedInMemoryContext(databaseName, root, tenantId);
+        var repository = new PaidEventPolicyRepository(context);
+
+        PaidEventPolicyVersion? activeInstance = await repository.GetActiveInstanceAsync(CancellationToken.None);
+        PaidEventPolicyVersion? activeTenant = await repository.GetActiveTenantAsync(tenantId, CancellationToken.None);
+        PaidEventPolicyVersion tenantRevision = activeTenant!.CreateRevision(
+            true,
+            activeTenant.AllowedOrganizerKinds,
+            true,
+            activeTenant.AllowedCurrencyCodes,
+            activeTenant.DefaultCurrencyCode,
+            activeTenant.RefundProtections,
+            activeTenant.CurrencyRiskLimits,
+            activeTenant.RequiresFirstPaidEventReview,
+            activeTenant.FarFutureReviewThresholdDays);
+        await repository.AddAsync(tenantRevision, CancellationToken.None);
+        await repository.SaveChangesAsync(CancellationToken.None);
+        context.ChangeTracker.Clear();
+
+        PaidEventPolicyVersion[] history = await repository.ListTenantHistoryAsync(tenantId, CancellationToken.None);
+
+        await Assert.That(activeInstance?.TenantId).IsNull();
+        await Assert.That(activeInstance?.AllowedCurrencyCodes.SequenceEqual(["EUR", "USD"])).IsTrue();
+        await Assert.That(activeInstance?.CurrencyRiskLimits.Single().CurrencyCode).IsEqualTo("EUR");
+        await Assert.That(history.Select(policy => policy.VersionNumber).SequenceEqual([1, 2])).IsTrue();
+        await Assert.That(history.Single(policy => policy.VersionNumber == 1).IsActive).IsFalse();
+        await Assert.That(history.Single(policy => policy.VersionNumber == 2).IsActive).IsTrue();
+    }
+
+    [Test]
+    public async Task PaidEventPolicyRepository_HonorsTenantIsolationForTenantVersions()
+    {
+        string databaseName = $"paid-policy-tenant-isolation-{Guid.NewGuid():N}";
+        var root = new InMemoryDatabaseRoot();
+        Guid tenantA = Guid.CreateVersion7();
+        Guid tenantB = Guid.CreateVersion7();
+
+        await using (ExploreDbContext seed = CreateNamedInMemoryContext(databaseName, root))
+        {
+            seed.EnableTenantFilterBypass("Seeds paid policy tenant isolation rows.");
+            seed.Set<PaidEventPolicyVersion>().AddRange(CreateTenantPaidPolicy(tenantA), CreateTenantPaidPolicy(tenantB));
+            await seed.SaveChangesAsync();
+        }
+
+        await using ExploreDbContext context = CreateNamedInMemoryContext(databaseName, root, tenantA);
+        var repository = new PaidEventPolicyRepository(context);
+
+        await Assert.That(await repository.GetActiveTenantAsync(tenantA, CancellationToken.None)).IsNotNull();
+        await Assert.That(await repository.GetActiveTenantAsync(tenantB, CancellationToken.None)).IsNull();
+    }
+
+    [Test]
+    public async Task OrganizerPaymentProviderConnection_PersistsReadinessMetadataAndNamedFilters()
+    {
+        string databaseName = $"organizer-payment-filter-{Guid.NewGuid():N}";
+        var root = new InMemoryDatabaseRoot();
+        Guid tenantA = Guid.CreateVersion7();
+        Guid tenantB = Guid.CreateVersion7();
+        OrganizerPaymentProviderConnection visible = ReadyConnection(tenantA, Guid.CreateVersion7(), "acct_visible", 0);
+        OrganizerPaymentProviderConnection deleted = ReadyConnection(tenantA, Guid.CreateVersion7(), "acct_deleted", 1);
+        OrganizerPaymentProviderConnection otherTenant = ReadyConnection(tenantB, Guid.CreateVersion7(), "acct_other", 2);
+        deleted.IsDeleted = true;
+
+        await using (ExploreDbContext seed = CreateNamedInMemoryContext(databaseName, root))
+        {
+            seed.EnableTenantFilterBypass("Seeds organizer payment provider filter test rows.");
+            seed.Set<OrganizerPaymentProviderConnection>().AddRange(visible, deleted, otherTenant);
+            await seed.SaveChangesAsync();
+        }
+
+        await using ExploreDbContext tenant = CreateNamedInMemoryContext(databaseName, root, tenantA);
+        OrganizerPaymentProviderConnection reloaded = await tenant.Set<OrganizerPaymentProviderConnection>().SingleAsync();
+
+        await Assert.That(await tenant.Set<OrganizerPaymentProviderConnectionSupportedCurrency>().CountAsync()).IsEqualTo(2);
+        await Assert.That(reloaded.SupportedCurrencyCodes.SequenceEqual(["EUR", "USD"])).IsTrue();
+        await Assert.That(reloaded.MerchantCountryCode).IsEqualTo("BE");
+        await Assert.That(reloaded.ChargeCapabilityStateId).IsEqualTo((int)ChargeCapabilityState.Active);
+        await Assert.That(reloaded.RequirementsStateId).IsEqualTo((int)ProviderRequirementsState.Satisfied);
+        await Assert.That(reloaded.LastReadinessObservedAt).IsEqualTo(new DateTime(2026, 8, 13, 12, 0, 0, DateTimeKind.Utc));
+        await Assert.That(reloaded.LastReadinessEvidenceRevision).IsEqualTo("stripe-readiness-0");
+        await Assert.That(await tenant.Set<OrganizerPaymentProviderConnection>().IgnoreQueryFilters([QueryFilterNames.SoftDelete]).CountAsync()).IsEqualTo(2);
+    }
+
+    [Test]
+    public async Task OrganizerPaymentProviderConnectionRepository_IsRegisteredAndHonorsActiveAndHistoricalIdentitySemantics()
+    {
+        string databaseName = $"organizer-payment-repository-{Guid.NewGuid():N}";
+        var root = new InMemoryDatabaseRoot();
+        Guid tenantId = Guid.CreateVersion7();
+        Guid organizerActorId = Guid.CreateVersion7();
+        OrganizerPaymentProviderConnection active = ReadyConnection(tenantId, organizerActorId, "acct_active", 0);
+        OrganizerPaymentProviderConnection disabled = ReadyConnection(tenantId, organizerActorId, "acct_disabled", 1);
+        OrganizerPaymentProviderConnection replaced = ReadyConnection(tenantId, organizerActorId, "acct_replaced", 2);
+        OrganizerPaymentProviderConnection softDeleted = ReadyConnection(tenantId, organizerActorId, "acct_soft_deleted", 3);
+        disabled.Disable("operator_disabled", new DateTime(2026, 8, 13, 13, 0, 0, DateTimeKind.Utc));
+        OrganizerPaymentProviderConnection replacement = replaced.ReplaceWith(Guid.CreateVersion7(), "acct_replacement", new DateTime(2026, 8, 13, 14, 0, 0, DateTimeKind.Utc));
+        softDeleted.IsDeleted = true;
+
+        await using (ExploreDbContext seed = CreateNamedInMemoryContext(databaseName, root))
+        {
+            seed.EnableTenantFilterBypass("Seeds organizer payment provider repository test rows.");
+            seed.Set<OrganizerPaymentProviderConnection>().AddRange(active, disabled, replaced, replacement, softDeleted);
+            await seed.SaveChangesAsync();
+        }
+
+        using ServiceProvider serviceProvider = CreateRepositoryServiceProvider(databaseName, root, tenantId);
+        using IServiceScope scope = serviceProvider.CreateScope();
+        IOrganizerPaymentProviderConnectionRepository repository = scope.ServiceProvider.GetRequiredService<IOrganizerPaymentProviderConnectionRepository>();
+
+        OrganizerPaymentProviderConnection? activeByScope = await repository.GetActiveByScopeAsync(tenantId, organizerActorId, "stripe", "platform-main", CancellationToken.None);
+        OrganizerPaymentProviderConnection? disabledHistorical = await repository.GetHistoricalByExternalAccountAsync("stripe", "platform-main", "acct_disabled", CancellationToken.None);
+        OrganizerPaymentProviderConnection? replacedHistorical = await repository.GetHistoricalByExternalAccountAsync("stripe", "platform-main", "acct_replaced", CancellationToken.None);
+        OrganizerPaymentProviderConnection? softDeletedHistorical = await repository.GetHistoricalByExternalAccountAsync("stripe", "platform-main", "acct_soft_deleted", CancellationToken.None);
+        IReadOnlyList<OrganizerPaymentProviderConnection> listed = await repository.ListByTenantAndActorAsync(tenantId, organizerActorId, CancellationToken.None);
+
+        await Assert.That(activeByScope?.Id).IsEqualTo(active.Id);
+        await Assert.That(disabledHistorical?.StatusId).IsEqualTo((int)OrganizerPaymentProviderConnectionStatusEnum.Disabled);
+        await Assert.That(replacedHistorical?.StatusId).IsEqualTo((int)OrganizerPaymentProviderConnectionStatusEnum.Replaced);
+        await Assert.That(softDeletedHistorical?.Id).IsEqualTo(softDeleted.Id);
+        await Assert.That(listed.Select(connection => connection.Id).Order().SequenceEqual(new[] { active.Id, disabled.Id, replaced.Id, replacement.Id }.Order())).IsTrue();
+    }
+
+    [Test]
+    public async Task OrganizerPaymentProviderConnectionRepository_ListDueReadinessChecksBoundsStatusOrderAndNoTracking()
+    {
+        string databaseName = $"organizer-payment-readiness-due-{Guid.NewGuid():N}";
+        var root = new InMemoryDatabaseRoot();
+        Guid tenantId = Guid.CreateVersion7();
+        Guid organizerActorId = Guid.CreateVersion7();
+        DateTime cutoff = new(2026, 8, 14, 12, 0, 0, DateTimeKind.Utc);
+        OrganizerPaymentProviderConnection neverObserved = OrganizerPaymentProviderConnection.Create(Guid.CreateVersion7(), tenantId, organizerActorId, "stripe", "platform-main", "acct_never", cutoff.AddMinutes(-30));
+        OrganizerPaymentProviderConnection olderRestricted = OrganizerPaymentProviderConnection.Create(Guid.CreateVersion7(), tenantId, organizerActorId, "stripe", "platform-main-2", "acct_old", cutoff.AddMinutes(-20));
+        olderRestricted.ApplyReadiness(OrganizerPaymentProviderReadinessObservation.Create("BE", ChargeCapabilityState.Pending, ProviderRequirementsState.CurrentlyDue, ["EUR"], cutoff.AddMinutes(-10), "old"));
+        OrganizerPaymentProviderConnection newerRestricted = OrganizerPaymentProviderConnection.Create(Guid.CreateVersion7(), tenantId, organizerActorId, "stripe", "platform-main-3", "acct_new", cutoff.AddMinutes(-10));
+        newerRestricted.ApplyReadiness(OrganizerPaymentProviderReadinessObservation.Create("BE", ChargeCapabilityState.Pending, ProviderRequirementsState.CurrentlyDue, ["EUR"], cutoff.AddMinutes(-1), "new"));
+        OrganizerPaymentProviderConnection ready = ReadyConnection(tenantId, organizerActorId, "acct_ready", 1);
+        OrganizerPaymentProviderConnection disabled = OrganizerPaymentProviderConnection.Create(Guid.CreateVersion7(), tenantId, organizerActorId, "stripe", "platform-main-4", "acct_disabled", cutoff.AddMinutes(-40));
+        disabled.Disable("operator_disabled", cutoff.AddMinutes(-30));
+        OrganizerPaymentProviderConnection deleted = OrganizerPaymentProviderConnection.Create(Guid.CreateVersion7(), tenantId, organizerActorId, "stripe", "platform-main-5", "acct_deleted", cutoff.AddMinutes(-50));
+        deleted.IsDeleted = true;
+
+        await using (ExploreDbContext seed = CreateNamedInMemoryContext(databaseName, root))
+        {
+            seed.EnableTenantFilterBypass("Seeds organizer payment readiness due rows.");
+            seed.Set<OrganizerPaymentProviderConnection>().AddRange(olderRestricted, ready, neverObserved, newerRestricted, disabled, deleted);
+            await seed.SaveChangesAsync();
+        }
+
+        await using ExploreDbContext context = CreateNamedInMemoryContext(databaseName, root, tenantId);
+        var repository = new OrganizerPaymentProviderConnectionRepository(context);
+
+        IReadOnlyList<OrganizerPaymentProviderConnection> due = await repository.ListDueReadinessChecksAsync(cutoff, 2, CancellationToken.None);
+
+        await Assert.That(due.Select(connection => connection.Id).SequenceEqual([neverObserved.Id, olderRestricted.Id])).IsTrue();
+        await Assert.That(due.All(connection => connection.StatusId is (int)OrganizerPaymentProviderConnectionStatusEnum.PendingOnboarding or (int)OrganizerPaymentProviderConnectionStatusEnum.Restricted)).IsTrue();
+        await Assert.That(due.Any(connection => connection.Id == ready.Id || connection.Id == disabled.Id || connection.Id == deleted.Id || connection.Id == newerRestricted.Id)).IsFalse();
+        await Assert.That(context.ChangeTracker.Entries<OrganizerPaymentProviderConnection>()).IsEmpty();
+    }
+
+    [Test]
+    public async Task OrganizerPaymentProviderConnectionRepositoryListDueReadinessChecksCrossesTenantsWithoutAmbientTenantButPreservesSoftDelete()
+    {
+        string databaseName = $"organizer-payment-readiness-cross-tenant-{Guid.NewGuid():N}";
+        var root = new InMemoryDatabaseRoot();
+        Guid tenantA = Guid.CreateVersion7();
+        Guid tenantB = Guid.CreateVersion7();
+        Guid unrelatedTenant = Guid.CreateVersion7();
+        Guid organizerActorId = Guid.CreateVersion7();
+        DateTime cutoff = new(2026, 8, 14, 12, 0, 0, DateTimeKind.Utc);
+        OrganizerPaymentProviderConnection tenantADue = OrganizerPaymentProviderConnection.Create(Guid.CreateVersion7(), tenantA, organizerActorId, "stripe", "platform-main", "acct_due_a", cutoff.AddMinutes(-30));
+        OrganizerPaymentProviderConnection tenantBDue = OrganizerPaymentProviderConnection.Create(Guid.CreateVersion7(), tenantB, organizerActorId, "stripe", "platform-main", "acct_due_b", cutoff.AddMinutes(-20));
+        OrganizerPaymentProviderConnection deletedDue = OrganizerPaymentProviderConnection.Create(Guid.CreateVersion7(), tenantA, organizerActorId, "stripe", "platform-main", "acct_deleted_due", cutoff.AddMinutes(-40));
+        deletedDue.IsDeleted = true;
+
+        await using (ExploreDbContext seed = CreateNamedInMemoryContext(databaseName, root))
+        {
+            seed.EnableTenantFilterBypass("Seeds organizer payment readiness cross-tenant queue rows.");
+            seed.Set<OrganizerPaymentProviderConnection>().AddRange(tenantADue, tenantBDue, deletedDue);
+            await seed.SaveChangesAsync();
+        }
+
+        await using ExploreDbContext noTenantContext = CreateNamedInMemoryContext(databaseName, root);
+        var noTenantRepository = new OrganizerPaymentProviderConnectionRepository(noTenantContext);
+        await using ExploreDbContext unrelatedTenantContext = CreateNamedInMemoryContext(databaseName, root, unrelatedTenant);
+        var unrelatedTenantRepository = new OrganizerPaymentProviderConnectionRepository(unrelatedTenantContext);
+
+        IReadOnlyList<OrganizerPaymentProviderConnection> withoutAmbientTenant = await noTenantRepository.ListDueReadinessChecksAsync(cutoff, 10, CancellationToken.None);
+        IReadOnlyList<OrganizerPaymentProviderConnection> withDifferentAmbientTenant = await unrelatedTenantRepository.ListDueReadinessChecksAsync(cutoff, 10, CancellationToken.None);
+
+        Guid[] expectedIds = [tenantADue.Id, tenantBDue.Id];
+        await Assert.That(withoutAmbientTenant.Select(connection => connection.Id).SequenceEqual(expectedIds)).IsTrue();
+        await Assert.That(withDifferentAmbientTenant.Select(connection => connection.Id).SequenceEqual(expectedIds)).IsTrue();
+        await Assert.That(withoutAmbientTenant.Any(connection => connection.Id == deletedDue.Id)).IsFalse();
+        await Assert.That(withDifferentAmbientTenant.Any(connection => connection.Id == deletedDue.Id)).IsFalse();
+    }
+
+    [Test]
+    public async Task OrganizerPaymentProviderConnectionRepository_IsScopedInPersistenceComposition()
+    {
+        var services = new ServiceCollection();
+        IConfiguration configuration = new ConfigurationBuilder().Build();
+
+        services.ConfigurePersistenceServices(configuration, skipDbContextRegistration: true, skipLookupCacheInitializer: true);
+
+        ServiceDescriptor descriptor = services.Single(value =>
+            value.ServiceType == typeof(IOrganizerPaymentProviderConnectionRepository));
+        await Assert.That(descriptor.Lifetime).IsEqualTo(ServiceLifetime.Scoped);
+        await Assert.That(descriptor.ImplementationType).IsNotNull();
+        await Assert.That(services.Single(value => value.ServiceType == typeof(IOrganizerPaymentProviderAccountOperationRepository)).Lifetime).IsEqualTo(ServiceLifetime.Scoped);
+        await Assert.That(services.Single(value => value.ServiceType == typeof(IPaidEventPolicyRepository)).Lifetime).IsEqualTo(ServiceLifetime.Scoped);
+    }
+
+    [Test]
+    public async Task OrganizerPaymentProviderAccountOperationSqliteUniqueActiveSlotBlocksDuplicateAndReleasesAfterTerminal()
+    {
+        await using SqliteConnection connection = await OpenSqliteConnectionAsync();
+        await using TicketingTestDbContext context = CreateSqliteContext(connection);
+        await context.Database.EnsureCreatedAsync();
+        Guid tenantId = Guid.CreateVersion7();
+        Guid organizerActorId = Guid.CreateVersion7();
+        context.AddRange(CreateActiveTenantStatus(), CreateOrganizationActorType(), CreateTenant(tenantId), CreateActor(organizerActorId));
+        OrganizerPaymentProviderAccountOperation active = CreateAccountOperation(tenantId, organizerActorId, 0);
+        OrganizerPaymentProviderAccountOperation duplicate = CreateAccountOperation(tenantId, organizerActorId, 1);
+
+        context.Set<OrganizerPaymentProviderAccountOperation>().Add(active);
+        await context.SaveChangesAsync();
+        context.Set<OrganizerPaymentProviderAccountOperation>().Add(duplicate);
+        await Assert.ThrowsAsync<DbUpdateException>(() => context.SaveChangesAsync());
+        context.ChangeTracker.Clear();
+        context.TenantContext = new TestTenantContext(tenantId);
+
+        active = await context.Set<OrganizerPaymentProviderAccountOperation>().SingleAsync(operation => operation.Id == active.Id);
+        active.RejectByProvider("account_invalid", "req_bad", new DateTime(2026, 8, 14, 12, 30, 0, DateTimeKind.Utc));
+        OrganizerPaymentProviderAccountOperation successor = CreateAccountOperation(tenantId, organizerActorId, 2);
+        context.Set<OrganizerPaymentProviderAccountOperation>().Add(successor);
+        await context.SaveChangesAsync();
+
+        await Assert.That(active.ActiveUniquenessSlot).IsEqualTo($"providerrejected:{active.Id:N}");
+        await Assert.That(successor.ActiveUniquenessSlot).IsEqualTo("active");
+    }
+
+    [Test]
+    public async Task PaidEventPolicyVersionSqliteUniqueActiveSlotBlocksDuplicateAndReleasesAfterRevision()
+    {
+        await using SqliteConnection connection = await OpenSqliteConnectionAsync();
+        await using TicketingTestDbContext context = CreateSqliteContext(connection);
+        await context.Database.EnsureCreatedAsync();
+        Guid tenantId = Guid.CreateVersion7();
+        context.AddRange(CreateActiveTenantStatus(), CreateOrganizationActorType(), CreateTenant(tenantId));
+        PaidEventPolicyVersion active = CreateTenantPaidPolicy(tenantId);
+        PaidEventPolicyVersion duplicate = CreateTenantPaidPolicy(tenantId);
+
+        context.Set<PaidEventPolicyVersion>().Add(active);
+        await context.SaveChangesAsync();
+        context.Set<PaidEventPolicyVersion>().Add(duplicate);
+        await Assert.ThrowsAsync<DbUpdateException>(() => context.SaveChangesAsync());
+        context.ChangeTracker.Clear();
+        context.TenantContext = new TestTenantContext(tenantId);
+
+        active = await context.Set<PaidEventPolicyVersion>().SingleAsync(policy => policy.Id == active.Id);
+        PaidEventPolicyVersion successor = active.CreateRevision(
+            isPaymentsEnabled: true,
+            allowedOrganizerKinds: [ActorTypeEnum.Organization],
+            requiresLocalVerification: true,
+            allowedCurrencyCodes: ["EUR"],
+            defaultCurrencyCode: "EUR",
+            refundProtections: Enum.GetValues<PaidEventRefundProtection>(),
+            currencyRiskLimits: [],
+            requiresFirstPaidEventReview: true,
+            farFutureReviewThresholdDays: 180);
+        context.Set<PaidEventPolicyVersion>().Add(successor);
+        await context.SaveChangesAsync();
+
+        await Assert.That(active.ActiveUniquenessSlot).IsEqualTo(1);
+        await Assert.That(successor.ActiveUniquenessSlot).IsEqualTo(0);
+    }
+
+    [Test]
+    public async Task OrganizerPaymentProviderConnectionSqliteUniqueActiveSlotBlocksDuplicateAndReleasesAfterDisable()
+    {
+        await using SqliteConnection connection = await OpenSqliteConnectionAsync();
+        await using TicketingTestDbContext context = CreateSqliteContext(connection);
+        await context.Database.EnsureCreatedAsync();
+        Guid tenantId = Guid.CreateVersion7();
+        Guid organizerActorId = Guid.CreateVersion7();
+        context.AddRange(CreateActiveTenantStatus(), CreateOrganizationActorType(), CreateTenant(tenantId), CreateActor(organizerActorId));
+        OrganizerPaymentProviderConnection active = ReadyConnection(tenantId, organizerActorId, "acct_active", 0);
+        OrganizerPaymentProviderConnection duplicate = ReadyConnection(tenantId, organizerActorId, "acct_duplicate", 1);
+
+        context.Set<OrganizerPaymentProviderConnection>().Add(active);
+        await context.SaveChangesAsync();
+        context.Set<OrganizerPaymentProviderConnection>().Add(duplicate);
+        await Assert.ThrowsAsync<DbUpdateException>(() => context.SaveChangesAsync());
+        context.ChangeTracker.Clear();
+        context.TenantContext = new TestTenantContext(tenantId);
+
+        active = await context.Set<OrganizerPaymentProviderConnection>().SingleAsync(connection => connection.Id == active.Id);
+        active.Disable("operator_disabled", new DateTime(2026, 8, 13, 13, 0, 0, DateTimeKind.Utc));
+        OrganizerPaymentProviderConnection successor = ReadyConnection(tenantId, organizerActorId, "acct_successor", 2);
+        context.Set<OrganizerPaymentProviderConnection>().Add(successor);
+        await context.SaveChangesAsync();
+
+        await Assert.That(active.ActiveUniquenessSlot).IsEqualTo($"disabled:{active.Id:N}");
+        await Assert.That(successor.ActiveUniquenessSlot).IsEqualTo("active");
+    }
+
+    [Test]
+    public async Task OrganizerPaymentProviderConnectionSqliteReplacementPersistsActiveSlotAndSelfReferencingLineageWithStagedSaves()
+    {
+        await using SqliteConnection connection = await OpenSqliteConnectionAsync();
+        await using TicketingTestDbContext context = CreateSqliteContext(connection);
+        await context.Database.EnsureCreatedAsync();
+        Guid tenantId = Guid.CreateVersion7();
+        Guid organizerActorId = Guid.CreateVersion7();
+        context.AddRange(CreateActiveTenantStatus(), CreateOrganizationActorType(), CreateTenant(tenantId), CreateActor(organizerActorId));
+        OrganizerPaymentProviderConnection current = ReadyConnection(tenantId, organizerActorId, "acct_current", 0);
+        context.Set<OrganizerPaymentProviderConnection>().Add(current);
+        await context.SaveChangesAsync();
+        context.ChangeTracker.Clear();
+        context.TenantContext = new TestTenantContext(tenantId);
+        var repository = new OrganizerPaymentProviderConnectionRepository(context);
+
+        OrganizerPaymentProviderConnection managed = (await repository.GetByTenantAndIdForUpdateAsync(tenantId, current.Id, CancellationToken.None))!;
+        OrganizerPaymentProviderConnection replacement = managed.ReplaceWith(
+            Guid.CreateVersion7(),
+            "acct_replacement",
+            new DateTime(2026, 8, 13, 14, 0, 0, DateTimeKind.Utc));
+        await repository.SaveChangesAsync(CancellationToken.None);
+
+        await repository.CreateAsync(replacement, CancellationToken.None);
+        await repository.SaveChangesAsync(CancellationToken.None);
+
+        managed.MarkReplacedBy(replacement.Id);
+        await repository.SaveChangesAsync(CancellationToken.None);
+
+        context.ChangeTracker.Clear();
+        OrganizerPaymentProviderConnection[] persisted = await context.Set<OrganizerPaymentProviderConnection>()
+            .OrderBy(row => row.CreatedAt)
+            .ToArrayAsync();
+        OrganizerPaymentProviderConnection oldConnection = persisted.Single(row => row.Id == current.Id);
+        OrganizerPaymentProviderConnection newConnection = persisted.Single(row => row.Id == replacement.Id);
+
+        await Assert.That(oldConnection.ReplacedByConnectionId).IsEqualTo(newConnection.Id);
+        await Assert.That(newConnection.ReplacesConnectionId).IsEqualTo(oldConnection.Id);
+        await Assert.That(oldConnection.ActiveUniquenessSlot).IsEqualTo($"replaced:{oldConnection.Id:N}");
+        await Assert.That(newConnection.ActiveUniquenessSlot).IsEqualTo("active");
+        await Assert.That(oldConnection.StatusId).IsEqualTo((int)OrganizerPaymentProviderConnectionStatusEnum.Replaced);
+        await Assert.That(newConnection.StatusId).IsEqualTo((int)OrganizerPaymentProviderConnectionStatusEnum.PendingOnboarding);
+        await Assert.That((await repository.GetActiveByScopeAsync(tenantId, organizerActorId, "stripe", "platform-main", CancellationToken.None))?.Id).IsEqualTo(newConnection.Id);
     }
 
     [Test]
@@ -457,6 +1015,18 @@ public sealed class TicketingMonetizationPersistenceTests
         .UseNpgsql("Host=localhost;Database=ticketing_model;Username=unused;Password=unused")
         .UseSnakeCaseNamingConvention().Options);
 
+    private static async Task<SqliteConnection> OpenSqliteConnectionAsync()
+    {
+        var connection = new SqliteConnection("Data Source=:memory:");
+        await connection.OpenAsync();
+        return connection;
+    }
+
+    private static TicketingTestDbContext CreateSqliteContext(SqliteConnection connection) => new(new DbContextOptionsBuilder<ExploreDbContext>()
+        .UseSqlite(connection)
+        .UseSnakeCaseNamingConvention()
+        .Options);
+
     private static TicketingTestDbContext CreateInMemoryContext(string name, SaveChangesInterceptor? interceptor = null)
     {
         var optionsBuilder = new DbContextOptionsBuilder<ExploreDbContext>()
@@ -468,6 +1038,109 @@ public sealed class TicketingMonetizationPersistenceTests
 
         return new(optionsBuilder.Options);
     }
+
+    private static TicketingTestDbContext CreateNamedInMemoryContext(string databaseName, InMemoryDatabaseRoot databaseRoot, Guid? tenantId = null)
+    {
+        var context = new TicketingTestDbContext(new DbContextOptionsBuilder<ExploreDbContext>()
+            .UseInMemoryDatabase(databaseName, databaseRoot)
+            .Options);
+        if (tenantId is { } value)
+        {
+            context.TenantContext = new TestTenantContext(value);
+        }
+
+        return context;
+    }
+
+    private static ServiceProvider CreateRepositoryServiceProvider(string databaseName, InMemoryDatabaseRoot databaseRoot, Guid tenantId)
+    {
+        var services = new ServiceCollection();
+        services.AddScoped<ExploreDbContext>(_ => CreateNamedInMemoryContext(databaseName, databaseRoot, tenantId));
+        services.ConfigurePersistenceServices(new ConfigurationBuilder().Build(), skipDbContextRegistration: true, skipLookupCacheInitializer: true);
+        return services.BuildServiceProvider(validateScopes: true);
+    }
+
+    private static OrganizerPaymentProviderConnection ReadyConnection(Guid tenantId, Guid organizerActorId, string externalAccountId, int revision)
+    {
+        OrganizerPaymentProviderConnection connection = OrganizerPaymentProviderConnection.Create(
+            Guid.CreateVersion7(),
+            tenantId,
+            organizerActorId,
+            "stripe",
+            "platform-main",
+            externalAccountId,
+            new DateTime(2026, 8, 13, 11, 0, 0, DateTimeKind.Utc).AddMinutes(revision));
+        connection.ApplyReadiness(OrganizerPaymentProviderReadinessObservation.Create(
+            "be",
+            ChargeCapabilityState.Active,
+            ProviderRequirementsState.Satisfied,
+            ["usd", "EUR", "usd"],
+            new DateTime(2026, 8, 13, 12, 0, 0, DateTimeKind.Utc).AddMinutes(revision),
+            $"stripe-readiness-{revision}"));
+        return connection;
+    }
+
+    private static OrganizerPaymentProviderAccountOperation CreateAccountOperation(Guid tenantId, Guid organizerActorId, int revision) =>
+        OrganizerPaymentProviderAccountOperation.CreateRequested(
+            Guid.CreateVersion7(),
+            tenantId,
+            organizerActorId,
+            "stripe",
+            "platform-main",
+            new DateTime(2026, 8, 14, 12, 0, 0, DateTimeKind.Utc).AddMinutes(revision));
+
+    private static PaidEventPolicyVersion CreateTenantPaidPolicy(Guid tenantId) => PaidEventPolicyVersion.CreateTenant(
+        tenantId,
+        isPaymentsEnabled: true,
+        allowedOrganizerKinds: [ActorTypeEnum.Organization],
+        requiresLocalVerification: true,
+        allowedCurrencyCodes: ["EUR"],
+        defaultCurrencyCode: "EUR",
+        refundProtections: Enum.GetValues<PaidEventRefundProtection>(),
+        currencyRiskLimits: [],
+        requiresFirstPaidEventReview: true,
+        farFutureReviewThresholdDays: 180);
+
+    private static Tenant CreateTenant(Guid tenantId) => new()
+    {
+        Id = tenantId,
+        FullName = "SQLite tenant",
+        Slug = $"sqlite-{tenantId:N}",
+        TenantStatusId = (int)TenantStatusEnum.Active,
+        TenantStatus = null!,
+        CreatedAt = new DateTime(2026, 8, 13, 10, 0, 0, DateTimeKind.Utc)
+    };
+
+    private static TenantStatus CreateActiveTenantStatus() => new()
+    {
+        Id = (int)TenantStatusEnum.Active,
+        MasterCode = "ACTIVE",
+        FullName = "Active",
+        IsActiveState = true
+    };
+
+    private static ActorType CreateOrganizationActorType() => new()
+    {
+        Id = (int)ActorTypeEnum.Organization,
+        MasterCode = "ORGANIZATION",
+        FullName = "Organization"
+    };
+
+    private static Actor CreateActor(Guid actorId) => new()
+    {
+        Id = actorId,
+        ActorTypeId = (int)ActorTypeEnum.Organization,
+        ActorType = null!,
+        Pii = new ActorPii
+        {
+            DisplayName = "SQLite organizer"
+        },
+        CreatedAt = new DateTime(2026, 8, 13, 10, 0, 0, DateTimeKind.Utc),
+        ConcurrencyStamp = Guid.CreateVersion7()
+    };
+
+    private static bool HasProperties(IIndex index, params string[] properties) =>
+        index.Properties.Select(property => property.Name).SequenceEqual(properties);
 
     private sealed record TestTenantContext(Guid TenantId) : ITenantContext;
 

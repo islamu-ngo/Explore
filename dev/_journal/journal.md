@@ -961,3 +961,28 @@ When startup is blocked by data that violates an earlier migration, do not try t
 - [ ] Stays in journal only (one-off debugging lesson)
 
 ---
+
+[2026-08-14 Europe/Brussels] — Clean-room isolation after official-doc source return
+
+**Context**: While working in the Task 16.4 workstream, an official-documentation lookup tool was used for external behavior research before any Task 16.4 implementation existed in the repository. The session was under the repository clean-room/IP-governance rules.
+
+**Symptom / Observation**: The documentation tool unexpectedly returned source-bearing SDK material instead of only source-free behavioral facts. No excerpts, API snippets, third-party structure, naming, control flow, tests, or comments from that material were retained in the implementation context.
+
+**Root Cause**: The external documentation retrieval surface can include implementation-style SDK excerpts even when the agent intent is source-free functional research, so official-doc tooling is not automatically safe for clean-room implementation context.
+
+**Resolution**: The source-bearing material was discarded, the contaminated context was not used for implementation, and Task 16.4 implementation work was moved to fresh source-free subagent contexts. Those contexts received only sanitized official behavior and repository-native design requirements, with independent structure, sequence, organization, naming, tests, and documentation choices.
+
+**Why This Matters for Future Work**: Clean-room stop conditions apply to tool output as well as human-provided material. When an official-doc tool returns source-like excerpts before implementation starts, the lazy safe path is to discard the output, restart implementation in a fresh source-free context, and pass only sanitized behavior plus repository-native constraints forward.
+
+**References**:
+- `docs/legal/IP_GOVERNANCE.md`
+- Task 16.4 workstream
+
+**Promotion Consideration**:
+- [ ] Candidate for `docs/QUICK_REFERENCE.md` (new non-inferable rule)
+- [ ] Candidate for new `.claude/rules/*.md` entry
+- [x] Candidate for skill update: `ip-clean-room`
+- [ ] Candidate for ADR / `MAJOR_DECISIONS.md`
+- [ ] Stays in journal only (one-off debugging lesson)
+
+---

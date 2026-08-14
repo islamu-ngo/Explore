@@ -1,5 +1,5 @@
 // ABOUTME: Canonical catalog of authorization action strings matching Cerbos policy definitions.
-// ABOUTME: Replaces PermissionAction enum; organized by resource kind for discoverability.
+// ABOUTME: Organizes canonical authorization action strings by resource kind for discoverability.
 
 namespace Explore.Application.Authorization;
 
@@ -96,6 +96,7 @@ public static class AuthorizationActions
         public const string ViewOrganizerClaims = "view-organizer-claims";
         public const string ManageRegistrations = "manage-registrations";
         public const string ManageTickets = "manage-tickets";
+        public const string ManagePaidEventCommerce = "manage-paid-event-commerce";
         public const string ManageAttendees = "manage-attendees";
     }
 

@@ -77,6 +77,12 @@ public static class SecretDefinitionRegistry
             public const string DbPassword = "keycloak.db_password";
         }
 
+        public static class Stripe
+        {
+            public const string PlatformSecretKey = "payments.stripe.platform_secret_key";
+            public const string WebhookSecret = "payments.stripe.webhook_secret";
+        }
+
         public static class Atproto
         {
             public const string OAuthClientPrivateJwks = "auth.atproto.oauth_client_private_jwks";
@@ -344,6 +350,29 @@ public static class SecretDefinitionRegistry
                 DefaultEnvironmentVariableName = "KEYCLOAK_DB_PASSWORD",
                 IsBootstrapSecret = false,
                 Description = "Keycloak backing database password (read by Keycloak itself).",
+            },
+
+            new()
+            {
+                Key = Keys.Stripe.PlatformSecretKey,
+                AllowedScopes = instanceOnly,
+                AllowedSources = nonBootstrapSources,
+                DefaultInfisicalPath = "/stripe",
+                DefaultInfisicalKey = "STRIPE_PLATFORM_SECRET_KEY",
+                DefaultEnvironmentVariableName = "STRIPE_PLATFORM_SECRET_KEY",
+                IsBootstrapSecret = false,
+                Description = "Stripe platform secret key reference.",
+            },
+            new()
+            {
+                Key = Keys.Stripe.WebhookSecret,
+                AllowedScopes = instanceOnly,
+                AllowedSources = nonBootstrapSources,
+                DefaultInfisicalPath = "/stripe",
+                DefaultInfisicalKey = "STRIPE_WEBHOOK_SECRET",
+                DefaultEnvironmentVariableName = "STRIPE_WEBHOOK_SECRET",
+                IsBootstrapSecret = false,
+                Description = "Stripe webhook signing secret reference.",
             },
 
             new()

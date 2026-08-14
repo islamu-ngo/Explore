@@ -59,6 +59,8 @@ public partial class FallbackAuthorizationService
         IReadOnlySet<Guid> AdminGroupIds,
         IReadOnlySet<Guid> EventCreateOrgIds,
         IReadOnlySet<Guid> EventCreateGroupIds,
+        IReadOnlySet<Guid> EventFinanceOrgIds,
+        IReadOnlySet<Guid> EventFinanceGroupIds,
         Guid? UserId);
 
     private async Task<AuthorityProfile> ResolveAuthorityProfileAsync(CancellationToken cancellationToken)
@@ -82,6 +84,18 @@ public partial class FallbackAuthorizationService
                 PermissionCodes.EventCreate,
                 cancellationToken) ?? []).ToHashSet()
             : [];
+        var eventFinanceOrgIds = userId.HasValue
+            ? (await _organizationMemberRepository.GetOrganizationIdsWhereUserHasPermission(
+                userId.Value,
+                PermissionCodes.EventManageFinance,
+                cancellationToken) ?? []).ToHashSet()
+            : [];
+        var eventFinanceGroupIds = userId.HasValue
+            ? (await _groupMemberRepository.GetGroupIdsWhereUserHasPermission(
+                userId.Value,
+                PermissionCodes.EventManageFinance,
+                cancellationToken) ?? []).ToHashSet()
+            : [];
         return new AuthorityProfile(
             isInstanceAdmin,
             isTenantAdmin,
@@ -90,6 +104,8 @@ public partial class FallbackAuthorizationService
             adminGroupIds,
             eventCreateOrgIds,
             eventCreateGroupIds,
+            eventFinanceOrgIds,
+            eventFinanceGroupIds,
             userId);
     }
 
@@ -155,6 +171,8 @@ public partial class FallbackAuthorizationService
                 => EvaluateManageRegistrationsWithProfile(profile, eventAuthority, resourceId, resourceAttributes),
             "islamuevent_event" when action == AuthorizationActions.Events.ManageTickets
                 => EvaluateManageTicketsWithProfile(profile, eventAuthority, resourceId, resourceAttributes),
+            "islamuevent_event" when action == AuthorizationActions.Events.ManagePaidEventCommerce
+                => EvaluateManagePaidEventCommerceWithProfile(profile, resourceId, resourceAttributes),
             "islamuevent_event" or "islamuevent_event_session" or "islamuevent_event_session_group" or "islamuevent_event_session_agenda_item" or "islamuevent_event_day" or "islamuevent_event_agenda_item"
                 => HasEventContextForProfile(profile, resourceKind, resourceId, resourceAttributes)
                     && (resourceKind == ResourceKinds.Event && IsEventModerationAction(action)
@@ -237,6 +255,26 @@ public partial class FallbackAuthorizationService
         && HasEventContextForProfile(profile, ResourceKinds.Event, resourceId, resourceAttributes)
         && (IsVerifiedOrganizerControllerFromProfile(profile, resourceAttributes)
             || HasEventRolePermission(eventAuthority, ResourceKinds.Event, resourceId, AuthorizationActions.Events.ManageTickets, resourceAttributes));
+
+    private static bool EvaluateManagePaidEventCommerceWithProfile(
+        AuthorityProfile profile,
+        string resourceId,
+        IDictionary<string, object>? resourceAttributes)
+    {
+        if (!HasEventContextForProfile(profile, ResourceKinds.Event, resourceId, resourceAttributes)
+            || !HasExactlyOneOrganizerActor(resourceAttributes)
+            || !profile.UserId.HasValue)
+        {
+            return false;
+        }
+
+        return TryResolveGuidAttribute(resourceAttributes, "organizerUserId", out var organizerUserId)
+                && organizerUserId == profile.UserId.Value
+            || TryResolveGuidAttribute(resourceAttributes, "organizerOrganizationId", out var organizerOrganizationId)
+                && profile.EventFinanceOrgIds.Contains(organizerOrganizationId)
+            || TryResolveGuidAttribute(resourceAttributes, "organizerGroupId", out var organizerGroupId)
+                && profile.EventFinanceGroupIds.Contains(organizerGroupId);
+    }
 
     private static bool IsVerifiedOrganizerControllerFromProfile(
         AuthorityProfile profile,

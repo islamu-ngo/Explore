@@ -345,13 +345,12 @@ Convention tests in `Event.Architecture.Tests/` enforce accessibility rules at b
 
 Personal Settings uses two deliberately distinct navigation labels when administrative scopes are available: `Settings scopes` changes the governed scope, while `Personal settings sections` changes the focused section. The section navigation precedes content in DOM and focus order, remains sticky below the fixed app bar on desktop, and becomes non-sticky above the content on narrow viewports. View all keeps one page `h1`, gives every rendered section a unique `h2`/`aria-labelledby` pair, announces metadata-search result counts politely, uses logical CSS, and disables section entrance motion when `prefers-reduced-motion` is active.
 
-### AuthorizationParityTests (4 tests)
+### AuthorizationParityTests (3 tests)
 
 | Test | Rule |
 |---|---|
 | `RegisteredResourceKinds_ShouldHave_FallbackCase` | Every resource kind has a fallback case in authorization |
 | `RegisteredResourceKinds_ShouldHave_CerbosPolicy` | Every resource kind maps to a Cerbos policy file |
-| `AllPermissionActions_ShouldBe_MappedInToActionString` | All permission actions have string mappings |
 | `CerbosPolicies_ShouldHave_FallbackCase` | Every Cerbos policy defines a fallback case |
 
 ### Service Integration Guide

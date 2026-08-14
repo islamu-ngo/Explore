@@ -66,6 +66,9 @@ public sealed class GetEventTicketCatalogManagementQueryHandler(
             StatusId = catalog.TicketCatalogStatusId,
             StatusCode = catalog.TicketCatalogStatus?.MasterCode,
             StatusName = catalog.TicketCatalogStatus?.FullName,
+            MerchantDisclosureText = catalog.MerchantDisclosureText,
+            RefundPolicyDisclosureText = catalog.RefundPolicyDisclosureText,
+            SupportContactDisclosureText = catalog.SupportContactDisclosureText,
             TicketTypes = catalog.TicketTypes
                 .Where(ticketType => !ticketType.IsDeleted)
                 .Select(Map)

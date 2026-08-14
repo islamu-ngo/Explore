@@ -91,7 +91,7 @@ ABOUTME: Keeps release notes short and focused on externally observable API beha
 
 ## Breaking Change Evidence
 
-Intentional breaking API changes must add an entry to this file in the same PR that changes `schemas/openapi.json`, `docs/API_CONTRACT_INVENTORY.md`, or `Explore.Blazor.Client/Clients/EventApiClient.g.cs`.
+Intentional breaking API changes must add an entry to this file in the same PR that changes `schemas/openapi_islamu-event.json`, `docs/API_CONTRACT_INVENTORY.md`, or `Explore.Blazor.Client/Clients/EventApiClient.g.cs`.
 
 Each breaking-change entry must include:
 

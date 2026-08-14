@@ -145,6 +145,7 @@ public static class MachineScopeMapping
         AuthorizationActions.Events.ModerateLight => true,
         AuthorizationActions.Events.ModerateHeavy => true,
         AuthorizationActions.Events.Unmoderate => true,
+        AuthorizationActions.Events.ManagePaidEventCommerce => true,
         AuthorizationActions.SyncApply => true,
         AuthorizationActions.ExportSharedContacts => true,
         AuthorizationActions.SendMessage => true,

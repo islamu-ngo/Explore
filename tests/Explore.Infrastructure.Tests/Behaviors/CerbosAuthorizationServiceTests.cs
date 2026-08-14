@@ -47,6 +47,16 @@ public class CerbosAuthorizationServiceTests
 
         _machinePrincipalAccessor.IsMachineCaller.Returns(false);
         _machinePrincipalAccessor.Current.Returns((Explore.Application.Authentication.ApiKeyPrincipalContext?)null);
+        _organizationMemberRepository.GetOrganizationIdsWhereUserHasPermission(
+                Arg.Any<Guid>(),
+                Arg.Any<string>(),
+                Arg.Any<CancellationToken>())
+            .Returns([]);
+        _groupMemberRepository.GetGroupIdsWhereUserHasPermission(
+                Arg.Any<Guid>(),
+                Arg.Any<string>(),
+                Arg.Any<CancellationToken>())
+            .Returns([]);
     }
 
     [Test]

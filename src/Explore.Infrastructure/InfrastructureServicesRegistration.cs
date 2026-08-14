@@ -36,6 +36,7 @@ using Explore.Infrastructure.Mail.Unsubscribe;
 using Explore.Infrastructure.Management;
 using Explore.Infrastructure.Messaging;
 using Explore.Infrastructure.NotificationFanout;
+using Explore.Infrastructure.Payments.Stripe;
 using Explore.Infrastructure.Registration;
 using Explore.Infrastructure.Services;
 using Explore.Infrastructure.Services.Federation;
@@ -92,6 +93,21 @@ public static class InfrastructureServicesRegistration
         services.AddScoped<IPrivacyErasureProviderLocatorProtector, PrivacyErasureProviderLocatorProtector>();
         services.AddScoped<IRegistrationSensitiveValueProtector, RegistrationSensitiveValueProtector>();
         services.AddScoped<IPrivacyErasureCredentialCleanupService, PrivacyErasureCredentialCleanupService>();
+        services.AddOptions<StripePaymentOptions>()
+            .Bind(configuration.GetSection(StripePaymentOptions.SectionName))
+            .ValidateOnStart();
+        services.AddSingleton<IValidateOptions<StripePaymentOptions>, StripePaymentOptionsValidator>();
+        services.AddHttpClient(StripeConnectAccountAdapter.HttpClientName, client =>
+        {
+            client.Timeout = TimeSpan.FromSeconds(15);
+        })
+        .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler
+        {
+            AllowAutoRedirect = false,
+            UseCookies = false,
+            ConnectTimeout = TimeSpan.FromSeconds(10)
+        });
+        services.AddScoped<IOrganizerPaymentOnboardingProvider, StripeConnectAccountAdapter>();
 
         services.AddOptions<ManagedControlPlaneOptions>()
             .Bind(configuration.GetSection(ManagedControlPlaneOptions.SectionName))
@@ -341,6 +357,8 @@ public static class InfrastructureServicesRegistration
         services.AddScoped<IIncomingWebhookEffectProcessingService, IncomingWebhookEffectProcessingService>();
         services.AddScoped<IIncomingWebhookHandler, CoopDecisionIncomingWebhookHandler>();
         services.AddScoped<IIncomingWebhookHandler, RegistrationProviderSubmissionIncomingWebhookHandler>();
+        services.AddScoped<IIncomingWebhookVerifier, StripeConnectIncomingWebhookVerifier>();
+        services.AddScoped<IIncomingWebhookHandler, StripeConnectIncomingWebhookHandler>();
         services.AddOptions<IncomingWebhookProcessingSettings>()
             .Bind(configuration.GetSection(IncomingWebhookProcessingSettings.SectionName))
             .ValidateDataAnnotations()

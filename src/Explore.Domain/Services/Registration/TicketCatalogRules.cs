@@ -19,6 +19,14 @@ public static class TicketCatalogRules
             throw new InvalidOperationException("A published ticket catalog requires at least one ticket type.");
         }
 
+        if (liveTicketTypes.Any(static ticketType => ticketType.TicketPricingModeId != (int)TicketPricingModeEnum.Free)
+            && (string.IsNullOrWhiteSpace(catalog.MerchantDisclosureText)
+                || string.IsNullOrWhiteSpace(catalog.RefundPolicyDisclosureText)
+                || string.IsNullOrWhiteSpace(catalog.SupportContactDisclosureText)))
+        {
+            throw new InvalidOperationException("Paid ticket catalogs require merchant, refund, and support disclosures before publication.");
+        }
+
         foreach (EventTicketType ticketType in liveTicketTypes)
         {
             if (!string.Equals(ticketType.CurrencyCode, catalog.CurrencyCode, StringComparison.Ordinal))

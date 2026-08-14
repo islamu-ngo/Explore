@@ -213,7 +213,7 @@ tests:
     input:
       principals: ["event_owner"]
       resources: ["event_1"]
-      actions: ["view", "update", "delete", "publish", "manage-team", "manage-owner", "transfer-ownership", "manage-finance", "manage-registrations", "manage-tickets"]
+      actions: ["view", "update", "delete", "publish", "manage-team", "manage-owner", "transfer-ownership", "manage-finance", "manage-registrations", "manage-tickets", "manage-paid-event-commerce"]
     expected:
       - principal: "event_owner"
         resource: "event_1"
@@ -228,12 +228,13 @@ tests:
           manage-finance: EFFECT_ALLOW
           manage-registrations: EFFECT_DENY
           manage-tickets: EFFECT_ALLOW
+          manage-paid-event-commerce: EFFECT_DENY
 
   - name: "Event manager can update and publish but cannot manage ownership or finance"
     input:
       principals: ["event_manager"]
       resources: ["event_1"]
-      actions: ["view", "update", "delete", "publish", "manage-team", "manage-owner", "transfer-ownership", "manage-finance", "manage-registrations", "manage-tickets"]
+      actions: ["view", "update", "delete", "publish", "manage-team", "manage-owner", "transfer-ownership", "manage-finance", "manage-registrations", "manage-tickets", "manage-paid-event-commerce"]
     expected:
       - principal: "event_manager"
         resource: "event_1"
@@ -248,6 +249,7 @@ tests:
           manage-finance: EFFECT_DENY
           manage-registrations: EFFECT_DENY
           manage-tickets: EFFECT_ALLOW
+          manage-paid-event-commerce: EFFECT_DENY
 
   - name: "Event update alone does not grant ticket management"
     input:

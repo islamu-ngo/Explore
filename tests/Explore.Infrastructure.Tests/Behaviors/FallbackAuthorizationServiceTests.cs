@@ -79,6 +79,16 @@ public class FallbackAuthorizationServiceTests
         _tenantContext.TenantId.Returns(TestTenantId);
         _machinePrincipalAccessor.IsMachineCaller.Returns(false);
         _machinePrincipalAccessor.Current.Returns((Explore.Application.Authentication.ApiKeyPrincipalContext?)null);
+        _organizationMemberRepository.GetOrganizationIdsWhereUserHasPermission(
+                Arg.Any<Guid>(),
+                Arg.Any<string>(),
+                Arg.Any<CancellationToken>())
+            .Returns([]);
+        _groupMemberRepository.GetGroupIdsWhereUserHasPermission(
+                Arg.Any<Guid>(),
+                Arg.Any<string>(),
+                Arg.Any<CancellationToken>())
+            .Returns([]);
 
         _service = new FallbackAuthorizationService(
             _adminContext,
@@ -2760,6 +2770,125 @@ public class FallbackAuthorizationServiceTests
             new(ResourceKinds.Event, contributorEventId.ToString(), AuthorizationActions.Events.ManageTickets, contributorAttributes),
             new(ResourceKinds.Event, assignedEventId.ToString(), AuthorizationActions.Events.ManageTickets, new Dictionary<string, object> { ["eventId"] = assignedEventId }),
             new(ResourceKinds.Event, assignedEventId.ToString(), AuthorizationActions.Events.ManageTickets, CreateEventContextAttributes(Guid.NewGuid()))
+        ]);
+
+        await Assert.That(results).IsEquivalentTo([true, true, false, false, false]);
+    }
+
+    [Test]
+    [Category("PaidEventCommerceAuthorization")]
+    public async Task IsAllowed_ManagePaidEventCommerce_AllowsOnlyExactOrganizerFinanceControllers()
+    {
+        const string action = AuthorizationActions.Events.ManagePaidEventCommerce;
+        var userId = Guid.NewGuid();
+        var personalEventId = Guid.NewGuid();
+        var organizationEventId = Guid.NewGuid();
+        var groupEventId = Guid.NewGuid();
+        var assignedEventId = Guid.NewGuid();
+        _adminContext.UserId.Returns(userId);
+        _adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(false);
+        _adminContext.IsTenantAdminAsync(TestTenantId, Arg.Any<CancellationToken>()).Returns(false);
+        _organizationMemberRepository.HasPermissionInOrganization(TestOrgId, userId, PermissionCodes.EventManageFinance)
+            .Returns(true);
+        _groupMemberRepository.HasPermissionInGroup(TestGroupId, userId, PermissionCodes.EventManageFinance)
+            .Returns(true);
+        ConfigureEventAuthority(userId, assignedEventId, PermissionCodes.EventManageFinance);
+
+        await Assert.That(await _service.IsAllowedAsync(
+            ResourceKinds.Event,
+            personalEventId.ToString(),
+            action,
+            CreateVerifiedOrganizerAttributes(personalEventId, userId: userId))).IsTrue();
+        await Assert.That(await _service.IsAllowedAsync(
+            ResourceKinds.Event,
+            organizationEventId.ToString(),
+            action,
+            CreateVerifiedOrganizerAttributes(organizationEventId, organizationId: TestOrgId))).IsTrue();
+        await Assert.That(await _service.IsAllowedAsync(
+            ResourceKinds.Event,
+            groupEventId.ToString(),
+            action,
+            CreateVerifiedOrganizerAttributes(groupEventId, groupId: TestGroupId))).IsTrue();
+        await Assert.That(await _service.IsAllowedAsync(
+            ResourceKinds.Event,
+            assignedEventId.ToString(),
+            action,
+            CreateEventContextAttributes(assignedEventId))).IsFalse();
+    }
+
+    [Test]
+    [Category("PaidEventCommerceAuthorization")]
+    public async Task IsAllowed_ManagePaidEventCommerce_DeniesAdminContributorMissingAndAmbiguousOrganizerContext()
+    {
+        const string action = AuthorizationActions.Events.ManagePaidEventCommerce;
+        var userId = Guid.NewGuid();
+        var eventId = Guid.NewGuid();
+        _adminContext.UserId.Returns(userId);
+        _adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(false);
+        _adminContext.IsTenantAdminAsync(TestTenantId, Arg.Any<CancellationToken>()).Returns(false);
+        _organizationMemberRepository.HasPermissionInOrganization(TestOrgId, userId, PermissionCodes.EventManageFinance)
+            .Returns(true);
+
+        var contributor = CreateEventContextAttributes(eventId);
+        contributor["actorId"] = Guid.NewGuid();
+        contributor["userId"] = userId;
+        var ambiguous = CreateVerifiedOrganizerAttributes(eventId, userId: userId, organizationId: TestOrgId);
+
+        await Assert.That(await _service.IsAllowedAsync(ResourceKinds.Event, eventId.ToString(), action, contributor)).IsFalse();
+        await Assert.That(await _service.IsAllowedAsync(ResourceKinds.Event, eventId.ToString(), action, ambiguous)).IsFalse();
+        await Assert.That(await _service.IsAllowedAsync(
+            ResourceKinds.Event,
+            eventId.ToString(),
+            action,
+            new Dictionary<string, object> { ["eventId"] = eventId })).IsFalse();
+
+        _adminContext.IsTenantAdminAsync(TestTenantId, Arg.Any<CancellationToken>()).Returns(true);
+        await Assert.That(await _service.IsAllowedAsync(ResourceKinds.Event, eventId.ToString(), action, CreateEventContextAttributes(eventId))).IsFalse();
+
+        _adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(true);
+        await Assert.That(await _service.IsAllowedAsync(ResourceKinds.Event, eventId.ToString(), action, CreateEventContextAttributes(eventId))).IsFalse();
+        await Assert.That(await _service.IsAllowedAsync(
+            ResourceKinds.Event,
+            eventId.ToString(),
+            action,
+            CreateVerifiedOrganizerAttributes(eventId, userId: userId))).IsTrue();
+    }
+
+    [Test]
+    [Category("PaidEventCommerceAuthorization")]
+    public async Task IsAllowedBatch_ManagePaidEventCommerce_MatchesSingleDecisionBoundaries()
+    {
+        const string action = AuthorizationActions.Events.ManagePaidEventCommerce;
+        var userId = Guid.NewGuid();
+        var personalEventId = Guid.NewGuid();
+        var organizationEventId = Guid.NewGuid();
+        var assignedEventId = Guid.NewGuid();
+        var ambiguousEventId = Guid.NewGuid();
+        _adminContext.UserId.Returns(userId);
+        _adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(false);
+        _adminContext.IsTenantAdminAsync(TestTenantId, Arg.Any<CancellationToken>()).Returns(false);
+        _adminContext.GetAdminOrganizationIdsAsync(Arg.Any<CancellationToken>()).Returns([]);
+        _adminContext.GetAdminGroupIdsAsync(Arg.Any<CancellationToken>()).Returns([]);
+        _organizationMemberRepository.GetOrganizationIdsWhereUserHasPermission(
+                userId,
+                PermissionCodes.EventManageFinance,
+                Arg.Any<CancellationToken>())
+            .Returns([TestOrgId]);
+        _groupMemberRepository.GetGroupIdsWhereUserHasPermission(
+                userId,
+                PermissionCodes.EventManageFinance,
+                Arg.Any<CancellationToken>())
+            .Returns([TestGroupId]);
+        ConfigureEventAuthority(userId, assignedEventId, PermissionCodes.EventManageFinance);
+        var ambiguous = CreateVerifiedOrganizerAttributes(ambiguousEventId, userId: userId, organizationId: TestOrgId);
+
+        var results = await _service.IsAllowedBatchAsync(
+        [
+            new(ResourceKinds.Event, personalEventId.ToString(), action, CreateVerifiedOrganizerAttributes(personalEventId, userId: userId)),
+            new(ResourceKinds.Event, organizationEventId.ToString(), action, CreateVerifiedOrganizerAttributes(organizationEventId, organizationId: TestOrgId)),
+            new(ResourceKinds.Event, assignedEventId.ToString(), action, CreateEventContextAttributes(assignedEventId)),
+            new(ResourceKinds.Event, ambiguousEventId.ToString(), action, ambiguous),
+            new(ResourceKinds.Event, Guid.NewGuid().ToString(), action, CreateVerifiedOrganizerAttributes(Guid.NewGuid(), groupId: Guid.NewGuid()))
         ]);
 
         await Assert.That(results).IsEquivalentTo([true, true, false, false, false]);

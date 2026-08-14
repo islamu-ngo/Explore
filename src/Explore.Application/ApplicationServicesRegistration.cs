@@ -27,6 +27,7 @@ using Explore.Application.Features.EventCustomProperties.Requests.Commands;
 using Explore.Application.Features.EventOrganizerClaims.Authorization;
 using Explore.Application.Features.EventOrganizerClaims.Requests.Commands;
 using Explore.Application.Features.EventReporting;
+using Explore.Application.Features.EventTicketing.Services;
 using Explore.Application.Features.EventSessionAgendaItems.Authorization;
 using Explore.Application.Features.EventSessionAgendaItems.Requests.Commands;
 using Explore.Application.Features.EventSessionCustomProperties.Authorization;
@@ -48,6 +49,7 @@ using Explore.Application.Features.Footer.Handlers.Commands;
 using Explore.Application.Features.ManagedProviderProvisioning;
 using Explore.Application.Features.ManagedProviderProvisioning.Handlers.Commands;
 using Explore.Application.Features.Management;
+using Explore.Application.Features.OrganizerPaymentConnections;
 using Explore.Application.Features.RegistrationOrders.Handlers.Commands;
 using Explore.Application.Notifications;
 using Explore.Application.Services;
@@ -61,6 +63,7 @@ using Explore.Domain.Services.Scheduling;
 using MediatR;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 
 namespace Explore.Application;
 
@@ -153,6 +156,14 @@ public static class ApplicationServicesRegistration
                 options => EventReminderOptions.IsValidLeadTimeHours(options.EventReminderLeadTimeHours),
                 $"EmailDispatch:EventReminderLeadTimeHours must be between {EventReminderOptions.MinLeadTimeHours} and {EventReminderOptions.MaxLeadTimeHours} hours.")
             .ValidateOnStart();
+        services.AddOptions<OrganizerPaymentReadinessReconciliationOptions>()
+            .Bind(configuration.GetSection(OrganizerPaymentReadinessReconciliationOptions.SectionName))
+            .ValidateOnStart();
+        services.AddOptions<OrganizerPaymentCommerceOptions>()
+            .Bind(configuration.GetSection(OrganizerPaymentCommerceOptions.SectionName));
+        services.AddScoped<IOrganizerPaymentCommerceConfiguration>(provider =>
+            provider.GetRequiredService<Microsoft.Extensions.Options.IOptions<OrganizerPaymentCommerceOptions>>().Value);
+        services.AddSingleton<IValidateOptions<OrganizerPaymentReadinessReconciliationOptions>, OrganizerPaymentReadinessReconciliationOptionsValidator>();
         services.AddOptions<RegistrationFileAnswerOptions>()
             .Bind(configuration.GetSection(RegistrationFileAnswerOptions.SectionName));
         services.Configure<NotificationRoutingOptions>(configuration.GetSection(NotificationRoutingOptions.SectionName));
@@ -193,6 +204,8 @@ public static class ApplicationServicesRegistration
         services.AddScoped<IRegistrationProviderManagedPublishPreflight, RegistrationProviderManagedPublishPreflightService>();
         services.AddScoped<IRegistrationProviderConnectionCheckpoint, RegistrationProviderConnectionCheckpointService>();
         services.AddScoped<RegistrationProviderSubscriptionLifecycleService>();
+        services.AddScoped<OrganizerPaymentReadinessReconciliationService>();
+        services.AddScoped<PaidEventPublicationPreflightService>();
         services.AddSingleton(provider => new RegistrationFormPublishPreflightService(
             provider.GetRequiredService<Microsoft.Extensions.Options.IOptions<RegistrationFileAnswerOptions>>().Value));
         services.AddScoped<RegistrationFormAuthoringCommandService>();

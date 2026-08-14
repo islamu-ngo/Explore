@@ -17,6 +17,7 @@ using Explore.Application.Contracts.Services;
 using Explore.Application.Contracts.Services.Registration;
 using Explore.Application.Contracts.Webhooks;
 using Explore.Application.Features.Events.OpenGraph;
+using Explore.Application.Features.OrganizerPaymentConnections;
 using Explore.Application.Services.Webhooks;
 using Explore.Application.Telemetry;
 using Explore.Infrastructure;
@@ -334,6 +335,14 @@ public static class ApiHostServiceCollectionExtensions
             {
                 builder.Services.AddHostedService<IncomingWebhookProcessor>();
                 builder.Services.AddHostedService<IncomingWebhookEffectProcessor>();
+            }
+
+            var organizerPaymentReadinessSettings = builder.Configuration
+                .GetSection(OrganizerPaymentReadinessReconciliationOptions.SectionName)
+                .Get<OrganizerPaymentReadinessReconciliationOptions>() ?? new OrganizerPaymentReadinessReconciliationOptions();
+            if (!builder.Environment.IsEnvironment("Testing") && organizerPaymentReadinessSettings.Enabled)
+            {
+                builder.Services.AddHostedService<OrganizerPaymentReadinessReconciliationWorker>();
             }
 
             if (!builder.Environment.IsEnvironment("Testing"))

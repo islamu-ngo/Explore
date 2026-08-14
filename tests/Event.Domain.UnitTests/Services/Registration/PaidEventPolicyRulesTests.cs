@@ -63,7 +63,10 @@ public sealed class PaidEventPolicyRulesTests
         await Assert.That(revision.Id).IsNotEqualTo(original.Id);
         await Assert.That(revision.VersionNumber).IsEqualTo(3);
         await Assert.That(original.IsActive).IsFalse();
+        await Assert.That(original.ActiveUniquenessSlot).IsEqualTo(2);
         await Assert.That(revision.IsActive).IsTrue();
+        await Assert.That(revision.ActiveUniquenessSlot).IsEqualTo(0);
+        await Assert.That(revision.PolicyScopeKey).IsEqualTo("instance");
         await Assert.That(revision.AllowedOrganizerKinds.SequenceEqual([ActorTypeEnum.Organization, ActorTypeEnum.Group])).IsTrue();
         await Assert.That(revision.AllowedCurrencyCodes.SequenceEqual(["EUR", "USD"])).IsTrue();
         await Assert.That(revision.RefundProtections.SequenceEqual(RequiredRefundFloor())).IsTrue();

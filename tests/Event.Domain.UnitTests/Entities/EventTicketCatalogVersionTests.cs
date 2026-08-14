@@ -49,6 +49,62 @@ public sealed class EventTicketCatalogVersionTests
     }
 
     [Test]
+    public async Task UpdateCommercialDisclosures_NormalizesBoundedTextAndRequiresDraft()
+    {
+        EventTicketCatalogVersion catalog = CreateCatalog();
+
+        catalog.UpdateCommercialDisclosures("  merchant  ", " refund ", " support ");
+
+        await Assert.That(catalog.MerchantDisclosureText).IsEqualTo("merchant");
+        await Assert.That(catalog.RefundPolicyDisclosureText).IsEqualTo("refund");
+        await Assert.That(catalog.SupportContactDisclosureText).IsEqualTo("support");
+
+        AddFreeTicketWithEventEntitlement(catalog);
+        catalog.Publish();
+
+        await Assert.That(() => catalog.UpdateCommercialDisclosures("merchant", "refund", "support"))
+            .Throws<InvalidOperationException>();
+    }
+
+    [Test]
+    public async Task UpdateCommercialDisclosures_RejectsOverlongText()
+    {
+        EventTicketCatalogVersion catalog = CreateCatalog();
+        string overlong = new('x', EventTicketCatalogVersion.MaxCommercialDisclosureTextLength + 1);
+
+        await Assert.That(() => catalog.UpdateCommercialDisclosures(overlong, "refund", "support"))
+            .Throws<ArgumentException>();
+    }
+
+    [Test]
+    public async Task Publish_WhenCatalogContainsPaidTickets_RequiresAllCommercialDisclosures()
+    {
+        EventTicketCatalogVersion catalog = CreateCatalog();
+        EventTicketType ticketType = CreateTicket(catalog, "USD", TicketPricingModeEnum.Fixed, 1_000, null, null);
+        catalog.AddTicketType(ticketType, null);
+        catalog.AddEntitlement(ticketType, CreateEventEntitlement(catalog, ticketType));
+
+        await Assert.That(() => catalog.Publish()).Throws<InvalidOperationException>();
+
+        catalog.UpdateCommercialDisclosures("Merchant of record: organizer", "Refunds within 14 days", "support@example.test");
+        catalog.Publish();
+
+        await Assert.That(catalog.TicketCatalogStatusId).IsEqualTo((int)TicketCatalogStatusEnum.Published);
+    }
+
+    [Test]
+    public async Task Publish_WhenCatalogIsFree_AllowsMissingCommercialDisclosures()
+    {
+        EventTicketCatalogVersion catalog = CreateCatalog();
+        AddFreeTicketWithEventEntitlement(catalog);
+
+        catalog.Publish();
+
+        await Assert.That(catalog.TicketCatalogStatusId).IsEqualTo((int)TicketCatalogStatusEnum.Published);
+        await Assert.That(catalog.MerchantDisclosureText).IsNull();
+    }
+
+    [Test]
     public async Task Publish_WhenOnlyTicketTypeIsDeleted_RejectsCatalog()
     {
         EventTicketCatalogVersion catalog = CreateCatalog();
@@ -78,6 +134,7 @@ public sealed class EventTicketCatalogVersionTests
     {
         EventTicketCatalogVersion catalog = CreateCatalog();
         EventTicketType ticketType = AddFreeTicketWithEventEntitlement(catalog);
+        catalog.UpdateCommercialDisclosures("merchant", "refund", "support");
         catalog.Publish();
 
         EventTicketCatalogVersion clone = catalog.CloneToDraft();
@@ -91,6 +148,9 @@ public sealed class EventTicketCatalogVersionTests
         await Assert.That(clonedTicketType.Id).IsNotEqualTo(ticketType.Id);
         await Assert.That(clonedTicketType.Entitlements.Single().Id).IsNotEqualTo(ticketType.Entitlements.Single().Id);
         await Assert.That(clonedTicketType.FixedPriceMinor).IsEqualTo(1_235);
+        await Assert.That(clone.MerchantDisclosureText).IsEqualTo("merchant");
+        await Assert.That(clone.RefundPolicyDisclosureText).IsEqualTo("refund");
+        await Assert.That(clone.SupportContactDisclosureText).IsEqualTo("support");
         await Assert.That(ticketType.TicketPricingModeId).IsEqualTo((int)TicketPricingModeEnum.Free);
     }
 
@@ -125,6 +185,7 @@ public sealed class EventTicketCatalogVersionTests
         await Assert.That(ticketType.RequiresApproval).IsTrue();
         await Assert.That(ticketType.PerBookingPartyLimit).IsEqualTo(5);
 
+        catalog.UpdateCommercialDisclosures("merchant", "refund", "support");
         catalog.Publish();
         await Assert.That(() => catalog.DeleteTicketType(ticketType, DateTime.UtcNow, Guid.CreateVersion7()))
             .Throws<InvalidOperationException>();

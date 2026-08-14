@@ -9743,6 +9743,21 @@ namespace Explore.Persistence.Migrations
                         .HasDefaultValue(false)
                         .HasColumnName("is_deleted");
 
+                    b.Property<string>("MerchantDisclosureText")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("merchant_disclosure_text");
+
+                    b.Property<string>("RefundPolicyDisclosureText")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("refund_policy_disclosure_text");
+
+                    b.Property<string>("SupportContactDisclosureText")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("support_contact_disclosure_text");
+
                     b.Property<Guid>("TenantId")
                         .HasColumnType("uuid")
                         .HasColumnName("tenant_id");
@@ -15601,6 +15616,340 @@ namespace Explore.Persistence.Migrations
                     b.ToTable("organization_tenant_evidence", "islamu_event");
                 });
 
+            modelBuilder.Entity("Explore.Domain.OrganizerPaymentProviderAccountOperation", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("ActiveScopeKey")
+                        .IsRequired()
+                        .HasMaxLength(232)
+                        .HasColumnType("character varying(232)")
+                        .HasColumnName("active_scope_key");
+
+                    b.Property<string>("ActiveUniquenessSlot")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)")
+                        .HasColumnName("active_uniqueness_slot");
+
+                    b.Property<DateTime?>("BoundAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("bound_at");
+
+                    b.Property<Guid>("ConcurrencyStamp")
+                        .IsConcurrencyToken()
+                        .HasColumnType("uuid")
+                        .HasColumnName("concurrency_stamp");
+
+                    b.Property<string>("ConnectPlatformId")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)")
+                        .HasColumnName("connect_platform_id");
+
+                    b.Property<Guid?>("ConnectionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("connection_id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<string>("ExternalAccountId")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("external_account_id");
+
+                    b.Property<string>("FailureCode")
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)")
+                        .HasColumnName("failure_code");
+
+                    b.Property<DateTime?>("ManualReconciliationRequiredAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("manual_reconciliation_required_at");
+
+                    b.Property<DateTime?>("NoProviderAccountConfirmedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("no_provider_account_confirmed_at");
+
+                    b.Property<Guid>("OrganizerActorId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("organizer_actor_id");
+
+                    b.Property<string>("ProviderCode")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("provider_code");
+
+                    b.Property<string>("ProviderIdempotencyKey")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)")
+                        .HasColumnName("provider_idempotency_key");
+
+                    b.Property<DateTime?>("ProviderRejectedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("provider_rejected_at");
+
+                    b.Property<string>("ProviderRequestId")
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)")
+                        .HasColumnName("provider_request_id");
+
+                    b.Property<DateTime>("RequestedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("requested_at");
+
+                    b.Property<string>("ResolutionReason")
+                        .HasMaxLength(160)
+                        .HasColumnType("character varying(160)")
+                        .HasColumnName("resolution_reason");
+
+                    b.Property<int>("StatusId")
+                        .HasColumnType("integer")
+                        .HasColumnName("status_id");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_organizer_payment_provider_account_operations");
+
+                    b.HasAlternateKey("TenantId", "Id")
+                        .HasName("ak_organizer_payment_provider_account_operations_tenant_id_id");
+
+                    b.HasIndex("OrganizerActorId")
+                        .HasDatabaseName("ix_organizer_payment_provider_account_operations_organizer_act");
+
+                    b.HasIndex("ProviderIdempotencyKey")
+                        .IsUnique()
+                        .HasDatabaseName("ix_organizer_payment_provider_account_operations_provider_idem");
+
+                    b.HasIndex("ActiveScopeKey", "ActiveUniquenessSlot")
+                        .IsUnique()
+                        .HasDatabaseName("ix_organizer_payment_provider_account_operations_active_scope_");
+
+                    b.HasIndex("TenantId", "ConnectionId")
+                        .HasDatabaseName("ix_organizer_payment_provider_account_operations_tenant_id_con");
+
+                    b.HasIndex("TenantId", "OrganizerActorId", "ProviderCode", "ConnectPlatformId", "StatusId")
+                        .HasDatabaseName("ix_organizer_payment_provider_account_operations_tenant_id_org");
+
+                    b.ToTable("organizer_payment_provider_account_operations", "islamu_event", t =>
+                        {
+                            t.HasCheckConstraint("ck_organizer_payment_provider_account_operations_status", "status_id BETWEEN 1 AND 5");
+                        });
+                });
+
+            modelBuilder.Entity("Explore.Domain.OrganizerPaymentProviderConnection", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("ActiveScopeKey")
+                        .IsRequired()
+                        .HasMaxLength(232)
+                        .HasColumnType("character varying(232)")
+                        .HasColumnName("active_scope_key");
+
+                    b.Property<string>("ActiveUniquenessSlot")
+                        .IsRequired()
+                        .HasMaxLength(48)
+                        .HasColumnType("character varying(48)")
+                        .HasColumnName("active_uniqueness_slot");
+
+                    b.Property<int>("ChargeCapabilityStateId")
+                        .HasColumnType("integer")
+                        .HasColumnName("charge_capability_state_id");
+
+                    b.Property<Guid>("ConcurrencyStamp")
+                        .IsConcurrencyToken()
+                        .HasColumnType("uuid")
+                        .HasColumnName("concurrency_stamp");
+
+                    b.Property<string>("ConnectPlatformId")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)")
+                        .HasColumnName("connect_platform_id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("deleted_by");
+
+                    b.Property<DateTime?>("DisabledAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("disabled_at");
+
+                    b.Property<string>("DisabledReasonCode")
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)")
+                        .HasColumnName("disabled_reason_code");
+
+                    b.Property<string>("ExternalAccountId")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("external_account_id");
+
+                    b.Property<bool>("IsDeleted")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_deleted");
+
+                    b.Property<string>("LastReadinessEvidenceRevision")
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)")
+                        .HasColumnName("last_readiness_evidence_revision");
+
+                    b.Property<DateTime?>("LastReadinessObservedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_readiness_observed_at");
+
+                    b.Property<string>("MerchantCountryCode")
+                        .HasMaxLength(2)
+                        .HasColumnType("character varying(2)")
+                        .HasColumnName("merchant_country_code");
+
+                    b.Property<Guid>("OrganizerActorId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("organizer_actor_id");
+
+                    b.Property<string>("ProviderCode")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("provider_code");
+
+                    b.Property<DateTime?>("ReplacedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("replaced_at");
+
+                    b.Property<Guid?>("ReplacedByConnectionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("replaced_by_connection_id");
+
+                    b.Property<Guid?>("ReplacesConnectionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("replaces_connection_id");
+
+                    b.Property<int>("RequirementsStateId")
+                        .HasColumnType("integer")
+                        .HasColumnName("requirements_state_id");
+
+                    b.Property<int>("StatusId")
+                        .HasColumnType("integer")
+                        .HasColumnName("status_id");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_organizer_payment_provider_connections");
+
+                    b.HasAlternateKey("TenantId", "Id")
+                        .HasName("ak_organizer_payment_provider_connections_tenant_id_id");
+
+                    b.HasIndex("OrganizerActorId")
+                        .HasDatabaseName("ix_organizer_payment_provider_connections_organizer_actor_id");
+
+                    b.HasIndex("ActiveScopeKey", "ActiveUniquenessSlot")
+                        .IsUnique()
+                        .HasDatabaseName("ix_organizer_payment_provider_connections_active_scope_key_act");
+
+                    b.HasIndex("TenantId", "ReplacedByConnectionId")
+                        .HasDatabaseName("ix_organizer_payment_provider_connections_tenant_id_replaced_b");
+
+                    b.HasIndex("TenantId", "ReplacesConnectionId")
+                        .HasDatabaseName("ix_organizer_payment_provider_connections_tenant_id_replaces_c");
+
+                    b.HasIndex("ProviderCode", "ConnectPlatformId", "ExternalAccountId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_organizer_payment_provider_connections_provider_code_connec");
+
+                    b.HasIndex("TenantId", "OrganizerActorId", "ProviderCode", "ConnectPlatformId", "StatusId")
+                        .HasDatabaseName("ix_organizer_payment_provider_connections_tenant_id_organizer_");
+
+                    b.ToTable("organizer_payment_provider_connections", "islamu_event", t =>
+                        {
+                            t.HasCheckConstraint("ck_organizer_payment_provider_connections_charge_capability", "charge_capability_state_id BETWEEN 0 AND 3");
+
+                            t.HasCheckConstraint("ck_organizer_payment_provider_connections_requirements", "requirements_state_id BETWEEN 0 AND 4");
+
+                            t.HasCheckConstraint("ck_organizer_payment_provider_connections_status", "status_id BETWEEN 1 AND 5");
+                        });
+                });
+
+            modelBuilder.Entity("Explore.Domain.OrganizerPaymentProviderConnectionSupportedCurrency", b =>
+                {
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<Guid>("OrganizerPaymentProviderConnectionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("organizer_payment_provider_connection_id");
+
+                    b.Property<int>("Ordinal")
+                        .HasColumnType("integer")
+                        .HasColumnName("ordinal");
+
+                    b.Property<string>("CurrencyCode")
+                        .IsRequired()
+                        .HasMaxLength(3)
+                        .HasColumnType("character varying(3)")
+                        .HasColumnName("currency_code");
+
+                    b.HasKey("TenantId", "OrganizerPaymentProviderConnectionId", "Ordinal")
+                        .HasName("pk_organizer_payment_provider_connection_supported_currencies");
+
+                    b.HasIndex("TenantId", "OrganizerPaymentProviderConnectionId", "CurrencyCode")
+                        .IsUnique()
+                        .HasDatabaseName("ix_organizer_payment_provider_connection_supported_currencies_");
+
+                    b.ToTable("organizer_payment_provider_connection_supported_currencies", "islamu_event");
+                });
+
             modelBuilder.Entity("Explore.Domain.OutboxMessage", b =>
                 {
                     b.Property<Guid>("Id")
@@ -15705,6 +16054,239 @@ namespace Explore.Persistence.Migrations
                         .HasName("pk_owner_types");
 
                     b.ToTable("owner_types", "islamu_event");
+                });
+
+            modelBuilder.Entity("Explore.Domain.PaidEventPolicyAllowedCurrency", b =>
+                {
+                    b.Property<string>("PolicyScopeKey")
+                        .HasMaxLength(48)
+                        .HasColumnType("character varying(48)")
+                        .HasColumnName("policy_scope_key");
+
+                    b.Property<Guid>("PaidEventPolicyVersionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("paid_event_policy_version_id");
+
+                    b.Property<int>("Ordinal")
+                        .HasColumnType("integer")
+                        .HasColumnName("ordinal");
+
+                    b.Property<string>("CurrencyCode")
+                        .IsRequired()
+                        .HasMaxLength(3)
+                        .HasColumnType("character varying(3)")
+                        .HasColumnName("currency_code");
+
+                    b.Property<Guid?>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.HasKey("PolicyScopeKey", "PaidEventPolicyVersionId", "Ordinal")
+                        .HasName("pk_paid_event_policy_allowed_currencies");
+
+                    b.HasIndex("PolicyScopeKey", "PaidEventPolicyVersionId", "CurrencyCode")
+                        .IsUnique()
+                        .HasDatabaseName("ix_paid_event_policy_allowed_currencies_policy_scope_key_paid_");
+
+                    b.ToTable("paid_event_policy_allowed_currencies", "islamu_event");
+                });
+
+            modelBuilder.Entity("Explore.Domain.PaidEventPolicyAllowedOrganizerKind", b =>
+                {
+                    b.Property<string>("PolicyScopeKey")
+                        .HasMaxLength(48)
+                        .HasColumnType("character varying(48)")
+                        .HasColumnName("policy_scope_key");
+
+                    b.Property<Guid>("PaidEventPolicyVersionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("paid_event_policy_version_id");
+
+                    b.Property<int>("Ordinal")
+                        .HasColumnType("integer")
+                        .HasColumnName("ordinal");
+
+                    b.Property<int>("ActorTypeId")
+                        .HasColumnType("integer")
+                        .HasColumnName("actor_type_id");
+
+                    b.Property<Guid?>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.HasKey("PolicyScopeKey", "PaidEventPolicyVersionId", "Ordinal")
+                        .HasName("pk_paid_event_policy_allowed_organizer_kinds");
+
+                    b.HasIndex("PolicyScopeKey", "PaidEventPolicyVersionId", "ActorTypeId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_paid_event_policy_allowed_organizer_kinds_policy_scope_key_");
+
+                    b.ToTable("paid_event_policy_allowed_organizer_kinds", "islamu_event");
+                });
+
+            modelBuilder.Entity("Explore.Domain.PaidEventPolicyCurrencyRiskLimitRow", b =>
+                {
+                    b.Property<string>("PolicyScopeKey")
+                        .HasMaxLength(48)
+                        .HasColumnType("character varying(48)")
+                        .HasColumnName("policy_scope_key");
+
+                    b.Property<Guid>("PaidEventPolicyVersionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("paid_event_policy_version_id");
+
+                    b.Property<int>("Ordinal")
+                        .HasColumnType("integer")
+                        .HasColumnName("ordinal");
+
+                    b.Property<string>("CurrencyCode")
+                        .IsRequired()
+                        .HasMaxLength(3)
+                        .HasColumnType("character varying(3)")
+                        .HasColumnName("currency_code");
+
+                    b.Property<long?>("HighValueReviewThresholdMinor")
+                        .HasColumnType("bigint")
+                        .HasColumnName("high_value_review_threshold_minor");
+
+                    b.Property<long?>("PerEventSalesCeilingMinor")
+                        .HasColumnType("bigint")
+                        .HasColumnName("per_event_sales_ceiling_minor");
+
+                    b.Property<long?>("RollingOrganizerSalesCeilingMinor")
+                        .HasColumnType("bigint")
+                        .HasColumnName("rolling_organizer_sales_ceiling_minor");
+
+                    b.Property<Guid?>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.HasKey("PolicyScopeKey", "PaidEventPolicyVersionId", "Ordinal")
+                        .HasName("pk_paid_event_policy_currency_risk_limits");
+
+                    b.HasIndex("PolicyScopeKey", "PaidEventPolicyVersionId", "CurrencyCode")
+                        .IsUnique()
+                        .HasDatabaseName("ix_paid_event_policy_currency_risk_limits_policy_scope_key_pai");
+
+                    b.ToTable("paid_event_policy_currency_risk_limits", "islamu_event");
+                });
+
+            modelBuilder.Entity("Explore.Domain.PaidEventPolicyRefundProtection", b =>
+                {
+                    b.Property<string>("PolicyScopeKey")
+                        .HasMaxLength(48)
+                        .HasColumnType("character varying(48)")
+                        .HasColumnName("policy_scope_key");
+
+                    b.Property<Guid>("PaidEventPolicyVersionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("paid_event_policy_version_id");
+
+                    b.Property<int>("Ordinal")
+                        .HasColumnType("integer")
+                        .HasColumnName("ordinal");
+
+                    b.Property<int>("RefundProtectionId")
+                        .HasColumnType("integer")
+                        .HasColumnName("refund_protection_id");
+
+                    b.Property<Guid?>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.HasKey("PolicyScopeKey", "PaidEventPolicyVersionId", "Ordinal")
+                        .HasName("pk_paid_event_policy_refund_protections");
+
+                    b.HasIndex("PolicyScopeKey", "PaidEventPolicyVersionId", "RefundProtectionId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_paid_event_policy_refund_protections_policy_scope_key_paid_");
+
+                    b.ToTable("paid_event_policy_refund_protections", "islamu_event");
+                });
+
+            modelBuilder.Entity("Explore.Domain.PaidEventPolicyVersion", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<int>("ActiveUniquenessSlot")
+                        .HasColumnType("integer")
+                        .HasColumnName("active_uniqueness_slot");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<string>("DefaultCurrencyCode")
+                        .HasMaxLength(3)
+                        .HasColumnType("character varying(3)")
+                        .HasColumnName("default_currency_code");
+
+                    b.Property<int?>("FarFutureReviewThresholdDays")
+                        .HasColumnType("integer")
+                        .HasColumnName("far_future_review_threshold_days");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_active");
+
+                    b.Property<bool>("IsPaymentsEnabled")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_payments_enabled");
+
+                    b.Property<string>("PolicyScopeKey")
+                        .IsRequired()
+                        .HasMaxLength(48)
+                        .HasColumnType("character varying(48)")
+                        .HasColumnName("policy_scope_key");
+
+                    b.Property<bool>("RequiresFirstPaidEventReview")
+                        .HasColumnType("boolean")
+                        .HasColumnName("requires_first_paid_event_review");
+
+                    b.Property<bool>("RequiresLocalVerification")
+                        .HasColumnType("boolean")
+                        .HasColumnName("requires_local_verification");
+
+                    b.Property<Guid?>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.Property<int>("VersionNumber")
+                        .HasColumnType("integer")
+                        .HasColumnName("version_number");
+
+                    b.HasKey("Id")
+                        .HasName("pk_paid_event_policy_versions");
+
+                    b.HasAlternateKey("PolicyScopeKey", "Id")
+                        .HasName("ak_paid_event_policy_versions_policy_scope_key_id");
+
+                    b.HasIndex("TenantId")
+                        .HasDatabaseName("ix_paid_event_policy_versions_tenant_id");
+
+                    b.HasIndex("PolicyScopeKey", "ActiveUniquenessSlot")
+                        .IsUnique()
+                        .HasDatabaseName("ix_paid_event_policy_versions_policy_scope_key_active_uniquene");
+
+                    b.HasIndex("PolicyScopeKey", "VersionNumber")
+                        .IsUnique()
+                        .HasDatabaseName("ix_paid_event_policy_versions_policy_scope_key_version_number");
+
+                    b.ToTable("paid_event_policy_versions", "islamu_event");
                 });
 
             modelBuilder.Entity("Explore.Domain.ParticipantDataCollectionMode", b =>
@@ -33000,6 +33582,127 @@ namespace Explore.Persistence.Migrations
                     b.Navigation("Tenant");
                 });
 
+            modelBuilder.Entity("Explore.Domain.OrganizerPaymentProviderAccountOperation", b =>
+                {
+                    b.HasOne("Explore.Domain.Actor", null)
+                        .WithMany()
+                        .HasForeignKey("OrganizerActorId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_organizer_payment_provider_account_operations_actors_organi");
+
+                    b.HasOne("Explore.Domain.Tenant", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_organizer_payment_provider_account_operations_tenants_tenan");
+
+                    b.HasOne("Explore.Domain.OrganizerPaymentProviderConnection", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "ConnectionId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_organizer_payment_account_operations_connection");
+                });
+
+            modelBuilder.Entity("Explore.Domain.OrganizerPaymentProviderConnection", b =>
+                {
+                    b.HasOne("Explore.Domain.Actor", null)
+                        .WithMany()
+                        .HasForeignKey("OrganizerActorId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_organizer_payment_provider_connections_actors_organizer_act");
+
+                    b.HasOne("Explore.Domain.Tenant", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_organizer_payment_provider_connections_tenants_tenant_id");
+
+                    b.HasOne("Explore.Domain.OrganizerPaymentProviderConnection", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "ReplacedByConnectionId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_organizer_payment_connections_replaced_by");
+
+                    b.HasOne("Explore.Domain.OrganizerPaymentProviderConnection", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "ReplacesConnectionId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_organizer_payment_connections_replaces");
+                });
+
+            modelBuilder.Entity("Explore.Domain.OrganizerPaymentProviderConnectionSupportedCurrency", b =>
+                {
+                    b.HasOne("Explore.Domain.OrganizerPaymentProviderConnection", "Connection")
+                        .WithMany("SupportedCurrencyRows")
+                        .HasForeignKey("TenantId", "OrganizerPaymentProviderConnectionId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_organizer_payment_provider_connection_supported_currencies_");
+
+                    b.Navigation("Connection");
+                });
+
+            modelBuilder.Entity("Explore.Domain.PaidEventPolicyAllowedCurrency", b =>
+                {
+                    b.HasOne("Explore.Domain.PaidEventPolicyVersion", null)
+                        .WithMany("AllowedCurrencyRows")
+                        .HasForeignKey("PolicyScopeKey", "PaidEventPolicyVersionId")
+                        .HasPrincipalKey("PolicyScopeKey", "Id")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_paid_event_policy_allowed_currencies_paid_event_policy_vers");
+                });
+
+            modelBuilder.Entity("Explore.Domain.PaidEventPolicyAllowedOrganizerKind", b =>
+                {
+                    b.HasOne("Explore.Domain.PaidEventPolicyVersion", null)
+                        .WithMany("AllowedOrganizerKindRows")
+                        .HasForeignKey("PolicyScopeKey", "PaidEventPolicyVersionId")
+                        .HasPrincipalKey("PolicyScopeKey", "Id")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_paid_event_policy_allowed_organizer_kinds_paid_event_policy");
+                });
+
+            modelBuilder.Entity("Explore.Domain.PaidEventPolicyCurrencyRiskLimitRow", b =>
+                {
+                    b.HasOne("Explore.Domain.PaidEventPolicyVersion", null)
+                        .WithMany("CurrencyRiskLimitRows")
+                        .HasForeignKey("PolicyScopeKey", "PaidEventPolicyVersionId")
+                        .HasPrincipalKey("PolicyScopeKey", "Id")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_paid_event_policy_currency_risk_limits_paid_event_policy_ve");
+                });
+
+            modelBuilder.Entity("Explore.Domain.PaidEventPolicyRefundProtection", b =>
+                {
+                    b.HasOne("Explore.Domain.PaidEventPolicyVersion", null)
+                        .WithMany("RefundProtectionRows")
+                        .HasForeignKey("PolicyScopeKey", "PaidEventPolicyVersionId")
+                        .HasPrincipalKey("PolicyScopeKey", "Id")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_paid_event_policy_refund_protections_paid_event_policy_vers");
+                });
+
+            modelBuilder.Entity("Explore.Domain.PaidEventPolicyVersion", b =>
+                {
+                    b.HasOne("Explore.Domain.Tenant", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_paid_event_policy_versions_tenants_tenant_id");
+                });
+
             modelBuilder.Entity("Explore.Domain.ParticipationRequirementAttachment", b =>
                 {
                     b.HasOne("Explore.Domain.EventParticipationConfiguration", null)
@@ -39110,6 +39813,22 @@ namespace Explore.Persistence.Migrations
                     b.Navigation("Members");
 
                     b.Navigation("Settings");
+                });
+
+            modelBuilder.Entity("Explore.Domain.OrganizerPaymentProviderConnection", b =>
+                {
+                    b.Navigation("SupportedCurrencyRows");
+                });
+
+            modelBuilder.Entity("Explore.Domain.PaidEventPolicyVersion", b =>
+                {
+                    b.Navigation("AllowedCurrencyRows");
+
+                    b.Navigation("AllowedOrganizerKindRows");
+
+                    b.Navigation("CurrencyRiskLimitRows");
+
+                    b.Navigation("RefundProtectionRows");
                 });
 
             modelBuilder.Entity("Explore.Domain.PlatformContributionSetting", b =>

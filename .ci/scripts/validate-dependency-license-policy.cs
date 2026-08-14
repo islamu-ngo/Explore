@@ -84,7 +84,8 @@ static void ValidateNuGetLicenses(IReadOnlyCollection<NuGetPackage> packages, Li
 {
     foreach (var package in packages.OrderBy(item => item.Id, StringComparer.OrdinalIgnoreCase).ThenBy(item => item.Version, StringComparer.OrdinalIgnoreCase))
     {
-        if (LicensePolicy.ApprovedOverrides.TryGetValue(package.Id, out var packageOverride))
+        if (LicensePolicy.ApprovedOverrides.TryGetValue(package.Id, out var packageOverride)
+            && (packageOverride.Version is null || packageOverride.Version.Equals(package.Version, StringComparison.OrdinalIgnoreCase)))
         {
             if (packageOverride.RequiresFollowUp)
             {
@@ -388,6 +389,11 @@ static class LicensePolicy
         ["Infisical.Sdk"] = new("MIT", "package uses license file metadata", false),
         ["Microsoft.DotNet.PlatformAbstractions"] = new("Microsoft-.NET-Library", "Microsoft .NET library package uses license file metadata", false),
         ["Microsoft.Testing.Extensions.CodeCoverage"] = new("Microsoft-.NET-Library", "Microsoft .NET testing package uses license file metadata", false),
+        ["Microsoft.Data.SqlClient.SNI.runtime"] = new(
+            "Microsoft-.NET-Library",
+            "exact-version optional SQL Server native runtime under separate Microsoft terms; PostgreSQL-only published artifacts must exclude it",
+            true,
+            "6.0.2"),
         ["runtime.win-arm64.runtime.native.System.Data.SqlClient.sni"] = new("Microsoft-.NET-Library", "Microsoft native runtime package uses license URL metadata", false),
         ["runtime.win-x64.runtime.native.System.Data.SqlClient.sni"] = new("Microsoft-.NET-Library", "Microsoft native runtime package uses license URL metadata", false),
         ["runtime.win-x86.runtime.native.System.Data.SqlClient.sni"] = new("Microsoft-.NET-Library", "Microsoft native runtime package uses license URL metadata", false),
@@ -396,9 +402,10 @@ static class LicensePolicy
         ["Portable.BouncyCastle"] = new("MIT", "package uses legacy license URL metadata", false),
         ["runtime.linux-x64.Microsoft.DotNet.ILCompiler"] = new("MIT", "build-only Native AOT compiler tool runtime; not shipped with runtime artifacts", false),
         ["WebPush"] = new("MPL-2.0", "package uses legacy license URL metadata", false),
+        ["Stripe.net"] = new("Apache-2.0", "package uses legacy license URL metadata", false),
     };
 }
 
 readonly record struct NuGetPackage(string Id, string Version);
 readonly record struct LicenseMetadata(string? Expression, string? Url, string DisplayValue);
-readonly record struct LicenseOverride(string LicenseId, string Rationale, bool RequiresFollowUp);
+readonly record struct LicenseOverride(string LicenseId, string Rationale, bool RequiresFollowUp, string? Version = null);

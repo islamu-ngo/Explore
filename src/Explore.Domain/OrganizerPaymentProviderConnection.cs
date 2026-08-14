@@ -9,7 +9,9 @@ namespace Explore.Domain;
 
 public sealed class OrganizerPaymentProviderConnection : ITenantEntity, IAuditableEntity, ISoftDeletable, IConcurrencyAware
 {
-    private readonly List<string> _supportedCurrencyCodes = [];
+    private const string ActiveUniquenessSlotValue = "active";
+
+    private readonly List<OrganizerPaymentProviderConnectionSupportedCurrency> _supportedCurrencyCodes = [];
 
     private OrganizerPaymentProviderConnection()
     {
@@ -21,11 +23,18 @@ public sealed class OrganizerPaymentProviderConnection : ITenantEntity, IAuditab
     public string ProviderCode { get; private set; } = string.Empty;
     public string ConnectPlatformId { get; private set; } = string.Empty;
     public string ExternalAccountId { get; private set; } = string.Empty;
+    public string ActiveScopeKey { get; private set; } = string.Empty;
+    public string ActiveUniquenessSlot { get; private set; } = string.Empty;
     public int StatusId { get; private set; }
     public string? MerchantCountryCode { get; private set; }
     public int ChargeCapabilityStateId { get; private set; } = (int)ChargeCapabilityState.Unknown;
     public int RequirementsStateId { get; private set; } = (int)ProviderRequirementsState.Unknown;
-    public IReadOnlyList<string> SupportedCurrencyCodes => _supportedCurrencyCodes.AsReadOnly();
+    public IReadOnlyList<string> SupportedCurrencyCodes => _supportedCurrencyCodes
+        .OrderBy(row => row.Ordinal)
+        .Select(row => row.CurrencyCode)
+        .ToArray();
+
+    private IReadOnlyCollection<OrganizerPaymentProviderConnectionSupportedCurrency> SupportedCurrencyRows => _supportedCurrencyCodes;
     public DateTime? LastReadinessObservedAt { get; private set; }
     public string? LastReadinessEvidenceRevision { get; private set; }
     public Guid? ReplacesConnectionId { get; private set; }
@@ -72,7 +81,8 @@ public sealed class OrganizerPaymentProviderConnection : ITenantEntity, IAuditab
         ChargeCapabilityStateId = (int)observation.ChargeCapabilityState;
         RequirementsStateId = (int)observation.RequirementsState;
         _supportedCurrencyCodes.Clear();
-        _supportedCurrencyCodes.AddRange(observation.SupportedCurrencyCodes);
+        _supportedCurrencyCodes.AddRange(observation.SupportedCurrencyCodes.Select((currencyCode, index) =>
+            OrganizerPaymentProviderConnectionSupportedCurrency.Create(TenantId, Id, index, currencyCode)));
         LastReadinessObservedAt = observation.ObservedAt;
         LastReadinessEvidenceRevision = observation.EvidenceRevision;
         StatusId = observation.IsReady
@@ -110,11 +120,34 @@ public sealed class OrganizerPaymentProviderConnection : ITenantEntity, IAuditab
             normalizedExternalAccountId,
             Id,
             timestamp);
-        StatusId = (int)OrganizerPaymentProviderConnectionStatusEnum.Replaced;
-        ReplacedByConnectionId = replacement.Id;
-        ReplacedAt = timestamp;
-        ConcurrencyStamp = Guid.CreateVersion7();
+        MarkReplaced(timestamp);
         return replacement;
+    }
+
+    public void MarkReplacedBy(Guid replacementConnectionId)
+    {
+        if (StatusId != (int)OrganizerPaymentProviderConnectionStatusEnum.Replaced)
+        {
+            throw new InvalidOperationException("Only replaced organizer payment connections can record replacement lineage.");
+        }
+
+        if (replacementConnectionId == Guid.Empty || replacementConnectionId == Id)
+        {
+            throw new ArgumentException("Replacement connection identity is required.", nameof(replacementConnectionId));
+        }
+
+        if (ReplacedByConnectionId == replacementConnectionId)
+        {
+            return;
+        }
+
+        if (ReplacedByConnectionId is not null)
+        {
+            throw new InvalidOperationException("Replacement lineage is already recorded.");
+        }
+
+        ReplacedByConnectionId = replacementConnectionId;
+        ConcurrencyStamp = Guid.CreateVersion7();
     }
 
     public void Disable(string reasonCode, DateTime disabledAt)
@@ -123,6 +156,7 @@ public sealed class OrganizerPaymentProviderConnection : ITenantEntity, IAuditab
         DisabledReasonCode = NormalizeReasonCode(reasonCode);
         DisabledAt = EnsureUtc(disabledAt, nameof(disabledAt));
         StatusId = (int)OrganizerPaymentProviderConnectionStatusEnum.Disabled;
+        ActiveUniquenessSlot = CreateTerminalUniquenessSlot(nameof(OrganizerPaymentProviderConnectionStatusEnum.Disabled));
         ConcurrencyStamp = Guid.CreateVersion7();
     }
 
@@ -143,7 +177,7 @@ public sealed class OrganizerPaymentProviderConnection : ITenantEntity, IAuditab
         }
 
         string normalizedCurrencyCode = NormalizeCurrencyCode(currencyCode);
-        if (!_supportedCurrencyCodes.Contains(normalizedCurrencyCode, StringComparer.Ordinal))
+        if (!_supportedCurrencyCodes.Any(row => row.CurrencyCode == normalizedCurrencyCode))
         {
             throw new ArgumentException("Snapshot currency must be supported by the ready connection.", nameof(currencyCode));
         }
@@ -215,11 +249,28 @@ public sealed class OrganizerPaymentProviderConnection : ITenantEntity, IAuditab
             ProviderCode = NormalizeProviderCode(providerCode),
             ConnectPlatformId = NormalizeRequiredText(connectPlatformId, nameof(connectPlatformId), 120, preserveCase: false),
             ExternalAccountId = NormalizeRequiredText(externalAccountId, nameof(externalAccountId), 200, preserveCase: true),
+            ActiveUniquenessSlot = ActiveUniquenessSlotValue,
             StatusId = (int)OrganizerPaymentProviderConnectionStatusEnum.PendingOnboarding,
             ReplacesConnectionId = replacesConnectionId,
             CreatedAt = EnsureUtc(createdAt, nameof(createdAt)),
             ConcurrencyStamp = Guid.CreateVersion7()
-        };
+        }.AssignActiveScopeKey();
+    }
+
+    private OrganizerPaymentProviderConnection AssignActiveScopeKey()
+    {
+        ActiveScopeKey = string.Join('|', TenantId.ToString("N"), OrganizerActorId.ToString("N"), ProviderCode, ConnectPlatformId);
+        return this;
+    }
+
+    private string CreateTerminalUniquenessSlot(string statusName) => $"{statusName.ToLowerInvariant()}:{Id:N}";
+
+    private void MarkReplaced(DateTime replacedAt)
+    {
+        StatusId = (int)OrganizerPaymentProviderConnectionStatusEnum.Replaced;
+        ActiveUniquenessSlot = CreateTerminalUniquenessSlot(nameof(OrganizerPaymentProviderConnectionStatusEnum.Replaced));
+        ReplacedAt = replacedAt;
+        ConcurrencyStamp = Guid.CreateVersion7();
     }
 
     private void EnsureCanAcceptReadiness()
@@ -372,4 +423,32 @@ public enum ProviderRequirementsState
     EventuallyDue = 2,
     PastDue = 3,
     Satisfied = 4
+}
+
+public sealed class OrganizerPaymentProviderConnectionSupportedCurrency : ITenantEntity
+{
+    private OrganizerPaymentProviderConnectionSupportedCurrency()
+    {
+    }
+
+    private OrganizerPaymentProviderConnectionSupportedCurrency(Guid tenantId, Guid connectionId, int ordinal, string currencyCode)
+    {
+        TenantId = tenantId;
+        OrganizerPaymentProviderConnectionId = connectionId;
+        Ordinal = ordinal;
+        CurrencyCode = currencyCode;
+    }
+
+    public Guid TenantId { get; set; }
+
+    public Guid OrganizerPaymentProviderConnectionId { get; private set; }
+
+    public OrganizerPaymentProviderConnection? Connection { get; private set; }
+
+    public int Ordinal { get; private set; }
+
+    public string CurrencyCode { get; private set; } = string.Empty;
+
+    internal static OrganizerPaymentProviderConnectionSupportedCurrency Create(Guid tenantId, Guid connectionId, int ordinal, string currencyCode) =>
+        new(tenantId, connectionId, ordinal, currencyCode);
 }
