@@ -89,6 +89,8 @@ The API uses a Hypermedia as the Engine of Application State (HATEOAS) model. HA
 
 Registration-form authoring uses the scoped `islamuevent_registration_form` resource with `view`, `create`, `update`, `delete`, `preflight`, `publish`, and `manage-requirements` actions. Its trusted resource context is enriched from the persisted parent Event; request bodies cannot author tenant or organizer identity. The event-level `manage-registration-workflow` entry relation and all form-level actions share the same authority: a verified organizer controller or exact tenant/event `event.registration_manager` assignment carrying `event_registration:manage`. Contributors, listing submitters, tenant-only curators, instance administrators, machine principals, missing/ambiguous organizer state, and unrelated tenant/event assignments fail closed in both Cerbos and fallback authorization.
 
+Paid-event commerce is an exact event authority, not administrative fallback authority. `manage-paid-event-commerce` is evaluated with the persisted event and organizer actor context for payment-connection, hosted onboarding, commercial disclosures, and paid publication. A current user must control that exact organizer actor in the ambient tenant; instance and tenant administrators, unrelated actor controllers, machines, historical recipients, and ambiguous organizer state do not substitute. The same decision controls the corresponding `payment-connection`, `start-onboarding`, `commercial-disclosures`, and paid `publish` HAL relations.
+
 `HateoasAuthorizationEvaluator` performs that enrichment through one bounded persisted-Event lookup per batch, applies the ambient tenant filter, removes caller-supplied authority attributes, rebuilds trusted actor/organizer context, and denies before Cerbos or fallback evaluation for missing, cross-tenant, missing-ID, or over-bound inputs. The resulting HAL relation set—not local claims or role checks—is the client action boundary.
 
 ## 4. Authorization Providers
@@ -196,11 +198,9 @@ If reading the instance provider setting fails, runtime authorization uses the C
 The system is designed to fail safely — deny by default when the configured provider is unavailable.
 
 -   **Instance Cerbos Failure**: If the connection to the instance-level Cerbos PDP fails (e.g., network error, timeout), all authorization checks are denied. The operator explicitly chose Cerbos; falling back to a potentially more permissive local RBAC would silently bypass intended policies. Restore Cerbos connectivity or explicitly switch the authorization provider setting to local RBAC through instance administration to recover without Cerbos.
--   **BYO Cerbos Failure & The Safe-Mode Latch**:
-    -   If the tenant's BYO configuration has `failure_mode=closed`, `FallbackAuthorizationService.ActivateSafeMode()` is triggered. Safe mode is a **one-way, thread-safe latch** for the provider instance: once activated, it logs a critical alert and denies all non-instance-admin requests to prevent bypassing stricter tenant policies.
-    -   If `failure_mode=open`, the fallback provider runs its standard RBAC logic.
+-   **BYO Cerbos Failure & The Safe-Mode Latch**: Any tenant BYO PDP failure triggers `FallbackAuthorizationService.ActivateSafeMode()`. Safe mode is a **one-way, thread-safe latch** for the provider instance: once activated, it logs a critical alert and denies all non-instance-admin requests to prevent bypassing stricter tenant policies. `failure_mode=open` remains parseable as a deprecated configuration value but is ignored at runtime; it never enables standard local RBAC fallback.
 -   **BYO Configuration Failure**: If tenant BYO configuration cannot be resolved, runtime authorization activates provider-instance safe mode instead of silently using local RBAC.
--   **Blank BYO PDP Endpoint**: If a tenant explicitly sets `cerbos.mode=custom_endpoint` but leaves the custom PDP endpoint blank, the resolver preserves BYO mode, failure mode, and explicit BYO Admin API config. Runtime authorization then applies the configured `failure_mode`; it does not fall back to the instance PDP.
+-   **Blank BYO PDP Endpoint**: If a tenant explicitly sets `cerbos.mode=custom_endpoint` but leaves the custom PDP endpoint blank, the resolver preserves BYO mode, failure mode, and explicit BYO Admin API config. Runtime authorization activates safe mode; it does not fall back to the instance PDP or local RBAC.
 -   **Safe Logging**: Runtime failure logs avoid raw endpoints, Admin API credentials, JWTs/tokens, response bodies, and exception objects/messages. They keep safe operational metadata such as failure type, action, mode, counts, request id, and correlation id.
 
 ### 4.5. Machine Principal (API Key) Security Architecture
@@ -210,10 +210,12 @@ API key machine callers evaluate authorization through `EvaluateMachineCallerAcc
 1.  **Registration Workflow Prohibition**: Machine callers are strictly barred from modifying registration forms, registration workflows, or managing event tickets.
 2.  **Scope Ceiling (`MachineScopeMapping`)**: External API key scopes (`events:write`, `organizations:read`, `admin:tenant`, `mcp:propose`, etc.) establish a maximum capability ceiling. A machine caller must satisfy this scope ceiling in addition to owner-type authority.
 3.  **Owner-Type Boundaries (`ExternalApiKeyOwnerType`)**:
-    -   `InstanceAdmin`: Unrestricted platform-wide access.
+    -   `InstanceAdmin`: Phase 0 allows only narrow platform operations after `admin:instance` scope and the shared instance-admin fallback allowlist match. It does not grant tenant/content mutations, incoming webhook processing, registration workflow changes, ticket management, paid-commerce management, or ordinary event deletion.
     -   `Tenant`: Bound to the key's `TenantId`. Cannot access instance settings, ATProto records, or platform namespaces.
     -   `Organization` / `Group`: Bound strictly to resources owned by `context.OwnerId`.
-    -   `User`: Bound to user-owned resources or tenant resources where the user holds Tenant Admin or Organization Admin authority.
+    -   `User`: Bound to user-owned resources or tenant resources where `context.OwnerId` has matching tenant, organization, or group admin membership. Ambient current-user admin checks do not authorize machine requests.
+
+Machine callers are routed through `ApiKeyPrincipalContext` before human instance-admin shortcuts, including setting checks. Tenant and content access still requires explicit owner authority after the scope ceiling. **Phase 1 Local/Cerbos parity follow-up:** mirror this Phase 0 machine allowlist and owner-aware containment in bundled Cerbos policies and policy-contract tests before treating Cerbos as parity-complete for machine principals.
 
 ### 4.6. Batch Capability Planning Engine
 
@@ -251,6 +253,8 @@ Event attendee contact export is a separate consent-resource decision. A managem
 Footer configuration authority is tenant-scoped. Footer management writes reuse `ResourceKinds.Tenant` with `AuthorizationActions.Update`, and each command sends the resolved `tenantId` as the resource id and authorization attribute. Local fallback allows tenant administrators only for the ambient tenant and denies create/delete tenant-resource actions for non-instance administrators; Cerbos evaluates the same tenant update action. Footer UI affordances must be emitted from the same resource/action decision if HAL links are added later.
 
 Email dispatch row operations are tenant-scoped operator actions. The status, tenant pause/resume, park, replay, resolve, and reconcile requests use `ResourceKinds.EmailDispatch` with `tenantId` and row-level `outboxId` where applicable. Global processor requests use `ResourceKinds.InstanceSetting` for `email-dispatch.processor`. EmailDispatch DTOs and logs remain bounded and never expose recipient email, message body, subject, provider message ids, raw provider errors, pause actors, or reconciliation evidence text.
+
+Paid-event policy settings follow the settings boundary: instance `view`/`update` applies to the `paid-event-policy` instance setting, while tenant `view`/`update` applies only to the named tenant setting. Those policy resources return `edit` only after the matching setting decision; tenant policy revision cannot use authorization to bypass the instance policy ceiling.
 
 ## 6. Implementation Patterns
 

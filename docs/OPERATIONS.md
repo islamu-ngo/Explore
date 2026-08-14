@@ -901,8 +901,8 @@ Non-local Admin API/PDP endpoints must use safe TLS-capable URLs. Unsafe endpoin
 |---|---|
 | Cerbos readiness health check | Follows fail-closed semantics when instance Cerbos mode is active; local mode skips PDP readiness. |
 | Package status issue code | Distinguishes Admin API not configured, auth failure, Admin API unavailable/rejected package, reload failure, generic publish failure, and Cerbos package-status unknown. |
-| BYO closed safe-mode log | Tenant BYO failure activated provider-instance fallback safe mode; non-instance-admin decisions deny. |
-| BYO open fallback log | Tenant explicitly chose local RBAC fallback for BYO PDP failure. |
+| BYO safe-mode log | Tenant BYO failure activated provider-instance fallback safe mode; non-instance-admin decisions deny. |
+| Deprecated BYO open value | `failure_mode=open` may appear in configuration metadata, but runtime treats the outage as fail-closed. |
 | Runtime failure type metadata | Safe diagnostic context; no raw endpoints, credentials, JWTs, response bodies, or exception messages. |
 
 ### Incident Triage (Cerbos)
@@ -910,7 +910,7 @@ Non-local Admin API/PDP endpoints must use safe TLS-capable URLs. Unsafe endpoin
 1. Check the runtime PDP health and the app Cerbos readiness endpoint.
 2. Verify instance `Cerbos:GrpcEndpoint` for runtime checks and `Cerbos:AdminApi:*` for package operations.
 3. For BYO tenants, verify `cerbos.mode`, `cerbos.custom_endpoint`, `cerbos.failure_mode`, and optional custom Admin API endpoint/credentials.
-4. If `cerbos.mode=custom_endpoint` has a blank PDP endpoint, runtime authorization still follows BYO failure mode; configure the PDP endpoint or temporarily choose local/open behavior only as an explicit operator decision.
+4. If `cerbos.mode=custom_endpoint` has a blank PDP endpoint, runtime authorization activates safe mode; configure the PDP endpoint or explicitly switch the tenant back to instance mode after confirming policy intent.
 5. For package sync failures, inspect the safe issue code before retrying. Prefer `docker compose --profile authz run --rm cerbos-policy-sync` for self-hosted Compose deployments after confirming `CERBOS_ADMIN_PASSWORD_HASH` matches `CERBOS_ADMIN_PASSWORD`, or use setup/admin manual ZIP download plus `cerbosctl put policy --recursive .` and `cerbosctl put schema --recursive _schemas` when Admin API sync is unavailable.
 6. For missing HAL affordances, confirm the link was not denied by server-side authorization before debugging route generation.
 

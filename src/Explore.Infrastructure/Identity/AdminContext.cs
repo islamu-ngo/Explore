@@ -4,7 +4,6 @@
 using System.Security.Claims;
 using Explore.Application.Contracts.Identity;
 using Explore.Application.Contracts.Persistence;
-using Explore.Application.Contracts.Services;
 using Explore.Domain.Constants;
 using Explore.Domain.Enums;
 using Microsoft.AspNetCore.Http;
@@ -30,7 +29,6 @@ public class AdminContext : IAdminContext, IAdminCacheInvalidator
     private readonly IUserExternalLoginRepository _userExternalLoginRepository;
     private readonly IUserRepository _userRepository;
     private readonly IMemoryCache _cache;
-    private readonly IDeploymentModeProvider _deploymentModeProvider;
     private readonly ILogger<AdminContext> _logger;
 
     private static readonly TimeSpan CacheExpiration = TimeSpan.FromMinutes(5);
@@ -46,7 +44,6 @@ public class AdminContext : IAdminContext, IAdminCacheInvalidator
         IUserExternalLoginRepository userExternalLoginRepository,
         IUserRepository userRepository,
         IMemoryCache cache,
-        IDeploymentModeProvider deploymentModeProvider,
         ILogger<AdminContext> logger)
     {
         _httpContextAccessor = httpContextAccessor;
@@ -58,7 +55,6 @@ public class AdminContext : IAdminContext, IAdminCacheInvalidator
         _userExternalLoginRepository = userExternalLoginRepository;
         _userRepository = userRepository;
         _cache = cache;
-        _deploymentModeProvider = deploymentModeProvider;
         _logger = logger;
     }
 
@@ -159,18 +155,9 @@ public class AdminContext : IAdminContext, IAdminCacheInvalidator
             var bootstrap = await _instanceBootstrapStateRepository.GetCurrent();
             var isBootstrapAdmin = bootstrap?.IsCompleted == true && bootstrap.CompletedByUserId == userId;
 
-            // Legacy fallback for instances completed before CompletedByUserId was tracked.
-            // In that case, default-tenant admins keep instance-admin access until role data is repaired.
-            if (!isBootstrapAdmin
-                && bootstrap?.IsCompleted == true
-                && !bootstrap.CompletedByUserId.HasValue)
-            {
-                isBootstrapAdmin = await _tenantAdminRepo.IsTenantAdmin(PlatformDefaults.DefaultTenantId, userId);
-            }
-
             if (isBootstrapAdmin)
             {
-                _logger.LogInformation("AdminContext: User {UserId} IsInstanceAdmin=true (bootstrap owner fallback)", userId);
+                _logger.LogInformation("AdminContext: User {UserId} IsInstanceAdmin=true (bootstrap owner)", userId);
             }
             else
             {
@@ -186,13 +173,6 @@ public class AdminContext : IAdminContext, IAdminCacheInvalidator
         var uid = await ResolveUserIdAsync(cancellationToken);
         if (uid == null)
             return false;
-
-        // Optimized check: Instance admins are automatically tenant admins for the default tenant in single-tenant mode
-        // This prevents access issues during the onboarding transition or in simple deployments.
-        if (tenantId == PlatformDefaults.DefaultTenantId && await IsInstanceAdminAsync(uid.Value, cancellationToken))
-        {
-            return true;
-        }
 
         var cacheKey = $"{CacheKeyPrefix}Tenant_{uid}_{tenantId}";
         return await _cache.GetOrCreateAsync(cacheKey, async entry =>
@@ -248,14 +228,6 @@ public class AdminContext : IAdminContext, IAdminCacheInvalidator
                 .Select(a => a.TenantId)
                 .Distinct()
                 .ToList();
-
-            // Single-Tenant optimization: Instance admins are automatically tenant admins for the default tenant.
-            if (!adminTenantIds.Contains(PlatformDefaults.DefaultTenantId) &&
-                await _deploymentModeProvider.IsSingleTenantAsync(cancellationToken) &&
-                await IsInstanceAdminAsync(userId, cancellationToken))
-            {
-                adminTenantIds.Add(PlatformDefaults.DefaultTenantId);
-            }
 
             return (IReadOnlyList<Guid>)adminTenantIds.AsReadOnly();
         }) ?? Array.Empty<Guid>();

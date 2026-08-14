@@ -51,7 +51,7 @@ public sealed class EventLocationHateoasTests
     {
         var eventId = Guid.CreateVersion7();
         var eventLocationId = Guid.CreateVersion7();
-        (object? payload, IReadOnlyList<AuthorizationCheck> checks) = await InvokeManagementAsync(
+        (object? payload, IReadOnlyList<AuthorizationRequest> checks) = await InvokeManagementAsync(
             eventId,
             eventLocationId,
             _ => true);
@@ -69,7 +69,7 @@ public sealed class EventLocationHateoasTests
     public async Task ManagementResponse_WhenDisclosureUpdateDenied_OmitsEditAndSpeculativeLinks()
     {
         var eventId = Guid.CreateVersion7();
-        (object? payload, IReadOnlyList<AuthorizationCheck> checks) = await InvokeManagementAsync(
+        (object? payload, IReadOnlyList<AuthorizationRequest> checks) = await InvokeManagementAsync(
             eventId,
             Guid.CreateVersion7(),
             _ => false);
@@ -99,7 +99,7 @@ public sealed class EventLocationHateoasTests
     [Test]
     public async Task ManagementResponse_WhenRouteMetadataIsMissing_OmitsEditWithoutAuthorizationCall()
     {
-        (object? payload, IReadOnlyList<AuthorizationCheck> checks) = await InvokeManagementAsync(
+        (object? payload, IReadOnlyList<AuthorizationRequest> checks) = await InvokeManagementAsync(
             Guid.CreateVersion7(),
             Guid.CreateVersion7(),
             _ => true,
@@ -114,7 +114,7 @@ public sealed class EventLocationHateoasTests
     [Test]
     public async Task ManagementResponse_WhenAuthorizationMetadataIsMissing_OmitsEditWithoutAuthorizationCall()
     {
-        (object? payload, IReadOnlyList<AuthorizationCheck> checks) = await InvokeManagementAsync(
+        (object? payload, IReadOnlyList<AuthorizationRequest> checks) = await InvokeManagementAsync(
             Guid.CreateVersion7(),
             Guid.CreateVersion7(),
             _ => true,
@@ -129,7 +129,7 @@ public sealed class EventLocationHateoasTests
     [Test]
     public async Task ManagementResponse_WhenEventRouteMetadataIsMalformed_OmitsEditWithoutAuthorizationCall()
     {
-        (object? payload, IReadOnlyList<AuthorizationCheck> checks) = await InvokeManagementAsync(
+        (object? payload, IReadOnlyList<AuthorizationRequest> checks) = await InvokeManagementAsync(
             Guid.CreateVersion7(),
             Guid.CreateVersion7(),
             _ => true,
@@ -141,15 +141,15 @@ public sealed class EventLocationHateoasTests
         await Assert.That(checks).IsEmpty();
     }
 
-    private static async Task<(object? Payload, IReadOnlyList<AuthorizationCheck> Checks)> InvokeManagementAsync(
+    private static async Task<(object? Payload, IReadOnlyList<AuthorizationRequest> Checks)> InvokeManagementAsync(
         Guid eventId,
         Guid eventLocationId,
-        Func<AuthorizationCheck, bool> decision,
+        Func<AuthorizationRequest, bool> decision,
         bool includeRouteMetadata = true,
         object? routeEventId = null,
         bool includeAuthorizationMetadata = true)
     {
-        var checks = new List<AuthorizationCheck>();
+        var checks = new List<AuthorizationRequest>();
         var authorizationProvider = new StubAuthorizationProvider
         {
             CheckPredicate = check =>
@@ -253,7 +253,7 @@ public sealed class EventLocationHateoasTests
             policyVersion: 1,
             Guid.CreateVersion7(),
             includeAuthorizationMetadata
-                ? new AuthorizationCheck(
+                ? new AuthorizationRequest(
                     ResourceKinds.Event,
                     eventId.ToString("D"),
                     AuthorizationActions.Update,
@@ -267,11 +267,11 @@ public sealed class EventLocationHateoasTests
                 : null);
 
     private static async Task AssertDirectMutationParityAsync(
-        IReadOnlyList<AuthorizationCheck> checks,
+        IReadOnlyList<AuthorizationRequest> checks,
         Guid eventId)
     {
         await Assert.That(checks).HasSingleItem();
-        AuthorizationCheck check = checks[0];
+        AuthorizationRequest check = checks[0];
         await Assert.That(check.ResourceKind).IsEqualTo(ResourceKinds.Event);
         await Assert.That(check.ResourceId).IsEqualTo(eventId.ToString("D"));
         await Assert.That(check.Action).IsEqualTo(AuthorizationActions.Update);

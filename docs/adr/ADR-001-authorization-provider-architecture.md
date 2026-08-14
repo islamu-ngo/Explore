@@ -42,8 +42,8 @@ No retry policy is configured — fail-fast to deny is safer than retrying autho
 ## Failure Mode Contract
 
 When BYO Cerbos fails:
-- `failure_mode=closed` -> local provider enters `SafeMode` (deny except explicit safe paths like instance-admin checks).
-- `failure_mode=open` -> local provider runs normal fallback authorization.
+- local provider enters `SafeMode` (deny except explicit safe paths like instance-admin checks).
+- `failure_mode=open` is parsed as a deprecated configuration value but ignored at runtime.
 
 When instance Cerbos fails:
 - All checks are denied. The operator chose Cerbos; falling back to a potentially more permissive

@@ -549,7 +549,7 @@ public class CerbosPolicyPackageServiceTests : IDisposable
         {
             Endpoint = "instance-cerbos.example:3593",
             Mode = CerbosMode.Instance,
-            FailureMode = CerbosFailureMode.Open,
+            FailureMode = CerbosFailureMode.Closed,
             IsInstanceDefault = true
         });
 

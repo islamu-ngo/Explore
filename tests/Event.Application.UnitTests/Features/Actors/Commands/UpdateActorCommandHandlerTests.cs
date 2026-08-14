@@ -39,10 +39,10 @@ public class UpdateActorCommandHandlerTests
                 return operation(CancellationToken.None);
             });
         _authorizationProvider
-            .IsAllowedBatchAsync(Arg.Any<IReadOnlyList<AuthorizationCheck>>(), Arg.Any<CancellationToken>())
+            .IsAllowedBatchAsync(Arg.Any<IReadOnlyList<AuthorizationRequest>>(), Arg.Any<CancellationToken>())
             .Returns(callInfo =>
             {
-                var checks = callInfo.Arg<IReadOnlyList<AuthorizationCheck>>();
+                var checks = callInfo.Arg<IReadOnlyList<AuthorizationRequest>>();
                 return checks.Select(_ => true).ToArray();
             });
 
@@ -78,7 +78,7 @@ public class UpdateActorCommandHandlerTests
         var actor = CreateTestActor();
         _actorRepository.GetById(actor.Id).Returns(actor);
         _authorizationProvider
-            .IsAllowedBatchAsync(Arg.Any<IReadOnlyList<AuthorizationCheck>>(), Arg.Any<CancellationToken>())
+            .IsAllowedBatchAsync(Arg.Any<IReadOnlyList<AuthorizationRequest>>(), Arg.Any<CancellationToken>())
             .Returns([true, false]);
 
         await Assert.That(async () => await _handler.Handle(new UpdateActorCommand

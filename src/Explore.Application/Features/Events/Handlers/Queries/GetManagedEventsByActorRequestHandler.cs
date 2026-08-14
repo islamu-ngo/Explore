@@ -76,7 +76,7 @@ public class GetManagedEventsByActorRequestHandler : IRequestHandler<GetManagedE
 
         var descriptor = ResourceDescriptors.EventList;
         var checks = eventDtos
-            .Select(dto => new AuthorizationCheck(
+            .Select(dto => new AuthorizationRequest(
                 descriptor.Kind,
                 descriptor.GetResourceId(dto),
                 AuthorizationActions.Events.ViewManagement,
@@ -87,7 +87,9 @@ public class GetManagedEventsByActorRequestHandler : IRequestHandler<GetManagedE
         IReadOnlyList<bool> decisions;
         try
         {
-            decisions = await _authorizationProvider.IsAllowedBatchAsync(checks, cancellationToken);
+            decisions = (await _authorizationProvider.AuthorizeBatchAsync(checks, cancellationToken))
+                .Select(decision => decision.IsAllowed)
+                .ToArray();
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {

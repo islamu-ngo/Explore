@@ -72,7 +72,7 @@ public class AdminContextTests
     }
 
     [Test]
-    public async Task IsInstanceAdminAsync_WhenBootstrapOwnerMissing_AndUserIsDefaultTenantAdmin_ReturnsTrue()
+    public async Task IsInstanceAdminAsync_WhenBootstrapOwnerMissing_AndUserIsDefaultTenantAdmin_ReturnsFalse()
     {
         // Arrange
         var userId = Guid.NewGuid();
@@ -95,8 +95,59 @@ public class AdminContextTests
         var result = await sut.IsInstanceAdminAsync(userId, CancellationToken.None);
 
         // Assert
-        await Assert.That(result).IsTrue();
-        await tenantUserRoleGrantRepository.Received(1).IsTenantAdmin(PlatformDefaults.DefaultTenantId, userId);
+        await Assert.That(result).IsFalse();
+        await tenantUserRoleGrantRepository.DidNotReceive().IsTenantAdmin(PlatformDefaults.DefaultTenantId, userId);
+    }
+
+    [Test]
+    public async Task IsInstanceAdminAsync_WhenBootstrapStateMissing_ReturnsFalse()
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+        var platformUserRoleRepository = Substitute.For<IPlatformUserRoleRepository>();
+        platformUserRoleRepository.IsUserPlatformAdmin(userId).Returns(false);
+
+        var bootstrapRepository = Substitute.For<IInstanceBootstrapStateRepository>();
+        bootstrapRepository.GetCurrent().Returns((InstanceBootstrapState?)null);
+
+        var tenantUserRoleGrantRepository = Substitute.For<ITenantUserRoleGrantRepository>();
+        var organizationMemberRepository = Substitute.For<IOrganizationMemberRepository>();
+        var sut = CreateSut(CreateHttpContextAccessor(userId), platformUserRoleRepository, bootstrapRepository, tenantUserRoleGrantRepository, organizationMemberRepository);
+
+        // Act
+        var result = await sut.IsInstanceAdminAsync(userId, CancellationToken.None);
+
+        // Assert
+        await Assert.That(result).IsFalse();
+        await tenantUserRoleGrantRepository.DidNotReceive().IsTenantAdmin(Arg.Any<Guid>(), Arg.Any<Guid>());
+    }
+
+    [Test]
+    public async Task IsInstanceAdminAsync_WhenBootstrapCompletedByDifferentUser_ReturnsFalse()
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+        var platformUserRoleRepository = Substitute.For<IPlatformUserRoleRepository>();
+        platformUserRoleRepository.IsUserPlatformAdmin(userId).Returns(false);
+
+        var bootstrapRepository = Substitute.For<IInstanceBootstrapStateRepository>();
+        bootstrapRepository.GetCurrent().Returns(new InstanceBootstrapState
+        {
+            IsCompleted = true,
+            CompletedByUserId = Guid.NewGuid()
+        });
+
+        var tenantUserRoleGrantRepository = Substitute.For<ITenantUserRoleGrantRepository>();
+        tenantUserRoleGrantRepository.IsTenantAdmin(PlatformDefaults.DefaultTenantId, userId).Returns(true);
+        var organizationMemberRepository = Substitute.For<IOrganizationMemberRepository>();
+        var sut = CreateSut(CreateHttpContextAccessor(userId), platformUserRoleRepository, bootstrapRepository, tenantUserRoleGrantRepository, organizationMemberRepository);
+
+        // Act
+        var result = await sut.IsInstanceAdminAsync(userId, CancellationToken.None);
+
+        // Assert
+        await Assert.That(result).IsFalse();
+        await tenantUserRoleGrantRepository.DidNotReceive().IsTenantAdmin(PlatformDefaults.DefaultTenantId, userId);
     }
 
     [Test]
@@ -121,6 +172,29 @@ public class AdminContextTests
         await Assert.That(result).IsTrue();
         await tenantUserRoleGrantRepository.Received(1).IsTenantAdmin(tenantId, userId);
         await tenantUserRoleGrantRepository.DidNotReceive().HasActiveTenantUserRoleGrant(Arg.Any<Guid>(), Arg.Any<Guid>());
+    }
+
+    [Test]
+    public async Task IsTenantAdminAsync_WhenDefaultTenantInstanceAdminWithoutTenantGrant_ReturnsFalse()
+    {
+        var userId = Guid.NewGuid();
+        var platformUserRoleRepository = Substitute.For<IPlatformUserRoleRepository>();
+        platformUserRoleRepository.IsUserPlatformAdmin(userId).Returns(true);
+
+        var tenantUserRoleGrantRepository = Substitute.For<ITenantUserRoleGrantRepository>();
+        tenantUserRoleGrantRepository.IsTenantAdmin(PlatformDefaults.DefaultTenantId, userId).Returns(false);
+
+        var sut = CreateSut(
+            CreateHttpContextAccessor(userId),
+            platformUserRoleRepository,
+            Substitute.For<IInstanceBootstrapStateRepository>(),
+            tenantUserRoleGrantRepository,
+            Substitute.For<IOrganizationMemberRepository>());
+
+        var result = await sut.IsTenantAdminAsync(PlatformDefaults.DefaultTenantId, CancellationToken.None);
+
+        await Assert.That(result).IsFalse();
+        await tenantUserRoleGrantRepository.Received(1).IsTenantAdmin(PlatformDefaults.DefaultTenantId, userId);
     }
 
     [Test]
@@ -532,7 +606,6 @@ public class AdminContextTests
         var userExternalLoginRepository = Substitute.For<IUserExternalLoginRepository>();
         var userRepository = Substitute.For<IUserRepository>();
         var cache = new MemoryCache(new MemoryCacheOptions());
-        var deploymentModeProvider = Substitute.For<IDeploymentModeProvider>();
         var logger = Substitute.For<ILogger<AdminContext>>();
 
         return new AdminContext(
@@ -545,7 +618,6 @@ public class AdminContextTests
             userExternalLoginRepository,
             userRepository,
             cache,
-            deploymentModeProvider,
             logger);
     }
 
@@ -581,6 +653,29 @@ public class AdminContextTests
         await Assert.That(result).Contains(adminTenantId);
         await Assert.That(result).Contains(ownerTenantId);
         await Assert.That(result).DoesNotContain(memberTenantId);
+    }
+
+    [Test]
+    public async Task GetAdminTenantIdsAsync_WhenSingleTenantInstanceAdminWithoutTenantGrant_DoesNotAddDefaultTenant()
+    {
+        var userId = Guid.NewGuid();
+        var platformUserRoleRepository = Substitute.For<IPlatformUserRoleRepository>();
+        platformUserRoleRepository.IsUserPlatformAdmin(userId).Returns(true);
+
+        var tenantUserRoleGrantRepository = Substitute.For<ITenantUserRoleGrantRepository>();
+        tenantUserRoleGrantRepository.GetByUserId(userId).Returns([]);
+
+        var sut = CreateSut(
+            CreateHttpContextAccessor(userId),
+            platformUserRoleRepository,
+            Substitute.For<IInstanceBootstrapStateRepository>(),
+            tenantUserRoleGrantRepository,
+            Substitute.For<IOrganizationMemberRepository>());
+
+        var result = await sut.GetAdminTenantIdsAsync(userId, CancellationToken.None);
+
+        await Assert.That(result).DoesNotContain(PlatformDefaults.DefaultTenantId);
+        await tenantUserRoleGrantRepository.Received(1).GetByUserId(userId);
     }
 
     private static TenantUserRoleGrant NewGrant(Guid userId, Guid tenantId, RoleEnum role) => new()
@@ -674,7 +769,6 @@ public class AdminContextTests
     {
         var groupMemberRepository = Substitute.For<IGroupMemberRepository>();
         var cache = new MemoryCache(new MemoryCacheOptions());
-        var deploymentModeProvider = Substitute.For<IDeploymentModeProvider>();
         var logger = Substitute.For<ILogger<AdminContext>>();
 
         return new AdminContext(
@@ -687,7 +781,6 @@ public class AdminContextTests
             userExternalLoginRepository ?? Substitute.For<IUserExternalLoginRepository>(),
             userRepository ?? Substitute.For<IUserRepository>(),
             cache,
-            deploymentModeProvider,
             logger);
     }
 

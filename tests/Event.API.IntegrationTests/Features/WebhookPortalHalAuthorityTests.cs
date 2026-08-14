@@ -38,7 +38,7 @@ public sealed class WebhookPortalHalAuthorityTests
         await Assert.That(resource.Links.ContainsKey(LinkRelations.RepairProviderBinding)).IsTrue();
         await Assert.That(resource.Links[LinkRelations.OpenProviderPortal].Method).IsEqualTo("POST");
         await fixture.AuthorizationProvider.Received(1).IsAllowedBatchAsync(
-            Arg.Is<IReadOnlyList<AuthorizationCheck>>(checks => checks != null && checks.Any(check =>
+            Arg.Is<IReadOnlyList<AuthorizationRequest>>(checks => checks != null && checks.Any(check =>
                 check.Action == AuthorizationActions.Webhooks.OpenProviderPortal &&
                 check.ResourceId == ConsumerId.ToString("D"))),
             Arg.Any<CancellationToken>());
@@ -238,10 +238,10 @@ public sealed class WebhookPortalHalAuthorityTests
 
             AuthorizationProvider = Substitute.For<IAuthorizationProvider>();
             AuthorizationProvider.IsAllowedBatchAsync(
-                    Arg.Any<IReadOnlyList<AuthorizationCheck>>(),
+                    Arg.Any<IReadOnlyList<AuthorizationRequest>>(),
                     Arg.Any<CancellationToken>())
                 .Returns(call => Task.FromResult<IReadOnlyList<bool>>(
-                    call.ArgAt<IReadOnlyList<AuthorizationCheck>>(0)
+                    call.ArgAt<IReadOnlyList<AuthorizationRequest>>(0)
                         .Select(check => check.Action != AuthorizationActions.Webhooks.OpenProviderPortal || authorizePortal)
                         .ToArray()));
 

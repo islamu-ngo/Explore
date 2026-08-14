@@ -78,17 +78,46 @@ public partial class FallbackAuthorizationService : IAuthorizationProvider
         _logger = logger;
     }
 
-    public async Task<bool> IsAllowedAsync(
+    public async Task<AuthorizationDecision> AuthorizeAsync(
+        AuthorizationRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(request.ResourceId))
+            return AuthorizationDecision.Deny(AuthorizationProviderMetadata.Local, AuthorizationDecisionReasonCodes.InvalidRequest);
+
+        var allowed = await IsAllowedCoreAsync(
+            request.ResourceKind,
+            request.ResourceId,
+            request.Action,
+            request.ResourceAttributes is null ? null : new Dictionary<string, object>(request.ResourceAttributes),
+            cancellationToken,
+            request.Facts);
+
+        return allowed
+            ? AuthorizationDecision.Allow(AuthorizationProviderMetadata.Local)
+            : AuthorizationDecision.Deny(AuthorizationProviderMetadata.Local);
+    }
+
+    private async Task<bool> IsAllowedCoreAsync(
         string resourceKind,
         string resourceId,
         string action,
         IDictionary<string, object>? resourceAttributes = null,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        IAuthorizationFacts? facts = null)
     {
         if (!IsSupportedEventResourceAction(resourceKind, action))
         {
             LogDecision("deny", "unsupported_event_action", resourceKind, resourceId, action);
             return false;
+        }
+
+        if (_machinePrincipalAccessor.IsMachineCaller)
+        {
+            bool machineDecision = await EvaluateMachineCallerAccessAsync(
+                resourceKind, resourceId, action, resourceAttributes, cancellationToken);
+            LogDecision(machineDecision ? "allow" : "deny", "machine_caller", resourceKind, resourceId, action);
+            return machineDecision;
         }
 
         var isInstanceAdmin = await _adminContext.IsInstanceAdminAsync(cancellationToken);
@@ -100,10 +129,16 @@ public partial class FallbackAuthorizationService : IAuthorizationProvider
             return false;
         }
 
-        if (isInstanceAdmin && !RequiresDirectEventAuthority(resourceKind, action))
+        if (isInstanceAdmin && IsInstanceAdminFallbackAllowed(resourceKind, action))
         {
             LogDecision("allow", "is_instance_admin", resourceKind, resourceId, action);
             return true;
+        }
+
+        if (isInstanceAdmin && IsInstanceAdminFallbackDenied(resourceKind, action))
+        {
+            LogDecision("deny", "is_instance_admin_shortcut_denied", resourceKind, resourceId, action);
+            return false;
         }
 
         // Safe-Mode: only instance admin allowed (bypassed above) — deny everything else.
@@ -112,14 +147,6 @@ public partial class FallbackAuthorizationService : IAuthorizationProvider
         {
             LogDecision("deny", "safe_mode_active", resourceKind, resourceId, action);
             return false;
-        }
-
-        if (_machinePrincipalAccessor.IsMachineCaller)
-        {
-            bool machineDecision = await EvaluateMachineCallerAccessAsync(
-                resourceKind, resourceId, action, resourceAttributes, cancellationToken);
-            LogDecision(machineDecision ? "allow" : "deny", "machine_caller", resourceKind, resourceId, action);
-            return machineDecision;
         }
 
         var decision = resourceKind switch
@@ -171,7 +198,7 @@ public partial class FallbackAuthorizationService : IAuthorizationProvider
             "islamuevent_event_contact_share_consent" => await EvaluateContactShareConsentAccessAsync(resourceId, action, resourceAttributes, cancellationToken),
 
             // Storage: all authenticated can create, tenant admin for full management
-            "islamuevent_storage_object" => await EvaluateStorageObjectAccessAsync(resourceId, action, resourceAttributes, cancellationToken),
+            "islamuevent_storage_object" => await EvaluateStorageObjectAccessAsync(resourceId, action, resourceAttributes, facts, cancellationToken),
 
             // User management: instance admin or tenant admin, or self-update
             "islamuevent_user" => await EvaluateUserAccessAsync(resourceId, action, resourceAttributes, cancellationToken),
@@ -197,47 +224,6 @@ public partial class FallbackAuthorizationService : IAuthorizationProvider
 
         LogDecision(decision ? "allow" : "deny", "fallback_policy", resourceKind, resourceId, action);
         return decision;
-    }
-
-    public async Task<bool> CheckSettingAccessAsync(
-        string settingKey,
-        string action,
-        Guid? tenantId = null,
-        Guid? organizationId = null,
-        CancellationToken cancellationToken = default)
-    {
-        // Instance admins bypass all lock checks
-        if (await _adminContext.IsInstanceAdminAsync(cancellationToken))
-            return true;
-
-        // Safe-Mode: only instance admin allowed (bypassed above)
-        if (SafeMode)
-            return false;
-
-        // Determine resource kind from scope
-        string resourceKind;
-        var attributes = new Dictionary<string, object> { ["settingKey"] = settingKey };
-
-        if (organizationId.HasValue)
-        {
-            resourceKind = "islamuevent_organization";
-            attributes["organizationId"] = organizationId.Value.ToString();
-        }
-        else if (tenantId.HasValue)
-        {
-            resourceKind = "islamuevent_tenant_setting";
-            attributes["tenantId"] = tenantId.Value.ToString();
-
-            // Check if the setting is locked by instance
-            var metadata = await _resolver.ResolveWithMetadataAsync(settingKey, new SettingContext(), cancellationToken);
-            attributes["isLockedByInstance"] = metadata?.IsLocked == true;
-        }
-        else
-        {
-            resourceKind = "islamuevent_instance_setting";
-        }
-
-        return await IsAllowedAsync(resourceKind, settingKey, action, attributes, cancellationToken);
     }
 
     private Task<bool> EvaluateDefaultAccessAsync(
@@ -334,6 +320,72 @@ public partial class FallbackAuthorizationService : IAuthorizationProvider
             or AuthorizationActions.Events.WithdrawOrganizerClaim
             or AuthorizationActions.Events.ViewOrganizerClaims
             or AuthorizationActions.Events.ReviewOrganizerClaim;
+
+    private static bool IsInstanceAdminFallbackAllowed(string resourceKind, string action) => resourceKind switch
+    {
+        ResourceKinds.InstanceSetting => action is AuthorizationActions.InstanceSettings.View
+            or AuthorizationActions.InstanceSettings.Update
+            or AuthorizationActions.InstanceSettings.Delete
+            or AuthorizationActions.InstanceSettings.Lock
+            or AuthorizationActions.InstanceSettings.Unlock,
+        ResourceKinds.Tenant => action is AuthorizationActions.Tenants.View
+            or AuthorizationActions.Tenants.Update,
+        ResourceKinds.TenantUserRoleGrant => action is AuthorizationActions.TenantUserRoleGrants.View
+            or AuthorizationActions.TenantUserRoleGrants.Create
+            or AuthorizationActions.TenantUserRoleGrants.Delete,
+        ResourceKinds.User => action is AuthorizationActions.Users.View
+            or AuthorizationActions.Users.Update
+            or AuthorizationActions.Users.Delete,
+        ResourceKinds.AtprotoRecord or ResourceKinds.IndexedDid => action is AuthorizationActions.View
+            or AuthorizationActions.Create
+            or AuthorizationActions.Update
+            or AuthorizationActions.Delete,
+        ResourceKinds.PlatformNamespace => action is AuthorizationActions.View
+            or AuthorizationActions.Create
+            or AuthorizationActions.Update
+            or AuthorizationActions.Delete,
+        ResourceKinds.EmailDispatch => action is AuthorizationActions.EmailDispatches.View
+            or AuthorizationActions.EmailDispatches.ManageTenant
+            or AuthorizationActions.EmailDispatches.Park
+            or AuthorizationActions.EmailDispatches.Replay
+            or AuthorizationActions.EmailDispatches.Resolve
+            or AuthorizationActions.EmailDispatches.Reconcile,
+        ResourceKinds.Event => action is AuthorizationActions.Events.ViewManagement
+            or AuthorizationActions.Events.ModerateLight
+            or AuthorizationActions.Events.ModerateHeavy
+            or AuthorizationActions.Events.Unmoderate,
+        ResourceKinds.SupportAccessSession => action is AuthorizationActions.SupportAccessSessions.View
+            or AuthorizationActions.SupportAccessSessions.List
+            or AuthorizationActions.SupportAccessSessions.Start
+            or AuthorizationActions.SupportAccessSessions.Stop
+            or AuthorizationActions.SupportAccessSessions.ViewAudit
+            or AuthorizationActions.SupportAccessSessions.ForceStop,
+        ResourceKinds.Webhook => action is AuthorizationActions.Webhooks.View
+            or AuthorizationActions.Webhooks.Create
+            or AuthorizationActions.Webhooks.Update
+            or AuthorizationActions.Webhooks.Delete
+            or AuthorizationActions.Webhooks.RotateSecret
+            or AuthorizationActions.Webhooks.Test
+            or AuthorizationActions.Webhooks.Retry
+            or AuthorizationActions.Webhooks.Pause
+            or AuthorizationActions.Webhooks.Resume
+            or AuthorizationActions.Webhooks.ReconcilePublication
+            or AuthorizationActions.Webhooks.AbandonPublication
+            or AuthorizationActions.Webhooks.ViewDelivery
+            or AuthorizationActions.Webhooks.ViewPayload
+            or AuthorizationActions.Webhooks.BulkReplay
+            or AuthorizationActions.Webhooks.ManageProvider
+            or AuthorizationActions.Webhooks.OpenProviderPortal,
+        _ => false
+    };
+
+    private static bool IsInstanceAdminFallbackDenied(string resourceKind, string action) => resourceKind switch
+    {
+        ResourceKinds.AiConversation => true,
+        ResourceKinds.Notification => true,
+        ResourceKinds.ActorSubscription => true,
+        _ => false
+    };
 
     private static bool IsOrganizerClaimAction(string action) =>
         action is AuthorizationActions.Events.ClaimOrganizer

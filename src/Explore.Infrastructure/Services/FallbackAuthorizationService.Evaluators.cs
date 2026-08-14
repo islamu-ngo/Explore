@@ -2,6 +2,7 @@
 // ABOUTME: Tenant-scoped, org-scoped, and resource-specific access evaluation methods.
 
 using Explore.Application.Authorization;
+using Explore.Application.Features.StorageObjects.Requests.Commands;
 using Explore.Application.Helpers;
 using Explore.Domain;
 using Explore.Domain.Constants;
@@ -749,10 +750,11 @@ public partial class FallbackAuthorizationService
         string resourceId,
         string action,
         IDictionary<string, object>? resourceAttributes,
+        IAuthorizationFacts? facts,
         CancellationToken cancellationToken)
     {
         if (action == AuthorizationActions.StorageObjects.Create)
-            return true;
+            return await CanCreateStorageUploadAsync(resourceId, facts, cancellationToken);
 
         if (action is AuthorizationActions.StorageObjects.Download
             or AuthorizationActions.StorageObjects.PresignedDownload)
@@ -764,6 +766,39 @@ public partial class FallbackAuthorizationService
         }
 
         return await EvaluateTenantScopedAccessAsync("islamuevent_storage_object", resourceId, action, resourceAttributes, cancellationToken);
+    }
+
+    private async Task<bool> CanCreateStorageUploadAsync(
+        string resourceId,
+        IAuthorizationFacts? facts,
+        CancellationToken cancellationToken)
+    {
+        if (facts is not StorageUploadIntentFacts storageFacts ||
+            !storageFacts.IsOrganizationTenantUpload ||
+            storageFacts.TenantId == Guid.Empty ||
+            storageFacts.OwningResourceId == Guid.Empty ||
+            storageFacts.OwningOrganizationId is not { } organizationId ||
+            !string.Equals(resourceId, nameof(CreateStorageUploadSessionCommand), StringComparison.Ordinal))
+        {
+            LogDecision("deny", "storage_upload_intent_facts_missing", "islamuevent_storage_object", resourceId, AuthorizationActions.StorageObjects.Create);
+            return false;
+        }
+
+        var currentUserId = _adminContext.UserId ?? await _adminContext.ResolveUserIdAsync(cancellationToken);
+        if (currentUserId != storageFacts.SubjectUserId || storageFacts.TenantId != _tenantContext.TenantId)
+        {
+            LogDecision("deny", "storage_upload_subject_or_tenant_mismatch", "islamuevent_storage_object", resourceId, AuthorizationActions.StorageObjects.Create);
+            return false;
+        }
+
+        var allowed = await _adminContext.IsOrganizationAdminAsync(organizationId, cancellationToken);
+        LogDecision(
+            allowed ? "allow" : "deny",
+            allowed ? "storage_upload_owner_admin" : "storage_upload_owner_admin_missing",
+            "islamuevent_storage_object",
+            resourceId,
+            AuthorizationActions.StorageObjects.Create);
+        return allowed;
     }
 
     private bool CanReadStorageObjectContent(

@@ -2,6 +2,7 @@
 // ABOUTME: Validates settings against provider capabilities before writing at Instance scope.
 
 using Explore.Application.Contracts.Infrastructure;
+using Explore.Application.Contracts.Identity;
 using Explore.Application.Features.InstanceOnboarding.Requests.Commands;
 using Explore.Application.Responses;
 using Explore.Application.Settings;
@@ -16,13 +17,24 @@ using MediatR;
 namespace Explore.Application.Features.InstanceOnboarding.Handlers.Commands;
 
 public sealed class UpdateAnalyticsGovernanceSettingsCommandHandler(
-    IHierarchicalSettingsResolver settingsResolver)
+    IHierarchicalSettingsResolver settingsResolver,
+    IAdminContext adminContext)
     : IRequestHandler<UpdateAnalyticsGovernanceSettingsCommand, BaseCommandResponse<Guid>>
 {
     public async Task<BaseCommandResponse<Guid>> Handle(
         UpdateAnalyticsGovernanceSettingsCommand request, CancellationToken cancellationToken)
     {
         var userId = request.UserId;
+
+        if (!await adminContext.IsInstanceAdminAsync(userId, cancellationToken))
+        {
+            return new BaseCommandResponse<Guid>
+            {
+                Success = false,
+                Message = "Only instance administrators can update instance governance settings.",
+                FailureCode = FailureCodes.AdminRequired
+            };
+        }
 
         if (!request.Patch.HasChanges())
         {

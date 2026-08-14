@@ -72,12 +72,12 @@ public sealed class UpdateMyReportCommunicationConsentCommandHandler(
                 EventReportFailureCodes.UserUnresolved);
         }
 
-        var isAllowed = await authorizationProvider.IsAllowedAsync(
-            ResourceKinds.User,
-            resolvedReporterUserId.ToString(),
-            AuthorizationActions.Users.Update,
-            cancellationToken: cancellationToken);
-        if (!isAllowed)
+        var decision = await authorizationProvider.AuthorizeAsync(
+            new AuthorizationRequest(
+                AuthorizationCapabilityCatalog.Require(ResourceKinds.User, AuthorizationActions.Users.Update),
+                resolvedReporterUserId.ToString()),
+            cancellationToken);
+        if (!decision.IsAllowed)
         {
             throw new AuthorizationException(
                 ResourceKinds.User,

@@ -3,9 +3,9 @@
 
 # Authorization Platform Redesign — Context
 
-Last Updated: 2026-08-14 Europe/Brussels
+Last Updated: 2026-08-15 Europe/Brussels
 
-## SESSION PROGRESS (2026-08-14 Europe/Brussels)
+## SESSION PROGRESS (2026-08-15 Europe/Brussels)
 
 ### ✅ COMPLETED
 
@@ -14,29 +14,34 @@ Last Updated: 2026-08-14 Europe/Brussels
 - Reviewed the previous 10-phase plan, context, and task ledger against repository conventions, Clean Architecture, tenant-isolation, self-hosting, and enterprise-operations requirements.
 - Researched current Microsoft authorization guidance through Context7 and primary Microsoft, NIST, Cerbos, and OpenID sources under the clean-room boundary.
 - Rejected the generic policy AST/compiler/store and Policy Studio scope; replaced it with a typed Application decision port, two provider adapters, shared scenarios, operability, bounded query protection, and legacy deletion.
-- Synchronized the plan/context/task artifacts. No runtime code was changed.
+- Completed Phase 0 runtime containment: 171 mutating MediatR surfaces now have deterministic evidence-backed dispositions with zero unresolved entries.
+- Added provider-neutral MediatR, HAL, Runtime, Local, and Cerbos scenarios, then removed the abandoned cross-project scenario catalog.
+- Made BYO Cerbos failures, missing bootstrap ownership, broad instance-administrator grants, machine identity bleed, and locked machine tenant settings fail closed.
+- Secured analytics and localization administration, invitation ownership, organization-review authorship, EventSeries tenant administration, and group creator binding.
+- Consumed the Phase 0 Release build and architecture-test gate and recorded the pre-existing failures below.
 
 ### 🟡 IN PROGRESS
 
-- Awaiting user review and approval of the re-baselined six-phase implementation plan.
+- Phase 1 is active: introduce the typed Application authorization boundary, beginning with trusted storage pre-create owner facts.
 
 ### ⏭️ NEXT
 
-1. After approval, begin Phase 0 only.
-2. Inventory current capabilities, exceptional bypasses, endpoint metadata, MediatR declarations, HAL relations, Local paths, Cerbos paths, and negative scenarios.
-3. Contain verified exposure/drift defects without introducing the later typed platform contract prematurely.
+1. Add the smallest Application-owned typed request, decision, capability, provider-metadata, and fact contracts.
+2. Introduce trusted `StorageUploadIntentFacts` from authenticated subject, tenant, and loaded owning-resource evidence.
+3. Adapt the provider port without moving provider concerns into Domain or introducing a generic fact dictionary, AST, or DSL.
 
 ### ⚠️ BLOCKERS
 
-- No implementation blocker is known.
+- The local .NET workload manifest set is currently inconsistent (`MSB4242`, missing workload set `10.0.301.1`). Focused tests run with `MSBuildEnableWorkloadResolver=false`; repair of the developer SDK installation is outside this workstream.
 - Permission widening remains forbidden without separate explicit approval.
 - Tavily MCP research was attempted as requested but every call returned HTTP 432 because the configured Tavily plan usage limit was exceeded. Context7 and primary-source Anysearch results were used for the remaining research.
+- Phase 1 must resolve storage pre-create facts, lifecycle vocabulary, contact-share typed facts, and Local/Cerbos instance-administrator parity without compatibility shims.
 
 ## Quick Resume
 
-This is a planning-only workstream. Runtime behavior is unchanged. The previous mega-plan was directionally security-aware but over-engineered: it mixed authorization hardening with a new policy language, compiler, persistence model, control plane, admin API, external PDP, and visual studio. The replacement plan keeps the useful typed decision boundary and parity goals while relying on repository-native Local policy code and Cerbos-native policy lifecycle behavior.
+Phase 0 is complete and runtime authorization behavior is deliberately narrower. The deterministic inventory has 171 evidence-backed MediatR dispositions and zero unresolved violations; BYO/provider, administrator, machine, governance, ownership, and invitation gaps now fail closed.
 
-The immediate implementation priority is containment, not platform construction. Implementation agents must not start Phase 1 until the Phase 0 capability/scenario inventory and exposure fixes are complete and verified.
+Phase 1 is active. Implement the typed Application boundary and trusted storage pre-create facts first, then adapt Local and Cerbos behind the typed port. Do not recreate the rejected policy language, compiler, generic dictionary, or control-plane design.
 
 ## Verified Current Architecture
 
@@ -83,6 +88,11 @@ External sources were used only for neutral behavioral constraints. No source co
 
 ## Validation Baseline
 
+- Phase 0 Release build passed with 0 errors and 10 existing `SSH.NET` advisory warnings.
+- Phase 0 architecture suite: 377 total, 372 passed, 1 skipped, and 4 pre-existing failures covering DTO suffixes, an unnamed tenant-filter bypass, Blazor-owned analytics contracts, and privacy-inventory omissions. No new authorization failure was introduced.
+- The authorization guardrail independently confirmed 171 deterministic dispositions, 0 unresolved violations, and 0 unclassified mutation surfaces.
+- Phase 0 evidence is recorded in `.omo/start-work/artifacts/authorization-platform-redesign/phase0-verification.json` and the task01/task03 artifact directories.
+
 - Planning-start build succeeded in 7.11 seconds with 0 errors and 10 warnings.
 - Final Release build succeeded in 50.40 seconds with 0 errors and 765 pre-existing warnings. These include `SSH.NET` 2025.1.0 advisory `GHSA-q939-rpr3-3284`, analyzer findings, obsolete test-container constructors, and existing test-code warnings; none originate from these Markdown-only changes.
 - Final architecture test result: 373 total, 368 passed, 1 skipped, and 4 pre-existing failures. The failures cover two registration-form input types without the `Dto` suffix, an unnamed tenant-filter bypass in `RegistrationFormAuthoringRepository`, Blazor-owned registration-answer analytics contracts, and two missing privacy-inventory properties.
@@ -98,10 +108,11 @@ External sources were used only for neutral behavioral constraints. No source co
 
 ## Handoff Notes
 
-### Handoff — 2026-08-14 Europe/Brussels
+### Handoff — 2026-08-15 Europe/Brussels
 
-- Start with `authorization-platform-redesign-tasks.md`; Phase 0 is the only approved next slice after user approval.
+- Start with `authorization-platform-redesign-tasks.md`; Phase 1 Task 1.1 is active.
 - Do not recreate the rejected AST/compiler/policy-store design under different names.
 - Treat HAL parity as authorization correctness, not UI work.
 - Preserve tenant filters, entity-returning repositories, handler DTO mapping, manual validators, BFF token secrecy, and generated-migration discipline.
+- Introduce typed storage pre-create ownership evidence before tightening `StorageObjects.Create`; missing subject, tenant, or ownership facts must deny.
 - Record exact phase-end build/test results here and update the task count immediately.

@@ -50,7 +50,7 @@ public sealed class HateoasAuthorizationEvaluator : IHateoasAuthorizationEvaluat
             return [];
 
         var results = new bool[definitions.Count];
-        var pendingChecks = new List<(int Index, AuthorizationCheck Check, string Key)>();
+        var pendingChecks = new List<(int Index, AuthorizationRequest Check, string Key)>();
 
         // Phase 1: Static checks (no provider call needed)
         for (var i = 0; i < definitions.Count; i++)
@@ -102,7 +102,7 @@ public sealed class HateoasAuthorizationEvaluator : IHateoasAuthorizationEvaluat
             return results;
 
         // Phase 2: Deduplicate — collapse identical checks before provider invocation
-        var uniqueChecks = new List<AuthorizationCheck>();
+        var uniqueChecks = new List<AuthorizationRequest>();
         var keyToDecisionIndex = new Dictionary<string, int>(StringComparer.Ordinal);
 
         foreach (var (_, check, key) in pendingChecks)
@@ -132,13 +132,13 @@ public sealed class HateoasAuthorizationEvaluator : IHateoasAuthorizationEvaluat
 
         try
         {
-            var allowed = await _authorizationProvider.IsAllowedBatchAsync(uniqueChecks);
+            var allowed = await _authorizationProvider.AuthorizeBatchAsync(uniqueChecks);
 
             // Phase 4: Map decisions back to all original link indices via dedup key
             foreach (var (index, _, key) in pendingChecks)
             {
                 var decisionIndex = keyToDecisionIndex[key];
-                results[index] = decisionIndex < allowed.Count && allowed[decisionIndex];
+                results[index] = decisionIndex < allowed.Count && allowed[decisionIndex].IsAllowed;
             }
 
             activity?.SetTag("outcome", "success");
@@ -183,7 +183,7 @@ public sealed class HateoasAuthorizationEvaluator : IHateoasAuthorizationEvaluat
         return true;
     }
 
-    private AuthorizationCheck? BuildCheck(LinkDefinition definition)
+    private AuthorizationRequest? BuildCheck(LinkDefinition definition)
     {
         if (string.IsNullOrWhiteSpace(definition.PermissionResourceKind))
             return null;
@@ -196,15 +196,15 @@ public sealed class HateoasAuthorizationEvaluator : IHateoasAuthorizationEvaluat
             ?? definition.RouteName;
 
         var attrs = definition.PermissionResourceAttributes;
-        return new AuthorizationCheck(definition.PermissionResourceKind, resourceId, action, attrs, definition.PermissionScope);
+        return new AuthorizationRequest(definition.PermissionResourceKind, resourceId, action, attrs, definition.PermissionScope);
     }
 
     private static bool RequiresExplicitPermissionAction(LinkDefinition definition) =>
         !string.IsNullOrWhiteSpace(definition.PermissionResourceKind) &&
         string.IsNullOrWhiteSpace(definition.PermissionAction);
 
-    private async Task<List<(int Index, AuthorizationCheck Check, string Key)>> EnrichRegistrationFormChecksAsync(
-        List<(int Index, AuthorizationCheck Check, string Key)> pendingChecks,
+    private async Task<List<(int Index, AuthorizationRequest Check, string Key)>> EnrichRegistrationFormChecksAsync(
+        List<(int Index, AuthorizationRequest Check, string Key)> pendingChecks,
         bool[] results,
         CancellationToken cancellationToken)
     {
@@ -224,8 +224,8 @@ public sealed class HateoasAuthorizationEvaluator : IHateoasAuthorizationEvaluat
             : (await _eventRepository.GetAuthorizationTargetsByIdsAsync(eventIds, cancellationToken))
                 .Where(item => item.TenantId == _tenantContext.TenantId)
                 .ToDictionary(item => item.Id);
-        var enriched = new List<(int Index, AuthorizationCheck Check, string Key)>(pendingChecks.Count);
-        foreach ((int index, AuthorizationCheck check, string key) in pendingChecks)
+        var enriched = new List<(int Index, AuthorizationRequest Check, string Key)>(pendingChecks.Count);
+        foreach ((int index, AuthorizationRequest check, string key) in pendingChecks)
         {
             if (check.ResourceKind != ResourceKinds.RegistrationForm)
             {

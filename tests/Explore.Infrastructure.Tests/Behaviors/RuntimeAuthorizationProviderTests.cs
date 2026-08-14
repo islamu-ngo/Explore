@@ -146,12 +146,12 @@ public class RuntimeAuthorizationProviderTests
 
         var results = await fixture.RuntimeProvider.IsAllowedBatchAsync(
         [
-            new AuthorizationCheck(
+            new AuthorizationRequest(
                 ResourceKinds.InstanceSetting,
                 "storage",
                 AuthorizationActions.InstanceSettings.Update,
                 new Dictionary<string, object> { ["settingKey"] = "storage" }),
-            new AuthorizationCheck(
+            new AuthorizationRequest(
                 ResourceKinds.InstanceSetting,
                 "storage",
                 AuthorizationActions.InstanceSettings.View,
@@ -193,12 +193,12 @@ public class RuntimeAuthorizationProviderTests
 
         var results = await fixture.RuntimeProvider.IsAllowedBatchAsync(
         [
-            new AuthorizationCheck(
+            new AuthorizationRequest(
                 ResourceKinds.AiConversation,
                 "GetAiConversationListQuery",
                 AuthorizationActions.AiConversations.View,
                 null),
-            new AuthorizationCheck(
+            new AuthorizationRequest(
                 ResourceKinds.AiConversation,
                 "CreateAiConversationCommand",
                 AuthorizationActions.AiConversations.Create,
@@ -222,7 +222,7 @@ public class RuntimeAuthorizationProviderTests
 
         var results = await fixture.RuntimeProvider.IsAllowedBatchAsync(
         [
-            new AuthorizationCheck(
+            new AuthorizationRequest(
                 ResourceKinds.Event,
                 CreateEventCommand.PreCreateResourceId,
                 AuthorizationActions.Create,
@@ -249,7 +249,7 @@ public class RuntimeAuthorizationProviderTests
 
         var results = await fixture.RuntimeProvider.IsAllowedBatchAsync(
         [
-            new AuthorizationCheck(
+            new AuthorizationRequest(
                 ResourceKinds.Organization,
                 CreateOrganizationCommand.PreCreateResourceId,
                 AuthorizationActions.Create,
@@ -293,7 +293,7 @@ public class RuntimeAuthorizationProviderTests
 
         var results = await fixture.RuntimeProvider.IsAllowedBatchAsync(
         [
-            new AuthorizationCheck(
+            new AuthorizationRequest(
                 ResourceKinds.EventSession,
                 eventId.ToString(),
                 AuthorizationActions.Create,
@@ -303,7 +303,7 @@ public class RuntimeAuthorizationProviderTests
                     ["eventId"] = eventId.ToString(),
                     ["authorizationPhase"] = AuthorizationPhases.PreCreate
                 }),
-            new AuthorizationCheck(
+            new AuthorizationRequest(
                 ResourceKinds.Category,
                 categoryId,
                 AuthorizationActions.Create,
@@ -346,7 +346,7 @@ public class RuntimeAuthorizationProviderTests
 
         var results = await fixture.RuntimeProvider.IsAllowedBatchAsync(
         [
-            new AuthorizationCheck(
+            new AuthorizationRequest(
                 ResourceKinds.StorageObject,
                 resourceId,
                 AuthorizationActions.Create,
@@ -379,8 +379,8 @@ public class RuntimeAuthorizationProviderTests
 
         var results = await fixture.RuntimeProvider.IsAllowedBatchAsync(
         [
-            new AuthorizationCheck(ResourceKinds.User, userId.ToString(), AuthorizationActions.Update, attributes),
-            new AuthorizationCheck(ResourceKinds.User, otherUserId.ToString(), AuthorizationActions.Update, attributes)
+            new AuthorizationRequest(ResourceKinds.User, userId.ToString(), AuthorizationActions.Update, attributes),
+            new AuthorizationRequest(ResourceKinds.User, otherUserId.ToString(), AuthorizationActions.Update, attributes)
         ]);
 
         await Assert.That(results).IsEquivalentTo([true, false]);
@@ -438,7 +438,7 @@ public class RuntimeAuthorizationProviderTests
     }
 
     [Test]
-    public async Task IsAllowedBatchAsync_WithByoOpenPdpUnavailable_UsesLocalRbacFallback()
+    public async Task IsAllowedBatchAsync_WithByoOpenPdpUnavailable_TreatsOpenAsDeprecatedFailClosedMode()
     {
         var fixture = CreateRuntimeProviderFixture();
         fixture.AdminContext.UserId.Returns(Guid.NewGuid());
@@ -453,8 +453,29 @@ public class RuntimeAuthorizationProviderTests
             Guid.NewGuid().ToString(),
             "create");
 
-        await Assert.That(result).IsTrue();
-        await Assert.That(fixture.LocalProvider.SafeMode).IsFalse();
+        await Assert.That(result).IsFalse();
+        await Assert.That(fixture.LocalProvider.SafeMode).IsTrue();
+        await fixture.ByoCerbosClient.Received(1).CheckResourcesAsync(Arg.Any<CheckResourcesRequest>(), Arg.Any<Metadata>());
+    }
+
+    [Test]
+    public async Task IsAllowedBatchAsync_WithByoOpenPdpUnavailable_ActivatesSafeModeAndDeniesNonInstanceAdmin()
+    {
+        var fixture = CreateRuntimeProviderFixture();
+        fixture.AdminContext.UserId.Returns(Guid.NewGuid());
+        fixture.AdminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(false);
+        fixture.AdminContext.IsTenantAdminAsync(TestTenantId, Arg.Any<CancellationToken>()).Returns(true);
+        fixture.CerbosConfigResolver.ResolveAsync(Arg.Any<CancellationToken>()).Returns(CreateByoConfiguration(CerbosFailureMode.Open));
+        fixture.ByoCerbosClient.CheckResourcesAsync(Arg.Any<CheckResourcesRequest>(), Arg.Any<Metadata>())
+            .Returns<CheckResourcesResponse>(_ => throw CreateUnavailableRpcException());
+
+        var result = await fixture.RuntimeProvider.IsAllowedAsync(
+            "islamuevent_category",
+            Guid.NewGuid().ToString(),
+            "create");
+
+        await Assert.That(result).IsFalse();
+        await Assert.That(fixture.LocalProvider.SafeMode).IsTrue();
         await fixture.ByoCerbosClient.Received(1).CheckResourcesAsync(Arg.Any<CheckResourcesRequest>(), Arg.Any<Metadata>());
     }
 
@@ -490,6 +511,33 @@ public class RuntimeAuthorizationProviderTests
             Endpoint = string.Empty,
             Mode = CerbosMode.CustomEndpoint,
             FailureMode = CerbosFailureMode.Closed,
+            IsInstanceDefault = false
+        });
+        fixture.ByoCerbosClient.CheckResourcesAsync(Arg.Any<CheckResourcesRequest>(), Arg.Any<Metadata>())
+            .Returns<CheckResourcesResponse>(_ => throw CreateUnavailableRpcException());
+
+        var result = await fixture.RuntimeProvider.IsAllowedAsync(
+            "islamuevent_category",
+            Guid.NewGuid().ToString(),
+            "create");
+
+        await Assert.That(result).IsFalse();
+        await Assert.That(fixture.LocalProvider.SafeMode).IsTrue();
+        await fixture.CerbosClient.DidNotReceive().CheckResourcesAsync(Arg.Any<CheckResourcesRequest>(), Arg.Any<Metadata>());
+    }
+
+    [Test]
+    public async Task IsAllowedBatchAsync_WithByoOpenBlankEndpoint_ActivatesSafeModeInsteadOfLocalRbacFallback()
+    {
+        var fixture = CreateRuntimeProviderFixture();
+        fixture.AdminContext.UserId.Returns(Guid.NewGuid());
+        fixture.AdminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(false);
+        fixture.AdminContext.IsTenantAdminAsync(TestTenantId, Arg.Any<CancellationToken>()).Returns(true);
+        fixture.CerbosConfigResolver.ResolveAsync(Arg.Any<CancellationToken>()).Returns(new CerbosConfiguration
+        {
+            Endpoint = string.Empty,
+            Mode = CerbosMode.CustomEndpoint,
+            FailureMode = CerbosFailureMode.Open,
             IsInstanceDefault = false
         });
         fixture.ByoCerbosClient.CheckResourcesAsync(Arg.Any<CheckResourcesRequest>(), Arg.Any<Metadata>())
@@ -622,12 +670,12 @@ public class RuntimeAuthorizationProviderTests
 
         var results = await fixture.RuntimeProvider.IsAllowedBatchAsync(
         [
-            new AuthorizationCheck(
+            new AuthorizationRequest(
                 ResourceKinds.Category,
                 categoryId,
                 AuthorizationActions.View,
                 new Dictionary<string, object> { ["tenantId"] = TestTenantId.ToString("D") }),
-            new AuthorizationCheck(
+            new AuthorizationRequest(
                 ResourceKinds.Category,
                 categoryId,
                 AuthorizationActions.Create,
@@ -647,9 +695,117 @@ public class RuntimeAuthorizationProviderTests
             Arg.Any<Metadata>());
     }
 
+    [Test]
+    [Arguments(SupportAccessModeEnum.ReadOnly)]
+    [Arguments(SupportAccessModeEnum.Write)]
+    public async Task IsAllowedBatchAsync_WithForwardedSupportAccess_DoesNotBoundaryDenySupportSessionResource(
+        SupportAccessModeEnum mode)
+    {
+        var fixture = CreateRuntimeProviderFixture();
+        fixture.AdminContext.UserId.Returns(Guid.NewGuid());
+        fixture.AdminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(true);
+        fixture.SupportAccessSessionService.GetCurrentAsync(Arg.Any<CancellationToken>())
+            .Returns(CreateSupportContext(mode, TestTenantId));
+
+        var result = await fixture.RuntimeProvider.IsAllowedAsync(
+            ResourceKinds.SupportAccessSession,
+            Guid.NewGuid().ToString("D"),
+            AuthorizationActions.SupportAccessSessions.Stop,
+            new Dictionary<string, object> { ["tenantId"] = TestTenantId.ToString("D") });
+
+        await Assert.That(result).IsTrue();
+        await fixture.CerbosClient.DidNotReceive().CheckResourcesAsync(
+            Arg.Any<CheckResourcesRequest>(),
+            Arg.Any<Metadata>());
+    }
+
+    [Test]
+    [Arguments(true)]
+    [Arguments(false)]
+    public async Task IsAllowedBatchAsync_WithActiveSupportAccessMissingRequiredFacts_DeniesBeforeProvider(
+        bool missingTargetTenant)
+    {
+        var fixture = CreateRuntimeProviderFixture();
+        fixture.AdminContext.UserId.Returns(Guid.NewGuid());
+        fixture.AdminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(true);
+        fixture.SystemSettingRepository.GetByKey(GovernanceSettingKeys.Security.AuthorizationProvider)
+            .Returns(CreateAuthorizationProviderSetting("cerbos"));
+        fixture.SupportAccessSessionService.GetCurrentAsync(Arg.Any<CancellationToken>())
+            .Returns(CreateSupportContext(SupportAccessModeEnum.Write, missingTargetTenant ? null : TestTenantId));
+        fixture.CerbosClient.CheckResourcesAsync(Arg.Any<CheckResourcesRequest>(), Arg.Any<Metadata>())
+            .Returns<CheckResourcesResponse>(_ => throw CreateUnavailableRpcException());
+
+        var attributes = missingTargetTenant
+            ? new Dictionary<string, object> { ["tenantId"] = TestTenantId.ToString("D") }
+            : [];
+
+        var result = await fixture.RuntimeProvider.IsAllowedAsync(
+            ResourceKinds.Category,
+            Guid.NewGuid().ToString("D"),
+            AuthorizationActions.View,
+            attributes);
+
+        await Assert.That(result).IsFalse();
+        await fixture.CerbosClient.DidNotReceive().CheckResourcesAsync(
+            Arg.Any<CheckResourcesRequest>(),
+            Arg.Any<Metadata>());
+    }
+
+    [Test]
+    [Arguments(false, null)]
+    [Arguments(true, null)]
+    [Arguments(true, "")]
+    [Arguments(true, "\"\"")]
+    [Arguments(true, "unsupported")]
+    public async Task IsAllowedBatchAsync_WithMissingOrUnsupportedProviderMode_UsesLocalAuthorization(
+        bool settingExists,
+        string? storedValue)
+    {
+        var fixture = CreateRuntimeProviderFixture();
+        fixture.AdminContext.UserId.Returns(Guid.NewGuid());
+        fixture.AdminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(false);
+        fixture.AdminContext.IsTenantAdminAsync(TestTenantId, Arg.Any<CancellationToken>()).Returns(true);
+        fixture.SystemSettingRepository.GetByKey(GovernanceSettingKeys.Security.AuthorizationProvider)
+            .Returns(settingExists ? CreateAuthorizationProviderSettingValue(storedValue) : null);
+        fixture.CerbosClient.CheckResourcesAsync(Arg.Any<CheckResourcesRequest>(), Arg.Any<Metadata>())
+            .Returns<CheckResourcesResponse>(_ => throw CreateUnavailableRpcException());
+
+        var result = await fixture.RuntimeProvider.IsAllowedAsync(
+            ResourceKinds.Category,
+            Guid.NewGuid().ToString("D"),
+            AuthorizationActions.Create,
+            new Dictionary<string, object> { ["tenantId"] = TestTenantId.ToString("D") });
+
+        await Assert.That(result).IsTrue();
+        await fixture.CerbosClient.DidNotReceive().CheckResourcesAsync(
+            Arg.Any<CheckResourcesRequest>(),
+            Arg.Any<Metadata>());
+    }
+
+    [Test]
+    public async Task CheckSettingAccessAsync_WithInstanceCerbosUnavailable_DeniesInsteadOfUsingLocalParity()
+    {
+        var fixture = CreateRuntimeProviderFixture();
+        fixture.AdminContext.UserId.Returns(Guid.NewGuid());
+        fixture.AdminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(true);
+        fixture.SystemSettingRepository.GetByKey(GovernanceSettingKeys.Security.AuthorizationProvider)
+            .Returns(CreateAuthorizationProviderSetting("cerbos"));
+        fixture.CerbosClient.CheckResourcesAsync(Arg.Any<CheckResourcesRequest>(), Arg.Any<Metadata>())
+            .Returns<CheckResourcesResponse>(_ => throw CreateUnavailableRpcException());
+
+        var result = await fixture.RuntimeProvider.CheckSettingAccessAsync(
+            GovernanceSettingKeys.Security.AuthorizationProvider,
+            AuthorizationActions.InstanceSettings.Update);
+
+        await Assert.That(result).IsFalse();
+        await fixture.CerbosClient.Received(1).CheckResourcesAsync(
+            Arg.Any<CheckResourcesRequest>(),
+            Arg.Any<Metadata>());
+    }
+
     private static SupportAccessContext CreateSupportContext(
         SupportAccessModeEnum mode,
-        Guid targetTenantId,
+        Guid? targetTenantId,
         Guid? actorUserId = null)
     {
         return new SupportAccessContext(
@@ -767,11 +923,16 @@ public class RuntimeAuthorizationProviderTests
 
     private static SystemSetting CreateAuthorizationProviderSetting(string provider)
     {
+        return CreateAuthorizationProviderSettingValue(JsonSerializer.Serialize(provider));
+    }
+
+    private static SystemSetting CreateAuthorizationProviderSettingValue(string? value)
+    {
         return new SystemSetting
         {
             Id = Guid.NewGuid(),
             SettingKey = GovernanceSettingKeys.Security.AuthorizationProvider,
-            Value = JsonSerializer.Serialize(provider),
+            Value = value,
             ValueType = SettingValueType.String,
             IsLocked = true,
             CreatedAt = DateTime.UtcNow

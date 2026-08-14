@@ -62,7 +62,7 @@ public sealed class EventReportConsentArchitectureTests
         await Assert.That(reporterPolicy).Contains("RouteNames.UpdateMyEventReportCommunicationConsent");
         await Assert.That(reporterPolicy).Contains("ResourceKinds.User");
         await Assert.That(reporterPolicy).Contains("AuthorizationActions.Users.Update");
-        await Assert.That(handler).Contains("authorizationProvider.IsAllowedAsync(");
+        await Assert.That(handler).Contains("authorizationProvider.AuthorizeAsync(");
         await Assert.That(handler).Contains("ResourceKinds.User");
         await Assert.That(handler).Contains("resolvedReporterUserId.ToString()");
         await Assert.That(handler).Contains("AuthorizationActions.Users.Update");

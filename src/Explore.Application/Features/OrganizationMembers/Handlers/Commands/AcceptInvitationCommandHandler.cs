@@ -1,5 +1,5 @@
 // ABOUTME: Handler for accepting an organization membership invitation.
-// ABOUTME: Validates the invitation token and activates the membership record.
+// ABOUTME: Validates invitation ownership before confirming the membership record.
 
 using System;
 using System.Threading;
@@ -32,15 +32,12 @@ public class AcceptInvitationCommandHandler : IRequestHandler<AcceptInvitationCo
             return response;
         }
 
-        if (invitation.UserId != Guid.Empty)
+        if (invitation.UserId == Guid.Empty || invitation.UserId != request.UserId)
         {
             response.Success = false;
-            response.Message = "Invitation already accepted";
+            response.Message = "Invitation not found";
             return response;
         }
-
-        invitation.UserId = request.UserId;
-        await _organizationMemberRepository.Update(invitation);
 
         response.Success = true;
         response.Message = "Invitation accepted";

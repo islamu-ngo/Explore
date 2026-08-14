@@ -1,85 +1,158 @@
-// ABOUTME: Provider-agnostic contract for authorization decisions across the application.
-// ABOUTME: Implemented by CerbosAuthorizationProvider (ABAC via PDP) and LocalAuthorizationProvider (DB-driven RBAC).
+// ABOUTME: Application-owned typed authorization port and provider-neutral decision model.
+// ABOUTME: Keeps capabilities catalog-bound while Local and Cerbos stay infrastructure adapters.
 
 namespace Explore.Application.Contracts.Infrastructure;
 
 using System.Collections.Generic;
 using System.Globalization;
+using System.Reflection;
 using System.Text;
 using Explore.Application.Authorization;
 
-/// <summary>
-/// Authorization provider that evaluates access control decisions.
-/// Two implementations: CerbosAuthorizationProvider (external PDP) and LocalAuthorizationProvider (DB-driven).
-/// Runtime switching is handled by RuntimeAuthorizationProvider wrapper via SystemSetting.
-/// </summary>
 public interface IAuthorizationProvider
 {
-    /// <summary>
-    /// Checks if the current user is allowed to perform an action on a resource.
-    /// </summary>
-    /// <param name="resourceKind">The type of resource (e.g., "instance_setting", "tenant_setting", "organization").</param>
-    /// <param name="resourceId">The specific resource identifier.</param>
-    /// <param name="action">The action being attempted (e.g., "view", "update", "delete").</param>
-    /// <param name="resourceAttributes">Additional attributes about the resource (e.g., tenantId, isLocked).</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
-    /// <returns>True if the action is allowed, false if denied.</returns>
-    Task<bool> IsAllowedAsync(
-        string resourceKind,
-        string resourceId,
-        string action,
-        IDictionary<string, object>? resourceAttributes = null,
+    Task<AuthorizationDecision> AuthorizeAsync(
+        AuthorizationRequest request,
         CancellationToken cancellationToken = default);
 
-    /// <summary>
-    /// Checks permissions for multiple resource/action pairs in a single call.
-    /// Result order matches request order.
-    /// </summary>
-    Task<IReadOnlyList<bool>> IsAllowedBatchAsync(
-        IReadOnlyList<AuthorizationCheck> checks,
-        CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Checks if the current user can modify a specific setting, considering lock semantics.
-    /// Convenience method that builds the resource context from the setting key and scope.
-    /// </summary>
-    /// <param name="settingKey">The setting key (e.g., "events.require_approval").</param>
-    /// <param name="action">The action (e.g., "update").</param>
-    /// <param name="tenantId">The tenant scope (null for instance-level).</param>
-    /// <param name="organizationId">The organization scope (null if not org-level).</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
-    /// <returns>True if the setting modification is allowed.</returns>
-    Task<bool> CheckSettingAccessAsync(
-        string settingKey,
-        string action,
-        Guid? tenantId = null,
-        Guid? organizationId = null,
+    Task<IReadOnlyList<AuthorizationDecision>> AuthorizeBatchAsync(
+        IReadOnlyList<AuthorizationRequest> requests,
         CancellationToken cancellationToken = default);
 }
 
-/// <summary>
-/// Transport-neutral authorization check request.
-/// Captures all metadata needed for a single Cerbos resource check.
-/// </summary>
-/// <param name="ResourceKind">Resource kind string from <see cref="ResourceKinds"/>.</param>
-/// <param name="ResourceId">Unique resource identifier (typically entity primary key).</param>
-/// <param name="Action">Action string from <see cref="AuthorizationActions"/>.</param>
-/// <param name="ResourceAttributes">Additional attributes for policy evaluation (e.g., tenantId, ownerId).</param>
-/// <param name="Scope">Tenant/org scope for per-tenant policy resolution. Null for unscoped checks.</param>
-public sealed record AuthorizationCheck(
-    string ResourceKind,
-    string ResourceId,
-    string Action,
-    IReadOnlyDictionary<string, object>? ResourceAttributes = null,
-    AuthorizationScope? Scope = null)
+public sealed record AuthorizationCapability
 {
-    /// <summary>
-    /// Generates a deduplication key for batch authorization requests.
-    /// Two checks with the same key are semantically identical and only need
-    /// to be evaluated once. Key includes resource identity, action, scope,
-    /// and canonical resource attributes so scoped/attribute-sensitive checks
-    /// cannot collapse into each other.
-    /// </summary>
+    internal AuthorizationCapability(string resourceKind, string action)
+    {
+        ResourceKind = resourceKind;
+        Action = action;
+    }
+
+    public string ResourceKind { get; }
+
+    public string Action { get; }
+}
+
+public static class AuthorizationCapabilityCatalog
+{
+    private static readonly Lazy<IReadOnlySet<string>> KnownResourceKinds = new(BuildResourceKinds);
+    private static readonly Lazy<IReadOnlySet<string>> KnownActions = new(BuildActions);
+
+    public static AuthorizationCapability Require(string resourceKind, string action)
+    {
+        if (string.IsNullOrWhiteSpace(resourceKind) || !KnownResourceKinds.Value.Contains(resourceKind))
+            throw new ArgumentException("Authorization resource kind is not in the catalog.", nameof(resourceKind));
+
+        if (string.IsNullOrWhiteSpace(action) || !KnownActions.Value.Contains(action))
+            throw new ArgumentException("Authorization action is not in the catalog.", nameof(action));
+
+        return new AuthorizationCapability(resourceKind, action);
+    }
+
+    private static IReadOnlySet<string> BuildResourceKinds() =>
+        typeof(ResourceKinds)
+            .GetFields(BindingFlags.Public | BindingFlags.Static)
+            .Where(field => field.FieldType == typeof(string))
+            .Select(field => (string)field.GetValue(null)!)
+            .ToHashSet(StringComparer.Ordinal);
+
+    private static IReadOnlySet<string> BuildActions()
+    {
+        var actionTypes = new[] { typeof(AuthorizationActions) }
+            .Concat(typeof(AuthorizationActions).GetNestedTypes(BindingFlags.Public));
+
+        return actionTypes
+            .SelectMany(type => type.GetFields(BindingFlags.Public | BindingFlags.Static))
+            .Where(field => field.FieldType == typeof(string))
+            .Select(field => (string)field.GetValue(null)!)
+            .ToHashSet(StringComparer.Ordinal);
+    }
+}
+
+public sealed record AuthorizationSubject(Guid? UserId = null, bool IsMachine = false)
+{
+    public static readonly AuthorizationSubject Ambient = new();
+}
+
+public sealed record AuthorizationTenant(Guid? TenantId = null, Guid? OrganizationId = null)
+{
+    public static readonly AuthorizationTenant Ambient = new();
+}
+
+public enum AuthorizationDecisionOutcome
+{
+    Deny = 0,
+    Allow = 1
+}
+
+public static class AuthorizationDecisionReasonCodes
+{
+    public const string Allowed = "allowed";
+    public const string Denied = "denied";
+    public const string InvalidRequest = "invalid_request";
+    public const string MissingSubject = "missing_subject";
+    public const string ProviderUnavailable = "provider_unavailable";
+    public const string ProviderError = "provider_error";
+}
+
+public sealed record AuthorizationProviderMetadata(string ProviderId, string? ObservedRevision = null)
+{
+    public static readonly AuthorizationProviderMetadata Runtime = new("runtime");
+    public static readonly AuthorizationProviderMetadata Local = new("local");
+    public static readonly AuthorizationProviderMetadata Cerbos = new("cerbos");
+}
+
+public sealed record AuthorizationDecision(
+    AuthorizationDecisionOutcome Outcome,
+    string ReasonCode,
+    AuthorizationProviderMetadata Provider)
+{
+    public bool IsAllowed => Outcome == AuthorizationDecisionOutcome.Allow;
+
+    public static AuthorizationDecision Allow(
+        AuthorizationProviderMetadata provider,
+        string reasonCode = AuthorizationDecisionReasonCodes.Allowed) =>
+        new(AuthorizationDecisionOutcome.Allow, reasonCode, provider);
+
+    public static AuthorizationDecision Deny(
+        AuthorizationProviderMetadata provider,
+        string reasonCode = AuthorizationDecisionReasonCodes.Denied) =>
+        new(AuthorizationDecisionOutcome.Deny, reasonCode, provider);
+}
+
+public record AuthorizationRequest(
+    AuthorizationCapability Capability,
+    string ResourceId,
+    IReadOnlyDictionary<string, object>? ResourceAttributes = null,
+    AuthorizationScope? Scope = null,
+    IAuthorizationFacts? Facts = null,
+    AuthorizationSubject? Subject = null,
+    AuthorizationTenant? Tenant = null)
+{
+    public AuthorizationRequest(
+        string resourceKind,
+        string resourceId,
+        string action,
+        IReadOnlyDictionary<string, object>? resourceAttributes = null,
+        AuthorizationScope? scope = null,
+        IAuthorizationFacts? facts = null,
+        AuthorizationSubject? subject = null,
+        AuthorizationTenant? tenant = null)
+        : this(
+            AuthorizationCapabilityCatalog.Require(resourceKind, action),
+            resourceId,
+            resourceAttributes,
+            scope,
+            facts,
+            subject,
+            tenant)
+    {
+    }
+
+    public string ResourceKind => Capability.ResourceKind;
+
+    public string Action => Capability.Action;
+
     public string ToDeduplicationKey()
     {
         var builder = new StringBuilder();
@@ -137,5 +210,33 @@ public sealed record AuthorizationCheck(
         builder.Append(':');
         builder.Append(value);
         builder.Append('|');
+    }
+}
+
+public sealed record AuthorizationCheck : AuthorizationRequest
+{
+    public AuthorizationCheck(
+        AuthorizationCapability capability,
+        string resourceId,
+        IReadOnlyDictionary<string, object>? resourceAttributes = null,
+        AuthorizationScope? scope = null,
+        IAuthorizationFacts? facts = null,
+        AuthorizationSubject? subject = null,
+        AuthorizationTenant? tenant = null)
+        : base(capability, resourceId, resourceAttributes, scope, facts, subject, tenant)
+    {
+    }
+
+    public AuthorizationCheck(
+        string resourceKind,
+        string resourceId,
+        string action,
+        IReadOnlyDictionary<string, object>? resourceAttributes = null,
+        AuthorizationScope? scope = null,
+        IAuthorizationFacts? facts = null,
+        AuthorizationSubject? subject = null,
+        AuthorizationTenant? tenant = null)
+        : base(resourceKind, resourceId, action, resourceAttributes, scope, facts, subject, tenant)
+    {
     }
 }

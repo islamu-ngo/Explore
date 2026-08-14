@@ -46,23 +46,23 @@ public sealed class GetStudioContextQueryHandler(
         }
 
         IReadOnlyList<Event> managedEvents = await events.GetEventsByActorWithDetails(actorId, cancellationToken);
-        List<AuthorizationCheck> checks = managedEvents
+        List<AuthorizationRequest> checks = managedEvents
             .Where(IsPlatformManaged)
             .SelectMany(eventEntity => new[]
             {
-                new AuthorizationCheck(
+                new AuthorizationRequest(
                     ResourceKinds.Event,
                     eventEntity.Id.ToString("D"),
                     AuthorizationActions.Events.ManageRegistrations,
                     ResourceDescriptors.EventAuthorizationTarget.GetResourceAttributes(eventEntity),
                     ResourceDescriptors.EventAuthorizationTarget.GetScope(eventEntity)),
-                new AuthorizationCheck(
+                new AuthorizationRequest(
                     ResourceKinds.Event,
                     eventEntity.Id.ToString("D"),
                     AuthorizationActions.Events.ManageRegistrationChannels,
                     ResourceDescriptors.EventAuthorizationTarget.GetResourceAttributes(eventEntity),
                     ResourceDescriptors.EventAuthorizationTarget.GetScope(eventEntity)),
-                new AuthorizationCheck(
+                new AuthorizationRequest(
                     ResourceKinds.Event,
                     eventEntity.Id.ToString("D"),
                     AuthorizationActions.Events.ViewRegistrationProviderHealth,
@@ -77,19 +77,19 @@ public sealed class GetStudioContextQueryHandler(
 
         try
         {
-            IReadOnlyList<bool> decisions = await authorization.IsAllowedBatchAsync(checks, cancellationToken);
-            if (decisions.Where((_, index) => index % 3 == 0).Any(allowed => allowed))
+            IReadOnlyList<AuthorizationDecision> decisions = await authorization.AuthorizeBatchAsync(checks, cancellationToken);
+            if (decisions.Where((_, index) => index % 3 == 0).Any(decision => decision.IsAllowed))
             {
                 context.AllowedLinkRelations.Add(LinkRelations.ViewRegistrationOrders);
                 context.AllowedLinkRelations.Add(LinkRelations.ViewParticipants);
             }
 
-            if (decisions.Where((_, index) => index % 3 == 1).Any(allowed => allowed))
+            if (decisions.Where((_, index) => index % 3 == 1).Any(decision => decision.IsAllowed))
             {
                 context.AllowedLinkRelations.Add(LinkRelations.ManageRegistrationChannels);
             }
 
-            if (decisions.Where((_, index) => index % 3 == 2).Any(allowed => allowed))
+            if (decisions.Where((_, index) => index % 3 == 2).Any(decision => decision.IsAllowed))
             {
                 context.AllowedLinkRelations.Add(LinkRelations.ViewRegistrationProviderHealth);
             }

@@ -19,7 +19,7 @@ public sealed class EventLocationManagementLinkPolicy(IHttpContextAccessor httpC
     {
         if (dto.EventLocationId == Guid.Empty
             || !TryGetEventId(out Guid eventId)
-            || !TryGetUpdateAuthorization(dto, eventId, out AuthorizationCheck authorization))
+            || !TryGetUpdateAuthorization(dto, eventId, out AuthorizationRequest authorization))
         {
             yield break;
         }
@@ -72,7 +72,7 @@ public sealed class EventLocationManagementLinkPolicy(IHttpContextAccessor httpC
     private static bool TryGetUpdateAuthorization(
         EventLocationManagementDto dto,
         Guid eventId,
-        out AuthorizationCheck authorization)
+        out AuthorizationRequest authorization)
     {
         authorization = dto.UpdateAuthorization!;
         if (authorization is null

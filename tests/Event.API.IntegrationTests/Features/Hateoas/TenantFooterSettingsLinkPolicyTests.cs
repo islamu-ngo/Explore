@@ -86,7 +86,7 @@ public sealed class TenantFooterSettingsLinkPolicyTests
         var definitions = new TenantFooterSettingsLinkPolicy().GetLinks(dto, user).ToArray();
         var authorizationProvider = Substitute.For<IAuthorizationProvider>();
         authorizationProvider.IsAllowedBatchAsync(
-                Arg.Any<IReadOnlyList<AuthorizationCheck>>(),
+                Arg.Any<IReadOnlyList<AuthorizationRequest>>(),
                 Arg.Any<CancellationToken>())
             .Returns([isAuthorized]);
         var evaluator = new HateoasAuthorizationEvaluator(

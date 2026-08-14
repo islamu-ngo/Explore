@@ -89,8 +89,8 @@ must not share one PostgreSQL database.
 3. `AuthorizationActions` (string constants) and `ResourceKinds` (string constants) form the canonical action/resource catalogs shared by commands, link policies, and Cerbos policies.
 4. `IAuthorizableResourceDescriptor<T>` + `ResourceDescriptors` extract resource metadata (kind, id, attributes, scope) from DTOs — eliminating manual attribute dictionaries in HATEOAS link policies.
 5. HATEOAS capability planning uses a 4-phase pipeline: candidate links → normalized `AuthorizationCheck` with dedup key → batch evaluate unique checks → map decisions back to links. Fail-closed on batch failure.
-6. Runtime authorization provider routes checks by configuration: tenant BYO Cerbos first, otherwise the instance provider setting. Instance Cerbos failures deny rather than falling through to local RBAC; local fallback is used only when local mode is selected or an explicit BYO failure mode delegates to fallback behavior.
-7. SafeMode is a provider-instance latch via `ActivateSafeMode()` — once activated for BYO closed/resolver failures, only instance-admin traffic is allowed through that fallback provider instance. Recreate the provider instance after the PDP/configuration recovers to leave safe mode. Logs `LogCritical` once.
+6. Runtime authorization provider routes checks by configuration: tenant BYO Cerbos first, otherwise the instance provider setting. Instance and BYO Cerbos failures deny rather than falling through to local RBAC; local fallback is used only when local mode is selected.
+7. SafeMode is a provider-instance latch via `ActivateSafeMode()` — once activated for BYO PDP/resolver failures, only instance-admin traffic is allowed through that fallback provider instance. Recreate the provider instance after the PDP/configuration recovers to leave safe mode. Logs `LogCritical` once.
 8. Cerbos policies reference JSON schemas (`_schemas/`) for principal and resource attribute contracts. Schema enforcement is `warn` by default.
 
 ## API Representation

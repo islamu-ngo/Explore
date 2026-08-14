@@ -7,6 +7,7 @@ using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
 using Explore.Application.Features.Organizations.Requests.Commands;
+using Explore.Application.Features.StorageObjects.Requests.Commands;
 using Explore.Application.Settings;
 using Explore.Domain;
 using Explore.Domain.Constants;
@@ -64,6 +65,43 @@ public class FallbackAuthorizationServiceTests
         AuthorizationActions.SupportAccessSessions.ViewAudit,
         AuthorizationActions.SupportAccessSessions.ForceStop
     ];
+    private static readonly (string ResourceKind, string Action)[] InstanceAdminUserAllowlistCases =
+    [
+        (ResourceKinds.InstanceSetting, AuthorizationActions.InstanceSettings.Update),
+        (ResourceKinds.Tenant, AuthorizationActions.Tenants.Update),
+        (ResourceKinds.TenantUserRoleGrant, AuthorizationActions.TenantUserRoleGrants.Create),
+        (ResourceKinds.User, AuthorizationActions.Users.Update),
+        (ResourceKinds.Event, AuthorizationActions.Events.ModerateHeavy),
+        (ResourceKinds.Event, AuthorizationActions.Events.ViewManagement),
+        (ResourceKinds.SupportAccessSession, AuthorizationActions.SupportAccessSessions.ForceStop),
+        (ResourceKinds.EmailDispatch, AuthorizationActions.EmailDispatches.ManageTenant),
+        (ResourceKinds.Webhook, AuthorizationActions.Webhooks.ManageProvider),
+        (ResourceKinds.PlatformNamespace, AuthorizationActions.PlatformNamespaces.Update),
+        (ResourceKinds.AtprotoRecord, AuthorizationActions.AtprotoRecords.Update),
+        (ResourceKinds.IndexedDid, AuthorizationActions.IndexedDids.Delete)
+    ];
+
+    private static readonly (string ResourceKind, string Action)[] InstanceAdminUserDeniedShortcutCases =
+    [
+        (ResourceKinds.Event, AuthorizationActions.Events.Update),
+        (ResourceKinds.Event, AuthorizationActions.Events.Publish),
+        (ResourceKinds.Event, AuthorizationActions.Events.ManageTeam),
+        (ResourceKinds.Event, AuthorizationActions.Events.ManageFinance),
+        (ResourceKinds.Event, AuthorizationActions.Events.ManageRegistrations),
+        (ResourceKinds.Event, AuthorizationActions.Events.ManageTickets),
+        (ResourceKinds.Event, AuthorizationActions.Events.ManagePaidEventCommerce),
+        (ResourceKinds.RegistrationForm, AuthorizationActions.RegistrationForms.Update),
+        (ResourceKinds.StorageObject, AuthorizationActions.StorageObjects.Update),
+        (ResourceKinds.Organization, AuthorizationActions.Organizations.Update),
+        (ResourceKinds.Group, AuthorizationActions.Update),
+        (ResourceKinds.CustomPropertyValue, AuthorizationActions.Update),
+        (ResourceKinds.AiConversation, AuthorizationActions.AiConversations.SendMessage),
+        (ResourceKinds.Notification, AuthorizationActions.Update),
+        (ResourceKinds.ActorSubscription, AuthorizationActions.ActorSubscriptions.Update),
+        (ResourceKinds.Webhook, AuthorizationActions.Webhooks.ProcessIncoming),
+        (ResourceKinds.Webhook, AuthorizationActions.Webhooks.RedriveIncoming),
+        (ResourceKinds.TenantSetting, AuthorizationActions.TenantSettings.Update)
+    ];
 
     public FallbackAuthorizationServiceTests()
     {
@@ -108,6 +146,18 @@ public class FallbackAuthorizationServiceTests
         ["userId"] = Guid.NewGuid().ToString()
     };
 
+    private static Dictionary<string, object> EventAttributes() => new()
+    {
+        ["tenantId"] = TestTenantId.ToString("D"),
+        ["eventId"] = TestOrgId.ToString("D")
+    };
+
+    private static Dictionary<string, object> ContactShareAttributes() => new()
+    {
+        ["tenantId"] = TestTenantId.ToString("D"),
+        ["organizationId"] = TestOrgId.ToString("D")
+    };
+
     private static Dictionary<string, object> StorageObjectAttributes(string visibility, Guid? createdBy = null) => new()
     {
         ["tenantId"] = TestTenantId.ToString(),
@@ -115,6 +165,16 @@ public class FallbackAuthorizationServiceTests
         ["lifecycleState"] = StorageObjectLifecycleStates.Active,
         ["createdBy"] = (createdBy ?? Guid.NewGuid()).ToString("D")
     };
+
+    private static StorageUploadIntentFacts StorageUploadFacts(
+        Guid? subjectUserId = null,
+        Guid? tenantId = null,
+        Guid? organizationId = null) => new(
+        subjectUserId ?? TestUserId,
+        tenantId ?? TestTenantId,
+        StorageOwningResourceKinds.OrganizationTenant,
+        Guid.NewGuid(),
+        organizationId ?? TestOrgId);
 
     private static Dictionary<string, object> SupportAccessAttributes(Guid? targetTenantId = null) => new()
     {
@@ -162,10 +222,41 @@ public class FallbackAuthorizationServiceTests
         return attributes;
     }
 
+    private static string ResourceIdFor(string resourceKind) => resourceKind switch
+    {
+        ResourceKinds.Tenant => TestTenantId.ToString("D"),
+        ResourceKinds.InstanceSetting => "platform-governance",
+        ResourceKinds.TenantSetting => "locked-governance",
+        ResourceKinds.EmailDispatch => "email-dispatch",
+        ResourceKinds.PlatformNamespace => "calendar",
+        _ => Guid.NewGuid().ToString("D")
+    };
+
+    private static Dictionary<string, object>? AttributesFor(string resourceKind) => resourceKind switch
+    {
+        ResourceKinds.Tenant => new Dictionary<string, object> { ["tenantId"] = TestTenantId.ToString("D") },
+        ResourceKinds.TenantSetting => new Dictionary<string, object>
+        {
+            ["tenantId"] = TestTenantId.ToString("D"),
+            ["isLockedByInstance"] = true
+        },
+        ResourceKinds.TenantUserRoleGrant => new Dictionary<string, object> { ["tenantId"] = TestTenantId.ToString("D") },
+        ResourceKinds.Event => EventAttributes(),
+        ResourceKinds.RegistrationForm => EventAttributes(),
+        ResourceKinds.SupportAccessSession => SupportAccessAttributes(),
+        ResourceKinds.EmailDispatch => new Dictionary<string, object> { ["tenantId"] = TestTenantId.ToString("D") },
+        ResourceKinds.Webhook => WebhookOwnerAttributes(WebhookConsumerKind.Tenant, TestTenantId),
+        ResourceKinds.StorageObject => StorageObjectAttributes(StorageObjectVisibilities.PrivateOwner),
+        ResourceKinds.Organization => new Dictionary<string, object> { ["organizationId"] = TestOrgId.ToString("D") },
+        ResourceKinds.Group => new Dictionary<string, object> { ["organizationId"] = TestOrgId.ToString("D") },
+        ResourceKinds.CustomPropertyValue => new Dictionary<string, object> { ["organizationId"] = TestOrgId.ToString("D") },
+        _ => null
+    };
+
     // === Instance Admin Tests ===
 
     [Test]
-    public async Task IsAllowed_InstanceAdmin_AllowsEverything()
+    public async Task IsAllowed_InstanceAdmin_AllowsInstanceSetting()
     {
         _adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(true);
 
@@ -175,14 +266,175 @@ public class FallbackAuthorizationServiceTests
     }
 
     [Test]
-    public async Task IsAllowed_InstanceAdmin_AllowsTenantSettingEvenWhenLocked()
+    [Arguments("administrator.direct_registration_form_authority", ResourceKinds.RegistrationForm, AuthorizationActions.RegistrationForms.Update, true, false, false)]
+    [Arguments("administrator.instance_event_public_action_current_deny", ResourceKinds.Event, AuthorizationActions.Events.ManagePublicActions, true, false, false)]
+    [Arguments("administrator.tenant_public_action_management", ResourceKinds.Event, AuthorizationActions.Events.ManagePublicActions, false, true, true)]
+    public async Task IsAllowed_Phase0AdministratorCurrentBaseline(
+        string scenario,
+        string resourceKind,
+        string action,
+        bool isInstanceAdmin,
+        bool isTenantAdmin,
+        bool expectedCurrentOutcome)
+    {
+        _adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(isInstanceAdmin);
+        _adminContext.IsTenantAdminAsync(TestTenantId, Arg.Any<CancellationToken>()).Returns(isTenantAdmin);
+
+        var result = await _service.IsAllowedAsync(
+            resourceKind,
+            TestOrgId.ToString("D"),
+            action,
+            EventAttributes());
+
+        await Assert.That(result)
+            .IsEqualTo(expectedCurrentOutcome)
+            .Because($"phase-0 provider scenario '{scenario}' must pin the current administrator baseline.");
+    }
+
+    [Test]
+    public async Task IsAllowed_InstanceAdmin_DeniesTenantSettingWhenLocked()
     {
         _adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(true);
 
         var attrs = new Dictionary<string, object> { ["isLockedByInstance"] = true };
         var result = await _service.IsAllowedAsync("islamuevent_tenant_setting", "locked-key", "update", attrs);
 
+        await Assert.That(result).IsFalse();
+    }
+
+    [Test]
+    public async Task IsAllowed_InstanceAdmin_AllowsUserAdministration()
+    {
+        _adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(true);
+
+        var result = await _service.IsAllowedAsync(
+            ResourceKinds.User,
+            Guid.NewGuid().ToString("D"),
+            AuthorizationActions.Update);
+
         await Assert.That(result).IsTrue();
+    }
+
+    [Test]
+    public async Task IsAllowed_InstanceAdmin_AllowsOnlyDocumentedPlatformOperations()
+    {
+        _adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(true);
+
+        foreach (var (resourceKind, action) in InstanceAdminUserAllowlistCases)
+        {
+            var result = await _service.IsAllowedAsync(
+                resourceKind,
+                ResourceIdFor(resourceKind),
+                action,
+                AttributesFor(resourceKind));
+
+            await Assert.That(result)
+                .IsTrue()
+                .Because($"instance admin user shortcut should allow documented pair {resourceKind}:{action}.");
+        }
+    }
+
+    [Test]
+    public async Task IsAllowed_InstanceAdmin_DeniesBusinessAndIncomingShortcuts()
+    {
+        _adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(true);
+
+        foreach (var (resourceKind, action) in InstanceAdminUserDeniedShortcutCases)
+        {
+            var result = await _service.IsAllowedAsync(
+                resourceKind,
+                ResourceIdFor(resourceKind),
+                action,
+                AttributesFor(resourceKind));
+
+            await Assert.That(result)
+                .IsFalse()
+                .Because($"instance admin user shortcut must not allow {resourceKind}:{action}.");
+        }
+    }
+
+    [Test]
+    public async Task IsAllowedBatch_InstanceAdmin_MatchesSingleAllowlistForOptimizedBatch()
+    {
+        _adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(true);
+
+        var allowChecks = InstanceAdminUserAllowlistCases
+            .Take(6)
+            .Select(pair => new AuthorizationRequest(
+                pair.ResourceKind,
+                ResourceIdFor(pair.ResourceKind),
+                pair.Action,
+                AttributesFor(pair.ResourceKind)));
+        var denyChecks = InstanceAdminUserDeniedShortcutCases
+            .Take(6)
+            .Select(pair => new AuthorizationRequest(
+                pair.ResourceKind,
+                ResourceIdFor(pair.ResourceKind),
+                pair.Action,
+                AttributesFor(pair.ResourceKind)));
+        var checks = allowChecks.Concat(denyChecks).ToArray();
+
+        var batchResults = await _service.IsAllowedBatchAsync(checks);
+
+        await Assert.That(batchResults).Count().IsEqualTo(checks.Length);
+        for (var i = 0; i < checks.Length; i++)
+        {
+            var check = checks[i];
+            var singleResult = await _service.IsAllowedAsync(
+                check.ResourceKind,
+                check.ResourceId,
+                check.Action,
+                check.ResourceAttributes is null ? null : new Dictionary<string, object>(check.ResourceAttributes));
+
+            await Assert.That(batchResults[i])
+                .IsEqualTo(singleResult)
+                .Because($"batch and single checks must agree for {check.ResourceKind}:{check.Action}.");
+        }
+    }
+
+    [Test]
+    public async Task CheckSettingAccessAsync_InstanceAdmin_DeniesLockedTenantSettingUpdate()
+    {
+        _adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(true);
+        _settingsResolver.ResolveWithMetadataAsync(
+                "locked-governance",
+                Arg.Any<SettingContext>(),
+                Arg.Any<CancellationToken>())
+            .Returns(new ResolvedSetting { Key = "locked-governance", IsLocked = true });
+
+        var result = await _service.CheckSettingAccessAsync(
+            "locked-governance",
+            AuthorizationActions.TenantSettings.Update,
+            TestTenantId);
+
+        await Assert.That(result).IsFalse();
+    }
+
+    [Test]
+    public async Task IsAllowedBatch_InstanceAdmin_OnlyAllowsInstanceAdminAllowlist()
+    {
+        _adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(true);
+
+        var checks = new[]
+        {
+            new AuthorizationRequest(
+                ResourceKinds.TenantSetting,
+                "locked-key",
+                AuthorizationActions.TenantSettings.Update,
+                new Dictionary<string, object>
+                {
+                    ["tenantId"] = TestTenantId.ToString("D"),
+                    ["isLockedByInstance"] = true
+                }),
+            new AuthorizationRequest(ResourceKinds.User, Guid.NewGuid().ToString("D"), AuthorizationActions.Users.Update),
+            new AuthorizationRequest(ResourceKinds.InstanceSetting, "deployment.mode", AuthorizationActions.InstanceSettings.Update)
+        };
+
+        var results = await _service.IsAllowedBatchAsync(checks);
+
+        await Assert.That(results[0]).IsFalse();
+        await Assert.That(results[1]).IsTrue();
+        await Assert.That(results[2]).IsTrue();
     }
 
     // === Instance Setting Access ===
@@ -351,6 +603,58 @@ public class FallbackAuthorizationServiceTests
             AuthorizationActions.EmailDispatches.View);
 
         await Assert.That(result).IsTrue();
+    }
+
+    [Test]
+    [Arguments("consent.tenant_admin_contact_export_current_deny", AuthorizationActions.ExportSharedContacts, true, false, false)]
+    [Arguments("consent.organization_admin_contact_view_current_allow", AuthorizationActions.ViewSharedContacts, false, true, true)]
+    [Arguments("consent.organization_admin_contact_export_current_allow", AuthorizationActions.ExportSharedContacts, false, true, true)]
+    [Arguments("consent.unsupported_plain_view_current_deny", AuthorizationActions.View, false, true, false)]
+    public async Task IsAllowed_Phase0ContactSharingCurrentBaseline(
+        string scenario,
+        string action,
+        bool isTenantAdmin,
+        bool isOrganizationAdmin,
+        bool expectedCurrentOutcome)
+    {
+        _adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(false);
+        _adminContext.IsTenantAdminAsync(TestTenantId, Arg.Any<CancellationToken>()).Returns(isTenantAdmin);
+        _adminContext.IsOrganizationAdminAsync(TestOrgId, Arg.Any<CancellationToken>()).Returns(isOrganizationAdmin);
+
+        var result = await _service.IsAllowedAsync(
+            ResourceKinds.EventContactShareConsent,
+            Guid.NewGuid().ToString("D"),
+            action,
+            ContactShareAttributes());
+
+        await Assert.That(result)
+            .IsEqualTo(expectedCurrentOutcome)
+            .Because($"phase-0 provider scenario '{scenario}' must pin current contact-sharing authorization.");
+    }
+
+    [Test]
+    [Arguments("public.public_image_download_without_user", StorageObjectVisibilities.PublicImage, AuthorizationActions.StorageObjects.Download, true)]
+    [Arguments("public.authenticated_tenant_download_without_user_current_allow", StorageObjectVisibilities.AuthenticatedTenant, AuthorizationActions.StorageObjects.Download, true)]
+    [Arguments("public.private_owner_presign_without_user", StorageObjectVisibilities.PrivateOwner, AuthorizationActions.StorageObjects.PresignedDownload, false)]
+    public async Task IsAllowed_Phase0PublicStorageCurrentBaseline(
+        string scenario,
+        string visibility,
+        string action,
+        bool expectedCurrentOutcome)
+    {
+        _adminContext.UserId.Returns((Guid?)null);
+        _adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(false);
+        _adminContext.IsTenantAdminAsync(TestTenantId, Arg.Any<CancellationToken>()).Returns(false);
+
+        var result = await _service.IsAllowedAsync(
+            ResourceKinds.StorageObject,
+            Guid.NewGuid().ToString("D"),
+            action,
+            StorageObjectAttributes(visibility));
+
+        await Assert.That(result)
+            .IsEqualTo(expectedCurrentOutcome)
+            .Because($"phase-0 provider scenario '{scenario}' must pin current public/guest storage authorization.");
     }
 
     [Test]
@@ -621,17 +925,17 @@ public class FallbackAuthorizationServiceTests
 
         var checks = new[]
         {
-            new AuthorizationCheck(
+            new AuthorizationRequest(
                 ResourceKinds.EmailDispatch,
                 Guid.NewGuid().ToString("D"),
                 AuthorizationActions.EmailDispatches.View,
                 new Dictionary<string, object> { ["tenantId"] = otherTenantId.ToString("D") }),
-            new AuthorizationCheck(
+            new AuthorizationRequest(
                 ResourceKinds.Webhook,
                 Guid.NewGuid().ToString("D"),
                 AuthorizationActions.Update,
                 new Dictionary<string, object> { ["tenantId"] = otherTenantId }),
-            new AuthorizationCheck(
+            new AuthorizationRequest(
                 ResourceKinds.Category,
                 Guid.NewGuid().ToString("D"),
                 AuthorizationActions.Update,
@@ -654,16 +958,16 @@ public class FallbackAuthorizationServiceTests
 
         var checks = new[]
         {
-            new AuthorizationCheck(
+            new AuthorizationRequest(
                 ResourceKinds.CustomPropertyProjection,
                 "projection-status",
                 AuthorizationActions.CustomPropertyProjections.View),
-            new AuthorizationCheck(
+            new AuthorizationRequest(
                 ResourceKinds.CustomPropertyProjection,
                 "projection-status",
                 AuthorizationActions.CustomPropertyProjections.Update,
                 new Dictionary<string, object> { ["tenantId"] = otherTenantId.ToString("D") }),
-            new AuthorizationCheck(
+            new AuthorizationRequest(
                 ResourceKinds.CustomPropertyProjection,
                 "projection-status",
                 AuthorizationActions.CustomPropertyProjections.View,
@@ -729,6 +1033,126 @@ public class FallbackAuthorizationServiceTests
     }
 
     [Test]
+    public async Task IsAllowed_StorageObjectCreate_WithUploadIntentFacts_RequiresOwningOrganizationAdmin()
+    {
+        _adminContext.UserId.Returns(TestUserId);
+        _adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(false);
+        _adminContext.IsOrganizationAdminAsync(TestOrgId, Arg.Any<CancellationToken>()).Returns(false, true, true);
+
+        var wrongOwner = await _service.IsAllowedWithFactsAsync(
+            ResourceKinds.StorageObject,
+            nameof(CreateStorageUploadSessionCommand),
+            AuthorizationActions.StorageObjects.Create,
+            null,
+            CancellationToken.None,
+            facts: StorageUploadFacts());
+        var ownerAdmin = await _service.IsAllowedWithFactsAsync(
+            ResourceKinds.StorageObject,
+            nameof(CreateStorageUploadSessionCommand),
+            AuthorizationActions.StorageObjects.Create,
+            null,
+            CancellationToken.None,
+            facts: StorageUploadFacts());
+        var wrongTenant = await _service.IsAllowedWithFactsAsync(
+            ResourceKinds.StorageObject,
+            nameof(CreateStorageUploadSessionCommand),
+            AuthorizationActions.StorageObjects.Create,
+            null,
+            CancellationToken.None,
+            facts: StorageUploadFacts(tenantId: Guid.NewGuid()));
+        var missingFacts = await _service.IsAllowedAsync(
+            ResourceKinds.StorageObject,
+            nameof(CreateStorageUploadSessionCommand),
+            AuthorizationActions.StorageObjects.Create);
+
+        await Assert.That(wrongOwner).IsFalse();
+        await Assert.That(ownerAdmin).IsTrue();
+        await Assert.That(wrongTenant).IsFalse();
+        await Assert.That(missingFacts).IsFalse();
+
+        await WritePhase1Task11ArtifactAsync(wrongOwner, ownerAdmin, wrongTenant, missingFacts);
+    }
+
+    [Test]
+    public async Task IsAllowedBatch_StorageObjectCreate_WithUploadIntentFacts_RequiresCanonicalCommandResourceId()
+    {
+        _adminContext.UserId.Returns(TestUserId);
+        _adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(false);
+        _adminContext.GetAdminOrganizationIdsAsync(Arg.Any<CancellationToken>()).Returns([TestOrgId]);
+
+        var checks = new[]
+        {
+            new AuthorizationRequest(
+                ResourceKinds.StorageObject,
+                Guid.NewGuid().ToString("D"),
+                AuthorizationActions.StorageObjects.View,
+                StorageObjectAttributes(StorageObjectVisibilities.PublicImage)),
+            new AuthorizationRequest(
+                ResourceKinds.StorageObject,
+                Guid.NewGuid().ToString("D"),
+                AuthorizationActions.StorageObjects.Create,
+                Facts: StorageUploadFacts()),
+            new AuthorizationRequest(
+                ResourceKinds.StorageObject,
+                nameof(CreateStorageUploadSessionCommand),
+                AuthorizationActions.StorageObjects.Create,
+                Facts: StorageUploadFacts())
+        };
+
+        var results = await _service.IsAllowedBatchAsync(checks);
+
+        await Assert.That(results[0]).IsFalse();
+        await Assert.That(results[1]).IsFalse();
+        await Assert.That(results[2]).IsTrue();
+
+        await WritePhase1Task11ArtifactAsync(
+            wrongOwner: false,
+            ownerAdmin: results[2],
+            wrongTenant: false,
+            missingFacts: false,
+            arbitraryResourceId: results[1]);
+    }
+
+    private static async Task WritePhase1Task11ArtifactAsync(
+        bool wrongOwner,
+        bool ownerAdmin,
+        bool wrongTenant,
+        bool missingFacts,
+        bool? arbitraryResourceId = null)
+    {
+        var artifactDirectory = Path.Combine(
+            FindRepositoryRoot(),
+            ".omo/start-work/artifacts/authorization-platform-redesign/phase1-task11");
+        Directory.CreateDirectory(artifactDirectory);
+        await File.WriteAllTextAsync(
+            Path.Combine(artifactDirectory, "storage-upload-intent-local-evaluator.json"),
+            $$"""
+            {
+              "schemaVersion": 1,
+              "generatedFrom": "FallbackAuthorizationServiceTests.IsAllowed_StorageObjectCreate_WithUploadIntentFacts_RequiresOwningOrganizationAdmin",
+              "scenarios": {
+                "ownerAdminAllowed": {{ownerAdmin.ToString().ToLowerInvariant()}},
+                "wrongOwnerDenied": {{(!wrongOwner).ToString().ToLowerInvariant()}},
+                "wrongTenantDenied": {{(!wrongTenant).ToString().ToLowerInvariant()}},
+                "missingFactsDenied": {{(!missingFacts).ToString().ToLowerInvariant()}},
+                "arbitraryResourceIdDenied": {{((arbitraryResourceId ?? false) == false).ToString().ToLowerInvariant()}}
+              }
+            }
+            """);
+    }
+
+    private static string FindRepositoryRoot()
+    {
+        var directory = new DirectoryInfo(Directory.GetCurrentDirectory());
+        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "AGENTS.md")))
+        {
+            directory = directory.Parent;
+        }
+
+        return directory?.FullName ?? Directory.GetCurrentDirectory();
+    }
+
+    [Test]
     public async Task IsAllowedBatch_StorageObject_MatchesSingleReadBoundary()
     {
         var ownerId = Guid.NewGuid();
@@ -738,17 +1162,17 @@ public class FallbackAuthorizationServiceTests
 
         var checks = new[]
         {
-            new AuthorizationCheck(
+            new AuthorizationRequest(
                 ResourceKinds.StorageObject,
                 Guid.NewGuid().ToString("D"),
                 AuthorizationActions.StorageObjects.View,
                 StorageObjectAttributes(StorageObjectVisibilities.PublicImage)),
-            new AuthorizationCheck(
+            new AuthorizationRequest(
                 ResourceKinds.StorageObject,
                 Guid.NewGuid().ToString("D"),
                 AuthorizationActions.StorageObjects.Download,
                 StorageObjectAttributes(StorageObjectVisibilities.PublicImage)),
-            new AuthorizationCheck(
+            new AuthorizationRequest(
                 ResourceKinds.StorageObject,
                 Guid.NewGuid().ToString("D"),
                 AuthorizationActions.StorageObjects.PresignedDownload,
@@ -906,7 +1330,7 @@ public class FallbackAuthorizationServiceTests
 
         var attrs = SupportAccessAttributes();
         var checks = SupportAccessLifecycleActions
-            .Select(action => new AuthorizationCheck(
+            .Select(action => new AuthorizationRequest(
                 ResourceKinds.SupportAccessSession,
                 Guid.NewGuid().ToString("D"),
                 action,
@@ -1643,7 +2067,7 @@ public class FallbackAuthorizationServiceTests
         _adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(false);
         _service.ActivateSafeMode();
 
-        var result = await _service.IsAllowedAsync("islamuevent_event", Guid.NewGuid().ToString(), "view");
+        var result = await _service.IsAllowedAsync("islamuevent_event", Guid.NewGuid().ToString(), AuthorizationActions.Events.ViewManagement);
 
         await Assert.That(result).IsFalse();
     }
@@ -1654,7 +2078,10 @@ public class FallbackAuthorizationServiceTests
         _adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(true);
         _service.ActivateSafeMode();
 
-        var result = await _service.IsAllowedAsync("islamuevent_event", Guid.NewGuid().ToString(), "view");
+        var result = await _service.IsAllowedAsync(
+            "islamuevent_event",
+            Guid.NewGuid().ToString(),
+            AuthorizationActions.Events.ViewManagement);
 
         await Assert.That(result).IsTrue();
     }
@@ -1668,7 +2095,7 @@ public class FallbackAuthorizationServiceTests
         _adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(false);
         _adminContext.IsTenantAdminAsync(TestTenantId, Arg.Any<CancellationToken>()).Returns(true);
 
-        var checks = new List<AuthorizationCheck>
+        var checks = new List<AuthorizationRequest>
         {
             new(
                 "islamuevent_tenant_setting",
@@ -1696,7 +2123,7 @@ public class FallbackAuthorizationServiceTests
         _adminContext.IsTenantAdminAsync(TestTenantId, Arg.Any<CancellationToken>()).Returns(true);
         _adminContext.GetAdminOrganizationIdsAsync(Arg.Any<CancellationToken>()).Returns(new List<Guid>());
 
-        var checks = new List<AuthorizationCheck>
+        var checks = new List<AuthorizationRequest>
         {
             new("islamuevent_notification", Guid.NewGuid().ToString(), "view"),
             new("islamuevent_tenant_user_role_grant", Guid.NewGuid().ToString(), "create"),
@@ -1720,7 +2147,7 @@ public class FallbackAuthorizationServiceTests
         _adminContext.IsTenantAdminAsync(TestTenantId, Arg.Any<CancellationToken>()).Returns(true);
         _adminContext.GetAdminOrganizationIdsAsync(Arg.Any<CancellationToken>()).Returns(new List<Guid>());
 
-        var checks = new List<AuthorizationCheck>
+        var checks = new List<AuthorizationRequest>
         {
             new(
                 "islamuevent_event_session",
@@ -1754,7 +2181,7 @@ public class FallbackAuthorizationServiceTests
             ["eventId"] = Guid.NewGuid()
         };
 
-        var checks = new List<AuthorizationCheck>
+        var checks = new List<AuthorizationRequest>
         {
             new("islamuevent_event_session", Guid.NewGuid().ToString(), "update", attrs),
             new("islamuevent_notification", Guid.NewGuid().ToString(), "view")
@@ -1779,7 +2206,7 @@ public class FallbackAuthorizationServiceTests
         _adminContext.GetAdminOrganizationIdsAsync(Arg.Any<CancellationToken>()).Returns(new List<Guid>());
 
         var resourceId = attrs["eventId"]!.ToString()!;
-        var checks = new List<AuthorizationCheck>
+        var checks = new List<AuthorizationRequest>
         {
             new("islamuevent_event", resourceId, "update", attrs),
             new("islamuevent_event", resourceId, "delete", attrs),
@@ -1804,13 +2231,13 @@ public class FallbackAuthorizationServiceTests
         _adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(true);
         _adminContext.GetAdminOrganizationIdsAsync(Arg.Any<CancellationToken>()).Returns(new List<Guid>());
 
-        var checks = new List<AuthorizationCheck>
+        var checks = new List<AuthorizationRequest>
         {
             new("islamuevent_event", resourceId, "update", attrs),
             new("islamuevent_event", resourceId, AuthorizationActions.Events.ModerateLight, attrs),
             new("islamuevent_event", resourceId, AuthorizationActions.Events.ModerateHeavy, attrs),
             new("islamuevent_event", resourceId, AuthorizationActions.Events.Unmoderate, attrs),
-            new("islamuevent_notification", Guid.NewGuid().ToString(), "view")
+            new(ResourceKinds.SupportAccessSession, Guid.NewGuid().ToString(), AuthorizationActions.SupportAccessSessions.ViewAudit, SupportAccessAttributes())
         };
 
         var results = await _service.IsAllowedBatchAsync(checks);
@@ -1834,7 +2261,7 @@ public class FallbackAuthorizationServiceTests
         _adminContext.IsTenantAdminAsync(TestTenantId, Arg.Any<CancellationToken>()).Returns(true);
         _adminContext.GetAdminOrganizationIdsAsync(Arg.Any<CancellationToken>()).Returns(new List<Guid>());
 
-        var checks = new List<AuthorizationCheck>
+        var checks = new List<AuthorizationRequest>
         {
             new("islamuevent_event", resourceId, "update", attrs),
             new("islamuevent_event", resourceId, AuthorizationActions.Events.ModerateLight, attrs),
@@ -1865,7 +2292,7 @@ public class FallbackAuthorizationServiceTests
         _adminContext.IsTenantAdminAsync(TestTenantId, Arg.Any<CancellationToken>()).Returns(false);
         _adminContext.GetAdminOrganizationIdsAsync(Arg.Any<CancellationToken>()).Returns([TestOrgId]);
 
-        var checks = new List<AuthorizationCheck>
+        var checks = new List<AuthorizationRequest>
         {
             new("islamuevent_event", resourceId, "update", attrs),
             new("islamuevent_event", resourceId, AuthorizationActions.Events.ModerateLight, attrs),
@@ -1896,7 +2323,7 @@ public class FallbackAuthorizationServiceTests
         ConfigureEventAuthority(userId, eventId, PermissionCodes.EventSessionUpdate);
 
         var attrs = CreateEventContextAttributes(eventId);
-        var checks = new List<AuthorizationCheck>
+        var checks = new List<AuthorizationRequest>
         {
             new("islamuevent_event_session", Guid.NewGuid().ToString(), "update", attrs),
             new("islamuevent_event_session", Guid.NewGuid().ToString(), "delete", attrs),
@@ -1923,7 +2350,7 @@ public class FallbackAuthorizationServiceTests
         ConfigureEventAuthority(userId, eventId, PermissionCodes.EventSessionUpdate);
 
         var attrs = CreateEventContextAttributes(eventId);
-        var checks = new List<AuthorizationCheck>
+        var checks = new List<AuthorizationRequest>
         {
             new("islamuevent_event_session", Guid.NewGuid().ToString(), "update", attrs),
             new("islamuevent_event_session", Guid.NewGuid().ToString(), "delete", attrs),
@@ -1951,7 +2378,7 @@ public class FallbackAuthorizationServiceTests
         _adminContext.GetAdminOrganizationIdsAsync(Arg.Any<CancellationToken>()).Returns(new List<Guid>());
         ConfigureEventAuthority(userId, authorizedEventId, PermissionCodes.EventSessionUpdate);
 
-        var checks = new List<AuthorizationCheck>
+        var checks = new List<AuthorizationRequest>
         {
             new("islamuevent_event_session", Guid.NewGuid().ToString(), "update", CreateEventContextAttributes(authorizedEventId)),
             new("islamuevent_event_session", Guid.NewGuid().ToString(), "update", CreateEventContextAttributes(otherEventId)),
@@ -2300,9 +2727,9 @@ public class FallbackAuthorizationServiceTests
         _adminContext.GetAdminOrganizationIdsAsync(Arg.Any<CancellationToken>()).Returns([]);
         var attributes = CreateEventContextAttributes();
         var resourceId = attributes["eventId"].ToString()!;
-        var checks = new List<AuthorizationCheck>
+        var checks = new List<AuthorizationRequest>
         {
-            new(ResourceKinds.Event, resourceId, AuthorizationActions.View, attributes),
+            new(ResourceKinds.Event, resourceId, AuthorizationActions.Events.ViewManagement, attributes),
             new(ResourceKinds.Event, resourceId, AuthorizationActions.Events.ManageRegistrations, attributes),
             new(ResourceKinds.Event, resourceId, AuthorizationActions.Events.ManageTickets, attributes),
             new(ResourceKinds.Event, resourceId, AuthorizationActions.Events.ManageAttendees, attributes)
@@ -2536,8 +2963,8 @@ public class FallbackAuthorizationServiceTests
         var eventId = attributes["eventId"].ToString()!;
         var checks = new[]
         {
-            new AuthorizationCheck(ResourceKinds.EventOrganizerClaim, eventId, AuthorizationActions.Events.ViewOrganizerClaims, attributes),
-            new AuthorizationCheck(ResourceKinds.EventOrganizerClaim, eventId, AuthorizationActions.Events.ReviewOrganizerClaim, attributes)
+            new AuthorizationRequest(ResourceKinds.EventOrganizerClaim, eventId, AuthorizationActions.Events.ViewOrganizerClaims, attributes),
+            new AuthorizationRequest(ResourceKinds.EventOrganizerClaim, eventId, AuthorizationActions.Events.ReviewOrganizerClaim, attributes)
         };
 
         var results = await _service.IsAllowedBatchAsync(checks);
@@ -2584,10 +3011,10 @@ public class FallbackAuthorizationServiceTests
         var resourceId = attributes["eventId"].ToString()!;
         var checks = new[]
         {
-            new AuthorizationCheck(ResourceKinds.EventOrganizerClaim, resourceId, AuthorizationActions.Events.ClaimOrganizer, attributes),
-            new AuthorizationCheck(ResourceKinds.EventOrganizerClaim, resourceId, AuthorizationActions.Events.WithdrawOrganizerClaim, attributes),
-            new AuthorizationCheck(ResourceKinds.EventOrganizerClaim, resourceId, AuthorizationActions.Events.ViewOrganizerClaims, attributes),
-            new AuthorizationCheck(ResourceKinds.EventOrganizerClaim, resourceId, AuthorizationActions.Events.ReviewOrganizerClaim, attributes)
+            new AuthorizationRequest(ResourceKinds.EventOrganizerClaim, resourceId, AuthorizationActions.Events.ClaimOrganizer, attributes),
+            new AuthorizationRequest(ResourceKinds.EventOrganizerClaim, resourceId, AuthorizationActions.Events.WithdrawOrganizerClaim, attributes),
+            new AuthorizationRequest(ResourceKinds.EventOrganizerClaim, resourceId, AuthorizationActions.Events.ViewOrganizerClaims, attributes),
+            new AuthorizationRequest(ResourceKinds.EventOrganizerClaim, resourceId, AuthorizationActions.Events.ReviewOrganizerClaim, attributes)
         };
 
         var results = await _service.IsAllowedBatchAsync(checks);
@@ -2640,6 +3067,18 @@ public class FallbackAuthorizationServiceTests
     {
         _adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(false);
         _adminContext.IsTenantAdminAsync(TestTenantId, Arg.Any<CancellationToken>()).Returns(true);
+        _settingsResolver.ResolveWithMetadataAsync("deployment.mode", Arg.Any<SettingContext>(), Arg.Any<CancellationToken>())
+            .Returns(new ResolvedSetting { Key = "deployment.mode", IsLocked = true });
+
+        var result = await _service.CheckSettingAccessAsync("deployment.mode", "update", tenantId: TestTenantId);
+
+        await Assert.That(result).IsFalse();
+    }
+
+    [Test]
+    public async Task CheckSettingAccess_InstanceAdmin_DeniesLockedTenantSetting()
+    {
+        _adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(true);
         _settingsResolver.ResolveWithMetadataAsync("deployment.mode", Arg.Any<SettingContext>(), Arg.Any<CancellationToken>())
             .Returns(new ResolvedSetting { Key = "deployment.mode", IsLocked = true });
 

@@ -21,7 +21,7 @@ namespace Explore.API.Controllers;
 [Route("api/[controller]")]
 [ApiController]
 [Produces(HateoasConstants.JsonMediaType, HateoasConstants.HalJsonMediaType)]
-public class OrganizationReviewController : ControllerBase
+public class OrganizationReviewController : ExploreControllerBase
 {
     private readonly IMediator _mediator;
     private readonly IResourceAssembler<OrganizationReviewDto, OrganizationReviewDto> _resourceAssembler;
@@ -71,7 +71,11 @@ public class OrganizationReviewController : ControllerBase
     [HttpPost(Name = RouteNames.CreateOrganizationReview)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> Post([FromBody] CreateOrganizationReviewDto createOrganizationReviewDto, CancellationToken cancellationToken = default)
     {
-        var command = new CreateOrganizationReviewCommand { CreateOrganizationReviewDto = createOrganizationReviewDto };
+        var command = new CreateOrganizationReviewCommand
+        {
+            CreateOrganizationReviewDto = createOrganizationReviewDto,
+            ReviewerUserId = RequiredUserId
+        };
         var response = await _mediator.Send(command, cancellationToken);
         return Ok(response);
     }

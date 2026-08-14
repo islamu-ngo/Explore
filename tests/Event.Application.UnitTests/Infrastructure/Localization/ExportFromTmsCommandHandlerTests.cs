@@ -2,6 +2,7 @@
 // ABOUTME: Verifies IBundleFileWriter is called with correct dict, resolver invalidation fires, BundleWriteException handled.
 
 using System.Diagnostics.Metrics;
+using Explore.Application.Contracts.Identity;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Features.Localization.Handlers.Commands;
 using Explore.Application.Features.Localization.Requests.Commands;
@@ -14,6 +15,9 @@ namespace Event.Application.UnitTests.Infrastructure.Localization;
 
 public class ExportFromTmsCommandHandlerTests
 {
+    private static readonly Guid ActorId = Guid.Parse("11111111-1111-1111-1111-111111111111");
+
+    private readonly IAdminContext _adminContext;
     private readonly ITranslationManagementProvider _tmsProvider;
     private readonly ITranslationResolver _translationResolver;
     private readonly IBundleFileWriter _bundleFileWriter;
@@ -22,17 +26,60 @@ public class ExportFromTmsCommandHandlerTests
 
     public ExportFromTmsCommandHandlerTests()
     {
+        _adminContext = Substitute.For<IAdminContext>();
+        _adminContext.ResolveUserIdAsync(Arg.Any<CancellationToken>()).Returns(ActorId);
+        _adminContext.IsInstanceAdminAsync(ActorId, Arg.Any<CancellationToken>()).Returns(true);
         _tmsProvider = Substitute.For<ITranslationManagementProvider>();
         _translationResolver = Substitute.For<ITranslationResolver>();
         _bundleFileWriter = Substitute.For<IBundleFileWriter>();
         _metrics = CreateTestMetrics();
 
         _handler = new ExportFromTmsCommandHandler(
+            _adminContext,
             _tmsProvider,
             _translationResolver,
             _bundleFileWriter,
             _metrics,
             Substitute.For<ILogger<ExportFromTmsCommandHandler>>());
+    }
+
+    [Test]
+    public async Task Handle_WhenUserIsNotInstanceAdmin_DeniesBeforeProviderWriterOrCache()
+    {
+        _adminContext.IsInstanceAdminAsync(ActorId, Arg.Any<CancellationToken>()).Returns(false);
+        _tmsProvider.ExportTranslationsAsync("en", Arg.Any<CancellationToken>())
+            .Returns([new TranslationExport("ui.button.save", "Save")]);
+        _bundleFileWriter.WriteBundleAsync("en", Arg.Any<IReadOnlyDictionary<string, string>>(), Arg.Any<CancellationToken>())
+            .Returns("/app/data/en.json");
+
+        var result = await _handler.Handle(new ExportFromTmsCommand { LanguageCode = "en" }, CancellationToken.None);
+
+        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.Message).Contains("Instance administrator");
+        await _tmsProvider.DidNotReceive().ExportTranslationsAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
+        await _bundleFileWriter.DidNotReceive().WriteBundleAsync(
+            Arg.Any<string>(), Arg.Any<IReadOnlyDictionary<string, string>>(), Arg.Any<CancellationToken>());
+        await _translationResolver.DidNotReceive().InvalidateLanguageAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task Handle_WhenCancelledDuringAdminResolution_PropagatesCancellationBeforeProviderWriterOrCache()
+    {
+        using var source = new CancellationTokenSource();
+        await source.CancelAsync();
+        _adminContext.ResolveUserIdAsync(source.Token)
+            .Returns(Task.FromCanceled<Guid?>(source.Token));
+
+        var exception = await Assert.ThrowsAsync<OperationCanceledException>(() =>
+            _handler.Handle(new ExportFromTmsCommand { LanguageCode = "en" }, source.Token));
+
+        await Assert.That(exception.CancellationToken).IsEqualTo(source.Token);
+        await _adminContext.Received(1).ResolveUserIdAsync(source.Token);
+        await _adminContext.DidNotReceive().IsInstanceAdminAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+        await _tmsProvider.DidNotReceive().ExportTranslationsAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
+        await _bundleFileWriter.DidNotReceive().WriteBundleAsync(
+            Arg.Any<string>(), Arg.Any<IReadOnlyDictionary<string, string>>(), Arg.Any<CancellationToken>());
+        await _translationResolver.DidNotReceive().InvalidateLanguageAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
     }
 
     [Test]

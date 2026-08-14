@@ -537,6 +537,92 @@ public class AuthorizationBehaviorTests
     }
 
     [Test]
+    public async Task Handle_WithPlatformAuthorizationScenarios_PinsProviderNeutralOutcomes()
+    {
+        foreach (var scenario in PlatformAuthorizationScenarios())
+        {
+            var authService = Substitute.For<IAuthorizationProvider>();
+            var behavior = new AuthorizationBehavior<TestAuthorizationPlatformCommand, BaseCommandResponse<Guid>>(
+                authService,
+                Substitute.For<ILogger<AuthorizationBehavior<TestAuthorizationPlatformCommand, BaseCommandResponse<Guid>>>>());
+            var command = new TestAuthorizationPlatformCommand(scenario.ResourceId, scenario.Attributes);
+            var nextCalled = false;
+            var expectedResponse = new BaseCommandResponse<Guid> { Success = true };
+
+            authService.IsAllowedAsync(
+                    ResourceKinds.Event,
+                    scenario.ResourceId,
+                    AuthorizationActions.Update,
+                    Arg.Is<IDictionary<string, object>?>(attributes => HasExactAuthorizationContext(attributes, scenario.Attributes)),
+                    Arg.Any<CancellationToken>())
+                .Returns(scenario.AllowedByProvider);
+
+            async Task<BaseCommandResponse<Guid>> Act() => await behavior.Handle(
+                command,
+                _ =>
+                {
+                    nextCalled = true;
+                    return Task.FromResult(expectedResponse);
+                },
+                CancellationToken.None);
+
+            if (scenario.ExpectedOutcome == AuthorizationScenarioOutcome.Allowed)
+            {
+                var result = await Act();
+
+                await Assert.That(result.Success).IsTrue();
+                await Assert.That(nextCalled).IsTrue();
+            }
+            else
+            {
+                await Assert.ThrowsAsync<AuthorizationException>(Act);
+                await Assert.That(nextCalled).IsFalse();
+            }
+
+            await authService.Received(1).IsAllowedAsync(
+                ResourceKinds.Event,
+                scenario.ResourceId,
+                AuthorizationActions.Update,
+                Arg.Is<IDictionary<string, object>?>(attributes => HasExactAuthorizationContext(attributes, scenario.Attributes)),
+                Arg.Any<CancellationToken>());
+        }
+    }
+
+    [Test]
+    public async Task Handle_WithRegistrationFormPipelineDenialScenarios_DeniesBeforeProvider()
+    {
+        foreach (var scenario in RegistrationFormPipelineDenialScenarios())
+        {
+            var authService = Substitute.For<IAuthorizationProvider>();
+            var eventRepository = Substitute.For<IEventRepository>();
+            var tenantContext = Substitute.For<ITenantContext>();
+            var behavior = new AuthorizationBehavior<TestRegistrationFormSecureCommand, BaseCommandResponse<Guid>>(
+                authService,
+                Substitute.For<ILogger<AuthorizationBehavior<TestRegistrationFormSecureCommand, BaseCommandResponse<Guid>>>>(),
+                new AuthorizationResourceContextResolver(eventRepository: eventRepository, tenantContext: tenantContext));
+            var nextCalled = false;
+
+            tenantContext.TenantId.Returns(scenario.AmbientTenantId);
+            if (scenario.PersistedEvent is not null)
+            {
+                eventRepository.GetEventWithDetails(scenario.EventId).Returns(scenario.PersistedEvent);
+            }
+
+            await Assert.ThrowsAsync<AuthorizationException>(() => behavior.Handle(
+                new TestRegistrationFormSecureCommand(Guid.NewGuid(), scenario.EventId),
+                _ =>
+                {
+                    nextCalled = true;
+                    return Task.FromResult(new BaseCommandResponse<Guid> { Success = true });
+                },
+                CancellationToken.None));
+
+            await Assert.That(nextCalled).IsFalse();
+            await authService.DidNotReceiveWithAnyArgs().IsAllowedAsync(default!, default!, default!, default, default);
+        }
+    }
+
+    [Test]
     public async Task Handle_WithEventSessionResource_EnrichesMissingEventAuthorizationContext()
     {
         var eventSessionRepository = Substitute.For<IEventSessionRepository>();
@@ -1853,7 +1939,107 @@ public class AuthorizationBehaviorTests
         attributes.Count == expectedAttributes.Count &&
         expectedAttributes.All(expected =>
             attributes.TryGetValue(expected.Key, out var actual) && actual.Equals(expected.Value));
+
+    private static IReadOnlyList<PlatformAuthorizationScenario> PlatformAuthorizationScenarios()
+    {
+        var tenantId = Guid.NewGuid().ToString("D");
+        var eventId = Guid.NewGuid().ToString("D");
+        var userId = Guid.NewGuid().ToString("D");
+
+        return
+        [
+            new(
+                "normal_allow",
+                eventId,
+                new Dictionary<string, string>
+                {
+                    ["tenantId"] = tenantId,
+                    ["eventId"] = eventId,
+                    ["userId"] = userId
+                },
+                true,
+                AuthorizationScenarioOutcome.Allowed),
+            new(
+                "normal_deny",
+                eventId,
+                new Dictionary<string, string>
+                {
+                    ["tenantId"] = tenantId,
+                    ["eventId"] = eventId,
+                    ["userId"] = userId
+                },
+                false,
+                AuthorizationScenarioOutcome.ProviderDenied),
+            new(
+                "missing_subject",
+                eventId,
+                new Dictionary<string, string>
+                {
+                    ["tenantId"] = tenantId,
+                    ["eventId"] = eventId
+                },
+                false,
+                AuthorizationScenarioOutcome.ProviderDenied),
+            new(
+                "missing_tenant",
+                eventId,
+                new Dictionary<string, string>
+                {
+                    ["eventId"] = eventId,
+                    ["userId"] = userId
+                },
+                false,
+                AuthorizationScenarioOutcome.ProviderDenied),
+            new(
+                "wrong_resource_facts",
+                eventId,
+                new Dictionary<string, string>
+                {
+                    ["tenantId"] = Guid.NewGuid().ToString("D"),
+                    ["eventId"] = Guid.NewGuid().ToString("D"),
+                    ["userId"] = userId
+                },
+                false,
+                AuthorizationScenarioOutcome.ProviderDenied)
+        ];
+    }
+
+    private static IReadOnlyList<RegistrationFormPipelineDenialScenario> RegistrationFormPipelineDenialScenarios()
+    {
+        var missingEventId = Guid.NewGuid();
+        var wrongTenantEventId = Guid.NewGuid();
+        var ambientTenantId = Guid.NewGuid();
+
+        return
+        [
+            new("missing_resource", missingEventId, ambientTenantId, null),
+            new(
+                "wrong_tenant",
+                wrongTenantEventId,
+                ambientTenantId,
+                CreateAuthorizationEvent(wrongTenantEventId, Guid.NewGuid(), Guid.NewGuid()))
+        ];
+    }
 }
+
+public enum AuthorizationScenarioOutcome
+{
+    Allowed,
+    ProviderDenied
+}
+
+public sealed record PlatformAuthorizationScenario(
+    string Name,
+    string ResourceId,
+    IReadOnlyDictionary<string, string> Attributes,
+    bool AllowedByProvider,
+    AuthorizationScenarioOutcome ExpectedOutcome);
+
+public sealed record RegistrationFormPipelineDenialScenario(
+    string Name,
+    Guid EventId,
+    Guid AmbientTenantId,
+    Explore.Domain.Event? PersistedEvent);
 
 // Test command with [AuthorizeResource] attribute
 [AuthorizeResource("islamuevent_instance_setting", "update")]
@@ -1913,4 +2099,16 @@ public sealed class TestRegistrationFormSecureCommand(
     {
         ["eventId"] = eventId.ToString("D")
     };
+}
+
+[AuthorizeResource(ResourceKinds.Event, AuthorizationActions.Update)]
+public sealed class TestAuthorizationPlatformCommand(
+    string resourceId,
+    IReadOnlyDictionary<string, string> attributes) : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
+{
+    string? ISecureRequest.ResourceId => resourceId;
+
+    IDictionary<string, object>? ISecureRequest.ResourceAttributes => attributes.ToDictionary(
+        pair => pair.Key,
+        pair => (object)pair.Value);
 }

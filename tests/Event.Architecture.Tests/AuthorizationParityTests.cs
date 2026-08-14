@@ -117,7 +117,7 @@ public partial class AuthorizationParityTests
     }
 
     /// <summary>
-    /// All resource kind strings handled in FallbackAuthorizationService.IsAllowedAsync switch.
+    /// All resource kind strings handled in FallbackAuthorizationService typed authorization switch.
     /// Extracted by reading the source file and parsing the switch cases.
     /// </summary>
     private static IReadOnlySet<string> GetFallbackHandledResourceKinds()

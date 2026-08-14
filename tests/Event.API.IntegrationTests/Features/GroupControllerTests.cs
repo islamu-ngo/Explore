@@ -4,7 +4,14 @@
 using System.Net;
 using System.Net.Http.Json;
 using Event.Api.IntegrationTests.Fixtures;
+using Explore.API.Controllers;
 using Explore.Application.DTOs.Group;
+using Explore.Domain.Constants;
+using Explore.Domain.Enums;
+using Explore.Persistence;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using TUnit.Assertions;
 using TUnit.Core;
 
@@ -50,6 +57,85 @@ public class GroupControllerTests
         });
 
         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
+    }
+
+    [Test]
+    public async Task Create_ActionRequiresAuthorizeMetadata_AndDoesNotAllowAnonymous()
+    {
+        var method = typeof(GroupController).GetMethod(nameof(GroupController.Create));
+
+        await Assert.That(method).IsNotNull();
+        await Assert.That(method!.GetCustomAttributes(typeof(AuthorizeAttribute), inherit: true)).IsNotEmpty();
+        await Assert.That(method.GetCustomAttributes(typeof(AllowAnonymousAttribute), inherit: true)).IsEmpty();
+    }
+
+    [Test]
+    public async Task Create_WhenAuthenticated_PersistsAuthenticatedUserAsPendingGroupAdmin()
+    {
+        await using var factory = new AuthenticatedWebApplicationFactory();
+        using var client = factory.CreateClient();
+        var authenticatedUserId = Guid.CreateVersion7();
+        var groupName = $"Creator Binding {Guid.NewGuid():N}";
+        using var request = new HttpRequestMessage(HttpMethod.Post, BaseUrl)
+        {
+            Content = JsonContent.Create(new CreateGroupDto
+            {
+                FullName = groupName
+            })
+        };
+        request.Headers.Add(
+            TestAuthHandler.AuthHeaderName,
+            TestAuthHandler.CreateAuthHeaderValue(
+                authenticatedUserId,
+                "Group Creator",
+                ("internal_user_id", authenticatedUserId.ToString("D"))));
+
+        using var response = await client.SendAsync(request);
+
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Created);
+        await using var scope = factory.Services.CreateAsyncScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<ExploreDbContext>();
+        var membership = await dbContext.GroupMembers
+            .Include(member => member.GroupTenant)
+                .ThenInclude(participation => participation.Group)
+            .SingleAsync(member => member.GroupTenant.Group.FullName == groupName);
+        await Assert.That(membership.UserId).IsEqualTo(authenticatedUserId);
+        await Assert.That(membership.RoleId).IsEqualTo((int)RoleEnum.GroupAdmin);
+        await Assert.That(membership.TenantId).IsEqualTo(PlatformDefaults.DefaultTenantId);
+        await Assert.That(membership.GroupTenant.TenantId).IsEqualTo(PlatformDefaults.DefaultTenantId);
+        await Assert.That(membership.GroupTenant.ApprovalStatusId).IsEqualTo((int)ApprovalStatusEnum.Pending);
+    }
+
+    [Test]
+    public async Task Create_WhenBodyContainsCreatorUserId_ReturnsBadRequestAndPersistsNoMembership()
+    {
+        await using var factory = new AuthenticatedWebApplicationFactory();
+        using var client = factory.CreateClient();
+        var authenticatedUserId = Guid.CreateVersion7();
+        var hostileCreatorUserId = Guid.CreateVersion7();
+        var groupName = $"Hostile Creator {Guid.NewGuid():N}";
+        using var request = new HttpRequestMessage(HttpMethod.Post, BaseUrl)
+        {
+            Content = JsonContent.Create(new
+            {
+                FullName = groupName,
+                CreatorUserId = hostileCreatorUserId
+            })
+        };
+        request.Headers.Add(
+            TestAuthHandler.AuthHeaderName,
+            TestAuthHandler.CreateAuthHeaderValue(
+                authenticatedUserId,
+                "Group Creator",
+                ("internal_user_id", authenticatedUserId.ToString("D"))));
+
+        using var response = await client.SendAsync(request);
+
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.BadRequest);
+        await using var scope = factory.Services.CreateAsyncScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<ExploreDbContext>();
+        await Assert.That(await dbContext.Groups.AnyAsync(group => group.FullName == groupName)).IsFalse();
+        await Assert.That(await dbContext.GroupMembers.AnyAsync(member => member.UserId == hostileCreatorUserId)).IsFalse();
     }
 
     [Test]

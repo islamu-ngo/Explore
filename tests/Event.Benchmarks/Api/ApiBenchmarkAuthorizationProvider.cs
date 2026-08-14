@@ -20,7 +20,7 @@ internal sealed class ApiBenchmarkAuthorizationProvider : IAuthorizationProvider
     }
 
     public Task<IReadOnlyList<bool>> IsAllowedBatchAsync(
-        IReadOnlyList<AuthorizationCheck> checks,
+        IReadOnlyList<AuthorizationRequest> checks,
         CancellationToken cancellationToken = default)
     {
         IReadOnlyList<bool> results = checks.Select(_ => true).ToList();

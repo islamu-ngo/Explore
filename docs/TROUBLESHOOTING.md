@@ -375,14 +375,14 @@ The instance control plane exposes warning codes with operator remediation text.
 
 ### BYO Tenant PDP Failure
 
-- `failure_mode=closed` activates provider-instance safe mode and denies non-instance-admin checks.
-- `failure_mode=open` uses local RBAC fallback only for that tenant BYO failure path.
+- Any BYO PDP failure activates provider-instance safe mode and denies non-instance-admin checks.
+- `failure_mode=open` is parsed as a deprecated configuration value but no longer enables local RBAC fallback.
 - BYO config resolver failures also activate provider-instance safe mode.
 
 ### Blank Custom PDP Endpoint
 
 - `cerbos.mode=custom_endpoint` with a blank PDP endpoint remains BYO mode. It preserves the tenant failure mode and any explicit BYO Admin API config instead of falling back to the instance PDP.
-- Configure the PDP endpoint, change the tenant mode, or use manual ZIP/Admin API package operations while runtime authorization follows the configured failure mode.
+- Configure the PDP endpoint, change the tenant mode, or use manual ZIP/Admin API package operations while runtime authorization remains in safe mode.
 
 ### Admin API Package Sync Failure
 

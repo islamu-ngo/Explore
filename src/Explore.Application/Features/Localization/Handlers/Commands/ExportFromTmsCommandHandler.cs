@@ -2,6 +2,7 @@
 // ABOUTME: The persistence seam is IBundleFileWriter so a future DistributedBundleFileWriter can replace local-disk.
 
 using Explore.Application.Contracts.Infrastructure;
+using Explore.Application.Contracts.Identity;
 using Explore.Application.Features.Localization.Requests.Commands;
 using Explore.Application.Responses;
 using Explore.Application.Telemetry;
@@ -12,6 +13,7 @@ namespace Explore.Application.Features.Localization.Handlers.Commands;
 
 public class ExportFromTmsCommandHandler : IRequestHandler<ExportFromTmsCommand, BaseCommandResponse<Guid>>
 {
+    private readonly IAdminContext _adminContext;
     private readonly ITranslationManagementProvider _translationProvider;
     private readonly ITranslationResolver _translationResolver;
     private readonly IBundleFileWriter _bundleFileWriter;
@@ -19,12 +21,14 @@ public class ExportFromTmsCommandHandler : IRequestHandler<ExportFromTmsCommand,
     private readonly ILogger<ExportFromTmsCommandHandler> _logger;
 
     public ExportFromTmsCommandHandler(
+        IAdminContext adminContext,
         ITranslationManagementProvider translationProvider,
         ITranslationResolver translationResolver,
         IBundleFileWriter bundleFileWriter,
         TranslationMetrics metrics,
         ILogger<ExportFromTmsCommandHandler> logger)
     {
+        _adminContext = adminContext;
         _translationProvider = translationProvider;
         _translationResolver = translationResolver;
         _bundleFileWriter = bundleFileWriter;
@@ -35,6 +39,13 @@ public class ExportFromTmsCommandHandler : IRequestHandler<ExportFromTmsCommand,
     public async Task<BaseCommandResponse<Guid>> Handle(ExportFromTmsCommand request, CancellationToken cancellationToken)
     {
         var response = new BaseCommandResponse<Guid>();
+        var actor = await _adminContext.ResolveUserIdAsync(cancellationToken);
+        if (!actor.HasValue || !await _adminContext.IsInstanceAdminAsync(actor.Value, cancellationToken))
+        {
+            response.Success = false;
+            response.Message = "Instance administrator authority is required to export localization bundles from TMS.";
+            return response;
+        }
 
         IEnumerable<TranslationExport> exports;
         try

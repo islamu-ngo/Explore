@@ -384,6 +384,8 @@ Hard deny behavior:
 - `AuthorizationBehavior` throws `AuthorizationException` on deny.
 - API global exception handler returns HTTP `403 Forbidden` via RFC 7807 ProblemDetails.
 
+Paid-event publication repeats its policy, organizer, connection, currency, disclosure, and commerce-authority checks in the server-side publish transaction; browser preflight is advisory UI state only. The organizer payment connection and policy reads are authenticated `private, no-store` resources. Browser policy responses omit policy and tenant identifiers. Browser-visible connection state is limited to status, merchant country, charge-capability state, requirements state, supported currencies, and readiness timestamp. It must not contain provider, platform, account, tenant, actor, connection, lineage, or evidence identifiers. Hosted onboarding exposes only an absolute HTTP(S) URL and whether an existing connection was reused; return and refresh redirects never assert readiness.
+
 ## Runtime Authorization Providers
 
 Provider selection:
@@ -398,10 +400,10 @@ Failure behavior:
 - Instance Cerbos failure denies all authorized requests (fail-closed). The operator explicitly chose Cerbos; falling back to a potentially more permissive local RBAC would silently bypass intended policies.
 - Instance provider-mode read failures also enter the Cerbos fail-closed path and log only safe failure-type metadata; they do not default open to local RBAC.
 - BYO Cerbos:
-  - `failure_mode=closed` -> provider-instance fallback `SafeMode` (deny all except instance admin path).
-  - `failure_mode=open` -> standard local RBAC fallback.
+  - Any PDP failure -> provider-instance fallback `SafeMode` (deny all except instance admin path).
+  - `failure_mode=open` is parsed as deprecated config but ignored at runtime; it does not enable local RBAC fallback.
   - BYO config resolver failures activate provider-instance safe mode instead of silently using local RBAC.
-  - `cerbos.mode=custom_endpoint` with a blank PDP endpoint preserves BYO mode/failure mode and any explicit BYO Admin API config; runtime authorization applies the configured failure mode rather than falling back to the instance PDP.
+  - `cerbos.mode=custom_endpoint` with a blank PDP endpoint preserves BYO mode/failure mode and any explicit BYO Admin API config; runtime authorization activates safe mode rather than falling back to the instance PDP.
 
 Runtime failure logs must not include raw PDP/Admin API endpoints, Admin API credentials, JWTs/tokens, response bodies, or exception objects/messages. Log failure type, request/correlation identifiers, counts, modes, and actions only.
 
@@ -433,7 +435,7 @@ Tenants may point to their own Cerbos PDP endpoint via tenant settings:
 - Receives the same `AuthorizationCheck` payloads as the instance PDP.
 - `AuthorizationCheck.Scope` enables per-tenant policy resolution within the BYO PDP.
 - Optional BYO Admin API endpoint and credentials can target package sync/status independently of the PDP endpoint.
-- Failure modes: `closed` → provider-instance safe mode (deny all except instance admin), `open` → fallback to local RBAC.
+- Failure modes: any PDP failure activates provider-instance safe mode (deny all except instance admin); `open` is deprecated and ignored at runtime.
 - A blank custom PDP endpoint is treated as a BYO runtime configuration error, not as an instruction to use the instance PDP. Any explicit BYO Admin API config is still preserved for package operations.
 - Only applies to resource checks. Setting access always uses the instance provider.
 

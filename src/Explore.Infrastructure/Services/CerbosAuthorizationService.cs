@@ -1,5 +1,5 @@
 // ABOUTME: Cerbos PDP authorization service using the official gRPC SDK for policy decisions.
-// ABOUTME: Uses Cerbos.Sdk CheckResourcesAsync, prefers AuthorizationCheck.Scope over ambient tenant context.
+// ABOUTME: Uses Cerbos.Sdk CheckResourcesAsync, prefers AuthorizationRequest.Scope over ambient tenant context.
 
 using System.Collections.Concurrent;
 using System.Diagnostics;
@@ -59,96 +59,119 @@ public class CerbosAuthorizationService : IAuthorizationProvider
         _settings = settings.Value;
     }
 
-    public async Task<bool> IsAllowedAsync(
-        string resourceKind,
-        string resourceId,
-        string action,
-        IDictionary<string, object>? resourceAttributes = null,
+    public async Task<AuthorizationDecision> AuthorizeAsync(
+        AuthorizationRequest request,
         CancellationToken cancellationToken = default)
     {
-        var checks = new[]
-        {
-            new AuthorizationCheck(
-                resourceKind,
-                resourceId,
-                action,
-                resourceAttributes is null ? null : new Dictionary<string, object>(resourceAttributes))
-        };
+        if (string.IsNullOrWhiteSpace(request.ResourceId))
+            return AuthorizationDecision.Deny(AuthorizationProviderMetadata.Cerbos, AuthorizationDecisionReasonCodes.InvalidRequest);
 
-        var results = await IsAllowedBatchAsync(checks, cancellationToken);
-        return results.Count > 0 && results[0];
+        var results = await AuthorizeBatchAsync([request], cancellationToken);
+        return results.Count > 0
+            ? results[0]
+            : AuthorizationDecision.Deny(AuthorizationProviderMetadata.Cerbos, AuthorizationDecisionReasonCodes.ProviderError);
     }
 
-    public async Task<IReadOnlyList<bool>> IsAllowedBatchAsync(
-        IReadOnlyList<AuthorizationCheck> checks,
+    public async Task<IReadOnlyList<AuthorizationDecision>> AuthorizeBatchAsync(
+        IReadOnlyList<AuthorizationRequest> checks,
         CancellationToken cancellationToken = default)
     {
         if (checks.Count == 0)
             return [];
 
-        return await ExecuteCheckAsync(_client, _settings.GrpcEndpoint, checks, cancellationToken);
+        return await ExecuteCheckWithStorageTypedDenyAsync(_client, _settings.GrpcEndpoint, checks, cancellationToken);
     }
 
-    public async Task<IReadOnlyList<bool>> IsAllowedBatchWithUnavailableSignalAsync(
-        IReadOnlyList<AuthorizationCheck> checks,
+    private static bool IsStorageUploadCreateWithTypedFacts(AuthorizationRequest check) =>
+        check.ResourceKind == ResourceKinds.StorageObject &&
+        check.Action == AuthorizationActions.StorageObjects.Create &&
+        check.Facts is StorageUploadIntentFacts;
+
+    public async Task<IReadOnlyList<AuthorizationDecision>> AuthorizeBatchWithUnavailableSignalAsync(
+        IReadOnlyList<AuthorizationRequest> checks,
         CancellationToken cancellationToken = default)
     {
         if (checks.Count == 0)
             return [];
 
-        return await ExecuteCheckAsync(_client, _settings.GrpcEndpoint, checks, cancellationToken, throwOnUnavailable: true);
+        return await ExecuteCheckWithStorageTypedDenyAsync(
+            _client,
+            _settings.GrpcEndpoint,
+            checks,
+            cancellationToken,
+            throwOnUnavailable: true);
     }
 
     /// <summary>
     /// Checks permissions against a specific Cerbos PDP endpoint (for BYO tenants).
     /// Uses <see cref="ICerbosClientFactory"/> to get a cached gRPC client for the BYO endpoint.
     /// </summary>
-    public async Task<IReadOnlyList<bool>> IsAllowedBatchWithEndpointAsync(
+    public async Task<IReadOnlyList<AuthorizationDecision>> AuthorizeBatchWithEndpointAsync(
         string endpointUrl,
-        IReadOnlyList<AuthorizationCheck> checks,
+        IReadOnlyList<AuthorizationRequest> checks,
         CancellationToken cancellationToken = default)
     {
         if (checks.Count == 0)
             return [];
 
         var byoClient = _clientFactory.GetOrCreate(endpointUrl);
-        return await ExecuteCheckAsync(byoClient, endpointUrl, checks, cancellationToken, throwOnUnavailable: true);
+        return await ExecuteCheckWithStorageTypedDenyAsync(
+            byoClient,
+            endpointUrl,
+            checks,
+            cancellationToken,
+            throwOnUnavailable: true);
     }
 
-    public async Task<bool> CheckSettingAccessAsync(
-        string settingKey,
-        string action,
-        Guid? tenantId = null,
-        Guid? organizationId = null,
-        CancellationToken cancellationToken = default)
-    {
-        var attributes = new Dictionary<string, object> { ["settingKey"] = settingKey };
-        string resourceKind;
-
-        if (organizationId.HasValue)
-        {
-            resourceKind = "islamuevent_organization";
-            attributes["organizationId"] = organizationId.Value.ToString();
-        }
-        else if (tenantId.HasValue)
-        {
-            resourceKind = "islamuevent_tenant_setting";
-            attributes["tenantId"] = tenantId.Value.ToString();
-            var metadata = await _resolver.ResolveWithMetadataAsync(settingKey, new SettingContext(), cancellationToken);
-            attributes["isLockedByInstance"] = metadata?.IsLocked == true;
-        }
-        else
-        {
-            resourceKind = "islamuevent_instance_setting";
-        }
-
-        return await IsAllowedAsync(resourceKind, settingKey, action, attributes, cancellationToken);
-    }
-
-    private async Task<IReadOnlyList<bool>> ExecuteCheckAsync(
+    private async Task<IReadOnlyList<AuthorizationDecision>> ExecuteCheckWithStorageTypedDenyAsync(
         ICerbosClient client,
         string endpointLabel,
-        IReadOnlyList<AuthorizationCheck> checks,
+        IReadOnlyList<AuthorizationRequest> checks,
+        CancellationToken cancellationToken,
+        bool throwOnUnavailable = false)
+    {
+        if (!checks.Any(IsStorageUploadCreateWithTypedFacts))
+            return await ExecuteCheckAsync(client, endpointLabel, checks, cancellationToken, throwOnUnavailable);
+
+        var results = Enumerable.Repeat(
+            AuthorizationDecision.Deny(AuthorizationProviderMetadata.Cerbos),
+            checks.Count).ToArray();
+        var passthroughIndexes = new List<int>(checks.Count);
+        var passthroughChecks = new List<AuthorizationRequest>(checks.Count);
+
+        for (var index = 0; index < checks.Count; index++)
+        {
+            if (IsStorageUploadCreateWithTypedFacts(checks[index]))
+                continue;
+
+            passthroughIndexes.Add(index);
+            passthroughChecks.Add(checks[index]);
+        }
+
+        if (passthroughChecks.Count == 0)
+            return results;
+
+        var passthroughResults = await ExecuteCheckAsync(
+            client,
+            endpointLabel,
+            passthroughChecks,
+            cancellationToken,
+            throwOnUnavailable);
+
+        for (var index = 0; index < passthroughIndexes.Count; index++)
+        {
+            results[passthroughIndexes[index]] = index < passthroughResults.Count
+                ? passthroughResults[index]
+                : AuthorizationDecision.Deny(AuthorizationProviderMetadata.Cerbos, AuthorizationDecisionReasonCodes.ProviderError);
+        }
+
+        return results;
+    }
+
+    private async Task<IReadOnlyList<AuthorizationDecision>> ExecuteCheckAsync(
+        ICerbosClient client,
+        string endpointLabel,
+        IReadOnlyList<AuthorizationRequest> checks,
         CancellationToken cancellationToken,
         bool throwOnUnavailable = false)
     {
@@ -161,7 +184,7 @@ public class CerbosAuthorizationService : IAuthorizationProvider
         if (userId is null && machineContext is null)
         {
             _logger.LogWarning("Cerbos auth denied: no user id and no machine principal in admin context");
-            return DenyAll(checks.Count);
+            return DenyAll(checks.Count, AuthorizationDecisionReasonCodes.MissingSubject);
         }
 
         var requestId = RequestId.Generate();
@@ -207,12 +230,12 @@ public class CerbosAuthorizationService : IAuthorizationProvider
             if (throwOnUnavailable)
                 throw;
 
-            return DenyAll(checks.Count);
+            return DenyAll(checks.Count, AuthorizationDecisionReasonCodes.ProviderUnavailable);
         }
     }
 
     private CerbosResourceEntry[] BuildResourceEntries(
-        IReadOnlyList<AuthorizationCheck> checks,
+        IReadOnlyList<AuthorizationRequest> checks,
         bool isMachine)
     {
         var ambientTenantId = _tenantContext.TenantId;
@@ -260,7 +283,7 @@ public class CerbosAuthorizationService : IAuthorizationProvider
             .ToArray();
     }
 
-    private static HashSet<Guid> ExtractEventIdsFromChecks(IReadOnlyList<AuthorizationCheck> checks)
+    private static HashSet<Guid> ExtractEventIdsFromChecks(IReadOnlyList<AuthorizationRequest> checks)
     {
         var eventIds = new HashSet<Guid>();
         foreach (var check in checks)
@@ -278,7 +301,7 @@ public class CerbosAuthorizationService : IAuthorizationProvider
         return eventIds;
     }
 
-    private Guid ResolveTenantIdFromChecks(IReadOnlyList<AuthorizationCheck> checks)
+    private Guid ResolveTenantIdFromChecks(IReadOnlyList<AuthorizationRequest> checks)
     {
         foreach (var check in checks)
         {
@@ -299,13 +322,13 @@ public class CerbosAuthorizationService : IAuthorizationProvider
         return _tenantContext.TenantId;
     }
 
-    private IReadOnlyList<bool> BuildDecisionResults(
-        IReadOnlyList<AuthorizationCheck> checks,
+    private IReadOnlyList<AuthorizationDecision> BuildDecisionResults(
+        IReadOnlyList<AuthorizationRequest> checks,
         CheckResourcesResponse response,
         string requestId,
         string correlationId)
     {
-        var decisions = new bool[checks.Count];
+        var decisions = new AuthorizationDecision[checks.Count];
 
         for (var i = 0; i < checks.Count; i++)
         {
@@ -315,7 +338,9 @@ public class CerbosAuthorizationService : IAuthorizationProvider
             if (resultEntry is not null && resultEntry.Actions.TryGetValue(check.Action, out var effect))
             {
                 var isAllowed = effect == Effect.Allow;
-                decisions[i] = isAllowed;
+                decisions[i] = isAllowed
+                    ? AuthorizationDecision.Allow(AuthorizationProviderMetadata.Cerbos)
+                    : AuthorizationDecision.Deny(AuthorizationProviderMetadata.Cerbos);
                 _logger.LogDebug(
                     "Cerbos decision: effect={Effect} resource={Resource}/{ResourceId} action={Action} requestId={RequestId} correlationId={CorrelationId}",
                     effect, check.ResourceKind, check.ResourceId, check.Action, requestId, correlationId);
@@ -325,7 +350,7 @@ public class CerbosAuthorizationService : IAuthorizationProvider
             _logger.LogWarning(
                 "Cerbos decision missing. Default deny for resource={Resource}/{ResourceId} action={Action} requestId={RequestId} correlationId={CorrelationId}",
                 check.ResourceKind, check.ResourceId, check.Action, requestId, correlationId);
-            decisions[i] = false;
+            decisions[i] = AuthorizationDecision.Deny(AuthorizationProviderMetadata.Cerbos, AuthorizationDecisionReasonCodes.ProviderError);
         }
 
         return decisions;
@@ -333,7 +358,7 @@ public class CerbosAuthorizationService : IAuthorizationProvider
 
     private static Cerbos.Api.V1.Response.CheckResourcesResponse.Types.ResultEntry? FindResultEntry(
         CheckResourcesResponse response,
-        AuthorizationCheck check,
+        AuthorizationRequest check,
         int checkIndex)
     {
         if (checkIndex < response.Raw.Results.Count)
@@ -350,16 +375,16 @@ public class CerbosAuthorizationService : IAuthorizationProvider
 
     private static bool MatchesResult(
         Cerbos.Api.V1.Response.CheckResourcesResponse.Types.ResultEntry result,
-        AuthorizationCheck check)
+        AuthorizationRequest check)
     {
         return result.Resource is { } resource &&
                string.Equals(resource.Id, check.ResourceId, StringComparison.Ordinal) &&
                string.Equals(resource.Kind, check.ResourceKind, StringComparison.Ordinal);
     }
 
-    private static bool[] DenyAll(int count)
+    private static AuthorizationDecision[] DenyAll(int count, string reasonCode = AuthorizationDecisionReasonCodes.Denied)
     {
-        return Enumerable.Repeat(false, count).ToArray();
+        return Enumerable.Repeat(AuthorizationDecision.Deny(AuthorizationProviderMetadata.Cerbos, reasonCode), count).ToArray();
     }
 
     /// <summary>

@@ -54,7 +54,7 @@ Runtime behavior:
 - `RuntimeAuthorizationProvider` chooses Cerbos first (when configured),
 - instance Cerbos failures deny/fail closed; they do not automatically fall back to local RBAC,
 - switching to local authorization requires an explicit provider-mode configuration change,
-- BYO tenant Cerbos can opt into `failure_mode=open`; that is the explicit tenant-scoped local fallback case.
+- BYO tenant Cerbos outages always fail closed; legacy `failure_mode=open` values are parsed but ignored at runtime.
 
 ## Tier 3 - Ummah-Scale
 

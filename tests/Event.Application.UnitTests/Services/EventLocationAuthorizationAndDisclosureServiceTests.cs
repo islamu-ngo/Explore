@@ -53,7 +53,7 @@ public sealed class EventLocationAuthorizationAndDisclosureServiceTests
             .Returns(targets);
         var authorizationProvider = Substitute.For<IAuthorizationProvider>();
         authorizationProvider.IsAllowedBatchAsync(
-                Arg.Any<IReadOnlyList<AuthorizationCheck>>(),
+                Arg.Any<IReadOnlyList<AuthorizationRequest>>(),
                 Arg.Any<CancellationToken>())
             .Returns([true, false]);
         var auditService = Substitute.For<IEventLocationExactReadAuditService>();
@@ -105,7 +105,7 @@ public sealed class EventLocationAuthorizationAndDisclosureServiceTests
             Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Count == 3),
             cancellation.Token);
         await authorizationProvider.Received(1).IsAllowedBatchAsync(
-            Arg.Is<IReadOnlyList<AuthorizationCheck>>(checks =>
+            Arg.Is<IReadOnlyList<AuthorizationRequest>>(checks =>
                 checks.Count == 2
                 && checks.All(check =>
                     check.ResourceKind == ResourceKinds.Event
@@ -128,7 +128,7 @@ public sealed class EventLocationAuthorizationAndDisclosureServiceTests
             .Returns([CreateEvent(eventId)]);
         var authorizationProvider = Substitute.For<IAuthorizationProvider>();
         authorizationProvider.IsAllowedBatchAsync(
-                Arg.Any<IReadOnlyList<AuthorizationCheck>>(),
+                Arg.Any<IReadOnlyList<AuthorizationRequest>>(),
                 Arg.Any<CancellationToken>())
             .Returns<Task<IReadOnlyList<bool>>>(_ => throw new InvalidOperationException("provider unavailable"));
         var auditService = Substitute.For<IEventLocationExactReadAuditService>();
@@ -255,7 +255,7 @@ public sealed class EventLocationAuthorizationAndDisclosureServiceTests
                 cancellation.Token))
             .Throws<OperationCanceledException>();
         await authorizationProvider.DidNotReceive().IsAllowedBatchAsync(
-            Arg.Any<IReadOnlyList<AuthorizationCheck>>(),
+            Arg.Any<IReadOnlyList<AuthorizationRequest>>(),
             Arg.Any<CancellationToken>());
         await auditService.DidNotReceive().RecordManyAsync(
             Arg.Any<IReadOnlyCollection<EventLocationExactReadAuditRequest>>(),

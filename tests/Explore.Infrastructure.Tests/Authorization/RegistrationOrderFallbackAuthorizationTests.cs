@@ -84,6 +84,50 @@ public sealed class RegistrationOrderFallbackAuthorizationTests
     }
 
     [Test]
+    [Arguments("guest.order_with_account_user_fact_but_no_current_user_current_deny")]
+    public async Task IsAllowed_Phase0RegistrationOrderGuestCurrentBaseline(
+        string scenario)
+    {
+        FallbackAuthorizationService service = CreateService();
+        _adminContext.UserId.Returns((Guid?)null);
+        _adminContext.ResolveUserIdAsync(Arg.Any<CancellationToken>()).Returns((Guid?)null);
+
+        bool result = await service.IsAllowedAsync(
+            ResourceKinds.RegistrationOrder,
+            _orderId.ToString("D"),
+            AuthorizationActions.RegistrationOrders.View,
+            Attributes());
+
+        await Assert.That(result)
+            .IsFalse()
+            .Because($"phase-0 provider scenario '{scenario}' must pin current guest registration-order authorization.");
+    }
+
+    [Test]
+    [Arguments("missing_facts.order_without_account_user_fact_current_deny", true, false, true)]
+    [Arguments("missing_facts.order_without_tenant_context_current_deny", false, true, true)]
+    [Arguments("missing_facts.order_without_event_context_current_deny", true, true, false)]
+    public async Task IsAllowed_Phase0RegistrationOrderMissingFactsCurrentBaseline(
+        string scenario,
+        bool includeTenantId,
+        bool includeAccountUserId,
+        bool includeEventContext)
+    {
+        FallbackAuthorizationService service = CreateService();
+        _adminContext.UserId.Returns(_accountUserId);
+
+        bool result = await service.IsAllowedAsync(
+            ResourceKinds.RegistrationOrder,
+            _orderId.ToString("D"),
+            AuthorizationActions.RegistrationOrders.View,
+            Attributes(includeTenantId: includeTenantId, includeAccountUserId: includeAccountUserId, includeEventContext: includeEventContext));
+
+        await Assert.That(result)
+            .IsFalse()
+            .Because($"phase-0 provider scenario '{scenario}' must pin current guest/missing-fact registration-order authorization.");
+    }
+
+    [Test]
     public async Task IsAllowed_RegistrationManagerMayViewButNotMutateAnOrder()
     {
         FallbackAuthorizationService service = CreateService();
@@ -146,10 +190,29 @@ public sealed class RegistrationOrderFallbackAuthorizationTests
             Substitute.For<ILogger<FallbackAuthorizationService>>());
     }
 
-    private Dictionary<string, object> Attributes(Guid? tenantId = null) => new()
+    private Dictionary<string, object> Attributes(
+        Guid? tenantId = null,
+        bool includeTenantId = true,
+        bool includeAccountUserId = true,
+        bool includeEventContext = true)
     {
-        ["tenantId"] = (tenantId ?? _tenantId).ToString("D"),
-        ["eventId"] = _eventId.ToString("D"),
-        ["accountUserId"] = _accountUserId.ToString("D")
-    };
+        var attributes = new Dictionary<string, object>();
+
+        if (includeTenantId)
+        {
+            attributes["tenantId"] = (tenantId ?? _tenantId).ToString("D");
+        }
+
+        if (includeEventContext)
+        {
+            attributes["eventId"] = _eventId.ToString("D");
+        }
+
+        if (includeAccountUserId)
+        {
+            attributes["accountUserId"] = _accountUserId.ToString("D");
+        }
+
+        return attributes;
+    }
 }

@@ -344,6 +344,8 @@ Do not promise perfect migration of Svix-only features such as transformations, 
 
 This endpoint handles account readiness and deauthorization only. Checkout, payment, refund, and dispute webhook processing remains deferred to Phase 18 and must use separately fenced Application processing rather than performing provider state transitions in the callback controller or inside a provider-call transaction.
 
+Hosted organizer onboarding and the bounded readiness reconciliation worker are separate from webhook intake. Reconciliation selects stale connections in bounded batches, refreshes provider readiness outside its serializable local apply transaction, and ignores disabled, replaced, or older observations. It logs aggregate counts and bounded failure/request-id samples only.
+
 ## Related
 
 - [API.md](API.md#webhook-management)

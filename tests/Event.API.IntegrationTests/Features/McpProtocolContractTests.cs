@@ -283,7 +283,7 @@ public sealed class McpProtocolContractTests
     [Test]
     public async Task ToolsCall_WhenModerationTargetAuthorizationDenied_ReturnsFailureWithoutPersistingProposal()
     {
-        var deniedChecks = new List<AuthorizationCheck>();
+        var deniedChecks = new List<AuthorizationRequest>();
         var authorizationProvider = new StubAuthorizationProvider
         {
             CheckPredicate = check =>
@@ -343,7 +343,7 @@ public sealed class McpProtocolContractTests
     public async Task ToolsCall_WhenInstanceAdminTargetsCrossTenantModeration_UsesTargetTenantAndPersistsProposal()
     {
         var targetTenantId = Guid.CreateVersion7();
-        var moderationChecks = new List<AuthorizationCheck>();
+        var moderationChecks = new List<AuthorizationRequest>();
         var authorizationProvider = new StubAuthorizationProvider
         {
             CheckPredicate = check =>

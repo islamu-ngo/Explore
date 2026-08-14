@@ -111,29 +111,31 @@ public class UpdateActorCommandHandler : IRequestHandler<UpdateActorCommand, Bas
 
     private async Task EnsureCanUpdatePresentGroupsAsync(Actor actor, UpdateActorDto dto, CancellationToken cancellationToken)
     {
-        var checks = BuildPresentGroupAuthorizationChecks(actor, dto);
+        var checks = BuildPresentGroupAuthorizationRequests(actor, dto);
         if (checks.Count == 0)
         {
             return;
         }
 
-        var decisions = await _authorizationProvider.IsAllowedBatchAsync(checks, cancellationToken);
+            var decisions = (await _authorizationProvider.AuthorizeBatchAsync(checks, cancellationToken))
+                .Select(decision => decision.IsAllowed)
+                .ToArray();
         if (decisions.Any(isAllowed => !isAllowed))
         {
             throw new AuthorizationException(ResourceKinds.Actor, AuthorizationActions.Update);
         }
     }
 
-    private IReadOnlyList<AuthorizationCheck> BuildPresentGroupAuthorizationChecks(Actor actor, UpdateActorDto dto)
+    private IReadOnlyList<AuthorizationRequest> BuildPresentGroupAuthorizationRequests(Actor actor, UpdateActorDto dto)
     {
-        var checks = new List<AuthorizationCheck>();
+        var checks = new List<AuthorizationRequest>();
         AddGroupCheck(checks, actor, dto.Profile, "profile");
         AddGroupCheck(checks, actor, dto.ProfileImage, "profileImage");
         AddGroupCheck(checks, actor, dto.Appearance, "appearance");
         return checks;
     }
 
-    private void AddGroupCheck<TGroup>(List<AuthorizationCheck> checks, Actor actor, TGroup? group, string groupName)
+    private void AddGroupCheck<TGroup>(List<AuthorizationRequest> checks, Actor actor, TGroup? group, string groupName)
         where TGroup : class
     {
         if (group is null)
@@ -141,7 +143,7 @@ public class UpdateActorCommandHandler : IRequestHandler<UpdateActorCommand, Bas
             return;
         }
 
-        checks.Add(new AuthorizationCheck(
+        checks.Add(new AuthorizationRequest(
             ResourceKinds.Actor,
             actor.Id.ToString(),
             AuthorizationActions.Update,

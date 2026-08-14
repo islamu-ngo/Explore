@@ -145,11 +145,8 @@ public sealed class IncomingWebhookTenantExecutionTests
         IMachinePrincipalAccessor machineAccessor,
         ExecutionState state) : IAuthorizationProvider
     {
-        public async Task<bool> IsAllowedAsync(
-            string resourceKind,
-            string resourceId,
-            string action,
-            IDictionary<string, object>? resourceAttributes = null,
+        public async Task<AuthorizationDecision> AuthorizeAsync(
+            AuthorizationRequest request,
             CancellationToken cancellationToken = default)
         {
             var tenantId = tenantAccessor.TenantId ?? Guid.Empty;
@@ -159,30 +156,27 @@ public sealed class IncomingWebhookTenantExecutionTests
                 tenantId,
                 principal?.TenantId,
                 principal?.Scopes ?? [],
-                action));
+                request.Action));
             await state.SynchronizeAsync(cancellationToken);
             var hasMatchingTenantAttribute =
-                resourceAttributes?.TryGetValue("tenantId", out var tenantAttribute) == true &&
+                request.ResourceAttributes?.TryGetValue("tenantId", out var tenantAttribute) == true &&
                 tenantAttribute?.ToString() == tenantId.ToString();
-            return resourceKind == ResourceKinds.Webhook &&
-                   action == AuthorizationActions.Webhooks.ProcessIncoming &&
-                   principal is not null &&
-                   principal.TenantId == tenantId &&
-                   hasMatchingTenantAttribute;
+            var allowed = request.ResourceKind == ResourceKinds.Webhook &&
+                          request.Action == AuthorizationActions.Webhooks.ProcessIncoming &&
+                          principal is not null &&
+                          principal.TenantId == tenantId &&
+                          hasMatchingTenantAttribute;
+            return allowed
+                ? AuthorizationDecision.Allow(AuthorizationProviderMetadata.Local)
+                : AuthorizationDecision.Deny(AuthorizationProviderMetadata.Local);
         }
 
-        public Task<IReadOnlyList<bool>> IsAllowedBatchAsync(
-            IReadOnlyList<AuthorizationCheck> checks,
+        public Task<IReadOnlyList<AuthorizationDecision>> AuthorizeBatchAsync(
+            IReadOnlyList<AuthorizationRequest> requests,
             CancellationToken cancellationToken = default) =>
-            Task.FromResult<IReadOnlyList<bool>>(checks.Select(_ => true).ToArray());
-
-        public Task<bool> CheckSettingAccessAsync(
-            string settingKey,
-            string action,
-            Guid? tenantId = null,
-            Guid? organizationId = null,
-            CancellationToken cancellationToken = default) =>
-            Task.FromResult(false);
+            Task.FromResult<IReadOnlyList<AuthorizationDecision>>(requests
+                .Select(_ => AuthorizationDecision.Allow(AuthorizationProviderMetadata.Local))
+                .ToArray());
     }
 
     private sealed class RecordingProcessingService(ExecutionState state) : IIncomingWebhookProcessingService

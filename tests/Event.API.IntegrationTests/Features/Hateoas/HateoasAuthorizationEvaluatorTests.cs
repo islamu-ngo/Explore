@@ -76,7 +76,7 @@ public class HateoasAuthorizationEvaluatorTests
         };
 
         _authProvider.IsAllowedBatchAsync(
-            Arg.Any<IReadOnlyList<AuthorizationCheck>>(),
+            Arg.Any<IReadOnlyList<AuthorizationRequest>>(),
             Arg.Any<CancellationToken>())
             .Returns([true]);
 
@@ -84,7 +84,7 @@ public class HateoasAuthorizationEvaluatorTests
 
         await Assert.That(result[0]).IsTrue();
         await _authProvider.Received(1).IsAllowedBatchAsync(
-            Arg.Is<IReadOnlyList<AuthorizationCheck>>(checks => checks.Count == 1),
+            Arg.Is<IReadOnlyList<AuthorizationRequest>>(checks => checks.Count == 1),
             Arg.Any<CancellationToken>());
     }
 
@@ -102,13 +102,13 @@ public class HateoasAuthorizationEvaluatorTests
                 Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Count == 1 && ids.Contains(eventId)),
                 Arg.Any<CancellationToken>())
             .Returns([AuthorizationEvent(tenantId, eventId, attackerUserId, organizerUserId)]);
-        IReadOnlyList<AuthorizationCheck>? captured = null;
+        IReadOnlyList<AuthorizationRequest>? captured = null;
         _authProvider.IsAllowedBatchAsync(
-                Arg.Any<IReadOnlyList<AuthorizationCheck>>(),
+                Arg.Any<IReadOnlyList<AuthorizationRequest>>(),
                 Arg.Any<CancellationToken>())
             .Returns(call =>
             {
-                captured = call.Arg<IReadOnlyList<AuthorizationCheck>>();
+                captured = call.Arg<IReadOnlyList<AuthorizationRequest>>();
                 return captured.Select(_ => true).ToArray();
             });
         var evaluator = new HateoasAuthorizationEvaluator(_authProvider, repository, tenantContext, _logger);
@@ -165,8 +165,78 @@ public class HateoasAuthorizationEvaluatorTests
 
         await Assert.That(result.All(value => !value)).IsTrue();
         await authorizationProvider.DidNotReceive().IsAllowedBatchAsync(
-            Arg.Any<IReadOnlyList<AuthorizationCheck>>(),
+            Arg.Any<IReadOnlyList<AuthorizationRequest>>(),
             Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    [Arguments("allow", true, true, true, true)]
+    [Arguments("deny", true, false, true, false)]
+    [Arguments("missing-subject", false, true, false, false)]
+    [Arguments("missing-tenant-facts", true, true, true, true)]
+    [Arguments("missing-resource-facts", true, true, false, false)]
+    [Arguments("wrong-tenant", true, true, false, false)]
+    [Arguments("provider-failure", true, true, true, false)]
+    public async Task RegistrationFormHalScenarios_PinLinkMaterialization(
+        string scenario,
+        bool hasSubject,
+        bool providerAllows,
+        bool providerReached,
+        bool expectedAllowed)
+    {
+        Guid tenantId = Guid.CreateVersion7();
+        Guid eventId = Guid.CreateVersion7();
+        IAuthorizationProvider authorizationProvider = Substitute.For<IAuthorizationProvider>();
+        IEventRepository repository = Substitute.For<IEventRepository>();
+        ITenantContext tenantContext = Substitute.For<ITenantContext>();
+        tenantContext.TenantId.Returns(tenantId);
+        repository.GetAuthorizationTargetsByIdsAsync(
+                Arg.Any<IReadOnlyCollection<Guid>>(),
+                Arg.Any<CancellationToken>())
+            .Returns([AuthorizationEvent(
+                scenario == "wrong-tenant" ? Guid.CreateVersion7() : tenantId,
+                eventId,
+                Guid.CreateVersion7(),
+                Guid.CreateVersion7())]);
+        if (scenario == "provider-failure")
+        {
+            authorizationProvider.IsAllowedBatchAsync(
+                    Arg.Any<IReadOnlyList<AuthorizationRequest>>(),
+                    Arg.Any<CancellationToken>())
+                .ThrowsAsync(new HttpRequestException("provider unavailable"));
+        }
+        else
+        {
+            authorizationProvider.IsAllowedBatchAsync(
+                    Arg.Any<IReadOnlyList<AuthorizationRequest>>(),
+                    Arg.Any<CancellationToken>())
+                .Returns([providerAllows]);
+        }
+        var evaluator = new HateoasAuthorizationEvaluator(authorizationProvider, repository, tenantContext, _logger);
+        Dictionary<string, object> attributes = scenario == "missing-resource-facts"
+            ? new Dictionary<string, object>()
+            : new Dictionary<string, object> { ["eventId"] = eventId.ToString("D") };
+        if (scenario != "missing-tenant-facts")
+            attributes["tenantId"] = tenantId.ToString("D");
+
+        IReadOnlyList<bool> result = await evaluator.AreLinksAllowedAsync(
+            [RegistrationLink(attributes)],
+            hasSubject ? AuthenticatedUser() : null,
+            _httpContext);
+
+        await Assert.That(result).IsEquivalentTo([expectedAllowed]);
+        if (providerReached)
+        {
+            await authorizationProvider.Received(1).IsAllowedBatchAsync(
+                Arg.Any<IReadOnlyList<AuthorizationRequest>>(),
+                Arg.Any<CancellationToken>());
+        }
+        else
+        {
+            await authorizationProvider.DidNotReceive().IsAllowedBatchAsync(
+                Arg.Any<IReadOnlyList<AuthorizationRequest>>(),
+                Arg.Any<CancellationToken>());
+        }
     }
 
     [Test]
@@ -190,7 +260,7 @@ public class HateoasAuthorizationEvaluatorTests
             Arg.Any<IReadOnlyCollection<Guid>>(),
             Arg.Any<CancellationToken>());
         await authorizationProvider.DidNotReceive().IsAllowedBatchAsync(
-            Arg.Any<IReadOnlyList<AuthorizationCheck>>(),
+            Arg.Any<IReadOnlyList<AuthorizationRequest>>(),
             Arg.Any<CancellationToken>());
     }
 
@@ -208,7 +278,7 @@ public class HateoasAuthorizationEvaluatorTests
         };
 
         _authProvider.IsAllowedBatchAsync(
-            Arg.Any<IReadOnlyList<AuthorizationCheck>>(),
+            Arg.Any<IReadOnlyList<AuthorizationRequest>>(),
             Arg.Any<CancellationToken>())
             .Returns([true]);
 
@@ -217,7 +287,7 @@ public class HateoasAuthorizationEvaluatorTests
         await Assert.That(result[0]).IsTrue();
         await Assert.That(result[1]).IsTrue();
         await _authProvider.Received(1).IsAllowedBatchAsync(
-            Arg.Is<IReadOnlyList<AuthorizationCheck>>(checks => checks.Count == 1),
+            Arg.Is<IReadOnlyList<AuthorizationRequest>>(checks => checks.Count == 1),
             Arg.Any<CancellationToken>());
     }
 
@@ -236,7 +306,7 @@ public class HateoasAuthorizationEvaluatorTests
         };
 
         _authProvider.IsAllowedBatchAsync(
-            Arg.Any<IReadOnlyList<AuthorizationCheck>>(),
+            Arg.Any<IReadOnlyList<AuthorizationRequest>>(),
             Arg.Any<CancellationToken>())
             .Returns([true, false]);
 
@@ -245,7 +315,7 @@ public class HateoasAuthorizationEvaluatorTests
         await Assert.That(result[0]).IsTrue();
         await Assert.That(result[1]).IsFalse();
         await _authProvider.Received(1).IsAllowedBatchAsync(
-            Arg.Is<IReadOnlyList<AuthorizationCheck>>(checks => ChecksContainScopes(checks, tenantScope, orgScope)),
+            Arg.Is<IReadOnlyList<AuthorizationRequest>>(checks => ChecksContainScopes(checks, tenantScope, orgScope)),
             Arg.Any<CancellationToken>());
     }
 
@@ -270,7 +340,7 @@ public class HateoasAuthorizationEvaluatorTests
         };
 
         _authProvider.IsAllowedBatchAsync(
-            Arg.Any<IReadOnlyList<AuthorizationCheck>>(),
+            Arg.Any<IReadOnlyList<AuthorizationRequest>>(),
             Arg.Any<CancellationToken>())
             .Returns([true, false]);
 
@@ -279,7 +349,7 @@ public class HateoasAuthorizationEvaluatorTests
         await Assert.That(result[0]).IsTrue();
         await Assert.That(result[1]).IsFalse();
         await _authProvider.Received(1).IsAllowedBatchAsync(
-            Arg.Is<IReadOnlyList<AuthorizationCheck>>(checks => ChecksContainTenantAttributes(checks, "tenant-1", "tenant-2")),
+            Arg.Is<IReadOnlyList<AuthorizationRequest>>(checks => ChecksContainTenantAttributes(checks, "tenant-1", "tenant-2")),
             Arg.Any<CancellationToken>());
     }
 
@@ -287,13 +357,13 @@ public class HateoasAuthorizationEvaluatorTests
     [DisplayName("Dedup key canonicalizes attributes independent of insertion order")]
     public async Task DedupKey_CanonicalizesAttributesIndependentOfInsertionOrder()
     {
-        var first = new AuthorizationCheck(
+        var first = new AuthorizationRequest(
             "islamuevent_event",
             "event-1",
             "update",
             new Dictionary<string, object> { ["tenantId"] = "tenant-1", ["ownerId"] = "owner-1" },
             AuthorizationScope.Empty);
-        var second = new AuthorizationCheck(
+        var second = new AuthorizationRequest(
             "islamuevent_event",
             "event-1",
             "update",
@@ -306,12 +376,12 @@ public class HateoasAuthorizationEvaluatorTests
     [DisplayName("Dedup key changes when resource attributes differ")]
     public async Task DedupKey_ChangesWhenAttributesDiffer()
     {
-        var first = new AuthorizationCheck(
+        var first = new AuthorizationRequest(
             "islamuevent_event",
             "event-1",
             "update",
             new Dictionary<string, object> { ["tenantId"] = "tenant-1" });
-        var second = new AuthorizationCheck(
+        var second = new AuthorizationRequest(
             "islamuevent_event",
             "event-1",
             "update",
@@ -337,7 +407,7 @@ public class HateoasAuthorizationEvaluatorTests
         };
 
         _authProvider.IsAllowedBatchAsync(
-            Arg.Any<IReadOnlyList<AuthorizationCheck>>(),
+            Arg.Any<IReadOnlyList<AuthorizationRequest>>(),
             Arg.Any<CancellationToken>())
             .Returns([true]);
 
@@ -345,7 +415,7 @@ public class HateoasAuthorizationEvaluatorTests
 
         await Assert.That(result[0]).IsTrue();
         await _authProvider.Received(1).IsAllowedBatchAsync(
-            Arg.Is<IReadOnlyList<AuthorizationCheck>>(checks => CheckContainsScopeAndAttributes(checks, "tenant-1", "org-1")),
+            Arg.Is<IReadOnlyList<AuthorizationRequest>>(checks => CheckContainsScopeAndAttributes(checks, "tenant-1", "org-1")),
             Arg.Any<CancellationToken>());
     }
 
@@ -366,7 +436,7 @@ public class HateoasAuthorizationEvaluatorTests
 
         // Provider returns 2 decisions for 2 unique checks: update=allowed, delete=denied
         _authProvider.IsAllowedBatchAsync(
-            Arg.Any<IReadOnlyList<AuthorizationCheck>>(),
+            Arg.Any<IReadOnlyList<AuthorizationRequest>>(),
             Arg.Any<CancellationToken>())
             .Returns([true, false]);
 
@@ -391,7 +461,7 @@ public class HateoasAuthorizationEvaluatorTests
         };
 
         _authProvider.IsAllowedBatchAsync(
-            Arg.Any<IReadOnlyList<AuthorizationCheck>>(),
+            Arg.Any<IReadOnlyList<AuthorizationRequest>>(),
             Arg.Any<CancellationToken>())
             .ThrowsAsync(new HttpRequestException("Cerbos unreachable"));
 
@@ -417,7 +487,7 @@ public class HateoasAuthorizationEvaluatorTests
 
         await Assert.That(result[0]).IsFalse();
         await _authProvider.DidNotReceive().IsAllowedBatchAsync(
-            Arg.Any<IReadOnlyList<AuthorizationCheck>>(),
+            Arg.Any<IReadOnlyList<AuthorizationRequest>>(),
             Arg.Any<CancellationToken>());
     }
 
@@ -438,7 +508,7 @@ public class HateoasAuthorizationEvaluatorTests
 
         await Assert.That(result[0]).IsFalse();
         await _authProvider.DidNotReceive().IsAllowedBatchAsync(
-            Arg.Any<IReadOnlyList<AuthorizationCheck>>(),
+            Arg.Any<IReadOnlyList<AuthorizationRequest>>(),
             Arg.Any<CancellationToken>());
     }
 
@@ -472,7 +542,7 @@ public class HateoasAuthorizationEvaluatorTests
 
         await Assert.That(result[0]).IsTrue();
         await _authProvider.DidNotReceive().IsAllowedBatchAsync(
-            Arg.Any<IReadOnlyList<AuthorizationCheck>>(),
+            Arg.Any<IReadOnlyList<AuthorizationRequest>>(),
             Arg.Any<CancellationToken>());
     }
 
@@ -502,7 +572,7 @@ public class HateoasAuthorizationEvaluatorTests
         };
 
         _authProvider.IsAllowedBatchAsync(
-            Arg.Any<IReadOnlyList<AuthorizationCheck>>(),
+            Arg.Any<IReadOnlyList<AuthorizationRequest>>(),
             Arg.Any<CancellationToken>())
             .Returns([true]);
 
@@ -528,7 +598,7 @@ public class HateoasAuthorizationEvaluatorTests
         };
 
         _authProvider.IsAllowedBatchAsync(
-            Arg.Any<IReadOnlyList<AuthorizationCheck>>(),
+            Arg.Any<IReadOnlyList<AuthorizationRequest>>(),
             Arg.Any<CancellationToken>())
             .Returns([false, true]); // delete=denied, create=allowed
 
@@ -541,7 +611,7 @@ public class HateoasAuthorizationEvaluatorTests
     }
 
     private static bool ChecksContainScopes(
-        IReadOnlyList<AuthorizationCheck> checks,
+        IReadOnlyList<AuthorizationRequest> checks,
         AuthorizationScope first,
         AuthorizationScope second) =>
         checks.Count == 2 &&
@@ -549,7 +619,7 @@ public class HateoasAuthorizationEvaluatorTests
         checks.Any(check => check.Scope == second);
 
     private static bool ChecksContainTenantAttributes(
-        IReadOnlyList<AuthorizationCheck> checks,
+        IReadOnlyList<AuthorizationRequest> checks,
         string firstTenantId,
         string secondTenantId) =>
         checks.Count == 2 &&
@@ -557,14 +627,14 @@ public class HateoasAuthorizationEvaluatorTests
         checks.Any(check => HasTenantId(check, secondTenantId));
 
     private static bool CheckContainsScopeAndAttributes(
-        IReadOnlyList<AuthorizationCheck> checks,
+        IReadOnlyList<AuthorizationRequest> checks,
         string tenantId,
         string organizationId) =>
         checks.Count == 1 &&
         checks[0].Scope == new AuthorizationScope(tenantId, organizationId) &&
         HasTenantId(checks[0], tenantId);
 
-    private static bool HasTenantId(AuthorizationCheck check, string tenantId) =>
+    private static bool HasTenantId(AuthorizationRequest check, string tenantId) =>
         check.ResourceAttributes is not null &&
         check.ResourceAttributes.TryGetValue("tenantId", out var value) &&
         string.Equals(value as string, tenantId, StringComparison.Ordinal);

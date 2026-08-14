@@ -11,6 +11,7 @@ using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
 using Explore.Application.Settings;
+using Explore.Domain;
 using Explore.Domain.Constants;
 using Explore.Infrastructure.Services;
 using Grpc.Core;
@@ -18,11 +19,47 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using NSubstitute;
 using NSubstitute.ExceptionExtensions;
+using NSubstitute.Exceptions;
+using System.Text.Json;
 
 namespace Explore.Infrastructure.Tests.Behaviors;
 
 public class CerbosAuthorizationServiceTests
 {
+    private const string ArtifactRelativePath = ".omo/start-work/artifacts/authorization-platform-redesign/phase0-task02/cerbos-provider-scenarios.json";
+    private const string FixedUserId = "11111111-1111-1111-1111-111111111111";
+    private const string FixedTenantId = "22222222-2222-2222-2222-222222222222";
+    private const string FixedEventId = "33333333-3333-3333-3333-333333333333";
+
+    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
+    {
+        WriteIndented = true
+    };
+
+    private static readonly Phase0Scenario[] Phase0Scenarios =
+    [
+        new(
+            Id: "cerbos.missing_subject_current_deny",
+            MissingFact: "subject",
+            ExpectedGrpcCall: false),
+        new(
+            Id: "cerbos.missing_tenant_fact_current_deny",
+            MissingFact: "tenantId",
+            ExpectedGrpcCall: true),
+        new(
+            Id: "cerbos.missing_resource_fact_current_deny",
+            MissingFact: "eventId",
+            ExpectedGrpcCall: true),
+        new(
+            Id: "cerbos.provider_unavailable_current_deny",
+            ProviderOutcome: "failure",
+            ExpectedGrpcCall: true),
+        new(
+            Id: "cerbos.provider_deny_current_deny",
+            ProviderOutcome: "deny",
+            ExpectedGrpcCall: true)
+    ];
+
     private readonly IAdminContext _adminContext;
     private readonly IMachinePrincipalAccessor _machinePrincipalAccessor;
     private readonly IOrganizationMemberRepository _organizationMemberRepository;
@@ -65,7 +102,7 @@ public class CerbosAuthorizationServiceTests
         _adminContext.UserId.Returns((Guid?)null);
 
         var service = CreateService();
-        var checks = new List<AuthorizationCheck>
+        var checks = new List<AuthorizationRequest>
         {
             new("islamuevent_organization", "org-1", "update", null),
             new("islamuevent_tenant_setting", "setting-key", "read", null)
@@ -78,6 +115,50 @@ public class CerbosAuthorizationServiceTests
         await Assert.That(result[1]).IsFalse();
         await _cerbosClient.DidNotReceive().CheckResourcesAsync(
             Arg.Any<CheckResourcesRequest>(), Arg.Any<Metadata>());
+    }
+
+    [Test]
+    [Arguments("cerbos.missing_subject_current_deny")]
+    [Arguments("cerbos.missing_tenant_fact_current_deny")]
+    [Arguments("cerbos.missing_resource_fact_current_deny")]
+    [Arguments("cerbos.provider_unavailable_current_deny")]
+    [Arguments("cerbos.provider_deny_current_deny")]
+    public async Task IsAllowedAsync_Phase0CerbosFailureCurrentBaseline(
+        string scenario)
+    {
+        var result = await ExecutePhase0ScenarioAsync(scenario);
+
+        await Assert.That(result.Allowed)
+            .IsFalse()
+            .Because($"phase-0 provider scenario '{scenario}' must pin current Cerbos fail-closed behavior.");
+    }
+
+    [Test]
+    public async Task Phase0CerbosProviderScenarioArtifact_ShouldBeGenerated()
+    {
+        var results = new List<Phase0ScenarioResult>();
+        foreach (var scenario in Phase0Scenarios)
+        {
+            var test = new CerbosAuthorizationServiceTests();
+            results.Add(await test.ExecutePhase0ScenarioAsync(scenario.Id));
+        }
+
+        var artifact = new Phase0ScenarioArtifact(
+            SchemaVersion: 1,
+            GeneratedFrom: nameof(CerbosAuthorizationServiceTests),
+            TestMethod: nameof(IsAllowedAsync_Phase0CerbosFailureCurrentBaseline),
+            Results: results.ToArray(),
+            Mismatches: results
+                .Where(result => result.Allowed != result.ExpectedAllowed || result.GrpcCallObserved != result.ExpectedGrpcCall)
+                .Select(result => result.Id)
+                .ToArray());
+
+        var path = Path.Combine(FindRepositoryRoot(), ArtifactRelativePath);
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+        await File.WriteAllTextAsync(path, JsonSerializer.Serialize(artifact, JsonOptions));
+
+        await Assert.That(artifact.Mismatches).IsEmpty();
+        await Assert.That(File.Exists(path)).IsTrue();
     }
 
     [Test]
@@ -97,7 +178,7 @@ public class CerbosAuthorizationServiceTests
             .Returns(new CheckResourcesResponse(protoResponse));
 
         var service = CreateService();
-        var checks = new List<AuthorizationCheck>
+        var checks = new List<AuthorizationRequest>
         {
             new("islamuevent_organization", "org-1", "update", null),
             new("islamuevent_organization", "org-2", "delete", null)
@@ -131,7 +212,7 @@ public class CerbosAuthorizationServiceTests
             .Returns(new CheckResourcesResponse(protoResponse));
 
         var service = CreateService();
-        var checks = new List<AuthorizationCheck>
+        var checks = new List<AuthorizationRequest>
         {
             new(ResourceKinds.Event, eventId, AuthorizationActions.Events.ManageTeam, null),
             new(ResourceKinds.Event, eventId, AuthorizationActions.Update, null),
@@ -173,6 +254,35 @@ public class CerbosAuthorizationServiceTests
         await Assert.That(result).IsTrue();
         await Assert.That(capturedRequest).IsNotNull();
         await Assert.That(capturedRequest!.Principal.Id).IsEqualTo(resolvedUserId.ToString());
+    }
+
+    [Test]
+    public async Task IsAllowedBatchAsync_StorageUploadTypedFacts_FailsClosedWithoutGrpcCall()
+    {
+        var userId = Guid.NewGuid();
+        _adminContext.UserId.Returns(userId);
+
+        var service = CreateService();
+        var checks = new[]
+        {
+            new AuthorizationRequest(
+                ResourceKinds.StorageObject,
+                "CreateStorageUploadSessionCommand",
+                AuthorizationActions.StorageObjects.Create,
+                Facts: new StorageUploadIntentFacts(
+                    userId,
+                    Guid.NewGuid(),
+                    StorageOwningResourceKinds.OrganizationTenant,
+                    Guid.NewGuid(),
+                    Guid.NewGuid()))
+        };
+
+        var result = await service.IsAllowedBatchAsync(checks);
+
+        await Assert.That(result.Count).IsEqualTo(1);
+        await Assert.That(result[0]).IsFalse();
+        await _cerbosClient.DidNotReceive().CheckResourcesAsync(
+            Arg.Any<CheckResourcesRequest>(), Arg.Any<Metadata>());
     }
 
     [Test]
@@ -294,7 +404,7 @@ public class CerbosAuthorizationServiceTests
             });
 
         var service = CreateService();
-        var checks = new List<AuthorizationCheck>
+        var checks = new List<AuthorizationRequest>
         {
             new(
                 ResourceKinds.Event,
@@ -337,7 +447,7 @@ public class CerbosAuthorizationServiceTests
             });
 
         var service = CreateService(usePolicyScope: true);
-        var checks = new List<AuthorizationCheck>
+        var checks = new List<AuthorizationRequest>
         {
             new(
                 ResourceKinds.Event,
@@ -372,7 +482,7 @@ public class CerbosAuthorizationServiceTests
             .Returns(new CheckResourcesResponse(protoResponse));
 
         var service = CreateService();
-        var checks = new List<AuthorizationCheck>
+        var checks = new List<AuthorizationRequest>
         {
             new("islamuevent_organization", sharedId, "update", null),
             new("islamuevent_tenant", sharedId, "update", null)
@@ -398,7 +508,7 @@ public class CerbosAuthorizationServiceTests
             .ThrowsAsync(new RpcException(new Status(StatusCode.Unavailable, "PDP unreachable")));
 
         var service = CreateService();
-        var checks = new List<AuthorizationCheck>
+        var checks = new List<AuthorizationRequest>
         {
             new("islamuevent_organization", "org-1", "update", null),
             new("islamuevent_tenant_setting", "setting-1", "update", null)
@@ -514,6 +624,127 @@ public class CerbosAuthorizationServiceTests
         await Assert.That(intVal).IsNotNull();
     }
 
+    private async Task<Phase0ScenarioResult> ExecutePhase0ScenarioAsync(string scenarioId)
+    {
+        var scenario = Phase0Scenarios.Single(item => item.Id == scenarioId);
+        Cerbos.Api.V1.Request.CheckResourcesRequest? capturedRequest = null;
+        var eventAuthoritySnapshotService = Substitute.For<IEventAuthoritySnapshotService>();
+        eventAuthoritySnapshotService.GetForUserAndEventsAsync(
+                Arg.Any<Guid>(),
+                Arg.Any<Guid>(),
+                Arg.Any<IReadOnlyCollection<Guid>>(),
+                Arg.Any<CancellationToken>())
+            .Returns(call => new EventAuthoritySnapshot(
+                call.ArgAt<Guid>(0),
+                call.ArgAt<Guid>(1),
+                new Dictionary<Guid, EventAuthorityForUser>()));
+
+        if (scenario.MissingFact == "subject")
+        {
+            _adminContext.UserId.Returns((Guid?)null);
+            _adminContext.ResolveUserIdAsync(Arg.Any<CancellationToken>()).Returns((Guid?)null);
+        }
+        else
+        {
+            ConfigureAuthenticatedUser();
+            if (scenario.ProviderOutcome == "failure")
+            {
+                _cerbosClient.CheckResourcesAsync(Arg.Any<CheckResourcesRequest>(), Arg.Any<Metadata>())
+                    .ThrowsAsync(new RpcException(new Status(StatusCode.Unavailable, "PDP unreachable")));
+            }
+            else
+            {
+                var protoResponse = new Cerbos.Api.V1.Response.CheckResourcesResponse();
+                protoResponse.Results.Add(CreateResultEntry(FixedEventId, ResourceKinds.Event, AuthorizationActions.Update, Effect.Deny));
+                _cerbosClient.CheckResourcesAsync(Arg.Any<CheckResourcesRequest>(), Arg.Any<Metadata>())
+                    .Returns(call =>
+                    {
+                        capturedRequest = call.ArgAt<CheckResourcesRequest>(0).ToCheckResourcesRequest();
+                        return new CheckResourcesResponse(protoResponse);
+                    });
+            }
+        }
+
+        var service = CreateService(eventAuthoritySnapshotService: eventAuthoritySnapshotService);
+        var result = await service.IsAllowedBatchAsync([CreateScenarioCheck(scenario)]);
+        var grpcCallObserved = await DidObserveGrpcCallAsync();
+        await Assert.That(grpcCallObserved).IsEqualTo(scenario.ExpectedGrpcCall);
+
+        if (scenario.MissingFact is "tenantId" or "eventId")
+        {
+            await Assert.That(capturedRequest).IsNotNull();
+            await Assert.That(capturedRequest!.Resources[0].Resource.Attr.ContainsKey(scenario.MissingFact)).IsFalse();
+        }
+        else if (scenario.Id == "cerbos.provider_deny_current_deny")
+        {
+            await Assert.That(capturedRequest).IsNotNull();
+            await Assert.That(capturedRequest!.Resources[0].Resource.Attr.ContainsKey("tenantId")).IsTrue();
+            await Assert.That(capturedRequest.Resources[0].Resource.Attr.ContainsKey("eventId")).IsTrue();
+        }
+
+        return new Phase0ScenarioResult(
+            Id: scenario.Id,
+            MissingFact: scenario.MissingFact,
+            ProviderOutcome: scenario.ProviderOutcome,
+            ExpectedAllowed: scenario.ExpectedAllowed,
+            Allowed: result.Single(),
+            ExpectedGrpcCall: scenario.ExpectedGrpcCall,
+            GrpcCallObserved: grpcCallObserved);
+    }
+
+    private void ConfigureAuthenticatedUser()
+    {
+        var userId = Guid.Parse(FixedUserId);
+        _adminContext.UserId.Returns(userId);
+        _adminContext.IsInstanceAdminAsync(userId, Arg.Any<CancellationToken>()).Returns(false);
+        _adminContext.GetAdminTenantIdsAsync(userId, Arg.Any<CancellationToken>()).Returns([]);
+        _adminContext.GetAdminOrganizationIdsAsync(userId, Arg.Any<CancellationToken>()).Returns([]);
+        _adminContext.GetAdminGroupIdsAsync(userId, Arg.Any<CancellationToken>()).Returns([]);
+    }
+
+    private static AuthorizationRequest CreateScenarioCheck(Phase0Scenario scenario)
+    {
+        var attributes = new Dictionary<string, object>();
+        if (scenario.MissingFact != "eventId")
+            attributes["eventId"] = FixedEventId;
+
+        return new AuthorizationRequest(
+            ResourceKinds.Event,
+            FixedEventId,
+            AuthorizationActions.Update,
+            attributes,
+            scenario.MissingFact == "tenantId" || scenario.MissingFact == "subject"
+                ? null
+                : new AuthorizationScope(TenantId: FixedTenantId));
+    }
+
+    private async Task<bool> DidObserveGrpcCallAsync()
+    {
+        try
+        {
+            await _cerbosClient.Received(1).CheckResourcesAsync(Arg.Any<CheckResourcesRequest>(), Arg.Any<Metadata>());
+            return true;
+        }
+        catch (ReceivedCallsException)
+        {
+            return false;
+        }
+    }
+
+    private static string FindRepositoryRoot()
+    {
+        var directory = new DirectoryInfo(AppContext.BaseDirectory);
+        while (directory is not null)
+        {
+            if (File.Exists(Path.Combine(directory.FullName, "Explore.slnx")))
+                return directory.FullName;
+
+            directory = directory.Parent;
+        }
+
+        throw new InvalidOperationException("Could not locate repository root from test output directory.");
+    }
+
     private CerbosAuthorizationService CreateService(
         string grpcEndpoint = "http://localhost:3593",
         IEventAuthoritySnapshotService? eventAuthoritySnapshotService = null,
@@ -555,4 +786,27 @@ public class CerbosAuthorizationServiceTests
         entry.Actions.Add(action, effect);
         return entry;
     }
+
+    private sealed record Phase0Scenario(
+        string Id,
+        string MissingFact = "none",
+        string ProviderOutcome = "deny",
+        bool ExpectedAllowed = false,
+        bool ExpectedGrpcCall = true);
+
+    private sealed record Phase0ScenarioResult(
+        string Id,
+        string MissingFact,
+        string ProviderOutcome,
+        bool ExpectedAllowed,
+        bool Allowed,
+        bool ExpectedGrpcCall,
+        bool GrpcCallObserved);
+
+    private sealed record Phase0ScenarioArtifact(
+        int SchemaVersion,
+        string GeneratedFrom,
+        string TestMethod,
+        Phase0ScenarioResult[] Results,
+        string[] Mismatches);
 }

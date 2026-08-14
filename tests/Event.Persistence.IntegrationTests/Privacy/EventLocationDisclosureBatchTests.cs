@@ -467,7 +467,7 @@ public sealed class EventLocationDisclosureBatchTests(RegistrationCoveragePostgr
     private sealed class CountingAuthorizationProvider(bool allow = true) : IAuthorizationProvider
     {
         public int BatchCalls { get; private set; }
-        public IReadOnlyList<AuthorizationCheck> LastChecks { get; private set; } = [];
+        public IReadOnlyList<AuthorizationRequest> LastChecks { get; private set; } = [];
 
         public Task<bool> IsAllowedAsync(
             string resourceKind,
@@ -478,7 +478,7 @@ public sealed class EventLocationDisclosureBatchTests(RegistrationCoveragePostgr
             throw new InvalidOperationException("Disclosure must use one authorization batch.");
 
         public Task<IReadOnlyList<bool>> IsAllowedBatchAsync(
-            IReadOnlyList<AuthorizationCheck> checks,
+            IReadOnlyList<AuthorizationRequest> checks,
             CancellationToken cancellationToken = default)
         {
             cancellationToken.ThrowIfCancellationRequested();

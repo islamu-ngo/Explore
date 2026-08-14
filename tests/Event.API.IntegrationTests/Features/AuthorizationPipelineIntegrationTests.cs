@@ -436,7 +436,7 @@ public class AuthorizationPipelineIntegrationTests : IAsyncDisposable
             CancellationToken cancellationToken = default)
         {
             var results = await IsAllowedBatchAsync(
-                [new AuthorizationCheck(resourceKind, resourceId, action,
+                [new AuthorizationRequest(resourceKind, resourceId, action,
                     resourceAttributes is not null
                         ? new Dictionary<string, object>(resourceAttributes)
                         : null)],
@@ -446,7 +446,7 @@ public class AuthorizationPipelineIntegrationTests : IAsyncDisposable
         }
 
         public async Task<IReadOnlyList<bool>> IsAllowedBatchAsync(
-            IReadOnlyList<AuthorizationCheck> checks,
+            IReadOnlyList<AuthorizationRequest> checks,
             CancellationToken cancellationToken = default)
         {
             var resources = checks.Select(c =>
@@ -507,7 +507,7 @@ public class AuthorizationPipelineIntegrationTests : IAsyncDisposable
             return Task.FromResult(true);
         }
 
-        private static object BuildResourceAttrs(AuthorizationCheck check)
+        private static object BuildResourceAttrs(AuthorizationRequest check)
         {
             if (check.ResourceAttributes is null)
             {

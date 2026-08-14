@@ -36,6 +36,8 @@ using Explore.Application.DTOs.Organization;
 using Explore.Application.DTOs.OrganizationMember;
 using Explore.Application.DTOs.OrganizationPosition;
 using Explore.Application.DTOs.OrganizationReview;
+using Explore.Application.DTOs.OrganizerPaymentConnections;
+using Explore.Application.DTOs.EventTicketing;
 using Explore.Application.DTOs.Permission;
 using Explore.Application.DTOs.PublicExperience;
 using Explore.Application.DTOs.RegistrationMode;
@@ -79,6 +81,13 @@ namespace Explore.Application.Serialization;
 [JsonSerializable(typeof(AiAssistantLimitsDto))]
 [JsonSerializable(typeof(UiShellContextDto))]
 [JsonSerializable(typeof(RegistrationOrderDto))]
+[JsonSerializable(typeof(EventOrganizerPaymentConnectionManagementDto))]
+[JsonSerializable(typeof(HalResource<EventOrganizerPaymentConnectionManagementDto>))]
+[JsonSerializable(typeof(OrganizerPaymentConnectionDto))]
+[JsonSerializable(typeof(PaidEventPublicationPreflightDto))]
+[JsonSerializable(typeof(HalResource<PaidEventPublicationPreflightDto>))]
+[JsonSerializable(typeof(EventTicketCatalogManagementDto))]
+[JsonSerializable(typeof(HalResource<EventTicketCatalogManagementDto>))]
 [JsonSerializable(typeof(HalResource<RegistrationOrderDto>))]
 [JsonSerializable(typeof(StudioContextDto))]
 [JsonSerializable(typeof(HalResource<StudioContextDto>))]

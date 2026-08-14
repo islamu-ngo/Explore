@@ -2,11 +2,13 @@
 // ABOUTME: Covers rejection of invalid combos, advisory warnings, and settings persistence.
 
 using Explore.Application.Contracts.Infrastructure;
+using Explore.Application.Contracts.Identity;
 using Explore.Application.DTOs.Analytics;
 using Explore.Application.DTOs.Instance;
 using Explore.Application.Features.InstanceOnboarding.Handlers.Commands;
 using Explore.Application.Features.InstanceOnboarding.Requests.Commands;
 using Explore.Application.Models.Common;
+using Explore.Application.Responses;
 using Explore.Application.Settings;
 using Explore.Application.Settings.Groups;
 using Explore.Domain.Constants;
@@ -18,19 +20,23 @@ namespace Event.Application.UnitTests.Analytics;
 
 public class UpdateAnalyticsGovernanceSettingsCommandHandlerTests
 {
+    private readonly IAdminContext _adminContext;
     private readonly IHierarchicalSettingsResolver _settingsResolver;
     private readonly UpdateAnalyticsGovernanceSettingsCommandHandler _handler;
 
     public UpdateAnalyticsGovernanceSettingsCommandHandlerTests()
     {
+        _adminContext = Substitute.For<IAdminContext>();
         _settingsResolver = Substitute.For<IHierarchicalSettingsResolver>();
+
+        _adminContext.IsInstanceAdminAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(true);
 
         // Default: empty group (no provider configured)
         _settingsResolver.ResolveGroupAsync<AnalyticsSettingGroup>(
             Arg.Any<SettingContext>(), Arg.Any<CancellationToken>())
             .Returns(new AnalyticsSettingGroup());
 
-        _handler = new UpdateAnalyticsGovernanceSettingsCommandHandler(_settingsResolver);
+        _handler = new UpdateAnalyticsGovernanceSettingsCommandHandler(_settingsResolver, _adminContext);
     }
 
     private void SetupCurrentGroup(params (string key, string value)[] entries)
@@ -188,6 +194,90 @@ public class UpdateAnalyticsGovernanceSettingsCommandHandlerTests
     }
 
     // --- Validation failure blocks persistence ---
+
+    [Test]
+    public async Task Handle_WhenPatchHasNoChanges_DoesNotResolveOrPersistSettings()
+    {
+        var command = new UpdateAnalyticsGovernanceSettingsCommand
+        {
+            UserId = Guid.NewGuid(),
+            Patch = new PatchAnalyticsGovernanceSettingsDto()
+        };
+
+        var result = await _handler.Handle(command, CancellationToken.None);
+
+        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.FailureCode).IsEqualTo("ValidationFailed");
+        await _settingsResolver.DidNotReceive().ResolveGroupAsync<AnalyticsSettingGroup>(
+            Arg.Any<SettingContext>(),
+            Arg.Any<CancellationToken>());
+        await _settingsResolver.DidNotReceive().SetValueAsync(
+            Arg.Any<string>(),
+            Arg.Any<string>(),
+            Arg.Any<SettingScope>(),
+            Arg.Any<Guid>(),
+            Arg.Any<Guid>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task Handle_RegularAuthenticatedUser_DeniesBeforeResolverAndPersistence()
+    {
+        var userId = Guid.NewGuid();
+        _adminContext.IsInstanceAdminAsync(userId, Arg.Any<CancellationToken>()).Returns(false);
+        var command = new UpdateAnalyticsGovernanceSettingsCommand
+        {
+            UserId = userId,
+            Patch = new PatchAnalyticsGovernanceSettingsDto
+            {
+                ConsentCookieLifetimeDays = OptionalUpdate<int>.Set(90)
+            }
+        };
+
+        var result = await _handler.Handle(command, CancellationToken.None);
+
+        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.FailureCode).IsEqualTo(FailureCodes.AdminRequired);
+        await _settingsResolver.DidNotReceive().ResolveGroupAsync<AnalyticsSettingGroup>(
+            Arg.Any<SettingContext>(),
+            Arg.Any<CancellationToken>());
+        await _settingsResolver.DidNotReceive().SetValueAsync(
+            Arg.Any<string>(),
+            Arg.Any<string>(),
+            Arg.Any<SettingScope>(),
+            Arg.Any<Guid>(),
+            Arg.Any<Guid>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task Handle_InstanceAdmin_PreservesCancellationTokenThroughAuthorizationResolveAndPersistence()
+    {
+        using var cts = new CancellationTokenSource();
+        var command = new UpdateAnalyticsGovernanceSettingsCommand
+        {
+            UserId = Guid.NewGuid(),
+            Patch = new PatchAnalyticsGovernanceSettingsDto
+            {
+                ConsentCookieLifetimeDays = OptionalUpdate<int>.Set(90)
+            }
+        };
+
+        var result = await _handler.Handle(command, cts.Token);
+
+        await Assert.That(result.Success).IsTrue();
+        await _adminContext.Received(1).IsInstanceAdminAsync(command.UserId, cts.Token);
+        await _settingsResolver.Received(1).ResolveGroupAsync<AnalyticsSettingGroup>(
+            Arg.Any<SettingContext>(),
+            cts.Token);
+        await _settingsResolver.Received(1).SetValueAsync(
+            GovernanceSettingKeys.Analytics.ConsentCookieLifetimeDays,
+            "90",
+            SettingScope.Instance,
+            Guid.Empty,
+            command.UserId,
+            cts.Token);
+    }
 
     [Test]
     public async Task Handle_ValidationFailed_DoesNotPersistSettings()

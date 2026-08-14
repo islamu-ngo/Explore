@@ -182,7 +182,7 @@ public class CerbosConfigResolver : ICerbosConfigResolver
         {
             Endpoint = GrpcEndpointNormalizer.Normalize(_instanceSettings.GrpcEndpoint),
             Mode = CerbosMode.Instance,
-            FailureMode = CerbosFailureMode.Open,
+            FailureMode = CerbosFailureMode.Closed,
             IsInstanceDefault = true
         };
     }

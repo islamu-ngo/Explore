@@ -77,7 +77,7 @@ public sealed class EventLocationManagementAuthorizationService(
             .OrderBy(target => target.Id)
             .ToArray();
         var checks = validTargets
-            .Select(target => new AuthorizationCheck(
+            .Select(target => new AuthorizationRequest(
                 descriptor.Kind,
                 descriptor.GetResourceId(target),
                 AuthorizationActions.Events.ViewManagement,
@@ -85,10 +85,10 @@ public sealed class EventLocationManagementAuthorizationService(
                 descriptor.GetScope(target)))
             .ToArray();
 
-        IReadOnlyList<bool> providerDecisions = [];
+        IReadOnlyList<AuthorizationDecision> providerDecisions = [];
         try
         {
-            providerDecisions = await authorizationProvider.IsAllowedBatchAsync(checks, cancellationToken);
+            providerDecisions = await authorizationProvider.AuthorizeBatchAsync(checks, cancellationToken);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
@@ -105,7 +105,7 @@ public sealed class EventLocationManagementAuthorizationService(
         for (var index = 0; index < validTargets.Length; index++)
         {
             decisionByEventId[validTargets[index].Id] =
-                index < providerDecisions.Count && providerDecisions[index];
+                index < providerDecisions.Count && providerDecisions[index].IsAllowed;
         }
 
         ImmutableDictionary<Guid, bool> decisions = normalized.ToImmutableDictionary(

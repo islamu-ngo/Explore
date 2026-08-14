@@ -20,7 +20,7 @@ public class StubAuthorizationProvider : IAuthorizationProvider
     /// Optional predicate for fine-grained control over which checks pass.
     /// When set, overrides AllowAll for each individual check.
     /// </summary>
-    public Func<AuthorizationCheck, bool>? CheckPredicate { get; set; }
+    public Func<AuthorizationRequest, bool>? CheckPredicate { get; set; }
 
     public Task<bool> IsAllowedAsync(string resourceKind, string resourceId, string action,
         IDictionary<string, object>? resourceAttributes = null, CancellationToken cancellationToken = default)
@@ -30,14 +30,14 @@ public class StubAuthorizationProvider : IAuthorizationProvider
             IReadOnlyDictionary<string, object>? attrs = resourceAttributes is not null
                 ? new Dictionary<string, object>(resourceAttributes)
                 : null;
-            var check = new AuthorizationCheck(resourceKind, resourceId, action, attrs);
+            var check = new AuthorizationRequest(resourceKind, resourceId, action, attrs);
             return Task.FromResult(CheckPredicate(check));
         }
 
         return Task.FromResult(AllowAll);
     }
 
-    public Task<IReadOnlyList<bool>> IsAllowedBatchAsync(IReadOnlyList<AuthorizationCheck> checks,
+    public Task<IReadOnlyList<bool>> IsAllowedBatchAsync(IReadOnlyList<AuthorizationRequest> checks,
         CancellationToken cancellationToken = default)
     {
         if (CheckPredicate is not null)

@@ -1,5 +1,5 @@
 // ABOUTME: Handler for declining an organization membership invitation.
-// ABOUTME: Validates the invitation token and removes or rejects the pending membership.
+// ABOUTME: Validates invitation ownership before removing the pending membership.
 
 using System;
 using System.Threading;
@@ -32,9 +32,12 @@ public class DeclineInvitationCommandHandler : IRequestHandler<DeclineInvitation
             return response;
         }
 
-        // Ideally we should check if the invitation belongs to the user (by email)
-        // But for now we assume the controller handles the security or we trust the ID.
-        // Since UserId is null on invite, we can't check UserId. We could check Email if we passed it.
+        if (invitation.UserId == Guid.Empty || invitation.UserId != request.UserId)
+        {
+            response.Success = false;
+            response.Message = "Invitation not found";
+            return response;
+        }
 
         await _organizationMemberRepository.Delete(invitation);
 

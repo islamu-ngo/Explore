@@ -29,6 +29,8 @@ Layer 3 must not redefine or replace Layer 1 or Layer 2 semantics.
 
 Fields that are standard across a sector, required for filtering, moderation, policy, ranking, publication, export, or stable interoperability must not exist only as Layer 3 custom properties.
 
+Paid-event policy, commercial disclosures, organizer payment readiness, and publication blockers are first-class ticketing and policy data. A custom property cannot weaken the instance ceiling, satisfy a required disclosure, select a merchant, or grant a paid-commerce affordance.
+
 Examples in this repo:
 
 - `MadhabId` belongs to Layer 2 via `EventIslamicAspect`.

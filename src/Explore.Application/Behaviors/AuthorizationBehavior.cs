@@ -34,11 +34,13 @@ public sealed class AuthorizationBehavior<TRequest, TResponse>(
         var resourceAttributes = request is ISecureRequest secureRequestWithAttributes
             ? secureRequestWithAttributes.ResourceAttributes
             : null;
+        IAuthorizationFacts? facts = null;
         if (authorizationContextEnricher is not null)
         {
             var context = await authorizationContextEnricher.ResolveAsync(request, cancellationToken);
             resourceId = context.ResourceId ?? resourceId;
             resourceAttributes = context.Attributes ?? resourceAttributes;
+            facts = context.Facts;
         }
 
         var resolvedContext = await _resourceContextResolver.ResolveAsync(
@@ -54,20 +56,27 @@ public sealed class AuthorizationBehavior<TRequest, TResponse>(
             resolvedContext.ResourceId ?? resourceId,
             attribute.Action,
             resolvedContext.Attributes,
+            resolvedContext.Facts ?? facts,
             typeof(TRequest).Name,
             cancellationToken);
         return await next(cancellationToken);
     }
     private async Task EnforceAuthorizationAsync(
-        string resourceKind, string resourceId, string action, IDictionary<string, object>? resourceAttributes, string requestType, CancellationToken cancellationToken)
+        string resourceKind, string resourceId, string action, IDictionary<string, object>? resourceAttributes, IAuthorizationFacts? facts, string requestType, CancellationToken cancellationToken)
     {
         using var activity = AuthorizationActivitySource.StartActivity("authorization.evaluate");
         activity?.SetTag("resource.kind", resourceKind);
         activity?.SetTag("resource.action", action);
         activity?.SetTag("request.type", requestType);
         var correlationId = Activity.Current?.Id ?? string.Empty;
-        var isAllowed = await authorizationProvider.IsAllowedAsync(resourceKind, resourceId, action, resourceAttributes, cancellationToken);
-        if (!isAllowed)
+        var decision = await authorizationProvider.AuthorizeAsync(
+            new AuthorizationRequest(
+                AuthorizationCapabilityCatalog.Require(resourceKind, action),
+                resourceId,
+                resourceAttributes is null ? null : new Dictionary<string, object>(resourceAttributes),
+                Facts: facts),
+            cancellationToken);
+        if (!decision.IsAllowed)
         {
             activity?.SetStatus(ActivityStatusCode.Error, "Authorization denied");
             logger.LogWarning(

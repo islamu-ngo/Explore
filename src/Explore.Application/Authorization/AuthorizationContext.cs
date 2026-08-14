@@ -5,4 +5,5 @@ namespace Explore.Application.Authorization;
 
 public sealed record AuthorizationContext(
     string? ResourceId,
-    IDictionary<string, object>? Attributes);
+    IDictionary<string, object>? Attributes,
+    IAuthorizationFacts? Facts = null);

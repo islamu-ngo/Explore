@@ -36,16 +36,16 @@ public sealed class IncomingWebhookEffectTenantExecutor(IServiceScopeFactory sco
         try
         {
             var authorizationProvider = scope.ServiceProvider.GetRequiredService<IAuthorizationProvider>();
-            var allowed = await authorizationProvider.IsAllowedAsync(
-                ResourceKinds.Webhook,
-                claim.EffectOutboxId.ToString("N"),
-                AuthorizationActions.Webhooks.ProcessIncoming,
-                new Dictionary<string, object>
-                {
-                    ["tenantId"] = claim.TenantId.ToString()
-                },
+            var decision = await authorizationProvider.AuthorizeAsync(
+                new AuthorizationRequest(
+                    AuthorizationCapabilityCatalog.Require(ResourceKinds.Webhook, AuthorizationActions.Webhooks.ProcessIncoming),
+                    claim.EffectOutboxId.ToString("N"),
+                    new Dictionary<string, object>
+                    {
+                        ["tenantId"] = claim.TenantId.ToString()
+                    }),
                 cancellationToken);
-            if (!allowed)
+            if (!decision.IsAllowed)
             {
                 return IncomingWebhookClaimExecutionResult.AuthorizationDenied();
             }

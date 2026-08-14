@@ -72,11 +72,13 @@ public sealed class MutateAuthenticatedRegistrationParticipantsCommandHandler(
             return false;
         }
 
-        return await authorization.IsAllowedAsync(
-            ResourceKinds.Event,
-            eventEntity.Id.ToString("D"),
-            AuthorizationActions.Events.ManageRegistrations,
-            new Dictionary<string, object>(ResourceDescriptors.EventAuthorizationTarget.GetResourceAttributes(eventEntity)),
+        var decision = await authorization.AuthorizeAsync(
+            new AuthorizationRequest(
+                AuthorizationCapabilityCatalog.Require(ResourceKinds.Event, AuthorizationActions.Events.ManageRegistrations),
+                eventEntity.Id.ToString("D"),
+                new Dictionary<string, object>(ResourceDescriptors.EventAuthorizationTarget.GetResourceAttributes(eventEntity)),
+                ResourceDescriptors.EventAuthorizationTarget.GetScope(eventEntity)),
             cancellationToken);
+        return decision.IsAllowed;
     }
 }

@@ -4,9 +4,12 @@
 using System.Linq;
 using System.Text.RegularExpressions;
 using AutoMapper;
+using Explore.Application.Authorization;
+using Explore.Application.Contracts.Identity;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.EventSeries.Validators;
+using Explore.Application.Exceptions;
 using Explore.Application.Features.EventSeries.Requests.Commands;
 using Explore.Application.Responses;
 using Explore.Application.Services;
@@ -18,23 +21,37 @@ public class CreateEventSeriesCommandHandler : IRequestHandler<CreateEventSeries
 {
     private readonly IEventSeriesRepository _eventSeriesRepository;
     private readonly ITenantContext _tenantContext;
+    private readonly IAdminContext _adminContext;
     private readonly IStorageObjectRepository _storageObjectRepository;
     private readonly IMapper _mapper;
 
     public CreateEventSeriesCommandHandler(
         IEventSeriesRepository eventSeriesRepository,
         ITenantContext tenantContext,
+        IAdminContext adminContext,
         IStorageObjectRepository storageObjectRepository,
         IMapper mapper)
     {
         _eventSeriesRepository = eventSeriesRepository;
         _tenantContext = tenantContext;
+        _adminContext = adminContext;
         _storageObjectRepository = storageObjectRepository;
         _mapper = mapper;
     }
 
     public async Task<BaseCommandResponse<Guid>> Handle(CreateEventSeriesCommand request, CancellationToken cancellationToken)
     {
+        Guid tenantId = _tenantContext.TenantId;
+        Guid? userId = await _adminContext.ResolveUserIdAsync(cancellationToken);
+        IReadOnlyList<Guid> adminTenantIds = userId.HasValue
+            ? await _adminContext.GetAdminTenantIdsAsync(userId.Value, cancellationToken)
+            : [];
+
+        if (!adminTenantIds.Contains(tenantId))
+        {
+            throw new AuthorizationException(ResourceKinds.Tenant, AuthorizationActions.Create);
+        }
+
         var validator = new CreateEventSeriesDtoValidator();
         var validationResult = await validator.ValidateAsync(request.EventSeriesDto, cancellationToken);
         if (!validationResult.IsValid)
@@ -49,7 +66,7 @@ public class CreateEventSeriesCommandHandler : IRequestHandler<CreateEventSeries
 
         if (!await ImageReferenceEligibility.AreEligibleAsync(
                 _storageObjectRepository,
-                _tenantContext.TenantId,
+                tenantId,
                 request.EventSeriesDto.FeaturedImageId))
         {
             return new BaseCommandResponse<Guid>
@@ -61,7 +78,7 @@ public class CreateEventSeriesCommandHandler : IRequestHandler<CreateEventSeries
         }
 
         var series = _mapper.Map<Domain.EventSeries>(request.EventSeriesDto);
-        series.TenantId = _tenantContext.TenantId;
+        series.TenantId = tenantId;
         series.TotalViews = 0;
         series.VisibilityTypeId = 1; // Default: Public
 

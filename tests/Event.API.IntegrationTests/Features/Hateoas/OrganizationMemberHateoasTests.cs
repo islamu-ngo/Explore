@@ -110,7 +110,7 @@ public sealed class OrganizationMemberHateoasTests
         await Assert.That(links.Single(link => link.Rel == LinkRelations.Delete).RouteName).IsEqualTo(RouteNames.DeleteOrganizationMember);
     }
 
-    private static bool IsOrganizationMemberActionForOrganization(AuthorizationCheck check, Guid tenantId, Guid organizationId)
+    private static bool IsOrganizationMemberActionForOrganization(AuthorizationRequest check, Guid tenantId, Guid organizationId)
     {
         if (check.ResourceKind != ResourceKinds.OrganizationMember)
         {
@@ -129,7 +129,7 @@ public sealed class OrganizationMemberHateoasTests
                     && organizationValue?.ToString() == organizationId.ToString()));
     }
 
-    private static TestAssembler CreateAssembler(Func<AuthorizationCheck, bool> predicate)
+    private static TestAssembler CreateAssembler(Func<AuthorizationRequest, bool> predicate)
     {
         var authorizationProvider = new StubAuthorizationProvider { CheckPredicate = predicate };
         var evaluator = new HateoasAuthorizationEvaluator(

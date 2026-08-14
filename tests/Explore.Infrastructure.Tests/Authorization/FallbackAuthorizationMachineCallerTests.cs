@@ -71,6 +71,38 @@ public class FallbackAuthorizationMachineCallerTests
             CancellationToken.None)).IsFalse();
     }
 
+    [Test]
+    [Arguments("machine.registration_form_update_current_deny", ResourceKinds.RegistrationForm, AuthorizationActions.RegistrationForms.Update, ExternalApiKeyScopes.AdminTenant, false)]
+    [Arguments("machine.event_public_action_current_allow", ResourceKinds.Event, AuthorizationActions.Events.ManagePublicActions, ExternalApiKeyScopes.AdminTenant, true)]
+    [Arguments("machine.contact_export_current_allow", ResourceKinds.EventContactShareConsent, AuthorizationActions.ExportSharedContacts, ExternalApiKeyScopes.AdminTenant, true)]
+    public async Task IsAllowed_Phase0MachineCallerCurrentBaseline(
+        string scenario,
+        string resourceKind,
+        string action,
+        string scope,
+        bool expectedCurrentOutcome)
+    {
+        var tenantId = Guid.NewGuid();
+        var ownerId = Guid.NewGuid();
+        SetMachineContext(ExternalApiKeyOwnerType.Tenant, tenantId, tenantId, scope);
+
+        var result = await _sut.IsAllowedAsync(
+            resourceKind,
+            ownerId.ToString("D"),
+            action,
+            new Dictionary<string, object>
+            {
+                ["tenantId"] = tenantId,
+                ["eventId"] = Guid.NewGuid(),
+                ["organizationId"] = ownerId
+            },
+            CancellationToken.None);
+
+        await Assert.That(result)
+            .IsEqualTo(expectedCurrentOutcome)
+            .Because($"phase-0 provider scenario '{scenario}' must pin current machine-caller authorization.");
+    }
+
     private void SetMachineContext(ExternalApiKeyOwnerType ownerType, Guid? tenantId, Guid ownerId, params string[] scopes)
     {
         var ctx = new ApiKeyPrincipalContext(
@@ -84,7 +116,7 @@ public class FallbackAuthorizationMachineCallerTests
     }
 
     [Test]
-    public async Task InstanceAdminOwner_WithScopeMatch_AllowsAnyResourceAcrossAnyTenant()
+    public async Task InstanceAdminOwner_WithScopeMatch_DeniesNonAllowlistedResourceAcrossAnyTenant()
     {
         var ownerId = Guid.NewGuid();
         var arbitraryTenantId = Guid.NewGuid();
@@ -96,7 +128,26 @@ public class FallbackAuthorizationMachineCallerTests
         bool result = await _sut.IsAllowedAsync(ResourceKinds.Event, Guid.NewGuid().ToString(),
             AuthorizationActions.Delete, attrs, CancellationToken.None);
 
-        await Assert.That(result).IsTrue();
+        await Assert.That(result).IsFalse();
+    }
+
+    [Test]
+    public async Task InstanceAdminOwner_WithAdminInstanceScope_DeniesIncomingWebhookProcessing()
+    {
+        SetMachineContext(
+            ExternalApiKeyOwnerType.InstanceAdmin,
+            tenantId: null,
+            Guid.NewGuid(),
+            ExternalApiKeyScopes.AdminInstance);
+
+        var result = await _sut.IsAllowedAsync(
+            ResourceKinds.Webhook,
+            Guid.NewGuid().ToString("D"),
+            AuthorizationActions.Webhooks.ProcessIncoming,
+            new Dictionary<string, object> { ["tenantId"] = Guid.NewGuid().ToString("D") },
+            CancellationToken.None);
+
+        await Assert.That(result).IsFalse();
     }
 
     [Test]
@@ -107,6 +158,125 @@ public class FallbackAuthorizationMachineCallerTests
 
         bool result = await _sut.IsAllowedAsync(ResourceKinds.InstanceSetting, "features.enabled",
             AuthorizationActions.Update, null, CancellationToken.None);
+
+        await Assert.That(result).IsFalse();
+    }
+
+    [Test]
+    public async Task InstanceAdminOwner_WithAdminInstanceScope_AllowsPlatformOperation()
+    {
+        SetMachineContext(ExternalApiKeyOwnerType.InstanceAdmin, tenantId: null, Guid.NewGuid(),
+            ExternalApiKeyScopes.AdminInstance);
+
+        bool result = await _sut.IsAllowedAsync(ResourceKinds.InstanceSetting, "platform.feature",
+            AuthorizationActions.InstanceSettings.Update, null, CancellationToken.None);
+
+        await Assert.That(result).IsTrue();
+    }
+
+    [Test]
+    public async Task MachineCaller_CheckSettingAccessInstanceSetting_UsesApiKeyContextWithoutAmbientAdmin()
+    {
+        SetMachineContext(ExternalApiKeyOwnerType.InstanceAdmin, tenantId: null, Guid.NewGuid(),
+            ExternalApiKeyScopes.AdminInstance);
+        _adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(false);
+
+        var result = await _sut.CheckSettingAccessAsync(
+            "platform.feature",
+            AuthorizationActions.InstanceSettings.Update,
+            cancellationToken: CancellationToken.None);
+
+        await Assert.That(result).IsTrue();
+        await _adminContext.DidNotReceive().IsInstanceAdminAsync(Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task MachineCaller_CheckSettingAccessInstanceSetting_DeniesTenantKeyDespiteAmbientAdmin()
+    {
+        var tenantId = Guid.NewGuid();
+        SetMachineContext(ExternalApiKeyOwnerType.Tenant, tenantId, tenantId,
+            ExternalApiKeyScopes.AdminTenant);
+        _adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(true);
+
+        var result = await _sut.CheckSettingAccessAsync(
+            "platform.feature",
+            AuthorizationActions.InstanceSettings.Update,
+            cancellationToken: CancellationToken.None);
+
+        await Assert.That(result).IsFalse();
+        await _adminContext.DidNotReceive().IsInstanceAdminAsync(Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task MachineCaller_CheckSettingAccessLockedTenantSetting_DeniesTenantKeyWithoutAmbientAdmin()
+    {
+        var tenantId = Guid.NewGuid();
+        SetMachineContext(ExternalApiKeyOwnerType.Tenant, tenantId, tenantId,
+            ExternalApiKeyScopes.AdminTenant);
+        _adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(true);
+        _settingsResolver.ResolveWithMetadataAsync("deployment.mode", Arg.Any<SettingContext>(), Arg.Any<CancellationToken>())
+            .Returns(new ResolvedSetting { Key = "deployment.mode", IsLocked = true });
+
+        var result = await _sut.CheckSettingAccessAsync(
+            "deployment.mode",
+            AuthorizationActions.Update,
+            tenantId: tenantId,
+            cancellationToken: CancellationToken.None);
+
+        await Assert.That(result).IsFalse();
+        await _adminContext.DidNotReceive().IsInstanceAdminAsync(Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task MachineCaller_CheckSettingAccessUnlockedTenantSetting_AllowsTenantKeyWithoutAmbientAdmin()
+    {
+        var tenantId = Guid.NewGuid();
+        SetMachineContext(ExternalApiKeyOwnerType.Tenant, tenantId, tenantId,
+            ExternalApiKeyScopes.AdminTenant);
+        _adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(false);
+        _settingsResolver.ResolveWithMetadataAsync("events.require_approval", Arg.Any<SettingContext>(), Arg.Any<CancellationToken>())
+            .Returns(new ResolvedSetting { Key = "events.require_approval", IsLocked = false });
+
+        var result = await _sut.CheckSettingAccessAsync(
+            "events.require_approval",
+            AuthorizationActions.Update,
+            tenantId: tenantId,
+            cancellationToken: CancellationToken.None);
+
+        await Assert.That(result).IsTrue();
+        await _adminContext.DidNotReceive().IsInstanceAdminAsync(Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task MachineCaller_CheckSettingAccessLockedTenantSetting_DeniesUserOwnerTenantAdminWithoutAmbientAdmin()
+    {
+        var tenantId = Guid.NewGuid();
+        var userOwnerId = Guid.NewGuid();
+        SetMachineContext(ExternalApiKeyOwnerType.User, tenantId, userOwnerId,
+            ExternalApiKeyScopes.AdminTenant);
+        _settingsResolver.ResolveWithMetadataAsync("events.require_approval", Arg.Any<SettingContext>(), Arg.Any<CancellationToken>())
+            .Returns(new ResolvedSetting { Key = "events.require_approval", IsLocked = true });
+
+        var result = await _sut.CheckSettingAccessAsync(
+            "events.require_approval",
+            AuthorizationActions.Update,
+            tenantId: tenantId,
+            cancellationToken: CancellationToken.None);
+
+        await Assert.That(result).IsFalse();
+        await _adminContext.DidNotReceive().IsInstanceAdminAsync(userOwnerId, Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task SafeMode_TenantMachineCaller_DeniesEvenWithMatchingTenantScope()
+    {
+        var tenantId = Guid.NewGuid();
+        SetMachineContext(ExternalApiKeyOwnerType.Tenant, tenantId, tenantId,
+            ExternalApiKeyScopes.AdminTenant);
+        _sut.ActivateSafeMode();
+
+        bool result = await _sut.IsAllowedAsync(ResourceKinds.Category, Guid.NewGuid().ToString("D"),
+            AuthorizationActions.Create, new Dictionary<string, object> { ["tenantId"] = tenantId }, CancellationToken.None);
 
         await Assert.That(result).IsFalse();
     }
@@ -290,7 +460,7 @@ public class FallbackAuthorizationMachineCallerTests
     }
 
     [Test]
-    public async Task UserOwner_IsInstanceAdmin_AllowsAnything()
+    public async Task UserOwner_IsInstanceAdmin_DeniesNonAllowlistedResource()
     {
         var userId = Guid.NewGuid();
         SetMachineContext(ExternalApiKeyOwnerType.User, Guid.NewGuid(), userId,
@@ -300,7 +470,7 @@ public class FallbackAuthorizationMachineCallerTests
         bool result = await _sut.IsAllowedAsync(ResourceKinds.Event, Guid.NewGuid().ToString(),
             AuthorizationActions.Delete, null, CancellationToken.None);
 
-        await Assert.That(result).IsTrue();
+        await Assert.That(result).IsFalse();
     }
 
     [Test]
@@ -368,7 +538,7 @@ public class FallbackAuthorizationMachineCallerTests
             ExternalApiKeyScopes.EventsWrite);
         _adminContext.IsInstanceAdminAsync(userId, Arg.Any<CancellationToken>()).Returns(false);
         _adminContext.GetAdminTenantIdsAsync(userId, Arg.Any<CancellationToken>()).Returns(new List<Guid>());
-        _adminContext.IsOrganizationAdminAsync(orgId, Arg.Any<CancellationToken>()).Returns(true);
+        _adminContext.GetAdminOrganizationIdsAsync(userId, tenantId, Arg.Any<CancellationToken>()).Returns(new List<Guid> { orgId });
 
         var attrs = new Dictionary<string, object>
         {
@@ -383,6 +553,33 @@ public class FallbackAuthorizationMachineCallerTests
     }
 
     [Test]
+    public async Task UserOwner_IgnoresAmbientOrganizationAdmin()
+    {
+        var tenantId = Guid.NewGuid();
+        var userOwnerId = Guid.NewGuid();
+        var orgId = Guid.NewGuid();
+        SetMachineContext(ExternalApiKeyOwnerType.User, tenantId, userOwnerId, ExternalApiKeyScopes.EventsWrite);
+        _adminContext.IsInstanceAdminAsync(userOwnerId, Arg.Any<CancellationToken>()).Returns(false);
+        _adminContext.GetAdminTenantIdsAsync(userOwnerId, Arg.Any<CancellationToken>()).Returns([]);
+        _adminContext.IsOrganizationAdminAsync(orgId, Arg.Any<CancellationToken>()).Returns(true);
+
+        var attrs = new Dictionary<string, object>
+        {
+            ["tenantId"] = tenantId,
+            ["organizationId"] = orgId
+        };
+
+        var result = await _sut.IsAllowedAsync(
+            ResourceKinds.Event,
+            Guid.NewGuid().ToString("D"),
+            AuthorizationActions.Create,
+            attrs,
+            CancellationToken.None);
+
+        await Assert.That(result).IsFalse();
+    }
+
+    [Test]
     public async Task UserOwner_GroupAdmin_AllowsGroupResource()
     {
         var tenantId = Guid.NewGuid();
@@ -392,7 +589,7 @@ public class FallbackAuthorizationMachineCallerTests
             ExternalApiKeyScopes.GroupsWrite);
         _adminContext.IsInstanceAdminAsync(userId, Arg.Any<CancellationToken>()).Returns(false);
         _adminContext.GetAdminTenantIdsAsync(userId, Arg.Any<CancellationToken>()).Returns(new List<Guid>());
-        _adminContext.IsGroupAdminAsync(groupId, Arg.Any<CancellationToken>()).Returns(true);
+        _adminContext.GetAdminGroupIdsAsync(userId, tenantId, Arg.Any<CancellationToken>()).Returns(new List<Guid> { groupId });
 
         var attrs = new Dictionary<string, object>
         {
@@ -458,7 +655,7 @@ public class FallbackAuthorizationMachineCallerTests
     }
 
     [Test]
-    public async Task MachineCaller_DoesNotBypassInstanceAdminShortCircuit()
+    public async Task MachineCaller_DoesNotUseAmbientInstanceAdminShortcut()
     {
         var tenantId = Guid.NewGuid();
         var orgId = Guid.NewGuid();
@@ -471,6 +668,117 @@ public class FallbackAuthorizationMachineCallerTests
 
         bool result = await _sut.IsAllowedAsync(ResourceKinds.Tenant, tenantId.ToString(),
             AuthorizationActions.Update, attrs, CancellationToken.None);
+
+        await Assert.That(result).IsFalse();
+        await _adminContext.DidNotReceive().IsInstanceAdminAsync(Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task UserOwner_IgnoresAmbientOrganizationAdminWhenOwnerCollectionsOmitScope()
+    {
+        var tenantId = Guid.NewGuid();
+        var userOwnerId = Guid.NewGuid();
+        var orgId = Guid.NewGuid();
+        SetMachineContext(ExternalApiKeyOwnerType.User, tenantId, userOwnerId, ExternalApiKeyScopes.EventsWrite);
+        _adminContext.IsInstanceAdminAsync(userOwnerId, Arg.Any<CancellationToken>()).Returns(false);
+        _adminContext.GetAdminTenantIdsAsync(userOwnerId, Arg.Any<CancellationToken>()).Returns([]);
+        _adminContext.GetAdminOrganizationIdsAsync(userOwnerId, tenantId, Arg.Any<CancellationToken>()).Returns([]);
+        _adminContext.IsOrganizationAdminAsync(orgId, Arg.Any<CancellationToken>()).Returns(true);
+
+        var attrs = new Dictionary<string, object>
+        {
+            ["tenantId"] = tenantId,
+            ["organizationId"] = orgId
+        };
+
+        var result = await _sut.IsAllowedAsync(
+            ResourceKinds.Event,
+            Guid.NewGuid().ToString("D"),
+            AuthorizationActions.Create,
+            attrs,
+            CancellationToken.None);
+
+        await Assert.That(result).IsFalse();
+    }
+
+    [Test]
+    public async Task UserOwner_IgnoresAmbientGroupAdminWhenOwnerCollectionsOmitScope()
+    {
+        var tenantId = Guid.NewGuid();
+        var userOwnerId = Guid.NewGuid();
+        var groupId = Guid.NewGuid();
+        SetMachineContext(ExternalApiKeyOwnerType.User, tenantId, userOwnerId, ExternalApiKeyScopes.GroupsWrite);
+        _adminContext.IsInstanceAdminAsync(userOwnerId, Arg.Any<CancellationToken>()).Returns(false);
+        _adminContext.GetAdminTenantIdsAsync(userOwnerId, Arg.Any<CancellationToken>()).Returns([]);
+        _adminContext.GetAdminGroupIdsAsync(userOwnerId, tenantId, Arg.Any<CancellationToken>()).Returns([]);
+        _adminContext.IsGroupAdminAsync(groupId, Arg.Any<CancellationToken>()).Returns(true);
+
+        var attrs = new Dictionary<string, object>
+        {
+            ["tenantId"] = tenantId,
+            ["groupId"] = groupId
+        };
+
+        var result = await _sut.IsAllowedAsync(
+            ResourceKinds.Group,
+            groupId.ToString("D"),
+            AuthorizationActions.Update,
+            attrs,
+            CancellationToken.None);
+
+        await Assert.That(result).IsFalse();
+    }
+
+    [Test]
+    public async Task UserOwner_OrganizationOwnerCollectionMatch_AllowsOrgScopedResource()
+    {
+        var tenantId = Guid.NewGuid();
+        var userOwnerId = Guid.NewGuid();
+        var orgId = Guid.NewGuid();
+        SetMachineContext(ExternalApiKeyOwnerType.User, tenantId, userOwnerId, ExternalApiKeyScopes.EventsWrite);
+        _adminContext.IsInstanceAdminAsync(userOwnerId, Arg.Any<CancellationToken>()).Returns(false);
+        _adminContext.GetAdminTenantIdsAsync(userOwnerId, Arg.Any<CancellationToken>()).Returns([]);
+        _adminContext.GetAdminOrganizationIdsAsync(userOwnerId, tenantId, Arg.Any<CancellationToken>()).Returns([orgId]);
+
+        var attrs = new Dictionary<string, object>
+        {
+            ["tenantId"] = tenantId,
+            ["organizationId"] = orgId
+        };
+
+        var result = await _sut.IsAllowedAsync(
+            ResourceKinds.Event,
+            Guid.NewGuid().ToString("D"),
+            AuthorizationActions.Create,
+            attrs,
+            CancellationToken.None);
+
+        await Assert.That(result).IsTrue();
+    }
+
+    [Test]
+    public async Task UserOwner_GroupOwnerCollectionMatch_AllowsGroupResource()
+    {
+        var tenantId = Guid.NewGuid();
+        var userOwnerId = Guid.NewGuid();
+        var groupId = Guid.NewGuid();
+        SetMachineContext(ExternalApiKeyOwnerType.User, tenantId, userOwnerId, ExternalApiKeyScopes.GroupsWrite);
+        _adminContext.IsInstanceAdminAsync(userOwnerId, Arg.Any<CancellationToken>()).Returns(false);
+        _adminContext.GetAdminTenantIdsAsync(userOwnerId, Arg.Any<CancellationToken>()).Returns([]);
+        _adminContext.GetAdminGroupIdsAsync(userOwnerId, tenantId, Arg.Any<CancellationToken>()).Returns([groupId]);
+
+        var attrs = new Dictionary<string, object>
+        {
+            ["tenantId"] = tenantId,
+            ["groupId"] = groupId
+        };
+
+        var result = await _sut.IsAllowedAsync(
+            ResourceKinds.Group,
+            groupId.ToString("D"),
+            AuthorizationActions.Update,
+            attrs,
+            CancellationToken.None);
 
         await Assert.That(result).IsTrue();
     }

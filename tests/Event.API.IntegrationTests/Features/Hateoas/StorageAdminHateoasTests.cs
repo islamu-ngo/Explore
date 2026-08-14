@@ -248,7 +248,7 @@ public sealed class StorageAdminHateoasTests
             IsReadOnly = false
         };
 
-    private static InstanceAssemblerHarness CreateInstanceAssembler(Func<AuthorizationCheck, bool> predicate)
+    private static InstanceAssemblerHarness CreateInstanceAssembler(Func<AuthorizationRequest, bool> predicate)
     {
         var evaluator = CreateEvaluator(predicate);
         var linkGenerator = CreateLinkGenerator();
@@ -260,7 +260,7 @@ public sealed class StorageAdminHateoasTests
         return new InstanceAssemblerHarness(assembler, evaluator);
     }
 
-    private static TenantAssemblerHarness CreateTenantAssembler(Func<AuthorizationCheck, bool> predicate)
+    private static TenantAssemblerHarness CreateTenantAssembler(Func<AuthorizationRequest, bool> predicate)
     {
         var evaluator = CreateEvaluator(predicate);
         var linkGenerator = CreateLinkGenerator();
@@ -272,7 +272,7 @@ public sealed class StorageAdminHateoasTests
         return new TenantAssemblerHarness(assembler, evaluator);
     }
 
-    private static IHateoasAuthorizationEvaluator CreateEvaluator(Func<AuthorizationCheck, bool> predicate)
+    private static IHateoasAuthorizationEvaluator CreateEvaluator(Func<AuthorizationRequest, bool> predicate)
     {
         var authorizationProvider = new StubAuthorizationProvider { CheckPredicate = predicate };
         return new HateoasAuthorizationEvaluator(

@@ -2,6 +2,7 @@
 // ABOUTME: Invalidates runtime translation cache after a successful same-process bundle write.
 
 using Explore.Application.Contracts.Infrastructure;
+using Explore.Application.Contracts.Identity;
 using Explore.Application.Features.Localization.Requests.Commands;
 using Explore.Application.Responses;
 using Explore.Application.Telemetry;
@@ -15,17 +16,20 @@ namespace Explore.Application.Features.Localization.Handlers.Commands;
 
 public class ImportLocalizationBundleCommandHandler : IRequestHandler<ImportLocalizationBundleCommand, BaseCommandResponse<Guid>>
 {
+    private readonly IAdminContext _adminContext;
     private readonly IBundleFileWriter _bundleFileWriter;
     private readonly ITranslationResolver _translationResolver;
     private readonly TranslationMetrics _metrics;
     private readonly ILogger<ImportLocalizationBundleCommandHandler> _logger;
 
     public ImportLocalizationBundleCommandHandler(
+        IAdminContext adminContext,
         IBundleFileWriter bundleFileWriter,
         ITranslationResolver translationResolver,
         TranslationMetrics metrics,
         ILogger<ImportLocalizationBundleCommandHandler> logger)
     {
+        _adminContext = adminContext;
         _bundleFileWriter = bundleFileWriter;
         _translationResolver = translationResolver;
         _metrics = metrics;
@@ -37,6 +41,13 @@ public class ImportLocalizationBundleCommandHandler : IRequestHandler<ImportLoca
         CancellationToken cancellationToken)
     {
         var response = new BaseCommandResponse<Guid>();
+        var actor = await _adminContext.ResolveUserIdAsync(cancellationToken);
+        if (!actor.HasValue || !await _adminContext.IsInstanceAdminAsync(actor.Value, cancellationToken))
+        {
+            response.Success = false;
+            response.Message = "Instance administrator authority is required to import localization bundles.";
+            return response;
+        }
 
         if (!CultureRegistry.TryGetEntry(request.Dto.LanguageCode, out var culture))
             throw new ValidationException([

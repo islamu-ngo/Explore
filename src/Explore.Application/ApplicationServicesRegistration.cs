@@ -51,6 +51,8 @@ using Explore.Application.Features.ManagedProviderProvisioning.Handlers.Commands
 using Explore.Application.Features.Management;
 using Explore.Application.Features.OrganizerPaymentConnections;
 using Explore.Application.Features.RegistrationOrders.Handlers.Commands;
+using Explore.Application.Features.StorageObjects.Authorization;
+using Explore.Application.Features.StorageObjects.Requests.Commands;
 using Explore.Application.Notifications;
 using Explore.Application.Services;
 using Explore.Application.Services.Federation;
@@ -144,6 +146,7 @@ public static class ApplicationServicesRegistration
         services.AddTransient<IAuthorizationContextEnricher<UpdateEventSessionGroupCommand>, UpdateEventSessionGroupAuthorizationContextEnricher>();
         services.AddTransient<IAuthorizationContextEnricher<UpdateEventSessionSpeakerCommand>, UpdateEventSessionSpeakerAuthorizationContextEnricher>();
         services.AddTransient<IAuthorizationContextEnricher<WithdrawEventOrganizerClaimCommand>, WithdrawEventOrganizerClaimAuthorizationContextEnricher>();
+        services.AddTransient<IAuthorizationContextEnricher<CreateStorageUploadSessionCommand>, CreateStorageUploadSessionAuthorizationContextEnricher>();
         services.AddOptions<EventReportSubmissionOptions>()
             .Bind(configuration.GetSection(EventReportSubmissionOptions.SectionName))
             .Validate(

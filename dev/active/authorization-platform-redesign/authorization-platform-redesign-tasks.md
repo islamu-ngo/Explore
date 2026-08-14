@@ -3,14 +3,14 @@
 
 # Authorization Platform Redesign — Task Checklist
 
-Last Updated: 2026-08-14 Europe/Brussels
+Last Updated: 2026-08-15 Europe/Brussels
 
 ## Status Summary
 
-- **Overall status:** Re-baselined; awaiting user approval.
-- **Completed:** 0/18 implementation tasks; phase verification is tracked separately.
-- **Current priority:** Approve the reduced architecture and begin containment only.
-- **Next recommended slice:** Phase 0, Task 0.1: build the current capability and exceptional-path inventory.
+- **Overall status:** Implementation active; Phase 0 is complete and Phase 1 is in progress.
+- **Completed:** 3/18 implementation tasks; phase verification is tracked separately.
+- **Current priority:** Introduce the typed Application authorization boundary and trusted storage pre-create facts.
+- **Next recommended slice:** Phase 1, Task 1.1: add the typed core contract and `StorageUploadIntentFacts` without provider or Domain leakage.
 
 ## Implementation Maintenance Rules
 
@@ -23,25 +23,25 @@ Last Updated: 2026-08-14 Europe/Brussels
 - At phase end run exactly one Release build and at most one selected non-browser test project. Never run solution-level `dotnet test`.
 - Permission widening requires separate explicit approval. Breaking removal of development contracts does not require compatibility tests or shims.
 
-## Phase 0: Containment and capability inventory ⏳ NOT STARTED
+## Phase 0: Containment and capability inventory ✅ COMPLETE
 
-- [ ] **Task 0.1 — Current capability inventory:** map every subject/resource/action, authority zone, endpoint auth attribute, MediatR authorization declaration, HAL relation, Local evaluator path, Cerbos policy path, and exceptional bypass; record exact files/symbols and owners.
-- [ ] **Task 0.2 — Provider-neutral baseline corpus:** add allow/deny scenarios for normal user, administrator, machine caller, support session, missing subject, missing tenant, wrong tenant, missing resource, consent/contact sharing, guest capability, public visibility, provider failure, and HAL suppression.
-- [ ] **Task 0.3 — Urgent containment:** remove, narrow, or fail closed verified administrator/machine/handler pass-through, action-reuse, consent, guest/public, and BYO-provider gaps without introducing the Phase 1 contract.
+- [x] **Task 0.1 — Current capability inventory:** map every subject/resource/action, authority zone, endpoint auth attribute, MediatR authorization declaration, HAL relation, Local evaluator path, Cerbos policy path, and exceptional bypass; record exact files/symbols and owners.
+- [x] **Task 0.2 — Provider-neutral baseline corpus:** add allow/deny scenarios for normal user, administrator, machine caller, support session, missing subject, missing tenant, wrong tenant, missing resource, consent/contact sharing, guest capability, public visibility, provider failure, and HAL suppression.
+- [x] **Task 0.3 — Urgent containment:** remove, narrow, or fail closed verified administrator/machine/handler pass-through, action-reuse, consent, guest/public, and BYO-provider gaps without introducing the Phase 1 contract.
 
 ### Phase 0 Acceptance
 
-- [ ] Every current grant and bypass maps to a named capability/scenario; no permission is widened.
-- [ ] MediatR denials and HAL suppression agree for contained behavior.
-- [ ] Remaining ambiguity is a named blocker, not an implicit allow.
+- [x] Every current grant and bypass maps to a named capability/scenario; no permission is widened.
+- [x] MediatR denials and HAL suppression agree for contained behavior.
+- [x] Remaining ambiguity is a named blocker, not an implicit allow.
 
 ### Phase 0 Verification — RUN ONCE AFTER ALL PHASE TASKS
 
-- [ ] `dotnet build --configuration Release --verbosity quiet`
-- [ ] `dotnet test --project tests/Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet`
-- [ ] Record exact results and any unrelated pre-existing failure in context.
+- [x] `dotnet build --configuration Release --verbosity quiet`
+- [x] `dotnet test --project tests/Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet`
+- [x] Record exact results and any unrelated pre-existing failure in context.
 
-## Phase 1: Typed Application decision contract ⏳ NOT STARTED
+## Phase 1: Typed Application decision contract 🟡 IN PROGRESS
 
 - [ ] **Task 1.1 — Typed boundary:** add Application-owned request, decision, stable reason-code, provider-metadata, and closed capability-catalog contracts; prohibit arbitrary action/resource strings and fact dictionaries.
 - [ ] **Task 1.2 — Trusted resolvers:** translate authenticated callers and loaded entities into typed subject/resource/facts while preserving tenant, support-session, machine-caller, callback, and suspended/deleted-principal boundaries.

@@ -31,14 +31,27 @@ public partial class FallbackAuthorizationService
             return false;
         }
 
+        if (SafeMode && context.OwnerType != ExternalApiKeyOwnerType.InstanceAdmin)
+        {
+            return false;
+        }
+
         if (!MachineScopeMapping.ScopesPermit(context.Scopes, resourceKind, action))
+        {
+            return false;
+        }
+
+        if (resourceKind == ResourceKinds.TenantSetting
+            && !IsTenantBrandingDocument(resourceAttributes)
+            && resourceAttributes?.TryGetValue("isLockedByInstance", out var lockedObj) == true
+            && lockedObj is true)
         {
             return false;
         }
 
         return context.OwnerType switch
         {
-            ExternalApiKeyOwnerType.InstanceAdmin => true,
+            ExternalApiKeyOwnerType.InstanceAdmin => IsInstanceAdminFallbackAllowed(resourceKind, action),
             ExternalApiKeyOwnerType.Tenant => EvaluateTenantOwnerMachineAccess(context, resourceKind, resourceId, resourceAttributes),
             ExternalApiKeyOwnerType.Organization => EvaluateOrganizationOwnerMachineAccess(context, resourceKind, resourceId, resourceAttributes),
             ExternalApiKeyOwnerType.Group => EvaluateGroupOwnerMachineAccess(context, resourceKind, resourceId, resourceAttributes),
@@ -152,7 +165,7 @@ public partial class FallbackAuthorizationService
     {
         if (await _adminContext.IsInstanceAdminAsync(context.OwnerId, cancellationToken))
         {
-            return true;
+            return IsInstanceAdminFallbackAllowed(resourceKind, action);
         }
 
         if (!context.TenantId.HasValue)
@@ -198,7 +211,8 @@ public partial class FallbackAuthorizationService
         if (IsOrganizationScopedResource(resourceKind))
         {
             var orgId = ResolveOrganizationId(resourceAttributes, resourceId);
-            if (orgId.HasValue && await _adminContext.IsOrganizationAdminAsync(orgId.Value, cancellationToken))
+            var adminOrgIds = await _adminContext.GetAdminOrganizationIdsAsync(context.OwnerId, context.TenantId.Value, cancellationToken);
+            if (orgId.HasValue && adminOrgIds.Contains(orgId.Value))
             {
                 return true;
             }
@@ -209,7 +223,8 @@ public partial class FallbackAuthorizationService
         if (resourceKind == ResourceKinds.Group || resourceKind == ResourceKinds.GroupMember)
         {
             var groupId = ResolveGroupId(resourceAttributes, resourceId);
-            if (groupId.HasValue && await _adminContext.IsGroupAdminAsync(groupId.Value, cancellationToken))
+            var adminGroupIds = await _adminContext.GetAdminGroupIdsAsync(context.OwnerId, context.TenantId.Value, cancellationToken);
+            if (groupId.HasValue && adminGroupIds.Contains(groupId.Value))
             {
                 return true;
             }

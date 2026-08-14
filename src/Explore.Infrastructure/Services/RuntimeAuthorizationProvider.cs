@@ -35,10 +35,9 @@ namespace Explore.Infrastructure.Services;
 /// <list type="bullet">
 /// <item>Instance Cerbos failure → deny all checks. The operator chose Cerbos; falling back
 /// to a potentially more permissive local RBAC would silently bypass intended policies.</item>
-/// <item>BYO Cerbos failure with <c>FailureMode.Closed</c> → Safe-Mode activated (one-way latch):
-/// deny all except instance admin. Prevents bypassing stricter tenant policies.</item>
-/// <item>BYO Cerbos failure with <c>FailureMode.Open</c> → Standard fallback RBAC
-/// (tenant accepts permissive fallback risk).</item>
+/// <item>BYO Cerbos failure - Safe-Mode activated (one-way latch): deny all except
+/// instance admin. Prevents bypassing stricter tenant policies. Legacy <c>FailureMode.Open</c>
+/// values are accepted for configuration parsing but ignored at runtime.</item>
 /// </list>
 /// <para><b>Setting access</b>: Always uses instance-level provider (never BYO).
 /// Settings are platform governance, not tenant-customizable.</para>
@@ -80,28 +79,21 @@ public sealed class RuntimeAuthorizationProvider : IAuthorizationProvider, IAuth
         _metrics = metrics;
     }
 
-    public async Task<bool> IsAllowedAsync(
-        string resourceKind,
-        string resourceId,
-        string action,
-        IDictionary<string, object>? resourceAttributes = null,
+    public async Task<AuthorizationDecision> AuthorizeAsync(
+        AuthorizationRequest request,
         CancellationToken cancellationToken = default)
     {
-        var checks = new[]
-        {
-            new AuthorizationCheck(
-                resourceKind,
-                resourceId,
-                action,
-                resourceAttributes is null ? null : new Dictionary<string, object>(resourceAttributes))
-        };
+        if (string.IsNullOrWhiteSpace(request.ResourceId))
+            return AuthorizationDecision.Deny(AuthorizationProviderMetadata.Runtime, AuthorizationDecisionReasonCodes.InvalidRequest);
 
-        var results = await IsAllowedBatchAsync(checks, cancellationToken);
-        return results.Count > 0 && results[0];
+        var results = await AuthorizeBatchAsync([request], cancellationToken);
+        return results.Count > 0
+            ? results[0]
+            : AuthorizationDecision.Deny(AuthorizationProviderMetadata.Runtime, AuthorizationDecisionReasonCodes.ProviderError);
     }
 
-    public async Task<IReadOnlyList<bool>> IsAllowedBatchAsync(
-        IReadOnlyList<AuthorizationCheck> checks,
+    public async Task<IReadOnlyList<AuthorizationDecision>> AuthorizeBatchAsync(
+        IReadOnlyList<AuthorizationRequest> checks,
         CancellationToken cancellationToken = default)
     {
         if (checks.Count == 0)
@@ -112,7 +104,7 @@ public sealed class RuntimeAuthorizationProvider : IAuthorizationProvider, IAuth
             return supportBoundary.Results;
 
         var effectiveChecks = supportBoundary.EffectiveChecks;
-        IReadOnlyList<bool> evaluatedResults;
+        IReadOnlyList<AuthorizationDecision> evaluatedResults;
 
         if (UsesSettingAuthorization(effectiveChecks))
         {
@@ -133,7 +125,7 @@ public sealed class RuntimeAuthorizationProvider : IAuthorizationProvider, IAuth
                 effectiveChecks.Count,
                 ex.GetType().Name);
             _localProvider.ActivateSafeMode();
-            evaluatedResults = await _localProvider.IsAllowedBatchAsync(effectiveChecks, cancellationToken);
+            evaluatedResults = await _localProvider.AuthorizeBatchAsync(effectiveChecks, cancellationToken);
             return supportBoundary.Complete(evaluatedResults);
         }
 
@@ -149,7 +141,7 @@ public sealed class RuntimeAuthorizationProvider : IAuthorizationProvider, IAuth
         var localCheckIndexes = GetHandlerOwnedLocalCheckIndexes(effectiveChecks);
         if (localCheckIndexes.Count == effectiveChecks.Count)
         {
-            evaluatedResults = await _localProvider.IsAllowedBatchAsync(effectiveChecks, cancellationToken);
+            evaluatedResults = await _localProvider.AuthorizeBatchAsync(effectiveChecks, cancellationToken);
             return supportBoundary.Complete(evaluatedResults);
         }
 
@@ -164,20 +156,24 @@ public sealed class RuntimeAuthorizationProvider : IAuthorizationProvider, IAuth
         return supportBoundary.Complete(evaluatedResults);
     }
 
-    private async Task<IReadOnlyList<bool>> ExecuteMixedLocalAndInstanceAsync(
-        IReadOnlyList<AuthorizationCheck> checks,
+    private async Task<IReadOnlyList<AuthorizationDecision>> ExecuteMixedLocalAndInstanceAsync(
+        IReadOnlyList<AuthorizationRequest> checks,
         IReadOnlyList<int> localCheckIndexes,
         CancellationToken cancellationToken)
     {
-        var results = new bool[checks.Count];
+        var results = Enumerable.Repeat(
+            AuthorizationDecision.Deny(AuthorizationProviderMetadata.Runtime, AuthorizationDecisionReasonCodes.ProviderError),
+            checks.Count).ToArray();
 
         var localChecks = localCheckIndexes
             .Select(index => checks[index])
             .ToArray();
-        var localResults = await _localProvider.IsAllowedBatchAsync(localChecks, cancellationToken);
+        var localResults = await _localProvider.AuthorizeBatchAsync(localChecks, cancellationToken);
         for (var i = 0; i < localCheckIndexes.Count; i++)
         {
-            results[localCheckIndexes[i]] = i < localResults.Count && localResults[i];
+            results[localCheckIndexes[i]] = i < localResults.Count
+                ? localResults[i]
+                : AuthorizationDecision.Deny(AuthorizationProviderMetadata.Runtime, AuthorizationDecisionReasonCodes.ProviderError);
         }
 
         var localIndexSet = localCheckIndexes.ToHashSet();
@@ -194,14 +190,16 @@ public sealed class RuntimeAuthorizationProvider : IAuthorizationProvider, IAuth
         var instanceResults = await ExecuteInstanceProviderAsync(instanceChecks, cancellationToken);
         for (var i = 0; i < instanceCheckIndexes.Length; i++)
         {
-            results[instanceCheckIndexes[i]] = i < instanceResults.Count && instanceResults[i];
+            results[instanceCheckIndexes[i]] = i < instanceResults.Count
+                ? instanceResults[i]
+                : AuthorizationDecision.Deny(AuthorizationProviderMetadata.Runtime, AuthorizationDecisionReasonCodes.ProviderError);
         }
 
         return results;
     }
 
-    private async Task<IReadOnlyList<bool>> ExecuteInstanceProviderAsync(
-        IReadOnlyList<AuthorizationCheck> checks,
+    private async Task<IReadOnlyList<AuthorizationDecision>> ExecuteInstanceProviderAsync(
+        IReadOnlyList<AuthorizationRequest> checks,
         CancellationToken cancellationToken)
     {
         var provider = await ResolveInstanceProviderAsync(cancellationToken);
@@ -209,8 +207,8 @@ public sealed class RuntimeAuthorizationProvider : IAuthorizationProvider, IAuth
         try
         {
             return provider == _cerbosProvider
-                ? await _cerbosProvider.IsAllowedBatchWithUnavailableSignalAsync(checks, cancellationToken)
-                : await provider.IsAllowedBatchAsync(checks, cancellationToken);
+                ? await _cerbosProvider.AuthorizeBatchWithUnavailableSignalAsync(checks, cancellationToken)
+                : await provider.AuthorizeBatchAsync(checks, cancellationToken);
         }
         catch (Exception ex) when (provider == _cerbosProvider)
         {
@@ -221,7 +219,7 @@ public sealed class RuntimeAuthorizationProvider : IAuthorizationProvider, IAuth
                     "Using local setting-governance parity so administrator affordances match setting command authorization. FailureType={FailureType}",
                     checks.Count,
                     ex.GetType().Name);
-                return await _localProvider.IsAllowedBatchAsync(checks, cancellationToken);
+                return await _localProvider.AuthorizeBatchAsync(checks, cancellationToken);
             }
 
             // When Cerbos is the configured instance authorization provider and is unavailable,
@@ -233,45 +231,14 @@ public sealed class RuntimeAuthorizationProvider : IAuthorizationProvider, IAuth
                 "Restore Cerbos connectivity or switch authorization.provider setting to resolve. FailureType={FailureType}",
                 checks.Count,
                 ex.GetType().Name);
-            return checks.Select(_ => false).ToArray();
-        }
-    }
-
-    public async Task<bool> CheckSettingAccessAsync(
-        string settingKey,
-        string action,
-        Guid? tenantId = null,
-        Guid? organizationId = null,
-        CancellationToken cancellationToken = default)
-    {
-        var supportBoundary = await ApplySupportAccessBoundaryAsync(
-            [CreateSettingAuthorizationCheck(settingKey, action, tenantId, organizationId)],
-            cancellationToken);
-        if (supportBoundary.EffectiveChecks.Count == 0)
-            return supportBoundary.Results[0];
-
-        // BYO Cerbos only applies to resource checks, not setting access.
-        // Settings are governed by the instance-level provider.
-        var provider = await ResolveInstanceProviderAsync(cancellationToken);
-
-        try
-        {
-            return await provider.CheckSettingAccessAsync(settingKey, action, tenantId, organizationId, cancellationToken);
-        }
-        catch (Exception ex) when (provider == _cerbosProvider)
-        {
-            _logger.LogError(
-                "Instance Cerbos provider unavailable for setting check {SettingKey}:{Action}. " +
-                "Denying — Cerbos is the configured authorization provider. FailureType={FailureType}",
-                settingKey,
-                action,
-                ex.GetType().Name);
-            return false;
+            return checks
+                .Select(_ => AuthorizationDecision.Deny(AuthorizationProviderMetadata.Cerbos, AuthorizationDecisionReasonCodes.ProviderUnavailable))
+                .ToArray();
         }
     }
 
     private async Task<SupportAccessBoundaryResult> ApplySupportAccessBoundaryAsync(
-        IReadOnlyList<AuthorizationCheck> checks,
+        IReadOnlyList<AuthorizationRequest> checks,
         CancellationToken cancellationToken)
     {
         if (_supportAccessSessionService is null)
@@ -283,8 +250,10 @@ public sealed class RuntimeAuthorizationProvider : IAuthorizationProvider, IAuth
 
         AddSupportAccessTraceTags(supportContext);
 
-        var results = new bool[checks.Count];
-        var effectiveChecks = new List<AuthorizationCheck>(checks.Count);
+        var results = Enumerable.Repeat(
+            AuthorizationDecision.Deny(AuthorizationProviderMetadata.Runtime),
+            checks.Count).ToArray();
+        var effectiveChecks = new List<AuthorizationRequest>(checks.Count);
         var originalIndexes = new List<int>(checks.Count);
 
         for (var i = 0; i < checks.Count; i++)
@@ -322,8 +291,8 @@ public sealed class RuntimeAuthorizationProvider : IAuthorizationProvider, IAuth
         return new SupportAccessBoundaryResult(effectiveChecks, originalIndexes, results);
     }
 
-    private static AuthorizationCheck EnrichWithSupportAccessContext(
-        AuthorizationCheck check,
+    private static AuthorizationRequest EnrichWithSupportAccessContext(
+        AuthorizationRequest check,
         ISupportAccessContext supportContext)
     {
         var attributes = check.ResourceAttributes is null
@@ -359,7 +328,7 @@ public sealed class RuntimeAuthorizationProvider : IAuthorizationProvider, IAuth
         activity.SetTag("support_access.mode", supportContext.Mode?.ToString() ?? "unknown");
     }
 
-    private static void AddSupportAccessBoundaryDeniedTraceEvent(AuthorizationCheck check, string reason)
+    private static void AddSupportAccessBoundaryDeniedTraceEvent(AuthorizationRequest check, string reason)
     {
         var activity = Activity.Current;
         if (activity is null)
@@ -378,7 +347,7 @@ public sealed class RuntimeAuthorizationProvider : IAuthorizationProvider, IAuth
 
     private static string? GetSupportAccessBoundaryDenialReason(
         ISupportAccessContext supportContext,
-        AuthorizationCheck check)
+        AuthorizationRequest check)
     {
         if (supportContext.WasForwarded && !supportContext.IsActive)
             return "support_access_inactive";
@@ -400,7 +369,7 @@ public sealed class RuntimeAuthorizationProvider : IAuthorizationProvider, IAuth
             : "support_access_target_tenant_mismatch";
     }
 
-    private static bool IsSupportAccessBoundedResource(AuthorizationCheck check)
+    private static bool IsSupportAccessBoundedResource(AuthorizationRequest check)
     {
         if (HasTenantAttribute(check.ResourceAttributes))
             return check.ResourceKind is not ResourceKinds.SupportAccessSession;
@@ -449,28 +418,6 @@ public sealed class RuntimeAuthorizationProvider : IAuthorizationProvider, IAuth
                 AuthorizationActions.ExportSharedContacts
             || action.EndsWith(":view", StringComparison.Ordinal)
             || action.EndsWith(":view-delivery", StringComparison.Ordinal);
-    }
-
-    private static AuthorizationCheck CreateSettingAuthorizationCheck(
-        string settingKey,
-        string action,
-        Guid? tenantId,
-        Guid? organizationId)
-    {
-        var attributes = new Dictionary<string, object> { ["settingKey"] = settingKey };
-        if (organizationId.HasValue)
-        {
-            attributes["organizationId"] = organizationId.Value.ToString("D");
-            return new AuthorizationCheck(ResourceKinds.Organization, settingKey, action, attributes);
-        }
-
-        if (tenantId.HasValue)
-        {
-            attributes["tenantId"] = tenantId.Value.ToString("D");
-            return new AuthorizationCheck(ResourceKinds.TenantSetting, settingKey, action, attributes);
-        }
-
-        return new AuthorizationCheck(ResourceKinds.InstanceSetting, settingKey, action, attributes);
     }
 
     private static bool HasTenantAttribute(IReadOnlyDictionary<string, object>? resourceAttributes) =>
@@ -522,37 +469,28 @@ public sealed class RuntimeAuthorizationProvider : IAuthorizationProvider, IAuth
 
     /// <summary>
     /// Executes authorization checks against a BYO Cerbos endpoint.
-    /// On failure, applies the tenant's configured failure mode (closed=safe-mode, open=fallback RBAC).
+    /// On failure, always activates safe mode; permissive BYO outage fallback is forbidden.
     /// </summary>
-    private async Task<IReadOnlyList<bool>> ExecuteByoAsync(
+    private async Task<IReadOnlyList<AuthorizationDecision>> ExecuteByoAsync(
         CerbosConfiguration config,
-        IReadOnlyList<AuthorizationCheck> checks,
+        IReadOnlyList<AuthorizationRequest> checks,
         CancellationToken cancellationToken)
     {
         try
         {
             _logger.LogDebug("Routing {Count} auth checks to BYO Cerbos endpoint", checks.Count);
-            return await _cerbosProvider.IsAllowedBatchWithEndpointAsync(config.Endpoint, checks, cancellationToken);
+            return await _cerbosProvider.AuthorizeBatchWithEndpointAsync(config.Endpoint, checks, cancellationToken);
         }
         catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
         {
             _logger.LogWarning(
-                "BYO Cerbos PDP unreachable. Applying failure_mode={FailureMode}. FailureType={FailureType}",
+                "BYO Cerbos PDP unreachable. Activating safe mode regardless of configured failure_mode={FailureMode}. FailureType={FailureType}",
                 config.FailureMode,
                 ex.GetType().Name);
 
-            if (config.FailureMode == CerbosFailureMode.Closed)
-            {
-                // Safe-Mode: only instance admin allowed, deny everything else.
-                // Never fall back to instance PDP — tenant policies might be stricter.
-                // Safe mode is a one-way latch for this fallback provider instance.
-                _localProvider.ActivateSafeMode();
-                return await _localProvider.IsAllowedBatchAsync(checks, cancellationToken);
-            }
-
-            // Open mode: standard RBAC fallback — tenant accepts the risk
-            _logger.LogInformation("BYO Cerbos failure_mode=open; using standard FallbackAuthorizationService");
-            return await _localProvider.IsAllowedBatchAsync(checks, cancellationToken);
+            // Never fall back to instance PDP or standard local RBAC; tenant policies might be stricter.
+            _localProvider.ActivateSafeMode();
+            return await _localProvider.AuthorizeBatchAsync(checks, cancellationToken);
         }
     }
 
@@ -602,7 +540,7 @@ public sealed class RuntimeAuthorizationProvider : IAuthorizationProvider, IAuth
         return mode == "cerbos" ? _cerbosProvider : _localProvider;
     }
 
-    private static IReadOnlyList<int> GetHandlerOwnedLocalCheckIndexes(IReadOnlyList<AuthorizationCheck> checks)
+    private static IReadOnlyList<int> GetHandlerOwnedLocalCheckIndexes(IReadOnlyList<AuthorizationRequest> checks)
     {
         var indexes = new List<int>();
         for (var i = 0; i < checks.Count; i++)
@@ -614,7 +552,7 @@ public sealed class RuntimeAuthorizationProvider : IAuthorizationProvider, IAuth
         return indexes;
     }
 
-    private static bool IsHandlerOwnedLocalCheck(AuthorizationCheck check)
+    private static bool IsHandlerOwnedLocalCheck(AuthorizationRequest check)
     {
         return check.ResourceKind == ResourceKinds.AiConversation
             || IsHandlerOwnedUserProfileUpdateCheck(check)
@@ -624,21 +562,21 @@ public sealed class RuntimeAuthorizationProvider : IAuthorizationProvider, IAuth
             || IsHandlerOwnedStorageUploadSessionCheck(check);
     }
 
-    private static bool IsHandlerOwnedUserProfileUpdateCheck(AuthorizationCheck check)
+    private static bool IsHandlerOwnedUserProfileUpdateCheck(AuthorizationRequest check)
     {
         return check.ResourceKind == ResourceKinds.User
             && check.Action == AuthorizationActions.Update
             && Guid.TryParse(check.ResourceId, out _);
     }
 
-    private static bool IsHandlerOwnedEventCreateCheck(AuthorizationCheck check)
+    private static bool IsHandlerOwnedEventCreateCheck(AuthorizationRequest check)
     {
         return check.ResourceKind == ResourceKinds.Event
             && check.Action == AuthorizationActions.Create
             && string.Equals(check.ResourceId, "create", StringComparison.Ordinal);
     }
 
-    private static bool IsHandlerOwnedOrganizationCreateCheck(AuthorizationCheck check)
+    private static bool IsHandlerOwnedOrganizationCreateCheck(AuthorizationRequest check)
     {
         return check.ResourceKind == ResourceKinds.Organization
             && check.Action == AuthorizationActions.Create
@@ -646,14 +584,14 @@ public sealed class RuntimeAuthorizationProvider : IAuthorizationProvider, IAuth
             && HasAuthorizationPhase(check, CreateOrganizationCommand.PreCreateAuthorizationPhase);
     }
 
-    private static bool IsHandlerOwnedEventSessionPreCreateCheck(AuthorizationCheck check)
+    private static bool IsHandlerOwnedEventSessionPreCreateCheck(AuthorizationRequest check)
     {
         return check.ResourceKind == ResourceKinds.EventSession
             && check.Action == AuthorizationActions.Create
             && HasAuthorizationPhase(check, AuthorizationPhases.PreCreate);
     }
 
-    private static bool IsHandlerOwnedStorageUploadSessionCheck(AuthorizationCheck check)
+    private static bool IsHandlerOwnedStorageUploadSessionCheck(AuthorizationRequest check)
     {
         return check.ResourceKind == ResourceKinds.StorageObject
             && check.Action == AuthorizationActions.Create
@@ -661,36 +599,38 @@ public sealed class RuntimeAuthorizationProvider : IAuthorizationProvider, IAuth
                 || Guid.TryParse(check.ResourceId, out _));
     }
 
-    private static bool HasAuthorizationPhase(AuthorizationCheck check, string phase)
+    private static bool HasAuthorizationPhase(AuthorizationRequest check, string phase)
     {
         return check.ResourceAttributes?.TryGetValue("authorizationPhase", out var value) == true
             && string.Equals(value?.ToString(), phase, StringComparison.Ordinal);
     }
 
-    private static bool UsesSettingAuthorization(IReadOnlyList<AuthorizationCheck> checks)
+    private static bool UsesSettingAuthorization(IReadOnlyList<AuthorizationRequest> checks)
     {
         return checks.Count > 0
             && checks.All(check => check.ResourceKind is ResourceKinds.InstanceSetting or ResourceKinds.TenantSetting);
     }
 
     private sealed record SupportAccessBoundaryResult(
-        IReadOnlyList<AuthorizationCheck> EffectiveChecks,
+        IReadOnlyList<AuthorizationRequest> EffectiveChecks,
         IReadOnlyList<int> OriginalIndexes,
-        bool[] Results)
+        AuthorizationDecision[] Results)
     {
-        public static SupportAccessBoundaryResult PassThrough(IReadOnlyList<AuthorizationCheck> checks)
+        public static SupportAccessBoundaryResult PassThrough(IReadOnlyList<AuthorizationRequest> checks)
         {
             return new SupportAccessBoundaryResult(
                 checks,
                 Enumerable.Range(0, checks.Count).ToArray(),
-                new bool[checks.Count]);
+                Enumerable.Repeat(AuthorizationDecision.Deny(AuthorizationProviderMetadata.Runtime), checks.Count).ToArray());
         }
 
-        public IReadOnlyList<bool> Complete(IReadOnlyList<bool> evaluatedResults)
+        public IReadOnlyList<AuthorizationDecision> Complete(IReadOnlyList<AuthorizationDecision> evaluatedResults)
         {
             for (var i = 0; i < OriginalIndexes.Count; i++)
             {
-                Results[OriginalIndexes[i]] = i < evaluatedResults.Count && evaluatedResults[i];
+                Results[OriginalIndexes[i]] = i < evaluatedResults.Count
+                    ? evaluatedResults[i]
+                    : AuthorizationDecision.Deny(AuthorizationProviderMetadata.Runtime, AuthorizationDecisionReasonCodes.ProviderError);
             }
 
             return Results;

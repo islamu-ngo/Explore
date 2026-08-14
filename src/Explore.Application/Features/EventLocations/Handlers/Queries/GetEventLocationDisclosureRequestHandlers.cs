@@ -212,7 +212,7 @@ internal static class EventLocationManagementProjection
         Event authorizationTarget)
     {
         var descriptor = ResourceDescriptors.EventAuthorizationTarget;
-        var updateAuthorization = new AuthorizationCheck(
+        var updateAuthorization = new AuthorizationRequest(
             descriptor.Kind,
             descriptor.GetResourceId(authorizationTarget),
             AuthorizationActions.Update,

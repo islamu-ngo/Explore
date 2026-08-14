@@ -117,12 +117,15 @@ public sealed class ProposeAiToolActionCommandHandler(
             return false;
         }
 
-        return await authorizationProvider.IsAllowedAsync(
-            definition.RequiredAuthorization.ResourceKind,
-            authorizationContext.Value.ResourceId,
-            definition.RequiredAuthorization.Action,
-            authorizationContext.Value.ResourceAttributes,
+        var decision = await authorizationProvider.AuthorizeAsync(
+            new AuthorizationRequest(
+                AuthorizationCapabilityCatalog.Require(
+                    definition.RequiredAuthorization.ResourceKind,
+                    definition.RequiredAuthorization.Action),
+                authorizationContext.Value.ResourceId,
+                ResourceAttributes: new Dictionary<string, object>(authorizationContext.Value.ResourceAttributes)),
             cancellationToken);
+        return decision.IsAllowed;
     }
 
     private async Task<(string ResourceId, IDictionary<string, object> ResourceAttributes)?> BuildAuthorizationContextAsync(

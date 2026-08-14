@@ -170,10 +170,10 @@ public sealed class WebhookPortalHttpContainmentTests
                 Arg.Any<CancellationToken>())
             .Returns(true);
         authorizationProvider.IsAllowedBatchAsync(
-                Arg.Any<IReadOnlyList<AuthorizationCheck>>(),
+                Arg.Any<IReadOnlyList<AuthorizationRequest>>(),
                 Arg.Any<CancellationToken>())
             .Returns(call => Task.FromResult<IReadOnlyList<bool>>(
-                call.ArgAt<IReadOnlyList<AuthorizationCheck>>(0).Select(_ => true).ToArray()));
+                call.ArgAt<IReadOnlyList<AuthorizationRequest>>(0).Select(_ => true).ToArray()));
 
         var factory = new PortalFactory(svixClient, auditWriter)
         {

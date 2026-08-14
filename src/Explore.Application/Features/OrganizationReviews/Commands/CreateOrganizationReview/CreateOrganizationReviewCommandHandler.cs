@@ -28,8 +28,11 @@ public class CreateOrganizationReviewCommandHandler : IRequestHandler<CreateOrga
         var response = new BaseCommandResponse<Guid>();
         var organizationReview = _mapper.Map<OrganizationReview>(request.CreateOrganizationReviewDto);
 
+        organizationReview.UserId = request.ReviewerUserId;
         organizationReview.CreatedAt = DateTime.UtcNow;
         organizationReview.UpdatedAt = DateTime.UtcNow;
+        organizationReview.CreatedBy = request.ReviewerUserId;
+        organizationReview.UpdatedBy = request.ReviewerUserId;
 
         // Set TenantId from the request context
         organizationReview.TenantId = _tenantContext.TenantId;

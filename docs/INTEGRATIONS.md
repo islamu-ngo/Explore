@@ -32,6 +32,8 @@ Outgoing product webhooks use `Local`, `Svix`, `Composite`, `DryRun`, or `Disabl
 
 These routes continue to work when outgoing webhooks are `Disabled`, `Local`, `Svix`, `Composite`, or `DryRun`.
 
+Stripe Connect account readiness uses `POST /api/integrations/stripe/connect` through the same durable incoming-message boundary. It verifies the signed raw body, applies only monotonic readiness evidence to one historical connection owner, and never performs checkout, capture, refund, dispute, or payout processing. Hosted onboarding is initiated from the authenticated ticketing resource, not this callback route; browser contracts contain no provider, platform, account, tenant, actor, connection, lineage, or evidence identifiers.
+
 Coop effect inspection and generation-checked dead-letter redrive are authenticated administrative operations under `/api/admin/incoming-webhook-effects`. Clients must use server-authored HAL affordances and must not receive callback bytes, hashes, signed provider decision IDs, or raw provider errors.
 
 ## Verification Rules

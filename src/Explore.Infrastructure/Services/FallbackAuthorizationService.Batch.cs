@@ -4,6 +4,7 @@
 using Explore.Application.Authorization;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Services;
+using Explore.Application.Features.StorageObjects.Requests.Commands;
 using Explore.Domain;
 using Explore.Domain.Constants;
 
@@ -11,8 +12,8 @@ namespace Explore.Infrastructure.Services;
 
 public partial class FallbackAuthorizationService
 {
-    public async Task<IReadOnlyList<bool>> IsAllowedBatchAsync(
-        IReadOnlyList<AuthorizationCheck> checks,
+    public async Task<IReadOnlyList<AuthorizationDecision>> AuthorizeBatchAsync(
+        IReadOnlyList<AuthorizationRequest> checks,
         CancellationToken cancellationToken = default)
     {
         if (checks.Count == 0)
@@ -20,16 +21,10 @@ public partial class FallbackAuthorizationService
 
         if (checks.Count <= 2 || _machinePrincipalAccessor.IsMachineCaller)
         {
-            var smallResults = new bool[checks.Count];
+            var smallResults = new AuthorizationDecision[checks.Count];
             for (var i = 0; i < checks.Count; i++)
             {
-                var check = checks[i];
-                smallResults[i] = await IsAllowedAsync(
-                    check.ResourceKind,
-                    check.ResourceId,
-                    check.Action,
-                    check.ResourceAttributes is null ? null : new Dictionary<string, object>(check.ResourceAttributes),
-                    cancellationToken);
+                smallResults[i] = await AuthorizeAsync(checks[i], cancellationToken);
             }
 
             return smallResults;
@@ -38,14 +33,17 @@ public partial class FallbackAuthorizationService
         var profile = await ResolveAuthorityProfileAsync(cancellationToken);
         var eventAuthority = await ResolveBatchEventAuthorityAsync(profile, checks, cancellationToken);
 
-        var results = new bool[checks.Count];
+        var results = new AuthorizationDecision[checks.Count];
         for (var i = 0; i < checks.Count; i++)
         {
             var check = checks[i];
             var attributes = check.ResourceAttributes is null
                 ? null
                 : new Dictionary<string, object>(check.ResourceAttributes);
-            results[i] = EvaluateWithProfile(profile, eventAuthority, check.ResourceKind, check.ResourceId, check.Action, attributes);
+            var allowed = EvaluateWithProfile(profile, eventAuthority, check.ResourceKind, check.ResourceId, check.Action, attributes, check.Facts);
+            results[i] = allowed
+                ? AuthorizationDecision.Allow(AuthorizationProviderMetadata.Local)
+                : AuthorizationDecision.Deny(AuthorizationProviderMetadata.Local);
         }
 
         return results;
@@ -115,7 +113,8 @@ public partial class FallbackAuthorizationService
         string resourceKind,
         string resourceId,
         string action,
-        IDictionary<string, object>? resourceAttributes)
+        IDictionary<string, object>? resourceAttributes,
+        IAuthorizationFacts? facts)
     {
         if (!IsSupportedEventResourceAction(resourceKind, action))
         {
@@ -123,10 +122,16 @@ public partial class FallbackAuthorizationService
             return false;
         }
 
-        if (profile.IsInstanceAdmin && !RequiresDirectEventAuthority(resourceKind, action))
+        if (profile.IsInstanceAdmin && IsInstanceAdminFallbackAllowed(resourceKind, action))
         {
             LogDecision("allow", "is_instance_admin", resourceKind, resourceId, action);
             return true;
+        }
+
+        if (profile.IsInstanceAdmin && IsInstanceAdminFallbackDenied(resourceKind, action))
+        {
+            LogDecision("deny", "is_instance_admin_shortcut_denied", resourceKind, resourceId, action);
+            return false;
         }
 
         if (SafeMode && !profile.IsInstanceAdmin)
@@ -190,7 +195,8 @@ public partial class FallbackAuthorizationService
                 resourceAttributes),
             "islamuevent_event_contact_share_consent" => action is "viewsharedcontacts" or "exportsharedcontacts"
                 && IsAdminForOrgScope(profile, resourceAttributes, resourceId),
-            "islamuevent_storage_object" => EvaluateStorageObjectWithProfile(profile, resourceId, action, resourceAttributes),
+            "islamuevent_storage_object"
+                => EvaluateStorageObjectWithProfile(profile, resourceId, action, resourceAttributes, facts),
             "islamuevent_user" => EvaluateUserWithProfile(profile, resourceId, action),
             "islamuevent_notification" => true,
             "islamuevent_actor_subscription" => true,
@@ -386,10 +392,11 @@ public partial class FallbackAuthorizationService
         AuthorityProfile profile,
         string resourceId,
         string action,
-        IDictionary<string, object>? resourceAttributes)
+        IDictionary<string, object>? resourceAttributes,
+        IAuthorizationFacts? facts)
     {
         if (action == AuthorizationActions.StorageObjects.Create)
-            return true;
+            return CanCreateStorageUploadWithProfile(profile, resourceId, facts);
 
         if (action is AuthorizationActions.StorageObjects.Download
             or AuthorizationActions.StorageObjects.PresignedDownload)
@@ -399,6 +406,26 @@ public partial class FallbackAuthorizationService
         }
 
         return EvaluateTenantScopedWithProfile(profile, resourceAttributes);
+    }
+
+    private static bool CanCreateStorageUploadWithProfile(
+        AuthorityProfile profile,
+        string resourceId,
+        IAuthorizationFacts? facts)
+    {
+        if (facts is not StorageUploadIntentFacts storageFacts ||
+            !string.Equals(resourceId, nameof(CreateStorageUploadSessionCommand), StringComparison.Ordinal) ||
+            !storageFacts.IsOrganizationTenantUpload ||
+            storageFacts.TenantId == Guid.Empty ||
+            storageFacts.OwningResourceId == Guid.Empty ||
+            storageFacts.OwningOrganizationId is not { } organizationId ||
+            storageFacts.SubjectUserId != profile.UserId ||
+            storageFacts.TenantId != profile.TenantId)
+        {
+            return false;
+        }
+
+        return profile.AdminOrgIds.Contains(organizationId);
     }
 
     private static bool CanReadStorageObjectContentWithProfile(
@@ -514,7 +541,7 @@ public partial class FallbackAuthorizationService
 
     private async Task<EventAuthoritySnapshot?> ResolveBatchEventAuthorityAsync(
         AuthorityProfile profile,
-        IReadOnlyList<AuthorizationCheck> checks,
+        IReadOnlyList<AuthorizationRequest> checks,
         CancellationToken cancellationToken)
     {
         if (!profile.UserId.HasValue)

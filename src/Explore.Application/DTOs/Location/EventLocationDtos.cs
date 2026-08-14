@@ -141,7 +141,7 @@ public sealed record EventLocationManagementDto
         bool needsPrivacyReview,
         int policyVersion,
         Guid concurrencyStamp,
-        AuthorizationCheck? updateAuthorization)
+        AuthorizationRequest? updateAuthorization)
     {
         EventLocationId = eventLocationId;
         LocationId = locationId;
@@ -170,7 +170,7 @@ public sealed record EventLocationManagementDto
     public Guid ConcurrencyStamp { get; }
 
     [JsonIgnore]
-    public AuthorizationCheck? UpdateAuthorization { get; }
+    public AuthorizationRequest? UpdateAuthorization { get; }
 
     public static EventLocationManagementDto FromDisclosureResult(
         EventLocationDisclosureResult result,
@@ -192,7 +192,7 @@ public sealed record EventLocationManagementDto
         bool needsPrivacyReview,
         int policyVersion,
         Guid concurrencyStamp,
-        AuthorizationCheck? updateAuthorization)
+        AuthorizationRequest? updateAuthorization)
     {
         ArgumentNullException.ThrowIfNull(result);
         ArgumentNullException.ThrowIfNull(policy);

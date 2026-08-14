@@ -1,8 +1,8 @@
 // ABOUTME: Handler for UpdateLocalizationGovernanceCommand — validates, upserts 9 governance keys, invalidates resolver cache.
 // ABOUTME: Validator is manually instantiated per repo convention (no DI for validators).
 
+using Explore.Application.Contracts.Identity;
 using Explore.Application.Contracts.Infrastructure;
-using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.Localization;
 using Explore.Application.DTOs.Localization.Validators;
 using Explore.Application.Features.Localization.Requests.Commands;
@@ -17,22 +17,22 @@ namespace Explore.Application.Features.Localization.Handlers.Commands;
 public class UpdateLocalizationGovernanceCommandHandler
     : IRequestHandler<UpdateLocalizationGovernanceCommand, BaseCommandResponse<Guid>>
 {
+    private readonly IAdminContext _adminContext;
     private readonly SettingUpsertService _upsertService;
     private readonly ITranslationConfigResolver _configResolver;
-    private readonly ICurrentUserService _currentUserService;
     private readonly ITenantContext _tenantContext;
     private readonly ILogger<UpdateLocalizationGovernanceCommandHandler> _logger;
 
     public UpdateLocalizationGovernanceCommandHandler(
+        IAdminContext adminContext,
         SettingUpsertService upsertService,
         ITranslationConfigResolver configResolver,
-        ICurrentUserService currentUserService,
         ITenantContext tenantContext,
         ILogger<UpdateLocalizationGovernanceCommandHandler> logger)
     {
+        _adminContext = adminContext;
         _upsertService = upsertService;
         _configResolver = configResolver;
-        _currentUserService = currentUserService;
         _tenantContext = tenantContext;
         _logger = logger;
     }
@@ -42,6 +42,13 @@ public class UpdateLocalizationGovernanceCommandHandler
         CancellationToken cancellationToken)
     {
         var response = new BaseCommandResponse<Guid>();
+        var actor = await _adminContext.ResolveUserIdAsync(cancellationToken);
+        if (!actor.HasValue || !await _adminContext.IsInstanceAdminAsync(actor.Value, cancellationToken))
+        {
+            response.Success = false;
+            response.Message = "Instance administrator authority is required to update localization governance.";
+            return response;
+        }
 
         var validator = new UpdateLocalizationGovernanceDtoValidator();
         var validation = await validator.ValidateAsync(request.Dto, cancellationToken);
@@ -53,7 +60,6 @@ public class UpdateLocalizationGovernanceCommandHandler
             return response;
         }
 
-        var actor = _currentUserService.UserId;
         var dto = request.Dto;
         if (dto.Tms is { } tms)
         {

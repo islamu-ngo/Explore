@@ -124,7 +124,7 @@ public sealed class GroupMemberHateoasTests
         await Assert.That(item.Links.ContainsKey(LinkRelations.Delete)).IsFalse();
     }
 
-    private static bool IsGroupMemberActionForGroup(AuthorizationCheck check, Guid groupId)
+    private static bool IsGroupMemberActionForGroup(AuthorizationRequest check, Guid groupId)
     {
         if (check.ResourceKind != ResourceKinds.GroupMember)
         {
@@ -140,7 +140,7 @@ public sealed class GroupMemberHateoasTests
             || (check.ResourceAttributes?.TryGetValue("groupId", out var value) == true && value?.ToString() == groupId.ToString());
     }
 
-    private static TestAssembler CreateAssembler(Func<AuthorizationCheck, bool> predicate)
+    private static TestAssembler CreateAssembler(Func<AuthorizationRequest, bool> predicate)
     {
         var authorizationProvider = new StubAuthorizationProvider { CheckPredicate = predicate };
         var evaluator = new HateoasAuthorizationEvaluator(

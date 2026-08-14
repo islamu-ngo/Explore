@@ -1,6 +1,7 @@
 // ABOUTME: Unit tests for UpdateLocalizationGovernanceCommandHandler — validation, persistence, cache invalidation.
 // ABOUTME: Verifies all 9 governance keys are upserted and validation rejects bad inputs.
 
+using Explore.Application.Contracts.Identity;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
@@ -17,29 +18,69 @@ namespace Event.Application.UnitTests.Infrastructure.Localization;
 
 public class UpdateLocalizationGovernanceCommandHandlerTests
 {
+    private static readonly Guid ActorId = Guid.Parse("22222222-2222-2222-2222-222222222222");
+
+    private readonly IAdminContext _adminContext;
     private readonly ISystemSettingRepository _settingRepository;
     private readonly ITranslationConfigResolver _configResolver;
-    private readonly ICurrentUserService _currentUserService;
     private readonly ITenantContext _tenantContext;
     private readonly UpdateLocalizationGovernanceCommandHandler _handler;
 
     public UpdateLocalizationGovernanceCommandHandlerTests()
     {
+        _adminContext = Substitute.For<IAdminContext>();
+        _adminContext.ResolveUserIdAsync(Arg.Any<CancellationToken>()).Returns(ActorId);
+        _adminContext.IsInstanceAdminAsync(ActorId, Arg.Any<CancellationToken>()).Returns(true);
         _settingRepository = Substitute.For<ISystemSettingRepository>();
         var mediator = Substitute.For<IMediator>();
         var upsertService = new SettingUpsertService(_settingRepository, mediator);
         _configResolver = Substitute.For<ITranslationConfigResolver>();
-        _currentUserService = Substitute.For<ICurrentUserService>();
-        _currentUserService.UserId.Returns(Guid.NewGuid());
         _tenantContext = Substitute.For<ITenantContext>();
         _tenantContext.TenantId.Returns(Guid.NewGuid());
 
         _handler = new UpdateLocalizationGovernanceCommandHandler(
+            _adminContext,
             upsertService,
             _configResolver,
-            _currentUserService,
             _tenantContext,
             Substitute.For<ILogger<UpdateLocalizationGovernanceCommandHandler>>());
+    }
+
+    [Test]
+    public async Task Handle_WhenUserIsNotInstanceAdmin_DeniesBeforeUpsertOrCacheInvalidation()
+    {
+        _adminContext.IsInstanceAdminAsync(ActorId, Arg.Any<CancellationToken>()).Returns(false);
+        var command = new UpdateLocalizationGovernanceCommand { Dto = BuildValidTolgeeDto() };
+
+        var result = await _handler.Handle(command, CancellationToken.None);
+
+        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.Message).Contains("Instance administrator");
+        await _settingRepository.DidNotReceive().UpsertAsync(
+            Arg.Any<Explore.Domain.SystemSetting>(),
+            Arg.Any<CancellationToken>());
+        _configResolver.DidNotReceive().InvalidateCache(Arg.Any<Guid?>());
+    }
+
+    [Test]
+    public async Task Handle_WhenCancelledDuringAdminResolution_PropagatesCancellationBeforeUpsertOrCacheInvalidation()
+    {
+        using var source = new CancellationTokenSource();
+        await source.CancelAsync();
+        _adminContext.ResolveUserIdAsync(source.Token)
+            .Returns(Task.FromCanceled<Guid?>(source.Token));
+        var command = new UpdateLocalizationGovernanceCommand { Dto = BuildValidTolgeeDto() };
+
+        var exception = await Assert.ThrowsAsync<OperationCanceledException>(() =>
+            _handler.Handle(command, source.Token));
+
+        await Assert.That(exception.CancellationToken).IsEqualTo(source.Token);
+        await _adminContext.Received(1).ResolveUserIdAsync(source.Token);
+        await _adminContext.DidNotReceive().IsInstanceAdminAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+        await _settingRepository.DidNotReceive().UpsertAsync(
+            Arg.Any<Explore.Domain.SystemSetting>(),
+            Arg.Any<CancellationToken>());
+        _configResolver.DidNotReceive().InvalidateCache(Arg.Any<Guid?>());
     }
 
     [Test]

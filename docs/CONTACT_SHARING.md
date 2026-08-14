@@ -60,6 +60,7 @@ Organization read and export requests use application resource authorization for
 - Export writes `EventContactShareExport` plus per-consent `EventContactShareExportItem` audit evidence with purpose, policy version, included fields, row count, content hash, exporter, and snapshots.
 - Withdrawal changes future application reads by moving the consent to withdrawn status.
 - Withdrawal is not a permanent-delete operation and does not prove removal from external mailing lists.
+- Paid-event merchant, refund, and support disclosures are catalog publication data, not contact-sharing consent or a basis to export attendee contact details.
 
 Do not document legal or privacy guarantees beyond these source-backed behaviors.
 
