@@ -17,6 +17,21 @@ The current release model is manual semantic-version tags plus manually authored
 
 Do not add or require `.github/workflows/release.yml`, Release Drafter, or automatic semantic-release behavior until the release evidence bundle format is stable and the automation can attach or link durable evidence without relying only on expiring GitHub Actions artifacts. Conventional Commits remain the preferred commit-message style, but they do not automatically publish or version releases today.
 
+## Prospective Governed Release Contract
+
+The approved future release architecture is documented in
+[ADR-025](adr/ADR-025-provider-neutral-release-governance.md),
+[RELEASE_POLICY.md](RELEASE_POLICY.md), and [RELEASE_RUNBOOK.md](RELEASE_RUNBOOK.md).
+It is not an active automation path. Until its trusted bundle, release-engine
+verification, signer policy, protected provider controls, and advisory dry run are
+implemented and accepted, operators MUST follow this manual checklist and MUST NOT
+claim automated release approval.
+
+After activation, a release line MUST prepare and validate one final commit `B`.
+`B` MUST be the release-line head, signed annotated tag target, candidate evidence
+commit, and stable `main` target when that tag is the newest stable release. The
+operator still approves the release; tooling only verifies and records evidence.
+
 ## Release Evidence Bundle
 
 Before publishing a GitHub Release, download the retained CI/CD artifacts listed in this checklist into a local evidence directory and generate the durable bundle:

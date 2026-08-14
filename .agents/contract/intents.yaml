@@ -336,25 +336,57 @@ intents:
       - .agents/rules/ip-clean-room.md
     paths_in_scope:
       - ".github/**"
+      - ".agents/contract/intents.yaml"
+      - ".gitignore"
+      - ".agents/skills/conventional-commit/SKILL.md"
+      - ".ci/README.md"
+      - ".ci/providers/**"
+      - ".ci/release/**"
+      - ".ci/scripts/generate-release-evidence-bundle.cs"
+      - ".ci/scripts/validate-dependency-license-policy.cs"
+      - ".ci/scripts/write-artifact-checksums.cs"
       - "src/Explore.API/Dockerfile"
       - "src/Explore.Blazor/Dockerfile"
       - "Directory.Packages.props"
       - "global.json"
+      - "Explore.slnx"
+      - "eng/release/**"
       - "docs/CI_CD_GOVERNANCE.md"
       - "docs/OPERATIONS.md"
       - "docs/TESTING.md"
       - "docs/RELEASE_CHECKLIST.md"
       - "docs/CONTRIBUTING.md"
+      - "docs/index.md"
+      - "docs/RELEASE_POLICY.md"
+      - "docs/RELEASE_RUNBOOK.md"
+      - "docs/adr/ADR-025-provider-neutral-release-governance.md"
+      - "docs/legal/dependencies/git-cliff.md"
+      - "docs/releases/**"
+      - "docs/semantic_versioning/**"
+      - "dev/report/git-cliff-changelog-automation-report.md"
+      - "dev/active/git-cliff-release-engineering/git-cliff-dependency-handoff.md"
+      - "tests/Event.Architecture.Tests/**"
     minimum_tests:
-      - Event.Architecture.Tests
+      - "Documentation-only tasks: parse .agents/contract/intents.yaml and run the release-governance manual assertions."
+      - "Phase 1 completion: dotnet build --configuration Release --verbosity quiet"
+      - "Phase 1 completion: dotnet test --project tests/Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet"
     docs_to_update:
       - docs/CI_CD_GOVERNANCE.md
       - docs/OPERATIONS.md
       - docs/RELEASE_CHECKLIST.md
+      - docs/RELEASE_POLICY.md
+      - docs/RELEASE_RUNBOOK.md
     unique_acceptance:
       - "External GitHub Actions remain pinned to full commit SHAs with same-line version comments"
       - "Required checks are always-present or explicitly documented as path-conditional"
       - "Deployment changes retain protected environment approval and release evidence"
+      - "Release-engine work is limited to governed release lines; develop receives no generated Unreleased changelog writes."
+      - "Canonical release notes and evidence are provider-neutral; forge metadata may only enrich a noncanonical publication view."
+      - "ISLAMU-owned policy validates inclusion, impacts, versions, ranges, and trust; git-cliff renders normalized context only."
+      - "The release branch head, final preparation commit B, candidate attestation, signed annotated tag target, and stable-main target are the same full Git object."
+      - "release.yaml and summary.md are the only human-owned release inputs; release-notes.md is fully generated."
+      - "Authoritative attestation uses a previously promoted trusted bundle and SSH-signed annotated tags; deterministic evidence excludes clocks and provider identity."
+      - "Embargoed security details remain outside the public checkout and public artifacts until disclosure is authorized."
     forbidden_without_approval:
       - "Introducing pull_request_target outside a documented metadata-only legal/status workflow threat model"
       - "Granting write-token, package, OIDC, registry, or deployment credentials to fork PR code"

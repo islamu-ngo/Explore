@@ -83,15 +83,37 @@ The `Contributor License Agreement` workflow records v1.0 signatures in `signatu
 
 ### Commit Messages
 
-Use conventional commit format:
+Use conventional commit format. The release engine treats commit text as
+untrusted input and validates it against `eng/release/policy/release-policy.yaml`
+and `eng/release/policy/scope-registry.yaml`:
 
 ```
 type(scope): description
 
-feat(api): add tenant footer endpoints
-fix(blazor): correct dialog close behavior
-refactor(persistence): extract specification builder
-docs(architecture): add outbox pattern section
+feat(registration): let attendees correct registration details
+fix(events): keep draft events private until organizers publish them
+ci(release): verify promoted release tooling
+docs(documentation): clarify operator release checks
+```
+
+Use public product scopes such as `events`, `registration`, `ticketing`,
+`discovery`, `notifications`, `privacy`, `access`, `storage`, `onboarding`,
+`federation`, `webhooks`, `localization`, `accessibility`, and `self-hosting`
+for release-visible outcomes. Use engineering scopes such as `ci`,
+`dependencies`, `architecture`, `database`, `observability`, `documentation`,
+`release`, `testing`, and `build` for valid internal commits that are omitted
+from public notes by default.
+
+Breaking commits must include both the `!` marker and a non-empty
+`BREAKING CHANGE:` footer. Nonbreaking commits may be omitted explicitly only
+with both `Changelog: skip` and a non-empty `Changelog-Reason:`; breaking
+changes cannot be skipped. The release preparation commit is:
+
+```text
+chore(release): prepare v1.1.0
+
+Changelog: skip
+Changelog-Reason: release metadata commit
 ```
 
 ## Required Validation Before PR
@@ -205,14 +227,14 @@ When DTO contracts change, sequence matters to avoid false compile failures.
 
 1. Update DTOs, validators, mappings, and handlers in API/Application layers
 2. Build API: `dotnet build --project Explore.API/Explore.API.csproj --configuration Release --verbosity quiet`
-3. Confirm the API build refreshed `schemas/openapi.json` through build-time OpenAPI generation
+3. Confirm the API build refreshed `schemas/openapi_islamu-event.json` through build-time OpenAPI generation
 4. Build Blazor client: `dotnet build --project Explore.Blazor.Client/Explore.Blazor.Client.csproj --configuration Release --verbosity quiet`
 5. Update Blazor services/components that use the generated client types
 6. Rebuild and rerun all tests
 
 ### Why This Sequence
 
-The Blazor client auto-generates API types from `schemas/openapi.json` via NSwag. If UI code is changed before client regeneration, you get false compile failures because generated types still reflect the old API contract.
+The Blazor client auto-generates API types from `schemas/openapi_islamu-event.json` via NSwag. If UI code is changed before client regeneration, you get false compile failures because generated types still reflect the old API contract.
 
 ## TDD Workflow
 

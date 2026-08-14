@@ -42,7 +42,7 @@ all work for one product outcome into one coherent commit.
 2. Scope uses the narrowest existing canonical product capability and never names a code layer, project, file type, or ticket ID.
 3. One commit represents one releasable outcome and includes all directly supporting code, tests, documentation, migrations, and generated artifacts across layers when they share that outcome.
 4. Descriptions use lowercase imperative language, lead with the benefit or restored behavior, avoid implementation mechanics and hype, and have no trailing period.
-5. Every breaking commit uses both `!` after its type or scope and a `BREAKING CHANGE:` footer that states the required reader action.
+5. Every breaking commit uses both `!` after its type or scope and a non-empty `BREAKING CHANGE:` footer that states the required reader action; breaking changes are always release-visible and cannot be skipped.
 
 ## Top 5 Anti-Patterns
 
@@ -61,10 +61,11 @@ type(scope): benefit-led release note
 
 [optional user-facing context: what changed and why]
 
-[optional BREAKING CHANGE, Refs/Closes, or co-author footer]
+[optional BREAKING CHANGE, Change-Id, Refs/Closes, or co-author footer]
 ```
 
-Choose the type from the released outcome, not the files changed:
+Choose the type from the released outcome, not the files changed. The release
+engine accepts only these types:
 
 | Type | Changelog meaning |
 |---|---|
@@ -92,6 +93,31 @@ accessibility   self-hosting
 Reuse the narrowest matching scope. Introduce a new product-capability scope
 only when none fits; do not create aliases or layer-qualified variants such as
 `api/registration`, `blazor/events`, or `persistence/privacy`.
+
+Engineering-only commits use one of these valid internal scopes and are omitted
+from canonical public notes unless they are breaking:
+
+```text
+ci              dependencies    architecture    database
+observability   documentation   release         testing       build
+```
+
+To intentionally omit a nonbreaking commit that would otherwise be visible, add
+both trailers exactly:
+
+```text
+Changelog: skip
+Changelog-Reason: release metadata commit
+```
+
+`Changelog: skip` without a non-empty `Changelog-Reason` is invalid. A
+`Changelog-Reason` without `Changelog: skip` is invalid. Breaking changes cannot
+use `Changelog: skip`.
+
+Release fragments link to the current commit with an optional terminal
+`Change-Id: CHG-YYYY-NNNN` trailer. Use it only when a reviewed public change
+fragment exists for that change; malformed or duplicate `Change-Id` trailers fail
+release policy.
 
 Prefer outcome-led subjects:
 
@@ -151,6 +177,15 @@ feat(registration)!: simplify attendee check-in credentials
 
 BREAKING CHANGE: Check-in integrations must send `credential` instead of
 `ticketCode` after upgrading.
+```
+
+Release preparation commits use the governed skip contract:
+
+```text
+chore(release): prepare v1.1.0
+
+Changelog: skip
+Changelog-Reason: release metadata commit
 ```
 
 The subject must remain understandable when the changelog tool omits the body.

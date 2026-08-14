@@ -1,0 +1,43 @@
+{
+  "schemaVersion": 1,
+  "release": {
+    "version": "1.2.0-beta.2",
+    "line": "v1.2",
+    "releaseDate": "2026-08-14",
+    "baseStableTag": "v1.1.0",
+    "previousPublishedTag": "v1.2.0-beta.1",
+    "minimumBump": "minor",
+    "channel": "beta",
+    "advancesMain": false
+  },
+  "changes": [
+    {
+      "displayId": "ffffffffffff",
+      "oid": "ffffffffffffffffffffffffffffffffffffffff",
+      "type": "feat",
+      "scope": "discovery",
+      "title": "show richer event filters",
+      "summary": "show richer event filters",
+      "breaking": false,
+      "backport": false
+    }
+  ],
+  "evidence": {
+    "baseStableOid": "dddddddddddddddddddddddddddddddddddddddd",
+    "previousPublishedOid": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+    "objects": [
+      {
+        "displayId": "dddddddddddd",
+        "oid": "dddddddddddddddddddddddddddddddddddddddd"
+      },
+      {
+        "displayId": "eeeeeeeeeeee",
+        "oid": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+      },
+      {
+        "displayId": "ffffffffffff",
+        "oid": "ffffffffffffffffffffffffffffffffffffffff"
+      }
+    ]
+  }
+}

@@ -4,12 +4,22 @@
 # Git-Cliff Changelog Automation Report
 
 > **Audience:** Maintainers | Release operators | Contributors | AI agents  
-> **Status:** Proposed; no changelog automation is implemented by this report  
+> **Status:** Historical research and provenance record; superseded as release architecture by [ADR-025](../../docs/adr/ADR-025-provider-neutral-release-governance.md), [RELEASE_POLICY.md](../../docs/RELEASE_POLICY.md), and [RELEASE_RUNBOOK.md](../../docs/RELEASE_RUNBOOK.md). No changelog automation is implemented by this report.
 > **Owner:** Platform/Ops  
 > **Last Verified:** 2026-08-13  
 > **Source Anchors:** local git-cliff documentation snapshot `5963160d7303111a217ee8453189d23a1c87925a`; [Release Checklist](../../docs/RELEASE_CHECKLIST.md); [CI/CD Governance](../../docs/CI_CD_GOVERNANCE.md); [Conventional Commit skill](../../.agents/skills/conventional-commit/SKILL.md); [current semantic-version changelog](../../docs/semantic_versioning/CHANGELOG.md)
 
 ## Purpose
+
+### Authority disposition
+
+This report retains the local documentation inventory, source register, and
+sanitized functional handoff. It is not normative release authority. Where its
+earlier design conflicts with the linked ADR, policy, or runbook—including
+candidate-controlled final tooling, split curated/generated regions, tag-message
+duplication, renderer-owned policy, or a candidate distinct from final commit `B`—the
+linked canonical documents control. No compatibility shim is required because this
+report design has not shipped.
 
 This report defines how ISLAMU Event should use git-cliff to generate high-quality changelogs for governed releases without making GitHub, GitLab, Gitea/Forgejo, Bitbucket, Azure DevOps, or any other forge part of the core release-note contract.
 

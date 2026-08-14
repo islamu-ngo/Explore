@@ -1,0 +1,23 @@
+# ABOUTME: Defines release-engine commit classification rules independent of git-cliff and forge metadata.
+# ABOUTME: Keeps skip, breaking-change, visibility, and input-bound policy in repository-owned data.
+schemaVersion: 1
+maximumCommitMessageBytes: 8192
+releaseVisibleTypes:
+  - feat
+  - fix
+  - perf
+  - revert
+  - docs
+internalTypes:
+  - test
+  - refactor
+  - style
+  - build
+  - ci
+  - chore
+requiredBreakingSignals:
+  bang: true
+  footer: BREAKING CHANGE
+skipTrailer: Changelog
+skipValue: skip
+skipReasonTrailer: Changelog-Reason

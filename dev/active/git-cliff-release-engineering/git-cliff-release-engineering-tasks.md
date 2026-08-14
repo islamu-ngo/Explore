@@ -3,15 +3,16 @@
 
 # Git-Cliff Release Engineering - Task Checklist
 
-Last Updated: 2026-08-13 Europe/Brussels
+Last Updated: 2026-08-14 Europe/Brussels
 
 ## Status Summary
 
-- **Overall status:** Draft; awaiting user review.
-- **Completed:** 0/18 implementation tasks. Phase verification is tracked separately.
-- **Current priority:** Task 1.1 - Re-baseline Release Governance And Contribution Scope.
-- **Next recommended slice:** Complete Tasks 1.1-1.3 as one governed foundation phase, then run the Phase 1 build and architecture tests once.
+- **Overall status:** Active implementation; Phase 1 blocked by unrelated architecture-test failures.
+- **Completed:** 6/18 implementation tasks. Phase verification is tracked separately.
+- **Current priority:** Implement Task 3.1 Git object and release-line validation.
+- **Next recommended slice:** Complete Task 3.1, then harden canonical bytes and untrusted text in Task 3.2.
 - **Known future decision:** Select the first non-GitHub forge before Task 6.1 completes.
+- **Phase-gate exception:** On 2026-08-14 the user explicitly authorized Tasks 2-5 to continue while the Phase 1 architecture checkbox remains blocked by four unrelated shared-worktree failures.
 
 ## Implementation Maintenance Rules
 
@@ -27,21 +28,21 @@ Last Updated: 2026-08-13 Europe/Brussels
 - Do not start the app, browser, Docker, Aspire, Playwright, Chrome DevTools, or live services.
 - Preserve unrelated dirty files. Never restore, delete, stage, or absorb another workstream's changes.
 
-## Phase 1: Governed Foundation And Tool Selection - NOT STARTED
+## Phase 1: Governed Foundation And Tool Selection - IN PROGRESS
 
-- [ ] **1.1 Re-baseline Release Governance And Contribution Scope**
-  - **Files:** existing `.agents/contract/intents.yaml`, `docs/CI_CD_GOVERNANCE.md`, `docs/RELEASE_CHECKLIST.md`, `docs/index.md`, `dev/report/git-cliff-changelog-automation-report.md`; new `docs/adr/ADR-025-provider-neutral-release-governance.md`, `docs/RELEASE_POLICY.md`, `docs/RELEASE_RUNBOOK.md`.
-  - **Acceptance:** Planned paths are permitted; ADR/policy/runbook own distinct stable concerns; the report retains provenance but no conflicting authority; current manual release behavior remains truthful.
+- [x] **1.1 Re-baseline Release Governance And Contribution Scope**
+  - **Files:** existing `.agents/contract/intents.yaml`, `.gitignore`, `docs/CI_CD_GOVERNANCE.md`, `docs/RELEASE_CHECKLIST.md`, `docs/index.md`, `dev/report/git-cliff-changelog-automation-report.md`; new `docs/adr/ADR-025-provider-neutral-release-governance.md`, `docs/RELEASE_POLICY.md`, `docs/RELEASE_RUNBOOK.md`.
+  - **Acceptance:** Planned paths are permitted and `eng/release/**` is not hidden by generic build-output ignores; ADR/policy/runbook own distinct stable concerns; the report retains provenance but no conflicting authority; current manual release behavior remains truthful.
   - **Effort:** M
   - **Dependencies:** None.
 
-- [ ] **1.2 Create The Minimal Release-Engine Project**
+- [x] **1.2 Create The Minimal Release-Engine Project**
   - **Files:** existing `Explore.slnx`; new `eng/release/src/ISLAMU.ReleaseEngineering/**`, `eng/release/tests/ISLAMU.ReleaseEngineering.Tests/**`, project lock files, and `eng/release/README.md`.
   - **Acceptance:** One `net10.0` console project and one TUnit project build without product-project references; `verify-tools` and stable CLI errors are tested; no speculative service/plugin abstractions are added.
   - **Effort:** M
   - **Dependencies:** 1.1.
 
-- [ ] **1.3 Select, Record, And Promote The Git-Cliff Runtime**
+- [x] **1.3 Select, Record, And Promote The Git-Cliff Runtime**
   - **Files:** new `eng/release/toolchain.lock.json`, `docs/legal/dependencies/git-cliff.md`, `dev/active/git-cliff-release-engineering/git-cliff-dependency-handoff.md`; release-engine tool verification code/tests.
   - **Acceptance:** A released capability-complete git-cliff version has exact platform digests/license evidence; the implementation receives a sanitized handoff; wrong binaries fail; repository dependency-license validation passes or blocks explicitly.
   - **Effort:** M
@@ -49,24 +50,24 @@ Last Updated: 2026-08-13 Europe/Brussels
 
 ### Phase 1 Verification - RUN ONCE AFTER ALL PHASE TASKS
 
-- [ ] `dotnet build --configuration Release --verbosity quiet`
+- [x] `dotnet build --configuration Release --verbosity quiet`
 - [ ] `dotnet test --project tests/Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet`
 
-## Phase 2: ISLAMU Policy Engine And Normalized Context - NOT STARTED
+## Phase 2: ISLAMU Policy Engine And Normalized Context - IMPLEMENTATION COMPLETE; BUILD GATE OPEN
 
-- [ ] **2.1 Implement Commit, Scope, And Skip Policy**
+- [x] **2.1 Implement Commit, Scope, And Skip Policy**
   - **Files:** new `eng/release/policy/release-policy.yaml`, `eng/release/policy/scope-registry.yaml`, parser/validator code/tests; existing `.agents/skills/conventional-commit/SKILL.md`, `docs/CONTRIBUTING.md`.
   - **Acceptance:** Public/engineering scopes, release visibility, both breaking signals, explained skips, protected breaking changes, and malformed metadata are deterministic and fixture-proven.
   - **Effort:** L
   - **Dependencies:** 1.2.
 
-- [ ] **2.2 Implement Change Fragments And Release Descriptors**
+- [x] **2.2 Implement Change Fragments And Release Descriptors**
   - **Files:** new typed YAML models/validators/tests; new `docs/releases/README.md`, `docs/releases/changes/README.md`.
   - **Acceptance:** High-impact/grouped changes have append-only fragments linked by `Change-Id`; releases fix line/version/date/range/impact dispositions; mutations, duplicates, missing evidence, and public embargo details fail.
   - **Effort:** L
   - **Dependencies:** 2.1.
 
-- [ ] **2.3 Implement Version, Prerelease, Backport, And Context Policy**
+- [x] **2.3 Implement Version, Prerelease, Backport, And Context Policy**
   - **Files:** new SemVer/range/context code and `release-context.v1.json` fixtures under `eng/release/`.
   - **Acceptance:** ISLAMU independently validates minimum bump, release line, cumulative prereleases, contiguous counters, stable promotion, backport identity, full OIDs, and collision-safe display IDs; context contains no identities/raw bodies.
   - **Effort:** L
@@ -75,7 +76,7 @@ Last Updated: 2026-08-13 Europe/Brussels
 ### Phase 2 Verification - RUN ONCE AFTER ALL PHASE TASKS
 
 - [ ] `dotnet build --configuration Release --verbosity quiet`
-- [ ] `dotnet test --project eng/release/tests/ISLAMU.ReleaseEngineering.Tests/ISLAMU.ReleaseEngineering.Tests.csproj --configuration Release --verbosity quiet`
+- [x] `dotnet test --project eng/release/tests/ISLAMU.ReleaseEngineering.Tests/ISLAMU.ReleaseEngineering.Tests.csproj --configuration Release --verbosity quiet`
 
 ## Phase 3: Git Trust, Determinism, And Security Boundaries - NOT STARTED
 

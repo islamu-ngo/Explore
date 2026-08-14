@@ -3,6 +3,8 @@
     "schemas/lexicons",
     "schemas/islamu-event.md",
     "docs/**/*",
+    "dev/report/**/*",
+    "dev/active/**/*",
     "README.md",
     "AGENTS.md",
     "docker-compose.yml",

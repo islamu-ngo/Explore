@@ -3,9 +3,9 @@
 
 # Git-Cliff Release Engineering - Context
 
-Last Updated: 2026-08-13 Europe/Brussels
+Last Updated: 2026-08-14 Europe/Brussels
 
-## SESSION PROGRESS (2026-08-13 Europe/Brussels)
+## SESSION PROGRESS (2026-08-14 Europe/Brussels)
 
 ### COMPLETED
 
@@ -15,21 +15,46 @@ Last Updated: 2026-08-13 Europe/Brussels
 - Verified the existing CI/CD, release checklist, release-impact gate, evidence-bundle script, conventional-commit policy, semantic-version docs, clean-room policy, solution/project layout, and current source report.
 - Ran the planning baseline Release build successfully.
 - Re-baselined the future architecture around a trusted release-engine bundle, normalized context, renderer-only git-cliff, exact final commit `B`, separate human/generated files, change fragments, SSH-signed tags, deterministic evidence, embargo handling, and parallel release lines.
+- Completed Tasks 1.1-1.3, including exact git-cliff `2.13.1` platform
+  digests, fail-closed local tool verification, and the version-bound optional
+  SQL Server SNI redistribution boundary. PostgreSQL-only published artifacts
+  must exclude the native SNI component. The separate FluentAssertions
+  remediation completed on 2026-08-14, and the dependency-policy validator now
+  passes while retaining the visible SNI exception.
+- Completed Task 2.1 after independent adversarial review. The release engine
+  now reads governed Conventional Commit metadata only from the terminal footer,
+  preserves unrelated trailers and wrapped values, fails closed on unknown
+  policy YAML, and passes 41 focused tests plus real consumer probes.
+- Completed Task 2.2 after independent adversarial repair verification. Typed
+  change fragments and release descriptors now enforce append-only supersession,
+  retain the validated release range, and reject embargo, Unicode ambiguity,
+  credential-shaped text, and provider metadata without rejecting normal email
+  or multilingual prose.
+- Completed Task 2.3 after independent adversarial repair verification. The
+  normalized context now validates SemVer and prerelease progression, preserves
+  real current/backport object identity, emits no synthetic OIDs, and passes 72
+  focused release-engine tests with exact stable/prerelease/backport goldens.
 
 ### IN PROGRESS
 
-- Awaiting user review and approval of the implementation plan.
+- Task 3.1 Git object and release-line validation. The user explicitly
+  authorized Tasks 2-5 to continue while the Phase 1 architecture checkbox
+  remains blocked by four reproducible failures outside this workstream.
 
 ### NEXT
 
-1. Review the trusted-tool bootstrap and exact-`B` release flow in the plan.
-2. Confirm or correct the SSH-only initial signing decision.
-3. Approve Phase 1 or request plan changes.
-4. The first implementation agent starts Task 1.1 and does not touch unrelated dirty files.
+1. Implement Task 3.1 explicit Git object and release-line validation.
+2. Implement Task 3.2 canonical-byte and untrusted-text hardening.
+3. Rerun the open Phase 1/2 gates after unrelated worktree changes settle.
 
 ### BLOCKERS
 
-- No blocker for Phases 1-5.
+- Phase 1 cannot close while the architecture suite fails. Current evidence
+  records four non-release failures: DTO naming, generated-client ownership,
+  tenant bypass-reason usage, and User-PII inventory coverage. The user
+  explicitly authorized Tasks 2-5 to continue without closing this checkbox.
+- Phase 2 cannot close while the full solution build fails in the unrelated
+  concurrent `PublishEventTicketCatalogCommandHandlerTests` constructor call.
 - Task 6.1 requires the Project Steward to name the first non-GitHub forge before its adapter path is finalized.
 - Task 3.3 requires real release signer principals/keys and an artifact-promotion authority before activation, but their absence does not block earlier implementation.
 
@@ -37,7 +62,7 @@ Last Updated: 2026-08-13 Europe/Brussels
 
 1. Read this context and `git-cliff-release-engineering-tasks.md`.
 2. Read only the current phase and referenced decisions in `git-cliff-release-engineering-plan.md`; do not reread the unchanged full plan on every resume.
-3. Start from Task 1.1 unless the user changes priority.
+3. Resume from the current priority in `git-cliff-release-engineering-tasks.md`.
 4. Treat `tasks.md` as the hot ledger; update this context only after a phase, decision, blocker, validation failure, material discovery, or handoff.
 5. Preserve the unrelated dirty worktree. Do not restore deleted files or edit migration/payment/registration/agent-context work unless a later task explicitly owns the exact path.
 

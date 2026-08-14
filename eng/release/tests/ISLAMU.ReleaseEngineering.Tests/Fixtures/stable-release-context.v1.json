@@ -1,0 +1,43 @@
+{
+  "schemaVersion": 1,
+  "release": {
+    "version": "1.1.0",
+    "line": "v1.1",
+    "releaseDate": "2026-08-14",
+    "baseStableTag": "v1.0.0",
+    "previousPublishedTag": "v1.0.0",
+    "minimumBump": "minor",
+    "channel": "stable",
+    "advancesMain": true
+  },
+  "changes": [
+    {
+      "displayId": "cccccccccccc",
+      "oid": "cccccccccccccccccccccccccccccccccccccccc",
+      "type": "feat",
+      "scope": "registration",
+      "title": "let attendees correct registration details",
+      "summary": "let attendees correct registration details",
+      "breaking": false,
+      "backport": false
+    }
+  ],
+  "evidence": {
+    "baseStableOid": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "previousPublishedOid": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "objects": [
+      {
+        "displayId": "aaaaaaaaaaaa",
+        "oid": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      },
+      {
+        "displayId": "bbbbbbbbbbbb",
+        "oid": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      },
+      {
+        "displayId": "cccccccccccc",
+        "oid": "cccccccccccccccccccccccccccccccccccccccc"
+      }
+    ]
+  }
+}

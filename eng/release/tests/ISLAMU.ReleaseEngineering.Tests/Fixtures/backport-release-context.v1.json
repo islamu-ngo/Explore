@@ -1,0 +1,49 @@
+{
+  "schemaVersion": 1,
+  "release": {
+    "version": "1.1.1",
+    "line": "v1.1",
+    "releaseDate": "2026-08-14",
+    "baseStableTag": "v1.1.0",
+    "previousPublishedTag": "v1.1.0",
+    "minimumBump": "patch",
+    "channel": "stable",
+    "advancesMain": true
+  },
+  "changes": [
+    {
+      "displayId": "333333333333",
+      "oid": "3333333333333333333333333333333333333333",
+      "changeId": "CHG-2026-0001",
+      "type": "feat",
+      "scope": "registration",
+      "title": "Backport: Attendee credential migration",
+      "summary": "Attendees use a single credential during check-in.",
+      "breaking": false,
+      "backport": true,
+      "backportOf": "0123456789abcdef0123456789abcdef01234567"
+    }
+  ],
+  "evidence": {
+    "baseStableOid": "1111111111111111111111111111111111111111",
+    "previousPublishedOid": "2222222222222222222222222222222222222222",
+    "objects": [
+      {
+        "displayId": "0123456789ab",
+        "oid": "0123456789abcdef0123456789abcdef01234567"
+      },
+      {
+        "displayId": "111111111111",
+        "oid": "1111111111111111111111111111111111111111"
+      },
+      {
+        "displayId": "222222222222",
+        "oid": "2222222222222222222222222222222222222222"
+      },
+      {
+        "displayId": "333333333333",
+        "oid": "3333333333333333333333333333333333333333"
+      }
+    ]
+  }
+}

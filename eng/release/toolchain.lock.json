@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "tool": "git-cliff",
+  "version": "2.13.1",
+  "platforms": [
+    {
+      "platform": "linux-x64",
+      "executable": "git-cliff",
+      "executableSha256": "25d1281e34da5c45b22d9c174425c1099e7b3aa24c9e1f2d78272df09a6a8dde",
+      "archive": "git-cliff-2.13.1-x86_64-unknown-linux-musl.tar.gz",
+      "archiveSha256": "200d2535da6d9703f3bcc8a4d159c3b55eacdb01cf2148c55b3eee9dd04d5249",
+      "source": "https://github.com/orhun/git-cliff/releases/download/v2.13.1/git-cliff-2.13.1-x86_64-unknown-linux-musl.tar.gz"
+    },
+    {
+      "platform": "windows-x64",
+      "executable": "git-cliff.exe",
+      "executableSha256": "af0e46671560e716ec634b398f2eedd45b2b4e01ca1b43445094e6e0bac94039",
+      "archive": "git-cliff-2.13.1-x86_64-pc-windows-msvc.zip",
+      "archiveSha256": "3ae3a5549e85c7ad5b20192ebcfee4371269deca51255f6f2f2e051c6541f5ca",
+      "source": "https://github.com/orhun/git-cliff/releases/download/v2.13.1/git-cliff-2.13.1-x86_64-pc-windows-msvc.zip"
+    }
+  ]
+}

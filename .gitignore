@@ -79,6 +79,10 @@ storage-data/
 [Dd]ebugPublic/
 [Rr]elease/
 [Rr]eleases/
+!/docs/releases/
+!/docs/releases/**
+!/eng/release/
+!/eng/release/**
 x64/
 x86/
 [Ww][Ii][Nn]32/

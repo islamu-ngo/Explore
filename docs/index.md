@@ -19,6 +19,7 @@ Start with [README.md](../README.md) if you are new to the project. Use this pag
 | Run the app locally | [GETTING_STARTED.md](GETTING_STARTED.md) | [TESTING.md](TESTING.md), [TROUBLESHOOTING.md](TROUBLESHOOTING.md) |
 | Self-host or operate a deployment | [SELF_HOSTING.md](SELF_HOSTING.md) | [CONFIGURATION.md](CONFIGURATION.md), [SECRETS.md](SECRETS.md), [OPERATIONS.md](OPERATIONS.md), [BACKUP_RESTORE_UPGRADE.md](BACKUP_RESTORE_UPGRADE.md) |
 | Troubleshoot a failure | [TROUBLESHOOTING.md](TROUBLESHOOTING.md) | [OPERATIONS.md](OPERATIONS.md), [CONFIGURATION.md](CONFIGURATION.md), [TEST_RELIABILITY.md](TEST_RELIABILITY.md) |
+| Prepare a governed release | [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md) | [RELEASE_POLICY.md](RELEASE_POLICY.md), [RELEASE_RUNBOOK.md](RELEASE_RUNBOOK.md), [ADR-025](adr/ADR-025-provider-neutral-release-governance.md) |
 | Configure tenants, admins, or branding | [ADMIN_GUIDE.md](ADMIN_GUIDE.md) | [ADMIN_HIERARCHY.md](ADMIN_HIERARCHY.md), [DEPLOYMENT_MODES.md](DEPLOYMENT_MODES.md), [MULTI_TENANCY.md](MULTI_TENANCY.md) |
 | Integrate with the API | [API_COOKBOOK.md](API_COOKBOOK.md) | [API.md](API.md), [WEBHOOKS.md](WEBHOOKS.md), [INTEGRATIONS.md](INTEGRATIONS.md), [API_CHANGELOG.md](API_CHANGELOG.md), [SECURITY-MODEL.md](SECURITY-MODEL.md) |
 | Change authorization or Cerbos behavior | [AUTHORIZATION.md](AUTHORIZATION.md) | [AUTHORIZATION_PATTERNS.md](AUTHORIZATION_PATTERNS.md), [SECURITY-MODEL.md](SECURITY-MODEL.md), [OPERATIONS.md](OPERATIONS.md) |
@@ -58,6 +59,9 @@ Start with [README.md](../README.md) if you are new to the project. Use this pag
 - [GOVERNANCE.md](GOVERNANCE.md) - design and code governance.
 - [CI_CD_GOVERNANCE.md](CI_CD_GOVERNANCE.md) - GitHub Actions gates, branch protection, deployment environments, and CI/CD evidence policy.
 - [CI_CD_RUNBOOKS.md](CI_CD_RUNBOOKS.md) - maintainer runbooks for rerunning CI/CD gates without bypassing controls.
+- [RELEASE_POLICY.md](RELEASE_POLICY.md) - normative provider-neutral release invariants; prospective until the release engine is activated.
+- [RELEASE_RUNBOOK.md](RELEASE_RUNBOOK.md) - current manual and future governed-release operator procedure.
+- [adr/ADR-025-provider-neutral-release-governance.md](adr/ADR-025-provider-neutral-release-governance.md) - trusted-bundle, exact-commit, and renderer-only release architecture.
 - [legal/CLA.md](../legal/CLA.md) - active ISLAMU Event contributor license agreement.
 - [legal/CONTRIBUTION_GOVERNANCE.md](legal/CONTRIBUTION_GOVERNANCE.md) - CLA legal contribution decision record and automation threat model.
 - [legal/IP_GOVERNANCE.md](legal/IP_GOVERNANCE.md) - clean-room research, source isolation, dependency-license compatibility, and audit evidence policy.
