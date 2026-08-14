@@ -7,8 +7,9 @@ internal sealed class RuntimePromotionTrustRootScope : IDisposable
 {
     private const string RuntimeTrustRootName = "ISLAMU.ReleaseEngineering.promotion-allowed-signers";
     private static readonly SemaphoreSlim Gate = new(1, 1);
-    private readonly FileStream processLock;
+    private static readonly Mutex ProcessGate = new(false, "ISLAMU.ReleaseEngineering.Tests.RuntimePromotionTrustRootScope");
     private readonly byte[]? originalBytes;
+    private bool processGateHeld;
     private bool disposed;
 
     private RuntimePromotionTrustRootScope(string sourcePath)
@@ -17,12 +18,22 @@ internal sealed class RuntimePromotionTrustRootScope : IDisposable
         try
         {
             RuntimeTrustRootPath = GetRuntimeTrustRootPath();
-            processLock = AcquireProcessLock(RuntimeTrustRootPath + ".lock");
+            try
+            {
+                processGateHeld = ProcessGate.WaitOne(TimeSpan.FromSeconds(30));
+            }
+            catch (AbandonedMutexException)
+            {
+                processGateHeld = true;
+            }
+
+            if (!processGateHeld) throw new IOException("runtime_promotion_trust_root_lock_timeout");
             originalBytes = File.Exists(RuntimeTrustRootPath) ? File.ReadAllBytes(RuntimeTrustRootPath) : null;
             AtomicWrite(RuntimeTrustRootPath, File.ReadAllBytes(sourcePath));
         }
         catch
         {
+            if (processGateHeld) ProcessGate.ReleaseMutex();
             Gate.Release();
             throw;
         }
@@ -53,25 +64,8 @@ internal sealed class RuntimePromotionTrustRootScope : IDisposable
         }
         finally
         {
-            processLock.Dispose();
+            if (processGateHeld) ProcessGate.ReleaseMutex();
             Gate.Release();
-        }
-    }
-
-    private static FileStream AcquireProcessLock(string path)
-    {
-        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
-        System.Diagnostics.Stopwatch stopwatch = System.Diagnostics.Stopwatch.StartNew();
-        while (true)
-        {
-            try
-            {
-                return new FileStream(path, FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None);
-            }
-            catch (IOException) when (stopwatch.Elapsed < TimeSpan.FromSeconds(30))
-            {
-                Thread.Sleep(25);
-            }
         }
     }
 
