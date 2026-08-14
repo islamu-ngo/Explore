@@ -1,10 +1,9 @@
 // ABOUTME: Unit tests for SecretProviderOptionsValidator.
-// Tests validation rules for each provider type configuration.
+// ABOUTME: Tests validation rules for each provider type configuration.
 
 using Explore.Secrets.Abstractions;
 using Explore.Secrets.Configuration;
 using Explore.Secrets.Validation;
-using FluentAssertions;
 using TUnit.Core;
 
 namespace Explore.Secrets.UnitTests.Validation;
@@ -21,7 +20,7 @@ public class SecretProviderOptionsValidatorTests
     #region None Provider Tests
 
     [Test]
-    public void Validate_WhenProviderIsNone_ShouldSucceed()
+    public async Task Validate_WhenProviderIsNone_ShouldSucceed()
     {
         // Arrange
         var options = new SecretProviderOptions { Provider = SecretProviderType.None };
@@ -30,7 +29,7 @@ public class SecretProviderOptionsValidatorTests
         var result = _validator.Validate(null, options);
 
         // Assert
-        result.Succeeded.Should().BeTrue();
+        await Assert.That(result.Succeeded).IsTrue();
     }
 
     #endregion
@@ -38,7 +37,7 @@ public class SecretProviderOptionsValidatorTests
     #region Infisical Provider Tests
 
     [Test]
-    public void Validate_WhenInfisicalMissingUrl_ShouldFail()
+    public async Task Validate_WhenInfisicalMissingUrl_ShouldFail()
     {
         // Arrange
         var options = new SecretProviderOptions
@@ -58,12 +57,12 @@ public class SecretProviderOptionsValidatorTests
         var result = _validator.Validate(null, options);
 
         // Assert
-        result.Succeeded.Should().BeFalse();
-        result.FailureMessage.Should().Contain("URL is required");
+        await Assert.That(result.Succeeded).IsFalse();
+        await Assert.That(result.FailureMessage).Contains("URL is required");
     }
 
     [Test]
-    public void Validate_WhenInfisicalMissingProjectId_ShouldFail()
+    public async Task Validate_WhenInfisicalMissingProjectId_ShouldFail()
     {
         // Arrange
         var options = new SecretProviderOptions
@@ -83,12 +82,12 @@ public class SecretProviderOptionsValidatorTests
         var result = _validator.Validate(null, options);
 
         // Assert
-        result.Succeeded.Should().BeFalse();
-        result.FailureMessage.Should().Contain("Project ID is required");
+        await Assert.That(result.Succeeded).IsFalse();
+        await Assert.That(result.FailureMessage).Contains("Project ID is required");
     }
 
     [Test]
-    public void Validate_WhenInfisicalInvalidUrl_ShouldFail()
+    public async Task Validate_WhenInfisicalInvalidUrl_ShouldFail()
     {
         // Arrange
         var options = new SecretProviderOptions
@@ -108,12 +107,12 @@ public class SecretProviderOptionsValidatorTests
         var result = _validator.Validate(null, options);
 
         // Assert
-        result.Succeeded.Should().BeFalse();
-        result.FailureMessage.Should().Contain("valid HTTP/HTTPS URL");
+        await Assert.That(result.Succeeded).IsFalse();
+        await Assert.That(result.FailureMessage).Contains("valid HTTP/HTTPS URL");
     }
 
     [Test]
-    public void Validate_WhenInfisicalComplete_ShouldSucceed()
+    public async Task Validate_WhenInfisicalComplete_ShouldSucceed()
     {
         // Arrange
         var options = new SecretProviderOptions
@@ -133,7 +132,7 @@ public class SecretProviderOptionsValidatorTests
         var result = _validator.Validate(null, options);
 
         // Assert
-        result.Succeeded.Should().BeTrue();
+        await Assert.That(result.Succeeded).IsTrue();
     }
 
     #endregion
@@ -141,7 +140,7 @@ public class SecretProviderOptionsValidatorTests
     #region Vault Provider Tests
 
     [Test]
-    public void Validate_WhenVaultMissingUrl_ShouldFail()
+    public async Task Validate_WhenVaultMissingUrl_ShouldFail()
     {
         // Arrange
         var options = new SecretProviderOptions
@@ -160,12 +159,12 @@ public class SecretProviderOptionsValidatorTests
         var result = _validator.Validate(null, options);
 
         // Assert
-        result.Succeeded.Should().BeFalse();
-        result.FailureMessage.Should().Contain("URL is required");
+        await Assert.That(result.Succeeded).IsFalse();
+        await Assert.That(result.FailureMessage).Contains("URL is required");
     }
 
     [Test]
-    public void Validate_WhenVaultMissingPaths_ShouldFail()
+    public async Task Validate_WhenVaultMissingPaths_ShouldFail()
     {
         // Arrange
         var options = new SecretProviderOptions
@@ -184,12 +183,12 @@ public class SecretProviderOptionsValidatorTests
         var result = _validator.Validate(null, options);
 
         // Assert
-        result.Succeeded.Should().BeFalse();
-        result.FailureMessage.Should().Contain("path is required");
+        await Assert.That(result.Succeeded).IsFalse();
+        await Assert.That(result.FailureMessage).Contains("path is required");
     }
 
     [Test]
-    public void Validate_WhenVaultComplete_ShouldSucceed()
+    public async Task Validate_WhenVaultComplete_ShouldSucceed()
     {
         // Arrange
         var options = new SecretProviderOptions
@@ -208,7 +207,7 @@ public class SecretProviderOptionsValidatorTests
         var result = _validator.Validate(null, options);
 
         // Assert
-        result.Succeeded.Should().BeTrue();
+        await Assert.That(result.Succeeded).IsTrue();
     }
 
     #endregion
@@ -216,7 +215,7 @@ public class SecretProviderOptionsValidatorTests
     #region Azure Key Vault Tests
 
     [Test]
-    public void Validate_WhenAzureKvMissingUrl_ShouldFail()
+    public async Task Validate_WhenAzureKvMissingUrl_ShouldFail()
     {
         // Arrange
         var options = new SecretProviderOptions
@@ -232,12 +231,12 @@ public class SecretProviderOptionsValidatorTests
         var result = _validator.Validate(null, options);
 
         // Assert
-        result.Succeeded.Should().BeFalse();
-        result.FailureMessage.Should().Contain("URL is required");
+        await Assert.That(result.Succeeded).IsFalse();
+        await Assert.That(result.FailureMessage).Contains("URL is required");
     }
 
     [Test]
-    public void Validate_WhenAzureKvInvalidUrl_ShouldFail()
+    public async Task Validate_WhenAzureKvInvalidUrl_ShouldFail()
     {
         // Arrange
         var options = new SecretProviderOptions
@@ -253,12 +252,12 @@ public class SecretProviderOptionsValidatorTests
         var result = _validator.Validate(null, options);
 
         // Assert
-        result.Succeeded.Should().BeFalse();
-        result.FailureMessage.Should().Contain(".vault.azure.net");
+        await Assert.That(result.Succeeded).IsFalse();
+        await Assert.That(result.FailureMessage).Contains(".vault.azure.net");
     }
 
     [Test]
-    public void Validate_WhenAzureKvWithServicePrincipalMissingTenant_ShouldFail()
+    public async Task Validate_WhenAzureKvWithServicePrincipalMissingTenant_ShouldFail()
     {
         // Arrange
         var options = new SecretProviderOptions
@@ -276,12 +275,12 @@ public class SecretProviderOptionsValidatorTests
         var result = _validator.Validate(null, options);
 
         // Assert
-        result.Succeeded.Should().BeFalse();
-        result.FailureMessage.Should().Contain("Tenant ID is required");
+        await Assert.That(result.Succeeded).IsFalse();
+        await Assert.That(result.FailureMessage).Contains("Tenant ID is required");
     }
 
     [Test]
-    public void Validate_WhenAzureKvWithManagedIdentity_ShouldSucceed()
+    public async Task Validate_WhenAzureKvWithManagedIdentity_ShouldSucceed()
     {
         // Arrange
         var options = new SecretProviderOptions
@@ -298,7 +297,7 @@ public class SecretProviderOptionsValidatorTests
         var result = _validator.Validate(null, options);
 
         // Assert
-        result.Succeeded.Should().BeTrue();
+        await Assert.That(result.Succeeded).IsTrue();
     }
 
     #endregion
@@ -306,7 +305,7 @@ public class SecretProviderOptionsValidatorTests
     #region AWS Secrets Manager Tests
 
     [Test]
-    public void Validate_WhenAwsMissingRegion_ShouldFail()
+    public async Task Validate_WhenAwsMissingRegion_ShouldFail()
     {
         // Arrange
         var options = new SecretProviderOptions
@@ -323,12 +322,12 @@ public class SecretProviderOptionsValidatorTests
         var result = _validator.Validate(null, options);
 
         // Assert
-        result.Succeeded.Should().BeFalse();
-        result.FailureMessage.Should().Contain("Region is required");
+        await Assert.That(result.Succeeded).IsFalse();
+        await Assert.That(result.FailureMessage).Contains("Region is required");
     }
 
     [Test]
-    public void Validate_WhenAwsMissingSecretNames_ShouldFail()
+    public async Task Validate_WhenAwsMissingSecretNames_ShouldFail()
     {
         // Arrange
         var options = new SecretProviderOptions
@@ -345,12 +344,12 @@ public class SecretProviderOptionsValidatorTests
         var result = _validator.Validate(null, options);
 
         // Assert
-        result.Succeeded.Should().BeFalse();
-        result.FailureMessage.Should().Contain("secret name is required");
+        await Assert.That(result.Succeeded).IsFalse();
+        await Assert.That(result.FailureMessage).Contains("secret name is required");
     }
 
     [Test]
-    public void Validate_WhenAwsWithExplicitCredsMissingSecret_ShouldFail()
+    public async Task Validate_WhenAwsWithExplicitCredsMissingSecret_ShouldFail()
     {
         // Arrange
         var options = new SecretProviderOptions
@@ -369,12 +368,12 @@ public class SecretProviderOptionsValidatorTests
         var result = _validator.Validate(null, options);
 
         // Assert
-        result.Succeeded.Should().BeFalse();
-        result.FailureMessage.Should().Contain("Secret Access Key is required");
+        await Assert.That(result.Succeeded).IsFalse();
+        await Assert.That(result.FailureMessage).Contains("Secret Access Key is required");
     }
 
     [Test]
-    public void Validate_WhenAwsWithIrsa_ShouldSucceed()
+    public async Task Validate_WhenAwsWithIrsa_ShouldSucceed()
     {
         // Arrange
         var options = new SecretProviderOptions
@@ -392,7 +391,7 @@ public class SecretProviderOptionsValidatorTests
         var result = _validator.Validate(null, options);
 
         // Assert
-        result.Succeeded.Should().BeTrue();
+        await Assert.That(result.Succeeded).IsTrue();
     }
 
     #endregion

@@ -12,7 +12,6 @@ using Explore.Application.Exceptions;
 using Explore.Application.Models;
 using Explore.Domain.Constants;
 using Explore.Persistence;
-using FluentAssertions;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -461,8 +460,7 @@ public class CoverageGovernanceTests : IAsyncDisposable
             return;
         }
 
-        response.StatusCode.Should().Be(HttpStatusCode.Forbidden,
-            $"regular user should be denied access to {method} {url}");
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Forbidden).Because($"regular user should be denied access to {method} {url}");
     }
 
     private async Task AssertRegularUserOk(HttpMethod method, string url)
@@ -470,8 +468,7 @@ public class CoverageGovernanceTests : IAsyncDisposable
         var token = await _keycloak.TokenClient.GetUserTokenAsync();
         using var request = Auth(method, url, token);
         var response = await _regularUserClient.SendAsync(request);
-        response.StatusCode.Should().Be(HttpStatusCode.OK,
-            $"regular user should be allowed authenticated access to {method} {url}");
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK).Because($"regular user should be allowed authenticated access to {method} {url}");
     }
 
     private async Task AssertInstanceAdminOk(HttpMethod method, string url)
@@ -479,24 +476,21 @@ public class CoverageGovernanceTests : IAsyncDisposable
         var token = await _keycloak.TokenClient.GetAdminTokenAsync();
         using var request = Auth(method, url, token);
         var response = await _instanceAdminClient.SendAsync(request);
-        response.StatusCode.Should().Be(HttpStatusCode.OK,
-            $"instance admin should be allowed access to {method} {url}");
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK).Because($"instance admin should be allowed access to {method} {url}");
     }
 
     private async Task AssertAnonymous401(HttpMethod method, string url)
     {
         using var request = new HttpRequestMessage(method, url);
         var response = await _anonymousClient.SendAsync(request);
-        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized,
-            $"anonymous should get 401 for {method} {url}");
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized).Because($"anonymous should get 401 for {method} {url}");
     }
 
     private async Task AssertAnonymousOk(string url)
     {
         using var request = new HttpRequestMessage(HttpMethod.Get, url);
         var response = await _anonymousClient.SendAsync(request);
-        response.StatusCode.Should().Be(HttpStatusCode.OK,
-            $"[AllowAnonymous] endpoint {url} should return 200 for anonymous");
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK).Because($"[AllowAnonymous] endpoint {url} should return 200 for anonymous");
     }
 
     private static HttpRequestMessage Auth(HttpMethod method, string url, string token)

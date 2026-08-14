@@ -7,7 +7,6 @@ using Explore.Persistence.Database;
 using Explore.Persistence.Extensions;
 using Explore.Persistence.Security;
 using Explore.Secrets.Database;
-using FluentAssertions;
 using Microsoft.AspNetCore.DataProtection.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
@@ -25,7 +24,7 @@ public sealed class PrimaryDatabaseProviderCompositionTests
     [Arguments(PrimaryDatabaseProvider.SqlServer, "SqlServerOptionsExtension")]
     [Arguments(PrimaryDatabaseProvider.MariaDb, "MySqlOptionsExtension")]
     [Arguments(PrimaryDatabaseProvider.MySql, "MySqlOptionsExtension")]
-    public void ConfigureApplication_SelectsRequestedProvider(
+    public async Task ConfigureApplication_SelectsRequestedProvider(
         PrimaryDatabaseProvider provider,
         string expectedOptionsExtension)
     {
@@ -33,8 +32,8 @@ public sealed class PrimaryDatabaseProviderCompositionTests
 
         PrimaryDatabaseProviderComposition.ConfigureApplication(builder, CreateOptions(provider));
 
-        builder.Options.Extensions.Select(extension => extension.GetType().Name)
-            .Should().Contain(expectedOptionsExtension);
+        await Assert.That(builder.Options.Extensions.Select(extension => extension.GetType().Name))
+            .Contains(expectedOptionsExtension);
     }
 
     [Test]
@@ -43,7 +42,7 @@ public sealed class PrimaryDatabaseProviderCompositionTests
     [Arguments(PrimaryDatabaseProvider.SqlServer, "SqlServerOptionsExtension")]
     [Arguments(PrimaryDatabaseProvider.MariaDb, "MySqlOptionsExtension")]
     [Arguments(PrimaryDatabaseProvider.MySql, "MySqlOptionsExtension")]
-    public void ConfigurePersistenceServices_SelectsRequestedProvider(
+    public async Task ConfigurePersistenceServices_SelectsRequestedProvider(
         PrimaryDatabaseProvider provider,
         string expectedOptionsExtension)
     {
@@ -56,12 +55,12 @@ public sealed class PrimaryDatabaseProviderCompositionTests
 
         var options = serviceProvider.GetRequiredService<DbContextOptions<ExploreDbContext>>();
 
-        options.Extensions.Select(extension => extension.GetType().Name)
-            .Should().Contain(expectedOptionsExtension);
+        await Assert.That(options.Extensions.Select(extension => extension.GetType().Name))
+            .Contains(expectedOptionsExtension);
     }
 
     [Test]
-    public void ConfigurePersistenceServices_DoesNotEnablePostgresRlsForOtherProviders()
+    public async Task ConfigurePersistenceServices_DoesNotEnablePostgresRlsForOtherProviders()
     {
         var values = BuildConfigurationValues(PrimaryDatabaseProvider.Sqlite);
         values["Persistence:EnableRlsTenantSession"] = "true";
@@ -75,7 +74,7 @@ public sealed class PrimaryDatabaseProviderCompositionTests
         var options = serviceProvider.GetRequiredService<DbContextOptions<ExploreDbContext>>();
         var interceptors = options.FindExtension<CoreOptionsExtension>()?.Interceptors ?? [];
 
-        interceptors.Should().NotContain(interceptor => interceptor is PostgresTenantSessionInterceptor);
+        await Assert.That(interceptors.Any(interceptor => interceptor is PostgresTenantSessionInterceptor)).IsFalse();
     }
 
     [Test]
@@ -84,7 +83,7 @@ public sealed class PrimaryDatabaseProviderCompositionTests
     [Arguments(PrimaryDatabaseProvider.SqlServer, false)]
     [Arguments(PrimaryDatabaseProvider.MariaDb, true)]
     [Arguments(PrimaryDatabaseProvider.MySql, true)]
-    public void ConfigurePersistenceServices_SelectsProviderNeutralLocksAndMySqlInterceptor(
+    public async Task ConfigurePersistenceServices_SelectsProviderNeutralLocksAndMySqlInterceptor(
         PrimaryDatabaseProvider provider,
         bool expectsMySqlInterceptor)
     {
@@ -95,21 +94,21 @@ public sealed class PrimaryDatabaseProviderCompositionTests
             environmentName: "Production");
         using var serviceProvider = services.BuildServiceProvider();
 
-        services.Single(service => service.ServiceType == typeof(ISettingMutationLock))
-            .ImplementationType.Should().Be(typeof(RelationalSettingMutationLock));
-        services.Single(service => service.ServiceType == typeof(IAtprotoSessionRefreshLock))
-            .ImplementationType.Should().Be(typeof(RelationalAtprotoSessionRefreshLock));
+        await Assert.That(services.Single(service => service.ServiceType == typeof(ISettingMutationLock))
+            .ImplementationType).IsEqualTo(typeof(RelationalSettingMutationLock));
+        await Assert.That(services.Single(service => service.ServiceType == typeof(IAtprotoSessionRefreshLock))
+            .ImplementationType).IsEqualTo(typeof(RelationalAtprotoSessionRefreshLock));
         var options = serviceProvider.GetRequiredService<DbContextOptions<ExploreDbContext>>();
         var interceptors = options.FindExtension<CoreOptionsExtension>()?.Interceptors ?? [];
 
-        interceptors.Any(interceptor => interceptor is MySqlNamedLockTransactionInterceptor)
-            .Should().Be(expectsMySqlInterceptor);
+        await Assert.That(interceptors.Any(interceptor => interceptor is MySqlNamedLockTransactionInterceptor))
+            .IsEqualTo(expectsMySqlInterceptor);
     }
 
     [Test]
     [Arguments(PrimaryDatabaseProvider.MariaDb, "MariaDbServerVersion")]
     [Arguments(PrimaryDatabaseProvider.MySql, "MySqlServerVersion")]
-    public void ConfigureApplication_SelectsMicrotingServerFlavor(
+    public async Task ConfigureApplication_SelectsMicrotingServerFlavor(
         PrimaryDatabaseProvider provider,
         string expectedServerVersionType)
     {
@@ -120,45 +119,44 @@ public sealed class PrimaryDatabaseProviderCompositionTests
         var extension = builder.Options.Extensions.Single(candidate =>
             candidate.GetType().Name == "MySqlOptionsExtension");
         var serverVersion = extension.GetType().GetProperty("ServerVersion")!.GetValue(extension);
-        serverVersion!.GetType().Name.Should().Be(expectedServerVersionType);
+        await Assert.That(serverVersion!.GetType().Name).IsEqualTo(expectedServerVersionType);
     }
 
     [Test]
-    public void MigrationAssemblyContract_IsStableForAllPrimaryContexts()
+    public async Task MigrationAssemblyContract_IsStableForAllPrimaryContexts()
     {
-        PrimaryDatabaseProviderComposition.GetMigrationsAssemblyName(
+        await Assert.That(PrimaryDatabaseProviderComposition.GetMigrationsAssemblyName(
                 PrimaryDatabaseProvider.PostgreSql,
                 PrimaryDatabaseMigrationTarget.Application)
-            .Should().Be("Explore.Persistence");
-        PrimaryDatabaseProviderComposition.GetMigrationsAssemblyName(
+            ).IsEqualTo("Explore.Persistence");
+        await Assert.That(PrimaryDatabaseProviderComposition.GetMigrationsAssemblyName(
                 PrimaryDatabaseProvider.PostgreSql,
                 PrimaryDatabaseMigrationTarget.DataProtection)
-            .Should().Be("Explore.Persistence");
-        PrimaryDatabaseProviderComposition.GetMigrationsAssemblyName(
+            ).IsEqualTo("Explore.Persistence");
+        await Assert.That(PrimaryDatabaseProviderComposition.GetMigrationsAssemblyName(
                 PrimaryDatabaseProvider.PostgreSql,
                 PrimaryDatabaseMigrationTarget.CoLocatedPrivacyErasureAuthority)
-            .Should().Be("Explore.Persistence");
+            ).IsEqualTo("Explore.Persistence");
 
         foreach (var provider in Enum.GetValues<PrimaryDatabaseProvider>()
                      .Where(candidate => candidate != PrimaryDatabaseProvider.PostgreSql))
         {
-            PrimaryDatabaseProviderComposition.GetMigrationsAssemblyName(
+            await Assert.That(PrimaryDatabaseProviderComposition.GetMigrationsAssemblyName(
                     provider,
                     PrimaryDatabaseMigrationTarget.Application)
-                .Should().Be($"Explore.Persistence.Migrations.{provider}");
-            PrimaryDatabaseProviderComposition.GetMigrationsAssemblyName(
+                ).IsEqualTo($"Explore.Persistence.Migrations.{provider}");
+            await Assert.That(PrimaryDatabaseProviderComposition.GetMigrationsAssemblyName(
                     provider,
                     PrimaryDatabaseMigrationTarget.DataProtection)
-                .Should().Be($"Explore.Persistence.DataProtection.Migrations.{provider}");
-            FluentActions.Invoking(() => PrimaryDatabaseProviderComposition.GetMigrationsAssemblyName(
-                    provider,
-                    PrimaryDatabaseMigrationTarget.CoLocatedPrivacyErasureAuthority))
-                .Should().Throw<InvalidOperationException>();
+                ).IsEqualTo($"Explore.Persistence.DataProtection.Migrations.{provider}");
+            await Assert.That(() => PrimaryDatabaseProviderComposition.GetMigrationsAssemblyName(
+                provider,
+                PrimaryDatabaseMigrationTarget.CoLocatedPrivacyErasureAuthority)).Throws<InvalidOperationException>();
         }
     }
 
     [Test]
-    public void MigrationHistoryContract_SeparatesApplicationAndDataProtection()
+    public async Task MigrationHistoryContract_SeparatesApplicationAndDataProtection()
     {
         foreach (var provider in Enum.GetValues<PrimaryDatabaseProvider>())
         {
@@ -169,26 +167,26 @@ public sealed class PrimaryDatabaseProviderCompositionTests
                 provider,
                 PrimaryDatabaseMigrationTarget.DataProtection);
 
-            application.Table.Should().NotBe(dataProtection.Table);
-            application.Schema.Should().Be(dataProtection.Schema);
+            await Assert.That(application.Table).IsNotEqualTo(dataProtection.Table);
+            await Assert.That(application.Schema).IsEqualTo(dataProtection.Schema);
 
             if (provider is PrimaryDatabaseProvider.PostgreSql or PrimaryDatabaseProvider.SqlServer)
             {
-                application.Should().Be(("__EFMigrationsHistory", "islamu_event"));
-                dataProtection.Should().Be(("__EFDataProtectionMigrationsHistory", "islamu_event"));
+                await Assert.That(application).IsEqualTo(("__EFMigrationsHistory", "islamu_event"));
+                await Assert.That(dataProtection).IsEqualTo(("__EFDataProtectionMigrationsHistory", "islamu_event"));
             }
             else
             {
-                application.Should().Be(("ie___EFMigrationsHistory", null));
-                dataProtection.Should().Be(("ie___EFDataProtectionMigrationsHistory", null));
+                await Assert.That(application).IsEqualTo(("ie___EFMigrationsHistory", (string?)null));
+                await Assert.That(dataProtection).IsEqualTo(("ie___EFDataProtectionMigrationsHistory", (string?)null));
             }
         }
 
-        PrimaryDatabaseProviderComposition.GetMigrationsHistoryTable(
+        await Assert.That(PrimaryDatabaseProviderComposition.GetMigrationsHistoryTable(
                 PrimaryDatabaseProvider.PostgreSql,
                 PrimaryDatabaseMigrationTarget.CoLocatedPrivacyErasureAuthority,
                 "custom_event")
-            .Should().Be(("__EFPrivacyErasureAuthorityMigrationsHistory", "custom_event"));
+            ).IsEqualTo(("__EFPrivacyErasureAuthorityMigrationsHistory", "custom_event"));
     }
 
     [Test]
@@ -197,7 +195,7 @@ public sealed class PrimaryDatabaseProviderCompositionTests
     [Arguments(PrimaryDatabaseProvider.Sqlite, null, "ie_")]
     [Arguments(PrimaryDatabaseProvider.MariaDb, null, "ie_")]
     [Arguments(PrimaryDatabaseProvider.MySql, null, "ie_")]
-    public void DataProtectionModel_UsesFixedNamespacePolicy(
+    public async Task DataProtectionModel_UsesFixedNamespacePolicy(
         PrimaryDatabaseProvider provider,
         string? expectedSchema,
         string? expectedPrefix)
@@ -208,10 +206,10 @@ public sealed class PrimaryDatabaseProviderCompositionTests
 
         var entityType = context.Model.FindEntityType(typeof(DataProtectionKey))!;
 
-        entityType.GetSchema().Should().Be(expectedSchema);
+        await Assert.That(entityType.GetSchema()).IsEqualTo(expectedSchema);
         if (expectedPrefix is not null)
         {
-            entityType.GetTableName().Should().StartWith(expectedPrefix);
+            await Assert.That(entityType.GetTableName()).StartsWith(expectedPrefix);
         }
     }
 
@@ -221,7 +219,7 @@ public sealed class PrimaryDatabaseProviderCompositionTests
     [Arguments(PrimaryDatabaseProvider.SqlServer, "Microsoft.EntityFrameworkCore.SqlServer")]
     [Arguments(PrimaryDatabaseProvider.MariaDb, "Microting.EntityFrameworkCore.MySql")]
     [Arguments(PrimaryDatabaseProvider.MySql, "Microting.EntityFrameworkCore.MySql")]
-    public void AddExploreDataProtection_SelectsRequestedProvider(
+    public async Task AddExploreDataProtection_SelectsRequestedProvider(
         PrimaryDatabaseProvider provider,
         string expectedProviderName)
     {
@@ -231,11 +229,11 @@ public sealed class PrimaryDatabaseProviderCompositionTests
 
         using var context = serviceProvider.GetRequiredService<DataProtectionKeyContext>();
 
-        context.Database.ProviderName.Should().Be(expectedProviderName);
+        await Assert.That(context.Database.ProviderName).IsEqualTo(expectedProviderName);
     }
 
     [Test]
-    public void DesignTimeFactories_ProjectDiscretePostgresMigratorSettings()
+    public async Task DesignTimeFactories_ProjectDiscretePostgresMigratorSettings()
     {
         var values = new Dictionary<string, string?>
         {
@@ -250,12 +248,12 @@ public sealed class PrimaryDatabaseProviderCompositionTests
         using var dataProtection = new DataProtectionKeyContextFactory().CreateDbContext(
             new ConfigurationBuilder().AddInMemoryCollection(values));
 
-        application.Database.ProviderName.Should().Be("Npgsql.EntityFrameworkCore.PostgreSQL");
-        dataProtection.Database.ProviderName.Should().Be("Npgsql.EntityFrameworkCore.PostgreSQL");
+        await Assert.That(application.Database.ProviderName).IsEqualTo("Npgsql.EntityFrameworkCore.PostgreSQL");
+        await Assert.That(dataProtection.Database.ProviderName).IsEqualTo("Npgsql.EntityFrameworkCore.PostgreSQL");
     }
 
     [Test]
-    public void DesignTimeFactories_PreserveExplicitStructuredProviderPriority()
+    public async Task DesignTimeFactories_PreserveExplicitStructuredProviderPriority()
     {
         var values = new Dictionary<string, string?>
         {
@@ -272,8 +270,8 @@ public sealed class PrimaryDatabaseProviderCompositionTests
         using var dataProtection = new DataProtectionKeyContextFactory().CreateDbContext(
             new ConfigurationBuilder().AddInMemoryCollection(values));
 
-        application.Database.ProviderName.Should().Be("Microsoft.EntityFrameworkCore.Sqlite");
-        dataProtection.Database.ProviderName.Should().Be("Microsoft.EntityFrameworkCore.Sqlite");
+        await Assert.That(application.Database.ProviderName).IsEqualTo("Microsoft.EntityFrameworkCore.Sqlite");
+        await Assert.That(dataProtection.Database.ProviderName).IsEqualTo("Microsoft.EntityFrameworkCore.Sqlite");
     }
 
     private static IConfiguration BuildConfiguration(PrimaryDatabaseProvider provider)

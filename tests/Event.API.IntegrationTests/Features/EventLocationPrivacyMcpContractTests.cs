@@ -22,7 +22,6 @@ using Explore.Application.Features.EventSessionGroups.Requests.Queries;
 using Explore.Application.Features.EventSessions.Requests.Queries;
 using Explore.Application.Hateoas;
 using Explore.Domain.Enums;
-using FluentAssertions;
 using MediatR;
 using Microsoft.AspNetCore.Http;
 using NSubstitute;
@@ -53,7 +52,7 @@ public sealed class EventLocationPrivacyMcpContractTests
     };
 
     [Test]
-    public void AnonymousEventProgramAndSessionDescriptors_OmitPhysicalLocationFields()
+    public async Task AnonymousEventProgramAndSessionDescriptors_OmitPhysicalLocationFields()
     {
         var anonymousDescriptorTypes = new[]
         {
@@ -70,19 +69,15 @@ public sealed class EventLocationPrivacyMcpContractTests
             .Where(field => PhysicalLocationFieldNames.Contains(field[(field.LastIndexOf('.') + 1)..]))
             .ToArray();
 
-        leakedFields.Should().BeEmpty(
-            "anonymous-safe MCP contracts must not expose physical location or room identifiers");
+        await Assert.That(leakedFields).IsEmpty().Because("anonymous-safe MCP contracts must not expose physical location or room identifiers");
     }
 
     [Test]
-    public void EventMcpTools_RequireAiContextGateway()
+    public async Task EventMcpTools_RequireAiContextGateway()
     {
-        typeof(EventManagementMcpTools).GetConstructors()
+        await Assert.That(typeof(EventManagementMcpTools).GetConstructors()
             .Single()
-            .GetParameters()
-            .Should()
-            .Contain(parameter => parameter.ParameterType == typeof(IAiContextGateway),
-                "location-bearing MCP tool context must pass through the disclosure gateway");
+            .GetParameters()).Contains(parameter => parameter.ParameterType == typeof(IAiContextGateway)).Because("location-bearing MCP tool context must pass through the disclosure gateway");
     }
 
     [Test]
@@ -110,15 +105,14 @@ public sealed class EventLocationPrivacyMcpContractTests
                 }
             });
 
-        var tools = CreateTools(mediator, gateway);
+        var tools = await CreateTools(mediator, gateway);
 
         await tools.ListPublicEventSessionsAsync(eventId);
 
         var gatewayWasInvoked = gateway.ReceivedCalls().Any(call =>
             call.GetMethodInfo().Name == nameof(IAiContextGateway.Sanitize)
             || call.GetMethodInfo().Name == nameof(IAiContextGateway.SanitizeMany));
-        gatewayWasInvoked.Should().BeTrue(
-            "a real anonymous MCP adapter path must invoke the disclosure gateway, not merely inject it");
+        await Assert.That(gatewayWasInvoked).IsTrue().Because("a real anonymous MCP adapter path must invoke the disclosure gateway, not merely inject it");
     }
 
     [Test]
@@ -153,13 +147,13 @@ public sealed class EventLocationPrivacyMcpContractTests
                 ]
             });
 
-        var result = await CreateTools(mediator, gateway)
+        var result = await (await CreateTools(mediator, gateway))
             .GetPublicEventProgramSummaryAsync(eventId);
 
-        gateway.ReceivedCalls().Should().Contain(call =>
+        await Assert.That(gateway.ReceivedCalls()).Contains(call =>
             call.GetMethodInfo().Name == nameof(IAiContextGateway.SanitizeMany));
-        result.Should().NotContain("PRIVATE-VENUE");
-        result.Should().NotContain("PRIVATE-ROOM");
+        await Assert.That(result).DoesNotContain("PRIVATE-VENUE");
+        await Assert.That(result).DoesNotContain("PRIVATE-ROOM");
     }
 
     [Test]
@@ -186,9 +180,9 @@ public sealed class EventLocationPrivacyMcpContractTests
                 .Select(DisclosePrivateVenue)
                 .ToArray());
 
-        var act = () => CreateTools(mediator, gateway).ListPublicEventSessionsAsync(eventId);
+        var act = async () => await (await CreateTools(mediator, gateway)).ListPublicEventSessionsAsync(eventId);
 
-        await act.Should().ThrowAsync<InvalidOperationException>();
+        await Assert.ThrowsAsync<InvalidOperationException>(act);
     }
 
     [Test]
@@ -219,9 +213,9 @@ public sealed class EventLocationPrivacyMcpContractTests
                 .Select(_ => PassThroughLocationEnvelope())
                 .ToArray());
 
-        var act = () => CreateTools(mediator, gateway).ListPublicEventSessionsAsync(eventId);
+        var act = async () => await (await CreateTools(mediator, gateway)).ListPublicEventSessionsAsync(eventId);
 
-        await act.Should().ThrowAsync<InvalidOperationException>();
+        await Assert.ThrowsAsync<InvalidOperationException>(act);
     }
 
     [Test]
@@ -245,9 +239,9 @@ public sealed class EventLocationPrivacyMcpContractTests
         gateway.SanitizeMany(Arg.Any<IReadOnlyList<AiContextSanitizationInput>>())
             .Returns([AiContextSanitizedEnvelope.Success("EventPii", [], [], [])]);
 
-        var act = () => CreateTools(mediator, gateway).ListPublicEventSessionsAsync(eventId);
+        var act = async () => await (await CreateTools(mediator, gateway)).ListPublicEventSessionsAsync(eventId);
 
-        await act.Should().ThrowAsync<InvalidOperationException>();
+        await Assert.ThrowsAsync<InvalidOperationException>(act);
     }
 
     [Test]
@@ -291,10 +285,10 @@ public sealed class EventLocationPrivacyMcpContractTests
         httpContextAccessor.HttpContext.Returns(new DefaultHttpContext());
         var gateway = CreateZeroDisclosureGateway();
 
-        var result = await CreateTools(mediator, gateway, assembler, httpContextAccessor)
+        var result = await (await CreateTools(mediator, gateway, assembler, httpContextAccessor))
             .GetEventProgramManagementContextAsync(eventId);
 
-        gateway.ReceivedCalls().Should().Contain(call =>
+        await Assert.That(gateway.ReceivedCalls()).Contains(call =>
             call.GetMethodInfo().Name == nameof(IAiContextGateway.SanitizeMany));
         await mediator.Received(1).Send(
             Arg.Any<GetManagedEventSessionGroupsByEventRequest>(),
@@ -302,14 +296,14 @@ public sealed class EventLocationPrivacyMcpContractTests
         await mediator.Received(1).Send(
             Arg.Any<GetManagedEventAgendaItemsByEventRequest>(),
             Arg.Any<CancellationToken>());
-        result.Should().Contain("PRIVATE-DRAFT-TRACK");
-        result.Should().NotContain("LocationName");
-        result.Should().NotContain("RoomName");
-        result.Should().NotContain("PRIVATE-MANAGEMENT-VENUE");
-        result.Should().NotContain("PRIVATE-MANAGEMENT-ROOM");
+        await Assert.That(result).Contains("PRIVATE-DRAFT-TRACK");
+        await Assert.That(result).DoesNotContain("LocationName");
+        await Assert.That(result).DoesNotContain("RoomName");
+        await Assert.That(result).DoesNotContain("PRIVATE-MANAGEMENT-VENUE");
+        await Assert.That(result).DoesNotContain("PRIVATE-MANAGEMENT-ROOM");
     }
 
-    private static EventManagementMcpTools CreateTools(
+    private static async Task<EventManagementMcpTools> CreateTools(
         IMediator mediator,
         IAiContextGateway gateway,
         IResourceAssembler<EventDto, EventListDto>? eventResourceAssembler = null,
@@ -328,9 +322,7 @@ public sealed class EventLocationPrivacyMcpContractTests
         var constructor = typeof(EventManagementMcpTools).GetConstructors().Single();
         var parameters = constructor.GetParameters();
 
-        parameters.Should().Contain(
-            parameter => parameter.ParameterType == typeof(IAiContextGateway),
-            "the public-session MCP path must receive the disclosure gateway");
+        await Assert.That(parameters).Contains(parameter => parameter.ParameterType == typeof(IAiContextGateway)).Because("the public-session MCP path must receive the disclosure gateway");
 
         return (EventManagementMcpTools)constructor.Invoke(
             parameters.Select(parameter => dependencies[parameter.ParameterType]).ToArray());

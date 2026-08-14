@@ -2,7 +2,6 @@
 // ABOUTME: Guards the launch-critical SMTP probe timeout and readiness classification.
 
 using Event.Api.IntegrationTests.Fixtures;
-using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Options;
@@ -23,11 +22,11 @@ public sealed class SmtpHealthCheckRegistrationTests
         var options = factory.Services.GetRequiredService<IOptions<HealthCheckServiceOptions>>().Value;
         var registration = options.Registrations.Single(registration => registration.Name == "smtp");
 
-        registration.Timeout.Should().Be(ExpectedSmtpReadinessTimeout);
-        registration.FailureStatus.Should().Be(HealthStatus.Unhealthy);
-        registration.Tags.Should().Contain("ready");
-        registration.Tags.Should().Contain("smtp");
-        registration.Tags.Should().Contain("infrastructure");
+        await Assert.That(registration.Timeout).IsEqualTo(ExpectedSmtpReadinessTimeout);
+        await Assert.That(registration.FailureStatus).IsEqualTo(HealthStatus.Unhealthy);
+        await Assert.That(registration.Tags).Contains("ready");
+        await Assert.That(registration.Tags).Contains("smtp");
+        await Assert.That(registration.Tags).Contains("infrastructure");
     }
 
     [Test]
@@ -38,10 +37,10 @@ public sealed class SmtpHealthCheckRegistrationTests
         var options = factory.Services.GetRequiredService<IOptions<HealthCheckServiceOptions>>().Value;
         var registration = options.Registrations.Single(registration => registration.Name == "web-push-dispatch");
 
-        registration.FailureStatus.Should().Be(HealthStatus.Unhealthy);
-        registration.Tags.Should().Contain("ready");
-        registration.Tags.Should().Contain("web-push");
-        registration.Tags.Should().Contain("dispatch");
-        registration.Tags.Should().Contain("infrastructure");
+        await Assert.That(registration.FailureStatus).IsEqualTo(HealthStatus.Unhealthy);
+        await Assert.That(registration.Tags).Contains("ready");
+        await Assert.That(registration.Tags).Contains("web-push");
+        await Assert.That(registration.Tags).Contains("dispatch");
+        await Assert.That(registration.Tags).Contains("infrastructure");
     }
 }

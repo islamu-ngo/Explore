@@ -4,7 +4,6 @@
 using Explore.API.Configuration;
 using Explore.API.HealthChecks;
 using Explore.API.Mcp;
-using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Options;
@@ -31,17 +30,17 @@ public sealed class McpAdapterHealthCheckTests
 
         var result = await healthCheck.CheckHealthAsync(new HealthCheckContext());
 
-        result.Status.Should().Be(HealthStatus.Degraded);
-        result.Description.Should().Contain("startup");
-        result.Data.Should().ContainKey("enabled").WhoseValue.Should().Be(false);
-        result.Data.Should().ContainKey("startupEnabled").WhoseValue.Should().Be(false);
-        result.Data.Should().ContainKey("runtimeEnabled").WhoseValue.Should().Be(true);
-        result.Data.Should().ContainKey("endpointPath").WhoseValue.Should().Be("/mcp");
-        result.Data.Should().ContainKey("stateless").WhoseValue.Should().Be(true);
-        result.Data.Should().ContainKey("legacySseStartupCeiling").WhoseValue.Should().Be(false);
-        result.Data.Should().ContainKey("legacySseRuntimeRequested").WhoseValue.Should().Be(false);
-        result.Data.Should().ContainKey("legacySseRuntimeEnabled").WhoseValue.Should().Be(false);
-        AssertSafeKeys(result);
+        await Assert.That(result.Status).IsEqualTo(HealthStatus.Degraded);
+        await Assert.That(result.Description).Contains("startup");
+        await Assert.That(result.Data).ContainsKey("enabled").And.Value.IsEqualTo(false);
+        await Assert.That(result.Data).ContainsKey("startupEnabled").And.Value.IsEqualTo(false);
+        await Assert.That(result.Data).ContainsKey("runtimeEnabled").And.Value.IsEqualTo(true);
+        await Assert.That(result.Data).ContainsKey("endpointPath").And.Value.IsEqualTo("/mcp");
+        await Assert.That(result.Data).ContainsKey("stateless").And.Value.IsEqualTo(true);
+        await Assert.That(result.Data).ContainsKey("legacySseStartupCeiling").And.Value.IsEqualTo(false);
+        await Assert.That(result.Data).ContainsKey("legacySseRuntimeRequested").And.Value.IsEqualTo(false);
+        await Assert.That(result.Data).ContainsKey("legacySseRuntimeEnabled").And.Value.IsEqualTo(false);
+        await AssertSafeKeys(result);
     }
 
     [Test]
@@ -60,12 +59,12 @@ public sealed class McpAdapterHealthCheckTests
 
         var result = await healthCheck.CheckHealthAsync(new HealthCheckContext());
 
-        result.Status.Should().Be(HealthStatus.Degraded);
-        result.Description.Should().Contain("runtime");
-        result.Data.Should().ContainKey("enabled").WhoseValue.Should().Be(false);
-        result.Data.Should().ContainKey("startupEnabled").WhoseValue.Should().Be(true);
-        result.Data.Should().ContainKey("runtimeEnabled").WhoseValue.Should().Be(false);
-        AssertSafeKeys(result);
+        await Assert.That(result.Status).IsEqualTo(HealthStatus.Degraded);
+        await Assert.That(result.Description).Contains("runtime");
+        await Assert.That(result.Data).ContainsKey("enabled").And.Value.IsEqualTo(false);
+        await Assert.That(result.Data).ContainsKey("startupEnabled").And.Value.IsEqualTo(true);
+        await Assert.That(result.Data).ContainsKey("runtimeEnabled").And.Value.IsEqualTo(false);
+        await AssertSafeKeys(result);
     }
 
     [Test]
@@ -84,12 +83,12 @@ public sealed class McpAdapterHealthCheckTests
 
         var result = await healthCheck.CheckHealthAsync(new HealthCheckContext());
 
-        result.Status.Should().Be(HealthStatus.Healthy);
-        result.Description.Should().Contain("stateless Streamable HTTP");
-        result.Data.Should().ContainKey("enabled").WhoseValue.Should().Be(true);
-        result.Data.Should().ContainKey("legacySseRuntimeRequested").WhoseValue.Should().Be(true);
-        result.Data.Should().ContainKey("legacySseRuntimeEnabled").WhoseValue.Should().Be(false);
-        AssertSafeKeys(result);
+        await Assert.That(result.Status).IsEqualTo(HealthStatus.Healthy);
+        await Assert.That(result.Description).Contains("stateless Streamable HTTP");
+        await Assert.That(result.Data).ContainsKey("enabled").And.Value.IsEqualTo(true);
+        await Assert.That(result.Data).ContainsKey("legacySseRuntimeRequested").And.Value.IsEqualTo(true);
+        await Assert.That(result.Data).ContainsKey("legacySseRuntimeEnabled").And.Value.IsEqualTo(false);
+        await AssertSafeKeys(result);
     }
 
     private static McpAdapterHealthCheck CreateHealthCheck(McpRuntimeState state)
@@ -112,11 +111,11 @@ public sealed class McpAdapterHealthCheckTests
             provider.GetRequiredService<IServiceScopeFactory>());
     }
 
-    private static void AssertSafeKeys(HealthCheckResult result)
+    private static async Task AssertSafeKeys(HealthCheckResult result)
     {
-        result.Data.Keys.Should().NotContain(key => key.Contains("tenant", StringComparison.OrdinalIgnoreCase));
-        result.Data.Keys.Should().NotContain(key => key.Contains("prompt", StringComparison.OrdinalIgnoreCase));
-        result.Data.Keys.Should().NotContain(key => key.Contains("payload", StringComparison.OrdinalIgnoreCase));
-        result.Data.Keys.Should().NotContain(key => key.Contains("apiKey", StringComparison.OrdinalIgnoreCase));
+        await Assert.That(result.Data.Keys).DoesNotContain(key => key.Contains("tenant", StringComparison.OrdinalIgnoreCase));
+        await Assert.That(result.Data.Keys).DoesNotContain(key => key.Contains("prompt", StringComparison.OrdinalIgnoreCase));
+        await Assert.That(result.Data.Keys).DoesNotContain(key => key.Contains("payload", StringComparison.OrdinalIgnoreCase));
+        await Assert.That(result.Data.Keys).DoesNotContain(key => key.Contains("apiKey", StringComparison.OrdinalIgnoreCase));
     }
 }

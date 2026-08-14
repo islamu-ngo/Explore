@@ -7,7 +7,6 @@ using Event.Api.IntegrationTests.Fixtures;
 using Explore.API.Services.OpenGraph;
 using Explore.Application.Features.Events.OpenGraph;
 using Explore.Application.Features.Events.Requests.Queries;
-using FluentAssertions;
 using SkiaSharp;
 using TUnit.Core;
 
@@ -31,13 +30,13 @@ public sealed class SkiaEventOpenGraphImageRendererTests
     {
         var result = await RenderAsync(title: "Community Iftar");
 
-        result.PngBytes.AsSpan(0, 8).SequenceEqual(PngSignature).Should().BeTrue();
-        BinaryPrimitives.ReadInt32BigEndian(result.PngBytes.AsSpan(16, 4)).Should().Be(CanvasWidth);
-        BinaryPrimitives.ReadInt32BigEndian(result.PngBytes.AsSpan(20, 4)).Should().Be(CanvasHeight);
+        await Assert.That(result.PngBytes.AsSpan(0, 8).SequenceEqual(PngSignature)).IsTrue();
+        await Assert.That(BinaryPrimitives.ReadInt32BigEndian(result.PngBytes.AsSpan(16, 4))).IsEqualTo(CanvasWidth);
+        await Assert.That(BinaryPrimitives.ReadInt32BigEndian(result.PngBytes.AsSpan(20, 4))).IsEqualTo(CanvasHeight);
 
         var expectedHash = Convert.ToHexStringLower(SHA256.HashData(result.PngBytes));
-        result.ETag.Should().Be($"\"{expectedHash}\"");
-        result.ETag.StartsWith("W/", StringComparison.OrdinalIgnoreCase).Should().BeFalse();
+        await Assert.That(result.ETag).IsEqualTo($"\"{expectedHash}\"");
+        await Assert.That(result.ETag.StartsWith("W/", StringComparison.OrdinalIgnoreCase)).IsFalse();
     }
 
     [Test]
@@ -46,8 +45,9 @@ public sealed class SkiaEventOpenGraphImageRendererTests
         var first = await RenderAsync(title: "Deterministic Event");
         var second = await RenderAsync(title: "Deterministic Event");
 
-        second.PngBytes.Should().Equal(first.PngBytes);
-        second.ETag.Should().Be(first.ETag);
+        await Assert.That(second.PngBytes).IsEquivalentTo(
+            first.PngBytes, TUnit.Assertions.Enums.CollectionOrdering.Matching);
+        await Assert.That(second.ETag).IsEqualTo(first.ETag);
     }
 
     [Test]
@@ -59,9 +59,9 @@ public sealed class SkiaEventOpenGraphImageRendererTests
         var blank = await RenderAsync(title: "   ");
         var eventSeed = await RenderAsync(title: "event");
 
-        HashArtworkPanel(alpha.PngBytes).Should().Be(HashArtworkPanel(trimmedAlpha.PngBytes));
-        HashArtworkPanel(alpha.PngBytes).Should().NotBe(HashArtworkPanel(beta.PngBytes));
-        HashArtworkPanel(blank.PngBytes).Should().Be(HashArtworkPanel(eventSeed.PngBytes));
+        await Assert.That(HashArtworkPanel(alpha.PngBytes)).IsEqualTo(HashArtworkPanel(trimmedAlpha.PngBytes));
+        await Assert.That(HashArtworkPanel(alpha.PngBytes)).IsNotEqualTo(HashArtworkPanel(beta.PngBytes));
+        await Assert.That(HashArtworkPanel(blank.PngBytes)).IsEqualTo(HashArtworkPanel(eventSeed.PngBytes));
     }
 
     [Test]
@@ -76,9 +76,9 @@ public sealed class SkiaEventOpenGraphImageRendererTests
         var oversizedResult = await RenderAsync("Fallback Event", oversized, "image/png");
 
         var expectedPanel = HashArtworkPanel(fallback.PngBytes);
-        HashArtworkPanel(invalidResult.PngBytes).Should().Be(expectedPanel);
-        HashArtworkPanel(unsupportedResult.PngBytes).Should().Be(expectedPanel);
-        HashArtworkPanel(oversizedResult.PngBytes).Should().Be(expectedPanel);
+        await Assert.That(HashArtworkPanel(invalidResult.PngBytes)).IsEqualTo(expectedPanel);
+        await Assert.That(HashArtworkPanel(unsupportedResult.PngBytes)).IsEqualTo(expectedPanel);
+        await Assert.That(HashArtworkPanel(oversizedResult.PngBytes)).IsEqualTo(expectedPanel);
     }
 
     [Test]
@@ -98,15 +98,15 @@ public sealed class SkiaEventOpenGraphImageRendererTests
                 "image/png",
                 CancellationToken.None);
 
-            decoded.Should().BeNull();
+            await Assert.That(decoded).IsNull();
         }
 
         using var artwork = new NonSeekableReadStream(oversizedEncodedData);
         var result = await RenderAsync(title, artwork, "image/png");
 
-        HashArtworkPanel(result.PngBytes).Should().Be(HashArtworkPanel(fallback.PngBytes));
-        BinaryPrimitives.ReadInt32BigEndian(result.PngBytes.AsSpan(16, 4)).Should().Be(CanvasWidth);
-        BinaryPrimitives.ReadInt32BigEndian(result.PngBytes.AsSpan(20, 4)).Should().Be(CanvasHeight);
+        await Assert.That(HashArtworkPanel(result.PngBytes)).IsEqualTo(HashArtworkPanel(fallback.PngBytes));
+        await Assert.That(BinaryPrimitives.ReadInt32BigEndian(result.PngBytes.AsSpan(16, 4))).IsEqualTo(CanvasWidth);
+        await Assert.That(BinaryPrimitives.ReadInt32BigEndian(result.PngBytes.AsSpan(20, 4))).IsEqualTo(CanvasHeight);
     }
 
     [Test]
@@ -125,16 +125,16 @@ public sealed class SkiaEventOpenGraphImageRendererTests
             "image/jpeg",
             CancellationToken.None);
 
-        decoded.Should().NotBeNull();
-        decoded!.Width.Should().BeGreaterThanOrEqualTo(ArtworkWidth);
-        decoded.Height.Should().BeGreaterThanOrEqualTo(ArtworkHeight);
-        ((long)decoded.Width * decoded.Height).Should().BeLessThanOrEqualTo(4L * ArtworkWidth * ArtworkHeight);
+        await Assert.That(decoded).IsNotNull();
+        await Assert.That(decoded!.Width).IsGreaterThanOrEqualTo(ArtworkWidth);
+        await Assert.That(decoded.Height).IsGreaterThanOrEqualTo(ArtworkHeight);
+        await Assert.That(((long)decoded.Width * decoded.Height)).IsLessThanOrEqualTo(4L * ArtworkWidth * ArtworkHeight);
 
         using var renderArtwork = new MemoryStream(jpegBytes);
         var result = await RenderAsync("Large JPEG Event", renderArtwork, "image/jpeg");
 
-        BinaryPrimitives.ReadInt32BigEndian(result.PngBytes.AsSpan(16, 4)).Should().Be(CanvasWidth);
-        BinaryPrimitives.ReadInt32BigEndian(result.PngBytes.AsSpan(20, 4)).Should().Be(CanvasHeight);
+        await Assert.That(BinaryPrimitives.ReadInt32BigEndian(result.PngBytes.AsSpan(16, 4))).IsEqualTo(CanvasWidth);
+        await Assert.That(BinaryPrimitives.ReadInt32BigEndian(result.PngBytes.AsSpan(20, 4))).IsEqualTo(CanvasHeight);
     }
 
     [Test]
@@ -148,14 +148,14 @@ public sealed class SkiaEventOpenGraphImageRendererTests
             "image/png",
             CancellationToken.None);
 
-        decoded.Should().BeNull();
+        await Assert.That(decoded).IsNull();
 
         using var renderArtwork = new MemoryStream(CreateSolidPng(4000, 3000, SKColors.Red));
         var result = await RenderAsync("Large PNG Event", renderArtwork, "image/png");
 
-        BinaryPrimitives.ReadInt32BigEndian(result.PngBytes.AsSpan(16, 4)).Should().Be(CanvasWidth);
-        BinaryPrimitives.ReadInt32BigEndian(result.PngBytes.AsSpan(20, 4)).Should().Be(CanvasHeight);
-        HashArtworkPanel(result.PngBytes).Should().Be(HashArtworkPanel(fallback.PngBytes));
+        await Assert.That(BinaryPrimitives.ReadInt32BigEndian(result.PngBytes.AsSpan(16, 4))).IsEqualTo(CanvasWidth);
+        await Assert.That(BinaryPrimitives.ReadInt32BigEndian(result.PngBytes.AsSpan(20, 4))).IsEqualTo(CanvasHeight);
+        await Assert.That(HashArtworkPanel(result.PngBytes)).IsEqualTo(HashArtworkPanel(fallback.PngBytes));
     }
 
     [Test]
@@ -171,7 +171,7 @@ public sealed class SkiaEventOpenGraphImageRendererTests
         var result = await RenderAsync("Portrait Event", artwork, "image/png");
         using var bitmap = SKBitmap.Decode(result.PngBytes);
 
-        AssertPanelCenterLineIsGreen(bitmap, vertical: true);
+        await AssertPanelCenterLineIsGreen(bitmap, vertical: true);
     }
 
     [Test]
@@ -187,30 +187,25 @@ public sealed class SkiaEventOpenGraphImageRendererTests
         var result = await RenderAsync("Landscape Event", artwork, "image/png");
         using var bitmap = SKBitmap.Decode(result.PngBytes);
 
-        AssertPanelCenterLineIsGreen(bitmap, vertical: false);
+        await AssertPanelCenterLineIsGreen(bitmap, vertical: false);
     }
 
     [Test]
     public async Task FormatDateRangeUsesInvariantBoundedBadgeText()
     {
-        SkiaEventOpenGraphImageRenderer.FormatDateRange(null, null)
-            .Should().Be("DATE TO BE ANNOUNCED");
-        SkiaEventOpenGraphImageRenderer.FormatDateRange(
+        await Assert.That(SkiaEventOpenGraphImageRenderer.FormatDateRange(null, null)).IsEqualTo("DATE TO BE ANNOUNCED");
+        await Assert.That(SkiaEventOpenGraphImageRenderer.FormatDateRange(
                 new DateOnly(2026, 1, 5),
-                new DateOnly(2026, 1, 5))
-            .Should().Be("JAN 5, 2026");
-        SkiaEventOpenGraphImageRenderer.FormatDateRange(
+                new DateOnly(2026, 1, 5))).IsEqualTo("JAN 5, 2026");
+        await Assert.That(SkiaEventOpenGraphImageRenderer.FormatDateRange(
                 new DateOnly(2026, 1, 5),
-                new DateOnly(2026, 1, 7))
-            .Should().Be("JAN 5–7, 2026");
-        SkiaEventOpenGraphImageRenderer.FormatDateRange(
+                new DateOnly(2026, 1, 7))).IsEqualTo("JAN 5–7, 2026");
+        await Assert.That(SkiaEventOpenGraphImageRenderer.FormatDateRange(
                 new DateOnly(2026, 1, 31),
-                new DateOnly(2026, 2, 2))
-            .Should().Be("JAN 31 – FEB 2, 2026");
-        SkiaEventOpenGraphImageRenderer.FormatDateRange(
+                new DateOnly(2026, 2, 2))).IsEqualTo("JAN 31 – FEB 2, 2026");
+        await Assert.That(SkiaEventOpenGraphImageRenderer.FormatDateRange(
                 new DateOnly(2026, 12, 31),
-                new DateOnly(2027, 1, 1))
-            .Should().Be("DEC 31, 2026 – JAN 1, 2027");
+                new DateOnly(2027, 1, 1))).IsEqualTo("DEC 31, 2026 – JAN 1, 2027");
 
         await Task.CompletedTask;
     }
@@ -220,8 +215,8 @@ public sealed class SkiaEventOpenGraphImageRendererTests
     {
         using var typeface = SkiaEventOpenGraphImageRenderer.LoadEmbeddedTypeface();
 
-        typeface.FamilyName.Should().Contain("Noto Sans Arabic");
-        typeface.GetGlyphs("فعاليات".AsSpan()).Should().OnlyContain(glyph => glyph != 0);
+        await Assert.That(typeface.FamilyName).Contains("Noto Sans Arabic");
+        await Assert.That(typeface.GetGlyphs("فعاليات".AsSpan()).All(glyph => glyph != 0)).IsTrue();
         await Task.CompletedTask;
     }
 
@@ -233,8 +228,8 @@ public sealed class SkiaEventOpenGraphImageRendererTests
             brandDisplayName: "فعاليات إسلامو");
         var blank = await RenderAsync(title: "", brandDisplayName: "");
 
-        HashTextRegion(arabic.PngBytes).Should().NotBe(HashTextRegion(blank.PngBytes));
-        CountDarkPixels(arabic.PngBytes).Should().BeGreaterThan(500);
+        await Assert.That(HashTextRegion(arabic.PngBytes)).IsNotEqualTo(HashTextRegion(blank.PngBytes));
+        await Assert.That(CountDarkPixels(arabic.PngBytes)).IsGreaterThan(500);
     }
 
     private Task<EventOpenGraphImageRenderResult> RenderAsync(
@@ -299,7 +294,7 @@ public sealed class SkiaEventOpenGraphImageRendererTests
         return count;
     }
 
-    private static void AssertPanelCenterLineIsGreen(SKBitmap bitmap, bool vertical)
+    private static async Task AssertPanelCenterLineIsGreen(SKBitmap bitmap, bool vertical)
     {
         var points = vertical
             ? new[]
@@ -318,9 +313,9 @@ public sealed class SkiaEventOpenGraphImageRendererTests
         foreach (var point in points)
         {
             var color = bitmap.GetPixel(point.X, point.Y);
-            color.Green.Should().BeGreaterThan(240);
-            color.Red.Should().BeLessThan(15);
-            color.Blue.Should().BeLessThan(15);
+            await Assert.That(color.Green).IsGreaterThan((byte)240);
+            await Assert.That(color.Red).IsLessThan((byte)15);
+            await Assert.That(color.Blue).IsLessThan((byte)15);
         }
     }
 

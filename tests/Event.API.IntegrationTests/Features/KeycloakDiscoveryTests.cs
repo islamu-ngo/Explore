@@ -3,7 +3,6 @@
 
 using System.Text.Json;
 using Event.Api.IntegrationTests.Fixtures;
-using FluentAssertions;
 using TUnit.Core;
 
 namespace Event.Api.IntegrationTests.Features;
@@ -39,21 +38,20 @@ public class KeycloakDiscoveryTests : IDisposable
     {
         var response = await _httpClient.GetAsync(_infra.KeycloakMetadataAddress);
 
-        response.IsSuccessStatusCode.Should().BeTrue("the OIDC metadata endpoint must be reachable");
+        await Assert.That(response.IsSuccessStatusCode).IsTrue().Because("the OIDC metadata endpoint must be reachable");
 
         var json = await response.Content.ReadAsStringAsync();
         var doc = JsonDocument.Parse(json);
 
-        doc.RootElement.TryGetProperty("issuer", out var issuer).Should().BeTrue();
-        issuer.GetString().Should().Be(_infra.KeycloakAuthority,
-            "the issuer in OIDC metadata must match the Keycloak realm URL");
+        await Assert.That(doc.RootElement.TryGetProperty("issuer", out var issuer)).IsTrue();
+        await Assert.That(issuer.GetString()).IsEqualTo(_infra.KeycloakAuthority).Because("the issuer in OIDC metadata must match the Keycloak realm URL");
 
-        doc.RootElement.TryGetProperty("token_endpoint", out _).Should().BeTrue();
-        doc.RootElement.TryGetProperty("jwks_uri", out _).Should().BeTrue();
-        doc.RootElement.TryGetProperty("authorization_endpoint", out _).Should().BeTrue();
-        doc.RootElement.TryGetProperty("response_types_supported", out _).Should().BeTrue();
-        doc.RootElement.TryGetProperty("subject_types_supported", out _).Should().BeTrue();
-        doc.RootElement.TryGetProperty("id_token_signing_alg_values_supported", out _).Should().BeTrue();
+        await Assert.That(doc.RootElement.TryGetProperty("token_endpoint", out _)).IsTrue();
+        await Assert.That(doc.RootElement.TryGetProperty("jwks_uri", out _)).IsTrue();
+        await Assert.That(doc.RootElement.TryGetProperty("authorization_endpoint", out _)).IsTrue();
+        await Assert.That(doc.RootElement.TryGetProperty("response_types_supported", out _)).IsTrue();
+        await Assert.That(doc.RootElement.TryGetProperty("subject_types_supported", out _)).IsTrue();
+        await Assert.That(doc.RootElement.TryGetProperty("id_token_signing_alg_values_supported", out _)).IsTrue();
     }
 
     [Test]
@@ -61,11 +59,10 @@ public class KeycloakDiscoveryTests : IDisposable
     {
         var metadata = await GetOidcMetadataAsync();
 
-        metadata.TryGetProperty("response_types_supported", out var responseTypes).Should().BeTrue();
+        await Assert.That(metadata.TryGetProperty("response_types_supported", out var responseTypes)).IsTrue();
         var types = responseTypes.EnumerateArray().Select(t => t.GetString()).ToList();
 
-        types.Should().Contain("code",
-            "the OIDC provider must support authorization code flow for the BFF pattern");
+        await Assert.That(types).Contains("code").Because("the OIDC provider must support authorization code flow for the BFF pattern");
     }
 
     [Test]
@@ -73,11 +70,10 @@ public class KeycloakDiscoveryTests : IDisposable
     {
         var metadata = await GetOidcMetadataAsync();
 
-        metadata.TryGetProperty("grant_types_supported", out var grantTypes).Should().BeTrue();
+        await Assert.That(metadata.TryGetProperty("grant_types_supported", out var grantTypes)).IsTrue();
         var types = grantTypes.EnumerateArray().Select(t => t.GetString()).ToList();
 
-        types.Should().Contain("password",
-            "the OIDC provider must support ROPC grant for test token acquisition");
+        await Assert.That(types).Contains("password").Because("the OIDC provider must support ROPC grant for test token acquisition");
     }
 
     [Test]
@@ -85,11 +81,10 @@ public class KeycloakDiscoveryTests : IDisposable
     {
         var metadata = await GetOidcMetadataAsync();
 
-        metadata.TryGetProperty("id_token_signing_alg_values_supported", out var algs).Should().BeTrue();
+        await Assert.That(metadata.TryGetProperty("id_token_signing_alg_values_supported", out var algs)).IsTrue();
         var algValues = algs.EnumerateArray().Select(a => a.GetString()).ToList();
 
-        algValues.Should().Contain("RS256",
-            "the OIDC provider must support RS256 for JWT signing (production requirement)");
+        await Assert.That(algValues).Contains("RS256").Because("the OIDC provider must support RS256 for JWT signing (production requirement)");
     }
 
     #endregion
@@ -102,25 +97,25 @@ public class KeycloakDiscoveryTests : IDisposable
         var metadata = await GetOidcMetadataAsync();
         var jwksUri = metadata.GetProperty("jwks_uri").GetString();
 
-        jwksUri.Should().NotBeNullOrEmpty();
+        await Assert.That(string.IsNullOrEmpty(jwksUri)).IsFalse();
 
         var response = await _httpClient.GetAsync(jwksUri!);
-        response.IsSuccessStatusCode.Should().BeTrue();
+        await Assert.That(response.IsSuccessStatusCode).IsTrue();
 
         var json = await response.Content.ReadAsStringAsync();
         var doc = JsonDocument.Parse(json);
 
-        doc.RootElement.TryGetProperty("keys", out var keys).Should().BeTrue();
+        await Assert.That(doc.RootElement.TryGetProperty("keys", out var keys)).IsTrue();
         var keyList = keys.EnumerateArray().ToList();
-        keyList.Should().NotBeEmpty("at least one signing key must be available");
+        await Assert.That(keyList).IsNotEmpty().Because("at least one signing key must be available");
 
         foreach (var key in keyList)
         {
-            key.TryGetProperty("kty", out _).Should().BeTrue("each key must have a key type");
-            key.TryGetProperty("use", out var use).Should().BeTrue();
-            use.GetString().Should().BeOneOf("sig", "enc",
-                "Keycloak may publish both signing and encryption keys");
-            key.TryGetProperty("kid", out _).Should().BeTrue("each key must have a key ID");
+            await Assert.That(key.TryGetProperty("kty", out _)).IsTrue().Because("each key must have a key type");
+            await Assert.That(key.TryGetProperty("use", out var use)).IsTrue();
+            await Assert.That(new[] { "sig", "enc" }).Contains(use.GetString())
+                .Because("Keycloak may publish both signing and encryption keys");
+            await Assert.That(key.TryGetProperty("kid", out _)).IsTrue().Because("each key must have a key ID");
         }
 
         var hasRsaSigningKey = keyList.Any(key =>
@@ -129,8 +124,7 @@ public class KeycloakDiscoveryTests : IDisposable
             key.TryGetProperty("kty", out var keyType) &&
             keyType.GetString() == "RSA");
 
-        hasRsaSigningKey.Should().BeTrue(
-            "at least one RSA signing key must be available for RS256 JWT validation");
+        await Assert.That(hasRsaSigningKey).IsTrue().Because("at least one RSA signing key must be available for RS256 JWT validation");
     }
 
     [Test]
@@ -147,7 +141,7 @@ public class KeycloakDiscoveryTests : IDisposable
         var hasRsa = keys.EnumerateArray()
             .Any(k => k.TryGetProperty("kty", out var kty) && kty.GetString() == "RSA");
 
-        hasRsa.Should().BeTrue("at least one RSA key must be present for RS256 JWT signing");
+        await Assert.That(hasRsa).IsTrue().Because("at least one RSA key must be present for RS256 JWT signing");
     }
 
     #endregion
@@ -160,7 +154,7 @@ public class KeycloakDiscoveryTests : IDisposable
         var metadata = await GetOidcMetadataAsync();
         var tokenEndpoint = metadata.GetProperty("token_endpoint").GetString();
 
-        tokenEndpoint.Should().NotBeNullOrEmpty();
+        await Assert.That(string.IsNullOrEmpty(tokenEndpoint)).IsFalse();
 
         var probeResponse = await _httpClient.PostAsync(tokenEndpoint!,
             new FormUrlEncodedContent(new Dictionary<string, string>
@@ -170,8 +164,7 @@ public class KeycloakDiscoveryTests : IDisposable
                 ["client_secret"] = "invalid-secret"
             }));
 
-        probeResponse.StatusCode.Should().Be(System.Net.HttpStatusCode.Unauthorized,
-            "the token endpoint must be reachable and reject invalid credentials with 401");
+        await Assert.That(probeResponse.StatusCode).IsEqualTo(System.Net.HttpStatusCode.Unauthorized).Because("the token endpoint must be reachable and reject invalid credentials with 401");
     }
 
     [Test]
@@ -179,8 +172,7 @@ public class KeycloakDiscoveryTests : IDisposable
     {
         var act = async () => await _infra.TokenClient.GetAccessTokenAsync("nonexistent-user", "wrong-password");
 
-        await act.Should().ThrowAsync<InvalidOperationException>(
-            "invalid credentials must cause an InvalidOperationException in the token client");
+        await Assert.ThrowsAsync<InvalidOperationException>(act);
     }
 
     #endregion
@@ -192,11 +184,10 @@ public class KeycloakDiscoveryTests : IDisposable
     {
         var response = await _httpClient.GetAsync(_infra.KeycloakMetadataAddress);
 
-        response.StatusCode.Should().Be(System.Net.HttpStatusCode.OK);
+        await Assert.That(response.StatusCode).IsEqualTo(System.Net.HttpStatusCode.OK);
 
         var contentType = response.Content.Headers.ContentType?.MediaType;
-        contentType.Should().Be("application/json",
-            "OIDC metadata must be served as JSON");
+        await Assert.That(contentType).IsEqualTo("application/json").Because("OIDC metadata must be served as JSON");
     }
 
     [Test]
@@ -204,14 +195,13 @@ public class KeycloakDiscoveryTests : IDisposable
     {
         var response = await _httpClient.GetAsync(_infra.KeycloakMetadataAddress);
 
-        response.IsSuccessStatusCode.Should().BeTrue();
+        await Assert.That(response.IsSuccessStatusCode).IsTrue();
 
         var json = await response.Content.ReadAsStringAsync();
         var doc = JsonDocument.Parse(json);
 
-        doc.RootElement.GetProperty("issuer").GetString().Should().Be(_infra.KeycloakAuthority);
-        doc.RootElement.GetProperty("authorization_endpoint").GetString().Should()
-            .Contain("/realms/ISLAMU/", "the imported ISLAMU realm must serve OIDC endpoints");
+        await Assert.That(doc.RootElement.GetProperty("issuer").GetString()).IsEqualTo(_infra.KeycloakAuthority);
+        await Assert.That(doc.RootElement.GetProperty("authorization_endpoint").GetString()).Contains("/realms/ISLAMU/").Because("the imported ISLAMU realm must serve OIDC endpoints");
     }
 
     #endregion
@@ -228,8 +218,7 @@ public class KeycloakDiscoveryTests : IDisposable
         var metadata = await GetOidcMetadataAsync();
         var metadataIssuer = metadata.GetProperty("issuer").GetString();
 
-        jwt.Issuer.Should().Be(metadataIssuer,
-            "the token issuer must exactly match the issuer in OIDC metadata");
+        await Assert.That(jwt.Issuer).IsEqualTo(metadataIssuer).Because("the token issuer must exactly match the issuer in OIDC metadata");
     }
 
     #endregion

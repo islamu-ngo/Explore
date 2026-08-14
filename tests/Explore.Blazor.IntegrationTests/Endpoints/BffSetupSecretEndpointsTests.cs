@@ -6,7 +6,6 @@ using System.Threading.RateLimiting;
 using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Extensions;
 using Explore.Blazor.Services;
-using FluentAssertions;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
@@ -27,11 +26,11 @@ public sealed class BffSetupSecretEndpointsTests
 
         using var response = await app.Client.PostAsJsonAsync("/bff/setup-secret", new { secret = "candidate-secret" });
 
-        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Forbidden);
         var body = await response.Content.ReadAsStringAsync();
-        body.Should().Contain("Invalid setup secret.");
-        body.Should().NotContain("provider rejected");
-        body.Should().NotContain("raw-secret-value");
+        await Assert.That(body).Contains("Invalid setup secret.");
+        await Assert.That(body).DoesNotContain("provider rejected");
+        await Assert.That(body).DoesNotContain("raw-secret-value");
     }
 
     [Test]
@@ -44,11 +43,11 @@ public sealed class BffSetupSecretEndpointsTests
 
         using var response = await app.Client.PostAsJsonAsync("/bff/setup-secret", new { secret = "candidate-secret" });
 
-        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.BadRequest);
         var body = await response.Content.ReadAsStringAsync();
-        body.Should().Contain("Invalid setup secret.");
-        body.Should().NotContain("database said");
-        body.Should().NotContain("hash mismatch");
+        await Assert.That(body).Contains("Invalid setup secret.");
+        await Assert.That(body).DoesNotContain("database said");
+        await Assert.That(body).DoesNotContain("hash mismatch");
     }
 
     [Test]
@@ -60,11 +59,11 @@ public sealed class BffSetupSecretEndpointsTests
 
         using var response = await app.Client.PostAsync("/bff/setup-secret", content);
 
-        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.BadRequest);
         var body = await response.Content.ReadAsStringAsync();
-        body.Should().Contain("Setup secret request body must be valid JSON.");
-        body.Should().NotContain("JsonException");
-        handler.CallCount.Should().Be(0);
+        await Assert.That(body).Contains("Setup secret request body must be valid JSON.");
+        await Assert.That(body).DoesNotContain("JsonException");
+        await Assert.That(handler.CallCount).IsEqualTo(0);
     }
 
     [Test]
@@ -76,10 +75,10 @@ public sealed class BffSetupSecretEndpointsTests
 
         using var response = await app.Client.PostAsJsonAsync("/bff/setup-secret", new { secret = tooLongSecret });
 
-        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.BadRequest);
         var body = await response.Content.ReadAsStringAsync();
-        body.Should().Contain("512 characters or fewer");
-        handler.CallCount.Should().Be(0);
+        await Assert.That(body).Contains("512 characters or fewer");
+        await Assert.That(handler.CallCount).IsEqualTo(0);
     }
 
     [Test]
@@ -93,11 +92,11 @@ public sealed class BffSetupSecretEndpointsTests
 
         using var response = await app.Client.SendAsync(request);
 
-        response.StatusCode.Should().Be(HttpStatusCode.OK);
-        handler.CallCount.Should().Be(1);
-        handler.CapturedRequestBody.Should().Contain("body-secret");
-        handler.CapturedRequestBody.Should().NotContain("browser-controlled-secret");
-        handler.CapturedSetupSecretHeader.Should().BeNull();
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
+        await Assert.That(handler.CallCount).IsEqualTo(1);
+        await Assert.That(handler.CapturedRequestBody).Contains("body-secret");
+        await Assert.That(handler.CapturedRequestBody).DoesNotContain("browser-controlled-secret");
+        await Assert.That(handler.CapturedSetupSecretHeader).IsNull();
     }
 
     [Test]
@@ -112,17 +111,17 @@ public sealed class BffSetupSecretEndpointsTests
 
         using var response = await app.Client.SendAsync(request);
 
-        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
         var cookie = response.Headers.GetValues("Set-Cookie").Single(value => value.StartsWith("setup-secret=", StringComparison.Ordinal));
         var sessionCookie = response.Headers.GetValues("Set-Cookie").Single(value => value.StartsWith("setup-secret-session=", StringComparison.Ordinal));
         var normalizedCookie = cookie.ToLowerInvariant();
         var normalizedSessionCookie = sessionCookie.ToLowerInvariant();
-        normalizedCookie.Should().NotContain("; secure");
-        normalizedSessionCookie.Should().NotContain("; secure");
-        normalizedCookie.Should().Contain("httponly");
-        normalizedSessionCookie.Should().Contain("httponly");
-        normalizedCookie.Should().Contain("max-age=1800");
-        normalizedSessionCookie.Should().Contain("max-age=1800");
+        await Assert.That(normalizedCookie).DoesNotContain("; secure");
+        await Assert.That(normalizedSessionCookie).DoesNotContain("; secure");
+        await Assert.That(normalizedCookie).Contains("httponly");
+        await Assert.That(normalizedSessionCookie).Contains("httponly");
+        await Assert.That(normalizedCookie).Contains("max-age=1800");
+        await Assert.That(normalizedSessionCookie).Contains("max-age=1800");
     }
 
     [Test]
@@ -137,17 +136,17 @@ public sealed class BffSetupSecretEndpointsTests
 
         using var response = await app.Client.SendAsync(request);
 
-        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
         var cookie = response.Headers.GetValues("Set-Cookie").Single(value => value.StartsWith("setup-secret=", StringComparison.Ordinal));
         var sessionCookie = response.Headers.GetValues("Set-Cookie").Single(value => value.StartsWith("setup-secret-session=", StringComparison.Ordinal));
         var normalizedCookie = cookie.ToLowerInvariant();
         var normalizedSessionCookie = sessionCookie.ToLowerInvariant();
-        normalizedCookie.Should().Contain("; secure");
-        normalizedSessionCookie.Should().Contain("; secure");
-        normalizedCookie.Should().Contain("httponly");
-        normalizedSessionCookie.Should().Contain("httponly");
-        normalizedCookie.Should().Contain("max-age=1800");
-        normalizedSessionCookie.Should().Contain("max-age=1800");
+        await Assert.That(normalizedCookie).Contains("; secure");
+        await Assert.That(normalizedSessionCookie).Contains("; secure");
+        await Assert.That(normalizedCookie).Contains("httponly");
+        await Assert.That(normalizedSessionCookie).Contains("httponly");
+        await Assert.That(normalizedCookie).Contains("max-age=1800");
+        await Assert.That(normalizedSessionCookie).Contains("max-age=1800");
     }
 
     [Test]
@@ -163,9 +162,9 @@ public sealed class BffSetupSecretEndpointsTests
         };
         using var response = await app.Client.SendAsync(request);
 
-        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
         var body = await response.Content.ReadAsStringAsync();
-        body.Should().NotContain(submittedSecret);
+        await Assert.That(body).DoesNotContain(submittedSecret);
     }
 
     [Test]
@@ -178,13 +177,11 @@ public sealed class BffSetupSecretEndpointsTests
 
         using var response = await app.Client.GetAsync("/bff/setup-secret");
 
-        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
         var cookies = response.Headers.GetValues("Set-Cookie").ToArray();
-        cookies.Single(value => value.StartsWith("setup-secret=", StringComparison.Ordinal))
-            .Should().Contain("max-age=1800");
-        cookies.Single(value => value.StartsWith("setup-secret-session=", StringComparison.Ordinal))
-            .Should().Contain("max-age=1800");
-        handler.CallCount.Should().Be(0);
+        await Assert.That(cookies.Single(value => value.StartsWith("setup-secret=", StringComparison.Ordinal))).Contains("max-age=1800");
+        await Assert.That(cookies.Single(value => value.StartsWith("setup-secret-session=", StringComparison.Ordinal))).Contains("max-age=1800");
+        await Assert.That(handler.CallCount).IsEqualTo(0);
     }
 
     [Test]
@@ -198,8 +195,8 @@ public sealed class BffSetupSecretEndpointsTests
 
         using var response = await app.Client.PostAsJsonAsync("/bff/setup-secret/sync", new { secret = "" });
 
-        response.StatusCode.Should().Be(HttpStatusCode.OK);
-        handler.CallCount.Should().Be(0);
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
+        await Assert.That(handler.CallCount).IsEqualTo(0);
     }
 
     [Test]
@@ -215,8 +212,8 @@ public sealed class BffSetupSecretEndpointsTests
 
         using var response = await app.Client.PostAsJsonAsync("/bff/setup-secret/sync", new { secret = "" });
 
-        response.StatusCode.Should().Be(HttpStatusCode.OK);
-        handler.CallCount.Should().Be(1);
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
+        await Assert.That(handler.CallCount).IsEqualTo(1);
     }
 
     [Test]
@@ -230,14 +227,14 @@ public sealed class BffSetupSecretEndpointsTests
         using var secondRequest = CreateSetupSecretRequest("second-secret", "stable-xsrf-partition");
         using var secondResponse = await app.Client.SendAsync(secondRequest);
 
-        firstResponse.StatusCode.Should().Be(HttpStatusCode.OK);
-        secondResponse.StatusCode.Should().Be(HttpStatusCode.TooManyRequests);
-        secondResponse.Headers.Contains("Retry-After").Should().BeTrue();
+        await Assert.That(firstResponse.StatusCode).IsEqualTo(HttpStatusCode.OK);
+        await Assert.That(secondResponse.StatusCode).IsEqualTo(HttpStatusCode.TooManyRequests);
+        await Assert.That(secondResponse.Headers.Contains("Retry-After")).IsTrue();
         var body = await secondResponse.Content.ReadAsStringAsync();
-        body.Should().Contain("Too Many Requests");
-        body.Should().Contain("Too many setup-secret attempts");
-        body.Should().NotContain("second-secret");
-        handler.CallCount.Should().Be(1);
+        await Assert.That(body).Contains("Too Many Requests");
+        await Assert.That(body).Contains("Too many setup-secret attempts");
+        await Assert.That(body).DoesNotContain("second-secret");
+        await Assert.That(handler.CallCount).IsEqualTo(1);
     }
 
     private static async Task<TestBffApp> CreateAppAsync(

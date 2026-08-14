@@ -8,7 +8,6 @@ using System.Net.Sockets;
 using Event.Api.IntegrationTests.Fixtures;
 using Explore.Domain.Constants;
 using Explore.Persistence;
-using FluentAssertions;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -58,8 +57,7 @@ public class NoKeycloakAuthenticationTests : IAsyncDisposable
 
         var response = await _client.SendAsync(request);
 
-        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized,
-            "without any OIDC authority, anonymous requests to protected endpoints must get 401");
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized).Because("without any OIDC authority, anonymous requests to protected endpoints must get 401");
     }
 
     [Test]
@@ -71,8 +69,7 @@ public class NoKeycloakAuthenticationTests : IAsyncDisposable
 
         var response = await _client.SendAsync(request);
 
-        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized,
-            "arbitrary JWTs must be rejected when no authority is configured to validate them");
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized).Because("arbitrary JWTs must be rejected when no authority is configured to validate them");
     }
 
     [Test]
@@ -87,8 +84,7 @@ public class NoKeycloakAuthenticationTests : IAsyncDisposable
 
         var response = await _client.SendAsync(request);
 
-        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized,
-            "expired tokens must be rejected when no authority can validate them");
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized).Because("expired tokens must be rejected when no authority can validate them");
     }
 
     #endregion
@@ -102,8 +98,7 @@ public class NoKeycloakAuthenticationTests : IAsyncDisposable
 
         var response = await _client.SendAsync(request);
 
-        response.StatusCode.Should().Be(HttpStatusCode.OK,
-            "[AllowAnonymous] endpoints must function regardless of OIDC configuration");
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK).Because("[AllowAnonymous] endpoints must function regardless of OIDC configuration");
     }
 
     [Test]
@@ -113,8 +108,7 @@ public class NoKeycloakAuthenticationTests : IAsyncDisposable
 
         var response = await _client.SendAsync(request);
 
-        response.StatusCode.Should().BeOneOf([HttpStatusCode.OK, HttpStatusCode.NotFound],
-            "onboarding status must be accessible for initial setup before Keycloak is configured");
+        await Assert.That([HttpStatusCode.OK, HttpStatusCode.NotFound]).Contains(response.StatusCode).Because("onboarding status must be accessible for initial setup before Keycloak is configured");
     }
 
     [Test]
@@ -124,8 +118,7 @@ public class NoKeycloakAuthenticationTests : IAsyncDisposable
 
         var response = await _client.SendAsync(request);
 
-        response.StatusCode.Should().BeOneOf([HttpStatusCode.OK, HttpStatusCode.ServiceUnavailable],
-            "health endpoints must be accessible for infrastructure monitoring");
+        await Assert.That([HttpStatusCode.OK, HttpStatusCode.ServiceUnavailable]).Contains(response.StatusCode).Because("health endpoints must be accessible for infrastructure monitoring");
     }
 
     [Test]
@@ -135,8 +128,7 @@ public class NoKeycloakAuthenticationTests : IAsyncDisposable
 
         var response = await _client.SendAsync(request);
 
-        response.StatusCode.Should().BeOneOf([HttpStatusCode.OK, HttpStatusCode.ServiceUnavailable],
-            "liveness must stay independent from readiness-only dependencies, while still allowing the documented graceful-shutdown window to report 503");
+        await Assert.That([HttpStatusCode.OK, HttpStatusCode.ServiceUnavailable]).Contains(response.StatusCode).Because("liveness must stay independent from readiness-only dependencies, while still allowing the documented graceful-shutdown window to report 503");
     }
 
     #endregion
@@ -146,13 +138,13 @@ public class NoKeycloakAuthenticationTests : IAsyncDisposable
     [Test]
     public async Task NoAuthority_ServerStartsWithoutCrash()
     {
-        _factory.Should().NotBeNull("the factory must build successfully without Keycloak config");
-        _client.Should().NotBeNull("the HTTP client must be created without errors");
+        await Assert.That(_factory).IsNotNull().Because("the factory must build successfully without Keycloak config");
+        await Assert.That(_client).IsNotNull().Because("the HTTP client must be created without errors");
 
         using var request = new HttpRequestMessage(HttpMethod.Get, "/api/eventtypes");
         var response = await _client.SendAsync(request);
 
-        response.Should().NotBeNull("the server must respond to requests even without OIDC config");
+        await Assert.That(response).IsNotNull().Because("the server must respond to requests even without OIDC config");
     }
 
     #endregion

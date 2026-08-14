@@ -5,7 +5,6 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using Event.Api.IntegrationTests.Fixtures;
-using FluentAssertions;
 using TUnit.Core;
 
 namespace Event.Api.IntegrationTests.Features;
@@ -64,8 +63,7 @@ public class SecurityIntegrationTests : IAsyncDisposable
         var response = await _client.SendAsync(request);
 
         // Assert
-        response.StatusCode.Should().Be(HttpStatusCode.OK,
-            "a valid JWT from the Keycloak container should be accepted by real JwtBearer validation");
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK).Because("a valid JWT from the Keycloak container should be accepted by real JwtBearer validation");
     }
 
     [Test]
@@ -91,8 +89,7 @@ public class SecurityIntegrationTests : IAsyncDisposable
         var response = await _client.SendAsync(request);
 
         // Assert — should NOT be 401 (could be 201, 400, or 403 from business logic)
-        response.StatusCode.Should().NotBe(HttpStatusCode.Unauthorized,
-            "a valid Keycloak JWT with proper audience should pass authentication");
+        await Assert.That(response.StatusCode).IsNotEqualTo(HttpStatusCode.Unauthorized).Because("a valid Keycloak JWT with proper audience should pass authentication");
     }
 
     #endregion
@@ -120,8 +117,7 @@ public class SecurityIntegrationTests : IAsyncDisposable
         var response = await _client.SendAsync(request);
 
         // Assert
-        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized,
-            "requests without a Bearer token must be rejected by real JWT validation");
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized).Because("requests without a Bearer token must be rejected by real JWT validation");
     }
 
     #endregion
@@ -150,8 +146,7 @@ public class SecurityIntegrationTests : IAsyncDisposable
         var response = await _client.SendAsync(request);
 
         // Assert
-        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized,
-            "a malformed JWT must be rejected by token signature validation");
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized).Because("a malformed JWT must be rejected by token signature validation");
     }
 
     [Test]
@@ -176,8 +171,7 @@ public class SecurityIntegrationTests : IAsyncDisposable
         var response = await _client.SendAsync(request);
 
         // Assert
-        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized,
-            "an empty Bearer token must be rejected");
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized).Because("an empty Bearer token must be rejected");
     }
 
     #endregion
@@ -215,8 +209,7 @@ public class SecurityIntegrationTests : IAsyncDisposable
             var response = await _client.SendAsync(request);
 
             // Assert
-            response.StatusCode.Should().Be(HttpStatusCode.Unauthorized,
-                "a JWT with a tampered signature must be rejected by RSA key validation");
+            await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized).Because("a JWT with a tampered signature must be rejected by RSA key validation");
         }
     }
 
@@ -230,7 +223,7 @@ public class SecurityIntegrationTests : IAsyncDisposable
         var token = await _infra.TokenClient.GetUserTokenAsync();
         var parts = token.Split('.');
 
-        parts.Length.Should().Be(3, "JWT must have 3 parts");
+        await Assert.That(parts.Length).IsEqualTo(3).Because("JWT must have 3 parts");
 
         var payloadBytes = Convert.FromBase64String(PadBase64(parts[1]));
         var payloadJson = System.Text.Encoding.UTF8.GetString(payloadBytes);
@@ -260,8 +253,7 @@ public class SecurityIntegrationTests : IAsyncDisposable
 
         var response = await _client.SendAsync(request);
 
-        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized,
-            "an expired JWT must be rejected even if the signature is valid");
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized).Because("an expired JWT must be rejected even if the signature is valid");
     }
 
     #endregion
@@ -289,9 +281,8 @@ public class SecurityIntegrationTests : IAsyncDisposable
 
         var response = await _client.SendAsync(request);
 
-        response.StatusCode.Should().NotBe(HttpStatusCode.Unauthorized,
-            "the test realm includes the islamu-event-api audience mapper, " +
-            "so a valid token should pass audience validation");
+        await Assert.That(response.StatusCode).IsNotEqualTo(HttpStatusCode.Unauthorized).Because("the test realm includes the islamu-event-api audience mapper, " +
+        "so a valid token should pass audience validation");
     }
 
     #endregion
@@ -313,8 +304,7 @@ public class SecurityIntegrationTests : IAsyncDisposable
         var response = await _client.SendAsync(request);
 
         // Assert — public GET endpoints must remain accessible without authentication
-        response.StatusCode.Should().Be(HttpStatusCode.OK,
-            $"public endpoint {endpoint} should be accessible without a Bearer token");
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK).Because($"public endpoint {endpoint} should be accessible without a Bearer token");
     }
 
     [Test]
@@ -324,8 +314,7 @@ public class SecurityIntegrationTests : IAsyncDisposable
 
         var response = await _client.SendAsync(request);
 
-        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized,
-            "generic physical-location data requires an authenticated principal");
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized).Because("generic physical-location data requires an authenticated principal");
     }
 
     #endregion

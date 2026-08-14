@@ -9,7 +9,6 @@ using System.Text.Json.Nodes;
 using Event.Api.IntegrationTests.Fixtures;
 using Explore.Domain.Constants;
 using Explore.Domain.Enums;
-using FluentAssertions;
 using TUnit.Core;
 
 namespace ApiIntegrationTests.Features;
@@ -45,17 +44,17 @@ public sealed class EventManagementMcpRedactionTests
 
         using var response = await client.SendAsync(request);
 
-        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
         using var document = await ReadJsonRpcDocumentAsync(response);
-        document.RootElement.TryGetProperty("error", out _).Should().BeFalse(document.RootElement.GetRawText());
-        var descriptorText = GetFirstTextContent(document.RootElement.GetProperty("result"));
+        await Assert.That(document.RootElement.TryGetProperty("error", out _)).IsFalse().Because(document.RootElement.GetRawText());
+        var descriptorText = await GetFirstTextContent(document.RootElement.GetProperty("result"));
         using var descriptor = JsonDocument.Parse(descriptorText);
-        descriptor.RootElement.GetProperty("Success").GetBoolean().Should().BeFalse();
-        descriptor.RootElement.GetProperty("FailureCode").GetString().Should().Be("invalid_tool_arguments");
-        descriptor.RootElement.GetProperty("Message").GetString().Should().Be("Invalid MCP tool arguments.");
-        descriptor.RootElement.GetProperty("Errors")[0].GetString().Should().Be("Invalid MCP tool arguments.");
+        await Assert.That(descriptor.RootElement.GetProperty("Success").GetBoolean()).IsFalse();
+        await Assert.That(descriptor.RootElement.GetProperty("FailureCode").GetString()).IsEqualTo("invalid_tool_arguments");
+        await Assert.That(descriptor.RootElement.GetProperty("Message").GetString()).IsEqualTo("Invalid MCP tool arguments.");
+        await Assert.That(descriptor.RootElement.GetProperty("Errors")[0].GetString()).IsEqualTo("Invalid MCP tool arguments.");
 
-        AssertNoToolArgumentEcho(
+        await AssertNoToolArgumentEcho(
             document.RootElement.GetRawText(),
             tenantId.ToString(),
             userId.ToString(),
@@ -84,8 +83,8 @@ public sealed class EventManagementMcpRedactionTests
         using var response = await client.SendAsync(request);
         var body = await response.Content.ReadAsStringAsync();
 
-        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
-        AssertNoCredentialOrInternalEcho(body, RawApiKey, bearerToken, userId.ToString());
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.BadRequest);
+        await AssertNoCredentialOrInternalEcho(body, RawApiKey, bearerToken, userId.ToString());
     }
 
     private static AuthenticatedWebApplicationFactory CreateAuthenticatedMcpFactory()
@@ -146,11 +145,11 @@ public sealed class EventManagementMcpRedactionTests
         return request;
     }
 
-    private static string GetFirstTextContent(JsonElement result)
+    private static async Task<string> GetFirstTextContent(JsonElement result)
     {
         var content = result.GetProperty("content");
-        content.ValueKind.Should().Be(JsonValueKind.Array);
-        content.GetArrayLength().Should().BeGreaterThan(0);
+        await Assert.That(content.ValueKind).IsEqualTo(JsonValueKind.Array);
+        await Assert.That(content.GetArrayLength()).IsGreaterThan(0);
         return content[0].GetProperty("text").GetString() ?? string.Empty;
     }
 
@@ -180,30 +179,30 @@ public sealed class EventManagementMcpRedactionTests
         throw new InvalidOperationException("The MCP response did not contain a JSON-RPC message.");
     }
 
-    private static void AssertNoToolArgumentEcho(string value, params string[] forbiddenValues)
+    private static async Task AssertNoToolArgumentEcho(string value, params string[] forbiddenValues)
     {
-        AssertNoCredentialOrInternalEcho(value, forbiddenValues);
+        await AssertNoCredentialOrInternalEcho(value, forbiddenValues);
         var normalized = value.ToLowerInvariant();
-        normalized.Should().NotContain("tenantid");
-        normalized.Should().NotContain("userid");
-        normalized.Should().NotContain("apikey");
-        normalized.Should().NotContain("authorization");
-        normalized.Should().NotContain("providerendpoint");
-        normalized.Should().NotContain("rawexception");
+        await Assert.That(normalized).DoesNotContain("tenantid");
+        await Assert.That(normalized).DoesNotContain("userid");
+        await Assert.That(normalized).DoesNotContain("apikey");
+        await Assert.That(normalized).DoesNotContain("authorization");
+        await Assert.That(normalized).DoesNotContain("providerendpoint");
+        await Assert.That(normalized).DoesNotContain("rawexception");
     }
 
-    private static void AssertNoCredentialOrInternalEcho(string value, params string[] forbiddenValues)
+    private static async Task AssertNoCredentialOrInternalEcho(string value, params string[] forbiddenValues)
     {
         foreach (var forbiddenValue in forbiddenValues)
         {
-            value.Should().NotContain(forbiddenValue);
+            await Assert.That(value).DoesNotContain(forbiddenValue);
         }
 
         var normalized = value.ToLowerInvariant();
-        normalized.Should().NotContain("redacted-test-api-key");
-        normalized.Should().NotContain("redacted-test-bearer-token");
-        normalized.Should().NotContain("system.invalidoperationexception");
-        normalized.Should().NotContain("stack trace");
-        normalized.Should().NotContain("https://provider.example.test");
+        await Assert.That(normalized).DoesNotContain("redacted-test-api-key");
+        await Assert.That(normalized).DoesNotContain("redacted-test-bearer-token");
+        await Assert.That(normalized).DoesNotContain("system.invalidoperationexception");
+        await Assert.That(normalized).DoesNotContain("stack trace");
+        await Assert.That(normalized).DoesNotContain("https://provider.example.test");
     }
 }

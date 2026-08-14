@@ -5,7 +5,6 @@ using Event.Api.IntegrationTests.Fixtures;
 using Explore.API.Configuration;
 using Explore.API.Extensions;
 using Explore.API.Scheduling;
-using FluentAssertions;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -20,7 +19,7 @@ namespace ApiIntegrationTests.Features;
 public sealed class TickerQSchedulerOperationalStoreTests
 {
     [Test]
-    public void AddApiTickerQScheduler_RejectsNonPostgreSqlWithoutLeakingCredentials()
+    public async Task AddApiTickerQScheduler_RejectsNonPostgreSqlWithoutLeakingCredentials()
     {
         const string password = "tickerq-provider-gate-password";
         var configuration = new ConfigurationBuilder()
@@ -41,10 +40,10 @@ public sealed class TickerQSchedulerOperationalStoreTests
             new TestWebHostEnvironment(),
             enabled: true);
 
-        var exception = act.Should().Throw<InvalidOperationException>().Which;
-        exception.Message.Should().Contain("Database:Provider=PostgreSql")
-            .And.Contain("EmailDispatchProcessor:Mode=HostedService")
-            .And.NotContain(password);
+        var exception = Assert.Throws<InvalidOperationException>(act);
+        await Assert.That(exception.Message).Contains("Database:Provider=PostgreSql");
+        await Assert.That(exception.Message).Contains("EmailDispatchProcessor:Mode=HostedService");
+        await Assert.That(exception.Message).DoesNotContain(password);
     }
 
     [Test]
@@ -101,7 +100,7 @@ public sealed class TickerQSchedulerOperationalStoreTests
             """;
         var schemaExists = (bool)(await command.ExecuteScalarAsync() ?? false);
 
-        schemaExists.Should().BeTrue("TickerQ operational tables must live in their own scheduler schema");
+        await Assert.That(schemaExists).IsTrue().Because("TickerQ operational tables must live in their own scheduler schema");
 
         command.CommandText = """
             select exists (
@@ -113,8 +112,7 @@ public sealed class TickerQSchedulerOperationalStoreTests
             """;
         var schedulerHistoryExists = (bool)(await command.ExecuteScalarAsync() ?? false);
 
-        schedulerHistoryExists.Should().BeTrue(
-            "TickerQ must not reuse the primary application's snake_case EF migrations history table");
+        await Assert.That(schedulerHistoryExists).IsTrue().Because("TickerQ must not reuse the primary application's snake_case EF migrations history table");
     }
 
     private sealed class TestWebHostEnvironment : IWebHostEnvironment

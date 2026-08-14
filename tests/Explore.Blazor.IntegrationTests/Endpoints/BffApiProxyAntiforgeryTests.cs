@@ -4,7 +4,6 @@
 using System.Net;
 using Explore.Blazor.IntegrationTests.Fixtures;
 using Explore.Blazor.Services;
-using FluentAssertions;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Hosting.Server;
@@ -54,8 +53,8 @@ public sealed class BffApiProxyAntiforgeryTests : IAsyncDisposable
 
         using var response = await _client.SendAsync(request);
 
-        response.StatusCode.Should().Be(HttpStatusCode.OK);
-        (await response.Content.ReadAsStringAsync()).Should().Contain("publicKey");
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
+        await Assert.That((await response.Content.ReadAsStringAsync())).Contains("publicKey");
     }
 
     [Test]
@@ -67,8 +66,8 @@ public sealed class BffApiProxyAntiforgeryTests : IAsyncDisposable
 
         using var response = await _client.SendAsync(request);
 
-        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
-        (await response.Content.ReadAsStringAsync()).Should().Contain("Antiforgery validation failed");
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.BadRequest);
+        await Assert.That((await response.Content.ReadAsStringAsync())).Contains("Antiforgery validation failed");
     }
 
     [Test]
@@ -79,8 +78,8 @@ public sealed class BffApiProxyAntiforgeryTests : IAsyncDisposable
 
         using var response = await _client.SendAsync(request);
 
-        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
-        (await response.Content.ReadAsStringAsync()).Should().Contain("Antiforgery validation failed");
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.BadRequest);
+        await Assert.That((await response.Content.ReadAsStringAsync())).Contains("Antiforgery validation failed");
     }
 
     [Test]
@@ -95,8 +94,8 @@ public sealed class BffApiProxyAntiforgeryTests : IAsyncDisposable
 
         using var response = await _client.SendAsync(request);
 
-        response.StatusCode.Should().Be(HttpStatusCode.Created);
-        (await response.Content.ReadAsStringAsync()).Should().Contain("subscribed");
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Created);
+        await Assert.That((await response.Content.ReadAsStringAsync())).Contains("subscribed");
     }
 
     [Test]
@@ -108,8 +107,8 @@ public sealed class BffApiProxyAntiforgeryTests : IAsyncDisposable
 
         using var response = await _client.SendAsync(request);
 
-        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
-        (await response.Content.ReadAsStringAsync()).Should().Contain("Antiforgery validation failed");
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.BadRequest);
+        await Assert.That((await response.Content.ReadAsStringAsync())).Contains("Antiforgery validation failed");
     }
 
     [Test]
@@ -122,7 +121,7 @@ public sealed class BffApiProxyAntiforgeryTests : IAsyncDisposable
 
         using var response = await _client.SendAsync(request);
 
-        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
     }
 
     [Test]
@@ -146,8 +145,8 @@ public sealed class BffApiProxyAntiforgeryTests : IAsyncDisposable
 
         using var response = await _client.SendAsync(request);
 
-        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
-        _upstream.LastPathAndQuery.Should().BeNull();
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.BadRequest);
+        await Assert.That(_upstream.LastPathAndQuery).IsNull();
     }
 
     [Test]
@@ -164,9 +163,9 @@ public sealed class BffApiProxyAntiforgeryTests : IAsyncDisposable
 
         using var response = await _client.SendAsync(request);
 
-        response.StatusCode.Should().Be(HttpStatusCode.OK);
-        _upstream.LastPathAndQuery.Should().Be("/api/instance/settings/auth-provider");
-        _upstream.LastSetupSecret.Should().Be("trusted-yarp-instance-settings-secret");
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
+        await Assert.That(_upstream.LastPathAndQuery).IsEqualTo("/api/instance/settings/auth-provider");
+        await Assert.That(_upstream.LastSetupSecret).IsEqualTo("trusted-yarp-instance-settings-secret");
     }
 
     [Test]
@@ -180,9 +179,9 @@ public sealed class BffApiProxyAntiforgeryTests : IAsyncDisposable
 
         using var response = await _client.SendAsync(request);
 
-        response.StatusCode.Should().Be(HttpStatusCode.OK);
-        _upstream.LastPathAndQuery.Should().Be($"{path}?source=test");
-        _upstream.LastSetupSecret.Should().Be("trusted-yarp-instance-settings-secret");
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
+        await Assert.That(_upstream.LastPathAndQuery).IsEqualTo($"{path}?source=test");
+        await Assert.That(_upstream.LastSetupSecret).IsEqualTo("trusted-yarp-instance-settings-secret");
     }
 
     [Test]
@@ -215,9 +214,9 @@ public sealed class BffApiProxyAntiforgeryTests : IAsyncDisposable
 
         using var response = await _client.SendAsync(request);
 
-        response.StatusCode.Should().Be(HttpStatusCode.OK);
-        _upstream.LastPathAndQuery.Should().Be($"{path}?source=test");
-        _upstream.LastSetupSecret.Should().BeNull();
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
+        await Assert.That(_upstream.LastPathAndQuery).IsEqualTo($"{path}?source=test");
+        await Assert.That(_upstream.LastSetupSecret).IsNull();
     }
 
     public async ValueTask DisposeAsync()
@@ -254,15 +253,16 @@ public sealed class BffApiProxyAntiforgeryTests : IAsyncDisposable
         }
 
         using var response = await _client.SendAsync(request);
-        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
 
-        response.Headers.TryGetValues("Set-Cookie", out var values).Should().BeTrue();
+        await Assert.That(response.Headers.TryGetValues("Set-Cookie", out var values)).IsTrue();
         var setCookies = values!.ToArray();
         var token = setCookies
             .Select(ReadXsrfToken)
             .FirstOrDefault(value => !string.IsNullOrWhiteSpace(value));
 
-        token.Should().NotBeNullOrWhiteSpace("GET requests should issue the readable XSRF-TOKEN cookie");
+        await Assert.That(string.IsNullOrWhiteSpace(token)).IsFalse()
+            .Because("GET requests should issue the readable XSRF-TOKEN cookie");
         return new AntiforgeryCookie(token!, BuildCookieHeader(setCookies, authenticated));
     }
 

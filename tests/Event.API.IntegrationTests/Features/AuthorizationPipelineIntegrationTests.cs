@@ -9,7 +9,6 @@ using Event.Api.IntegrationTests.Fixtures;
 using Explore.Application.Authorization;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Domain.Enums;
-using FluentAssertions;
 using TUnit.Core;
 
 namespace Event.Api.IntegrationTests.Features;
@@ -129,7 +128,7 @@ public class AuthorizationPipelineIntegrationTests : IAsyncDisposable
 
         var response = await _instanceAdminClient.SendAsync(request);
 
-        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
     }
 
     [Test]
@@ -142,8 +141,8 @@ public class AuthorizationPipelineIntegrationTests : IAsyncDisposable
         var listResponse = await _instanceAdminControlPlaneClient.SendAsync(listRequest);
         var detailResponse = await _instanceAdminControlPlaneClient.SendAsync(detailRequest);
 
-        listResponse.StatusCode.Should().Be(HttpStatusCode.OK);
-        detailResponse.StatusCode.Should().Be(HttpStatusCode.NotFound);
+        await Assert.That(listResponse.StatusCode).IsEqualTo(HttpStatusCode.OK);
+        await Assert.That(detailResponse.StatusCode).IsEqualTo(HttpStatusCode.NotFound);
     }
 
     #endregion
@@ -158,7 +157,7 @@ public class AuthorizationPipelineIntegrationTests : IAsyncDisposable
 
         var response = await _regularUserClient.SendAsync(request);
 
-        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
     }
 
     [Test]
@@ -171,8 +170,8 @@ public class AuthorizationPipelineIntegrationTests : IAsyncDisposable
         var listResponse = await _regularUserControlPlaneClient.SendAsync(listRequest);
         var detailResponse = await _regularUserControlPlaneClient.SendAsync(detailRequest);
 
-        listResponse.StatusCode.Should().Be(HttpStatusCode.Forbidden);
-        detailResponse.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+        await Assert.That(listResponse.StatusCode).IsEqualTo(HttpStatusCode.Forbidden);
+        await Assert.That(detailResponse.StatusCode).IsEqualTo(HttpStatusCode.Forbidden);
     }
 
     [Test]
@@ -185,8 +184,8 @@ public class AuthorizationPipelineIntegrationTests : IAsyncDisposable
         var listResponse = await _tenantAdminClient.SendAsync(listRequest);
         var detailResponse = await _tenantAdminClient.SendAsync(detailRequest);
 
-        listResponse.StatusCode.Should().Be(HttpStatusCode.Forbidden);
-        detailResponse.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+        await Assert.That(listResponse.StatusCode).IsEqualTo(HttpStatusCode.Forbidden);
+        await Assert.That(detailResponse.StatusCode).IsEqualTo(HttpStatusCode.Forbidden);
     }
 
     #endregion
@@ -200,8 +199,7 @@ public class AuthorizationPipelineIntegrationTests : IAsyncDisposable
 
         var response = await _regularUserClient.SendAsync(request);
 
-        response.StatusCode.Should().Be(HttpStatusCode.OK,
-            "public GET endpoints should be accessible without authentication");
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK).Because("public GET endpoints should be accessible without authentication");
     }
 
     [Test]
@@ -214,7 +212,7 @@ public class AuthorizationPipelineIntegrationTests : IAsyncDisposable
 
         var response = await _regularUserClient.SendAsync(request);
 
-        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
     }
 
     [Test]
@@ -235,7 +233,7 @@ public class AuthorizationPipelineIntegrationTests : IAsyncDisposable
 
         var response = await _regularUserClient.SendAsync(request);
 
-        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
     }
 
     #endregion
@@ -252,7 +250,11 @@ public class AuthorizationPipelineIntegrationTests : IAsyncDisposable
             resourceKind: ResourceKinds.Event,
             actions: ["view", "create", "update", "delete"]);
 
-        result.Should().ContainValues("EFFECT_ALLOW", "EFFECT_ALLOW", "EFFECT_ALLOW", "EFFECT_ALLOW");
+        await Assert.That(result).HasCount(4);
+        await Assert.That(result["view"]).IsEqualTo("EFFECT_ALLOW");
+        await Assert.That(result["create"]).IsEqualTo("EFFECT_ALLOW");
+        await Assert.That(result["update"]).IsEqualTo("EFFECT_ALLOW");
+        await Assert.That(result["delete"]).IsEqualTo("EFFECT_ALLOW");
     }
 
     [Test]
@@ -265,10 +267,10 @@ public class AuthorizationPipelineIntegrationTests : IAsyncDisposable
             resourceKind: ResourceKinds.Event,
             actions: ["view", "create", "update", "delete"]);
 
-        result["view"].Should().Be("EFFECT_ALLOW");
-        result["create"].Should().Be("EFFECT_DENY");
-        result["update"].Should().Be("EFFECT_DENY");
-        result["delete"].Should().Be("EFFECT_DENY");
+        await Assert.That(result["view"]).IsEqualTo("EFFECT_ALLOW");
+        await Assert.That(result["create"]).IsEqualTo("EFFECT_DENY");
+        await Assert.That(result["update"]).IsEqualTo("EFFECT_DENY");
+        await Assert.That(result["delete"]).IsEqualTo("EFFECT_DENY");
     }
 
     [Test]
@@ -282,8 +284,7 @@ public class AuthorizationPipelineIntegrationTests : IAsyncDisposable
             resourceAttrs: new { tenantId = "tenant-1", organizationId = "org-1" },
             actions: ["view", "moderate-light"]);
 
-        ownTenantResult.Values.Should().OnlyContain(v => v == "EFFECT_ALLOW",
-            "tenant admin should be allowed view and moderation actions on events in own tenant");
+        await Assert.That(ownTenantResult.Values.All(v => v == "EFFECT_ALLOW")).IsTrue().Because("tenant admin should be allowed view and moderation actions on events in own tenant");
 
         var ownTenantMutations = await CheckCerbosDecision(
             isInstanceAdmin: false,
@@ -293,8 +294,7 @@ public class AuthorizationPipelineIntegrationTests : IAsyncDisposable
             resourceAttrs: new { tenantId = "tenant-1", organizationId = "org-1" },
             actions: ["create", "update", "delete"]);
 
-        ownTenantMutations.Values.Should().OnlyContain(v => v == "EFFECT_DENY",
-            "tenant admin should be denied direct event mutations in own tenant (delegated to org admins)");
+        await Assert.That(ownTenantMutations.Values.All(v => v == "EFFECT_DENY")).IsTrue().Because("tenant admin should be denied direct event mutations in own tenant (delegated to org admins)");
 
         var otherTenantResult = await CheckCerbosDecision(
             isInstanceAdmin: false,
@@ -304,8 +304,7 @@ public class AuthorizationPipelineIntegrationTests : IAsyncDisposable
             resourceAttrs: new { tenantId = "tenant-2", organizationId = "org-2" },
             actions: ["create", "update", "delete", "moderate-light"]);
 
-        otherTenantResult.Values.Should().OnlyContain(v => v == "EFFECT_DENY",
-            "tenant admin should be denied all mutations and moderation on events in other tenant");
+        await Assert.That(otherTenantResult.Values.All(v => v == "EFFECT_DENY")).IsTrue().Because("tenant admin should be denied all mutations and moderation on events in other tenant");
     }
 
     [Test]
@@ -319,7 +318,7 @@ public class AuthorizationPipelineIntegrationTests : IAsyncDisposable
             resourceAttrs: new { tenantId = "tenant-1", organizationId = "org-1" },
             actions: ["view", "create", "update"]);
 
-        ownOrgResult.Values.Should().OnlyContain(v => v == "EFFECT_ALLOW");
+        await Assert.That(ownOrgResult.Values.All(v => v == "EFFECT_ALLOW")).IsTrue();
 
         var otherOrgResult = await CheckCerbosDecision(
             isInstanceAdmin: false,
@@ -329,8 +328,7 @@ public class AuthorizationPipelineIntegrationTests : IAsyncDisposable
             resourceAttrs: new { tenantId = "tenant-1", organizationId = "org-other" },
             actions: ["create", "update", "delete"]);
 
-        otherOrgResult.Values.Should().OnlyContain(v => v == "EFFECT_DENY",
-            "org admin should be denied mutations on events in other org");
+        await Assert.That(otherOrgResult.Values.All(v => v == "EFFECT_DENY")).IsTrue().Because("org admin should be denied mutations on events in other org");
     }
 
     #endregion

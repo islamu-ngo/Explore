@@ -6,7 +6,6 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using Explore.Blazor.Client.Clients;
 using Explore.Blazor.IntegrationTests.Fixtures;
-using FluentAssertions;
 using Microsoft.AspNetCore.Mvc.Testing;
 
 namespace Explore.Blazor.IntegrationTests.Endpoints;
@@ -32,9 +31,9 @@ public sealed class BffPreferenceAntiforgeryTests : IAsyncDisposable
 
         using var response = await _client.PostAsync("/bff/theme?theme=dark", content: null);
 
-        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.BadRequest);
         var body = await response.Content.ReadAsStringAsync();
-        body.Should().Contain("Antiforgery validation failed");
+        await Assert.That(body).Contains("Antiforgery validation failed");
     }
 
     [Test]
@@ -47,9 +46,9 @@ public sealed class BffPreferenceAntiforgeryTests : IAsyncDisposable
 
         using var response = await _client.SendAsync(request);
 
-        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.BadRequest);
         var body = await response.Content.ReadAsStringAsync();
-        body.Should().Contain("Antiforgery validation failed");
+        await Assert.That(body).Contains("Antiforgery validation failed");
     }
 
     [Test]
@@ -62,7 +61,7 @@ public sealed class BffPreferenceAntiforgeryTests : IAsyncDisposable
 
         using var response = await _client.SendAsync(request);
 
-        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
     }
 
     [Test]
@@ -73,10 +72,10 @@ public sealed class BffPreferenceAntiforgeryTests : IAsyncDisposable
         using var request = CreateMutationRequest(HttpMethod.Post, "/bff/theme?theme=dark", token);
         using var response = await _client.SendAsync(request);
 
-        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
         var json = await ReadJsonAsync(response);
-        json.RootElement.GetProperty("themeMode").GetString().Should().Be("dark");
-        GetSetCookieHeaders(response).Should().Contain(cookie => cookie.StartsWith("theme=dark", StringComparison.Ordinal));
+        await Assert.That(json.RootElement.GetProperty("themeMode").GetString()).IsEqualTo("dark");
+        await Assert.That(await GetSetCookieHeaders(response)).Contains(cookie => cookie.StartsWith("theme=dark", StringComparison.Ordinal));
     }
 
     [Test]
@@ -87,12 +86,12 @@ public sealed class BffPreferenceAntiforgeryTests : IAsyncDisposable
         using var request = CreateMutationRequest(HttpMethod.Post, "/bff/language?lang=fr", token);
         using var response = await _client.SendAsync(request);
 
-        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
         var json = await ReadJsonAsync(response);
-        json.RootElement.GetProperty("language").GetString().Should().Be("fr");
-        var cookies = GetSetCookieHeaders(response);
-        cookies.Should().Contain(cookie => cookie.StartsWith("lang=fr", StringComparison.Ordinal));
-        cookies.Should().Contain(cookie => cookie.StartsWith(".AspNetCore.Culture=", StringComparison.Ordinal));
+        await Assert.That(json.RootElement.GetProperty("language").GetString()).IsEqualTo("fr");
+        var cookies = await GetSetCookieHeaders(response);
+        await Assert.That(cookies).Contains(cookie => cookie.StartsWith("lang=fr", StringComparison.Ordinal));
+        await Assert.That(cookies).Contains(cookie => cookie.StartsWith(".AspNetCore.Culture=", StringComparison.Ordinal));
     }
 
     [Test]
@@ -103,17 +102,17 @@ public sealed class BffPreferenceAntiforgeryTests : IAsyncDisposable
         using (var setRtlRequest = CreateMutationRequest(HttpMethod.Post, "/bff/direction?dir=rtl", token))
         using (var setRtlResponse = await _client.SendAsync(setRtlRequest))
         {
-            setRtlResponse.StatusCode.Should().Be(HttpStatusCode.OK);
-            GetSetCookieHeaders(setRtlResponse).Should().Contain(cookie => cookie.StartsWith("direction=rtl", StringComparison.Ordinal));
+            await Assert.That(setRtlResponse.StatusCode).IsEqualTo(HttpStatusCode.OK);
+            await Assert.That(await GetSetCookieHeaders(setRtlResponse)).Contains(cookie => cookie.StartsWith("direction=rtl", StringComparison.Ordinal));
         }
 
         using var autoRequest = CreateMutationRequest(HttpMethod.Post, "/bff/direction?dir=auto", token);
         using var autoResponse = await _client.SendAsync(autoRequest);
 
-        autoResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        await Assert.That(autoResponse.StatusCode).IsEqualTo(HttpStatusCode.OK);
         var json = await ReadJsonAsync(autoResponse);
-        json.RootElement.GetProperty("direction").GetString().Should().Be("auto");
-        GetSetCookieHeaders(autoResponse).Should().Contain(cookie =>
+        await Assert.That(json.RootElement.GetProperty("direction").GetString()).IsEqualTo("auto");
+        await Assert.That(await GetSetCookieHeaders(autoResponse)).Contains(cookie =>
             cookie.StartsWith("direction=", StringComparison.Ordinal) &&
             cookie.Contains("expires=", StringComparison.OrdinalIgnoreCase));
     }
@@ -127,7 +126,7 @@ public sealed class BffPreferenceAntiforgeryTests : IAsyncDisposable
         using var request = CreateMutationRequest(HttpMethod.Post, $"/bff/appearance/profiles/from-preset/{presetId}", token);
         using var response = await _client.SendAsync(request);
 
-        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
     }
 
     [Test]
@@ -144,13 +143,13 @@ public sealed class BffPreferenceAntiforgeryTests : IAsyncDisposable
         patchRequest.Content = JsonContent.Create(body);
         using var patchResponse = await _client.SendAsync(patchRequest);
 
-        patchResponse.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+        await Assert.That(patchResponse.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
 
         using var putRequest = CreateMutationRequest(HttpMethod.Put, $"/bff/appearance/profiles/{profileId}", token);
         putRequest.Content = JsonContent.Create(body);
         using var putResponse = await _client.SendAsync(putRequest);
 
-        putResponse.StatusCode.Should().Be(HttpStatusCode.MethodNotAllowed);
+        await Assert.That(putResponse.StatusCode).IsEqualTo(HttpStatusCode.MethodNotAllowed);
     }
 
     public async ValueTask DisposeAsync()
@@ -162,15 +161,16 @@ public sealed class BffPreferenceAntiforgeryTests : IAsyncDisposable
     private async Task<string> IssueAntiforgeryCookieAsync()
     {
         using var response = await _client.GetAsync("/auth/status");
-        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
 
-        response.Headers.TryGetValues("Set-Cookie", out var values).Should().BeTrue();
+        await Assert.That(response.Headers.TryGetValues("Set-Cookie", out var values)).IsTrue();
 
         var token = values!
             .Select(ReadXsrfToken)
             .FirstOrDefault(value => !string.IsNullOrWhiteSpace(value));
 
-        token.Should().NotBeNullOrWhiteSpace("GET requests should issue the readable XSRF-TOKEN cookie");
+        await Assert.That(string.IsNullOrWhiteSpace(token)).IsFalse()
+            .Because("GET requests should issue the readable XSRF-TOKEN cookie");
         return token!;
     }
 
@@ -200,9 +200,9 @@ public sealed class BffPreferenceAntiforgeryTests : IAsyncDisposable
         return JsonDocument.Parse(body);
     }
 
-    private static IReadOnlyCollection<string> GetSetCookieHeaders(HttpResponseMessage response)
+    private static async Task<IReadOnlyCollection<string>> GetSetCookieHeaders(HttpResponseMessage response)
     {
-        response.Headers.TryGetValues("Set-Cookie", out var values).Should().BeTrue();
+        await Assert.That(response.Headers.TryGetValues("Set-Cookie", out var values)).IsTrue();
         return values!.ToArray();
     }
 }

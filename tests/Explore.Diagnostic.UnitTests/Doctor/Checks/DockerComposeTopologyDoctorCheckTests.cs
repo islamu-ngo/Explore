@@ -3,7 +3,6 @@
 
 using Explore.Diagnostic.Doctor;
 using Explore.Diagnostic.Doctor.Checks;
-using FluentAssertions;
 
 namespace Explore.Diagnostic.UnitTests.Doctor.Checks;
 
@@ -21,8 +20,8 @@ public class DockerComposeTopologyDoctorCheckTests
 
         var result = await check.RunAsync(CancellationToken.None);
 
-        result.Status.Should().Be(DoctorCheckStatus.Warn);
-        result.Remediation.Should().Contain("http://islamu-event-api:8080/");
+        await Assert.That(result.Status).IsEqualTo(DoctorCheckStatus.Warn);
+        await Assert.That(result.Remediation).Contains("http://islamu-event-api:8080/");
     }
 
     [Test]
@@ -34,7 +33,7 @@ public class DockerComposeTopologyDoctorCheckTests
 
         var result = await check.RunAsync(CancellationToken.None);
 
-        result.Status.Should().Be(DoctorCheckStatus.Pass);
+        await Assert.That(result.Status).IsEqualTo(DoctorCheckStatus.Pass);
     }
 
     [Test]
@@ -46,8 +45,8 @@ public class DockerComposeTopologyDoctorCheckTests
 
         var result = await check.RunAsync(CancellationToken.None);
 
-        result.Status.Should().Be(DoctorCheckStatus.Fail);
-        result.Remediation.Should().Contain("redis");
+        await Assert.That(result.Status).IsEqualTo(DoctorCheckStatus.Fail);
+        await Assert.That(result.Remediation).Contains("redis");
     }
 
     private static string RequiredServices() =>

@@ -11,7 +11,6 @@ using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Models;
 using Explore.Domain.Constants;
 using Explore.Persistence;
-using FluentAssertions;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -106,8 +105,7 @@ public class CrossTenantIsolationTests : IAsyncDisposable
 
         var response = await _tenantAAdminClient.SendAsync(request);
 
-        response.StatusCode.Should().Be(HttpStatusCode.OK,
-            "tenant A admin should be able to access own tenant settings");
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK).Because("tenant A admin should be able to access own tenant settings");
     }
 
     [Test]
@@ -118,8 +116,7 @@ public class CrossTenantIsolationTests : IAsyncDisposable
 
         var response = await _tenantAAdminClient.SendAsync(request);
 
-        response.StatusCode.Should().Be(HttpStatusCode.OK,
-            "tenant A admin should be able to list tenants");
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK).Because("tenant A admin should be able to list tenants");
     }
 
     [Test]
@@ -130,8 +127,7 @@ public class CrossTenantIsolationTests : IAsyncDisposable
 
         var response = await _tenantAAdminClient.SendAsync(request);
 
-        response.StatusCode.Should().Be(HttpStatusCode.OK,
-            "tenant A admin should be able to list own tenant user role grants");
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK).Because("tenant A admin should be able to list own tenant user role grants");
     }
 
     [Test]
@@ -142,8 +138,7 @@ public class CrossTenantIsolationTests : IAsyncDisposable
 
         var response = await _tenantAAdminClient.SendAsync(request);
 
-        response.StatusCode.Should().Be(HttpStatusCode.Forbidden,
-            "tenant A admin should not be able to access instance-level settings");
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Forbidden).Because("tenant A admin should not be able to access instance-level settings");
     }
 
     #endregion
@@ -158,8 +153,7 @@ public class CrossTenantIsolationTests : IAsyncDisposable
 
         var response = await _instanceAdminClient.SendAsync(request);
 
-        response.StatusCode.Should().Be(HttpStatusCode.OK,
-            "instance admin should be able to access any tenant's settings");
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK).Because("instance admin should be able to access any tenant's settings");
     }
 
     [Test]
@@ -170,8 +164,7 @@ public class CrossTenantIsolationTests : IAsyncDisposable
 
         var response = await _instanceAdminClient.SendAsync(request);
 
-        response.StatusCode.Should().Be(HttpStatusCode.OK,
-            "instance admin should be able to access any tenant's members");
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK).Because("instance admin should be able to access any tenant's members");
     }
 
     [Test]
@@ -182,8 +175,7 @@ public class CrossTenantIsolationTests : IAsyncDisposable
 
         var response = await _instanceAdminClient.SendAsync(request);
 
-        response.StatusCode.Should().Be(HttpStatusCode.OK,
-            "instance admin should be able to list all tenants");
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK).Because("instance admin should be able to list all tenants");
     }
 
     #endregion
@@ -198,9 +190,7 @@ public class CrossTenantIsolationTests : IAsyncDisposable
 
         var response = await _regularUserClient.SendAsync(request);
 
-        response.StatusCode.Should().BeOneOf(
-            new[] { HttpStatusCode.Forbidden, HttpStatusCode.BadRequest },
-            "regular user should be denied tenant settings updates or fail request validation before update");
+        await Assert.That(new[] { HttpStatusCode.Forbidden, HttpStatusCode.BadRequest }).Contains(response.StatusCode).Because("regular user should be denied tenant settings updates or fail request validation before update");
     }
 
     [Test]
@@ -211,8 +201,7 @@ public class CrossTenantIsolationTests : IAsyncDisposable
 
         var response = await _regularUserClient.SendAsync(request);
 
-        response.StatusCode.Should().Be(HttpStatusCode.Forbidden,
-            "regular user should not be able to create tenant user role grants");
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Forbidden).Because("regular user should not be able to create tenant user role grants");
     }
 
     [Test]
@@ -223,9 +212,7 @@ public class CrossTenantIsolationTests : IAsyncDisposable
 
         var response = await _regularUserClient.SendAsync(request);
 
-        response.StatusCode.Should().BeOneOf(
-            new[] { HttpStatusCode.Forbidden, HttpStatusCode.BadRequest },
-            "regular user should be denied category creation");
+        await Assert.That(new[] { HttpStatusCode.Forbidden, HttpStatusCode.BadRequest }).Contains(response.StatusCode).Because("regular user should be denied category creation");
     }
 
     [Test]
@@ -236,9 +223,7 @@ public class CrossTenantIsolationTests : IAsyncDisposable
 
         var response = await _regularUserClient.SendAsync(request);
 
-        response.StatusCode.Should().BeOneOf(
-            new[] { HttpStatusCode.Forbidden, HttpStatusCode.BadRequest },
-            "regular user should be denied location creation");
+        await Assert.That(new[] { HttpStatusCode.Forbidden, HttpStatusCode.BadRequest }).Contains(response.StatusCode).Because("regular user should be denied location creation");
     }
 
     [Test]
@@ -249,9 +234,7 @@ public class CrossTenantIsolationTests : IAsyncDisposable
 
         var response = await _regularUserClient.SendAsync(request);
 
-        response.StatusCode.Should().BeOneOf(
-            new[] { HttpStatusCode.Forbidden, HttpStatusCode.BadRequest },
-            "regular user should be denied tag creation");
+        await Assert.That(new[] { HttpStatusCode.Forbidden, HttpStatusCode.BadRequest }).Contains(response.StatusCode).Because("regular user should be denied tag creation");
     }
 
     [Test]
@@ -262,9 +245,7 @@ public class CrossTenantIsolationTests : IAsyncDisposable
 
         var response = await _regularUserClient.SendAsync(request);
 
-        response.StatusCode.Should().BeOneOf(
-            new[] { HttpStatusCode.Forbidden, HttpStatusCode.BadRequest },
-            "regular user should be denied organization creation");
+        await Assert.That(new[] { HttpStatusCode.Forbidden, HttpStatusCode.BadRequest }).Contains(response.StatusCode).Because("regular user should be denied organization creation");
     }
 
     [Test]
@@ -275,9 +256,7 @@ public class CrossTenantIsolationTests : IAsyncDisposable
 
         var response = await _regularUserClient.SendAsync(request);
 
-        response.StatusCode.Should().BeOneOf(
-            new[] { HttpStatusCode.Forbidden, HttpStatusCode.BadRequest },
-            "regular user should be denied event creation");
+        await Assert.That(new[] { HttpStatusCode.Forbidden, HttpStatusCode.BadRequest }).Contains(response.StatusCode).Because("regular user should be denied event creation");
     }
 
     #endregion
@@ -292,8 +271,7 @@ public class CrossTenantIsolationTests : IAsyncDisposable
 
         var response = await _tenantBAdminClient.SendAsync(request);
 
-        response.StatusCode.Should().Be(HttpStatusCode.OK,
-            "tenant B admin should be able to access own tenant settings");
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK).Because("tenant B admin should be able to access own tenant settings");
     }
 
     [Test]
@@ -304,8 +282,7 @@ public class CrossTenantIsolationTests : IAsyncDisposable
 
         var response = await _tenantBAdminClient.SendAsync(request);
 
-        response.StatusCode.Should().Be(HttpStatusCode.Forbidden,
-            "tenant B admin should not be able to access instance-level settings");
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Forbidden).Because("tenant B admin should not be able to access instance-level settings");
     }
 
     #endregion
@@ -319,8 +296,7 @@ public class CrossTenantIsolationTests : IAsyncDisposable
 
         var response = await _regularUserClient.SendAsync(request);
 
-        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized,
-            "anonymous requests should get 401 for tenant endpoints");
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized).Because("anonymous requests should get 401 for tenant endpoints");
     }
 
     [Test]
@@ -330,8 +306,7 @@ public class CrossTenantIsolationTests : IAsyncDisposable
 
         var response = await _regularUserClient.SendAsync(request);
 
-        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized,
-            "anonymous requests should get 401 for tenant settings");
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized).Because("anonymous requests should get 401 for tenant settings");
     }
 
     #endregion

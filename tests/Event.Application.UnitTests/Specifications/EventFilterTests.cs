@@ -140,6 +140,7 @@ public sealed class EventFilterTests
 
         if (state != CatalogState.Draft)
         {
+            catalog.UpdateCommercialDisclosures("Merchant", "Refund", "Support");
             catalog.Publish();
         }
 

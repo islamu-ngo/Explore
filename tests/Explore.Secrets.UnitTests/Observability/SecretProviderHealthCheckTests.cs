@@ -1,9 +1,8 @@
 // ABOUTME: Unit tests for SecretProviderHealthCheck.
-// Tests health check responses based on provider status.
+// ABOUTME: Tests health check responses based on provider status.
 
 using Explore.Secrets.Abstractions;
 using Explore.Secrets.Observability;
-using FluentAssertions;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Logging;
 using NSubstitute;
@@ -49,9 +48,9 @@ public class SecretProviderHealthCheckTests : IDisposable
         var result = await _healthCheck.CheckHealthAsync(new HealthCheckContext());
 
         // Assert
-        result.Status.Should().Be(HealthStatus.Healthy);
-        result.Description.Should().Contain("Infisical");
-        result.Description.Should().Contain("healthy");
+        await Assert.That(result.Status).IsEqualTo(HealthStatus.Healthy);
+        await Assert.That(result.Description).Contains("Infisical");
+        await Assert.That(result.Description).Contains("healthy");
     }
 
     [Test]
@@ -72,9 +71,9 @@ public class SecretProviderHealthCheckTests : IDisposable
         var result = await _healthCheck.CheckHealthAsync(new HealthCheckContext());
 
         // Assert
-        result.Status.Should().Be(HealthStatus.Degraded);
-        result.Description.Should().Contain("transient resolution failures");
-        result.Description.Should().NotContain("Temporary connection issue");
+        await Assert.That(result.Status).IsEqualTo(HealthStatus.Degraded);
+        await Assert.That(result.Description).Contains("transient resolution failures");
+        await Assert.That(result.Description).DoesNotContain("Temporary connection issue");
     }
 
     [Test]
@@ -95,9 +94,9 @@ public class SecretProviderHealthCheckTests : IDisposable
         var result = await _healthCheck.CheckHealthAsync(new HealthCheckContext());
 
         // Assert
-        result.Status.Should().Be(HealthStatus.Unhealthy);
-        result.Description.Should().Contain("5 consecutive failures");
-        result.Description.Should().NotContain("Authentication failed");
+        await Assert.That(result.Status).IsEqualTo(HealthStatus.Unhealthy);
+        await Assert.That(result.Description).Contains("5 consecutive failures");
+        await Assert.That(result.Description).DoesNotContain("Authentication failed");
     }
 
     [Test]
@@ -113,9 +112,9 @@ public class SecretProviderHealthCheckTests : IDisposable
         var result = await _healthCheck.CheckHealthAsync(new HealthCheckContext());
 
         // Assert
-        result.Status.Should().Be(HealthStatus.Unhealthy);
-        result.Exception.Should().BeNull();
-        result.Description.Should().Be("Secret provider health check failed.");
+        await Assert.That(result.Status).IsEqualTo(HealthStatus.Unhealthy);
+        await Assert.That(result.Exception).IsNull();
+        await Assert.That(result.Description).IsEqualTo("Secret provider health check failed.");
     }
 
     [Test]
@@ -136,8 +135,8 @@ public class SecretProviderHealthCheckTests : IDisposable
         var result = await _healthCheck.CheckHealthAsync(new HealthCheckContext());
 
         // Assert
-        result.Data.Should().ContainKey("provider");
-        result.Data["provider"].Should().Be("Infisical");
+        await Assert.That(result.Data.ContainsKey("provider")).IsTrue();
+        await Assert.That(result.Data["provider"]).IsEqualTo("Infisical");
     }
 
     [Test]
@@ -158,8 +157,8 @@ public class SecretProviderHealthCheckTests : IDisposable
         var result = await _healthCheck.CheckHealthAsync(new HealthCheckContext());
 
         // Assert
-        result.Data.Should().ContainKey("supportsRefresh");
-        result.Data["supportsRefresh"].Should().Be(false);
+        await Assert.That(result.Data.ContainsKey("supportsRefresh")).IsTrue();
+        await Assert.That(result.Data["supportsRefresh"]).IsEqualTo(false);
     }
 
     [Test]
@@ -181,20 +180,20 @@ public class SecretProviderHealthCheckTests : IDisposable
         var result = await _healthCheck.CheckHealthAsync(new HealthCheckContext());
 
         // Assert
-        result.Data.Should().ContainKey("lastSuccessfulRefresh");
-        result.Data.Should().ContainKey("secondsSinceLastRefresh");
+        await Assert.That(result.Data.ContainsKey("lastSuccessfulRefresh")).IsTrue();
+        await Assert.That(result.Data.ContainsKey("secondsSinceLastRefresh")).IsTrue();
     }
 
     [Test]
-    public void Name_ShouldBeSecretProvider()
+    public async Task Name_ShouldBeSecretProvider()
     {
-        SecretProviderHealthCheck.Name.Should().Be("secret_provider");
+        await Assert.That(SecretProviderHealthCheck.Name).IsEqualTo("secret_provider");
     }
 
     [Test]
-    public void Tag_ShouldBeSecrets()
+    public async Task Tag_ShouldBeSecrets()
     {
-        SecretProviderHealthCheck.Tag.Should().Be("secrets");
+        await Assert.That(SecretProviderHealthCheck.Tag).IsEqualTo("secrets");
     }
 
     [Test]
@@ -217,6 +216,6 @@ public class SecretProviderHealthCheckTests : IDisposable
         var result = await healthCheckWithoutMetrics.CheckHealthAsync(new HealthCheckContext());
 
         // Assert
-        result.Status.Should().Be(HealthStatus.Healthy);
+        await Assert.That(result.Status).IsEqualTo(HealthStatus.Healthy);
     }
 }

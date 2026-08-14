@@ -5,7 +5,6 @@ using Explore.Persistence;
 using Explore.Persistence.Database;
 using Explore.Secrets.Bootstrap;
 using Explore.Secrets.Database;
-using FluentAssertions;
 using Microsoft.Data.SqlClient;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
@@ -24,7 +23,7 @@ public sealed class PrimaryDatabaseConfigurationTests
         new ConfigurationBuilder().AddInMemoryCollection(values).Build();
 
     [Test]
-    public void BindRuntime_StructuredSchemaOverridesEnvironmentAlias()
+    public async Task BindRuntime_StructuredSchemaOverridesEnvironmentAlias()
     {
         var configuration = BuildConfiguration(new Dictionary<string, string?>
         {
@@ -37,11 +36,11 @@ public sealed class PrimaryDatabaseConfigurationTests
             ["Database:Runtime:Password"] = "runtime-secret",
         });
 
-        PrimaryDatabaseConfiguration.BindRuntime(configuration).Schema.Should().Be("structured_event");
+        await Assert.That(PrimaryDatabaseConfiguration.BindRuntime(configuration).Schema).IsEqualTo("structured_event");
     }
 
     [Test]
-    public void BindRuntime_UsesSchemaAliasAndDefault()
+    public async Task BindRuntime_UsesSchemaAliasAndDefault()
     {
         var values = new Dictionary<string, string?>
         {
@@ -52,14 +51,14 @@ public sealed class PrimaryDatabaseConfigurationTests
             ["Database:Runtime:Password"] = "runtime-secret",
         };
 
-        PrimaryDatabaseConfiguration.BindRuntime(BuildConfiguration(values)).Schema
-            .Should().Be(PrimaryDatabaseConnectionOptions.DefaultSchema);
+        await Assert.That(PrimaryDatabaseConfiguration.BindRuntime(BuildConfiguration(values)).Schema)
+            .IsEqualTo(PrimaryDatabaseConnectionOptions.DefaultSchema);
         values["DATABASE_SCHEMA"] = "alias_event";
-        PrimaryDatabaseConfiguration.BindRuntime(BuildConfiguration(values)).Schema.Should().Be("alias_event");
+        await Assert.That(PrimaryDatabaseConfiguration.BindRuntime(BuildConfiguration(values)).Schema).IsEqualTo("alias_event");
     }
 
     [Test]
-    public void BindRuntime_RejectsUnsupportedPrefixAlias()
+    public async Task BindRuntime_RejectsUnsupportedPrefixAlias()
     {
         var configuration = BuildConfiguration(new Dictionary<string, string?>
         {
@@ -73,12 +72,12 @@ public sealed class PrimaryDatabaseConfigurationTests
 
         Action act = () => PrimaryDatabaseConfiguration.BindRuntime(configuration);
 
-        act.Should().Throw<InvalidOperationException>()
-            .WithMessage("*Prefix overrides are not supported*");
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => Task.Run(act));
+        await Assert.That(exception!.Message).Contains("Prefix overrides are not supported");
     }
 
     [Test]
-    public void BindRuntime_RejectsRuntimePrefixEnvironmentAlias()
+    public async Task BindRuntime_RejectsRuntimePrefixEnvironmentAlias()
     {
         var configuration = BuildConfiguration(new Dictionary<string, string?>
         {
@@ -92,12 +91,12 @@ public sealed class PrimaryDatabaseConfigurationTests
 
         Action act = () => PrimaryDatabaseConfiguration.BindRuntime(configuration);
 
-        act.Should().Throw<InvalidOperationException>()
-            .WithMessage("*Prefix overrides are not supported*");
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => Task.Run(act));
+        await Assert.That(exception!.Message).Contains("Prefix overrides are not supported");
     }
 
     [Test]
-    public void BindRuntime_RejectsStructuredPrefixAlias()
+    public async Task BindRuntime_RejectsStructuredPrefixAlias()
     {
         var configuration = BuildConfiguration(new Dictionary<string, string?>
         {
@@ -111,12 +110,12 @@ public sealed class PrimaryDatabaseConfigurationTests
 
         Action act = () => PrimaryDatabaseConfiguration.BindRuntime(configuration);
 
-        act.Should().Throw<InvalidOperationException>()
-            .WithMessage("*Prefix overrides are not supported*");
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => Task.Run(act));
+        await Assert.That(exception!.Message).Contains("Prefix overrides are not supported");
     }
 
     [Test]
-    public void BindRuntime_RejectsRuntimeStructuredPrefixAlias()
+    public async Task BindRuntime_RejectsRuntimeStructuredPrefixAlias()
     {
         var configuration = BuildConfiguration(new Dictionary<string, string?>
         {
@@ -130,12 +129,12 @@ public sealed class PrimaryDatabaseConfigurationTests
 
         Action act = () => PrimaryDatabaseConfiguration.BindRuntime(configuration);
 
-        act.Should().Throw<InvalidOperationException>()
-            .WithMessage("*Prefix overrides are not supported*");
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => Task.Run(act));
+        await Assert.That(exception!.Message).Contains("Prefix overrides are not supported");
     }
 
     [Test]
-    public void BindMigrator_RejectsUnsupportedPrefixAlias()
+    public async Task BindMigrator_RejectsUnsupportedPrefixAlias()
     {
         var configuration = BuildConfiguration(new Dictionary<string, string?>
         {
@@ -149,12 +148,12 @@ public sealed class PrimaryDatabaseConfigurationTests
 
         Action act = () => PrimaryDatabaseConfiguration.BindMigrator(configuration);
 
-        act.Should().Throw<InvalidOperationException>()
-            .WithMessage("*Prefix overrides are not supported*");
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => Task.Run(act));
+        await Assert.That(exception!.Message).Contains("Prefix overrides are not supported");
     }
 
     [Test]
-    public void BindMigrator_RejectsMigratorPrefixEnvironmentAlias()
+    public async Task BindMigrator_RejectsMigratorPrefixEnvironmentAlias()
     {
         var configuration = BuildConfiguration(new Dictionary<string, string?>
         {
@@ -168,12 +167,12 @@ public sealed class PrimaryDatabaseConfigurationTests
 
         Action act = () => PrimaryDatabaseConfiguration.BindMigrator(configuration);
 
-        act.Should().Throw<InvalidOperationException>()
-            .WithMessage("*Prefix overrides are not supported*");
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => Task.Run(act));
+        await Assert.That(exception!.Message).Contains("Prefix overrides are not supported");
     }
 
     [Test]
-    public void BindMigrator_RejectsStructuredPrefixAlias()
+    public async Task BindMigrator_RejectsStructuredPrefixAlias()
     {
         var configuration = BuildConfiguration(new Dictionary<string, string?>
         {
@@ -187,12 +186,12 @@ public sealed class PrimaryDatabaseConfigurationTests
 
         Action act = () => PrimaryDatabaseConfiguration.BindMigrator(configuration);
 
-        act.Should().Throw<InvalidOperationException>()
-            .WithMessage("*Prefix overrides are not supported*");
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => Task.Run(act));
+        await Assert.That(exception!.Message).Contains("Prefix overrides are not supported");
     }
 
     [Test]
-    public void BindMigrator_RejectsMigratorStructuredPrefixAlias()
+    public async Task BindMigrator_RejectsMigratorStructuredPrefixAlias()
     {
         var configuration = BuildConfiguration(new Dictionary<string, string?>
         {
@@ -206,12 +205,12 @@ public sealed class PrimaryDatabaseConfigurationTests
 
         Action act = () => PrimaryDatabaseConfiguration.BindMigrator(configuration);
 
-        act.Should().Throw<InvalidOperationException>()
-            .WithMessage("*Prefix overrides are not supported*");
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => Task.Run(act));
+        await Assert.That(exception!.Message).Contains("Prefix overrides are not supported");
     }
 
     [Test]
-    public void BuildConnectionString_PostgreSqlCustomSchemaSetsSessionSearchPath()
+    public async Task BuildConnectionString_PostgreSqlCustomSchemaSetsSessionSearchPath()
     {
         var options = new PrimaryDatabaseConnectionOptions
         {
@@ -227,12 +226,12 @@ public sealed class PrimaryDatabaseConfigurationTests
 
         var result = PrimaryDatabaseConfiguration.BuildConnectionString(options);
 
-        new NpgsqlConnectionStringBuilder(result.ConnectionString).SearchPath
-            .Should().Be("custom_event");
+        await Assert.That(new NpgsqlConnectionStringBuilder(result.ConnectionString).SearchPath)
+            .IsEqualTo("custom_event");
     }
 
     [Test]
-    public void BuildConnectionString_PostgreSqlMigratorSearchPathKeepsPublicBootstrapFallback()
+    public async Task BuildConnectionString_PostgreSqlMigratorSearchPathKeepsPublicBootstrapFallback()
     {
         var options = new PrimaryDatabaseConnectionOptions
         {
@@ -248,8 +247,8 @@ public sealed class PrimaryDatabaseConfigurationTests
 
         var result = PrimaryDatabaseConfiguration.BuildConnectionString(options);
 
-        new NpgsqlConnectionStringBuilder(result.ConnectionString).SearchPath
-            .Should().Be("custom_event, public");
+        await Assert.That(new NpgsqlConnectionStringBuilder(result.ConnectionString).SearchPath)
+            .IsEqualTo("custom_event, public");
     }
 
     [Test]
@@ -257,7 +256,7 @@ public sealed class PrimaryDatabaseConfigurationTests
     [Arguments("9bad")]
     [Arguments("schema;drop")]
     [Arguments("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")]
-    public void BindRuntime_RejectsUnsafeSchema(string schema)
+    public async Task BindRuntime_RejectsUnsafeSchema(string schema)
     {
         var configuration = BuildConfiguration(new Dictionary<string, string?>
         {
@@ -270,11 +269,11 @@ public sealed class PrimaryDatabaseConfigurationTests
         });
 
         var action = () => PrimaryDatabaseConfiguration.BindRuntime(configuration);
-        action.Should().Throw<OptionsValidationException>();
+        await Assert.That(action).Throws<OptionsValidationException>();
     }
 
     [Test]
-    public void BindRuntime_WithPostgreSqlAndSharedEndpoint_ComposesRuntimeOptions()
+    public async Task BindRuntime_WithPostgreSqlAndSharedEndpoint_ComposesRuntimeOptions()
     {
         var configuration = BuildConfiguration(new Dictionary<string, string?>
         {
@@ -290,26 +289,26 @@ public sealed class PrimaryDatabaseConfigurationTests
         var options = PrimaryDatabaseConfiguration.BindRuntime(configuration);
         var result = PrimaryDatabaseConfiguration.BuildConnectionString(options);
 
-        options.Role.Should().Be(PrimaryDatabaseRole.Runtime);
-        options.Provider.Should().Be(PrimaryDatabaseProvider.PostgreSql);
-        options.Port.Should().BeNull();
-        options.TlsMode.Should().Be(PrimaryDatabaseTlsMode.Required);
-        options.TrustServerCertificate.Should().BeTrue();
+        await Assert.That(options.Role).IsEqualTo(PrimaryDatabaseRole.Runtime);
+        await Assert.That(options.Provider).IsEqualTo(PrimaryDatabaseProvider.PostgreSql);
+        await Assert.That(options.Port).IsNull();
+        await Assert.That(options.TlsMode).IsEqualTo(PrimaryDatabaseTlsMode.Required);
+        await Assert.That(options.TrustServerCertificate).IsTrue();
 
         var parsed = new NpgsqlConnectionStringBuilder(result.ConnectionString);
-        parsed.Host.Should().Be("pg.example.test");
-        parsed.Port.Should().Be(5432);
-        parsed.Database.Should().Be("event_db");
-        parsed.Username.Should().Be("app_user");
-        parsed.Password.Should().Be("runtime-secret");
-        parsed.SslMode.Should().Be(SslMode.Require);
-        result.RedactedConnectionString.Should().NotContain("runtime-secret");
-        result.SafeSummary.Should().Contain("Runtime:PostgreSql");
-        result.SafeSummary.Should().Contain("tls=Required");
+        await Assert.That(parsed.Host).IsEqualTo("pg.example.test");
+        await Assert.That(parsed.Port).IsEqualTo(5432);
+        await Assert.That(parsed.Database).IsEqualTo("event_db");
+        await Assert.That(parsed.Username).IsEqualTo("app_user");
+        await Assert.That(parsed.Password).IsEqualTo("runtime-secret");
+        await Assert.That(parsed.SslMode).IsEqualTo(SslMode.Require);
+        await Assert.That(result.RedactedConnectionString).DoesNotContain("runtime-secret");
+        await Assert.That(result.SafeSummary).Contains("Runtime:PostgreSql");
+        await Assert.That(result.SafeSummary).Contains("tls=Required");
     }
 
     [Test]
-    public void BindMigrator_WithDistinctCredentials_ComposesMigratorOptions()
+    public async Task BindMigrator_WithDistinctCredentials_ComposesMigratorOptions()
     {
         var configuration = BuildConfiguration(new Dictionary<string, string?>
         {
@@ -323,13 +322,13 @@ public sealed class PrimaryDatabaseConfigurationTests
         var options = PrimaryDatabaseConfiguration.BindMigrator(configuration);
         var result = PrimaryDatabaseConfiguration.BuildConnectionString(options);
 
-        options.Role.Should().Be(PrimaryDatabaseRole.Migrator);
-        new NpgsqlConnectionStringBuilder(result.ConnectionString).Username.Should().Be("migrator_user");
-        result.RedactedConnectionString.Should().NotContain("migrator-secret");
+        await Assert.That(options.Role).IsEqualTo(PrimaryDatabaseRole.Migrator);
+        await Assert.That(new NpgsqlConnectionStringBuilder(result.ConnectionString).Username).IsEqualTo("migrator_user");
+        await Assert.That(result.RedactedConnectionString).DoesNotContain("migrator-secret");
     }
 
     [Test]
-    public void BindRuntime_WithSqlite_UsesLocalFilePath()
+    public async Task BindRuntime_WithSqlite_UsesLocalFilePath()
     {
         var configuration = BuildConfiguration(new Dictionary<string, string?>
         {
@@ -340,19 +339,19 @@ public sealed class PrimaryDatabaseConfigurationTests
         var options = PrimaryDatabaseConfiguration.BindRuntime(configuration);
         var result = PrimaryDatabaseConfiguration.BuildConnectionString(options);
 
-        options.Provider.Should().Be(PrimaryDatabaseProvider.Sqlite);
-        options.Role.Should().Be(PrimaryDatabaseRole.Runtime);
-        options.Database.Should().Be("/tmp/event-primary.db");
+        await Assert.That(options.Provider).IsEqualTo(PrimaryDatabaseProvider.Sqlite);
+        await Assert.That(options.Role).IsEqualTo(PrimaryDatabaseRole.Runtime);
+        await Assert.That(options.Database).IsEqualTo("/tmp/event-primary.db");
 
         var parsed = new SqliteConnectionStringBuilder(result.ConnectionString);
-        parsed.DataSource.Should().Be("/tmp/event-primary.db");
-        parsed.Mode.Should().Be(SqliteOpenMode.ReadWriteCreate);
-        parsed.DefaultTimeout.Should().Be(30);
-        result.RedactedConnectionString.Should().NotContain("runtime-secret");
+        await Assert.That(parsed.DataSource).IsEqualTo("/tmp/event-primary.db");
+        await Assert.That(parsed.Mode).IsEqualTo(SqliteOpenMode.ReadWriteCreate);
+        await Assert.That(parsed.DefaultTimeout).IsEqualTo(30);
+        await Assert.That(result.RedactedConnectionString).DoesNotContain("runtime-secret");
     }
 
     [Test]
-    public void BindRuntime_WithSqlServer_UsesDefaultPortAndNativeBuilder()
+    public async Task BindRuntime_WithSqlServer_UsesDefaultPortAndNativeBuilder()
     {
         var configuration = BuildConfiguration(new Dictionary<string, string?>
         {
@@ -367,17 +366,17 @@ public sealed class PrimaryDatabaseConfigurationTests
         var result = PrimaryDatabaseConfiguration.BuildConnectionString(PrimaryDatabaseConfiguration.BindRuntime(configuration));
         var parsed = new SqlConnectionStringBuilder(result.ConnectionString);
 
-        parsed.ConnectionString.Should().Contain("Data Source=sql.example.test");
-        parsed.InitialCatalog.Should().Be("event_db");
-        parsed.UserID.Should().Be("sql_user");
-        parsed.Password.Should().Be("sql-secret");
-        parsed.ConnectionString.Should().Contain("Encrypt=True");
-        result.SafeSummary.Should().Contain("port=1433");
-        result.RedactedConnectionString.Should().NotContain("sql-secret");
+        await Assert.That(parsed.ConnectionString).Contains("Data Source=sql.example.test");
+        await Assert.That(parsed.InitialCatalog).IsEqualTo("event_db");
+        await Assert.That(parsed.UserID).IsEqualTo("sql_user");
+        await Assert.That(parsed.Password).IsEqualTo("sql-secret");
+        await Assert.That(parsed.ConnectionString).Contains("Encrypt=True");
+        await Assert.That(result.SafeSummary).Contains("port=1433");
+        await Assert.That(result.RedactedConnectionString).DoesNotContain("sql-secret");
     }
 
     [Test]
-    public void BindRuntime_WithMariaDb_RequiresFlavorAndVersion()
+    public async Task BindRuntime_WithMariaDb_RequiresFlavorAndVersion()
     {
         var configuration = BuildConfiguration(new Dictionary<string, string?>
         {
@@ -395,18 +394,18 @@ public sealed class PrimaryDatabaseConfigurationTests
         var result = PrimaryDatabaseConfiguration.BuildConnectionString(options);
         var parsed = new MySqlConnectionStringBuilder(result.ConnectionString);
 
-        options.ServerFlavor.Should().Be(PrimaryDatabaseServerFlavor.MariaDb);
-        options.ServerVersion.Should().Be(new Version(10, 11));
-        parsed.Server.Should().Be("mariadb.example.test");
-        parsed.Port.Should().Be(3306);
-        parsed.UserID.Should().Be("db_user");
-        parsed.Password.Should().Be("db-secret");
-        result.SafeSummary.Should().Contain("MariaDb");
-        result.SafeSummary.Should().Contain("port=3306");
+        await Assert.That(options.ServerFlavor).IsEqualTo(PrimaryDatabaseServerFlavor.MariaDb);
+        await Assert.That(options.ServerVersion).IsEqualTo(new Version(10, 11));
+        await Assert.That(parsed.Server).IsEqualTo("mariadb.example.test");
+        await Assert.That(parsed.Port).IsEqualTo(3306u);
+        await Assert.That(parsed.UserID).IsEqualTo("db_user");
+        await Assert.That(parsed.Password).IsEqualTo("db-secret");
+        await Assert.That(result.SafeSummary).Contains("MariaDb");
+        await Assert.That(result.SafeSummary).Contains("port=3306");
     }
 
     [Test]
-    public void BindRuntime_WithMySql_RequiresFlavorAndVersion()
+    public async Task BindRuntime_WithMySql_RequiresFlavorAndVersion()
     {
         var configuration = BuildConfiguration(new Dictionary<string, string?>
         {
@@ -424,17 +423,17 @@ public sealed class PrimaryDatabaseConfigurationTests
         var result = PrimaryDatabaseConfiguration.BuildConnectionString(options);
         var parsed = new MySqlConnectionStringBuilder(result.ConnectionString);
 
-        options.ServerFlavor.Should().Be(PrimaryDatabaseServerFlavor.MySql);
-        options.ServerVersion.Should().Be(new Version(8, 0));
-        parsed.Server.Should().Be("mysql.example.test");
-        parsed.Port.Should().Be(3306);
-        parsed.UserID.Should().Be("db_user");
-        parsed.Password.Should().Be("db-secret");
-        result.SafeSummary.Should().Contain("MySql");
+        await Assert.That(options.ServerFlavor).IsEqualTo(PrimaryDatabaseServerFlavor.MySql);
+        await Assert.That(options.ServerVersion).IsEqualTo(new Version(8, 0));
+        await Assert.That(parsed.Server).IsEqualTo("mysql.example.test");
+        await Assert.That(parsed.Port).IsEqualTo(3306u);
+        await Assert.That(parsed.UserID).IsEqualTo("db_user");
+        await Assert.That(parsed.Password).IsEqualTo("db-secret");
+        await Assert.That(result.SafeSummary).Contains("MySql");
     }
 
     [Test]
-    public void Validate_RejectsSqliteWithServerFields()
+    public async Task Validate_RejectsSqliteWithServerFields()
     {
         var configuration = BuildConfiguration(new Dictionary<string, string?>
         {
@@ -447,11 +446,11 @@ public sealed class PrimaryDatabaseConfigurationTests
 
         Action act = () => PrimaryDatabaseConfiguration.BindRuntime(configuration);
 
-        act.Should().Throw<OptionsValidationException>();
+        await Assert.That(act).Throws<OptionsValidationException>();
     }
 
     [Test]
-    public void Validate_RejectsUnknownProvider()
+    public async Task Validate_RejectsUnknownProvider()
     {
         var configuration = BuildConfiguration(new Dictionary<string, string?>
         {
@@ -460,13 +459,13 @@ public sealed class PrimaryDatabaseConfigurationTests
 
         Action act = () => PrimaryDatabaseConfiguration.BindRuntime(configuration);
 
-        act.Should().Throw<InvalidOperationException>();
+        await Assert.That(act).Throws<InvalidOperationException>();
     }
 
     [Test]
     [Arguments("1")]
     [Arguments("999")]
-    public void BindRuntime_RejectsNumericProviderValues(string provider)
+    public async Task BindRuntime_RejectsNumericProviderValues(string provider)
     {
         var configuration = BuildConfiguration(new Dictionary<string, string?>
         {
@@ -475,13 +474,13 @@ public sealed class PrimaryDatabaseConfigurationTests
 
         Action act = () => PrimaryDatabaseConfiguration.BindRuntime(configuration);
 
-        act.Should().Throw<InvalidOperationException>();
+        await Assert.That(act).Throws<InvalidOperationException>();
     }
 
     [Test]
     [Arguments("1")]
     [Arguments("999")]
-    public void BindRuntime_RejectsNumericTlsModeValues(string tlsMode)
+    public async Task BindRuntime_RejectsNumericTlsModeValues(string tlsMode)
     {
         var configuration = BuildConfiguration(new Dictionary<string, string?>
         {
@@ -495,13 +494,13 @@ public sealed class PrimaryDatabaseConfigurationTests
 
         Action act = () => PrimaryDatabaseConfiguration.BindRuntime(configuration);
 
-        act.Should().Throw<InvalidOperationException>();
+        await Assert.That(act).Throws<InvalidOperationException>();
     }
 
     [Test]
     [Arguments("1")]
     [Arguments("999")]
-    public void BindRuntime_RejectsNumericServerFlavorValues(string serverFlavor)
+    public async Task BindRuntime_RejectsNumericServerFlavorValues(string serverFlavor)
     {
         var configuration = BuildConfiguration(new Dictionary<string, string?>
         {
@@ -516,7 +515,7 @@ public sealed class PrimaryDatabaseConfigurationTests
 
         Action act = () => PrimaryDatabaseConfiguration.BindRuntime(configuration);
 
-        act.Should().Throw<InvalidOperationException>();
+        await Assert.That(act).Throws<InvalidOperationException>();
     }
 
     [Test]
@@ -525,7 +524,7 @@ public sealed class PrimaryDatabaseConfigurationTests
     [Arguments("file::memory:?cache=shared")]
     [Arguments("file:shared?mode=memory&cache=shared")]
     [Arguments("file:shared?cache=shared&mode=memory")]
-    public void BindRuntime_RejectsNonPersistedSqliteDatabase(string database)
+    public async Task BindRuntime_RejectsNonPersistedSqliteDatabase(string database)
     {
         var configuration = BuildConfiguration(new Dictionary<string, string?>
         {
@@ -535,7 +534,7 @@ public sealed class PrimaryDatabaseConfigurationTests
 
         Action act = () => PrimaryDatabaseConfiguration.BindRuntime(configuration);
 
-        act.Should().Throw<OptionsValidationException>();
+        await Assert.That(act).Throws<OptionsValidationException>();
     }
 
     [Test]
@@ -544,7 +543,7 @@ public sealed class PrimaryDatabaseConfigurationTests
     [Arguments("file:///app/data/event.db")]
     [Arguments("/app/data/privacy_erasure_authority.db")]
     [Arguments("privacy_erasure_authority.db")]
-    public void BindRuntime_RejectsNonLocalOrReservedSqliteDatabase(string database)
+    public async Task BindRuntime_RejectsNonLocalOrReservedSqliteDatabase(string database)
     {
         var configuration = BuildConfiguration(new Dictionary<string, string?>
         {
@@ -554,7 +553,7 @@ public sealed class PrimaryDatabaseConfigurationTests
 
         Action act = () => PrimaryDatabaseConfiguration.BindRuntime(configuration);
 
-        act.Should().Throw<OptionsValidationException>();
+        await Assert.That(act).Throws<OptionsValidationException>();
     }
 
     [Test]
@@ -580,9 +579,9 @@ public sealed class PrimaryDatabaseConfigurationTests
             await using var connection = new SqliteConnection(result.ConnectionString);
             await connection.OpenAsync(CancellationToken.None);
             await using var command = connection.CreateCommand();
-            command.CommandTimeout.Should().Be(30);
+            await Assert.That(command.CommandTimeout).IsEqualTo(30);
             command.CommandText = "PRAGMA journal_mode;";
-            (await command.ExecuteScalarAsync(CancellationToken.None)).Should().Be("wal");
+            await Assert.That(await command.ExecuteScalarAsync(CancellationToken.None)).IsEqualTo("wal");
         }
         finally
         {
@@ -601,11 +600,11 @@ public sealed class PrimaryDatabaseConfigurationTests
 
         var act = () => SqliteDatabaseInitializer.InitializeAsync(context, CancellationToken.None);
 
-        await act.Should().NotThrowAsync();
+        await Assert.That(act).ThrowsNothing();
     }
 
     [Test]
-    public void BuildConnectionString_PostgreSqlRequiredTlsWithoutTrustBypass_VerifiesServerIdentity()
+    public async Task BuildConnectionString_PostgreSqlRequiredTlsWithoutTrustBypass_VerifiesServerIdentity()
     {
         var configuration = BuildConfiguration(new Dictionary<string, string?>
         {
@@ -619,11 +618,11 @@ public sealed class PrimaryDatabaseConfigurationTests
 
         var result = PrimaryDatabaseConfiguration.ResolveRuntimeConnectionString(configuration);
 
-        new NpgsqlConnectionStringBuilder(result.ConnectionString).SslMode.Should().Be(SslMode.VerifyFull);
+        await Assert.That(new NpgsqlConnectionStringBuilder(result.ConnectionString).SslMode).IsEqualTo(SslMode.VerifyFull);
     }
 
     [Test]
-    public void BuildConnectionString_PostgreSqlDefaultTls_VerifiesServerIdentity()
+    public async Task BuildConnectionString_PostgreSqlDefaultTls_VerifiesServerIdentity()
     {
         var configuration = BuildConfiguration(new Dictionary<string, string?>
         {
@@ -636,11 +635,11 @@ public sealed class PrimaryDatabaseConfigurationTests
 
         var result = PrimaryDatabaseConfiguration.ResolveRuntimeConnectionString(configuration);
 
-        new NpgsqlConnectionStringBuilder(result.ConnectionString).SslMode.Should().Be(SslMode.VerifyFull);
+        await Assert.That(new NpgsqlConnectionStringBuilder(result.ConnectionString).SslMode).IsEqualTo(SslMode.VerifyFull);
     }
 
     [Test]
-    public void BuildConnectionString_PostgreSqlRequiredTlsWithExplicitTrustBypass_RequiresEncryptionWithoutVerification()
+    public async Task BuildConnectionString_PostgreSqlRequiredTlsWithExplicitTrustBypass_RequiresEncryptionWithoutVerification()
     {
         var configuration = BuildConfiguration(new Dictionary<string, string?>
         {
@@ -655,11 +654,11 @@ public sealed class PrimaryDatabaseConfigurationTests
 
         var result = PrimaryDatabaseConfiguration.ResolveRuntimeConnectionString(configuration);
 
-        new NpgsqlConnectionStringBuilder(result.ConnectionString).SslMode.Should().Be(SslMode.Require);
+        await Assert.That(new NpgsqlConnectionStringBuilder(result.ConnectionString).SslMode).IsEqualTo(SslMode.Require);
     }
 
     [Test]
-    public void BindRuntime_RejectsTrustBypassWithoutRequiredTls()
+    public async Task BindRuntime_RejectsTrustBypassWithoutRequiredTls()
     {
         var configuration = BuildConfiguration(new Dictionary<string, string?>
         {
@@ -674,11 +673,11 @@ public sealed class PrimaryDatabaseConfigurationTests
 
         Action act = () => PrimaryDatabaseConfiguration.BindRuntime(configuration);
 
-        act.Should().Throw<OptionsValidationException>();
+        await Assert.That(act).Throws<OptionsValidationException>();
     }
 
     [Test]
-    public void Validate_RejectsSqlServerMissingDatabase()
+    public async Task Validate_RejectsSqlServerMissingDatabase()
     {
         var configuration = BuildConfiguration(new Dictionary<string, string?>
         {
@@ -690,7 +689,7 @@ public sealed class PrimaryDatabaseConfigurationTests
 
         Action act = () => PrimaryDatabaseConfiguration.BindRuntime(configuration);
 
-        act.Should().Throw<OptionsValidationException>();
+        await Assert.That(act).Throws<OptionsValidationException>();
     }
 
     [Test]
@@ -698,7 +697,7 @@ public sealed class PrimaryDatabaseConfigurationTests
     [Arguments("Testing")]
     [Arguments(null)]
     [Arguments("Production")]
-    public void ResolveRuntimeConnectionString_WithLegacyConnectionString_RejectsEveryEnvironment(
+    public async Task ResolveRuntimeConnectionString_WithLegacyConnectionString_RejectsEveryEnvironment(
         string? environmentName)
     {
         var configuration = BuildConfiguration(new Dictionary<string, string?>
@@ -709,11 +708,11 @@ public sealed class PrimaryDatabaseConfigurationTests
 
         Action act = () => PrimaryDatabaseConfiguration.ResolveRuntimeConnectionString(configuration);
 
-        act.Should().Throw<InvalidOperationException>();
+        await Assert.That(act).Throws<InvalidOperationException>();
     }
 
     [Test]
-    public void ConfigurePersistenceServices_WhenDatabaseRegistrationIsSkipped_DoesNotRequireDatabaseConfiguration()
+    public async Task ConfigurePersistenceServices_WhenDatabaseRegistrationIsSkipped_DoesNotRequireDatabaseConfiguration()
     {
         var configuration = BuildConfiguration(new Dictionary<string, string?>());
         var services = new ServiceCollection();
@@ -724,11 +723,11 @@ public sealed class PrimaryDatabaseConfigurationTests
             skipLookupCacheInitializer: true,
             environmentName: "Production");
 
-        act.Should().NotThrow();
+        await Assert.That(act).ThrowsNothing();
     }
 
     [Test]
-    public void ConfigurePersistenceServices_WhenDatabaseRegistrationIsActive_RequiresStructuredConfiguration()
+    public async Task ConfigurePersistenceServices_WhenDatabaseRegistrationIsActive_RequiresStructuredConfiguration()
     {
         var configuration = BuildConfiguration(new Dictionary<string, string?>());
         var services = new ServiceCollection();
@@ -739,11 +738,11 @@ public sealed class PrimaryDatabaseConfigurationTests
             skipLookupCacheInitializer: true,
             environmentName: "Production");
 
-        act.Should().Throw<InvalidOperationException>();
+        await Assert.That(act).Throws<InvalidOperationException>();
     }
 
     [Test]
-    public void ConfigurePersistenceServices_WithProjectedDiscretePostgres_UsesSharedStructuredBinder()
+    public async Task ConfigurePersistenceServices_WithProjectedDiscretePostgres_UsesSharedStructuredBinder()
     {
         var builder = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
         {
@@ -765,11 +764,11 @@ public sealed class PrimaryDatabaseConfigurationTests
             skipLookupCacheInitializer: true,
             environmentName: "Production");
 
-        act.Should().NotThrow();
+        await Assert.That(act).ThrowsNothing();
     }
 
     [Test]
-    public void BuildConnectionString_RedactsSensitiveValues()
+    public async Task BuildConnectionString_RedactsSensitiveValues()
     {
         var configuration = BuildConfiguration(new Dictionary<string, string?>
         {
@@ -782,7 +781,7 @@ public sealed class PrimaryDatabaseConfigurationTests
 
         var result = PrimaryDatabaseConfiguration.BuildConnectionString(PrimaryDatabaseConfiguration.BindRuntime(configuration));
 
-        result.RedactedConnectionString.Should().NotContain("MDB_SECRET_SENTINEL");
-        result.SafeSummary.Should().NotContain("MDB_SECRET_SENTINEL");
+        await Assert.That(result.RedactedConnectionString).DoesNotContain("MDB_SECRET_SENTINEL");
+        await Assert.That(result.SafeSummary).DoesNotContain("MDB_SECRET_SENTINEL");
     }
 }

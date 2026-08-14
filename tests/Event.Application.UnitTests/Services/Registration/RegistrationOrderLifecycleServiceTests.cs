@@ -1191,6 +1191,7 @@ public sealed class RegistrationOrderLifecycleServiceTests
             participantMode, pool?.Id, null, null, false, false, null, null, null, perBookingPartyLimit);
         catalog.AddTicketType(ticket, pool);
         catalog.AddEntitlement(ticket, TicketTypeEntitlement.CreateForEvent(ticket.Id, _tenantId, _eventId, 1));
+        catalog.UpdateCommercialDisclosures("Merchant", "Refund", "Support");
         catalog.Publish();
         RegistrationOrder order = RegistrationOrder.Create(
             _tenantId, _eventId, Guid.CreateVersion7(), purchaserActorId, BookingPartyTypeEnum.Individual, catalog.Id,
@@ -1224,6 +1225,7 @@ public sealed class RegistrationOrderLifecycleServiceTests
         catalog.AddTicketType(secondTicket, pool);
         catalog.AddEntitlement(firstTicket, TicketTypeEntitlement.CreateForEvent(firstTicket.Id, _tenantId, _eventId, 1));
         catalog.AddEntitlement(secondTicket, TicketTypeEntitlement.CreateForEvent(secondTicket.Id, _tenantId, _eventId, 1));
+        catalog.UpdateCommercialDisclosures("Merchant", "Refund", "Support");
         catalog.Publish();
         RegistrationOrder order = RegistrationOrder.Create(
             _tenantId, _eventId, Guid.CreateVersion7(), null, BookingPartyTypeEnum.Individual, catalog.Id,
@@ -1262,6 +1264,7 @@ public sealed class RegistrationOrderLifecycleServiceTests
         catalog.AddTicketType(waitlistTicket, waitlistPool);
         catalog.AddEntitlement(timedTicket, TicketTypeEntitlement.CreateForEvent(timedTicket.Id, _tenantId, _eventId, 1));
         catalog.AddEntitlement(waitlistTicket, TicketTypeEntitlement.CreateForEvent(waitlistTicket.Id, _tenantId, _eventId, 1));
+        catalog.UpdateCommercialDisclosures("Merchant", "Refund", "Support");
         catalog.Publish();
 
         RegistrationOrder order = RegistrationOrder.Create(

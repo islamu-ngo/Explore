@@ -1,3 +1,6 @@
+<!-- ABOUTME: Provides TUnit integration-test patterns for C# MCP servers. -->
+<!-- ABOUTME: Uses real protocol and HTTP boundaries without third-party assertion libraries. -->
+
 # Test Patterns
 
 Complete code patterns for testing C# MCP servers at every level.
@@ -31,42 +34,6 @@ public class MockHttpMessageHandler : HttpMessageHandler
 }
 ```
 
-## ClientServerTestBase (In-Memory Testing)
-
-The SDK provides `ClientServerTestBase` for zero-network integration tests using `System.IO.Pipelines`:
-
-```csharp
-using ModelContextProtocol.Tests; // from SDK test utilities
-
-public class MyToolTests : ClientServerTestBase
-{
-    public MyToolTests(ITestOutputHelper output) : base(output) { }
-
-    protected override void ConfigureServices(
-        ServiceCollection services, IMcpServerBuilder builder)
-    {
-        builder.WithTools<MyTools>();
-        // Register any DI services your tools need
-        services.AddSingleton<IMyService, FakeMyService>();
-    }
-
-    [Fact]
-    public async Task MyTool_ReturnsExpected()
-    {
-        await using var client = await CreateMcpClientForServer();
-        var result = await client.CallToolAsync("my_tool",
-            new() { ["input"] = "test" },
-            cancellationToken: TestContext.Current.CancellationToken);
-        Assert.NotNull(result);
-    }
-}
-```
-
-**Key advantages:**
-- In-memory transport — no process spawning, no network
-- Full DI support — inject fakes/mocks for external dependencies
-- Runs in milliseconds
-
 ## HTTP Testing with WebApplicationFactory
 
 Test HTTP MCP servers using ASP.NET Core's test infrastructure.
@@ -78,19 +45,13 @@ Test HTTP MCP servers using ASP.NET Core's test infrastructure.
 ```csharp
 using Microsoft.AspNetCore.Mvc.Testing;
 
-public class HttpServerTests : IClassFixture<WebApplicationFactory<Program>>
+public class HttpServerTests
 {
-    private readonly WebApplicationFactory<Program> _factory;
-
-    public HttpServerTests(WebApplicationFactory<Program> factory)
-    {
-        _factory = factory;
-    }
-
-    [Fact]
+    [Test]
     public async Task McpEndpoint_AcceptsInitialize()
     {
-        var client = _factory.CreateClient();
+        await using var factory = new WebApplicationFactory<Program>();
+        using var client = factory.CreateClient();
         var request = new
         {
             jsonrpc = "2.0",
@@ -105,13 +66,14 @@ public class HttpServerTests : IClassFixture<WebApplicationFactory<Program>>
         };
 
         var response = await client.PostAsJsonAsync("/mcp", request);
-        response.EnsureSuccessStatusCode();
+        await Assert.That(response.IsSuccessStatusCode).IsTrue();
     }
 
-    [Fact]
+    [Test]
     public async Task McpEndpoint_InvokesTool()
     {
-        var client = _factory.CreateClient();
+        await using var factory = new WebApplicationFactory<Program>();
+        using var client = factory.CreateClient();
 
         // First initialize the session
         var init = new
@@ -142,17 +104,18 @@ public class HttpServerTests : IClassFixture<WebApplicationFactory<Program>>
         };
 
         var response = await client.PostAsJsonAsync("/mcp", toolCall);
-        response.EnsureSuccessStatusCode();
+        await Assert.That(response.IsSuccessStatusCode).IsTrue();
         var body = await response.Content.ReadAsStringAsync();
-        Assert.Contains("hello", body);
+        await Assert.That(body).Contains("hello");
     }
 
-    [Fact]
+    [Test]
     public async Task HealthEndpoint_ReturnsOk()
     {
-        var client = _factory.CreateClient();
+        await using var factory = new WebApplicationFactory<Program>();
+        using var client = factory.CreateClient();
         var response = await client.GetAsync("/health");
-        response.EnsureSuccessStatusCode();
+        await Assert.That(response.IsSuccessStatusCode).IsTrue();
     }
 }
 ```

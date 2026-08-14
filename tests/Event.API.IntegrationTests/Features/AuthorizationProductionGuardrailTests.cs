@@ -9,7 +9,6 @@ using Explore.Application.Authorization;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Domain.Constants;
 using Explore.Persistence;
-using FluentAssertions;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -44,10 +43,9 @@ public class AuthorizationProductionGuardrailTests
 
         var provider = scope.ServiceProvider.GetService<IAuthorizationProvider>();
 
-        provider.Should().NotBeNull("IAuthorizationProvider must always be registered");
-        provider.Should().NotBeOfType<StubAuthorizationProvider>(
-            "StubAuthorizationProvider must never be registered in a non-Testing environment");
-        provider!.GetType().Name.Should().NotBe("StubAuthorizationProvider");
+        await Assert.That(provider).IsNotNull().Because("IAuthorizationProvider must always be registered");
+        await Assert.That(provider).IsNotTypeOf<StubAuthorizationProvider>().Because("StubAuthorizationProvider must never be registered in a non-Testing environment");
+        await Assert.That(provider!.GetType().Name).IsNotEqualTo("StubAuthorizationProvider");
     }
 
     [Test]
@@ -60,9 +58,8 @@ public class AuthorizationProductionGuardrailTests
 
         var result = await provider.IsAllowedAsync(ResourceKinds.Event, "test-resource", AuthorizationActions.Create);
 
-        result.Should().BeFalse(
-            "with no Cerbos endpoint and authorization.provider unset, " +
-            "the provider must default to denying, not allowing");
+        await Assert.That(result).IsFalse().Because("with no Cerbos endpoint and authorization.provider unset, " +
+        "the provider must default to denying, not allowing");
     }
 
     [Test]
@@ -75,8 +72,7 @@ public class AuthorizationProductionGuardrailTests
 
         var response = await client.SendAsync(request);
 
-        response.StatusCode.Should().Be(System.Net.HttpStatusCode.Unauthorized,
-            "without Keycloak authority configured, no requests should succeed");
+        await Assert.That(response.StatusCode).IsEqualTo(System.Net.HttpStatusCode.Unauthorized).Because("without Keycloak authority configured, no requests should succeed");
     }
 
     [Test]
@@ -89,10 +85,9 @@ public class AuthorizationProductionGuardrailTests
 
         try
         {
-            factory.Services.GetRequiredService<Microsoft.AspNetCore.Hosting.IWebHostEnvironment>()
-                .EnvironmentName.Should().Be("Testing",
-                    "SecurityWebApplicationFactory must always set the Testing environment " +
-                    "to prevent test infrastructure from leaking into production behavior");
+            await Assert.That(factory.Services.GetRequiredService<Microsoft.AspNetCore.Hosting.IWebHostEnvironment>()
+                .EnvironmentName).IsEqualTo("Testing").Because("SecurityWebApplicationFactory must always set the Testing environment " +
+            "to prevent test infrastructure from leaking into production behavior");
         }
         finally
         {

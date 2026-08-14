@@ -2,30 +2,29 @@
 // ABOUTME: Ensures warnings stay non-blocking while hard failures fail automation.
 
 using Explore.Diagnostic.Doctor;
-using FluentAssertions;
 
 namespace Explore.Diagnostic.UnitTests.Doctor;
 
 public class DoctorExitCodeTests
 {
     [Test]
-    public void FromReport_WithOnlyPassAndWarn_ReturnsSuccess()
+    public async Task FromReport_WithOnlyPassAndWarn_ReturnsSuccess()
     {
         var report = new DoctorReport([
             DoctorCheckResult.Pass("pass", DoctorCheckCategory.Tooling, "ok", "none", "docs/OPERATIONS.md"),
             DoctorCheckResult.Warn("warn", DoctorCheckCategory.Configuration, "warn", "fix", "docs/TROUBLESHOOTING.md"),
         ]);
 
-        DoctorExitCodes.FromReport(report).Should().Be(DoctorExitCodes.Success);
+        await Assert.That(DoctorExitCodes.FromReport(report)).IsEqualTo(DoctorExitCodes.Success);
     }
 
     [Test]
-    public void FromReport_WithFail_ReturnsHardFailure()
+    public async Task FromReport_WithFail_ReturnsHardFailure()
     {
         var report = new DoctorReport([
             DoctorCheckResult.Fail("fail", DoctorCheckCategory.Tooling, "failed", "fix", "docs/TROUBLESHOOTING.md"),
         ]);
 
-        DoctorExitCodes.FromReport(report).Should().Be(DoctorExitCodes.HardFailure);
+        await Assert.That(DoctorExitCodes.FromReport(report)).IsEqualTo(DoctorExitCodes.HardFailure);
     }
 }

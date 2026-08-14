@@ -3,7 +3,6 @@
 
 using Explore.Blazor.IntegrationTests.Fixtures;
 using Explore.Blazor.Services;
-using FluentAssertions;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -31,16 +30,16 @@ public sealed class BffAuthEndpointValidationTests
 
         using var response = await client.GetAsync("/auth/providers");
 
-        response.StatusCode.Should().Be(HttpStatusCode.InternalServerError);
-        response.Content.Headers.ContentType?.MediaType.Should().Be("application/problem+json");
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.InternalServerError);
+        await Assert.That(response.Content.Headers.ContentType?.MediaType).IsEqualTo("application/problem+json");
         var body = await response.Content.ReadAsStringAsync();
-        body.Should().Contain("Authentication providers could not be resolved.");
-        body.Should().Contain("auth_provider_resolution_failed");
-        body.Should().Contain("correlationId");
-        body.Should().NotContain("raw provider failure");
-        body.Should().NotContain("refresh_token");
-        body.Should().NotContain("secretLen");
-        body.Should().NotContain("islamu-event-blazor");
+        await Assert.That(body).Contains("Authentication providers could not be resolved.");
+        await Assert.That(body).Contains("auth_provider_resolution_failed");
+        await Assert.That(body).Contains("correlationId");
+        await Assert.That(body).DoesNotContain("raw provider failure");
+        await Assert.That(body).DoesNotContain("refresh_token");
+        await Assert.That(body).DoesNotContain("secretLen");
+        await Assert.That(body).DoesNotContain("islamu-event-blazor");
     }
 
     [Test]
@@ -58,11 +57,11 @@ public sealed class BffAuthEndpointValidationTests
 
         using var response = await client.SendAsync(request);
 
-        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
         var body = await response.Content.ReadAsStringAsync();
-        body.Should().Contain("\"isAuthenticated\":false");
-        body.Should().NotContain(browserToken);
-        body.Should().NotContain("Bearer");
+        await Assert.That(body).Contains("\"isAuthenticated\":false");
+        await Assert.That(body).DoesNotContain(browserToken);
+        await Assert.That(body).DoesNotContain("Bearer");
     }
 
     [Test]
@@ -77,9 +76,9 @@ public sealed class BffAuthEndpointValidationTests
 
         using var response = await client.PostAsync("/bff/auth/refresh-schemes", content: null);
 
-        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.BadRequest);
         var body = await response.Content.ReadAsStringAsync();
-        body.Should().Contain("Antiforgery validation failed");
+        await Assert.That(body).Contains("Antiforgery validation failed");
     }
 
     [Test]
@@ -97,9 +96,9 @@ public sealed class BffAuthEndpointValidationTests
 
         using var response = await client.PostAsync("/bff/auth/refresh-session", content: null);
 
-        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.BadRequest);
         var body = await response.Content.ReadAsStringAsync();
-        body.Should().Contain("Antiforgery validation failed");
+        await Assert.That(body).Contains("Antiforgery validation failed");
     }
 
     private sealed class ThrowingAuthSchemeManager : IDynamicAuthSchemeManager

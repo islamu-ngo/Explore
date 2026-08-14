@@ -2,7 +2,6 @@
 // ABOUTME: Prevents URI, network, replica, and unsafe timeout configurations from reaching SQLite.
 
 using Explore.Secrets.Database;
-using FluentAssertions;
 using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Options;
@@ -12,19 +11,18 @@ namespace Explore.Secrets.UnitTests.Database;
 public sealed class EmbeddedPrivacyErasureAuthorityOptionsTests
 {
     [Test]
-    public void MissingConfigurationUsesProductionDefaults()
+    public async Task MissingConfigurationUsesProductionDefaults()
     {
         EmbeddedPrivacyErasureAuthorityOptions options =
             EmbeddedPrivacyErasureAuthorityOptions.Bind(BuildConfiguration([]));
 
-        options.Path.Should().Be(EmbeddedPrivacyErasureAuthorityOptions.DefaultPath);
-        options.WriterReplicaCount.Should().Be(1);
-        options.BusyTimeoutSeconds.Should()
-            .Be(EmbeddedPrivacyErasureAuthorityOptions.DefaultBusyTimeoutSeconds);
+        await Assert.That(options.Path).IsEqualTo(EmbeddedPrivacyErasureAuthorityOptions.DefaultPath);
+        await Assert.That(options.WriterReplicaCount).IsEqualTo(1);
+        await Assert.That(options.BusyTimeoutSeconds).IsEqualTo(EmbeddedPrivacyErasureAuthorityOptions.DefaultBusyTimeoutSeconds);
     }
 
     [Test]
-    public void ConnectionStringUsesPrivatePersistedFileComposition()
+    public async Task ConnectionStringUsesPrivatePersistedFileComposition()
     {
         string path = Path.Combine(Path.GetTempPath(), "privacy-erasure-authority.db");
         EmbeddedPrivacyErasureAuthorityOptions options =
@@ -36,10 +34,10 @@ public sealed class EmbeddedPrivacyErasureAuthorityOptionsTests
 
         var connection = new SqliteConnectionStringBuilder(options.BuildConnectionString());
 
-        connection.DataSource.Should().Be(Path.GetFullPath(path));
-        connection.Mode.Should().Be(SqliteOpenMode.ReadWriteCreate);
-        connection.Cache.Should().Be(SqliteCacheMode.Private);
-        connection.DefaultTimeout.Should().Be(17);
+        await Assert.That(connection.DataSource).IsEqualTo(Path.GetFullPath(path));
+        await Assert.That(connection.Mode).IsEqualTo(SqliteOpenMode.ReadWriteCreate);
+        await Assert.That(connection.Cache).IsEqualTo(SqliteCacheMode.Private);
+        await Assert.That(connection.DefaultTimeout).IsEqualTo(17);
     }
 
     [Test]
@@ -47,7 +45,7 @@ public sealed class EmbeddedPrivacyErasureAuthorityOptionsTests
     [Arguments("file:/tmp/authority.db")]
     [Arguments("https://example.test/authority.db")]
     [Arguments("\\\\server\\authority.db")]
-    public void NonLocalOrNonAbsolutePathFailsClosed(string path)
+    public async Task NonLocalOrNonAbsolutePathFailsClosed(string path)
     {
         Action act = () => EmbeddedPrivacyErasureAuthorityOptions.Bind(
             BuildConfiguration(new()
@@ -55,13 +53,13 @@ public sealed class EmbeddedPrivacyErasureAuthorityOptionsTests
                 ["PrivacyErasureAuthorityEmbedded:Path"] = path,
             }));
 
-        act.Should().Throw<OptionsValidationException>();
+        await Assert.That(act).Throws<OptionsValidationException>();
     }
 
     [Test]
     [Arguments("0")]
     [Arguments("2")]
-    public void WriterReplicaCountOtherThanOneFailsClosed(string replicas)
+    public async Task WriterReplicaCountOtherThanOneFailsClosed(string replicas)
     {
         Action act = () => EmbeddedPrivacyErasureAuthorityOptions.Bind(
             BuildConfiguration(new()
@@ -69,15 +67,15 @@ public sealed class EmbeddedPrivacyErasureAuthorityOptionsTests
                 ["PrivacyErasureAuthorityEmbedded:WriterReplicaCount"] = replicas,
             }));
 
-        act.Should().Throw<OptionsValidationException>()
-            .WithMessage("*WriterReplicaCount must be exactly 1*");
+        await Assert.That(act).Throws<OptionsValidationException>()
+            .WithMessageContaining("WriterReplicaCount must be exactly 1");
     }
 
     [Test]
     [Arguments("0")]
     [Arguments("301")]
     [Arguments("not-an-integer")]
-    public void BusyTimeoutOutsideBoundsFailsClosed(string timeout)
+    public async Task BusyTimeoutOutsideBoundsFailsClosed(string timeout)
     {
         Action act = () => EmbeddedPrivacyErasureAuthorityOptions.Bind(
             BuildConfiguration(new()
@@ -85,7 +83,7 @@ public sealed class EmbeddedPrivacyErasureAuthorityOptionsTests
                 ["PrivacyErasureAuthorityEmbedded:BusyTimeoutSeconds"] = timeout,
             }));
 
-        act.Should().Throw<OptionsValidationException>();
+        await Assert.That(act).Throws<OptionsValidationException>();
     }
 
     private static IConfiguration BuildConfiguration(Dictionary<string, string?> values) =>

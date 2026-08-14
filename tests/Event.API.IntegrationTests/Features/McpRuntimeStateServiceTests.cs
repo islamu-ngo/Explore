@@ -8,7 +8,6 @@ using Explore.Application.Contracts.Services;
 using Explore.Application.Settings;
 using Explore.Application.Settings.Groups;
 using Explore.Domain.Constants;
-using FluentAssertions;
 using Microsoft.Extensions.Options;
 using NSubstitute;
 using TUnit.Core;
@@ -24,9 +23,9 @@ public sealed class McpRuntimeStateServiceTests
 
         var state = await service.GetAsync();
 
-        state.StartupEnabled.Should().BeFalse();
-        state.RuntimeEnabled.Should().BeTrue();
-        state.EffectiveEnabled.Should().BeFalse();
+        await Assert.That(state.StartupEnabled).IsFalse();
+        await Assert.That(state.RuntimeEnabled).IsTrue();
+        await Assert.That(state.EffectiveEnabled).IsFalse();
     }
 
     [Test]
@@ -42,9 +41,9 @@ public sealed class McpRuntimeStateServiceTests
 
         var state = await service.GetAsync();
 
-        state.TenantOverrideAllowed.Should().BeTrue();
-        state.RuntimeEnabled.Should().BeFalse();
-        state.EffectiveEnabled.Should().BeFalse();
+        await Assert.That(state.TenantOverrideAllowed).IsTrue();
+        await Assert.That(state.RuntimeEnabled).IsFalse();
+        await Assert.That(state.EffectiveEnabled).IsFalse();
     }
 
     [Test]
@@ -60,9 +59,9 @@ public sealed class McpRuntimeStateServiceTests
 
         var state = await service.GetAsync();
 
-        state.TenantOverrideAllowed.Should().BeFalse();
-        state.RuntimeEnabled.Should().BeTrue();
-        state.EffectiveEnabled.Should().BeTrue();
+        await Assert.That(state.TenantOverrideAllowed).IsFalse();
+        await Assert.That(state.RuntimeEnabled).IsTrue();
+        await Assert.That(state.EffectiveEnabled).IsTrue();
     }
 
     [Test]
@@ -78,9 +77,9 @@ public sealed class McpRuntimeStateServiceTests
 
         var state = await service.GetAsync();
 
-        state.StartupLegacySseCeiling.Should().BeTrue();
-        state.RuntimeLegacySseRequested.Should().BeTrue();
-        state.LegacySseRuntimeEnabled.Should().BeFalse();
+        await Assert.That(state.StartupLegacySseCeiling).IsTrue();
+        await Assert.That(state.RuntimeLegacySseRequested).IsTrue();
+        await Assert.That(state.LegacySseRuntimeEnabled).IsFalse();
     }
 
     private static McpRuntimeStateService CreateService(

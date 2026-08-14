@@ -4,7 +4,6 @@
 using System.Reflection;
 using Explore.Secrets.Configuration;
 using Explore.Secrets.Extensions;
-using FluentAssertions;
 using Microsoft.Extensions.Configuration;
 using TUnit.Core;
 
@@ -13,7 +12,7 @@ namespace Explore.Secrets.UnitTests.Configuration;
 public sealed class InfisicalConfigurationProviderTests
 {
     [Test]
-    public void AddInfisical_WhenCredentialsAreConfigured_AddsConfiguredSource()
+    public async Task AddInfisical_WhenCredentialsAreConfigured_AddsConfiguredSource()
     {
         var bootstrapConfiguration = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
@@ -31,18 +30,20 @@ public sealed class InfisicalConfigurationProviderTests
 
         builder.AddInfisical(bootstrapConfiguration);
 
-        var source = builder.Sources.Should().ContainSingle()
-            .Which.Should().BeOfType<InfisicalConfigurationSource>().Subject;
-        source.Url.Should().Be("https://secrets.example.test");
-        source.ProjectId.Should().Be("project-id");
-        source.ClientId.Should().Be("client-id");
-        source.ClientSecret.Should().Be("client-secret");
-        source.Environment.Should().Be("staging");
-        source.Paths.Should().Equal("/api", "/keycloak");
+        await Assert.That(builder.Sources).Count().IsEqualTo(1);
+        var source = builder.Sources.Single();
+        await Assert.That(source).IsTypeOf<InfisicalConfigurationSource>();
+        var infisicalSource = (InfisicalConfigurationSource)source;
+        await Assert.That(infisicalSource.Url).IsEqualTo("https://secrets.example.test");
+        await Assert.That(infisicalSource.ProjectId).IsEqualTo("project-id");
+        await Assert.That(infisicalSource.ClientId).IsEqualTo("client-id");
+        await Assert.That(infisicalSource.ClientSecret).IsEqualTo("client-secret");
+        await Assert.That(infisicalSource.Environment).IsEqualTo("staging");
+        await Assert.That(infisicalSource.Paths.SequenceEqual(["/api", "/keycloak"])).IsTrue();
     }
 
     [Test]
-    public void AddInfisical_WhenCredentialsAreIncomplete_DoesNotAddSource()
+    public async Task AddInfisical_WhenCredentialsAreIncomplete_DoesNotAddSource()
     {
         var bootstrapConfiguration = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
@@ -54,24 +55,24 @@ public sealed class InfisicalConfigurationProviderTests
 
         builder.AddInfisical(bootstrapConfiguration);
 
-        builder.Sources.Should().BeEmpty();
+        await Assert.That(builder.Sources).IsEmpty();
     }
 
     [Test]
-    public void ConvertToConfigurationKey_WhenAiToolProposalsSecretProvided_MapsToAiProviderSetting()
+    public async Task ConvertToConfigurationKey_WhenAiToolProposalsSecretProvided_MapsToAiProviderSetting()
     {
-        var key = ConvertToConfigurationKey("AI_TOOL_PROPOSALS_ENABLED", "/");
+        var key = await ConvertToConfigurationKey("AI_TOOL_PROPOSALS_ENABLED", "/");
 
-        key.Should().Be("AiProvider:ToolProposalsEnabled");
+        await Assert.That(key).IsEqualTo("AiProvider:ToolProposalsEnabled");
     }
 
-    private static string ConvertToConfigurationKey(string secretKey, string path)
+    private static async Task<string> ConvertToConfigurationKey(string secretKey, string path)
     {
         var method = typeof(InfisicalConfigurationProvider).GetMethod(
             "ConvertToConfigurationKey",
             BindingFlags.NonPublic | BindingFlags.Static);
 
-        method.Should().NotBeNull();
+        await Assert.That(method).IsNotNull();
         return ((string?)method!.Invoke(null, [secretKey, path]))!;
     }
 }

@@ -2,7 +2,6 @@
 // ABOUTME: Prevents raw connection strings and topology-resource drift in Compose and Aspire.
 
 using Explore.Diagnostic.Doctor;
-using FluentAssertions;
 
 namespace Explore.Diagnostic.UnitTests.Doctor.Checks;
 
@@ -29,55 +28,55 @@ public class StructuredDatabaseDeploymentInputTests
         ];
         foreach (var key in sharedKeys)
         {
-            compose.Should().Contain($"Database__{key.Configuration}:");
-            environmentExample.Should().Contain($"DATABASE_{key.Environment}=");
+            await Assert.That(compose).Contains($"Database__{key.Configuration}:");
+            await Assert.That(environmentExample).Contains($"DATABASE_{key.Environment}=");
         }
 
-        compose.Should().Contain("Database__Runtime__Username:");
-        compose.Should().Contain("Database__Runtime__Password:");
-        compose.Should().Contain("Database__Migrator__Username:");
-        compose.Should().Contain("Database__Migrator__Password:");
-        environmentExample.Should().Contain("DATABASE_RUNTIME_USERNAME=");
-        environmentExample.Should().Contain("DATABASE_RUNTIME_PASSWORD=");
-        environmentExample.Should().Contain("DATABASE_MIGRATOR_USERNAME=");
-        environmentExample.Should().Contain("DATABASE_MIGRATOR_PASSWORD=");
+        await Assert.That(compose).Contains("Database__Runtime__Username:");
+        await Assert.That(compose).Contains("Database__Runtime__Password:");
+        await Assert.That(compose).Contains("Database__Migrator__Username:");
+        await Assert.That(compose).Contains("Database__Migrator__Password:");
+        await Assert.That(environmentExample).Contains("DATABASE_RUNTIME_USERNAME=");
+        await Assert.That(environmentExample).Contains("DATABASE_RUNTIME_PASSWORD=");
+        await Assert.That(environmentExample).Contains("DATABASE_MIGRATOR_USERNAME=");
+        await Assert.That(environmentExample).Contains("DATABASE_MIGRATOR_PASSWORD=");
 
-        compose.Should().Contain("PrivacyErasureAuthorityDatabase__Provider:");
-        compose.Should().Contain("PrivacyErasureAuthorityDatabase__Host:");
-        compose.Should().Contain("PrivacyErasureAuthorityDatabase__Runtime__Username:");
-        compose.Should().Contain("PrivacyErasureAuthorityDatabase__Runtime__Password:");
-        compose.Should().Contain("PrivacyErasureAuthorityDatabase__Migrator__Username:");
-        compose.Should().Contain("PrivacyErasureAuthorityDatabase__Migrator__Password:");
-        environmentExample.Should().Contain("PRIVACY_ERASURE_AUTHORITY_HOST=");
-        environmentExample.Should().Contain("PRIVACY_ERASURE_AUTHORITY_RUNTIME_USERNAME=");
-        environmentExample.Should().Contain("PRIVACY_ERASURE_AUTHORITY_MIGRATOR_USERNAME=");
-        environmentExample.Should().Contain("PRIVACY_ERASURE_AUTHORITY_TOPOLOGY=EmbeddedSqlite");
-        environmentExample.Should().Contain("PRIVACY_ERASURE_AUTHORITY_EMBEDDED_PATH=/app/data/privacy_erasure_authority.db");
-        environmentExample.Should().Contain("PRIVACY_ERASURE_AUTHORITY_WRITER_REPLICA_COUNT=1");
-        environmentExample.Should().Contain("PRIVACY_ERASURE_AUTHORITY_BUSY_TIMEOUT_SECONDS=30");
+        await Assert.That(compose).Contains("PrivacyErasureAuthorityDatabase__Provider:");
+        await Assert.That(compose).Contains("PrivacyErasureAuthorityDatabase__Host:");
+        await Assert.That(compose).Contains("PrivacyErasureAuthorityDatabase__Runtime__Username:");
+        await Assert.That(compose).Contains("PrivacyErasureAuthorityDatabase__Runtime__Password:");
+        await Assert.That(compose).Contains("PrivacyErasureAuthorityDatabase__Migrator__Username:");
+        await Assert.That(compose).Contains("PrivacyErasureAuthorityDatabase__Migrator__Password:");
+        await Assert.That(environmentExample).Contains("PRIVACY_ERASURE_AUTHORITY_HOST=");
+        await Assert.That(environmentExample).Contains("PRIVACY_ERASURE_AUTHORITY_RUNTIME_USERNAME=");
+        await Assert.That(environmentExample).Contains("PRIVACY_ERASURE_AUTHORITY_MIGRATOR_USERNAME=");
+        await Assert.That(environmentExample).Contains("PRIVACY_ERASURE_AUTHORITY_TOPOLOGY=EmbeddedSqlite");
+        await Assert.That(environmentExample).Contains("PRIVACY_ERASURE_AUTHORITY_EMBEDDED_PATH=/app/data/privacy_erasure_authority.db");
+        await Assert.That(environmentExample).Contains("PRIVACY_ERASURE_AUTHORITY_WRITER_REPLICA_COUNT=1");
+        await Assert.That(environmentExample).Contains("PRIVACY_ERASURE_AUTHORITY_BUSY_TIMEOUT_SECONDS=30");
 
-        compose.Should().Contain("PrivacyErasure__Authority__Topology: ${PRIVACY_ERASURE_AUTHORITY_TOPOLOGY:-EmbeddedSqlite}");
-        compose.Should().Contain("PrivacyErasureAuthorityEmbedded__Path:");
-        compose.Should().Contain("PrivacyErasureAuthorityEmbedded__WriterReplicaCount:");
-        compose.Should().Contain("PrivacyErasureAuthorityEmbedded__BusyTimeoutSeconds:");
-        compose.Should().Contain("privacy_erasure_authority_data:/app/data");
-        compose.Should().Contain("SETUP_SECRET_FILE: ${SETUP_SECRET_FILE:-/app/bootstrap/setup-secret}");
-        compose.Should().Contain("setup_data:/app/bootstrap");
-        compose.Should().Contain("\n  setup_data:");
-        environmentExample.Should().Contain("SETUP_SECRET_FILE=");
-        compose.Should().Contain("privacy-erasure-authority-volume-init:");
-        compose.Should().Contain("event-migrationservice:");
-        compose.Should().NotContain("event-migrationservice:\n    profiles:");
-        compose.Should().Contain("replicas: 1");
-        compose.Should().NotContain("PrivacyErasureAuthorityEmbedded__Cache");
-        compose.Should().NotContain("privacy_erasure_authority_data:/var/lib/postgresql");
+        await Assert.That(compose).Contains("PrivacyErasure__Authority__Topology: ${PRIVACY_ERASURE_AUTHORITY_TOPOLOGY:-EmbeddedSqlite}");
+        await Assert.That(compose).Contains("PrivacyErasureAuthorityEmbedded__Path:");
+        await Assert.That(compose).Contains("PrivacyErasureAuthorityEmbedded__WriterReplicaCount:");
+        await Assert.That(compose).Contains("PrivacyErasureAuthorityEmbedded__BusyTimeoutSeconds:");
+        await Assert.That(compose).Contains("privacy_erasure_authority_data:/app/data");
+        await Assert.That(compose).Contains("SETUP_SECRET_FILE: ${SETUP_SECRET_FILE:-/app/bootstrap/setup-secret}");
+        await Assert.That(compose).Contains("setup_data:/app/bootstrap");
+        await Assert.That(compose).Contains("\n  setup_data:");
+        await Assert.That(environmentExample).Contains("SETUP_SECRET_FILE=");
+        await Assert.That(compose).Contains("privacy-erasure-authority-volume-init:");
+        await Assert.That(compose).Contains("event-migrationservice:");
+        await Assert.That(compose).DoesNotContain("event-migrationservice:\n    profiles:");
+        await Assert.That(compose).Contains("replicas: 1");
+        await Assert.That(compose).DoesNotContain("PrivacyErasureAuthorityEmbedded__Cache");
+        await Assert.That(compose).DoesNotContain("privacy_erasure_authority_data:/var/lib/postgresql");
 
-        compose.Should().NotContain("ConnectionStrings__DefaultConnection");
-        compose.Should().NotContain("ConnectionStrings__EventMigrationService");
-        compose.Should().NotContain("ConnectionStrings__PrivacyErasureAuthority");
-        environmentExample.Should().NotContain("DATABASE_CONNECTION_STRING=");
-        environmentExample.Should().NotContain("PRIVACY_ERASURE_AUTHORITY_RUNTIME_CONNECTION_STRING=");
-        environmentExample.Should().NotContain("PRIVACY_ERASURE_AUTHORITY_MIGRATOR_CONNECTION_STRING=");
+        await Assert.That(compose).DoesNotContain("ConnectionStrings__DefaultConnection");
+        await Assert.That(compose).DoesNotContain("ConnectionStrings__EventMigrationService");
+        await Assert.That(compose).DoesNotContain("ConnectionStrings__PrivacyErasureAuthority");
+        await Assert.That(environmentExample).DoesNotContain("DATABASE_CONNECTION_STRING=");
+        await Assert.That(environmentExample).DoesNotContain("PRIVACY_ERASURE_AUTHORITY_RUNTIME_CONNECTION_STRING=");
+        await Assert.That(environmentExample).DoesNotContain("PRIVACY_ERASURE_AUTHORITY_MIGRATOR_CONNECTION_STRING=");
     }
 
     [Test]
@@ -86,19 +85,19 @@ public class StructuredDatabaseDeploymentInputTests
         var appHost = await File.ReadAllTextAsync(
             Path.Combine(RepositoryRoot, "src", "Explore.AppHost", "AppHost.cs"));
 
-        appHost.Should().Contain("\"Database__Provider\"");
-        appHost.Should().Contain("PrimaryDatabaseRole.Runtime");
-        appHost.Should().Contain("PrimaryDatabaseRole.Migrator");
-        appHost.Should().Contain("$\"Database__{role}__\"");
-        appHost.Should().NotContain("WithReference(database, connectionName:");
-        appHost.Should().Contain("PrivacyErasureAuthorityDatabase__Provider");
-        appHost.Should().Contain("WithLocalPrivacyErasureAuthorityDatabase");
-        appHost.Should().Contain("WithExternalPrivacyErasureAuthorityDatabase");
-        appHost.Should().Contain("PrivacyErasureAuthorityTopology.EmbeddedSqlite");
-        appHost.Should().Contain("WithEmbeddedPrivacyErasureAuthority");
-        appHost.Should().Contain("/app/data/privacy_erasure_authority.db");
-        appHost.Should().Contain(".WithReplicas(1)");
-        appHost.Should().Contain("islamu-event-privacy-erasure-authority-data");
-        appHost.Should().NotContain("connectionName: \"PrivacyErasureAuthority");
+        await Assert.That(appHost).Contains("\"Database__Provider\"");
+        await Assert.That(appHost).Contains("PrimaryDatabaseRole.Runtime");
+        await Assert.That(appHost).Contains("PrimaryDatabaseRole.Migrator");
+        await Assert.That(appHost).Contains("$\"Database__{role}__\"");
+        await Assert.That(appHost).DoesNotContain("WithReference(database, connectionName:");
+        await Assert.That(appHost).Contains("PrivacyErasureAuthorityDatabase__Provider");
+        await Assert.That(appHost).Contains("WithLocalPrivacyErasureAuthorityDatabase");
+        await Assert.That(appHost).Contains("WithExternalPrivacyErasureAuthorityDatabase");
+        await Assert.That(appHost).Contains("PrivacyErasureAuthorityTopology.EmbeddedSqlite");
+        await Assert.That(appHost).Contains("WithEmbeddedPrivacyErasureAuthority");
+        await Assert.That(appHost).Contains("/app/data/privacy_erasure_authority.db");
+        await Assert.That(appHost).Contains(".WithReplicas(1)");
+        await Assert.That(appHost).Contains("islamu-event-privacy-erasure-authority-data");
+        await Assert.That(appHost).DoesNotContain("connectionName: \"PrivacyErasureAuthority");
     }
 }

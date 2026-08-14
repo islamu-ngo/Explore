@@ -7,7 +7,6 @@ using Explore.Blazor.Authentication;
 using Explore.Blazor.IntegrationTests.Fixtures;
 using Explore.Blazor.Services;
 using Explore.Blazor.Services.Auth;
-using FluentAssertions;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Http;
@@ -33,21 +32,21 @@ public sealed class AtprotoTenantHandoffTests
     {
         await using var factory = CreateFactory();
         var code = await CreateHandoffAsync(factory);
-        code.Should().HaveLength(43);
-        code.Should().NotContain(PlatformAccessToken);
+        await Assert.That(code.Length).IsEqualTo(43);
+        await Assert.That(code).DoesNotContain(PlatformAccessToken);
         var response = await InvokeHandoffEndpointAsync(factory, TenantOrigin, code);
 
-        response.StatusCode.Should().Be(StatusCodes.Status302Found);
-        response.Location.Should().Be("/events?source=atproto");
-        response.CacheControl.Should().Contain("no-store");
-        response.Body.Should().BeEmpty();
+        await Assert.That(response.StatusCode).IsEqualTo(StatusCodes.Status302Found);
+        await Assert.That(response.Location).IsEqualTo("/events?source=atproto");
+        await Assert.That(response.CacheControl).Contains("no-store");
+        await Assert.That(response.Body).IsEmpty();
         var cookieHeader = response.SetCookies.Single(value =>
             value.StartsWith(".AspNetCore.Cookies=", StringComparison.Ordinal));
         var normalizedCookieHeader = cookieHeader.ToLowerInvariant();
-        normalizedCookieHeader.Should().Contain("; path=/");
-        normalizedCookieHeader.Should().Contain("; secure");
-        normalizedCookieHeader.Should().Contain("; httponly");
-        normalizedCookieHeader.Should().Contain("; samesite=lax");
+        await Assert.That(normalizedCookieHeader).Contains("; path=/");
+        await Assert.That(normalizedCookieHeader).Contains("; secure");
+        await Assert.That(normalizedCookieHeader).Contains("; httponly");
+        await Assert.That(normalizedCookieHeader).Contains("; samesite=lax");
 
         var browserVisible = string.Join('\n', response.SetCookies.Append(response.Location ?? string.Empty)) + response.Body;
         foreach (var secret in new[]
@@ -61,23 +60,23 @@ public sealed class AtprotoTenantHandoffTests
             UserId.ToString("D")
         })
         {
-            browserVisible.Should().NotContain(secret);
+            await Assert.That(browserVisible).DoesNotContain(secret);
         }
 
         var ticket = UnprotectCookieTicket(factory, cookieHeader);
-        ticket.Should().NotBeNull();
-        ticket!.Principal.FindFirstValue("sub").Should().Be(UserId.ToString("D"));
-        ticket.Principal.FindFirstValue(ClaimTypes.NameIdentifier).Should().Be(UserId.ToString("D"));
-        ticket.Principal.FindFirstValue("did").Should().Be("did:plc:alice");
-        ticket.Principal.FindFirstValue("tenant_id").Should().Be(TenantId.ToString("D"));
-        ticket.Principal.FindFirstValue("auth_provider").Should().Be("atproto");
-        ticket.Principal.FindFirstValue("canonical_actor_id").Should().BeNull();
-        ticket.Principal.FindFirstValue("expected_actor_concurrency_stamp").Should().BeNull();
-        ticket.Properties.GetTokenValue("access_token").Should().Be(PlatformAccessToken);
-        ticket.Properties.GetTokenValue("token_type").Should().Be("Bearer");
-        ticket.Properties.GetTokenValue("expires_at").Should().NotBeNullOrWhiteSpace();
-        ticket.Properties.AllowRefresh.Should().BeTrue();
-        ticket.Properties.IsPersistent.Should().BeTrue();
+        await Assert.That(ticket).IsNotNull();
+        await Assert.That(ticket!.Principal.FindFirstValue("sub")).IsEqualTo(UserId.ToString("D"));
+        await Assert.That(ticket.Principal.FindFirstValue(ClaimTypes.NameIdentifier)).IsEqualTo(UserId.ToString("D"));
+        await Assert.That(ticket.Principal.FindFirstValue("did")).IsEqualTo("did:plc:alice");
+        await Assert.That(ticket.Principal.FindFirstValue("tenant_id")).IsEqualTo(TenantId.ToString("D"));
+        await Assert.That(ticket.Principal.FindFirstValue("auth_provider")).IsEqualTo("atproto");
+        await Assert.That(ticket.Principal.FindFirstValue("canonical_actor_id")).IsNull();
+        await Assert.That(ticket.Principal.FindFirstValue("expected_actor_concurrency_stamp")).IsNull();
+        await Assert.That(ticket.Properties.GetTokenValue("access_token")).IsEqualTo(PlatformAccessToken);
+        await Assert.That(ticket.Properties.GetTokenValue("token_type")).IsEqualTo("Bearer");
+        await Assert.That(string.IsNullOrWhiteSpace(ticket.Properties.GetTokenValue("expires_at"))).IsFalse();
+        await Assert.That(ticket.Properties.AllowRefresh).IsTrue();
+        await Assert.That(ticket.Properties.IsPersistent).IsTrue();
     }
 
     [Test]
@@ -91,8 +90,8 @@ public sealed class AtprotoTenantHandoffTests
         using var substituted = await attackerClient.GetAsync($"/auth/atproto/handoff?code={code}");
         using var replay = await tenantClient.GetAsync($"/auth/atproto/handoff?code={code}");
 
-        AssertSafeHandoffFailure(substituted);
-        AssertSafeHandoffFailure(replay);
+        await AssertSafeHandoffFailure(substituted);
+        await AssertSafeHandoffFailure(replay);
     }
 
     [Test]
@@ -104,9 +103,9 @@ public sealed class AtprotoTenantHandoffTests
 
         using var response = await client.GetAsync($"/auth/atproto/handoff?code={Uri.EscapeDataString(supplied)}");
 
-        AssertSafeHandoffFailure(response);
-        response.Headers.Location!.OriginalString.Should().NotContain(supplied);
-        response.Headers.Location.OriginalString.Should().NotContain("browser-secret");
+        await AssertSafeHandoffFailure(response);
+        await Assert.That(response.Headers.Location!.OriginalString).DoesNotContain(supplied);
+        await Assert.That(response.Headers.Location.OriginalString).DoesNotContain("browser-secret");
     }
 
     private static WebApplicationFactory<Program> CreateFactory() =>
@@ -206,14 +205,14 @@ public sealed class AtprotoTenantHandoffTests
         return options.TicketDataFormat.Unprotect(Uri.UnescapeDataString(encoded));
     }
 
-    private static void AssertSafeHandoffFailure(HttpResponseMessage response)
+    private static async Task AssertSafeHandoffFailure(HttpResponseMessage response)
     {
-        response.StatusCode.Should().Be(HttpStatusCode.Redirect);
-        response.Headers.CacheControl?.NoStore.Should().BeTrue();
-        response.Headers.Location?.OriginalString.Should().Be("/login?provider=atproto&challengeError=1");
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Redirect);
+        await Assert.That(response.Headers.CacheControl?.NoStore).IsTrue();
+        await Assert.That(response.Headers.Location?.OriginalString).IsEqualTo("/login?provider=atproto&challengeError=1");
         if (response.Headers.TryGetValues("Set-Cookie", out var cookies))
         {
-            cookies.Should().NotContain(value =>
+            await Assert.That(cookies).DoesNotContain(value =>
                 value.StartsWith(".AspNetCore.Cookies=", StringComparison.Ordinal));
         }
     }

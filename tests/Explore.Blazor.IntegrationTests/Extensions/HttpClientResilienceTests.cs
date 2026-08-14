@@ -4,7 +4,6 @@
 using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Extensions;
 using Explore.Blazor.Services;
-using FluentAssertions;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Hosting.Server;
@@ -30,8 +29,8 @@ public sealed class HttpClientResilienceTests
 
         using var response = await client.PostAsync("/bff/auth/refresh-session/internal", content: null);
 
-        response.StatusCode.Should().Be(HttpStatusCode.Redirect);
-        bff.LoginCallCount.Should().Be(0);
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Redirect);
+        await Assert.That(bff.LoginCallCount).IsEqualTo(0);
     }
 
     [Test]
@@ -47,8 +46,8 @@ public sealed class HttpClientResilienceTests
             $"/api/ai/assistant/conversations/{Guid.CreateVersion7()}/messages",
             new { content = "hi", idempotencyKey = $"test-{Guid.CreateVersion7()}" });
 
-        response.StatusCode.Should().Be(HttpStatusCode.Accepted);
-        api.CallCount.Should().Be(1);
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Accepted);
+        await Assert.That(api.CallCount).IsEqualTo(1);
     }
 
     private static ServiceCollection CreateServices(string apiBaseAddress)

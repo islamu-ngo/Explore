@@ -2,7 +2,6 @@
 // ABOUTME: Validates the 3-level admin hierarchy (instance > tenant > org) for every resource kind.
 
 using Event.Api.IntegrationTests.Fixtures;
-using FluentAssertions;
 using TUnit.Core;
 
 namespace Event.Api.IntegrationTests.Features;
@@ -76,8 +75,7 @@ public class CerbosPolicyContractTests : IDisposable
 
         foreach (var action in actions)
         {
-            result.Should().ContainKey(action).WhoseValue.Should().Be("EFFECT_ALLOW",
-                $"instance admin should be allowed '{action}' on '{resourceKind}'");
+            await Assert.That(result).ContainsKey(action).And.Value.IsEqualTo("EFFECT_ALLOW").Because($"instance admin should be allowed '{action}' on '{resourceKind}'");
         }
     }
 
@@ -93,14 +91,14 @@ public class CerbosPolicyContractTests : IDisposable
             resourceAttrs: new { tenantId = "tenant-1", organizationId = "org-1", userId = "user-1" },
             actions: ["view", "view-management", "create", "update", "delete", "moderate-light", "moderate-heavy", "unmoderate"]);
 
-        result.Should().ContainKey("view").WhoseValue.Should().Be("EFFECT_ALLOW");
-        result.Should().ContainKey("view-management").WhoseValue.Should().Be("EFFECT_ALLOW");
-        result.Should().ContainKey("create").WhoseValue.Should().Be("EFFECT_DENY");
-        result.Should().ContainKey("update").WhoseValue.Should().Be("EFFECT_DENY");
-        result.Should().ContainKey("delete").WhoseValue.Should().Be("EFFECT_DENY");
-        result.Should().ContainKey("moderate-light").WhoseValue.Should().Be("EFFECT_ALLOW");
-        result.Should().ContainKey("moderate-heavy").WhoseValue.Should().Be("EFFECT_ALLOW");
-        result.Should().ContainKey("unmoderate").WhoseValue.Should().Be("EFFECT_ALLOW");
+        await Assert.That(result).ContainsKey("view").And.Value.IsEqualTo("EFFECT_ALLOW");
+        await Assert.That(result).ContainsKey("view-management").And.Value.IsEqualTo("EFFECT_ALLOW");
+        await Assert.That(result).ContainsKey("create").And.Value.IsEqualTo("EFFECT_DENY");
+        await Assert.That(result).ContainsKey("update").And.Value.IsEqualTo("EFFECT_DENY");
+        await Assert.That(result).ContainsKey("delete").And.Value.IsEqualTo("EFFECT_DENY");
+        await Assert.That(result).ContainsKey("moderate-light").And.Value.IsEqualTo("EFFECT_ALLOW");
+        await Assert.That(result).ContainsKey("moderate-heavy").And.Value.IsEqualTo("EFFECT_ALLOW");
+        await Assert.That(result).ContainsKey("unmoderate").And.Value.IsEqualTo("EFFECT_ALLOW");
     }
 
     #endregion
@@ -124,14 +122,14 @@ public class CerbosPolicyContractTests : IDisposable
             resourceAttrs: new { tenantId = "tenant-1", organizationId = "org-1" },
             actions: ["view", "view-management", "create", "update", "delete", "moderate-light", "moderate-heavy", "unmoderate"]);
 
-        result.Should().ContainKey("view").WhoseValue.Should().Be("EFFECT_ALLOW");
-        result.Should().ContainKey("view-management").WhoseValue.Should().Be("EFFECT_ALLOW");
-        result.Should().ContainKey("create").WhoseValue.Should().Be("EFFECT_DENY");
-        result.Should().ContainKey("update").WhoseValue.Should().Be("EFFECT_DENY");
-        result.Should().ContainKey("delete").WhoseValue.Should().Be("EFFECT_DENY");
-        result.Should().ContainKey("moderate-light").WhoseValue.Should().Be("EFFECT_ALLOW");
-        result.Should().ContainKey("moderate-heavy").WhoseValue.Should().Be("EFFECT_ALLOW");
-        result.Should().ContainKey("unmoderate").WhoseValue.Should().Be("EFFECT_ALLOW");
+        await Assert.That(result).ContainsKey("view").And.Value.IsEqualTo("EFFECT_ALLOW");
+        await Assert.That(result).ContainsKey("view-management").And.Value.IsEqualTo("EFFECT_ALLOW");
+        await Assert.That(result).ContainsKey("create").And.Value.IsEqualTo("EFFECT_DENY");
+        await Assert.That(result).ContainsKey("update").And.Value.IsEqualTo("EFFECT_DENY");
+        await Assert.That(result).ContainsKey("delete").And.Value.IsEqualTo("EFFECT_DENY");
+        await Assert.That(result).ContainsKey("moderate-light").And.Value.IsEqualTo("EFFECT_ALLOW");
+        await Assert.That(result).ContainsKey("moderate-heavy").And.Value.IsEqualTo("EFFECT_ALLOW");
+        await Assert.That(result).ContainsKey("unmoderate").And.Value.IsEqualTo("EFFECT_ALLOW");
     }
 
     [Test]
@@ -151,13 +149,13 @@ public class CerbosPolicyContractTests : IDisposable
             resourceAttrs: new { tenantId = "tenant-1", organizationId = "org-1" },
             actions: ["view-management", "create", "update", "delete", "moderate-light", "moderate-heavy", "unmoderate"]);
 
-        result.Should().ContainKey("view-management").WhoseValue.Should().Be("EFFECT_DENY");
-        result.Should().ContainKey("create").WhoseValue.Should().Be("EFFECT_DENY");
-        result.Should().ContainKey("update").WhoseValue.Should().Be("EFFECT_DENY");
-        result.Should().ContainKey("delete").WhoseValue.Should().Be("EFFECT_DENY");
-        result.Should().ContainKey("moderate-light").WhoseValue.Should().Be("EFFECT_DENY");
-        result.Should().ContainKey("moderate-heavy").WhoseValue.Should().Be("EFFECT_DENY");
-        result.Should().ContainKey("unmoderate").WhoseValue.Should().Be("EFFECT_DENY");
+        await Assert.That(result).ContainsKey("view-management").And.Value.IsEqualTo("EFFECT_DENY");
+        await Assert.That(result).ContainsKey("create").And.Value.IsEqualTo("EFFECT_DENY");
+        await Assert.That(result).ContainsKey("update").And.Value.IsEqualTo("EFFECT_DENY");
+        await Assert.That(result).ContainsKey("delete").And.Value.IsEqualTo("EFFECT_DENY");
+        await Assert.That(result).ContainsKey("moderate-light").And.Value.IsEqualTo("EFFECT_DENY");
+        await Assert.That(result).ContainsKey("moderate-heavy").And.Value.IsEqualTo("EFFECT_DENY");
+        await Assert.That(result).ContainsKey("unmoderate").And.Value.IsEqualTo("EFFECT_DENY");
     }
 
     [Test]
@@ -178,11 +176,11 @@ public class CerbosPolicyContractTests : IDisposable
             resourceAttrs: new { tenantId = "tenant-1", eventId = "event-user-owned", userId = "user-owner" },
             actions: ["view", "view-management", "update", "delete", "publish"]);
 
-        ownerResult.Should().ContainKey("view").WhoseValue.Should().Be("EFFECT_ALLOW");
-        ownerResult.Should().ContainKey("view-management").WhoseValue.Should().Be("EFFECT_ALLOW");
-        ownerResult.Should().ContainKey("update").WhoseValue.Should().Be("EFFECT_ALLOW");
-        ownerResult.Should().ContainKey("delete").WhoseValue.Should().Be("EFFECT_ALLOW");
-        ownerResult.Should().ContainKey("publish").WhoseValue.Should().Be("EFFECT_ALLOW");
+        await Assert.That(ownerResult).ContainsKey("view").And.Value.IsEqualTo("EFFECT_ALLOW");
+        await Assert.That(ownerResult).ContainsKey("view-management").And.Value.IsEqualTo("EFFECT_ALLOW");
+        await Assert.That(ownerResult).ContainsKey("update").And.Value.IsEqualTo("EFFECT_ALLOW");
+        await Assert.That(ownerResult).ContainsKey("delete").And.Value.IsEqualTo("EFFECT_ALLOW");
+        await Assert.That(ownerResult).ContainsKey("publish").And.Value.IsEqualTo("EFFECT_ALLOW");
 
         var otherResult = await _cerbos.CheckResourceAsync(
             principalId: "user-other",
@@ -199,11 +197,11 @@ public class CerbosPolicyContractTests : IDisposable
             resourceAttrs: new { tenantId = "tenant-1", eventId = "event-user-owned", userId = "user-owner" },
             actions: ["view", "view-management", "update", "delete", "publish"]);
 
-        otherResult.Should().ContainKey("view").WhoseValue.Should().Be("EFFECT_ALLOW");
-        otherResult.Should().ContainKey("view-management").WhoseValue.Should().Be("EFFECT_DENY");
-        otherResult.Should().ContainKey("update").WhoseValue.Should().Be("EFFECT_DENY");
-        otherResult.Should().ContainKey("delete").WhoseValue.Should().Be("EFFECT_DENY");
-        otherResult.Should().ContainKey("publish").WhoseValue.Should().Be("EFFECT_DENY");
+        await Assert.That(otherResult).ContainsKey("view").And.Value.IsEqualTo("EFFECT_ALLOW");
+        await Assert.That(otherResult).ContainsKey("view-management").And.Value.IsEqualTo("EFFECT_DENY");
+        await Assert.That(otherResult).ContainsKey("update").And.Value.IsEqualTo("EFFECT_DENY");
+        await Assert.That(otherResult).ContainsKey("delete").And.Value.IsEqualTo("EFFECT_DENY");
+        await Assert.That(otherResult).ContainsKey("publish").And.Value.IsEqualTo("EFFECT_DENY");
     }
 
     [Test]
@@ -223,11 +221,11 @@ public class CerbosPolicyContractTests : IDisposable
             resourceAttrs: new { tenantId = "tenant-1", organizationId = "org-1" },
             actions: ["view", "create", "update", "delete", "manage_members"]);
 
-        result.Should().ContainKey("view").WhoseValue.Should().Be("EFFECT_ALLOW");
-        result.Should().ContainKey("create").WhoseValue.Should().Be("EFFECT_ALLOW");
-        result.Should().ContainKey("update").WhoseValue.Should().Be("EFFECT_ALLOW");
-        result.Should().ContainKey("delete").WhoseValue.Should().Be("EFFECT_ALLOW");
-        result.Should().ContainKey("manage_members").WhoseValue.Should().Be("EFFECT_ALLOW");
+        await Assert.That(result).ContainsKey("view").And.Value.IsEqualTo("EFFECT_ALLOW");
+        await Assert.That(result).ContainsKey("create").And.Value.IsEqualTo("EFFECT_ALLOW");
+        await Assert.That(result).ContainsKey("update").And.Value.IsEqualTo("EFFECT_ALLOW");
+        await Assert.That(result).ContainsKey("delete").And.Value.IsEqualTo("EFFECT_ALLOW");
+        await Assert.That(result).ContainsKey("manage_members").And.Value.IsEqualTo("EFFECT_ALLOW");
     }
 
     [Test]
@@ -247,11 +245,11 @@ public class CerbosPolicyContractTests : IDisposable
             resourceAttrs: new { tenantId = "tenant-1", organizationId = "org-1", userId = "user-1" },
             actions: ["view", "create", "update", "delete", "manage_members"]);
 
-        result.Should().ContainKey("view").WhoseValue.Should().Be("EFFECT_ALLOW");
-        result.Should().ContainKey("create").WhoseValue.Should().Be("EFFECT_ALLOW");
-        result.Should().ContainKey("update").WhoseValue.Should().Be("EFFECT_ALLOW");
-        result.Should().ContainKey("delete").WhoseValue.Should().Be("EFFECT_ALLOW");
-        result.Should().ContainKey("manage_members").WhoseValue.Should().Be("EFFECT_ALLOW");
+        await Assert.That(result).ContainsKey("view").And.Value.IsEqualTo("EFFECT_ALLOW");
+        await Assert.That(result).ContainsKey("create").And.Value.IsEqualTo("EFFECT_ALLOW");
+        await Assert.That(result).ContainsKey("update").And.Value.IsEqualTo("EFFECT_ALLOW");
+        await Assert.That(result).ContainsKey("delete").And.Value.IsEqualTo("EFFECT_ALLOW");
+        await Assert.That(result).ContainsKey("manage_members").And.Value.IsEqualTo("EFFECT_ALLOW");
     }
 
     [Test]
@@ -271,9 +269,9 @@ public class CerbosPolicyContractTests : IDisposable
             resourceAttrs: new { tenantId = "tenant-1", organizationId = "org-1" },
             actions: ["create", "update", "delete"]);
 
-        result.Should().ContainKey("create").WhoseValue.Should().Be("EFFECT_DENY");
-        result.Should().ContainKey("update").WhoseValue.Should().Be("EFFECT_DENY");
-        result.Should().ContainKey("delete").WhoseValue.Should().Be("EFFECT_DENY");
+        await Assert.That(result).ContainsKey("create").And.Value.IsEqualTo("EFFECT_DENY");
+        await Assert.That(result).ContainsKey("update").And.Value.IsEqualTo("EFFECT_DENY");
+        await Assert.That(result).ContainsKey("delete").And.Value.IsEqualTo("EFFECT_DENY");
     }
 
     [Test]
@@ -293,8 +291,8 @@ public class CerbosPolicyContractTests : IDisposable
             resourceAttrs: new { tenantId = "tenant-1" },
             actions: ["view", "update"]);
 
-        result.Should().ContainKey("view").WhoseValue.Should().Be("EFFECT_ALLOW");
-        result.Should().ContainKey("update").WhoseValue.Should().Be("EFFECT_ALLOW");
+        await Assert.That(result).ContainsKey("view").And.Value.IsEqualTo("EFFECT_ALLOW");
+        await Assert.That(result).ContainsKey("update").And.Value.IsEqualTo("EFFECT_ALLOW");
     }
 
     [Test]
@@ -314,8 +312,7 @@ public class CerbosPolicyContractTests : IDisposable
             resourceAttrs: new { tenantId = "tenant-1", isLockedByInstance = true },
             actions: ["update"]);
 
-        result.Should().ContainKey("update").WhoseValue.Should().Be("EFFECT_DENY",
-            "tenant admin must be denied update when instance admin has locked the setting");
+        await Assert.That(result).ContainsKey("update").And.Value.IsEqualTo("EFFECT_DENY").Because("tenant admin must be denied update when instance admin has locked the setting");
     }
 
     [Test]
@@ -341,7 +338,7 @@ public class CerbosPolicyContractTests : IDisposable
             actions: actions);
 
         foreach (var action in actions)
-            instanceAdmin.Should().ContainKey(action).WhoseValue.Should().Be("EFFECT_ALLOW");
+            await Assert.That(instanceAdmin).ContainsKey(action).And.Value.IsEqualTo("EFFECT_ALLOW");
 
         var tenantAdmin = await _cerbos.CheckResourceAsync(
             principalId: "user-tenant-admin",
@@ -357,12 +354,12 @@ public class CerbosPolicyContractTests : IDisposable
             resourceAttrs: resourceAttrs,
             actions: actions);
 
-        tenantAdmin.Should().ContainKey("view").WhoseValue.Should().Be("EFFECT_ALLOW");
-        tenantAdmin.Should().ContainKey("list").WhoseValue.Should().Be("EFFECT_ALLOW");
-        tenantAdmin.Should().ContainKey("view_audit").WhoseValue.Should().Be("EFFECT_ALLOW");
-        tenantAdmin.Should().ContainKey("start").WhoseValue.Should().Be("EFFECT_DENY");
-        tenantAdmin.Should().ContainKey("stop").WhoseValue.Should().Be("EFFECT_DENY");
-        tenantAdmin.Should().ContainKey("force_stop").WhoseValue.Should().Be("EFFECT_DENY");
+        await Assert.That(tenantAdmin).ContainsKey("view").And.Value.IsEqualTo("EFFECT_ALLOW");
+        await Assert.That(tenantAdmin).ContainsKey("list").And.Value.IsEqualTo("EFFECT_ALLOW");
+        await Assert.That(tenantAdmin).ContainsKey("view_audit").And.Value.IsEqualTo("EFFECT_ALLOW");
+        await Assert.That(tenantAdmin).ContainsKey("start").And.Value.IsEqualTo("EFFECT_DENY");
+        await Assert.That(tenantAdmin).ContainsKey("stop").And.Value.IsEqualTo("EFFECT_DENY");
+        await Assert.That(tenantAdmin).ContainsKey("force_stop").And.Value.IsEqualTo("EFFECT_DENY");
 
         var otherTenantAdmin = await _cerbos.CheckResourceAsync(
             principalId: "user-other-tenant-admin",
@@ -378,9 +375,9 @@ public class CerbosPolicyContractTests : IDisposable
             resourceAttrs: resourceAttrs,
             actions: ["view", "list", "view_audit"]);
 
-        otherTenantAdmin.Should().ContainKey("view").WhoseValue.Should().Be("EFFECT_DENY");
-        otherTenantAdmin.Should().ContainKey("list").WhoseValue.Should().Be("EFFECT_DENY");
-        otherTenantAdmin.Should().ContainKey("view_audit").WhoseValue.Should().Be("EFFECT_DENY");
+        await Assert.That(otherTenantAdmin).ContainsKey("view").And.Value.IsEqualTo("EFFECT_DENY");
+        await Assert.That(otherTenantAdmin).ContainsKey("list").And.Value.IsEqualTo("EFFECT_DENY");
+        await Assert.That(otherTenantAdmin).ContainsKey("view_audit").And.Value.IsEqualTo("EFFECT_DENY");
 
         var regularUser = await _cerbos.CheckResourceAsync(
             principalId: "user-regular",
@@ -392,7 +389,7 @@ public class CerbosPolicyContractTests : IDisposable
             actions: actions);
 
         foreach (var action in actions)
-            regularUser.Should().ContainKey(action).WhoseValue.Should().Be("EFFECT_DENY");
+            await Assert.That(regularUser).ContainsKey(action).And.Value.IsEqualTo("EFFECT_DENY");
     }
 
     [Test]
@@ -414,8 +411,7 @@ public class CerbosPolicyContractTests : IDisposable
 
         foreach (var action in new[] { "view", "manage_tenant", "park", "replay" })
         {
-            result.Should().ContainKey(action).WhoseValue.Should().Be("EFFECT_ALLOW",
-                $"tenant admin should be allowed '{action}' on email dispatch rows in their tenant");
+            await Assert.That(result).ContainsKey(action).And.Value.IsEqualTo("EFFECT_ALLOW").Because($"tenant admin should be allowed '{action}' on email dispatch rows in their tenant");
         }
     }
 
@@ -433,8 +429,7 @@ public class CerbosPolicyContractTests : IDisposable
 
         foreach (var action in new[] { "view", "manage_tenant", "park", "replay" })
         {
-            result.Should().ContainKey(action).WhoseValue.Should().Be("EFFECT_DENY",
-                $"regular users must not access email dispatch operator actions");
+            await Assert.That(result).ContainsKey(action).And.Value.IsEqualTo("EFFECT_DENY").Because($"regular users must not access email dispatch operator actions");
         }
     }
 
@@ -455,8 +450,8 @@ public class CerbosPolicyContractTests : IDisposable
             resourceAttrs: new { tenantId = "tenant-1", isLockedByInstance = false },
             actions: ["view", "update"]);
 
-        result.Should().ContainKey("view").WhoseValue.Should().Be("EFFECT_ALLOW");
-        result.Should().ContainKey("update").WhoseValue.Should().Be("EFFECT_ALLOW");
+        await Assert.That(result).ContainsKey("view").And.Value.IsEqualTo("EFFECT_ALLOW");
+        await Assert.That(result).ContainsKey("update").And.Value.IsEqualTo("EFFECT_ALLOW");
     }
 
 
@@ -477,8 +472,7 @@ public class CerbosPolicyContractTests : IDisposable
             resourceAttrs: new { tenantId = "tenant-1", documentKey = "tenant.branding", isLockedByInstance = true },
             actions: ["update"]);
 
-        result.Should().ContainKey("update").WhoseValue.Should().Be("EFFECT_ALLOW",
-            "tenant.branding field-level locks are enforced by the replacement handler after authorization");
+        await Assert.That(result).ContainsKey("update").And.Value.IsEqualTo("EFFECT_ALLOW").Because("tenant.branding field-level locks are enforced by the replacement handler after authorization");
     }
 
     #endregion
@@ -502,10 +496,10 @@ public class CerbosPolicyContractTests : IDisposable
             resourceAttrs: new { tenantId = "tenant-1", organizationId = "org-1" },
             actions: ["view", "create", "update", "delete"]);
 
-        result.Should().ContainKey("view").WhoseValue.Should().Be("EFFECT_ALLOW");
-        result.Should().ContainKey("create").WhoseValue.Should().Be("EFFECT_ALLOW");
-        result.Should().ContainKey("update").WhoseValue.Should().Be("EFFECT_ALLOW");
-        result.Should().ContainKey("delete").WhoseValue.Should().Be("EFFECT_ALLOW");
+        await Assert.That(result).ContainsKey("view").And.Value.IsEqualTo("EFFECT_ALLOW");
+        await Assert.That(result).ContainsKey("create").And.Value.IsEqualTo("EFFECT_ALLOW");
+        await Assert.That(result).ContainsKey("update").And.Value.IsEqualTo("EFFECT_ALLOW");
+        await Assert.That(result).ContainsKey("delete").And.Value.IsEqualTo("EFFECT_ALLOW");
     }
 
     [Test]
@@ -525,9 +519,9 @@ public class CerbosPolicyContractTests : IDisposable
             resourceAttrs: new { tenantId = "tenant-1", organizationId = "org-1" },
             actions: ["create", "update", "delete"]);
 
-        result.Should().ContainKey("create").WhoseValue.Should().Be("EFFECT_DENY");
-        result.Should().ContainKey("update").WhoseValue.Should().Be("EFFECT_DENY");
-        result.Should().ContainKey("delete").WhoseValue.Should().Be("EFFECT_DENY");
+        await Assert.That(result).ContainsKey("create").And.Value.IsEqualTo("EFFECT_DENY");
+        await Assert.That(result).ContainsKey("update").And.Value.IsEqualTo("EFFECT_DENY");
+        await Assert.That(result).ContainsKey("delete").And.Value.IsEqualTo("EFFECT_DENY");
     }
 
     [Test]
@@ -547,9 +541,9 @@ public class CerbosPolicyContractTests : IDisposable
             resourceAttrs: new { tenantId = "tenant-1", organizationId = "org-1" },
             actions: ["view", "update", "manage_members"]);
 
-        result.Should().ContainKey("view").WhoseValue.Should().Be("EFFECT_ALLOW");
-        result.Should().ContainKey("update").WhoseValue.Should().Be("EFFECT_ALLOW");
-        result.Should().ContainKey("manage_members").WhoseValue.Should().Be("EFFECT_ALLOW");
+        await Assert.That(result).ContainsKey("view").And.Value.IsEqualTo("EFFECT_ALLOW");
+        await Assert.That(result).ContainsKey("update").And.Value.IsEqualTo("EFFECT_ALLOW");
+        await Assert.That(result).ContainsKey("manage_members").And.Value.IsEqualTo("EFFECT_ALLOW");
     }
 
     [Test]
@@ -569,8 +563,7 @@ public class CerbosPolicyContractTests : IDisposable
             resourceAttrs: new { tenantId = "tenant-1", organizationId = "org-1" },
             actions: ["delete"]);
 
-        result.Should().ContainKey("delete").WhoseValue.Should().Be("EFFECT_DENY",
-            "org admins can update/manage_members but not delete organizations");
+        await Assert.That(result).ContainsKey("delete").And.Value.IsEqualTo("EFFECT_DENY").Because("org admins can update/manage_members but not delete organizations");
     }
 
     [Test]
@@ -590,11 +583,11 @@ public class CerbosPolicyContractTests : IDisposable
             resourceAttrs: new { tenantId = "tenant-1", organizationId = "org-1", userId = "user-1" },
             actions: ["view", "create", "update", "delete", "manage_members"]);
 
-        result.Should().ContainKey("view").WhoseValue.Should().Be("EFFECT_ALLOW");
-        result.Should().ContainKey("create").WhoseValue.Should().Be("EFFECT_ALLOW");
-        result.Should().ContainKey("update").WhoseValue.Should().Be("EFFECT_ALLOW");
-        result.Should().ContainKey("delete").WhoseValue.Should().Be("EFFECT_ALLOW");
-        result.Should().ContainKey("manage_members").WhoseValue.Should().Be("EFFECT_ALLOW");
+        await Assert.That(result).ContainsKey("view").And.Value.IsEqualTo("EFFECT_ALLOW");
+        await Assert.That(result).ContainsKey("create").And.Value.IsEqualTo("EFFECT_ALLOW");
+        await Assert.That(result).ContainsKey("update").And.Value.IsEqualTo("EFFECT_ALLOW");
+        await Assert.That(result).ContainsKey("delete").And.Value.IsEqualTo("EFFECT_ALLOW");
+        await Assert.That(result).ContainsKey("manage_members").And.Value.IsEqualTo("EFFECT_ALLOW");
     }
 
     [Test]
@@ -614,10 +607,10 @@ public class CerbosPolicyContractTests : IDisposable
             resourceAttrs: new { tenantId = "tenant-1", organizationId = "org-1" },
             actions: ["view", "create", "update", "delete"]);
 
-        result.Should().ContainKey("view").WhoseValue.Should().Be("EFFECT_ALLOW");
-        result.Should().ContainKey("create").WhoseValue.Should().Be("EFFECT_ALLOW");
-        result.Should().ContainKey("update").WhoseValue.Should().Be("EFFECT_ALLOW");
-        result.Should().ContainKey("delete").WhoseValue.Should().Be("EFFECT_ALLOW");
+        await Assert.That(result).ContainsKey("view").And.Value.IsEqualTo("EFFECT_ALLOW");
+        await Assert.That(result).ContainsKey("create").And.Value.IsEqualTo("EFFECT_ALLOW");
+        await Assert.That(result).ContainsKey("update").And.Value.IsEqualTo("EFFECT_ALLOW");
+        await Assert.That(result).ContainsKey("delete").And.Value.IsEqualTo("EFFECT_ALLOW");
     }
 
     [Test]
@@ -637,9 +630,8 @@ public class CerbosPolicyContractTests : IDisposable
             resourceAttrs: new { tenantId = "tenant-1", organizationId = "org-1" },
             actions: ["view", "create"]);
 
-        result.Should().ContainKey("view").WhoseValue.Should().Be("EFFECT_ALLOW");
-        result.Should().ContainKey("create").WhoseValue.Should().Be("EFFECT_DENY",
-            "org admins can only view actors, not create them");
+        await Assert.That(result).ContainsKey("view").And.Value.IsEqualTo("EFFECT_ALLOW");
+        await Assert.That(result).ContainsKey("create").And.Value.IsEqualTo("EFFECT_DENY").Because("org admins can only view actors, not create them");
     }
 
     #endregion
@@ -658,8 +650,8 @@ public class CerbosPolicyContractTests : IDisposable
             resourceAttrs: new { tenantId = "tenant-1", organizationId = "org-1" },
             actions: ["view", "view-management"]);
 
-        result.Should().ContainKey("view").WhoseValue.Should().Be("EFFECT_ALLOW");
-        result.Should().ContainKey("view-management").WhoseValue.Should().Be("EFFECT_DENY");
+        await Assert.That(result).ContainsKey("view").And.Value.IsEqualTo("EFFECT_ALLOW");
+        await Assert.That(result).ContainsKey("view-management").And.Value.IsEqualTo("EFFECT_DENY");
     }
 
     [Test]
@@ -674,9 +666,9 @@ public class CerbosPolicyContractTests : IDisposable
             resourceAttrs: new { tenantId = "tenant-1", organizationId = "org-1" },
             actions: ["create", "update", "delete"]);
 
-        result.Should().ContainKey("create").WhoseValue.Should().Be("EFFECT_DENY");
-        result.Should().ContainKey("update").WhoseValue.Should().Be("EFFECT_DENY");
-        result.Should().ContainKey("delete").WhoseValue.Should().Be("EFFECT_DENY");
+        await Assert.That(result).ContainsKey("create").And.Value.IsEqualTo("EFFECT_DENY");
+        await Assert.That(result).ContainsKey("update").And.Value.IsEqualTo("EFFECT_DENY");
+        await Assert.That(result).ContainsKey("delete").And.Value.IsEqualTo("EFFECT_DENY");
     }
 
     [Test]
@@ -691,8 +683,7 @@ public class CerbosPolicyContractTests : IDisposable
             resourceAttrs: new { tenantId = "tenant-1", authorizationPhase = "pre_create" },
             actions: ["create"]);
 
-        result.Should().ContainKey("create").WhoseValue.Should().Be("EFFECT_ALLOW",
-            "pre-create organization checks only decide whether the authenticated human request can reach CreateOrganizationCommandHandler");
+        await Assert.That(result).ContainsKey("create").And.Value.IsEqualTo("EFFECT_ALLOW").Because("pre-create organization checks only decide whether the authenticated human request can reach CreateOrganizationCommandHandler");
     }
 
     [Test]
@@ -707,8 +698,7 @@ public class CerbosPolicyContractTests : IDisposable
             resourceAttrs: new { tenantId = "tenant-1", authorizationPhase = "pre_create" },
             actions: ["create"]);
 
-        result.Should().ContainKey("create").WhoseValue.Should().Be("EFFECT_DENY",
-            "machine/API-key organization creation cannot use the human self-registration pre-create gate");
+        await Assert.That(result).ContainsKey("create").And.Value.IsEqualTo("EFFECT_DENY").Because("machine/API-key organization creation cannot use the human self-registration pre-create gate");
     }
 
     [Test]
@@ -723,8 +713,7 @@ public class CerbosPolicyContractTests : IDisposable
             resourceAttrs: new { tenantId = "tenant-1", authorizationPhase = "pre_create" },
             actions: ["create"]);
 
-        result.Should().ContainKey("create").WhoseValue.Should().Be("EFFECT_ALLOW",
-            "pre-create event checks only decide whether the authenticated human request can reach CreateEventCommandHandler; EventActorResolver enforces publishing policy");
+        await Assert.That(result).ContainsKey("create").And.Value.IsEqualTo("EFFECT_ALLOW").Because("pre-create event checks only decide whether the authenticated human request can reach CreateEventCommandHandler; EventActorResolver enforces publishing policy");
     }
 
     [Test]
@@ -739,8 +728,7 @@ public class CerbosPolicyContractTests : IDisposable
             resourceAttrs: new { tenantId = "tenant-1", authorizationPhase = "pre_create" },
             actions: ["create"]);
 
-        result.Should().ContainKey("create").WhoseValue.Should().Be("EFFECT_DENY",
-            "machine/API-key event create is governed by scope and owner checks, not the human pre-create rule");
+        await Assert.That(result).ContainsKey("create").And.Value.IsEqualTo("EFFECT_DENY").Because("machine/API-key event create is governed by scope and owner checks, not the human pre-create rule");
     }
 
     [Test]
@@ -773,15 +761,15 @@ public class CerbosPolicyContractTests : IDisposable
                 "webhook:bulk-replay"
             ]);
 
-        dedicatedWorker.Should().ContainKey("webhook:process-incoming").WhoseValue.Should().Be("EFFECT_ALLOW");
-        dedicatedWorker.Should().ContainKey("webhook:redrive-incoming").WhoseValue.Should().Be("EFFECT_DENY");
-        dedicatedWorker.Should().ContainKey("webhook:pause").WhoseValue.Should().Be("EFFECT_DENY");
-        dedicatedWorker.Should().ContainKey("webhook:resume").WhoseValue.Should().Be("EFFECT_DENY");
-        dedicatedWorker.Should().ContainKey("webhook:reconcile-publication").WhoseValue.Should().Be("EFFECT_DENY");
-        dedicatedWorker.Should().ContainKey("webhook:abandon-publication").WhoseValue.Should().Be("EFFECT_DENY");
-        dedicatedWorker.Should().ContainKey("webhook:manage-provider").WhoseValue.Should().Be("EFFECT_DENY");
-        dedicatedWorker.Should().ContainKey("webhook:view-payload").WhoseValue.Should().Be("EFFECT_DENY");
-        dedicatedWorker.Should().ContainKey("webhook:bulk-replay").WhoseValue.Should().Be("EFFECT_DENY");
+        await Assert.That(dedicatedWorker).ContainsKey("webhook:process-incoming").And.Value.IsEqualTo("EFFECT_ALLOW");
+        await Assert.That(dedicatedWorker).ContainsKey("webhook:redrive-incoming").And.Value.IsEqualTo("EFFECT_DENY");
+        await Assert.That(dedicatedWorker).ContainsKey("webhook:pause").And.Value.IsEqualTo("EFFECT_DENY");
+        await Assert.That(dedicatedWorker).ContainsKey("webhook:resume").And.Value.IsEqualTo("EFFECT_DENY");
+        await Assert.That(dedicatedWorker).ContainsKey("webhook:reconcile-publication").And.Value.IsEqualTo("EFFECT_DENY");
+        await Assert.That(dedicatedWorker).ContainsKey("webhook:abandon-publication").And.Value.IsEqualTo("EFFECT_DENY");
+        await Assert.That(dedicatedWorker).ContainsKey("webhook:manage-provider").And.Value.IsEqualTo("EFFECT_DENY");
+        await Assert.That(dedicatedWorker).ContainsKey("webhook:view-payload").And.Value.IsEqualTo("EFFECT_DENY");
+        await Assert.That(dedicatedWorker).ContainsKey("webhook:bulk-replay").And.Value.IsEqualTo("EFFECT_DENY");
 
         var tenantAdminMachine = await _cerbos.CheckResourceAsync(
             principalId: "tenant-admin-machine",
@@ -810,15 +798,15 @@ public class CerbosPolicyContractTests : IDisposable
                 "webhook:bulk-replay"
             ]);
 
-        tenantAdminMachine.Should().ContainKey("webhook:process-incoming").WhoseValue.Should().Be("EFFECT_DENY");
-        tenantAdminMachine.Should().ContainKey("webhook:redrive-incoming").WhoseValue.Should().Be("EFFECT_ALLOW");
-        tenantAdminMachine.Should().ContainKey("webhook:pause").WhoseValue.Should().Be("EFFECT_ALLOW");
-        tenantAdminMachine.Should().ContainKey("webhook:resume").WhoseValue.Should().Be("EFFECT_ALLOW");
-        tenantAdminMachine.Should().ContainKey("webhook:reconcile-publication").WhoseValue.Should().Be("EFFECT_ALLOW");
-        tenantAdminMachine.Should().ContainKey("webhook:abandon-publication").WhoseValue.Should().Be("EFFECT_ALLOW");
-        tenantAdminMachine.Should().ContainKey("webhook:manage-provider").WhoseValue.Should().Be("EFFECT_ALLOW");
-        tenantAdminMachine.Should().ContainKey("webhook:view-payload").WhoseValue.Should().Be("EFFECT_ALLOW");
-        tenantAdminMachine.Should().ContainKey("webhook:bulk-replay").WhoseValue.Should().Be("EFFECT_ALLOW");
+        await Assert.That(tenantAdminMachine).ContainsKey("webhook:process-incoming").And.Value.IsEqualTo("EFFECT_DENY");
+        await Assert.That(tenantAdminMachine).ContainsKey("webhook:redrive-incoming").And.Value.IsEqualTo("EFFECT_ALLOW");
+        await Assert.That(tenantAdminMachine).ContainsKey("webhook:pause").And.Value.IsEqualTo("EFFECT_ALLOW");
+        await Assert.That(tenantAdminMachine).ContainsKey("webhook:resume").And.Value.IsEqualTo("EFFECT_ALLOW");
+        await Assert.That(tenantAdminMachine).ContainsKey("webhook:reconcile-publication").And.Value.IsEqualTo("EFFECT_ALLOW");
+        await Assert.That(tenantAdminMachine).ContainsKey("webhook:abandon-publication").And.Value.IsEqualTo("EFFECT_ALLOW");
+        await Assert.That(tenantAdminMachine).ContainsKey("webhook:manage-provider").And.Value.IsEqualTo("EFFECT_ALLOW");
+        await Assert.That(tenantAdminMachine).ContainsKey("webhook:view-payload").And.Value.IsEqualTo("EFFECT_ALLOW");
+        await Assert.That(tenantAdminMachine).ContainsKey("webhook:bulk-replay").And.Value.IsEqualTo("EFFECT_ALLOW");
     }
 
     [Test]
@@ -839,10 +827,10 @@ public class CerbosPolicyContractTests : IDisposable
             },
             actions: ["view", "create", "download", "presigned_download"]);
 
-        result.Should().ContainKey("view").WhoseValue.Should().Be("EFFECT_DENY");
-        result.Should().ContainKey("create").WhoseValue.Should().Be("EFFECT_ALLOW");
-        result.Should().ContainKey("download").WhoseValue.Should().Be("EFFECT_ALLOW");
-        result.Should().ContainKey("presigned_download").WhoseValue.Should().Be("EFFECT_ALLOW");
+        await Assert.That(result).ContainsKey("view").And.Value.IsEqualTo("EFFECT_DENY");
+        await Assert.That(result).ContainsKey("create").And.Value.IsEqualTo("EFFECT_ALLOW");
+        await Assert.That(result).ContainsKey("download").And.Value.IsEqualTo("EFFECT_ALLOW");
+        await Assert.That(result).ContainsKey("presigned_download").And.Value.IsEqualTo("EFFECT_ALLOW");
     }
 
     [Test]
@@ -857,8 +845,8 @@ public class CerbosPolicyContractTests : IDisposable
             resourceAttrs: new { tenantId = "tenant-1", organizationId = "org-1" },
             actions: ["delete", "update"]);
 
-        result.Should().ContainKey("delete").WhoseValue.Should().Be("EFFECT_DENY");
-        result.Should().ContainKey("update").WhoseValue.Should().Be("EFFECT_DENY");
+        await Assert.That(result).ContainsKey("delete").And.Value.IsEqualTo("EFFECT_DENY");
+        await Assert.That(result).ContainsKey("update").And.Value.IsEqualTo("EFFECT_DENY");
     }
 
     [Test]
@@ -873,11 +861,9 @@ public class CerbosPolicyContractTests : IDisposable
             resourceAttrs: new { tenantId = "tenant-1" },
             actions: ["view", "update", "delete"]);
 
-        result.Should().ContainKey("view").WhoseValue.Should().Be("EFFECT_ALLOW");
-        result.Should().ContainKey("update").WhoseValue.Should().Be("EFFECT_ALLOW",
-            "a signed-in user must be able to save their own account settings profile even when the auth subject differs from the domain user id");
-        result.Should().ContainKey("delete").WhoseValue.Should().Be("EFFECT_DENY",
-            "self-service profile editing must not imply self-service hard deletion");
+        await Assert.That(result).ContainsKey("view").And.Value.IsEqualTo("EFFECT_ALLOW");
+        await Assert.That(result).ContainsKey("update").And.Value.IsEqualTo("EFFECT_ALLOW").Because("a signed-in user must be able to save their own account settings profile even when the auth subject differs from the domain user id");
+        await Assert.That(result).ContainsKey("delete").And.Value.IsEqualTo("EFFECT_DENY").Because("self-service profile editing must not imply self-service hard deletion");
     }
 
     [Test]
@@ -892,8 +878,8 @@ public class CerbosPolicyContractTests : IDisposable
             resourceAttrs: new { tenantId = "tenant-1" },
             actions: ["update", "delete"]);
 
-        result.Should().ContainKey("update").WhoseValue.Should().Be("EFFECT_DENY");
-        result.Should().ContainKey("delete").WhoseValue.Should().Be("EFFECT_DENY");
+        await Assert.That(result).ContainsKey("update").And.Value.IsEqualTo("EFFECT_DENY");
+        await Assert.That(result).ContainsKey("delete").And.Value.IsEqualTo("EFFECT_DENY");
     }
 
     public static IEnumerable<string> GetAllViewableResources()
@@ -930,8 +916,7 @@ public class CerbosPolicyContractTests : IDisposable
             resourceAttrs: new { tenantId = "tenant-1", organizationId = "org-1" },
             actions: ["view"]);
 
-        result.Should().ContainKey("view").WhoseValue.Should().Be("EFFECT_ALLOW",
-            $"regular users should be able to view '{resourceKind}' resources");
+        await Assert.That(result).ContainsKey("view").And.Value.IsEqualTo("EFFECT_ALLOW").Because($"regular users should be able to view '{resourceKind}' resources");
     }
 
     [Test]
@@ -946,8 +931,7 @@ public class CerbosPolicyContractTests : IDisposable
             resourceAttrs: new { tenantId = "tenant-1", organizationId = "org-1" },
             actions: ["view"]);
 
-        result.Should().ContainKey("view").WhoseValue.Should().Be("EFFECT_DENY",
-            "generic physical-location data is restricted to tenant administrators");
+        await Assert.That(result).ContainsKey("view").And.Value.IsEqualTo("EFFECT_DENY").Because("generic physical-location data is restricted to tenant administrators");
     }
 
     [Test]
@@ -962,8 +946,7 @@ public class CerbosPolicyContractTests : IDisposable
             resourceAttrs: new { tenantId = "tenant-1", tenantUserId = "tenant-user-1", userId = "user-1" },
             actions: ["view"]);
 
-        result.Should().ContainKey("view").WhoseValue.Should().Be("EFFECT_DENY",
-            "tenant role grants include identity, role, grant, and revocation metadata and are tenant-admin-only");
+        await Assert.That(result).ContainsKey("view").And.Value.IsEqualTo("EFFECT_DENY").Because("tenant role grants include identity, role, grant, and revocation metadata and are tenant-admin-only");
     }
 
     [Test]
@@ -978,8 +961,7 @@ public class CerbosPolicyContractTests : IDisposable
             resourceAttrs: new { tenantId = "tenant-1", organizationId = "org-1", userId = "user-1" },
             actions: ["view"]);
 
-        result.Should().ContainKey("view").WhoseValue.Should().Be("EFFECT_DENY",
-            "organization members include identity, role, and position metadata and are admin/member-management data");
+        await Assert.That(result).ContainsKey("view").And.Value.IsEqualTo("EFFECT_DENY").Because("organization members include identity, role, and position metadata and are admin/member-management data");
     }
 
     #endregion
@@ -998,10 +980,10 @@ public class CerbosPolicyContractTests : IDisposable
             resourceAttrs: new { tenantId = "tenant-1" },
             actions: ["update", "delete", "lock", "unlock"]);
 
-        result.Should().ContainKey("update").WhoseValue.Should().Be("EFFECT_DENY");
-        result.Should().ContainKey("delete").WhoseValue.Should().Be("EFFECT_DENY");
-        result.Should().ContainKey("lock").WhoseValue.Should().Be("EFFECT_DENY");
-        result.Should().ContainKey("unlock").WhoseValue.Should().Be("EFFECT_DENY");
+        await Assert.That(result).ContainsKey("update").And.Value.IsEqualTo("EFFECT_DENY");
+        await Assert.That(result).ContainsKey("delete").And.Value.IsEqualTo("EFFECT_DENY");
+        await Assert.That(result).ContainsKey("lock").And.Value.IsEqualTo("EFFECT_DENY");
+        await Assert.That(result).ContainsKey("unlock").And.Value.IsEqualTo("EFFECT_DENY");
     }
 
     [Test]
@@ -1021,10 +1003,9 @@ public class CerbosPolicyContractTests : IDisposable
             resourceAttrs: new { tenantId = "tenant-1" },
             actions: ["update", "lock", "unlock"]);
 
-        result.Should().ContainKey("update").WhoseValue.Should().Be("EFFECT_DENY",
-            "tenant admins cannot modify instance-level settings");
-        result.Should().ContainKey("lock").WhoseValue.Should().Be("EFFECT_DENY");
-        result.Should().ContainKey("unlock").WhoseValue.Should().Be("EFFECT_DENY");
+        await Assert.That(result).ContainsKey("update").And.Value.IsEqualTo("EFFECT_DENY").Because("tenant admins cannot modify instance-level settings");
+        await Assert.That(result).ContainsKey("lock").And.Value.IsEqualTo("EFFECT_DENY");
+        await Assert.That(result).ContainsKey("unlock").And.Value.IsEqualTo("EFFECT_DENY");
     }
 
     #endregion
@@ -1058,8 +1039,7 @@ public class CerbosPolicyContractTests : IDisposable
 
         foreach (var action in new[] { "view", "create", "update", "delete" })
         {
-            result.Should().ContainKey(action).WhoseValue.Should().Be("EFFECT_ALLOW",
-                $"tenant admin should be allowed '{action}' on '{resourceKind}' in own tenant");
+            await Assert.That(result).ContainsKey(action).And.Value.IsEqualTo("EFFECT_ALLOW").Because($"tenant admin should be allowed '{action}' on '{resourceKind}' in own tenant");
         }
     }
 
@@ -1078,8 +1058,7 @@ public class CerbosPolicyContractTests : IDisposable
 
         foreach (var action in new[] { "create", "update", "delete" })
         {
-            result.Should().ContainKey(action).WhoseValue.Should().Be("EFFECT_DENY",
-                $"regular user should be denied '{action}' on '{resourceKind}'");
+            await Assert.That(result).ContainsKey(action).And.Value.IsEqualTo("EFFECT_DENY").Because($"regular user should be denied '{action}' on '{resourceKind}'");
         }
     }
 
@@ -1115,8 +1094,7 @@ public class CerbosPolicyContractTests : IDisposable
 
         foreach (var action in new[] { "view", "create", "update", "delete" })
         {
-            result.Should().ContainKey(action).WhoseValue.Should().Be("EFFECT_ALLOW",
-                $"org admin should be allowed '{action}' on '{resourceKind}' in own org");
+            await Assert.That(result).ContainsKey(action).And.Value.IsEqualTo("EFFECT_ALLOW").Because($"org admin should be allowed '{action}' on '{resourceKind}' in own org");
         }
     }
 
@@ -1133,9 +1111,8 @@ public class CerbosPolicyContractTests : IDisposable
             resourceAttrs: new { tenantId = "tenant-1", organizationId = "org-1" },
             actions: ["view", "create"]);
 
-        result.Should().ContainKey("view").WhoseValue.Should().Be("EFFECT_ALLOW");
-        result.Should().ContainKey("create").WhoseValue.Should().Be("EFFECT_DENY",
-            $"regular users should be denied create on '{resourceKind}'");
+        await Assert.That(result).ContainsKey("view").And.Value.IsEqualTo("EFFECT_ALLOW");
+        await Assert.That(result).ContainsKey("create").And.Value.IsEqualTo("EFFECT_DENY").Because($"regular users should be denied create on '{resourceKind}'");
     }
 
     #endregion
@@ -1154,9 +1131,8 @@ public class CerbosPolicyContractTests : IDisposable
             resourceAttrs: new { tenantId = "tenant-1", organizationId = "org-1" },
             actions: ["create", "view"]);
 
-        result.Should().ContainKey("create").WhoseValue.Should().Be("EFFECT_ALLOW",
-            "all authenticated users can create organization reviews");
-        result.Should().ContainKey("view").WhoseValue.Should().Be("EFFECT_ALLOW");
+        await Assert.That(result).ContainsKey("create").And.Value.IsEqualTo("EFFECT_ALLOW").Because("all authenticated users can create organization reviews");
+        await Assert.That(result).ContainsKey("view").And.Value.IsEqualTo("EFFECT_ALLOW");
     }
 
     [Test]
@@ -1171,8 +1147,8 @@ public class CerbosPolicyContractTests : IDisposable
             resourceAttrs: new { tenantId = "tenant-1", organizationId = "org-1" },
             actions: ["delete", "update"]);
 
-        result.Should().ContainKey("delete").WhoseValue.Should().Be("EFFECT_DENY");
-        result.Should().ContainKey("update").WhoseValue.Should().Be("EFFECT_DENY");
+        await Assert.That(result).ContainsKey("delete").And.Value.IsEqualTo("EFFECT_DENY");
+        await Assert.That(result).ContainsKey("update").And.Value.IsEqualTo("EFFECT_DENY");
     }
 
     #endregion
@@ -1193,8 +1169,7 @@ public class CerbosPolicyContractTests : IDisposable
 
         foreach (var action in new[] { "view", "create", "update", "delete" })
         {
-            result.Should().ContainKey(action).WhoseValue.Should().Be("EFFECT_ALLOW",
-                "all authenticated users should be able to manage their notifications");
+            await Assert.That(result).ContainsKey(action).And.Value.IsEqualTo("EFFECT_ALLOW").Because("all authenticated users should be able to manage their notifications");
         }
     }
 
@@ -1214,9 +1189,8 @@ public class CerbosPolicyContractTests : IDisposable
             resourceAttrs: new { tenantId = "tenant-1", organizationId = "org-1" },
             actions: ["view", "create"]);
 
-        result.Should().ContainKey("view").WhoseValue.Should().Be("EFFECT_ALLOW");
-        result.Should().ContainKey("create").WhoseValue.Should().Be("EFFECT_DENY",
-            "only tenant admins can create custom property definitions");
+        await Assert.That(result).ContainsKey("view").And.Value.IsEqualTo("EFFECT_ALLOW");
+        await Assert.That(result).ContainsKey("create").And.Value.IsEqualTo("EFFECT_DENY").Because("only tenant admins can create custom property definitions");
     }
 
     [Test]
@@ -1238,8 +1212,7 @@ public class CerbosPolicyContractTests : IDisposable
 
         foreach (var action in new[] { "view", "create", "update", "delete" })
         {
-            result.Should().ContainKey(action).WhoseValue.Should().Be("EFFECT_ALLOW",
-                $"org admin should manage custom property values for their org");
+            await Assert.That(result).ContainsKey(action).And.Value.IsEqualTo("EFFECT_ALLOW").Because($"org admin should manage custom property values for their org");
         }
     }
 
@@ -1266,8 +1239,7 @@ public class CerbosPolicyContractTests : IDisposable
 
         foreach (var action in new[] { "view", "create", "update", "delete" })
         {
-            result.Should().ContainKey(action).WhoseValue.Should().Be("EFFECT_DENY",
-                $"generic location rooms are tenant-admin-only physical-location data");
+            await Assert.That(result).ContainsKey(action).And.Value.IsEqualTo("EFFECT_DENY").Because($"generic location rooms are tenant-admin-only physical-location data");
         }
     }
 

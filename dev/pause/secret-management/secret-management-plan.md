@@ -146,7 +146,7 @@ Explore.Secrets/
 5. Implement `SecretProviderFactory`
 6. Implement `RequiredSecretsValidator` with `ValidateOnStart`
 7. Create `ServiceCollectionExtensions` for DI
-8. Add unit tests (xUnit + FluentAssertions)
+8. Add unit tests (TUnit with native async assertions)
 
 **Package References**:
 ```xml

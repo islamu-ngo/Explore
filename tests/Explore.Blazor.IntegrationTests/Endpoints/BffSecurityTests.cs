@@ -3,7 +3,6 @@
 
 using System.Text.RegularExpressions;
 using Explore.Blazor.IntegrationTests.Fixtures;
-using FluentAssertions;
 using TUnit.Core;
 
 namespace Explore.Blazor.IntegrationTests.Endpoints;
@@ -56,11 +55,11 @@ public class BffSecurityTests : IAsyncDisposable
     {
         var response = await _client.GetAsync("/auth/status");
 
-        response.StatusCode.Should().Be(System.Net.HttpStatusCode.OK);
+        await Assert.That(response.StatusCode).IsEqualTo(System.Net.HttpStatusCode.OK);
 
         var payload = await response.Content.ReadFromJsonAsync<AuthStatusPayload>();
-        payload.Should().NotBeNull();
-        payload!.IsAuthenticated.Should().BeFalse("anonymous requests should report not authenticated");
+        await Assert.That(payload).IsNotNull();
+        await Assert.That(payload!.IsAuthenticated).IsFalse().Because("anonymous requests should report not authenticated");
     }
 
     #endregion
@@ -72,32 +71,25 @@ public class BffSecurityTests : IAsyncDisposable
     {
         var response = await _client.GetAsync("/auth/challenge?provider=keycloak&returnUrl=/dashboard");
 
-        response.StatusCode.Should().Be(System.Net.HttpStatusCode.Redirect,
-            "OIDC challenge must respond with a 302 redirect");
+        await Assert.That(response.StatusCode).IsEqualTo(System.Net.HttpStatusCode.Redirect).Because("OIDC challenge must respond with a 302 redirect");
 
         var location = response.Headers.Location?.ToString();
-        location.Should().NotBeNullOrEmpty("the redirect must have a Location header");
+        await Assert.That(string.IsNullOrEmpty(location)).IsFalse()
+            .Because("the redirect must have a Location header");
 
-        location.Should().Contain("/realms/ISLAMU/protocol/openid-connect/auth",
-            "the redirect must point to Keycloak's authorization endpoint");
+        await Assert.That(location).Contains("/realms/ISLAMU/protocol/openid-connect/auth").Because("the redirect must point to Keycloak's authorization endpoint");
 
-        location.Should().Contain("response_type=code",
-            "the redirect must request authorization code flow");
+        await Assert.That(location).Contains("response_type=code").Because("the redirect must request authorization code flow");
 
-        location.Should().Contain("client_id=islamu-event-blazor",
-            "the redirect must include the correct client_id");
+        await Assert.That(location).Contains("client_id=islamu-event-blazor").Because("the redirect must include the correct client_id");
 
-        location.Should().Contain("redirect_uri=",
-            "the redirect must include a callback URI");
+        await Assert.That(location).Contains("redirect_uri=").Because("the redirect must include a callback URI");
 
-        location.Should().Contain("scope=",
-            "the redirect must include OIDC scopes");
+        await Assert.That(location).Contains("scope=").Because("the redirect must include OIDC scopes");
 
-        location.Should().NotContain("offline_access",
-            "the BFF only needs normal refresh tokens and Keycloak rejects offline-token requests for users without offline access");
+        await Assert.That(location).DoesNotContain("offline_access").Because("the BFF only needs normal refresh tokens and Keycloak rejects offline-token requests for users without offline access");
 
-        location.Should().Contain("state=",
-            "the redirect must include a state parameter for CSRF protection");
+        await Assert.That(location).Contains("state=").Because("the redirect must include a state parameter for CSRF protection");
     }
 
     [Test]
@@ -106,8 +98,7 @@ public class BffSecurityTests : IAsyncDisposable
         var response = await _client.GetAsync("/auth/challenge?provider=keycloak");
 
         var location = response.Headers.Location?.ToString();
-        location.Should().Contain("nonce=",
-            "the OIDC request must include a nonce for replay protection");
+        await Assert.That(location).Contains("nonce=").Because("the OIDC request must include a nonce for replay protection");
     }
 
     [Test]
@@ -116,10 +107,8 @@ public class BffSecurityTests : IAsyncDisposable
         var response = await _client.GetAsync("/auth/challenge?provider=keycloak");
 
         var location = response.Headers.Location?.ToString();
-        location.Should().Contain("code_challenge=",
-            "PKCE must be enabled — the challenge must include a code_challenge parameter");
-        location.Should().Contain("code_challenge_method=S256",
-            "PKCE must use S256 code challenge method");
+        await Assert.That(location).Contains("code_challenge=").Because("PKCE must be enabled — the challenge must include a code_challenge parameter");
+        await Assert.That(location).Contains("code_challenge_method=S256").Because("PKCE must use S256 code challenge method");
     }
 
     [Test]
@@ -127,7 +116,7 @@ public class BffSecurityTests : IAsyncDisposable
     {
         var challenge = await _client.GetAsync("/auth/challenge?provider=keycloak&returnUrl=/dashboard");
         var authorizationUri = challenge.Headers.Location;
-        authorizationUri.Should().NotBeNull();
+        await Assert.That(authorizationUri).IsNotNull();
 
         using var keycloakHandler = new HttpClientHandler
         {
@@ -137,14 +126,14 @@ public class BffSecurityTests : IAsyncDisposable
         using var keycloakClient = new HttpClient(keycloakHandler);
 
         var loginPage = await keycloakClient.GetAsync(authorizationUri);
-        loginPage.StatusCode.Should().Be(HttpStatusCode.OK);
+        await Assert.That(loginPage.StatusCode).IsEqualTo(HttpStatusCode.OK);
         var loginHtml = await loginPage.Content.ReadAsStringAsync();
         var loginAction = Regex.Match(
             loginHtml,
             "<form(?=[^>]*id=\"kc-form-login\")(?=[^>]*action=\"(?<action>[^\"]+)\")[^>]*>",
             RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)
             .Groups["action"].Value;
-        loginAction.Should().NotBeNullOrWhiteSpace();
+        await Assert.That(string.IsNullOrWhiteSpace(loginAction)).IsFalse();
         var loginUri = new Uri(WebUtility.HtmlDecode(loginAction));
 
         using var credentials = new FormUrlEncodedContent(
@@ -165,16 +154,16 @@ public class BffSecurityTests : IAsyncDisposable
         loginRequest.Headers.TryAddWithoutValidation("Cookie", string.Join("; ", authSessionCookies));
 
         var login = await keycloakClient.SendAsync(loginRequest);
-        login.StatusCode.Should().Be(HttpStatusCode.Redirect);
-        login.Headers.Location.Should().NotBeNull();
+        await Assert.That(login.StatusCode).IsEqualTo(HttpStatusCode.Redirect);
+        await Assert.That(login.Headers.Location).IsNotNull();
 
         var callback = await _client.GetAsync(login.Headers.Location);
-        callback.StatusCode.Should().Be(HttpStatusCode.Redirect);
-        callback.Headers.Location?.ToString().Should().EndWith("/dashboard");
+        await Assert.That(callback.StatusCode).IsEqualTo(HttpStatusCode.Redirect);
+        await Assert.That(callback.Headers.Location?.ToString()).EndsWith("/dashboard");
 
         var status = await _client.GetFromJsonAsync<AuthStatusPayload>("/auth/status");
-        status.Should().NotBeNull();
-        status!.IsAuthenticated.Should().BeTrue();
+        await Assert.That(status).IsNotNull();
+        await Assert.That(status!.IsAuthenticated).IsTrue();
     }
 
     #endregion
@@ -186,13 +175,11 @@ public class BffSecurityTests : IAsyncDisposable
     {
         var response = await _client.GetAsync("/auth/providers");
 
-        response.StatusCode.Should().Be(System.Net.HttpStatusCode.OK);
+        await Assert.That(response.StatusCode).IsEqualTo(System.Net.HttpStatusCode.OK);
 
         var json = await response.Content.ReadAsStringAsync();
-        json.Should().Contain("Keycloak",
-            "the containerized Keycloak should be listed as a provider");
-        json.Should().Contain("keycloak",
-            "the provider name should be 'keycloak'");
+        await Assert.That(json).Contains("Keycloak").Because("the containerized Keycloak should be listed as a provider");
+        await Assert.That(json).Contains("keycloak").Because("the provider name should be 'keycloak'");
     }
 
     #endregion
@@ -204,12 +191,10 @@ public class BffSecurityTests : IAsyncDisposable
     {
         var response = await _client.GetAsync("/auth/challenge?returnUrl=/");
 
-        response.StatusCode.Should().Be(System.Net.HttpStatusCode.Redirect,
-            "with a single registered provider, challenge should auto-redirect");
+        await Assert.That(response.StatusCode).IsEqualTo(System.Net.HttpStatusCode.Redirect).Because("with a single registered provider, challenge should auto-redirect");
 
         var location = response.Headers.Location?.ToString();
-        location.Should().Contain("/realms/ISLAMU/protocol/openid-connect/auth",
-            "should auto-select Keycloak when it's the only ready provider");
+        await Assert.That(location).Contains("/realms/ISLAMU/protocol/openid-connect/auth").Because("should auto-select Keycloak when it's the only ready provider");
     }
 
     #endregion
@@ -221,13 +206,11 @@ public class BffSecurityTests : IAsyncDisposable
     {
         var response = await _client.GetAsync("/auth/login?provider=keycloak&returnUrl=/dashboard");
 
-        response.StatusCode.Should().Be(System.Net.HttpStatusCode.Redirect);
+        await Assert.That(response.StatusCode).IsEqualTo(System.Net.HttpStatusCode.Redirect);
 
         var location = response.Headers.Location?.ToString();
-        location.Should().Contain("/auth/challenge",
-            "/auth/login should redirect to /auth/challenge");
-        location.Should().Contain("provider=keycloak",
-            "the provider should be forwarded to the challenge endpoint");
+        await Assert.That(location).Contains("/auth/challenge").Because("/auth/login should redirect to /auth/challenge");
+        await Assert.That(location).Contains("provider=keycloak").Because("the provider should be forwarded to the challenge endpoint");
     }
 
     #endregion
@@ -239,8 +222,7 @@ public class BffSecurityTests : IAsyncDisposable
     {
         var response = await _client.GetAsync("/auth/signout?returnUrl=/");
 
-        response.StatusCode.Should().Be(System.Net.HttpStatusCode.Redirect,
-            "signout should redirect even for anonymous users");
+        await Assert.That(response.StatusCode).IsEqualTo(System.Net.HttpStatusCode.Redirect).Because("signout should redirect even for anonymous users");
     }
 
     [Test]
@@ -250,9 +232,8 @@ public class BffSecurityTests : IAsyncDisposable
 
         var setCookieHeaders = response.Headers.GetValues("Set-Cookie").ToList();
 
-        setCookieHeaders.Should().Contain(c =>
-            c.StartsWith(".AspNetCore.Cookies=") && c.Contains("expires="),
-            "signout should expire the authentication cookie");
+        await Assert.That(setCookieHeaders).Contains(c =>
+            c.StartsWith(".AspNetCore.Cookies=") && c.Contains("expires=")).Because("signout should expire the authentication cookie");
     }
 
     #endregion

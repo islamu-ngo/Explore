@@ -2,7 +2,6 @@
 // ABOUTME: Ensures browser redirects and auth failure handling never expose secret-derived details.
 
 using Event.Web.BffHosting.Authentication;
-using FluentAssertions;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Microsoft.AspNetCore.Hosting;
@@ -58,16 +57,16 @@ public sealed class SafeAuthDiagnosticsPolicyTests
         await events.RemoteFailure(failureContext);
 
         var redirectUrl = httpContext.Response.Headers.Location.ToString();
-        redirectUrl.Should().Contain("/login?");
-        redirectUrl.Should().Contain("challengeError=1");
-        redirectUrl.Should().Contain("errorCode=oidc_remote_failure");
-        redirectUrl.Should().Contain("correlationId=");
-        redirectUrl.Should().NotContain("errorDetail");
-        redirectUrl.Should().NotContain("clientId");
-        redirectUrl.Should().NotContain("secretLen");
-        redirectUrl.Should().NotContain("secretPrefix");
-        redirectUrl.Should().NotContain("super-secret-value");
-        redirectUrl.Should().NotContain("token exchange failed");
+        await Assert.That(redirectUrl).Contains("/login?");
+        await Assert.That(redirectUrl).Contains("challengeError=1");
+        await Assert.That(redirectUrl).Contains("errorCode=oidc_remote_failure");
+        await Assert.That(redirectUrl).Contains("correlationId=");
+        await Assert.That(redirectUrl).DoesNotContain("errorDetail");
+        await Assert.That(redirectUrl).DoesNotContain("clientId");
+        await Assert.That(redirectUrl).DoesNotContain("secretLen");
+        await Assert.That(redirectUrl).DoesNotContain("secretPrefix");
+        await Assert.That(redirectUrl).DoesNotContain("super-secret-value");
+        await Assert.That(redirectUrl).DoesNotContain("token exchange failed");
     }
 
     [Test]

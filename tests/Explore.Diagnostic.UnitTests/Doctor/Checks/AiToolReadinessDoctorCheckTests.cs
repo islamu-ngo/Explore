@@ -3,7 +3,6 @@
 
 using Explore.Diagnostic.Doctor;
 using Explore.Diagnostic.Doctor.Checks;
-using FluentAssertions;
 
 namespace Explore.Diagnostic.UnitTests.Doctor.Checks;
 
@@ -19,7 +18,7 @@ public sealed class AiToolReadinessDoctorCheckTests
 
         var result = await check.RunAsync(CancellationToken.None);
 
-        result.Status.Should().Be(DoctorCheckStatus.Pass);
+        await Assert.That(result.Status).IsEqualTo(DoctorCheckStatus.Pass);
     }
 
     [Test]
@@ -30,8 +29,8 @@ public sealed class AiToolReadinessDoctorCheckTests
 
         var result = await check.RunAsync(CancellationToken.None);
 
-        result.Status.Should().Be(DoctorCheckStatus.Warn);
-        result.RedactedEvidence.Should().Contain("missing:docs/AI_AGENT_CONTRACT_INVENTORY.md");
+        await Assert.That(result.Status).IsEqualTo(DoctorCheckStatus.Warn);
+        await Assert.That(result.RedactedEvidence).Contains("missing:docs/AI_AGENT_CONTRACT_INVENTORY.md");
     }
 
     private static FakeDoctorFileSystem CreateFileSystemWithRequiredArtifacts(bool includeInventory = true)

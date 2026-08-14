@@ -3,7 +3,6 @@
 
 using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Services.Preferences;
-using FluentAssertions;
 using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.TestHost;
@@ -34,10 +33,10 @@ public sealed class BffPreferenceValidationEndpointsTests : IAsyncDisposable
 
         using var response = await _client.SendAsync(request);
 
-        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.BadRequest);
         var body = await response.Content.ReadAsStringAsync();
-        body.Should().Contain("Theme mode must be one of");
-        GetSetCookieHeaders(response).Should().NotContain(cookie => cookie.StartsWith("theme=", StringComparison.Ordinal));
+        await Assert.That(body).Contains("Theme mode must be one of");
+        await Assert.That(GetSetCookieHeaders(response)).DoesNotContain(cookie => cookie.StartsWith("theme=", StringComparison.Ordinal));
     }
 
     [Test]
@@ -48,11 +47,11 @@ public sealed class BffPreferenceValidationEndpointsTests : IAsyncDisposable
 
         using var response = await _client.SendAsync(request);
 
-        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.BadRequest);
         var body = await response.Content.ReadAsStringAsync();
-        body.Should().Contain("Language must be a supported culture code");
-        GetSetCookieHeaders(response).Should().NotContain(cookie => cookie.StartsWith("lang=", StringComparison.Ordinal));
-        GetSetCookieHeaders(response).Should().NotContain(cookie => cookie.StartsWith(".AspNetCore.Culture=", StringComparison.Ordinal));
+        await Assert.That(body).Contains("Language must be a supported culture code");
+        await Assert.That(GetSetCookieHeaders(response)).DoesNotContain(cookie => cookie.StartsWith("lang=", StringComparison.Ordinal));
+        await Assert.That(GetSetCookieHeaders(response)).DoesNotContain(cookie => cookie.StartsWith(".AspNetCore.Culture=", StringComparison.Ordinal));
     }
 
     [Test]
@@ -63,10 +62,10 @@ public sealed class BffPreferenceValidationEndpointsTests : IAsyncDisposable
 
         using var response = await _client.SendAsync(request);
 
-        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.BadRequest);
         var body = await response.Content.ReadAsStringAsync();
-        body.Should().Contain("Direction must be");
-        GetSetCookieHeaders(response).Should().NotContain(cookie => cookie.StartsWith("direction=", StringComparison.Ordinal));
+        await Assert.That(body).Contains("Direction must be");
+        await Assert.That(GetSetCookieHeaders(response)).DoesNotContain(cookie => cookie.StartsWith("direction=", StringComparison.Ordinal));
     }
 
     [Test]
@@ -97,9 +96,9 @@ public sealed class BffPreferenceValidationEndpointsTests : IAsyncDisposable
 
         using var response = await client.SendAsync(request);
 
-        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.BadRequest);
         var body = await response.Content.ReadAsStringAsync();
-        body.Should().Contain("Theme mode must be one of");
+        await Assert.That(body).Contains("Theme mode must be one of");
         await forwarding.DidNotReceive().SetThemeModeAsync(
             Arg.Any<string>(),
             Arg.Any<CancellationToken>());
@@ -145,13 +144,13 @@ public sealed class BffPreferenceValidationEndpointsTests : IAsyncDisposable
 
         using var response = await client.SendAsync(request);
 
-        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
         var body = await response.Content.ReadFromJsonAsync<BffAppearancePreferences>();
-        body.Should().NotBeNull();
-        body!.ThemeMode.Should().Be("dark");
-        body.Direction.Should().Be("rtl");
-        body.Language.Should().Be("fr");
-        body.DefaultThemeId.Should().Be(defaultThemeId);
+        await Assert.That(body).IsNotNull();
+        await Assert.That(body!.ThemeMode).IsEqualTo("dark");
+        await Assert.That(body.Direction).IsEqualTo("rtl");
+        await Assert.That(body.Language).IsEqualTo("fr");
+        await Assert.That(body.DefaultThemeId).IsEqualTo(defaultThemeId);
         await forwarding.Received(1).SetThemeModeAsync(
             "dark",
             Arg.Any<CancellationToken>());
@@ -189,7 +188,7 @@ public sealed class BffPreferenceValidationEndpointsTests : IAsyncDisposable
 
         using var response = await client.SendAsync(request);
 
-        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
         await forwarding.Received(1).SetActiveProfileAsync(profileId, Arg.Any<CancellationToken>());
     }
 
@@ -208,14 +207,15 @@ public sealed class BffPreferenceValidationEndpointsTests : IAsyncDisposable
         }
 
         using var response = await client.SendAsync(request);
-        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
 
-        response.Headers.TryGetValues("Set-Cookie", out var values).Should().BeTrue();
+        await Assert.That(response.Headers.TryGetValues("Set-Cookie", out var values)).IsTrue();
         var token = values!
             .Select(ReadXsrfToken)
             .FirstOrDefault(value => !string.IsNullOrWhiteSpace(value));
 
-        token.Should().NotBeNullOrWhiteSpace("GET requests should issue the readable XSRF-TOKEN cookie");
+        await Assert.That(string.IsNullOrWhiteSpace(token)).IsFalse()
+            .Because("GET requests should issue the readable XSRF-TOKEN cookie");
         return token!;
     }
 

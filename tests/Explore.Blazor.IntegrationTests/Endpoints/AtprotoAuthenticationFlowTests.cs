@@ -14,7 +14,6 @@ using Explore.Blazor.Extensions;
 using Explore.Blazor.IntegrationTests.Fixtures;
 using Explore.Blazor.Services;
 using Explore.Blazor.Services.Auth;
-using FluentAssertions;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
@@ -40,15 +39,15 @@ public sealed class AtprotoAuthenticationFlowTests
     {
         await using var factory = CreateFactory();
         var endpoint = GetChallengeEndpoint(factory);
-        endpoint.Metadata.GetMetadata<HttpMethodMetadata>()!.HttpMethods.Should().Equal("POST");
+        await Assert.That(endpoint.Metadata.GetMetadata<HttpMethodMetadata>()!.HttpMethods.SequenceEqual(["POST"])).IsTrue();
 
         var response = await InvokeChallengeAsync(
             factory,
             endpoint,
             "{\"handle\":\"alice.example\",\"classification\":\"person\"}");
 
-        response.StatusCode.Should().Be(StatusCodes.Status400BadRequest);
-        response.Body.Should().Contain("Antiforgery validation failed");
+        await Assert.That(response.StatusCode).IsEqualTo(StatusCodes.Status400BadRequest);
+        await Assert.That(response.Body).Contains("Antiforgery validation failed");
     }
 
     [Test]
@@ -68,8 +67,8 @@ public sealed class AtprotoAuthenticationFlowTests
                 "/auth/atproto/challenge",
                 secondContent);
 
-            first.StatusCode.Should().NotBe(HttpStatusCode.TooManyRequests);
-            second.StatusCode.Should().Be(HttpStatusCode.TooManyRequests);
+            await Assert.That(first.StatusCode).IsNotEqualTo(HttpStatusCode.TooManyRequests);
+            await Assert.That(second.StatusCode).IsEqualTo(HttpStatusCode.TooManyRequests);
         }
 
         await using (var callbackFactory = CreateFactory(enableRealAtprotoRateLimit: true))
@@ -78,8 +77,8 @@ public sealed class AtprotoAuthenticationFlowTests
             using var first = await client.GetAsync("/signin-atproto");
             using var second = await client.GetAsync("/signin-atproto");
 
-            first.StatusCode.Should().Be(HttpStatusCode.Redirect);
-            second.StatusCode.Should().Be(HttpStatusCode.TooManyRequests);
+            await Assert.That(first.StatusCode).IsEqualTo(HttpStatusCode.Redirect);
+            await Assert.That(second.StatusCode).IsEqualTo(HttpStatusCode.TooManyRequests);
         }
     }
 
@@ -101,16 +100,13 @@ public sealed class AtprotoAuthenticationFlowTests
         {
             var response = await InvokeChallengeHandlerAsync(factory, payload);
 
-            response.StatusCode.Should().Be(
-                StatusCodes.Status400BadRequest,
-                "payload {0} must fail with a bounded problem response, but returned {1}",
-                payload,
-                response.Body);
-            response.Location.Should().BeNull();
-            response.Body.Should().Contain("ATProto sign-in could not be started.");
-            response.Body.Should().NotContain("oauth-access-token");
-            response.Body.Should().NotContain("login_hint");
-            response.Body.Should().NotContain("credential");
+            await Assert.That(response.StatusCode).IsEqualTo(StatusCodes.Status400BadRequest)
+                .Because($"payload {payload} must fail with a bounded problem response, but returned {response.Body}");
+            await Assert.That(response.Location).IsNull();
+            await Assert.That(response.Body).Contains("ATProto sign-in could not be started.");
+            await Assert.That(response.Body).DoesNotContain("oauth-access-token");
+            await Assert.That(response.Body).DoesNotContain("login_hint");
+            await Assert.That(response.Body).DoesNotContain("credential");
         }
 
         var oversizedPayload = JsonSerializer.Serialize(new
@@ -121,9 +117,9 @@ public sealed class AtprotoAuthenticationFlowTests
         });
         var oversizedResponse = await InvokeChallengeHandlerAsync(factory, oversizedPayload);
 
-        oversizedResponse.StatusCode.Should().Be(StatusCodes.Status400BadRequest);
-        oversizedResponse.Location.Should().BeNull();
-        oversizedResponse.Body.Should().NotContain(new string('x', 64));
+        await Assert.That(oversizedResponse.StatusCode).IsEqualTo(StatusCodes.Status400BadRequest);
+        await Assert.That(oversizedResponse.Location).IsNull();
+        await Assert.That(oversizedResponse.Body).DoesNotContain(new string('x', 64));
     }
 
     [Test]
@@ -141,9 +137,9 @@ public sealed class AtprotoAuthenticationFlowTests
         {
             var response = await InvokeChallengeHandlerAsync(factory, payload);
 
-            response.StatusCode.Should().Be(StatusCodes.Status400BadRequest);
-            response.Location.Should().BeNull();
-            response.Body.Should().Contain("ATProto sign-in could not be started.");
+            await Assert.That(response.StatusCode).IsEqualTo(StatusCodes.Status400BadRequest);
+            await Assert.That(response.Location).IsNull();
+            await Assert.That(response.Body).Contains("ATProto sign-in could not be started.");
         }
     }
 
@@ -168,14 +164,14 @@ public sealed class AtprotoAuthenticationFlowTests
         challengeRequest.Headers.Add("X-CSRF-TOKEN", antiforgeryToken);
 
         using var challenge = await client.SendAsync(challengeRequest);
-        challenge.StatusCode.Should().Be(HttpStatusCode.OK);
+        await Assert.That(challenge.StatusCode).IsEqualTo(HttpStatusCode.OK);
         using var callbackClient = CreateClient(factory, CanonicalOrigin);
         using var callback = await callbackClient.GetAsync(
             $"/signin-atproto?code=authorization-code&state={Uri.EscapeDataString(atprotoServer.State!)}&iss={Uri.EscapeDataString("https://issuer.example")}");
 
-        callback.StatusCode.Should().Be(HttpStatusCode.Redirect);
-        apiServer.CanonicalActorId.Should().Be(CanonicalActorId);
-        apiServer.ExpectedCanonicalActorConcurrencyStamp.Should().Be(ExpectedCanonicalActorConcurrencyStamp);
+        await Assert.That(callback.StatusCode).IsEqualTo(HttpStatusCode.Redirect);
+        await Assert.That(apiServer.CanonicalActorId).IsEqualTo(CanonicalActorId);
+        await Assert.That(apiServer.ExpectedCanonicalActorConcurrencyStamp).IsEqualTo(ExpectedCanonicalActorConcurrencyStamp);
     }
 
     [Test]
@@ -194,8 +190,8 @@ public sealed class AtprotoAuthenticationFlowTests
         {
             var response = await InvokeChallengeHandlerAsync(factory, payload);
 
-            response.StatusCode.Should().Be(StatusCodes.Status400BadRequest);
-            atprotoServer.PushedAuthorizationRequestCount.Should().Be(0);
+            await Assert.That(response.StatusCode).IsEqualTo(StatusCodes.Status400BadRequest);
+            await Assert.That(atprotoServer.PushedAuthorizationRequestCount).IsEqualTo(0);
         }
     }
 
@@ -211,8 +207,8 @@ public sealed class AtprotoAuthenticationFlowTests
         using var unknownResponse = await client.GetAsync(
             $"/signin-atproto?state={State}&code={code}&iss={Uri.EscapeDataString(issuer)}");
 
-        AssertSafeCallbackFailure(missingResponse, []);
-        AssertSafeCallbackFailure(unknownResponse, [State, code, issuer, "oauth-code", "issuer-secret"]);
+        await AssertSafeCallbackFailure(missingResponse, []);
+        await AssertSafeCallbackFailure(unknownResponse, [State, code, issuer, "oauth-code", "issuer-secret"]);
     }
 
     [Test]
@@ -229,8 +225,8 @@ public sealed class AtprotoAuthenticationFlowTests
         using var replay = await client.GetAsync(
             $"/signin-atproto?state={State}&code={code}&iss={Uri.EscapeDataString("https://issuer.example/")}");
 
-        AssertSafeCallbackFailure(substituted, [State, code, attackerIssuer]);
-        AssertSafeCallbackFailure(replay, [State, code, "https://issuer.example/"]);
+        await AssertSafeCallbackFailure(substituted, [State, code, attackerIssuer]);
+        await AssertSafeCallbackFailure(replay, [State, code, "https://issuer.example/"]);
     }
 
     [Test]
@@ -248,13 +244,13 @@ public sealed class AtprotoAuthenticationFlowTests
         await using (var scope = factory.Services.CreateAsyncScope())
         {
             var store = scope.ServiceProvider.GetRequiredService<CacheBackedOAuthStateStore>();
-            (await store.GetPinnedKeyIdAsync(State, CancellationToken.None)).Should().BeNull();
+            await Assert.That((await store.GetPinnedKeyIdAsync(State, CancellationToken.None))).IsNull();
         }
 
         using var replay = await client.GetAsync(callback);
 
-        AssertSafeCallbackFailure(first, [State, error, description, "issuer.example"]);
-        AssertSafeCallbackFailure(replay, [State, error, description, "issuer.example"]);
+        await AssertSafeCallbackFailure(first, [State, error, description, "issuer.example"]);
+        await AssertSafeCallbackFailure(replay, [State, error, description, "issuer.example"]);
     }
 
     [Test]
@@ -277,12 +273,12 @@ public sealed class AtprotoAuthenticationFlowTests
         foreach (var callback in callbacks)
         {
             using var response = await client.GetAsync(callback);
-            AssertSafeCallbackFailure(response, [State, "access_denied", "server_error", "issuer.example"]);
+            await AssertSafeCallbackFailure(response, [State, "access_denied", "server_error", "issuer.example"]);
         }
 
         await using var scope = factory.Services.CreateAsyncScope();
         var store = scope.ServiceProvider.GetRequiredService<CacheBackedOAuthStateStore>();
-        (await store.GetPinnedKeyIdAsync(State, CancellationToken.None)).Should().Be("oauth-active");
+        await Assert.That((await store.GetPinnedKeyIdAsync(State, CancellationToken.None))).IsEqualTo("oauth-active");
     }
 
     [Test]
@@ -291,10 +287,10 @@ public sealed class AtprotoAuthenticationFlowTests
         var guard = typeof(AtprotoAuthenticationHandler).GetMethod(
             "ValidateAuthorizationUrl",
             BindingFlags.NonPublic | BindingFlags.Static);
-        guard.Should().NotBeNull();
+        await Assert.That(guard).IsNotNull();
         const string valid = "https://oauth.example/authorize?client_id=https%3A%2F%2Fevents.example.com%2Foauth%2Fclient-metadata.json&request_uri=urn%3Aexample%3Apar";
 
-        guard!.Invoke(null, [valid]).Should().Be(valid);
+        await Assert.That(guard!.Invoke(null, [valid])).IsEqualTo(valid);
 
         string[] rejected =
         [
@@ -306,8 +302,8 @@ public sealed class AtprotoAuthenticationFlowTests
         foreach (var value in rejected)
         {
             Action action = () => guard.Invoke(null, [value]);
-            action.Should().Throw<TargetInvocationException>()
-                .Where(exception => exception.InnerException is InvalidOperationException);
+            var exception = await Assert.That(action).Throws<TargetInvocationException>();
+            await Assert.That(exception!.InnerException).IsTypeOf<InvalidOperationException>();
         }
     }
 
@@ -332,51 +328,49 @@ public sealed class AtprotoAuthenticationFlowTests
         challengeRequest.Headers.Add("X-CSRF-TOKEN", antiforgeryToken);
 
         using var challenge = await loginClient.SendAsync(challengeRequest);
-        challenge.StatusCode.Should().Be(HttpStatusCode.OK);
-        atprotoServer.State.Should().NotBeNullOrWhiteSpace(
-            "the real CarpaNet PAR request must be reached by the HTTP challenge");
+        await Assert.That(challenge.StatusCode).IsEqualTo(HttpStatusCode.OK);
+        await Assert.That(string.IsNullOrWhiteSpace(atprotoServer.State)).IsFalse()
+            .Because("the real CarpaNet PAR request must be reached by the HTTP challenge");
         var challengeBody = await challenge.Content.ReadAsStringAsync();
-        challengeBody.Should().NotBeEmpty(
-            "the ATProto challenge endpoint must return its authorization URL; response was {0}",
-            challenge);
+        await Assert.That(challengeBody).IsNotEmpty()
+            .Because($"the ATProto challenge endpoint must return its authorization URL; response was {challenge}");
         using var challengeJson = JsonDocument.Parse(challengeBody);
         var authorizationUrl = challengeJson.RootElement.GetProperty("authorizationUrl").GetString();
-        authorizationUrl.Should().StartWith("https://issuer.example/oauth/authorize?");
-        authorizationUrl.Should().NotContain("login_hint");
+        await Assert.That(authorizationUrl).StartsWith("https://issuer.example/oauth/authorize?");
+        await Assert.That(authorizationUrl).DoesNotContain("login_hint");
 
         using var callbackClient = CreateClient(factory, CanonicalOrigin);
         var callbackPath = $"/signin-atproto?code=authorization-code&state={Uri.EscapeDataString(atprotoServer.State!)}&iss={Uri.EscapeDataString("https://issuer.example")}";
         using var callback = await callbackClient.GetAsync(callbackPath);
-        callback.StatusCode.Should().Be(HttpStatusCode.Redirect);
-        callback.Headers.CacheControl?.NoStore.Should().BeTrue();
-        apiServer.BridgeCalls.Should().Be(1);
+        await Assert.That(callback.StatusCode).IsEqualTo(HttpStatusCode.Redirect);
+        await Assert.That(callback.Headers.CacheControl?.NoStore).IsTrue();
+        await Assert.That(apiServer.BridgeCalls).IsEqualTo(1);
 
         HttpResponseMessage cookieResponse;
         if (crossHost)
         {
             var handoffLocation = callback.Headers.Location;
-            handoffLocation.Should().NotBeNull();
-            handoffLocation!.GetLeftPart(UriPartial.Authority).Should().Be(loginOrigin);
-            handoffLocation.AbsolutePath.Should().Be("/auth/atproto/handoff");
-            handoffLocation.Query.Should().NotContain("access_token");
+            await Assert.That(handoffLocation).IsNotNull();
+            await Assert.That(handoffLocation!.GetLeftPart(UriPartial.Authority)).IsEqualTo(loginOrigin);
+            await Assert.That(handoffLocation.AbsolutePath).IsEqualTo("/auth/atproto/handoff");
+            await Assert.That(handoffLocation.Query).DoesNotContain("access_token");
             cookieResponse = await loginClient.GetAsync(handoffLocation.PathAndQuery);
         }
         else
         {
-            callback.Headers.Location?.OriginalString.Should().Be("/events?source=atproto");
+            await Assert.That(callback.Headers.Location?.OriginalString).IsEqualTo("/events?source=atproto");
             cookieResponse = callback;
         }
 
         using (cookieResponse)
         {
-            cookieResponse.StatusCode.Should().Be(HttpStatusCode.Redirect);
-            cookieResponse.Headers.Location?.OriginalString.Should().Be("/events?source=atproto");
-            cookieResponse.Headers.GetValues("Set-Cookie")
-                .Should().Contain(value => value.StartsWith(".AspNetCore.Cookies=", StringComparison.Ordinal));
+            await Assert.That(cookieResponse.StatusCode).IsEqualTo(HttpStatusCode.Redirect);
+            await Assert.That(cookieResponse.Headers.Location?.OriginalString).IsEqualTo("/events?source=atproto");
+            await Assert.That(cookieResponse.Headers.GetValues("Set-Cookie")).Contains(value => value.StartsWith(".AspNetCore.Cookies=", StringComparison.Ordinal));
             var browserVisible = string.Join('\n', cookieResponse.Headers.SelectMany(header => header.Value));
-            browserVisible.Should().NotContain("pds-access-token");
-            browserVisible.Should().NotContain("pds-refresh-token");
-            browserVisible.Should().NotContain(HermeticBffApiServer.PlatformAccessToken);
+            await Assert.That(browserVisible).DoesNotContain("pds-access-token");
+            await Assert.That(browserVisible).DoesNotContain("pds-refresh-token");
+            await Assert.That(browserVisible).DoesNotContain(HermeticBffApiServer.PlatformAccessToken);
         }
     }
 
@@ -402,12 +396,12 @@ public sealed class AtprotoAuthenticationFlowTests
 
             using var response = await client.SendAsync(request);
 
-            response.StatusCode.Should().Be(HttpStatusCode.OK);
+            await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
         }
 
-        atprotoServer.DnsRequestCount.Should().Be(1);
-        atprotoServer.DidDocumentRequestCount.Should().Be(1);
-        atprotoServer.PushedAuthorizationRequestCount.Should().Be(2);
+        await Assert.That(atprotoServer.DnsRequestCount).IsEqualTo(1);
+        await Assert.That(atprotoServer.DidDocumentRequestCount).IsEqualTo(1);
+        await Assert.That(atprotoServer.PushedAuthorizationRequestCount).IsEqualTo(2);
     }
 
     [Test]
@@ -419,10 +413,10 @@ public sealed class AtprotoAuthenticationFlowTests
 
         using var response = await StartChallengeAsync(factory);
 
-        response.StatusCode.Should().Be(HttpStatusCode.OK);
-        atprotoServer.DidDocumentRequestCount.Should().Be(1);
-        atprotoServer.PushedAuthorizationRequestCount.Should().Be(1);
-        apiServer.BridgeCalls.Should().Be(0);
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
+        await Assert.That(atprotoServer.DidDocumentRequestCount).IsEqualTo(1);
+        await Assert.That(atprotoServer.PushedAuthorizationRequestCount).IsEqualTo(1);
+        await Assert.That(apiServer.BridgeCalls).IsEqualTo(0);
     }
 
     [Test]
@@ -440,9 +434,9 @@ public sealed class AtprotoAuthenticationFlowTests
 
         using var response = await StartChallengeAsync(factory);
 
-        response.StatusCode.Should().NotBe(HttpStatusCode.OK);
-        atprotoServer.PushedAuthorizationRequestCount.Should().Be(0);
-        apiServer.BridgeCalls.Should().Be(0);
+        await Assert.That(response.StatusCode).IsNotEqualTo(HttpStatusCode.OK);
+        await Assert.That(atprotoServer.PushedAuthorizationRequestCount).IsEqualTo(0);
+        await Assert.That(apiServer.BridgeCalls).IsEqualTo(0);
     }
 
     private static WebApplicationFactory<Program> CreateFactory(
@@ -564,10 +558,10 @@ public sealed class AtprotoAuthenticationFlowTests
     private static async Task<string> IssueAntiforgeryTokenAsync(HttpClient client)
     {
         using var response = await client.GetAsync("/auth/status");
-        response.StatusCode.Should().Be(HttpStatusCode.OK);
-        response.Headers.TryGetValues("Set-Cookie", out var values).Should().BeTrue();
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
+        await Assert.That(response.Headers.TryGetValues("Set-Cookie", out var values)).IsTrue();
         var token = values!.Select(ReadXsrfToken).FirstOrDefault(value => value is not null);
-        token.Should().NotBeNullOrWhiteSpace();
+        await Assert.That(string.IsNullOrWhiteSpace(token)).IsFalse();
         return token!;
     }
 
@@ -646,10 +640,10 @@ public sealed class AtprotoAuthenticationFlowTests
         var handler = typeof(BffAuthEndpoints).GetMethod(
             "HandleAtprotoChallengeAsync",
             BindingFlags.NonPublic | BindingFlags.Static);
-        handler.Should().NotBeNull();
+        await Assert.That(handler).IsNotNull();
 
         var resultTask = handler!.Invoke(null, [context]) as Task<IResult>;
-        resultTask.Should().NotBeNull();
+        await Assert.That(resultTask is not null).IsTrue();
         var result = await resultTask!;
         await result.ExecuteAsync(context);
 
@@ -684,25 +678,25 @@ public sealed class AtprotoAuthenticationFlowTests
             await reader.ReadToEndAsync());
     }
 
-    private static void AssertSafeCallbackFailure(
+    private static async Task AssertSafeCallbackFailure(
         HttpResponseMessage response,
         IReadOnlyCollection<string> forbiddenValues)
     {
-        response.StatusCode.Should().Be(HttpStatusCode.Redirect);
-        response.Headers.CacheControl?.NoStore.Should().BeTrue();
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Redirect);
+        await Assert.That(response.Headers.CacheControl?.NoStore).IsTrue();
         var location = response.Headers.Location?.OriginalString;
-        location.Should().NotBeNull();
-        location.Should().StartWith("/login?");
-        location.Should().Contain("provider=atproto");
-        location.Should().Contain("challengeError=1");
-        location.Should().Contain("errorCode=atproto_callback_failed");
-        location.Should().Contain("correlationId=");
+        await Assert.That(location).IsNotNull();
+        await Assert.That(location).StartsWith("/login?");
+        await Assert.That(location).Contains("provider=atproto");
+        await Assert.That(location).Contains("challengeError=1");
+        await Assert.That(location).Contains("errorCode=atproto_callback_failed");
+        await Assert.That(location).Contains("correlationId=");
         foreach (var value in forbiddenValues)
         {
-            location.Should().NotContain(value);
+            await Assert.That(location).DoesNotContain(value);
         }
 
-        response.Content.Headers.ContentLength.Should().Be(0);
+        await Assert.That(response.Content.Headers.ContentLength).IsEqualTo(0);
     }
 
     private static async Task StoreFlowStateAsync(WebApplicationFactory<Program> factory)

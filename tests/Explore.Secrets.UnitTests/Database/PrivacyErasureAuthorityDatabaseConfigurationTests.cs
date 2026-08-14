@@ -2,7 +2,6 @@
 // ABOUTME: Prevents raw connection strings and non-PostgreSQL providers from entering the authority boundary.
 
 using Explore.Secrets.Database;
-using FluentAssertions;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Options;
 using Npgsql;
@@ -12,7 +11,7 @@ namespace Explore.Secrets.UnitTests.Database;
 public sealed class PrivacyErasureAuthorityDatabaseConfigurationTests
 {
     [Test]
-    public void StructuredRolesBuildDistinctNativePostgreSqlConnections()
+    public async Task StructuredRolesBuildDistinctNativePostgreSqlConnections()
     {
         IConfiguration configuration = BuildConfiguration(new Dictionary<string, string?>
         {
@@ -33,16 +32,16 @@ public sealed class PrivacyErasureAuthorityDatabaseConfigurationTests
         var runtimeTarget = new NpgsqlConnectionStringBuilder(runtime.ConnectionString);
         var migratorTarget = new NpgsqlConnectionStringBuilder(migrator.ConnectionString);
 
-        runtimeTarget.Username.Should().Be("runtime_role");
-        migratorTarget.Username.Should().Be("migrator_role");
-        runtimeTarget.Host.Should().Be("authority.example.test");
-        runtimeTarget.Port.Should().Be(6543);
-        runtime.RedactedConnectionString.Should().NotContain("runtime-secret");
-        runtime.SafeSummary.Should().NotContain("runtime-secret");
+        await Assert.That(runtimeTarget.Username).IsEqualTo("runtime_role");
+        await Assert.That(migratorTarget.Username).IsEqualTo("migrator_role");
+        await Assert.That(runtimeTarget.Host).IsEqualTo("authority.example.test");
+        await Assert.That(runtimeTarget.Port).IsEqualTo(6543);
+        await Assert.That(runtime.RedactedConnectionString).DoesNotContain("runtime-secret");
+        await Assert.That(runtime.SafeSummary).DoesNotContain("runtime-secret");
     }
 
     [Test]
-    public void ExplicitStructuredValuesOutrankDiscreteSecrets()
+    public async Task ExplicitStructuredValuesOutrankDiscreteSecrets()
     {
         IConfiguration configuration = BuildConfiguration(new Dictionary<string, string?>
         {
@@ -59,14 +58,14 @@ public sealed class PrivacyErasureAuthorityDatabaseConfigurationTests
 
         var options = PrivacyErasureAuthorityDatabaseConfiguration.BindRuntime(configuration);
 
-        options.Host.Should().Be("explicit-host");
-        options.Database.Should().Be("explicit_database");
-        options.Username.Should().Be("explicit_user");
-        options.Password.Should().Be("explicit-password");
+        await Assert.That(options.Host).IsEqualTo("explicit-host");
+        await Assert.That(options.Database).IsEqualTo("explicit_database");
+        await Assert.That(options.Username).IsEqualTo("explicit_user");
+        await Assert.That(options.Password).IsEqualTo("explicit-password");
     }
 
     [Test]
-    public void DiscreteSecretsProjectIntoCanonicalSection()
+    public async Task DiscreteSecretsProjectIntoCanonicalSection()
     {
         var builder = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
         {
@@ -84,14 +83,14 @@ public sealed class PrivacyErasureAuthorityDatabaseConfigurationTests
         PrivacyErasureAuthorityDatabaseConfiguration.ProjectDiscreteConfiguration(builder);
         IConfiguration configuration = builder.Build();
 
-        configuration["PrivacyErasureAuthorityDatabase:Provider"].Should().Be("PostgreSql");
-        configuration["PrivacyErasureAuthorityDatabase:Host"].Should().Be("authority");
-        configuration["PrivacyErasureAuthorityDatabase:Runtime:Username"].Should().Be("runtime");
-        configuration["PrivacyErasureAuthorityDatabase:Migrator:Username"].Should().Be("migrator");
+        await Assert.That(configuration["PrivacyErasureAuthorityDatabase:Provider"]).IsEqualTo("PostgreSql");
+        await Assert.That(configuration["PrivacyErasureAuthorityDatabase:Host"]).IsEqualTo("authority");
+        await Assert.That(configuration["PrivacyErasureAuthorityDatabase:Runtime:Username"]).IsEqualTo("runtime");
+        await Assert.That(configuration["PrivacyErasureAuthorityDatabase:Migrator:Username"]).IsEqualTo("migrator");
     }
 
     [Test]
-    public void NonPostgreSqlProviderFailsClosed()
+    public async Task NonPostgreSqlProviderFailsClosed()
     {
         IConfiguration configuration = BuildConfiguration(new Dictionary<string, string?>
         {
@@ -101,8 +100,8 @@ public sealed class PrivacyErasureAuthorityDatabaseConfigurationTests
 
         Action act = () => PrivacyErasureAuthorityDatabaseConfiguration.BindRuntime(configuration);
 
-        act.Should().Throw<OptionsValidationException>()
-            .WithMessage("*Provider must be PostgreSql*");
+        await Assert.That(act).Throws<OptionsValidationException>()
+            .WithMessageContaining("Provider must be PostgreSql");
     }
 
     private static IConfiguration BuildConfiguration(Dictionary<string, string?> values) =>

@@ -4,7 +4,6 @@
 using Explore.Diagnostic.Doctor;
 using Explore.Diagnostic.Doctor.Checks;
 using Explore.Diagnostic.Doctor.Infrastructure;
-using FluentAssertions;
 
 namespace Explore.Diagnostic.UnitTests.Doctor.Checks;
 
@@ -24,7 +23,7 @@ public class GlobalJsonSdkDoctorCheckTests
 
         var result = await check.RunAsync(CancellationToken.None);
 
-        result.Status.Should().Be(DoctorCheckStatus.Pass);
+        await Assert.That(result.Status).IsEqualTo(DoctorCheckStatus.Pass);
     }
 
     [Test]
@@ -38,7 +37,7 @@ public class GlobalJsonSdkDoctorCheckTests
 
         var result = await check.RunAsync(CancellationToken.None);
 
-        result.Status.Should().Be(DoctorCheckStatus.Warn);
-        result.Remediation.Should().Contain("pinned SDK");
+        await Assert.That(result.Status).IsEqualTo(DoctorCheckStatus.Warn);
+        await Assert.That(result.Remediation).Contains("pinned SDK");
     }
 }

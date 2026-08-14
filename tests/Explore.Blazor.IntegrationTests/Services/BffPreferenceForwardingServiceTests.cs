@@ -3,7 +3,6 @@
 
 using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Services.Preferences;
-using FluentAssertions;
 
 namespace Explore.Blazor.IntegrationTests.Services;
 
@@ -20,7 +19,7 @@ public sealed class BffPreferenceForwardingServiceTests
 
         var response = await service.GetAppearanceAsync(CancellationToken.None);
 
-        response.Should().BeSameAs(expected);
+        await Assert.That(response).IsSameReferenceAs(expected);
         await apiClient.Received(1)
             .GetCurrentUserAppearancePreferencesAsync(cancellationToken: Arg.Any<CancellationToken>());
     }
@@ -37,10 +36,10 @@ public sealed class BffPreferenceForwardingServiceTests
         var service = new BffPreferenceForwardingService(apiClient);
         await service.PersistLocalizationAsync("rtl", null, CancellationToken.None);
 
-        captured.Should().NotBeNull();
-        captured!.Localization.Should().NotBeNull();
-        captured.Localization!.Direction.Should().Be("rtl");
-        captured.Localization.Language.Should().BeNull();
+        await Assert.That(captured).IsNotNull();
+        await Assert.That(captured!.Localization).IsNotNull();
+        await Assert.That(captured.Localization!.Direction).IsEqualTo("rtl");
+        await Assert.That(captured.Localization.Language).IsNull();
     }
 
     [Test]
@@ -74,7 +73,7 @@ public sealed class BffPreferenceForwardingServiceTests
 
         var response = await service.GeneratePaletteAsync("blue green", "#ff/00", isDark: true, CancellationToken.None);
 
-        response.Should().BeSameAs(expected);
+        await Assert.That(response).IsSameReferenceAs(expected);
         await apiClient.Received(1).GenerateAppearancePaletteAsync(
             "blue green",
             "#ff/00",
@@ -93,7 +92,7 @@ public sealed class BffPreferenceForwardingServiceTests
 
         var response = await service.GetAvailableThemesAsync(CancellationToken.None);
 
-        response.Should().BeSameAs(expected);
+        await Assert.That(response).IsSameReferenceAs(expected);
         await apiClient.Received(1)
             .GetAvailableThemesAsync(cancellationToken: Arg.Any<CancellationToken>());
     }

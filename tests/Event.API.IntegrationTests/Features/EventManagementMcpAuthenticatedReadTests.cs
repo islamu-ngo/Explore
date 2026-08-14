@@ -15,7 +15,6 @@ using Explore.Domain.Constants;
 using Explore.Domain.Enums;
 using Explore.Domain.Services.Scheduling;
 using Explore.Persistence;
-using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using TUnit.Core;
@@ -62,18 +61,18 @@ public sealed class EventManagementMcpAuthenticatedReadTests
             ["pageNumber"] = 1,
             ["pageSize"] = 999
         });
-        var mcpText = GetFirstTextContent(GetResult(mcpResponse));
+        var mcpText = await GetFirstTextContent(GetResult(mcpResponse));
         using var descriptor = JsonDocument.Parse(mcpText);
 
-        restResponse.StatusCode.Should().Be(HttpStatusCode.OK);
-        restText.Should().Contain(ownedTitle);
-        restText.Should().NotContain(otherTitle);
+        await Assert.That(restResponse.StatusCode).IsEqualTo(HttpStatusCode.OK);
+        await Assert.That(restText).Contains(ownedTitle);
+        await Assert.That(restText).DoesNotContain(otherTitle);
 
-        mcpText.Should().Contain(ownedTitle);
-        mcpText.Should().NotContain(otherTitle);
-        descriptor.RootElement.GetProperty("PageSize").GetInt32().Should().Be(25);
-        descriptor.RootElement.GetProperty("PageSizeWasClamped").GetBoolean().Should().BeTrue();
-        descriptor.RootElement.GetProperty("TotalCount").GetInt32().Should().Be(1);
+        await Assert.That(mcpText).Contains(ownedTitle);
+        await Assert.That(mcpText).DoesNotContain(otherTitle);
+        await Assert.That(descriptor.RootElement.GetProperty("PageSize").GetInt32()).IsEqualTo(25);
+        await Assert.That(descriptor.RootElement.GetProperty("PageSizeWasClamped").GetBoolean()).IsTrue();
+        await Assert.That(descriptor.RootElement.GetProperty("TotalCount").GetInt32()).IsEqualTo(1);
     }
 
     [Test]
@@ -92,31 +91,31 @@ public sealed class EventManagementMcpAuthenticatedReadTests
         var mcp = McpProtocolClient.Authenticated(client, seed.UserId);
 
         using var mcpResponse = await mcp.CallToolAsync("get_event_creation_context", new JsonObject());
-        var mcpText = GetFirstTextContent(GetResult(mcpResponse));
+        var mcpText = await GetFirstTextContent(GetResult(mcpResponse));
         using var descriptor = JsonDocument.Parse(mcpText);
 
-        restResponse.StatusCode.Should().Be(HttpStatusCode.OK);
-        restText.Should().Contain("AI Test Publisher Organization");
-        restText.Should().Contain(seed.OrganizationId.ToString());
+        await Assert.That(restResponse.StatusCode).IsEqualTo(HttpStatusCode.OK);
+        await Assert.That(restText).Contains("AI Test Publisher Organization");
+        await Assert.That(restText).Contains(seed.OrganizationId.ToString());
 
-        descriptor.RootElement.GetProperty("CanCreate").GetBoolean().Should().BeTrue();
-        descriptor.RootElement.GetProperty("AllowPersonalPublishing").GetBoolean().Should().BeTrue();
-        descriptor.RootElement.GetProperty("AllowOrganizationPublishing").GetBoolean().Should().BeTrue();
-        descriptor.RootElement.GetProperty("DefaultPublisherMode").GetString().Should().Be("personal");
-        descriptor.RootElement.GetProperty("PublisherOptionCount").GetInt32().Should().BeGreaterThanOrEqualTo(2);
-        descriptor.RootElement.GetProperty("PublisherOptionsWereTruncated").GetBoolean().Should().BeFalse();
+        await Assert.That(descriptor.RootElement.GetProperty("CanCreate").GetBoolean()).IsTrue();
+        await Assert.That(descriptor.RootElement.GetProperty("AllowPersonalPublishing").GetBoolean()).IsTrue();
+        await Assert.That(descriptor.RootElement.GetProperty("AllowOrganizationPublishing").GetBoolean()).IsTrue();
+        await Assert.That(descriptor.RootElement.GetProperty("DefaultPublisherMode").GetString()).IsEqualTo("personal");
+        await Assert.That(descriptor.RootElement.GetProperty("PublisherOptionCount").GetInt32()).IsGreaterThanOrEqualTo(2);
+        await Assert.That(descriptor.RootElement.GetProperty("PublisherOptionsWereTruncated").GetBoolean()).IsFalse();
 
         var publisherOptions = descriptor.RootElement.GetProperty("PublisherOptions");
         var organizationOption = publisherOptions.EnumerateArray().Single(option =>
             option.GetProperty("PublisherId").ValueKind == JsonValueKind.String &&
             option.GetProperty("PublisherId").GetGuid() == seed.OrganizationId);
-        organizationOption.GetProperty("PublisherMode").GetString().Should().Be("organization");
-        organizationOption.GetProperty("DisplayName").GetString().Should().Be("AI Test Publisher Organization");
-        organizationOption.GetProperty("CanPublish").GetBoolean().Should().BeTrue();
+        await Assert.That(organizationOption.GetProperty("PublisherMode").GetString()).IsEqualTo("organization");
+        await Assert.That(organizationOption.GetProperty("DisplayName").GetString()).IsEqualTo("AI Test Publisher Organization");
+        await Assert.That(organizationOption.GetProperty("CanPublish").GetBoolean()).IsTrue();
 
-        mcpText.Should().NotContain("RoleId");
-        mcpText.Should().NotContain("TenantId");
-        mcpText.Should().NotContain("UserId");
+        await Assert.That(mcpText).DoesNotContain("RoleId");
+        await Assert.That(mcpText).DoesNotContain("TenantId");
+        await Assert.That(mcpText).DoesNotContain("UserId");
     }
 
     [Test]
@@ -136,23 +135,22 @@ public sealed class EventManagementMcpAuthenticatedReadTests
 
         using var resourceResponse = await mcp.ReadResourceAsync(
             $"islamu-event://events/{seed.EventId}/management-context");
-        var resourceText = GetFirstResourceText(GetResult(resourceResponse));
+        var resourceText = await GetFirstResourceText(GetResult(resourceResponse));
         using var descriptor = JsonDocument.Parse(resourceText);
 
-        restResponse.StatusCode.Should().Be(HttpStatusCode.OK);
-        restLinks.Keys.Should().Contain(LinkRelations.Edit);
+        await Assert.That(restResponse.StatusCode).IsEqualTo(HttpStatusCode.OK);
+        await Assert.That(restLinks.Keys).Contains(LinkRelations.Edit);
 
-        descriptor.RootElement.GetProperty("Found").GetBoolean().Should().BeTrue();
-        descriptor.RootElement.GetProperty("EventId").GetGuid().Should().Be(seed.EventId);
+        await Assert.That(descriptor.RootElement.GetProperty("Found").GetBoolean()).IsTrue();
+        await Assert.That(descriptor.RootElement.GetProperty("EventId").GetGuid()).IsEqualTo(seed.EventId);
 
         var context = descriptor.RootElement.GetProperty("Context");
-        context.GetProperty("EventId").GetGuid().Should().Be(seed.EventId);
-        context.GetProperty("ConcurrencyStamp").GetGuid().Should().Be(seed.ConcurrencyStamp);
-        context.GetProperty("Title").GetString().Should().Be(title);
-        context.GetProperty("PublishReadinessAvailable").GetBoolean()
-            .Should().Be(restLinks.ContainsKey(LinkRelations.PublishReadiness));
-        context.GetProperty("PublishReadiness").ValueKind.Should().NotBe(JsonValueKind.Null);
-        context.GetProperty("PublishReadiness").GetProperty("EventId").GetGuid().Should().Be(seed.EventId);
+        await Assert.That(context.GetProperty("EventId").GetGuid()).IsEqualTo(seed.EventId);
+        await Assert.That(context.GetProperty("ConcurrencyStamp").GetGuid()).IsEqualTo(seed.ConcurrencyStamp);
+        await Assert.That(context.GetProperty("Title").GetString()).IsEqualTo(title);
+        await Assert.That(context.GetProperty("PublishReadinessAvailable").GetBoolean()).IsEqualTo(restLinks.ContainsKey(LinkRelations.PublishReadiness));
+        await Assert.That(context.GetProperty("PublishReadiness").ValueKind).IsNotEqualTo(JsonValueKind.Null);
+        await Assert.That(context.GetProperty("PublishReadiness").GetProperty("EventId").GetGuid()).IsEqualTo(seed.EventId);
 
         var actions = context.GetProperty("Actions")
             .EnumerateArray()
@@ -160,25 +158,25 @@ public sealed class EventManagementMcpAuthenticatedReadTests
 
         foreach (var relation in ManagementActionRelations)
         {
-            actions.Should().ContainKey(relation);
+            await Assert.That(actions).ContainsKey(relation);
             var action = actions[relation];
             var isAvailableInRest = restLinks.TryGetValue(relation, out var restLink);
-            action.GetProperty("Available").GetBoolean().Should().Be(isAvailableInRest, relation);
+            await Assert.That(action.GetProperty("Available").GetBoolean()).IsEqualTo(isAvailableInRest).Because(relation);
 
             if (isAvailableInRest)
             {
-                action.GetProperty("Href").GetString().Should().Be(restLink.Href, relation);
-                action.GetProperty("Method").GetString().Should().Be(restLink.Method, relation);
+                await Assert.That(action.GetProperty("Href").GetString()).IsEqualTo(restLink.Href).Because(relation);
+                await Assert.That(action.GetProperty("Method").GetString()).IsEqualTo(restLink.Method).Because(relation);
                 continue;
             }
 
-            action.GetProperty("Href").ValueKind.Should().Be(JsonValueKind.Null, relation);
-            action.GetProperty("Method").ValueKind.Should().Be(JsonValueKind.Null, relation);
+            await Assert.That(action.GetProperty("Href").ValueKind).IsEqualTo(JsonValueKind.Null).Because(relation);
+            await Assert.That(action.GetProperty("Method").ValueKind).IsEqualTo(JsonValueKind.Null).Because(relation);
         }
 
-        resourceText.Should().NotContain("TenantId");
-        resourceText.Should().NotContain("UserId");
-        resourceText.Should().NotContain("RoleId");
+        await Assert.That(resourceText).DoesNotContain("TenantId");
+        await Assert.That(resourceText).DoesNotContain("UserId");
+        await Assert.That(resourceText).DoesNotContain("RoleId");
     }
 
     [Test]
@@ -204,23 +202,22 @@ public sealed class EventManagementMcpAuthenticatedReadTests
         {
             ["eventId"] = seed.EventId.ToString()
         });
-        var mcpText = GetFirstTextContent(GetResult(mcpResponse));
+        var mcpText = await GetFirstTextContent(GetResult(mcpResponse));
         using var descriptor = JsonDocument.Parse(mcpText);
 
-        restDetailResponse.StatusCode.Should().Be(HttpStatusCode.OK);
-        restLinks.Should().ContainKey(LinkRelations.PublishReadiness);
-        restReadinessResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        await Assert.That(restDetailResponse.StatusCode).IsEqualTo(HttpStatusCode.OK);
+        await Assert.That(restLinks).ContainsKey(LinkRelations.PublishReadiness);
+        await Assert.That(restReadinessResponse.StatusCode).IsEqualTo(HttpStatusCode.OK);
 
         var restErrors = restReadiness.RootElement.GetProperty("errors");
         var readiness = descriptor.RootElement.GetProperty("PublishReadiness");
-        descriptor.RootElement.GetProperty("Found").GetBoolean().Should().BeTrue();
-        descriptor.RootElement.GetProperty("Available").GetBoolean().Should().BeTrue();
-        descriptor.RootElement.GetProperty("FailureCode").ValueKind.Should().Be(JsonValueKind.Null);
-        readiness.GetProperty("EventId").GetGuid().Should().Be(seed.EventId);
-        readiness.GetProperty("IsReady").GetBoolean()
-            .Should().Be(restReadiness.RootElement.GetProperty("isReady").GetBoolean());
-        readiness.GetProperty("ErrorCount").GetInt32().Should().Be(restErrors.GetArrayLength());
-        readiness.GetProperty("Errors").GetArrayLength().Should().BeLessThanOrEqualTo(25);
+        await Assert.That(descriptor.RootElement.GetProperty("Found").GetBoolean()).IsTrue();
+        await Assert.That(descriptor.RootElement.GetProperty("Available").GetBoolean()).IsTrue();
+        await Assert.That(descriptor.RootElement.GetProperty("FailureCode").ValueKind).IsEqualTo(JsonValueKind.Null);
+        await Assert.That(readiness.GetProperty("EventId").GetGuid()).IsEqualTo(seed.EventId);
+        await Assert.That(readiness.GetProperty("IsReady").GetBoolean()).IsEqualTo(restReadiness.RootElement.GetProperty("isReady").GetBoolean());
+        await Assert.That(readiness.GetProperty("ErrorCount").GetInt32()).IsEqualTo(restErrors.GetArrayLength());
+        await Assert.That(readiness.GetProperty("Errors").GetArrayLength()).IsLessThanOrEqualTo(25);
 
         if (restErrors.GetArrayLength() > 0)
         {
@@ -235,12 +232,12 @@ public sealed class EventManagementMcpAuthenticatedReadTests
                 .Where(code => !string.IsNullOrWhiteSpace(code))
                 .ToArray();
 
-            mcpCodes.Should().BeSubsetOf(restCodes);
+            await Assert.That(mcpCodes.All(restCodes.Contains)).IsTrue();
         }
 
-        mcpText.Should().NotContain("TenantId");
-        mcpText.Should().NotContain("UserId");
-        mcpText.Should().NotContain("RoleId");
+        await Assert.That(mcpText).DoesNotContain("TenantId");
+        await Assert.That(mcpText).DoesNotContain("UserId");
+        await Assert.That(mcpText).DoesNotContain("RoleId");
     }
 
     [Test]
@@ -263,14 +260,14 @@ public sealed class EventManagementMcpAuthenticatedReadTests
         {
             ["eventId"] = seed.EventId.ToString()
         });
-        using var descriptor = JsonDocument.Parse(GetFirstTextContent(GetResult(mcpResponse)));
+        using var descriptor = JsonDocument.Parse(await GetFirstTextContent(GetResult(mcpResponse)));
 
-        restDetailResponse.StatusCode.Should().Be(HttpStatusCode.OK);
-        restLinks.Should().NotContainKey(LinkRelations.PublishReadiness);
-        descriptor.RootElement.GetProperty("Found").GetBoolean().Should().BeTrue();
-        descriptor.RootElement.GetProperty("Available").GetBoolean().Should().BeFalse();
-        descriptor.RootElement.GetProperty("FailureCode").GetString().Should().Be("not_available");
-        descriptor.RootElement.GetProperty("PublishReadiness").ValueKind.Should().Be(JsonValueKind.Null);
+        await Assert.That(restDetailResponse.StatusCode).IsEqualTo(HttpStatusCode.OK);
+        await Assert.That(restLinks).DoesNotContainKey(LinkRelations.PublishReadiness);
+        await Assert.That(descriptor.RootElement.GetProperty("Found").GetBoolean()).IsTrue();
+        await Assert.That(descriptor.RootElement.GetProperty("Available").GetBoolean()).IsFalse();
+        await Assert.That(descriptor.RootElement.GetProperty("FailureCode").GetString()).IsEqualTo("not_available");
+        await Assert.That(descriptor.RootElement.GetProperty("PublishReadiness").ValueKind).IsEqualTo(JsonValueKind.Null);
     }
 
     [Test]
@@ -288,126 +285,126 @@ public sealed class EventManagementMcpAuthenticatedReadTests
         {
             ["eventId"] = seed.EventId.ToString()
         });
-        var programText = GetFirstTextContent(GetResult(programResponse));
+        var programText = await GetFirstTextContent(GetResult(programResponse));
         using var program = JsonDocument.Parse(programText);
         var programContext = program.RootElement.GetProperty("Context");
 
-        program.RootElement.GetProperty("Found").GetBoolean().Should().BeTrue();
-        program.RootElement.GetProperty("Available").GetBoolean().Should().BeTrue();
-        programContext.GetProperty("EventId").GetGuid().Should().Be(seed.EventId);
-        programContext.GetProperty("SessionCount").GetInt32().Should().Be(1);
-        programContext.GetProperty("SessionGroupCount").GetInt32().Should().Be(1);
-        programContext.GetProperty("DayCount").GetInt32().Should().Be(1);
-        programContext.GetProperty("AgendaItemCount").GetInt32().Should().Be(1);
-        programText.Should().Contain("MCP Management Session");
-        programText.Should().Contain("MCP Management Track");
-        programText.Should().NotContain("LocationName");
-        programText.Should().NotContain("RoomName");
-        programText.Should().NotContain("TenantId");
-        programText.Should().NotContain("UserId");
+        await Assert.That(program.RootElement.GetProperty("Found").GetBoolean()).IsTrue();
+        await Assert.That(program.RootElement.GetProperty("Available").GetBoolean()).IsTrue();
+        await Assert.That(programContext.GetProperty("EventId").GetGuid()).IsEqualTo(seed.EventId);
+        await Assert.That(programContext.GetProperty("SessionCount").GetInt32()).IsEqualTo(1);
+        await Assert.That(programContext.GetProperty("SessionGroupCount").GetInt32()).IsEqualTo(1);
+        await Assert.That(programContext.GetProperty("DayCount").GetInt32()).IsEqualTo(1);
+        await Assert.That(programContext.GetProperty("AgendaItemCount").GetInt32()).IsEqualTo(1);
+        await Assert.That(programText).Contains("MCP Management Session");
+        await Assert.That(programText).Contains("MCP Management Track");
+        await Assert.That(programText).DoesNotContain("LocationName");
+        await Assert.That(programText).DoesNotContain("RoomName");
+        await Assert.That(programText).DoesNotContain("TenantId");
+        await Assert.That(programText).DoesNotContain("UserId");
 
         using var customPropertiesResponse = await mcp.CallToolAsync("get_event_custom_properties_context", new JsonObject
         {
             ["eventId"] = seed.EventId.ToString(),
             ["pageSize"] = 999
         });
-        var customPropertiesText = GetFirstTextContent(GetResult(customPropertiesResponse));
+        var customPropertiesText = await GetFirstTextContent(GetResult(customPropertiesResponse));
         using var customProperties = JsonDocument.Parse(customPropertiesText);
         var customPropertiesContext = customProperties.RootElement.GetProperty("Context");
 
-        customProperties.RootElement.GetProperty("Found").GetBoolean().Should().BeTrue();
-        customProperties.RootElement.GetProperty("Available").GetBoolean().Should().BeTrue();
-        customPropertiesContext.GetProperty("PageSize").GetInt32().Should().Be(25);
-        customPropertiesContext.GetProperty("PageSizeWasClamped").GetBoolean().Should().BeTrue();
-        customPropertiesContext.GetProperty("TotalDefinitionCount").GetInt32().Should().Be(1);
-        customPropertiesContext.GetProperty("ValueCount").GetInt32().Should().Be(1);
-        customPropertiesText.Should().Contain("MCP Track Notes");
-        customPropertiesText.Should().Contain("Bring notebook");
-        customPropertiesText.Should().NotContain("TenantId");
-        customPropertiesText.Should().NotContain("UserId");
+        await Assert.That(customProperties.RootElement.GetProperty("Found").GetBoolean()).IsTrue();
+        await Assert.That(customProperties.RootElement.GetProperty("Available").GetBoolean()).IsTrue();
+        await Assert.That(customPropertiesContext.GetProperty("PageSize").GetInt32()).IsEqualTo(25);
+        await Assert.That(customPropertiesContext.GetProperty("PageSizeWasClamped").GetBoolean()).IsTrue();
+        await Assert.That(customPropertiesContext.GetProperty("TotalDefinitionCount").GetInt32()).IsEqualTo(1);
+        await Assert.That(customPropertiesContext.GetProperty("ValueCount").GetInt32()).IsEqualTo(1);
+        await Assert.That(customPropertiesText).Contains("MCP Track Notes");
+        await Assert.That(customPropertiesText).Contains("Bring notebook");
+        await Assert.That(customPropertiesText).DoesNotContain("TenantId");
+        await Assert.That(customPropertiesText).DoesNotContain("UserId");
 
         using var registrationsResponse = await mcp.CallToolAsync("get_event_registrations_context", new JsonObject
         {
             ["eventId"] = seed.EventId.ToString(),
             ["pageSize"] = 999
         });
-        var registrationsText = GetFirstTextContent(GetResult(registrationsResponse));
+        var registrationsText = await GetFirstTextContent(GetResult(registrationsResponse));
         using var registrations = JsonDocument.Parse(registrationsText);
         var registrationsContext = registrations.RootElement.GetProperty("Context");
 
-        registrations.RootElement.GetProperty("Found").GetBoolean().Should().BeTrue();
-        registrations.RootElement.GetProperty("Available").GetBoolean().Should().BeTrue();
-        registrationsContext.GetProperty("PageSize").GetInt32().Should().Be(100);
-        registrationsContext.GetProperty("PageSizeWasClamped").GetBoolean().Should().BeTrue();
-        registrationsContext.GetProperty("TotalRegistrationCount").GetInt32().Should().Be(1);
+        await Assert.That(registrations.RootElement.GetProperty("Found").GetBoolean()).IsTrue();
+        await Assert.That(registrations.RootElement.GetProperty("Available").GetBoolean()).IsTrue();
+        await Assert.That(registrationsContext.GetProperty("PageSize").GetInt32()).IsEqualTo(100);
+        await Assert.That(registrationsContext.GetProperty("PageSizeWasClamped").GetBoolean()).IsTrue();
+        await Assert.That(registrationsContext.GetProperty("TotalRegistrationCount").GetInt32()).IsEqualTo(1);
         var registration = registrationsContext.GetProperty("Registrations").EnumerateArray().Single();
-        registration.GetProperty("EventId").GetGuid().Should().Be(seed.EventId);
-        registration.GetProperty("StatusCode").GetString().Should().Be("DRAFT");
-        registration.GetProperty("CurrencyCode").GetString().Should().Be("USD");
-        registration.GetProperty("TotalDueMinor").GetInt64().Should().Be(0);
-        registrationsText.Should().NotContain("MCP Management Session");
-        registrationsText.Should().NotContain("Approved");
-        registrationsText.Should().NotContain("MCP Management Attendee");
-        registrationsText.Should().NotContain("TenantId");
-        registrationsText.Should().NotContain("UserId");
-        registrationsText.Should().NotContain("UserFullName");
-        registrationsText.Should().NotContain("UserEmail");
+        await Assert.That(registration.GetProperty("EventId").GetGuid()).IsEqualTo(seed.EventId);
+        await Assert.That(registration.GetProperty("StatusCode").GetString()).IsEqualTo("DRAFT");
+        await Assert.That(registration.GetProperty("CurrencyCode").GetString()).IsEqualTo("USD");
+        await Assert.That(registration.GetProperty("TotalDueMinor").GetInt64()).IsEqualTo(0);
+        await Assert.That(registrationsText).DoesNotContain("MCP Management Session");
+        await Assert.That(registrationsText).DoesNotContain("Approved");
+        await Assert.That(registrationsText).DoesNotContain("MCP Management Attendee");
+        await Assert.That(registrationsText).DoesNotContain("TenantId");
+        await Assert.That(registrationsText).DoesNotContain("UserId");
+        await Assert.That(registrationsText).DoesNotContain("UserFullName");
+        await Assert.That(registrationsText).DoesNotContain("UserEmail");
 
         using var teamResponse = await mcp.CallToolAsync("get_event_team_context", new JsonObject
         {
             ["eventId"] = seed.EventId.ToString()
         });
-        var teamText = GetFirstTextContent(GetResult(teamResponse));
+        var teamText = await GetFirstTextContent(GetResult(teamResponse));
         using var team = JsonDocument.Parse(teamText);
 
-        team.RootElement.GetProperty("Found").GetBoolean().Should().BeTrue();
-        team.RootElement.GetProperty("Available").GetBoolean().Should().BeTrue();
-        team.RootElement.GetProperty("Context").GetProperty("CurrentUserPermissions")
-            .GetProperty("EventId").GetGuid().Should().Be(seed.EventId);
-        teamText.Should().NotContain("TenantId");
-        teamText.Should().NotContain("UserId");
+        await Assert.That(team.RootElement.GetProperty("Found").GetBoolean()).IsTrue();
+        await Assert.That(team.RootElement.GetProperty("Available").GetBoolean()).IsTrue();
+        await Assert.That(team.RootElement.GetProperty("Context").GetProperty("CurrentUserPermissions")
+            .GetProperty("EventId").GetGuid()).IsEqualTo(seed.EventId);
+        await Assert.That(teamText).DoesNotContain("TenantId");
+        await Assert.That(teamText).DoesNotContain("UserId");
 
         using var templateCatalogResponse = await mcp.CallToolAsync("get_event_template_catalog_context", new JsonObject
         {
             ["eventId"] = seed.EventId.ToString(),
             ["pageSize"] = 999
         });
-        var templateCatalogText = GetFirstTextContent(GetResult(templateCatalogResponse));
+        var templateCatalogText = await GetFirstTextContent(GetResult(templateCatalogResponse));
         using var templateCatalog = JsonDocument.Parse(templateCatalogText);
 
-        templateCatalog.RootElement.GetProperty("Found").GetBoolean().Should().BeTrue();
-        templateCatalog.RootElement.GetProperty("Available").GetBoolean().Should().BeTrue();
-        templateCatalog.RootElement.GetProperty("Context").GetProperty("PageSize").GetInt32().Should().Be(25);
-        templateCatalogText.Should().NotContain("TenantId");
-        templateCatalogText.Should().NotContain("UserId");
+        await Assert.That(templateCatalog.RootElement.GetProperty("Found").GetBoolean()).IsTrue();
+        await Assert.That(templateCatalog.RootElement.GetProperty("Available").GetBoolean()).IsTrue();
+        await Assert.That(templateCatalog.RootElement.GetProperty("Context").GetProperty("PageSize").GetInt32()).IsEqualTo(25);
+        await Assert.That(templateCatalogText).DoesNotContain("TenantId");
+        await Assert.That(templateCatalogText).DoesNotContain("UserId");
 
         using var templateSyncResponse = await mcp.CallToolAsync("get_event_template_sync_context", new JsonObject
         {
             ["eventId"] = seed.EventId.ToString()
         });
-        var templateSyncText = GetFirstTextContent(GetResult(templateSyncResponse));
+        var templateSyncText = await GetFirstTextContent(GetResult(templateSyncResponse));
         using var templateSync = JsonDocument.Parse(templateSyncText);
 
-        templateSync.RootElement.GetProperty("Found").GetBoolean().Should().BeTrue();
-        templateSync.RootElement.GetProperty("Available").GetBoolean().Should().BeTrue();
-        templateSync.RootElement.GetProperty("Context").GetProperty("DiffAvailable").GetBoolean().Should().BeFalse();
-        templateSync.RootElement.GetProperty("Context").GetProperty("DiffFailureCode").GetString().Should().Be("not_requested");
-        templateSyncText.Should().NotContain("TenantId");
-        templateSyncText.Should().NotContain("UserId");
+        await Assert.That(templateSync.RootElement.GetProperty("Found").GetBoolean()).IsTrue();
+        await Assert.That(templateSync.RootElement.GetProperty("Available").GetBoolean()).IsTrue();
+        await Assert.That(templateSync.RootElement.GetProperty("Context").GetProperty("DiffAvailable").GetBoolean()).IsFalse();
+        await Assert.That(templateSync.RootElement.GetProperty("Context").GetProperty("DiffFailureCode").GetString()).IsEqualTo("not_requested");
+        await Assert.That(templateSyncText).DoesNotContain("TenantId");
+        await Assert.That(templateSyncText).DoesNotContain("UserId");
 
         using var sessionTemplateSyncResponse = await mcp.CallToolAsync("get_event_session_template_sync_context", new JsonObject
         {
             ["eventId"] = seed.EventId.ToString(),
             ["sessionId"] = sessionId.ToString()
         });
-        var sessionTemplateSyncText = GetFirstTextContent(GetResult(sessionTemplateSyncResponse));
+        var sessionTemplateSyncText = await GetFirstTextContent(GetResult(sessionTemplateSyncResponse));
         using var sessionTemplateSync = JsonDocument.Parse(sessionTemplateSyncText);
 
-        sessionTemplateSync.RootElement.GetProperty("Found").GetBoolean().Should().BeTrue();
-        sessionTemplateSync.RootElement.GetProperty("Available").GetBoolean().Should().BeTrue();
-        sessionTemplateSync.RootElement.GetProperty("Context").GetProperty("SessionId").GetGuid().Should().Be(sessionId);
-        sessionTemplateSyncText.Should().NotContain("TenantId");
-        sessionTemplateSyncText.Should().NotContain("UserId");
+        await Assert.That(sessionTemplateSync.RootElement.GetProperty("Found").GetBoolean()).IsTrue();
+        await Assert.That(sessionTemplateSync.RootElement.GetProperty("Available").GetBoolean()).IsTrue();
+        await Assert.That(sessionTemplateSync.RootElement.GetProperty("Context").GetProperty("SessionId").GetGuid()).IsEqualTo(sessionId);
+        await Assert.That(sessionTemplateSyncText).DoesNotContain("TenantId");
+        await Assert.That(sessionTemplateSyncText).DoesNotContain("UserId");
     }
 
     private static AuthenticatedWebApplicationFactory CreateMcpEnabledFactory()
@@ -577,7 +574,7 @@ public sealed class EventManagementMcpAuthenticatedReadTests
         await using var scope = factory.Services.CreateAsyncScope();
         var context = scope.ServiceProvider.GetRequiredService<ExploreDbContext>();
         var @event = await context.Events.FindAsync(eventId);
-        @event.Should().NotBeNull();
+        await Assert.That(@event).IsNotNull();
         @event!.EventStatusId = (int)status;
         await context.SaveChangesAsync();
     }
@@ -589,7 +586,7 @@ public sealed class EventManagementMcpAuthenticatedReadTests
         await using var scope = factory.Services.CreateAsyncScope();
         var context = scope.ServiceProvider.GetRequiredService<ExploreDbContext>();
         var @event = await context.Events.FindAsync(eventId);
-        @event.Should().NotBeNull();
+        await Assert.That(@event).IsNotNull();
         @event!.Timezone = "UTC";
         var tenantId = @event.TenantId;
         var start = DateTimeOffset.UtcNow.AddDays(10);
@@ -759,19 +756,19 @@ public sealed class EventManagementMcpAuthenticatedReadTests
     private static JsonElement GetResult(JsonDocument document)
         => document.RootElement.GetProperty("result");
 
-    private static string GetFirstTextContent(JsonElement result)
+    private static async Task<string> GetFirstTextContent(JsonElement result)
     {
         var content = result.GetProperty("content");
-        content.ValueKind.Should().Be(JsonValueKind.Array);
-        content.GetArrayLength().Should().BeGreaterThan(0);
+        await Assert.That(content.ValueKind).IsEqualTo(JsonValueKind.Array);
+        await Assert.That(content.GetArrayLength()).IsGreaterThan(0);
         return content[0].GetProperty("text").GetString() ?? string.Empty;
     }
 
-    private static string GetFirstResourceText(JsonElement result)
+    private static async Task<string> GetFirstResourceText(JsonElement result)
     {
         var contents = result.GetProperty("contents");
-        contents.ValueKind.Should().Be(JsonValueKind.Array);
-        contents.GetArrayLength().Should().BeGreaterThan(0);
+        await Assert.That(contents.ValueKind).IsEqualTo(JsonValueKind.Array);
+        await Assert.That(contents.GetArrayLength()).IsGreaterThan(0);
         return contents[0].GetProperty("text").GetString() ?? string.Empty;
     }
 
@@ -830,10 +827,10 @@ public sealed class EventManagementMcpAuthenticatedReadTests
             }
 
             using var response = await SendRawAsync(requestBody.ToJsonString());
-            response.StatusCode.Should().Be(HttpStatusCode.OK);
+            await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
             var document = await ReadJsonRpcDocumentAsync(response);
-            document.RootElement.TryGetProperty("error", out _).Should().BeFalse(document.RootElement.GetRawText());
-            document.RootElement.TryGetProperty("result", out _).Should().BeTrue(document.RootElement.GetRawText());
+            await Assert.That(document.RootElement.TryGetProperty("error", out _)).IsFalse().Because(document.RootElement.GetRawText());
+            await Assert.That(document.RootElement.TryGetProperty("result", out _)).IsTrue().Because(document.RootElement.GetRawText());
             return document;
         }
 

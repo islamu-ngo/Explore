@@ -3,7 +3,6 @@
 
 using System.Net;
 using Explore.Blazor.Services.Auth;
-using FluentAssertions;
 using Microsoft.Extensions.Options;
 
 namespace Explore.Blazor.IntegrationTests.Services;
@@ -27,7 +26,7 @@ public sealed class BffAuthDiagnosticsServiceTests
         await Assert.That(snapshot["hasClientSecret"]).IsEqualTo(false);
         await Assert.That(snapshot["discoveryStatus"]).IsEqualTo((int)HttpStatusCode.OK);
         await Assert.That(snapshot["discoverySuccess"]).IsEqualTo(true);
-        snapshot.Should().ContainKey("discoveryDocument");
+        await Assert.That(snapshot).ContainsKey("discoveryDocument");
     }
 
     [Test]

@@ -1,7 +1,6 @@
 // ABOUTME: Token-boundary tests for browser-readable current-user BFF identity projection.
 // ABOUTME: Ensures server-held token-shaped claims are not returned by /bff/me responses.
 
-using FluentAssertions;
 
 namespace Explore.Blazor.IntegrationTests.Endpoints;
 
@@ -35,13 +34,13 @@ public sealed class BffCurrentUserEndpointTokenBoundaryTests
         using var response = await client.SendAsync(request);
         var body = await response.Content.ReadAsStringAsync();
 
-        response.StatusCode.Should().Be(HttpStatusCode.OK);
-        body.Should().Contain("Token Boundary User");
-        body.Should().NotContain("access_token");
-        body.Should().NotContain("refresh_token");
-        body.Should().NotContain("id_token");
-        body.Should().NotContain(accessToken);
-        body.Should().NotContain(refreshToken);
-        body.Should().NotContain(idToken);
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
+        await Assert.That(body).Contains("Token Boundary User");
+        await Assert.That(body).DoesNotContain("access_token");
+        await Assert.That(body).DoesNotContain("refresh_token");
+        await Assert.That(body).DoesNotContain("id_token");
+        await Assert.That(body).DoesNotContain(accessToken);
+        await Assert.That(body).DoesNotContain(refreshToken);
+        await Assert.That(body).DoesNotContain(idToken);
     }
 }

@@ -4,7 +4,6 @@
 using Explore.Diagnostic.Doctor;
 using Explore.Diagnostic.Doctor.Checks;
 using Explore.Diagnostic.Doctor.Infrastructure;
-using FluentAssertions;
 
 namespace Explore.Diagnostic.UnitTests.Doctor.Checks;
 
@@ -20,8 +19,10 @@ public class DockerDoctorCheckTests
 
         var result = await check.RunAsync(CancellationToken.None);
 
-        result.Status.Should().Be(DoctorCheckStatus.Pass);
-        processRunner.Calls.Should().Equal(("docker", "--version"), ("docker", "compose version"));
+        await Assert.That(result.Status).IsEqualTo(DoctorCheckStatus.Pass);
+        await Assert.That(processRunner.Calls.Count).IsEqualTo(2);
+        await Assert.That(processRunner.Calls[0]).IsEqualTo(("docker", "--version"));
+        await Assert.That(processRunner.Calls[1]).IsEqualTo(("docker", "compose version"));
     }
 
     [Test]
@@ -34,7 +35,7 @@ public class DockerDoctorCheckTests
 
         var result = await check.RunAsync(CancellationToken.None);
 
-        result.Status.Should().Be(DoctorCheckStatus.Fail);
-        result.Summary.Should().Contain("docker compose");
+        await Assert.That(result.Status).IsEqualTo(DoctorCheckStatus.Fail);
+        await Assert.That(result.Summary).Contains("docker compose");
     }
 }

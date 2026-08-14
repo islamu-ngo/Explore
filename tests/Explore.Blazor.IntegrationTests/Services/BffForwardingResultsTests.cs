@@ -4,7 +4,6 @@
 using System.Net;
 using System.Text;
 using Explore.Blazor.Services.Preferences;
-using FluentAssertions;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -25,11 +24,11 @@ public sealed class BffForwardingResultsTests
 
         await result.ExecuteAsync(context);
 
-        context.Response.ContentType.Should().Be("application/json");
+        await Assert.That(context.Response.ContentType).IsEqualTo("application/json");
         context.Response.Body.Position = 0;
         using var reader = new StreamReader(context.Response.Body, Encoding.UTF8);
         var body = await reader.ReadToEndAsync();
-        body.Should().Be("{\"ok\":true}");
+        await Assert.That(body).IsEqualTo("{\"ok\":true}");
     }
 
     [Test]
@@ -55,7 +54,7 @@ public sealed class BffForwardingResultsTests
         context.Response.Body.Position = 0;
         using var reader = new StreamReader(context.Response.Body, Encoding.UTF8);
         var body = await reader.ReadToEndAsync();
-        body.Should().Be("{\"ok\":true}");
+        await Assert.That(body).IsEqualTo("{\"ok\":true}");
     }
 
     [Test]
@@ -68,7 +67,7 @@ public sealed class BffForwardingResultsTests
 
         await result.ExecuteAsync(context);
 
-        context.Response.StatusCode.Should().Be(StatusCodes.Status502BadGateway);
+        await Assert.That(context.Response.StatusCode).IsEqualTo(StatusCodes.Status502BadGateway);
     }
 
     [Test]
@@ -84,11 +83,11 @@ public sealed class BffForwardingResultsTests
 
         await result.ExecuteAsync(context);
 
-        context.Response.ContentType.Should().StartWith("application/hal+json");
+        await Assert.That(context.Response.ContentType).StartsWith("application/hal+json");
         context.Response.Body.Position = 0;
         using var reader = new StreamReader(context.Response.Body, Encoding.UTF8);
         var body = await reader.ReadToEndAsync();
-        body.Should().Be("[]");
+        await Assert.That(body).IsEqualTo("[]");
     }
 
     [Test]
@@ -101,7 +100,7 @@ public sealed class BffForwardingResultsTests
 
         await result.ExecuteAsync(context);
 
-        context.Response.StatusCode.Should().Be(StatusCodes.Status409Conflict);
+        await Assert.That(context.Response.StatusCode).IsEqualTo(StatusCodes.Status409Conflict);
     }
 
     private static DefaultHttpContext CreateContext()

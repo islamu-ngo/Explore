@@ -2,7 +2,6 @@
 // ABOUTME: Ensures it binds structured database settings instead of hardcoded localhost defaults.
 
 using Explore.API.Scheduling;
-using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
 using TUnit.Core;
@@ -23,7 +22,7 @@ public sealed class ApiTickerQDbContextFactoryTests
     ];
 
     [Test]
-    public void CreateDbContext_UsesStructuredDatabaseSettings()
+    public async Task CreateDbContext_UsesStructuredDatabaseSettings()
     {
         try
         {
@@ -38,12 +37,12 @@ public sealed class ApiTickerQDbContextFactoryTests
             using var context = factory.CreateDbContext([]);
 
             var parsed = new NpgsqlConnectionStringBuilder(context.Database.GetConnectionString());
-            parsed.Host.Should().Be("tickerq-db.example.test");
-            parsed.Port.Should().Be(5434);
-            parsed.Database.Should().Be("tickerq_design_time");
-            parsed.Username.Should().Be("tickerq_user");
-            parsed.Password.Should().Be("tickerq_secret");
-            parsed.Host.Should().NotBe("localhost");
+            await Assert.That(parsed.Host).IsEqualTo("tickerq-db.example.test");
+            await Assert.That(parsed.Port).IsEqualTo(5434);
+            await Assert.That(parsed.Database).IsEqualTo("tickerq_design_time");
+            await Assert.That(parsed.Username).IsEqualTo("tickerq_user");
+            await Assert.That(parsed.Password).IsEqualTo("tickerq_secret");
+            await Assert.That(parsed.Host).IsNotEqualTo("localhost");
         }
         finally
         {
@@ -55,7 +54,7 @@ public sealed class ApiTickerQDbContextFactoryTests
     }
 
     [Test]
-    public void CreateDbContext_RejectsNonPostgreSqlWithoutLeakingCredentials()
+    public async Task CreateDbContext_RejectsNonPostgreSqlWithoutLeakingCredentials()
     {
         const string password = "tickerq-design-time-gate-password";
 
@@ -69,10 +68,10 @@ public sealed class ApiTickerQDbContextFactoryTests
 
             Action act = () => new ApiTickerQDbContextFactory().CreateDbContext([]);
 
-            var exception = act.Should().Throw<InvalidOperationException>().Which;
-            exception.Message.Should().Contain("Database:Provider=PostgreSql")
-                .And.Contain("EmailDispatchProcessor:Mode=HostedService")
-                .And.NotContain(password);
+            var exception = Assert.Throws<InvalidOperationException>(act);
+            await Assert.That(exception.Message).Contains("Database:Provider=PostgreSql");
+            await Assert.That(exception.Message).Contains("EmailDispatchProcessor:Mode=HostedService");
+            await Assert.That(exception.Message).DoesNotContain(password);
         }
         finally
         {

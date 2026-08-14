@@ -1,9 +1,8 @@
 // ABOUTME: Unit tests for EnvironmentSecretProvider.
-// Tests key mapping, secret retrieval, and health status.
+// ABOUTME: Tests key mapping, secret retrieval, and health status.
 
 using Explore.Secrets.Abstractions;
 using Explore.Secrets.Providers;
-using FluentAssertions;
 using Microsoft.Extensions.Logging;
 using NSubstitute;
 using TUnit.Core;
@@ -22,15 +21,15 @@ public class EnvironmentSecretProviderTests
     }
 
     [Test]
-    public void ProviderType_ShouldReturnNone()
+    public async Task ProviderType_ShouldReturnNone()
     {
-        _provider.ProviderType.Should().Be(SecretProviderType.None);
+        await Assert.That(_provider.ProviderType).IsEqualTo(SecretProviderType.None);
     }
 
     [Test]
-    public void SupportsRefresh_ShouldReturnFalse()
+    public async Task SupportsRefresh_ShouldReturnFalse()
     {
-        _provider.SupportsRefresh.Should().BeFalse();
+        await Assert.That(_provider.SupportsRefresh).IsFalse();
     }
 
     [Test]
@@ -45,8 +44,8 @@ public class EnvironmentSecretProviderTests
     {
         var act = async () => await _provider.GetSecretAsync("Test:Key");
 
-        await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*not initialized*");
+        await Assert.That(act).Throws<InvalidOperationException>()
+            .WithMessageContaining("not initialized");
     }
 
     [Test]
@@ -62,7 +61,7 @@ public class EnvironmentSecretProviderTests
             var result = await _provider.GetSecretAsync("Test:Secret");
 
             // Assert
-            result.Should().Be("secret-value");
+            await Assert.That(result).IsEqualTo("secret-value");
         }
         finally
         {
@@ -80,7 +79,7 @@ public class EnvironmentSecretProviderTests
         var result = await _provider.GetSecretAsync("NonExistent:Key");
 
         // Assert
-        result.Should().BeNull();
+        await Assert.That(result).IsNull();
     }
 
     [Test]
@@ -96,9 +95,9 @@ public class EnvironmentSecretProviderTests
             var result = await _provider.GetSecretWithMetadataAsync("Metadata:Test");
 
             // Assert
-            result.Should().NotBeNull();
-            result!.Value.Should().Be("test-value");
-            result.Version.Should().BeNull(); // Env vars don't have versions
+            await Assert.That(result).IsNotNull();
+            await Assert.That(result!.Value).IsEqualTo("test-value");
+            await Assert.That(result.Version).IsNull(); // Env vars don't have versions
         }
         finally
         {
@@ -116,7 +115,7 @@ public class EnvironmentSecretProviderTests
         var result = await _provider.GetSecretWithMetadataAsync("NonExistent:Key");
 
         // Assert
-        result.Should().BeNull();
+        await Assert.That(result).IsNull();
     }
 
     [Test]
@@ -134,9 +133,9 @@ public class EnvironmentSecretProviderTests
             var results = await _provider.GetSecretsByPathAsync("Prefix");
 
             // Assert
-            results.Should().ContainKey("Prefix:Key1");
-            results.Should().ContainKey("Prefix:Key2");
-            results.Should().NotContainKey("Other:Key");
+            await Assert.That(results.ContainsKey("Prefix:Key1")).IsTrue();
+            await Assert.That(results.ContainsKey("Prefix:Key2")).IsTrue();
+            await Assert.That(results.ContainsKey("Other:Key")).IsFalse();
         }
         finally
         {
@@ -166,9 +165,9 @@ public class EnvironmentSecretProviderTests
         var health = await _provider.GetHealthAsync();
 
         // Assert
-        health.IsHealthy.Should().BeTrue();
-        health.ProviderType.Should().Be(SecretProviderType.None);
-        health.ConsecutiveFailures.Should().Be(0);
+        await Assert.That(health.IsHealthy).IsTrue();
+        await Assert.That(health.ProviderType).IsEqualTo(SecretProviderType.None);
+        await Assert.That(health.ConsecutiveFailures).IsEqualTo(0);
     }
 
     [Test]
@@ -178,6 +177,6 @@ public class EnvironmentSecretProviderTests
         var health = await _provider.GetHealthAsync();
 
         // Assert
-        health.IsHealthy.Should().BeFalse();
+        await Assert.That(health.IsHealthy).IsFalse();
     }
 }

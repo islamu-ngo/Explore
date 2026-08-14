@@ -12,7 +12,6 @@ using CarpaNet.OAuth.Storage;
 using Explore.Atproto.Transport;
 using Explore.Blazor.Authentication;
 using Explore.Blazor.Services.Auth;
-using FluentAssertions;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -50,7 +49,7 @@ public sealed class AtprotoOAuthTransportTests
         using var client = CreateClient(registry, keyProvider, recorder, keyProvider.ActiveKeyId!);
 
         using var metadata = await client.GetAsync(MetadataEndpoint);
-        metadata.StatusCode.Should().Be(HttpStatusCode.OK);
+        await Assert.That(metadata.StatusCode).IsEqualTo(HttpStatusCode.OK);
 
         using var tokenRequest = new HttpRequestMessage(HttpMethod.Post, "https://tokens.example/oauth/token")
         {
@@ -66,12 +65,12 @@ public sealed class AtprotoOAuthTransportTests
         var form = ParseForm(recorder.RequestBodies.Last());
         var payload = DecodeJwtPart(form["client_assertion"], 1);
         var header = DecodeJwtPart(form["client_assertion"], 0);
-        payload.GetProperty("iss").GetString().Should().Be(ClientId);
-        payload.GetProperty("sub").GetString().Should().Be(ClientId);
-        payload.GetProperty("aud").GetString().Should().Be(Issuer);
-        (payload.GetProperty("exp").GetInt64() - payload.GetProperty("iat").GetInt64()).Should().BeLessThanOrEqualTo(60);
-        header.GetProperty("kid").GetString().Should().Be(keyProvider.ActiveKeyId);
-        form["client_assertion_type"].Should().Be("urn:ietf:params:oauth:client-assertion-type:jwt-bearer");
+        await Assert.That(payload.GetProperty("iss").GetString()).IsEqualTo(ClientId);
+        await Assert.That(payload.GetProperty("sub").GetString()).IsEqualTo(ClientId);
+        await Assert.That(payload.GetProperty("aud").GetString()).IsEqualTo(Issuer);
+        await Assert.That((payload.GetProperty("exp").GetInt64() - payload.GetProperty("iat").GetInt64())).IsLessThanOrEqualTo(60);
+        await Assert.That(header.GetProperty("kid").GetString()).IsEqualTo(keyProvider.ActiveKeyId);
+        await Assert.That(form["client_assertion_type"]).IsEqualTo("urn:ietf:params:oauth:client-assertion-type:jwt-bearer");
     }
 
     [Test]
@@ -104,8 +103,8 @@ public sealed class AtprotoOAuthTransportTests
                 recorder));
 
             var act = () => client.GetAsync(MetadataEndpoint);
-            await act.Should().ThrowAsync<AtprotoOAuthSecurityException>();
-            registry.TryResolve(new Uri("https://issuer.example/oauth/token"), out _).Should().BeFalse();
+            await Assert.That(act).Throws<AtprotoOAuthSecurityException>();
+            await Assert.That(registry.TryResolve(new Uri("https://issuer.example/oauth/token"), out _)).IsFalse();
         }
     }
 
@@ -127,7 +126,7 @@ public sealed class AtprotoOAuthTransportTests
                 new AtprotoOutboundPolicy(false),
                 new RecordingHandler((_, _) => responseFactory())));
             Func<Task> act = () => client.GetAsync(MetadataEndpoint);
-            await act.Should().ThrowAsync<AtprotoOAuthSecurityException>();
+            await Assert.That(act).Throws<AtprotoOAuthSecurityException>();
         }
     }
 
@@ -202,8 +201,8 @@ public sealed class AtprotoOAuthTransportTests
                 new AtprotoOutboundPolicy(false),
                 new RecordingHandler((_, _) => MetadataResponse(document))));
             Func<Task> act = () => client.GetAsync(MetadataEndpoint);
-            await act.Should().ThrowAsync<AtprotoOAuthSecurityException>();
-            registry.TryResolve(new Uri("https://issuer.example/oauth/token"), out _).Should().BeFalse();
+            await Assert.That(act).Throws<AtprotoOAuthSecurityException>();
+            await Assert.That(registry.TryResolve(new Uri("https://issuer.example/oauth/token"), out _)).IsFalse();
         }
     }
 
@@ -227,9 +226,9 @@ public sealed class AtprotoOAuthTransportTests
             "https://tokens.example/oauth/token?tenant=one",
             RefreshForm());
 
-        registry.TryResolve(new Uri("https://tokens.example/oauth/token?tenant=one"), out _).Should().BeTrue();
-        registry.TryResolve(new Uri("https://tokens.example/oauth/token?tenant=two"), out _).Should().BeFalse();
-        ParseForm(recorder.RequestBodies.Last()).Should().ContainKey("client_assertion");
+        await Assert.That(registry.TryResolve(new Uri("https://tokens.example/oauth/token?tenant=one"), out _)).IsTrue();
+        await Assert.That(registry.TryResolve(new Uri("https://tokens.example/oauth/token?tenant=two"), out _)).IsFalse();
+        await Assert.That(ParseForm(recorder.RequestBodies.Last())).ContainsKey("client_assertion");
     }
 
     private static HttpResponseMessage CreateOversizedMetadataResponse()
@@ -268,11 +267,11 @@ public sealed class AtprotoOAuthTransportTests
             "token=r&token_type_hint=refresh_token");
 
         var assertions = recorder.RequestBodies.Select(body => ParseForm(body)["client_assertion"]).ToArray();
-        assertions.Should().HaveCount(4);
-        assertions.Select(assertion => DecodeJwtPart(assertion, 1).GetProperty("aud").GetString())
-            .Should().OnlyContain(audience => audience == Issuer);
-        assertions.Select(assertion => DecodeJwtPart(assertion, 1).GetProperty("jti").GetString())
-            .Should().OnlyHaveUniqueItems();
+        await Assert.That(assertions).Count().IsEqualTo(4);
+        await Assert.That(assertions.Select(assertion => DecodeJwtPart(assertion, 1).GetProperty("aud").GetString())
+            .All(audience => audience == Issuer)).IsTrue();
+        var jwtIds = assertions.Select(assertion => DecodeJwtPart(assertion, 1).GetProperty("jti").GetString()).ToArray();
+        await Assert.That(jwtIds.Distinct().Count()).IsEqualTo(jwtIds.Length);
     }
 
     [Test]
@@ -287,16 +286,16 @@ public sealed class AtprotoOAuthTransportTests
             client,
             "https://issuer.example/oauth/par",
             ParForm());
-        await missingNonce.Should().ThrowAsync<AtprotoOAuthSecurityException>();
+        await Assert.That(missingNonce).Throws<AtprotoOAuthSecurityException>();
 
         Func<Task> duplicate = () => SendFormAsync(client, "https://issuer.example/oauth/token", "grant_type=refresh_token&refresh_token=r&client_assertion=x");
-        await duplicate.Should().ThrowAsync<AtprotoOAuthSecurityException>();
+        await Assert.That(duplicate).Throws<AtprotoOAuthSecurityException>();
 
         Func<Task> unmapped = () => client.PostAsync("https://unknown.example/oauth/token", Form("grant_type=refresh_token&refresh_token=r"));
-        await unmapped.Should().ThrowAsync<AtprotoOAuthSecurityException>();
+        await Assert.That(unmapped).Throws<AtprotoOAuthSecurityException>();
 
         Func<Task> nonForm = () => client.PostAsync("https://issuer.example/oauth/token", new StringContent("{}", Encoding.UTF8, "application/json"));
-        await nonForm.Should().ThrowAsync<AtprotoOAuthSecurityException>();
+        await Assert.That(nonForm).Throws<AtprotoOAuthSecurityException>();
     }
 
     [Test]
@@ -327,7 +326,7 @@ public sealed class AtprotoOAuthTransportTests
                     "active");
 
                 Func<Task> act = () => SendFormAsync(client, operation.Endpoint, operation.Body);
-                await act.Should().ThrowAsync<AtprotoOAuthSecurityException>();
+                await Assert.That(act).Throws<AtprotoOAuthSecurityException>();
             }
         }
     }
@@ -363,7 +362,7 @@ public sealed class AtprotoOAuthTransportTests
         foreach (var (endpoint, form) in cases)
         {
             Func<Task> act = () => SendFormAsync(client, endpoint, form);
-            await act.Should().ThrowAsync<AtprotoOAuthSecurityException>();
+            await Assert.That(act).Throws<AtprotoOAuthSecurityException>();
         }
     }
 
@@ -386,8 +385,8 @@ public sealed class AtprotoOAuthTransportTests
             "https://issuer.example/oauth/token",
             RefreshForm());
 
-        await act.Should().ThrowAsync<AtprotoOAuthSecurityException>();
-        recorder.RequestBodies.Should().BeEmpty();
+        await Assert.That(act).Throws<AtprotoOAuthSecurityException>();
+        await Assert.That(recorder.RequestBodies).IsEmpty();
     }
 
     [Test]
@@ -416,11 +415,10 @@ public sealed class AtprotoOAuthTransportTests
         }
 
         var assertions = recorder.RequestBodies.Select(body => ParseForm(body)["client_assertion"]).ToArray();
-        assertions.Should().HaveCount(2);
-        DecodeJwtPart(assertions[0], 0).GetProperty("kid").GetString().Should().Be("old");
-        DecodeJwtPart(assertions[1], 0).GetProperty("kid").GetString().Should().Be("old");
-        DecodeJwtPart(assertions[0], 1).GetProperty("jti").GetString()
-            .Should().NotBe(DecodeJwtPart(assertions[1], 1).GetProperty("jti").GetString());
+        await Assert.That(assertions).Count().IsEqualTo(2);
+        await Assert.That(DecodeJwtPart(assertions[0], 0).GetProperty("kid").GetString()).IsEqualTo("old");
+        await Assert.That(DecodeJwtPart(assertions[1], 0).GetProperty("kid").GetString()).IsEqualTo("old");
+        await Assert.That(DecodeJwtPart(assertions[0], 1).GetProperty("jti").GetString()).IsNotEqualTo(DecodeJwtPart(assertions[1], 1).GetProperty("jti").GetString());
     }
 
     [Test]
@@ -449,18 +447,18 @@ public sealed class AtprotoOAuthTransportTests
             CallbackUri + "?code=authorization-code&state=" + Uri.EscapeDataString(state),
             CancellationToken.None);
 
-        recorder.ParBodies.Should().HaveCount(2);
-        recorder.TokenBodies.Should().HaveCount(2);
+        await Assert.That(recorder.ParBodies).Count().IsEqualTo(2);
+        await Assert.That(recorder.TokenBodies).Count().IsEqualTo(2);
         var assertions = recorder.ParBodies.Concat(recorder.TokenBodies)
             .Select(body => ParseForm(body)["client_assertion"])
             .ToArray();
-        assertions.Should().HaveCount(4);
-        assertions.Select(assertion => DecodeJwtPart(assertion, 0).GetProperty("kid").GetString())
-            .Should().OnlyContain(kid => kid == "old");
-        assertions.Select(assertion => DecodeJwtPart(assertion, 1).GetProperty("aud").GetString())
-            .Should().OnlyContain(audience => audience == Issuer);
-        assertions.Select(assertion => DecodeJwtPart(assertion, 1).GetProperty("jti").GetString())
-            .Should().OnlyHaveUniqueItems();
+        await Assert.That(assertions).Count().IsEqualTo(4);
+        await Assert.That(assertions.Select(assertion => DecodeJwtPart(assertion, 0).GetProperty("kid").GetString())
+            .All(kid => kid == "old")).IsTrue();
+        await Assert.That(assertions.Select(assertion => DecodeJwtPart(assertion, 1).GetProperty("aud").GetString())
+            .All(audience => audience == Issuer)).IsTrue();
+        var jwtIds = assertions.Select(assertion => DecodeJwtPart(assertion, 1).GetProperty("jti").GetString()).ToArray();
+        await Assert.That(jwtIds.Distinct().Count()).IsEqualTo(jwtIds.Length);
     }
 
     [Test]
@@ -500,8 +498,8 @@ public sealed class AtprotoOAuthTransportTests
                    redirectUri: CallbackUri,
                    scope: Scope))
         {
-            (await tokenProvider.RestoreSessionAsync(did)).Should().BeTrue();
-            (await tokenProvider.GetAccessTokenAsync()).Should().Be("refreshed-access");
+            await Assert.That((await tokenProvider.RestoreSessionAsync(did))).IsTrue();
+            await Assert.That((await tokenProvider.GetAccessTokenAsync())).IsEqualTo("refreshed-access");
         }
 
         using (var session = new OAuthSession(new OAuthClientConfig
@@ -518,20 +516,18 @@ public sealed class AtprotoOAuthTransportTests
             await session.RevokeAsync(did);
         }
 
-        recorder.TokenBodies.Should().ContainSingle();
-        recorder.RevocationBodies.Should().ContainSingle();
+        await Assert.That(recorder.TokenBodies).HasSingleItem();
+        await Assert.That(recorder.RevocationBodies).HasSingleItem();
         var refreshAssertion = ParseForm(recorder.TokenBodies.Single())["client_assertion"];
         var revokeAssertion = ParseForm(recorder.RevocationBodies.Single())["client_assertion"];
         foreach (var assertion in new[] { refreshAssertion, revokeAssertion })
         {
-            DecodeJwtPart(assertion, 0).GetProperty("kid").GetString().Should().Be("old");
-            DecodeJwtPart(assertion, 1).GetProperty("aud").GetString().Should().Be(Issuer);
+            await Assert.That(DecodeJwtPart(assertion, 0).GetProperty("kid").GetString()).IsEqualTo("old");
+            await Assert.That(DecodeJwtPart(assertion, 1).GetProperty("aud").GetString()).IsEqualTo(Issuer);
         }
 
-        DecodeJwtPart(refreshAssertion, 1).GetProperty("jti").GetString()
-            .Should().NotBe(DecodeJwtPart(revokeAssertion, 1).GetProperty("jti").GetString());
-        (await sessionStore.GetAsync(did)).Should().BeNull(
-            "local cleanup must complete even when a successful remote revocation omits its mandatory nonce");
+        await Assert.That(DecodeJwtPart(refreshAssertion, 1).GetProperty("jti").GetString()).IsNotEqualTo(DecodeJwtPart(revokeAssertion, 1).GetProperty("jti").GetString());
+        await Assert.That((await sessionStore.GetAsync(did))).IsNull().Because("local cleanup must complete even when a successful remote revocation omits its mandatory nonce");
     }
 
     [Test]
@@ -554,30 +550,29 @@ public sealed class AtprotoOAuthTransportTests
             response.Dispose();
         }
 
-        AssertAssertionBinding(recorderA.RequestBodies.Single(), issuerA, "key-a");
-        AssertAssertionBinding(recorderB.RequestBodies.Single(), issuerB, "key-b");
+        await AssertAssertionBinding(recorderA.RequestBodies.Single(), issuerA, "key-a");
+        await AssertAssertionBinding(recorderB.RequestBodies.Single(), issuerB, "key-b");
     }
 
     [Test]
-    public void OutboundPolicyRejectsPrivateAndAllowsOnlyExplicitDevelopmentLoopback()
+    public async Task OutboundPolicyRejectsPrivateAndAllowsOnlyExplicitDevelopmentLoopback()
     {
         var production = new AtprotoOutboundPolicy(false);
         production.ValidateUri(new Uri("https://example.com/path"));
-        new[] { "http://127.0.0.1", "https://127.0.0.1", "https://10.0.0.1", "https://169.254.169.254", "https://[::1]", "https://[fd00::1]" }
-            .Should().AllSatisfy(value =>
-            {
-                var act = () => production.ValidateUri(new Uri(value));
-                act.Should().Throw<AtprotoOAuthSecurityException>();
-            });
+        foreach (var value in new[] { "http://127.0.0.1", "https://127.0.0.1", "https://10.0.0.1", "https://169.254.169.254", "https://[::1]", "https://[fd00::1]" })
+        {
+            var act = () => production.ValidateUri(new Uri(value));
+            await Assert.That(act).Throws<AtprotoOAuthSecurityException>();
+        }
         Action mixedDns = () => production.ValidateResolvedAddresses(
             "issuer.example",
             [IPAddress.Parse("93.184.216.34"), IPAddress.Loopback]);
-        mixedDns.Should().Throw<AtprotoOAuthSecurityException>();
+        await Assert.That(mixedDns).Throws<AtprotoOAuthSecurityException>();
 
         var development = new AtprotoOutboundPolicy(true);
         development.ValidateUri(new Uri("http://127.0.0.1:8080/path"));
         Action deceptiveLoopback = () => development.ValidateUri(new Uri("http://localhost.evil.example/path"));
-        deceptiveLoopback.Should().Throw<AtprotoOAuthSecurityException>();
+        await Assert.That(deceptiveLoopback).Throws<AtprotoOAuthSecurityException>();
     }
 
     [Test]
@@ -596,17 +591,17 @@ public sealed class AtprotoOAuthTransportTests
             new Uri("https://other.example/oauth/par"),
             new Uri("https://issuer.example/oauth/token"),
             null));
-        collision.Should().Throw<AtprotoOAuthSecurityException>();
-        registry.TryResolve(new Uri("https://other.example/oauth/par"), out _).Should().BeFalse();
+        await Assert.That(collision).Throws<AtprotoOAuthSecurityException>();
+        await Assert.That(registry.TryResolve(new Uri("https://other.example/oauth/par"), out _)).IsFalse();
 
         clock.Advance(TimeSpan.FromMinutes(2));
-        registry.TryResolve(new Uri("https://issuer.example/oauth/token"), out _).Should().BeFalse();
+        await Assert.That(registry.TryResolve(new Uri("https://issuer.example/oauth/token"), out _)).IsFalse();
         Action sameProfileEndpoint = () => registry.Register(new(
             Issuer,
             new Uri("https://issuer.example/oauth/shared"),
             new Uri("https://issuer.example/oauth/shared"),
             null));
-        sameProfileEndpoint.Should().Throw<AtprotoOAuthSecurityException>();
+        await Assert.That(sameProfileEndpoint).Throws<AtprotoOAuthSecurityException>();
         await Task.CompletedTask;
     }
 
@@ -649,7 +644,7 @@ public sealed class AtprotoOAuthTransportTests
         using var client = new HttpClient(new AtprotoBoundedResponseHandler(100, new CancellationHandler()));
 
         Func<Task> act = () => client.GetAsync("https://example.com", source.Token);
-        await act.Should().ThrowAsync<OperationCanceledException>();
+        await Assert.That(act).Throws<OperationCanceledException>();
     }
 
     [Test]
@@ -666,7 +661,7 @@ public sealed class AtprotoOAuthTransportTests
             static (_, _, token) => ValueTask.FromException<Stream>(new OperationCanceledException(token)),
             cancellation.Token);
 
-        await act.Should().ThrowExactlyAsync<OperationCanceledException>();
+        await Assert.That(act).ThrowsExactly<OperationCanceledException>();
     }
 
     [Test]
@@ -675,9 +670,9 @@ public sealed class AtprotoOAuthTransportTests
         using var handler = (SocketsHttpHandler)AtprotoHardenedHttpClient.CreatePrimaryHandler(
             new AtprotoOutboundPolicy(false),
             TimeSpan.FromSeconds(1));
-        handler.AllowAutoRedirect.Should().BeFalse();
-        handler.UseCookies.Should().BeFalse();
-        handler.AutomaticDecompression.Should().Be(DecompressionMethods.None);
+        await Assert.That(handler.AllowAutoRedirect).IsFalse();
+        await Assert.That(handler.UseCookies).IsFalse();
+        await Assert.That(handler.AutomaticDecompression).IsEqualTo(DecompressionMethods.None);
 
         IPAddress? connectedAddress = null;
         var expected = IPAddress.Parse("93.184.216.34");
@@ -693,8 +688,8 @@ public sealed class AtprotoOAuthTransportTests
             },
             CancellationToken.None);
 
-        stream.Should().BeSameAs(Stream.Null);
-        connectedAddress.Should().Be(expected);
+        await Assert.That(stream).IsSameReferenceAs(Stream.Null);
+        await Assert.That(connectedAddress).IsEqualTo(expected);
     }
 
     [Test]
@@ -710,9 +705,9 @@ public sealed class AtprotoOAuthTransportTests
                    }))))
         using (var response = await successClient.GetAsync("https://example.com"))
         {
-            response.Content.Headers.GetValues("X-Content-Canary").Single().Should().Be("preserved");
-            (await response.Content.ReadAsByteArrayAsync()).Should().Equal(1, 2, 3);
-            successContent.IsDisposed.Should().BeTrue();
+            await Assert.That(response.Content.Headers.GetValues("X-Content-Canary").Single()).IsEqualTo("preserved");
+            await Assert.That((await response.Content.ReadAsByteArrayAsync()).SequenceEqual(new byte[] { 1, 2, 3 })).IsTrue();
+            await Assert.That(successContent.IsDisposed).IsTrue();
         }
 
         var oversized = new TrackingByteArrayContent(new byte[101]);
@@ -724,8 +719,8 @@ public sealed class AtprotoOAuthTransportTests
                    }))))
         {
             Func<Task> oversizedAct = () => oversizedClient.GetAsync("https://example.com");
-            await oversizedAct.Should().ThrowAsync<AtprotoOAuthSecurityException>();
-            oversized.IsDisposed.Should().BeTrue();
+            await Assert.That(oversizedAct).Throws<AtprotoOAuthSecurityException>();
+            await Assert.That(oversized.IsDisposed).IsTrue();
         }
 
         using var ioClient = new HttpClient(new AtprotoBoundedResponseHandler(
@@ -735,9 +730,9 @@ public sealed class AtprotoOAuthTransportTests
                 Content = new ThrowingContent()
             })));
         Func<Task> ioAct = () => ioClient.GetAsync("https://example.com");
-        var ioFailure = await ioAct.Should().ThrowAsync<HttpRequestException>();
-        ioFailure.Which.Should().NotBeOfType<AtprotoOAuthSecurityException>();
-        ioFailure.Which.InnerException.Should().BeOfType<IOException>();
+        var ioFailure = await Assert.That(ioAct).Throws<HttpRequestException>();
+        await Assert.That(ioFailure).IsNotTypeOf<AtprotoOAuthSecurityException>();
+        await Assert.That(ioFailure!.InnerException).IsTypeOf<IOException>();
     }
 
     [Test]
@@ -758,7 +753,7 @@ public sealed class AtprotoOAuthTransportTests
             environment,
             unavailableServices,
             new AtprotoOAuthTransportFactory());
-        unavailable.GetReadiness().FailureCode.Should().Be("state_store_unavailable");
+        await Assert.That(unavailable.GetReadiness().FailureCode).IsEqualTo("state_store_unavailable");
 
         var availableServices = Substitute.For<IServiceProviderIsService>();
         availableServices.IsService(typeof(IOAuthStateStore)).Returns(true);
@@ -769,19 +764,19 @@ public sealed class AtprotoOAuthTransportTests
             environment,
             availableServices,
             new AtprotoOAuthTransportFactory());
-        ready.GetReadiness().IsReady.Should().BeTrue();
+        await Assert.That(ready.GetReadiness().IsReady).IsTrue();
         var stateStore = new MemoryOAuthStateStore();
         var sessionStore = new MemoryOAuthSessionStore();
         using var current = ready.CreateForNewFlow(stateStore, sessionStore);
-        current.PinnedKeyId.Should().Be("new");
+        await Assert.That(current.PinnedKeyId).IsEqualTo("new");
         var loggerFactory = typeof(OAuthSession)
             .GetField("_loggerFactory", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!
             .GetValue(current.Session);
-        loggerFactory.Should().BeSameAs(NullLoggerFactory.Instance);
+        await Assert.That(loggerFactory).IsSameReferenceAs(NullLoggerFactory.Instance);
         using var retired = ready.CreateForPinnedKey("old", stateStore, sessionStore);
-        retired.PinnedKeyId.Should().Be("old");
+        await Assert.That(retired.PinnedKeyId).IsEqualTo("old");
         Action unknown = () => ready.CreateForPinnedKey("missing", stateStore, sessionStore);
-        unknown.Should().Throw<InvalidOperationException>();
+        await Assert.That(unknown).Throws<InvalidOperationException>();
         await Task.CompletedTask;
     }
 
@@ -809,12 +804,12 @@ public sealed class AtprotoOAuthTransportTests
         });
 
         var factory = provider.GetRequiredService<AtprotoOAuthClientFactory>();
-        factory.GetReadiness().IsReady.Should().BeTrue();
+        await Assert.That(factory.GetReadiness().IsReady).IsTrue();
         using var scope = provider.CreateScope();
         using var lease = factory.CreateForNewFlow(
             scope.ServiceProvider.GetRequiredService<IOAuthStateStore>(),
             scope.ServiceProvider.GetRequiredService<IOAuthSessionStore>());
-        lease.PinnedKeyId.Should().Be("active");
+        await Assert.That(lease.PinnedKeyId).IsEqualTo("active");
         await Task.CompletedTask;
     }
 
@@ -911,11 +906,11 @@ public sealed class AtprotoOAuthTransportTests
         return JsonDocument.Parse(Convert.FromBase64String(part)).RootElement.Clone();
     }
 
-    private static void AssertAssertionBinding(string body, string issuer, string keyId)
+    private static async Task AssertAssertionBinding(string body, string issuer, string keyId)
     {
         var assertion = ParseForm(body)["client_assertion"];
-        DecodeJwtPart(assertion, 1).GetProperty("aud").GetString().Should().Be(issuer);
-        DecodeJwtPart(assertion, 0).GetProperty("kid").GetString().Should().Be(keyId);
+        await Assert.That(DecodeJwtPart(assertion, 1).GetProperty("aud").GetString()).IsEqualTo(issuer);
+        await Assert.That(DecodeJwtPart(assertion, 0).GetProperty("kid").GetString()).IsEqualTo(keyId);
     }
 
     private static AtprotoClientKeyProvider CreateKeyProvider(string? ring = null) =>
@@ -1090,5 +1085,5 @@ public sealed class AtprotoOAuthTransportTests
 internal static class AtprotoOAuthTestAssertions
 {
     public static async Task ShouldThrowAsync<TException>(this Func<Task> action) where TException : Exception =>
-        await action.Should().ThrowAsync<TException>();
+        await Assert.That(action).Throws<TException>();
 }

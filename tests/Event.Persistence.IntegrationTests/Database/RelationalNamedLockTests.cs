@@ -5,7 +5,6 @@ using System.Data.Common;
 using Explore.Persistence;
 using Explore.Persistence.Database;
 using Explore.Secrets.Database;
-using FluentAssertions;
 using Microsoft.Data.SqlClient;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
@@ -41,16 +40,16 @@ public sealed class RelationalNamedLockTests
         using DbCommand mySqlRelease = RelationalNamedLock.CreateReleaseCommand(
             new MySqlConnection(), RelationalNamedLock.MySqlProvider, mySqlResource);
 
-        postgresTransaction.CommandText.Should().Be("SELECT pg_advisory_xact_lock(@key)");
-        postgresSession.CommandText.Should().Be("SELECT pg_advisory_lock(@key)");
-        sqlServerTransaction.CommandText.Should().Contain("@LockOwner = 'Transaction'");
-        sqlServerSession.CommandText.Should().Contain("@LockOwner = 'Session'");
-        mySql.CommandText.Should().Be("SELECT GET_LOCK(@resource, -1)");
-        postgresRelease.CommandText.Should().Be("SELECT pg_advisory_unlock(@key)");
-        sqlServerRelease.CommandText.Should().Contain("sys.sp_releaseapplock");
-        mySqlRelease.CommandText.Should().Be("SELECT RELEASE_LOCK(@resource)");
-        mySqlResource.Should().HaveLength(64);
-        mySqlResource.Should().StartWith("explore:");
+        await Assert.That(postgresTransaction.CommandText).IsEqualTo("SELECT pg_advisory_xact_lock(@key)");
+        await Assert.That(postgresSession.CommandText).IsEqualTo("SELECT pg_advisory_lock(@key)");
+        await Assert.That(sqlServerTransaction.CommandText).Contains("@LockOwner = 'Transaction'");
+        await Assert.That(sqlServerSession.CommandText).Contains("@LockOwner = 'Session'");
+        await Assert.That(mySql.CommandText).IsEqualTo("SELECT GET_LOCK(@resource, -1)");
+        await Assert.That(postgresRelease.CommandText).IsEqualTo("SELECT pg_advisory_unlock(@key)");
+        await Assert.That(sqlServerRelease.CommandText).Contains("sys.sp_releaseapplock");
+        await Assert.That(mySqlRelease.CommandText).IsEqualTo("SELECT RELEASE_LOCK(@resource)");
+        await Assert.That(mySqlResource).Length().IsEqualTo(64);
+        await Assert.That(mySqlResource).StartsWith("explore:");
         await Assert.That(mySql.Parameters[0].Value).IsEqualTo(mySqlResource);
     }
 

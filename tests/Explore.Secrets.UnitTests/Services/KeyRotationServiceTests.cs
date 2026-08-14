@@ -1,10 +1,9 @@
 // ABOUTME: Unit tests for KeyRotationService.
-// Tests re-encryption workflow, error handling, and progress tracking.
+// ABOUTME: Tests re-encryption workflow, error handling, and progress tracking.
 
 using Explore.Secrets.Abstractions;
 using Explore.Secrets.Configuration;
 using Explore.Secrets.Services;
-using FluentAssertions;
 using Microsoft.Extensions.Options;
 using NSubstitute;
 using TUnit.Core;
@@ -47,23 +46,23 @@ public class KeyRotationServiceTests : IDisposable
     // ==================== Constructor Tests ====================
 
     [Test]
-    public void Constructor_WithNullEncryptionService_ShouldThrow()
+    public async Task Constructor_WithNullEncryptionService_ShouldThrow()
     {
         // Act
         var act = () => new KeyRotationService(null!);
 
         // Assert
-        act.Should().Throw<ArgumentNullException>();
+        await Assert.That(act).Throws<ArgumentNullException>();
     }
 
     [Test]
-    public void Constructor_WithValidEncryptionService_ShouldSucceed()
+    public async Task Constructor_WithValidEncryptionService_ShouldSucceed()
     {
         // Arrange & Act
         var service = CreateRotationService();
 
         // Assert
-        service.Should().NotBeNull();
+        await Assert.That(service).IsNotNull();
     }
 
     // ==================== ReEncryptAllAsync Tests ====================
@@ -83,11 +82,11 @@ public class KeyRotationServiceTests : IDisposable
         var result = await service.ReEncryptAllAsync(getSettings, updateSetting);
 
         // Assert
-        result.TotalSettings.Should().Be(0);
-        result.ReEncryptedCount.Should().Be(0);
-        result.SkippedCount.Should().Be(0);
-        result.ErrorCount.Should().Be(0);
-        result.Errors.Should().BeEmpty();
+        await Assert.That(result.TotalSettings).IsEqualTo(0);
+        await Assert.That(result.ReEncryptedCount).IsEqualTo(0);
+        await Assert.That(result.SkippedCount).IsEqualTo(0);
+        await Assert.That(result.ErrorCount).IsEqualTo(0);
+        await Assert.That(result.Errors).IsEmpty();
     }
 
     [Test]
@@ -113,10 +112,10 @@ public class KeyRotationServiceTests : IDisposable
         var result = await service.ReEncryptAllAsync(getSettings, updateSetting);
 
         // Assert
-        result.TotalSettings.Should().Be(1);
-        result.ReEncryptedCount.Should().Be(0);
-        result.SkippedCount.Should().Be(1);
-        result.ErrorCount.Should().Be(0);
+        await Assert.That(result.TotalSettings).IsEqualTo(1);
+        await Assert.That(result.ReEncryptedCount).IsEqualTo(0);
+        await Assert.That(result.SkippedCount).IsEqualTo(1);
+        await Assert.That(result.ErrorCount).IsEqualTo(0);
         await updateSetting.DidNotReceive().Invoke(
             Arg.Any<string>(),
             Arg.Any<string>(),
@@ -165,17 +164,17 @@ public class KeyRotationServiceTests : IDisposable
         var result = await service.ReEncryptAllAsync(getSettings, updateSetting);
 
         // Assert
-        result.TotalSettings.Should().Be(1);
-        result.ReEncryptedCount.Should().Be(1);
-        result.SkippedCount.Should().Be(0);
-        result.ErrorCount.Should().Be(0);
+        await Assert.That(result.TotalSettings).IsEqualTo(1);
+        await Assert.That(result.ReEncryptedCount).IsEqualTo(1);
+        await Assert.That(result.SkippedCount).IsEqualTo(0);
+        await Assert.That(result.ErrorCount).IsEqualTo(0);
 
-        updatedCiphertext.Should().NotBeNullOrEmpty();
-        updatedKeyVersion.Should().Be(2);
+        await Assert.That(updatedCiphertext).IsNotNullOrEmpty();
+        await Assert.That(updatedKeyVersion).IsEqualTo(2);
 
         // Verify the new ciphertext can be decrypted
         var decrypted = encService.Decrypt(updatedCiphertext!, updatedKeyVersion!.Value);
-        decrypted.Should().Be("secret data");
+        await Assert.That(decrypted).IsEqualTo("secret data");
     }
 
     [Test]
@@ -204,14 +203,14 @@ public class KeyRotationServiceTests : IDisposable
         var result = await service.ReEncryptAllAsync(getSettings, updateSetting);
 
         // Assert
-        result.TotalSettings.Should().Be(1);
-        result.ReEncryptedCount.Should().Be(0);
-        result.SkippedCount.Should().Be(0);
-        result.ErrorCount.Should().Be(1);
-        result.Errors.Should().HaveCount(1);
-        result.Errors[0].Key.Should().Be("key1");
-        result.Errors[0].OldKeyVersion.Should().Be(1);
-        result.Errors[0].ErrorMessage.Should().Contain("Missing key version 1");
+        await Assert.That(result.TotalSettings).IsEqualTo(1);
+        await Assert.That(result.ReEncryptedCount).IsEqualTo(0);
+        await Assert.That(result.SkippedCount).IsEqualTo(0);
+        await Assert.That(result.ErrorCount).IsEqualTo(1);
+        await Assert.That(result.Errors).Count().IsEqualTo(1);
+        await Assert.That(result.Errors[0].Key).IsEqualTo("key1");
+        await Assert.That(result.Errors[0].OldKeyVersion).IsEqualTo(1);
+        await Assert.That(result.Errors[0].ErrorMessage).Contains("Missing key version 1");
     }
 
     [Test]
@@ -234,11 +233,11 @@ public class KeyRotationServiceTests : IDisposable
         var result = await service.ReEncryptAllAsync(getSettings, updateSetting);
 
         // Assert
-        result.TotalSettings.Should().Be(1);
-        result.ReEncryptedCount.Should().Be(0);
-        result.ErrorCount.Should().Be(1);
-        result.Errors.Should().HaveCount(1);
-        result.Errors[0].Key.Should().Be("key1");
+        await Assert.That(result.TotalSettings).IsEqualTo(1);
+        await Assert.That(result.ReEncryptedCount).IsEqualTo(0);
+        await Assert.That(result.ErrorCount).IsEqualTo(1);
+        await Assert.That(result.Errors).Count().IsEqualTo(1);
+        await Assert.That(result.Errors[0].Key).IsEqualTo("key1");
     }
 
     [Test]
@@ -281,10 +280,10 @@ public class KeyRotationServiceTests : IDisposable
         var result = await service.ReEncryptAllAsync(getSettings, updateSetting);
 
         // Assert
-        result.TotalSettings.Should().Be(3);
-        result.ReEncryptedCount.Should().Be(3);
-        result.ErrorCount.Should().Be(0);
-        updateCount.Should().Be(3);
+        await Assert.That(result.TotalSettings).IsEqualTo(3);
+        await Assert.That(result.ReEncryptedCount).IsEqualTo(3);
+        await Assert.That(result.ErrorCount).IsEqualTo(0);
+        await Assert.That(updateCount).IsEqualTo(3);
     }
 
     [Test]
@@ -323,13 +322,13 @@ public class KeyRotationServiceTests : IDisposable
         var result = await service.ReEncryptAllAsync(getSettings, updateSetting, progress);
 
         // Assert
-        progressReports.Should().HaveCount(2);
-        progressReports[0].Current.Should().Be(1);
-        progressReports[0].Total.Should().Be(2);
-        progressReports[0].Key.Should().Be("key1");
-        progressReports[1].Current.Should().Be(2);
-        progressReports[1].Total.Should().Be(2);
-        progressReports[1].Key.Should().Be("key2");
+        await Assert.That(progressReports).Count().IsEqualTo(2);
+        await Assert.That(progressReports[0].Current).IsEqualTo(1);
+        await Assert.That(progressReports[0].Total).IsEqualTo(2);
+        await Assert.That(progressReports[0].Key).IsEqualTo("key1");
+        await Assert.That(progressReports[1].Current).IsEqualTo(2);
+        await Assert.That(progressReports[1].Total).IsEqualTo(2);
+        await Assert.That(progressReports[1].Key).IsEqualTo("key2");
     }
 
     [Test]
@@ -376,14 +375,14 @@ public class KeyRotationServiceTests : IDisposable
             cancellationToken: cts.Token);
 
         // Assert
-        await act.Should().ThrowAsync<OperationCanceledException>();
-        updateCount.Should().Be(1);
+        await Assert.That(act).Throws<OperationCanceledException>();
+        await Assert.That(updateCount).IsEqualTo(1);
     }
 
     // ==================== ReEncryptSingle Tests ====================
 
     [Test]
-    public void ReEncryptSingle_WithValidInput_ShouldReturnNewEncryption()
+    public async Task ReEncryptSingle_WithValidInput_ShouldReturnNewEncryption()
     {
         // Arrange
         var v1Options = new EncryptionOptions
@@ -402,17 +401,17 @@ public class KeyRotationServiceTests : IDisposable
         var result = service.ReEncryptSingle(encryptedV1.Ciphertext, encryptedV1.KeyVersion);
 
         // Assert
-        result.Should().NotBeNull();
-        result.KeyVersion.Should().Be(2);
-        result.Ciphertext.Should().NotBe(encryptedV1.Ciphertext);
+        await Assert.That(result).IsNotNull();
+        await Assert.That(result.KeyVersion).IsEqualTo(2);
+        await Assert.That(result.Ciphertext).IsNotEqualTo(encryptedV1.Ciphertext);
 
         // Verify decryption works
         var decrypted = encService.Decrypt(result.Ciphertext, result.KeyVersion);
-        decrypted.Should().Be("secret data");
+        await Assert.That(decrypted).IsEqualTo("secret data");
     }
 
     [Test]
-    public void ReEncryptSingle_WithMissingKeyVersion_ShouldThrow()
+    public async Task ReEncryptSingle_WithMissingKeyVersion_ShouldThrow()
     {
         // Arrange - Service only has version 2
         var options = new EncryptionOptions
@@ -428,12 +427,13 @@ public class KeyRotationServiceTests : IDisposable
         var act = () => service.ReEncryptSingle("some-ciphertext", 1);
 
         // Assert
-        act.Should().Throw<InvalidOperationException>()
-            .WithMessage("*Cannot re-encrypt*key version 1 not available*");
+        var exception = await Assert.That(act).Throws<InvalidOperationException>();
+        await Assert.That(exception!.Message).Contains("Cannot re-encrypt");
+        await Assert.That(exception.Message).Contains("key version 1 not available");
     }
 
     [Test]
-    public void ReEncryptSingle_WithEmptyCiphertext_ShouldThrow()
+    public async Task ReEncryptSingle_WithEmptyCiphertext_ShouldThrow()
     {
         // Arrange
         var service = CreateRotationService();
@@ -442,11 +442,11 @@ public class KeyRotationServiceTests : IDisposable
         var act = () => service.ReEncryptSingle("", 1);
 
         // Assert
-        act.Should().Throw<ArgumentException>();
+        await Assert.That(act).Throws<ArgumentException>();
     }
 
     [Test]
-    public void ReEncryptSingle_WithNullCiphertext_ShouldThrow()
+    public async Task ReEncryptSingle_WithNullCiphertext_ShouldThrow()
     {
         // Arrange
         var service = CreateRotationService();
@@ -455,7 +455,7 @@ public class KeyRotationServiceTests : IDisposable
         var act = () => service.ReEncryptSingle(null!, 1);
 
         // Assert
-        act.Should().Throw<ArgumentException>();
+        await Assert.That(act).Throws<ArgumentException>();
     }
 
     public void Dispose()

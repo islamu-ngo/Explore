@@ -9,7 +9,6 @@ using Explore.Application.Contracts.Services;
 using Explore.Domain;
 using Explore.Domain.Enums;
 using Explore.Persistence;
-using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using TUnit.Core;
 
@@ -33,8 +32,7 @@ public class SetupSecretAuthorizationMatrixTests
 
         var response = await client.SendAsync(request);
 
-        response.StatusCode.Should().Be(HttpStatusCode.BadRequest,
-            "a valid setup secret on an exact canonical PATCH route should reach command validation");
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.BadRequest).Because("a valid setup secret on an exact canonical PATCH route should reach command validation");
     }
 
     [Test]
@@ -49,8 +47,7 @@ public class SetupSecretAuthorizationMatrixTests
 
         var response = await client.SendAsync(request);
 
-        response.StatusCode.Should().Be(HttpStatusCode.OK,
-            "a valid setup secret on an exact canonical GET route should reach the provider configuration response");
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK).Because("a valid setup secret on an exact canonical GET route should reach the provider configuration response");
     }
 
     [Test]
@@ -67,8 +64,7 @@ public class SetupSecretAuthorizationMatrixTests
 
         var response = await client.SendAsync(request);
 
-        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized,
-            "a present invalid setup secret must fail closed instead of falling back to bearer authentication");
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized).Because("a present invalid setup secret must fail closed instead of falling back to bearer authentication");
     }
 
     [Test]
@@ -82,8 +78,7 @@ public class SetupSecretAuthorizationMatrixTests
 
         var response = await client.SendAsync(request);
 
-        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized,
-            "the canonical PATCH routes must retain their authenticated write boundary");
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized).Because("the canonical PATCH routes must retain their authenticated write boundary");
     }
 
     [Test]
@@ -98,8 +93,7 @@ public class SetupSecretAuthorizationMatrixTests
 
         var response = await client.SendAsync(request);
 
-        response.StatusCode.Should().Be(HttpStatusCode.Gone,
-            "inactive setup mode should preserve Gone");
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Gone).Because("inactive setup mode should preserve Gone");
     }
 
     [Test]
@@ -114,8 +108,7 @@ public class SetupSecretAuthorizationMatrixTests
 
         var response = await client.SendAsync(request);
 
-        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized,
-            "setup-secret authentication must not apply outside the four canonical provider GET and PATCH routes");
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized).Because("setup-secret authentication must not apply outside the four canonical provider GET and PATCH routes");
     }
 
     [Test]
@@ -131,8 +124,7 @@ public class SetupSecretAuthorizationMatrixTests
 
         var response = await client.SendAsync(request);
 
-        response.StatusCode.Should().Be(HttpStatusCode.BadRequest,
-            "ordinary instance-admin bearer requests should continue to reach command validation");
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.BadRequest).Because("ordinary instance-admin bearer requests should continue to reach command validation");
     }
 
     private static ExternalApiPhase0WebApplicationFactory CreateFactory(

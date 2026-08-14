@@ -4,7 +4,6 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using Explore.Blazor.Services.Auth;
-using FluentAssertions;
 
 namespace Explore.Blazor.IntegrationTests.Services;
 
@@ -53,10 +52,10 @@ public sealed class BffAccessTokenAssessmentServiceTests
 
         var summary = service.Describe(token);
 
-        summary.Should().Contain("user=user-1");
-        summary.Should().Contain("iss=https://issuer.example");
-        summary.Should().Contain("aud=api");
-        summary.Should().NotContain(token);
+        await Assert.That(summary).Contains("user=user-1");
+        await Assert.That(summary).Contains("iss=https://issuer.example");
+        await Assert.That(summary).Contains("aud=api");
+        await Assert.That(summary).DoesNotContain(token);
         await Assert.That(summary).Contains("validTo=");
     }
 

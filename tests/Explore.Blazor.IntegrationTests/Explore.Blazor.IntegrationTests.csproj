@@ -4,7 +4,6 @@
     <ProjectReference Include="..\..\src\Explore.Blazor\Explore.Blazor.csproj" />
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="FluentAssertions" />
     <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" />
     <PackageReference Include="NSubstitute" />
     <PackageReference Include="System.IdentityModel.Tokens.Jwt" />

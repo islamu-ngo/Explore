@@ -3,7 +3,6 @@
 
 using Explore.Diagnostic.Doctor;
 using Explore.Diagnostic.Doctor.Checks;
-using FluentAssertions;
 
 namespace Explore.Diagnostic.UnitTests.Doctor.Checks;
 
@@ -21,7 +20,7 @@ public class BootstrapConfigurationDoctorCheckTests
 
         var result = await check.RunAsync(CancellationToken.None);
 
-        result.Status.Should().Be(DoctorCheckStatus.Pass);
+        await Assert.That(result.Status).IsEqualTo(DoctorCheckStatus.Pass);
     }
 
     [Test]
@@ -33,9 +32,9 @@ public class BootstrapConfigurationDoctorCheckTests
 
         var result = await check.RunAsync(CancellationToken.None);
 
-        result.Status.Should().Be(DoctorCheckStatus.Fail);
-        result.Summary.Should().Contain("raw ConnectionStrings__DefaultConnection");
-        result.Summary.Should().NotContain("secret");
+        await Assert.That(result.Status).IsEqualTo(DoctorCheckStatus.Fail);
+        await Assert.That(result.Summary).Contains("raw ConnectionStrings__DefaultConnection");
+        await Assert.That(result.Summary).DoesNotContain("secret");
     }
 
     [Test]
@@ -47,8 +46,8 @@ public class BootstrapConfigurationDoctorCheckTests
 
         var result = await check.RunAsync(CancellationToken.None);
 
-        result.Status.Should().Be(DoctorCheckStatus.Fail);
-        result.Remediation.Should().Contain("Database__Migrator__Password");
+        await Assert.That(result.Status).IsEqualTo(DoctorCheckStatus.Fail);
+        await Assert.That(result.Remediation).Contains("Database__Migrator__Password");
     }
 
     private static string ComposeWithDatabaseVariables() =>

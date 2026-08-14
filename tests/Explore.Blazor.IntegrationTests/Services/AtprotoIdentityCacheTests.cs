@@ -3,7 +3,6 @@
 
 using CarpaNet.Identity;
 using Explore.Blazor.Services.Auth;
-using FluentAssertions;
 
 namespace Explore.Blazor.IntegrationTests.Services;
 
@@ -15,14 +14,14 @@ public sealed class AtprotoIdentityCacheTests
         using var cache = new AtprotoIdentityCache();
         const string initialDid = "did:plc:initial";
 
-        AtprotoIdentityCache.HandleTtl.Should().Be(TimeSpan.FromMinutes(2));
-        AtprotoIdentityCache.DidDocumentTtl.Should().Be(TimeSpan.FromMinutes(5));
+        await Assert.That(AtprotoIdentityCache.HandleTtl).IsEqualTo(TimeSpan.FromMinutes(2));
+        await Assert.That(AtprotoIdentityCache.DidDocumentTtl).IsEqualTo(TimeSpan.FromMinutes(5));
 
         await cache.SetHandleDidAsync("Alice.Example", initialDid);
         await cache.SetDidDocumentAsync(initialDid, new DidDocument { Id = initialDid });
 
-        (await cache.GetHandleDidAsync(" alice.example ")).Should().Be(initialDid);
-        (await cache.GetDidDocumentAsync(" DID:PLC:INITIAL "))!.Id.Should().Be(initialDid);
+        await Assert.That((await cache.GetHandleDidAsync(" alice.example "))).IsEqualTo(initialDid);
+        await Assert.That((await cache.GetDidDocumentAsync(" DID:PLC:INITIAL "))!.Id).IsEqualTo(initialDid);
 
         cache.Clear();
         for (var index = 0; index <= AtprotoIdentityCache.MaximumEntriesPerKind; index++)
@@ -47,8 +46,8 @@ public sealed class AtprotoIdentityCacheTests
             }
         }
 
-        retainedHandles.Should().Be(AtprotoIdentityCache.MaximumEntriesPerKind);
-        retainedDocuments.Should().Be(AtprotoIdentityCache.MaximumEntriesPerKind);
+        await Assert.That(retainedHandles).IsEqualTo(AtprotoIdentityCache.MaximumEntriesPerKind);
+        await Assert.That(retainedDocuments).IsEqualTo(AtprotoIdentityCache.MaximumEntriesPerKind);
 
         cache.RemoveHandle("user-0000.example");
         cache.RemoveDidDocument("did:plc:0000");
@@ -57,8 +56,8 @@ public sealed class AtprotoIdentityCacheTests
             "did:plc:replacement",
             new DidDocument { Id = "did:plc:replacement" });
 
-        (await cache.GetHandleDidAsync("replacement.example")).Should().Be("did:plc:replacement");
-        (await cache.GetDidDocumentAsync("did:plc:replacement"))!.Id.Should().Be("did:plc:replacement");
+        await Assert.That((await cache.GetHandleDidAsync("replacement.example"))).IsEqualTo("did:plc:replacement");
+        await Assert.That((await cache.GetDidDocumentAsync("did:plc:replacement"))!.Id).IsEqualTo("did:plc:replacement");
     }
 
     [Test]
@@ -74,13 +73,13 @@ public sealed class AtprotoIdentityCacheTests
         await cache.SetDidDocumentAsync(firstDid, new DidDocument { Id = firstDid });
 
         timeProvider.Advance(AtprotoIdentityCache.HandleTtl + TimeSpan.FromTicks(1));
-        (await cache.GetHandleDidAsync(handle)).Should().BeNull();
+        await Assert.That((await cache.GetHandleDidAsync(handle))).IsNull();
         await cache.SetHandleDidAsync(handle, secondDid);
-        (await cache.GetHandleDidAsync(handle)).Should().Be(secondDid);
+        await Assert.That((await cache.GetHandleDidAsync(handle))).IsEqualTo(secondDid);
 
         timeProvider.Advance(
             AtprotoIdentityCache.DidDocumentTtl - AtprotoIdentityCache.HandleTtl);
-        (await cache.GetDidDocumentAsync(firstDid)).Should().BeNull();
+        await Assert.That((await cache.GetDidDocumentAsync(firstDid))).IsNull();
     }
 
     private sealed class ManualTimeProvider(DateTimeOffset utcNow) : TimeProvider

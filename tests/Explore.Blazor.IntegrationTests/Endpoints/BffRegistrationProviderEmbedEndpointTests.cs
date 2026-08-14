@@ -6,7 +6,6 @@ using System.Text.Json;
 using System.Net.Http.Json;
 using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Client.Components.Registration.ProviderLaunch;
-using FluentAssertions;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
@@ -46,7 +45,7 @@ public sealed partial class BffRegistrationProviderEmbedEndpointTests : IAsyncDi
         GivenDescriptor(Descriptor());
         using var response = await _client.PostAsJsonAsync(Route(), LaunchRequest());
 
-        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.BadRequest);
         await _apiClient.DidNotReceiveWithAnyArgs().LaunchAuthenticatedRegistrationProviderAttemptAsync(
             default, default, default!, null, null, default);
     }
@@ -58,14 +57,17 @@ public sealed partial class BffRegistrationProviderEmbedEndpointTests : IAsyncDi
 
         using var response = await SendAuthenticatedAsync(Route());
 
-        response.StatusCode.Should().Be(HttpStatusCode.OK);
-        response.Headers.GetValues("Content-Security-Policy").Single().Should().Be(
-            "default-src 'none'; frame-src https://forms.example.test; frame-ancestors 'self'; base-uri 'none'; form-action 'none'; object-src 'none'; script-src 'none'; style-src 'none'");
-        response.Headers.GetValues("X-Frame-Options").Single().Should().Be("SAMEORIGIN");
-        response.Headers.GetValues("Cache-Control").Single().Should().Contain("private").And.Contain("no-store");
-        response.Headers.GetValues("Pragma").Should().Contain("no-cache");
-        GetRawHeader(response, "Expires").Should().Be("0");
-        (await response.Content.ReadAsStringAsync()).Should().Contain("<iframe").And.Contain("sandbox=\"allow-forms allow-same-origin allow-scripts\"");
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
+        await Assert.That(response.Headers.GetValues("Content-Security-Policy").Single()).IsEqualTo("default-src 'none'; frame-src https://forms.example.test; frame-ancestors 'self'; base-uri 'none'; form-action 'none'; object-src 'none'; script-src 'none'; style-src 'none'");
+        await Assert.That(response.Headers.GetValues("X-Frame-Options").Single()).IsEqualTo("SAMEORIGIN");
+        var cacheControl = response.Headers.GetValues("Cache-Control").Single();
+        await Assert.That(cacheControl).Contains("private");
+        await Assert.That(cacheControl).Contains("no-store");
+        await Assert.That(response.Headers.GetValues("Pragma")).Contains("no-cache");
+        await Assert.That(GetRawHeader(response, "Expires")).IsEqualTo("0");
+        var body = await response.Content.ReadAsStringAsync();
+        await Assert.That(body).Contains("<iframe");
+        await Assert.That(body).Contains("sandbox=\"allow-forms allow-same-origin allow-scripts\"");
     }
 
     [Test]
@@ -75,8 +77,8 @@ public sealed partial class BffRegistrationProviderEmbedEndpointTests : IAsyncDi
 
         using var response = await SendAuthenticatedAsync(Route());
 
-        response.StatusCode.Should().Be(HttpStatusCode.OK);
-        response.Headers.GetValues("Content-Security-Policy").Single().Should().Contain("frame-src https://forms.example.test; ");
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
+        await Assert.That(response.Headers.GetValues("Content-Security-Policy").Single()).Contains("frame-src https://forms.example.test; ");
     }
 
     [Test]
@@ -88,15 +90,15 @@ public sealed partial class BffRegistrationProviderEmbedEndpointTests : IAsyncDi
 
         using var response = await SendAuthenticatedAsync(Route());
 
-        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
         var html = await response.Content.ReadAsStringAsync();
-        html.Should().Contain("Bad &lt;img src=x onerror=alert(1)&gt; title");
-        html.Should().NotContain("<script>");
-        html.Should().NotContain("onload=");
-        DangerousAttributeBreakout().IsMatch(html).Should().BeFalse();
+        await Assert.That(html).Contains("Bad &lt;img src=x onerror=alert(1)&gt; title");
+        await Assert.That(html).DoesNotContain("<script>");
+        await Assert.That(html).DoesNotContain("onload=");
+        await Assert.That(DangerousAttributeBreakout().IsMatch(html)).IsFalse();
 
         using var rejected = await SendAuthenticatedAsync(Route() + "?url=https://attacker.example/embed");
-        rejected.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        await Assert.That(rejected.StatusCode).IsEqualTo(HttpStatusCode.BadRequest);
     }
 
     [Test]
@@ -104,15 +106,15 @@ public sealed partial class BffRegistrationProviderEmbedEndpointTests : IAsyncDi
     {
         GivenDescriptor(Descriptor(available: false));
         using var unavailable = await SendAuthenticatedAsync(Route());
-        unavailable.StatusCode.Should().Be(HttpStatusCode.NotFound);
+        await Assert.That(unavailable.StatusCode).IsEqualTo(HttpStatusCode.NotFound);
 
         GivenDescriptor(Descriptor(mode: "redirect"));
         using var nonEmbed = await SendAuthenticatedAsync(Route());
-        nonEmbed.StatusCode.Should().Be(HttpStatusCode.NotFound);
+        await Assert.That(nonEmbed.StatusCode).IsEqualTo(HttpStatusCode.NotFound);
 
         GivenDescriptor(Descriptor(bindingId: Guid.Parse("018e4e5c-7f00-7000-8000-000000000502")));
         using var tampered = await SendAuthenticatedAsync(Route());
-        tampered.StatusCode.Should().Be(HttpStatusCode.NotFound);
+        await Assert.That(tampered.StatusCode).IsEqualTo(HttpStatusCode.NotFound);
     }
 
     [Test]
@@ -120,11 +122,11 @@ public sealed partial class BffRegistrationProviderEmbedEndpointTests : IAsyncDi
     {
         GivenDescriptor(Descriptor(formId: Guid.Parse("018e4e5c-7f00-7000-8000-000000000602")));
         using var tamperedForm = await SendAuthenticatedAsync(Route());
-        tamperedForm.StatusCode.Should().Be(HttpStatusCode.NotFound);
+        await Assert.That(tamperedForm.StatusCode).IsEqualTo(HttpStatusCode.NotFound);
 
         GivenDescriptor(Descriptor(url: "http://forms.example.test/embed"));
         using var httpDescriptor = await SendAuthenticatedAsync(Route());
-        httpDescriptor.StatusCode.Should().Be(HttpStatusCode.NotFound);
+        await Assert.That(httpDescriptor.StatusCode).IsEqualTo(HttpStatusCode.NotFound);
     }
 
     [Test]
@@ -132,23 +134,23 @@ public sealed partial class BffRegistrationProviderEmbedEndpointTests : IAsyncDi
     {
         GivenDescriptor(Descriptor(url: "https://user:pass@forms.example.test/embed"));
         using var userInfo = await SendAuthenticatedAsync(Route());
-        userInfo.StatusCode.Should().Be(HttpStatusCode.NotFound);
+        await Assert.That(userInfo.StatusCode).IsEqualTo(HttpStatusCode.NotFound);
 
         GivenDescriptor(Descriptor(url: "https://127.0.0.1/embed"));
         using var loopback = await SendAuthenticatedAsync(Route());
-        loopback.StatusCode.Should().Be(HttpStatusCode.NotFound);
+        await Assert.That(loopback.StatusCode).IsEqualTo(HttpStatusCode.NotFound);
 
         GivenDescriptor(Descriptor(url: "https://[fc00::1]/embed"));
         using var uniqueLocal = await SendAuthenticatedAsync(Route());
-        uniqueLocal.StatusCode.Should().Be(HttpStatusCode.NotFound);
+        await Assert.That(uniqueLocal.StatusCode).IsEqualTo(HttpStatusCode.NotFound);
 
         GivenDescriptor(Descriptor(url: "https://[::ffff:127.0.0.1]/embed"));
         using var mappedLoopback = await SendAuthenticatedAsync(Route());
-        mappedLoopback.StatusCode.Should().Be(HttpStatusCode.NotFound);
+        await Assert.That(mappedLoopback.StatusCode).IsEqualTo(HttpStatusCode.NotFound);
 
         GivenDescriptor(Descriptor(url: "https://[::ffff:192.168.1.1]/embed"));
         using var mappedPrivate = await SendAuthenticatedAsync(Route());
-        mappedPrivate.StatusCode.Should().Be(HttpStatusCode.NotFound);
+        await Assert.That(mappedPrivate.StatusCode).IsEqualTo(HttpStatusCode.NotFound);
     }
 
     [Test]
@@ -156,8 +158,8 @@ public sealed partial class BffRegistrationProviderEmbedEndpointTests : IAsyncDi
     {
         using var response = await _client.GetAsync("/bff/theme");
 
-        response.StatusCode.Should().Be(HttpStatusCode.OK);
-        response.Headers.GetValues("X-Frame-Options").Single().Should().Be("DENY");
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
+        await Assert.That(response.Headers.GetValues("X-Frame-Options").Single()).IsEqualTo("DENY");
     }
 
     [Test]
@@ -167,7 +169,7 @@ public sealed partial class BffRegistrationProviderEmbedEndpointTests : IAsyncDi
 
         using var response = await SendAuthenticatedAsync(Route());
 
-        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
         await _apiClient.Received(1).LaunchAuthenticatedRegistrationProviderAttemptAsync(
             EventId,
             OrderId,
@@ -195,9 +197,10 @@ public sealed partial class BffRegistrationProviderEmbedEndpointTests : IAsyncDi
         request.Headers.Add("X-CSRF-TOKEN", token);
 
         using HttpResponseMessage response = await _client.SendAsync(request);
-        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
         RegistrationProviderBffTicket? launch = await response.Content.ReadFromJsonAsync<RegistrationProviderBffTicket>();
-        launch!.EmbedUrl.Should().StartWith("/bff/registration-provider-embed/launches/").And.NotContain(capability);
+        await Assert.That(launch!.EmbedUrl).StartsWith("/bff/registration-provider-embed/launches/");
+        await Assert.That(launch.EmbedUrl).DoesNotContain(capability);
         await _apiClient.Received(1).LaunchGuestRegistrationProviderAttemptAsync(
             EventId, OrderId, Arg.Any<LaunchRegistrationProviderAttemptRequest>(), capability,
             null, null, Arg.Any<CancellationToken>());
@@ -291,7 +294,7 @@ public sealed partial class BffRegistrationProviderEmbedEndpointTests : IAsyncDi
             request.Headers.Add(TestAuthHandler.AuthHeaderName, authentication);
         }
         using var response = await _client.SendAsync(request);
-        response.Headers.TryGetValues("Set-Cookie", out var values).Should().BeTrue();
+        await Assert.That(response.Headers.TryGetValues("Set-Cookie", out var values)).IsTrue();
         string token = values!.Select(ReadXsrfToken).First(value => !string.IsNullOrWhiteSpace(value))!;
         return token;
     }

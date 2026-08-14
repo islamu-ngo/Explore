@@ -15,7 +15,6 @@ using Explore.Domain.Constants;
 using Explore.Domain.Modules;
 using Explore.Persistence;
 using Explore.Persistence.Seed;
-using FluentAssertions;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -122,8 +121,7 @@ public class LocalRbacAuthorizationTests : IAsyncDisposable
 
         var response = await _instanceAdminClient.SendAsync(request);
 
-        response.StatusCode.Should().Be(HttpStatusCode.OK,
-            "instance admin should have full access to instance settings via local RBAC");
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK).Because("instance admin should have full access to instance settings via local RBAC");
     }
 
     [Test]
@@ -134,10 +132,8 @@ public class LocalRbacAuthorizationTests : IAsyncDisposable
 
         var response = await _instanceAdminClient.SendAsync(request);
 
-        response.StatusCode.Should().BeOneOf(
-            new[] { HttpStatusCode.OK, HttpStatusCode.BadRequest },
-            "instance admin should be allowed to create tenants via local RBAC " +
-            "(actual status depends on request body validation, not authorization)");
+        await Assert.That(new[] { HttpStatusCode.OK, HttpStatusCode.BadRequest }).Contains(response.StatusCode).Because("instance admin should be allowed to create tenants via local RBAC " +
+        "(actual status depends on request body validation, not authorization)");
     }
 
     #endregion
@@ -152,8 +148,7 @@ public class LocalRbacAuthorizationTests : IAsyncDisposable
 
         var response = await _regularUserClient.SendAsync(request);
 
-        response.StatusCode.Should().Be(HttpStatusCode.Forbidden,
-            "regular user should be denied access to instance settings via local RBAC");
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Forbidden).Because("regular user should be denied access to instance settings via local RBAC");
     }
 
     [Test]
@@ -164,8 +159,7 @@ public class LocalRbacAuthorizationTests : IAsyncDisposable
 
         var response = await _regularUserClient.SendAsync(request);
 
-        response.StatusCode.Should().Be(HttpStatusCode.Forbidden,
-            "regular user should be denied tenant creation via local RBAC");
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Forbidden).Because("regular user should be denied tenant creation via local RBAC");
     }
 
     #endregion
@@ -180,8 +174,7 @@ public class LocalRbacAuthorizationTests : IAsyncDisposable
 
         var response = await _tenantAdminClient.SendAsync(request);
 
-        response.StatusCode.Should().Be(HttpStatusCode.OK,
-            "tenant admin should be allowed to view tenants via local RBAC");
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK).Because("tenant admin should be allowed to view tenants via local RBAC");
     }
 
     [Test]
@@ -192,8 +185,7 @@ public class LocalRbacAuthorizationTests : IAsyncDisposable
 
         var response = await _tenantAdminClient.SendAsync(request);
 
-        response.StatusCode.Should().Be(HttpStatusCode.Forbidden,
-            "tenant admin should be denied access to instance settings via local RBAC");
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Forbidden).Because("tenant admin should be denied access to instance settings via local RBAC");
     }
 
     #endregion
@@ -207,8 +199,7 @@ public class LocalRbacAuthorizationTests : IAsyncDisposable
 
         var response = await _anonymousClient.SendAsync(request);
 
-        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized,
-            "authentication (JWT validation) is independent of authorization (local RBAC)");
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized).Because("authentication (JWT validation) is independent of authorization (local RBAC)");
     }
 
     [Test]
@@ -218,8 +209,7 @@ public class LocalRbacAuthorizationTests : IAsyncDisposable
 
         var response = await _anonymousClient.SendAsync(request);
 
-        response.StatusCode.Should().Be(HttpStatusCode.OK,
-            "[AllowAnonymous] endpoints bypass both authentication and authorization");
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK).Because("[AllowAnonymous] endpoints bypass both authentication and authorization");
     }
 
     #endregion
@@ -234,10 +224,8 @@ public class LocalRbacAuthorizationTests : IAsyncDisposable
 
         var response = await _instanceAdminClient.SendAsync(request);
 
-        response.StatusCode.Should().BeOneOf(
-            new[] { HttpStatusCode.OK, HttpStatusCode.NotFound },
-            "instance admin should be allowed to update settings via local RBAC " +
-            "(actual status depends on whether the setting exists, not authorization)");
+        await Assert.That(new[] { HttpStatusCode.OK, HttpStatusCode.NotFound }).Contains(response.StatusCode).Because("instance admin should be allowed to update settings via local RBAC " +
+        "(actual status depends on whether the setting exists, not authorization)");
     }
 
     [Test]
@@ -248,8 +236,7 @@ public class LocalRbacAuthorizationTests : IAsyncDisposable
 
         var response = await _regularUserClient.SendAsync(request);
 
-        response.StatusCode.Should().Be(HttpStatusCode.Forbidden,
-            "regular user should be denied instance setting update via local RBAC");
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Forbidden).Because("regular user should be denied instance setting update via local RBAC");
     }
 
     #endregion
@@ -264,8 +251,7 @@ public class LocalRbacAuthorizationTests : IAsyncDisposable
 
         var response = await _tenantAdminClient.SendAsync(request);
 
-        response.StatusCode.Should().Be(HttpStatusCode.OK,
-            "tenant admin should be allowed to enable modules for their tenant via local RBAC");
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK).Because("tenant admin should be allowed to enable modules for their tenant via local RBAC");
     }
 
     [Test]
@@ -276,8 +262,7 @@ public class LocalRbacAuthorizationTests : IAsyncDisposable
 
         var response = await _tenantAdminClient.SendAsync(request);
 
-        response.StatusCode.Should().Be(HttpStatusCode.OK,
-            "tenant admin should be allowed to disable modules for their tenant via local RBAC");
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK).Because("tenant admin should be allowed to disable modules for their tenant via local RBAC");
     }
 
     [Test]
@@ -288,8 +273,7 @@ public class LocalRbacAuthorizationTests : IAsyncDisposable
 
         var response = await _regularUserClient.SendAsync(request);
 
-        response.StatusCode.Should().Be(HttpStatusCode.Forbidden,
-            "regular user should be denied module enablement via local RBAC");
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Forbidden).Because("regular user should be denied module enablement via local RBAC");
     }
 
     [Test]
@@ -300,8 +284,7 @@ public class LocalRbacAuthorizationTests : IAsyncDisposable
 
         var response = await _regularUserClient.SendAsync(request);
 
-        response.StatusCode.Should().Be(HttpStatusCode.Forbidden,
-            "regular user should be denied module disablement via local RBAC");
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Forbidden).Because("regular user should be denied module disablement via local RBAC");
     }
 
     #endregion

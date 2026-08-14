@@ -726,6 +726,7 @@ public sealed class CreateOrderWithHoldCommandHandlerTests
             perBookingPartyLimit);
         catalog.AddTicketType(ticket, pool);
         catalog.AddEntitlement(ticket, TicketTypeEntitlement.CreateForEvent(ticket.Id, _tenantId, _eventId, 1));
+        catalog.UpdateCommercialDisclosures("Merchant", "Refund", "Support");
         catalog.Publish();
         return (catalog, ticket, pool);
     }
@@ -740,6 +741,7 @@ public sealed class CreateOrderWithHoldCommandHandlerTests
         EventTicketCatalogVersion catalog = EventTicketCatalogVersion.Create(_tenantId, _eventId, "USD", 1);
         (EventTicketType Ticket, EventCapacityPool Pool) first = AddTicketType(catalog, "First", firstPolicy);
         (EventTicketType Ticket, EventCapacityPool Pool) second = AddTicketType(catalog, "Second", secondPolicy);
+        catalog.UpdateCommercialDisclosures("Merchant", "Refund", "Support");
         catalog.Publish();
         return (catalog, first, second);
     }

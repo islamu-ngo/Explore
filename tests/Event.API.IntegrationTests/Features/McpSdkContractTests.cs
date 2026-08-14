@@ -6,7 +6,6 @@ using System.Reflection;
 using Event.Api.IntegrationTests.Fixtures;
 using Explore.API.Mcp;
 using Explore.Application.Features.AiAssistant.Tools;
-using FluentAssertions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
@@ -19,24 +18,18 @@ namespace ApiIntegrationTests.Features;
 public sealed class McpSdkContractTests
 {
     [Test]
-    public void McpSurfaceTypesUseOfficialSdkTypeAttributes()
+    public async Task McpSurfaceTypesUseOfficialSdkTypeAttributes()
     {
-        typeof(AiToolRegistryMcpTools).GetCustomAttribute<McpServerToolTypeAttribute>()
-            .Should().NotBeNull();
-        typeof(AiAssistantMcpTools).GetCustomAttribute<McpServerToolTypeAttribute>()
-            .Should().NotBeNull();
-        typeof(EventManagementMcpTools).GetCustomAttribute<McpServerToolTypeAttribute>()
-            .Should().NotBeNull();
-        typeof(AiAssistantMcpResources).GetCustomAttribute<McpServerResourceTypeAttribute>()
-            .Should().NotBeNull();
-        typeof(EventManagementMcpResources).GetCustomAttribute<McpServerResourceTypeAttribute>()
-            .Should().NotBeNull();
-        typeof(AiAssistantMcpPrompts).GetCustomAttribute<McpServerPromptTypeAttribute>()
-            .Should().NotBeNull();
+        await Assert.That(typeof(AiToolRegistryMcpTools).GetCustomAttribute<McpServerToolTypeAttribute>()).IsNotNull();
+        await Assert.That(typeof(AiAssistantMcpTools).GetCustomAttribute<McpServerToolTypeAttribute>()).IsNotNull();
+        await Assert.That(typeof(EventManagementMcpTools).GetCustomAttribute<McpServerToolTypeAttribute>()).IsNotNull();
+        await Assert.That(typeof(AiAssistantMcpResources).GetCustomAttribute<McpServerResourceTypeAttribute>()).IsNotNull();
+        await Assert.That(typeof(EventManagementMcpResources).GetCustomAttribute<McpServerResourceTypeAttribute>()).IsNotNull();
+        await Assert.That(typeof(AiAssistantMcpPrompts).GetCustomAttribute<McpServerPromptTypeAttribute>()).IsNotNull();
     }
 
     [Test]
-    public void McpToolsPromptsAndResourcesHaveDescriptionsForLlmDiscovery()
+    public async Task McpToolsPromptsAndResourcesHaveDescriptionsForLlmDiscovery()
     {
         var methods = new[]
         {
@@ -65,13 +58,15 @@ public sealed class McpSdkContractTests
 
         foreach (var method in methods)
         {
-            method.GetCustomAttribute<DescriptionAttribute>()?.Description
-                .Should().NotBeNullOrWhiteSpace(method.Name);
+            await Assert.That(string.IsNullOrWhiteSpace(
+                    method.GetCustomAttribute<DescriptionAttribute>()?.Description))
+                .IsFalse()
+                .Because(method.Name);
         }
     }
 
     [Test]
-    public void McpSchemaParametersHaveDescriptionsExceptInjectedCancellation()
+    public async Task McpSchemaParametersHaveDescriptionsExceptInjectedCancellation()
     {
         var exposedMethods = new[]
         {
@@ -101,13 +96,15 @@ public sealed class McpSdkContractTests
                 continue;
             }
 
-            parameter.GetCustomAttribute<DescriptionAttribute>()?.Description
-                .Should().NotBeNullOrWhiteSpace($"{parameter.Member.Name}.{parameter.Name}");
+            await Assert.That(string.IsNullOrWhiteSpace(
+                    parameter.GetCustomAttribute<DescriptionAttribute>()?.Description))
+                .IsFalse()
+                .Because($"{parameter.Member.Name}.{parameter.Name}");
         }
     }
 
     [Test]
-    public void McpCallableMethodsDeclareExplicitAuthorizationPosture()
+    public async Task McpCallableMethodsDeclareExplicitAuthorizationPosture()
     {
         var anonymousSafeMethods = new HashSet<MethodInfo>
         {
@@ -122,97 +119,76 @@ public sealed class McpSdkContractTests
         {
             if (anonymousSafeMethods.Contains(method))
             {
-                method.GetCustomAttribute<AllowAnonymousAttribute>()
-                    .Should().NotBeNull(method.Name);
-                method.GetCustomAttribute<AuthorizeAttribute>()
-                    .Should().BeNull(method.Name);
+                await Assert.That(method.GetCustomAttribute<AllowAnonymousAttribute>()).IsNotNull().Because(method.Name);
+                await Assert.That(method.GetCustomAttribute<AuthorizeAttribute>()).IsNull().Because(method.Name);
                 continue;
             }
 
-            method.GetCustomAttribute<AuthorizeAttribute>()
-                .Should().NotBeNull(method.Name);
-            method.GetCustomAttribute<AllowAnonymousAttribute>()
-                .Should().BeNull(method.Name);
+            await Assert.That(method.GetCustomAttribute<AuthorizeAttribute>()).IsNotNull().Because(method.Name);
+            await Assert.That(method.GetCustomAttribute<AllowAnonymousAttribute>()).IsNull().Because(method.Name);
         }
     }
 
     [Test]
-    public void McpAuthorizedMethodsUseApiKeyScopeAwarePolicies()
+    public async Task McpAuthorizedMethodsUseApiKeyScopeAwarePolicies()
     {
-        RequiredMethod(typeof(AiAssistantMcpTools), nameof(AiAssistantMcpTools.ProposeAiToolActionAsync))
-            .GetCustomAttribute<AuthorizeAttribute>()?.Policy
-            .Should().Be(McpAuthorizationPolicies.Propose);
+        await Assert.That(RequiredMethod(typeof(AiAssistantMcpTools), nameof(AiAssistantMcpTools.ProposeAiToolActionAsync))
+            .GetCustomAttribute<AuthorizeAttribute>()?.Policy).IsEqualTo(McpAuthorizationPolicies.Propose);
 
-        RequiredMethod(typeof(EventManagementMcpTools), nameof(EventManagementMcpTools.ListMyEventsAsync))
-            .GetCustomAttribute<AuthorizeAttribute>()?.Policy
-            .Should().Be(McpAuthorizationPolicies.EventManagementRead);
+        await Assert.That(RequiredMethod(typeof(EventManagementMcpTools), nameof(EventManagementMcpTools.ListMyEventsAsync))
+            .GetCustomAttribute<AuthorizeAttribute>()?.Policy).IsEqualTo(McpAuthorizationPolicies.EventManagementRead);
 
-        RequiredMethod(typeof(EventManagementMcpTools), nameof(EventManagementMcpTools.GetEventCreationContextAsync))
-            .GetCustomAttribute<AuthorizeAttribute>()?.Policy
-            .Should().Be(McpAuthorizationPolicies.EventManagementRead);
+        await Assert.That(RequiredMethod(typeof(EventManagementMcpTools), nameof(EventManagementMcpTools.GetEventCreationContextAsync))
+            .GetCustomAttribute<AuthorizeAttribute>()?.Policy).IsEqualTo(McpAuthorizationPolicies.EventManagementRead);
 
-        RequiredMethod(typeof(EventManagementMcpTools), nameof(EventManagementMcpTools.GetEventPublishReadinessAsync))
-            .GetCustomAttribute<AuthorizeAttribute>()?.Policy
-            .Should().Be(McpAuthorizationPolicies.EventManagementRead);
+        await Assert.That(RequiredMethod(typeof(EventManagementMcpTools), nameof(EventManagementMcpTools.GetEventPublishReadinessAsync))
+            .GetCustomAttribute<AuthorizeAttribute>()?.Policy).IsEqualTo(McpAuthorizationPolicies.EventManagementRead);
 
-        RequiredMethod(typeof(EventManagementMcpTools), nameof(EventManagementMcpTools.GetEventProgramManagementContextAsync))
-            .GetCustomAttribute<AuthorizeAttribute>()?.Policy
-            .Should().Be(McpAuthorizationPolicies.EventManagementRead);
+        await Assert.That(RequiredMethod(typeof(EventManagementMcpTools), nameof(EventManagementMcpTools.GetEventProgramManagementContextAsync))
+            .GetCustomAttribute<AuthorizeAttribute>()?.Policy).IsEqualTo(McpAuthorizationPolicies.EventManagementRead);
 
-        RequiredMethod(typeof(EventManagementMcpTools), nameof(EventManagementMcpTools.GetEventCustomPropertiesContextAsync))
-            .GetCustomAttribute<AuthorizeAttribute>()?.Policy
-            .Should().Be(McpAuthorizationPolicies.EventManagementRead);
+        await Assert.That(RequiredMethod(typeof(EventManagementMcpTools), nameof(EventManagementMcpTools.GetEventCustomPropertiesContextAsync))
+            .GetCustomAttribute<AuthorizeAttribute>()?.Policy).IsEqualTo(McpAuthorizationPolicies.EventManagementRead);
 
-        RequiredMethod(typeof(EventManagementMcpTools), nameof(EventManagementMcpTools.GetEventRegistrationsContextAsync))
-            .GetCustomAttribute<AuthorizeAttribute>()?.Policy
-            .Should().Be(McpAuthorizationPolicies.EventManagementRead);
+        await Assert.That(RequiredMethod(typeof(EventManagementMcpTools), nameof(EventManagementMcpTools.GetEventRegistrationsContextAsync))
+            .GetCustomAttribute<AuthorizeAttribute>()?.Policy).IsEqualTo(McpAuthorizationPolicies.EventManagementRead);
 
-        RequiredMethod(typeof(EventManagementMcpTools), nameof(EventManagementMcpTools.GetEventTeamContextAsync))
-            .GetCustomAttribute<AuthorizeAttribute>()?.Policy
-            .Should().Be(McpAuthorizationPolicies.EventManagementRead);
+        await Assert.That(RequiredMethod(typeof(EventManagementMcpTools), nameof(EventManagementMcpTools.GetEventTeamContextAsync))
+            .GetCustomAttribute<AuthorizeAttribute>()?.Policy).IsEqualTo(McpAuthorizationPolicies.EventManagementRead);
 
-        RequiredMethod(typeof(EventManagementMcpTools), nameof(EventManagementMcpTools.GetEventTemplateCatalogContextAsync))
-            .GetCustomAttribute<AuthorizeAttribute>()?.Policy
-            .Should().Be(McpAuthorizationPolicies.EventManagementRead);
+        await Assert.That(RequiredMethod(typeof(EventManagementMcpTools), nameof(EventManagementMcpTools.GetEventTemplateCatalogContextAsync))
+            .GetCustomAttribute<AuthorizeAttribute>()?.Policy).IsEqualTo(McpAuthorizationPolicies.EventManagementRead);
 
-        RequiredMethod(typeof(EventManagementMcpTools), nameof(EventManagementMcpTools.GetEventTemplateSyncContextAsync))
-            .GetCustomAttribute<AuthorizeAttribute>()?.Policy
-            .Should().Be(McpAuthorizationPolicies.EventManagementRead);
+        await Assert.That(RequiredMethod(typeof(EventManagementMcpTools), nameof(EventManagementMcpTools.GetEventTemplateSyncContextAsync))
+            .GetCustomAttribute<AuthorizeAttribute>()?.Policy).IsEqualTo(McpAuthorizationPolicies.EventManagementRead);
 
-        RequiredMethod(typeof(EventManagementMcpTools), nameof(EventManagementMcpTools.GetEventSessionTemplateSyncContextAsync))
-            .GetCustomAttribute<AuthorizeAttribute>()?.Policy
-            .Should().Be(McpAuthorizationPolicies.EventManagementRead);
+        await Assert.That(RequiredMethod(typeof(EventManagementMcpTools), nameof(EventManagementMcpTools.GetEventSessionTemplateSyncContextAsync))
+            .GetCustomAttribute<AuthorizeAttribute>()?.Policy).IsEqualTo(McpAuthorizationPolicies.EventManagementRead);
 
-        RequiredMethod(typeof(AiAssistantMcpResources), nameof(AiAssistantMcpResources.ListConversationsAsync))
-            .GetCustomAttribute<AuthorizeAttribute>()?.Policy
-            .Should().Be(McpAuthorizationPolicies.Read);
+        await Assert.That(RequiredMethod(typeof(AiAssistantMcpResources), nameof(AiAssistantMcpResources.ListConversationsAsync))
+            .GetCustomAttribute<AuthorizeAttribute>()?.Policy).IsEqualTo(McpAuthorizationPolicies.Read);
 
-        RequiredMethod(typeof(AiAssistantMcpResources), nameof(AiAssistantMcpResources.GetConversationAsync))
-            .GetCustomAttribute<AuthorizeAttribute>()?.Policy
-            .Should().Be(McpAuthorizationPolicies.Read);
+        await Assert.That(RequiredMethod(typeof(AiAssistantMcpResources), nameof(AiAssistantMcpResources.GetConversationAsync))
+            .GetCustomAttribute<AuthorizeAttribute>()?.Policy).IsEqualTo(McpAuthorizationPolicies.Read);
 
-        RequiredMethod(typeof(EventManagementMcpResources), nameof(EventManagementMcpResources.GetEventManagementContextAsync))
-            .GetCustomAttribute<AuthorizeAttribute>()?.Policy
-            .Should().Be(McpAuthorizationPolicies.EventManagementRead);
+        await Assert.That(RequiredMethod(typeof(EventManagementMcpResources), nameof(EventManagementMcpResources.GetEventManagementContextAsync))
+            .GetCustomAttribute<AuthorizeAttribute>()?.Policy).IsEqualTo(McpAuthorizationPolicies.EventManagementRead);
 
-        RequiredMethod(typeof(AiAssistantMcpPrompts), nameof(AiAssistantMcpPrompts.CreateEventDraftWithConfirmation))
-            .GetCustomAttribute<AuthorizeAttribute>()?.Policy
-            .Should().Be(McpAuthorizationPolicies.Propose);
+        await Assert.That(RequiredMethod(typeof(AiAssistantMcpPrompts), nameof(AiAssistantMcpPrompts.CreateEventDraftWithConfirmation))
+            .GetCustomAttribute<AuthorizeAttribute>()?.Policy).IsEqualTo(McpAuthorizationPolicies.Propose);
 
-        RequiredMethod(typeof(AiAssistantMcpPrompts), nameof(AiAssistantMcpPrompts.ManageEventWithConfirmation))
-            .GetCustomAttribute<AuthorizeAttribute>()?.Policy
-            .Should().Be(McpAuthorizationPolicies.Propose);
+        await Assert.That(RequiredMethod(typeof(AiAssistantMcpPrompts), nameof(AiAssistantMcpPrompts.ManageEventWithConfirmation))
+            .GetCustomAttribute<AuthorizeAttribute>()?.Policy).IsEqualTo(McpAuthorizationPolicies.Propose);
 
         foreach (var definition in AiToolContractRegistry.CreateDefault().Definitions.Where(definition => definition.ExposeToMcp))
         {
             var projectedTool = new AiMcpProjectedProposalTool(definition);
-            projectedTool.Metadata.OfType<AuthorizeAttribute>().Single().Policy
-                .Should().Be(McpAuthorizationPolicies.Propose);
+            await Assert.That(projectedTool.Metadata.OfType<AuthorizeAttribute>().Single().Policy).IsEqualTo(McpAuthorizationPolicies.Propose);
         }
     }
 
     [Test]
-    public void McpSurfaceTypesDoNotPermitAnonymousAccess()
+    public async Task McpSurfaceTypesDoNotPermitAnonymousAccess()
     {
         var surfaceTypes = new[]
         {
@@ -226,8 +202,7 @@ public sealed class McpSdkContractTests
 
         foreach (var type in surfaceTypes)
         {
-            type.GetCustomAttribute<AllowAnonymousAttribute>()
-                .Should().BeNull(type.FullName);
+            await Assert.That(type.GetCustomAttribute<AllowAnonymousAttribute>()).IsNull().Because(type.FullName);
         }
     }
 
@@ -241,63 +216,63 @@ public sealed class McpSdkContractTests
             .GetRequiredService<IOptions<HttpServerTransportOptions>>()
             .Value;
 
-        transportOptions.Stateless.Should().BeTrue();
+        await Assert.That(transportOptions.Stateless).IsTrue();
 #pragma warning disable MCP9004
-        transportOptions.EnableLegacySse.Should().BeFalse();
+        await Assert.That(transportOptions.EnableLegacySse).IsFalse();
 #pragma warning restore MCP9004
     }
 
     [Test]
-    public void ApiHostUsesStreamableHttpOnlyForProductMcpTransport()
+    public async Task ApiHostUsesStreamableHttpOnlyForProductMcpTransport()
     {
         var services = ReadRepoFile("src/Explore.API/Hosting/ApiHostServiceCollectionExtensions.cs");
         var application = ReadRepoFile("src/Explore.API/Hosting/ApiHostApplicationExtensions.cs");
         var program = ReadRepoFile("src/Explore.API/Program.cs");
 
-        services.Should().Contain(".WithHttpTransport(options =>");
-        services.Should().Contain("options.Stateless = mcpAdapterSettings.Stateless");
-        services.Should().Contain("builder.Services.PostConfigure<McpAdapterSettings>");
-        services.Should().Contain("settings.EndpointPath = endpointPath.StartsWith('/')");
-        application.Should().Contain("app.MapMcp(mcpAdapterSettings.EndpointPath)");
-        application.Should().Contain(".AllowAnonymous()");
-        services.Should().NotContain(".WithStdioServerTransport");
-        application.Should().NotContain(".WithStdioServerTransport");
-        services.Should().NotContain("options.EnableLegacySse");
-        application.Should().NotContain("options.EnableLegacySse");
-        program.Should().Contain("AddApiHostServices");
-        program.Should().NotContain(".WithHttpTransport(");
-        program.Should().NotContain("app.MapMcp(");
+        await Assert.That(services).Contains(".WithHttpTransport(options =>");
+        await Assert.That(services).Contains("options.Stateless = mcpAdapterSettings.Stateless");
+        await Assert.That(services).Contains("builder.Services.PostConfigure<McpAdapterSettings>");
+        await Assert.That(services).Contains("settings.EndpointPath = endpointPath.StartsWith('/')");
+        await Assert.That(application).Contains("app.MapMcp(mcpAdapterSettings.EndpointPath)");
+        await Assert.That(application).Contains(".AllowAnonymous()");
+        await Assert.That(services).DoesNotContain(".WithStdioServerTransport");
+        await Assert.That(application).DoesNotContain(".WithStdioServerTransport");
+        await Assert.That(services).DoesNotContain("options.EnableLegacySse");
+        await Assert.That(application).DoesNotContain("options.EnableLegacySse");
+        await Assert.That(program).Contains("AddApiHostServices");
+        await Assert.That(program).DoesNotContain(".WithHttpTransport(");
+        await Assert.That(program).DoesNotContain("app.MapMcp(");
     }
 
     [Test]
-    public void ApiHostRegistersMcpSurfacesExplicitlyForAotReviewability()
+    public async Task ApiHostRegistersMcpSurfacesExplicitlyForAotReviewability()
     {
         var services = ReadRepoFile("src/Explore.API/Hosting/ApiHostServiceCollectionExtensions.cs");
         var program = ReadRepoFile("src/Explore.API/Program.cs");
 
-        services.Should().Contain(".WithTools<AiToolRegistryMcpTools>()");
-        services.Should().Contain(".WithTools<AiAssistantMcpTools>()");
-        services.Should().Contain(".WithTools<EventManagementMcpTools>()");
-        services.Should().Contain(".WithResources<AiAssistantMcpResources>()");
-        services.Should().Contain(".WithResources<EventManagementMcpResources>()");
-        services.Should().Contain(".WithPrompts<AiAssistantMcpPrompts>()");
-        services.Should().Contain("AiMcpProjectedToolOptionsSetup");
-        services.Should().NotContain(".WithToolsFromAssembly");
-        services.Should().NotContain(".WithResourcesFromAssembly");
-        services.Should().NotContain(".WithPromptsFromAssembly");
-        program.Should().Contain("AddApiHostServices");
-        program.Should().NotContain(".WithTools<");
-        program.Should().NotContain(".WithResources<");
-        program.Should().NotContain(".WithPrompts<");
+        await Assert.That(services).Contains(".WithTools<AiToolRegistryMcpTools>()");
+        await Assert.That(services).Contains(".WithTools<AiAssistantMcpTools>()");
+        await Assert.That(services).Contains(".WithTools<EventManagementMcpTools>()");
+        await Assert.That(services).Contains(".WithResources<AiAssistantMcpResources>()");
+        await Assert.That(services).Contains(".WithResources<EventManagementMcpResources>()");
+        await Assert.That(services).Contains(".WithPrompts<AiAssistantMcpPrompts>()");
+        await Assert.That(services).Contains("AiMcpProjectedToolOptionsSetup");
+        await Assert.That(services).DoesNotContain(".WithToolsFromAssembly");
+        await Assert.That(services).DoesNotContain(".WithResourcesFromAssembly");
+        await Assert.That(services).DoesNotContain(".WithPromptsFromAssembly");
+        await Assert.That(program).Contains("AddApiHostServices");
+        await Assert.That(program).DoesNotContain(".WithTools<");
+        await Assert.That(program).DoesNotContain(".WithResources<");
+        await Assert.That(program).DoesNotContain(".WithPrompts<");
     }
 
     [Test]
-    public void ServiceDefaultsExportsBoundedMcpTelemetrySourceAndMeter()
+    public async Task ServiceDefaultsExportsBoundedMcpTelemetrySourceAndMeter()
     {
         var serviceDefaults = ReadRepoFile("src/Explore.ServiceDefaults/Extensions.cs");
 
-        serviceDefaults.Should().Contain(".AddMeter(\"Explore.Mcp\")");
-        serviceDefaults.Should().Contain(".AddSource(\"Explore.Mcp\")");
+        await Assert.That(serviceDefaults).Contains(".AddMeter(\"Explore.Mcp\")");
+        await Assert.That(serviceDefaults).Contains(".AddSource(\"Explore.Mcp\")");
     }
 
     private static MethodInfo[] McpCallableMethods()

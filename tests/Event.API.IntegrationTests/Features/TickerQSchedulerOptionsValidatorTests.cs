@@ -2,7 +2,6 @@
 // ABOUTME: Proves dashboard and scheduler settings fail fast before unsafe operational exposure.
 
 using Explore.API.Configuration;
-using FluentAssertions;
 using TUnit.Core;
 
 namespace ApiIntegrationTests.Features;
@@ -12,15 +11,15 @@ public sealed class TickerQSchedulerOptionsValidatorTests
     private readonly TickerQSchedulerOptionsValidator _validator = new();
 
     [Test]
-    public void ValidateDefaultSettingsReturnsSuccess()
+    public async Task ValidateDefaultSettingsReturnsSuccess()
     {
         var result = _validator.Validate(null, new TickerQSchedulerOptions());
 
-        result.Succeeded.Should().BeTrue();
+        await Assert.That(result.Succeeded).IsTrue();
     }
 
     [Test]
-    public void ValidateRejectsInvalidSchedulerShape()
+    public async Task ValidateRejectsInvalidSchedulerShape()
     {
         var result = _validator.Validate(null, new TickerQSchedulerOptions
         {
@@ -29,26 +28,26 @@ public sealed class TickerQSchedulerOptionsValidatorTests
             NodeIdentifier = " "
         });
 
-        result.Succeeded.Should().BeFalse();
-        result.FailureMessage.Should().Contain("Schema");
-        result.FailureMessage.Should().Contain("MaxConcurrency");
-        result.FailureMessage.Should().Contain("NodeIdentifier");
+        await Assert.That(result.Succeeded).IsFalse();
+        await Assert.That(result.FailureMessage).Contains("Schema");
+        await Assert.That(result.FailureMessage).Contains("MaxConcurrency");
+        await Assert.That(result.FailureMessage).Contains("NodeIdentifier");
     }
 
     [Test]
-    public void ValidateRejectsSchemaWithoutMatchingMigration()
+    public async Task ValidateRejectsSchemaWithoutMatchingMigration()
     {
         var result = _validator.Validate(null, new TickerQSchedulerOptions
         {
             Schema = "scheduler"
         });
 
-        result.Succeeded.Should().BeFalse();
-        result.FailureMessage.Should().Contain("must be ticker");
+        await Assert.That(result.Succeeded).IsFalse();
+        await Assert.That(result.FailureMessage).Contains("must be ticker");
     }
 
     [Test]
-    public void ValidateRejectsDashboardWithoutSafeHostAuthentication()
+    public async Task ValidateRejectsDashboardWithoutSafeHostAuthentication()
     {
         var result = _validator.Validate(null, new TickerQSchedulerOptions
         {
@@ -58,9 +57,9 @@ public sealed class TickerQSchedulerOptionsValidatorTests
             DashboardSessionTimeoutMinutes = 0
         });
 
-        result.Succeeded.Should().BeFalse();
-        result.FailureMessage.Should().Contain("DashboardPath");
-        result.FailureMessage.Should().Contain("DashboardAuthorizationPolicy");
-        result.FailureMessage.Should().Contain("DashboardSessionTimeoutMinutes");
+        await Assert.That(result.Succeeded).IsFalse();
+        await Assert.That(result.FailureMessage).Contains("DashboardPath");
+        await Assert.That(result.FailureMessage).Contains("DashboardAuthorizationPolicy");
+        await Assert.That(result.FailureMessage).Contains("DashboardSessionTimeoutMinutes");
     }
 }

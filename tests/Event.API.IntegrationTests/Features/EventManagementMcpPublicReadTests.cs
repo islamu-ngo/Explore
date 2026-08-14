@@ -13,7 +13,6 @@ using Explore.Domain.Constants;
 using Explore.Domain.Enums;
 using Explore.Domain.Services.Scheduling;
 using Explore.Persistence;
-using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using TUnit.Core;
 
@@ -31,18 +30,17 @@ public sealed class EventManagementMcpPublicReadTests
         using var tools = await mcp.InvokeAsync("tools/list");
         using var resourceTemplates = await mcp.InvokeAsync("resources/templates/list");
 
-        GetNames(GetResult(tools), "tools").Should().Contain([
-            "list_ai_tool_contracts",
-            "search_public_events",
-            "get_public_event",
-            "get_public_event_program_summary",
-            "list_public_event_sessions"]);
-        GetNames(GetResult(tools), "tools").Should().NotContain("list_my_events");
-        GetNames(GetResult(tools), "tools").Should().NotContain("get_event_creation_context");
-        GetNames(GetResult(tools), "tools").Should().NotContain("get_event_publish_readiness");
-        GetNames(GetResult(tools), "tools").Should().NotContain("propose_ai_tool_action");
-        GetNames(GetResult(tools), "tools").Should().NotContain("propose_create_event_draft");
-        GetNames(GetResult(resourceTemplates), "resourceTemplates").Should().NotContain("event_management_context");
+        await Assert.That(new[] { "list_ai_tool_contracts",
+        "search_public_events",
+        "get_public_event",
+        "get_public_event_program_summary",
+        "list_public_event_sessions" }.All(GetNames(GetResult(tools), "tools").Contains)).IsTrue();
+        await Assert.That(GetNames(GetResult(tools), "tools")).DoesNotContain("list_my_events");
+        await Assert.That(GetNames(GetResult(tools), "tools")).DoesNotContain("get_event_creation_context");
+        await Assert.That(GetNames(GetResult(tools), "tools")).DoesNotContain("get_event_publish_readiness");
+        await Assert.That(GetNames(GetResult(tools), "tools")).DoesNotContain("propose_ai_tool_action");
+        await Assert.That(GetNames(GetResult(tools), "tools")).DoesNotContain("propose_create_event_draft");
+        await Assert.That(GetNames(GetResult(resourceTemplates), "resourceTemplates")).DoesNotContain("event_management_context");
     }
 
     [Test]
@@ -74,21 +72,21 @@ public sealed class EventManagementMcpPublicReadTests
             ["pageNumber"] = 1,
             ["pageSize"] = 999
         });
-        var mcpText = GetFirstTextContent(GetResult(mcpResponse));
+        var mcpText = await GetFirstTextContent(GetResult(mcpResponse));
         using var mcpDescriptor = JsonDocument.Parse(mcpText);
 
-        restResponse.StatusCode.Should().Be(HttpStatusCode.OK);
-        restText.Should().Contain(publishedTitle);
-        restText.Should().NotContain(draftTitle);
-        restText.Should().NotContain(archivedTitle);
-        restText.Should().NotContain(privateTitle);
+        await Assert.That(restResponse.StatusCode).IsEqualTo(HttpStatusCode.OK);
+        await Assert.That(restText).Contains(publishedTitle);
+        await Assert.That(restText).DoesNotContain(draftTitle);
+        await Assert.That(restText).DoesNotContain(archivedTitle);
+        await Assert.That(restText).DoesNotContain(privateTitle);
 
-        mcpText.Should().Contain(publishedTitle);
-        mcpText.Should().NotContain(draftTitle);
-        mcpText.Should().NotContain(archivedTitle);
-        mcpText.Should().NotContain(privateTitle);
-        mcpDescriptor.RootElement.GetProperty("PageSize").GetInt32().Should().Be(25);
-        mcpDescriptor.RootElement.GetProperty("PageSizeWasClamped").GetBoolean().Should().BeTrue();
+        await Assert.That(mcpText).Contains(publishedTitle);
+        await Assert.That(mcpText).DoesNotContain(draftTitle);
+        await Assert.That(mcpText).DoesNotContain(archivedTitle);
+        await Assert.That(mcpText).DoesNotContain(privateTitle);
+        await Assert.That(mcpDescriptor.RootElement.GetProperty("PageSize").GetInt32()).IsEqualTo(25);
+        await Assert.That(mcpDescriptor.RootElement.GetProperty("PageSizeWasClamped").GetBoolean()).IsTrue();
     }
 
     [Test]
@@ -131,25 +129,25 @@ public sealed class EventManagementMcpPublicReadTests
             ["eventId"] = Guid.CreateVersion7().ToString()
         });
 
-        restPublished.StatusCode.Should().Be(HttpStatusCode.OK);
-        restDraft.StatusCode.Should().Be(HttpStatusCode.NotFound);
+        await Assert.That(restPublished.StatusCode).IsEqualTo(HttpStatusCode.OK);
+        await Assert.That(restDraft.StatusCode).IsEqualTo(HttpStatusCode.NotFound);
 
-        using var publishedDescriptor = JsonDocument.Parse(GetFirstTextContent(GetResult(publishedMcpResponse)));
-        publishedDescriptor.RootElement.GetProperty("Found").GetBoolean().Should().BeTrue();
-        publishedDescriptor.RootElement.GetProperty("Event").GetProperty("Title").GetString().Should().Be(publishedTitle);
+        using var publishedDescriptor = JsonDocument.Parse(await GetFirstTextContent(GetResult(publishedMcpResponse)));
+        await Assert.That(publishedDescriptor.RootElement.GetProperty("Found").GetBoolean()).IsTrue();
+        await Assert.That(publishedDescriptor.RootElement.GetProperty("Event").GetProperty("Title").GetString()).IsEqualTo(publishedTitle);
 
-        using var draftDescriptor = JsonDocument.Parse(GetFirstTextContent(GetResult(draftMcpResponse)));
-        draftDescriptor.RootElement.GetProperty("Found").GetBoolean().Should().BeFalse();
-        draftDescriptor.RootElement.GetProperty("FailureCode").GetString().Should().Be("not_found");
+        using var draftDescriptor = JsonDocument.Parse(await GetFirstTextContent(GetResult(draftMcpResponse)));
+        await Assert.That(draftDescriptor.RootElement.GetProperty("Found").GetBoolean()).IsFalse();
+        await Assert.That(draftDescriptor.RootElement.GetProperty("FailureCode").GetString()).IsEqualTo("not_found");
 
-        using var privateDescriptor = JsonDocument.Parse(GetFirstTextContent(GetResult(privateMcpResponse)));
-        privateDescriptor.RootElement.GetProperty("Found").GetBoolean().Should().BeFalse();
-        privateDescriptor.RootElement.GetProperty("FailureCode").GetString().Should().Be("not_found");
-        privateDescriptor.RootElement.GetRawText().Should().NotContain(privateTitle);
+        using var privateDescriptor = JsonDocument.Parse(await GetFirstTextContent(GetResult(privateMcpResponse)));
+        await Assert.That(privateDescriptor.RootElement.GetProperty("Found").GetBoolean()).IsFalse();
+        await Assert.That(privateDescriptor.RootElement.GetProperty("FailureCode").GetString()).IsEqualTo("not_found");
+        await Assert.That(privateDescriptor.RootElement.GetRawText()).DoesNotContain(privateTitle);
 
-        using var missingDescriptor = JsonDocument.Parse(GetFirstTextContent(GetResult(missingMcpResponse)));
-        missingDescriptor.RootElement.GetProperty("Found").GetBoolean().Should().BeFalse();
-        missingDescriptor.RootElement.GetProperty("FailureCode").GetString().Should().Be("not_found");
+        using var missingDescriptor = JsonDocument.Parse(await GetFirstTextContent(GetResult(missingMcpResponse)));
+        await Assert.That(missingDescriptor.RootElement.GetProperty("Found").GetBoolean()).IsFalse();
+        await Assert.That(missingDescriptor.RootElement.GetProperty("FailureCode").GetString()).IsEqualTo("not_found");
     }
 
     [Test]
@@ -208,40 +206,40 @@ public sealed class EventManagementMcpPublicReadTests
             ["eventId"] = privateEventId.ToString()
         });
 
-        restPublishedDetail.StatusCode.Should().Be(HttpStatusCode.OK);
-        restDraftDetail.StatusCode.Should().Be(HttpStatusCode.NotFound);
-        restProgram.StatusCode.Should().Be(HttpStatusCode.OK);
-        restProgramText.Should().Contain(publishedSessionTitle);
-        restSessions.StatusCode.Should().Be(HttpStatusCode.OK);
-        restSessionsText.Should().Contain(publishedSessionTitle);
+        await Assert.That(restPublishedDetail.StatusCode).IsEqualTo(HttpStatusCode.OK);
+        await Assert.That(restDraftDetail.StatusCode).IsEqualTo(HttpStatusCode.NotFound);
+        await Assert.That(restProgram.StatusCode).IsEqualTo(HttpStatusCode.OK);
+        await Assert.That(restProgramText).Contains(publishedSessionTitle);
+        await Assert.That(restSessions.StatusCode).IsEqualTo(HttpStatusCode.OK);
+        await Assert.That(restSessionsText).Contains(publishedSessionTitle);
 
-        using var publishedProgram = JsonDocument.Parse(GetFirstTextContent(GetResult(publishedProgramResponse)));
-        publishedProgram.RootElement.GetProperty("Found").GetBoolean().Should().BeTrue();
-        publishedProgram.RootElement.GetProperty("Program").GetRawText().Should().Contain(publishedSessionTitle);
+        using var publishedProgram = JsonDocument.Parse(await GetFirstTextContent(GetResult(publishedProgramResponse)));
+        await Assert.That(publishedProgram.RootElement.GetProperty("Found").GetBoolean()).IsTrue();
+        await Assert.That(publishedProgram.RootElement.GetProperty("Program").GetRawText()).Contains(publishedSessionTitle);
 
-        using var publishedSessions = JsonDocument.Parse(GetFirstTextContent(GetResult(publishedSessionsResponse)));
-        publishedSessions.RootElement.GetProperty("Found").GetBoolean().Should().BeTrue();
-        publishedSessions.RootElement.GetProperty("Sessions").GetRawText().Should().Contain(publishedSessionTitle);
+        using var publishedSessions = JsonDocument.Parse(await GetFirstTextContent(GetResult(publishedSessionsResponse)));
+        await Assert.That(publishedSessions.RootElement.GetProperty("Found").GetBoolean()).IsTrue();
+        await Assert.That(publishedSessions.RootElement.GetProperty("Sessions").GetRawText()).Contains(publishedSessionTitle);
 
-        using var draftProgram = JsonDocument.Parse(GetFirstTextContent(GetResult(draftProgramResponse)));
-        draftProgram.RootElement.GetProperty("Found").GetBoolean().Should().BeFalse();
-        draftProgram.RootElement.GetProperty("FailureCode").GetString().Should().Be("not_found");
-        draftProgram.RootElement.GetRawText().Should().NotContain(draftSessionTitle);
+        using var draftProgram = JsonDocument.Parse(await GetFirstTextContent(GetResult(draftProgramResponse)));
+        await Assert.That(draftProgram.RootElement.GetProperty("Found").GetBoolean()).IsFalse();
+        await Assert.That(draftProgram.RootElement.GetProperty("FailureCode").GetString()).IsEqualTo("not_found");
+        await Assert.That(draftProgram.RootElement.GetRawText()).DoesNotContain(draftSessionTitle);
 
-        using var draftSessions = JsonDocument.Parse(GetFirstTextContent(GetResult(draftSessionsResponse)));
-        draftSessions.RootElement.GetProperty("Found").GetBoolean().Should().BeFalse();
-        draftSessions.RootElement.GetProperty("FailureCode").GetString().Should().Be("not_found");
-        draftSessions.RootElement.GetRawText().Should().NotContain(draftSessionTitle);
+        using var draftSessions = JsonDocument.Parse(await GetFirstTextContent(GetResult(draftSessionsResponse)));
+        await Assert.That(draftSessions.RootElement.GetProperty("Found").GetBoolean()).IsFalse();
+        await Assert.That(draftSessions.RootElement.GetProperty("FailureCode").GetString()).IsEqualTo("not_found");
+        await Assert.That(draftSessions.RootElement.GetRawText()).DoesNotContain(draftSessionTitle);
 
-        using var privateProgram = JsonDocument.Parse(GetFirstTextContent(GetResult(privateProgramResponse)));
-        privateProgram.RootElement.GetProperty("Found").GetBoolean().Should().BeFalse();
-        privateProgram.RootElement.GetProperty("FailureCode").GetString().Should().Be("not_found");
-        privateProgram.RootElement.GetRawText().Should().NotContain(privateSessionTitle);
+        using var privateProgram = JsonDocument.Parse(await GetFirstTextContent(GetResult(privateProgramResponse)));
+        await Assert.That(privateProgram.RootElement.GetProperty("Found").GetBoolean()).IsFalse();
+        await Assert.That(privateProgram.RootElement.GetProperty("FailureCode").GetString()).IsEqualTo("not_found");
+        await Assert.That(privateProgram.RootElement.GetRawText()).DoesNotContain(privateSessionTitle);
 
-        using var privateSessions = JsonDocument.Parse(GetFirstTextContent(GetResult(privateSessionsResponse)));
-        privateSessions.RootElement.GetProperty("Found").GetBoolean().Should().BeFalse();
-        privateSessions.RootElement.GetProperty("FailureCode").GetString().Should().Be("not_found");
-        privateSessions.RootElement.GetRawText().Should().NotContain(privateSessionTitle);
+        using var privateSessions = JsonDocument.Parse(await GetFirstTextContent(GetResult(privateSessionsResponse)));
+        await Assert.That(privateSessions.RootElement.GetProperty("Found").GetBoolean()).IsFalse();
+        await Assert.That(privateSessions.RootElement.GetProperty("FailureCode").GetString()).IsEqualTo("not_found");
+        await Assert.That(privateSessions.RootElement.GetRawText()).DoesNotContain(privateSessionTitle);
     }
 
     private static AuthenticatedWebApplicationFactory CreateMcpEnabledFactory()
@@ -285,11 +283,11 @@ public sealed class EventManagementMcpPublicReadTests
             .ToArray();
     }
 
-    private static string GetFirstTextContent(JsonElement result)
+    private static async Task<string> GetFirstTextContent(JsonElement result)
     {
         var content = result.GetProperty("content");
-        content.ValueKind.Should().Be(JsonValueKind.Array);
-        content.GetArrayLength().Should().BeGreaterThan(0);
+        await Assert.That(content.ValueKind).IsEqualTo(JsonValueKind.Array);
+        await Assert.That(content.GetArrayLength()).IsGreaterThan(0);
         return content[0].GetProperty("text").GetString() ?? string.Empty;
     }
 
@@ -461,10 +459,10 @@ public sealed class EventManagementMcpPublicReadTests
             }
 
             using var response = await SendRawAsync(requestBody.ToJsonString());
-            response.StatusCode.Should().Be(HttpStatusCode.OK);
+            await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
             var document = await ReadJsonRpcDocumentAsync(response);
-            document.RootElement.TryGetProperty("error", out _).Should().BeFalse(document.RootElement.GetRawText());
-            document.RootElement.TryGetProperty("result", out _).Should().BeTrue(document.RootElement.GetRawText());
+            await Assert.That(document.RootElement.TryGetProperty("error", out _)).IsFalse().Because(document.RootElement.GetRawText());
+            await Assert.That(document.RootElement.TryGetProperty("result", out _)).IsTrue().Because(document.RootElement.GetRawText());
             return document;
         }
 

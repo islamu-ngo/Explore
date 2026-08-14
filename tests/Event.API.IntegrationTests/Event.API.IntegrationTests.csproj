@@ -8,7 +8,6 @@
   <ItemGroup>
     <PackageReference Include="Bogus" />
     <PackageReference Include="Cerbos.Sdk" />
-    <PackageReference Include="FluentAssertions" />
     <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" />
     <PackageReference Include="NSubstitute" />

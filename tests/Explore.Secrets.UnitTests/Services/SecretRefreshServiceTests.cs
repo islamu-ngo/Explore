@@ -1,11 +1,10 @@
 // ABOUTME: Unit tests for SecretRefreshService.
-// Tests refresh scheduling, backoff behavior, and metrics integration.
+// ABOUTME: Tests refresh scheduling, backoff behavior, and metrics integration.
 
 using Explore.Secrets.Abstractions;
 using Explore.Secrets.Configuration;
 using Explore.Secrets.Observability;
 using Explore.Secrets.Services;
-using FluentAssertions;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -53,23 +52,23 @@ public class SecretRefreshServiceTests : IDisposable
     }
 
     [Test]
-    public void ConsecutiveFailures_Initially_ShouldBeZero()
+    public async Task ConsecutiveFailures_Initially_ShouldBeZero()
     {
         // Arrange
         var service = CreateService();
 
         // Assert
-        service.ConsecutiveFailures.Should().Be(0);
+        await Assert.That(service.ConsecutiveFailures).IsEqualTo(0);
     }
 
     [Test]
-    public void LastSuccessfulRefresh_Initially_ShouldBeNull()
+    public async Task LastSuccessfulRefresh_Initially_ShouldBeNull()
     {
         // Arrange
         var service = CreateService();
 
         // Assert
-        service.LastSuccessfulRefresh.Should().BeNull();
+        await Assert.That(service.LastSuccessfulRefresh).IsNull();
     }
 
     [Test]
@@ -153,8 +152,8 @@ public class SecretRefreshServiceTests : IDisposable
 
         // Assert
         await _mockProvider.Received().RefreshAsync(Arg.Any<CancellationToken>());
-        service.ConsecutiveFailures.Should().Be(0);
-        service.LastSuccessfulRefresh.Should().NotBeNull();
+        await Assert.That(service.ConsecutiveFailures).IsEqualTo(0);
+        await Assert.That(service.LastSuccessfulRefresh).IsNotNull();
     }
 
     [Test]
@@ -185,8 +184,8 @@ public class SecretRefreshServiceTests : IDisposable
 
         // Assert
         await _mockProvider.Received().RefreshAsync(Arg.Any<CancellationToken>());
-        service.ConsecutiveFailures.Should().BeGreaterThan(0);
-        service.LastSuccessfulRefresh.Should().BeNull();
+        await Assert.That(service.ConsecutiveFailures).IsGreaterThan(0);
+        await Assert.That(service.LastSuccessfulRefresh).IsNull();
     }
 
     [Test]
@@ -227,9 +226,9 @@ public class SecretRefreshServiceTests : IDisposable
         await service.StopAsync(CancellationToken.None);
 
         // Assert
-        callCount.Should().BeGreaterThan(1);
-        service.ConsecutiveFailures.Should().Be(0);
-        service.LastSuccessfulRefresh.Should().NotBeNull();
+        await Assert.That(callCount).IsGreaterThan(1);
+        await Assert.That(service.ConsecutiveFailures).IsEqualTo(0);
+        await Assert.That(service.LastSuccessfulRefresh).IsNotNull();
     }
 
     public void Dispose()

@@ -2,7 +2,6 @@
 // ABOUTME: Protects endpoint decomposition from drifting validation/defaulting behavior.
 
 using Explore.Blazor.Services.Preferences;
-using FluentAssertions;
 
 namespace Explore.Blazor.IntegrationTests.Services;
 
@@ -15,7 +14,7 @@ public sealed class BffPreferenceValidationServiceTests
 
         var result = service.NormalizeThemeMode("  DarkHighContrast  ");
 
-        result.Should().Be("darkhighcontrast");
+        await Assert.That(result).IsEqualTo("darkhighcontrast");
         await Assert.That(service.ThemeModeValidationMessage).Contains("custom");
     }
 
@@ -36,7 +35,7 @@ public sealed class BffPreferenceValidationServiceTests
 
         var result = service.NormalizeLanguage("fr");
 
-        result.Should().Be("fr");
+        await Assert.That(result).IsEqualTo("fr");
         await Assert.That(result).IsNotNull();
     }
 
@@ -57,7 +56,7 @@ public sealed class BffPreferenceValidationServiceTests
 
         var result = service.NormalizeDirection(" RTL ");
 
-        result.Should().Be("rtl");
+        await Assert.That(result).IsEqualTo("rtl");
         await Assert.That(result).IsNotNull();
     }
 

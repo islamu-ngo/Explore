@@ -3,14 +3,13 @@
 
 using Explore.Domain.Enums;
 using Explore.Domain.Secrets;
-using FluentAssertions;
 
 namespace Explore.Secrets.UnitTests.Configuration;
 
 public sealed class AtprotoSecretDefinitionTests
 {
     [Test]
-    public void RegistryDefinesSeparateInstanceScopedAtprotoKeyPurposes()
+    public async Task RegistryDefinesSeparateInstanceScopedAtprotoKeyPurposes()
     {
         var expectations = new Dictionary<string, string>
         {
@@ -22,11 +21,11 @@ public sealed class AtprotoSecretDefinitionTests
         foreach (var expectation in expectations)
         {
             var definition = SecretDefinitionRegistry.GetRequired(expectation.Key);
-            definition.AllowedScopes.Should().Equal(SecretScope.Instance);
-            definition.DefaultInfisicalPath.Should().Be("/atproto");
-            definition.DefaultInfisicalKey.Should().Be(expectation.Value);
-            definition.DefaultEnvironmentVariableName.Should().Be(expectation.Value);
-            definition.IsBootstrapSecret.Should().BeFalse();
+            await Assert.That(definition.AllowedScopes.SequenceEqual([SecretScope.Instance])).IsTrue();
+            await Assert.That(definition.DefaultInfisicalPath).IsEqualTo("/atproto");
+            await Assert.That(definition.DefaultInfisicalKey).IsEqualTo(expectation.Value);
+            await Assert.That(definition.DefaultEnvironmentVariableName).IsEqualTo(expectation.Value);
+            await Assert.That(definition.IsBootstrapSecret).IsFalse();
         }
     }
 }

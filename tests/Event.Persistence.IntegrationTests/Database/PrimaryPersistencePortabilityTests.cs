@@ -8,7 +8,6 @@ using Explore.Persistence.Database;
 using Explore.Persistence;
 using Explore.Persistence.Projections;
 using Explore.Persistence.Repositories;
-using FluentAssertions;
 using Microsoft.Data.SqlClient;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
@@ -40,9 +39,9 @@ public sealed class PrimaryPersistencePortabilityTests
 
         TenantSetting? match = await repository.GetByDomainHostAsync("  events.example.com.  ");
 
-        match.Should().NotBeNull();
-        match!.TenantId.Should().Be(expectedTenantId);
-        context.ChangeTracker.Entries<TenantSetting>().Should().BeEmpty();
+        await Assert.That(match).IsNotNull();
+        await Assert.That(match!.TenantId).IsEqualTo(expectedTenantId);
+        await Assert.That(context.ChangeTracker.Entries<TenantSetting>()).IsEmpty();
     }
 
     [Test]
@@ -60,7 +59,7 @@ public sealed class PrimaryPersistencePortabilityTests
 
         TenantSetting? match = await repository.GetByDomainHostAsync("events.example.com");
 
-        match.Should().BeNull();
+        await Assert.That(match).IsNull();
     }
 
     [Test]
@@ -89,9 +88,9 @@ public sealed class PrimaryPersistencePortabilityTests
                 exclusive: false,
                 CancellationToken.None);
 
-            exclusive.Should().BeTrue();
-            blockedShared.Should().BeFalse();
-            owner.Database.CurrentTransaction.Should().BeSameAs(transaction);
+            await Assert.That(exclusive).IsTrue();
+            await Assert.That(blockedShared).IsFalse();
+            await Assert.That(owner.Database.CurrentTransaction).IsSameReferenceAs(transaction);
             await transaction.RollbackAsync();
 
             bool sharedAfterRelease = await ProjectionInfrastructure.TryAcquireAdvisoryLockAsync(
@@ -100,7 +99,7 @@ public sealed class PrimaryPersistencePortabilityTests
                 tenantId,
                 exclusive: false,
                 CancellationToken.None);
-            sharedAfterRelease.Should().BeTrue();
+            await Assert.That(sharedAfterRelease).IsTrue();
         }
         finally
         {
@@ -132,8 +131,8 @@ public sealed class PrimaryPersistencePortabilityTests
             exclusive: false,
             CancellationToken.None);
 
-        exclusive.Should().BeTrue();
-        sharedAfterDispose.Should().BeTrue();
+        await Assert.That(exclusive).IsTrue();
+        await Assert.That(sharedAfterDispose).IsTrue();
     }
 
     [Test]
@@ -166,14 +165,14 @@ public sealed class PrimaryPersistencePortabilityTests
             "projection-resource",
             exclusive);
 
-        command.CommandText.Should().Contain(commandFragment);
-        command.CommandText.Should().Contain("0");
+        await Assert.That(command.CommandText).Contains(commandFragment);
+        await Assert.That(command.CommandText).Contains("0");
         if (provider == "SqlServer")
         {
-            command.CommandText.Should().Contain("@LockOwner = 'Transaction'");
-            command.Parameters.Cast<DbParameter>()
+            await Assert.That(command.CommandText).Contains("@LockOwner = 'Transaction'");
+            await Assert.That(command.Parameters.Cast<DbParameter>()
                 .Single(parameter => parameter.ParameterName.Contains("lockMode", StringComparison.OrdinalIgnoreCase))
-                .Value.Should().Be(expectedMode);
+                .Value).IsEqualTo(expectedMode);
         }
     }
 

@@ -3,7 +3,6 @@
 
 using Explore.Diagnostic.Doctor;
 using Explore.Diagnostic.Doctor.Checks;
-using FluentAssertions;
 
 namespace Explore.Diagnostic.UnitTests.Doctor.Checks;
 
@@ -19,7 +18,7 @@ public sealed class McpDebugReadinessDoctorCheckTests
 
         var result = await check.RunAsync(CancellationToken.None);
 
-        result.Status.Should().Be(DoctorCheckStatus.Pass);
+        await Assert.That(result.Status).IsEqualTo(DoctorCheckStatus.Pass);
     }
 
     [Test]
@@ -30,8 +29,8 @@ public sealed class McpDebugReadinessDoctorCheckTests
 
         var result = await check.RunAsync(CancellationToken.None);
 
-        result.Status.Should().Be(DoctorCheckStatus.Warn);
-        result.RedactedEvidence.Should().Contain("missing:Event.API.IntegrationTests/Features/McpProtocolContractTests.cs");
+        await Assert.That(result.Status).IsEqualTo(DoctorCheckStatus.Warn);
+        await Assert.That(result.RedactedEvidence).Contains("missing:Event.API.IntegrationTests/Features/McpProtocolContractTests.cs");
     }
 
     [Test]
@@ -45,9 +44,9 @@ public sealed class McpDebugReadinessDoctorCheckTests
 
         var result = await check.RunAsync(CancellationToken.None);
 
-        result.Status.Should().Be(DoctorCheckStatus.Warn);
-        result.RedactedEvidence.Should().Contain("docs:possible-secret");
-        result.RedactedEvidence.Should().NotContain("eyJsecret");
+        await Assert.That(result.Status).IsEqualTo(DoctorCheckStatus.Warn);
+        await Assert.That(result.RedactedEvidence).Contains("docs:possible-secret");
+        await Assert.That(result.RedactedEvidence).DoesNotContain("eyJsecret");
     }
 
     private static FakeDoctorFileSystem CreateFileSystemWithRequiredArtifacts(bool includeProtocolHarness = true)

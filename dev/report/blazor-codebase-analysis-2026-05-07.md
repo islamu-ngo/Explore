@@ -598,7 +598,7 @@ Some components use `@onclick="Handler"` (implicit EventArgs) instead of `@oncli
 | Project | Framework | Tools | File Count |
 |---------|-----------|-------|------------|
 | `Explore.Blazor.Client.Tests` | TUnit | bUnit, NSubstitute, Bogus, AutoFixture, Shouldly | ~50+ files |
-| `Explore.Blazor.IntegrationTests` | TUnit | FluentAssertions, Testcontainers, Respawn, Alba | ~40+ files |
+| `Explore.Blazor.IntegrationTests` | TUnit | Native TUnit assertions, Testcontainers, Respawn, Alba | ~40+ files |
 | `Explore.Blazor.E2E.Tests` | TUnit | Playwright, Aspire, Alba | ~23+ files |
 
 ### 8.2 Strengths

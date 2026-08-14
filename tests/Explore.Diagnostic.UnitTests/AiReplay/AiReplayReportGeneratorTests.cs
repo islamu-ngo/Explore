@@ -3,7 +3,6 @@
 
 using System.Text.Json;
 using Explore.Diagnostic.AiReplay;
-using FluentAssertions;
 
 namespace Explore.Diagnostic.UnitTests.AiReplay;
 
@@ -12,95 +11,96 @@ public sealed class AiReplayReportGeneratorTests
     private static readonly DateTimeOffset FixedNow = new(2026, 6, 7, 12, 0, 0, TimeSpan.Zero);
 
     [Test]
-    public void GenerateCoversNormalCiReplayScenariosWithoutLiveCredentials()
+    public async Task GenerateCoversNormalCiReplayScenariosWithoutLiveCredentials()
     {
         var report = new AiReplayReportGenerator(() => FixedNow).Generate();
 
-        report.UsesLiveProviderCredentials.Should().BeFalse();
-        report.ContainsContentBearingArtifacts.Should().BeFalse();
-        report.HasDatabaseSideEffects.Should().BeFalse();
-        report.IsCiSafe.Should().BeTrue();
-        report.FailCount.Should().Be(0);
-        report.PassRate.Should().Be(1m);
-        report.Results.Select(result => result.Code).Should().BeEquivalentTo(
+        await Assert.That(report.UsesLiveProviderCredentials).IsFalse();
+        await Assert.That(report.ContainsContentBearingArtifacts).IsFalse();
+        await Assert.That(report.HasDatabaseSideEffects).IsFalse();
+        await Assert.That(report.IsCiSafe).IsTrue();
+        await Assert.That(report.FailCount).IsEqualTo(0);
+        await Assert.That(report.PassRate).IsEqualTo(1m);
+        await Assert.That(report.Results.Select(result => result.Code)).IsEquivalentTo([
             AiReplayScenarioCodes.AssistantRailProposalPreview,
             AiReplayScenarioCodes.McpInspectorContract,
             AiReplayScenarioCodes.McpProposalFirst,
             AiReplayScenarioCodes.McpProjectedToolSelection,
             AiReplayScenarioCodes.McpConfirmationRequired,
             AiReplayScenarioCodes.AssistantRailMissingHal,
-            AiReplayScenarioCodes.InvalidPayloadRecovery);
+            AiReplayScenarioCodes.InvalidPayloadRecovery,
+        ]);
     }
 
     [Test]
-    public void GenerateIncludesMcpInspectorContractChecklistWithoutRunningLiveClients()
+    public async Task GenerateIncludesMcpInspectorContractChecklistWithoutRunningLiveClients()
     {
         var report = new AiReplayReportGenerator(() => FixedNow).Generate();
 
         var inspectorScenario = report.Results.Single(result => result.Code == AiReplayScenarioCodes.McpInspectorContract);
 
-        inspectorScenario.Status.Should().Be(AiReplayScenarioStatus.Pass);
-        inspectorScenario.Summary.Should().Contain("MCP Inspector");
-        inspectorScenario.Diagnostics.Should().Contain("tools/list");
-        inspectorScenario.Diagnostics.Should().Contain("resources/list");
-        inspectorScenario.Diagnostics.Should().Contain("resources/templates/list");
-        inspectorScenario.Diagnostics.Should().Contain("prompts/list");
-        inspectorScenario.Diagnostics.Should().Contain("propose_create_event_draft");
-        inspectorScenario.Diagnostics.Should().Contain("propose_update_event_draft");
-        inspectorScenario.Diagnostics.Should().Contain("propose_publish_event");
-        inspectorScenario.Diagnostics.Should().Contain("propose_create_event_session");
-        inspectorScenario.Diagnostics.Should().Contain("44 registry-projected proposal tools");
-        inspectorScenario.DatabaseSideEffectsDetected.Should().BeFalse();
+        await Assert.That(inspectorScenario.Status).IsEqualTo(AiReplayScenarioStatus.Pass);
+        await Assert.That(inspectorScenario.Summary).Contains("MCP Inspector");
+        await Assert.That(inspectorScenario.Diagnostics).Contains("tools/list");
+        await Assert.That(inspectorScenario.Diagnostics).Contains("resources/list");
+        await Assert.That(inspectorScenario.Diagnostics).Contains("resources/templates/list");
+        await Assert.That(inspectorScenario.Diagnostics).Contains("prompts/list");
+        await Assert.That(inspectorScenario.Diagnostics).Contains("propose_create_event_draft");
+        await Assert.That(inspectorScenario.Diagnostics).Contains("propose_update_event_draft");
+        await Assert.That(inspectorScenario.Diagnostics).Contains("propose_publish_event");
+        await Assert.That(inspectorScenario.Diagnostics).Contains("propose_create_event_session");
+        await Assert.That(inspectorScenario.Diagnostics).Contains("44 registry-projected proposal tools");
+        await Assert.That(inspectorScenario.DatabaseSideEffectsDetected).IsFalse();
     }
 
     [Test]
-    public void GenerateIncludesMcpProposalVsExecutionGuidance()
+    public async Task GenerateIncludesMcpProposalVsExecutionGuidance()
     {
         var report = new AiReplayReportGenerator(() => FixedNow).Generate();
 
         var projectedToolScenario = report.Results.Single(result => result.Code == AiReplayScenarioCodes.McpProjectedToolSelection);
         var confirmationScenario = report.Results.Single(result => result.Code == AiReplayScenarioCodes.McpConfirmationRequired);
 
-        projectedToolScenario.Status.Should().Be(AiReplayScenarioStatus.Pass);
-        projectedToolScenario.Diagnostics.Should().Contain("propose_create_event_draft");
-        projectedToolScenario.Diagnostics.Should().Contain("propose_update_event_draft");
-        projectedToolScenario.Diagnostics.Should().Contain("sub-resource propose_* tools");
-        projectedToolScenario.Diagnostics.Should().Contain("allow-listed");
-        confirmationScenario.Status.Should().Be(AiReplayScenarioStatus.Pass);
-        confirmationScenario.Summary.Should().Contain("proposals only");
-        confirmationScenario.Diagnostics.Should().Contain("before confirmation");
+        await Assert.That(projectedToolScenario.Status).IsEqualTo(AiReplayScenarioStatus.Pass);
+        await Assert.That(projectedToolScenario.Diagnostics).Contains("propose_create_event_draft");
+        await Assert.That(projectedToolScenario.Diagnostics).Contains("propose_update_event_draft");
+        await Assert.That(projectedToolScenario.Diagnostics).Contains("sub-resource propose_* tools");
+        await Assert.That(projectedToolScenario.Diagnostics).Contains("allow-listed");
+        await Assert.That(confirmationScenario.Status).IsEqualTo(AiReplayScenarioStatus.Pass);
+        await Assert.That(confirmationScenario.Summary).Contains("proposals only");
+        await Assert.That(confirmationScenario.Diagnostics).Contains("before confirmation");
     }
 
     [Test]
-    public void GenerateDoesNotExposePromptPayloadTenantOrProviderContent()
+    public async Task GenerateDoesNotExposePromptPayloadTenantOrProviderContent()
     {
         var report = new AiReplayReportGenerator(() => FixedNow).Generate();
         var combined = AiReplayReportWriter.ToJson(report) + AiReplayReportWriter.ToMarkdown(report);
 
-        AiReplayArtifactSafetyPolicy.ContainsContentBearingData(report).Should().BeFalse();
-        AiReplayArtifactSafetyPolicy.ContainsContentBearingData(combined).Should().BeFalse();
-        combined.Should().NotContain("Replay fixture");
-        combined.Should().NotContain("018e4e5c");
-        combined.Should().NotContain("OPENAI_API_KEY");
-        combined.Should().NotContain("gpt-4");
-        combined.Should().NotContain("<tool>");
+        await Assert.That(AiReplayArtifactSafetyPolicy.ContainsContentBearingData(report)).IsFalse();
+        await Assert.That(AiReplayArtifactSafetyPolicy.ContainsContentBearingData(combined)).IsFalse();
+        await Assert.That(combined).DoesNotContain("Replay fixture");
+        await Assert.That(combined).DoesNotContain("018e4e5c");
+        await Assert.That(combined).DoesNotContain("OPENAI_API_KEY");
+        await Assert.That(combined).DoesNotContain("gpt-4");
+        await Assert.That(combined).DoesNotContain("<tool>");
     }
 
     [Test]
-    public void ArtifactSafetyPolicyDetectsForbiddenMarkers()
+    public async Task ArtifactSafetyPolicyDetectsForbiddenMarkers()
     {
-        AiReplayArtifactSafetyPolicy.ContainsContentBearingData("raw tool payload includes Replay fixture").Should().BeTrue();
+        await Assert.That(AiReplayArtifactSafetyPolicy.ContainsContentBearingData("raw tool payload includes Replay fixture")).IsTrue();
     }
 
     [Test]
-    public void ToJsonUsesReadableStringEnums()
+    public async Task ToJsonUsesReadableStringEnums()
     {
         var report = new AiReplayReportGenerator(() => FixedNow).Generate();
 
         using var document = JsonDocument.Parse(AiReplayReportWriter.ToJson(report));
         var firstResult = document.RootElement.GetProperty("results")[0];
 
-        firstResult.GetProperty("status").GetString().Should().Be("Pass");
-        firstResult.GetProperty("failureClass").ValueKind.Should().Be(JsonValueKind.String);
+        await Assert.That(firstResult.GetProperty("status").GetString()).IsEqualTo("Pass");
+        await Assert.That(firstResult.GetProperty("failureClass").ValueKind).IsEqualTo(JsonValueKind.String);
     }
 }

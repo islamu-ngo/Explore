@@ -30,6 +30,7 @@ public sealed class AuthorizationPolicyPackageDownloadControllerTests
             mediator,
             Substitute.For<ISetupSecretProvider>(),
             Substitute.For<IInstanceBootstrapAuditLogger>(),
+            Substitute.For<IAuthProviderConfigurationService>(),
             Substitute.For<ILogger<InstanceOnboardingController>>(),
             Substitute.For<IResourceAssembler<InstanceOnboardingStatusDto, InstanceOnboardingStatusDto>>());
 
@@ -57,6 +58,8 @@ public sealed class AuthorizationPolicyPackageDownloadControllerTests
             adminContext,
             Substitute.For<ISetupSecretProvider>(),
             Substitute.For<IDeploymentModeProvider>(),
+            Substitute.For<IAuthProviderConfigurationService>(),
+            Substitute.For<IAuthorizationProviderConfigurationService>(),
             Substitute.For<IResourceAssembler<InstanceStorageSettingsDto, InstanceStorageSettingsDto>>());
 
         IActionResult result = await controller.DownloadAuthorizationPolicyPackage(CancellationToken.None);
@@ -82,6 +85,8 @@ public sealed class AuthorizationPolicyPackageDownloadControllerTests
             adminContext,
             setupSecretProvider,
             Substitute.For<IDeploymentModeProvider>(),
+            Substitute.For<IAuthProviderConfigurationService>(),
+            Substitute.For<IAuthorizationProviderConfigurationService>(),
             Substitute.For<IResourceAssembler<InstanceStorageSettingsDto, InstanceStorageSettingsDto>>())
         {
             ControllerContext = new ControllerContext

@@ -8,7 +8,6 @@ using Explore.Application.Features.AiAssistant.Disclosure;
 using Explore.Application.Features.AiAssistant.Requests.Commands;
 using Explore.Application.Features.AiAssistant.Requests.Queries;
 using Explore.Application.Responses;
-using FluentAssertions;
 using MediatR;
 using NSubstitute;
 using TUnit.Core;
@@ -43,9 +42,9 @@ public sealed class McpAiAssistantAdapterTests
             CancellationToken.None);
 
         using var document = JsonDocument.Parse(json);
-        document.RootElement.GetProperty("Success").GetBoolean().Should().BeTrue();
-        document.RootElement.GetProperty("Id").GetGuid().Should().Be(proposedActionId);
-        document.RootElement.GetProperty("Message").GetString().Should().Contain("Confirm");
+        await Assert.That(document.RootElement.GetProperty("Success").GetBoolean()).IsTrue();
+        await Assert.That(document.RootElement.GetProperty("Id").GetGuid()).IsEqualTo(proposedActionId);
+        await Assert.That(document.RootElement.GetProperty("Message").GetString()).Contains("Confirm");
 
         await _mediator.Received(1).Send(
             Arg.Is<ProposeAiToolActionCommand>(command =>
@@ -80,10 +79,10 @@ public sealed class McpAiAssistantAdapterTests
 
         using var document = JsonDocument.Parse(json);
         var conversations = document.RootElement.GetProperty("Conversations");
-        conversations.GetArrayLength().Should().Be(1);
-        conversations[0].GetProperty("Id").GetGuid().Should().Be(conversationId);
-        conversations[0].GetProperty("Title").GetString().Should().Be("Event planning");
-        json.Should().NotContain("PayloadJson");
+        await Assert.That(conversations.GetArrayLength()).IsEqualTo(1);
+        await Assert.That(conversations[0].GetProperty("Id").GetGuid()).IsEqualTo(conversationId);
+        await Assert.That(conversations[0].GetProperty("Title").GetString()).IsEqualTo("Event planning");
+        await Assert.That(json).DoesNotContain("PayloadJson");
 
         await _mediator.Received(1).Send(
             Arg.Is<GetAiConversationListQuery>(query => query.Limit == 10),
@@ -130,25 +129,25 @@ public sealed class McpAiAssistantAdapterTests
         var json = await resources.GetConversationAsync(conversationId, CancellationToken.None);
 
         using var document = JsonDocument.Parse(json);
-        document.RootElement.GetProperty("Found").GetBoolean().Should().BeTrue();
-        document.RootElement.GetProperty("ProposedActions")[0].GetProperty("Id").GetGuid().Should().Be(proposedActionId);
-        document.RootElement.GetProperty("Messages")[0].GetProperty("HasContent").GetBoolean().Should().BeTrue();
-        json.Should().NotContain("PayloadJson");
-        json.Should().NotContain("Secret draft payload");
-        json.Should().NotContain("Sensitive prompt text");
+        await Assert.That(document.RootElement.GetProperty("Found").GetBoolean()).IsTrue();
+        await Assert.That(document.RootElement.GetProperty("ProposedActions")[0].GetProperty("Id").GetGuid()).IsEqualTo(proposedActionId);
+        await Assert.That(document.RootElement.GetProperty("Messages")[0].GetProperty("HasContent").GetBoolean()).IsTrue();
+        await Assert.That(json).DoesNotContain("PayloadJson");
+        await Assert.That(json).DoesNotContain("Secret draft payload");
+        await Assert.That(json).DoesNotContain("Sensitive prompt text");
     }
 
     [Test]
-    public void CreateEventDraftWithConfirmationPrompt_RequiresProposalAndConfirmation()
+    public async Task CreateEventDraftWithConfirmationPrompt_RequiresProposalAndConfirmation()
     {
         var prompt = new AiAssistantMcpPrompts().CreateEventDraftWithConfirmation();
 
-        prompt.Should().Contain("list_ai_tool_contracts");
-        prompt.Should().Contain("propose_ai_tool_action");
-        prompt.Should().Contain("wait for");
+        await Assert.That(prompt).Contains("list_ai_tool_contracts");
+        await Assert.That(prompt).Contains("propose_ai_tool_action");
+        await Assert.That(prompt).Contains("wait for");
         var normalized = prompt.ToLowerInvariant();
-        normalized.Should().NotContain("apikey");
-        normalized.Should().NotContain("provider endpoint");
-        normalized.Should().NotContain("tenant id");
+        await Assert.That(normalized).DoesNotContain("apikey");
+        await Assert.That(normalized).DoesNotContain("provider endpoint");
+        await Assert.That(normalized).DoesNotContain("tenant id");
     }
 }

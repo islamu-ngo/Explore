@@ -222,6 +222,7 @@ public sealed class EventTicketPriceSummaryMapperTests
 
         if (publish)
         {
+            catalog.UpdateCommercialDisclosures("Merchant", "Refund", "Support");
             catalog.Publish();
         }
 

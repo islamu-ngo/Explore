@@ -1,11 +1,10 @@
 // ABOUTME: Unit tests for InfisicalSecretProvider.
-// Tests configuration validation, key mapping, and error handling.
+// ABOUTME: Tests configuration validation, key mapping, and error handling.
 // Note: Does not test actual Infisical SDK calls (requires integration tests).
 
 using Explore.Secrets.Abstractions;
 using Explore.Secrets.Configuration;
 using Explore.Secrets.Providers;
-using FluentAssertions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using NSubstitute;
@@ -41,23 +40,23 @@ public class InfisicalSecretProviderTests
     }
 
     [Test]
-    public void ProviderType_ShouldReturnInfisical()
+    public async Task ProviderType_ShouldReturnInfisical()
     {
         // Arrange
         var provider = CreateProvider();
 
         // Act & Assert
-        provider.ProviderType.Should().Be(SecretProviderType.Infisical);
+        await Assert.That(provider.ProviderType).IsEqualTo(SecretProviderType.Infisical);
     }
 
     [Test]
-    public void SupportsRefresh_ShouldReturnTrue()
+    public async Task SupportsRefresh_ShouldReturnTrue()
     {
         // Arrange
         var provider = CreateProvider();
 
         // Act & Assert
-        provider.SupportsRefresh.Should().BeTrue();
+        await Assert.That(provider.SupportsRefresh).IsTrue();
     }
 
     [Test]
@@ -76,10 +75,10 @@ public class InfisicalSecretProviderTests
         var act = () => provider.InitializeAsync();
 
         // Assert
-        await act.Should().ThrowAsync<SecretProviderException>()
-            .Where(e => e.ProviderType == SecretProviderType.Infisical)
-            .Where(e => e.Operation == "Initialize")
-            .Where(e => !e.IsTransient);
+        var exception = await Assert.That(act).Throws<SecretProviderException>();
+        await Assert.That(exception!.ProviderType).IsEqualTo(SecretProviderType.Infisical);
+        await Assert.That(exception.Operation).IsEqualTo("Initialize");
+        await Assert.That(exception.IsTransient).IsFalse();
     }
 
     [Test]
@@ -98,10 +97,10 @@ public class InfisicalSecretProviderTests
         var act = () => provider.InitializeAsync();
 
         // Assert
-        await act.Should().ThrowAsync<SecretProviderException>()
-            .Where(e => e.ProviderType == SecretProviderType.Infisical)
-            .Where(e => e.Operation == "Initialize")
-            .Where(e => !e.IsTransient);
+        var exception = await Assert.That(act).Throws<SecretProviderException>();
+        await Assert.That(exception!.ProviderType).IsEqualTo(SecretProviderType.Infisical);
+        await Assert.That(exception.Operation).IsEqualTo("Initialize");
+        await Assert.That(exception.IsTransient).IsFalse();
     }
 
     [Test]
@@ -120,10 +119,10 @@ public class InfisicalSecretProviderTests
         var act = () => provider.InitializeAsync();
 
         // Assert
-        await act.Should().ThrowAsync<SecretProviderException>()
-            .Where(e => e.ProviderType == SecretProviderType.Infisical)
-            .Where(e => e.Operation == "Initialize")
-            .Where(e => !e.IsTransient);
+        var exception = await Assert.That(act).Throws<SecretProviderException>();
+        await Assert.That(exception!.ProviderType).IsEqualTo(SecretProviderType.Infisical);
+        await Assert.That(exception.Operation).IsEqualTo("Initialize");
+        await Assert.That(exception.IsTransient).IsFalse();
     }
 
     [Test]
@@ -136,8 +135,8 @@ public class InfisicalSecretProviderTests
         var act = () => provider.GetSecretAsync("SomeKey");
 
         // Assert
-        await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*not initialized*");
+        await Assert.That(act).Throws<InvalidOperationException>()
+            .WithMessageContaining("not initialized");
     }
 
     [Test]
@@ -147,11 +146,12 @@ public class InfisicalSecretProviderTests
         var provider = CreateProvider();
 
         // Act
-        var act = () => provider.GetSecretsByPathAsync("/api");
+        Func<Task<IReadOnlyDictionary<string, string>?>> act =
+            async () => await provider.GetSecretsByPathAsync("/api");
 
         // Assert
-        await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*not initialized*");
+        await Assert.That(act).Throws<InvalidOperationException>()
+            .WithMessageContaining("not initialized");
     }
 
     [Test]
@@ -164,8 +164,8 @@ public class InfisicalSecretProviderTests
         var act = () => provider.RefreshAsync();
 
         // Assert
-        await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*not initialized*");
+        await Assert.That(act).Throws<InvalidOperationException>()
+            .WithMessageContaining("not initialized");
     }
 
     [Test]
@@ -178,10 +178,10 @@ public class InfisicalSecretProviderTests
         var health = await provider.GetHealthAsync();
 
         // Assert
-        health.IsHealthy.Should().BeFalse();
-        health.ProviderType.Should().Be(SecretProviderType.Infisical);
-        health.LastSuccessfulRefresh.Should().BeNull();
-        health.ConsecutiveFailures.Should().Be(0);
+        await Assert.That(health.IsHealthy).IsFalse();
+        await Assert.That(health.ProviderType).IsEqualTo(SecretProviderType.Infisical);
+        await Assert.That(health.LastSuccessfulRefresh).IsNull();
+        await Assert.That(health.ConsecutiveFailures).IsEqualTo(0);
     }
 
     [Test]
@@ -194,6 +194,6 @@ public class InfisicalSecretProviderTests
         var act = async () => await provider.DisposeAsync();
 
         // Assert
-        await act.Should().NotThrowAsync();
+        await Assert.That(act).ThrowsNothing();
     }
 }

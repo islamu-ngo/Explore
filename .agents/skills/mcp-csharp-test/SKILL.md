@@ -12,6 +12,9 @@ description: >
 license: MIT
 ---
 
+<!-- ABOUTME: Guides project-native TUnit testing for C# MCP servers. -->
+<!-- ABOUTME: Covers direct tool tests, protocol integration tests, and deterministic evaluations. -->
+
 # C# MCP Server Testing
 
 Test MCP servers at two levels: unit tests for individual tool methods, and integration tests that exercise the full MCP protocol in-memory.
@@ -34,7 +37,7 @@ Test MCP servers at two levels: unit tests for individual tool methods, and inte
 | Input | Required | Description |
 |-------|----------|-------------|
 | MCP server project path | Yes | Path to the server `.csproj` being tested |
-| Test framework | Recommended | Default: xUnit. Also supports NUnit or MSTest |
+| Test framework | Recommended | TUnit (repository standard) |
 | Transport type | Recommended | Determines integration test approach (stdio vs HTTP) |
 
 ## Workflow
@@ -42,12 +45,11 @@ Test MCP servers at two levels: unit tests for individual tool methods, and inte
 ### Step 1: Create the test project
 
 ```bash
-dotnet new xunit -n <ServerName>.Tests
+dotnet new install TUnit.Templates
+dotnet new TUnit -n <ServerName>.Tests
 cd <ServerName>.Tests
 dotnet add reference ../<ServerName>/<ServerName>.csproj
 dotnet add package ModelContextProtocol
-dotnet add package Moq
-dotnet add package FluentAssertions
 ```
 
 ### Step 2: Write unit tests for tool methods
@@ -57,36 +59,36 @@ Test tool methods directly — fastest and most isolated:
 ```csharp
 public class MyToolTests
 {
-    [Fact]
-    public void Echo_ReturnsFormattedMessage()
+    [Test]
+    public async Task Echo_ReturnsFormattedMessage()
     {
         var result = MyTools.Echo("Hello");
-        result.Should().Be("Echo: Hello");
+        await Assert.That(result).IsEqualTo("Echo: Hello");
     }
 
-    [Theory]
-    [InlineData("")]
-    [InlineData("   ")]
-    public void Echo_HandlesEdgeCases(string input)
+    [Test]
+    [Arguments("")]
+    [Arguments("   ")]
+    public async Task Echo_HandlesEdgeCases(string input)
     {
         var result = MyTools.Echo(input);
-        result.Should().StartWith("Echo:");
+        await Assert.That(result).StartsWith("Echo:");
     }
 }
 ```
 
-For tools with DI dependencies, mock the dependency:
+For tools with DI dependencies, fake the dependency at the boundary:
 ```csharp
 public class ApiToolTests
 {
-    [Fact]
+    [Test]
     public async Task FetchData_ReturnsApiResponse()
     {
         var handler = new MockHttpMessageHandler("""{"id": 1}""");
         var httpClient = new HttpClient(handler);
 
         var result = await ApiTools.FetchData(httpClient, "resource-1");
-        result.Should().Contain("id");
+        await Assert.That(result).Contains("id");
     }
 }
 ```
@@ -98,11 +100,9 @@ Test the full MCP protocol using a client-server connection:
 ```csharp
 using ModelContextProtocol.Client;
 
-public class ServerIntegrationTests : IAsyncLifetime
+public class ServerIntegrationTests
 {
-    private McpClient _client = null!;
-
-    public async Task InitializeAsync()
+    private static async Task<McpClient> CreateClientAsync()
     {
         var transport = new StdioClientTransport(new StdioClientTransportOptions
         {
@@ -110,42 +110,42 @@ public class ServerIntegrationTests : IAsyncLifetime
             Command = "dotnet",
             Arguments = ["run", "--project", "../<ServerName>/<ServerName>.csproj"]
         });
-        _client = await McpClient.CreateAsync(transport);
+        return await McpClient.CreateAsync(transport);
     }
 
-    public async Task DisposeAsync() => await _client.DisposeAsync();
-
-    [Fact]
+    [Test]
     public async Task Server_ListsExpectedTools()
     {
-        var tools = await _client.ListToolsAsync();
-        tools.Should().Contain(t => t.Name == "echo");
+        await using var client = await CreateClientAsync();
+        var tools = await client.ListToolsAsync();
+        await Assert.That(tools).Contains(t => t.Name == "echo");
     }
 
-    [Fact]
+    [Test]
     public async Task Tool_ReturnsExpectedResult()
     {
-        var result = await _client.CallToolAsync("echo",
+        await using var client = await CreateClientAsync();
+        var result = await client.CallToolAsync("echo",
             new Dictionary<string, object?> { ["message"] = "Test" });
         var text = result.Content.OfType<TextContentBlock>().First().Text;
-        text.Should().Contain("Test");
+        await Assert.That(text).Contains("Test");
     }
 }
 ```
 
-**For the SDK's `ClientServerTestBase` (in-memory testing) and HTTP testing with `WebApplicationFactory`**, see [references/test-patterns.md](references/test-patterns.md).
+**For HTTP testing with `WebApplicationFactory`**, see [references/test-patterns.md](references/test-patterns.md).
 
 ### Step 4: Run tests
 
 ```bash
 # Run all tests
-dotnet test
+dotnet test --project <ServerName>.Tests/<ServerName>.Tests.csproj
 
 # Run a specific test class
-dotnet test --filter "FullyQualifiedName~MyToolTests"
+dotnet test --project <ServerName>.Tests/<ServerName>.Tests.csproj -- --treenode-filter "/*/*/MyToolTests/*" --minimum-expected-tests 1
 
 # Run with coverage
-dotnet test --collect:"XPlat Code Coverage"
+dotnet test --project <ServerName>.Tests/<ServerName>.Tests.csproj -- --coverage
 ```
 
 ### Step 5: Write evaluations
@@ -162,7 +162,7 @@ For the evaluation format, example questions, and detailed guidance, see [refere
 - [ ] Unit tests cover all tool methods, including edge cases
 - [ ] Integration tests verify tool listing via `ListToolsAsync()`
 - [ ] Integration tests verify tool invocation via `CallToolAsync()`
-- [ ] All tests pass: `dotnet test`
+- [ ] All tests pass through the project-specific `dotnet test --project` command
 - [ ] Tests run in CI without manual setup
 
 ## Common Pitfalls
@@ -173,7 +173,7 @@ For the evaluation format, example questions, and detailed guidance, see [refere
 | `StdioClientTransport` not finding project | Use the correct relative path to `.csproj` from the test project directory |
 | Tests pass locally but fail in CI | Run `dotnet build` before test execution. Use `--no-build` only after an explicit build step |
 | Mocking `HttpClient` is awkward | Mock `HttpMessageHandler`, not `HttpClient` directly. See [references/test-patterns.md](references/test-patterns.md) |
-| Full test suite runs are slow | Use `--filter` for development. Run the full suite only for CI verification |
+| Full test suite runs are slow | Use TUnit `--treenode-filter` for development. Run the full project for CI verification |
 
 ## Related Skills
 
@@ -188,4 +188,4 @@ For the evaluation format, example questions, and detailed guidance, see [refere
 
 ## More Info
 
-- [xUnit documentation](https://xunit.net/docs/getting-started/netcore/cmdline) — Getting started with xUnit for .NET
+- [TUnit documentation](https://tunit.dev/docs/getting-started/installation/) — Install, write, and run TUnit tests

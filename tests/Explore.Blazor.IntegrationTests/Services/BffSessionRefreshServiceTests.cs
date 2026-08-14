@@ -11,7 +11,6 @@ using Explore.Blazor.Authentication;
 using Explore.Blazor.Client.Configuration;
 using Explore.Blazor.Services;
 using Explore.Blazor.Services.Auth;
-using FluentAssertions;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Caching.Memory;
@@ -95,9 +94,9 @@ public sealed class BffSessionRefreshServiceTests
         await Assert.That(root.GetProperty("refreshed").GetBoolean()).IsTrue();
         await Assert.That(root.GetProperty("adminClaimsUpdated").GetBoolean()).IsFalse();
         await Assert.That(root.TryGetProperty("tokenStatus", out var tokenStatus)).IsTrue();
-        tokenStatus.GetString().Should().StartWith("valid_until:");
+        await Assert.That(tokenStatus.GetString()).StartsWith("valid_until:");
         await Assert.That(root.TryGetProperty("token", out _)).IsFalse();
-        root.GetRawText().Should().NotContain(accessToken);
+        await Assert.That(root.GetRawText()).DoesNotContain(accessToken);
     }
 
     [Test]
@@ -144,7 +143,8 @@ public sealed class BffSessionRefreshServiceTests
         await Assert.That(authService.SignInCalled).IsFalse();
         context.Response.Body.Position = 0;
         var responseBody = await new StreamReader(context.Response.Body).ReadToEndAsync();
-        responseBody.Should().Contain("token_handoff_failed").And.NotContain(accessToken);
+        await Assert.That(responseBody).Contains("token_handoff_failed");
+        await Assert.That(responseBody).DoesNotContain(accessToken);
     }
 
     [Test]
@@ -173,7 +173,8 @@ public sealed class BffSessionRefreshServiceTests
 
         context.Response.Body.Position = 0;
         var responseBody = await new StreamReader(context.Response.Body).ReadToEndAsync();
-        responseBody.Should().NotContain("old-platform-token").And.NotContain("new-platform-token");
+        await Assert.That(responseBody).DoesNotContain("old-platform-token");
+        await Assert.That(responseBody).DoesNotContain("new-platform-token");
     }
 
     [Test]

@@ -8,7 +8,6 @@ using Explore.Blazor.Authentication;
 using Explore.Blazor.Constants;
 using Explore.Blazor.Services;
 using Explore.Blazor.Services.Auth;
-using FluentAssertions;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.DependencyInjection;
@@ -133,7 +132,7 @@ public sealed class BffProviderReadinessServiceTests
 
         var provider = await service.ResolvePreferredProviderForDirectLoginAsync(CancellationToken.None);
 
-        provider.Should().BeNull();
+        await Assert.That(provider).IsNull();
     }
 
     private static BffProviderReadinessService CreateService(

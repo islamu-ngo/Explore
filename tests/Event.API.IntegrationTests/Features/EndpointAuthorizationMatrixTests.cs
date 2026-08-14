@@ -12,7 +12,6 @@ using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Models;
 using Explore.Domain.Constants;
 using Explore.Persistence;
-using FluentAssertions;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -428,8 +427,7 @@ public class EndpointAuthorizationMatrixTests : IAsyncDisposable
 
         var response = await _regularUserClient.SendAsync(request);
 
-        response.StatusCode.Should().Be(HttpStatusCode.Forbidden,
-            "instance settings should only be accessible to instance admins");
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Forbidden).Because("instance settings should only be accessible to instance admins");
     }
 
     [Test]
@@ -440,8 +438,7 @@ public class EndpointAuthorizationMatrixTests : IAsyncDisposable
 
         var response = await _instanceAdminClient.SendAsync(request);
 
-        response.StatusCode.Should().Be(HttpStatusCode.OK,
-            "instance admin should be able to read instance settings modules");
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK).Because("instance admin should be able to read instance settings modules");
     }
 
     [Test]
@@ -452,8 +449,7 @@ public class EndpointAuthorizationMatrixTests : IAsyncDisposable
 
         var response = await _regularUserClient.SendAsync(request);
 
-        response.StatusCode.Should().Be(HttpStatusCode.Forbidden,
-            "instance branding settings should only be accessible to instance admins");
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Forbidden).Because("instance branding settings should only be accessible to instance admins");
     }
 
     [Test]
@@ -464,8 +460,7 @@ public class EndpointAuthorizationMatrixTests : IAsyncDisposable
 
         var response = await _instanceAdminClient.SendAsync(request);
 
-        response.StatusCode.Should().Be(HttpStatusCode.OK,
-            "instance admin should be able to read instance branding settings");
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK).Because("instance admin should be able to read instance branding settings");
     }
 
     [Test]
@@ -476,8 +471,7 @@ public class EndpointAuthorizationMatrixTests : IAsyncDisposable
 
         var response = await _tenantAdminClient.SendAsync(request);
 
-        response.StatusCode.Should().Be(HttpStatusCode.Forbidden,
-            "deployment mode settings should only be accessible to instance admins, not tenant admins");
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Forbidden).Because("deployment mode settings should only be accessible to instance admins, not tenant admins");
     }
 
     [Test]
@@ -488,8 +482,7 @@ public class EndpointAuthorizationMatrixTests : IAsyncDisposable
 
         var response = await _instanceAdminClient.SendAsync(request);
 
-        response.StatusCode.Should().Be(HttpStatusCode.OK,
-            "instance admin should be able to read storage settings");
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK).Because("instance admin should be able to read storage settings");
     }
 
     [Test]
@@ -500,8 +493,7 @@ public class EndpointAuthorizationMatrixTests : IAsyncDisposable
 
         var response = await _instanceAdminClient.SendAsync(request);
 
-        response.StatusCode.Should().Be(HttpStatusCode.OK,
-            "instance admin should be able to read SMTP settings");
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK).Because("instance admin should be able to read SMTP settings");
     }
 
     [Test]
@@ -512,8 +504,7 @@ public class EndpointAuthorizationMatrixTests : IAsyncDisposable
 
         var response = await _regularUserClient.SendAsync(request);
 
-        response.StatusCode.Should().Be(HttpStatusCode.Forbidden,
-            "analytics governance should only be accessible to instance admins");
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Forbidden).Because("analytics governance should only be accessible to instance admins");
     }
 
     [Test]
@@ -524,8 +515,7 @@ public class EndpointAuthorizationMatrixTests : IAsyncDisposable
 
         var response = await _instanceAdminClient.SendAsync(request);
 
-        response.StatusCode.Should().Be(HttpStatusCode.OK,
-            "instance admin should be able to read tenant delegation settings");
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK).Because("instance admin should be able to read tenant delegation settings");
     }
 
     [Test]
@@ -536,8 +526,7 @@ public class EndpointAuthorizationMatrixTests : IAsyncDisposable
 
         var response = await _instanceAdminClient.SendAsync(request);
 
-        response.StatusCode.Should().Be(HttpStatusCode.OK,
-            "instance admin should be able to read render policy settings");
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK).Because("instance admin should be able to read render policy settings");
     }
 
     [Test]
@@ -548,8 +537,7 @@ public class EndpointAuthorizationMatrixTests : IAsyncDisposable
 
         var response = await _instanceAdminClient.SendAsync(request);
 
-        response.StatusCode.Should().Be(HttpStatusCode.OK,
-            "instance admin should be able to read footer governance settings");
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK).Because("instance admin should be able to read footer governance settings");
     }
 
     [Test]
@@ -560,8 +548,7 @@ public class EndpointAuthorizationMatrixTests : IAsyncDisposable
 
         var response = await _instanceAdminClient.SendAsync(request);
 
-        response.StatusCode.Should().Be(HttpStatusCode.OK,
-            "instance admin should be able to read auth provider settings");
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK).Because("instance admin should be able to read auth provider settings");
     }
 
     [Test]
@@ -573,8 +560,7 @@ public class EndpointAuthorizationMatrixTests : IAsyncDisposable
 
         var response = await _regularUserClient.SendAsync(request);
 
-        response.StatusCode.Should().Be(HttpStatusCode.Forbidden,
-            "Keycloak realm diagnostics should only be accessible to instance admins");
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Forbidden).Because("Keycloak realm diagnostics should only be accessible to instance admins");
     }
 
     [Test]
@@ -586,8 +572,7 @@ public class EndpointAuthorizationMatrixTests : IAsyncDisposable
 
         var response = await _instanceAdminClient.SendAsync(request);
 
-        response.StatusCode.Should().Be(HttpStatusCode.OK,
-            "instance admin should be able to run read-only Keycloak realm diagnostics");
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK).Because("instance admin should be able to run read-only Keycloak realm diagnostics");
     }
 
     [Test]
@@ -599,8 +584,7 @@ public class EndpointAuthorizationMatrixTests : IAsyncDisposable
 
         var response = await _regularUserClient.SendAsync(request);
 
-        response.StatusCode.Should().Be(HttpStatusCode.Forbidden,
-            "Keycloak realm sync preview should only be accessible to instance admins");
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Forbidden).Because("Keycloak realm sync preview should only be accessible to instance admins");
     }
 
     [Test]
@@ -612,8 +596,7 @@ public class EndpointAuthorizationMatrixTests : IAsyncDisposable
 
         var response = await _instanceAdminClient.SendAsync(request);
 
-        response.StatusCode.Should().Be(HttpStatusCode.OK,
-            "instance admin should be able to preview read-only Keycloak realm sync plans");
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK).Because("instance admin should be able to preview read-only Keycloak realm sync plans");
     }
 
     [Test]
@@ -625,8 +608,7 @@ public class EndpointAuthorizationMatrixTests : IAsyncDisposable
 
         var response = await _regularUserClient.SendAsync(request);
 
-        response.StatusCode.Should().Be(HttpStatusCode.Forbidden,
-            "Keycloak realm sync apply should only be accessible to instance admins");
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Forbidden).Because("Keycloak realm sync apply should only be accessible to instance admins");
     }
 
     [Test]
@@ -638,8 +620,7 @@ public class EndpointAuthorizationMatrixTests : IAsyncDisposable
 
         var response = await _instanceAdminClient.SendAsync(request);
 
-        response.StatusCode.Should().Be(HttpStatusCode.OK,
-            "instance admin should be able to apply backup-confirmed additive Keycloak realm repairs");
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK).Because("instance admin should be able to apply backup-confirmed additive Keycloak realm repairs");
     }
 
     [Test]
@@ -651,8 +632,7 @@ public class EndpointAuthorizationMatrixTests : IAsyncDisposable
 
         var response = await _regularUserClient.SendAsync(request);
 
-        response.StatusCode.Should().Be(HttpStatusCode.Forbidden,
-            "Keycloak client-secret rotation should only be accessible to instance admins");
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Forbidden).Because("Keycloak client-secret rotation should only be accessible to instance admins");
     }
 
     [Test]
@@ -664,8 +644,7 @@ public class EndpointAuthorizationMatrixTests : IAsyncDisposable
 
         var response = await _instanceAdminClient.SendAsync(request);
 
-        response.StatusCode.Should().Be(HttpStatusCode.OK,
-            "instance admin should receive safe operator instructions for deployment-managed Keycloak secrets");
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK).Because("instance admin should receive safe operator instructions for deployment-managed Keycloak secrets");
     }
 
     [Test]
@@ -676,8 +655,7 @@ public class EndpointAuthorizationMatrixTests : IAsyncDisposable
 
         var response = await _instanceAdminClient.SendAsync(request);
 
-        response.StatusCode.Should().Be(HttpStatusCode.OK,
-            "instance admin should be able to read authz provider settings");
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK).Because("instance admin should be able to read authz provider settings");
     }
 
     [Test]
@@ -688,8 +666,7 @@ public class EndpointAuthorizationMatrixTests : IAsyncDisposable
 
         var response = await _instanceAdminClient.SendAsync(request);
 
-        response.StatusCode.Should().Be(HttpStatusCode.OK,
-            "instance admin should be able to read domain settings");
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK).Because("instance admin should be able to read domain settings");
     }
 
     [Test]
@@ -700,8 +677,7 @@ public class EndpointAuthorizationMatrixTests : IAsyncDisposable
 
         var response = await _instanceAdminClient.SendAsync(request);
 
-        response.StatusCode.Should().Be(HttpStatusCode.OK,
-            "instance admin should be able to read organization settings");
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK).Because("instance admin should be able to read organization settings");
     }
 
     #endregion
@@ -716,8 +692,7 @@ public class EndpointAuthorizationMatrixTests : IAsyncDisposable
 
         var response = await _tenantAdminClient.SendAsync(request);
 
-        response.StatusCode.Should().Be(HttpStatusCode.OK,
-            "tenant admin should be able to list tenants");
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK).Because("tenant admin should be able to list tenants");
     }
 
     [Test]
@@ -728,9 +703,7 @@ public class EndpointAuthorizationMatrixTests : IAsyncDisposable
 
         var response = await _regularUserClient.SendAsync(request);
 
-        response.StatusCode.Should().BeOneOf(
-            new[] { HttpStatusCode.Forbidden, HttpStatusCode.BadRequest },
-            "regular user should be denied category creation (403) or get validation error (400)");
+        await Assert.That(new[] { HttpStatusCode.Forbidden, HttpStatusCode.BadRequest }).Contains(response.StatusCode).Because("regular user should be denied category creation (403) or get validation error (400)");
     }
 
     [Test]
@@ -741,9 +714,7 @@ public class EndpointAuthorizationMatrixTests : IAsyncDisposable
 
         var response = await _regularUserClient.SendAsync(request);
 
-        response.StatusCode.Should().BeOneOf(
-            new[] { HttpStatusCode.Forbidden, HttpStatusCode.BadRequest },
-            "regular user should be denied tag creation");
+        await Assert.That(new[] { HttpStatusCode.Forbidden, HttpStatusCode.BadRequest }).Contains(response.StatusCode).Because("regular user should be denied tag creation");
     }
 
     [Test]
@@ -754,9 +725,7 @@ public class EndpointAuthorizationMatrixTests : IAsyncDisposable
 
         var response = await _regularUserClient.SendAsync(request);
 
-        response.StatusCode.Should().BeOneOf(
-            new[] { HttpStatusCode.Forbidden, HttpStatusCode.BadRequest },
-            "regular user should be denied location creation");
+        await Assert.That(new[] { HttpStatusCode.Forbidden, HttpStatusCode.BadRequest }).Contains(response.StatusCode).Because("regular user should be denied location creation");
     }
 
     [Test]
@@ -767,8 +736,7 @@ public class EndpointAuthorizationMatrixTests : IAsyncDisposable
 
         var response = await _tenantAdminClient.SendAsync(request);
 
-        response.StatusCode.Should().Be(HttpStatusCode.OK,
-            "tenant admin should be able to list tenant user role grants");
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK).Because("tenant admin should be able to list tenant user role grants");
     }
 
     [Test]
@@ -779,8 +747,7 @@ public class EndpointAuthorizationMatrixTests : IAsyncDisposable
 
         var response = await _tenantAdminClient.SendAsync(request);
 
-        response.StatusCode.Should().Be(HttpStatusCode.OK,
-            "tenant admin should be able to read tenant settings");
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK).Because("tenant admin should be able to read tenant settings");
     }
 
     [Test]
@@ -791,8 +758,7 @@ public class EndpointAuthorizationMatrixTests : IAsyncDisposable
 
         var response = await _tenantAdminClient.SendAsync(request);
 
-        response.StatusCode.Should().Be(HttpStatusCode.OK,
-            "tenant admin should be able to view tenant count");
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK).Because("tenant admin should be able to view tenant count");
     }
 
     [Test]
@@ -803,8 +769,7 @@ public class EndpointAuthorizationMatrixTests : IAsyncDisposable
 
         var response = await _tenantAdminClient.SendAsync(request);
 
-        response.StatusCode.Should().Be(HttpStatusCode.Forbidden,
-            "tenant onboarding status is gated to multi-tenant deployments and the matrix fixture runs in single-tenant mode");
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Forbidden).Because("tenant onboarding status is gated to multi-tenant deployments and the matrix fixture runs in single-tenant mode");
     }
 
     #endregion
@@ -819,8 +784,7 @@ public class EndpointAuthorizationMatrixTests : IAsyncDisposable
 
         var response = await _regularUserClient.SendAsync(request);
 
-        response.StatusCode.Should().Be(HttpStatusCode.OK,
-            "notifications are personal data — all authenticated users can view their own");
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK).Because("notifications are personal data — all authenticated users can view their own");
     }
 
     [Test]
@@ -831,9 +795,7 @@ public class EndpointAuthorizationMatrixTests : IAsyncDisposable
 
         var response = await _regularUserClient.SendAsync(request);
 
-        response.StatusCode.Should().BeOneOf(
-            new[] { HttpStatusCode.OK, HttpStatusCode.NoContent, HttpStatusCode.BadRequest },
-            "user sync should work for all authenticated users");
+        await Assert.That(new[] { HttpStatusCode.OK, HttpStatusCode.NoContent, HttpStatusCode.BadRequest }).Contains(response.StatusCode).Because("user sync should work for all authenticated users");
     }
 
     [Test]
@@ -844,8 +806,7 @@ public class EndpointAuthorizationMatrixTests : IAsyncDisposable
 
         var response = await _regularUserClient.SendAsync(request);
 
-        response.StatusCode.Should().Be(HttpStatusCode.OK,
-            "user appearance preferences should be accessible to all authenticated users");
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK).Because("user appearance preferences should be accessible to all authenticated users");
     }
 
     [Test]
@@ -856,8 +817,7 @@ public class EndpointAuthorizationMatrixTests : IAsyncDisposable
 
         var response = await _regularUserClient.SendAsync(request);
 
-        response.StatusCode.Should().Be(HttpStatusCode.OK,
-            "user settings should be accessible to all authenticated users");
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK).Because("user settings should be accessible to all authenticated users");
     }
 
     [Test]
@@ -871,10 +831,8 @@ public class EndpointAuthorizationMatrixTests : IAsyncDisposable
 
         var response = await _regularUserClient.SendAsync(request);
 
-        response.StatusCode.Should().BeOneOf(
-            new[] { HttpStatusCode.OK, HttpStatusCode.Created, HttpStatusCode.BadRequest },
-            "registration order creation should be available to all authenticated users " +
-            "(actual status depends on request body validation)");
+        await Assert.That(new[] { HttpStatusCode.OK, HttpStatusCode.Created, HttpStatusCode.BadRequest }).Contains(response.StatusCode).Because("registration order creation should be available to all authenticated users " +
+        "(actual status depends on request body validation)");
     }
 
     [Test]
@@ -885,8 +843,7 @@ public class EndpointAuthorizationMatrixTests : IAsyncDisposable
 
         var response = await _regularUserClient.SendAsync(request);
 
-        response.StatusCode.Should().Be(HttpStatusCode.OK,
-            "feature flags should be accessible to all authenticated users");
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK).Because("feature flags should be accessible to all authenticated users");
     }
 
     [Test]
@@ -897,8 +854,7 @@ public class EndpointAuthorizationMatrixTests : IAsyncDisposable
 
         var response = await _regularUserClient.SendAsync(request);
 
-        response.StatusCode.Should().Be(HttpStatusCode.OK,
-            "user authority check should be accessible to all authenticated users");
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK).Because("user authority check should be accessible to all authenticated users");
     }
 
     #endregion
@@ -913,8 +869,7 @@ public class EndpointAuthorizationMatrixTests : IAsyncDisposable
 
         var response = await _instanceAdminClient.SendAsync(request);
 
-        response.StatusCode.Should().Be(HttpStatusCode.OK,
-            "instance admin has full access including tenant endpoints");
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK).Because("instance admin has full access including tenant endpoints");
     }
 
     [Test]
@@ -925,8 +880,7 @@ public class EndpointAuthorizationMatrixTests : IAsyncDisposable
 
         var response = await _instanceAdminClient.SendAsync(request);
 
-        response.StatusCode.Should().Be(HttpStatusCode.OK,
-            "instance admin can access tenant user role grant management");
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK).Because("instance admin can access tenant user role grant management");
     }
 
     [Test]
@@ -937,9 +891,7 @@ public class EndpointAuthorizationMatrixTests : IAsyncDisposable
 
         var response = await _regularUserClient.SendAsync(request);
 
-        response.StatusCode.Should().BeOneOf(
-            new[] { HttpStatusCode.Forbidden, HttpStatusCode.BadRequest },
-            "regular users should be denied tenant creation or fail request validation before creation");
+        await Assert.That(new[] { HttpStatusCode.Forbidden, HttpStatusCode.BadRequest }).Contains(response.StatusCode).Because("regular users should be denied tenant creation or fail request validation before creation");
     }
 
     [Test]
@@ -950,8 +902,7 @@ public class EndpointAuthorizationMatrixTests : IAsyncDisposable
 
         var response = await _regularUserClient.SendAsync(request);
 
-        response.StatusCode.Should().Be(HttpStatusCode.Forbidden,
-            "regular users should not be able to create tenant user role grants");
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Forbidden).Because("regular users should not be able to create tenant user role grants");
     }
 
     [Test]
@@ -962,8 +913,7 @@ public class EndpointAuthorizationMatrixTests : IAsyncDisposable
 
         var response = await _regularUserClient.SendAsync(request);
 
-        response.StatusCode.Should().Be(HttpStatusCode.OK,
-            "regular users can list external API keys visible to the current user");
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK).Because("regular users can list external API keys visible to the current user");
     }
 
     [Test]
@@ -974,8 +924,7 @@ public class EndpointAuthorizationMatrixTests : IAsyncDisposable
 
         var response = await _tenantAdminClient.SendAsync(request);
 
-        response.StatusCode.Should().Be(HttpStatusCode.Forbidden,
-            "tenant admins should not be able to access instance settings");
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Forbidden).Because("tenant admins should not be able to access instance settings");
     }
 
     #endregion
@@ -986,16 +935,14 @@ public class EndpointAuthorizationMatrixTests : IAsyncDisposable
     {
         using var request = new HttpRequestMessage(HttpMethod.Get, url);
         var response = await _anonymousClient.SendAsync(request);
-        response.StatusCode.Should().Be(HttpStatusCode.OK,
-            $"[AllowAnonymous] endpoint {url} should return 200 for unauthenticated requests");
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK).Because($"[AllowAnonymous] endpoint {url} should return 200 for unauthenticated requests");
     }
 
     private async Task AssertAnonymousUnauthorized(string url, HttpMethod? method = null)
     {
         using var request = new HttpRequestMessage(method ?? HttpMethod.Get, url);
         var response = await _anonymousClient.SendAsync(request);
-        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized,
-            $"[Authorize] endpoint {url} should return 401 for unauthenticated requests");
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized).Because($"[Authorize] endpoint {url} should return 401 for unauthenticated requests");
     }
 
     private static HttpRequestMessage Auth(HttpMethod method, string url, string token)

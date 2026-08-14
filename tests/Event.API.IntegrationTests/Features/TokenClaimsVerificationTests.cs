@@ -5,7 +5,6 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Net.Http.Headers;
 using System.Security.Claims;
 using Event.Api.IntegrationTests.Fixtures;
-using FluentAssertions;
 using TUnit.Core;
 
 namespace Event.Api.IntegrationTests.Features;
@@ -35,8 +34,7 @@ public class TokenClaimsVerificationTests
         var token = await _infra.TokenClient.GetAdminTokenAsync();
         var jwt = DecodeToken(token);
 
-        jwt.Issuer.Should().Be(_infra.KeycloakAuthority,
-            "the token issuer must match the Keycloak container's realm URL");
+        await Assert.That(jwt.Issuer).IsEqualTo(_infra.KeycloakAuthority).Because("the token issuer must match the Keycloak container's realm URL");
     }
 
     [Test]
@@ -45,8 +43,7 @@ public class TokenClaimsVerificationTests
         var token = await _infra.TokenClient.GetUserTokenAsync();
         var jwt = DecodeToken(token);
 
-        jwt.Audiences.Should().Contain("islamu-event-api",
-            "the token must contain the islamu-event-api audience mapped in the realm export");
+        await Assert.That(jwt.Audiences).Contains("islamu-event-api").Because("the token must contain the islamu-event-api audience mapped in the realm export");
     }
 
     [Test]
@@ -55,7 +52,8 @@ public class TokenClaimsVerificationTests
         var token = await _infra.TokenClient.GetAdminTokenAsync();
         var jwt = DecodeToken(token);
 
-        GetSubject(jwt).Should().NotBeNullOrEmpty("every token must have a subject (sub) claim");
+        await Assert.That(string.IsNullOrEmpty(GetSubject(jwt))).IsFalse()
+            .Because("every token must have a subject (sub) claim");
     }
 
     [Test]
@@ -64,9 +62,7 @@ public class TokenClaimsVerificationTests
         var token = await _infra.TokenClient.GetAdminTokenAsync();
         var claims = DecodeToken(token).Claims;
 
-        claims.FirstOrDefault(c => c.Type == "preferred_username")?.Value
-            .Should().Be("test-admin",
-                "the preferred_username claim must match the Keycloak user");
+        await Assert.That(claims.FirstOrDefault(c => c.Type == "preferred_username")?.Value).IsEqualTo("test-admin").Because("the preferred_username claim must match the Keycloak user");
     }
 
     [Test]
@@ -75,9 +71,7 @@ public class TokenClaimsVerificationTests
         var token = await _infra.TokenClient.GetUserTokenAsync();
         var claims = DecodeToken(token).Claims;
 
-        claims.FirstOrDefault(c => c.Type == "email")?.Value
-            .Should().Be("user@test.islamu.org",
-                "the email claim must match the test realm user configuration");
+        await Assert.That(claims.FirstOrDefault(c => c.Type == "email")?.Value).IsEqualTo("user@test.islamu.org").Because("the email claim must match the test realm user configuration");
     }
 
     #endregion
@@ -90,10 +84,8 @@ public class TokenClaimsVerificationTests
         var token = await _infra.TokenClient.GetAdminTokenAsync();
         var jwt = DecodeToken(token);
 
-        jwt.ValidFrom.Should().BeBefore(DateTime.UtcNow,
-            "iat (issued-at) must be in the past");
-        jwt.ValidTo.Should().BeAfter(DateTime.UtcNow,
-            "exp (expiry) must be in the future — realm sets accessTokenLifespan=3600s");
+        await Assert.That(jwt.ValidFrom).IsBefore(DateTime.UtcNow).Because("iat (issued-at) must be in the past");
+        await Assert.That(jwt.ValidTo).IsAfter(DateTime.UtcNow).Because("exp (expiry) must be in the future — realm sets accessTokenLifespan=3600s");
     }
 
     [Test]
@@ -103,8 +95,7 @@ public class TokenClaimsVerificationTests
         var jwt = DecodeToken(token);
 
         var remaining = jwt.ValidTo - DateTime.UtcNow;
-        remaining.Should().BeGreaterThan(TimeSpan.FromMinutes(50),
-            "access token lifespan is 3600s in the test realm — at least 50 minutes must remain");
+        await Assert.That(remaining).IsGreaterThan(TimeSpan.FromMinutes(50)).Because("access token lifespan is 3600s in the test realm — at least 50 minutes must remain");
     }
 
     #endregion
@@ -123,8 +114,7 @@ public class TokenClaimsVerificationTests
         var jti1 = jwt1.Claims.FirstOrDefault(c => c.Type == "jti")?.Value;
         var jti2 = jwt2.Claims.FirstOrDefault(c => c.Type == "jti")?.Value;
 
-        jti1.Should().NotBe(jti2,
-            "each token must have a unique jti (JWT ID)");
+        await Assert.That(jti1).IsNotEqualTo(jti2).Because("each token must have a unique jti (JWT ID)");
     }
 
     #endregion
@@ -140,8 +130,7 @@ public class TokenClaimsVerificationTests
         var adminJwt = DecodeToken(adminToken);
         var userJwt = DecodeToken(userToken);
 
-        GetSubject(adminJwt).Should().NotBe(GetSubject(userJwt),
-            "different users must have different sub claims");
+        await Assert.That(GetSubject(adminJwt)).IsNotEqualTo(GetSubject(userJwt)).Because("different users must have different sub claims");
     }
 
     [Test]
@@ -155,8 +144,8 @@ public class TokenClaimsVerificationTests
         var tenantAdminUsername = DecodeToken(tenantAdminToken).Claims
             .First(c => c.Type == "preferred_username").Value;
 
-        adminUsername.Should().Be("test-admin");
-        tenantAdminUsername.Should().Be("test-tenant-admin");
+        await Assert.That(adminUsername).IsEqualTo("test-admin");
+        await Assert.That(tenantAdminUsername).IsEqualTo("test-tenant-admin");
     }
 
     #endregion
@@ -182,8 +171,7 @@ public class TokenClaimsVerificationTests
 
         var response = await client.SendAsync(request);
 
-        response.StatusCode.Should().Be(System.Net.HttpStatusCode.OK,
-            "a token with valid claims must be accepted by the real JwtBearer middleware");
+        await Assert.That(response.StatusCode).IsEqualTo(System.Net.HttpStatusCode.OK).Because("a token with valid claims must be accepted by the real JwtBearer middleware");
     }
 
     #endregion

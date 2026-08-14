@@ -1,11 +1,10 @@
 // ABOUTME: Unit tests for SecretProviderFactory.
-// Tests factory creation based on provider type configuration.
+// ABOUTME: Tests factory creation based on provider type configuration.
 
 using Explore.Secrets.Abstractions;
 using Explore.Secrets.Configuration;
 using Explore.Secrets.Providers;
 using Explore.Secrets.Services;
-using FluentAssertions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using NSubstitute;
@@ -31,7 +30,7 @@ public class SecretProviderFactoryTests
     }
 
     [Test]
-    public void Create_WhenProviderTypeIsNone_ShouldReturnEnvironmentProvider()
+    public async Task Create_WhenProviderTypeIsNone_ShouldReturnEnvironmentProvider()
     {
         // Arrange
         var options = Options.Create(new SecretProviderOptions
@@ -44,12 +43,12 @@ public class SecretProviderFactoryTests
         var provider = factory.Create();
 
         // Assert
-        provider.Should().BeOfType<EnvironmentSecretProvider>();
-        provider.ProviderType.Should().Be(SecretProviderType.None);
+        await Assert.That(provider).IsTypeOf<EnvironmentSecretProvider>();
+        await Assert.That(provider.ProviderType).IsEqualTo(SecretProviderType.None);
     }
 
     [Test]
-    public void Create_WhenProviderTypeIsInfisical_ShouldReturnInfisicalProvider()
+    public async Task Create_WhenProviderTypeIsInfisical_ShouldReturnInfisicalProvider()
     {
         // Arrange
         var options = Options.Create(new SecretProviderOptions
@@ -62,13 +61,13 @@ public class SecretProviderFactoryTests
         var provider = factory.Create();
 
         // Assert
-        provider.Should().BeOfType<InfisicalSecretProvider>();
-        provider.ProviderType.Should().Be(SecretProviderType.Infisical);
-        provider.SupportsRefresh.Should().BeTrue();
+        await Assert.That(provider).IsTypeOf<InfisicalSecretProvider>();
+        await Assert.That(provider.ProviderType).IsEqualTo(SecretProviderType.Infisical);
+        await Assert.That(provider.SupportsRefresh).IsTrue();
     }
 
     [Test]
-    public void Create_WhenProviderTypeIsVault_ShouldThrowNotImplemented()
+    public async Task Create_WhenProviderTypeIsVault_ShouldThrowNotImplemented()
     {
         // Arrange
         var options = Options.Create(new SecretProviderOptions
@@ -81,12 +80,12 @@ public class SecretProviderFactoryTests
         var act = () => factory.Create();
 
         // Assert
-        act.Should().Throw<SecretProviderException>()
-            .Which.ProviderType.Should().Be(SecretProviderType.Vault);
+        var exception = await Assert.That(act).Throws<SecretProviderException>();
+        await Assert.That(exception!.ProviderType).IsEqualTo(SecretProviderType.Vault);
     }
 
     [Test]
-    public void Create_WhenProviderTypeIsAzureKeyVault_ShouldThrowNotImplemented()
+    public async Task Create_WhenProviderTypeIsAzureKeyVault_ShouldThrowNotImplemented()
     {
         // Arrange
         var options = Options.Create(new SecretProviderOptions
@@ -99,12 +98,12 @@ public class SecretProviderFactoryTests
         var act = () => factory.Create();
 
         // Assert
-        act.Should().Throw<SecretProviderException>()
-            .Which.ProviderType.Should().Be(SecretProviderType.AzureKeyVault);
+        var exception = await Assert.That(act).Throws<SecretProviderException>();
+        await Assert.That(exception!.ProviderType).IsEqualTo(SecretProviderType.AzureKeyVault);
     }
 
     [Test]
-    public void Create_WhenProviderTypeIsAwsSecretsManager_ShouldThrowNotImplemented()
+    public async Task Create_WhenProviderTypeIsAwsSecretsManager_ShouldThrowNotImplemented()
     {
         // Arrange
         var options = Options.Create(new SecretProviderOptions
@@ -117,7 +116,7 @@ public class SecretProviderFactoryTests
         var act = () => factory.Create();
 
         // Assert
-        act.Should().Throw<SecretProviderException>()
-            .Which.ProviderType.Should().Be(SecretProviderType.AwsSecretsManager);
+        var exception = await Assert.That(act).Throws<SecretProviderException>();
+        await Assert.That(exception!.ProviderType).IsEqualTo(SecretProviderType.AwsSecretsManager);
     }
 }

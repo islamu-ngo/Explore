@@ -2,7 +2,6 @@
 // ABOUTME: Protects Aspire service discovery from being overridden by Infisical compatibility keys.
 
 using Explore.Blazor.Extensions;
-using FluentAssertions;
 using Microsoft.Extensions.Configuration;
 
 namespace Explore.Blazor.IntegrationTests.Extensions;
@@ -10,7 +9,7 @@ namespace Explore.Blazor.IntegrationTests.Extensions;
 public sealed class BlazorConfigurationExtensionsTests
 {
     [Test]
-    public void AddInfisicalBlazorCompatibility_WhenAspireApiReferenceExists_DoesNotMapInfisicalApiEndpoint()
+    public async Task AddInfisicalBlazorCompatibility_WhenAspireApiReferenceExists_DoesNotMapInfisicalApiEndpoint()
     {
         var configurationBuilder = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
@@ -25,12 +24,12 @@ public sealed class BlazorConfigurationExtensionsTests
         configurationBuilder.AddInfisicalBlazorCompatibility();
 
         var configuration = configurationBuilder.Build();
-        configuration["ExploreApi:BaseUrl"].Should().BeNull();
-        configuration["services:explore-api:https:0"].Should().Be("https://localhost:7211");
+        await Assert.That(configuration["ExploreApi:BaseUrl"]).IsNull();
+        await Assert.That(configuration["services:explore-api:https:0"]).IsEqualTo("https://localhost:7211");
     }
 
     [Test]
-    public void AddInfisicalBlazorCompatibility_WhenAspireApiReferenceIsMissing_MapsInfisicalApiEndpoint()
+    public async Task AddInfisicalBlazorCompatibility_WhenAspireApiReferenceIsMissing_MapsInfisicalApiEndpoint()
     {
         var configurationBuilder = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
@@ -44,6 +43,6 @@ public sealed class BlazorConfigurationExtensionsTests
         configurationBuilder.AddInfisicalBlazorCompatibility();
 
         var configuration = configurationBuilder.Build();
-        configuration["ExploreApi:BaseUrl"].Should().Be("https://localhost:7039");
+        await Assert.That(configuration["ExploreApi:BaseUrl"]).IsEqualTo("https://localhost:7039");
     }
 }

@@ -27,6 +27,7 @@ public sealed class GetRegistrationOrderParticipantsQueryHandlerTests
             null, 17, true, false, null, null, null, null);
         catalog.AddTicketType(child, null);
         catalog.AddEntitlement(child, TicketTypeEntitlement.CreateForEvent(child.Id, tenantId, eventId, 1));
+        catalog.UpdateCommercialDisclosures("Merchant", "Refund", "Support");
         catalog.Publish();
         var now = new DateTime(2026, 7, 31, 12, 0, 0, DateTimeKind.Utc);
         var order = RegistrationOrder.Create(

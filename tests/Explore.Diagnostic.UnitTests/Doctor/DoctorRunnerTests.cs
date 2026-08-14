@@ -2,7 +2,6 @@
 // ABOUTME: Ensures failed checks become visible WARN results rather than being swallowed.
 
 using Explore.Diagnostic.Doctor;
-using FluentAssertions;
 
 namespace Explore.Diagnostic.UnitTests.Doctor;
 
@@ -15,11 +14,11 @@ public class DoctorRunnerTests
 
         var report = await runner.RunAsync(TimeSpan.FromSeconds(5), CancellationToken.None);
 
-        report.Results.Should().ContainSingle();
+        await Assert.That(report.Results.Count).IsEqualTo(1);
         var result = report.Results[0];
-        result.Status.Should().Be(DoctorCheckStatus.Warn);
-        result.RedactedEvidence.Should().Contain("Password=<redacted>");
-        result.RedactedEvidence.Should().NotContain("super-secret");
+        await Assert.That(result.Status).IsEqualTo(DoctorCheckStatus.Warn);
+        await Assert.That(result.RedactedEvidence).Contains("Password=<redacted>");
+        await Assert.That(result.RedactedEvidence).DoesNotContain("super-secret");
     }
 
     private sealed class ThrowingCheck : IDoctorCheck

@@ -7,7 +7,6 @@ using Event.Api.IntegrationTests.Fixtures;
 using Explore.API.Configuration;
 using Explore.API.Extensions;
 using Explore.API.Scheduling;
-using FluentAssertions;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
@@ -31,7 +30,7 @@ public sealed class TickerQDashboardRouteTests
         await using var host = await CreateTickerQHostAsync(dashboardEnabled: false);
         var response = await host.Client.GetAsync("/admin/scheduler");
 
-        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.NotFound);
     }
 
     [Test]
@@ -40,7 +39,7 @@ public sealed class TickerQDashboardRouteTests
         await using var host = await CreateTickerQHostAsync(dashboardEnabled: true);
         var response = await host.Client.GetAsync("/admin/scheduler");
 
-        response.StatusCode.Should().BeOneOf(HttpStatusCode.Unauthorized, HttpStatusCode.Forbidden);
+        await Assert.That(new[] { HttpStatusCode.Unauthorized, HttpStatusCode.Forbidden }).Contains(response.StatusCode);
     }
 
     private static async Task<TickerQHost> CreateTickerQHostAsync(bool dashboardEnabled)

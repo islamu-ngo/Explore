@@ -1,9 +1,8 @@
 // ABOUTME: Unit tests for RotationAwareHttpClientFactory.
-// Tests client creation, credential rotation, atomic swap, and graceful disposal.
+// ABOUTME: Tests client creation, credential rotation, atomic swap, and graceful disposal.
 
 using Explore.Secrets.Configuration;
 using Explore.Secrets.Services;
-using FluentAssertions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using NSubstitute;
@@ -45,18 +44,18 @@ public class RotationAwareHttpClientFactoryTests : IDisposable
     // ==================== Constructor Tests ====================
 
     [Test]
-    public void Constructor_WithValidOptions_ShouldSucceed()
+    public async Task Constructor_WithValidOptions_ShouldSucceed()
     {
         // Arrange & Act
         var factory = CreateFactory();
 
         // Assert
-        factory.Should().NotBeNull();
-        factory.ActiveClientCount.Should().Be(0);
+        await Assert.That(factory).IsNotNull();
+        await Assert.That(factory.ActiveClientCount).IsEqualTo(0);
     }
 
     [Test]
-    public void Constructor_WithNullCredentialOptions_ShouldThrow()
+    public async Task Constructor_WithNullCredentialOptions_ShouldThrow()
     {
         // Arrange
         var rotationMonitor = CreateOptionsMonitor(new RotationOptions());
@@ -65,12 +64,12 @@ public class RotationAwareHttpClientFactoryTests : IDisposable
         var act = () => new RotationAwareHttpClientFactory(null!, rotationMonitor, _logger);
 
         // Assert
-        act.Should().Throw<ArgumentNullException>()
+        await Assert.That(act).Throws<ArgumentNullException>()
             .WithParameterName("credentialOptions");
     }
 
     [Test]
-    public void Constructor_WithNullRotationOptions_ShouldThrow()
+    public async Task Constructor_WithNullRotationOptions_ShouldThrow()
     {
         // Arrange
         var credentialMonitor = CreateOptionsMonitor(new HttpClientCredentialOptions());
@@ -79,12 +78,12 @@ public class RotationAwareHttpClientFactoryTests : IDisposable
         var act = () => new RotationAwareHttpClientFactory(credentialMonitor, null!, _logger);
 
         // Assert
-        act.Should().Throw<ArgumentNullException>()
+        await Assert.That(act).Throws<ArgumentNullException>()
             .WithParameterName("rotationOptions");
     }
 
     [Test]
-    public void Constructor_WithNullLogger_ShouldThrow()
+    public async Task Constructor_WithNullLogger_ShouldThrow()
     {
         // Arrange
         var credentialMonitor = CreateOptionsMonitor(new HttpClientCredentialOptions());
@@ -94,14 +93,14 @@ public class RotationAwareHttpClientFactoryTests : IDisposable
         var act = () => new RotationAwareHttpClientFactory(credentialMonitor, rotationMonitor, null!);
 
         // Assert
-        act.Should().Throw<ArgumentNullException>()
+        await Assert.That(act).Throws<ArgumentNullException>()
             .WithParameterName("logger");
     }
 
     // ==================== CreateClient Tests ====================
 
     [Test]
-    public void CreateClient_WithNewName_ShouldCreateClient()
+    public async Task CreateClient_WithNewName_ShouldCreateClient()
     {
         // Arrange
         var factory = CreateFactory();
@@ -110,13 +109,13 @@ public class RotationAwareHttpClientFactoryTests : IDisposable
         var client = factory.CreateClient("test-client");
 
         // Assert
-        client.Should().NotBeNull();
-        factory.ActiveClientCount.Should().Be(1);
-        factory.HasClient("test-client").Should().BeTrue();
+        await Assert.That(client).IsNotNull();
+        await Assert.That(factory.ActiveClientCount).IsEqualTo(1);
+        await Assert.That(factory.HasClient("test-client")).IsTrue();
     }
 
     [Test]
-    public void CreateClient_WithSameName_ShouldReturnSameClient()
+    public async Task CreateClient_WithSameName_ShouldReturnSameClient()
     {
         // Arrange
         var factory = CreateFactory();
@@ -126,12 +125,12 @@ public class RotationAwareHttpClientFactoryTests : IDisposable
         var client2 = factory.CreateClient("test-client");
 
         // Assert
-        client1.Should().BeSameAs(client2);
-        factory.ActiveClientCount.Should().Be(1);
+        await Assert.That(client1).IsSameReferenceAs(client2);
+        await Assert.That(factory.ActiveClientCount).IsEqualTo(1);
     }
 
     [Test]
-    public void CreateClient_WithDifferentNames_ShouldCreateDifferentClients()
+    public async Task CreateClient_WithDifferentNames_ShouldCreateDifferentClients()
     {
         // Arrange
         var factory = CreateFactory();
@@ -141,12 +140,12 @@ public class RotationAwareHttpClientFactoryTests : IDisposable
         var client2 = factory.CreateClient("client-2");
 
         // Assert
-        client1.Should().NotBeSameAs(client2);
-        factory.ActiveClientCount.Should().Be(2);
+        await Assert.That(ReferenceEquals(client1, client2)).IsFalse();
+        await Assert.That(factory.ActiveClientCount).IsEqualTo(2);
     }
 
     [Test]
-    public void CreateClient_WithCredentials_ShouldApplyCredentials()
+    public async Task CreateClient_WithCredentials_ShouldApplyCredentials()
     {
         // Arrange
         var credentials = new HttpClientCredentialOptions
@@ -167,15 +166,15 @@ public class RotationAwareHttpClientFactoryTests : IDisposable
         var client = factory.CreateClient("api-client");
 
         // Assert
-        client.BaseAddress.Should().Be(new Uri("https://api.example.com"));
-        client.DefaultRequestHeaders.Authorization.Should().NotBeNull();
-        client.DefaultRequestHeaders.Authorization!.Scheme.Should().Be("Bearer");
-        client.DefaultRequestHeaders.Authorization.Parameter.Should().Be("test-token-123");
-        client.Timeout.Should().Be(TimeSpan.FromSeconds(30));
+        await Assert.That(client.BaseAddress).IsEqualTo(new Uri("https://api.example.com"));
+        await Assert.That(client.DefaultRequestHeaders.Authorization).IsNotNull();
+        await Assert.That(client.DefaultRequestHeaders.Authorization!.Scheme).IsEqualTo("Bearer");
+        await Assert.That(client.DefaultRequestHeaders.Authorization.Parameter).IsEqualTo("test-token-123");
+        await Assert.That(client.Timeout).IsEqualTo(TimeSpan.FromSeconds(30));
     }
 
     [Test]
-    public void CreateClient_WithApiKey_ShouldAddApiKeyHeader()
+    public async Task CreateClient_WithApiKey_ShouldAddApiKeyHeader()
     {
         // Arrange
         var credentials = new HttpClientCredentialOptions
@@ -194,12 +193,12 @@ public class RotationAwareHttpClientFactoryTests : IDisposable
         var client = factory.CreateClient("api-client");
 
         // Assert
-        client.DefaultRequestHeaders.TryGetValues("X-API-Key", out var values).Should().BeTrue();
-        values.Should().Contain("my-api-key-123");
+        await Assert.That(client.DefaultRequestHeaders.TryGetValues("X-API-Key", out var values)).IsTrue();
+        await Assert.That(values).Contains("my-api-key-123");
     }
 
     [Test]
-    public void CreateClient_WithCustomHeaders_ShouldAddHeaders()
+    public async Task CreateClient_WithCustomHeaders_ShouldAddHeaders()
     {
         // Arrange
         var credentials = new HttpClientCredentialOptions
@@ -222,14 +221,14 @@ public class RotationAwareHttpClientFactoryTests : IDisposable
         var client = factory.CreateClient("api-client");
 
         // Assert
-        client.DefaultRequestHeaders.TryGetValues("X-Custom-Header", out var values1).Should().BeTrue();
-        values1.Should().Contain("custom-value");
-        client.DefaultRequestHeaders.TryGetValues("X-Another-Header", out var values2).Should().BeTrue();
-        values2.Should().Contain("another-value");
+        await Assert.That(client.DefaultRequestHeaders.TryGetValues("X-Custom-Header", out var values1)).IsTrue();
+        await Assert.That(values1).Contains("custom-value");
+        await Assert.That(client.DefaultRequestHeaders.TryGetValues("X-Another-Header", out var values2)).IsTrue();
+        await Assert.That(values2).Contains("another-value");
     }
 
     [Test]
-    public void CreateClient_AfterDispose_ShouldThrow()
+    public async Task CreateClient_AfterDispose_ShouldThrow()
     {
         // Arrange
         var factory = CreateFactory();
@@ -239,7 +238,7 @@ public class RotationAwareHttpClientFactoryTests : IDisposable
         var act = () => factory.CreateClient("test-client");
 
         // Assert
-        act.Should().Throw<ObjectDisposedException>();
+        await Assert.That(act).Throws<ObjectDisposedException>();
     }
 
     // ==================== ForceRotate Tests ====================
@@ -250,7 +249,7 @@ public class RotationAwareHttpClientFactoryTests : IDisposable
         // Arrange
         var factory = CreateFactory();
         var originalClient = factory.CreateClient("test-client");
-        factory.ActiveClientCount.Should().Be(1);
+        await Assert.That(factory.ActiveClientCount).IsEqualTo(1);
 
         // Act
         await factory.ForceRotateAsync("test-client");
@@ -260,7 +259,7 @@ public class RotationAwareHttpClientFactoryTests : IDisposable
 
         // Assert
         var newClient = factory.CreateClient("test-client");
-        newClient.Should().NotBeSameAs(originalClient);
+        await Assert.That(ReferenceEquals(newClient, originalClient)).IsFalse();
     }
 
     [Test]
@@ -273,7 +272,7 @@ public class RotationAwareHttpClientFactoryTests : IDisposable
         var act = () => factory.ForceRotateAsync("non-existent");
 
         // Assert
-        await act.Should().ThrowAsync<ArgumentException>()
+        await Assert.That(act).Throws<ArgumentException>()
             .WithParameterName("name");
     }
 
@@ -289,7 +288,7 @@ public class RotationAwareHttpClientFactoryTests : IDisposable
         var act = () => factory.ForceRotateAsync("test-client");
 
         // Assert
-        await act.Should().ThrowAsync<ObjectDisposedException>();
+        await Assert.That(act).Throws<ObjectDisposedException>();
     }
 
     [Test]
@@ -307,14 +306,14 @@ public class RotationAwareHttpClientFactoryTests : IDisposable
         // Assert
         var newClient1 = factory.CreateClient("client-1");
         var newClient2 = factory.CreateClient("client-2");
-        newClient1.Should().NotBeSameAs(client1);
-        newClient2.Should().NotBeSameAs(client2);
+        await Assert.That(ReferenceEquals(newClient1, client1)).IsFalse();
+        await Assert.That(ReferenceEquals(newClient2, client2)).IsFalse();
     }
 
     // ==================== HasClient Tests ====================
 
     [Test]
-    public void HasClient_WithExistingClient_ShouldReturnTrue()
+    public async Task HasClient_WithExistingClient_ShouldReturnTrue()
     {
         // Arrange
         var factory = CreateFactory();
@@ -324,11 +323,11 @@ public class RotationAwareHttpClientFactoryTests : IDisposable
         var result = factory.HasClient("test-client");
 
         // Assert
-        result.Should().BeTrue();
+        await Assert.That(result).IsTrue();
     }
 
     [Test]
-    public void HasClient_WithNonExistentClient_ShouldReturnFalse()
+    public async Task HasClient_WithNonExistentClient_ShouldReturnFalse()
     {
         // Arrange
         var factory = CreateFactory();
@@ -337,29 +336,29 @@ public class RotationAwareHttpClientFactoryTests : IDisposable
         var result = factory.HasClient("non-existent");
 
         // Assert
-        result.Should().BeFalse();
+        await Assert.That(result).IsFalse();
     }
 
     // ==================== Dispose Tests ====================
 
     [Test]
-    public void Dispose_ShouldClearClients()
+    public async Task Dispose_ShouldClearClients()
     {
         // Arrange
         var factory = CreateFactory();
         factory.CreateClient("client-1");
         factory.CreateClient("client-2");
-        factory.ActiveClientCount.Should().Be(2);
+        await Assert.That(factory.ActiveClientCount).IsEqualTo(2);
 
         // Act
         factory.Dispose();
 
         // Assert
-        factory.ActiveClientCount.Should().Be(0);
+        await Assert.That(factory.ActiveClientCount).IsEqualTo(0);
     }
 
     [Test]
-    public void Dispose_MultipleTimes_ShouldNotThrow()
+    public async Task Dispose_MultipleTimes_ShouldNotThrow()
     {
         // Arrange
         var factory = CreateFactory();
@@ -374,7 +373,7 @@ public class RotationAwareHttpClientFactoryTests : IDisposable
         };
 
         // Assert
-        act.Should().NotThrow();
+        await Assert.That(act).ThrowsNothing();
     }
 
     public void Dispose()

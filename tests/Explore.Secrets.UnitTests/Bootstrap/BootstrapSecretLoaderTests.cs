@@ -3,7 +3,6 @@
 
 using Explore.Secrets.Bootstrap;
 using Explore.Secrets.Database;
-using FluentAssertions;
 using Microsoft.Extensions.Configuration;
 using Npgsql;
 using TUnit.Core;
@@ -46,7 +45,7 @@ public class BootstrapSecretLoaderTests
     #region Config Resolution
 
     [Test]
-    public void LoadPostgresConnectionString_WithAllConfigValues_ComposesCorrectConnectionString()
+    public async Task LoadPostgresConnectionString_WithAllConfigValues_ComposesCorrectConnectionString()
     {
         ClearEnv();
 
@@ -62,19 +61,20 @@ public class BootstrapSecretLoaderTests
         var credentials = BootstrapSecretLoader.LoadPostgresConnectionString(config);
 
         var parsed = new NpgsqlConnectionStringBuilder(credentials.ConnectionString);
-        parsed.Host.Should().Be("db.example.com");
-        parsed.Port.Should().Be(6543);
-        parsed.Database.Should().Be("events");
-        parsed.Username.Should().Be("svc_events");
-        parsed.Password.Should().Be("p@ss!word");
-        parsed.SslMode.Should().Be(SslMode.Prefer);
+        await Assert.That(parsed.Host).IsEqualTo("db.example.com");
+        await Assert.That(parsed.Port).IsEqualTo(6543);
+        await Assert.That(parsed.Database).IsEqualTo("events");
+        await Assert.That(parsed.Username).IsEqualTo("svc_events");
+        await Assert.That(parsed.Password).IsEqualTo("p@ss!word");
+        await Assert.That(parsed.SslMode).IsEqualTo(SslMode.Prefer);
 
-        credentials.Source.Should().Contain("Config");
-        credentials.LoadedAt.Should().BeCloseTo(DateTimeOffset.UtcNow, TimeSpan.FromMinutes(1));
+        await Assert.That(credentials.Source).Contains("Config");
+        var now = DateTimeOffset.UtcNow;
+        await Assert.That(credentials.LoadedAt).IsBetween(now.AddMinutes(-1), now.AddMinutes(1));
     }
 
     [Test]
-    public void LoadPostgresConnectionString_WithoutPort_UsesDefault5432()
+    public async Task LoadPostgresConnectionString_WithoutPort_UsesDefault5432()
     {
         ClearEnv();
 
@@ -88,11 +88,11 @@ public class BootstrapSecretLoaderTests
 
         var credentials = BootstrapSecretLoader.LoadPostgresConnectionString(config);
 
-        new NpgsqlConnectionStringBuilder(credentials.ConnectionString).Port.Should().Be(5432);
+        await Assert.That(new NpgsqlConnectionStringBuilder(credentials.ConnectionString).Port).IsEqualTo(5432);
     }
 
     [Test]
-    public void LoadPostgresConnectionString_WithMalformedPort_FallsBackToDefault()
+    public async Task LoadPostgresConnectionString_WithMalformedPort_FallsBackToDefault()
     {
         ClearEnv();
 
@@ -107,11 +107,11 @@ public class BootstrapSecretLoaderTests
 
         var credentials = BootstrapSecretLoader.LoadPostgresConnectionString(config);
 
-        new NpgsqlConnectionStringBuilder(credentials.ConnectionString).Port.Should().Be(5432);
+        await Assert.That(new NpgsqlConnectionStringBuilder(credentials.ConnectionString).Port).IsEqualTo(5432);
     }
 
     [Test]
-    public void ProjectPostgresConfiguration_WithDiscreteFields_BindsMigratorRole()
+    public async Task ProjectPostgresConfiguration_WithDiscreteFields_BindsMigratorRole()
     {
         ClearEnv();
         var builder = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
@@ -129,12 +129,12 @@ public class BootstrapSecretLoaderTests
             infisicalAlreadyLoaded: true);
         var options = PrimaryDatabaseConfiguration.BindMigrator(builder.Build());
 
-        options.Role.Should().Be(PrimaryDatabaseRole.Migrator);
-        options.Provider.Should().Be(PrimaryDatabaseProvider.PostgreSql);
-        options.Host.Should().Be("migration-db.example.test");
-        options.Port.Should().Be(6543);
-        options.Username.Should().Be("migrator_user");
-        options.Password.Should().Be("migrator-secret");
+        await Assert.That(options.Role).IsEqualTo(PrimaryDatabaseRole.Migrator);
+        await Assert.That(options.Provider).IsEqualTo(PrimaryDatabaseProvider.PostgreSql);
+        await Assert.That(options.Host).IsEqualTo("migration-db.example.test");
+        await Assert.That(options.Port).IsEqualTo(6543);
+        await Assert.That(options.Username).IsEqualTo("migrator_user");
+        await Assert.That(options.Password).IsEqualTo("migrator-secret");
     }
 
     #endregion
@@ -142,7 +142,7 @@ public class BootstrapSecretLoaderTests
     #region Environment Variable Resolution
 
     [Test]
-    public void LoadPostgresConnectionString_WithEnvironmentVariables_ComposesCorrectConnectionString()
+    public async Task LoadPostgresConnectionString_WithEnvironmentVariables_ComposesCorrectConnectionString()
     {
         ClearEnv();
         try
@@ -158,13 +158,13 @@ public class BootstrapSecretLoaderTests
             var credentials = BootstrapSecretLoader.LoadPostgresConnectionString(config);
 
             var parsed = new NpgsqlConnectionStringBuilder(credentials.ConnectionString);
-            parsed.Host.Should().Be("env-host");
-            parsed.Port.Should().Be(7777);
-            parsed.Database.Should().Be("env_db");
-            parsed.Username.Should().Be("env_user");
-            parsed.Password.Should().Be("env_pass");
+            await Assert.That(parsed.Host).IsEqualTo("env-host");
+            await Assert.That(parsed.Port).IsEqualTo(7777);
+            await Assert.That(parsed.Database).IsEqualTo("env_db");
+            await Assert.That(parsed.Username).IsEqualTo("env_user");
+            await Assert.That(parsed.Password).IsEqualTo("env_pass");
 
-            credentials.Source.Should().Contain("Env");
+            await Assert.That(credentials.Source).Contains("Env");
         }
         finally
         {
@@ -173,7 +173,7 @@ public class BootstrapSecretLoaderTests
     }
 
     [Test]
-    public void LoadPostgresConnectionString_EnvWinsOverConfig()
+    public async Task LoadPostgresConnectionString_EnvWinsOverConfig()
     {
         ClearEnv();
         try
@@ -196,10 +196,10 @@ public class BootstrapSecretLoaderTests
             var credentials = BootstrapSecretLoader.LoadPostgresConnectionString(config);
 
             var parsed = new NpgsqlConnectionStringBuilder(credentials.ConnectionString);
-            parsed.Host.Should().Be("env-host");
-            parsed.Database.Should().Be("env_db");
-            parsed.Username.Should().Be("env_user");
-            parsed.Password.Should().Be("env_pass");
+            await Assert.That(parsed.Host).IsEqualTo("env-host");
+            await Assert.That(parsed.Database).IsEqualTo("env_db");
+            await Assert.That(parsed.Username).IsEqualTo("env_user");
+            await Assert.That(parsed.Password).IsEqualTo("env_pass");
         }
         finally
         {
@@ -208,7 +208,7 @@ public class BootstrapSecretLoaderTests
     }
 
     [Test]
-    public void LoadPostgresConnectionString_MixedSources_LabelsSourceAsMixed()
+    public async Task LoadPostgresConnectionString_MixedSources_LabelsSourceAsMixed()
     {
         ClearEnv();
         try
@@ -225,9 +225,9 @@ public class BootstrapSecretLoaderTests
 
             var credentials = BootstrapSecretLoader.LoadPostgresConnectionString(config);
 
-            credentials.Source.Should().Contain("Mixed");
-            credentials.Source.Should().Contain("Env");
-            credentials.Source.Should().Contain("Config");
+            await Assert.That(credentials.Source).Contains("Mixed");
+            await Assert.That(credentials.Source).Contains("Env");
+            await Assert.That(credentials.Source).Contains("Config");
         }
         finally
         {
@@ -240,7 +240,7 @@ public class BootstrapSecretLoaderTests
     #region Missing Field Errors
 
     [Test]
-    public void LoadPostgresConnectionString_MissingHost_ThrowsInvalidOperationException()
+    public async Task LoadPostgresConnectionString_MissingHost_ThrowsInvalidOperationException()
     {
         ClearEnv();
 
@@ -253,12 +253,12 @@ public class BootstrapSecretLoaderTests
 
         var act = () => BootstrapSecretLoader.LoadPostgresConnectionString(config);
 
-        act.Should().Throw<InvalidOperationException>()
-           .WithMessage("*Host*");
+        await Assert.That(act).Throws<InvalidOperationException>()
+            .WithMessageContaining("Host");
     }
 
     [Test]
-    public void LoadPostgresConnectionString_MissingDatabase_ThrowsInvalidOperationException()
+    public async Task LoadPostgresConnectionString_MissingDatabase_ThrowsInvalidOperationException()
     {
         ClearEnv();
 
@@ -271,12 +271,12 @@ public class BootstrapSecretLoaderTests
 
         var act = () => BootstrapSecretLoader.LoadPostgresConnectionString(config);
 
-        act.Should().Throw<InvalidOperationException>()
-           .WithMessage("*Database*");
+        await Assert.That(act).Throws<InvalidOperationException>()
+            .WithMessageContaining("Database");
     }
 
     [Test]
-    public void LoadPostgresConnectionString_MissingUsername_ThrowsInvalidOperationException()
+    public async Task LoadPostgresConnectionString_MissingUsername_ThrowsInvalidOperationException()
     {
         ClearEnv();
 
@@ -289,12 +289,12 @@ public class BootstrapSecretLoaderTests
 
         var act = () => BootstrapSecretLoader.LoadPostgresConnectionString(config);
 
-        act.Should().Throw<InvalidOperationException>()
-           .WithMessage("*Username*");
+        await Assert.That(act).Throws<InvalidOperationException>()
+            .WithMessageContaining("Username");
     }
 
     [Test]
-    public void LoadPostgresConnectionString_MissingPassword_ThrowsInvalidOperationException()
+    public async Task LoadPostgresConnectionString_MissingPassword_ThrowsInvalidOperationException()
     {
         ClearEnv();
 
@@ -307,12 +307,12 @@ public class BootstrapSecretLoaderTests
 
         var act = () => BootstrapSecretLoader.LoadPostgresConnectionString(config);
 
-        act.Should().Throw<InvalidOperationException>()
-           .WithMessage("*Password*");
+        await Assert.That(act).Throws<InvalidOperationException>()
+            .WithMessageContaining("Password");
     }
 
     [Test]
-    public void LoadPostgresConnectionString_AllMissing_ErrorListsEveryMissingField()
+    public async Task LoadPostgresConnectionString_AllMissing_ErrorListsEveryMissingField()
     {
         ClearEnv();
 
@@ -320,11 +320,11 @@ public class BootstrapSecretLoaderTests
 
         var act = () => BootstrapSecretLoader.LoadPostgresConnectionString(config);
 
-        var ex = act.Should().Throw<InvalidOperationException>().Which;
-        ex.Message.Should().Contain("Host");
-        ex.Message.Should().Contain("Database");
-        ex.Message.Should().Contain("Username");
-        ex.Message.Should().Contain("Password");
+        var ex = (await Assert.That(act).Throws<InvalidOperationException>())!;
+        await Assert.That(ex.Message).Contains("Host");
+        await Assert.That(ex.Message).Contains("Database");
+        await Assert.That(ex.Message).Contains("Username");
+        await Assert.That(ex.Message).Contains("Password");
     }
 
     #endregion

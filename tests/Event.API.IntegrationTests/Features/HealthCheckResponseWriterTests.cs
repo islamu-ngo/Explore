@@ -5,7 +5,6 @@ using System.Text;
 using System.Text.Json.Nodes;
 using Event.Api.IntegrationTests.Fixtures;
 using Explore.ServiceDefaults.HealthChecks;
-using FluentAssertions;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using TUnit.Core;
@@ -53,23 +52,23 @@ public sealed class HealthCheckResponseWriterTests
         var check = root["checks"]!.AsArray()[0]!.AsObject();
         var checkData = check["data"]!.AsObject();
 
-        check["error"]!.GetValue<string>().Should().Be(HealthCheckResponseWriter.RedactedErrorMessage);
-        check["description"].Should().BeNull();
-        checkData["provider"]!.GetValue<string>().Should().Be("s3_compatible");
-        checkData["status"]!.GetValue<string>().Should().Be("unhealthy");
-        checkData["failureCode"]!.GetValue<string>().Should().Be("provider_unreachable");
-        checkData["apiKeyConfigured"]!.GetValue<string>().Should().Be(HealthCheckResponseWriter.RedactedValue);
-        checkData["durationMs"]!.GetValue<int>().Should().Be(12);
-        checkData["endpoint"]!.GetValue<string>().Should().Be(HealthCheckResponseWriter.RedactedValue);
-        checkData["bucketName"]!.GetValue<string>().Should().Be(HealthCheckResponseWriter.RedactedValue);
-        checkData["objectKey"]!.GetValue<string>().Should().Be(HealthCheckResponseWriter.RedactedValue);
-        checkData["localPath"]!.GetValue<string>().Should().Be(HealthCheckResponseWriter.RedactedValue);
+        await Assert.That(check["error"]!.GetValue<string>()).IsEqualTo(HealthCheckResponseWriter.RedactedErrorMessage);
+        await Assert.That(check["description"]).IsNull();
+        await Assert.That(checkData["provider"]!.GetValue<string>()).IsEqualTo("s3_compatible");
+        await Assert.That(checkData["status"]!.GetValue<string>()).IsEqualTo("unhealthy");
+        await Assert.That(checkData["failureCode"]!.GetValue<string>()).IsEqualTo("provider_unreachable");
+        await Assert.That(checkData["apiKeyConfigured"]!.GetValue<string>()).IsEqualTo(HealthCheckResponseWriter.RedactedValue);
+        await Assert.That(checkData["durationMs"]!.GetValue<int>()).IsEqualTo(12);
+        await Assert.That(checkData["endpoint"]!.GetValue<string>()).IsEqualTo(HealthCheckResponseWriter.RedactedValue);
+        await Assert.That(checkData["bucketName"]!.GetValue<string>()).IsEqualTo(HealthCheckResponseWriter.RedactedValue);
+        await Assert.That(checkData["objectKey"]!.GetValue<string>()).IsEqualTo(HealthCheckResponseWriter.RedactedValue);
+        await Assert.That(checkData["localPath"]!.GetValue<string>()).IsEqualTo(HealthCheckResponseWriter.RedactedValue);
 
-        json.Should().NotContain("https://s3.example.test");
-        json.Should().NotContain("secret-token");
-        json.Should().NotContain("private-bucket");
-        json.Should().NotContain("/srv/islamu-event");
-        json.Should().NotContain("tenant-a/private/file.png");
+        await Assert.That(json).DoesNotContain("https://s3.example.test");
+        await Assert.That(json).DoesNotContain("secret-token");
+        await Assert.That(json).DoesNotContain("private-bucket");
+        await Assert.That(json).DoesNotContain("/srv/islamu-event");
+        await Assert.That(json).DoesNotContain("tenant-a/private/file.png");
     }
 
     [Test]
@@ -103,19 +102,19 @@ public sealed class HealthCheckResponseWriterTests
         var check = root["checks"]!.AsArray()[0]!.AsObject();
         var checkData = check["data"]!.AsObject();
 
-        context.Response.ContentType.Should().Be("application/json; charset=utf-8");
-        context.Response.Headers["X-Health-Status"].ToString().Should().Be("Healthy");
-        context.Response.Headers["Cache-Control"].ToString().Should().Be("no-cache, no-store, must-revalidate");
-        root["status"]!.GetValue<string>().Should().Be("Healthy");
-        root["message"]!.GetValue<string>().Should().Be("Ok");
-        check["name"]!.GetValue<string>().Should().Be("mcp-adapter");
-        check["status"]!.GetValue<string>().Should().Be("Healthy");
-        check["description"]!.GetValue<string>().Should().Be("MCP adapter posture is bounded.");
-        check["error"].Should().BeNull();
-        checkData["enabled"]!.GetValue<bool>().Should().BeTrue();
-        checkData["startupEnabled"]!.GetValue<bool>().Should().BeTrue();
-        checkData["runtimeEnabled"]!.GetValue<bool>().Should().BeTrue();
-        checkData["legacySseRuntimeEnabled"]!.GetValue<bool>().Should().BeFalse();
+        await Assert.That(context.Response.ContentType).IsEqualTo("application/json; charset=utf-8");
+        await Assert.That(context.Response.Headers["X-Health-Status"].ToString()).IsEqualTo("Healthy");
+        await Assert.That(context.Response.Headers["Cache-Control"].ToString()).IsEqualTo("no-cache, no-store, must-revalidate");
+        await Assert.That(root["status"]!.GetValue<string>()).IsEqualTo("Healthy");
+        await Assert.That(root["message"]!.GetValue<string>()).IsEqualTo("Ok");
+        await Assert.That(check["name"]!.GetValue<string>()).IsEqualTo("mcp-adapter");
+        await Assert.That(check["status"]!.GetValue<string>()).IsEqualTo("Healthy");
+        await Assert.That(check["description"]!.GetValue<string>()).IsEqualTo("MCP adapter posture is bounded.");
+        await Assert.That(check["error"]).IsNull();
+        await Assert.That(checkData["enabled"]!.GetValue<bool>()).IsTrue();
+        await Assert.That(checkData["startupEnabled"]!.GetValue<bool>()).IsTrue();
+        await Assert.That(checkData["runtimeEnabled"]!.GetValue<bool>()).IsTrue();
+        await Assert.That(checkData["legacySseRuntimeEnabled"]!.GetValue<bool>()).IsFalse();
     }
 
     [Test]
@@ -146,11 +145,11 @@ public sealed class HealthCheckResponseWriterTests
 
         var root = JsonNode.Parse(ReadResponseJson(context))!.AsObject();
         var checkData = root["checks"]!.AsArray()[0]!["data"]!.AsObject();
-        checkData["tenantId"]!.GetValue<string>().Should().Be(HealthCheckResponseWriter.RedactedValue);
-        checkData["userId"]!.GetValue<string>().Should().Be(HealthCheckResponseWriter.RedactedValue);
-        checkData["providerId"]!.GetValue<string>().Should().Be(HealthCheckResponseWriter.RedactedValue);
-        checkData["recipientAddress"]!.GetValue<string>().Should().Be(HealthCheckResponseWriter.RedactedValue);
-        checkData["pendingCount"]!.GetValue<int>().Should().Be(9);
+        await Assert.That(checkData["tenantId"]!.GetValue<string>()).IsEqualTo(HealthCheckResponseWriter.RedactedValue);
+        await Assert.That(checkData["userId"]!.GetValue<string>()).IsEqualTo(HealthCheckResponseWriter.RedactedValue);
+        await Assert.That(checkData["providerId"]!.GetValue<string>()).IsEqualTo(HealthCheckResponseWriter.RedactedValue);
+        await Assert.That(checkData["recipientAddress"]!.GetValue<string>()).IsEqualTo(HealthCheckResponseWriter.RedactedValue);
+        await Assert.That(checkData["pendingCount"]!.GetValue<int>()).IsEqualTo(9);
     }
 
     [Test]
@@ -175,10 +174,10 @@ public sealed class HealthCheckResponseWriterTests
 
         var root = JsonNode.Parse(ReadResponseJson(context))!.AsObject();
         var check = root["checks"]!.AsArray()[0]!.AsObject();
-        check["description"].Should().BeNull();
-        check["data"]!["runtimeConnection"]!.GetValue<string>().Should().Be(HealthCheckResponseWriter.RedactedValue);
-        root.ToJsonString().Should().NotContain("db.internal");
-        root.ToJsonString().Should().NotContain("canary");
+        await Assert.That(check["description"]).IsNull();
+        await Assert.That(check["data"]!["runtimeConnection"]!.GetValue<string>()).IsEqualTo(HealthCheckResponseWriter.RedactedValue);
+        await Assert.That(root.ToJsonString()).DoesNotContain("db.internal");
+        await Assert.That(root.ToJsonString()).DoesNotContain("canary");
     }
 
     private static string ReadResponseJson(HttpContext context)

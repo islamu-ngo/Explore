@@ -1,9 +1,8 @@
 // ABOUTME: Unit tests for RotationAwareDbContextFactory.
-// Tests context creation, connection string rotation, and redaction.
+// ABOUTME: Tests context creation, connection string rotation, and redaction.
 
 using Explore.Secrets.Configuration;
 using Explore.Secrets.Services;
-using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -68,18 +67,18 @@ public class RotationAwareDbContextFactoryTests : IDisposable
     // ==================== Constructor Tests ====================
 
     [Test]
-    public void Constructor_WithValidOptions_ShouldSucceed()
+    public async Task Constructor_WithValidOptions_ShouldSucceed()
     {
         // Arrange & Act
         var factory = CreateFactory();
 
         // Assert
-        factory.Should().NotBeNull();
-        factory.RotationCount.Should().Be(0);
+        await Assert.That(factory).IsNotNull();
+        await Assert.That(factory.RotationCount).IsEqualTo(0);
     }
 
     [Test]
-    public void Constructor_WithNullContextFactory_ShouldThrow()
+    public async Task Constructor_WithNullContextFactory_ShouldThrow()
     {
         // Arrange
         var connectionMonitor = CreateOptionsMonitor(new DatabaseConnectionOptions());
@@ -93,12 +92,12 @@ public class RotationAwareDbContextFactoryTests : IDisposable
             _logger);
 
         // Assert
-        act.Should().Throw<ArgumentNullException>()
+        await Assert.That(act).Throws<ArgumentNullException>()
             .WithParameterName("contextFactory");
     }
 
     [Test]
-    public void Constructor_WithNullConnectionOptions_ShouldThrow()
+    public async Task Constructor_WithNullConnectionOptions_ShouldThrow()
     {
         // Arrange
         var rotationMonitor = CreateOptionsMonitor(new RotationOptions());
@@ -111,12 +110,12 @@ public class RotationAwareDbContextFactoryTests : IDisposable
             _logger);
 
         // Assert
-        act.Should().Throw<ArgumentNullException>()
+        await Assert.That(act).Throws<ArgumentNullException>()
             .WithParameterName("connectionOptions");
     }
 
     [Test]
-    public void Constructor_WithNullRotationOptions_ShouldThrow()
+    public async Task Constructor_WithNullRotationOptions_ShouldThrow()
     {
         // Arrange
         var connectionMonitor = CreateOptionsMonitor(new DatabaseConnectionOptions());
@@ -129,12 +128,12 @@ public class RotationAwareDbContextFactoryTests : IDisposable
             _logger);
 
         // Assert
-        act.Should().Throw<ArgumentNullException>()
+        await Assert.That(act).Throws<ArgumentNullException>()
             .WithParameterName("rotationOptions");
     }
 
     [Test]
-    public void Constructor_WithNullLogger_ShouldThrow()
+    public async Task Constructor_WithNullLogger_ShouldThrow()
     {
         // Arrange
         var connectionMonitor = CreateOptionsMonitor(new DatabaseConnectionOptions());
@@ -148,14 +147,14 @@ public class RotationAwareDbContextFactoryTests : IDisposable
             null!);
 
         // Assert
-        act.Should().Throw<ArgumentNullException>()
+        await Assert.That(act).Throws<ArgumentNullException>()
             .WithParameterName("logger");
     }
 
     // ==================== CreateDbContext Tests ====================
 
     [Test]
-    public void CreateDbContext_WithValidConnectionString_ShouldSucceed()
+    public async Task CreateDbContext_WithValidConnectionString_ShouldSucceed()
     {
         // Arrange
         var factory = CreateFactory();
@@ -164,12 +163,12 @@ public class RotationAwareDbContextFactoryTests : IDisposable
         using var context = factory.CreateDbContext();
 
         // Assert
-        context.Should().NotBeNull();
-        context.Should().BeOfType<TestDbContext>();
+        await Assert.That(context).IsNotNull();
+        await Assert.That(context).IsTypeOf<TestDbContext>();
     }
 
     [Test]
-    public void CreateDbContext_WithNullConnectionString_ShouldThrow()
+    public async Task CreateDbContext_WithNullConnectionString_ShouldThrow()
     {
         // Arrange
         var factory = CreateFactory(new DatabaseConnectionOptions { ConnectionString = null });
@@ -178,12 +177,12 @@ public class RotationAwareDbContextFactoryTests : IDisposable
         var act = () => factory.CreateDbContext();
 
         // Assert
-        act.Should().Throw<InvalidOperationException>()
-            .WithMessage("*Connection string is not configured*");
+        await Assert.That(act).Throws<InvalidOperationException>()
+            .WithMessageContaining("Connection string is not configured");
     }
 
     [Test]
-    public void CreateDbContext_WithEmptyConnectionString_ShouldThrow()
+    public async Task CreateDbContext_WithEmptyConnectionString_ShouldThrow()
     {
         // Arrange
         var factory = CreateFactory(new DatabaseConnectionOptions { ConnectionString = "" });
@@ -192,12 +191,12 @@ public class RotationAwareDbContextFactoryTests : IDisposable
         var act = () => factory.CreateDbContext();
 
         // Assert
-        act.Should().Throw<InvalidOperationException>()
-            .WithMessage("*Connection string is not configured*");
+        await Assert.That(act).Throws<InvalidOperationException>()
+            .WithMessageContaining("Connection string is not configured");
     }
 
     [Test]
-    public void CreateDbContext_MultipleTimes_ShouldCreateNewContexts()
+    public async Task CreateDbContext_MultipleTimes_ShouldCreateNewContexts()
     {
         // Arrange
         var factory = CreateFactory();
@@ -207,11 +206,11 @@ public class RotationAwareDbContextFactoryTests : IDisposable
         using var context2 = factory.CreateDbContext();
 
         // Assert
-        context1.Should().NotBeSameAs(context2);
+        await Assert.That(ReferenceEquals(context1, context2)).IsFalse();
     }
 
     [Test]
-    public void CreateDbContext_AfterDispose_ShouldThrow()
+    public async Task CreateDbContext_AfterDispose_ShouldThrow()
     {
         // Arrange
         var factory = CreateFactory();
@@ -221,17 +220,17 @@ public class RotationAwareDbContextFactoryTests : IDisposable
         var act = () => factory.CreateDbContext();
 
         // Assert
-        act.Should().Throw<ObjectDisposedException>();
+        await Assert.That(act).Throws<ObjectDisposedException>();
     }
 
     // ==================== Rotation Tests ====================
 
     [Test]
-    public void OnConnectionOptionsChanged_WithNewConnectionString_ShouldIncreaseRotationCount()
+    public async Task OnConnectionOptionsChanged_WithNewConnectionString_ShouldIncreaseRotationCount()
     {
         // Arrange
         var factory = CreateFactory();
-        factory.RotationCount.Should().Be(0);
+        await Assert.That(factory.RotationCount).IsEqualTo(0);
 
         // Act - Simulate credential change
         _onChangeCallback?.Invoke(
@@ -239,16 +238,16 @@ public class RotationAwareDbContextFactoryTests : IDisposable
             null);
 
         // Assert
-        factory.RotationCount.Should().Be(1);
+        await Assert.That(factory.RotationCount).IsEqualTo(1);
     }
 
     [Test]
-    public void OnConnectionOptionsChanged_WithSameConnectionString_ShouldNotIncreaseRotationCount()
+    public async Task OnConnectionOptionsChanged_WithSameConnectionString_ShouldNotIncreaseRotationCount()
     {
         // Arrange
         var connectionString = "Host=localhost;Database=test;Username=user;Password=secret123";
         var factory = CreateFactory(new DatabaseConnectionOptions { ConnectionString = connectionString });
-        factory.RotationCount.Should().Be(0);
+        await Assert.That(factory.RotationCount).IsEqualTo(0);
 
         // Act - Simulate callback with same connection string
         _onChangeCallback?.Invoke(
@@ -256,17 +255,17 @@ public class RotationAwareDbContextFactoryTests : IDisposable
             null);
 
         // Assert
-        factory.RotationCount.Should().Be(0);
+        await Assert.That(factory.RotationCount).IsEqualTo(0);
     }
 
     [Test]
-    public void OnConnectionOptionsChanged_WhenRotationDisabled_ShouldNotRotate()
+    public async Task OnConnectionOptionsChanged_WhenRotationDisabled_ShouldNotRotate()
     {
         // Arrange
         var factory = CreateFactory(
             new DatabaseConnectionOptions { ConnectionString = "Host=localhost" },
             new RotationOptions { Enabled = false });
-        factory.RotationCount.Should().Be(0);
+        await Assert.That(factory.RotationCount).IsEqualTo(0);
 
         // Act - Simulate credential change
         _onChangeCallback?.Invoke(
@@ -274,11 +273,11 @@ public class RotationAwareDbContextFactoryTests : IDisposable
             null);
 
         // Assert
-        factory.RotationCount.Should().Be(0);
+        await Assert.That(factory.RotationCount).IsEqualTo(0);
     }
 
     [Test]
-    public void LastConnectionStringChange_AfterRotation_ShouldUpdate()
+    public async Task LastConnectionStringChange_AfterRotation_ShouldUpdate()
     {
         // Arrange
         var factory = CreateFactory();
@@ -293,13 +292,13 @@ public class RotationAwareDbContextFactoryTests : IDisposable
             null);
 
         // Assert
-        factory.LastConnectionStringChange.Should().BeAfter(beforeRotation);
+        await Assert.That(factory.LastConnectionStringChange).IsGreaterThan(beforeRotation);
     }
 
     // ==================== Redaction Tests ====================
 
     [Test]
-    public void CurrentConnectionStringRedacted_ShouldRedactPassword()
+    public async Task CurrentConnectionStringRedacted_ShouldRedactPassword()
     {
         // Arrange
         var factory = CreateFactory(new DatabaseConnectionOptions
@@ -311,12 +310,12 @@ public class RotationAwareDbContextFactoryTests : IDisposable
         var redacted = factory.CurrentConnectionStringRedacted;
 
         // Assert
-        redacted.Should().NotContain("supersecret123");
-        redacted.Should().Contain("password=***");
+        await Assert.That(redacted).DoesNotContain("supersecret123");
+        await Assert.That(redacted).Contains("password=***");
     }
 
     [Test]
-    public void CurrentConnectionStringRedacted_WithPwd_ShouldRedact()
+    public async Task CurrentConnectionStringRedacted_WithPwd_ShouldRedact()
     {
         // Arrange
         var factory = CreateFactory(new DatabaseConnectionOptions
@@ -328,12 +327,12 @@ public class RotationAwareDbContextFactoryTests : IDisposable
         var redacted = factory.CurrentConnectionStringRedacted;
 
         // Assert
-        redacted.Should().NotContain("mysecret");
-        redacted.Should().Contain("pwd=***");
+        await Assert.That(redacted).DoesNotContain("mysecret");
+        await Assert.That(redacted).Contains("pwd=***");
     }
 
     [Test]
-    public void CurrentConnectionStringRedacted_WithNoPassword_ShouldNotChange()
+    public async Task CurrentConnectionStringRedacted_WithNoPassword_ShouldNotChange()
     {
         // Arrange
         var connectionString = "Host=localhost;Database=test;Port=5432";
@@ -346,11 +345,11 @@ public class RotationAwareDbContextFactoryTests : IDisposable
         var redacted = factory.CurrentConnectionStringRedacted;
 
         // Assert
-        redacted.Should().Be(connectionString);
+        await Assert.That(redacted).IsEqualTo(connectionString);
     }
 
     [Test]
-    public void CurrentConnectionStringRedacted_WithNullConnectionString_ShouldReturnNull()
+    public async Task CurrentConnectionStringRedacted_WithNullConnectionString_ShouldReturnNull()
     {
         // Arrange - Use reflection to set _currentConnectionString to null
         var factory = CreateFactory(new DatabaseConnectionOptions { ConnectionString = "initial" });
@@ -365,13 +364,13 @@ public class RotationAwareDbContextFactoryTests : IDisposable
 
         // For this test, we need to check that null connection returns null from redaction
         // We can't easily test this through the factory, so let's just verify behavior
-        factory.Should().NotBeNull();
+        await Assert.That(factory).IsNotNull();
     }
 
     // ==================== ForceRefresh Tests ====================
 
     [Test]
-    public void ForceRefresh_ShouldTriggerRotation()
+    public async Task ForceRefresh_ShouldTriggerRotation()
     {
         // Arrange
         var factory = CreateFactory();
@@ -382,11 +381,11 @@ public class RotationAwareDbContextFactoryTests : IDisposable
 
         // Assert - ForceRefresh reads current options which hasn't changed,
         // so it won't actually increment if connection string is the same
-        factory.RotationCount.Should().Be(initialCount);
+        await Assert.That(factory.RotationCount).IsEqualTo(initialCount);
     }
 
     [Test]
-    public void ForceRefresh_AfterDispose_ShouldThrow()
+    public async Task ForceRefresh_AfterDispose_ShouldThrow()
     {
         // Arrange
         var factory = CreateFactory();
@@ -396,13 +395,13 @@ public class RotationAwareDbContextFactoryTests : IDisposable
         var act = () => factory.ForceRefresh();
 
         // Assert
-        act.Should().Throw<ObjectDisposedException>();
+        await Assert.That(act).Throws<ObjectDisposedException>();
     }
 
     // ==================== Dispose Tests ====================
 
     [Test]
-    public void Dispose_ShouldNotThrow()
+    public async Task Dispose_ShouldNotThrow()
     {
         // Arrange
         var factory = CreateFactory();
@@ -411,11 +410,11 @@ public class RotationAwareDbContextFactoryTests : IDisposable
         var act = () => factory.Dispose();
 
         // Assert
-        act.Should().NotThrow();
+        await Assert.That(act).ThrowsNothing();
     }
 
     [Test]
-    public void Dispose_MultipleTimes_ShouldNotThrow()
+    public async Task Dispose_MultipleTimes_ShouldNotThrow()
     {
         // Arrange
         var factory = CreateFactory();
@@ -429,7 +428,7 @@ public class RotationAwareDbContextFactoryTests : IDisposable
         };
 
         // Assert
-        act.Should().NotThrow();
+        await Assert.That(act).ThrowsNothing();
     }
 
     public void Dispose()

@@ -6,7 +6,6 @@ using System.Security.Cryptography;
 using System.Text.Json;
 using Explore.Blazor.IntegrationTests.Fixtures;
 using Explore.Blazor.Services.Auth;
-using FluentAssertions;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Options;
 
@@ -26,26 +25,26 @@ public sealed class AtprotoOAuthPublicationTests
 
         using var response = await client.GetAsync("/oauth/client-metadata.json");
 
-        response.StatusCode.Should().Be(HttpStatusCode.OK);
-        response.Content.Headers.ContentType?.MediaType.Should().Be("application/json");
-        response.Headers.Location.Should().BeNull();
-        response.Headers.CacheControl?.Public.Should().BeTrue();
-        response.Headers.CacheControl?.MaxAge.Should().Be(TimeSpan.FromMinutes(5));
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
+        await Assert.That(response.Content.Headers.ContentType?.MediaType).IsEqualTo("application/json");
+        await Assert.That(response.Headers.Location).IsNull();
+        await Assert.That(response.Headers.CacheControl?.Public).IsTrue();
+        await Assert.That(response.Headers.CacheControl?.MaxAge).IsEqualTo(TimeSpan.FromMinutes(5));
 
         using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
         var root = document.RootElement;
-        root.GetProperty("client_id").GetString().Should().Be("https://events.example.com/oauth/client-metadata.json");
-        root.GetProperty("redirect_uris")[0].GetString().Should().Be("https://events.example.com/signin-atproto");
-        root.GetProperty("scope").GetString().Should().Be("atproto transition:generic");
-        root.GetProperty("response_types").EnumerateArray().Select(value => value.GetString())
-            .Should().Equal("code");
-        root.GetProperty("grant_types").EnumerateArray().Select(value => value.GetString())
-            .Should().Equal("authorization_code", "refresh_token");
-        root.GetProperty("dpop_bound_access_tokens").GetBoolean().Should().BeTrue();
-        root.GetProperty("token_endpoint_auth_method").GetString().Should().Be("private_key_jwt");
-        root.GetProperty("token_endpoint_auth_signing_alg").GetString().Should().Be("ES256");
-        root.GetProperty("jwks_uri").GetString().Should().Be("https://events.example.com/oauth/jwks.json");
-        root.TryGetProperty("jwks", out _).Should().BeFalse();
+        await Assert.That(root.GetProperty("client_id").GetString()).IsEqualTo("https://events.example.com/oauth/client-metadata.json");
+        await Assert.That(root.GetProperty("redirect_uris")[0].GetString()).IsEqualTo("https://events.example.com/signin-atproto");
+        await Assert.That(root.GetProperty("scope").GetString()).IsEqualTo("atproto transition:generic");
+        await Assert.That(root.GetProperty("response_types").EnumerateArray().Select(value => value.GetString())
+            .SequenceEqual(["code"])).IsTrue();
+        await Assert.That(root.GetProperty("grant_types").EnumerateArray().Select(value => value.GetString())
+            .SequenceEqual(["authorization_code", "refresh_token"])).IsTrue();
+        await Assert.That(root.GetProperty("dpop_bound_access_tokens").GetBoolean()).IsTrue();
+        await Assert.That(root.GetProperty("token_endpoint_auth_method").GetString()).IsEqualTo("private_key_jwt");
+        await Assert.That(root.GetProperty("token_endpoint_auth_signing_alg").GetString()).IsEqualTo("ES256");
+        await Assert.That(root.GetProperty("jwks_uri").GetString()).IsEqualTo("https://events.example.com/oauth/jwks.json");
+        await Assert.That(root.TryGetProperty("jwks", out _)).IsFalse();
     }
 
     [Test]
@@ -61,22 +60,23 @@ public sealed class AtprotoOAuthPublicationTests
 
         using var response = await client.GetAsync("/oauth/jwks.json");
 
-        response.StatusCode.Should().Be(HttpStatusCode.OK);
-        response.Content.Headers.ContentType?.MediaType.Should().Be("application/json");
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
+        await Assert.That(response.Content.Headers.ContentType?.MediaType).IsEqualTo("application/json");
         var payload = await response.Content.ReadAsStringAsync();
         using var document = JsonDocument.Parse(payload);
         var keys = document.RootElement.GetProperty("keys").EnumerateArray().ToArray();
-        keys.Select(key => key.GetProperty("kid").GetString()).Should().Equal("a-retired", "z-active");
+        await Assert.That(keys.Select(key => key.GetProperty("kid").GetString())
+            .SequenceEqual(["a-retired", "z-active"])).IsTrue();
         foreach (var key in keys)
         {
-            key.EnumerateObject().Select(property => property.Name)
-                .Should().BeEquivalentTo("kty", "crv", "x", "y", "kid", "use", "alg");
-            key.GetProperty("kty").GetString().Should().Be("EC");
-            key.GetProperty("crv").GetString().Should().Be("P-256");
-            key.GetProperty("use").GetString().Should().Be("sig");
-            key.GetProperty("alg").GetString().Should().Be("ES256");
-            key.TryGetProperty("d", out _).Should().BeFalse();
-            key.TryGetProperty("status", out _).Should().BeFalse();
+            await Assert.That(key.EnumerateObject().Select(property => property.Name))
+                .IsEquivalentTo(["kty", "crv", "x", "y", "kid", "use", "alg"]);
+            await Assert.That(key.GetProperty("kty").GetString()).IsEqualTo("EC");
+            await Assert.That(key.GetProperty("crv").GetString()).IsEqualTo("P-256");
+            await Assert.That(key.GetProperty("use").GetString()).IsEqualTo("sig");
+            await Assert.That(key.GetProperty("alg").GetString()).IsEqualTo("ES256");
+            await Assert.That(key.TryGetProperty("d", out _)).IsFalse();
+            await Assert.That(key.TryGetProperty("status", out _)).IsFalse();
         }
     }
 
@@ -92,8 +92,8 @@ public sealed class AtprotoOAuthPublicationTests
 
         using var response = await client.GetAsync("/oauth/client-metadata.json");
 
-        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
-        response.Headers.Location.Should().BeNull();
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.NotFound);
+        await Assert.That(response.Headers.Location).IsNull();
     }
 
     [Test]
@@ -110,8 +110,8 @@ public sealed class AtprotoOAuthPublicationTests
 
         using var response = await client.GetAsync(endpointPath);
 
-        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
-        response.Headers.Location.Should().BeNull();
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.NotFound);
+        await Assert.That(response.Headers.Location).IsNull();
     }
 
     [Test]
@@ -133,8 +133,8 @@ public sealed class AtprotoOAuthPublicationTests
 
         using var response = await client.GetAsync("/oauth/client-metadata.json");
 
-        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
-        response.Headers.Location.Should().BeNull();
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.NotFound);
+        await Assert.That(response.Headers.Location).IsNull();
     }
 
     [Test]
@@ -151,10 +151,9 @@ public sealed class AtprotoOAuthPublicationTests
 
         using var response = await client.GetAsync("/oauth/client-metadata.json");
 
-        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
         using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
-        document.RootElement.GetProperty("client_id").GetString()
-            .Should().Be("https://events.example.com/oauth/client-metadata.json");
+        await Assert.That(document.RootElement.GetProperty("client_id").GetString()).IsEqualTo("https://events.example.com/oauth/client-metadata.json");
     }
 
     [Test]
@@ -181,12 +180,12 @@ public sealed class AtprotoOAuthPublicationTests
 
         using var response = await client.GetAsync("/oauth/client-metadata.json");
 
-        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
-        response.Headers.Location.Should().BeNull();
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.NotFound);
+        await Assert.That(response.Headers.Location).IsNull();
     }
 
     [Test]
-    public void KeyProviderRejectsMissingMalformedUnknownDuplicateAndInvalidActiveKeyRings()
+    public async Task KeyProviderRejectsMissingMalformedUnknownDuplicateAndInvalidActiveKeyRings()
     {
         var missing = CreateProvider(null);
         var malformed = CreateProvider("{not-json");
@@ -198,40 +197,40 @@ public sealed class AtprotoOAuthPublicationTests
         var noActive = CreateProvider(CreatePrivateJwks(("retired", "retired")));
         var multipleActive = CreateProvider(CreatePrivateJwks(("one", "active"), ("two", "active")));
 
-        missing.IsReady.Should().BeFalse();
-        missing.FailureCode.Should().Be("missing_key_ring");
-        malformed.IsReady.Should().BeFalse();
-        unknownProperty.IsReady.Should().BeFalse();
-        duplicateKid.IsReady.Should().BeFalse();
-        noActive.FailureCode.Should().Be("invalid_active_key_count");
-        multipleActive.FailureCode.Should().Be("invalid_active_key_count");
-        multipleActive.GetPublicKeys().Should().BeEmpty();
+        await Assert.That(missing.IsReady).IsFalse();
+        await Assert.That(missing.FailureCode).IsEqualTo("missing_key_ring");
+        await Assert.That(malformed.IsReady).IsFalse();
+        await Assert.That(unknownProperty.IsReady).IsFalse();
+        await Assert.That(duplicateKid.IsReady).IsFalse();
+        await Assert.That(noActive.FailureCode).IsEqualTo("invalid_active_key_count");
+        await Assert.That(multipleActive.FailureCode).IsEqualTo("invalid_active_key_count");
+        await Assert.That(multipleActive.GetPublicKeys()).IsEmpty();
     }
 
     [Test]
-    public void KeyProviderRejectsNonCanonicalBase64UrlCoordinatesAndPrivateScalar()
+    public async Task KeyProviderRejectsNonCanonicalBase64UrlCoordinatesAndPrivateScalar()
     {
         var canonicalRing = CreatePrivateJwks(("active", "active"));
 
-        CreateProvider(ReplaceWithNonCanonicalBase64Url(canonicalRing, "x")).IsReady.Should().BeFalse();
-        CreateProvider(ReplaceWithNonCanonicalBase64Url(canonicalRing, "y")).IsReady.Should().BeFalse();
-        CreateProvider(ReplaceWithNonCanonicalBase64Url(canonicalRing, "d")).IsReady.Should().BeFalse();
+        await Assert.That(CreateProvider(ReplaceWithNonCanonicalBase64Url(canonicalRing, "x")).IsReady).IsFalse();
+        await Assert.That(CreateProvider(ReplaceWithNonCanonicalBase64Url(canonicalRing, "y")).IsReady).IsFalse();
+        await Assert.That(CreateProvider(ReplaceWithNonCanonicalBase64Url(canonicalRing, "d")).IsReady).IsFalse();
     }
 
     [Test]
-    public void KeyProviderSelectsActiveAndRetiredKeysByKidAndRejectsUnknownKid()
+    public async Task KeyProviderSelectsActiveAndRetiredKeysByKidAndRejectsUnknownKid()
     {
         var provider = CreateProvider(CreatePrivateJwks(("current", "active"), ("previous", "retired")));
 
-        provider.IsReady.Should().BeTrue();
-        provider.ActiveKeyId.Should().Be("current");
+        await Assert.That(provider.IsReady).IsTrue();
+        await Assert.That(provider.ActiveKeyId).IsEqualTo("current");
         using var current = provider.CreateActiveSigningKey();
         using var previous = provider.CreateSigningKey("previous");
-        current.KeySize.Should().Be(256);
-        previous.KeySize.Should().Be(256);
+        await Assert.That(current.KeySize).IsEqualTo(256);
+        await Assert.That(previous.KeySize).IsEqualTo(256);
         var act = () => provider.CreateSigningKey("unknown");
-        act.Should().Throw<InvalidOperationException>()
-            .WithMessage("ATProto OAuth client signing key is unavailable.");
+        var exception = await Assert.That(act).Throws<InvalidOperationException>();
+        await Assert.That(exception!.Message).IsEqualTo("ATProto OAuth client signing key is unavailable.");
     }
 
     private static WebApplicationFactory<Program> CreateFactory(

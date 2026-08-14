@@ -3,7 +3,6 @@
 
 using System.Text.Json;
 using Explore.Diagnostic.AiEvaluation;
-using FluentAssertions;
 
 namespace Explore.Diagnostic.UnitTests.AiEvaluation;
 
@@ -12,18 +11,18 @@ public sealed class AiEvaluationReportGeneratorTests
     private static readonly DateTimeOffset FixedNow = new(2026, 6, 7, 12, 0, 0, TimeSpan.Zero);
 
     [Test]
-    public void GenerateCoversRequiredAdvisoryDimensions()
+    public async Task GenerateCoversRequiredAdvisoryDimensions()
     {
         var report = new AiEvaluationReportGenerator(() => FixedNow).Generate();
 
-        report.AdvisoryOnly.Should().BeTrue();
-        report.ContainsHardCiGate.Should().BeFalse();
-        report.Results.Select(result => result.Dimension).Should().BeEquivalentTo(Enum.GetValues<AiEvaluationDimension>());
-        report.Results.Should().OnlyContain(result => result.Status == AiEvaluationStatus.Pass);
+        await Assert.That(report.AdvisoryOnly).IsTrue();
+        await Assert.That(report.ContainsHardCiGate).IsFalse();
+        await Assert.That(report.Results.Select(result => result.Dimension)).IsEquivalentTo(Enum.GetValues<AiEvaluationDimension>());
+        await Assert.That(report.Results.All(result => result.Status == AiEvaluationStatus.Pass)).IsTrue();
     }
 
     [Test]
-    public void GenerateDoesNotExposeRawRejectedPayloadContentInArtifacts()
+    public async Task GenerateDoesNotExposeRawRejectedPayloadContentInArtifacts()
     {
         var report = new AiEvaluationReportGenerator(() => FixedNow).Generate();
 
@@ -31,36 +30,36 @@ public sealed class AiEvaluationReportGeneratorTests
         var markdown = AiEvaluationReportWriter.ToMarkdown(report);
         var combined = json + markdown;
 
-        combined.Should().NotContain("018e4e5c");
-        combined.Should().NotContain("tenantId");
-        combined.Should().NotContain("unsafeField");
-        combined.Should().NotContain("Ignore previous instructions");
-        combined.Should().NotContain("<tool>");
+        await Assert.That(combined).DoesNotContain("018e4e5c");
+        await Assert.That(combined).DoesNotContain("tenantId");
+        await Assert.That(combined).DoesNotContain("unsafeField");
+        await Assert.That(combined).DoesNotContain("Ignore previous instructions");
+        await Assert.That(combined).DoesNotContain("<tool>");
     }
 
     [Test]
-    public void GenerateIncludesDeterministicMcpProposalFlowEvaluation()
+    public async Task GenerateIncludesDeterministicMcpProposalFlowEvaluation()
     {
         var report = new AiEvaluationReportGenerator(() => FixedNow).Generate();
 
         var scenario = report.Results.Single(result => result.Code == "ai.eval.mcp-proposal-flow");
 
-        scenario.Status.Should().Be(AiEvaluationStatus.Pass);
-        scenario.Dimension.Should().Be(AiEvaluationDimension.McpProposalFlow);
-        scenario.Summary.Should().Contain("event-management");
-        scenario.Summary.Should().Contain("confirmation-before-side-effects");
-        scenario.Recommendation.Should().Contain("discovery and proposals");
+        await Assert.That(scenario.Status).IsEqualTo(AiEvaluationStatus.Pass);
+        await Assert.That(scenario.Dimension).IsEqualTo(AiEvaluationDimension.McpProposalFlow);
+        await Assert.That(scenario.Summary).Contains("event-management");
+        await Assert.That(scenario.Summary).Contains("confirmation-before-side-effects");
+        await Assert.That(scenario.Recommendation).Contains("discovery and proposals");
     }
 
     [Test]
-    public void ToJsonUsesStringEnumsForReadableTrendArtifacts()
+    public async Task ToJsonUsesStringEnumsForReadableTrendArtifacts()
     {
         var report = new AiEvaluationReportGenerator(() => FixedNow).Generate();
 
         using var document = JsonDocument.Parse(AiEvaluationReportWriter.ToJson(report));
         var firstResult = document.RootElement.GetProperty("results")[0];
 
-        firstResult.GetProperty("status").GetString().Should().Be("Pass");
-        firstResult.GetProperty("dimension").ValueKind.Should().Be(JsonValueKind.String);
+        await Assert.That(firstResult.GetProperty("status").GetString()).IsEqualTo("Pass");
+        await Assert.That(firstResult.GetProperty("dimension").ValueKind).IsEqualTo(JsonValueKind.String);
     }
 }

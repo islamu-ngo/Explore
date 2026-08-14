@@ -5,7 +5,6 @@ using System.Net;
 using Explore.Blazor.Extensions;
 using Explore.Blazor.Hosting;
 using Explore.Blazor.IntegrationTests.Fixtures;
-using FluentAssertions;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
@@ -29,19 +28,18 @@ public sealed class BlazorHostCompositionTests
 
         using var response = await client.GetAsync("/css/layers.css");
 
-        response.StatusCode.Should().Be(HttpStatusCode.OK);
-        response.Content.Headers.ContentType?.MediaType.Should().Be("text/css");
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
+        await Assert.That(response.Content.Headers.ContentType?.MediaType).IsEqualTo("text/css");
     }
 
     [Test]
-    public void HostCompositionTypes_ArePublicAndProfilesAreExhaustive()
+    public async Task HostCompositionTypes_ArePublicAndProfilesAreExhaustive()
     {
-        typeof(BlazorHostProfile).IsPublic.Should().BeTrue();
-        typeof(BlazorHostServiceCollectionExtensions).IsPublic.Should().BeTrue();
-        typeof(BlazorHostApplicationExtensions).IsPublic.Should().BeTrue();
-        Enum.GetValues<BlazorHostProfile>().Should().Equal(
-            BlazorHostProfile.Split,
-            BlazorHostProfile.Combined);
+        await Assert.That(typeof(BlazorHostProfile).IsPublic).IsTrue();
+        await Assert.That(typeof(BlazorHostServiceCollectionExtensions).IsPublic).IsTrue();
+        await Assert.That(typeof(BlazorHostApplicationExtensions).IsPublic).IsTrue();
+        await Assert.That(Enum.GetValues<BlazorHostProfile>()
+            .SequenceEqual([BlazorHostProfile.Split, BlazorHostProfile.Combined])).IsTrue();
     }
 
     [Test]
@@ -51,18 +49,18 @@ public sealed class BlazorHostCompositionTests
 
         builder.AddBlazorHostServices(BlazorHostProfile.Split, new GracefulShutdownState());
 
-        builder.Services.Should().Contain(descriptor =>
+        await Assert.That(builder.Services).Contains(descriptor =>
             descriptor.ServiceType == typeof(IProxyConfigProvider));
         await using var provider = builder.Services.BuildServiceProvider();
         var healthChecks = provider.GetRequiredService<IOptions<HealthCheckServiceOptions>>()
             .Value.Registrations;
-        healthChecks.Should().Contain(registration => registration.Name == "self");
-        healthChecks.Should().Contain(registration => registration.Name == "shutdown");
-        healthChecks.Should().Contain(registration => registration.Name == "distributed-cache");
-        healthChecks.Should().Contain(registration => registration.Name == "oidc-discovery");
-        healthChecks.Should().Contain(registration => registration.Name == "explore-api");
-        healthChecks.Should().Contain(registration => registration.Name == "data-protection-keys");
-        healthChecks.Should().Contain(registration => registration.Name == "atproto-authentication");
+        await Assert.That(healthChecks).Contains(registration => registration.Name == "self");
+        await Assert.That(healthChecks).Contains(registration => registration.Name == "shutdown");
+        await Assert.That(healthChecks).Contains(registration => registration.Name == "distributed-cache");
+        await Assert.That(healthChecks).Contains(registration => registration.Name == "oidc-discovery");
+        await Assert.That(healthChecks).Contains(registration => registration.Name == "explore-api");
+        await Assert.That(healthChecks).Contains(registration => registration.Name == "data-protection-keys");
+        await Assert.That(healthChecks).Contains(registration => registration.Name == "atproto-authentication");
     }
 
     [Test]
@@ -72,22 +70,22 @@ public sealed class BlazorHostCompositionTests
 
         builder.AddBlazorHostServices(BlazorHostProfile.Combined, new GracefulShutdownState());
 
-        builder.Services.Should().NotContain(descriptor =>
+        await Assert.That(builder.Services).DoesNotContain(descriptor =>
             descriptor.ServiceType == typeof(IProxyConfigProvider));
         await using var provider = builder.Services.BuildServiceProvider();
         var healthChecks = provider.GetRequiredService<IOptions<HealthCheckServiceOptions>>()
             .Value.Registrations;
-        healthChecks.Should().NotContain(registration => registration.Name == "self");
-        healthChecks.Should().NotContain(registration => registration.Name == "shutdown");
-        healthChecks.Should().NotContain(registration => registration.Name == "distributed-cache");
-        healthChecks.Should().NotContain(registration => registration.Name == "oidc-discovery");
-        healthChecks.Should().NotContain(registration => registration.Name == "explore-api");
-        healthChecks.Should().Contain(registration => registration.Name == "data-protection-keys");
-        healthChecks.Should().Contain(registration => registration.Name == "atproto-authentication");
+        await Assert.That(healthChecks).DoesNotContain(registration => registration.Name == "self");
+        await Assert.That(healthChecks).DoesNotContain(registration => registration.Name == "shutdown");
+        await Assert.That(healthChecks).DoesNotContain(registration => registration.Name == "distributed-cache");
+        await Assert.That(healthChecks).DoesNotContain(registration => registration.Name == "oidc-discovery");
+        await Assert.That(healthChecks).DoesNotContain(registration => registration.Name == "explore-api");
+        await Assert.That(healthChecks).Contains(registration => registration.Name == "data-protection-keys");
+        await Assert.That(healthChecks).Contains(registration => registration.Name == "atproto-authentication");
     }
 
     [Test]
-    public void AddBlazorHostServices_ConflictingProfiles_Throws()
+    public async Task AddBlazorHostServices_ConflictingProfiles_Throws()
     {
         var builder = CreateBuilder();
         builder.AddBlazorHostServices(BlazorHostProfile.Split, new GracefulShutdownState());
@@ -96,7 +94,7 @@ public sealed class BlazorHostCompositionTests
             BlazorHostProfile.Combined,
             new GracefulShutdownState());
 
-        act.Should().Throw<InvalidOperationException>();
+        await Assert.That(act).Throws<InvalidOperationException>();
     }
 
     private static WebApplicationBuilder CreateBuilder()

@@ -1,9 +1,8 @@
 // ABOUTME: Unit tests for StructuredSecretAuditLogger.
-// Tests structured logging output for audit entries.
+// ABOUTME: Tests structured logging output for audit entries.
 
 using Explore.Secrets.Abstractions;
 using Explore.Secrets.Services;
-using FluentAssertions;
 using Microsoft.Extensions.Logging;
 using NSubstitute;
 using TUnit.Core;
@@ -22,7 +21,7 @@ public class StructuredSecretAuditLoggerTests
     }
 
     [Test]
-    public void Log_WithSuccessfulEntry_ShouldLogAtInformationLevel()
+    public async Task Log_WithSuccessfulEntry_ShouldLogAtInformationLevel()
     {
         // Arrange
         var entry = new SecretAuditEntry(
@@ -45,7 +44,7 @@ public class StructuredSecretAuditLoggerTests
     }
 
     [Test]
-    public void Log_WithFailedEntry_ShouldLogAtWarningLevel()
+    public async Task Log_WithFailedEntry_ShouldLogAtWarningLevel()
     {
         // Arrange
         var entry = new SecretAuditEntry(
@@ -84,7 +83,7 @@ public class StructuredSecretAuditLoggerTests
     }
 
     [Test]
-    public void Log_ShouldIncludeEventIdFromOperation()
+    public async Task Log_ShouldIncludeEventIdFromOperation()
     {
         // Arrange
         var entry = new SecretAuditEntry(
@@ -107,7 +106,7 @@ public class StructuredSecretAuditLoggerTests
     }
 
     [Test]
-    public void Log_WithNullKeyPattern_ShouldNotThrow()
+    public async Task Log_WithNullKeyPattern_ShouldNotThrow()
     {
         // Arrange
         var entry = new SecretAuditEntry(
@@ -119,11 +118,11 @@ public class StructuredSecretAuditLoggerTests
 
         // Act & Assert
         var act = () => _auditLogger.Log(entry);
-        act.Should().NotThrow();
+        await Assert.That(act).ThrowsNothing();
     }
 
     [Test]
-    public void Log_WithAllFields_ShouldNotThrow()
+    public async Task Log_WithAllFields_ShouldNotThrow()
     {
         // Arrange
         var entry = new SecretAuditEntry(
@@ -138,16 +137,16 @@ public class StructuredSecretAuditLoggerTests
 
         // Act & Assert
         var act = () => _auditLogger.Log(entry);
-        act.Should().NotThrow();
+        await Assert.That(act).ThrowsNothing();
     }
 
     [Test]
-    public void Constructor_WithNullLogger_ShouldThrow()
+    public async Task Constructor_WithNullLogger_ShouldThrow()
     {
         // Act
         var act = () => new StructuredSecretAuditLogger(null!);
 
         // Assert
-        act.Should().Throw<ArgumentNullException>();
+        await Assert.That(act).Throws<ArgumentNullException>();
     }
 }

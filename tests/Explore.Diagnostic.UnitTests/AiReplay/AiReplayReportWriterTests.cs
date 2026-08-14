@@ -2,14 +2,13 @@
 // ABOUTME: Ensures generated artifacts are redacted, deterministic, and explicit about no live provider usage.
 
 using Explore.Diagnostic.AiReplay;
-using FluentAssertions;
 
 namespace Explore.Diagnostic.UnitTests.AiReplay;
 
 public sealed class AiReplayReportWriterTests
 {
     [Test]
-    public void WriteCreatesJsonAndMarkdownArtifacts()
+    public async Task WriteCreatesJsonAndMarkdownArtifacts()
     {
         var outputDirectory = Path.Combine(Path.GetTempPath(), "explore-ai-replay-" + Guid.NewGuid().ToString("N"));
         var report = new AiReplayReportGenerator(() => new DateTimeOffset(2026, 6, 7, 12, 0, 0, TimeSpan.Zero)).Generate();
@@ -18,12 +17,12 @@ public sealed class AiReplayReportWriterTests
         {
             var artifact = AiReplayReportWriter.Write(report, outputDirectory);
 
-            File.Exists(artifact.JsonPath).Should().BeTrue();
-            File.Exists(artifact.MarkdownPath).Should().BeTrue();
-            File.ReadAllText(artifact.MarkdownPath).Should().Contain("Uses live provider credentials: false");
-            File.ReadAllText(artifact.MarkdownPath).Should().Contain("Contains content-bearing artifacts: false");
-            File.ReadAllText(artifact.MarkdownPath).Should().Contain("Database side effects detected: false");
-            File.ReadAllText(artifact.MarkdownPath).Should().Contain("Pass rate: 100.00");
+            await Assert.That(File.Exists(artifact.JsonPath)).IsTrue();
+            await Assert.That(File.Exists(artifact.MarkdownPath)).IsTrue();
+            await Assert.That(File.ReadAllText(artifact.MarkdownPath)).Contains("Uses live provider credentials: false");
+            await Assert.That(File.ReadAllText(artifact.MarkdownPath)).Contains("Contains content-bearing artifacts: false");
+            await Assert.That(File.ReadAllText(artifact.MarkdownPath)).Contains("Database side effects detected: false");
+            await Assert.That(File.ReadAllText(artifact.MarkdownPath)).Contains("Pass rate: 100.00");
         }
         finally
         {

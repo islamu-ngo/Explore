@@ -2,7 +2,6 @@
 // ABOUTME: Verifies all policy files are loadable, the Cerbos container accepts them, and the health API confirms readiness.
 
 using Event.Api.IntegrationTests.Fixtures;
-using FluentAssertions;
 using TUnit.Core;
 
 namespace Event.Api.IntegrationTests.Features;
@@ -37,7 +36,7 @@ public class CerbosPolicyCompilationTests : IDisposable
     {
         var response = await _cerbos.HealthAsync();
 
-        response.IsSuccessStatusCode.Should().BeTrue("the Cerbos container must report healthy after startup");
+        await Assert.That(response.IsSuccessStatusCode).IsTrue().Because("the Cerbos container must report healthy after startup");
     }
 
     [Test]
@@ -45,7 +44,7 @@ public class CerbosPolicyCompilationTests : IDisposable
     {
         var response = await _cerbos.GetSchemaAsync();
 
-        response.IsSuccessStatusCode.Should().BeTrue("the Cerbos HTTP API must be serving the schema endpoint");
+        await Assert.That(response.IsSuccessStatusCode).IsTrue().Because("the Cerbos HTTP API must be serving the schema endpoint");
     }
 
     #endregion
@@ -64,8 +63,7 @@ public class CerbosPolicyCompilationTests : IDisposable
             resourceAttrs: new { tenantId = "tenant-1", organizationId = "org-1" },
             actions: ["view"]);
 
-        result.Should().ContainKey("view").WhoseValue.Should().Be("EFFECT_ALLOW",
-            "the derived roles (islamuevent_explore_admin_roles) must be loaded for islamuevent_instance_admin to match");
+        await Assert.That(result).ContainsKey("view").And.Value.IsEqualTo("EFFECT_ALLOW").Because("the derived roles (islamuevent_explore_admin_roles) must be loaded for islamuevent_instance_admin to match");
     }
 
     #endregion
@@ -120,10 +118,8 @@ public class CerbosPolicyCompilationTests : IDisposable
             resourceAttrs: new { tenantId = "tenant-1", organizationId = "org-1" },
             actions: ["view"]);
 
-        result.Should().ContainKey("view",
-            $"resource policy '{resourceKind}' must be loaded and accept check requests");
-        result["view"].Should().Be("EFFECT_ALLOW",
-            $"instance admin should always be allowed to view '{resourceKind}'");
+        await Assert.That(result).ContainsKey("view").Because($"resource policy '{resourceKind}' must be loaded and accept check requests");
+        await Assert.That(result["view"]).IsEqualTo("EFFECT_ALLOW").Because($"instance admin should always be allowed to view '{resourceKind}'");
     }
 
     #endregion
@@ -147,9 +143,8 @@ public class CerbosPolicyCompilationTests : IDisposable
             resourceAttrs: new { tenantId = "tenant-42", organizationId = "org-1" },
             actions: ["view", "moderate-light"]);
 
-        result["view"].Should().Be("EFFECT_ALLOW");
-        result["moderate-light"].Should().Be("EFFECT_ALLOW",
-            "tenant admin matching tenantId must be allowed to moderate events");
+        await Assert.That(result["view"]).IsEqualTo("EFFECT_ALLOW");
+        await Assert.That(result["moderate-light"]).IsEqualTo("EFFECT_ALLOW").Because("tenant admin matching tenantId must be allowed to moderate events");
     }
 
     [Test]
@@ -169,9 +164,8 @@ public class CerbosPolicyCompilationTests : IDisposable
             resourceAttrs: new { tenantId = "tenant-1", organizationId = "org-99" },
             actions: ["view", "update"]);
 
-        result["view"].Should().Be("EFFECT_ALLOW");
-        result["update"].Should().Be("EFFECT_ALLOW",
-            "org admin matching organizationId must be allowed to update their org");
+        await Assert.That(result["view"]).IsEqualTo("EFFECT_ALLOW");
+        await Assert.That(result["update"]).IsEqualTo("EFFECT_ALLOW").Because("org admin matching organizationId must be allowed to update their org");
     }
 
     [Test]
@@ -191,8 +185,7 @@ public class CerbosPolicyCompilationTests : IDisposable
             resourceAttrs: new { tenantId = "tenant-1", isLockedByInstance = true },
             actions: ["update"]);
 
-        result["update"].Should().Be("EFFECT_DENY",
-            "tenant admin must be denied update when isLockedByInstance=true");
+        await Assert.That(result["update"]).IsEqualTo("EFFECT_DENY").Because("tenant admin must be denied update when isLockedByInstance=true");
     }
 
 
@@ -213,8 +206,7 @@ public class CerbosPolicyCompilationTests : IDisposable
             resourceAttrs: new { tenantId = "tenant-1", documentKey = "tenant.branding", isLockedByInstance = true },
             actions: ["update"]);
 
-        result["update"].Should().Be("EFFECT_ALLOW",
-            "tenant.branding uses handler-level field locks so authorization must allow the command to run");
+        await Assert.That(result["update"]).IsEqualTo("EFFECT_ALLOW").Because("tenant.branding uses handler-level field locks so authorization must allow the command to run");
     }
 
     #endregion
@@ -233,9 +225,8 @@ public class CerbosPolicyCompilationTests : IDisposable
             resourceAttrs: new { tenantId = "tenant-1", organizationId = "org-1" },
             actions: ["view", "create"]);
 
-        result["view"].Should().Be("EFFECT_DENY",
-            "unknown resource kinds must be denied — no matching policy");
-        result["create"].Should().Be("EFFECT_DENY");
+        await Assert.That(result["view"]).IsEqualTo("EFFECT_DENY").Because("unknown resource kinds must be denied — no matching policy");
+        await Assert.That(result["create"]).IsEqualTo("EFFECT_DENY");
     }
 
     #endregion

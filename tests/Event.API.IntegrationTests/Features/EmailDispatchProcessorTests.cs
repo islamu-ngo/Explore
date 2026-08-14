@@ -5,7 +5,6 @@ using Event.Api.IntegrationTests.Fixtures;
 using Explore.API.BackgroundServices;
 using Explore.Application.Contracts.Services;
 using Explore.Infrastructure;
-using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using TUnit.Core;
@@ -42,11 +41,15 @@ public sealed class EmailDispatchProcessorTests
 
         await runner.RunOnceAsync(cancellation.Token);
 
-        recorder.Calls.Should().Equal("recover", "batch");
-        recorder.BatchSizes.Should().Equal(17, 17);
-        recorder.PollingIntervals.Should().Equal(3, 3);
-        recorder.ConsumerIds.Should().Equal("hosted-service-test", "hosted-service-test");
-        recorder.CancellationTokens.Should().OnlyContain(token => token == cancellation.Token);
+        await Assert.That(recorder.Calls).IsEquivalentTo(
+            ["recover", "batch"], TUnit.Assertions.Enums.CollectionOrdering.Matching);
+        await Assert.That(recorder.BatchSizes).IsEquivalentTo(
+            [17, 17], TUnit.Assertions.Enums.CollectionOrdering.Matching);
+        await Assert.That(recorder.PollingIntervals).IsEquivalentTo(
+            [3, 3], TUnit.Assertions.Enums.CollectionOrdering.Matching);
+        await Assert.That(recorder.ConsumerIds).IsEquivalentTo(
+            ["hosted-service-test", "hosted-service-test"], TUnit.Assertions.Enums.CollectionOrdering.Matching);
+        await Assert.That(recorder.CancellationTokens.All(token => token == cancellation.Token)).IsTrue();
     }
 
     private sealed class RecordingDrainCalls

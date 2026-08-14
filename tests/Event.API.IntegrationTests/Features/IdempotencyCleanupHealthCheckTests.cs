@@ -3,7 +3,6 @@
 
 using Explore.API.HealthChecks;
 using Explore.Infrastructure;
-using FluentAssertions;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Options;
 using TUnit.Core;
@@ -28,17 +27,17 @@ public sealed class IdempotencyCleanupHealthCheckTests
 
         var result = await healthCheck.CheckHealthAsync(new HealthCheckContext());
 
-        result.Status.Should().Be(HealthStatus.Healthy);
-        result.Description.Should().Contain("delete mode");
-        result.Data.Should().ContainKey("enabled").WhoseValue.Should().Be(true);
-        result.Data.Should().ContainKey("dryRun").WhoseValue.Should().Be(false);
-        result.Data.Should().ContainKey("initialDelaySeconds").WhoseValue.Should().Be(5);
-        result.Data.Should().ContainKey("pollingIntervalMinutes").WhoseValue.Should().Be(15);
-        result.Data.Should().ContainKey("batchSize").WhoseValue.Should().Be(25);
-        result.Data.Should().ContainKey("expirationGraceHours").WhoseValue.Should().Be(12);
-        result.Data.Keys.Should().NotContain(key => key.Contains("key", StringComparison.OrdinalIgnoreCase));
-        result.Data.Keys.Should().NotContain(key => key.Contains("tenant", StringComparison.OrdinalIgnoreCase));
-        result.Data.Keys.Should().NotContain(key => key.Contains("path", StringComparison.OrdinalIgnoreCase));
+        await Assert.That(result.Status).IsEqualTo(HealthStatus.Healthy);
+        await Assert.That(result.Description).Contains("delete mode");
+        await Assert.That(result.Data).ContainsKey("enabled").And.Value.IsEqualTo(true);
+        await Assert.That(result.Data).ContainsKey("dryRun").And.Value.IsEqualTo(false);
+        await Assert.That(result.Data).ContainsKey("initialDelaySeconds").And.Value.IsEqualTo(5);
+        await Assert.That(result.Data).ContainsKey("pollingIntervalMinutes").And.Value.IsEqualTo(15);
+        await Assert.That(result.Data).ContainsKey("batchSize").And.Value.IsEqualTo(25);
+        await Assert.That(result.Data).ContainsKey("expirationGraceHours").And.Value.IsEqualTo(12);
+        await Assert.That(result.Data.Keys).DoesNotContain(key => key.Contains("key", StringComparison.OrdinalIgnoreCase));
+        await Assert.That(result.Data.Keys).DoesNotContain(key => key.Contains("tenant", StringComparison.OrdinalIgnoreCase));
+        await Assert.That(result.Data.Keys).DoesNotContain(key => key.Contains("path", StringComparison.OrdinalIgnoreCase));
     }
 
     [Test]
@@ -53,9 +52,9 @@ public sealed class IdempotencyCleanupHealthCheckTests
 
         var result = await healthCheck.CheckHealthAsync(new HealthCheckContext());
 
-        result.Status.Should().Be(HealthStatus.Healthy);
-        result.Description.Should().Contain("dry-run mode");
-        result.Data.Should().ContainKey("dryRun").WhoseValue.Should().Be(true);
+        await Assert.That(result.Status).IsEqualTo(HealthStatus.Healthy);
+        await Assert.That(result.Description).Contains("dry-run mode");
+        await Assert.That(result.Data).ContainsKey("dryRun").And.Value.IsEqualTo(true);
     }
 
     [Test]
@@ -69,8 +68,8 @@ public sealed class IdempotencyCleanupHealthCheckTests
 
         var result = await healthCheck.CheckHealthAsync(new HealthCheckContext());
 
-        result.Status.Should().Be(HealthStatus.Degraded);
-        result.Description.Should().Contain("intentionally disabled");
-        result.Data.Should().ContainKey("enabled").WhoseValue.Should().Be(false);
+        await Assert.That(result.Status).IsEqualTo(HealthStatus.Degraded);
+        await Assert.That(result.Description).Contains("intentionally disabled");
+        await Assert.That(result.Data).ContainsKey("enabled").And.Value.IsEqualTo(false);
     }
 }

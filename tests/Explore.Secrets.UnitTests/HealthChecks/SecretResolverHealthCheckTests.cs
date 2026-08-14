@@ -3,7 +3,6 @@
 
 using Explore.Application.Contracts.Secrets;
 using Explore.Secrets.HealthChecks;
-using FluentAssertions;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Logging;
@@ -32,10 +31,10 @@ public sealed class SecretResolverHealthCheckTests
 
         var result = await check.CheckHealthAsync(new HealthCheckContext());
 
-        result.Status.Should().Be(HealthStatus.Unhealthy);
-        result.Description.Should().Be("Secret resolver configuration is unavailable.");
-        result.Exception.Should().BeNull();
-        result.Data["databaseConfiguration"].Should().Be("invalid");
-        result.Description.Should().NotContain("credential-canary");
+        await Assert.That(result.Status).IsEqualTo(HealthStatus.Unhealthy);
+        await Assert.That(result.Description).IsEqualTo("Secret resolver configuration is unavailable.");
+        await Assert.That(result.Exception).IsNull();
+        await Assert.That(result.Data["databaseConfiguration"]).IsEqualTo("invalid");
+        await Assert.That(result.Description).DoesNotContain("credential-canary");
     }
 }

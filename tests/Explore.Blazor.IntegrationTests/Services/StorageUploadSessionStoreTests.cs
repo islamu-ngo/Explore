@@ -5,7 +5,6 @@ using System.Security.Claims;
 using System.Text.Json;
 using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Services;
-using FluentAssertions;
 using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Caching.Memory;
 
@@ -43,8 +42,8 @@ public sealed class StorageUploadSessionStoreTests
             },
             "image/png");
 
-        result.Success.Should().BeFalse();
-        result.FailureCode.Should().Be("missing_upload_session_id");
+        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.FailureCode).IsEqualTo("missing_upload_session_id");
     }
 
     [Test]
@@ -67,8 +66,8 @@ public sealed class StorageUploadSessionStoreTests
             },
             "image/png");
 
-        result.Success.Should().BeFalse();
-        result.FailureCode.Should().Be("upload_session_expired");
+        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.FailureCode).IsEqualTo("upload_session_expired");
     }
 
     [Test]
@@ -78,8 +77,8 @@ public sealed class StorageUploadSessionStoreTests
 
         var resolved = await _store.ResolveAsync(CreateUser("user-2"), issued.SessionId!, "image/png");
 
-        resolved.Success.Should().BeFalse();
-        resolved.FailureCode.Should().Be("session_owner_mismatch");
+        await Assert.That(resolved.Success).IsFalse();
+        await Assert.That(resolved.FailureCode).IsEqualTo("session_owner_mismatch");
     }
 
     [Test]
@@ -89,8 +88,8 @@ public sealed class StorageUploadSessionStoreTests
 
         var resolved = await _store.ResolveAsync(CreateUser("user-1"), issued.SessionId!, "image/jpeg");
 
-        resolved.Success.Should().BeFalse();
-        resolved.FailureCode.Should().Be("content_type_mismatch");
+        await Assert.That(resolved.Success).IsFalse();
+        await Assert.That(resolved.FailureCode).IsEqualTo("content_type_mismatch");
     }
 
     [Test]
@@ -100,10 +99,10 @@ public sealed class StorageUploadSessionStoreTests
 
         var resolved = await _store.ResolveAsync(CreateUser("user-1"), issued.SessionId!, "image/png");
 
-        resolved.Success.Should().BeTrue();
-        resolved.Session.Should().NotBeNull();
-        resolved.Session!.ApiUploadSessionId.Should().Be(ApiUploadSessionId);
-        resolved.Session.ExpectedSizeBytes.Should().Be(4);
+        await Assert.That(resolved.Success).IsTrue();
+        await Assert.That(resolved.Session).IsNotNull();
+        await Assert.That(resolved.Session!.ApiUploadSessionId).IsEqualTo(ApiUploadSessionId);
+        await Assert.That(resolved.Session.ExpectedSizeBytes).IsEqualTo(4);
     }
 
     [Test]
@@ -123,10 +122,10 @@ public sealed class StorageUploadSessionStoreTests
         var resolved = await _store.ResolveAsync(CreateUser("user-1"), sessionId, "image/png");
         var secondResolve = await _store.ResolveAsync(CreateUser("user-1"), sessionId, "image/png");
 
-        resolved.Success.Should().BeFalse();
-        resolved.FailureCode.Should().Be("session_expired");
-        secondResolve.Success.Should().BeFalse();
-        secondResolve.FailureCode.Should().Be("session_not_found");
+        await Assert.That(resolved.Success).IsFalse();
+        await Assert.That(resolved.FailureCode).IsEqualTo("session_expired");
+        await Assert.That(secondResolve.Success).IsFalse();
+        await Assert.That(secondResolve.FailureCode).IsEqualTo("session_not_found");
     }
 
     private static readonly Guid ApiUploadSessionId = Guid.CreateVersion7();

@@ -1,9 +1,8 @@
 // ABOUTME: Unit tests for AuditingSecretProviderDecorator.
-// Tests audit logging, key redaction, and decorator passthrough behavior.
+// ABOUTME: Tests audit logging, key redaction, and decorator passthrough behavior.
 
 using Explore.Secrets.Abstractions;
 using Explore.Secrets.Providers;
-using FluentAssertions;
 using Microsoft.Extensions.Logging;
 using NSubstitute;
 using TUnit.Core;
@@ -27,7 +26,7 @@ public class AuditingSecretProviderDecoratorTests
         _capturedAuditEntries = new List<SecretAuditEntry>();
         _auditLogger.LogAsync(Arg.Any<SecretAuditEntry>(), Arg.Any<CancellationToken>())
             .Returns(Task.CompletedTask)
-            .AndDoes(ci => _capturedAuditEntries.Add(ci.Arg<SecretAuditEntry>()));
+            .AndDoes(ci => _capturedAuditEntries.Add(ci.Arg<SecretAuditEntry>()!));
 
         _decorator = new AuditingSecretProviderDecorator(
             _innerProvider,
@@ -37,23 +36,23 @@ public class AuditingSecretProviderDecoratorTests
     }
 
     [Test]
-    public void ProviderType_ShouldDelegateToInner()
+    public async Task ProviderType_ShouldDelegateToInner()
     {
         // Arrange
         _innerProvider.ProviderType.Returns(SecretProviderType.Vault);
 
         // Act & Assert
-        _decorator.ProviderType.Should().Be(SecretProviderType.Vault);
+        await Assert.That(_decorator.ProviderType).IsEqualTo(SecretProviderType.Vault);
     }
 
     [Test]
-    public void SupportsRefresh_ShouldDelegateToInner()
+    public async Task SupportsRefresh_ShouldDelegateToInner()
     {
         // Arrange
         _innerProvider.SupportsRefresh.Returns(true);
 
         // Act & Assert
-        _decorator.SupportsRefresh.Should().BeTrue();
+        await Assert.That(_decorator.SupportsRefresh).IsTrue();
     }
 
     [Test]
@@ -69,8 +68,8 @@ public class AuditingSecretProviderDecoratorTests
 
         // Assert
         await _innerProvider.Received(1).InitializeAsync(Arg.Any<CancellationToken>());
-        _capturedAuditEntries.Should().ContainSingle(e =>
-            e.Operation == SecretOperation.Initialize && e.Success);
+        await Assert.That(_capturedAuditEntries.Count(e =>
+            e.Operation == SecretOperation.Initialize && e.Success)).IsEqualTo(1);
     }
 
     [Test]
@@ -85,11 +84,11 @@ public class AuditingSecretProviderDecoratorTests
         var act = async () => await _decorator.InitializeAsync();
 
         // Assert
-        await act.Should().ThrowAsync<SecretProviderException>();
-        _capturedAuditEntries.Should().ContainSingle(e =>
+        await Assert.That(act).Throws<SecretProviderException>();
+        await Assert.That(_capturedAuditEntries.Count(e =>
             e.Operation == SecretOperation.InitializeFailed &&
             !e.Success &&
-            e.ErrorMessage == "Auth failed");
+            e.ErrorMessage == "Auth failed")).IsEqualTo(1);
     }
 
     [Test]
@@ -104,10 +103,10 @@ public class AuditingSecretProviderDecoratorTests
         var result = await _decorator.GetSecretAsync("Database:Host");
 
         // Assert
-        result.Should().Be("localhost");
+        await Assert.That(result).IsEqualTo("localhost");
         await _innerProvider.Received(1).GetSecretAsync("Database:Host", Arg.Any<CancellationToken>());
-        _capturedAuditEntries.Should().ContainSingle(e =>
-            e.Operation == SecretOperation.Access && e.Success);
+        await Assert.That(_capturedAuditEntries.Count(e =>
+            e.Operation == SecretOperation.Access && e.Success)).IsEqualTo(1);
     }
 
     [Test]
@@ -122,9 +121,9 @@ public class AuditingSecretProviderDecoratorTests
         var result = await _decorator.GetSecretAsync("Missing:Key");
 
         // Assert
-        result.Should().BeNull();
-        _capturedAuditEntries.Should().ContainSingle(e =>
-            e.Operation == SecretOperation.Access && !e.Success);
+        await Assert.That(result).IsNull();
+        await Assert.That(_capturedAuditEntries.Count(e =>
+            e.Operation == SecretOperation.Access && !e.Success)).IsEqualTo(1);
     }
 
     [Test]
@@ -139,8 +138,8 @@ public class AuditingSecretProviderDecoratorTests
         await _decorator.GetSecretAsync("Database:ConnectionString");
 
         // Assert - Key should be redacted in audit log
-        _capturedAuditEntries.Should().ContainSingle();
-        _capturedAuditEntries[0].KeyPattern.Should().Be("Database:***");
+        await Assert.That(_capturedAuditEntries).Count().IsEqualTo(1);
+        await Assert.That(_capturedAuditEntries[0].KeyPattern).IsEqualTo("Database:***");
     }
 
     [Test]
@@ -155,7 +154,7 @@ public class AuditingSecretProviderDecoratorTests
         await _decorator.GetSecretAsync("Smtp:Password");
 
         // Assert
-        _capturedAuditEntries[0].KeyPattern.Should().Be("Smtp:***");
+        await Assert.That(_capturedAuditEntries[0].KeyPattern).IsEqualTo("Smtp:***");
     }
 
     [Test]
@@ -170,7 +169,7 @@ public class AuditingSecretProviderDecoratorTests
         await _decorator.GetSecretAsync("Keycloak:BlazorClientSecret");
 
         // Assert
-        _capturedAuditEntries[0].KeyPattern.Should().Be("Keycloak:***");
+        await Assert.That(_capturedAuditEntries[0].KeyPattern).IsEqualTo("Keycloak:***");
     }
 
     [Test]
@@ -185,7 +184,7 @@ public class AuditingSecretProviderDecoratorTests
         await _decorator.GetSecretAsync("External:ApiKey");
 
         // Assert
-        _capturedAuditEntries[0].KeyPattern.Should().Be("External:***");
+        await Assert.That(_capturedAuditEntries[0].KeyPattern).IsEqualTo("External:***");
     }
 
     [Test]
@@ -200,7 +199,7 @@ public class AuditingSecretProviderDecoratorTests
         await _decorator.GetSecretAsync("Database:Host");
 
         // Assert - Non-sensitive key should not be redacted
-        _capturedAuditEntries[0].KeyPattern.Should().Be("Database:Host");
+        await Assert.That(_capturedAuditEntries[0].KeyPattern).IsEqualTo("Database:Host");
     }
 
     [Test]
@@ -220,11 +219,11 @@ public class AuditingSecretProviderDecoratorTests
         var result = await _decorator.GetSecretsByPathAsync("Database");
 
         // Assert
-        result.Should().BeEquivalentTo(secrets);
-        _capturedAuditEntries.Should().ContainSingle(e =>
+        await Assert.That(result).IsEquivalentTo(secrets);
+        await Assert.That(_capturedAuditEntries.Count(e =>
             e.Operation == SecretOperation.Access &&
             e.KeyPattern!.Contains("Database") &&
-            e.KeyPattern.Contains("2 secrets"));
+            e.KeyPattern.Contains("2 secrets"))).IsEqualTo(1);
     }
 
     [Test]
@@ -240,8 +239,8 @@ public class AuditingSecretProviderDecoratorTests
 
         // Assert
         await _innerProvider.Received(1).RefreshAsync(Arg.Any<CancellationToken>());
-        _capturedAuditEntries.Should().ContainSingle(e =>
-            e.Operation == SecretOperation.Refresh && e.Success);
+        await Assert.That(_capturedAuditEntries.Count(e =>
+            e.Operation == SecretOperation.Refresh && e.Success)).IsEqualTo(1);
     }
 
     [Test]
@@ -256,11 +255,11 @@ public class AuditingSecretProviderDecoratorTests
         var act = async () => await _decorator.RefreshAsync();
 
         // Assert
-        await act.Should().ThrowAsync<SecretProviderException>();
-        _capturedAuditEntries.Should().ContainSingle(e =>
+        await Assert.That(act).Throws<SecretProviderException>();
+        await Assert.That(_capturedAuditEntries.Count(e =>
             e.Operation == SecretOperation.RefreshFailed &&
             !e.Success &&
-            e.ErrorMessage == "Network timeout");
+            e.ErrorMessage == "Network timeout")).IsEqualTo(1);
     }
 
     [Test]
@@ -281,10 +280,10 @@ public class AuditingSecretProviderDecoratorTests
         var result = await _decorator.GetHealthAsync();
 
         // Assert
-        result.Should().BeEquivalentTo(healthInfo);
+        await Assert.That(result).IsEquivalentTo(healthInfo);
         await _innerProvider.Received(1).GetHealthAsync(Arg.Any<CancellationToken>());
         // Health checks should not generate audit entries
-        _capturedAuditEntries.Should().BeEmpty();
+        await Assert.That(_capturedAuditEntries).IsEmpty();
     }
 
     [Test]
@@ -300,8 +299,8 @@ public class AuditingSecretProviderDecoratorTests
         var result = await _decorator.GetSecretWithMetadataAsync("App:Setting");
 
         // Assert
-        result.Should().BeEquivalentTo(secretValue);
-        _capturedAuditEntries.Should().ContainSingle(e => e.Operation == SecretOperation.Access);
+        await Assert.That(result).IsEquivalentTo(secretValue);
+        await Assert.That(_capturedAuditEntries.Count(e => e.Operation == SecretOperation.Access)).IsEqualTo(1);
     }
 
     [Test]
@@ -317,8 +316,8 @@ public class AuditingSecretProviderDecoratorTests
         await _decorator.GetSecretAsync("Test:Key");
 
         // Assert
-        _capturedAuditEntries[0].Timestamp.Should().BeOnOrAfter(before);
-        _capturedAuditEntries[0].Timestamp.Should().BeOnOrBefore(DateTimeOffset.UtcNow);
+        await Assert.That(_capturedAuditEntries[0].Timestamp).IsGreaterThanOrEqualTo(before);
+        await Assert.That(_capturedAuditEntries[0].Timestamp).IsLessThanOrEqualTo(DateTimeOffset.UtcNow);
     }
 
     [Test]
@@ -333,6 +332,6 @@ public class AuditingSecretProviderDecoratorTests
         await _decorator.GetSecretAsync("Test:Key");
 
         // Assert
-        _capturedAuditEntries[0].ProviderType.Should().Be(SecretProviderType.AwsSecretsManager);
+        await Assert.That(_capturedAuditEntries[0].ProviderType).IsEqualTo(SecretProviderType.AwsSecretsManager);
     }
 }

@@ -2,25 +2,24 @@
 // ABOUTME: Verifies manual-section preservation, redaction posture, and generated-doc drift.
 
 using Explore.Diagnostic.AgentInventory;
-using FluentAssertions;
 
 namespace Explore.Diagnostic.UnitTests.AgentInventory;
 
 public sealed class AiAgentContractInventoryGeneratorTests
 {
     [Test]
-    public void GenerateMarkdownIncludesRegistryToolMetadata()
+    public async Task GenerateMarkdownIncludesRegistryToolMetadata()
     {
         var markdown = new AiAgentContractInventoryGenerator().GenerateMarkdown();
 
-        markdown.Should().Contain("Create event draft");
-        markdown.Should().Contain("HumanConfirmationRequired");
-        markdown.Should().Contain("create-event");
-        markdown.Should().Contain("execution authority");
+        await Assert.That(markdown).Contains("Create event draft");
+        await Assert.That(markdown).Contains("HumanConfirmationRequired");
+        await Assert.That(markdown).Contains("create-event");
+        await Assert.That(markdown).Contains("execution authority");
     }
 
     [Test]
-    public void GenerateMarkdownPreservesManualNotes()
+    public async Task GenerateMarkdownPreservesManualNotes()
     {
         const string existing = """
             # Existing
@@ -31,23 +30,23 @@ public sealed class AiAgentContractInventoryGeneratorTests
 
         var markdown = new AiAgentContractInventoryGenerator().GenerateMarkdown(existing);
 
-        markdown.Should().Contain("Keep this reviewer note.");
+        await Assert.That(markdown).Contains("Keep this reviewer note.");
     }
 
     [Test]
-    public void GenerateMarkdownDoesNotExposeSensitiveContentClasses()
+    public async Task GenerateMarkdownDoesNotExposeSensitiveContentClasses()
     {
         var markdown = new AiAgentContractInventoryGenerator().GenerateMarkdown();
 
         var lower = markdown.ToLowerInvariant();
-        lower.Should().NotContain("sk-");
-        lower.Should().NotContain("provider_response");
-        lower.Should().NotContain("tenantid");
-        lower.Should().NotContain("raw_tool_payload");
+        await Assert.That(lower).DoesNotContain("sk-");
+        await Assert.That(lower).DoesNotContain("provider_response");
+        await Assert.That(lower).DoesNotContain("tenantid");
+        await Assert.That(lower).DoesNotContain("raw_tool_payload");
     }
 
     [Test]
-    public void GeneratedDocumentationMatchesInventoryGenerator()
+    public async Task GeneratedDocumentationMatchesInventoryGenerator()
     {
         var root = LocateRepositoryRoot();
         var path = Path.Combine(root, "docs", "AI_AGENT_CONTRACT_INVENTORY.md");
@@ -55,7 +54,7 @@ public sealed class AiAgentContractInventoryGeneratorTests
 
         var generated = new AiAgentContractInventoryGenerator().GenerateMarkdown(existing);
 
-        existing.Should().Be(generated);
+        await Assert.That(existing).IsEqualTo(generated);
     }
 
     private static string LocateRepositoryRoot()

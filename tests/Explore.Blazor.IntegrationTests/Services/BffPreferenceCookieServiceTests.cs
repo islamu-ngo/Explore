@@ -2,7 +2,6 @@
 // ABOUTME: Protects preference endpoint decomposition from changing SSR cookie behavior.
 
 using Explore.Blazor.Services.Preferences;
-using FluentAssertions;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using NSubstitute;
@@ -20,10 +19,10 @@ public sealed class BffPreferenceCookieServiceTests
 
         var result = service.BuildDefaultResolvedAppearance(context);
 
-        result.ThemeMode.Should().Be("darkhighcontrast");
-        result.Direction.Should().Be("rtl");
-        result.Language.Should().Be("fr");
-        result.ServerEffectiveDarkMode.Should().BeTrue();
+        await Assert.That(result.ThemeMode).IsEqualTo("darkhighcontrast");
+        await Assert.That(result.Direction).IsEqualTo("rtl");
+        await Assert.That(result.Language).IsEqualTo("fr");
+        await Assert.That(result.ServerEffectiveDarkMode).IsTrue();
         await Assert.That(result.Theme).IsNull();
     }
 
@@ -36,9 +35,9 @@ public sealed class BffPreferenceCookieServiceTests
 
         var result = service.ReadCookiePreferences(context);
 
-        result.ThemeMode.Should().Be("system");
-        result.Direction.Should().Be("ltr");
-        result.Language.Should().Be("fr");
+        await Assert.That(result.ThemeMode).IsEqualTo("system");
+        await Assert.That(result.Direction).IsEqualTo("ltr");
+        await Assert.That(result.Language).IsEqualTo("fr");
         await Assert.That(result.DefaultThemeId).IsNull();
     }
 
@@ -52,9 +51,9 @@ public sealed class BffPreferenceCookieServiceTests
         service.PersistAspNetCoreCultureCookie(context, "fr");
 
         var setCookieHeaders = context.Response.Headers.SetCookie.ToArray();
-        setCookieHeaders.Should().Contain(header => header.StartsWith("lang=fr", StringComparison.Ordinal));
-        setCookieHeaders.Should().Contain(header => header.StartsWith(".AspNetCore.Culture=", StringComparison.Ordinal));
-        setCookieHeaders.Should().HaveCount(2);
+        await Assert.That(setCookieHeaders).Contains(header => header.StartsWith("lang=fr", StringComparison.Ordinal));
+        await Assert.That(setCookieHeaders).Contains(header => header.StartsWith(".AspNetCore.Culture=", StringComparison.Ordinal));
+        await Assert.That(setCookieHeaders).Count().IsEqualTo(2);
     }
 
     [Test]
@@ -66,9 +65,9 @@ public sealed class BffPreferenceCookieServiceTests
         service.PersistDirectionCookie(context, "auto");
 
         var setCookieHeader = context.Response.Headers.SetCookie.ToString();
-        setCookieHeader.Should().Contain("direction=");
-        setCookieHeader.Should().Contain("expires=", Exactly.Once());
-        setCookieHeader.ToLowerInvariant().Should().Contain("samesite=lax");
+        await Assert.That(setCookieHeader).Contains("direction=");
+        await Assert.That(setCookieHeader.Split("expires=", StringSplitOptions.None).Length - 1).IsEqualTo(1);
+        await Assert.That(setCookieHeader.ToLowerInvariant()).Contains("samesite=lax");
     }
 
     private static BffPreferenceCookieService CreateService()

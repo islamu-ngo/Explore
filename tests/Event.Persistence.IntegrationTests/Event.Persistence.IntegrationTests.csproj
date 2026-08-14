@@ -14,7 +14,6 @@
     <PackageReference Include="Respawn" />
     <PackageReference Include="Testcontainers.PostgreSql" />
     <PackageReference Include="TUnit" />
-    <PackageReference Include="FluentAssertions" />
   </ItemGroup>
 
   <PropertyGroup>

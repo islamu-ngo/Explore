@@ -1,9 +1,8 @@
 // ABOUTME: Unit tests for SecretRefreshMetrics.
-// Tests metric recording, consecutive failure tracking, and refresh timestamp.
+// ABOUTME: Tests metric recording, consecutive failure tracking, and refresh timestamp.
 
 using Explore.Secrets.Abstractions;
 using Explore.Secrets.Observability;
-using FluentAssertions;
 using TUnit.Core;
 
 namespace Explore.Secrets.UnitTests.Observability;
@@ -23,19 +22,19 @@ public class SecretRefreshMetricsTests : IDisposable
     }
 
     [Test]
-    public void Constructor_ShouldInitializeWithZeroFailures()
+    public async Task Constructor_ShouldInitializeWithZeroFailures()
     {
-        _metrics.ConsecutiveFailures.Should().Be(0);
+        await Assert.That(_metrics.ConsecutiveFailures).IsEqualTo(0);
     }
 
     [Test]
-    public void Constructor_ShouldInitializeWithMinValueTimestamp()
+    public async Task Constructor_ShouldInitializeWithMinValueTimestamp()
     {
-        _metrics.LastSuccessfulRefresh.Should().Be(DateTimeOffset.MinValue);
+        await Assert.That(_metrics.LastSuccessfulRefresh).IsEqualTo(DateTimeOffset.MinValue);
     }
 
     [Test]
-    public void RecordRefreshSuccess_ShouldUpdateLastSuccessfulRefresh()
+    public async Task RecordRefreshSuccess_ShouldUpdateLastSuccessfulRefresh()
     {
         // Arrange
         var before = DateTimeOffset.UtcNow;
@@ -44,27 +43,27 @@ public class SecretRefreshMetricsTests : IDisposable
         _metrics.RecordRefreshSuccess(SecretProviderType.Infisical, 0.5);
 
         // Assert
-        _metrics.LastSuccessfulRefresh.Should().BeOnOrAfter(before);
-        _metrics.LastSuccessfulRefresh.Should().BeOnOrBefore(DateTimeOffset.UtcNow);
+        await Assert.That(_metrics.LastSuccessfulRefresh).IsGreaterThanOrEqualTo(before);
+        await Assert.That(_metrics.LastSuccessfulRefresh).IsLessThanOrEqualTo(DateTimeOffset.UtcNow);
     }
 
     [Test]
-    public void RecordRefreshSuccess_ShouldResetConsecutiveFailures()
+    public async Task RecordRefreshSuccess_ShouldResetConsecutiveFailures()
     {
         // Arrange - Record some failures first
         _metrics.RecordRefreshFailure(SecretProviderType.Infisical, 0.1);
         _metrics.RecordRefreshFailure(SecretProviderType.Infisical, 0.1);
-        _metrics.ConsecutiveFailures.Should().Be(2);
+        await Assert.That(_metrics.ConsecutiveFailures).IsEqualTo(2);
 
         // Act
         _metrics.RecordRefreshSuccess(SecretProviderType.Infisical, 0.5);
 
         // Assert
-        _metrics.ConsecutiveFailures.Should().Be(0);
+        await Assert.That(_metrics.ConsecutiveFailures).IsEqualTo(0);
     }
 
     [Test]
-    public void RecordRefreshFailure_ShouldIncrementConsecutiveFailures()
+    public async Task RecordRefreshFailure_ShouldIncrementConsecutiveFailures()
     {
         // Act
         _metrics.RecordRefreshFailure(SecretProviderType.Vault, 1.0);
@@ -72,11 +71,11 @@ public class SecretRefreshMetricsTests : IDisposable
         _metrics.RecordRefreshFailure(SecretProviderType.Vault, 2.0);
 
         // Assert
-        _metrics.ConsecutiveFailures.Should().Be(3);
+        await Assert.That(_metrics.ConsecutiveFailures).IsEqualTo(3);
     }
 
     [Test]
-    public void RecordRefreshFailure_ShouldNotUpdateLastSuccessfulRefresh()
+    public async Task RecordRefreshFailure_ShouldNotUpdateLastSuccessfulRefresh()
     {
         // Arrange
         var initial = _metrics.LastSuccessfulRefresh;
@@ -85,11 +84,11 @@ public class SecretRefreshMetricsTests : IDisposable
         _metrics.RecordRefreshFailure(SecretProviderType.Infisical, 0.5);
 
         // Assert
-        _metrics.LastSuccessfulRefresh.Should().Be(initial);
+        await Assert.That(_metrics.LastSuccessfulRefresh).IsEqualTo(initial);
     }
 
     [Test]
-    public void StartRefreshOperation_Complete_ShouldRecordSuccess()
+    public async Task StartRefreshOperation_Complete_ShouldRecordSuccess()
     {
         // Arrange
         using var operation = _metrics.StartRefreshOperation(SecretProviderType.AzureKeyVault);
@@ -98,12 +97,13 @@ public class SecretRefreshMetricsTests : IDisposable
         operation.Complete();
 
         // Assert
-        _metrics.ConsecutiveFailures.Should().Be(0);
-        _metrics.LastSuccessfulRefresh.Should().BeCloseTo(DateTimeOffset.UtcNow, TimeSpan.FromSeconds(1));
+        await Assert.That(_metrics.ConsecutiveFailures).IsEqualTo(0);
+        var now = DateTimeOffset.UtcNow;
+        await Assert.That(_metrics.LastSuccessfulRefresh).IsBetween(now.AddSeconds(-1), now.AddSeconds(1));
     }
 
     [Test]
-    public void StartRefreshOperation_Fail_ShouldRecordFailure()
+    public async Task StartRefreshOperation_Fail_ShouldRecordFailure()
     {
         // Arrange
         using var operation = _metrics.StartRefreshOperation(SecretProviderType.AwsSecretsManager);
@@ -112,11 +112,11 @@ public class SecretRefreshMetricsTests : IDisposable
         operation.Fail("timeout");
 
         // Assert
-        _metrics.ConsecutiveFailures.Should().Be(1);
+        await Assert.That(_metrics.ConsecutiveFailures).IsEqualTo(1);
     }
 
     [Test]
-    public void StartRefreshOperation_Dispose_ShouldNotRecordMetrics()
+    public async Task StartRefreshOperation_Dispose_ShouldNotRecordMetrics()
     {
         // Arrange
         var initialTimestamp = _metrics.LastSuccessfulRefresh;
@@ -129,40 +129,40 @@ public class SecretRefreshMetricsTests : IDisposable
         }
 
         // Assert - Metrics should remain unchanged
-        _metrics.LastSuccessfulRefresh.Should().Be(initialTimestamp);
-        _metrics.ConsecutiveFailures.Should().Be(initialFailures);
+        await Assert.That(_metrics.LastSuccessfulRefresh).IsEqualTo(initialTimestamp);
+        await Assert.That(_metrics.ConsecutiveFailures).IsEqualTo(initialFailures);
     }
 
     [Test]
-    public void MeterName_ShouldBeExploreSecrets()
+    public async Task MeterName_ShouldBeExploreSecrets()
     {
-        SecretRefreshMetrics.MeterName.Should().Be("Explore.Secrets");
+        await Assert.That(SecretRefreshMetrics.MeterName).IsEqualTo("Explore.Secrets");
     }
 
     [Test]
-    public void MultipleProviders_ShouldTrackIndependently()
+    public async Task MultipleProviders_ShouldTrackIndependently()
     {
         // Act - Failures on different providers
         _metrics.RecordRefreshFailure(SecretProviderType.Infisical, 0.1);
         _metrics.RecordRefreshFailure(SecretProviderType.Vault, 0.1);
 
         // Assert - All failures counted together (single metrics instance)
-        _metrics.ConsecutiveFailures.Should().Be(2);
+        await Assert.That(_metrics.ConsecutiveFailures).IsEqualTo(2);
     }
 
     [Test]
-    public void RecordRefreshSuccess_AfterMultipleFailures_ShouldResetAll()
+    public async Task RecordRefreshSuccess_AfterMultipleFailures_ShouldResetAll()
     {
         // Arrange
         _metrics.RecordRefreshFailure(SecretProviderType.Infisical, 0.1);
         _metrics.RecordRefreshFailure(SecretProviderType.Infisical, 0.1);
         _metrics.RecordRefreshFailure(SecretProviderType.Infisical, 0.1);
-        _metrics.ConsecutiveFailures.Should().Be(3);
+        await Assert.That(_metrics.ConsecutiveFailures).IsEqualTo(3);
 
         // Act
         _metrics.RecordRefreshSuccess(SecretProviderType.Infisical, 0.5);
 
         // Assert
-        _metrics.ConsecutiveFailures.Should().Be(0);
+        await Assert.That(_metrics.ConsecutiveFailures).IsEqualTo(0);
     }
 }

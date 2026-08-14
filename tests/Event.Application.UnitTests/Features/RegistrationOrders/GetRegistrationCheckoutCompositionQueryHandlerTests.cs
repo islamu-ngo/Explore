@@ -53,6 +53,7 @@ public sealed class GetRegistrationCheckoutCompositionQueryHandlerTests
             5, null, null, null);
         catalog.AddTicketType(ticket, null);
         catalog.AddEntitlement(ticket, TicketTypeEntitlement.CreateForEvent(ticket.Id, tenantId, eventId, 1));
+        catalog.UpdateCommercialDisclosures("Merchant", "Refund", "Support");
         catalog.Publish();
         events.GetById(eventId).Returns(eventTarget);
         events.IsPubliclyEligibleAsync(tenantId, eventId, Arg.Any<CancellationToken>()).Returns(true);

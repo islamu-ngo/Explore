@@ -3,7 +3,6 @@
 
 using System.Net;
 using Explore.Blazor.IntegrationTests.Fixtures;
-using FluentAssertions;
 using Microsoft.AspNetCore.Mvc.Testing;
 
 namespace Explore.Blazor.IntegrationTests.Endpoints;
@@ -27,9 +26,9 @@ public sealed class BffStaticAssetCachingTests : IAsyncDisposable
     {
         using var response = await _client.GetAsync("/favicon.ico");
 
-        response.StatusCode.Should().Be(HttpStatusCode.OK);
-        response.Headers.TryGetValues("Set-Cookie", out var setCookies).Should().BeFalse();
-        (response.Headers.CacheControl?.NoStore ?? false).Should().BeFalse();
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
+        await Assert.That(response.Headers.TryGetValues("Set-Cookie", out var setCookies)).IsFalse();
+        await Assert.That((response.Headers.CacheControl?.NoStore ?? false)).IsFalse();
     }
 
     public async ValueTask DisposeAsync()

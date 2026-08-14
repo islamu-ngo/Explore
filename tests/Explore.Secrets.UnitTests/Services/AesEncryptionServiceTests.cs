@@ -1,9 +1,8 @@
 // ABOUTME: Unit tests for AesEncryptionService.
-// Tests encryption/decryption, key versioning, error handling, and secure disposal.
+// ABOUTME: Tests encryption/decryption, key versioning, error handling, and secure disposal.
 
 using Explore.Secrets.Configuration;
 using Explore.Secrets.Services;
-using FluentAssertions;
 using Microsoft.Extensions.Options;
 using TUnit.Core;
 
@@ -59,18 +58,18 @@ public class AesEncryptionServiceTests : IDisposable
     // ==================== Constructor Tests ====================
 
     [Test]
-    public void Constructor_WithValidOptions_ShouldSucceed()
+    public async Task Constructor_WithValidOptions_ShouldSucceed()
     {
         // Arrange & Act
         var service = CreateService();
 
         // Assert
-        service.CurrentKeyVersion.Should().Be(1);
-        service.AvailableKeyVersions.Should().Contain(1);
+        await Assert.That(service.CurrentKeyVersion).IsEqualTo(1);
+        await Assert.That(service.AvailableKeyVersions).Contains(1);
     }
 
     [Test]
-    public void Constructor_WithMultipleKeyVersions_ShouldLoadAll()
+    public async Task Constructor_WithMultipleKeyVersions_ShouldLoadAll()
     {
         // Arrange & Act
         var service = CreateService(new Dictionary<int, string>
@@ -80,14 +79,14 @@ public class AesEncryptionServiceTests : IDisposable
         }, currentKeyVersion: 2);
 
         // Assert
-        service.CurrentKeyVersion.Should().Be(2);
-        service.AvailableKeyVersions.Should().HaveCount(2);
-        service.AvailableKeyVersions.Should().Contain(1);
-        service.AvailableKeyVersions.Should().Contain(2);
+        await Assert.That(service.CurrentKeyVersion).IsEqualTo(2);
+        await Assert.That(service.AvailableKeyVersions).Count().IsEqualTo(2);
+        await Assert.That(service.AvailableKeyVersions).Contains(1);
+        await Assert.That(service.AvailableKeyVersions).Contains(2);
     }
 
     [Test]
-    public void Constructor_WithNoKeys_ShouldThrow()
+    public async Task Constructor_WithNoKeys_ShouldThrow()
     {
         // Arrange
         var options = new EncryptionOptions
@@ -101,12 +100,12 @@ public class AesEncryptionServiceTests : IDisposable
         var act = () => new AesEncryptionService(Options.Create(options));
 
         // Assert
-        act.Should().Throw<InvalidOperationException>()
-            .WithMessage("*No encryption keys configured*");
+        await Assert.That(act).Throws<InvalidOperationException>()
+            .WithMessageContaining("No encryption keys configured");
     }
 
     [Test]
-    public void Constructor_WithMissingCurrentKeyVersion_ShouldThrow()
+    public async Task Constructor_WithMissingCurrentKeyVersion_ShouldThrow()
     {
         // Arrange
         var options = new EncryptionOptions
@@ -123,12 +122,12 @@ public class AesEncryptionServiceTests : IDisposable
         var act = () => new AesEncryptionService(Options.Create(options));
 
         // Assert
-        act.Should().Throw<InvalidOperationException>()
-            .WithMessage("*Current key version 2 not found*");
+        await Assert.That(act).Throws<InvalidOperationException>()
+            .WithMessageContaining("Current key version 2 not found");
     }
 
     [Test]
-    public void Constructor_WithInvalidBase64Key_ShouldThrow()
+    public async Task Constructor_WithInvalidBase64Key_ShouldThrow()
     {
         // Arrange
         var options = new EncryptionOptions
@@ -145,12 +144,12 @@ public class AesEncryptionServiceTests : IDisposable
         var act = () => new AesEncryptionService(Options.Create(options));
 
         // Assert
-        act.Should().Throw<InvalidOperationException>()
-            .WithMessage("*Key version 1 is not valid base64*");
+        await Assert.That(act).Throws<InvalidOperationException>()
+            .WithMessageContaining("Key version 1 is not valid base64");
     }
 
     [Test]
-    public void Constructor_WithWrongKeyLength_ShouldThrow()
+    public async Task Constructor_WithWrongKeyLength_ShouldThrow()
     {
         // Arrange - 16 bytes instead of 32
         var shortKey = Convert.ToBase64String(new byte[16]);
@@ -168,23 +167,23 @@ public class AesEncryptionServiceTests : IDisposable
         var act = () => new AesEncryptionService(Options.Create(options));
 
         // Assert
-        act.Should().Throw<InvalidOperationException>()
-            .WithMessage("*Key version 1 must be exactly 32 bytes*");
+        await Assert.That(act).Throws<InvalidOperationException>()
+            .WithMessageContaining("Key version 1 must be exactly 32 bytes");
     }
 
     [Test]
-    public void Constructor_WithByteKeys_EmptyDictionary_ShouldThrow()
+    public async Task Constructor_WithByteKeys_EmptyDictionary_ShouldThrow()
     {
         // Arrange & Act
         var act = () => new AesEncryptionService(new Dictionary<int, byte[]>(), 1);
 
         // Assert
-        act.Should().Throw<ArgumentException>()
-            .WithMessage("*At least one key version is required*");
+        await Assert.That(act).Throws<ArgumentException>()
+            .WithMessageContaining("At least one key version is required");
     }
 
     [Test]
-    public void Constructor_WithByteKeys_WrongKeyLength_ShouldThrow()
+    public async Task Constructor_WithByteKeys_WrongKeyLength_ShouldThrow()
     {
         // Arrange
         var keyVersions = new Dictionary<int, byte[]>
@@ -196,14 +195,14 @@ public class AesEncryptionServiceTests : IDisposable
         var act = () => new AesEncryptionService(keyVersions, 1);
 
         // Assert
-        act.Should().Throw<ArgumentException>()
-            .WithMessage("*Key version 1 must be exactly 32 bytes*");
+        await Assert.That(act).Throws<ArgumentException>()
+            .WithMessageContaining("Key version 1 must be exactly 32 bytes");
     }
 
     // ==================== Encryption Tests ====================
 
     [Test]
-    public void Encrypt_WithValidPlaintext_ShouldReturnEncryptedResult()
+    public async Task Encrypt_WithValidPlaintext_ShouldReturnEncryptedResult()
     {
         // Arrange
         var service = CreateService();
@@ -213,14 +212,14 @@ public class AesEncryptionServiceTests : IDisposable
         var result = service.Encrypt(plaintext);
 
         // Assert
-        result.Should().NotBeNull();
-        result.Ciphertext.Should().NotBeNullOrEmpty();
-        result.KeyVersion.Should().Be(1);
-        result.Ciphertext.Should().NotBe(plaintext);
+        await Assert.That(result).IsNotNull();
+        await Assert.That(result.Ciphertext).IsNotNullOrEmpty();
+        await Assert.That(result.KeyVersion).IsEqualTo(1);
+        await Assert.That(result.Ciphertext).IsNotEqualTo(plaintext);
     }
 
     [Test]
-    public void Encrypt_SameTextTwice_ShouldProduceDifferentCiphertext()
+    public async Task Encrypt_SameTextTwice_ShouldProduceDifferentCiphertext()
     {
         // Arrange
         var service = CreateService();
@@ -231,11 +230,11 @@ public class AesEncryptionServiceTests : IDisposable
         var result2 = service.Encrypt(plaintext);
 
         // Assert - due to random nonce, ciphertext should differ
-        result1.Ciphertext.Should().NotBe(result2.Ciphertext);
+        await Assert.That(result1.Ciphertext).IsNotEqualTo(result2.Ciphertext);
     }
 
     [Test]
-    public void Encrypt_WithEmptyString_ShouldSucceed()
+    public async Task Encrypt_WithEmptyString_ShouldSucceed()
     {
         // Arrange
         var service = CreateService();
@@ -245,12 +244,12 @@ public class AesEncryptionServiceTests : IDisposable
         var result = service.Encrypt(plaintext);
 
         // Assert
-        result.Should().NotBeNull();
-        result.Ciphertext.Should().NotBeNullOrEmpty();
+        await Assert.That(result).IsNotNull();
+        await Assert.That(result.Ciphertext).IsNotNullOrEmpty();
     }
 
     [Test]
-    public void Encrypt_WithLargeText_ShouldSucceed()
+    public async Task Encrypt_WithLargeText_ShouldSucceed()
     {
         // Arrange
         var service = CreateService();
@@ -260,12 +259,12 @@ public class AesEncryptionServiceTests : IDisposable
         var result = service.Encrypt(plaintext);
 
         // Assert
-        result.Should().NotBeNull();
-        result.Ciphertext.Should().NotBeNullOrEmpty();
+        await Assert.That(result).IsNotNull();
+        await Assert.That(result.Ciphertext).IsNotNullOrEmpty();
     }
 
     [Test]
-    public void Encrypt_WithUnicodeText_ShouldSucceed()
+    public async Task Encrypt_WithUnicodeText_ShouldSucceed()
     {
         // Arrange
         var service = CreateService();
@@ -275,12 +274,12 @@ public class AesEncryptionServiceTests : IDisposable
         var result = service.Encrypt(plaintext);
 
         // Assert
-        result.Should().NotBeNull();
-        result.Ciphertext.Should().NotBeNullOrEmpty();
+        await Assert.That(result).IsNotNull();
+        await Assert.That(result.Ciphertext).IsNotNullOrEmpty();
     }
 
     [Test]
-    public void Encrypt_WithNullPlaintext_ShouldThrow()
+    public async Task Encrypt_WithNullPlaintext_ShouldThrow()
     {
         // Arrange
         var service = CreateService();
@@ -289,11 +288,11 @@ public class AesEncryptionServiceTests : IDisposable
         var act = () => service.Encrypt(null!);
 
         // Assert
-        act.Should().Throw<ArgumentNullException>();
+        await Assert.That(act).Throws<ArgumentNullException>();
     }
 
     [Test]
-    public void Encrypt_AfterDispose_ShouldThrow()
+    public async Task Encrypt_AfterDispose_ShouldThrow()
     {
         // Arrange
         var service = CreateService();
@@ -303,13 +302,13 @@ public class AesEncryptionServiceTests : IDisposable
         var act = () => service.Encrypt("test");
 
         // Assert
-        act.Should().Throw<ObjectDisposedException>();
+        await Assert.That(act).Throws<ObjectDisposedException>();
     }
 
     // ==================== Decryption Tests ====================
 
     [Test]
-    public void Decrypt_WithValidCiphertext_ShouldReturnOriginalPlaintext()
+    public async Task Decrypt_WithValidCiphertext_ShouldReturnOriginalPlaintext()
     {
         // Arrange
         var service = CreateService();
@@ -320,11 +319,11 @@ public class AesEncryptionServiceTests : IDisposable
         var decrypted = service.Decrypt(encrypted.Ciphertext, encrypted.KeyVersion);
 
         // Assert
-        decrypted.Should().Be(originalText);
+        await Assert.That(decrypted).IsEqualTo(originalText);
     }
 
     [Test]
-    public void Decrypt_WithEmptyStringEncrypted_ShouldReturnEmptyString()
+    public async Task Decrypt_WithEmptyStringEncrypted_ShouldReturnEmptyString()
     {
         // Arrange
         var service = CreateService();
@@ -335,11 +334,11 @@ public class AesEncryptionServiceTests : IDisposable
         var decrypted = service.Decrypt(encrypted.Ciphertext, encrypted.KeyVersion);
 
         // Assert
-        decrypted.Should().BeEmpty();
+        await Assert.That(decrypted).IsEmpty();
     }
 
     [Test]
-    public void Decrypt_WithUnicodeText_ShouldReturnOriginal()
+    public async Task Decrypt_WithUnicodeText_ShouldReturnOriginal()
     {
         // Arrange
         var service = CreateService();
@@ -350,11 +349,11 @@ public class AesEncryptionServiceTests : IDisposable
         var decrypted = service.Decrypt(encrypted.Ciphertext, encrypted.KeyVersion);
 
         // Assert
-        decrypted.Should().Be(originalText);
+        await Assert.That(decrypted).IsEqualTo(originalText);
     }
 
     [Test]
-    public void Decrypt_WithWrongKeyVersion_ShouldThrow()
+    public async Task Decrypt_WithWrongKeyVersion_ShouldThrow()
     {
         // Arrange
         var service = CreateService();
@@ -364,12 +363,12 @@ public class AesEncryptionServiceTests : IDisposable
         var act = () => service.Decrypt(encrypted.Ciphertext, 999);
 
         // Assert
-        act.Should().Throw<InvalidOperationException>()
-            .WithMessage("*Key version 999 not found*");
+        await Assert.That(act).Throws<InvalidOperationException>()
+            .WithMessageContaining("Key version 999 not found");
     }
 
     [Test]
-    public void Decrypt_WithInvalidBase64_ShouldThrow()
+    public async Task Decrypt_WithInvalidBase64_ShouldThrow()
     {
         // Arrange
         var service = CreateService();
@@ -378,12 +377,12 @@ public class AesEncryptionServiceTests : IDisposable
         var act = () => service.Decrypt("not-valid-base64!!!", 1);
 
         // Assert
-        act.Should().Throw<InvalidOperationException>()
-            .WithMessage("*Invalid ciphertext format*");
+        await Assert.That(act).Throws<InvalidOperationException>()
+            .WithMessageContaining("Invalid ciphertext format");
     }
 
     [Test]
-    public void Decrypt_WithTruncatedCiphertext_ShouldThrow()
+    public async Task Decrypt_WithTruncatedCiphertext_ShouldThrow()
     {
         // Arrange
         var service = CreateService();
@@ -393,12 +392,12 @@ public class AesEncryptionServiceTests : IDisposable
         var act = () => service.Decrypt(shortCiphertext, 1);
 
         // Assert
-        act.Should().Throw<InvalidOperationException>()
-            .WithMessage("*Invalid ciphertext: too short*");
+        await Assert.That(act).Throws<InvalidOperationException>()
+            .WithMessageContaining("Invalid ciphertext: too short");
     }
 
     [Test]
-    public void Decrypt_WithTamperedCiphertext_ShouldThrow()
+    public async Task Decrypt_WithTamperedCiphertext_ShouldThrow()
     {
         // Arrange
         var service = CreateService();
@@ -413,12 +412,12 @@ public class AesEncryptionServiceTests : IDisposable
         var act = () => service.Decrypt(tampered, encrypted.KeyVersion);
 
         // Assert
-        act.Should().Throw<InvalidOperationException>()
-            .WithMessage("*authentication tag mismatch*");
+        await Assert.That(act).Throws<InvalidOperationException>()
+            .WithMessageContaining("authentication tag mismatch");
     }
 
     [Test]
-    public void Decrypt_AfterDispose_ShouldThrow()
+    public async Task Decrypt_AfterDispose_ShouldThrow()
     {
         // Arrange
         var service = CreateService();
@@ -429,33 +428,33 @@ public class AesEncryptionServiceTests : IDisposable
         var act = () => service.Decrypt(encrypted.Ciphertext, encrypted.KeyVersion);
 
         // Assert
-        act.Should().Throw<ObjectDisposedException>();
+        await Assert.That(act).Throws<ObjectDisposedException>();
     }
 
     // ==================== Key Version Tests ====================
 
     [Test]
-    public void HasKeyVersion_WithExistingVersion_ShouldReturnTrue()
+    public async Task HasKeyVersion_WithExistingVersion_ShouldReturnTrue()
     {
         // Arrange
         var service = CreateService();
 
         // Act & Assert
-        service.HasKeyVersion(1).Should().BeTrue();
+        await Assert.That(service.HasKeyVersion(1)).IsTrue();
     }
 
     [Test]
-    public void HasKeyVersion_WithNonExistingVersion_ShouldReturnFalse()
+    public async Task HasKeyVersion_WithNonExistingVersion_ShouldReturnFalse()
     {
         // Arrange
         var service = CreateService();
 
         // Act & Assert
-        service.HasKeyVersion(999).Should().BeFalse();
+        await Assert.That(service.HasKeyVersion(999)).IsFalse();
     }
 
     [Test]
-    public void HasKeyVersion_AfterDispose_ShouldThrow()
+    public async Task HasKeyVersion_AfterDispose_ShouldThrow()
     {
         // Arrange
         var service = CreateService();
@@ -465,13 +464,13 @@ public class AesEncryptionServiceTests : IDisposable
         var act = () => service.HasKeyVersion(1);
 
         // Assert
-        act.Should().Throw<ObjectDisposedException>();
+        await Assert.That(act).Throws<ObjectDisposedException>();
     }
 
     // ==================== Multi-Version Tests ====================
 
     [Test]
-    public void MultiVersion_EncryptWithCurrentVersion_ShouldUseCurrentVersion()
+    public async Task MultiVersion_EncryptWithCurrentVersion_ShouldUseCurrentVersion()
     {
         // Arrange
         var service = CreateService(new Dictionary<int, string>
@@ -484,11 +483,11 @@ public class AesEncryptionServiceTests : IDisposable
         var result = service.Encrypt("test");
 
         // Assert
-        result.KeyVersion.Should().Be(2);
+        await Assert.That(result.KeyVersion).IsEqualTo(2);
     }
 
     [Test]
-    public void MultiVersion_DecryptWithOldVersion_ShouldSucceed()
+    public async Task MultiVersion_DecryptWithOldVersion_ShouldSucceed()
     {
         // Arrange
         var service1 = CreateService(new Dictionary<int, string>
@@ -510,11 +509,11 @@ public class AesEncryptionServiceTests : IDisposable
         var decrypted = service2.Decrypt(encrypted.Ciphertext, encrypted.KeyVersion);
 
         // Assert
-        decrypted.Should().Be("test");
+        await Assert.That(decrypted).IsEqualTo("test");
     }
 
     [Test]
-    public void MultiVersion_ReEncrypt_ShouldWorkCorrectly()
+    public async Task MultiVersion_ReEncrypt_ShouldWorkCorrectly()
     {
         // Arrange - Encrypt with version 1
         var service1 = CreateService(new Dictionary<int, string>
@@ -538,7 +537,7 @@ public class AesEncryptionServiceTests : IDisposable
         var encryptedV2 = service2.Encrypt(decrypted);
 
         // Assert
-        encryptedV2.KeyVersion.Should().Be(2);
+        await Assert.That(encryptedV2.KeyVersion).IsEqualTo(2);
 
         // Verify can decrypt with only version 2
         service2.Dispose();
@@ -548,13 +547,13 @@ public class AesEncryptionServiceTests : IDisposable
         }, currentKeyVersion: 2);
 
         var finalDecrypted = service3.Decrypt(encryptedV2.Ciphertext, encryptedV2.KeyVersion);
-        finalDecrypted.Should().Be(originalText);
+        await Assert.That(finalDecrypted).IsEqualTo(originalText);
     }
 
     // ==================== Disposal Tests ====================
 
     [Test]
-    public void Dispose_MultipleTimes_ShouldNotThrow()
+    public async Task Dispose_MultipleTimes_ShouldNotThrow()
     {
         // Arrange
         var service = CreateService();

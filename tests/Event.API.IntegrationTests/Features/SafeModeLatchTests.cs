@@ -12,7 +12,6 @@ using Explore.Application.Models;
 using Explore.Domain;
 using Explore.Domain.Constants;
 using Explore.Persistence;
-using FluentAssertions;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -118,8 +117,7 @@ public class SafeModeLatchTests : IAsyncDisposable
 
         var response = await _instanceAdminClient.SendAsync(request);
 
-        response.StatusCode.Should().Be(HttpStatusCode.OK,
-            "instance admin emergency access is the only role preserved during safe-mode");
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK).Because("instance admin emergency access is the only role preserved during safe-mode");
     }
 
     [Test]
@@ -130,8 +128,7 @@ public class SafeModeLatchTests : IAsyncDisposable
 
         var response = await _instanceAdminClient.SendAsync(request);
 
-        response.StatusCode.Should().BeOneOf([HttpStatusCode.OK, HttpStatusCode.BadRequest],
-            "instance admin can still manage tenant resources during safe-mode");
+        await Assert.That([HttpStatusCode.OK, HttpStatusCode.BadRequest]).Contains(response.StatusCode).Because("instance admin can still manage tenant resources during safe-mode");
     }
 
     #endregion
@@ -146,8 +143,7 @@ public class SafeModeLatchTests : IAsyncDisposable
 
         var response = await _regularUserClient.SendAsync(request);
 
-        response.StatusCode.Should().Be(HttpStatusCode.Forbidden,
-            "regular users are denied all access during safe-mode");
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Forbidden).Because("regular users are denied all access during safe-mode");
     }
 
     [Test]
@@ -158,8 +154,7 @@ public class SafeModeLatchTests : IAsyncDisposable
 
         var response = await _regularUserClient.SendAsync(request);
 
-        response.StatusCode.Should().Be(HttpStatusCode.Forbidden,
-            "regular users cannot access instance settings during safe-mode");
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Forbidden).Because("regular users cannot access instance settings during safe-mode");
     }
 
     #endregion
@@ -174,9 +169,8 @@ public class SafeModeLatchTests : IAsyncDisposable
 
         var response = await _tenantAdminClient.SendAsync(request);
 
-        response.StatusCode.Should().Be(HttpStatusCode.Forbidden,
-            "tenant admin is denied access to own tenant during safe-mode — " +
-            "only instance admin emergency access is preserved");
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Forbidden).Because("tenant admin is denied access to own tenant during safe-mode — " +
+        "only instance admin emergency access is preserved");
     }
 
     #endregion
@@ -191,18 +185,15 @@ public class SafeModeLatchTests : IAsyncDisposable
 
         using var adminRequest = CreateAuthorizedRequest(HttpMethod.Get, "/api/instance/settings/modules", adminToken);
         var adminResponse = await _instanceAdminClient.SendAsync(adminRequest);
-        adminResponse.StatusCode.Should().Be(HttpStatusCode.OK,
-            "instance admin access should succeed on first request");
+        await Assert.That(adminResponse.StatusCode).IsEqualTo(HttpStatusCode.OK).Because("instance admin access should succeed on first request");
 
         using var userRequest = CreateAuthorizedRequest(HttpMethod.Post, "/api/tenant", userToken, CreateTenantJson());
         var userResponse = await _regularUserClient.SendAsync(userRequest);
-        userResponse.StatusCode.Should().Be(HttpStatusCode.Forbidden,
-            "regular user denied on first request after BYO Cerbos failure");
+        await Assert.That(userResponse.StatusCode).IsEqualTo(HttpStatusCode.Forbidden).Because("regular user denied on first request after BYO Cerbos failure");
 
         using var userRequest2 = CreateAuthorizedRequest(HttpMethod.Post, "/api/tenant", userToken, CreateTenantJson());
         var userResponse2 = await _regularUserClient.SendAsync(userRequest2);
-        userResponse2.StatusCode.Should().Be(HttpStatusCode.Forbidden,
-            "safe-mode latch persists — regular user still denied on subsequent requests");
+        await Assert.That(userResponse2.StatusCode).IsEqualTo(HttpStatusCode.Forbidden).Because("safe-mode latch persists — regular user still denied on subsequent requests");
     }
 
     #endregion
@@ -216,8 +207,7 @@ public class SafeModeLatchTests : IAsyncDisposable
 
         var response = await _regularUserClient.SendAsync(request);
 
-        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized,
-            "authentication (JWT validation) is independent of authorization (safe-mode)");
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized).Because("authentication (JWT validation) is independent of authorization (safe-mode)");
     }
 
     [Test]
@@ -227,8 +217,7 @@ public class SafeModeLatchTests : IAsyncDisposable
 
         var response = await _regularUserClient.SendAsync(request);
 
-        response.StatusCode.Should().Be(HttpStatusCode.OK,
-            "[AllowAnonymous] endpoints bypass both authentication and safe-mode authorization");
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK).Because("[AllowAnonymous] endpoints bypass both authentication and safe-mode authorization");
     }
 
     #endregion

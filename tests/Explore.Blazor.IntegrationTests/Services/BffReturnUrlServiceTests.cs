@@ -2,7 +2,6 @@
 // ABOUTME: Protects auth endpoint decomposition from changing local-return-url safety rules.
 
 using Explore.Blazor.Services.Auth;
-using FluentAssertions;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging.Abstractions;
 using TUnit.Core;
@@ -51,7 +50,7 @@ public sealed class BffReturnUrlServiceTests
     {
         var result = _service.BuildLoginRedirectUrl("/admin/tenant settings", "key cloak");
 
-        result.Should().Be("/login?returnUrl=%2Fadmin%2Ftenant%20settings&provider=key%20cloak");
+        await Assert.That(result).IsEqualTo("/login?returnUrl=%2Fadmin%2Ftenant%20settings&provider=key%20cloak");
         await Assert.That(result).DoesNotContain("challengeError=1");
     }
 

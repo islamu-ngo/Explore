@@ -148,6 +148,8 @@ public sealed class InstanceStorageAdminControllerTests
             adminContext,
             setupSecretProvider ?? Substitute.For<ISetupSecretProvider>(),
             Substitute.For<IDeploymentModeProvider>(),
+            Substitute.For<IAuthProviderConfigurationService>(),
+            Substitute.For<IAuthorizationProviderConfigurationService>(),
             storageSettingsAssembler ?? Substitute.For<IResourceAssembler<InstanceStorageSettingsDto, InstanceStorageSettingsDto>>())
         {
             ControllerContext = new ControllerContext

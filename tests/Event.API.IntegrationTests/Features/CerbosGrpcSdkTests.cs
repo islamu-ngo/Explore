@@ -7,7 +7,6 @@ using Cerbos.Sdk.Builder;
 using Cerbos.Sdk.Response;
 using Cerbos.Sdk.Utility;
 using Event.Api.IntegrationTests.Fixtures;
-using FluentAssertions;
 using Grpc.Net.Client;
 using TUnit.Core;
 
@@ -68,12 +67,12 @@ public class CerbosGrpcSdkTests : IDisposable
         var response = await SendCheckResourcesAsync(principal, resource);
         var result = response.Find("event-grpc-1");
 
-        result.Should().NotBeNull();
-        AssertEffect(result!, "view", Effect.Allow);
-        AssertEffect(result!, "create", Effect.Deny);
-        AssertEffect(result!, "update", Effect.Deny);
-        AssertEffect(result!, "delete", Effect.Deny);
-        AssertEffect(result!, "moderate-light", Effect.Allow);
+        await Assert.That(result).IsNotNull();
+        await AssertEffect(result!, "view", Effect.Allow);
+        await AssertEffect(result!, "create", Effect.Deny);
+        await AssertEffect(result!, "update", Effect.Deny);
+        await AssertEffect(result!, "delete", Effect.Deny);
+        await AssertEffect(result!, "moderate-light", Effect.Allow);
     }
 
     #endregion
@@ -93,10 +92,10 @@ public class CerbosGrpcSdkTests : IDisposable
         var response = await SendCheckResourcesAsync(principal, resource);
         var result = response.Find("event-grpc-2")!;
 
-        AssertEffect(result, "view", Effect.Allow);
-        AssertEffect(result, "create", Effect.Deny);
-        AssertEffect(result, "update", Effect.Deny);
-        AssertEffect(result, "delete", Effect.Deny);
+        await AssertEffect(result, "view", Effect.Allow);
+        await AssertEffect(result, "create", Effect.Deny);
+        await AssertEffect(result, "update", Effect.Deny);
+        await AssertEffect(result, "delete", Effect.Deny);
     }
 
     [Test]
@@ -112,7 +111,7 @@ public class CerbosGrpcSdkTests : IDisposable
         var response = await SendCheckResourcesAsync(principal, resource);
         var result = response.Find("create")!;
 
-        AssertEffect(result, "create", Effect.Allow,
+        await AssertEffect(result, "create", Effect.Allow,
             "human event pre-create checks are allowed through to CreateEventCommandHandler, where EventActorResolver enforces publishing policy");
     }
 
@@ -142,10 +141,10 @@ public class CerbosGrpcSdkTests : IDisposable
         var response = await SendCheckResourcesAsync(principal, resource);
         var result = response.Find(eventId);
 
-        result.Should().NotBeNull("tenant-scoped HATEOAS event checks must still use the bundled root policy when no tenant override exists");
-        AssertEffect(result!, "update", Effect.Allow);
-        AssertEffect(result!, "delete", Effect.Allow);
-        AssertEffect(result!, "publish", Effect.Allow);
+        await Assert.That(result).IsNotNull().Because("tenant-scoped HATEOAS event checks must still use the bundled root policy when no tenant override exists");
+        await AssertEffect(result!, "update", Effect.Allow);
+        await AssertEffect(result!, "delete", Effect.Allow);
+        await AssertEffect(result!, "publish", Effect.Allow);
     }
 
     [Test]
@@ -161,7 +160,7 @@ public class CerbosGrpcSdkTests : IDisposable
         var response = await SendCheckResourcesAsync(principal, resource);
         var result = response.Find("create")!;
 
-        AssertEffect(result, "create", Effect.Deny,
+        await AssertEffect(result, "create", Effect.Deny,
             "machine/API-key event create is governed by scope and owner checks, not the human pre-create rule");
     }
 
@@ -182,10 +181,10 @@ public class CerbosGrpcSdkTests : IDisposable
         var response = await SendCheckResourcesAsync(principal, resource);
         var result = response.Find("event-grpc-3")!;
 
-        AssertEffect(result, "view", Effect.Allow);
-        AssertEffect(result, "create", Effect.Deny);
-        AssertEffect(result, "update", Effect.Deny);
-        AssertEffect(result, "moderate-light", Effect.Allow);
+        await AssertEffect(result, "view", Effect.Allow);
+        await AssertEffect(result, "create", Effect.Deny);
+        await AssertEffect(result, "update", Effect.Deny);
+        await AssertEffect(result, "moderate-light", Effect.Allow);
     }
 
     [Test]
@@ -201,9 +200,9 @@ public class CerbosGrpcSdkTests : IDisposable
         var response = await SendCheckResourcesAsync(principal, resource);
         var result = response.Find("event-grpc-4")!;
 
-        AssertEffect(result, "create", Effect.Deny);
-        AssertEffect(result, "update", Effect.Deny);
-        AssertEffect(result, "delete", Effect.Deny);
+        await AssertEffect(result, "create", Effect.Deny);
+        await AssertEffect(result, "update", Effect.Deny);
+        await AssertEffect(result, "delete", Effect.Deny);
     }
 
     #endregion
@@ -223,10 +222,10 @@ public class CerbosGrpcSdkTests : IDisposable
         var response = await SendCheckResourcesAsync(principal, resource);
         var result = response.Find("event-grpc-5")!;
 
-        AssertEffect(result, "view", Effect.Allow);
-        AssertEffect(result, "create", Effect.Allow);
-        AssertEffect(result, "update", Effect.Allow);
-        AssertEffect(result, "delete", Effect.Allow);
+        await AssertEffect(result, "view", Effect.Allow);
+        await AssertEffect(result, "create", Effect.Allow);
+        await AssertEffect(result, "update", Effect.Allow);
+        await AssertEffect(result, "delete", Effect.Allow);
     }
 
     [Test]
@@ -242,9 +241,9 @@ public class CerbosGrpcSdkTests : IDisposable
         var response = await SendCheckResourcesAsync(principal, resource);
         var result = response.Find("event-grpc-6")!;
 
-        AssertEffect(result, "create", Effect.Deny);
-        AssertEffect(result, "update", Effect.Deny);
-        AssertEffect(result, "delete", Effect.Deny);
+        await AssertEffect(result, "create", Effect.Deny);
+        await AssertEffect(result, "update", Effect.Deny);
+        await AssertEffect(result, "delete", Effect.Deny);
     }
 
     #endregion
@@ -279,8 +278,8 @@ public class CerbosGrpcSdkTests : IDisposable
         var eventResult = response.Find("batch-event-1")!;
         var orgResult = response.Find("batch-org-1")!;
 
-        AssertEffect(eventResult, "view", Effect.Allow);
-        AssertEffect(orgResult, "view", Effect.Allow);
+        await AssertEffect(eventResult, "view", Effect.Allow);
+        await AssertEffect(orgResult, "view", Effect.Allow);
     }
 
     #endregion
@@ -300,7 +299,7 @@ public class CerbosGrpcSdkTests : IDisposable
         var response = await SendCheckResourcesAsync(principal, resource);
         var result = response.Find("setting-grpc-1")!;
 
-        AssertEffect(result, "update", Effect.Deny,
+        await AssertEffect(result, "update", Effect.Deny,
             "tenant admin must be denied update when isLockedByInstance=true");
     }
 
@@ -319,7 +318,7 @@ public class CerbosGrpcSdkTests : IDisposable
         var response = await SendCheckResourcesAsync(principal, resource);
         var result = response.Find("setting-grpc-tenant-branding")!;
 
-        AssertEffect(result, "update", Effect.Allow,
+        await AssertEffect(result, "update", Effect.Allow,
             "tenant.branding uses handler-level field locks after resource authorization");
     }
 
@@ -339,15 +338,14 @@ public class CerbosGrpcSdkTests : IDisposable
         return await _client.CheckResourcesAsync(request);
     }
 
-    private static void AssertEffect(
+    private static async Task AssertEffect(
         CheckResourcesResponse.Types.ResultEntry result,
         string action,
         Effect expected,
         string? because = null)
     {
-        result.Actions.TryGetValue(action, out var actual).Should().BeTrue(
-            $"action '{action}' must be present in the Cerbos response");
-        actual.Should().Be(expected, because ?? $"action '{action}' should be {expected}");
+        await Assert.That(result.Actions.TryGetValue(action, out var actual)).IsTrue().Because($"action '{action}' must be present in the Cerbos response");
+        await Assert.That(actual).IsEqualTo(expected).Because(because ?? $"action '{action}' should be {expected}");
     }
 
     private static Principal BuildRegularUserPrincipal() =>

@@ -28,7 +28,6 @@ using Explore.Domain.Settings;
 using Explore.Persistence;
 using Explore.Persistence.Extensions;
 using Explore.Persistence.QueryFilters;
-using FluentAssertions;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.EntityFrameworkCore;
@@ -68,8 +67,8 @@ public sealed class McpProtocolContractTests
         using var resourceTemplates = await mcp.InvokeAsync("resources/templates/list");
         using var prompts = await mcp.InvokeAsync("prompts/list");
 
-        GetResult(initialize).TryGetProperty("protocolVersion", out _).Should().BeTrue();
-        GetNames(GetResult(tools), "tools").Should().Contain(
+        await Assert.That(GetResult(initialize).TryGetProperty("protocolVersion", out _)).IsTrue();
+        string[] expectedToolNames =
         [
             "list_ai_tool_contracts",
             "search_public_events",
@@ -88,14 +87,13 @@ public sealed class McpProtocolContractTests
             "get_event_session_template_sync_context",
             "propose_ai_tool_action",
             .. ProjectedProposalToolNames
-        ]);
-        GetNames(GetResult(resources), "resources").Should().Contain("ai_conversations");
-        GetNames(GetResult(resourceTemplates), "resourceTemplates").Should().Contain([
-            "ai_conversation_detail",
-            "event_management_context"]);
-        GetNames(GetResult(prompts), "prompts").Should().Contain([
-            "create_event_draft_with_confirmation",
-            "manage_event_with_confirmation"]);
+        ];
+        await Assert.That(expectedToolNames.All(GetNames(GetResult(tools), "tools").Contains)).IsTrue();
+        await Assert.That(GetNames(GetResult(resources), "resources")).Contains("ai_conversations");
+        await Assert.That(new[] { "ai_conversation_detail",
+        "event_management_context" }.All(GetNames(GetResult(resourceTemplates), "resourceTemplates").Contains)).IsTrue();
+        await Assert.That(new[] { "create_event_draft_with_confirmation",
+        "manage_event_with_confirmation" }.All(GetNames(GetResult(prompts), "prompts").Contains)).IsTrue();
     }
 
     [Test]
@@ -115,13 +113,13 @@ public sealed class McpProtocolContractTests
         var mcp = McpProtocolTestClient.Authenticated(httpClient, userId);
 
         using var registryCall = await mcp.CallToolAsync("list_ai_tool_contracts", new JsonObject());
-        var registryText = GetFirstTextContent(GetResult(registryCall));
+        var registryText = await GetFirstTextContent(GetResult(registryCall));
         using var registry = JsonDocument.Parse(registryText);
-        registry.RootElement.GetProperty("Tools").GetArrayLength().Should().BeGreaterThan(0);
-        registryText.Should().Contain("CreateEventDraft");
+        await Assert.That(registry.RootElement.GetProperty("Tools").GetArrayLength()).IsGreaterThan(0);
+        await Assert.That(registryText).Contains("CreateEventDraft");
         var normalizedRegistryText = registryText.ToLowerInvariant();
-        normalizedRegistryText.Should().NotContain("providerendpoint");
-        normalizedRegistryText.Should().NotContain("apikey");
+        await Assert.That(normalizedRegistryText).DoesNotContain("providerendpoint");
+        await Assert.That(normalizedRegistryText).DoesNotContain("apikey");
 
         using var genericProposal = await mcp.CallToolAsync("propose_ai_tool_action", new JsonObject
         {
@@ -256,30 +254,30 @@ public sealed class McpProtocolContractTests
             ["acknowledgedConsequences"] = true
         });
 
-        AssertSuccessfulToolResult(genericProposal);
-        AssertSuccessfulToolResult(projectedProposal);
-        AssertSuccessfulToolResult(projectedUpdateProposal);
-        AssertSuccessfulToolResult(projectedPublishProposal);
-        AssertSuccessfulToolResult(projectedDeleteProposal);
-        AssertSuccessfulToolResult(projectedIslamicAspectProposal);
-        AssertSuccessfulToolResult(projectedDeleteIslamicAspectProposal);
-        AssertSuccessfulToolResult(projectedTechAspectProposal);
-        AssertSuccessfulToolResult(projectedDeleteTechAspectProposal);
-        AssertSuccessfulToolResult(projectedSessionProposal);
-        AssertSuccessfulToolResult(projectedTemplateSyncProposal);
-        (await CountEventsAsync(factory)).Should().Be(eventCountBefore);
-        (await ReadAspectCountsAsync(factory)).Should().Be(aspectCountsBefore);
+        await AssertSuccessfulToolResult(genericProposal);
+        await AssertSuccessfulToolResult(projectedProposal);
+        await AssertSuccessfulToolResult(projectedUpdateProposal);
+        await AssertSuccessfulToolResult(projectedPublishProposal);
+        await AssertSuccessfulToolResult(projectedDeleteProposal);
+        await AssertSuccessfulToolResult(projectedIslamicAspectProposal);
+        await AssertSuccessfulToolResult(projectedDeleteIslamicAspectProposal);
+        await AssertSuccessfulToolResult(projectedTechAspectProposal);
+        await AssertSuccessfulToolResult(projectedDeleteTechAspectProposal);
+        await AssertSuccessfulToolResult(projectedSessionProposal);
+        await AssertSuccessfulToolResult(projectedTemplateSyncProposal);
+        await Assert.That((await CountEventsAsync(factory))).IsEqualTo(eventCountBefore);
+        await Assert.That((await ReadAspectCountsAsync(factory))).IsEqualTo(aspectCountsBefore);
         var existingEventAfter = await ReadEventStateAsync(factory, existingEvent.EventId);
-        existingEventAfter.Should().Be(existingEventBefore);
+        await Assert.That(existingEventAfter).IsEqualTo(existingEventBefore);
 
         using var detailRequest = CreateAuthenticatedRequest(
             HttpMethod.Get,
             $"/api/ai/assistant/conversations/{conversationId}",
             userId);
         using var detailResponse = await httpClient.SendAsync(detailRequest);
-        detailResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        await Assert.That(detailResponse.StatusCode).IsEqualTo(HttpStatusCode.OK);
         using var detail = await JsonDocument.ParseAsync(await detailResponse.Content.ReadAsStreamAsync());
-        detail.RootElement.GetProperty("proposedActions").GetArrayLength().Should().Be(11);
+        await Assert.That(detail.RootElement.GetProperty("proposedActions").GetArrayLength()).IsEqualTo(11);
     }
 
     [Test]
@@ -323,10 +321,10 @@ public sealed class McpProtocolContractTests
             ["acknowledgedConsequences"] = true
         });
 
-        using var descriptor = JsonDocument.Parse(GetFirstTextContent(GetResult(projectedModerationProposal)));
-        descriptor.RootElement.GetProperty("Success").GetBoolean().Should().BeFalse();
-        descriptor.RootElement.GetProperty("FailureCode").GetString().Should().Be("tool_authorization_denied");
-        deniedChecks.Should().ContainSingle(check =>
+        using var descriptor = JsonDocument.Parse(await GetFirstTextContent(GetResult(projectedModerationProposal)));
+        await Assert.That(descriptor.RootElement.GetProperty("Success").GetBoolean()).IsFalse();
+        await Assert.That(descriptor.RootElement.GetProperty("FailureCode").GetString()).IsEqualTo("tool_authorization_denied");
+        await Assert.That(deniedChecks).HasSingleItem(check =>
             check.ResourceId == existingEvent.EventId.ToString() &&
             HasGuidAttribute(check.ResourceAttributes, "eventId", existingEvent.EventId) &&
             HasGuidAttribute(check.ResourceAttributes, "tenantId", PlatformDefaults.DefaultTenantId));
@@ -336,9 +334,9 @@ public sealed class McpProtocolContractTests
             $"/api/ai/assistant/conversations/{conversationId}",
             userId);
         using var detailResponse = await httpClient.SendAsync(detailRequest);
-        detailResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        await Assert.That(detailResponse.StatusCode).IsEqualTo(HttpStatusCode.OK);
         using var detail = await JsonDocument.ParseAsync(await detailResponse.Content.ReadAsStreamAsync());
-        detail.RootElement.GetProperty("proposedActions").GetArrayLength().Should().Be(0);
+        await Assert.That(detail.RootElement.GetProperty("proposedActions").GetArrayLength()).IsEqualTo(0);
     }
 
     [Test]
@@ -386,12 +384,12 @@ public sealed class McpProtocolContractTests
             ["acknowledgedConsequences"] = true
         });
 
-        AssertSuccessfulToolResult(projectedModerationProposal);
-        moderationChecks.Should().ContainSingle(check =>
+        await AssertSuccessfulToolResult(projectedModerationProposal);
+        await Assert.That(moderationChecks).HasSingleItem(check =>
             check.ResourceId == existingEvent.EventId.ToString() &&
             HasGuidAttribute(check.ResourceAttributes, "eventId", existingEvent.EventId) &&
             HasGuidAttribute(check.ResourceAttributes, "tenantId", targetTenantId));
-        (await ReadEventStateAsync(factory, existingEvent.EventId)).Should().Be(eventStateBefore);
+        await Assert.That((await ReadEventStateAsync(factory, existingEvent.EventId))).IsEqualTo(eventStateBefore);
 
         using var detailRequest = CreateAuthenticatedRequest(
             HttpMethod.Get,
@@ -399,10 +397,10 @@ public sealed class McpProtocolContractTests
             userId,
             instanceAdminHeader);
         using var detailResponse = await httpClient.SendAsync(detailRequest);
-        detailResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        await Assert.That(detailResponse.StatusCode).IsEqualTo(HttpStatusCode.OK);
         using var detail = await JsonDocument.ParseAsync(await detailResponse.Content.ReadAsStreamAsync());
         var proposedActions = detail.RootElement.GetProperty("proposedActions");
-        proposedActions.GetArrayLength().Should().Be(1);
+        await Assert.That(proposedActions.GetArrayLength()).IsEqualTo(1);
     }
 
     [Test]
@@ -417,15 +415,15 @@ public sealed class McpProtocolContractTests
         using var malformed = await mcp.SendRawAsync(
             "{ \"jsonrpc\": \"2.0\", \"id\": 101, \"method\": \"tools/call\", " +
             $"\"params\": {{ \"name\": \"missing\", \"arguments\": {{ \"prompt\": \"{SensitiveMarker}\" }} }} ");
-        malformed.StatusCode.Should().NotBe(HttpStatusCode.Unauthorized);
-        AssertNoSensitiveEcho(await malformed.Content.ReadAsStringAsync());
+        await Assert.That(malformed.StatusCode).IsNotEqualTo(HttpStatusCode.Unauthorized);
+        await AssertNoSensitiveEcho(await malformed.Content.ReadAsStringAsync());
 
         using var unknownTool = await mcp.CallToolAsync("unknown_tool", new JsonObject
         {
             ["prompt"] = SensitiveMarker,
             ["apiKey"] = "redacted-test-api-key"
         }, expectProtocolSuccess: false);
-        AssertJsonRpcFailureDoesNotEchoSensitiveData(unknownTool);
+        await AssertJsonRpcFailureDoesNotEchoSensitiveData(unknownTool);
 
         using var hiddenField = await mcp.CallToolAsync("propose_create_event_draft", new JsonObject
         {
@@ -433,10 +431,10 @@ public sealed class McpProtocolContractTests
             ["title"] = "Hidden field smoke",
             ["tenantId"] = SensitiveMarker
         });
-        var hiddenDescriptor = JsonDocument.Parse(GetFirstTextContent(GetResult(hiddenField)));
-        hiddenDescriptor.RootElement.GetProperty("Success").GetBoolean().Should().BeFalse();
-        hiddenDescriptor.RootElement.GetProperty("FailureCode").GetString().Should().Be("invalid_tool_arguments");
-        AssertNoSensitiveEcho(hiddenDescriptor.RootElement.GetRawText());
+        var hiddenDescriptor = JsonDocument.Parse(await GetFirstTextContent(GetResult(hiddenField)));
+        await Assert.That(hiddenDescriptor.RootElement.GetProperty("Success").GetBoolean()).IsFalse();
+        await Assert.That(hiddenDescriptor.RootElement.GetProperty("FailureCode").GetString()).IsEqualTo("invalid_tool_arguments");
+        await AssertNoSensitiveEcho(hiddenDescriptor.RootElement.GetRawText());
     }
 
     [Test]
@@ -449,7 +447,7 @@ public sealed class McpProtocolContractTests
         using var response = await mcp.SendRawAsync(
             "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"tools/list\"}");
 
-        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.NotFound);
     }
 
     private static McpProtocolContractFactory CreateMcpEnabledFactory(
@@ -477,10 +475,10 @@ public sealed class McpProtocolContractTests
         });
 
         using var response = await client.SendAsync(request);
-        response.StatusCode.Should().Be(HttpStatusCode.Created);
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Created);
         var body = await response.Content.ReadFromJsonAsync<BaseCommandResponse<Guid>>();
-        body.Should().NotBeNull();
-        body!.Success.Should().BeTrue();
+        await Assert.That(body).IsNotNull();
+        await Assert.That(body!.Success).IsTrue();
         return body.Id;
     }
 
@@ -635,37 +633,37 @@ public sealed class McpProtocolContractTests
             .ToArray();
     }
 
-    private static string GetFirstTextContent(JsonElement result)
+    private static async Task<string> GetFirstTextContent(JsonElement result)
     {
         var content = result.GetProperty("content");
-        content.ValueKind.Should().Be(JsonValueKind.Array);
-        content.GetArrayLength().Should().BeGreaterThan(0);
+        await Assert.That(content.ValueKind).IsEqualTo(JsonValueKind.Array);
+        await Assert.That(content.GetArrayLength()).IsGreaterThan(0);
         return content[0].GetProperty("text").GetString() ?? string.Empty;
     }
 
-    private static void AssertSuccessfulToolResult(JsonDocument document)
+    private static async Task AssertSuccessfulToolResult(JsonDocument document)
     {
-        var descriptor = JsonDocument.Parse(GetFirstTextContent(GetResult(document)));
+        var descriptor = JsonDocument.Parse(await GetFirstTextContent(GetResult(document)));
         var message = descriptor.RootElement.GetProperty("Message").GetString();
-        descriptor.RootElement.GetProperty("Success").GetBoolean().Should().BeTrue(message);
-        descriptor.RootElement.GetProperty("Message").GetString().Should().Contain("Confirm");
-        descriptor.RootElement.GetProperty("Id").GetGuid().Should().NotBeEmpty();
+        await Assert.That(descriptor.RootElement.GetProperty("Success").GetBoolean()).IsTrue().Because(message);
+        await Assert.That(descriptor.RootElement.GetProperty("Message").GetString()).Contains("Confirm");
+        await Assert.That(descriptor.RootElement.GetProperty("Id").GetGuid()).IsNotEqualTo(Guid.Empty);
     }
 
-    private static void AssertJsonRpcFailureDoesNotEchoSensitiveData(JsonDocument document)
+    private static async Task AssertJsonRpcFailureDoesNotEchoSensitiveData(JsonDocument document)
     {
-        document.RootElement.TryGetProperty("error", out _).Should().BeTrue();
-        AssertNoSensitiveEcho(document.RootElement.GetRawText());
+        await Assert.That(document.RootElement.TryGetProperty("error", out _)).IsTrue();
+        await AssertNoSensitiveEcho(document.RootElement.GetRawText());
     }
 
-    private static void AssertNoSensitiveEcho(string value)
+    private static async Task AssertNoSensitiveEcho(string value)
     {
-        value.Should().NotContain(SensitiveMarker);
+        await Assert.That(value).DoesNotContain(SensitiveMarker);
         var normalized = value.ToLowerInvariant();
-        normalized.Should().NotContain("redacted-test-api-key");
-        normalized.Should().NotContain("bearer");
-        normalized.Should().NotContain("stack trace");
-        value.Should().NotContain("System.");
+        await Assert.That(normalized).DoesNotContain("redacted-test-api-key");
+        await Assert.That(normalized).DoesNotContain("bearer");
+        await Assert.That(normalized).DoesNotContain("stack trace");
+        await Assert.That(value).DoesNotContain("System.");
     }
 
     private static bool TryGetProperty(JsonElement element, string propertyName, out JsonElement value)
@@ -762,13 +760,13 @@ public sealed class McpProtocolContractTests
             }
 
             using var response = await SendRawAsync(requestBody.ToJsonString());
-            response.StatusCode.Should().Be(HttpStatusCode.OK);
+            await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
             var document = await ReadJsonRpcDocumentAsync(response);
 
             if (expectProtocolSuccess)
             {
-                document.RootElement.TryGetProperty("error", out _).Should().BeFalse(document.RootElement.GetRawText());
-                document.RootElement.TryGetProperty("result", out _).Should().BeTrue(document.RootElement.GetRawText());
+                await Assert.That(document.RootElement.TryGetProperty("error", out _)).IsFalse().Because(document.RootElement.GetRawText());
+                await Assert.That(document.RootElement.TryGetProperty("result", out _)).IsTrue().Because(document.RootElement.GetRawText());
             }
 
             return document;

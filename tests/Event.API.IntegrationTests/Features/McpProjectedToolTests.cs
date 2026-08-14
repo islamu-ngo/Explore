@@ -7,7 +7,6 @@ using Explore.Application.Features.AiAssistant.Requests.Commands;
 using Explore.Application.Features.AiAssistant.Tools;
 using Explore.Application.Responses;
 using Explore.Domain.Ai;
-using FluentAssertions;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.DependencyInjection;
@@ -27,247 +26,246 @@ public sealed class McpProjectedToolTests
         .ToArray();
 
     [Test]
-    public void CreateTools_ProjectsMcpExposedRegistryDefinitions()
+    public async Task CreateTools_ProjectsMcpExposedRegistryDefinitions()
     {
         var tools = AiMcpProjectedToolFactory.CreateTools(AiToolContractRegistry.CreateDefault());
 
-        tools.Select(tool => tool.ProtocolTool.Name)
-            .Order(StringComparer.Ordinal)
-            .Should()
-            .Equal(ProjectedProposalToolNames);
+        await Assert.That(tools.Select(tool => tool.ProtocolTool.Name)
+                .Order(StringComparer.Ordinal))
+            .IsEquivalentTo(ProjectedProposalToolNames, TUnit.Assertions.Enums.CollectionOrdering.Matching);
 
         var tool = tools.Single(candidate => candidate.ProtocolTool.Name == "propose_create_event_draft");
-        tool.ProtocolTool.Name.Should().Be("propose_create_event_draft");
-        tool.ProtocolTool.Title.Should().Be("Create event draft");
-        tool.ProtocolTool.Description.Should().Contain("proposed action");
-        tool.ProtocolTool.Annotations.Should().NotBeNull();
-        tool.ProtocolTool.Annotations!.ReadOnlyHint.Should().BeFalse();
-        tool.ProtocolTool.Annotations.DestructiveHint.Should().BeFalse();
-        tool.ProtocolTool.Annotations.IdempotentHint.Should().BeFalse();
-        tool.ProtocolTool.Annotations.OpenWorldHint.Should().BeFalse();
-        tool.ProtocolTool.Meta!["islamuRiskClass"]!.GetValue<string>().Should().Be("Medium");
-        tool.ProtocolTool.Meta!["islamuApprovalMode"]!.GetValue<string>().Should().Be("HumanConfirmationRequired");
-        tool.ProtocolTool.Meta!["islamuDestructive"]!.GetValue<bool>().Should().BeFalse();
-        tool.Metadata.OfType<AuthorizeAttribute>().Should().ContainSingle();
+        await Assert.That(tool.ProtocolTool.Name).IsEqualTo("propose_create_event_draft");
+        await Assert.That(tool.ProtocolTool.Title).IsEqualTo("Create event draft");
+        await Assert.That(tool.ProtocolTool.Description).Contains("proposed action");
+        await Assert.That(tool.ProtocolTool.Annotations).IsNotNull();
+        await Assert.That(tool.ProtocolTool.Annotations!.ReadOnlyHint).IsFalse();
+        await Assert.That(tool.ProtocolTool.Annotations.DestructiveHint).IsFalse();
+        await Assert.That(tool.ProtocolTool.Annotations.IdempotentHint).IsFalse();
+        await Assert.That(tool.ProtocolTool.Annotations.OpenWorldHint).IsFalse();
+        await Assert.That(tool.ProtocolTool.Meta!["islamuRiskClass"]!.GetValue<string>()).IsEqualTo("Medium");
+        await Assert.That(tool.ProtocolTool.Meta!["islamuApprovalMode"]!.GetValue<string>()).IsEqualTo("HumanConfirmationRequired");
+        await Assert.That(tool.ProtocolTool.Meta!["islamuDestructive"]!.GetValue<bool>()).IsFalse();
+        await Assert.That(tool.Metadata.OfType<AuthorizeAttribute>()).HasSingleItem();
     }
 
     [Test]
-    public void CreateTools_ExcludesDefinitionsNotExposedToMcp()
+    public async Task CreateTools_ExcludesDefinitionsNotExposedToMcp()
     {
         var hiddenDefinition = CreateEventDraftAiToolDefinition.Create() with { ExposeToMcp = false };
         var registry = new AiToolContractRegistry([hiddenDefinition]);
 
         var tools = AiMcpProjectedToolFactory.CreateTools(registry);
 
-        tools.Should().BeEmpty();
+        await Assert.That(tools).IsEmpty();
     }
 
     [Test]
-    public void ProjectedToolInputSchema_PreservesRegistryPayloadFieldsAndAddsProposalEnvelope()
+    public async Task ProjectedToolInputSchema_PreservesRegistryPayloadFieldsAndAddsProposalEnvelope()
     {
         var definition = CreateEventDraftAiToolDefinition.Create();
         var tool = new AiMcpProjectedProposalTool(definition);
 
         var schema = tool.ProtocolTool.InputSchema;
-        schema.GetProperty("type").GetString().Should().Be("object");
-        schema.GetProperty("additionalProperties").GetBoolean().Should().BeFalse();
+        await Assert.That(schema.GetProperty("type").GetString()).IsEqualTo("object");
+        await Assert.That(schema.GetProperty("additionalProperties").GetBoolean()).IsFalse();
 
         var properties = schema.GetProperty("properties");
-        properties.TryGetProperty("conversationId", out _).Should().BeTrue();
-        properties.TryGetProperty("summary", out _).Should().BeTrue();
-        properties.TryGetProperty("title", out _).Should().BeTrue();
-        properties.TryGetProperty("tenantId", out _).Should().BeFalse();
+        await Assert.That(properties.TryGetProperty("conversationId", out _)).IsTrue();
+        await Assert.That(properties.TryGetProperty("summary", out _)).IsTrue();
+        await Assert.That(properties.TryGetProperty("title", out _)).IsTrue();
+        await Assert.That(properties.TryGetProperty("tenantId", out _)).IsFalse();
 
         var projectedPayloadFields = properties.EnumerateObject()
             .Select(property => property.Name)
             .Where(name => name is not "conversationId" and not "summary")
             .Order(StringComparer.OrdinalIgnoreCase)
             .ToArray();
-        projectedPayloadFields.Should().Equal(definition.AllowedPayloadFields.Order(StringComparer.OrdinalIgnoreCase));
+        await Assert.That(projectedPayloadFields).IsEquivalentTo(
+            definition.AllowedPayloadFields.Order(StringComparer.OrdinalIgnoreCase),
+            TUnit.Assertions.Enums.CollectionOrdering.Matching);
 
         var required = schema.GetProperty("required")
             .EnumerateArray()
             .Select(value => value.GetString())
             .ToArray();
-        required.Should().Contain("conversationId");
-        required.Should().Contain("title");
+        await Assert.That(required).Contains("conversationId");
+        await Assert.That(required).Contains("title");
     }
 
     [Test]
-    public void ProjectedToolInputSchema_ForUpdateDraft_RequiresEventIdAndConcurrencyStamp()
+    public async Task ProjectedToolInputSchema_ForUpdateDraft_RequiresEventIdAndConcurrencyStamp()
     {
         var definition = UpdateEventDraftAiToolDefinition.Create();
         var tool = new AiMcpProjectedProposalTool(definition);
 
         var schema = tool.ProtocolTool.InputSchema;
         var properties = schema.GetProperty("properties");
-        properties.TryGetProperty("eventId", out _).Should().BeTrue();
-        properties.TryGetProperty("expectedConcurrencyStamp", out _).Should().BeTrue();
-        properties.TryGetProperty("tenantId", out _).Should().BeFalse();
-        properties.TryGetProperty("actorId", out _).Should().BeFalse();
-        properties.TryGetProperty("eventStatusId", out _).Should().BeFalse();
+        await Assert.That(properties.TryGetProperty("eventId", out _)).IsTrue();
+        await Assert.That(properties.TryGetProperty("expectedConcurrencyStamp", out _)).IsTrue();
+        await Assert.That(properties.TryGetProperty("tenantId", out _)).IsFalse();
+        await Assert.That(properties.TryGetProperty("actorId", out _)).IsFalse();
+        await Assert.That(properties.TryGetProperty("eventStatusId", out _)).IsFalse();
 
         var required = schema.GetProperty("required")
             .EnumerateArray()
             .Select(value => value.GetString())
             .ToArray();
-        required.Should().Contain("conversationId");
-        required.Should().Contain("eventId");
-        required.Should().Contain("expectedConcurrencyStamp");
-        required.Should().Contain("title");
+        await Assert.That(required).Contains("conversationId");
+        await Assert.That(required).Contains("eventId");
+        await Assert.That(required).Contains("expectedConcurrencyStamp");
+        await Assert.That(required).Contains("title");
     }
 
     [Test]
-    public void ProjectedToolInputSchema_ForPublishEvent_RequiresEventIdConcurrencyStampAndReadiness()
+    public async Task ProjectedToolInputSchema_ForPublishEvent_RequiresEventIdConcurrencyStampAndReadiness()
     {
         var definition = PublishEventAiToolDefinition.Create();
         var tool = new AiMcpProjectedProposalTool(definition);
 
         var schema = tool.ProtocolTool.InputSchema;
         var properties = schema.GetProperty("properties");
-        properties.TryGetProperty("eventId", out _).Should().BeTrue();
-        properties.TryGetProperty("expectedConcurrencyStamp", out _).Should().BeTrue();
-        properties.TryGetProperty("readinessIsReady", out _).Should().BeTrue();
-        properties.TryGetProperty("readinessErrorCount", out _).Should().BeTrue();
-        properties.TryGetProperty("tenantId", out _).Should().BeFalse();
-        properties.TryGetProperty("eventStatusId", out _).Should().BeFalse();
-        properties.TryGetProperty("publishedAt", out _).Should().BeFalse();
+        await Assert.That(properties.TryGetProperty("eventId", out _)).IsTrue();
+        await Assert.That(properties.TryGetProperty("expectedConcurrencyStamp", out _)).IsTrue();
+        await Assert.That(properties.TryGetProperty("readinessIsReady", out _)).IsTrue();
+        await Assert.That(properties.TryGetProperty("readinessErrorCount", out _)).IsTrue();
+        await Assert.That(properties.TryGetProperty("tenantId", out _)).IsFalse();
+        await Assert.That(properties.TryGetProperty("eventStatusId", out _)).IsFalse();
+        await Assert.That(properties.TryGetProperty("publishedAt", out _)).IsFalse();
 
         var required = schema.GetProperty("required")
             .EnumerateArray()
             .Select(value => value.GetString())
             .ToArray();
-        required.Should().Contain("conversationId");
-        required.Should().Contain("eventId");
-        required.Should().Contain("expectedConcurrencyStamp");
-        required.Should().Contain("readinessIsReady");
-        required.Should().Contain("readinessErrorCount");
+        await Assert.That(required).Contains("conversationId");
+        await Assert.That(required).Contains("eventId");
+        await Assert.That(required).Contains("expectedConcurrencyStamp");
+        await Assert.That(required).Contains("readinessIsReady");
+        await Assert.That(required).Contains("readinessErrorCount");
     }
 
     [Test]
-    public void ProjectedToolInputSchema_ForDeleteEvent_RequiresDestructiveConfirmation()
+    public async Task ProjectedToolInputSchema_ForDeleteEvent_RequiresDestructiveConfirmation()
     {
         var definition = DeleteEventAiToolDefinition.Create();
         var tool = new AiMcpProjectedProposalTool(definition);
 
-        tool.ProtocolTool.Annotations!.DestructiveHint.Should().BeTrue();
-        tool.ProtocolTool.Meta!["islamuDestructive"]!.GetValue<bool>().Should().BeTrue();
+        await Assert.That(tool.ProtocolTool.Annotations!.DestructiveHint).IsTrue();
+        await Assert.That(tool.ProtocolTool.Meta!["islamuDestructive"]!.GetValue<bool>()).IsTrue();
 
         var schema = tool.ProtocolTool.InputSchema;
         var properties = schema.GetProperty("properties");
-        properties.TryGetProperty("eventId", out _).Should().BeTrue();
-        properties.TryGetProperty("expectedConcurrencyStamp", out _).Should().BeTrue();
-        properties.TryGetProperty("managementContextHasDelete", out _).Should().BeTrue();
-        properties.TryGetProperty("destructiveSummary", out _).Should().BeTrue();
-        properties.TryGetProperty("confirmationPhrase", out _).Should().BeTrue();
-        properties.TryGetProperty("tenantId", out _).Should().BeFalse();
+        await Assert.That(properties.TryGetProperty("eventId", out _)).IsTrue();
+        await Assert.That(properties.TryGetProperty("expectedConcurrencyStamp", out _)).IsTrue();
+        await Assert.That(properties.TryGetProperty("managementContextHasDelete", out _)).IsTrue();
+        await Assert.That(properties.TryGetProperty("destructiveSummary", out _)).IsTrue();
+        await Assert.That(properties.TryGetProperty("confirmationPhrase", out _)).IsTrue();
+        await Assert.That(properties.TryGetProperty("tenantId", out _)).IsFalse();
 
         var required = schema.GetProperty("required")
             .EnumerateArray()
             .Select(value => value.GetString())
             .ToArray();
-        required.Should().Contain([
-            "conversationId",
-            "eventId",
-            "expectedConcurrencyStamp",
-            "managementContextHasDelete",
-            "destructiveSummary",
-            "confirmationPhrase",
-            "acknowledgedConsequences"]);
+        await Assert.That(required).Contains("conversationId");
+        await Assert.That(required).Contains("eventId");
+        await Assert.That(required).Contains("expectedConcurrencyStamp");
+        await Assert.That(required).Contains("managementContextHasDelete");
+        await Assert.That(required).Contains("destructiveSummary");
+        await Assert.That(required).Contains("confirmationPhrase");
+        await Assert.That(required).Contains("acknowledgedConsequences");
     }
 
     [Test]
-    public void ProjectedToolInputSchema_ForAspectTools_RequiresModuleAndPermissionContext()
+    public async Task ProjectedToolInputSchema_ForAspectTools_RequiresModuleAndPermissionContext()
     {
         var upsertIslamic = new AiMcpProjectedProposalTool(UpsertEventIslamicAspectAiToolDefinition.Create());
         var deleteTech = new AiMcpProjectedProposalTool(DeleteEventTechAspectAiToolDefinition.Create());
 
         var upsertProperties = upsertIslamic.ProtocolTool.InputSchema.GetProperty("properties");
-        upsertProperties.TryGetProperty("aspectKind", out _).Should().BeTrue();
-        upsertProperties.TryGetProperty("managementContextHasEdit", out _).Should().BeTrue();
-        upsertProperties.TryGetProperty("genderMode", out _).Should().BeTrue();
-        upsertProperties.TryGetProperty("tenantId", out _).Should().BeFalse();
-        upsertIslamic.ProtocolTool.Annotations!.DestructiveHint.Should().BeFalse();
+        await Assert.That(upsertProperties.TryGetProperty("aspectKind", out _)).IsTrue();
+        await Assert.That(upsertProperties.TryGetProperty("managementContextHasEdit", out _)).IsTrue();
+        await Assert.That(upsertProperties.TryGetProperty("genderMode", out _)).IsTrue();
+        await Assert.That(upsertProperties.TryGetProperty("tenantId", out _)).IsFalse();
+        await Assert.That(upsertIslamic.ProtocolTool.Annotations!.DestructiveHint).IsFalse();
 
         var deleteProperties = deleteTech.ProtocolTool.InputSchema.GetProperty("properties");
-        deleteProperties.TryGetProperty("aspectKind", out _).Should().BeTrue();
-        deleteProperties.TryGetProperty("managementContextHasEdit", out _).Should().BeTrue();
-        deleteProperties.TryGetProperty("confirmationPhrase", out _).Should().BeTrue();
-        deleteProperties.TryGetProperty("concurrencyStamp", out _).Should().BeFalse();
-        deleteTech.ProtocolTool.Annotations!.DestructiveHint.Should().BeTrue();
+        await Assert.That(deleteProperties.TryGetProperty("aspectKind", out _)).IsTrue();
+        await Assert.That(deleteProperties.TryGetProperty("managementContextHasEdit", out _)).IsTrue();
+        await Assert.That(deleteProperties.TryGetProperty("confirmationPhrase", out _)).IsTrue();
+        await Assert.That(deleteProperties.TryGetProperty("concurrencyStamp", out _)).IsFalse();
+        await Assert.That(deleteTech.ProtocolTool.Annotations!.DestructiveHint).IsTrue();
     }
 
     [Test]
-    public void ProjectedToolInputSchema_ForPhaseFiveSubResourceTools_RequiresContextAndServerOwnedExclusions()
+    public async Task ProjectedToolInputSchema_ForPhaseFiveSubResourceTools_RequiresContextAndServerOwnedExclusions()
     {
         var createSession = new AiMcpProjectedProposalTool(FindSubResourceDefinition(AiProposedActionKind.CreateEventSession));
         var applyTemplateSync = new AiMcpProjectedProposalTool(FindSubResourceDefinition(AiProposedActionKind.ApplyEventTemplateSync));
 
         var createSessionProperties = createSession.ProtocolTool.InputSchema.GetProperty("properties");
-        createSessionProperties.TryGetProperty("conversationId", out _).Should().BeTrue();
-        createSessionProperties.TryGetProperty("eventId", out _).Should().BeTrue();
-        createSessionProperties.TryGetProperty("expectedConcurrencyStamp", out _).Should().BeTrue();
-        createSessionProperties.TryGetProperty("managementContextHasAddSession", out _).Should().BeTrue();
-        createSessionProperties.TryGetProperty("title", out _).Should().BeTrue();
-        createSessionProperties.TryGetProperty("tenantId", out _).Should().BeFalse();
-        createSessionProperties.TryGetProperty("userId", out _).Should().BeFalse();
+        await Assert.That(createSessionProperties.TryGetProperty("conversationId", out _)).IsTrue();
+        await Assert.That(createSessionProperties.TryGetProperty("eventId", out _)).IsTrue();
+        await Assert.That(createSessionProperties.TryGetProperty("expectedConcurrencyStamp", out _)).IsTrue();
+        await Assert.That(createSessionProperties.TryGetProperty("managementContextHasAddSession", out _)).IsTrue();
+        await Assert.That(createSessionProperties.TryGetProperty("title", out _)).IsTrue();
+        await Assert.That(createSessionProperties.TryGetProperty("tenantId", out _)).IsFalse();
+        await Assert.That(createSessionProperties.TryGetProperty("userId", out _)).IsFalse();
 
         var createSessionRequired = createSession.ProtocolTool.InputSchema.GetProperty("required")
             .EnumerateArray()
             .Select(value => value.GetString())
             .ToArray();
-        createSessionRequired.Should().Contain([
-            "conversationId",
-            "eventId",
-            "expectedConcurrencyStamp",
-            "managementContextHasAddSession",
-            "title",
-            "startTime",
-            "endTime"]);
+        await Assert.That(new[] { "conversationId",
+        "eventId",
+        "expectedConcurrencyStamp",
+        "managementContextHasAddSession",
+        "title",
+        "startTime",
+        "endTime" }.All(createSessionRequired.Contains)).IsTrue();
 
         var templateSyncProperties = applyTemplateSync.ProtocolTool.InputSchema.GetProperty("properties");
-        templateSyncProperties.TryGetProperty("plan", out var planProperty).Should().BeTrue();
-        planProperty.GetProperty("additionalProperties").GetBoolean().Should().BeFalse();
-        planProperty.GetProperty("properties").TryGetProperty("targetTemplateVersion", out _).Should().BeTrue();
-        planProperty.GetProperty("properties").TryGetProperty("modifiedDefinitionKeys", out _).Should().BeTrue();
-        templateSyncProperties.TryGetProperty("sourceTemplateVersion", out _).Should().BeFalse();
-        templateSyncProperties.TryGetProperty("tenantId", out _).Should().BeFalse();
+        await Assert.That(templateSyncProperties.TryGetProperty("plan", out var planProperty)).IsTrue();
+        await Assert.That(planProperty.GetProperty("additionalProperties").GetBoolean()).IsFalse();
+        await Assert.That(planProperty.GetProperty("properties").TryGetProperty("targetTemplateVersion", out _)).IsTrue();
+        await Assert.That(planProperty.GetProperty("properties").TryGetProperty("modifiedDefinitionKeys", out _)).IsTrue();
+        await Assert.That(templateSyncProperties.TryGetProperty("sourceTemplateVersion", out _)).IsFalse();
+        await Assert.That(templateSyncProperties.TryGetProperty("tenantId", out _)).IsFalse();
     }
 
     [Test]
-    public void ProjectedToolInputSchema_ForModerationTools_RequiresHalContextAndHeavyAcknowledgement()
+    public async Task ProjectedToolInputSchema_ForModerationTools_RequiresHalContextAndHeavyAcknowledgement()
     {
         var lightModeration = new AiMcpProjectedProposalTool(FindModerationDefinition(AiProposedActionKind.LightModerateEvent));
         var heavyModeration = new AiMcpProjectedProposalTool(FindModerationDefinition(AiProposedActionKind.HeavyModerateEvent));
 
-        lightModeration.ProtocolTool.Name.Should().Be("propose_light_moderate_event");
-        lightModeration.ProtocolTool.Meta!["islamuRiskClass"]!.GetValue<string>().Should().Be("High");
-        lightModeration.ProtocolTool.Annotations!.DestructiveHint.Should().BeFalse();
+        await Assert.That(lightModeration.ProtocolTool.Name).IsEqualTo("propose_light_moderate_event");
+        await Assert.That(lightModeration.ProtocolTool.Meta!["islamuRiskClass"]!.GetValue<string>()).IsEqualTo("High");
+        await Assert.That(lightModeration.ProtocolTool.Annotations!.DestructiveHint).IsFalse();
 
         var lightProperties = lightModeration.ProtocolTool.InputSchema.GetProperty("properties");
-        lightProperties.TryGetProperty("conversationId", out _).Should().BeTrue();
-        lightProperties.TryGetProperty("eventId", out _).Should().BeTrue();
-        lightProperties.TryGetProperty("expectedConcurrencyStamp", out _).Should().BeTrue();
-        lightProperties.TryGetProperty("managementContextHasModerateLight", out _).Should().BeTrue();
-        lightProperties.TryGetProperty("reasonCode", out _).Should().BeTrue();
-        lightProperties.TryGetProperty("actorId", out _).Should().BeFalse();
-        lightProperties.TryGetProperty("tenantId", out _).Should().BeFalse();
+        await Assert.That(lightProperties.TryGetProperty("conversationId", out _)).IsTrue();
+        await Assert.That(lightProperties.TryGetProperty("eventId", out _)).IsTrue();
+        await Assert.That(lightProperties.TryGetProperty("expectedConcurrencyStamp", out _)).IsTrue();
+        await Assert.That(lightProperties.TryGetProperty("managementContextHasModerateLight", out _)).IsTrue();
+        await Assert.That(lightProperties.TryGetProperty("reasonCode", out _)).IsTrue();
+        await Assert.That(lightProperties.TryGetProperty("actorId", out _)).IsFalse();
+        await Assert.That(lightProperties.TryGetProperty("tenantId", out _)).IsFalse();
 
-        heavyModeration.ProtocolTool.Name.Should().Be("propose_heavy_moderate_event");
-        heavyModeration.ProtocolTool.Meta!["islamuRiskClass"]!.GetValue<string>().Should().Be("Critical");
-        heavyModeration.ProtocolTool.Annotations!.DestructiveHint.Should().BeTrue();
-        heavyModeration.ProtocolTool.Meta!["islamuDestructive"]!.GetValue<bool>().Should().BeTrue();
+        await Assert.That(heavyModeration.ProtocolTool.Name).IsEqualTo("propose_heavy_moderate_event");
+        await Assert.That(heavyModeration.ProtocolTool.Meta!["islamuRiskClass"]!.GetValue<string>()).IsEqualTo("Critical");
+        await Assert.That(heavyModeration.ProtocolTool.Annotations!.DestructiveHint).IsTrue();
+        await Assert.That(heavyModeration.ProtocolTool.Meta!["islamuDestructive"]!.GetValue<bool>()).IsTrue();
 
         var heavyProperties = heavyModeration.ProtocolTool.InputSchema.GetProperty("properties");
-        heavyProperties.TryGetProperty("managementContextHasModerateHeavy", out _).Should().BeTrue();
-        heavyProperties.TryGetProperty("destructiveSummary", out _).Should().BeTrue();
-        heavyProperties.TryGetProperty("confirmationPhrase", out var confirmationPhrase).Should().BeTrue();
-        heavyProperties.TryGetProperty("acknowledgedConsequences", out _).Should().BeTrue();
-        confirmationPhrase.GetProperty("enum").EnumerateArray().Single().GetString().Should().Be("HEAVY_MODERATE_EVENT");
+        await Assert.That(heavyProperties.TryGetProperty("managementContextHasModerateHeavy", out _)).IsTrue();
+        await Assert.That(heavyProperties.TryGetProperty("destructiveSummary", out _)).IsTrue();
+        await Assert.That(heavyProperties.TryGetProperty("confirmationPhrase", out var confirmationPhrase)).IsTrue();
+        await Assert.That(heavyProperties.TryGetProperty("acknowledgedConsequences", out _)).IsTrue();
+        await Assert.That(confirmationPhrase.GetProperty("enum").EnumerateArray().Single().GetString()).IsEqualTo("HEAVY_MODERATE_EVENT");
     }
 
     [Test]
-    public void MapArgumentsToCommand_CreatesGenericProposalCommandWithoutRuntimeEnvelopeFields()
+    public async Task MapArgumentsToCommand_CreatesGenericProposalCommandWithoutRuntimeEnvelopeFields()
     {
         var conversationId = Guid.CreateVersion7();
         var tool = new AiMcpProjectedProposalTool(CreateEventDraftAiToolDefinition.Create());
@@ -283,24 +281,19 @@ public sealed class McpProjectedToolTests
 
         var command = tool.MapArgumentsToCommand(arguments);
 
-        command.Should().BeEquivalentTo(
-            new ProposeAiToolActionCommand
-            {
-                ConversationId = conversationId,
-                ToolName = "CreateEventDraft",
-                Summary = "Draft an event"
-            },
-            options => options.Excluding(candidate => candidate.PayloadJson));
+        await Assert.That(command.ConversationId).IsEqualTo(conversationId);
+        await Assert.That(command.ToolName).IsEqualTo("CreateEventDraft");
+        await Assert.That(command.Summary).IsEqualTo("Draft an event");
 
         using var payload = JsonDocument.Parse(command.PayloadJson);
-        payload.RootElement.TryGetProperty("conversationId", out _).Should().BeFalse();
-        payload.RootElement.TryGetProperty("summary", out _).Should().BeFalse();
-        payload.RootElement.GetProperty("title").GetString().Should().Be("Projected MCP draft");
-        payload.RootElement.GetProperty("eventTypeId").GetInt32().Should().Be(7);
+        await Assert.That(payload.RootElement.TryGetProperty("conversationId", out _)).IsFalse();
+        await Assert.That(payload.RootElement.TryGetProperty("summary", out _)).IsFalse();
+        await Assert.That(payload.RootElement.GetProperty("title").GetString()).IsEqualTo("Projected MCP draft");
+        await Assert.That(payload.RootElement.GetProperty("eventTypeId").GetInt32()).IsEqualTo(7);
     }
 
     [Test]
-    public void MapArgumentsToCommand_RejectsUnexpectedOrHiddenFieldsBeforeMediatR()
+    public async Task MapArgumentsToCommand_RejectsUnexpectedOrHiddenFieldsBeforeMediatR()
     {
         var conversationId = Guid.CreateVersion7();
         var tool = new AiMcpProjectedProposalTool(CreateEventDraftAiToolDefinition.Create());
@@ -313,14 +306,14 @@ public sealed class McpProjectedToolTests
               }
               """);
 
-        var act = () => tool.MapArgumentsToCommand(arguments);
+        Action act = () => _ = tool.MapArgumentsToCommand(arguments);
 
-        act.Should().Throw<ArgumentException>()
-            .WithMessage("*tenantId*");
+        var exception = Assert.Throws<ArgumentException>(act);
+        await Assert.That(exception.Message).Contains("tenantId");
     }
 
     [Test]
-    public void MapArgumentsToCommand_ForUpdateDraft_CreatesProposalCommandWithDraftPayload()
+    public async Task MapArgumentsToCommand_ForUpdateDraft_CreatesProposalCommandWithDraftPayload()
     {
         var conversationId = Guid.CreateVersion7();
         var eventId = Guid.CreateVersion7();
@@ -339,25 +332,20 @@ public sealed class McpProjectedToolTests
 
         var command = tool.MapArgumentsToCommand(arguments);
 
-        command.Should().BeEquivalentTo(
-            new ProposeAiToolActionCommand
-            {
-                ConversationId = conversationId,
-                ToolName = "UpdateEventDraft",
-                Summary = "Update an event draft"
-            },
-            options => options.Excluding(candidate => candidate.PayloadJson));
+        await Assert.That(command.ConversationId).IsEqualTo(conversationId);
+        await Assert.That(command.ToolName).IsEqualTo("UpdateEventDraft");
+        await Assert.That(command.Summary).IsEqualTo("Update an event draft");
 
         using var payload = JsonDocument.Parse(command.PayloadJson);
-        payload.RootElement.TryGetProperty("conversationId", out _).Should().BeFalse();
-        payload.RootElement.TryGetProperty("summary", out _).Should().BeFalse();
-        payload.RootElement.GetProperty("eventId").GetGuid().Should().Be(eventId);
-        payload.RootElement.GetProperty("expectedConcurrencyStamp").GetGuid().Should().Be(concurrencyStamp);
-        payload.RootElement.GetProperty("title").GetString().Should().Be("Projected MCP update");
+        await Assert.That(payload.RootElement.TryGetProperty("conversationId", out _)).IsFalse();
+        await Assert.That(payload.RootElement.TryGetProperty("summary", out _)).IsFalse();
+        await Assert.That(payload.RootElement.GetProperty("eventId").GetGuid()).IsEqualTo(eventId);
+        await Assert.That(payload.RootElement.GetProperty("expectedConcurrencyStamp").GetGuid()).IsEqualTo(concurrencyStamp);
+        await Assert.That(payload.RootElement.GetProperty("title").GetString()).IsEqualTo("Projected MCP update");
     }
 
     [Test]
-    public void MapArgumentsToCommand_ForPublishEvent_CreatesProposalCommandWithPublishPayload()
+    public async Task MapArgumentsToCommand_ForPublishEvent_CreatesProposalCommandWithPublishPayload()
     {
         var conversationId = Guid.CreateVersion7();
         var eventId = Guid.CreateVersion7();
@@ -377,26 +365,21 @@ public sealed class McpProjectedToolTests
 
         var command = tool.MapArgumentsToCommand(arguments);
 
-        command.Should().BeEquivalentTo(
-            new ProposeAiToolActionCommand
-            {
-                ConversationId = conversationId,
-                ToolName = "PublishEvent",
-                Summary = "Publish an event"
-            },
-            options => options.Excluding(candidate => candidate.PayloadJson));
+        await Assert.That(command.ConversationId).IsEqualTo(conversationId);
+        await Assert.That(command.ToolName).IsEqualTo("PublishEvent");
+        await Assert.That(command.Summary).IsEqualTo("Publish an event");
 
         using var payload = JsonDocument.Parse(command.PayloadJson);
-        payload.RootElement.TryGetProperty("conversationId", out _).Should().BeFalse();
-        payload.RootElement.TryGetProperty("summary", out _).Should().BeFalse();
-        payload.RootElement.GetProperty("eventId").GetGuid().Should().Be(eventId);
-        payload.RootElement.GetProperty("expectedConcurrencyStamp").GetGuid().Should().Be(concurrencyStamp);
-        payload.RootElement.GetProperty("readinessIsReady").GetBoolean().Should().BeTrue();
-        payload.RootElement.GetProperty("readinessErrorCount").GetInt32().Should().Be(0);
+        await Assert.That(payload.RootElement.TryGetProperty("conversationId", out _)).IsFalse();
+        await Assert.That(payload.RootElement.TryGetProperty("summary", out _)).IsFalse();
+        await Assert.That(payload.RootElement.GetProperty("eventId").GetGuid()).IsEqualTo(eventId);
+        await Assert.That(payload.RootElement.GetProperty("expectedConcurrencyStamp").GetGuid()).IsEqualTo(concurrencyStamp);
+        await Assert.That(payload.RootElement.GetProperty("readinessIsReady").GetBoolean()).IsTrue();
+        await Assert.That(payload.RootElement.GetProperty("readinessErrorCount").GetInt32()).IsEqualTo(0);
     }
 
     [Test]
-    public void MapArgumentsToCommand_ForDeleteEvent_CreatesProposalCommandWithDestructivePayload()
+    public async Task MapArgumentsToCommand_ForDeleteEvent_CreatesProposalCommandWithDestructivePayload()
     {
         var conversationId = Guid.CreateVersion7();
         var eventId = Guid.CreateVersion7();
@@ -418,24 +401,19 @@ public sealed class McpProjectedToolTests
 
         var command = tool.MapArgumentsToCommand(arguments);
 
-        command.Should().BeEquivalentTo(
-            new ProposeAiToolActionCommand
-            {
-                ConversationId = conversationId,
-                ToolName = "DeleteEvent",
-                Summary = "Delete an event"
-            },
-            options => options.Excluding(candidate => candidate.PayloadJson));
+        await Assert.That(command.ConversationId).IsEqualTo(conversationId);
+        await Assert.That(command.ToolName).IsEqualTo("DeleteEvent");
+        await Assert.That(command.Summary).IsEqualTo("Delete an event");
 
         using var payload = JsonDocument.Parse(command.PayloadJson);
-        payload.RootElement.GetProperty("eventId").GetGuid().Should().Be(eventId);
-        payload.RootElement.GetProperty("expectedConcurrencyStamp").GetGuid().Should().Be(concurrencyStamp);
-        payload.RootElement.GetProperty("managementContextHasDelete").GetBoolean().Should().BeTrue();
-        payload.RootElement.GetProperty("confirmationPhrase").GetString().Should().Be("DELETE_EVENT");
+        await Assert.That(payload.RootElement.GetProperty("eventId").GetGuid()).IsEqualTo(eventId);
+        await Assert.That(payload.RootElement.GetProperty("expectedConcurrencyStamp").GetGuid()).IsEqualTo(concurrencyStamp);
+        await Assert.That(payload.RootElement.GetProperty("managementContextHasDelete").GetBoolean()).IsTrue();
+        await Assert.That(payload.RootElement.GetProperty("confirmationPhrase").GetString()).IsEqualTo("DELETE_EVENT");
     }
 
     [Test]
-    public void MapArgumentsToCommand_ForAspectTool_CreatesProposalCommandWithAspectPayload()
+    public async Task MapArgumentsToCommand_ForAspectTool_CreatesProposalCommandWithAspectPayload()
     {
         var conversationId = Guid.CreateVersion7();
         var eventId = Guid.CreateVersion7();
@@ -457,20 +435,20 @@ public sealed class McpProjectedToolTests
 
         var command = tool.MapArgumentsToCommand(arguments);
 
-        command.ToolName.Should().Be("UpsertEventTechAspect");
-        command.ConversationId.Should().Be(conversationId);
-        command.Summary.Should().Be("Update Tech aspect");
+        await Assert.That(command.ToolName).IsEqualTo("UpsertEventTechAspect");
+        await Assert.That(command.ConversationId).IsEqualTo(conversationId);
+        await Assert.That(command.Summary).IsEqualTo("Update Tech aspect");
         using var payload = JsonDocument.Parse(command.PayloadJson);
-        payload.RootElement.GetProperty("eventId").GetGuid().Should().Be(eventId);
-        payload.RootElement.GetProperty("expectedConcurrencyStamp").GetGuid().Should().Be(concurrencyStamp);
-        payload.RootElement.GetProperty("aspectKind").GetString().Should().Be("tech");
-        payload.RootElement.GetProperty("managementContextHasEdit").GetBoolean().Should().BeTrue();
-        payload.RootElement.GetProperty("skillLevel").GetInt32().Should().Be(0);
-        payload.RootElement.GetProperty("requiresLaptop").GetBoolean().Should().BeTrue();
+        await Assert.That(payload.RootElement.GetProperty("eventId").GetGuid()).IsEqualTo(eventId);
+        await Assert.That(payload.RootElement.GetProperty("expectedConcurrencyStamp").GetGuid()).IsEqualTo(concurrencyStamp);
+        await Assert.That(payload.RootElement.GetProperty("aspectKind").GetString()).IsEqualTo("tech");
+        await Assert.That(payload.RootElement.GetProperty("managementContextHasEdit").GetBoolean()).IsTrue();
+        await Assert.That(payload.RootElement.GetProperty("skillLevel").GetInt32()).IsEqualTo(0);
+        await Assert.That(payload.RootElement.GetProperty("requiresLaptop").GetBoolean()).IsTrue();
     }
 
     [Test]
-    public void MapArgumentsToCommand_ForPhaseFiveSubResourceTool_CreatesProposalCommandWithPayloadOnly()
+    public async Task MapArgumentsToCommand_ForPhaseFiveSubResourceTool_CreatesProposalCommandWithPayloadOnly()
     {
         var conversationId = Guid.CreateVersion7();
         var eventId = Guid.CreateVersion7();
@@ -492,38 +470,38 @@ public sealed class McpProjectedToolTests
 
         var command = tool.MapArgumentsToCommand(arguments);
 
-        command.ToolName.Should().Be("CreateEventSession");
-        command.ConversationId.Should().Be(conversationId);
-        command.Summary.Should().Be("Create a session");
+        await Assert.That(command.ToolName).IsEqualTo("CreateEventSession");
+        await Assert.That(command.ConversationId).IsEqualTo(conversationId);
+        await Assert.That(command.Summary).IsEqualTo("Create a session");
         using var payload = JsonDocument.Parse(command.PayloadJson);
-        payload.RootElement.TryGetProperty("conversationId", out _).Should().BeFalse();
-        payload.RootElement.TryGetProperty("summary", out _).Should().BeFalse();
-        payload.RootElement.GetProperty("eventId").GetGuid().Should().Be(eventId);
-        payload.RootElement.GetProperty("expectedConcurrencyStamp").GetGuid().Should().Be(concurrencyStamp);
-        payload.RootElement.GetProperty("managementContextHasAddSession").GetBoolean().Should().BeTrue();
-        payload.RootElement.GetProperty("title").GetString().Should().Be("Opening session");
+        await Assert.That(payload.RootElement.TryGetProperty("conversationId", out _)).IsFalse();
+        await Assert.That(payload.RootElement.TryGetProperty("summary", out _)).IsFalse();
+        await Assert.That(payload.RootElement.GetProperty("eventId").GetGuid()).IsEqualTo(eventId);
+        await Assert.That(payload.RootElement.GetProperty("expectedConcurrencyStamp").GetGuid()).IsEqualTo(concurrencyStamp);
+        await Assert.That(payload.RootElement.GetProperty("managementContextHasAddSession").GetBoolean()).IsTrue();
+        await Assert.That(payload.RootElement.GetProperty("title").GetString()).IsEqualTo("Opening session");
     }
 
     [Test]
-    public void ProjectedToolOptionsSetup_AddsRegistryProjectionToMcpOptions()
+    public async Task ProjectedToolOptionsSetup_AddsRegistryProjectionToMcpOptions()
     {
         var options = new McpServerOptions();
 
         new AiMcpProjectedToolOptionsSetup(AiToolContractRegistry.CreateDefault()).Configure(options);
 
-        options.ToolCollection.Should().NotBeNull();
-        options.ToolCollection!.PrimitiveNames.Should().Contain(ProjectedProposalToolNames);
+        await Assert.That(options.ToolCollection).IsNotNull();
+        await Assert.That(ProjectedProposalToolNames.All(options.ToolCollection!.PrimitiveNames.Contains)).IsTrue();
     }
 
     [Test]
-    public void ProjectedTool_DoesNotDependOnRepositories()
+    public async Task ProjectedTool_DoesNotDependOnRepositories()
     {
         var constructorParameters = typeof(AiMcpProjectedProposalTool)
             .GetConstructors()
             .SelectMany(constructor => constructor.GetParameters())
             .Select(parameter => parameter.ParameterType.Name);
 
-        constructorParameters.Should().NotContain(name => name.Contains("Repository", StringComparison.Ordinal));
+        await Assert.That(constructorParameters).DoesNotContain(name => name.Contains("Repository", StringComparison.Ordinal));
     }
 
     [Test]
@@ -564,7 +542,7 @@ public sealed class McpProjectedToolTests
 
         var result = await tool.InvokeAsync(request, expectedToken);
 
-        result.IsError.Should().BeFalse();
+        await Assert.That(result.IsError).IsFalse();
         await mediator.Received(1).Send(
             Arg.Is<ProposeAiToolActionCommand>(command =>
                 command.ConversationId == conversationId &&
@@ -575,32 +553,32 @@ public sealed class McpProjectedToolTests
     }
 
     [Test]
-    public void McpAdapterTelemetry_NormalizesUntrustedDiagnosticsDimensions()
+    public async Task McpAdapterTelemetry_NormalizesUntrustedDiagnosticsDimensions()
     {
-        McpAdapterTelemetry.ActivitySourceName.Should().Be("Explore.Mcp");
-        McpAdapterTelemetry.MeterName.Should().Be("Explore.Mcp");
-        McpAdapterTelemetry.NormalizeToolNameForDiagnostics("Bearer secret propose_create_event_draft").Should().Be("unknown");
+        await Assert.That(McpAdapterTelemetry.ActivitySourceName).IsEqualTo("Explore.Mcp");
+        await Assert.That(McpAdapterTelemetry.MeterName).IsEqualTo("Explore.Mcp");
+        await Assert.That(McpAdapterTelemetry.NormalizeToolNameForDiagnostics("Bearer secret propose_create_event_draft")).IsEqualTo("unknown");
         foreach (var toolName in ProjectedProposalToolNames)
         {
-            McpAdapterTelemetry.NormalizeToolNameForDiagnostics(toolName).Should().Be(toolName);
+            await Assert.That(McpAdapterTelemetry.NormalizeToolNameForDiagnostics(toolName)).IsEqualTo(toolName);
         }
 
-        McpAdapterTelemetry.NormalizeToolNameForDiagnostics("search_public_events").Should().Be("search_public_events");
-        McpAdapterTelemetry.NormalizeToolNameForDiagnostics("get_public_event").Should().Be("get_public_event");
-        McpAdapterTelemetry.NormalizeToolNameForDiagnostics("get_public_event_program_summary").Should().Be("get_public_event_program_summary");
-        McpAdapterTelemetry.NormalizeToolNameForDiagnostics("list_public_event_sessions").Should().Be("list_public_event_sessions");
-        McpAdapterTelemetry.NormalizeToolNameForDiagnostics("list_my_events").Should().Be("list_my_events");
-        McpAdapterTelemetry.NormalizeToolNameForDiagnostics("get_event_creation_context").Should().Be("get_event_creation_context");
-        McpAdapterTelemetry.NormalizeToolNameForDiagnostics("get_event_publish_readiness").Should().Be("get_event_publish_readiness");
-        McpAdapterTelemetry.NormalizeToolNameForDiagnostics("get_event_program_management_context").Should().Be("get_event_program_management_context");
-        McpAdapterTelemetry.NormalizeToolNameForDiagnostics("get_event_custom_properties_context").Should().Be("get_event_custom_properties_context");
-        McpAdapterTelemetry.NormalizeToolNameForDiagnostics("get_event_registrations_context").Should().Be("get_event_registrations_context");
-        McpAdapterTelemetry.NormalizeToolNameForDiagnostics("get_event_team_context").Should().Be("get_event_team_context");
-        McpAdapterTelemetry.NormalizeToolNameForDiagnostics("get_event_template_catalog_context").Should().Be("get_event_template_catalog_context");
-        McpAdapterTelemetry.NormalizeToolNameForDiagnostics("get_event_template_sync_context").Should().Be("get_event_template_sync_context");
-        McpAdapterTelemetry.NormalizeToolNameForDiagnostics("get_event_session_template_sync_context").Should().Be("get_event_session_template_sync_context");
-        McpAdapterTelemetry.NormalizeFailureCodeForDiagnostics("private-prompt-marker").Should().Be("unknown");
-        McpAdapterTelemetry.NormalizeFailureCodeForDiagnostics("invalid_tool_arguments").Should().Be("invalid_tool_arguments");
+        await Assert.That(McpAdapterTelemetry.NormalizeToolNameForDiagnostics("search_public_events")).IsEqualTo("search_public_events");
+        await Assert.That(McpAdapterTelemetry.NormalizeToolNameForDiagnostics("get_public_event")).IsEqualTo("get_public_event");
+        await Assert.That(McpAdapterTelemetry.NormalizeToolNameForDiagnostics("get_public_event_program_summary")).IsEqualTo("get_public_event_program_summary");
+        await Assert.That(McpAdapterTelemetry.NormalizeToolNameForDiagnostics("list_public_event_sessions")).IsEqualTo("list_public_event_sessions");
+        await Assert.That(McpAdapterTelemetry.NormalizeToolNameForDiagnostics("list_my_events")).IsEqualTo("list_my_events");
+        await Assert.That(McpAdapterTelemetry.NormalizeToolNameForDiagnostics("get_event_creation_context")).IsEqualTo("get_event_creation_context");
+        await Assert.That(McpAdapterTelemetry.NormalizeToolNameForDiagnostics("get_event_publish_readiness")).IsEqualTo("get_event_publish_readiness");
+        await Assert.That(McpAdapterTelemetry.NormalizeToolNameForDiagnostics("get_event_program_management_context")).IsEqualTo("get_event_program_management_context");
+        await Assert.That(McpAdapterTelemetry.NormalizeToolNameForDiagnostics("get_event_custom_properties_context")).IsEqualTo("get_event_custom_properties_context");
+        await Assert.That(McpAdapterTelemetry.NormalizeToolNameForDiagnostics("get_event_registrations_context")).IsEqualTo("get_event_registrations_context");
+        await Assert.That(McpAdapterTelemetry.NormalizeToolNameForDiagnostics("get_event_team_context")).IsEqualTo("get_event_team_context");
+        await Assert.That(McpAdapterTelemetry.NormalizeToolNameForDiagnostics("get_event_template_catalog_context")).IsEqualTo("get_event_template_catalog_context");
+        await Assert.That(McpAdapterTelemetry.NormalizeToolNameForDiagnostics("get_event_template_sync_context")).IsEqualTo("get_event_template_sync_context");
+        await Assert.That(McpAdapterTelemetry.NormalizeToolNameForDiagnostics("get_event_session_template_sync_context")).IsEqualTo("get_event_session_template_sync_context");
+        await Assert.That(McpAdapterTelemetry.NormalizeFailureCodeForDiagnostics("private-prompt-marker")).IsEqualTo("unknown");
+        await Assert.That(McpAdapterTelemetry.NormalizeFailureCodeForDiagnostics("invalid_tool_arguments")).IsEqualTo("invalid_tool_arguments");
     }
 
     private static Dictionary<string, JsonElement> CreateArguments(string json)

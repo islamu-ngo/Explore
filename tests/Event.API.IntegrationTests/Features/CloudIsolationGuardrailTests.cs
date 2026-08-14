@@ -2,7 +2,6 @@
 // ABOUTME: Fails the test suite if any configuration value contains cloud-specific URLs.
 
 using Event.Api.IntegrationTests.Fixtures;
-using FluentAssertions;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using TUnit.Core;
@@ -49,7 +48,7 @@ public class CloudIsolationGuardrailTests
     }
 
     [Test]
-    public void TestEnvironment_ShouldBeTesting()
+    public async Task TestEnvironment_ShouldBeTesting()
     {
         // Arrange & Act
         var env = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT");
@@ -61,12 +60,12 @@ public class CloudIsolationGuardrailTests
         var configuration = _fixture.Factory.Services.GetRequiredService<IConfiguration>();
         var keycloakAuthority = configuration["Keycloak:Authority"];
 
-        keycloakAuthority.Should().NotBeNull("Keycloak:Authority must be configured in test environment");
+        await Assert.That(keycloakAuthority).IsNotNull().Because("Keycloak:Authority must be configured in test environment");
     }
 
     [Test]
     [MethodDataSource(nameof(GetSensitiveConfigKeys))]
-    public void Configuration_ShouldNotContainCloudEndpoints(string configKey)
+    public async Task Configuration_ShouldNotContainCloudEndpoints(string configKey)
     {
         // Arrange
         var configuration = _fixture.Factory.Services.GetRequiredService<IConfiguration>();
@@ -80,9 +79,8 @@ public class CloudIsolationGuardrailTests
         // Assert — none of the forbidden domains should appear in the value
         foreach (var domain in ForbiddenDomains)
         {
-            value.Should().NotContain(domain,
-                $"configuration key '{configKey}' must not reference cloud domain '{domain}' in test environment. " +
-                $"Current value: '{value}'");
+            await Assert.That(value).DoesNotContain(domain).Because($"configuration key '{configKey}' must not reference cloud domain '{domain}' in test environment. " +
+            $"Current value: '{value}'");
         }
     }
 

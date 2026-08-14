@@ -5,7 +5,6 @@ using System.Text.Json;
 using Explore.Blazor.Client.Clients;
 using Explore.Blazor.IntegrationTests.Fixtures;
 using Explore.Blazor.Services;
-using FluentAssertions;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -51,8 +50,8 @@ public class BffNoKeycloakResilienceTests : IAsyncDisposable
     [Test]
     public async Task Bff_StartsWithoutKeycloak()
     {
-        _factory.Should().NotBeNull("the BFF factory must build successfully without Keycloak config");
-        _client.Should().NotBeNull("the HTTP client must be creatable without OIDC errors");
+        await Assert.That(_factory).IsNotNull().Because("the BFF factory must build successfully without Keycloak config");
+        await Assert.That(_client).IsNotNull().Because("the HTTP client must be creatable without OIDC errors");
     }
 
     #endregion
@@ -64,12 +63,11 @@ public class BffNoKeycloakResilienceTests : IAsyncDisposable
     {
         var response = await _client.GetAsync("/auth/status");
 
-        response.StatusCode.Should().Be(System.Net.HttpStatusCode.OK);
+        await Assert.That(response.StatusCode).IsEqualTo(System.Net.HttpStatusCode.OK);
 
         var payload = await response.Content.ReadFromJsonAsync<AuthStatusPayload>();
-        payload.Should().NotBeNull();
-        payload!.IsAuthenticated.Should().BeFalse(
-            "without any auth provider, the user is always not authenticated");
+        await Assert.That(payload).IsNotNull();
+        await Assert.That(payload!.IsAuthenticated).IsFalse().Because("without any auth provider, the user is always not authenticated");
     }
 
     [Test]
@@ -77,15 +75,13 @@ public class BffNoKeycloakResilienceTests : IAsyncDisposable
     {
         var response = await _client.GetAsync("/auth/challenge?returnUrl=/dashboard");
 
-        response.StatusCode.Should().Be(System.Net.HttpStatusCode.Redirect,
-            "challenge should still redirect even without providers");
+        await Assert.That(response.StatusCode).IsEqualTo(System.Net.HttpStatusCode.Redirect).Because("challenge should still redirect even without providers");
 
         var location = response.Headers.Location?.ToString();
-        location.Should().NotBeNullOrEmpty();
+        await Assert.That(string.IsNullOrEmpty(location)).IsFalse();
 
-        location.Should().Contain("/login",
-            "without any registered provider, challenge should redirect to the login page " +
-            "for provider selection (which will show an empty list)");
+        await Assert.That(location).Contains("/login").Because("without any registered provider, challenge should redirect to the login page " +
+        "for provider selection (which will show an empty list)");
     }
 
     [Test]
@@ -93,16 +89,15 @@ public class BffNoKeycloakResilienceTests : IAsyncDisposable
     {
         var response = await _client.GetAsync("/auth/providers");
 
-        response.StatusCode.Should().Be(System.Net.HttpStatusCode.OK);
+        await Assert.That(response.StatusCode).IsEqualTo(System.Net.HttpStatusCode.OK);
 
         var json = await response.Content.ReadAsStringAsync();
-        json.Should().Contain("providers",
-            "the providers endpoint should return a valid response even when empty");
+        await Assert.That(json).Contains("providers").Because("the providers endpoint should return a valid response even when empty");
 
         var payload = await response.Content.ReadFromJsonAsync<ProvidersPayload>();
-        payload.Should().NotBeNull();
-        payload!.Providers.Should().BeNullOrEmpty(
-            "without Keycloak configuration, no providers should be registered");
+        await Assert.That(payload).IsNotNull();
+        await Assert.That(payload!.Providers is null or { Count: 0 }).IsTrue()
+            .Because("without Keycloak configuration, no providers should be registered");
     }
 
     [Test]
@@ -110,8 +105,7 @@ public class BffNoKeycloakResilienceTests : IAsyncDisposable
     {
         var response = await _client.GetAsync("/auth/signout?returnUrl=/");
 
-        response.StatusCode.Should().Be(System.Net.HttpStatusCode.Redirect,
-            "signout should work even for anonymous users without any provider configured");
+        await Assert.That(response.StatusCode).IsEqualTo(System.Net.HttpStatusCode.Redirect).Because("signout should work even for anonymous users without any provider configured");
     }
 
     #endregion
@@ -123,8 +117,7 @@ public class BffNoKeycloakResilienceTests : IAsyncDisposable
     {
         var response = await _client.GetAsync("/");
 
-        response.StatusCode.Should().Be(System.Net.HttpStatusCode.OK,
-            "static pages should be accessible regardless of auth configuration");
+        await Assert.That(response.StatusCode).IsEqualTo(System.Net.HttpStatusCode.OK).Because("static pages should be accessible regardless of auth configuration");
     }
 
     [Test]
@@ -132,31 +125,29 @@ public class BffNoKeycloakResilienceTests : IAsyncDisposable
     {
         var response = await _client.GetAsync("/");
 
-        response.Headers.TryGetValues("Content-Security-Policy", out var values).Should().BeTrue(
-            "BFF HTML responses must carry the launch CSP header");
+        await Assert.That(response.Headers.TryGetValues("Content-Security-Policy", out var values)).IsTrue().Because("BFF HTML responses must carry the launch CSP header");
 
-        var csp = values.Should().ContainSingle().Subject;
-        csp.Should().Contain("default-src 'self'");
-        csp.Should().Contain("script-src 'self' 'wasm-unsafe-eval'");
-        csp.Should().Contain("img-src 'self' data: https: blob:");
-        csp.Should().Contain("connect-src 'self' https: http: ws: wss:");
-        csp.Should().Contain("font-src 'self' https://fonts.gstatic.com");
-        csp.Should().Contain("frame-ancestors 'none'");
-        csp.Should().Contain("base-uri 'self'");
-        csp.Should().Contain("object-src 'none'");
-        csp.Should().Contain("form-action 'self'");
+        var csp = await Assert.That(values).HasSingleItem();
+        await Assert.That(csp).Contains("default-src 'self'");
+        await Assert.That(csp).Contains("script-src 'self' 'wasm-unsafe-eval'");
+        await Assert.That(csp).Contains("img-src 'self' data: https: blob:");
+        await Assert.That(csp).Contains("connect-src 'self' https: http: ws: wss:");
+        await Assert.That(csp).Contains("font-src 'self' https://fonts.gstatic.com");
+        await Assert.That(csp).Contains("frame-ancestors 'none'");
+        await Assert.That(csp).Contains("base-uri 'self'");
+        await Assert.That(csp).Contains("object-src 'none'");
+        await Assert.That(csp).Contains("form-action 'self'");
 
         var body = await response.Content.ReadAsStringAsync();
         var nonceStart = csp.IndexOf("'nonce-", StringComparison.Ordinal);
-        nonceStart.Should().BeGreaterThanOrEqualTo(0);
+        await Assert.That(nonceStart).IsGreaterThanOrEqualTo(0);
         nonceStart += "'nonce-".Length;
         var nonceEnd = csp.IndexOf('\'', nonceStart);
-        nonceEnd.Should().BeGreaterThan(nonceStart);
+        await Assert.That(nonceEnd).IsGreaterThan(nonceStart);
         var nonce = csp[nonceStart..nonceEnd];
 
-        System.Net.WebUtility.HtmlDecode(body)
-            .Should().Contain($"<script type=\"importmap\" nonce=\"{nonce}\">");
-        body.Should().NotContain("http-equiv=\"Content-Security-Policy\"");
+        await Assert.That(System.Net.WebUtility.HtmlDecode(body)).Contains($"<script type=\"importmap\" nonce=\"{nonce}\">");
+        await Assert.That(body).DoesNotContain("http-equiv=\"Content-Security-Policy\"");
     }
 
     [Test]
@@ -168,8 +159,8 @@ public class BffNoKeycloakResilienceTests : IAsyncDisposable
         {
             var response = await _client.GetAsync(path);
 
-            response.StatusCode.Should().NotBe(System.Net.HttpStatusCode.InternalServerError);
-            AssertBrowserSecurityHeaders(response, path);
+            await Assert.That(response.StatusCode).IsNotEqualTo(System.Net.HttpStatusCode.InternalServerError);
+            await AssertBrowserSecurityHeaders(response, path);
         }
     }
 
@@ -178,11 +169,11 @@ public class BffNoKeycloakResilienceTests : IAsyncDisposable
     {
         var response = await _client.GetAsync("/");
 
-        response.StatusCode.Should().Be(System.Net.HttpStatusCode.OK);
+        await Assert.That(response.StatusCode).IsEqualTo(System.Net.HttpStatusCode.OK);
         var body = await response.Content.ReadAsStringAsync();
-        body.Should().Contain("rel=\"manifest\" href=\"manifest.webmanifest\"");
-        body.Should().Contain("name=\"theme-color\" content=\"#2563eb\"");
-        body.Should().NotContain("Icon_landingpage.png");
+        await Assert.That(body).Contains("rel=\"manifest\" href=\"manifest.webmanifest\"");
+        await Assert.That(body).Contains("name=\"theme-color\" content=\"#2563eb\"");
+        await Assert.That(body).DoesNotContain("Icon_landingpage.png");
     }
 
     [Test]
@@ -212,28 +203,28 @@ public class BffNoKeycloakResilienceTests : IAsyncDisposable
 
         var response = await client.GetAsync("/manifest.webmanifest");
 
-        response.StatusCode.Should().Be(System.Net.HttpStatusCode.OK);
+        await Assert.That(response.StatusCode).IsEqualTo(System.Net.HttpStatusCode.OK);
         var body = await response.Content.ReadAsStringAsync();
-        body.Should().NotContain("ISLAMU");
-        body.Should().NotContain("Icon_landingpage.png");
+        await Assert.That(body).DoesNotContain("ISLAMU");
+        await Assert.That(body).DoesNotContain("Icon_landingpage.png");
         using var document = JsonDocument.Parse(body);
         var root = document.RootElement;
 
-        root.GetProperty("name").GetString().Should().Be("Community Events");
-        root.GetProperty("short_name").GetString().Should().Be("Community");
-        root.GetProperty("description").GetString().Should().Be("Discover and register for events.");
-        root.GetProperty("start_url").GetString().Should().Be("/");
-        root.GetProperty("scope").GetString().Should().Be("/");
-        root.GetProperty("display").GetString().Should().Be("standalone");
-        root.GetProperty("theme_color").GetString().Should().Be("#2563eb");
-        root.GetProperty("background_color").GetString().Should().Be("#ffffff");
+        await Assert.That(root.GetProperty("name").GetString()).IsEqualTo("Community Events");
+        await Assert.That(root.GetProperty("short_name").GetString()).IsEqualTo("Community");
+        await Assert.That(root.GetProperty("description").GetString()).IsEqualTo("Discover and register for events.");
+        await Assert.That(root.GetProperty("start_url").GetString()).IsEqualTo("/");
+        await Assert.That(root.GetProperty("scope").GetString()).IsEqualTo("/");
+        await Assert.That(root.GetProperty("display").GetString()).IsEqualTo("standalone");
+        await Assert.That(root.GetProperty("theme_color").GetString()).IsEqualTo("#2563eb");
+        await Assert.That(root.GetProperty("background_color").GetString()).IsEqualTo("#ffffff");
 
         var icons = root.GetProperty("icons").EnumerateArray().ToArray();
-        icons.Should().Contain(icon =>
+        await Assert.That(icons).Contains(icon =>
             icon.GetProperty("src").GetString() == "https://cdn.example.test/favicon.svg" &&
             icon.GetProperty("sizes").GetString() == "any" &&
             icon.GetProperty("type").GetString() == "image/svg+xml");
-        icons.Should().Contain(icon =>
+        await Assert.That(icons).Contains(icon =>
             icon.GetProperty("src").GetString() == "https://cdn.example.test/logo.png" &&
             icon.GetProperty("sizes").GetString() == "any" &&
             icon.GetProperty("type").GetString() == "image/png");
@@ -244,11 +235,11 @@ public class BffNoKeycloakResilienceTests : IAsyncDisposable
     {
         var response = await _client.GetAsync("/robots.txt");
 
-        response.StatusCode.Should().Be(System.Net.HttpStatusCode.OK);
+        await Assert.That(response.StatusCode).IsEqualTo(System.Net.HttpStatusCode.OK);
         var body = await response.Content.ReadAsStringAsync();
-        body.Should().Contain("User-agent: *");
-        body.Should().Contain("Disallow: /");
-        body.Should().NotContain("Sitemap:");
+        await Assert.That(body).Contains("User-agent: *");
+        await Assert.That(body).Contains("Disallow: /");
+        await Assert.That(body).DoesNotContain("Sitemap:");
     }
 
     [Test]
@@ -266,24 +257,23 @@ public class BffNoKeycloakResilienceTests : IAsyncDisposable
 
         var response = await client.SendAsync(request);
 
-        response.StatusCode.Should().Be(System.Net.HttpStatusCode.OK);
+        await Assert.That(response.StatusCode).IsEqualTo(System.Net.HttpStatusCode.OK);
         var body = await response.Content.ReadAsStringAsync();
-        body.Should().Contain("User-agent: *");
-        body.Should().Contain("Allow: /");
-        body.Should().Contain("Sitemap: https://events.example.test/sitemap.xml");
+        await Assert.That(body).Contains("User-agent: *");
+        await Assert.That(body).Contains("Allow: /");
+        await Assert.That(body).Contains("Sitemap: https://events.example.test/sitemap.xml");
     }
 
     #endregion
 
-    private static void AssertBrowserSecurityHeaders(HttpResponseMessage response, string path)
+    private static async Task AssertBrowserSecurityHeaders(HttpResponseMessage response, string path)
     {
-        response.Headers.Contains("Content-Security-Policy").Should().BeTrue(path);
-        response.Headers.GetValues("X-Frame-Options").Should().ContainSingle().Which.Should().Be("DENY", path);
-        response.Headers.GetValues("X-Content-Type-Options").Should().ContainSingle().Which.Should().Be("nosniff", path);
-        response.Headers.GetValues("Referrer-Policy").Should().ContainSingle().Which.Should().Be("strict-origin-when-cross-origin", path);
-        response.Headers.GetValues("Permissions-Policy").Should().ContainSingle().Which.Should().Be(
-            "camera=(), microphone=(), geolocation=(self), payment=()",
-            path);
+        await Assert.That(response.Headers.Contains("Content-Security-Policy")).IsTrue().Because(path);
+        await Assert.That(await Assert.That(response.Headers.GetValues("X-Frame-Options")).HasSingleItem()).IsEqualTo("DENY").Because(path);
+        await Assert.That(await Assert.That(response.Headers.GetValues("X-Content-Type-Options")).HasSingleItem()).IsEqualTo("nosniff").Because(path);
+        await Assert.That(await Assert.That(response.Headers.GetValues("Referrer-Policy")).HasSingleItem()).IsEqualTo("strict-origin-when-cross-origin").Because(path);
+        await Assert.That(await Assert.That(response.Headers.GetValues("Permissions-Policy")).HasSingleItem())
+            .IsEqualTo("camera=(), microphone=(), geolocation=(self), payment=()").Because(path);
     }
 
     private sealed class AuthStatusPayload

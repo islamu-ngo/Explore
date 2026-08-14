@@ -4,7 +4,6 @@
 using Explore.Persistence;
 using Explore.Persistence.Schema;
 using Explore.Persistence.ValueGenerators;
-using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
@@ -20,17 +19,17 @@ public sealed class ExploreDbContextModelProviderTests
     [Arguments("SqlServer")]
     [Arguments("MariaDb")]
     [Arguments("MySql")]
-    public void UuidV7DefaultsUseClientGenerationOnEveryProvider(string provider)
+    public async Task UuidV7DefaultsUseClientGenerationOnEveryProvider(string provider)
     {
         using var context = CreateContext(provider);
         var property = context.GetService<IDesignTimeModel>().Model
             .FindEntityType(typeof(Explore.Domain.EventRegistration))!
             .FindProperty(nameof(Explore.Domain.EventRegistration.Id))!;
 
-        property.GetDefaultValueSql().Should().BeNull();
-        var generator = property.GetValueGeneratorFactory()!(property, property.DeclaringType)
-            .Should().BeOfType<GuidVersion7ValueGenerator>().Subject;
-        generator.Next(null!).Version.Should().Be(7);
+        await Assert.That(property.GetDefaultValueSql()).IsNull();
+        var generator = property.GetValueGeneratorFactory()!(property, property.DeclaringType);
+        await Assert.That(generator).IsTypeOf<GuidVersion7ValueGenerator>();
+        await Assert.That(((GuidVersion7ValueGenerator)generator).Next(null!).Version).IsEqualTo(7);
     }
 
     [Test]
@@ -47,44 +46,41 @@ public sealed class ExploreDbContextModelProviderTests
     [Arguments("SqlServer")]
     [Arguments("MariaDb")]
     [Arguments("MySql")]
-    public void ModelBuildsWithFixedNamespaceAndProviderCapabilities(string provider)
+    public async Task ModelBuildsWithFixedNamespaceAndProviderCapabilities(string provider)
     {
         using var context = CreateContext(provider);
 
         var model = context.Model;
-        model.GetRelationalModel().Tables.Should().NotBeEmpty();
+        await Assert.That(model.GetRelationalModel().Tables).IsNotEmpty();
 
         if (provider is "PostgreSql" or "SqlServer")
         {
-            model.GetDefaultSchema().Should().Be("islamu_event");
+            await Assert.That(model.GetDefaultSchema()).IsEqualTo("islamu_event");
         }
         else
         {
-            model.GetEntityTypes()
+            await Assert.That(model.GetEntityTypes()
                 .Where(entityType => entityType.GetTableName() is not null)
-                .Should().OnlyContain(entityType => entityType.GetTableName()!.StartsWith("ie_", StringComparison.Ordinal));
+                .All(entityType => entityType.GetTableName()!.StartsWith("ie_", StringComparison.Ordinal))).IsTrue();
         }
 
         var annotations = model.GetEntityTypes().SelectMany(entityType => entityType.GetAnnotations()).ToArray();
-        annotations.Any(annotation => annotation.Name.StartsWith("Explore:PostgresExclusionConstraint:", StringComparison.Ordinal))
-            .Should().Be(provider == "PostgreSql");
+        await Assert.That(annotations.Any(annotation => annotation.Name.StartsWith("Explore:PostgresExclusionConstraint:", StringComparison.Ordinal)))
+            .IsEqualTo(provider == "PostgreSql");
     }
 
     [Test]
     [Arguments("MariaDb")]
     [Arguments("MySql")]
-    public void MySqlModelsHaveDistinctBoundedCustomPropertyOptionForeignKeys(string provider)
+    public async Task MySqlModelsHaveDistinctBoundedCustomPropertyOptionForeignKeys(string provider)
     {
         using var context = CreateContext(provider);
 
         var relationalModel = context.Model.GetRelationalModel();
         var tables = relationalModel.Tables.ToArray();
-        tables.SelectMany(table => table.UniqueConstraints).Select(constraint => constraint.Name)
-            .Should().OnlyContain(name => name.Length <= 64);
-        tables.SelectMany(table => table.Indexes).Select(index => index.Name)
-            .Should().OnlyContain(name => name.Length <= 64);
-        tables.SelectMany(table => table.ForeignKeyConstraints).Select(constraint => constraint.Name)
-            .Should().OnlyContain(name => name.Length <= 64);
+        await Assert.That(tables.SelectMany(table => table.UniqueConstraints).Select(constraint => constraint.Name).All(name => name.Length <= 64)).IsTrue();
+        await Assert.That(tables.SelectMany(table => table.Indexes).Select(index => index.Name).All(name => name.Length <= 64)).IsTrue();
+        await Assert.That(tables.SelectMany(table => table.ForeignKeyConstraints).Select(constraint => constraint.Name).All(name => name.Length <= 64)).IsTrue();
 
         var optionTable = tables.Single(table => table.Name == "ie_custom_property_options");
         var optionForeignKeys = optionTable.ForeignKeyConstraints
@@ -93,48 +89,49 @@ public sealed class ExploreDbContextModelProviderTests
             .Select(constraint => constraint.Name)
             .ToArray();
 
-        optionForeignKeys.Should().HaveCount(2).And.OnlyHaveUniqueItems();
+        await Assert.That(optionForeignKeys).Count().IsEqualTo(2);
+        await Assert.That(optionForeignKeys.Distinct()).Count().IsEqualTo(2);
     }
 
     [Test]
     [Arguments("MariaDb")]
     [Arguments("MySql")]
-    public void MySqlExternalBindingHashKeysPreserveUnicodeValueCapacity(string provider)
+    public async Task MySqlExternalBindingHashKeysPreserveUnicodeValueCapacity(string provider)
     {
         using var context = CreateContext(provider);
         var entityType = context.GetService<IDesignTimeModel>().Model
             .FindEntityType(typeof(Explore.Domain.ExternalBinding))!;
 
         var externalId = entityType.FindProperty(nameof(Explore.Domain.ExternalBinding.ExternalId))!;
-        externalId.GetMaxLength().Should().Be(512);
-        externalId.GetCollation().Should().BeNull();
-        externalId.GetCharSet().Should().NotBe("ascii");
-        entityType.FindProperty("ExternalGlobalUniquenessHash")!.GetColumnType().Should().Be("binary(32)");
+        await Assert.That(externalId.GetMaxLength()).IsEqualTo(512);
+        await Assert.That(externalId.GetCollation()).IsNull();
+        await Assert.That(externalId.GetCharSet()).IsNotEqualTo("ascii");
+        await Assert.That(entityType.FindProperty("ExternalGlobalUniquenessHash")!.GetColumnType()).IsEqualTo("binary(32)");
     }
 
     [Test]
     [Arguments("MariaDb")]
     [Arguments("MySql")]
-    public void MySqlExternalBindingHashKeysSeparateGlobalAndTenantScopes(string provider)
+    public async Task MySqlExternalBindingHashKeysSeparateGlobalAndTenantScopes(string provider)
     {
         using var context = CreateContext(provider);
         var entityType = context.GetService<IDesignTimeModel>().Model
             .FindEntityType(typeof(Explore.Domain.ExternalBinding))!;
 
-        entityType.FindProperty("ExternalGlobalUniquenessHash")!.IsNullable.Should().BeTrue();
-        entityType.FindProperty("ExternalTenantUniquenessHash")!.IsNullable.Should().BeTrue();
-        entityType.FindProperty("InternalGlobalUniquenessHash")!.IsNullable.Should().BeTrue();
-        entityType.FindProperty("InternalTenantUniquenessHash")!.IsNullable.Should().BeTrue();
+        await Assert.That(entityType.FindProperty("ExternalGlobalUniquenessHash")!.IsNullable).IsTrue();
+        await Assert.That(entityType.FindProperty("ExternalTenantUniquenessHash")!.IsNullable).IsTrue();
+        await Assert.That(entityType.FindProperty("InternalGlobalUniquenessHash")!.IsNullable).IsTrue();
+        await Assert.That(entityType.FindProperty("InternalTenantUniquenessHash")!.IsNullable).IsTrue();
 
-        ExploreDbContext.ComputeMySqlUniquenessHash("provider", "system", "type", "identity")
-            .Should().NotEqual(ExploreDbContext.ComputeMySqlUniquenessHash(
+        await Assert.That(ExploreDbContext.ComputeMySqlUniquenessHash("provider", "system", "type", "identity"))
+            .IsNotEqualTo(ExploreDbContext.ComputeMySqlUniquenessHash(
                 "provider", "system", "type", "identity", Guid.Empty.ToString("D")));
     }
 
     [Test]
     [Arguments("MariaDb")]
     [Arguments("MySql")]
-    public void MySqlExternalBindingDuplicateProtectionUsesFourUniqueHashIndexes(string provider)
+    public async Task MySqlExternalBindingDuplicateProtectionUsesFourUniqueHashIndexes(string provider)
     {
         using var context = CreateContext(provider);
         var indexes = context.GetService<IDesignTimeModel>().Model
@@ -142,34 +139,33 @@ public sealed class ExploreDbContextModelProviderTests
             .GetIndexes()
             .ToArray();
 
-        indexes.Where(index => index.GetDatabaseName()?.EndsWith("_hash", StringComparison.Ordinal) == true)
-            .Should().HaveCount(4).And.OnlyContain(index => index.IsUnique);
-        indexes.Select(index => index.GetDatabaseName()).Intersect([
+        var hashIndexes = indexes.Where(index => index.GetDatabaseName()?.EndsWith("_hash", StringComparison.Ordinal) == true).ToArray();
+        await Assert.That(hashIndexes).Count().IsEqualTo(4);
+        await Assert.That(hashIndexes.All(index => index.IsUnique)).IsTrue();
+        await Assert.That(indexes.Select(index => index.GetDatabaseName()).Intersect([
                 "ix_external_bindings_external_global_unique",
                 "ix_external_bindings_external_tenant_unique",
                 "ix_external_bindings_internal_global_unique",
                 "ix_external_bindings_internal_tenant_unique"
-            ])
-            .Should().BeEmpty();
+            ])).IsEmpty();
     }
 
     [Test]
     [Arguments("MariaDb")]
     [Arguments("MySql")]
-    public void MySqlExternalBindingHashInputUsesLengthPrefixedUtf8Components(string provider)
+    public async Task MySqlExternalBindingHashInputUsesLengthPrefixedUtf8Components(string provider)
     {
         using var context = CreateContext(provider);
         _ = context.Model;
-        ExploreDbContext.ComputeMySqlUniquenessHash("ab", "c")
-            .Should().NotEqual(ExploreDbContext.ComputeMySqlUniquenessHash("a", "bc"));
-        ExploreDbContext.ComputeMySqlUniquenessHash("مزوّد", "外部識別子")
-            .Should().HaveCount(32);
+        await Assert.That(ExploreDbContext.ComputeMySqlUniquenessHash("ab", "c"))
+            .IsNotEqualTo(ExploreDbContext.ComputeMySqlUniquenessHash("a", "bc"));
+        await Assert.That(ExploreDbContext.ComputeMySqlUniquenessHash("مزوّد", "外部識別子")).Count().IsEqualTo(32);
     }
 
     [Test]
     [Arguments("MariaDb")]
     [Arguments("MySql")]
-    public void MySqlIndexesFitInnoDbKeyLimit(string provider)
+    public async Task MySqlIndexesFitInnoDbKeyLimit(string provider)
     {
         using var context = CreateContext(provider);
         var oversized = context.GetService<IDesignTimeModel>().Model.GetEntityTypes()
@@ -179,9 +175,7 @@ public sealed class ExploreDbContextModelProviderTests
             .Select(candidate => $"{candidate.Index.DeclaringEntityType.GetTableName()}.{candidate.Index.GetDatabaseName()}={candidate.Width}")
             .ToArray();
 
-        oversized.Should().BeEmpty(
-            "every MySQL-family index must fit 3072 bytes; oversized: {0}",
-            string.Join(", ", oversized));
+        await Assert.That(oversized).IsEmpty();
     }
 
     [Test]
@@ -190,7 +184,7 @@ public sealed class ExploreDbContextModelProviderTests
     [Arguments("SqlServer")]
     [Arguments("MariaDb")]
     [Arguments("MySql")]
-    public void ProviderModelNormalizesPostgreSqlOnlyRelationalAnnotations(string provider)
+    public async Task ProviderModelNormalizesPostgreSqlOnlyRelationalAnnotations(string provider)
     {
         using var context = CreateContext(provider);
 
@@ -201,46 +195,46 @@ public sealed class ExploreDbContextModelProviderTests
 
         if (provider == "PostgreSql")
         {
-            leaseShape.Sql.Should().Contain("btrim(lease_owner) <> ''");
+            await Assert.That(leaseShape.Sql).Contains("btrim(lease_owner) <> ''");
             return;
         }
 
-        leaseShape.Sql.Should().Contain("trim(lease_owner) <> ''");
-        checkConstraints.Any(constraint =>
-            constraint.Name == "ck_notifications_entity_reference_shape").Should().BeFalse();
-        checkConstraints.Any(constraint =>
+        await Assert.That(leaseShape.Sql).Contains("trim(lease_owner) <> ''");
+        await Assert.That(checkConstraints.Any(constraint =>
+            constraint.Name == "ck_notifications_entity_reference_shape")).IsFalse();
+        await Assert.That(checkConstraints.Any(constraint =>
             new[] { "btrim(", "::", "jsonb_", "num_nonnulls(", "octet_length(", "extract(", "~" }
-                .Any(token => constraint.Sql.Contains(token, StringComparison.OrdinalIgnoreCase))).Should().BeFalse();
+                .Any(token => constraint.Sql.Contains(token, StringComparison.OrdinalIgnoreCase)))).IsFalse();
 
         var properties = model.GetEntityTypes().SelectMany(entityType => entityType.GetProperties()).ToArray();
         if (provider is "MariaDb" or "MySql")
         {
-            properties.Where(property => !IsMySqlAsciiIdentityProperty(property))
-                .Should().OnlyContain(property => property.GetCollation() == null);
-            model.FindEntityType(typeof(Explore.Domain.AtprotoIdentity))!
+            await Assert.That(properties.Where(property => !IsMySqlAsciiIdentityProperty(property))
+                .All(property => property.GetCollation() == null)).IsTrue();
+            await Assert.That(model.FindEntityType(typeof(Explore.Domain.AtprotoIdentity))!
                 .FindProperty(nameof(Explore.Domain.AtprotoIdentity.Did))!
-                .GetCollation().Should().Be("ascii_bin");
+                .GetCollation()).IsEqualTo("ascii_bin");
         }
         else
         {
-            properties.Should().OnlyContain(property => property.GetCollation() == null);
+            await Assert.That(properties.All(property => property.GetCollation() == null)).IsTrue();
         }
-        properties.Any(property =>
+        await Assert.That(properties.Any(property =>
         {
             var columnType = property.GetColumnType();
             return
             columnType is not null && new[] { "bytea", "jsonb", "time without time zone", "timestamp with time zone", "uuid" }
                 .Contains(columnType, StringComparer.OrdinalIgnoreCase);
-        }).Should().BeFalse();
-        properties.Any(property =>
+        })).IsFalse();
+        await Assert.That(properties.Any(property =>
         {
             var defaultSql = property.GetDefaultValueSql();
             return
             defaultSql is not null && new[] { "uuidv7()", "NOW()", "statement_timestamp()" }
                 .Contains(defaultSql, StringComparer.OrdinalIgnoreCase);
-        }).Should().BeFalse();
-        properties.Any(property => property.GetComputedColumnSql()?.Contains(
-            "::uuid", StringComparison.OrdinalIgnoreCase) == true).Should().BeFalse();
+        })).IsFalse();
+        await Assert.That(properties.Any(property => property.GetComputedColumnSql()?.Contains(
+            "::uuid", StringComparison.OrdinalIgnoreCase) == true)).IsFalse();
 
         var sqlAnnotations = properties.SelectMany(property => new[]
             {
@@ -259,15 +253,15 @@ public sealed class ExploreDbContextModelProviderTests
             "uuidv7", "jsonb", "btrim", "::", "statement_timestamp", "INTERVAL", "infinity",
             "~", "num_nonnulls", "octet_length", "extract("
         };
-        sqlAnnotations.Any(sql => postgreSqlTokens.Any(token =>
-            sql.Contains(token, StringComparison.OrdinalIgnoreCase))).Should().BeFalse();
+        await Assert.That(sqlAnnotations.Any(sql => postgreSqlTokens.Any(token =>
+            sql.Contains(token, StringComparison.OrdinalIgnoreCase)))).IsFalse();
 
         if (provider == "SqlServer")
         {
-            model.GetEntityTypes().SelectMany(entityType => entityType.GetIndexes()).Any(index =>
+            await Assert.That(model.GetEntityTypes().SelectMany(entityType => entityType.GetIndexes()).Any(index =>
                 index.GetFilter() is { } filter &&
                     (filter.Contains("true", StringComparison.OrdinalIgnoreCase) ||
-                     filter.Contains("false", StringComparison.OrdinalIgnoreCase))).Should().BeFalse();
+                     filter.Contains("false", StringComparison.OrdinalIgnoreCase)))).IsFalse();
         }
     }
 
@@ -289,7 +283,7 @@ public sealed class ExploreDbContextModelProviderTests
                 .UseSnakeCaseNamingConvention();
             await using var context = new ExploreDbContext(builder.Options);
 
-            (await context.Database.EnsureCreatedAsync()).Should().BeTrue();
+            await Assert.That(await context.Database.EnsureCreatedAsync()).IsTrue();
         }
         finally
         {

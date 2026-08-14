@@ -11,7 +11,6 @@ using Explore.Application.Contracts.Persistence;
 using Explore.Application.Telemetry;
 using Explore.Infrastructure;
 using Explore.ServiceDefaults.HealthChecks;
-using FluentAssertions;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
@@ -59,34 +58,34 @@ public sealed class EmailDispatchHealthCheckTests
 
         var result = await setup.HealthCheck.CheckHealthAsync(new HealthCheckContext());
 
-        result.Status.Should().Be(HealthStatus.Healthy);
-        result.Description.Should().Contain("TickerQ");
-        result.Data.Should().ContainKey("enabled").WhoseValue.Should().Be(true);
-        result.Data.Should().ContainKey("mode").WhoseValue.Should().Be(nameof(EmailDispatchProcessorMode.TickerQ));
-        result.Data.Should().ContainKey("pollingIntervalSeconds").WhoseValue.Should().Be(7);
-        result.Data.Should().ContainKey("batchSize").WhoseValue.Should().Be(12);
-        result.Data.Should().ContainKey("maxAttemptCount").WhoseValue.Should().Be(4);
-        result.Data.Should().ContainKey("processingLeaseTimeoutSeconds").WhoseValue.Should().Be(30);
-        result.Data.Should().ContainKey("dueDispatchWarningThreshold").WhoseValue.Should().Be(10);
-        result.Data.Should().ContainKey("staleProcessingWarningThreshold").WhoseValue.Should().Be(2);
-        result.Data.Should().ContainKey("unknownWarningThreshold").WhoseValue.Should().Be(1);
-        result.Data.Should().ContainKey("deadLetterWarningThreshold").WhoseValue.Should().Be(2);
-        result.Data.Should().ContainKey("dueDispatchCount").WhoseValue.Should().Be(1);
-        result.Data.Should().ContainKey("retryScheduledCount").WhoseValue.Should().Be(1);
-        result.Data.Should().ContainKey("staleProcessingCount").WhoseValue.Should().Be(0);
-        result.Data.Should().ContainKey("deadLetteredCount").WhoseValue.Should().Be(0);
-        result.Data.Should().ContainKey("unknownCount").WhoseValue.Should().Be(0);
-        result.Data.Should().ContainKey("parkedCount").WhoseValue.Should().Be(0);
-        result.Data.Should().ContainKey("optionalReminderDeferralActive").WhoseValue.Should().Be(false);
-        result.Data.Should().ContainKey("processingStartedBefore").WhoseValue.Should().BeOfType<DateTime>();
-        result.Data.Should().ContainKey("oldestActivePendingAgeSeconds");
-        result.Data.Should().ContainKey("tenantBacklogSample");
-        result.Data.Should().ContainKey("consumerId").WhoseValue.Should().Be("test-consumer");
-        result.Data.Should().ContainKey("tickerQEnabled").WhoseValue.Should().Be(true);
-        result.Data.Should().ContainKey("tickerQDashboardEnabled").WhoseValue.Should().Be(false);
-        result.Data.Keys.Should().NotContain(key => key.Contains("body", StringComparison.OrdinalIgnoreCase));
-        result.Data.Keys.Should().NotContain(key => key.Contains("recipient", StringComparison.OrdinalIgnoreCase));
-        result.Data.Keys.Should().NotContain(key => key.Contains("secret", StringComparison.OrdinalIgnoreCase));
+        await Assert.That(result.Status).IsEqualTo(HealthStatus.Healthy);
+        await Assert.That(result.Description).Contains("TickerQ");
+        await Assert.That(result.Data).ContainsKey("enabled").And.Value.IsEqualTo(true);
+        await Assert.That(result.Data).ContainsKey("mode").And.Value.IsEqualTo(nameof(EmailDispatchProcessorMode.TickerQ));
+        await Assert.That(result.Data).ContainsKey("pollingIntervalSeconds").And.Value.IsEqualTo(7);
+        await Assert.That(result.Data).ContainsKey("batchSize").And.Value.IsEqualTo(12);
+        await Assert.That(result.Data).ContainsKey("maxAttemptCount").And.Value.IsEqualTo(4);
+        await Assert.That(result.Data).ContainsKey("processingLeaseTimeoutSeconds").And.Value.IsEqualTo(30);
+        await Assert.That(result.Data).ContainsKey("dueDispatchWarningThreshold").And.Value.IsEqualTo(10);
+        await Assert.That(result.Data).ContainsKey("staleProcessingWarningThreshold").And.Value.IsEqualTo(2);
+        await Assert.That(result.Data).ContainsKey("unknownWarningThreshold").And.Value.IsEqualTo(1);
+        await Assert.That(result.Data).ContainsKey("deadLetterWarningThreshold").And.Value.IsEqualTo(2);
+        await Assert.That(result.Data).ContainsKey("dueDispatchCount").And.Value.IsEqualTo(1);
+        await Assert.That(result.Data).ContainsKey("retryScheduledCount").And.Value.IsEqualTo(1);
+        await Assert.That(result.Data).ContainsKey("staleProcessingCount").And.Value.IsEqualTo(0);
+        await Assert.That(result.Data).ContainsKey("deadLetteredCount").And.Value.IsEqualTo(0);
+        await Assert.That(result.Data).ContainsKey("unknownCount").And.Value.IsEqualTo(0);
+        await Assert.That(result.Data).ContainsKey("parkedCount").And.Value.IsEqualTo(0);
+        await Assert.That(result.Data).ContainsKey("optionalReminderDeferralActive").And.Value.IsEqualTo(false);
+        await Assert.That(result.Data).ContainsKey("processingStartedBefore").And.Value.IsTypeOf<DateTime>();
+        await Assert.That(result.Data).ContainsKey("oldestActivePendingAgeSeconds");
+        await Assert.That(result.Data).ContainsKey("tenantBacklogSample");
+        await Assert.That(result.Data).ContainsKey("consumerId").And.Value.IsEqualTo("test-consumer");
+        await Assert.That(result.Data).ContainsKey("tickerQEnabled").And.Value.IsEqualTo(true);
+        await Assert.That(result.Data).ContainsKey("tickerQDashboardEnabled").And.Value.IsEqualTo(false);
+        await Assert.That(result.Data.Keys).DoesNotContain(key => key.Contains("body", StringComparison.OrdinalIgnoreCase));
+        await Assert.That(result.Data.Keys).DoesNotContain(key => key.Contains("recipient", StringComparison.OrdinalIgnoreCase));
+        await Assert.That(result.Data.Keys).DoesNotContain(key => key.Contains("secret", StringComparison.OrdinalIgnoreCase));
     }
 
     [Test]
@@ -102,10 +101,10 @@ public sealed class EmailDispatchHealthCheckTests
 
         var result = await setup.HealthCheck.CheckHealthAsync(new HealthCheckContext());
 
-        result.Status.Should().Be(HealthStatus.Degraded);
-        result.Description.Should().Contain("intentionally disabled");
-        result.Data.Should().ContainKey("enabled").WhoseValue.Should().Be(false);
-        result.Data.Should().ContainKey("consumerId").WhoseValue.Should().Be("disabled-consumer");
+        await Assert.That(result.Status).IsEqualTo(HealthStatus.Degraded);
+        await Assert.That(result.Description).Contains("intentionally disabled");
+        await Assert.That(result.Data).ContainsKey("enabled").And.Value.IsEqualTo(false);
+        await Assert.That(result.Data).ContainsKey("consumerId").And.Value.IsEqualTo("disabled-consumer");
         await setup.Repository.DidNotReceiveWithAnyArgs().CountDueDispatchAsync(default, default);
         await setup.Repository.DidNotReceiveWithAnyArgs().CountRetryScheduledAsync(default);
         await setup.Repository.DidNotReceiveWithAnyArgs().CountStaleProcessingAsync(default, default);
@@ -133,10 +132,10 @@ public sealed class EmailDispatchHealthCheckTests
 
         var result = await setup.HealthCheck.CheckHealthAsync(new HealthCheckContext());
 
-        result.Status.Should().Be(HealthStatus.Degraded);
-        result.Description.Should().Contain("Disabled");
-        result.Data.Should().ContainKey("enabled").WhoseValue.Should().Be(true);
-        result.Data.Should().ContainKey("mode").WhoseValue.Should().Be(nameof(EmailDispatchProcessorMode.Disabled));
+        await Assert.That(result.Status).IsEqualTo(HealthStatus.Degraded);
+        await Assert.That(result.Description).Contains("Disabled");
+        await Assert.That(result.Data).ContainsKey("enabled").And.Value.IsEqualTo(true);
+        await Assert.That(result.Data).ContainsKey("mode").And.Value.IsEqualTo(nameof(EmailDispatchProcessorMode.Disabled));
         await setup.Repository.DidNotReceiveWithAnyArgs().CountDueDispatchAsync(default, default);
         await setup.Repository.DidNotReceiveWithAnyArgs().CountRetryScheduledAsync(default);
         await setup.Repository.DidNotReceiveWithAnyArgs().CountStaleProcessingAsync(default, default);
@@ -164,10 +163,10 @@ public sealed class EmailDispatchHealthCheckTests
 
         var result = await setup.HealthCheck.CheckHealthAsync(new HealthCheckContext());
 
-        result.Status.Should().Be(HealthStatus.Unhealthy);
-        result.Description.Should().Contain("TickerQ");
-        result.Data.Should().ContainKey("mode").WhoseValue.Should().Be(nameof(EmailDispatchProcessorMode.TickerQ));
-        result.Data.Should().ContainKey("tickerQEnabled").WhoseValue.Should().Be(false);
+        await Assert.That(result.Status).IsEqualTo(HealthStatus.Unhealthy);
+        await Assert.That(result.Description).Contains("TickerQ");
+        await Assert.That(result.Data).ContainsKey("mode").And.Value.IsEqualTo(nameof(EmailDispatchProcessorMode.TickerQ));
+        await Assert.That(result.Data).ContainsKey("tickerQEnabled").And.Value.IsEqualTo(false);
         await setup.Repository.DidNotReceiveWithAnyArgs().CountDueDispatchAsync(default, default);
         await setup.Repository.DidNotReceiveWithAnyArgs().CountRetryScheduledAsync(default);
         await setup.Repository.DidNotReceiveWithAnyArgs().CountStaleProcessingAsync(default, default);
@@ -195,10 +194,10 @@ public sealed class EmailDispatchHealthCheckTests
 
         var result = await setup.HealthCheck.CheckHealthAsync(new HealthCheckContext());
 
-        result.Status.Should().Be(HealthStatus.Healthy);
-        result.Description.Should().Contain("hosted service");
-        result.Data.Should().ContainKey("mode").WhoseValue.Should().Be(nameof(EmailDispatchProcessorMode.HostedService));
-        result.Data.Should().ContainKey("tickerQEnabled").WhoseValue.Should().Be(false);
+        await Assert.That(result.Status).IsEqualTo(HealthStatus.Healthy);
+        await Assert.That(result.Description).Contains("hosted service");
+        await Assert.That(result.Data).ContainsKey("mode").And.Value.IsEqualTo(nameof(EmailDispatchProcessorMode.HostedService));
+        await Assert.That(result.Data).ContainsKey("tickerQEnabled").And.Value.IsEqualTo(false);
     }
 
     [Test]
@@ -218,9 +217,9 @@ public sealed class EmailDispatchHealthCheckTests
 
         var result = await setup.HealthCheck.CheckHealthAsync(new HealthCheckContext());
 
-        result.Status.Should().Be(HealthStatus.Degraded);
-        result.Description.Should().Contain("stale processing");
-        result.Data.Should().ContainKey("staleProcessingCount").WhoseValue.Should().Be(1);
+        await Assert.That(result.Status).IsEqualTo(HealthStatus.Degraded);
+        await Assert.That(result.Description).Contains("stale processing");
+        await Assert.That(result.Data).ContainsKey("staleProcessingCount").And.Value.IsEqualTo(1);
     }
 
     [Test]
@@ -240,9 +239,9 @@ public sealed class EmailDispatchHealthCheckTests
 
         var result = await setup.HealthCheck.CheckHealthAsync(new HealthCheckContext());
 
-        result.Status.Should().Be(HealthStatus.Degraded);
-        result.Description.Should().Contain("dead-lettered");
-        result.Data.Should().ContainKey("deadLetteredCount").WhoseValue.Should().Be(1);
+        await Assert.That(result.Status).IsEqualTo(HealthStatus.Degraded);
+        await Assert.That(result.Description).Contains("dead-lettered");
+        await Assert.That(result.Data).ContainsKey("deadLetteredCount").And.Value.IsEqualTo(1);
     }
 
     [Test]
@@ -264,11 +263,11 @@ public sealed class EmailDispatchHealthCheckTests
 
         var result = await setup.HealthCheck.CheckHealthAsync(new HealthCheckContext());
 
-        result.Status.Should().Be(HealthStatus.Degraded);
-        result.Description.Should().Contain("reconciliation");
-        result.Data.Should().ContainKey("unknownCount").WhoseValue.Should().Be(1);
-        result.Data.Should().ContainKey("parkedCount").WhoseValue.Should().Be(5);
-        result.Data.Should().ContainKey("optionalReminderDeferralActive").WhoseValue.Should().Be(true);
+        await Assert.That(result.Status).IsEqualTo(HealthStatus.Degraded);
+        await Assert.That(result.Description).Contains("reconciliation");
+        await Assert.That(result.Data).ContainsKey("unknownCount").And.Value.IsEqualTo(1);
+        await Assert.That(result.Data).ContainsKey("parkedCount").And.Value.IsEqualTo(5);
+        await Assert.That(result.Data).ContainsKey("optionalReminderDeferralActive").And.Value.IsEqualTo(true);
     }
 
     [Test]
@@ -289,10 +288,10 @@ public sealed class EmailDispatchHealthCheckTests
 
         var result = await setup.HealthCheck.CheckHealthAsync(new HealthCheckContext());
 
-        result.Status.Should().Be(HealthStatus.Degraded);
-        result.Description.Should().Contain("due backlog");
-        result.Data.Should().ContainKey("dueDispatchCount").WhoseValue.Should().Be(2);
-        result.Data.Should().ContainKey("retryScheduledCount").WhoseValue.Should().Be(1);
+        await Assert.That(result.Status).IsEqualTo(HealthStatus.Degraded);
+        await Assert.That(result.Description).Contains("due backlog");
+        await Assert.That(result.Data).ContainsKey("dueDispatchCount").And.Value.IsEqualTo(2);
+        await Assert.That(result.Data).ContainsKey("retryScheduledCount").And.Value.IsEqualTo(1);
     }
 
     [Test]
@@ -318,11 +317,13 @@ public sealed class EmailDispatchHealthCheckTests
 
         var result = await setup.HealthCheck.CheckHealthAsync(new HealthCheckContext());
 
-        result.Status.Should().Be(HealthStatus.Degraded);
-        result.Description.Should().Contain("oldest pending");
-        result.Data["oldestActivePendingAgeSeconds"].Should().BeOfType<double>().Which.Should().BeGreaterThan(60);
-        result.Data["tenantBacklogSample"].Should().BeAssignableTo<IReadOnlyDictionary<Guid, int>>()
-            .Which.Should().ContainSingle().Which.Key.Should().Be(tenantId);
+        await Assert.That(result.Status).IsEqualTo(HealthStatus.Degraded);
+        await Assert.That(result.Description).Contains("oldest pending");
+        var oldestActivePendingAgeSeconds = (double)result.Data["oldestActivePendingAgeSeconds"];
+        await Assert.That(oldestActivePendingAgeSeconds).IsGreaterThan(60);
+        var tenantBacklogSample = (IReadOnlyDictionary<Guid, int>)result.Data["tenantBacklogSample"];
+        await Assert.That(tenantBacklogSample).HasSingleItem();
+        await Assert.That(tenantBacklogSample.Single().Key).IsEqualTo(tenantId);
     }
 
     [Test]
@@ -369,16 +370,16 @@ public sealed class EmailDispatchHealthCheckTests
         using var reader = new StreamReader(context.Response.Body, Encoding.UTF8, leaveOpen: true);
         var json = await reader.ReadToEndAsync();
         var serializedData = JsonNode.Parse(json)!["checks"]!.AsArray()[0]!["data"]!.AsObject();
-        serializedData["tenantId"]!.GetValue<string>().Should().Be(HealthCheckResponseWriter.RedactedValue);
-        serializedData["userId"]!.GetValue<string>().Should().Be(HealthCheckResponseWriter.RedactedValue);
-        serializedData["providerId"]!.GetValue<string>().Should().Be(HealthCheckResponseWriter.RedactedValue);
-        json.Should().NotContain(tenantId.ToString());
-        json.Should().NotContain("person@example.test");
-        json.Should().NotContain("Private subject");
-        json.Should().NotContain("Private body");
-        json.Should().NotContain("Private evidence");
-        json.Should().NotContain("Private event");
-        json.Should().Contain(HealthCheckResponseWriter.RedactedValue);
+        await Assert.That(serializedData["tenantId"]!.GetValue<string>()).IsEqualTo(HealthCheckResponseWriter.RedactedValue);
+        await Assert.That(serializedData["userId"]!.GetValue<string>()).IsEqualTo(HealthCheckResponseWriter.RedactedValue);
+        await Assert.That(serializedData["providerId"]!.GetValue<string>()).IsEqualTo(HealthCheckResponseWriter.RedactedValue);
+        await Assert.That(json).DoesNotContain(tenantId.ToString());
+        await Assert.That(json).DoesNotContain("person@example.test");
+        await Assert.That(json).DoesNotContain("Private subject");
+        await Assert.That(json).DoesNotContain("Private body");
+        await Assert.That(json).DoesNotContain("Private evidence");
+        await Assert.That(json).DoesNotContain("Private event");
+        await Assert.That(json).Contains(HealthCheckResponseWriter.RedactedValue);
     }
 
     private static (

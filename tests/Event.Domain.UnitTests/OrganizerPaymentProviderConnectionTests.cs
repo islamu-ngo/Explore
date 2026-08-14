@@ -22,6 +22,8 @@ public sealed class OrganizerPaymentProviderConnectionTests
         await Assert.That(connection.ProviderCode).IsEqualTo("stripe");
         await Assert.That(connection.ConnectPlatformId).IsEqualTo("platform-live-eu");
         await Assert.That(connection.ExternalAccountId).IsEqualTo("acct_123");
+        await Assert.That(connection.ActiveScopeKey).IsEqualTo($"{TenantId:N}|{OrganizerActorId:N}|stripe|platform-live-eu");
+        await Assert.That(connection.ActiveUniquenessSlot).IsEqualTo("active");
         await Assert.That(connection.StatusId).IsEqualTo((int)OrganizerPaymentProviderConnectionStatusEnum.PendingOnboarding);
         await Assert.That(connection.ReplacesConnectionId).IsNull();
     }
@@ -83,18 +85,48 @@ public sealed class OrganizerPaymentProviderConnectionTests
     }
 
     [Test]
-    public async Task ReplaceWith_CreatesFutureConnectionAndNeverMutatesExternalAccount()
+    public async Task ReplaceWith_CreatesFutureConnectionAndKeepsReverseLineageSeparate()
     {
         OrganizerPaymentProviderConnection old = Connection("acct_old");
+        Guid previousStamp = old.ConcurrencyStamp;
 
         OrganizerPaymentProviderConnection replacement = old.ReplaceWith(Guid.Parse("018e4e5c-7f00-7000-8000-000000000222"), "acct_new", Now.AddMinutes(3));
 
         await Assert.That(old.StatusId).IsEqualTo((int)OrganizerPaymentProviderConnectionStatusEnum.Replaced);
+        await Assert.That(old.ActiveUniquenessSlot).IsEqualTo($"replaced:{old.Id:N}");
         await Assert.That(old.ExternalAccountId).IsEqualTo("acct_old");
-        await Assert.That(old.ReplacedByConnectionId).IsEqualTo(replacement.Id);
+        await Assert.That(old.ReplacedByConnectionId).IsNull();
         await Assert.That(replacement.ReplacesConnectionId).IsEqualTo(old.Id);
+        await Assert.That(replacement.ActiveUniquenessSlot).IsEqualTo("active");
         await Assert.That(replacement.ExternalAccountId).IsEqualTo("acct_new");
         await Assert.That(replacement.StatusId).IsEqualTo((int)OrganizerPaymentProviderConnectionStatusEnum.PendingOnboarding);
+
+        Guid retiredStamp = old.ConcurrencyStamp;
+        old.MarkReplacedBy(replacement.Id);
+
+        await Assert.That(old.ReplacedByConnectionId).IsEqualTo(replacement.Id);
+        await Assert.That(old.ConcurrencyStamp).IsNotEqualTo(retiredStamp);
+        await Assert.That(old.ConcurrencyStamp).IsNotEqualTo(previousStamp);
+    }
+
+    [Test]
+    public async Task MarkReplacedBy_ValidatesStateAndIdentityAndIsIdempotent()
+    {
+        OrganizerPaymentProviderConnection active = Connection("acct_active");
+        OrganizerPaymentProviderConnection old = Connection("acct_old");
+        OrganizerPaymentProviderConnection replacement = old.ReplaceWith(Guid.Parse("018e4e5c-7f00-7000-8000-000000000222"), "acct_new", Now.AddMinutes(3));
+
+        await Assert.That(() => active.MarkReplacedBy(replacement.Id)).Throws<InvalidOperationException>();
+        await Assert.That(() => old.MarkReplacedBy(Guid.Empty)).Throws<ArgumentException>();
+        await Assert.That(() => old.MarkReplacedBy(old.Id)).Throws<ArgumentException>();
+
+        old.MarkReplacedBy(replacement.Id);
+        Guid linkedStamp = old.ConcurrencyStamp;
+        old.MarkReplacedBy(replacement.Id);
+
+        await Assert.That(old.ReplacedByConnectionId).IsEqualTo(replacement.Id);
+        await Assert.That(old.ConcurrencyStamp).IsEqualTo(linkedStamp);
+        await Assert.That(() => old.MarkReplacedBy(Guid.CreateVersion7())).Throws<InvalidOperationException>();
     }
 
     [Test]
@@ -119,6 +151,7 @@ public sealed class OrganizerPaymentProviderConnectionTests
         OrganizerPaymentRecipientSnapshot snapshot = connection.CreateRecipientSnapshot("eur", instancePolicyVersionId, tenantPolicyVersionId, Now.AddMinutes(4));
         connection.Disable("operator_disabled", Now.AddMinutes(5));
 
+        await Assert.That(connection.ActiveUniquenessSlot).IsEqualTo($"disabled:{connection.Id:N}");
         await Assert.That(snapshot.TenantId).IsEqualTo(connection.TenantId);
         await Assert.That(snapshot.OrganizerActorId).IsEqualTo(connection.OrganizerActorId);
         await Assert.That(snapshot.ProviderCode).IsEqualTo("stripe");

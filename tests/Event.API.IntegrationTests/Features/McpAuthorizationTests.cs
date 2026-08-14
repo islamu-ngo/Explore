@@ -12,7 +12,6 @@ using Explore.Application.Features.AiAssistant.Tools;
 using Explore.Application.Services;
 using Explore.Domain.Constants;
 using Explore.Domain.Enums;
-using FluentAssertions;
 using TUnit.Core;
 
 namespace ApiIntegrationTests.Features;
@@ -57,7 +56,7 @@ public sealed class McpAuthorizationTests
 
         var response = await client.SendAsync(request);
 
-        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.NotFound);
     }
 
     [Test]
@@ -75,7 +74,7 @@ public sealed class McpAuthorizationTests
 
         var response = await client.SendAsync(request);
 
-        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.NotFound);
     }
 
     [Test]
@@ -87,11 +86,11 @@ public sealed class McpAuthorizationTests
 
         var response = await client.SendAsync(request);
 
-        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
         var toolNames = await ReadToolNamesAsync(response);
-        toolNames.Should().Contain("list_ai_tool_contracts");
-        AssertEventManagementReadsHidden(toolNames);
-        AssertProposalToolsHidden(toolNames);
+        await Assert.That(toolNames).Contains("list_ai_tool_contracts");
+        await AssertEventManagementReadsHidden(toolNames);
+        await AssertProposalToolsHidden(toolNames);
     }
 
     [Test]
@@ -106,9 +105,9 @@ public sealed class McpAuthorizationTests
 
         var response = await client.SendAsync(request);
 
-        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
         var toolNames = await ReadToolNamesAsync(response);
-        toolNames.Should().Contain("list_ai_tool_contracts");
+        await Assert.That(toolNames).Contains("list_ai_tool_contracts");
     }
 
     [Test]
@@ -121,11 +120,11 @@ public sealed class McpAuthorizationTests
 
         var response = await client.SendAsync(request);
 
-        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
         var toolNames = await ReadToolNamesAsync(response);
-        toolNames.Should().Contain("list_ai_tool_contracts");
-        AssertEventManagementReadsHidden(toolNames);
-        AssertProposalToolsHidden(toolNames);
+        await Assert.That(toolNames).Contains("list_ai_tool_contracts");
+        await AssertEventManagementReadsHidden(toolNames);
+        await AssertProposalToolsHidden(toolNames);
     }
 
     [Test]
@@ -140,11 +139,11 @@ public sealed class McpAuthorizationTests
 
         var response = await client.SendAsync(request);
 
-        response.StatusCode.Should().NotBe(HttpStatusCode.Unauthorized);
-        response.StatusCode.Should().NotBe(HttpStatusCode.Forbidden);
+        await Assert.That(response.StatusCode).IsNotEqualTo(HttpStatusCode.Unauthorized);
+        await Assert.That(response.StatusCode).IsNotEqualTo(HttpStatusCode.Forbidden);
         var toolNames = await ReadToolNamesAsync(response);
-        AssertEventManagementReadsDiscoverable(toolNames);
-        AssertProposalToolsDiscoverable(toolNames, includeGeneric: false);
+        await AssertEventManagementReadsDiscoverable(toolNames);
+        await AssertProposalToolsDiscoverable(toolNames, includeGeneric: false);
     }
 
     [Test]
@@ -162,11 +161,11 @@ public sealed class McpAuthorizationTests
 
         var response = await client.SendAsync(request);
 
-        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
         var toolNames = await ReadToolNamesAsync(response);
-        toolNames.Should().Contain("list_ai_tool_contracts");
-        AssertEventManagementReadsHidden(toolNames);
-        AssertProposalToolsHidden(toolNames);
+        await Assert.That(toolNames).Contains("list_ai_tool_contracts");
+        await AssertEventManagementReadsHidden(toolNames);
+        await AssertProposalToolsHidden(toolNames);
     }
 
     [Test]
@@ -200,11 +199,11 @@ public sealed class McpAuthorizationTests
 
         var response = await client.SendAsync(request);
 
-        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
         var toolNames = await ReadToolNamesAsync(response);
-        toolNames.Should().Contain("list_ai_tool_contracts");
-        AssertEventManagementReadsHidden(toolNames);
-        AssertProposalToolsHidden(toolNames);
+        await Assert.That(toolNames).Contains("list_ai_tool_contracts");
+        await AssertEventManagementReadsHidden(toolNames);
+        await AssertProposalToolsHidden(toolNames);
     }
 
     [Test]
@@ -243,7 +242,7 @@ public sealed class McpAuthorizationTests
 
         var response = await client.SendAsync(request);
 
-        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.NotFound);
     }
 
     [Test]
@@ -279,25 +278,25 @@ public sealed class McpAuthorizationTests
         var listResponse = await client.SendAsync(listRequest);
         var resourceTemplatesResponse = await client.SendAsync(resourceTemplatesRequest);
 
-        listResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        await Assert.That(listResponse.StatusCode).IsEqualTo(HttpStatusCode.OK);
         var toolNames = await ReadToolNamesAsync(listResponse);
-        toolNames.Should().Contain("list_ai_tool_contracts");
-        AssertEventManagementReadsHidden(toolNames);
-        AssertProposalToolsHidden(toolNames);
+        await Assert.That(toolNames).Contains("list_ai_tool_contracts");
+        await AssertEventManagementReadsHidden(toolNames);
+        await AssertProposalToolsHidden(toolNames);
 
-        resourceTemplatesResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        await Assert.That(resourceTemplatesResponse.StatusCode).IsEqualTo(HttpStatusCode.OK);
         var resourceTemplateNames = await ReadResourceTemplateNamesAsync(resourceTemplatesResponse);
-        resourceTemplateNames.Should().NotContain("event_management_context");
+        await Assert.That(resourceTemplateNames).DoesNotContain("event_management_context");
 
         using var eventReadCallRequest = CreateMcpToolCallRequest("list_my_events", new { });
         eventReadCallRequest.Headers.Add("X-API-Key", rawApiKey);
 
         var eventReadCallResponse = await client.SendAsync(eventReadCallRequest);
 
-        eventReadCallResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        await Assert.That(eventReadCallResponse.StatusCode).IsEqualTo(HttpStatusCode.OK);
         using var eventReadErrorDocument = await ReadJsonRpcDocumentAsync(eventReadCallResponse);
-        eventReadErrorDocument.RootElement.TryGetProperty("error", out _).Should().BeTrue(eventReadErrorDocument.RootElement.GetRawText());
-        eventReadErrorDocument.RootElement.GetRawText().Should().NotContain(rawApiKey);
+        await Assert.That(eventReadErrorDocument.RootElement.TryGetProperty("error", out _)).IsTrue().Because(eventReadErrorDocument.RootElement.GetRawText());
+        await Assert.That(eventReadErrorDocument.RootElement.GetRawText()).DoesNotContain(rawApiKey);
 
         using var callRequest = CreateMcpToolCallRequest("propose_create_event_draft", new
         {
@@ -308,10 +307,10 @@ public sealed class McpAuthorizationTests
 
         var callResponse = await client.SendAsync(callRequest);
 
-        callResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        await Assert.That(callResponse.StatusCode).IsEqualTo(HttpStatusCode.OK);
         using var errorDocument = await ReadJsonRpcDocumentAsync(callResponse);
-        errorDocument.RootElement.TryGetProperty("error", out _).Should().BeTrue(errorDocument.RootElement.GetRawText());
-        errorDocument.RootElement.GetRawText().Should().NotContain(rawApiKey);
+        await Assert.That(errorDocument.RootElement.TryGetProperty("error", out _)).IsTrue().Because(errorDocument.RootElement.GetRawText());
+        await Assert.That(errorDocument.RootElement.GetRawText()).DoesNotContain(rawApiKey);
     }
 
     [Test]
@@ -347,15 +346,15 @@ public sealed class McpAuthorizationTests
         var listResponse = await client.SendAsync(listRequest);
         var resourceTemplatesResponse = await client.SendAsync(resourceTemplatesRequest);
 
-        listResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        await Assert.That(listResponse.StatusCode).IsEqualTo(HttpStatusCode.OK);
         var toolNames = await ReadToolNamesAsync(listResponse);
-        toolNames.Should().Contain("list_ai_tool_contracts");
-        AssertEventManagementReadsDiscoverable(toolNames);
-        AssertProposalToolsHidden(toolNames);
+        await Assert.That(toolNames).Contains("list_ai_tool_contracts");
+        await AssertEventManagementReadsDiscoverable(toolNames);
+        await AssertProposalToolsHidden(toolNames);
 
-        resourceTemplatesResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        await Assert.That(resourceTemplatesResponse.StatusCode).IsEqualTo(HttpStatusCode.OK);
         var resourceTemplateNames = await ReadResourceTemplateNamesAsync(resourceTemplatesResponse);
-        resourceTemplateNames.Should().Contain("event_management_context");
+        await Assert.That(resourceTemplateNames).Contains("event_management_context");
     }
 
     [Test]
@@ -388,11 +387,11 @@ public sealed class McpAuthorizationTests
 
         var response = await client.SendAsync(request);
 
-        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
         var toolNames = await ReadToolNamesAsync(response);
-        toolNames.Should().Contain("list_ai_tool_contracts");
-        AssertEventManagementReadsHidden(toolNames);
-        AssertProposalToolsHidden(toolNames);
+        await Assert.That(toolNames).Contains("list_ai_tool_contracts");
+        await AssertEventManagementReadsHidden(toolNames);
+        await AssertProposalToolsHidden(toolNames);
     }
 
     [Test]
@@ -425,10 +424,10 @@ public sealed class McpAuthorizationTests
 
         var listResponse = await client.SendAsync(listRequest);
 
-        listResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        await Assert.That(listResponse.StatusCode).IsEqualTo(HttpStatusCode.OK);
         var toolNames = await ReadToolNamesAsync(listResponse);
-        AssertEventManagementReadsDiscoverable(toolNames);
-        AssertProposalToolsHidden(toolNames);
+        await AssertEventManagementReadsDiscoverable(toolNames);
+        await AssertProposalToolsHidden(toolNames);
 
         using var callRequest = CreateMcpToolCallRequest("propose_heavy_moderate_event", new
         {
@@ -445,10 +444,10 @@ public sealed class McpAuthorizationTests
 
         var callResponse = await client.SendAsync(callRequest);
 
-        callResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        await Assert.That(callResponse.StatusCode).IsEqualTo(HttpStatusCode.OK);
         using var errorDocument = await ReadJsonRpcDocumentAsync(callResponse);
-        errorDocument.RootElement.TryGetProperty("error", out _).Should().BeTrue(errorDocument.RootElement.GetRawText());
-        errorDocument.RootElement.GetRawText().Should().NotContain(rawApiKey);
+        await Assert.That(errorDocument.RootElement.TryGetProperty("error", out _)).IsTrue().Because(errorDocument.RootElement.GetRawText());
+        await Assert.That(errorDocument.RootElement.GetRawText()).DoesNotContain(rawApiKey);
     }
 
     [Test]
@@ -495,12 +494,12 @@ public sealed class McpAuthorizationTests
         secondApiKeyRequest.Headers.Add("X-API-Key", rawApiKey);
         var throttledApiKeyResponse = await client.SendAsync(secondApiKeyRequest);
 
-        firstAnonymousResponse.StatusCode.Should().Be(HttpStatusCode.OK);
-        throttledAnonymousResponse.StatusCode.Should().Be(HttpStatusCode.TooManyRequests);
-        throttledAnonymousResponse.Headers.Contains("Retry-After").Should().BeTrue();
-        firstApiKeyResponse.StatusCode.Should().Be(HttpStatusCode.OK);
-        throttledApiKeyResponse.StatusCode.Should().Be(HttpStatusCode.TooManyRequests);
-        throttledApiKeyResponse.Headers.Contains("Retry-After").Should().BeTrue();
+        await Assert.That(firstAnonymousResponse.StatusCode).IsEqualTo(HttpStatusCode.OK);
+        await Assert.That(throttledAnonymousResponse.StatusCode).IsEqualTo(HttpStatusCode.TooManyRequests);
+        await Assert.That(throttledAnonymousResponse.Headers.Contains("Retry-After")).IsTrue();
+        await Assert.That(firstApiKeyResponse.StatusCode).IsEqualTo(HttpStatusCode.OK);
+        await Assert.That(throttledApiKeyResponse.StatusCode).IsEqualTo(HttpStatusCode.TooManyRequests);
+        await Assert.That(throttledApiKeyResponse.Headers.Contains("Retry-After")).IsTrue();
     }
 
     [Test]
@@ -528,10 +527,10 @@ public sealed class McpAuthorizationTests
         var throttledAnonymousResponse = await client.SendAsync(throttledAnonymousRequest);
         var throttledBody = await throttledAnonymousResponse.Content.ReadAsStringAsync();
 
-        invalidKeyResponse.StatusCode.Should().Be(HttpStatusCode.OK);
-        throttledAnonymousResponse.StatusCode.Should().Be(HttpStatusCode.TooManyRequests);
-        throttledAnonymousResponse.Headers.Contains("Retry-After").Should().BeTrue();
-        throttledBody.Should().NotContain(invalidApiKey);
+        await Assert.That(invalidKeyResponse.StatusCode).IsEqualTo(HttpStatusCode.OK);
+        await Assert.That(throttledAnonymousResponse.StatusCode).IsEqualTo(HttpStatusCode.TooManyRequests);
+        await Assert.That(throttledAnonymousResponse.Headers.Contains("Retry-After")).IsTrue();
+        await Assert.That(throttledBody).DoesNotContain(invalidApiKey);
     }
 
     [Test]
@@ -588,12 +587,12 @@ public sealed class McpAuthorizationTests
         var throttledFirstKeyResponse = await client.SendAsync(throttledFirstKeyRequest);
         var throttledBody = await throttledFirstKeyResponse.Content.ReadAsStringAsync();
 
-        firstKeyResponse.StatusCode.Should().Be(HttpStatusCode.OK);
-        secondKeyResponse.StatusCode.Should().Be(HttpStatusCode.OK);
-        throttledFirstKeyResponse.StatusCode.Should().Be(HttpStatusCode.TooManyRequests);
-        throttledFirstKeyResponse.Headers.Contains("Retry-After").Should().BeTrue();
-        throttledBody.Should().NotContain(firstRawApiKey);
-        throttledBody.Should().NotContain(secondRawApiKey);
+        await Assert.That(firstKeyResponse.StatusCode).IsEqualTo(HttpStatusCode.OK);
+        await Assert.That(secondKeyResponse.StatusCode).IsEqualTo(HttpStatusCode.OK);
+        await Assert.That(throttledFirstKeyResponse.StatusCode).IsEqualTo(HttpStatusCode.TooManyRequests);
+        await Assert.That(throttledFirstKeyResponse.Headers.Contains("Retry-After")).IsTrue();
+        await Assert.That(throttledBody).DoesNotContain(firstRawApiKey);
+        await Assert.That(throttledBody).DoesNotContain(secondRawApiKey);
     }
 
     [Test]
@@ -622,9 +621,9 @@ public sealed class McpAuthorizationTests
         var throttledResponse = await client.SendAsync(throttledRequest);
         var throttledBody = await throttledResponse.Content.ReadAsStringAsync();
 
-        firstResponse.StatusCode.Should().Be(HttpStatusCode.OK);
-        throttledResponse.StatusCode.Should().Be(HttpStatusCode.TooManyRequests);
-        throttledBody.Should().NotContain(invalidApiKey);
+        await Assert.That(firstResponse.StatusCode).IsEqualTo(HttpStatusCode.OK);
+        await Assert.That(throttledResponse.StatusCode).IsEqualTo(HttpStatusCode.TooManyRequests);
+        await Assert.That(throttledBody).DoesNotContain(invalidApiKey);
     }
 
     [Test]
@@ -659,11 +658,11 @@ public sealed class McpAuthorizationTests
 
         var response = await client.SendAsync(request);
 
-        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
         var toolNames = await ReadToolNamesAsync(response);
-        toolNames.Should().Contain("list_ai_tool_contracts");
-        AssertEventManagementReadsDiscoverable(toolNames);
-        AssertProposalToolsDiscoverable(toolNames);
+        await Assert.That(toolNames).Contains("list_ai_tool_contracts");
+        await AssertEventManagementReadsDiscoverable(toolNames);
+        await AssertProposalToolsDiscoverable(toolNames);
     }
 
     [Test]
@@ -682,7 +681,7 @@ public sealed class McpAuthorizationTests
 
         var response = await client.SendAsync(request);
 
-        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.BadRequest);
     }
 
     private static AuthenticatedWebApplicationFactory CreateMcpEnabledFactory()
@@ -701,31 +700,31 @@ public sealed class McpAuthorizationTests
     private static HttpRequestMessage CreateMcpRequest()
         => CreateMcpListRequest("tools/list");
 
-    private static void AssertProposalToolsHidden(IReadOnlyList<string> toolNames)
+    private static async Task AssertProposalToolsHidden(IReadOnlyList<string> toolNames)
     {
         foreach (var toolName in ProposalToolNames)
         {
-            toolNames.Should().NotContain(toolName);
+            await Assert.That(toolNames).DoesNotContain(toolName);
         }
     }
 
-    private static void AssertEventManagementReadsHidden(IReadOnlyList<string> toolNames)
+    private static async Task AssertEventManagementReadsHidden(IReadOnlyList<string> toolNames)
     {
         foreach (var toolName in EventManagementReadToolNames)
         {
-            toolNames.Should().NotContain(toolName);
+            await Assert.That(toolNames).DoesNotContain(toolName);
         }
     }
 
-    private static void AssertEventManagementReadsDiscoverable(IReadOnlyList<string> toolNames)
+    private static async Task AssertEventManagementReadsDiscoverable(IReadOnlyList<string> toolNames)
     {
         foreach (var toolName in EventManagementReadToolNames)
         {
-            toolNames.Should().Contain(toolName);
+            await Assert.That(toolNames).Contains(toolName);
         }
     }
 
-    private static void AssertProposalToolsDiscoverable(
+    private static async Task AssertProposalToolsDiscoverable(
         IReadOnlyList<string> toolNames,
         bool includeGeneric = true)
     {
@@ -735,7 +734,7 @@ public sealed class McpAuthorizationTests
 
         foreach (var toolName in expectedNames)
         {
-            toolNames.Should().Contain(toolName);
+            await Assert.That(toolNames).Contains(toolName);
         }
     }
 

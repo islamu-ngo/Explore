@@ -9,7 +9,6 @@ using System.Text.Json;
 using Explore.Blazor.Client.Clients;
 using Explore.Blazor.IntegrationTests.Fixtures;
 using Explore.Blazor.Services;
-using FluentAssertions;
 using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -76,9 +75,9 @@ public sealed class BffStorageUploadProxyTests : IAsyncDisposable
 
         using var response = await client.SendAsync(request);
 
-        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.BadRequest);
         var body = await response.Content.ReadAsStringAsync();
-        body.Should().Contain("Antiforgery validation failed");
+        await Assert.That(body).Contains("Antiforgery validation failed");
     }
 
     [Test]
@@ -94,9 +93,9 @@ public sealed class BffStorageUploadProxyTests : IAsyncDisposable
 
         using var response = await client.SendAsync(request);
 
-        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.BadRequest);
         var body = await response.Content.ReadAsStringAsync();
-        body.Should().Contain("Antiforgery validation failed");
+        await Assert.That(body).Contains("Antiforgery validation failed");
     }
 
     [Test]
@@ -114,8 +113,8 @@ public sealed class BffStorageUploadProxyTests : IAsyncDisposable
 
         using var response = await client.SendAsync(request);
 
-        response.StatusCode.Should().Be(HttpStatusCode.OK);
-        apiHandler.ReserveCallCount.Should().Be(1);
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
+        await Assert.That(apiHandler.ReserveCallCount).IsEqualTo(1);
     }
 
     [Test]
@@ -129,10 +128,10 @@ public sealed class BffStorageUploadProxyTests : IAsyncDisposable
 
         using var response = await _client.SendAsync(request);
 
-        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.BadRequest);
         var body = await response.Content.ReadAsStringAsync();
-        body.Should().Contain("Raw upload destinations are not accepted");
-        _apiHandler.FinalizeCallCount.Should().Be(0);
+        await Assert.That(body).Contains("Raw upload destinations are not accepted");
+        await Assert.That(_apiHandler.FinalizeCallCount).IsEqualTo(0);
     }
 
     [Test]
@@ -142,10 +141,10 @@ public sealed class BffStorageUploadProxyTests : IAsyncDisposable
 
         using var response = await _client.SendAsync(request);
 
-        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.BadRequest);
         var body = await response.Content.ReadAsStringAsync();
-        body.Should().Contain("simple file name");
-        _apiHandler.CallCount.Should().Be(0);
+        await Assert.That(body).Contains("simple file name");
+        await Assert.That(_apiHandler.CallCount).IsEqualTo(0);
     }
 
     [Test]
@@ -155,10 +154,10 @@ public sealed class BffStorageUploadProxyTests : IAsyncDisposable
 
         using var response = await _client.SendAsync(request);
 
-        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.BadRequest);
         var body = await response.Content.ReadAsStringAsync();
-        body.Should().Contain("reserved device name");
-        _apiHandler.CallCount.Should().Be(0);
+        await Assert.That(body).Contains("reserved device name");
+        await Assert.That(_apiHandler.CallCount).IsEqualTo(0);
     }
 
     [Test]
@@ -168,10 +167,10 @@ public sealed class BffStorageUploadProxyTests : IAsyncDisposable
 
         using var response = await _client.SendAsync(request);
 
-        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.BadRequest);
         var body = await response.Content.ReadAsStringAsync();
-        body.Should().Contain("JPEG, PNG, GIF, or WebP without parameters");
-        _apiHandler.CallCount.Should().Be(0);
+        await Assert.That(body).Contains("JPEG, PNG, GIF, or WebP without parameters");
+        await Assert.That(_apiHandler.CallCount).IsEqualTo(0);
     }
 
     [Test]
@@ -182,10 +181,10 @@ public sealed class BffStorageUploadProxyTests : IAsyncDisposable
 
         using var response = await _client.SendAsync(request);
 
-        response.StatusCode.Should().Be(HttpStatusCode.OK);
-        _apiHandler.EvidenceReserveCallCount.Should().Be(1);
-        _apiHandler.CapturedReserveRequestBody.Should().Contain("\"contentType\":\"application/pdf\"");
-        _apiHandler.CapturedReserveRequestBody.Should().NotContain("owningResourceId");
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
+        await Assert.That(_apiHandler.EvidenceReserveCallCount).IsEqualTo(1);
+        await Assert.That(_apiHandler.CapturedReserveRequestBody).Contains("\"contentType\":\"application/pdf\"");
+        await Assert.That(_apiHandler.CapturedReserveRequestBody).DoesNotContain("owningResourceId");
     }
 
     [Test]
@@ -195,8 +194,8 @@ public sealed class BffStorageUploadProxyTests : IAsyncDisposable
 
         using var response = await _client.SendAsync(request);
 
-        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
-        _apiHandler.CallCount.Should().Be(0);
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.BadRequest);
+        await Assert.That(_apiHandler.CallCount).IsEqualTo(0);
     }
 
     [Test]
@@ -206,10 +205,10 @@ public sealed class BffStorageUploadProxyTests : IAsyncDisposable
 
         using var response = await _client.SendAsync(request);
 
-        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.BadRequest);
         var body = await response.Content.ReadAsStringAsync();
-        body.Should().Contain("JPEG, PNG, GIF, or WebP without parameters");
-        _apiHandler.CallCount.Should().Be(0);
+        await Assert.That(body).Contains("JPEG, PNG, GIF, or WebP without parameters");
+        await Assert.That(_apiHandler.CallCount).IsEqualTo(0);
     }
 
     [Test]
@@ -227,8 +226,8 @@ public sealed class BffStorageUploadProxyTests : IAsyncDisposable
 
         using var response = await _client.SendAsync(request);
 
-        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
-        _apiHandler.CallCount.Should().Be(0);
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.BadRequest);
+        await Assert.That(_apiHandler.CallCount).IsEqualTo(0);
     }
 
     [Test]
@@ -239,12 +238,12 @@ public sealed class BffStorageUploadProxyTests : IAsyncDisposable
 
         using var response = await _client.SendAsync(request);
 
-        response.StatusCode.Should().Be(HttpStatusCode.BadGateway);
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.BadGateway);
         var body = await response.Content.ReadAsStringAsync();
-        body.Should().Contain("invalid upload session");
-        body.Should().NotContain(_apiHandler.ApiUploadSessionId.ToString());
-        _apiHandler.ReserveCallCount.Should().Be(1);
-        _apiHandler.FinalizeCallCount.Should().Be(0);
+        await Assert.That(body).Contains("invalid upload session");
+        await Assert.That(body).DoesNotContain(_apiHandler.ApiUploadSessionId.ToString());
+        await Assert.That(_apiHandler.ReserveCallCount).IsEqualTo(1);
+        await Assert.That(_apiHandler.FinalizeCallCount).IsEqualTo(0);
     }
 
     [Test]
@@ -255,10 +254,10 @@ public sealed class BffStorageUploadProxyTests : IAsyncDisposable
 
         using var response = await _client.SendAsync(request);
 
-        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.BadRequest);
         var body = await response.Content.ReadAsStringAsync();
-        body.Should().Contain("content type must match");
-        _apiHandler.FinalizeCallCount.Should().Be(0);
+        await Assert.That(body).Contains("content type must match");
+        await Assert.That(_apiHandler.FinalizeCallCount).IsEqualTo(0);
     }
 
     [Test]
@@ -276,8 +275,8 @@ public sealed class BffStorageUploadProxyTests : IAsyncDisposable
 
         using var response = await _client.SendAsync(request);
 
-        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
-        _apiHandler.FinalizeCallCount.Should().Be(0);
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.BadRequest);
+        await Assert.That(_apiHandler.FinalizeCallCount).IsEqualTo(0);
     }
 
     [Test]
@@ -292,10 +291,10 @@ public sealed class BffStorageUploadProxyTests : IAsyncDisposable
 
         using var response = await _client.SendAsync(request);
 
-        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.BadRequest);
         var body = await response.Content.ReadAsStringAsync();
-        body.Should().Contain("reserved device name");
-        _apiHandler.FinalizeCallCount.Should().Be(0);
+        await Assert.That(body).Contains("reserved device name");
+        await Assert.That(_apiHandler.FinalizeCallCount).IsEqualTo(0);
     }
 
     [Test]
@@ -305,10 +304,10 @@ public sealed class BffStorageUploadProxyTests : IAsyncDisposable
 
         using var response = await _client.SendAsync(request);
 
-        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.BadRequest);
         var body = await response.Content.ReadAsStringAsync();
-        body.Should().Contain("server-issued upload session");
-        _apiHandler.FinalizeCallCount.Should().Be(0);
+        await Assert.That(body).Contains("server-issued upload session");
+        await Assert.That(_apiHandler.FinalizeCallCount).IsEqualTo(0);
     }
 
     [Test]
@@ -320,14 +319,14 @@ public sealed class BffStorageUploadProxyTests : IAsyncDisposable
 
         using var response = await _client.SendAsync(request);
 
-        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.BadRequest);
         var body = await response.Content.ReadAsStringAsync();
-        body.Should().Contain("server-issued upload session");
-        _apiHandler.FinalizeCallCount.Should().Be(0);
+        await Assert.That(body).Contains("server-issued upload session");
+        await Assert.That(_apiHandler.FinalizeCallCount).IsEqualTo(0);
 
         var cache = _factory.Services.GetRequiredService<IDistributedCache>();
         var payload = await cache.GetStringAsync("storage-upload-session:" + uploadSessionId);
-        payload.Should().BeNull();
+        await Assert.That(payload).IsNull();
     }
 
     [Test]
@@ -338,10 +337,10 @@ public sealed class BffStorageUploadProxyTests : IAsyncDisposable
 
         using var response = await _client.SendAsync(request);
 
-        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.BadRequest);
         var body = await response.Content.ReadAsStringAsync();
-        body.Should().Contain("server-issued upload session");
-        _apiHandler.FinalizeCallCount.Should().Be(0);
+        await Assert.That(body).Contains("server-issued upload session");
+        await Assert.That(_apiHandler.FinalizeCallCount).IsEqualTo(0);
     }
 
     [Test]
@@ -352,18 +351,18 @@ public sealed class BffStorageUploadProxyTests : IAsyncDisposable
         using var firstRequest = CreateUploadProxyRequest(uploadSessionId, "image/png", "image/png");
         using var firstResponse = await _client.SendAsync(firstRequest);
 
-        firstResponse.StatusCode.Should().Be(HttpStatusCode.OK);
-        _apiHandler.FinalizeCallCount.Should().Be(1);
+        await Assert.That(firstResponse.StatusCode).IsEqualTo(HttpStatusCode.OK);
+        await Assert.That(_apiHandler.FinalizeCallCount).IsEqualTo(1);
         var firstBody = await firstResponse.Content.ReadAsStringAsync();
-        firstBody.Should().Contain("storageObjectId");
+        await Assert.That(firstBody).Contains("storageObjectId");
 
         using var secondRequest = CreateUploadProxyRequest(uploadSessionId, "image/png", "image/png");
         using var secondResponse = await _client.SendAsync(secondRequest);
 
-        secondResponse.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        await Assert.That(secondResponse.StatusCode).IsEqualTo(HttpStatusCode.BadRequest);
         var body = await secondResponse.Content.ReadAsStringAsync();
-        body.Should().Contain("server-issued upload session");
-        _apiHandler.FinalizeCallCount.Should().Be(1);
+        await Assert.That(body).Contains("server-issued upload session");
+        await Assert.That(_apiHandler.FinalizeCallCount).IsEqualTo(1);
     }
 
     [Test]
@@ -373,12 +372,12 @@ public sealed class BffStorageUploadProxyTests : IAsyncDisposable
 
         using var response = await _client.SendAsync(request);
 
-        response.StatusCode.Should().Be(HttpStatusCode.OK);
-        _apiHandler.ReserveCallCount.Should().Be(1);
-        _apiHandler.CapturedReserveRequestBody.Should().Contain("\"expectedSizeBytes\":4");
-        _apiHandler.CapturedReserveRequestBody.Should().NotBeNull();
-        _apiHandler.CapturedReserveRequestBody!.ToLowerInvariant().Should().NotContain("uploadurl");
-        _apiHandler.CapturedReserveRequestBody.ToLowerInvariant().Should().NotContain("objectkey");
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
+        await Assert.That(_apiHandler.ReserveCallCount).IsEqualTo(1);
+        await Assert.That(_apiHandler.CapturedReserveRequestBody).Contains("\"expectedSizeBytes\":4");
+        await Assert.That(_apiHandler.CapturedReserveRequestBody).IsNotNull();
+        await Assert.That(_apiHandler.CapturedReserveRequestBody!.ToLowerInvariant()).DoesNotContain("uploadurl");
+        await Assert.That(_apiHandler.CapturedReserveRequestBody.ToLowerInvariant()).DoesNotContain("objectkey");
     }
 
     [Test]
@@ -395,7 +394,7 @@ public sealed class BffStorageUploadProxyTests : IAsyncDisposable
 
         using var response = await _client.SendAsync(request);
 
-        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
     }
 
     public async ValueTask DisposeAsync()

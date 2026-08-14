@@ -9,7 +9,6 @@ using Event.Api.IntegrationTests.Fixtures;
 using Explore.Domain;
 using Explore.Domain.Constants;
 using Explore.Persistence;
-using FluentAssertions;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
@@ -68,9 +67,8 @@ public class CerbosFailClosedTests : IAsyncDisposable
 
         var response = await _client.SendAsync(request);
 
-        response.StatusCode.Should().Be(HttpStatusCode.Forbidden,
-            "when Cerbos is down and configured as the authz provider, " +
-            "even instance admin must be denied — fail-closed is absolute");
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Forbidden).Because("when Cerbos is down and configured as the authz provider, " +
+        "even instance admin must be denied — fail-closed is absolute");
     }
 
     [Test]
@@ -81,8 +79,7 @@ public class CerbosFailClosedTests : IAsyncDisposable
 
         var response = await _client.SendAsync(request);
 
-        response.StatusCode.Should().Be(HttpStatusCode.Forbidden,
-            "all resource access must be denied when the chosen provider is unavailable");
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Forbidden).Because("all resource access must be denied when the chosen provider is unavailable");
     }
 
     [Test]
@@ -93,8 +90,7 @@ public class CerbosFailClosedTests : IAsyncDisposable
 
         var response = await _client.SendAsync(request);
 
-        response.StatusCode.Should().Be(HttpStatusCode.Forbidden,
-            "even read-only operations must be denied when Cerbos is down");
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Forbidden).Because("even read-only operations must be denied when Cerbos is down");
     }
 
     [Test]
@@ -105,8 +101,7 @@ public class CerbosFailClosedTests : IAsyncDisposable
 
         var response = await _client.SendAsync(request);
 
-        response.StatusCode.Should().Be(HttpStatusCode.Forbidden,
-            "tenant admin access to own tenant resources must be denied");
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Forbidden).Because("tenant admin access to own tenant resources must be denied");
     }
 
     #endregion
@@ -120,9 +115,8 @@ public class CerbosFailClosedTests : IAsyncDisposable
 
         var response = await _client.SendAsync(request);
 
-        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized,
-            "the authentication layer (JWT validation) is independent of authorization (Cerbos). " +
-            "Anonymous requests should still get 401, not 403");
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized).Because("the authentication layer (JWT validation) is independent of authorization (Cerbos). " +
+        "Anonymous requests should still get 401, not 403");
     }
 
     [Test]
@@ -132,8 +126,7 @@ public class CerbosFailClosedTests : IAsyncDisposable
 
         var response = await _client.SendAsync(request);
 
-        response.StatusCode.Should().Be(HttpStatusCode.OK,
-            "[AllowAnonymous] endpoints bypass both authentication and authorization");
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK).Because("[AllowAnonymous] endpoints bypass both authentication and authorization");
     }
 
     #endregion
@@ -151,9 +144,8 @@ public class CerbosFailClosedTests : IAsyncDisposable
         var response1 = await _client.SendAsync(request1);
         var response2 = await _client.SendAsync(request2);
 
-        response1.StatusCode.Should().Be(HttpStatusCode.Forbidden);
-        response2.StatusCode.Should().Be(HttpStatusCode.Forbidden,
-            "deny-all must be consistent — no intermittent allow during Cerbos outage");
+        await Assert.That(response1.StatusCode).IsEqualTo(HttpStatusCode.Forbidden);
+        await Assert.That(response2.StatusCode).IsEqualTo(HttpStatusCode.Forbidden).Because("deny-all must be consistent — no intermittent allow during Cerbos outage");
     }
 
     #endregion
