@@ -1,0 +1,38 @@
+# ABOUTME: Defines the inactive SSH signer roles, validity, rotation, revocation, and tag-integrity contract.
+# ABOUTME: Uses fixture-only principals and keys until operators provision reviewed production trust material.
+schemaVersion: release-signing-policy.v1
+status: inactive-fixture-only
+allowedAlgorithms:
+  - ssh-ed25519
+roles:
+  release:
+    tagPattern: v<major>.<minor>.<patch>[-prerelease]
+    tagKind: annotated
+    namespace: git
+    principal: fixture-release-operator
+  tooling-promotion:
+    tagPattern: release-tooling/v<major>.<minor>.<patch>
+    tagKind: annotated
+    namespace: git
+    principal: fixture-tooling-promoter
+separationOfDuty:
+  genesisIndependentReviewRequired: true
+  releaseSignerCannotPromoteOwnCandidateBundle: true
+rotation:
+  uniquePrincipalPerActiveKey: true
+  uniqueFingerprint: true
+  overlapRequiresDistinctKeys: true
+  validityIsInclusive: true
+revocation:
+  effectiveOnOrAfterRecordedDate: true
+  removeFromAllowedSigners: true
+  appendRotationHistory: true
+tagIntegrity:
+  rejectLightweight: true
+  rejectUnsigned: true
+  rejectReplacedObjectId: true
+  rejectRecreatedObjectId: true
+activationBlockers:
+  - reviewed production principals and public keys are absent
+  - key custody and rotation owners are absent
+  - promoted artifact store and retention authority are absent

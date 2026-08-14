@@ -1,0 +1,13 @@
+# ABOUTME: Deterministic Markdown metacharacter corpus used at the release public-text boundary.
+# ABOUTME: Covers forged structure, links, images, autolinks, fences, and inline HTML without external fuzz tooling.
+# forged heading
+## forged heading
+[forged](https://example.invalid)
+![image](https://example.invalid/pixel.png)
+<https://example.invalid/autolink>
+```html
+<script>alert(1)</script>
+---
+1. forged ordered list
+> forged quote
+| forged | table |

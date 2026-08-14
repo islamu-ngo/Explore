@@ -34,18 +34,34 @@ operator still approves the release; tooling only verifies and records evidence.
 
 ## Release Evidence Bundle
 
-Before publishing a GitHub Release, download the retained CI/CD artifacts listed in this checklist into a local evidence directory and generate the durable bundle:
+Before publishing a GitHub Release, download the retained CI/CD artifacts listed in this checklist into a local evidence directory. For governed release-mode bundles, the artifact tree must contain exactly one final canonical manifest from `verify-tag`:
+
+```text
+docs/releases/<version>/release-evidence.v1.json
+```
+
+That manifest exclusively owns release identity: version, line, tag name, tag object, final commit `B`, candidate-manifest digest, release descriptor/summary/context/notes hashes, and trusted bundle/tool/policy/config/trust hashes. Bundle collection time, workflow/provider run IDs, URLs, CLA status, and transport metadata are noncanonical and cannot override it.
+
+Set `RELEASE_VERSION`, `GITHUB_SHA`, `GITHUB_REF`, `RELEASE_TAG_OBJECT_ID`, `GITHUB_REPOSITORY`, `GITHUB_RUN_ID`, `GITHUB_RUN_ATTEMPT`, and `CLA_STATUS` when generating the bundle outside GitHub Actions. `RELEASE_VERSION`, `GITHUB_SHA`, `GITHUB_REF`, and `RELEASE_TAG_OBJECT_ID` must agree with the final manifest or the bundle fails closed. Then generate the durable bundle:
 
 ```bash
 dotnet run .ci/scripts/generate-release-evidence-bundle.cs -- artifacts release-evidence
 ```
 
-Set `RELEASE_VERSION`, `GITHUB_SHA`, `GITHUB_REF`, `GITHUB_REPOSITORY`, `GITHUB_RUN_ID`, `GITHUB_RUN_ATTEMPT`, and `CLA_STATUS` when generating the bundle outside GitHub Actions so the manifest records the release metadata. The script writes:
+The output path must not already exist. Use a new path for every attempt; the script
+publishes all four files with one directory rename and never replaces or merges a
+prior bundle.
+
+The script writes:
 
 - `release-evidence/release-evidence.json` — machine-readable evidence manifest;
 - `release-evidence/release-evidence.md` — full human-readable evidence summary;
 - `release-evidence/release-evidence-release-notes.md` — copy/paste GitHub Release evidence section;
 - `release-evidence/release-evidence-checksums.sha256` — SHA-256 hashes for every retained evidence file.
+
+The checksum file is produced through `.ci/scripts/write-artifact-checksums.cs` and must include release inputs/generated outputs (`release.yaml`, `summary.md`, `release-context.v1.json`, `release-notes.md`, `release-candidate.v1.json`, `release-evidence.v1.json`), trusted bundle promotion receipt/signature/manifest, signer/tag verification evidence, governance policy/config/trust files, and the existing container, deployment, OpenAPI, test, dependency, workflow-security, secret-scanning, scorecard, and security-test categories when present.
+
+Treat `release_bundle_*` and `artifact_checksums_*` diagnostics as release blockers. Do not rename or normalize rejected paths: rebuild the retained tree with one NFC, case-distinct, non-symlinked path per artifact and rerun from a fresh output path. A failed run must not leave a final output directory or partial bundle files.
 
 Attach the generated bundle files to the GitHub Release or copy them to durable release storage before the source GitHub Actions artifacts expire. Paste the contents of `release-evidence-release-notes.md` into the GitHub Release body so release readers can find the durable evidence even after workflow artifacts expire.
 
@@ -135,6 +151,7 @@ Use `Not applicable` only when the change has no release-impact category. If the
 - [ ] Deployment evidence includes environment, component, commit SHA, expected immutable image tag, expected image digest, promotion evidence path, webhook result, smoke-check result, whether smoke was required, deployment-freeze state, override reason if any, workflow run link, and rollback note.
 - [ ] Production deployment approval and branch restrictions are configured in GitHub Environment settings.
 - [ ] Long-lived release evidence is copied from expiring GitHub Actions artifacts into release notes or durable storage when required.
+- [ ] The durable release evidence bundle accepted exactly one `release-evidence.v1.json`; its canonical identity matched `RELEASE_VERSION`, `GITHUB_SHA`, `GITHUB_REF`, `RELEASE_TAG_OBJECT_ID`, and all retained source/tool/checksum artifacts.
 - [ ] Any failed gate rerun or emergency override follows [CI_CD_RUNBOOKS.md](CI_CD_RUNBOOKS.md) and records owner, reason, evidence, compensating control, and removal condition.
 
 Expected artifact names:

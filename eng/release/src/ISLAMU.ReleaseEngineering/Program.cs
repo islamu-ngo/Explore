@@ -41,9 +41,29 @@ public static class Program
             return WriteUsage(output);
         }
 
+        if (string.Equals(args[0], "prepare", StringComparison.Ordinal))
+        {
+            return PrepareCommand.Run(args, output, Environment.CurrentDirectory, GetPlatform(), ProcessTimeout);
+        }
+
+        if (string.Equals(args[0], "verify-candidate", StringComparison.Ordinal))
+        {
+            return CandidateCommand.Run(args, output, Environment.CurrentDirectory, GetPlatform(), ProcessTimeout);
+        }
+
+        if (string.Equals(args[0], "verify-tag", StringComparison.Ordinal) || string.Equals(args[0], "tag-message", StringComparison.Ordinal))
+        {
+            return TagCommand.Run(args, output, Environment.CurrentDirectory, GetPlatform(), ProcessTimeout);
+        }
+
+        if (string.Equals(args[0], "verify-main", StringComparison.Ordinal))
+        {
+            return MainCommand.Run(args, output, Environment.CurrentDirectory, ProcessTimeout);
+        }
+
         if (!string.Equals(args[0], "verify-tools", StringComparison.Ordinal))
         {
-            output.WriteLine("unknown_command: supported command is verify-tools");
+            output.WriteLine("unknown_command: supported commands are prepare, verify-candidate, tag-message, verify-tag, verify-main, and verify-tools");
             return UsageError;
         }
 
@@ -207,7 +227,7 @@ public static class Program
 
     private static int WriteUsage(TextWriter output)
     {
-        output.WriteLine("usage: release-engine verify-tools");
+        output.WriteLine("usage: release-engine verify-tools | prepare <release-directory> | verify-candidate <release-directory> <candidate-oid> | tag-message <release-directory> | verify-tag <release-directory> <tag-name> | verify-main <release-directory> <expected-old-origin-main-oid> <tag-object-oid>");
         return UsageError;
     }
 

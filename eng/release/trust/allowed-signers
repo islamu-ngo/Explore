@@ -1,0 +1,5 @@
+# ABOUTME: Intentionally empty production SSH allowed-signers root for release automation.
+# ABOUTME: Operators must promote real reviewed principals and keys before activation.
+
+# No production release or tooling-promotion signer is approved yet.
+# Keep this file comment-only so trusted-bundle activation fails closed.

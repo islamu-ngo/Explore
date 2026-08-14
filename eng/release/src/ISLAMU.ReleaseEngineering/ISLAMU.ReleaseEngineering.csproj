@@ -9,5 +9,8 @@
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="YamlDotNet" />
+    <None Include="../../trust/promotion-allowed-signers"
+          Link="ISLAMU.ReleaseEngineering.promotion-allowed-signers"
+          CopyToOutputDirectory="Always" />
   </ItemGroup>
 </Project>

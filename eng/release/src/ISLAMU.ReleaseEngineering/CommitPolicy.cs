@@ -50,6 +50,8 @@ public sealed class ReleasePolicy
     private readonly string skipReasonTrailer;
     private readonly string breakingFooter;
     private const string ChangeIdTrailer = "Change-Id";
+    private const int MaximumSubjectUtf8Bytes = 256;
+    private const int MaximumTrailerValueUtf8Bytes = 2_048;
     private static readonly Regex ChangeIdPattern = new("^CHG-[0-9]{4}-[0-9]{4}$", RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100));
 
     private ReleasePolicy(ReleasePolicyYaml policy, ScopeRegistryYaml scopes)
@@ -112,6 +114,13 @@ public sealed class ReleasePolicy
         string[] footerLines = ReadFooterBlock(lines);
         bool hasBreakingFooter = HasFooter(footerLines, breakingFooter, out string? breakingText);
         TrailerState trailers = ReadTrailers(footerLines);
+
+        if (System.Text.Encoding.UTF8.GetByteCount(description) > MaximumSubjectUtf8Bytes)
+        {
+            diagnostics.Add("commit_subject_too_long");
+        }
+
+        ValidateTrailerValueSizes(footerLines, diagnostics);
 
         if (!releaseVisibleTypes.Contains(type) && !internalTypes.Contains(type))
         {
@@ -176,6 +185,25 @@ public sealed class ReleasePolicy
             trailers.SkipReason,
             trailers.ChangeId,
             diagnostics);
+    }
+
+    private static void ValidateTrailerValueSizes(string[] footerLines, List<string> diagnostics)
+    {
+        foreach (string line in footerLines)
+        {
+            int separator = line.IndexOf(':', StringComparison.Ordinal);
+            if (separator <= 0)
+            {
+                continue;
+            }
+
+            string name = line[..separator];
+            string value = line[(separator + 1)..].Trim();
+            if (System.Text.Encoding.UTF8.GetByteCount(value) > MaximumTrailerValueUtf8Bytes)
+            {
+                diagnostics.Add($"commit_trailer_value_too_long:{name}");
+            }
+        }
     }
 
     private ReleaseVisibility Classify(string type, ScopeKind scopeKind, bool skipRequested, bool isBreaking)

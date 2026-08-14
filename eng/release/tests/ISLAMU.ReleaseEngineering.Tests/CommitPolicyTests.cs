@@ -401,6 +401,20 @@ public sealed class CommitPolicyTests
 
         await Assert.That(result.Diagnostics).IsEquivalentTo(["commit_message_too_long"]);
     }
+
+    [Test]
+    public async Task OversizedSubjectAndTrailerValuesFailClosed()
+    {
+        CommitPolicyResult subject = Policy.EvaluateCommit($"feat(events): {new string('x', 260)}");
+        CommitPolicyResult trailer = Policy.EvaluateCommit(
+            "chore(release): prepare v1.1.0\n" +
+            "\n" +
+            "Changelog: skip\n" +
+            $"Changelog-Reason: {new string('x', 2_100)}");
+
+        await Assert.That(subject.Diagnostics).Contains("commit_subject_too_long");
+        await Assert.That(trailer.Diagnostics).Contains("commit_trailer_value_too_long:Changelog-Reason");
+    }
 }
 
 internal static class RepositoryRoot

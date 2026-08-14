@@ -53,6 +53,57 @@ See [ADR-025](adr/ADR-025-provider-neutral-release-governance.md),
 [RELEASE_POLICY.md](RELEASE_POLICY.md), and [RELEASE_RUNBOOK.md](RELEASE_RUNBOOK.md)
 for the distinct architecture, normative policy, and future operator procedure.
 
+### Prospective trust-lane separation
+
+The candidate lane may compile and test candidate release-engine source but has no
+signing, protected-ref, publication, deployment, registry-write, OIDC, or promoted
+artifact-store credentials. The final lane starts from an independently promoted
+bundle plus a separately supplied immutable canonical promotion receipt and detached
+SSH signature. The previously promoted verifier resolves the promoter trust root only
+from its fixed protected application directory; requests and candidate sibling files
+cannot select, replace, or reset promotion authority. The verifier checks the receipt
+before reading candidate data and never resolves policy, configuration, tool locks,
+signer roots, or promotion authority from the checkout under release. The signed
+  receipt binds the canonical manifest digest plus bundle, policy, configuration, and
+  trust versions and digests. Reusing it for the same immutable bundle is idempotent;
+  using it for any different bundle fails without relying on a verifier-side replay
+  registry. Wrong signers or roots, self-created receipts, root aliases, hardlinked
+  bundle files, bounded-input violations, normalized or case-insensitive path
+  collisions, tampered bundle files, and candidate-local overrides fail before canonical
+  candidate data is trusted. Exact receipt reuse for the exact bound manifest adds no
+  authority, so the public request has no caller-resettable replay set.
+
+Restricted security input is a separate access-controlled input, not a candidate or
+canonical artifact. It is mounted only where candidate executables cannot run. Public
+logs and artifacts receive only stable diagnostic codes until disclosure is approved;
+after approval, only a reviewed public disposition and advisory reference may cross,
+and neither may exactly alias restricted fields after Unicode and whitespace
+normalization. The storage provider remains intentionally undecided and cannot affect
+canonical identity. Final jobs must reverify the promoted bundle immediately before
+use from immutable promoted storage.
+
+Task 5 must derive release-signer booleans, dates, principal, fingerprint, and tag
+object identity from local Git and OpenSSH evidence. Forge badges or hosted release
+metadata cannot satisfy the signer policy.
+
+Task 5.3 binds the existing durable evidence bundle to that final local evidence.
+Release-mode bundle generation MUST find exactly one `release-evidence.v1.json` in
+the retained artifact tree, parse it as the canonical final identity, and reject
+missing, duplicate, malformed, stale, tampered, or disagreeing manifests. The bundle
+MUST verify the final manifest's version, tag name, tag object ID, final `B`,
+candidate-manifest digest, release descriptor/summary/context/notes hashes, and
+trusted bundle/tool/policy/config/trust hashes against explicit inputs and retained
+artifacts. Workflow run IDs, provider URLs, collection time, CLA status, and artifact
+transport fields are noncanonical metadata only and MUST NOT change release identity.
+Canonical ingestion rejects unknown/duplicate fields, invalid UTF-8, non-NFC or
+noncanonical JSON, case/NFC/path aliases, symlinks, oversized trees/files, and
+malformed metadata with bounded stable diagnostics. Validation finishes before the
+bundle output is published, so rejected input cannot leave a partial final bundle.
+The durable checksum manifest MUST be produced through `.ci/scripts/write-artifact-checksums.cs`
+and include the final/candidate manifests, release.yaml, summary, generated context
+and notes, trusted tool promotion receipt/signature/manifest, signer/tag evidence,
+governance policy/config/trust files, and the existing evidence categories.
+
 ## Required Repository Settings
 
 These controls cannot be fully enforced from workflow YAML and must be configured in GitHub repository or organization settings.
@@ -386,6 +437,10 @@ For manual releases, generate the durable release evidence manifest after downlo
 ```bash
 dotnet run .ci/scripts/generate-release-evidence-bundle.cs -- artifacts release-evidence
 ```
+
+The output path must be fresh and absent before invocation. Bundle generation stages
+all four outputs beside that path and publishes them with one directory rename; it
+fails closed instead of replacing or merging an existing bundle.
 
 The generated JSON, markdown summary, release-notes evidence section, and SHA-256 checksum manifest are the bridge between expiring GitHub Actions artifacts and the manually authored GitHub Release. Attach them to the release or copy them to durable release storage. Paste `release-evidence-release-notes.md` into the GitHub Release body so the release keeps durable evidence pointers even after workflow artifacts expire.
 

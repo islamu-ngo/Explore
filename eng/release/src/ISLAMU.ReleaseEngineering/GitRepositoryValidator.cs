@@ -1,5 +1,5 @@
 // ABOUTME: Validates release Git objects through bounded provider-neutral Git CLI calls.
-// ABOUTME: Resolves release-line tags and preparation refs without mutating repository state.
+// ABOUTME: Resolves descriptor-selected tags and preparation refs without mutating repository state.
 
 using System.Diagnostics;
 using System.Globalization;
@@ -11,6 +11,8 @@ public sealed record GitReleaseValidationRequest(
     string RepositoryPath,
     string ReleaseLine,
     string SelectedVersion,
+    string BaseStableRef,
+    string PreviousPublishedRef,
     string ReleaseBranchRef,
     string CandidateRef,
     string? StableMainRef = null,
@@ -74,10 +76,9 @@ public static class GitRepositoryValidator
             diagnostics.Add("git_unknown_object_format");
         }
 
-        ValidateRepositoryState(git, diagnostics);
+        bool promisorRepository = ValidateRepositoryState(git, diagnostics);
         bool selectedValid = ParseSelected(request, diagnostics, out SemanticVersion selected);
-        string expectedReleaseBranch = $"refs/heads/release/{request.ReleaseLine}";
-        if (!string.Equals(request.ReleaseBranchRef, expectedReleaseBranch, StringComparison.Ordinal))
+        if (!string.Equals(request.ReleaseBranchRef, $"refs/heads/{request.ReleaseLine}", StringComparison.Ordinal))
         {
             diagnostics.Add("git_release_branch_line_mismatch");
         }
@@ -85,18 +86,12 @@ public static class GitRepositoryValidator
         string candidateOid = ResolveCommit(git, request.CandidateRef, oidLength, "candidate", diagnostics, requireFullOid: true);
         string releaseHeadOid = ResolveCommit(git, request.ReleaseBranchRef, oidLength, "release_branch_head", diagnostics, requireFullOid: false);
         string? stableMainOid = request.StableMainRef is null ? null : ResolveCommit(git, request.StableMainRef, oidLength, "stable_main", diagnostics, requireFullOid: false);
-        List<GitResolvedTag> tags = selectedValid ? ReadApplicableTags(git, request, selected, candidateOid, oidLength, diagnostics) : [];
-        GitResolvedTag? baseStable = tags.Where(tag => !tag.Version.IsPrerelease).MaxBy(tag => tag.Version);
-        GitResolvedTag? previousPublished = tags.MaxBy(tag => tag.Version);
-        if (baseStable is null)
-        {
-            diagnostics.Add("git_base_stable_tag_missing");
-        }
+        GitResolvedTag? baseStable = ResolveAnnotatedTag(git, request.BaseStableRef, oidLength, diagnostics);
+        GitResolvedTag? previousPublished = ResolveAnnotatedTag(git, request.PreviousPublishedRef, oidLength, diagnostics);
 
-        if (previousPublished is null)
-        {
-            diagnostics.Add("git_previous_published_tag_missing");
-        }
+        ValidateExpectedTagObject(request, baseStable, oidLength, diagnostics);
+        ValidateExpectedTagObject(request, previousPublished, oidLength, diagnostics);
+        ValidateDescriptorVersions(request, selectedValid ? selected : default, baseStable?.Version, previousPublished?.Version, diagnostics);
 
         if (candidateOid.Length != 0 && releaseHeadOid.Length != 0 && !string.Equals(candidateOid, releaseHeadOid, StringComparison.Ordinal))
         {
@@ -110,10 +105,33 @@ public static class GitRepositoryValidator
 
         if (candidateOid.Length != 0 && previousPublished is not null)
         {
-            if (!git.IsEmpty("rev-list", "--merges", $"{previousPublished.CommitOid}..{candidateOid}"))
+            if (!git.IsSuccess("merge-base", "--is-ancestor", previousPublished.CommitOid, candidateOid))
             {
-                diagnostics.Add("git_non_linear_candidate");
+                diagnostics.Add("git_previous_not_ancestor");
             }
+            else
+            {
+                if (!git.IsEmpty("rev-list", "--merges", $"{previousPublished.CommitOid}..{candidateOid}"))
+                {
+                    diagnostics.Add("git_non_linear_candidate");
+                }
+            }
+        }
+
+        if (candidateOid.Length != 0 && baseStable is not null && !git.IsSuccess("merge-base", "--is-ancestor", baseStable.CommitOid, candidateOid))
+        {
+            diagnostics.Add("git_base_not_ancestor");
+            diagnostics.Add($"git_wrong_line_tag:{baseStable.Name}");
+        }
+
+        if (candidateOid.Length != 0 && selectedValid && previousPublished is not null)
+        {
+            ValidateAmbientTags(git, request, selected, previousPublished.Version, candidateOid, oidLength, diagnostics);
+        }
+
+        if (promisorRepository && diagnostics.Any(diagnostic => diagnostic.StartsWith("git_missing_object:", StringComparison.Ordinal)))
+        {
+            diagnostics.Add("git_partial_clone_objects_missing");
         }
 
         if (diagnostics.Count != 0 || baseStable is null || previousPublished is null)
@@ -136,7 +154,7 @@ public static class GitRepositoryValidator
         return new GitReleaseValidationResult(true, identity, []);
     }
 
-    private static void ValidateRepositoryState(Git git, List<string> diagnostics)
+    private static bool ValidateRepositoryState(Git git, List<string> diagnostics)
     {
         if (string.Equals(git.RunScalar(diagnostics, "git_shallow_probe_failed", "rev-parse", "--is-shallow-repository"), "true", StringComparison.Ordinal))
         {
@@ -154,11 +172,8 @@ public static class GitRepositoryValidator
             diagnostics.Add("git_grafts_present");
         }
 
-        if (!git.IsEmpty("config", "--get-regexp", "^remote\\..*\\.promisor$") ||
-            git.RunScalar([], string.Empty, "config", "--get", "extensions.partialClone").Length != 0)
-        {
-            diagnostics.Add("git_partial_clone_objects_missing");
-        }
+        return !git.IsEmpty("config", "--get-regexp", "^remote\\..*\\.promisor$") ||
+            git.RunScalar([], string.Empty, "config", "--get", "extensions.partialClone").Length != 0;
     }
 
     private static bool ParseSelected(GitReleaseValidationRequest request, List<string> diagnostics, out SemanticVersion selected)
@@ -185,69 +200,124 @@ public static class GitRepositoryValidator
         return true;
     }
 
-    private static List<GitResolvedTag> ReadApplicableTags(
-        Git git,
+    private static void ValidateDescriptorVersions(
         GitReleaseValidationRequest request,
         SemanticVersion selected,
-        string candidateOid,
-        int oidLength,
+        SemanticVersion? baseStable,
+        SemanticVersion? previousPublished,
         List<string> diagnostics)
     {
-        string output = git.RunScalar(diagnostics, "git_tags_unavailable", "for-each-ref", "--format=%(refname:short)", "refs/tags");
-        var tags = new List<GitResolvedTag>();
-        foreach (string name in output.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+        if (!TryParseTagRef(request.BaseStableRef, out _, out SemanticVersion parsedBase) || parsedBase.IsPrerelease)
         {
-            if (!SemanticVersion.TryParseTag(name, out SemanticVersion version) ||
-                version.Major != selected.Major ||
-                version.Minor != selected.Minor ||
-                version.CompareTo(selected) >= 0)
-            {
-                continue;
-            }
-
-            GitResolvedTag? resolved = ResolveAnnotatedTag(git, name, version, oidLength, diagnostics);
-            if (resolved is null)
-            {
-                continue;
-            }
-
-            if (request.ExpectedTagObjectOids?.TryGetValue(name, out string? expectedOid) == true &&
-                (!IsFullOid(expectedOid, oidLength) || !string.Equals(expectedOid, resolved.TagObjectOid, StringComparison.Ordinal)))
-            {
-                diagnostics.Add($"git_tag_object_mismatch:{name}");
-            }
-
-            if (candidateOid.Length != 0 && !git.IsSuccess("merge-base", "--is-ancestor", resolved.CommitOid, candidateOid))
-            {
-                diagnostics.Add($"git_wrong_line_tag:{name}");
-                diagnostics.Add("git_previous_not_ancestor");
-                continue;
-            }
-
-            tags.Add(resolved);
+            diagnostics.Add("git_base_stable_tag_malformed");
         }
 
-        return tags;
+        if (!TryParseTagRef(request.PreviousPublishedRef, out _, out SemanticVersion parsedPrevious))
+        {
+            diagnostics.Add("git_previous_published_tag_malformed");
+        }
+
+        if (baseStable is not null && !baseStable.Value.Equals(parsedBase))
+        {
+            diagnostics.Add("git_base_stable_tag_malformed");
+        }
+
+        if (previousPublished is not null && !previousPublished.Value.Equals(parsedPrevious))
+        {
+            diagnostics.Add("git_previous_published_tag_malformed");
+        }
+
+        if (previousPublished is not null && previousPublished.Value.CompareTo(selected) >= 0)
+        {
+            diagnostics.Add("git_previous_tag_not_before_selected");
+        }
     }
 
-    private static GitResolvedTag? ResolveAnnotatedTag(Git git, string tag, SemanticVersion version, int oidLength, List<string> diagnostics)
+    private static void ValidateExpectedTagObject(GitReleaseValidationRequest request, GitResolvedTag? tag, int oidLength, List<string> diagnostics)
     {
-        string refName = $"refs/tags/{tag}";
-        if (IsAmbiguous(git, tag))
+        if (tag is null || request.ExpectedTagObjectOids?.TryGetValue(tag.Name, out string? expectedOid) != true || expectedOid is null)
         {
-            diagnostics.Add($"git_ambiguous_ref:{tag}");
+            return;
         }
 
-        string type = git.RunScalar(diagnostics, $"git_missing_object:{tag}", "cat-file", "-t", refName);
+        if (!IsFullOid(expectedOid, oidLength) || !string.Equals(expectedOid, tag.TagObjectOid, StringComparison.Ordinal))
+        {
+            diagnostics.Add($"git_tag_object_mismatch:{tag.Name}");
+        }
+    }
+
+    private static GitResolvedTag? ResolveAnnotatedTag(Git git, string tagRef, int oidLength, List<string> diagnostics)
+    {
+        if (!TryParseTagRef(tagRef, out string tag, out SemanticVersion version))
+        {
+            diagnostics.Add($"git_malformed_tag_ref:{tagRef}");
+            return null;
+        }
+
+        string type = git.RunScalar(diagnostics, $"git_missing_object:{tag}", "cat-file", "-t", tagRef);
+        if (type.Length == 0)
+        {
+            return null;
+        }
+
         if (!string.Equals(type, "tag", StringComparison.Ordinal))
         {
             diagnostics.Add($"git_lightweight_tag:{tag}");
             return null;
         }
 
-        string tagObjectOid = ResolveObject(git, refName, oidLength, $"tag:{tag}", diagnostics);
-        string commitOid = ResolveCommit(git, refName, oidLength, $"tag_target:{tag}", diagnostics, requireFullOid: false);
+        string tagObjectOid = ResolveObject(git, tagRef, oidLength, $"tag:{tag}", diagnostics);
+        string commitOid = ResolveCommit(git, tagRef, oidLength, $"tag_target:{tag}", diagnostics, requireFullOid: false);
         return tagObjectOid.Length == 0 || commitOid.Length == 0 ? null : new GitResolvedTag(tag, version, commitOid, tagObjectOid);
+    }
+
+    private static void ValidateAmbientTags(
+        Git git,
+        GitReleaseValidationRequest request,
+        SemanticVersion selected,
+        SemanticVersion previousPublished,
+        string candidateOid,
+        int oidLength,
+        List<string> diagnostics)
+    {
+        string output = git.RunScalar(diagnostics, "git_tag_scan_failed", "for-each-ref", "--format=%(refname)", "refs/tags");
+        foreach (string tagRef in output.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+        {
+            if (string.Equals(tagRef, request.BaseStableRef, StringComparison.Ordinal) ||
+                string.Equals(tagRef, request.PreviousPublishedRef, StringComparison.Ordinal) ||
+                !TryParseTagRef(tagRef, out string tag, out SemanticVersion version) ||
+                version.Major != selected.Major ||
+                version.Minor != selected.Minor ||
+                version.CompareTo(previousPublished) <= 0 ||
+                version.CompareTo(selected) >= 0)
+            {
+                continue;
+            }
+
+            GitResolvedTag? resolved = ResolveAnnotatedTag(git, tagRef, oidLength, diagnostics);
+            if (resolved is null)
+            {
+                continue;
+            }
+
+            diagnostics.Add(git.IsSuccess("merge-base", "--is-ancestor", resolved.CommitOid, candidateOid)
+                ? $"git_unexpected_newer_tag:{tag}"
+                : $"git_wrong_line_tag:{tag}");
+        }
+    }
+
+    private static bool TryParseTagRef(string tagRef, out string tag, out SemanticVersion version)
+    {
+        const string prefix = "refs/tags/";
+        if (!tagRef.StartsWith(prefix, StringComparison.Ordinal))
+        {
+            tag = string.Empty;
+            version = default;
+            return false;
+        }
+
+        tag = tagRef[prefix.Length..];
+        return SemanticVersion.TryParseTag(tag, out version);
     }
 
     private static string ResolveCommit(Git git, string reference, int oidLength, string label, List<string> diagnostics, bool requireFullOid)
@@ -295,8 +365,7 @@ public static class GitRepositoryValidator
             return false;
         }
 
-        string shortName = reference.StartsWith("release/", StringComparison.Ordinal) ? reference : reference.Split('/').Last();
-        string output = git.RunScalar([], string.Empty, "for-each-ref", "--format=%(refname)", $"refs/heads/{shortName}", $"refs/tags/{shortName}", $"refs/heads/{reference}", $"refs/tags/{reference}");
+        string output = git.RunScalar([], string.Empty, "for-each-ref", "--format=%(refname)", $"refs/heads/{reference}", $"refs/tags/{reference}");
         return output.Split('\n', StringSplitOptions.RemoveEmptyEntries).Distinct(StringComparer.Ordinal).Skip(1).Any();
     }
 
@@ -409,6 +478,10 @@ public static class GitRepositoryValidator
         public bool TryRun(out string output, params string[] args)
         {
             output = string.Empty;
+            string isolationDirectory = Path.Combine(Path.GetTempPath(), $"islamu-release-git-{Guid.NewGuid():N}");
+            Directory.CreateDirectory(isolationDirectory);
+            IReadOnlyDictionary<string, string> deterministicEnvironment = CanonicalArtifactPolicy.CreateDeterministicEnvironment(isolationDirectory);
+            File.WriteAllText(deterministicEnvironment["GIT_CONFIG_GLOBAL"], string.Empty);
             using var process = new Process
             {
                 StartInfo = new ProcessStartInfo("git")
@@ -419,10 +492,13 @@ public static class GitRepositoryValidator
                     CreateNoWindow = true,
                 },
             };
+            foreach ((string key, string value) in deterministicEnvironment)
+            {
+                process.StartInfo.Environment[key] = value;
+            }
+
             process.StartInfo.Environment["GIT_NO_REPLACE_OBJECTS"] = "1";
-            process.StartInfo.Environment["GIT_CONFIG_NOSYSTEM"] = "1";
-            process.StartInfo.Environment["GIT_CONFIG_GLOBAL"] = NullDevice;
-            process.StartInfo.Environment["GIT_CONFIG_COUNT"] = "0";
+            process.StartInfo.Environment["GIT_NO_LAZY_FETCH"] = "1";
             foreach (string variable in RepositoryEnvironmentVariables)
             {
                 process.StartInfo.Environment.Remove(variable);
@@ -461,6 +537,13 @@ public static class GitRepositoryValidator
             {
                 return false;
             }
+            finally
+            {
+                if (Directory.Exists(isolationDirectory))
+                {
+                    Directory.Delete(isolationDirectory, recursive: true);
+                }
+            }
         }
 
         private static async Task<string> ReadBoundedAsync(StreamReader reader, CancellationToken cancellationToken)
@@ -493,7 +576,11 @@ public static class GitRepositoryValidator
             "GIT_ALTERNATE_OBJECT_DIRECTORIES",
             "GIT_CEILING_DIRECTORIES",
             "GIT_COMMON_DIR",
+            "GIT_CONFIG_COUNT",
+            "GIT_CONFIG_KEY_0",
             "GIT_CONFIG_PARAMETERS",
+            "GIT_CONFIG_SYSTEM",
+            "GIT_CONFIG_VALUE_0",
             "GIT_DIR",
             "GIT_DISCOVERY_ACROSS_FILESYSTEM",
             "GIT_INDEX_FILE",

@@ -1,0 +1,310 @@
+// ABOUTME: Loads bounded prepare inputs and verifies the promoted renderer bundle before composition.
+// ABOUTME: Emits deterministic diagnostics and the exact release-metadata commit message without Git mutation.
+
+using System.Text;
+using System.Text.RegularExpressions;
+
+namespace ISLAMU.ReleaseEngineering;
+
+public static class PrepareCommand
+{
+    private static readonly UTF8Encoding StrictUtf8 = new(false, true);
+    private static readonly Regex ChangeIdPattern = new("^Change-Id: (?<id>CHG-[0-9]{4}-[0-9]{4})$", RegexOptions.CultureInvariant | RegexOptions.Multiline, TimeSpan.FromMilliseconds(100));
+
+    public static int Run(string[] args, TextWriter output, string repositoryRoot, string platform, TimeSpan timeout)
+    {
+        if (args.Length != 2)
+        {
+            output.WriteLine("invalid_arguments: prepare requires release directory");
+            return Program.UsageError;
+        }
+
+        try
+        {
+            string root = ResolveDirectory(repositoryRoot);
+            if (!string.Equals(RunGit(root, "rev-parse", "--show-toplevel").Trim(), root, PathComparison))
+            {
+                return Reject(output, "prepare_repository_root_invalid");
+            }
+
+            string releaseDirectory = ResolveChild(root, args[1], mustExist: true);
+            string expectedReleaseParent = Path.Combine(root, "docs", "releases");
+            if (!string.Equals(Path.GetDirectoryName(releaseDirectory), expectedReleaseParent, PathComparison))
+            {
+                return Reject(output, "prepare_release_path_invalid");
+            }
+
+            string releasePath = ResolveChild(releaseDirectory, "release.yaml", mustExist: true);
+            string summaryPath = ResolveChild(releaseDirectory, "summary.md", mustExist: true);
+            string releaseYaml = ReadCanonicalText(releasePath);
+            byte[] summaryBytes = File.ReadAllBytes(summaryPath);
+            if (!IsValidSummary(summaryBytes))
+            {
+                return Reject(output, "prepare_summary_restricted");
+            }
+
+            ReleaseInputValidationResult descriptorOnly = ReleaseInputPolicy.Validate(releaseYaml, [], []);
+            if (!descriptorOnly.IsValid || descriptorOnly.Descriptor is null)
+            {
+                return Reject(output, "prepare_release_input_invalid");
+            }
+
+            ReleaseDescriptor descriptor = descriptorOnly.Descriptor;
+            if (!ValidatePinnedObjects(root, descriptor))
+            {
+                return Reject(output, "prepare_release_range_moved");
+            }
+
+            ReleaseCommit[] commits = ReadGitRange(root, descriptor.PreviousPublishedTag, $"refs/heads/{descriptor.Line}");
+            string[] rangeOids = commits.Select(commit => commit.Oid).ToArray();
+            string[] linkedChangeIds = commits
+                .SelectMany(commit => ChangeIdPattern.Matches(commit.Message).Select(match => match.Groups["id"].Value))
+                .Distinct(StringComparer.Ordinal)
+                .Order(StringComparer.Ordinal)
+                .ToArray();
+            string fragmentDirectory = Path.Combine(root, "docs", "releases", "changes");
+            string[] fragments = Directory.Exists(fragmentDirectory)
+                ? Directory.EnumerateFiles(fragmentDirectory, "*.yaml", SearchOption.TopDirectoryOnly)
+                    .Where(path => linkedChangeIds.Contains(Path.GetFileNameWithoutExtension(path), StringComparer.Ordinal))
+                    .Order(StringComparer.Ordinal)
+                    .Select(ReadCanonicalText)
+                    .ToArray()
+                : [];
+            if (fragments.Length != linkedChangeIds.Length)
+            {
+                return Reject(output, "prepare_fragment_missing");
+            }
+
+            ReleaseInputValidationResult input = ReleaseInputPolicy.Validate(releaseYaml, fragments, []);
+            ReleaseContextValidationResult context = ReleaseContextPolicy.Build(input, commits, ReleasePolicy.LoadFromRepositoryRoot(root));
+            if (!context.IsValid || context.Json is null)
+            {
+                return Reject(output, "prepare_context_invalid");
+            }
+
+            string contextJson = context.Json;
+
+            TrustedBundleResult trusted = VerifyBundle(root);
+            if (!trusted.IsValid || trusted.Bundle is null)
+            {
+                return Reject(output, "prepare_trusted_bundle_invalid");
+            }
+
+            var renderRequest = new GitCliffRenderRequest(
+                trusted.Bundle,
+                StrictUtf8.GetBytes(contextJson),
+                platform,
+                Path.Combine(Path.GetTempPath(), "islamu-release-renderer"),
+                timeout);
+            ReleasePreparationResult result = ReleasePreparation.Prepare(new ReleasePreparationRequest(
+                releaseDirectory,
+                input,
+                context,
+                summaryBytes,
+                rangeOids,
+                renderRequest));
+            if (!result.IsValid)
+            {
+                return Reject(output, result.Diagnostic!);
+            }
+
+            string contextPath = Path.Combine(releaseDirectory, "release-context.v1.json");
+            byte[] contextBytes = StrictUtf8.GetBytes(contextJson);
+            if (File.Exists(contextPath))
+            {
+                if (!File.ReadAllBytes(contextPath).AsSpan().SequenceEqual(contextBytes))
+                {
+                    return Reject(output, "prepare_generated_file_unexpected");
+                }
+            }
+            else
+            {
+                WriteAtomic(contextPath, contextBytes);
+            }
+
+            output.Write(result.CommitMessage);
+            return Program.Success;
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or ArgumentException or DecoderFallbackException)
+        {
+            return Reject(output, "prepare_input_invalid");
+        }
+    }
+
+    private static bool ValidatePinnedObjects(string repositoryRoot, ReleaseDescriptor descriptor)
+    {
+        string baseOid = RunGit(repositoryRoot, "rev-parse", $"{descriptor.BaseStableTag}^{{commit}}").Trim();
+        string previousOid = RunGit(repositoryRoot, "rev-parse", $"{descriptor.PreviousPublishedTag}^{{commit}}").Trim();
+        string lineOid = RunGit(repositoryRoot, "rev-parse", $"refs/heads/{descriptor.Line}^{{commit}}").Trim();
+
+        return string.Equals(descriptor.ReleaseRange.BaseOid, baseOid, StringComparison.Ordinal) &&
+            string.Equals(descriptor.ReleaseRange.PreviousOid, previousOid, StringComparison.Ordinal) &&
+            !string.Equals(lineOid, previousOid, StringComparison.Ordinal);
+    }
+
+    private static ReleaseCommit[] ReadGitRange(string repositoryRoot, string previousPublishedTag, string releaseBranchRef)
+    {
+        string raw = RunGit(repositoryRoot, "log", "--reverse", "--format=%H%x00%B%x1e", $"{previousPublishedTag}..{releaseBranchRef}");
+        return raw.Split('\u001e', StringSplitOptions.RemoveEmptyEntries)
+            .Select(entry => entry.TrimStart('\n'))
+            .Where(entry => entry.Length != 0)
+            .Select(entry =>
+            {
+                int separator = entry.IndexOf('\0');
+                if (separator <= 0) throw new IOException();
+                return new ReleaseCommit(entry[..separator], entry[(separator + 1)..].TrimEnd('\n'));
+            })
+            .ToArray();
+    }
+
+    private static bool IsValidSummary(byte[] bytes)
+    {
+        try
+        {
+            string decoded = StrictUtf8.GetString(bytes);
+            CanonicalArtifactResult canonical = CanonicalArtifactPolicy.CanonicalizeText(decoded);
+            string summary = decoded.TrimEnd('\n');
+            return canonical.IsValid && canonical.Bytes is not null && bytes.AsSpan().SequenceEqual(canonical.Bytes) &&
+                !string.IsNullOrWhiteSpace(summary) &&
+                !summary.Contains("generated-region", StringComparison.OrdinalIgnoreCase) &&
+                !summary.Contains("restricted-details", StringComparison.OrdinalIgnoreCase) &&
+                !summary.Split('\n').Any(line => line.TrimStart().StartsWith('#') || !CanonicalArtifactPolicy.EscapeUntrustedMarkdown(line).IsValid);
+        }
+        catch (DecoderFallbackException)
+        {
+            return false;
+        }
+    }
+
+    private static string RunGit(string repositoryRoot, params string[] arguments)
+    {
+        using var process = new System.Diagnostics.Process
+        {
+            StartInfo = new System.Diagnostics.ProcessStartInfo("git")
+            {
+                UseShellExecute = false,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                WorkingDirectory = repositoryRoot,
+            },
+        };
+        string nullDevice = OperatingSystem.IsWindows() ? "NUL" : "/dev/null";
+        process.StartInfo.Environment["GIT_CONFIG_NOSYSTEM"] = "1";
+        process.StartInfo.Environment["GIT_CONFIG_GLOBAL"] = nullDevice;
+        process.StartInfo.ArgumentList.Add("-c");
+        process.StartInfo.ArgumentList.Add($"core.hooksPath={nullDevice}");
+        foreach (string argument in arguments)
+        {
+            process.StartInfo.ArgumentList.Add(argument);
+        }
+
+        process.Start();
+        string standardOutput = process.StandardOutput.ReadToEnd();
+        string standardError = process.StandardError.ReadToEnd();
+        if (!process.WaitForExit(TimeSpan.FromSeconds(5)) || process.ExitCode != 0 || standardError.Length != 0)
+        {
+            if (!process.HasExited) process.Kill(entireProcessTree: true);
+            throw new IOException();
+        }
+
+        return standardOutput;
+    }
+
+    private static void WriteAtomic(string path, byte[] bytes)
+    {
+        string temporaryPath = Path.Combine(Path.GetDirectoryName(path)!, $".{Path.GetFileName(path)}.{Guid.NewGuid():N}.tmp");
+        try
+        {
+            File.WriteAllBytes(temporaryPath, bytes);
+            File.Move(temporaryPath, path);
+        }
+        finally
+        {
+            if (File.Exists(temporaryPath)) File.Delete(temporaryPath);
+        }
+    }
+
+    private static TrustedBundleResult VerifyBundle(string candidateRoot)
+    {
+        string Required(string name) => Environment.GetEnvironmentVariable(name) ?? string.Empty;
+        return TrustedBundlePolicy.Verify(new TrustedBundleVerificationRequest(
+            Required("ISLAMU_RELEASE_TRUSTED_BUNDLE"),
+            candidateRoot,
+            new PromotionAuthorityInput(
+                Required("ISLAMU_RELEASE_PROMOTION_RECEIPT"),
+                Required("ISLAMU_RELEASE_PROMOTION_SIGNATURE"),
+                Required("ISLAMU_RELEASE_PROMOTION_PRINCIPAL")),
+            Required("ISLAMU_RELEASE_BUNDLE_ID"),
+            Required("ISLAMU_RELEASE_BUNDLE_VERSION"),
+            Required("ISLAMU_RELEASE_POLICY_VERSION"),
+            Required("ISLAMU_RELEASE_CONFIG_VERSION"),
+            Required("ISLAMU_RELEASE_TRUST_VERSION"))
+        {
+            ExpectedManifestDigest = Required("ISLAMU_RELEASE_MANIFEST_SHA256"),
+        });
+    }
+
+    private static string ReadCanonicalText(string path)
+    {
+        byte[] bytes = File.ReadAllBytes(path);
+        string text = StrictUtf8.GetString(bytes);
+        CanonicalArtifactResult canonical = CanonicalArtifactPolicy.CanonicalizeText(text);
+        if (!canonical.IsValid || canonical.Bytes is null || !bytes.AsSpan().SequenceEqual(canonical.Bytes))
+        {
+            throw new IOException();
+        }
+
+        return text;
+    }
+
+    private static string ResolveDirectory(string path)
+    {
+        string fullPath = Path.GetFullPath(path).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+        if (!Path.IsPathFullyQualified(fullPath) || !Directory.Exists(fullPath) || IsLink(fullPath))
+        {
+            throw new IOException();
+        }
+
+        return fullPath;
+    }
+
+    private static string ResolveChild(string root, string path, bool mustExist)
+    {
+        string fullPath = Path.GetFullPath(Path.IsPathFullyQualified(path) ? path : Path.Combine(root, path));
+        string relative = Path.GetRelativePath(root, fullPath);
+        if (relative == "." || relative.StartsWith("..", StringComparison.Ordinal) || Path.IsPathFullyQualified(relative) ||
+            (mustExist && !File.Exists(fullPath) && !Directory.Exists(fullPath)) || HasLinkInPath(root, fullPath))
+        {
+            throw new IOException();
+        }
+
+        return fullPath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+    }
+
+    private static bool IsLink(string path) => File.Exists(path) || Directory.Exists(path)
+        ? (File.GetAttributes(path) & FileAttributes.ReparsePoint) != 0
+        : false;
+
+    private static bool HasLinkInPath(string root, string path)
+    {
+        string current = root;
+        foreach (string segment in Path.GetRelativePath(root, path).Split([Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar], StringSplitOptions.RemoveEmptyEntries))
+        {
+            current = Path.Combine(current, segment);
+            if (IsLink(current))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static int Reject(TextWriter output, string diagnostic)
+    {
+        output.WriteLine($"prepare_failed: {diagnostic}");
+        return Program.ToolchainRejected;
+    }
+
+    private static StringComparison PathComparison => OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
+}

@@ -181,7 +181,7 @@ public sealed class ProgramTests
         int exitCode = Program.Run(["unexpected-command"], output);
 
         await Assert.That(exitCode).IsEqualTo(Program.UsageError);
-        await Assert.That(output.ToString()).IsEqualTo("unknown_command: supported command is verify-tools" + Environment.NewLine);
+        await Assert.That(output.ToString()).IsEqualTo("unknown_command: supported commands are prepare, verify-candidate, tag-message, verify-tag, verify-main, and verify-tools" + Environment.NewLine);
     }
 
     [Test]
@@ -194,7 +194,7 @@ public sealed class ProgramTests
         await Assert.That(exitCode).IsEqualTo(Program.UsageError);
         await Assert.That(output.ToString()).IsEqualTo(
             "invalid_arguments: verify-tools accepts no arguments" + Environment.NewLine +
-            "usage: release-engine verify-tools" + Environment.NewLine);
+            "usage: release-engine verify-tools | prepare <release-directory> | verify-candidate <release-directory> <candidate-oid> | tag-message <release-directory> | verify-tag <release-directory> <tag-name> | verify-main <release-directory> <expected-old-origin-main-oid> <tag-object-oid>" + Environment.NewLine);
     }
 
     private sealed class ToolFixture : IDisposable

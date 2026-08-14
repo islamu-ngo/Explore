@@ -7,12 +7,13 @@ Last Updated: 2026-08-14 Europe/Brussels
 
 ## Status Summary
 
-- **Overall status:** Active implementation; Phase 1 blocked by unrelated architecture-test failures.
-- **Completed:** 6/18 implementation tasks. Phase verification is tracked separately.
-- **Current priority:** Implement Task 3.1 Git object and release-line validation.
-- **Next recommended slice:** Complete Task 3.1, then harden canonical bytes and untrusted text in Task 3.2.
+- **Overall status:** Active implementation; Phase 1 remains blocked by unrelated architecture-test failures.
+- **Completed:** 15/18 implementation tasks. Phase verification is tracked separately.
+- **Current priority:** Run the Phase 5 build and release-engine verification gates.
+- **Next recommended slice:** Close Phase 5, then resolve the selected non-GitHub forge decision for Task 6.1.
 - **Known future decision:** Select the first non-GitHub forge before Task 6.1 completes.
 - **Phase-gate exception:** On 2026-08-14 the user explicitly authorized Tasks 2-5 to continue while the Phase 1 architecture checkbox remains blocked by four unrelated shared-worktree failures.
+- **Current Phase 1 gate evidence:** Exit 2; 377 total, 372 passed, 4 failed, 1 skipped. Independent escalation confirmed the same four product/architecture-contract failures remain outside release-engineering scope; the checkbox stays open.
 
 ## Implementation Maintenance Rules
 
@@ -53,7 +54,7 @@ Last Updated: 2026-08-14 Europe/Brussels
 - [x] `dotnet build --configuration Release --verbosity quiet`
 - [ ] `dotnet test --project tests/Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet`
 
-## Phase 2: ISLAMU Policy Engine And Normalized Context - IMPLEMENTATION COMPLETE; BUILD GATE OPEN
+## Phase 2: ISLAMU Policy Engine And Normalized Context - COMPLETE
 
 - [x] **2.1 Implement Commit, Scope, And Skip Policy**
   - **Files:** new `eng/release/policy/release-policy.yaml`, `eng/release/policy/scope-registry.yaml`, parser/validator code/tests; existing `.agents/skills/conventional-commit/SKILL.md`, `docs/CONTRIBUTING.md`.
@@ -75,24 +76,24 @@ Last Updated: 2026-08-14 Europe/Brussels
 
 ### Phase 2 Verification - RUN ONCE AFTER ALL PHASE TASKS
 
-- [ ] `dotnet build --configuration Release --verbosity quiet`
+- [x] `dotnet build --configuration Release --verbosity quiet`
 - [x] `dotnet test --project eng/release/tests/ISLAMU.ReleaseEngineering.Tests/ISLAMU.ReleaseEngineering.Tests.csproj --configuration Release --verbosity quiet`
 
-## Phase 3: Git Trust, Determinism, And Security Boundaries - NOT STARTED
+## Phase 3: Git Trust, Determinism, And Security Boundaries - COMPLETE
 
-- [ ] **3.1 Implement Git Object And Release-Line Validation**
+- [x] **3.1 Implement Git Object And Release-Line Validation**
   - **Files:** new Git process/repository/graph code and synthetic Git tests under `eng/release/`.
   - **Acceptance:** Explicit full objects and ancestry are proven; shallow/partial/replaced/grafted/ambiguous/lightweight/wrong-line histories fail; parallel lines select only applicable tags; object format is not hardcoded.
   - **Effort:** L
   - **Dependencies:** 2.3.
 
-- [ ] **3.2 Implement Canonicalization And Untrusted-Text Hardening**
+- [x] **3.2 Implement Canonicalization And Untrusted-Text Hardening**
   - **Files:** new JSON/Markdown/text canonicalization code and deterministic security fixtures under `eng/release/`.
   - **Acceptance:** UTF-8-no-BOM/LF/NFC/invariant ordering is byte-identical across Windows/Linux and clocks; global Git config is isolated; Markdown/HTML/control/bidi/length attacks are escaped or rejected.
   - **Effort:** L
   - **Dependencies:** 3.1.
 
-- [ ] **3.3 Establish Trusted Bundle, SSH Signer, And Embargo Contracts**
+- [x] **3.3 Establish Trusted Bundle, SSH Signer, And Embargo Contracts**
   - **Files:** new `eng/release/trust/**`, trusted-bundle code/tests; existing `docs/RELEASE_RUNBOOK.md`, `docs/CI_CD_GOVERNANCE.md`, dependency/provenance records.
   - **Acceptance:** Final attestation verifies a previously promoted bundle; candidate source/policy/config/trust cannot self-promote; SSH signer roles/rotation/revocation/replaced-tag behavior are explicit; restricted security input cannot leak into public artifacts.
   - **Effort:** XL
@@ -100,24 +101,24 @@ Last Updated: 2026-08-14 Europe/Brussels
 
 ### Phase 3 Verification - RUN ONCE AFTER ALL PHASE TASKS
 
-- [ ] `dotnet build --configuration Release --verbosity quiet`
-- [ ] `dotnet test --project eng/release/tests/ISLAMU.ReleaseEngineering.Tests/ISLAMU.ReleaseEngineering.Tests.csproj --configuration Release --verbosity quiet`
+- [x] `dotnet build --configuration Release --verbosity quiet`
+- [x] `dotnet test --project eng/release/tests/ISLAMU.ReleaseEngineering.Tests/ISLAMU.ReleaseEngineering.Tests.csproj --configuration Release --verbosity quiet`
 
-## Phase 4: Git-Cliff Rendering And Final Preparation Commit - NOT STARTED
+## Phase 4: Git-Cliff Rendering And Final Preparation Commit - COMPLETE
 
-- [ ] **4.1 Integrate Git-Cliff As Renderer Only**
+- [x] **4.1 Integrate Git-Cliff As Renderer Only**
   - **Files:** new packaged `eng/release/cliff.toml`, renderer adapter, and promoted-binary fixtures under `eng/release/`.
   - **Acceptance:** `--from-context --offline --no-exec` rendering works without Git/network; template contains presentation only; candidate config is not authoritative; canonical output has no provider/identity/body data.
   - **Effort:** L
   - **Dependencies:** 1.3, 2.3, 3.2, 3.3.
 
-- [ ] **4.2 Implement Release Composition And `prepare`**
+- [x] **4.2 Implement Release Composition And `prepare`**
   - **Files:** new `prepare` command/composition tests; new release directory templates; existing `docs/RELEASE_RUNBOOK.md`.
   - **Acceptance:** `release.yaml` plus `summary.md` produce fully generated `release-notes.md`; three layers and impact coverage are correct; no split markers exist; the emitted commit message has skip plus reason.
   - **Effort:** L
   - **Dependencies:** 2.2, 4.1.
 
-- [ ] **4.3 Implement Exact-`B` Candidate Attestation**
+- [x] **4.3 Implement Exact-`B` Candidate Attestation**
   - **Files:** new `verify-candidate` command, `release-candidate.v1.json` serializer, and exact-commit fixtures under `eng/release/`.
   - **Acceptance:** Final candidate validation occurs at `B`; `B` rerenders identically; replacement/movement/drift fails; deterministic candidate evidence contains all tool/policy/context/note hashes and no tag ID/current time.
   - **Effort:** L
@@ -125,24 +126,24 @@ Last Updated: 2026-08-14 Europe/Brussels
 
 ### Phase 4 Verification - RUN ONCE AFTER ALL PHASE TASKS
 
-- [ ] `dotnet build --configuration Release --verbosity quiet`
-- [ ] `dotnet test --project eng/release/tests/ISLAMU.ReleaseEngineering.Tests/ISLAMU.ReleaseEngineering.Tests.csproj --configuration Release --verbosity quiet`
+- [x] `dotnet build --configuration Release --verbosity quiet`
+- [x] `dotnet test --project eng/release/tests/ISLAMU.ReleaseEngineering.Tests/ISLAMU.ReleaseEngineering.Tests.csproj --configuration Release --verbosity quiet`
 
-## Phase 5: Tag Closure, Stable Main, And Evidence Integration - NOT STARTED
+## Phase 5: Tag Closure, Stable Main, And Evidence Integration - IN PROGRESS
 
-- [ ] **5.1 Implement `verify-tag` And Final Evidence**
+- [x] **5.1 Implement `verify-tag` And Final Evidence**
   - **Files:** new `verify-tag`, tag-message, `release-evidence.v1.json`, and signed-tag fixtures; existing `docs/RELEASE_RUNBOOK.md`.
   - **Acceptance:** Authorized SSH annotated tag, exact `B`, tag name/line/range, candidate digest, note hash, and tag object ID are verified locally; recreated tags are detectable; no hash cycle exists.
   - **Effort:** L
   - **Dependencies:** 3.3, 4.3.
 
-- [ ] **5.2 Implement `verify-main` And Parallel-Line Rules**
+- [x] **5.2 Implement `verify-main` And Parallel-Line Rules**
   - **Files:** new `verify-main` command/topology tests; existing `docs/RELEASE_RUNBOOK.md`.
   - **Acceptance:** Only newest stable `B` may be a normal fast-forward target for `main`; prereleases/older lines/races/non-descendants fail; expected old/new OIDs are emitted; the tool never pushes.
   - **Effort:** M
   - **Dependencies:** 5.1.
 
-- [ ] **5.3 Integrate Canonical Release Identity With Existing Evidence**
+- [x] **5.3 Integrate Canonical Release Identity With Existing Evidence**
   - **Files:** existing `.ci/scripts/generate-release-evidence-bundle.cs`, `.ci/scripts/write-artifact-checksums.cs`, `docs/CI_CD_GOVERNANCE.md`, `docs/RELEASE_CHECKLIST.md`; release-engine fixtures/docs.
   - **Acceptance:** Existing bundle verifies one canonical final manifest; collection time/run IDs remain noncanonical; disagreement fails; existing evidence categories remain intact; governance artifacts are checksummed.
   - **Effort:** M

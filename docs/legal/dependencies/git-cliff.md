@@ -69,8 +69,13 @@ they do not change the lock or trust decision.
 - PGP verification remains unverified because the expected signature asset was
   unavailable. Promotion policy may require independent signature evidence before
   treating the initial bundle as authoritative.
-- ISLAMU-controlled artifact-store location, retention, access policy, and genesis
-  promotion approval remain Task 3.3/operator decisions.
+- ISLAMU-controlled artifact-store location, retention, access policy, and real
+  signer custody remain operator activation decisions. Task 3.3 now defines the
+  fail-closed promoted-bundle contract: the final lane supplies the protected
+  manifest digest and separate exact-bundle-bound promotion evidence, while candidate
+  checkout policy, renderer config, tool locks, and trust roots cannot override the
+  promoted bundle. Same-bundle verification is idempotent and stores no replay
+  registry; reuse against different bundle bytes fails by digest/version binding.
 
 The repository dependency-license policy validator originally failed on the
 deprecated license-URL metadata of `Microsoft.Data.SqlClient.SNI.runtime 6.0.2`.

@@ -34,18 +34,65 @@ Last Updated: 2026-08-14 Europe/Brussels
   normalized context now validates SemVer and prerelease progression, preserves
   real current/backport object identity, emits no synthetic OIDs, and passes 72
   focused release-engine tests with exact stable/prerelease/backport goldens.
+- Completed Task 3.1 after independent adversarial repair verification. Git
+  validation now binds descriptor-selected refs to full expected OIDs, rejects
+  hostile or incomplete repository state, supports observed SHA-1/SHA-256 object
+  formats, and isolates Git configuration, hooks, environment, time, and output.
+- Closed the Phase 2 gates on the stabilized release engine: the focused suite
+  passed 86/86 and an independent literal Release build completed 38 projects
+  with zero errors; the remaining warnings are the known SSH.NET advisory.
+- Completed Task 3.2 after an independent adversarial repair loop. Canonical
+  artifacts now use UTF-8 without BOM, LF, NFC, invariant ordering, and bounded
+  deterministic diagnostics; hostile JSON numbers, Markdown/HTML, controls,
+  bidi text, identities, provider data, and secret shapes fail or escape safely.
+- Completed Task 3.3 and the Phase 3 gates after independent trust-boundary
+  review. Final verification consumes a separately signed promotion receipt,
+  uses only the fixed promoted-runtime signer root, bounds all bundle inputs,
+  rejects path collisions/links, and keeps real keys and embargo details out.
+  The release-engine suite passed 113/113 and the Release build had zero errors.
+- Completed Task 4.1 after real promoted-binary review. Git-cliff 2.13.1 now
+  receives only a canonical top-level context sequence in a non-Git directory,
+  with explicit trusted config, offline/no-exec flags, inert candidate config and
+  environment, bounded output, and byte-identical canonical Markdown.
+- Completed Task 4.2 after resolving a shared-worktree contract conflict against
+  the authoritative plan. `prepare docs/releases/<version>` derives the pinned
+  local Git range and canonical context from governed release sources, writes
+  byte-idempotent context and notes, and emits the required release-metadata skip
+  commit message. Independent clean verification passed 133/133 tests and real
+  one-argument CLI happy, malformed-summary, ref-movement, path, and trust probes.
+- Completed Task 4.3 after independent built-CLI verification. Candidate
+  attestation now rerenders exact preparation commit `B`, requires the governed
+  skip trailers, compares committed context and notes byte-for-byte, and emits a
+  deterministic pre-tag manifest. Exact `B` produced stable bytes twice while
+  parent `A`, stale evidence, dirty notes, and moved refs failed closed.
+- Closed Phase 4 after a clean Release build and 137/137 release-engine tests.
+  All changed C# files had zero diagnostics, scoped tracked and untracked
+  whitespace checks passed, and promoted trust roots remained comment-only.
+- Completed Task 5.1 after independent built-CLI verification in disposable
+  SHA-1 and SHA-256 repositories. Local OpenSSH verification closes exact `B`,
+  canonical tag text, signer policy, candidate digest, release hashes, and full
+  tag object identity into deterministic final evidence; recreated tags, note
+  tampering, and stale evidence fail closed.
+- Completed Task 5.2 after independent built-CLI verification in SHA-1 and
+  SHA-256 repositories. `verify-main` now binds every success action to observed
+  `origin/main`, enforces newest-stable fast-forward/no-backward rules, emits
+  deterministic old/new OIDs without mutating refs, and kills hung Git process
+  groups with bounded diagnostics.
+- Completed Task 5.3 after independent script-level verification. The durable
+  bundle now consumes one canonical final manifest, keeps transport/run metadata
+  noncanonical, preserves all prior evidence categories, checksums release and
+  governance artifacts, and rejects identity drift plus Unix/Windows filesystem
+  aliases before publishing staged output.
 
 ### IN PROGRESS
 
-- Task 3.1 Git object and release-line validation. The user explicitly
-  authorized Tasks 2-5 to continue while the Phase 1 architecture checkbox
-  remains blocked by four reproducible failures outside this workstream.
+- Phase 5 build and release-engine verification gates.
 
 ### NEXT
 
-1. Implement Task 3.1 explicit Git object and release-line validation.
-2. Implement Task 3.2 canonical-byte and untrusted-text hardening.
-3. Rerun the open Phase 1/2 gates after unrelated worktree changes settle.
+1. Run the Phase 5 build and release-engine test gates.
+2. Resolve the first non-GitHub forge selection required by Task 6.1.
+3. Rerun the open Phase 1 architecture gate after unrelated worktree changes settle.
 
 ### BLOCKERS
 
@@ -53,8 +100,6 @@ Last Updated: 2026-08-14 Europe/Brussels
   records four non-release failures: DTO naming, generated-client ownership,
   tenant bypass-reason usage, and User-PII inventory coverage. The user
   explicitly authorized Tasks 2-5 to continue without closing this checkbox.
-- Phase 2 cannot close while the full solution build fails in the unrelated
-  concurrent `PublishEventTicketCatalogCommandHandlerTests` constructor call.
 - Task 6.1 requires the Project Steward to name the first non-GitHub forge before its adapter path is finalized.
 - Task 3.3 requires real release signer principals/keys and an artifact-promotion authority before activation, but their absence does not block earlier implementation.
 
@@ -185,3 +230,11 @@ Planning-artifact verification is limited to `git diff --check -- dev/active/git
 - **Documentation impact:** New active planning workstream only. Canonical release docs are planned, not yet changed.
 - **Risks:** Candidate/trusted execution separation is the critical design boundary; do not begin renderer templates first.
 - **Notes for next contributor/agent:** Run `git status --short` before editing and preserve every unrelated dirty path. Do not restore the currently deleted `tests/Event.Architecture.Tests/AgentContextGovernanceTests.cs` as part of this workstream unless the user separately assigns it.
+
+## Phase-Gate Ledger
+
+### 2026-08-14 19:05:17 CEST - Phase 4 Gate Attempt
+
+- **Verdict:** FAIL for clean closure. The exact Phase 4 `dotnet build --configuration Release --verbosity quiet` gate passed across 38 projects with 12085 warnings and 0 errors, and the exact release-engine test gate passed 137/137 with no failed tests. The requested clean scoped diff check failed on untracked trust files with `new blank line at EOF` diagnostics, so Phase 4 should not close until that failure is addressed by the owning implementer.
+- **Evidence:** `.omo/start-work/evidence/git-cliff-phase-4-gates.md`.
+- **Cleanup:** Removed stale release-engine build outputs before gates, removed prior `/tmp/islamu-trust-*` roots before gates, confirmed no release-engine temp roots remained after gates, and confirmed packaged/runtime trust roots were comment-only.
