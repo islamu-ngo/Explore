@@ -18,3 +18,16 @@ public sealed record GetTenantPaidEventPolicyQuery(Guid TenantId) : IRequest<Pai
         ["settingKey"] = "paid-event-policy"
     };
 }
+
+[AuthorizeResource(ResourceKinds.TenantSetting, AuthorizationActions.TenantSettings.View)]
+public sealed record GetTenantPaidEventPolicyConfigurationQuery(Guid TenantId)
+    : IRequest<TenantPaidEventPolicyConfigurationDto?>, ISecureRequest
+{
+    string? ISecureRequest.ResourceId => TenantId == Guid.Empty ? null : $"{TenantId}:paid-event-policy";
+
+    IDictionary<string, object>? ISecureRequest.ResourceAttributes => new Dictionary<string, object>
+    {
+        ["tenantId"] = TenantId.ToString(),
+        ["settingKey"] = "paid-event-policy"
+    };
+}

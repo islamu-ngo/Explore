@@ -4,6 +4,7 @@
 using System.Reflection;
 using Explore.Blazor.Client.Contracts.Services.ControlPlane;
 using Explore.Blazor.Client.Contracts.Services.Federation;
+using Explore.Blazor.Client.Contracts.Services.PaidEventPolicies;
 using Explore.Blazor.Client.Models;
 using Explore.Blazor.Client.Pages.Events;
 using Explore.Blazor.Client.Tests.Common.Authentication;
@@ -19,6 +20,8 @@ public sealed class InstanceAdminSettingsLayoutTests : IDisposable
     private readonly ITenantPublicExperienceAdminService _publicExperienceAdminService;
     private readonly IOrganizationService _organizationService;
     private readonly IUserService _userService;
+    private readonly IPlatformMonetizationService _monetizationService;
+    private readonly IPaidEventPolicyService _paidEventPolicyService;
 
     public InstanceAdminSettingsLayoutTests()
     {
@@ -32,6 +35,10 @@ public sealed class InstanceAdminSettingsLayoutTests : IDisposable
         _publicExperienceAdminService = _ctx.AddMockService<ITenantPublicExperienceAdminService>();
         _organizationService = _ctx.AddMockService<IOrganizationService>();
         _userService = _ctx.AddMockService<IUserService>();
+        _monetizationService = _ctx.AddMockService<IPlatformMonetizationService>();
+        _paidEventPolicyService = _ctx.AddMockService<IPaidEventPolicyService>();
+        _monetizationService.GetAsync(Arg.Any<CancellationToken>()).Returns(new HalResourceOfPlatformMonetizationSettingsDto());
+        _paidEventPolicyService.GetInstanceAsync(Arg.Any<CancellationToken>()).Returns(new HalResourceOfPaidEventPolicyDto());
 
         ConfigureSingleTenantInstanceDefaults();
     }
@@ -60,6 +67,22 @@ public sealed class InstanceAdminSettingsLayoutTests : IDisposable
         });
 
         await Assert.That(cut.Markup).Contains("Public Experience", StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Test]
+    public async Task InstanceAdminSettingsLayout_MonetizationIncludesPaidEventCeiling()
+    {
+        var cut = _ctx.RenderMudComponent<DynamicComponent>(parameters =>
+            parameters.Add(component => component.Type, GetLayoutComponentType()));
+        cut.WaitForState(() => cut.Markup.Contains("Monetization", StringComparison.Ordinal));
+
+        cut.FindAll("[role='option']")
+            .Single(item => item.TextContent.Trim() == "Monetization")
+            .Click();
+
+        cut.WaitForElement("[data-testid='instance-paid-policy-section']");
+        await Assert.That(cut.FindAll("[data-testid='instance-monetization-section']").Count).IsEqualTo(1);
+        await _paidEventPolicyService.Received(1).GetInstanceAsync(Arg.Any<CancellationToken>());
     }
 
     [Test]

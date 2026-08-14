@@ -365,7 +365,7 @@ public sealed class PlatformMonetizationSettingsRuntimeApiTests
 
         public Task<bool> IsAllowedAsync(string resourceKind, string resourceId, string action, IDictionary<string, object>? resourceAttributes = null, CancellationToken cancellationToken = default) => Task.FromResult(true);
 
-        public Task<IReadOnlyList<bool>> IsAllowedBatchAsync(IReadOnlyList<AuthorizationCheck> checks, CancellationToken cancellationToken = default) =>
+        public Task<IReadOnlyList<bool>> IsAllowedBatchAsync(IReadOnlyList<AuthorizationRequest> checks, CancellationToken cancellationToken = default) =>
             Task.FromResult<IReadOnlyList<bool>>(checks.Select(check => check.Action != AuthorizationActions.InstanceSettings.Update || AllowUpdateInBatch).ToArray());
 
         public Task<bool> CheckSettingAccessAsync(string settingKey, string action, Guid? tenantId = null, Guid? organizationId = null, CancellationToken cancellationToken = default) => Task.FromResult(true);

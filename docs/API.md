@@ -241,11 +241,26 @@ Authenticated event-scoped ticket catalog versions, draft authoring, ticket type
 | `POST /api/events/{eventId}/ticketing/capacity-pools` | `CreateEventCapacityPool` | `[Authorize]` | Creates a shared capacity pool with oversell policy and seat allocations. |
 | `PUT /api/events/{eventId}/ticketing/capacity-pools/{capacityPoolId}` | `UpdateEventCapacityPool` | `[Authorize]` | Updates capacity pool limits and oversell policy. |
 | `DELETE /api/events/{eventId}/ticketing/capacity-pools/{capacityPoolId}` | `DeleteEventCapacityPool` | `[Authorize]` | Deletes a capacity pool. |
-| `POST /api/events/{eventId}/ticketing/publish` | `PublishEventTicketCatalog` | `[Authorize]` | Promotes draft catalog version to published status and archives former version. |
+| `GET /api/events/{eventId}/ticketing/publication-preflight` | `GetPaidEventPublicationPreflight` | `[Authorize]`, `private, no-store` | Returns the current paid-publication readiness and blockers. |
+| `PUT /api/events/{eventId}/ticketing/commercial-disclosures` | `UpdateEventTicketCatalogCommercialDisclosures` | `[Authorize]` | Updates the merchant, refund-policy, and support disclosures required for a paid catalog. |
+| `GET /api/events/{eventId}/ticketing/payment-connection` | `GetEventOrganizerPaymentConnection` | `[Authorize]`, `private, no-store` | Returns bounded readiness for the exact event organizer's payment connection. |
+| `POST /api/events/{eventId}/ticketing/payment-connection/onboarding` | `StartEventOrganizerPaymentOnboarding` | `[Authorize]`, `private, no-store` | Starts or reuses hosted organizer onboarding and returns an absolute HTTP(S) URL plus a reuse flag. |
+| `GET /api/events/{eventId}/ticketing/payment-connection/onboarding/return` | `ReturnEventOrganizerPaymentOnboarding` | `[Authorize]`, `private, no-store` | Redirects to Studio ticketing; it does not mark the connection ready. |
+| `GET /api/events/{eventId}/ticketing/payment-connection/onboarding/refresh` | `RefreshEventOrganizerPaymentOnboarding` | `[Authorize]`, `private, no-store` | Redirects to Studio ticketing for a new onboarding attempt; it does not mark the connection ready. |
+| `POST /api/events/{eventId}/ticketing/publish` | `PublishEventTicketCatalog` | `[Authorize]` | Recomputes paid readiness inside the publish transaction before promoting a draft catalog. |
 
 Ticketing money fields use integer minor units in `long ...Minor` properties. Percentages use integer basis points, where `10_000 = 100%`. Catalog, ticket-type, and capacity-pool mutations must follow the exact relation on the returned HAL resource, including `create-draft`, `clone-draft`, `create-type`, `create-pool`, `publish`, `edit`, and `delete`.
 
-Paid commerce and admission endpoints are not yet implemented. ADR-022 through ADR-024 reserve future surfaces for actor-bound Stripe onboarding/readiness, local promotions, direct-charge Checkout/payment/refund/dispute reconciliation, opaque admission tickets, recovery, entitlement-targeted check-in/undo, transfer, waitlist offers, and event-bound add-ons. Those surfaces must use explicit endpoint classifications, private/no-store where identities or commercial state are returned, idempotent `PublicTransactional` controls for guest writes, and HAL relations as the only client action authority. Marketing, accounting, tax determination, and legal invoice/credit-note endpoints remain outside the Event API.
+Paid-event policy settings are separate from instance monetization:
+
+| Route | Route Name | Auth | Purpose |
+|---|---|---|---|
+| `GET /api/instance/settings/paid-event-policy` | `GetInstancePaidEventPolicySettings` | `[Authorize]`, Admin, `private, no-store` | Returns the active instance ceiling. |
+| `PUT /api/instance/settings/paid-event-policy` | `UpdateInstancePaidEventPolicySettings` | `[Authorize]`, Admin, `private, no-store` | Revises the instance ceiling. |
+| `GET /api/tenants/{tenantId}/settings/paid-event-policy` | `GetTenantPaidEventPolicySettings` | `[Authorize]`, `private, no-store` | Returns the instance ceiling, tenant override, and effective policy. |
+| `PUT /api/tenants/{tenantId}/settings/paid-event-policy` | `UpdateTenantPaidEventPolicySettings` | `[Authorize]`, `private, no-store` | Revises a tenant-only narrowing of that ceiling. |
+
+The paid-management resources expose actions only through their exact HAL relations: `preflight`, `commercial-disclosures`, `payment-connection`, `start-onboarding`, and `publish`. A paid publish relation requires both fresh readiness and `manage-paid-event-commerce` for the event's persisted organizer actor. Policy responses expose policy values without policy or tenant identifiers. The connection response exposes only status, merchant country, charge-capability state, requirements state, supported currencies, and readiness timestamp. It omits provider, platform, account, tenant, actor, connection, lineage, and evidence identifiers. Checkout, capture, refunds, disputes, admission, QR/check-in, transfers, payouts, and legal/tax/invoice support are not API behavior.
 
 ### Registration Form Authoring Endpoints
 

@@ -1,6 +1,7 @@
 // ABOUTME: Tests ticket catalog publication handler validation, persistence, and cache behavior.
 // ABOUTME: Ensures invalid or failed publication does not mutate the repository or clear event detail cache.
 
+using Explore.Application.Authorization;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
@@ -42,6 +43,7 @@ public sealed class PublishEventTicketCatalogCommandHandlerTests
         _tenant.TenantId.Returns(_tenantId);
         _events.GetAuthorizationTargetByIdAsync(_eventId, Arg.Any<CancellationToken>())
             .Returns(CreatePlatformEvent());
+        _events.GetEventWithDetails(_eventId).Returns(CreatePlatformEvent());
     }
 
     [Test]
@@ -212,6 +214,7 @@ public sealed class PublishEventTicketCatalogCommandHandlerTests
         EventTicketCatalogVersion draft = CreateValidPaidDraftCatalog();
         var unitOfWork = new RecordingUnitOfWork();
         _events.GetAuthorizationTargetByIdAsync(_eventId, Arg.Any<CancellationToken>()).Returns(CreatePlatformEvent(organizer));
+        _events.GetEventWithDetails(_eventId).Returns(CreatePlatformEvent(organizer));
         _catalogs.GetDraftCatalogForUpdateAsync(_eventId, _tenantId, Arg.Any<CancellationToken>()).Returns(draft);
         ConfigureEnabledPaidPolicy();
 
@@ -231,6 +234,7 @@ public sealed class PublishEventTicketCatalogCommandHandlerTests
         draft.UpdateCommercialDisclosures("Merchant", "Refund", "Support");
         var unitOfWork = new RecordingUnitOfWork();
         _events.GetAuthorizationTargetByIdAsync(_eventId, Arg.Any<CancellationToken>()).Returns(CreatePlatformEvent(organizer));
+        _events.GetEventWithDetails(_eventId).Returns(CreatePlatformEvent(organizer));
         _catalogs.GetDraftCatalogForUpdateAsync(_eventId, _tenantId, Arg.Any<CancellationToken>()).Returns(draft);
         ConfigureEnabledPaidPolicy();
         ConfigurePaymentPlatform();
@@ -243,6 +247,62 @@ public sealed class PublishEventTicketCatalogCommandHandlerTests
             new PublishEventTicketCatalogCommand { EventId = _eventId },
             CancellationToken.None));
 
+        await _catalogs.DidNotReceive().SaveChangesAsync(Arg.Any<CancellationToken>());
+        await _cache.DidNotReceive().RemoveAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    [Category("WaveCPaidPublication")]
+    public async Task Handle_WhenPaidDraftIsReady_PublishesAndInvalidatesCacheAfterCommit()
+    {
+        Actor organizer = CreateOrganizerActor();
+        EventTicketCatalogVersion draft = CreateValidPaidDraftCatalog();
+        draft.UpdateCommercialDisclosures("Merchant", "Refund", "Support");
+        var unitOfWork = new RecordingUnitOfWork();
+        var cacheObservedCommittedUow = false;
+        _events.GetAuthorizationTargetByIdAsync(_eventId, Arg.Any<CancellationToken>()).Returns(CreatePlatformEvent(organizer));
+        _events.GetEventWithDetails(_eventId).Returns(CreatePlatformEvent(organizer));
+        _catalogs.GetDraftCatalogForUpdateAsync(_eventId, _tenantId, Arg.Any<CancellationToken>()).Returns(draft);
+        ConfigurePaidPublishReady(organizer);
+        _cache.RemoveAsync($"event:detail:{_eventId}", Arg.Any<CancellationToken>()).Returns(_ =>
+        {
+            cacheObservedCommittedUow = unitOfWork.HasCommitted;
+            return ValueTask.CompletedTask;
+        });
+
+        var result = await CreateHandler(unitOfWork).Handle(new PublishEventTicketCatalogCommand { EventId = _eventId }, CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await Assert.That(draft.TicketCatalogStatusId).IsEqualTo((int)TicketCatalogStatusEnum.Published);
+        await _catalogs.Received(2).SaveChangesAsync(Arg.Any<CancellationToken>());
+        await Assert.That(cacheObservedCommittedUow).IsTrue();
+        await _cache.Received(1).RemoveAsync($"event:detail:{_eventId}", Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    [Category("WaveCPaidPublication")]
+    public async Task Handle_WhenRetryReloadFindsOrganizerRemoved_FailsWithoutLastAttemptSaveOrCacheInvalidation()
+    {
+        Actor organizer = CreateOrganizerActor();
+        EventTicketCatalogVersion firstDraft = CreateValidPaidDraftCatalog();
+        EventTicketCatalogVersion retryDraft = CreateValidPaidDraftCatalog();
+        firstDraft.UpdateCommercialDisclosures("Merchant", "Refund", "Support");
+        retryDraft.UpdateCommercialDisclosures("Merchant", "Refund", "Support");
+        var unitOfWork = new ResettingRetryUnitOfWork(() =>
+        {
+            _catalogs.ClearReceivedCalls();
+            _cache.ClearReceivedCalls();
+        });
+        _events.GetAuthorizationTargetByIdAsync(_eventId, Arg.Any<CancellationToken>()).Returns(CreatePlatformEvent(organizer));
+        _events.GetEventWithDetails(_eventId).Returns(CreatePlatformEvent(organizer), CreatePlatformEvent());
+        _catalogs.GetDraftCatalogForUpdateAsync(_eventId, _tenantId, Arg.Any<CancellationToken>()).Returns(firstDraft, retryDraft);
+        ConfigurePaidPublishReady(organizer);
+
+        var result = await CreateHandler(unitOfWork).Handle(new PublishEventTicketCatalogCommand { EventId = _eventId }, CancellationToken.None);
+
+        await Assert.That(result.FailureCode).IsEqualTo("event_ticketing_validation_failed");
+        await Assert.That(result.Errors.Single()).Contains("persisted organizer actor");
+        await _events.Received(2).GetEventWithDetails(_eventId);
         await _catalogs.DidNotReceive().SaveChangesAsync(Arg.Any<CancellationToken>());
         await _cache.DidNotReceive().RemoveAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
     }
@@ -430,6 +490,16 @@ public sealed class PublishEventTicketCatalogCommandHandlerTests
         _commerceConfiguration.ConnectPlatformId.Returns("platform-live-eu");
     }
 
+    private void ConfigurePaidPublishReady(Actor organizer)
+    {
+        ConfigureEnabledPaidPolicy();
+        ConfigurePaymentPlatform();
+        _connections.GetActiveByScopeAsync(_tenantId, organizer.Id, "stripe", "platform-live-eu", Arg.Any<CancellationToken>())
+            .Returns(CreateReadyConnection(organizer.Id));
+        _authorization.IsAllowedAsync(ResourceKinds.Event, _eventId.ToString(), AuthorizationActions.Events.ManagePaidEventCommerce, Arg.Any<IDictionary<string, object>?>(), Arg.Any<CancellationToken>())
+            .Returns(true);
+    }
+
     private OrganizerPaymentProviderConnection CreateReadyConnection(Guid organizerActorId)
     {
         OrganizerPaymentProviderConnection connection = OrganizerPaymentProviderConnection.Create(
@@ -491,6 +561,26 @@ public sealed class PublishEventTicketCatalogCommandHandlerTests
 
             HasCommitted = true;
             return result;
+        }
+
+        public Task<T> ExecuteSerializableAsync<T>(Func<CancellationToken, Task<T>> operation, CancellationToken ct = default) =>
+            ExecuteInTransactionAsync(operation, ct);
+    }
+
+    private sealed class ResettingRetryUnitOfWork(Action afterFirstAttempt) : IUnitOfWork
+    {
+        public Task ExecuteInTransactionAsync(Func<CancellationToken, Task> operation, CancellationToken ct = default) =>
+            ExecuteInTransactionAsync<object?>(async token =>
+            {
+                await operation(token);
+                return null;
+            }, ct);
+
+        public async Task<T> ExecuteInTransactionAsync<T>(Func<CancellationToken, Task<T>> operation, CancellationToken ct = default)
+        {
+            await operation(ct);
+            afterFirstAttempt();
+            return await operation(ct);
         }
 
         public Task<T> ExecuteSerializableAsync<T>(Func<CancellationToken, Task<T>> operation, CancellationToken ct = default) =>

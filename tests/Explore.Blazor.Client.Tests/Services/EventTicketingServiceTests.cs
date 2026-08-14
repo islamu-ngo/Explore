@@ -2,6 +2,7 @@
 // ABOUTME: Proves fail-closed parsing, cancellation, generated DTO pass-through, and exact identifier dispatch.
 
 using System.Text.Json;
+using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Client.Pages.Studio;
 using Explore.Blazor.Client.Services;
 
@@ -14,14 +15,21 @@ public sealed class EventTicketingServiceTests
     {
         var eventId = Guid.CreateVersion7();
         using var cancellation = new CancellationTokenSource();
-        var resource = Resource($$"""
+        var resource = new HalResourceOfEventTicketCatalogManagementDto
+        {
+            EventId = eventId,
+            CurrencyCode = "EUR",
+            MerchantDisclosureText = "Sold by Example Organizer",
+            _links = new Dictionary<string, HalLink>(StringComparer.Ordinal)
             {
-              "eventId": "{{eventId}}",
-              "currencyCode": "EUR",
-              "_links": { "self": { "href": "/api/events/{{eventId}}/ticketing", "method": "GET" } },
-              "_embedded": { "ticket-types": [], "capacity-pools": [] }
+                ["self"] = new() { Href = $"/api/events/{eventId}/ticketing", Method = "GET" }
+            },
+            _embedded = new Dictionary<string, object?>(StringComparer.Ordinal)
+            {
+                ["ticket-types"] = Array.Empty<object>(),
+                ["capacity-pools"] = Array.Empty<object>()
             }
-            """);
+        };
         var apiClient = Substitute.For<IEventApiClient>();
         apiClient.GetEventTicketCatalogManagementAsync(eventId, null, null, cancellation.Token)
             .Returns(resource);
@@ -32,6 +40,7 @@ public sealed class EventTicketingServiceTests
         await Assert.That(result).IsNotNull();
         await Assert.That(result!.EventId).IsEqualTo(eventId);
         await Assert.That(result.CurrencyCode).IsEqualTo("EUR");
+        await Assert.That(result.MerchantDisclosureText).IsEqualTo("Sold by Example Organizer");
         await apiClient.Received(1).GetEventTicketCatalogManagementAsync(eventId, null, null, cancellation.Token);
     }
 
@@ -47,6 +56,54 @@ public sealed class EventTicketingServiceTests
         EventTicketCatalogState? result = await service.GetCatalogAsync(eventId);
 
         await Assert.That(result).IsNull();
+    }
+
+    [Test]
+    public async Task PaidCommerceWrappers_DelegateGeneratedDtosAndExactItemIds()
+    {
+        var eventId = Guid.CreateVersion7();
+        using var cancellation = new CancellationTokenSource();
+        var preflight = new HalResourceOfPaidEventPublicationPreflightDto();
+        var paymentConnection = new HalResourceOfEventOrganizerPaymentConnectionManagementDto();
+        var commercialDisclosures = new UpdateEventTicketCatalogCommercialDisclosuresCommand
+        {
+            MerchantDisclosureText = "Merchant disclosure",
+            RefundPolicyDisclosureText = "Refund policy",
+            SupportContactDisclosureText = "Support contact"
+        };
+        var onboarding = new BaseCommandResponseOfOrganizerPaymentOnboardingLinkResult
+        {
+            Success = true,
+            Id = new OrganizerPaymentOnboardingLinkResult
+            {
+                OnboardingUrl = new Uri("https://example.test/onboarding"),
+                ReusedExistingConnection = false
+            }
+        };
+        var response = new BaseCommandResponseOfGuid { Success = true };
+        var apiClient = Substitute.For<IEventApiClient>();
+        apiClient.GetPaidEventPublicationPreflightAsync(eventId, null, null, cancellation.Token).Returns(preflight);
+        apiClient.UpdateEventTicketCatalogCommercialDisclosuresAsync(eventId, commercialDisclosures, null, null, cancellation.Token).Returns(response);
+        apiClient.GetEventOrganizerPaymentConnectionAsync(eventId, null, null, cancellation.Token).Returns(paymentConnection);
+        apiClient.StartEventOrganizerPaymentOnboardingAsync(eventId, null, null, cancellation.Token).Returns(onboarding);
+        apiClient.ReturnEventOrganizerPaymentOnboardingAsync(eventId, null, null, cancellation.Token).Returns(Task.CompletedTask);
+        apiClient.RefreshEventOrganizerPaymentOnboardingAsync(eventId, null, null, cancellation.Token).Returns(Task.CompletedTask);
+        var service = new EventTicketingService(apiClient);
+
+        await Assert.That(await service.GetPaidPublicationPreflightAsync(eventId, cancellation.Token)).IsSameReferenceAs(preflight);
+        await Assert.That(await service.UpdateCommercialDisclosuresAsync(eventId, commercialDisclosures, cancellation.Token)).IsSameReferenceAs(response);
+        await Assert.That(await service.GetPaymentConnectionAsync(eventId, cancellation.Token)).IsSameReferenceAs(paymentConnection);
+        await Assert.That(await service.StartPaymentOnboardingAsync(eventId, cancellation.Token)).IsSameReferenceAs(onboarding);
+
+        await service.ReturnPaymentOnboardingAsync(eventId, cancellation.Token);
+        await service.RefreshPaymentOnboardingAsync(eventId, cancellation.Token);
+
+        await apiClient.Received(1).GetPaidEventPublicationPreflightAsync(eventId, null, null, cancellation.Token);
+        await apiClient.Received(1).UpdateEventTicketCatalogCommercialDisclosuresAsync(eventId, commercialDisclosures, null, null, cancellation.Token);
+        await apiClient.Received(1).GetEventOrganizerPaymentConnectionAsync(eventId, null, null, cancellation.Token);
+        await apiClient.Received(1).StartEventOrganizerPaymentOnboardingAsync(eventId, null, null, cancellation.Token);
+        await apiClient.Received(1).ReturnEventOrganizerPaymentOnboardingAsync(eventId, null, null, cancellation.Token);
+        await apiClient.Received(1).RefreshEventOrganizerPaymentOnboardingAsync(eventId, null, null, cancellation.Token);
     }
 
     [Test]

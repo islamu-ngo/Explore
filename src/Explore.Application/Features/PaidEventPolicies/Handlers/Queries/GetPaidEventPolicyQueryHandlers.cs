@@ -23,3 +23,33 @@ public sealed class GetTenantPaidEventPolicyQueryHandler(IPaidEventPolicyReposit
             ? null
             : PaidEventPolicyMapper.ToDto(policy);
 }
+
+public sealed class GetTenantPaidEventPolicyConfigurationQueryHandler(IPaidEventPolicyRepository policies)
+    : IRequestHandler<GetTenantPaidEventPolicyConfigurationQuery, TenantPaidEventPolicyConfigurationDto?>
+{
+    public async Task<TenantPaidEventPolicyConfigurationDto?> Handle(GetTenantPaidEventPolicyConfigurationQuery request, CancellationToken cancellationToken)
+    {
+        if (request.TenantId == Guid.Empty)
+        {
+            return null;
+        }
+
+        var instancePolicy = await policies.GetActiveInstanceAsync(cancellationToken);
+        if (instancePolicy is null || !instancePolicy.IsActive)
+        {
+            return null;
+        }
+
+        var tenantPolicy = await policies.GetActiveTenantAsync(request.TenantId, cancellationToken);
+        PaidEventPolicyDto instanceDto = PaidEventPolicyMapper.ToDto(instancePolicy);
+        PaidEventPolicyDto? tenantDto = tenantPolicy is null ? null : PaidEventPolicyMapper.ToDto(tenantPolicy);
+
+        return new TenantPaidEventPolicyConfigurationDto
+        {
+            TenantId = request.TenantId,
+            ActiveInstanceCeiling = instanceDto,
+            ActiveTenantOverride = tenantDto,
+            EffectivePolicy = tenantDto ?? instanceDto
+        };
+    }
+}

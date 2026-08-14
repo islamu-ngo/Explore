@@ -1,5 +1,5 @@
 // ABOUTME: HATEOAS candidates for event ticket catalog management resources.
-// ABOUTME: Every ticketing affordance is authorized against the parent event ManageTickets action.
+// ABOUTME: Splits ticket-management and paid-commerce affordances against the parent event.
 
 using System.Security.Claims;
 using Explore.Application.Authorization;
@@ -33,6 +33,15 @@ public sealed class EventTicketCatalogManagementLinkPolicy : ILinkPolicy<EventTi
 
         if (dto.CatalogId is null)
         {
+            yield return PaidCommerce(
+                new LinkDefinition(
+                    LinkRelations.PaymentConnection,
+                    RouteNames.GetEventOrganizerPaymentConnection,
+                    new { eventId = dto.EventId },
+                    HttpMethods.Get,
+                    "View organizer payment connection",
+                    RequiresAuth: true),
+                dto);
             yield return Manage(
                 new LinkDefinition(
                     LinkRelations.CreateDraft,
@@ -47,6 +56,45 @@ public sealed class EventTicketCatalogManagementLinkPolicy : ILinkPolicy<EventTi
 
         if (dto.StatusId == (int)TicketCatalogStatusEnum.Draft)
         {
+            yield return Manage(
+                new LinkDefinition(
+                    LinkRelations.Preflight,
+                    RouteNames.GetPaidEventPublicationPreflight,
+                    new { eventId = dto.EventId },
+                    HttpMethods.Get,
+                    "Check paid publication readiness",
+                    RequiresAuth: true),
+                dto);
+            if (dto.PublicationPreflight?.IsPaidCatalog == true)
+            {
+                yield return PaidCommerce(
+                    new LinkDefinition(
+                        LinkRelations.CommercialDisclosures,
+                        RouteNames.UpdateEventTicketCatalogCommercialDisclosures,
+                        new { eventId = dto.EventId },
+                        HttpMethods.Put,
+                        "Update commercial disclosures",
+                        RequiresAuth: true),
+                    dto);
+            }
+            yield return PaidCommerce(
+                new LinkDefinition(
+                    LinkRelations.PaymentConnection,
+                    RouteNames.GetEventOrganizerPaymentConnection,
+                    new { eventId = dto.EventId },
+                    HttpMethods.Get,
+                    "View organizer payment connection",
+                    RequiresAuth: true),
+                dto);
+            yield return PaidCommerce(
+                new LinkDefinition(
+                    LinkRelations.StartOnboarding,
+                    RouteNames.StartEventOrganizerPaymentOnboarding,
+                    new { eventId = dto.EventId },
+                    HttpMethods.Post,
+                    "Start organizer payment onboarding",
+                    RequiresAuth: true),
+                dto);
             yield return Manage(
                 new LinkDefinition(
                     LinkRelations.CreateTicketType,
@@ -65,15 +113,17 @@ public sealed class EventTicketCatalogManagementLinkPolicy : ILinkPolicy<EventTi
                     "Create capacity pool",
                     RequiresAuth: true),
                 dto);
-            yield return Manage(
-                new LinkDefinition(
-                    LinkRelations.Publish,
-                    RouteNames.PublishEventTicketCatalog,
-                    new { eventId = dto.EventId },
-                    HttpMethods.Post,
-                    "Publish ticket catalog",
-                    RequiresAuth: true),
-                dto);
+            if (dto.PublicationPreflight?.IsPaidCatalog == true)
+            {
+                if (dto.PublicationPreflight.IsReady)
+                {
+                    yield return PaidCommerce(PublishLink(dto.EventId), dto);
+                }
+            }
+            else
+            {
+                yield return Manage(PublishLink(dto.EventId), dto);
+            }
         }
         else if (dto.StatusId == (int)TicketCatalogStatusEnum.Published)
         {
@@ -149,6 +199,23 @@ public sealed class EventTicketCatalogManagementLinkPolicy : ILinkPolicy<EventTi
         LinkDefinition link,
         EventTicketCatalogManagementDto catalog) =>
         link.RequirePermission(AuthorizationActions.Events.ManageTickets,
+            ResourceKinds.Event,
+            catalog.EventId.ToString("D"),
+            BuildEventAttributes(catalog),
+            new AuthorizationScope(TenantId: catalog.TenantId.ToString("D")));
+
+    private static LinkDefinition PublishLink(Guid eventId) => new(
+        LinkRelations.Publish,
+        RouteNames.PublishEventTicketCatalog,
+        new { eventId },
+        HttpMethods.Post,
+        "Publish ticket catalog",
+        RequiresAuth: true);
+
+    private static LinkDefinition PaidCommerce(
+        LinkDefinition link,
+        EventTicketCatalogManagementDto catalog) =>
+        link.RequirePermission(AuthorizationActions.Events.ManagePaidEventCommerce,
             ResourceKinds.Event,
             catalog.EventId.ToString("D"),
             BuildEventAttributes(catalog),

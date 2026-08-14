@@ -1,0 +1,84 @@
+// ABOUTME: Focused tests for the paid-event policy service seam over the generated API client.
+// ABOUTME: Verifies exact generated method delegation for instance, tenant, and cancellation flows.
+
+using Explore.Blazor.Client.Contracts.Services.PaidEventPolicies;
+
+namespace Explore.Blazor.Client.Tests.Services;
+
+public sealed class PaidEventPolicyServiceTests
+{
+    private readonly IEventApiClient _api = Substitute.For<IEventApiClient>();
+    private readonly PaidEventPolicyService _service;
+
+    public PaidEventPolicyServiceTests()
+    {
+        _service = new PaidEventPolicyService(_api);
+    }
+
+    [Test]
+    public async Task GetInstanceAsync_DelegatesExactGeneratedMethod()
+    {
+        using var cancellation = new CancellationTokenSource();
+        var resource = new HalResourceOfPaidEventPolicyDto();
+        _api.GetInstancePaidEventPolicySettingsAsync(null, null, cancellation.Token).Returns(resource);
+
+        var result = await _service.GetInstanceAsync(cancellation.Token);
+
+        await Assert.That(result).IsSameReferenceAs(resource);
+        await _api.Received(1).GetInstancePaidEventPolicySettingsAsync(null, null, cancellation.Token);
+    }
+
+    [Test]
+    public async Task UpdateInstanceAsync_DelegatesExactGeneratedMethod()
+    {
+        using var cancellation = new CancellationTokenSource();
+        var request = new RevisePaidEventPolicyDto();
+        var response = new BaseCommandResponseOfGuid();
+        _api.UpdateInstancePaidEventPolicySettingsAsync(request, null, null, cancellation.Token).Returns(response);
+
+        var result = await _service.UpdateInstanceAsync(request, cancellation.Token);
+
+        await Assert.That(result).IsSameReferenceAs(response);
+        await _api.Received(1).UpdateInstancePaidEventPolicySettingsAsync(request, null, null, cancellation.Token);
+    }
+
+    [Test]
+    public async Task GetTenantAsync_DelegatesExactGeneratedMethod()
+    {
+        using var cancellation = new CancellationTokenSource();
+        var tenantId = Guid.Parse("11111111-1111-1111-1111-111111111111");
+        var resource = new HalResourceOfTenantPaidEventPolicyConfigurationDto();
+        _api.GetTenantPaidEventPolicySettingsAsync(tenantId, null, null, cancellation.Token).Returns(resource);
+
+        var result = await _service.GetTenantAsync(tenantId, cancellation.Token);
+
+        await Assert.That(result).IsSameReferenceAs(resource);
+        await _api.Received(1).GetTenantPaidEventPolicySettingsAsync(tenantId, null, null, cancellation.Token);
+    }
+
+    [Test]
+    public async Task UpdateTenantAsync_DelegatesExactGeneratedMethod()
+    {
+        using var cancellation = new CancellationTokenSource();
+        var tenantId = Guid.Parse("22222222-2222-2222-2222-222222222222");
+        var request = new RevisePaidEventPolicyDto();
+        var response = new BaseCommandResponseOfGuid();
+        _api.UpdateTenantPaidEventPolicySettingsAsync(tenantId, request, null, null, cancellation.Token).Returns(response);
+
+        var result = await _service.UpdateTenantAsync(tenantId, request, cancellation.Token);
+
+        await Assert.That(result).IsSameReferenceAs(response);
+        await _api.Received(1).UpdateTenantPaidEventPolicySettingsAsync(tenantId, request, null, null, cancellation.Token);
+    }
+
+    [Test]
+    public async Task BrowserPaidPolicyContracts_OmitServerOnlyIdentifiers()
+    {
+        string[] policyProperties = typeof(PaidEventPolicyDto).GetProperties().Select(property => property.Name).ToArray();
+        string[] configurationProperties = typeof(TenantPaidEventPolicyConfigurationDto).GetProperties().Select(property => property.Name).ToArray();
+
+        await Assert.That(policyProperties).DoesNotContain("Id");
+        await Assert.That(policyProperties).DoesNotContain("TenantId");
+        await Assert.That(configurationProperties).DoesNotContain("TenantId");
+    }
+}

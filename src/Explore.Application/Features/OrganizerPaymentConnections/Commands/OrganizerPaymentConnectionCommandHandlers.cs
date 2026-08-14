@@ -197,6 +197,8 @@ public sealed class DisableOrganizerPaymentConnectionCommandHandler(
 public sealed class CreateOrganizerPaymentOnboardingLinkCommandHandler(
     IOrganizerPaymentProviderConnectionRepository repository,
     IOrganizerPaymentProviderAccountOperationRepository operationRepository,
+    IEventRepository eventRepository,
+    IOrganizerPaymentCommerceConfiguration commerceConfiguration,
     IOrganizerPaymentOnboardingProvider onboardingProvider,
     IActorRepository actorRepository,
     ITenantUserRepository tenantUserRepository,
@@ -219,7 +221,15 @@ public sealed class CreateOrganizerPaymentOnboardingLinkCommandHandler(
 
     public async Task<BaseCommandResponse<OrganizerPaymentOnboardingLinkResult>> Handle(CreateOrganizerPaymentOnboardingLinkCommand request, CancellationToken cancellationToken)
     {
-        if (!await OrganizerPaymentActorAccess.AuthorizeAsync(request.TenantId, request.OrganizerActorId, tenantContext, currentUserService, actorRepository, tenantUserRepository, organizationTenantRepository, groupTenantRepository, organizationMemberRepository, groupMemberRepository, cancellationToken))
+        Event? eventTarget = await eventRepository.GetAuthorizationTargetByIdAsync(request.EventId, cancellationToken);
+        if (eventTarget?.TenantId != tenantContext.TenantId || eventTarget.OrganizerActorId is null)
+        {
+            return Failure("organizer_payment_event_not_found", "The event organizer payment scope was not found.");
+        }
+
+        Guid tenantId = eventTarget.TenantId;
+        Guid organizerActorId = eventTarget.OrganizerActorId.Value;
+        if (!await OrganizerPaymentActorAccess.AuthorizeAsync(tenantId, organizerActorId, tenantContext, currentUserService, actorRepository, tenantUserRepository, organizationTenantRepository, groupTenantRepository, organizationMemberRepository, groupMemberRepository, cancellationToken))
         {
             return Failure("organizer_payment_actor_denied", "The organizer actor is not controlled by the current user in this tenant.");
         }
@@ -233,7 +243,7 @@ public sealed class CreateOrganizerPaymentOnboardingLinkCommandHandler(
         string connectPlatformId;
         try
         {
-            OrganizerPaymentProviderConnection probe = OrganizerPaymentProviderConnection.Create(Guid.CreateVersion7(), request.TenantId, request.OrganizerActorId, request.ProviderCode, request.ConnectPlatformId, "validation-probe", timeProvider.GetUtcNow().UtcDateTime);
+            OrganizerPaymentProviderConnection probe = OrganizerPaymentProviderConnection.Create(Guid.CreateVersion7(), tenantId, organizerActorId, commerceConfiguration.ProviderCode, commerceConfiguration.ConnectPlatformId, "validation-probe", timeProvider.GetUtcNow().UtcDateTime);
             providerCode = probe.ProviderCode;
             connectPlatformId = probe.ConnectPlatformId;
         }
@@ -242,12 +252,12 @@ public sealed class CreateOrganizerPaymentOnboardingLinkCommandHandler(
             return Failure("organizer_payment_connection_validation_failed", exception.Message);
         }
 
-        OrganizerPaymentProviderConnection? existing = await repository.GetActiveByScopeAsync(request.TenantId, request.OrganizerActorId, providerCode, connectPlatformId, cancellationToken);
+        OrganizerPaymentProviderConnection? existing = await repository.GetActiveByScopeAsync(tenantId, organizerActorId, providerCode, connectPlatformId, cancellationToken);
         if (existing is not null)
         {
             OrganizerPaymentOnboardingLinkCreationResult existingLink = await CreateLinkAsync(providerCode, connectPlatformId, existing.ExternalAccountId, request, cancellationToken);
-            return existingLink.Success && existingLink.OnboardingUrl is not null
-                ? Success(existing.Id, existing.ExternalAccountId, existingLink.OnboardingUrl, reusedExistingConnection: true)
+            return existingLink.Success && existingLink.OnboardingUrl is not null && IsNavigationUrl(existingLink.OnboardingUrl)
+                ? Success(existingLink.OnboardingUrl, reusedExistingConnection: true)
                 : Failure(existingLink.FailureCode ?? "organizer_payment_onboarding_link_failed", "Provider onboarding link creation failed.");
         }
 
@@ -255,13 +265,13 @@ public sealed class CreateOrganizerPaymentOnboardingLinkCommandHandler(
         DateTime requestedAt = timeProvider.GetUtcNow().UtcDateTime;
         OrganizerPaymentAccountOperationAdmission admission = await unitOfWork.ExecuteSerializableAsync(async token =>
         {
-            OrganizerPaymentProviderConnection? racedActive = await repository.GetActiveByScopeAsync(request.TenantId, request.OrganizerActorId, providerCode, connectPlatformId, token);
+            OrganizerPaymentProviderConnection? racedActive = await repository.GetActiveByScopeAsync(tenantId, organizerActorId, providerCode, connectPlatformId, token);
             if (racedActive is not null)
             {
                 return OrganizerPaymentAccountOperationAdmission.ExistingConnection(racedActive.Id, racedActive.ExternalAccountId);
             }
 
-            OrganizerPaymentProviderAccountOperation? unresolved = await operationRepository.GetActiveByScopeAsync(request.TenantId, request.OrganizerActorId, providerCode, connectPlatformId, token);
+            OrganizerPaymentProviderAccountOperation? unresolved = await operationRepository.GetActiveByScopeAsync(tenantId, organizerActorId, providerCode, connectPlatformId, token);
             if (unresolved is not null)
             {
                 if (unresolved.StatusId == (int)OrganizerPaymentProviderAccountOperationStatus.ProviderCreateRequested)
@@ -273,7 +283,7 @@ public sealed class CreateOrganizerPaymentOnboardingLinkCommandHandler(
                 return OrganizerPaymentAccountOperationAdmission.Unresolved();
             }
 
-            OrganizerPaymentProviderAccountOperation operation = OrganizerPaymentProviderAccountOperation.CreateRequested(operationId, request.TenantId, request.OrganizerActorId, providerCode, connectPlatformId, requestedAt);
+            OrganizerPaymentProviderAccountOperation operation = OrganizerPaymentProviderAccountOperation.CreateRequested(operationId, tenantId, organizerActorId, providerCode, connectPlatformId, requestedAt);
             await operationRepository.CreateAsync(operation, token);
             await operationRepository.SaveChangesAsync(token);
             return OrganizerPaymentAccountOperationAdmission.Created(operation.Id, operation.ProviderIdempotencyKey);
@@ -282,8 +292,8 @@ public sealed class CreateOrganizerPaymentOnboardingLinkCommandHandler(
         if (admission.ReusedExistingConnection)
         {
             OrganizerPaymentOnboardingLinkCreationResult existingLink = await CreateLinkAsync(providerCode, connectPlatformId, admission.ExternalAccountId!, request, cancellationToken);
-            return existingLink.Success && existingLink.OnboardingUrl is not null
-                ? Success(admission.ConnectionId, admission.ExternalAccountId!, existingLink.OnboardingUrl, reusedExistingConnection: true)
+            return existingLink.Success && existingLink.OnboardingUrl is not null && IsNavigationUrl(existingLink.OnboardingUrl)
+                ? Success(existingLink.OnboardingUrl, reusedExistingConnection: true)
                 : Failure(existingLink.FailureCode ?? "organizer_payment_onboarding_link_failed", "Provider onboarding link creation failed.");
         }
 
@@ -296,30 +306,30 @@ public sealed class CreateOrganizerPaymentOnboardingLinkCommandHandler(
         try
         {
             account = await onboardingProvider.CreateAccountAsync(
-                new OrganizerPaymentProviderAccountCreationRequest(request.TenantId, request.OrganizerActorId, providerCode, connectPlatformId, admission.ProviderIdempotencyKey!),
+                new OrganizerPaymentProviderAccountCreationRequest(tenantId, organizerActorId, providerCode, connectPlatformId, admission.ProviderIdempotencyKey!),
                 cancellationToken);
         }
         catch (OperationCanceledException)
         {
-            await TryMarkOperationManualAfterCanceledProviderHandoffAsync(request.TenantId, admission.OperationId, ProviderAccountCreationCanceledFailureCode, null, timeProvider.GetUtcNow().UtcDateTime);
+            await TryMarkOperationManualAfterCanceledProviderHandoffAsync(tenantId, admission.OperationId, ProviderAccountCreationCanceledFailureCode, null, timeProvider.GetUtcNow().UtcDateTime);
             throw;
         }
         catch (Exception)
         {
-            await MarkOperationManualWithRecoveryTokenAsync(request.TenantId, admission.OperationId, ProviderAccountCreationExceptionFailureCode, null, timeProvider.GetUtcNow().UtcDateTime);
+            await MarkOperationManualWithRecoveryTokenAsync(tenantId, admission.OperationId, ProviderAccountCreationExceptionFailureCode, null, timeProvider.GetUtcNow().UtcDateTime);
             return Failure(ManualReconciliationFailureCode, "Provider account creation requires manual reconciliation before retry.");
         }
 
         DateTime providerSettledAt = timeProvider.GetUtcNow().UtcDateTime;
         if (account.Status == OrganizerPaymentProviderAccountCreationStatus.Failed)
         {
-            await MarkOperationRejectedAsync(request.TenantId, admission.OperationId, account.FailureCode, account.ProviderRequestId, providerSettledAt, cancellationToken);
+            await MarkOperationRejectedAsync(tenantId, admission.OperationId, account.FailureCode, account.ProviderRequestId, providerSettledAt, cancellationToken);
             return Failure(account.FailureCode ?? "organizer_payment_provider_account_creation_failed", "Provider account creation was rejected.");
         }
 
         if (account.Status == OrganizerPaymentProviderAccountCreationStatus.ManualReconciliationRequired || string.IsNullOrWhiteSpace(account.ExternalAccountId))
         {
-            await MarkOperationManualAsync(request.TenantId, admission.OperationId, account.FailureCode, account.ProviderRequestId, providerSettledAt, cancellationToken);
+            await MarkOperationManualAsync(tenantId, admission.OperationId, account.FailureCode, account.ProviderRequestId, providerSettledAt, cancellationToken);
             return Failure(ManualReconciliationFailureCode, "Provider account creation requires manual reconciliation before retry.");
         }
 
@@ -327,13 +337,13 @@ public sealed class CreateOrganizerPaymentOnboardingLinkCommandHandler(
         DateTime createdAt = timeProvider.GetUtcNow().UtcDateTime;
         OrganizerPaymentConnectionPersistenceResult persistence = await unitOfWork.ExecuteSerializableAsync(async token =>
         {
-            OrganizerPaymentProviderAccountOperation? operation = await operationRepository.GetByTenantAndIdForUpdateAsync(request.TenantId, admission.OperationId, token);
+            OrganizerPaymentProviderAccountOperation? operation = await operationRepository.GetByTenantAndIdForUpdateAsync(tenantId, admission.OperationId, token);
             if (operation is null || !operation.IsUnresolved)
             {
                 return OrganizerPaymentConnectionPersistenceResult.Failure("organizer_payment_provider_manual_reconciliation_required", "Provider account operation is no longer safely bindable.");
             }
 
-            OrganizerPaymentProviderConnection? racedActive = await repository.GetActiveByScopeAsync(request.TenantId, request.OrganizerActorId, providerCode, connectPlatformId, token);
+            OrganizerPaymentProviderConnection? racedActive = await repository.GetActiveByScopeAsync(tenantId, organizerActorId, providerCode, connectPlatformId, token);
             OrganizerPaymentProviderConnection? externalOwner = await repository.GetHistoricalByExternalAccountAsync(providerCode, connectPlatformId, account.ExternalAccountId, token);
             if (racedActive is not null)
             {
@@ -358,7 +368,7 @@ public sealed class CreateOrganizerPaymentOnboardingLinkCommandHandler(
 
             try
             {
-                OrganizerPaymentProviderConnection connection = OrganizerPaymentProviderConnection.Create(connectionId, request.TenantId, request.OrganizerActorId, providerCode, connectPlatformId, account.ExternalAccountId, createdAt);
+                OrganizerPaymentProviderConnection connection = OrganizerPaymentProviderConnection.Create(connectionId, tenantId, organizerActorId, providerCode, connectPlatformId, account.ExternalAccountId, createdAt);
                 await repository.CreateAsync(connection, token);
                 operation.BindToConnection(connection.Id, connection.ExternalAccountId, createdAt);
                 await repository.SaveChangesAsync(token);
@@ -376,8 +386,8 @@ public sealed class CreateOrganizerPaymentOnboardingLinkCommandHandler(
         }
 
         OrganizerPaymentOnboardingLinkCreationResult link = await CreateLinkAsync(providerCode, connectPlatformId, persistence.ExternalAccountId!, request, cancellationToken);
-        return link.Success && link.OnboardingUrl is not null
-            ? Success(persistence.ConnectionId, persistence.ExternalAccountId!, link.OnboardingUrl, persistence.ReusedExistingConnection)
+        return link.Success && link.OnboardingUrl is not null && IsNavigationUrl(link.OnboardingUrl)
+            ? Success(link.OnboardingUrl, persistence.ReusedExistingConnection)
             : Failure(link.FailureCode ?? "organizer_payment_onboarding_link_failed", "Provider onboarding link creation failed.");
     }
 
@@ -444,10 +454,10 @@ public sealed class CreateOrganizerPaymentOnboardingLinkCommandHandler(
     private static bool IsNavigationUrl(Uri url) =>
         url.IsAbsoluteUri && (url.Scheme == Uri.UriSchemeHttps || url.Scheme == Uri.UriSchemeHttp);
 
-    private static BaseCommandResponse<OrganizerPaymentOnboardingLinkResult> Success(Guid connectionId, string externalAccountId, Uri onboardingUrl, bool reusedExistingConnection) => new()
+    private static BaseCommandResponse<OrganizerPaymentOnboardingLinkResult> Success(Uri onboardingUrl, bool reusedExistingConnection) => new()
     {
         Success = true,
-        Id = new OrganizerPaymentOnboardingLinkResult(connectionId, externalAccountId, onboardingUrl, reusedExistingConnection),
+        Id = new OrganizerPaymentOnboardingLinkResult(onboardingUrl, reusedExistingConnection),
         Message = reusedExistingConnection ? "Organizer payment onboarding link created for existing connection." : "Organizer payment onboarding link created."
     };
 

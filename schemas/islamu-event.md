@@ -5987,7 +5987,7 @@ Table "paid_event_policy_versions" {
     tenant_id [name: 'ix_paid_event_policy_versions_tenant_id']
   }
 
-  Note: 'Versioned paid-event policy. Domain transitions and the unfiltered unique slot index enforce one active version per scope; the generated composite alternate key is (policy_scope_key, id).'
+  Note: 'Versioned paid-event policy. The instance scope is the ceiling and a tenant scope can only narrow it. Domain transitions and the unfiltered unique slot index enforce one active version per scope; the generated composite alternate key is (policy_scope_key, id).'
 }
 
 Table "paid_event_policy_allowed_organizer_kinds" {
@@ -6088,7 +6088,7 @@ Table "organizer_payment_provider_connections" {
     (tenant_id, replaces_connection_id) [name: 'ix_organizer_payment_provider_connections_tenant_id_replaces_c']
   }
 
-  Note: 'Organizer payment provider connection. Checks enforce status/charge-capability/requirements ranges; active uniqueness uses the portable slot column.'
+  Note: 'Organizer payment provider connection scoped to one tenant, organizer actor, provider, and platform. Checks enforce status/charge-capability/requirements ranges; active uniqueness uses the portable slot column.'
 }
 
 Table "organizer_payment_provider_account_operations" {

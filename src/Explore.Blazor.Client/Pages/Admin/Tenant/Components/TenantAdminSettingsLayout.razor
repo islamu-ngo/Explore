@@ -85,6 +85,13 @@
                                          Text="Policies"
                                          Class="@GetNavItemClass("policies")"
                                          OnClick="@(() => SelectSection("policies"))" />
+                            @if (_tenantId != Guid.Empty)
+                            {
+                                <MudListItem Icon="@Icons.Material.Filled.Payments"
+                                             Text="Paid Events"
+                                             Class="@GetNavItemClass("paid-events")"
+                                             OnClick="@(() => SelectSection("paid-events"))" />
+                            }
                             <MudListItem Icon="@Icons.Material.Filled.Speed"
                                          Text="Render Policy"
                                          Class="@GetNavItemClass("render-policy")"
@@ -198,6 +205,10 @@
                         else if (_currentSection == "render-policy")
                         {
                             <TenantRenderPolicySection Model="_model" />
+                        }
+                        else if (_currentSection == "paid-events" && _tenantId != Guid.Empty)
+                        {
+                            <TenantPaidEventPolicySection TenantId="_tenantId" />
                         }
                         else if (_currentSection == "shell")
                         {
@@ -446,6 +457,7 @@
     private bool _canEdit;
     private bool _isSingleTenantMode;
     private bool _isInstanceAdmin;
+    private Guid _tenantId;
     private bool _hasAnnouncementBar;
     private string? _errorMessage;
     private bool _managementSettingsUnavailable;
@@ -461,6 +473,7 @@
     {
         var tenantStatus = await TenantOnboardingService.GetStatusAsync();
         _canEdit = tenantStatus?.HasHalLink("manage-tenant-settings") == true;
+        _tenantId = tenantStatus?.TenantId ?? Guid.Empty;
 
         if (!_canEdit)
         {

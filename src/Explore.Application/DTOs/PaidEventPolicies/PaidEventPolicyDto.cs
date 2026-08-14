@@ -1,11 +1,16 @@
 // ABOUTME: DTO contracts for instance and tenant paid-event policy revisions.
 // ABOUTME: Exposes provider-neutral policy ceilings without leaking persistence row entities.
 
+using System.Text.Json.Serialization;
+
 namespace Explore.Application.DTOs.PaidEventPolicies;
 
 public sealed class PaidEventPolicyDto
 {
+    [JsonIgnore]
     public Guid Id { get; init; }
+
+    [JsonIgnore]
     public Guid? TenantId { get; init; }
     public int VersionNumber { get; init; }
     public bool IsActive { get; init; }
@@ -18,6 +23,15 @@ public sealed class PaidEventPolicyDto
     public IReadOnlyList<PaidEventPolicyCurrencyRiskLimitDto> CurrencyRiskLimits { get; init; } = [];
     public bool RequiresFirstPaidEventReview { get; init; }
     public int? FarFutureReviewThresholdDays { get; init; }
+}
+
+public sealed class TenantPaidEventPolicyConfigurationDto
+{
+    [JsonIgnore]
+    public Guid TenantId { get; init; }
+    public PaidEventPolicyDto ActiveInstanceCeiling { get; init; } = default!;
+    public PaidEventPolicyDto? ActiveTenantOverride { get; init; }
+    public PaidEventPolicyDto EffectivePolicy { get; init; } = default!;
 }
 
 public sealed class PaidEventPolicyCurrencyRiskLimitDto

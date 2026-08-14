@@ -27,13 +27,91 @@ public sealed class PaidEventPolicyHandlersTests
     {
         var instanceQuery = (ISecureRequest)new GetInstancePaidEventPolicyQuery();
         var tenantQuery = (ISecureRequest)new GetTenantPaidEventPolicyQuery(_tenantId);
+        var tenantConfigurationQuery = (ISecureRequest)new GetTenantPaidEventPolicyConfigurationQuery(_tenantId);
         var instanceCommand = (ISecureRequest)new ReviseInstancePaidEventPolicyCommand(CreateRevisionDto());
         var tenantCommand = (ISecureRequest)new ReviseTenantPaidEventPolicyCommand(_tenantId, CreateRevisionDto());
 
         await Assert.That(instanceQuery.ResourceId).IsEqualTo("paid-event-policy");
         await Assert.That(tenantQuery.ResourceId).IsEqualTo($"{_tenantId}:paid-event-policy");
+        await Assert.That(tenantConfigurationQuery.ResourceId).IsEqualTo($"{_tenantId}:paid-event-policy");
         await Assert.That(instanceCommand.ResourceId).IsEqualTo("paid-event-policy");
         await Assert.That(tenantCommand.ResourceId).IsEqualTo($"{_tenantId}:paid-event-policy");
+    }
+
+    [Test]
+    public async Task GetTenantConfiguration_WhenNoTenantOverride_UsesInstancePolicyAsEffectivePolicy()
+    {
+        PaidEventPolicyVersion instancePolicy = PaidEventPolicyVersion.CreateDefaultInstance().CreateRevision(
+            isPaymentsEnabled: true,
+            allowedOrganizerKinds: [ActorTypeEnum.Organization],
+            requiresLocalVerification: false,
+            allowedCurrencyCodes: ["USD"],
+            defaultCurrencyCode: "USD",
+            refundProtections: RefundProtections(),
+            currencyRiskLimits: [],
+            requiresFirstPaidEventReview: false,
+            farFutureReviewThresholdDays: null);
+        _policies.GetActiveInstanceAsync(Arg.Any<CancellationToken>()).Returns(instancePolicy);
+
+        TenantPaidEventPolicyConfigurationDto? result = await new GetTenantPaidEventPolicyConfigurationQueryHandler(_policies)
+            .Handle(new GetTenantPaidEventPolicyConfigurationQuery(_tenantId), CancellationToken.None);
+
+        await Assert.That(result).IsNotNull();
+        await Assert.That(result!.TenantId).IsEqualTo(_tenantId);
+        await Assert.That(result.ActiveTenantOverride).IsNull();
+        await Assert.That(result.ActiveInstanceCeiling.Id).IsEqualTo(result.EffectivePolicy.Id);
+        await Assert.That(result.EffectivePolicy.TenantId).IsNull();
+        await Assert.That(result.EffectivePolicy.AllowedCurrencyCodes.Single()).IsEqualTo("USD");
+    }
+
+    [Test]
+    public async Task GetTenantConfiguration_WhenTenantOverrideExists_UsesTenantPolicyAsEffectivePolicy()
+    {
+        PaidEventPolicyVersion instancePolicy = PaidEventPolicyVersion.CreateDefaultInstance().CreateRevision(
+            isPaymentsEnabled: true,
+            allowedOrganizerKinds: [ActorTypeEnum.Organization, ActorTypeEnum.Group],
+            requiresLocalVerification: false,
+            allowedCurrencyCodes: ["USD", "EUR"],
+            defaultCurrencyCode: "USD",
+            refundProtections: RefundProtections(),
+            currencyRiskLimits: [],
+            requiresFirstPaidEventReview: false,
+            farFutureReviewThresholdDays: null);
+        PaidEventPolicyVersion tenantPolicy = PaidEventPolicyVersion.CreateTenant(
+            _tenantId,
+            isPaymentsEnabled: true,
+            allowedOrganizerKinds: [ActorTypeEnum.Organization],
+            requiresLocalVerification: true,
+            allowedCurrencyCodes: ["EUR"],
+            defaultCurrencyCode: "EUR",
+            refundProtections: RefundProtections(),
+            currencyRiskLimits: [],
+            requiresFirstPaidEventReview: true,
+            farFutureReviewThresholdDays: 90);
+        _policies.GetActiveInstanceAsync(Arg.Any<CancellationToken>()).Returns(instancePolicy);
+        _policies.GetActiveTenantAsync(_tenantId, Arg.Any<CancellationToken>()).Returns(tenantPolicy);
+
+        TenantPaidEventPolicyConfigurationDto? result = await new GetTenantPaidEventPolicyConfigurationQueryHandler(_policies)
+            .Handle(new GetTenantPaidEventPolicyConfigurationQuery(_tenantId), CancellationToken.None);
+
+        await Assert.That(result).IsNotNull();
+        await Assert.That(result!.ActiveTenantOverride).IsNotNull();
+        await Assert.That(result.EffectivePolicy.Id).IsEqualTo(result.ActiveTenantOverride!.Id);
+        await Assert.That(result.EffectivePolicy.TenantId).IsEqualTo(_tenantId);
+        await Assert.That(result.EffectivePolicy.AllowedCurrencyCodes.Single()).IsEqualTo("EUR");
+        await Assert.That(result.EffectivePolicy.RequiresFirstPaidEventReview).IsTrue();
+    }
+
+    [Test]
+    public async Task GetTenantConfiguration_WhenInstancePolicyIsAbsent_ReturnsNullWithoutTenantLookup()
+    {
+        _policies.GetActiveInstanceAsync(Arg.Any<CancellationToken>()).Returns((PaidEventPolicyVersion?)null);
+
+        TenantPaidEventPolicyConfigurationDto? result = await new GetTenantPaidEventPolicyConfigurationQueryHandler(_policies)
+            .Handle(new GetTenantPaidEventPolicyConfigurationQuery(_tenantId), CancellationToken.None);
+
+        await Assert.That(result).IsNull();
+        await _policies.DidNotReceive().GetActiveTenantAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
     }
 
     [Test]

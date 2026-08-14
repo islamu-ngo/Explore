@@ -69,6 +69,132 @@ public sealed class EventTicketCatalogEditorTests : IDisposable
     }
 
     [Test]
+    public async Task PaidCatalogShowsServerBlockersAndUsesBoundedPaymentReadinessContract()
+    {
+        var eventId = Guid.CreateVersion7();
+        _ticketingService.GetCatalogAsync(eventId, Arg.Any<CancellationToken>()).Returns(
+            CreatePaidCatalog(eventId, ready: false, "preflight", "commercial-disclosures", "payment-connection", "start-onboarding"));
+        _ticketingService.GetPaymentConnectionAsync(eventId, Arg.Any<CancellationToken>()).Returns(
+            new HalResourceOfEventOrganizerPaymentConnectionManagementDto
+            {
+                EventId = eventId,
+                Connection = new Connection2
+                {
+                    StatusId = 2,
+                    MerchantCountryCode = "US",
+                    ChargeCapabilityStateId = 2,
+                    RequirementsStateId = 2,
+                    SupportedCurrencyCodes = ["USD"]
+                }
+            });
+
+        var cut = Render(eventId);
+
+        cut.WaitForElement("[data-testid='payment-connection-present']");
+        await Assert.That(cut.Markup).Contains("Paid publication requires merchant, refund, and support disclosures.");
+        await Assert.That(cut.FindAll("[data-testid='save-commercial-disclosures']").Count).IsEqualTo(1);
+        await Assert.That(cut.FindAll("[data-testid='start-payment-onboarding']").Count).IsEqualTo(1);
+        string[] exposedProperties = typeof(Connection2).GetProperties().Select(property => property.Name).ToArray();
+        await Assert.That(exposedProperties).DoesNotContain("ProviderCode");
+        await Assert.That(exposedProperties).DoesNotContain("ConnectPlatformId");
+        await Assert.That(exposedProperties).DoesNotContain("ExternalAccountId");
+    }
+
+    [Test]
+    public async Task MissingPaymentRelationDoesNotInferConnectionStateOrCallService()
+    {
+        var eventId = Guid.CreateVersion7();
+        _ticketingService.GetCatalogAsync(eventId, Arg.Any<CancellationToken>()).Returns(
+            CreatePaidCatalog(eventId, ready: false, "preflight"));
+
+        var cut = Render(eventId);
+
+        cut.WaitForElement("[data-testid='payment-connection-not-advertised']");
+        await Assert.That(cut.FindAll("[data-testid='payment-connection-missing']")).IsEmpty();
+        await _ticketingService.DidNotReceive().GetPaymentConnectionAsync(eventId, Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task CommercialDisclosureAffordanceSavesGeneratedRequestAndReloads()
+    {
+        var eventId = Guid.CreateVersion7();
+        EventTicketCatalogState catalog = CreatePaidCatalog(eventId, ready: false, "commercial-disclosures");
+        _ticketingService.GetCatalogAsync(eventId, Arg.Any<CancellationToken>()).Returns(catalog, catalog);
+        _ticketingService.UpdateCommercialDisclosuresAsync(
+                eventId,
+                Arg.Any<UpdateEventTicketCatalogCommercialDisclosuresCommand>(),
+                Arg.Any<CancellationToken>())
+            .Returns(new BaseCommandResponseOfGuid { Success = true });
+
+        var cut = Render(eventId);
+        cut.WaitForElement("[data-testid='save-commercial-disclosures']").Click();
+
+        cut.WaitForElement("[data-testid='ticket-catalog-status']");
+        await _ticketingService.Received(1).UpdateCommercialDisclosuresAsync(
+            eventId,
+            Arg.Is<UpdateEventTicketCatalogCommercialDisclosuresCommand>(request =>
+                request.EventId == eventId
+                && request.MerchantDisclosureText == "Merchant disclosure"
+                && request.RefundPolicyDisclosureText == "Refund policy"
+                && request.SupportContactDisclosureText == "Support contact"),
+            Arg.Any<CancellationToken>());
+        await _ticketingService.Received(2).GetCatalogAsync(eventId, Arg.Any<CancellationToken>());
+        await _announcer.Received(1).AnnouncePoliteAsync("Commercial disclosures saved.");
+    }
+
+    [Test]
+    public async Task ReadinessRefreshUsesPreflightHalPublishAffordance()
+    {
+        var eventId = Guid.CreateVersion7();
+        _ticketingService.GetCatalogAsync(eventId, Arg.Any<CancellationToken>()).Returns(
+            CreatePaidCatalog(eventId, ready: false, "preflight"));
+        _ticketingService.GetPaidPublicationPreflightAsync(eventId, Arg.Any<CancellationToken>()).Returns(
+            new HalResourceOfPaidEventPublicationPreflightDto
+            {
+                EventId = eventId,
+                IsPaidCatalog = true,
+                IsReady = true,
+                Blockers = [],
+                _links = new Dictionary<string, HalLink>
+                {
+                    ["publish"] = new() { Href = $"/api/events/{eventId}/ticketing/publish", Method = "POST" }
+                }
+            });
+
+        var cut = Render(eventId);
+        cut.WaitForElement("[data-testid='refresh-paid-publication-readiness']").Click();
+
+        cut.WaitForElement("[data-testid='paid-publication-ready']");
+        await Assert.That(cut.FindAll("[data-testid='publish-ticket-catalog']").Count).IsEqualTo(1);
+        await _ticketingService.Received(1).GetPaidPublicationPreflightAsync(eventId, Arg.Any<CancellationToken>());
+        await _announcer.Received(1).AnnouncePoliteAsync("Paid publication readiness refreshed.");
+    }
+
+    [Test]
+    public async Task ExactOnboardingAffordanceNavigatesToServerUrl()
+    {
+        var eventId = Guid.CreateVersion7();
+        var onboardingUrl = new Uri("https://payments.example.test/onboarding");
+        _ticketingService.GetCatalogAsync(eventId, Arg.Any<CancellationToken>()).Returns(
+            CreatePaidCatalog(eventId, ready: false, "start-onboarding"));
+        _ticketingService.StartPaymentOnboardingAsync(eventId, Arg.Any<CancellationToken>()).Returns(
+            new BaseCommandResponseOfOrganizerPaymentOnboardingLinkResult
+            {
+                Success = true,
+                Id = new OrganizerPaymentOnboardingLinkResult
+                {
+                    OnboardingUrl = onboardingUrl
+                }
+            });
+
+        var cut = Render(eventId);
+        cut.WaitForElement("[data-testid='start-payment-onboarding']").Click();
+
+        cut.WaitForState(() => _ctx.Services.GetRequiredService<NavigationManager>().Uri == onboardingUrl.ToString());
+        await _ticketingService.Received(1).StartPaymentOnboardingAsync(eventId, Arg.Any<CancellationToken>());
+    }
+
+    [Test]
     public async Task CreateDraftUsesSelectedCurrencyAndReloadsCatalog()
     {
         var eventId = Guid.CreateVersion7();
@@ -281,6 +407,26 @@ public sealed class EventTicketCatalogEditorTests : IDisposable
             relation => relation,
             relation => new HalLink { Href = $"/api/events/{eventId}/ticketing/{relation}", Method = "POST" },
             StringComparer.Ordinal));
+
+    private IRenderedComponent<EventTicketCatalogEditor> Render(Guid eventId) =>
+        _ctx.RenderMudComponent<EventTicketCatalogEditor>(parameters => parameters
+            .Add(component => component.EventId, eventId)
+            .Add(component => component.CanManageTicketTypes, true)
+            .Add(component => component.CanManageCapacityPools, true));
+
+    private static EventTicketCatalogState CreatePaidCatalog(Guid eventId, bool ready, params string[] relations) =>
+        CreateCatalog(eventId, relations) with
+        {
+            MerchantDisclosureText = "Merchant disclosure",
+            RefundPolicyDisclosureText = "Refund policy",
+            SupportContactDisclosureText = "Support contact",
+            PublicationPreflight = new EventTicketCatalogPaidPreflightState(
+                true,
+                ready,
+                ready
+                    ? []
+                    : [new EventTicketCatalogPaidPreflightBlockerState("commercial_disclosures_missing", "Paid publication requires merchant, refund, and support disclosures.")])
+        };
 }
 
 public sealed class TicketCatalogEditModelsTests

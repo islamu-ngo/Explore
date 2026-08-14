@@ -3,9 +3,11 @@
 
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
+using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.EventTicketing;
 using Explore.Application.Features.EventTicketing.Handlers.Queries;
 using Explore.Application.Features.EventTicketing.Requests.Queries;
+using Explore.Application.Features.EventTicketing.Services;
 using Explore.Domain;
 using Explore.Domain.Enums;
 using NSubstitute;
@@ -22,11 +24,19 @@ public sealed class GetEventTicketCatalogManagementQueryHandlerTests
     private readonly Guid _eventId = Guid.CreateVersion7();
     private readonly IEventRepository _events = Substitute.For<IEventRepository>();
     private readonly IEventTicketCatalogRepository _catalogs = Substitute.For<IEventTicketCatalogRepository>();
+    private readonly IPaidEventPolicyRepository _policies = Substitute.For<IPaidEventPolicyRepository>();
+    private readonly IOrganizerPaymentProviderConnectionRepository _connections = Substitute.For<IOrganizerPaymentProviderConnectionRepository>();
+    private readonly IOrganizationTenantRepository _organizationTenants = Substitute.For<IOrganizationTenantRepository>();
+    private readonly IGroupTenantRepository _groupTenants = Substitute.For<IGroupTenantRepository>();
+    private readonly IAuthorizationProvider _authorization = Substitute.For<IAuthorizationProvider>();
     private readonly ITenantContext _tenant = Substitute.For<ITenantContext>();
+    private readonly IOrganizerPaymentCommerceConfiguration _commerceConfiguration = Substitute.For<IOrganizerPaymentCommerceConfiguration>();
 
     public GetEventTicketCatalogManagementQueryHandlerTests()
     {
         _tenant.TenantId.Returns(_tenantId);
+        _commerceConfiguration.ProviderCode.Returns("stripe");
+        _commerceConfiguration.ConnectPlatformId.Returns("platform-live-eu");
     }
 
     [Test]
@@ -163,7 +173,18 @@ public sealed class GetEventTicketCatalogManagementQueryHandlerTests
         await Assert.That(mappedEntitlement.EntitlementSelectionRuleName).IsEqualTo("All included");
     }
 
-    private GetEventTicketCatalogManagementQueryHandler CreateHandler() => new(_events, _catalogs, _tenant);
+    private GetEventTicketCatalogManagementQueryHandler CreateHandler() => new(_events, _catalogs, _tenant, CreatePreflightService());
+
+    private PaidEventPublicationPreflightService CreatePreflightService() => new(
+        _events,
+        _catalogs,
+        _policies,
+        _connections,
+        _organizationTenants,
+        _groupTenants,
+        _authorization,
+        _tenant,
+        _commerceConfiguration);
 
     private static void SetNavigation<TTarget>(object source, string propertyName, TTarget value) where TTarget : class =>
         source.GetType().GetProperty(propertyName)!.SetValue(source, value);

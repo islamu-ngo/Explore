@@ -44,7 +44,7 @@ public sealed class PaidEventPublicationPreflightService(
         bool isPaid = IsPaid(draft);
         if (!isPaid)
         {
-            return Result(eventId, draft.Id, isPaid, []);
+            return Result(eventTarget, draft.Id, isPaid, []);
         }
 
         var blockers = new List<PaidEventPublicationPreflightBlockerDto>();
@@ -52,7 +52,7 @@ public sealed class PaidEventPublicationPreflightService(
         PaidEventPolicyVersion? tenantPolicy = await policies.GetActiveTenantAsync(tenant.TenantId, cancellationToken);
         if (!TryValidatePolicy(instancePolicy, tenantPolicy, blockers))
         {
-            return Result(eventId, draft.Id, isPaid, blockers);
+            return Result(eventTarget, draft.Id, isPaid, blockers);
         }
         PaidEventPolicyVersion effectivePolicy = tenantPolicy ?? instancePolicy!;
 
@@ -60,7 +60,7 @@ public sealed class PaidEventPublicationPreflightService(
         if (eventTarget.OrganizerActorId is null || organizer is null)
         {
             blockers.Add(Block("organizer_missing", "Paid publication requires one persisted organizer actor."));
-            return Result(eventId, draft.Id, isPaid, blockers);
+            return Result(eventTarget, draft.Id, isPaid, blockers);
         }
 
         if (!effectivePolicy.AllowedOrganizerKinds.Contains((ActorTypeEnum)organizer.ActorTypeId))
@@ -87,7 +87,7 @@ public sealed class PaidEventPublicationPreflightService(
         if (string.IsNullOrWhiteSpace(commerceConfiguration.ProviderCode) || string.IsNullOrWhiteSpace(commerceConfiguration.ConnectPlatformId))
         {
             blockers.Add(Block("payment_platform_not_configured", "The payment platform is not configured for paid publication."));
-            return Result(eventId, draft.Id, isPaid, blockers);
+            return Result(eventTarget, draft.Id, isPaid, blockers);
         }
 
         OrganizerPaymentProviderConnection? connection = await connections.GetActiveByScopeAsync(
@@ -105,18 +105,19 @@ public sealed class PaidEventPublicationPreflightService(
             AddConnectionBlockers(connection, confirmedCurrency, blockers);
         }
 
-        bool commerceAllowed = await authorization.IsAllowedAsync(
-            ResourceKinds.Event,
-            eventTarget.Id.ToString(),
-            AuthorizationActions.Events.ManagePaidEventCommerce,
-            OrganizerAttributes(eventTarget),
+        var commerceDecision = await authorization.AuthorizeAsync(
+            new AuthorizationRequest(
+                AuthorizationCapabilityCatalog.Require(ResourceKinds.Event, AuthorizationActions.Events.ManagePaidEventCommerce),
+                eventTarget.Id.ToString(),
+                OrganizerAttributes(eventTarget),
+                ResourceDescriptors.EventAuthorizationTarget.GetScope(eventTarget)),
             cancellationToken);
-        if (!commerceAllowed)
+        if (!commerceDecision.IsAllowed)
         {
             blockers.Add(Block("commerce_authorization_denied", "The current principal is not authorized to manage paid commerce for this exact organizer."));
         }
 
-        return Result(eventId, draft.Id, isPaid, blockers);
+        return Result(eventTarget, draft.Id, isPaid, blockers);
     }
 
     private static bool TryValidatePolicy(PaidEventPolicyVersion? instancePolicy, PaidEventPolicyVersion? tenantPolicy, List<PaidEventPublicationPreflightBlockerDto> blockers)
@@ -237,6 +238,24 @@ public sealed class PaidEventPublicationPreflightService(
         IsPaidCatalog = isPaid,
         IsReady = blockers.Count == 0,
         Blockers = blockers
+    };
+
+    private static PaidEventPublicationPreflightDto Result(Event eventTarget, Guid? catalogId, bool isPaid, IReadOnlyList<PaidEventPublicationPreflightBlockerDto> blockers) => new()
+    {
+        EventId = eventTarget.Id,
+        CatalogId = catalogId,
+        IsPaidCatalog = isPaid,
+        IsReady = blockers.Count == 0,
+        Blockers = blockers,
+        TenantId = eventTarget.TenantId,
+        ActorId = eventTarget.ActorId,
+        ActorUserId = eventTarget.Actor?.UserId,
+        ActorOrganizationId = eventTarget.Actor?.OrganizationId,
+        ActorGroupId = eventTarget.Actor?.GroupId,
+        OrganizerActorId = eventTarget.OrganizerActorId,
+        OrganizerUserId = eventTarget.OrganizerActor?.UserId,
+        OrganizerOrganizationId = eventTarget.OrganizerActor?.OrganizationId,
+        OrganizerGroupId = eventTarget.OrganizerActor?.GroupId
     };
 
     private static PaidEventPublicationPreflightBlockerDto Block(string code, string explanation) => new()

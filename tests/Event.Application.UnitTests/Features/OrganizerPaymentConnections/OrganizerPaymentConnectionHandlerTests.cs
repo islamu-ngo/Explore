@@ -4,6 +4,7 @@
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
+using Explore.Application.Authorization;
 using Explore.Application.DTOs.OrganizerPaymentConnections;
 using Explore.Application.Features.OrganizerPaymentConnections;
 using Explore.Application.Features.OrganizerPaymentConnections.Commands;
@@ -20,6 +21,7 @@ public sealed class OrganizerPaymentConnectionHandlerTests
 {
     private static readonly Guid TenantId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000001");
     private static readonly Guid ForeignTenantId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000002");
+    private static readonly Guid EventId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000003");
     private static readonly Guid UserId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000010");
     private static readonly Guid ActorId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000020");
     private static readonly DateTime Now = new(2026, 8, 13, 12, 0, 0, DateTimeKind.Utc);
@@ -260,11 +262,16 @@ public sealed class OrganizerPaymentConnectionHandlerTests
         OrganizerPaymentConnectionDto? detail = await harness.GetHandler.Handle(new GetOrganizerPaymentConnectionQuery(TenantId, ActorId, owned.Id), CancellationToken.None);
 
         await Assert.That(rows.Count).IsEqualTo(1);
-        await Assert.That(rows.Single().ExternalAccountId).IsEqualTo("acct_owned");
+        await Assert.That(rows.Single().StatusId).IsEqualTo((int)OrganizerPaymentProviderConnectionStatusEnum.PendingOnboarding);
         await Assert.That(detail).IsNotNull();
-        await Assert.That(detail!.OrganizerActorId).IsEqualTo(ActorId);
-        await Assert.That(typeof(OrganizerPaymentConnectionDto).GetProperties().Any(property => property.Name.Contains("Secret", StringComparison.Ordinal))).IsFalse();
-        await Assert.That(typeof(OrganizerPaymentConnectionDto).GetProperties().Any(property => property.Name.Contains("Raw", StringComparison.Ordinal))).IsFalse();
+        string[] exposedProperties = typeof(OrganizerPaymentConnectionDto).GetProperties().Select(property => property.Name).ToArray();
+        await Assert.That(exposedProperties).DoesNotContain("Id");
+        await Assert.That(exposedProperties).DoesNotContain("TenantId");
+        await Assert.That(exposedProperties).DoesNotContain("OrganizerActorId");
+        await Assert.That(exposedProperties).DoesNotContain("ProviderCode");
+        await Assert.That(exposedProperties).DoesNotContain("ConnectPlatformId");
+        await Assert.That(exposedProperties).DoesNotContain("ExternalAccountId");
+        await Assert.That(exposedProperties).DoesNotContain("LastReadinessEvidenceRevision");
     }
 
     [Test]
@@ -305,14 +312,28 @@ public sealed class OrganizerPaymentConnectionHandlerTests
         BaseCommandResponse<OrganizerPaymentOnboardingLinkResult> result = await harness.OnboardingHandler.Handle(harness.OnboardingCommand(), CancellationToken.None);
 
         await Assert.That(result.Success).IsTrue();
-        await Assert.That(result.Id!.ConnectionId).IsEqualTo(existing.Id);
-        await Assert.That(result.Id.OnboardingUrl).IsEqualTo(new Uri("https://payments.example/onboard/existing"));
+        await Assert.That(result.Id!.OnboardingUrl).IsEqualTo(new Uri("https://payments.example/onboard/existing"));
         await Assert.That(result.Id.ReusedExistingConnection).IsTrue();
         await Assert.That(harness.Provider.AccountCreateCalls).IsEqualTo(0);
         await Assert.That(harness.Provider.LinkCreateCalls).IsEqualTo(1);
         await Assert.That(harness.UnitOfWork.SerializableCalls).IsEqualTo(0);
         await Assert.That(harness.Provider.CalledInsideTransaction).IsFalse();
         await Assert.That(harness.Repository.Connections.Count).IsEqualTo(1);
+    }
+
+    [Test]
+    public async Task CreateOnboardingLink_RejectsProviderNavigationOutsideHttpSchemes()
+    {
+        Harness harness = new();
+        harness.Repository.AddExisting("acct_existing");
+        harness.Provider.NextLinkUrl = new Uri("javascript:alert('unsafe')");
+
+        BaseCommandResponse<OrganizerPaymentOnboardingLinkResult> result = await harness.OnboardingHandler.Handle(harness.OnboardingCommand(), CancellationToken.None);
+
+        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.Id).IsNull();
+        await Assert.That(result.FailureCode).IsEqualTo("organizer_payment_onboarding_link_failed");
+        await Assert.That(harness.Provider.LinkCreateCalls).IsEqualTo(1);
     }
 
     [Test]
@@ -326,9 +347,7 @@ public sealed class OrganizerPaymentConnectionHandlerTests
 
         OrganizerPaymentProviderConnection created = harness.Repository.Connections.Single();
         await Assert.That(result.Success).IsTrue();
-        await Assert.That(result.Id!.ConnectionId).IsEqualTo(created.Id);
-        await Assert.That(result.Id.ExternalAccountId).IsEqualTo("acct_new");
-        await Assert.That(result.Id.OnboardingUrl).IsEqualTo(new Uri("https://payments.example/onboard/new"));
+        await Assert.That(result.Id!.OnboardingUrl).IsEqualTo(new Uri("https://payments.example/onboard/new"));
         await Assert.That(result.Id.ReusedExistingConnection).IsFalse();
         await Assert.That(created.OrganizerActorId).IsEqualTo(ActorId);
         await Assert.That(created.ExternalAccountId).IsEqualTo("acct_new");
@@ -449,8 +468,7 @@ public sealed class OrganizerPaymentConnectionHandlerTests
         BaseCommandResponse<OrganizerPaymentOnboardingLinkResult> result = await harness.OnboardingHandler.Handle(harness.OnboardingCommand(), CancellationToken.None);
 
         await Assert.That(result.Success).IsTrue();
-        await Assert.That(result.Id!.ConnectionId).IsEqualTo(raced.Id);
-        await Assert.That(result.Id.ReusedExistingConnection).IsTrue();
+        await Assert.That(result.Id!.ReusedExistingConnection).IsTrue();
         await Assert.That(harness.Repository.Connections.Count).IsEqualTo(1);
         await Assert.That(harness.Repository.HistoricalReadCount).IsGreaterThanOrEqualTo(1);
         await Assert.That(harness.Provider.LinkCreateCalls).IsEqualTo(1);
@@ -511,6 +529,61 @@ public sealed class OrganizerPaymentConnectionHandlerTests
         await Assert.That(harness.Provider.LastLinkRequest.RefreshUrl).IsEqualTo(refreshUrl);
         await Assert.That(typeof(OrganizerPaymentProviderConnection).GetProperties().Any(property => property.Name.Contains("Url", StringComparison.Ordinal))).IsFalse();
         await Assert.That(harness.Repository.Connections.Single().StatusId).IsEqualTo((int)OrganizerPaymentProviderConnectionStatusEnum.PendingOnboarding);
+    }
+
+    [Test]
+    public async Task CreateOnboardingLink_UsesPersistedEventOrganizerAndConfiguredProviderScope()
+    {
+        Harness harness = new();
+
+        BaseCommandResponse<OrganizerPaymentOnboardingLinkResult> result = await harness.OnboardingHandler.Handle(harness.OnboardingCommand(), CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await Assert.That(harness.Provider.LastAccountRequest!.TenantId).IsEqualTo(TenantId);
+        await Assert.That(harness.Provider.LastAccountRequest.OrganizerActorId).IsEqualTo(ActorId);
+        await Assert.That(harness.Provider.LastAccountRequest.ProviderCode).IsEqualTo("stripe");
+        await Assert.That(harness.Provider.LastAccountRequest.ConnectPlatformId).IsEqualTo("platform-live-eu");
+    }
+
+    [Test]
+    public async Task OnboardingCommand_UsesPaidCommerceAuthorizationMetadata()
+    {
+        var authorize = (AuthorizeResourceAttribute)Attribute.GetCustomAttribute(
+            typeof(CreateOrganizerPaymentOnboardingLinkCommand),
+            typeof(AuthorizeResourceAttribute))!;
+        var request = (ISecureRequest)new CreateOrganizerPaymentOnboardingLinkCommand(
+            EventId,
+            new Uri("https://app.example/return"),
+            new Uri("https://app.example/refresh"));
+
+        await Assert.That(authorize.Resource).IsEqualTo(ResourceKinds.Event);
+        await Assert.That(authorize.Action).IsEqualTo(AuthorizationActions.Events.ManagePaidEventCommerce);
+        await Assert.That(request.ResourceId).IsEqualTo(EventId.ToString());
+        await Assert.That(request.ResourceAttributes!["eventId"]).IsEqualTo(EventId.ToString());
+    }
+
+    [Test]
+    public async Task EventPaymentConnectionQuery_ReturnsEnvelopeWhenNoConnectionExists()
+    {
+        Harness harness = new();
+
+        EventOrganizerPaymentConnectionManagementDto? result = await harness.EventPaymentHandler.Handle(new GetEventOrganizerPaymentConnectionQuery(EventId), CancellationToken.None);
+
+        await Assert.That(result).IsNotNull();
+        await Assert.That(result!.EventId).IsEqualTo(EventId);
+        await Assert.That(result.TenantId).IsEqualTo(TenantId);
+        await Assert.That(result.OrganizerActorId).IsEqualTo(ActorId);
+        await Assert.That(result.Connection).IsNull();
+    }
+
+    [Test]
+    public async Task EventPaymentConnectionQuery_MissingOrganizerContextReturnsNull()
+    {
+        Harness harness = new(hasEventOrganizer: false);
+
+        EventOrganizerPaymentConnectionManagementDto? result = await harness.EventPaymentHandler.Handle(new GetEventOrganizerPaymentConnectionQuery(EventId), CancellationToken.None);
+
+        await Assert.That(result).IsNull();
     }
 
     [Test]
@@ -615,7 +688,7 @@ public sealed class OrganizerPaymentConnectionHandlerTests
 
     private sealed class Harness
     {
-        public Harness(bool authenticated = true, bool controlled = true, bool activeTenantUser = true)
+        public Harness(bool authenticated = true, bool controlled = true, bool activeTenantUser = true, bool hasEventOrganizer = true)
         {
             Repository = new FakeOrganizerPaymentConnectionRepository();
             OperationRepository = new FakeOrganizerPaymentAccountOperationRepository();
@@ -638,6 +711,25 @@ public sealed class OrganizerPaymentConnectionHandlerTests
 
             ITenantContext tenantContext = Substitute.For<ITenantContext>();
             tenantContext.TenantId.Returns(TenantId);
+            IEventRepository eventRepository = Substitute.For<IEventRepository>();
+            var eventEntity = new Explore.Domain.Event
+            {
+                Id = EventId,
+                Title = "Paid event",
+                TenantId = TenantId,
+                Tenant = null!,
+                Actor = null!,
+                VisibilityType = null!,
+                EventStatus = null!,
+                EventFormat = null!,
+                OrganizerActorId = hasEventOrganizer ? ActorId : null,
+                OrganizerActor = hasEventOrganizer ? UserActor() : null
+            };
+            eventRepository.GetAuthorizationTargetByIdAsync(EventId, Arg.Any<CancellationToken>()).Returns(eventEntity);
+            eventRepository.GetEventWithDetails(EventId).Returns(eventEntity);
+            IOrganizerPaymentCommerceConfiguration commerceConfiguration = Substitute.For<IOrganizerPaymentCommerceConfiguration>();
+            commerceConfiguration.ProviderCode.Returns("stripe");
+            commerceConfiguration.ConnectPlatformId.Returns("platform-live-eu");
             IUnitOfWork unitOfWork = new InlineSerializableUnitOfWork();
             UnitOfWork = new RecordingSerializableUnitOfWork();
             TimeProvider timeProvider = new FixedTimeProvider(Now);
@@ -646,10 +738,11 @@ public sealed class OrganizerPaymentConnectionHandlerTests
             DisableHandler = new DisableOrganizerPaymentConnectionCommandHandler(Repository, actorRepository, tenantUserRepository, organizationTenantRepository, groupTenantRepository, organizationMemberRepository, groupMemberRepository, unitOfWork, tenantContext, currentUser, timeProvider);
             ListHandler = new ListOrganizerPaymentConnectionsQueryHandler(Repository, actorRepository, tenantUserRepository, organizationTenantRepository, groupTenantRepository, organizationMemberRepository, groupMemberRepository, tenantContext, currentUser);
             GetHandler = new GetOrganizerPaymentConnectionQueryHandler(Repository, actorRepository, tenantUserRepository, organizationTenantRepository, groupTenantRepository, organizationMemberRepository, groupMemberRepository, tenantContext, currentUser);
+            EventPaymentHandler = new GetEventOrganizerPaymentConnectionQueryHandler(eventRepository, Repository, commerceConfiguration, tenantContext);
             Repository.Events = Events;
             OperationRepository.Events = Events;
             Provider = new RecordingOrganizerPaymentOnboardingProvider(() => UnitOfWork.InSerializableOperation, Events);
-            OnboardingHandler = new CreateOrganizerPaymentOnboardingLinkCommandHandler(Repository, OperationRepository, Provider, actorRepository, tenantUserRepository, organizationTenantRepository, groupTenantRepository, organizationMemberRepository, groupMemberRepository, UnitOfWork, tenantContext, currentUser, timeProvider, NullLogger<CreateOrganizerPaymentOnboardingLinkCommandHandler>.Instance);
+            OnboardingHandler = new CreateOrganizerPaymentOnboardingLinkCommandHandler(Repository, OperationRepository, eventRepository, commerceConfiguration, Provider, actorRepository, tenantUserRepository, organizationTenantRepository, groupTenantRepository, organizationMemberRepository, groupMemberRepository, UnitOfWork, tenantContext, currentUser, timeProvider, NullLogger<CreateOrganizerPaymentOnboardingLinkCommandHandler>.Instance);
         }
 
         public FakeOrganizerPaymentConnectionRepository Repository { get; }
@@ -663,6 +756,7 @@ public sealed class OrganizerPaymentConnectionHandlerTests
         public CreateOrganizerPaymentOnboardingLinkCommandHandler OnboardingHandler { get; }
         public ListOrganizerPaymentConnectionsQueryHandler ListHandler { get; }
         public GetOrganizerPaymentConnectionQueryHandler GetHandler { get; }
+        public GetEventOrganizerPaymentConnectionQueryHandler EventPaymentHandler { get; }
 
         public OrganizerPaymentReadinessReconciliationService ReadinessService(int batchSize = 25, int staleIntervalMinutes = 5) => new(
             Repository,
@@ -681,7 +775,7 @@ public sealed class OrganizerPaymentConnectionHandlerTests
             new(TenantId, ActorId, "stripe", "platform-live-eu", externalAccountId);
 
         public CreateOrganizerPaymentOnboardingLinkCommand OnboardingCommand(Uri? returnUrl = null, Uri? refreshUrl = null) =>
-            new(TenantId, ActorId, "stripe", "platform-live-eu", returnUrl ?? new Uri("https://app.example/return"), refreshUrl ?? new Uri("https://app.example/refresh"));
+            new(EventId, returnUrl ?? new Uri("https://app.example/return"), refreshUrl ?? new Uri("https://app.example/refresh"));
     }
 
     private sealed class InlineSerializableUnitOfWork : IUnitOfWork

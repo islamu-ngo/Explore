@@ -14,7 +14,8 @@ namespace Explore.Application.Features.EventTicketing.Handlers.Queries;
 public sealed class GetEventTicketCatalogManagementQueryHandler(
     IEventRepository events,
     IEventTicketCatalogRepository catalogs,
-    ITenantContext tenant) : IRequestHandler<GetEventTicketCatalogManagementQuery, EventTicketCatalogManagementDto?>
+    ITenantContext tenant,
+    Services.PaidEventPublicationPreflightService paidPreflight) : IRequestHandler<GetEventTicketCatalogManagementQuery, EventTicketCatalogManagementDto?>
 {
     public async Task<EventTicketCatalogManagementDto?> Handle(
         GetEventTicketCatalogManagementQuery request,
@@ -37,7 +38,8 @@ public sealed class GetEventTicketCatalogManagementQueryHandler(
 
         Event? eventWithDetails = await events.GetEventWithDetails(request.EventId);
         EventCapacityPool[] pools = eventWithDetails?.CapacityPools.Where(pool => !pool.IsDeleted).ToArray() ?? [];
-        return Map(catalog, pools, eventTarget);
+        PaidEventPublicationPreflightDto publicationPreflight = await paidPreflight.AssessAsync(request.EventId, eventWithDetails, catalog, cancellationToken);
+        return Map(catalog, pools, eventTarget, publicationPreflight);
     }
 
     private static bool IsPlatformManaged(Event? eventTarget, Guid tenantId) =>
@@ -47,7 +49,8 @@ public sealed class GetEventTicketCatalogManagementQueryHandler(
     private static EventTicketCatalogManagementDto Map(
         EventTicketCatalogVersion catalog,
         IReadOnlyList<EventCapacityPool> pools,
-        Event eventTarget) =>
+        Event eventTarget,
+        PaidEventPublicationPreflightDto publicationPreflight) =>
         new()
         {
             TenantId = eventTarget.TenantId,
@@ -69,6 +72,7 @@ public sealed class GetEventTicketCatalogManagementQueryHandler(
             MerchantDisclosureText = catalog.MerchantDisclosureText,
             RefundPolicyDisclosureText = catalog.RefundPolicyDisclosureText,
             SupportContactDisclosureText = catalog.SupportContactDisclosureText,
+            PublicationPreflight = publicationPreflight,
             TicketTypes = catalog.TicketTypes
                 .Where(ticketType => !ticketType.IsDeleted)
                 .Select(Map)

@@ -4,6 +4,7 @@
 using System.Text.Json;
 using AngleSharp.Dom;
 using Explore.Blazor.Client.Contracts.Services.Shell;
+using Explore.Blazor.Client.Contracts.Services.PaidEventPolicies;
 using Explore.Blazor.Client.Pages.Events;
 
 namespace Explore.Blazor.Client.Tests.Pages.Admin;
@@ -16,7 +17,9 @@ public class TenantAdminSettingsRedirectTests : IDisposable
     private readonly ITenantBrandingSettingsAdminService _tenantBrandingSettingsAdminService;
     private readonly ITenantPublicExperienceAdminService _publicExperienceAdminService;
     private readonly ITenantStorageSettingsAdminService _tenantStorageSettingsAdminService;
+    private readonly IPaidEventPolicyService _paidEventPolicyService;
     private readonly BunitNavigationManager _nav;
+    private readonly Guid _tenantId = Guid.CreateVersion7();
 
     public TenantAdminSettingsRedirectTests()
     {
@@ -29,6 +32,7 @@ public class TenantAdminSettingsRedirectTests : IDisposable
         _publicExperienceAdminService = _ctx.AddMockService<ITenantPublicExperienceAdminService>();
         _tenantStorageSettingsAdminService = _ctx.AddMockService<ITenantStorageSettingsAdminService>();
         _tenantBrandingSettingsAdminService = _ctx.AddMockService<ITenantBrandingSettingsAdminService>();
+        _paidEventPolicyService = _ctx.AddMockService<IPaidEventPolicyService>();
         _ctx.AddMockService<IOrganizationService>();
         _ctx.AddMockService<IUiShellContextService>();
         _ctx.AddMockService<IShellPreferencesService>();
@@ -129,6 +133,25 @@ public class TenantAdminSettingsRedirectTests : IDisposable
     }
 
     [Test]
+    public async Task TenantAdminSettingsLayout_PaidEventsUsesAuthoritativeTenantId()
+    {
+        ConfigureAuthorizedManagement(CreateManagementModel());
+        _paidEventPolicyService.GetTenantAsync(_tenantId, Arg.Any<CancellationToken>()).Returns(
+            new HalResourceOfTenantPaidEventPolicyConfigurationDto
+            {
+                ActiveInstanceCeiling = PaidPolicy(),
+                EffectivePolicy = PaidPolicy()
+            });
+        var cut = RenderLayout();
+
+        NavigateTo(cut, "Paid Events");
+
+        cut.WaitForElement("[data-testid='tenant-paid-policy-section']");
+        await _paidEventPolicyService.Received(1).GetTenantAsync(_tenantId, Arg.Any<CancellationToken>());
+        await Assert.That(cut.Markup).DoesNotContain("Save Tenant Settings", StringComparison.Ordinal);
+    }
+
+    [Test]
     public async Task TenantAdminSettingsLayout_BrandingAndStorage_DoNotExposeBroadSave()
     {
         var management = CreateManagementModel();
@@ -205,7 +228,7 @@ public class TenantAdminSettingsRedirectTests : IDisposable
 
     private void ConfigureAuthorizedManagement(TenantPolicySettingsDto? settings)
     {
-        var tenantStatus = new TenantOnboardingStatusDto();
+        var tenantStatus = new TenantOnboardingStatusDto { TenantId = _tenantId };
         tenantStatus.AdditionalProperties["_links"] = JsonSerializer.SerializeToElement(
             new Dictionary<string, object>
             {
@@ -238,6 +261,25 @@ public class TenantAdminSettingsRedirectTests : IDisposable
         AllowOrganizationSubmittedEvents = false,
         AllowGroupSubmittedEvents = false,
         CanOverrideMcp = true
+    };
+
+    private static PaidEventPolicyDto PaidPolicy() => new()
+    {
+        IsPaymentsEnabled = true,
+        AllowedOrganizerKindIds = [2],
+        AllowedCurrencyCodes = ["EUR"],
+        DefaultCurrencyCode = "EUR",
+        RefundProtectionIds = [1, 2, 3, 4, 5, 6, 7],
+        CurrencyRiskLimits =
+        [
+            new CurrencyRiskLimits2
+            {
+                CurrencyCode = "EUR",
+                PerEventSalesCeilingMinor = 500_000,
+                RollingOrganizerSalesCeilingMinor = 1_000_000,
+                HighValueReviewThresholdMinor = 250_000
+            }
+        ]
     };
 
     private static IElement PolicyInput(IRenderedComponent<DynamicComponent> cut, string label) =>

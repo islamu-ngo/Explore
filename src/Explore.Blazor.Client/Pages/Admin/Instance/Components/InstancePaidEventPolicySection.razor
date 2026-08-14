@@ -1,0 +1,364 @@
+@* ABOUTME: Instance paid-event policy ceiling editor driven by the exact HAL edit relation. *@
+@* ABOUTME: Keeps organizer, currency, risk, review, and mandatory refund controls accessible and bounded. *@
+
+@using Explore.Blazor.Client.Clients
+@using Explore.Blazor.Client.Contracts.Services.Accessibility
+@using Explore.Blazor.Client.Contracts.Services.PaidEventPolicies
+@using Explore.Blazor.Client.Pages.Admin.Components
+@implements IDisposable
+@inject IPaidEventPolicyService PolicyService
+@inject IAccessibilityAnnouncerService Announcer
+
+<section class="instance-paid-policy" aria-labelledby="instance-paid-policy-title" data-testid="instance-paid-policy-section">
+    <div>
+        <h3 id="instance-paid-policy-title" class="mud-typography mud-typography-h6">Paid events</h3>
+        <MudText Typo="Typo.body2" Color="Color.Secondary">
+            Set the platform ceiling that tenant policies may only narrow.
+        </MudText>
+    </div>
+
+    @if (_loading)
+    {
+        <MudProgressLinear Indeterminate="true" Color="Color.Primary" aria-label="Loading paid-event policy" />
+    }
+    else if (_resource is null)
+    {
+        <MudAlert Severity="Severity.Error" role="alert" data-testid="paid-policy-load-error">@(_message ?? LoadFailureMessage)</MudAlert>
+    }
+    else
+    {
+        @if (!CanEdit)
+        {
+            <MudAlert Severity="Severity.Info" data-testid="paid-policy-read-only">The paid-event ceiling is read-only.</MudAlert>
+        }
+        @if (!string.IsNullOrWhiteSpace(_message))
+        {
+            <MudAlert Severity="@(_saved ? Severity.Success : Severity.Error)"
+                      role="@(_saved ? "status" : "alert")"
+                      data-testid="paid-policy-message">@_message</MudAlert>
+        }
+
+        <MudSwitch T="bool" @bind-Value="_model.IsPaymentsEnabled" Disabled="@(!CanEdit)">
+            Enable paid events
+        </MudSwitch>
+        <MudSwitch T="bool" @bind-Value="_model.RequiresLocalVerification" Disabled="@(!CanEdit)">
+            Require local organizer verification
+        </MudSwitch>
+
+        <div class="instance-paid-policy__group" aria-labelledby="instance-paid-policy-organizers">
+            <h4 id="instance-paid-policy-organizers" class="mud-typography mud-typography-subtitle2">Eligible organizer kinds</h4>
+            @foreach (PaidEventPolicyOrganizerKindOption option in _model.OrganizerKindOptions)
+            {
+                <MudCheckBox T="bool"
+                             Value="@_model.AllowedOrganizerKindIds.Contains(option.Id)"
+                             ValueChanged="@(value => SetOrganizerKind(option.Id, value))"
+                             Disabled="@(!CanEdit)">@OrganizerLabel(option)</MudCheckBox>
+            }
+        </div>
+
+        <div class="instance-paid-policy__group" aria-labelledby="instance-paid-policy-currencies">
+            <h4 id="instance-paid-policy-currencies" class="mud-typography mud-typography-subtitle2">Currencies and risk ceilings</h4>
+            @foreach (string currencyCode in _model.AllowedCurrencyCodes.ToArray())
+            {
+                PaidEventPolicyCurrencyRiskLimitEditModel limit = RiskLimit(currencyCode);
+                <div class="instance-paid-policy__currency" data-testid="paid-policy-currency-row">
+                    <MudText Typo="Typo.subtitle2">@currencyCode</MudText>
+                    <MudNumericField T="long?" @bind-Value="limit.PerEventSalesCeilingMinor" Label="Per-event sales ceiling (minor units)" Min="0" Disabled="@(!CanEdit)" Variant="Variant.Outlined" />
+                    <MudNumericField T="long?" @bind-Value="limit.RollingOrganizerSalesCeilingMinor" Label="Rolling organizer ceiling (minor units)" Min="0" Disabled="@(!CanEdit)" Variant="Variant.Outlined" />
+                    <MudNumericField T="long?" @bind-Value="limit.HighValueReviewThresholdMinor" Label="High-value review threshold (minor units)" Min="0" Disabled="@(!CanEdit)" Variant="Variant.Outlined" />
+                    @if (CanEdit)
+                    {
+                        <AppButton Variant="Variant.Text" Color="Color.Error" OnClick="@(() => RemoveCurrency(currencyCode))">Remove @currencyCode</AppButton>
+                    }
+                </div>
+            }
+            @if (CanEdit)
+            {
+                <div class="instance-paid-policy__add-currency">
+                    <MudTextField T="string" @bind-Value="_newCurrencyCode" Label="Add currency code" MaxLength="3" Variant="Variant.Outlined" />
+                    <AppButton Variant="Variant.Outlined" OnClick="AddCurrency">Add currency</AppButton>
+                </div>
+            }
+            <MudSelect T="string" Label="Default currency" @bind-Value="_model.DefaultCurrencyCode" Disabled="@(!CanEdit)" Variant="Variant.Outlined">
+                @foreach (string currencyCode in _model.AllowedCurrencyCodes)
+                {
+                    <MudSelectItem T="string" Value="@currencyCode">@currencyCode</MudSelectItem>
+                }
+            </MudSelect>
+        </div>
+
+        <div class="instance-paid-policy__group" aria-labelledby="instance-paid-policy-review">
+            <h4 id="instance-paid-policy-review" class="mud-typography mud-typography-subtitle2">Publication review</h4>
+            <MudSwitch T="bool" @bind-Value="_model.RequiresFirstPaidEventReview" Disabled="@(!CanEdit)">
+                Review an organizer's first paid event
+            </MudSwitch>
+            <MudNumericField T="int?" @bind-Value="_model.FarFutureReviewThresholdDays" Label="Far-future review threshold (days)" Min="1" Disabled="@(!CanEdit)" Variant="Variant.Outlined" />
+        </div>
+
+        <div class="instance-paid-policy__group" aria-labelledby="instance-paid-policy-refunds">
+            <h4 id="instance-paid-policy-refunds" class="mud-typography mud-typography-subtitle2">Mandatory refund protections</h4>
+            <MudText Typo="Typo.body2" Color="Color.Secondary">These protections are always included and cannot be disabled.</MudText>
+            <ul class="instance-paid-policy__protections" data-testid="paid-policy-refund-protections">
+                @foreach (string protection in RefundProtectionLabels)
+                {
+                    <li>@protection</li>
+                }
+            </ul>
+        </div>
+
+        @if (CanEdit)
+        {
+            <AppButton OnClick="SaveAsync" Disabled="_saving" data-testid="save-instance-paid-policy">Save paid-event ceiling</AppButton>
+        }
+    }
+</section>
+
+@code {
+    private const string LoadFailureMessage = "Paid-event policy could not be loaded.";
+    private const string SaveFailureMessage = "Paid-event policy could not be saved.";
+    private const string ConflictMessage = "Paid-event policy changed elsewhere. The latest values were reloaded.";
+    private static readonly string[] RefundProtectionLabels =
+    [
+        "Full refund when the organizer cancels",
+        "Buyer choice or full refund after a material change",
+        "Full refund for duplicate or incorrect charges",
+        "Remedy for substantial non-delivery",
+        "Buyer-change terms disclosed subject to applicable law",
+        "Card dispute rights are not waived",
+        "Platform amounts refunded by default for cancelled events"
+    ];
+
+    private readonly CancellationTokenSource _lifetimeCancellation = new();
+    private HalResourceOfPaidEventPolicyDto? _resource;
+    private PaidEventPolicyEditModel _model = new();
+    private bool _loading = true;
+    private bool _saving;
+    private bool _saved;
+    private bool _disposed;
+    private string? _message;
+    private string? _newCurrencyCode;
+    private bool CanEdit => _resource?._links?.ContainsKey("edit") == true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        CancellationToken cancellationToken = _lifetimeCancellation.Token;
+        try
+        {
+            await ReloadAsync(cancellationToken);
+            await Announcer.AnnouncePoliteAsync("Paid-event policy loaded.");
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            return;
+        }
+        catch (Exception)
+        {
+            _resource = null;
+            _message = LoadFailureMessage;
+            await Announcer.AnnounceAssertiveAsync(LoadFailureMessage);
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task SaveAsync()
+    {
+        if (!CanEdit || _saving || _disposed)
+        {
+            return;
+        }
+
+        string? validationMessage = Validate();
+        if (validationMessage is not null)
+        {
+            _saved = false;
+            _message = validationMessage;
+            await Announcer.AnnounceAssertiveAsync(validationMessage);
+            return;
+        }
+
+        CancellationToken cancellationToken = _lifetimeCancellation.Token;
+        _saving = true;
+        _saved = false;
+        _message = null;
+        try
+        {
+            BaseCommandResponseOfGuid response = await PolicyService.UpdateInstanceAsync(_model.ToRequest(), cancellationToken);
+            cancellationToken.ThrowIfCancellationRequested();
+            if (response.Success != true)
+            {
+                _message = response.Message ?? SaveFailureMessage;
+                await Announcer.AnnounceAssertiveAsync(_message);
+                return;
+            }
+
+            await ReloadAsync(cancellationToken);
+            _saved = true;
+            _message = "Paid-event ceiling saved.";
+            await Announcer.AnnouncePoliteAsync(_message);
+        }
+        catch (ApiException<ProblemDetails> exception) when (exception.StatusCode == 409)
+        {
+            await ReloadAfterConflictAsync(cancellationToken);
+        }
+        catch (ApiException<ProblemDetails> exception) when (exception.StatusCode == 400)
+        {
+            _message = "Review the paid-event policy values and try again.";
+            await Announcer.AnnounceAssertiveAsync(_message);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            return;
+        }
+        catch (Exception)
+        {
+            _message = SaveFailureMessage;
+            await Announcer.AnnounceAssertiveAsync(_message);
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+
+    private async Task ReloadAfterConflictAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            await ReloadAsync(cancellationToken);
+            _message = ConflictMessage;
+        }
+        catch (Exception) when (!cancellationToken.IsCancellationRequested)
+        {
+            _resource = null;
+            _message = "Paid-event policy changed elsewhere. Reload the section and try again.";
+        }
+
+        await Announcer.AnnounceAssertiveAsync(_message);
+    }
+
+    private async Task ReloadAsync(CancellationToken cancellationToken)
+    {
+        _resource = await PolicyService.GetInstanceAsync(cancellationToken);
+        cancellationToken.ThrowIfCancellationRequested();
+        _model = PaidEventPolicyEditModel.FromPolicy(new PaidEventPolicyDto
+        {
+            VersionNumber = _resource.VersionNumber,
+            IsActive = _resource.IsActive,
+            IsPaymentsEnabled = _resource.IsPaymentsEnabled,
+            RequiresLocalVerification = _resource.RequiresLocalVerification,
+            AllowedOrganizerKindIds = _resource.AllowedOrganizerKindIds,
+            AllowedCurrencyCodes = _resource.AllowedCurrencyCodes,
+            DefaultCurrencyCode = _resource.DefaultCurrencyCode,
+            RefundProtectionIds = _resource.RefundProtectionIds,
+            CurrencyRiskLimits = _resource.CurrencyRiskLimits?.Select(limit => new CurrencyRiskLimits2
+            {
+                CurrencyCode = limit.CurrencyCode,
+                PerEventSalesCeilingMinor = limit.PerEventSalesCeilingMinor,
+                RollingOrganizerSalesCeilingMinor = limit.RollingOrganizerSalesCeilingMinor,
+                HighValueReviewThresholdMinor = limit.HighValueReviewThresholdMinor
+            }).ToArray(),
+            RequiresFirstPaidEventReview = _resource.RequiresFirstPaidEventReview,
+            FarFutureReviewThresholdDays = _resource.FarFutureReviewThresholdDays
+        });
+    }
+
+    private string? Validate()
+    {
+        if (_model.AllowedOrganizerKindIds.Count == 0)
+        {
+            return "Select at least one eligible organizer kind.";
+        }
+        if (_model.AllowedCurrencyCodes.Count == 0)
+        {
+            return "Add at least one currency.";
+        }
+        if (string.IsNullOrWhiteSpace(_model.DefaultCurrencyCode)
+            || !_model.AllowedCurrencyCodes.Contains(_model.DefaultCurrencyCode, StringComparer.Ordinal))
+        {
+            return "Choose a default currency from the allowed currencies.";
+        }
+        if (_model.FarFutureReviewThresholdDays is <= 0)
+        {
+            return "Far-future review threshold must be greater than zero.";
+        }
+        return null;
+    }
+
+    private static string OrganizerLabel(PaidEventPolicyOrganizerKindOption option) => option.Label switch
+    {
+        "User" => "Users",
+        "Organization" => "Organizations",
+        "Group" => "Groups",
+        _ => option.Label
+    };
+
+    private void SetOrganizerKind(int id, bool selected)
+    {
+        if (!CanEdit)
+        {
+            return;
+        }
+        if (selected && !_model.AllowedOrganizerKindIds.Contains(id))
+        {
+            _model.AllowedOrganizerKindIds.Add(id);
+        }
+        else if (!selected)
+        {
+            _model.AllowedOrganizerKindIds.Remove(id);
+        }
+    }
+
+    private void AddCurrency()
+    {
+        string code = (_newCurrencyCode ?? string.Empty).Trim().ToUpperInvariant();
+        if (code.Length != 3 || !code.All(char.IsLetter) || _model.AllowedCurrencyCodes.Contains(code, StringComparer.Ordinal))
+        {
+            _saved = false;
+            _message = "Enter a new three-letter currency code.";
+            return;
+        }
+
+        _model.AllowedCurrencyCodes.Add(code);
+        _model.CurrencyRiskLimits.Add(new PaidEventPolicyCurrencyRiskLimitEditModel { CurrencyCode = code });
+        _model.DefaultCurrencyCode ??= code;
+        _newCurrencyCode = null;
+        _message = null;
+    }
+
+    private void RemoveCurrency(string code)
+    {
+        _model.AllowedCurrencyCodes.Remove(code);
+        _model.CurrencyRiskLimits.RemoveAll(limit => limit.CurrencyCode == code);
+        if (_model.DefaultCurrencyCode == code)
+        {
+            _model.DefaultCurrencyCode = _model.AllowedCurrencyCodes.FirstOrDefault();
+        }
+    }
+
+    private PaidEventPolicyCurrencyRiskLimitEditModel RiskLimit(string currencyCode)
+    {
+        PaidEventPolicyCurrencyRiskLimitEditModel? existing = _model.CurrencyRiskLimits.SingleOrDefault(limit => limit.CurrencyCode == currencyCode);
+        if (existing is not null)
+        {
+            return existing;
+        }
+
+        var created = new PaidEventPolicyCurrencyRiskLimitEditModel { CurrencyCode = currencyCode };
+        _model.CurrencyRiskLimits.Add(created);
+        return created;
+    }
+
+    public void Dispose()
+    {
+        if (_disposed)
+        {
+            return;
+        }
+        _disposed = true;
+        _lifetimeCancellation.Cancel();
+        _lifetimeCancellation.Dispose();
+    }
+}

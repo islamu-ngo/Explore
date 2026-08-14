@@ -133,19 +133,19 @@ public record AuthorizationRequest(
         string resourceKind,
         string resourceId,
         string action,
-        IReadOnlyDictionary<string, object>? resourceAttributes = null,
-        AuthorizationScope? scope = null,
-        IAuthorizationFacts? facts = null,
-        AuthorizationSubject? subject = null,
-        AuthorizationTenant? tenant = null)
+        IReadOnlyDictionary<string, object>? ResourceAttributes = null,
+        AuthorizationScope? Scope = null,
+        IAuthorizationFacts? Facts = null,
+        AuthorizationSubject? Subject = null,
+        AuthorizationTenant? Tenant = null)
         : this(
             AuthorizationCapabilityCatalog.Require(resourceKind, action),
             resourceId,
-            resourceAttributes,
-            scope,
-            facts,
-            subject,
-            tenant)
+            ResourceAttributes,
+            Scope,
+            Facts,
+            Subject,
+            Tenant)
     {
     }
 
@@ -231,12 +231,12 @@ public sealed record AuthorizationCheck : AuthorizationRequest
         string resourceKind,
         string resourceId,
         string action,
-        IReadOnlyDictionary<string, object>? resourceAttributes = null,
-        AuthorizationScope? scope = null,
-        IAuthorizationFacts? facts = null,
-        AuthorizationSubject? subject = null,
-        AuthorizationTenant? tenant = null)
-        : base(resourceKind, resourceId, action, resourceAttributes, scope, facts, subject, tenant)
+        IReadOnlyDictionary<string, object>? ResourceAttributes = null,
+        AuthorizationScope? Scope = null,
+        IAuthorizationFacts? Facts = null,
+        AuthorizationSubject? Subject = null,
+        AuthorizationTenant? Tenant = null)
+        : base(resourceKind, resourceId, action, ResourceAttributes, Scope, Facts, Subject, Tenant)
     {
     }
 }

@@ -9,8 +9,11 @@ using Explore.API.Filters;
 using Explore.API.Hateoas;
 using Explore.API.Hateoas.Assemblers;
 using Explore.Application.DTOs.EventTicketing;
+using Explore.Application.DTOs.OrganizerPaymentConnections;
 using Explore.Application.Features.EventTicketing.Requests.Commands;
 using Explore.Application.Features.EventTicketing.Requests.Queries;
+using Explore.Application.Features.OrganizerPaymentConnections;
+using Explore.Application.Features.OrganizerPaymentConnections.Commands;
 using Explore.Application.Hateoas;
 using Explore.Application.Responses;
 using MediatR;
@@ -27,7 +30,9 @@ namespace Explore.API.Controllers;
 [EndpointClassification(EndpointClass.Authenticated)]
 public sealed class EventTicketingController(
     IMediator mediator,
-    IResourceAssembler<EventTicketCatalogManagementDto, EventTicketCatalogManagementDto> assembler) : ControllerBase
+    IResourceAssembler<EventTicketCatalogManagementDto, EventTicketCatalogManagementDto> assembler,
+    IResourceAssembler<PaidEventPublicationPreflightDto, PaidEventPublicationPreflightDto> preflightAssembler,
+    IResourceAssembler<EventOrganizerPaymentConnectionManagementDto, EventOrganizerPaymentConnectionManagementDto> paymentConnectionAssembler) : ControllerBase
 {
     private static readonly ApiValidationProblemDescriptor TicketingValidationProblem = new(
         "eventTicketing",
@@ -138,6 +143,100 @@ public sealed class EventTicketingController(
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public Task<ActionResult<BaseCommandResponse<Guid>>> DeletePool(Guid eventId, Guid capacityPoolId, CancellationToken ct) => SendOk(new DeleteEventCapacityPoolCommand { EventId = eventId, CapacityPoolId = capacityPoolId }, ct);
 
+    [HttpGet("publication-preflight", Name = RouteNames.GetPaidEventPublicationPreflight)]
+    [PrivateNoStore]
+    [ProducesResponseType(typeof(HalResource<PaidEventPublicationPreflightDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<HalResource<PaidEventPublicationPreflightDto>>> Preflight(Guid eventId, CancellationToken ct)
+    {
+        PaidEventPublicationPreflightDto dto = await mediator.Send(new GetPaidEventPublicationPreflightQuery(eventId), ct);
+        var result = new ObjectResult(await preflightAssembler.ToResource(dto, HttpContext)) { StatusCode = StatusCodes.Status200OK };
+        result.ContentTypes.Add(HateoasConstants.HalJsonMediaType);
+        return result;
+    }
+
+    [HttpPut("commercial-disclosures", Name = RouteNames.UpdateEventTicketCatalogCommercialDisclosures)]
+    [EnableRateLimiting(RateLimitingExtensions.WritePolicy)]
+    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public Task<ActionResult<BaseCommandResponse<Guid>>> UpdateCommercialDisclosures(Guid eventId, [FromBody] UpdateEventTicketCatalogCommercialDisclosuresCommand command, CancellationToken ct) => SendOk(new UpdateEventTicketCatalogCommercialDisclosuresCommand
+    {
+        EventId = eventId,
+        MerchantDisclosureText = command.MerchantDisclosureText,
+        RefundPolicyDisclosureText = command.RefundPolicyDisclosureText,
+        SupportContactDisclosureText = command.SupportContactDisclosureText
+    }, ct);
+
+    [HttpGet("payment-connection", Name = RouteNames.GetEventOrganizerPaymentConnection)]
+    [PrivateNoStore]
+    [ProducesResponseType(typeof(HalResource<EventOrganizerPaymentConnectionManagementDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<HalResource<EventOrganizerPaymentConnectionManagementDto>>> GetPaymentConnection(Guid eventId, CancellationToken ct)
+    {
+        EventOrganizerPaymentConnectionManagementDto? dto = await mediator.Send(new GetEventOrganizerPaymentConnectionQuery(eventId), ct);
+        if (dto is null)
+        {
+            return this.ToNotFoundProblem(NotFoundProblem);
+        }
+
+        var result = new ObjectResult(await paymentConnectionAssembler.ToResource(dto, HttpContext)) { StatusCode = StatusCodes.Status200OK };
+        result.ContentTypes.Add(HateoasConstants.HalJsonMediaType);
+        return result;
+    }
+
+    [HttpPost("payment-connection/onboarding", Name = RouteNames.StartEventOrganizerPaymentOnboarding)]
+    [PrivateNoStore]
+    [EnableRateLimiting(RateLimitingExtensions.WritePolicy)]
+    [ProducesResponseType(typeof(BaseCommandResponse<OrganizerPaymentOnboardingLinkResult>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<BaseCommandResponse<OrganizerPaymentOnboardingLinkResult>>> StartPaymentOnboarding(Guid eventId, CancellationToken ct)
+    {
+        if (!TryGenerateAbsoluteRouteUrl(RouteNames.ReturnEventOrganizerPaymentOnboarding, eventId, out Uri? returnUrl)
+            || !TryGenerateAbsoluteRouteUrl(RouteNames.RefreshEventOrganizerPaymentOnboarding, eventId, out Uri? refreshUrl))
+        {
+            return this.ToCommandValidationProblem(new BaseCommandResponse<OrganizerPaymentOnboardingLinkResult>
+            {
+                Success = false,
+                FailureCode = "organizer_payment_onboarding_navigation_invalid",
+                Message = "Payment onboarding navigation URLs could not be generated.",
+                Errors = ["Payment onboarding navigation URLs could not be generated."]
+            }, TicketingValidationProblem);
+        }
+
+        BaseCommandResponse<OrganizerPaymentOnboardingLinkResult> response = await mediator.Send(new CreateOrganizerPaymentOnboardingLinkCommand(eventId, returnUrl, refreshUrl), ct);
+        return response.Success ? Ok(response) : MapPaymentFailure(response);
+    }
+
+    [HttpGet("payment-connection/onboarding/return", Name = RouteNames.ReturnEventOrganizerPaymentOnboarding)]
+    [PrivateNoStore]
+    [ProducesResponseType(StatusCodes.Status302Found)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public IActionResult ReturnPaymentOnboarding(Guid eventId) => RedirectToStudioTicketing(eventId);
+
+    [HttpGet("payment-connection/onboarding/refresh", Name = RouteNames.RefreshEventOrganizerPaymentOnboarding)]
+    [PrivateNoStore]
+    [ProducesResponseType(StatusCodes.Status302Found)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public IActionResult RefreshPaymentOnboarding(Guid eventId) => RedirectToStudioTicketing(eventId);
+
     [HttpPost("publish", Name = RouteNames.PublishEventTicketCatalog)]
     [EnableRateLimiting(RateLimitingExtensions.WritePolicy)]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
@@ -175,4 +274,20 @@ public sealed class EventTicketingController(
             "Event ticketing configuration was updated by another request."),
         _ => this.ToCommandValidationProblem(response, TicketingValidationProblem)
     };
+
+    private ActionResult MapPaymentFailure(BaseCommandResponse<OrganizerPaymentOnboardingLinkResult> response) => response.FailureCode switch
+    {
+        "organizer_payment_event_not_found" => this.ToNotFoundProblem(NotFoundProblem),
+        _ => this.ToCommandValidationProblem(response, TicketingValidationProblem)
+    };
+
+    private bool TryGenerateAbsoluteRouteUrl(string routeName, Guid eventId, out Uri? uri)
+    {
+        uri = null;
+        string? value = Url.RouteUrl(routeName, new { eventId }, Request.Scheme);
+        return Uri.TryCreate(value, UriKind.Absolute, out uri)
+            && (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps);
+    }
+
+    private static RedirectResult RedirectToStudioTicketing(Guid eventId) => new($"/studio/events/{eventId:D}/tickets");
 }

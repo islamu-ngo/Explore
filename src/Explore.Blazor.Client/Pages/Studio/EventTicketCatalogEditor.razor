@@ -10,6 +10,7 @@
 @inject IDialogService DialogService
 @inject IAccessibilityAnnouncerService Announcer
 @inject IAccessibilityFocusService FocusService
+@inject NavigationManager Navigation
 
 <div class="event-ticket-catalog" data-testid="event-ticket-catalog-editor">
     @if (_isLoading)
@@ -58,6 +59,86 @@
         else if (!string.IsNullOrWhiteSpace(_statusMessage))
         {
             <div class="event-ticket-catalog__message" role="status" data-testid="ticket-catalog-status">@_statusMessage</div>
+        }
+
+        @if (_catalog.PublicationPreflight?.IsPaidCatalog == true)
+        {
+            <section class="event-ticket-catalog__section event-ticket-catalog__commerce" aria-labelledby="paid-publication-title" data-testid="paid-publication-readiness">
+                <div class="event-ticket-catalog__section-header">
+                    <div>
+                        <h3 id="paid-publication-title" class="mud-typography mud-typography-h6">Paid publication readiness</h3>
+                        <MudText Typo="Typo.body2" Color="Color.Secondary">Catalog currency checked by the server: @_catalog.CurrencyCode</MudText>
+                    </div>
+                    @if (_catalog.HasLink("preflight"))
+                    {
+                        <AppButton OnClick="RefreshReadinessAsync" Disabled="_isMutating" Variant="Variant.Outlined" data-testid="refresh-paid-publication-readiness">Refresh readiness</AppButton>
+                    }
+                </div>
+
+                @if (_catalog.PublicationPreflight.IsReady)
+                {
+                    <div class="event-ticket-catalog__readiness event-ticket-catalog__readiness--ready" role="status" data-testid="paid-publication-ready">
+                        All server publication checks passed.
+                    </div>
+                }
+                else
+                {
+                    <div class="event-ticket-catalog__readiness" role="alert" data-testid="paid-publication-blockers">
+                        <MudText Typo="Typo.subtitle2">Resolve these blockers before publishing:</MudText>
+                        <ul>
+                            @foreach (var blocker in _catalog.PublicationPreflight.Blockers)
+                            {
+                                <li>@blocker.Explanation</li>
+                            }
+                        </ul>
+                    </div>
+                }
+
+                <div class="event-ticket-catalog__commerce-grid">
+                    <div class="event-ticket-catalog__commerce-panel">
+                        <MudText Typo="Typo.subtitle1">Commercial disclosures</MudText>
+                        @if (_catalog.HasLink("commercial-disclosures"))
+                        {
+                            <MudTextField T="string" Label="Merchant disclosure" @bind-Value="_merchantDisclosureText" Lines="3" Variant="Variant.Outlined" Required="true" Disabled="_isMutating" data-testid="merchant-disclosure" />
+                            <MudTextField T="string" Label="Refund policy disclosure" @bind-Value="_refundPolicyDisclosureText" Lines="3" Variant="Variant.Outlined" Required="true" Disabled="_isMutating" data-testid="refund-policy-disclosure" />
+                            <MudTextField T="string" Label="Support contact disclosure" @bind-Value="_supportContactDisclosureText" Lines="3" Variant="Variant.Outlined" Required="true" Disabled="_isMutating" data-testid="support-contact-disclosure" />
+                            <AppButton OnClick="SaveDisclosuresAsync" Disabled="@(_isMutating || !DisclosuresAreComplete)" data-testid="save-commercial-disclosures">Save disclosures</AppButton>
+                        }
+                        else
+                        {
+                            <MudText Typo="Typo.body2">@DisclosureSummary</MudText>
+                        }
+                    </div>
+
+                    <div class="event-ticket-catalog__commerce-panel">
+                        <MudText Typo="Typo.subtitle1">Payment connection</MudText>
+                        @if (!_catalog.HasLink("payment-connection"))
+                        {
+                            <MudText Typo="Typo.body2" data-testid="payment-connection-not-advertised">Payment connection details are unavailable with the current affordances.</MudText>
+                        }
+                        else if (_isLoadingPaymentConnection)
+                        {
+                            <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+                        }
+                        else if (_paymentConnectionUnavailable)
+                        {
+                            <MudText Typo="Typo.body2" role="alert" data-testid="payment-connection-unavailable">Payment connection status could not be loaded.</MudText>
+                        }
+                        else if (_paymentConnection?.Connection is null)
+                        {
+                            <MudText Typo="Typo.body2" data-testid="payment-connection-missing">No payment connection is currently available.</MudText>
+                        }
+                        else
+                        {
+                            <MudText Typo="Typo.body2" data-testid="payment-connection-present">A payment connection is available. The server readiness checks above determine whether it can be used.</MudText>
+                        }
+                        @if (_catalog.HasLink("start-onboarding"))
+                        {
+                            <AppButton OnClick="StartPaymentOnboardingAsync" Disabled="_isMutating" Variant="Variant.Outlined" data-testid="start-payment-onboarding">Open payment onboarding</AppButton>
+                        }
+                    </div>
+                </div>
+            </section>
         }
 
         <section class="event-ticket-catalog__section" aria-labelledby="ticket-types-title">
@@ -170,6 +251,12 @@
     private string? _errorMessage;
     private string? _statusMessage;
     private string _currencyCode = "USD";
+    private string _merchantDisclosureText = string.Empty;
+    private string _refundPolicyDisclosureText = string.Empty;
+    private string _supportContactDisclosureText = string.Empty;
+    private HalResourceOfEventOrganizerPaymentConnectionManagementDto? _paymentConnection;
+    private bool _isLoadingPaymentConnection;
+    private bool _paymentConnectionUnavailable;
     private TicketTypeEditModel? _editingTicketType;
     private CapacityPoolEditModel? _editingCapacityPool;
     private IReadOnlyList<EventDayListDto> _eventDays = [];
@@ -225,7 +312,8 @@
             _catalog = catalog;
             if (catalog is not null)
             {
-                _currencyCode = catalog.CurrencyCode;
+                ApplyCatalog(catalog);
+                await LoadPaymentConnectionAsync(eventId, cancellationToken);
                 await Announcer.AnnouncePoliteAsync($"Ticket catalog loaded: {catalog.TicketTypes.Count} ticket types and {catalog.CapacityPools.Count} capacity pools.");
             }
             else
@@ -295,6 +383,13 @@
 
     private string? PoolName(Guid poolId) => _catalog?.CapacityPools.FirstOrDefault(pool => pool.Id == poolId)?.Name;
     private int TicketTypeCount(Guid poolId) => _catalog?.TicketTypes.Count(ticket => ticket.CapacityPoolId == poolId) ?? 0;
+    private bool DisclosuresAreComplete =>
+        !string.IsNullOrWhiteSpace(_merchantDisclosureText)
+        && !string.IsNullOrWhiteSpace(_refundPolicyDisclosureText)
+        && !string.IsNullOrWhiteSpace(_supportContactDisclosureText);
+    private string DisclosureSummary => DisclosuresAreComplete
+        ? "Commercial disclosures are configured."
+        : "Commercial disclosures are incomplete and cannot be edited with the current affordances.";
 
     private void ShowNewTicketType() => _editingTicketType = TicketTypeEditModel.Create();
     private void EditTicketType(EventTicketTypeState ticketType) => _editingTicketType = TicketTypeEditModel.From(ticketType);
@@ -319,6 +414,118 @@
         if (await ConfirmAsync("Publish ticket catalog", "Publish this catalog for attendee use?", "Publish"))
         {
             await MutateAsync((eventId, cancellationToken) => TicketingService.PublishAsync(eventId, cancellationToken), "Ticket catalog published.");
+        }
+    }
+
+    private Task SaveDisclosuresAsync() => MutateAsync(
+        (eventId, cancellationToken) => TicketingService.UpdateCommercialDisclosuresAsync(
+            eventId,
+            new UpdateEventTicketCatalogCommercialDisclosuresCommand
+            {
+                EventId = eventId,
+                MerchantDisclosureText = _merchantDisclosureText.Trim(),
+                RefundPolicyDisclosureText = _refundPolicyDisclosureText.Trim(),
+                SupportContactDisclosureText = _supportContactDisclosureText.Trim()
+            },
+            cancellationToken),
+        "Commercial disclosures saved.");
+
+    private async Task RefreshReadinessAsync()
+    {
+        CancellationToken cancellationToken = _requestCancellation?.Token ?? default;
+        var eventId = EventId;
+        if (!IsCurrentRequest(eventId, cancellationToken) || _catalog?.HasLink("preflight") != true)
+        {
+            return;
+        }
+
+        _isMutating = true;
+        _errorMessage = null;
+        _statusMessage = null;
+        try
+        {
+            HalResourceOfPaidEventPublicationPreflightDto resource = await TicketingService.GetPaidPublicationPreflightAsync(eventId, cancellationToken);
+            cancellationToken.ThrowIfCancellationRequested();
+            if (resource.EventId != eventId || !IsCurrentRequest(eventId, cancellationToken))
+            {
+                _errorMessage = "Paid publication readiness could not be refreshed.";
+                await Announcer.AnnounceAssertiveAsync(_errorMessage);
+                return;
+            }
+
+            ApplyPreflight(resource);
+            _statusMessage = "Paid publication readiness refreshed.";
+            await Announcer.AnnouncePoliteAsync(_statusMessage);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            return;
+        }
+        catch (Exception)
+        {
+            if (IsCurrentRequest(eventId, cancellationToken))
+            {
+                _errorMessage = "Paid publication readiness could not be refreshed.";
+                await Announcer.AnnounceAssertiveAsync(_errorMessage);
+            }
+        }
+        finally
+        {
+            if (IsCurrentRequest(eventId, cancellationToken))
+            {
+                _isMutating = false;
+            }
+        }
+    }
+
+    private async Task StartPaymentOnboardingAsync()
+    {
+        CancellationToken cancellationToken = _requestCancellation?.Token ?? default;
+        var eventId = EventId;
+        if (!IsCurrentRequest(eventId, cancellationToken) || _catalog?.HasLink("start-onboarding") != true)
+        {
+            return;
+        }
+
+        _isMutating = true;
+        _errorMessage = null;
+        _statusMessage = null;
+        try
+        {
+            BaseCommandResponseOfOrganizerPaymentOnboardingLinkResult response = await TicketingService.StartPaymentOnboardingAsync(eventId, cancellationToken);
+            cancellationToken.ThrowIfCancellationRequested();
+            if (!IsCurrentRequest(eventId, cancellationToken))
+            {
+                return;
+            }
+
+            if (response.Success != true || response.Id?.OnboardingUrl is null)
+            {
+                _errorMessage = "Payment onboarding could not be started.";
+                await Announcer.AnnounceAssertiveAsync(_errorMessage);
+                return;
+            }
+
+            Navigation.NavigateTo(response.Id.OnboardingUrl.ToString(), forceLoad: true);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            return;
+        }
+        catch (Exception)
+        {
+            if (IsCurrentRequest(eventId, cancellationToken))
+            {
+                _errorMessage = "Payment onboarding could not be started.";
+                await Announcer.AnnounceAssertiveAsync(_errorMessage);
+            }
+        }
+        finally
+        {
+            if (IsCurrentRequest(eventId, cancellationToken))
+            {
+                _isMutating = false;
+            }
         }
     }
 
@@ -398,7 +605,10 @@
             cancellationToken.ThrowIfCancellationRequested();
             if (IsCurrentRequest(eventId, cancellationToken))
             {
-                _catalog = catalog;
+                if (catalog is not null)
+                {
+                    ApplyCatalog(catalog);
+                }
             }
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
@@ -420,6 +630,86 @@
             if (IsCurrentRequest(eventId, cancellationToken))
             {
                 _isMutating = false;
+            }
+        }
+    }
+
+    private void ApplyCatalog(EventTicketCatalogState catalog)
+    {
+        _catalog = catalog;
+        _currencyCode = catalog.CurrencyCode;
+        _merchantDisclosureText = catalog.MerchantDisclosureText ?? string.Empty;
+        _refundPolicyDisclosureText = catalog.RefundPolicyDisclosureText ?? string.Empty;
+        _supportContactDisclosureText = catalog.SupportContactDisclosureText ?? string.Empty;
+    }
+
+    private void ApplyPreflight(HalResourceOfPaidEventPublicationPreflightDto resource)
+    {
+        if (_catalog is null)
+        {
+            return;
+        }
+
+        var links = new Dictionary<string, HalLink>(_catalog.Links, StringComparer.Ordinal);
+        links.Remove("publish");
+        if (resource._links?.TryGetValue("publish", out HalLink? publish) == true
+            && !string.IsNullOrWhiteSpace(publish.Href))
+        {
+            links["publish"] = publish;
+        }
+
+        _catalog = _catalog with
+        {
+            PublicationPreflight = new EventTicketCatalogPaidPreflightState(
+                resource.IsPaidCatalog == true,
+                resource.IsReady == true,
+                resource.Blockers?
+                    .Where(blocker => !string.IsNullOrWhiteSpace(blocker.Code) && !string.IsNullOrWhiteSpace(blocker.Explanation))
+                    .Select(blocker => new EventTicketCatalogPaidPreflightBlockerState(blocker.Code!, blocker.Explanation!))
+                    .ToArray() ?? []),
+            Links = links
+        };
+    }
+
+    private async Task LoadPaymentConnectionAsync(Guid eventId, CancellationToken cancellationToken)
+    {
+        _paymentConnection = null;
+        _paymentConnectionUnavailable = false;
+        if (_catalog?.PublicationPreflight?.IsPaidCatalog != true || !_catalog.HasLink("payment-connection"))
+        {
+            return;
+        }
+
+        _isLoadingPaymentConnection = true;
+        try
+        {
+            HalResourceOfEventOrganizerPaymentConnectionManagementDto resource = await TicketingService.GetPaymentConnectionAsync(eventId, cancellationToken);
+            cancellationToken.ThrowIfCancellationRequested();
+            if (IsCurrentRequest(eventId, cancellationToken) && resource.EventId == eventId)
+            {
+                _paymentConnection = resource;
+            }
+            else if (IsCurrentRequest(eventId, cancellationToken))
+            {
+                _paymentConnectionUnavailable = true;
+            }
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            return;
+        }
+        catch (Exception)
+        {
+            if (IsCurrentRequest(eventId, cancellationToken))
+            {
+                _paymentConnectionUnavailable = true;
+            }
+        }
+        finally
+        {
+            if (IsCurrentRequest(eventId, cancellationToken))
+            {
+                _isLoadingPaymentConnection = false;
             }
         }
     }

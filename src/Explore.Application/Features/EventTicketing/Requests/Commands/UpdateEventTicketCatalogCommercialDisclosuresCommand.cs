@@ -1,5 +1,5 @@
 // ABOUTME: Updates organizer-authored commercial disclosures on the current ticket catalog draft.
-// ABOUTME: Uses existing ticket management authorization and domain disclosure normalization.
+// ABOUTME: Uses paid-commerce authorization and domain disclosure normalization.
 
 using Explore.Application.Authorization;
 using Explore.Application.Responses;
@@ -7,7 +7,7 @@ using MediatR;
 
 namespace Explore.Application.Features.EventTicketing.Requests.Commands;
 
-[AuthorizeResource(ResourceKinds.Event, AuthorizationActions.Events.ManageTickets)]
+[AuthorizeResource(ResourceKinds.Event, AuthorizationActions.Events.ManagePaidEventCommerce)]
 public sealed class UpdateEventTicketCatalogCommercialDisclosuresCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
 {
     public Guid EventId { get; init; }

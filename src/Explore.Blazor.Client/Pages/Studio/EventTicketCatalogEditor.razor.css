@@ -25,6 +25,33 @@
     gap: var(--isl-space-1);
 }
 
+.event-ticket-catalog__commerce,
+.event-ticket-catalog__commerce-panel {
+    display: grid;
+    gap: var(--isl-space-3);
+}
+
+.event-ticket-catalog__commerce-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 20rem), 1fr));
+    gap: var(--isl-space-4);
+}
+
+.event-ticket-catalog__commerce-panel,
+.event-ticket-catalog__readiness {
+    padding: var(--isl-space-4);
+    border: var(--isl-card-border);
+    border-radius: var(--isl-radius-card);
+}
+
+.event-ticket-catalog__readiness--ready {
+    border-color: var(--mud-palette-success);
+}
+
+.event-ticket-catalog__readiness ul {
+    margin-block-end: 0;
+}
+
 .event-ticket-catalog__actions {
     justify-content: flex-end;
 }

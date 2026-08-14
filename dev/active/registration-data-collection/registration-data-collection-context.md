@@ -3,7 +3,17 @@
 
 # Registration Data Collection & Participation Platform — Context
 
-Last Updated: 2026-08-14 Europe/Brussels
+Last Updated: 2026-08-15 Europe/Brussels
+
+## PHASE 16 COMPLETE (2026-08-15 Europe/Brussels)
+
+Task 16.5 and Phase 16 are complete. Instance administrators edit the versioned paid-event ceiling; tenant administrators receive the authoritative tenant ID from onboarding status and can only narrow that ceiling. The API reloads persisted event/organizer facts, the paid publication preflight evaluates current policy, organizer verification, exact commerce authority, catalog currency, commercial disclosures, and bounded payment-connection readiness, and HAL advertises paid publication only when that result is ready. Admin and Studio clients use generated contracts and exact relations; they never inspect local claims or receive provider/platform/account/policy/tenant/actor/connection/lineage/evidence identifiers in paid-event browser DTOs. Those values remain server-only metadata where HAL authorization needs them. External onboarding destinations are revalidated as absolute HTTP(S) URLs in Application before the Blazor client navigates.
+
+Final evidence is green: focused Application 76/76, API/HAL/controller/runtime 29/29, independent QA 212/212, full Blazor Client 2,373 with one governed skip, full Infrastructure 1,334/1,334, and the shared Release build with zero errors and 10 existing `SSH.NET` advisory warnings. Full Application is 3,686 passed with only the unchanged FormSchema golden-hash failure; full Architecture is 373 passed with one governed skip and the same four unrelated failures. `git diff --check` is clean. Goal, QA, security, and repository-context reviews pass. Quality initially rejected browser-visible paid-policy IDs; the final repair made `Id`/`TenantId` server-only `[JsonIgnore]` metadata, regenerated OpenAPI/NSwag/inventory, removed client dependencies, added a generated-contract regression, and passed quality re-review. The workstream forbids Aspire/browser/live-service verification, so no screenshot or live-provider claim is made. The incomplete host workload manifests remain untouched; verification uses `MSBuildEnableWorkloadResolver=false`.
+
+### NEXT
+
+No Phase 16 work remains. Phase 17 promotion-code work is the next planned slice, but do not start it or later Checkout/payment, refund/dispute, admission, QR/check-in, transfer, or payout runtime work without an explicit implementation request.
 
 ## PHASE 16.4 COMPLETE (2026-08-14 Europe/Brussels)
 

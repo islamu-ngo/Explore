@@ -72,7 +72,7 @@ public sealed class EventTicketingHalRuntimeTests
         await Assert.That(embedded.GetProperty("ticket-types")[0].GetProperty("_links").TryGetProperty("delete", out _)).IsTrue();
         await Assert.That(embedded.GetProperty("capacity-pools")[0].GetProperty("_links").TryGetProperty("edit", out _)).IsTrue();
         await Assert.That(provider.BatchCalls).IsEqualTo(1);
-        await Assert.That(provider.LastBatchSize).IsEqualTo(1);
+        await Assert.That(provider.LastBatchSize).IsEqualTo(2);
     }
 
     [Test]
@@ -282,7 +282,7 @@ public sealed class EventTicketingHalRuntimeTests
             CancellationToken cancellationToken = default) => Task.FromResult(AllowRequest);
 
         public Task<IReadOnlyList<bool>> IsAllowedBatchAsync(
-            IReadOnlyList<AuthorizationCheck> checks,
+            IReadOnlyList<AuthorizationRequest> checks,
             CancellationToken cancellationToken = default)
         {
             BatchCalls++;

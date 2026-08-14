@@ -16,6 +16,7 @@ public sealed class EventTicketCatalogManagementDto
     public string? MerchantDisclosureText { get; init; }
     public string? RefundPolicyDisclosureText { get; init; }
     public string? SupportContactDisclosureText { get; init; }
+    public PaidEventPublicationPreflightDto? PublicationPreflight { get; init; }
     [JsonIgnore]
     public IReadOnlyList<EventTicketTypeDto> TicketTypes { get; init; } = [];
     [JsonIgnore]

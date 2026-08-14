@@ -1,0 +1,45 @@
+/* ABOUTME: Isolated responsive layout for the instance paid-event policy ceiling. */
+/* ABOUTME: Uses shared tokens and logical properties for accessible policy groups and currency rows. */
+
+.instance-paid-policy,
+.instance-paid-policy__group {
+    display: grid;
+    gap: var(--isl-space-4);
+}
+
+.instance-paid-policy {
+    padding-block-start: var(--isl-space-6);
+    border-block-start: var(--isl-card-border);
+}
+
+.instance-paid-policy__currency {
+    display: grid;
+    grid-template-columns: minmax(5rem, 0.4fr) repeat(3, minmax(0, 1fr)) auto;
+    gap: var(--isl-space-3);
+    align-items: center;
+    padding: var(--isl-space-4);
+    border: var(--isl-card-border);
+    border-radius: var(--isl-radius-card);
+}
+
+.instance-paid-policy__add-currency {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: var(--isl-space-3);
+    align-items: center;
+}
+
+.instance-paid-policy__protections {
+    display: grid;
+    gap: var(--isl-space-2);
+    margin: 0;
+    padding-inline-start: var(--isl-space-6);
+}
+
+@media (max-width: 59.997em) {
+    .instance-paid-policy__currency,
+    .instance-paid-policy__add-currency {
+        grid-template-columns: 1fr;
+        align-items: stretch;
+    }
+}

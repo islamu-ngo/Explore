@@ -1,0 +1,408 @@
+@* ABOUTME: Tenant paid-event policy editor constrained by the active instance ceiling and HAL edit relation. *@
+@* ABOUTME: Hides unsupported choices and validates every narrowing before dispatching generated commands. *@
+
+@using Explore.Blazor.Client.Clients
+@using Explore.Blazor.Client.Contracts.Services.Accessibility
+@using Explore.Blazor.Client.Contracts.Services.PaidEventPolicies
+@using Explore.Blazor.Client.Pages.Admin.Components
+@implements IDisposable
+@inject IPaidEventPolicyService PolicyService
+@inject IAccessibilityAnnouncerService Announcer
+
+<section class="tenant-paid-policy" aria-labelledby="tenant-paid-policy-title" data-testid="tenant-paid-policy-section">
+    <div>
+        <h2 id="tenant-paid-policy-title" class="mud-typography mud-typography-h5">Paid events</h2>
+        <MudText Typo="Typo.body2" Color="Color.Secondary">
+            Narrow the platform ceiling for this tenant. Options unavailable at instance level are not shown.
+        </MudText>
+    </div>
+
+    @if (_loading)
+    {
+        <MudProgressLinear Indeterminate="true" Color="Color.Primary" aria-label="Loading tenant paid-event policy" />
+    }
+    else if (_configuration is null || _ceiling is null)
+    {
+        <MudAlert Severity="Severity.Error" role="alert" data-testid="tenant-paid-policy-load-error">@(_message ?? LoadFailureMessage)</MudAlert>
+    }
+    else
+    {
+        @if (!CanEdit)
+        {
+            <MudAlert Severity="Severity.Info" data-testid="tenant-paid-policy-read-only">The tenant paid-event policy is read-only.</MudAlert>
+        }
+        @if (!string.IsNullOrWhiteSpace(_message))
+        {
+            <MudAlert Severity="@(_saved ? Severity.Success : Severity.Error)"
+                      role="@(_saved ? "status" : "alert")"
+                      data-testid="tenant-paid-policy-message">@_message</MudAlert>
+        }
+
+        <div class="tenant-paid-policy__summary" data-testid="tenant-paid-policy-ceiling-summary">
+            <MudText Typo="Typo.subtitle2" HtmlTag="h3">Instance ceiling</MudText>
+            <MudText Typo="Typo.body2">Paid events: @YesNo(_ceiling.IsPaymentsEnabled)</MudText>
+            <MudText Typo="Typo.body2">Available currencies: @string.Join(", ", _ceiling.AllowedCurrencyCodes ?? [])</MudText>
+        </div>
+
+        <MudSwitch T="bool"
+                   Value="_model.IsPaymentsEnabled"
+                   ValueChanged="@(value => _model.IsPaymentsEnabled = value)"
+                   Disabled="@(!CanEdit || _ceiling.IsPaymentsEnabled != true)">
+            Enable paid events for this tenant
+        </MudSwitch>
+        @if (_ceiling.IsPaymentsEnabled != true)
+        {
+            <MudText Typo="Typo.caption" Color="Color.Warning" role="status">Paid events are disabled by the instance ceiling.</MudText>
+        }
+
+        <MudSwitch T="bool"
+                   Value="_model.RequiresLocalVerification"
+                   ValueChanged="@(value => _model.RequiresLocalVerification = value)"
+                   Disabled="@(!CanEdit || _ceiling.RequiresLocalVerification == true)">
+            Require local organizer verification
+        </MudSwitch>
+
+        <div class="tenant-paid-policy__group" aria-labelledby="tenant-paid-policy-organizers">
+            <h3 id="tenant-paid-policy-organizers" class="mud-typography mud-typography-subtitle2">Eligible organizer kinds</h3>
+            @foreach (PaidEventPolicyOrganizerKindOption option in _model.OrganizerKindOptions)
+            {
+                <MudCheckBox T="bool"
+                             Value="@_model.AllowedOrganizerKindIds.Contains(option.Id)"
+                             ValueChanged="@(value => SetOrganizerKind(option.Id, value))"
+                             Disabled="@(!CanEdit)">@OrganizerLabel(option)</MudCheckBox>
+            }
+            <MudText Typo="Typo.caption" Color="Color.Secondary">Organizer kinds outside the instance ceiling are unavailable.</MudText>
+        </div>
+
+        <div class="tenant-paid-policy__group" aria-labelledby="tenant-paid-policy-currencies">
+            <h3 id="tenant-paid-policy-currencies" class="mud-typography mud-typography-subtitle2">Currencies and risk ceilings</h3>
+            @foreach (string currencyCode in _model.CurrencyChoices)
+            {
+                <MudCheckBox T="bool"
+                             Value="@_model.AllowedCurrencyCodes.Contains(currencyCode, StringComparer.Ordinal)"
+                             ValueChanged="@(value => SetCurrency(currencyCode, value))"
+                             Disabled="@(!CanEdit)">@currencyCode</MudCheckBox>
+            }
+            <MudText Typo="Typo.caption" Color="Color.Secondary">Currencies outside the instance ceiling are unavailable.</MudText>
+            @foreach (string currencyCode in _model.AllowedCurrencyCodes)
+            {
+                PaidEventPolicyCurrencyRiskLimitEditModel limit = RiskLimit(currencyCode);
+                CurrencyRiskLimits2? ceilingLimit = CeilingRiskLimit(currencyCode);
+                <div class="tenant-paid-policy__currency" data-testid="tenant-paid-policy-currency-row">
+                    <MudText Typo="Typo.subtitle2">@currencyCode</MudText>
+                    <MudNumericField T="long?" @bind-Value="limit.PerEventSalesCeilingMinor" Label="Per-event ceiling (minor units)" Min="0" Max="ceilingLimit?.PerEventSalesCeilingMinor" Disabled="@(!CanEdit)" Variant="Variant.Outlined" />
+                    <MudNumericField T="long?" @bind-Value="limit.RollingOrganizerSalesCeilingMinor" Label="Rolling organizer ceiling (minor units)" Min="0" Max="ceilingLimit?.RollingOrganizerSalesCeilingMinor" Disabled="@(!CanEdit)" Variant="Variant.Outlined" />
+                    <MudNumericField T="long?" @bind-Value="limit.HighValueReviewThresholdMinor" Label="High-value review threshold (minor units)" Min="0" Max="ceilingLimit?.HighValueReviewThresholdMinor" Disabled="@(!CanEdit)" Variant="Variant.Outlined" />
+                </div>
+            }
+            <MudSelect T="string" Label="Default currency" @bind-Value="_model.DefaultCurrencyCode" Disabled="@(!CanEdit)" Variant="Variant.Outlined">
+                @foreach (string currencyCode in _model.AllowedCurrencyCodes)
+                {
+                    <MudSelectItem T="string" Value="@currencyCode">@currencyCode</MudSelectItem>
+                }
+            </MudSelect>
+        </div>
+
+        <div class="tenant-paid-policy__group" aria-labelledby="tenant-paid-policy-review">
+            <h3 id="tenant-paid-policy-review" class="mud-typography mud-typography-subtitle2">Publication review</h3>
+            <MudSwitch T="bool"
+                       Value="_model.RequiresFirstPaidEventReview"
+                       ValueChanged="@(value => _model.RequiresFirstPaidEventReview = value)"
+                       Disabled="@(!CanEdit || _ceiling.RequiresFirstPaidEventReview == true)">
+                Review an organizer's first paid event
+            </MudSwitch>
+            <MudNumericField T="int?"
+                             @bind-Value="_model.FarFutureReviewThresholdDays"
+                             Label="Far-future review threshold (days)"
+                             Min="1"
+                             Max="_ceiling.FarFutureReviewThresholdDays"
+                             Disabled="@(!CanEdit)"
+                             Variant="Variant.Outlined" />
+        </div>
+
+        <div class="tenant-paid-policy__group" aria-labelledby="tenant-paid-policy-refunds">
+            <h3 id="tenant-paid-policy-refunds" class="mud-typography mud-typography-subtitle2">Mandatory refund protections</h3>
+            <MudText Typo="Typo.body2" Color="Color.Secondary">Tenant policy cannot weaken these protections.</MudText>
+            <ul class="tenant-paid-policy__protections" data-testid="tenant-paid-policy-refund-protections">
+                @foreach (string protection in RefundProtectionLabels)
+                {
+                    <li>@protection</li>
+                }
+            </ul>
+        </div>
+
+        @if (CanEdit)
+        {
+            <AppButton OnClick="SaveAsync" Disabled="_saving" data-testid="save-tenant-paid-policy">Save tenant paid-event policy</AppButton>
+        }
+    }
+</section>
+
+@code {
+    [Parameter] public Guid TenantId { get; set; }
+
+    private const string LoadFailureMessage = "Tenant paid-event policy could not be loaded.";
+    private const string SaveFailureMessage = "Tenant paid-event policy could not be saved.";
+    private const string ConflictMessage = "Tenant paid-event policy changed elsewhere. The latest values were reloaded.";
+    private static readonly string[] RefundProtectionLabels =
+    [
+        "Full refund when the organizer cancels",
+        "Buyer choice or full refund after a material change",
+        "Full refund for duplicate or incorrect charges",
+        "Remedy for substantial non-delivery",
+        "Buyer-change terms disclosed subject to applicable law",
+        "Card dispute rights are not waived",
+        "Platform amounts refunded by default for cancelled events"
+    ];
+
+    private readonly CancellationTokenSource _lifetimeCancellation = new();
+    private HalResourceOfTenantPaidEventPolicyConfigurationDto? _configuration;
+    private PaidEventPolicyDto? _ceiling;
+    private PaidEventPolicyEditModel _model = new();
+    private bool _loading = true;
+    private bool _saving;
+    private bool _saved;
+    private bool _disposed;
+    private string? _message;
+    private bool CanEdit => _configuration?._links?.ContainsKey("edit") == true;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (!_loading || _disposed)
+        {
+            return;
+        }
+
+        CancellationToken cancellationToken = _lifetimeCancellation.Token;
+        if (TenantId == Guid.Empty)
+        {
+            _message = LoadFailureMessage;
+            _loading = false;
+            await Announcer.AnnounceAssertiveAsync(_message);
+            return;
+        }
+
+        try
+        {
+            await ReloadAsync(cancellationToken);
+            await Announcer.AnnouncePoliteAsync("Tenant paid-event policy loaded.");
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            return;
+        }
+        catch (Exception)
+        {
+            FailLoad();
+            await Announcer.AnnounceAssertiveAsync(LoadFailureMessage);
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task SaveAsync()
+    {
+        if (!CanEdit || _ceiling is null || _saving || _disposed)
+        {
+            return;
+        }
+
+        PaidEventPolicyValidationResult validation = _model.ValidateTenantNarrowing(_ceiling);
+        if (!validation.IsValid)
+        {
+            _saved = false;
+            _message = validation.Errors.FirstOrDefault() ?? "Review the tenant paid-event policy and try again.";
+            await Announcer.AnnounceAssertiveAsync(_message);
+            return;
+        }
+
+        CancellationToken cancellationToken = _lifetimeCancellation.Token;
+        _saving = true;
+        _saved = false;
+        _message = null;
+        try
+        {
+            BaseCommandResponseOfGuid response = await PolicyService.UpdateTenantAsync(TenantId, _model.ToRequest(), cancellationToken);
+            cancellationToken.ThrowIfCancellationRequested();
+            if (response.Success != true)
+            {
+                _message = response.Message ?? SaveFailureMessage;
+                await Announcer.AnnounceAssertiveAsync(_message);
+                return;
+            }
+
+            await ReloadAsync(cancellationToken);
+            _saved = true;
+            _message = "Tenant paid-event policy saved.";
+            await Announcer.AnnouncePoliteAsync(_message);
+        }
+        catch (ApiException<ProblemDetails> exception) when (exception.StatusCode == 409)
+        {
+            await ReloadAfterConflictAsync(cancellationToken);
+        }
+        catch (ApiException<ProblemDetails> exception) when (exception.StatusCode == 400)
+        {
+            _message = "Review the tenant paid-event policy values and try again.";
+            await Announcer.AnnounceAssertiveAsync(_message);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            return;
+        }
+        catch (Exception)
+        {
+            _message = SaveFailureMessage;
+            await Announcer.AnnounceAssertiveAsync(_message);
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+
+    private async Task ReloadAfterConflictAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            await ReloadAsync(cancellationToken);
+            _message = ConflictMessage;
+        }
+        catch (Exception) when (!cancellationToken.IsCancellationRequested)
+        {
+            FailLoad();
+            _message = "Tenant paid-event policy changed elsewhere. Reload the section and try again.";
+        }
+        await Announcer.AnnounceAssertiveAsync(_message);
+    }
+
+    private async Task ReloadAsync(CancellationToken cancellationToken)
+    {
+        HalResourceOfTenantPaidEventPolicyConfigurationDto configuration = await PolicyService.GetTenantAsync(TenantId, cancellationToken);
+        cancellationToken.ThrowIfCancellationRequested();
+        if (configuration.ActiveInstanceCeiling is null
+            || configuration.EffectivePolicy is null)
+        {
+            throw new InvalidOperationException("Incomplete tenant paid-event policy configuration.");
+        }
+
+        _configuration = configuration;
+        _ceiling = configuration.ActiveInstanceCeiling;
+        _model = PaidEventPolicyEditModel.FromTenantConfiguration(configuration);
+        if (_ceiling.IsPaymentsEnabled != true)
+        {
+            _model.IsPaymentsEnabled = false;
+        }
+        if (_ceiling.RequiresLocalVerification == true)
+        {
+            _model.RequiresLocalVerification = true;
+        }
+        if (_ceiling.RequiresFirstPaidEventReview == true)
+        {
+            _model.RequiresFirstPaidEventReview = true;
+        }
+    }
+
+    private void FailLoad()
+    {
+        _configuration = null;
+        _ceiling = null;
+        _message = LoadFailureMessage;
+    }
+
+    private void SetOrganizerKind(int id, bool selected)
+    {
+        if (!CanEdit || !_model.OrganizerKindOptions.Any(option => option.Id == id))
+        {
+            return;
+        }
+        if (selected && !_model.AllowedOrganizerKindIds.Contains(id))
+        {
+            _model.AllowedOrganizerKindIds.Add(id);
+        }
+        else if (!selected)
+        {
+            _model.AllowedOrganizerKindIds.Remove(id);
+        }
+    }
+
+    private void SetCurrency(string currencyCode, bool selected)
+    {
+        if (!CanEdit || _ceiling is null || !_model.CurrencyChoices.Contains(currencyCode, StringComparer.Ordinal))
+        {
+            return;
+        }
+
+        var selectedCodes = _model.AllowedCurrencyCodes.ToHashSet(StringComparer.Ordinal);
+        if (selected)
+        {
+            selectedCodes.Add(currencyCode);
+            if (_model.CurrencyRiskLimits.All(limit => limit.CurrencyCode != currencyCode))
+            {
+                CurrencyRiskLimits2? ceiling = CeilingRiskLimit(currencyCode);
+                _model.CurrencyRiskLimits.Add(new PaidEventPolicyCurrencyRiskLimitEditModel
+                {
+                    CurrencyCode = currencyCode,
+                    PerEventSalesCeilingMinor = ceiling?.PerEventSalesCeilingMinor,
+                    RollingOrganizerSalesCeilingMinor = ceiling?.RollingOrganizerSalesCeilingMinor,
+                    HighValueReviewThresholdMinor = ceiling?.HighValueReviewThresholdMinor
+                });
+            }
+        }
+        else
+        {
+            selectedCodes.Remove(currencyCode);
+            _model.CurrencyRiskLimits.RemoveAll(limit => limit.CurrencyCode == currencyCode);
+        }
+
+        _model.AllowedCurrencyCodes.Clear();
+        _model.AllowedCurrencyCodes.AddRange((_ceiling.AllowedCurrencyCodes ?? []).Where(selectedCodes.Contains));
+        if (_model.DefaultCurrencyCode is null || !_model.AllowedCurrencyCodes.Contains(_model.DefaultCurrencyCode, StringComparer.Ordinal))
+        {
+            _model.DefaultCurrencyCode = _model.AllowedCurrencyCodes.FirstOrDefault();
+        }
+    }
+
+    private PaidEventPolicyCurrencyRiskLimitEditModel RiskLimit(string currencyCode)
+    {
+        PaidEventPolicyCurrencyRiskLimitEditModel? existing = _model.CurrencyRiskLimits.SingleOrDefault(limit => limit.CurrencyCode == currencyCode);
+        if (existing is not null)
+        {
+            return existing;
+        }
+        CurrencyRiskLimits2? ceiling = CeilingRiskLimit(currencyCode);
+        var created = new PaidEventPolicyCurrencyRiskLimitEditModel
+        {
+            CurrencyCode = currencyCode,
+            PerEventSalesCeilingMinor = ceiling?.PerEventSalesCeilingMinor,
+            RollingOrganizerSalesCeilingMinor = ceiling?.RollingOrganizerSalesCeilingMinor,
+            HighValueReviewThresholdMinor = ceiling?.HighValueReviewThresholdMinor
+        };
+        _model.CurrencyRiskLimits.Add(created);
+        return created;
+    }
+
+    private CurrencyRiskLimits2? CeilingRiskLimit(string currencyCode) =>
+        _ceiling?.CurrencyRiskLimits?.SingleOrDefault(limit => limit.CurrencyCode == currencyCode);
+
+    private static string YesNo(bool? value) => value == true ? "Enabled" : "Disabled";
+    private static string OrganizerLabel(PaidEventPolicyOrganizerKindOption option) => option.Label switch
+    {
+        "User" => "Users",
+        "Organization" => "Organizations",
+        "Group" => "Groups",
+        _ => option.Label
+    };
+
+    public void Dispose()
+    {
+        if (_disposed)
+        {
+            return;
+        }
+        _disposed = true;
+        _lifetimeCancellation.Cancel();
+        _lifetimeCancellation.Dispose();
+    }
+}

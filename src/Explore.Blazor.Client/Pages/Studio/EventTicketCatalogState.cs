@@ -16,7 +16,11 @@ public sealed record EventTicketCatalogState(
     string? StatusName,
     IReadOnlyList<EventTicketTypeState> TicketTypes,
     IReadOnlyList<EventCapacityPoolState> CapacityPools,
-    IReadOnlyDictionary<string, HalLink> Links)
+    IReadOnlyDictionary<string, HalLink> Links,
+    string? MerchantDisclosureText = null,
+    string? RefundPolicyDisclosureText = null,
+    string? SupportContactDisclosureText = null,
+    EventTicketCatalogPaidPreflightState? PublicationPreflight = null)
 {
     public bool HasLink(string relation) => Links.ContainsKey(relation);
 
@@ -28,12 +32,11 @@ public sealed record EventTicketCatalogState(
         try
         {
             JsonElement root = JsonSerializer.SerializeToElement(resource.AdditionalProperties);
-            if (!TryRequiredGuid(root, "eventId", out Guid eventId)
-                || !TryRequiredString(root, "currencyCode", out string currencyCode)
-                || !TryLinks(root, required: true, out Dictionary<string, HalLink> links)
+            if (!TryRequiredGuid(resource.EventId, root, "eventId", out Guid eventId)
+                || !TryRequiredString(resource.CurrencyCode, root, "currencyCode", out string currencyCode)
+                || !TryResourceLinks(resource, root, out Dictionary<string, HalLink> links)
                 || !links.ContainsKey("self")
-                || !root.TryGetProperty("_embedded", out JsonElement embedded)
-                || embedded.ValueKind != JsonValueKind.Object
+                || !TryEmbedded(resource, root, out JsonElement embedded)
                 || !TryTicketTypes(embedded, out IReadOnlyList<EventTicketTypeState> ticketTypes)
                 || !TryCapacityPools(embedded, out IReadOnlyList<EventCapacityPoolState> capacityPools))
             {
@@ -42,15 +45,19 @@ public sealed record EventTicketCatalogState(
 
             state = new EventTicketCatalogState(
                 eventId,
-                OptionalGuid(root, "catalogId"),
-                OptionalInt(root, "versionNumber"),
+                OptionalGuid(resource.CatalogId, root, "catalogId"),
+                OptionalInt(resource.VersionNumber, root, "versionNumber"),
                 currencyCode,
-                OptionalInt(root, "statusId"),
-                OptionalString(root, "statusCode"),
-                OptionalString(root, "statusName"),
+                OptionalInt(resource.StatusId, root, "statusId"),
+                OptionalString(resource.StatusCode, root, "statusCode"),
+                OptionalString(resource.StatusName, root, "statusName"),
                 ticketTypes,
                 capacityPools,
-                links);
+                links,
+                OptionalString(resource.MerchantDisclosureText, root, "merchantDisclosureText"),
+                OptionalString(resource.RefundPolicyDisclosureText, root, "refundPolicyDisclosureText"),
+                OptionalString(resource.SupportContactDisclosureText, root, "supportContactDisclosureText"),
+                ParsePreflight(resource.PublicationPreflight, root));
             return true;
         }
         catch (JsonException)
@@ -65,6 +72,42 @@ public sealed record EventTicketCatalogState(
         {
             return false;
         }
+    }
+
+    private static bool TryResourceLinks(
+        HalResourceOfEventTicketCatalogManagementDto resource,
+        JsonElement root,
+        out Dictionary<string, HalLink> links) =>
+        TryLinks(resource._links, required: true, out links)
+        || TryLinks(root, required: true, out links);
+
+    private static bool TryEmbedded(
+        HalResourceOfEventTicketCatalogManagementDto resource,
+        JsonElement root,
+        out JsonElement embedded)
+    {
+        if (TryElement(resource._embedded, out embedded)
+            && embedded.ValueKind == JsonValueKind.Object)
+        {
+            return true;
+        }
+
+        return root.TryGetProperty("_embedded", out embedded)
+            && embedded.ValueKind == JsonValueKind.Object;
+    }
+
+    private static bool TryElement(object? value, out JsonElement element)
+    {
+        element = default;
+        if (value is null)
+        {
+            return false;
+        }
+
+        element = value is JsonElement json
+            ? json.Clone()
+            : JsonSerializer.SerializeToElement(value);
+        return element.ValueKind != JsonValueKind.Undefined;
     }
 
     private static bool TryTicketTypes(
@@ -246,6 +289,30 @@ public sealed record EventTicketCatalogState(
         return !required || links.Count > 0;
     }
 
+    private static bool TryLinks(
+        IDictionary<string, HalLink>? linkObject,
+        bool required,
+        out Dictionary<string, HalLink> links)
+    {
+        links = new Dictionary<string, HalLink>(StringComparer.Ordinal);
+        if (linkObject is null)
+        {
+            return !required;
+        }
+
+        foreach ((string relation, HalLink? link) in linkObject)
+        {
+            if (link is null || string.IsNullOrWhiteSpace(link.Href))
+            {
+                continue;
+            }
+
+            links[relation] = link;
+        }
+
+        return !required || links.Count > 0;
+    }
+
     private static Dictionary<string, HalLink> FilterItemLinks(
         Dictionary<string, HalLink> links,
         Guid itemId) =>
@@ -269,6 +336,12 @@ public sealed record EventTicketCatalogState(
             && value != Guid.Empty;
     }
 
+    private static bool TryRequiredGuid(Guid? direct, JsonElement source, string name, out Guid value)
+    {
+        value = direct.GetValueOrDefault();
+        return value != Guid.Empty || TryRequiredGuid(source, name, out value);
+    }
+
     private static bool TryRequiredInt(JsonElement source, string name, out int value)
     {
         value = default;
@@ -290,6 +363,12 @@ public sealed record EventTicketCatalogState(
         return true;
     }
 
+    private static bool TryRequiredString(string? direct, JsonElement source, string name, out string value)
+    {
+        value = direct ?? string.Empty;
+        return direct is not null || TryRequiredString(source, name, out value);
+    }
+
     private static Guid? OptionalGuid(JsonElement source, string name) =>
         source.TryGetProperty(name, out JsonElement property)
         && property.ValueKind == JsonValueKind.String
@@ -298,12 +377,20 @@ public sealed record EventTicketCatalogState(
             ? value
             : null;
 
+    private static Guid? OptionalGuid(Guid? direct, JsonElement source, string name) =>
+        direct is { } value && value != Guid.Empty
+            ? value
+            : OptionalGuid(source, name);
+
     private static int? OptionalInt(JsonElement source, string name) =>
         source.TryGetProperty(name, out JsonElement property)
         && property.ValueKind == JsonValueKind.Number
         && property.TryGetInt32(out int value)
             ? value
             : null;
+
+    private static int? OptionalInt(int? direct, JsonElement source, string name) =>
+        direct ?? OptionalInt(source, name);
 
     private static long? OptionalLong(JsonElement source, string name) =>
         source.TryGetProperty(name, out JsonElement property)
@@ -322,7 +409,68 @@ public sealed record EventTicketCatalogState(
         && property.ValueKind == JsonValueKind.String
             ? property.GetString()
             : null;
+
+    private static string? OptionalString(string? direct, JsonElement source, string name) =>
+        direct ?? OptionalString(source, name);
+
+    private static EventTicketCatalogPaidPreflightState? ParsePreflight(
+        PaidEventPublicationPreflightDto? direct,
+        JsonElement root)
+    {
+        if (direct is not null)
+        {
+            return new EventTicketCatalogPaidPreflightState(
+                direct.IsPaidCatalog == true,
+                direct.IsReady == true,
+                direct.Blockers?.Select(ParseBlocker).OfType<EventTicketCatalogPaidPreflightBlockerState>().ToArray() ?? []);
+        }
+
+        if (!root.TryGetProperty("publicationPreflight", out JsonElement preflight)
+            || preflight.ValueKind != JsonValueKind.Object)
+        {
+            return null;
+        }
+
+        return new EventTicketCatalogPaidPreflightState(
+            OptionalBool(preflight, "isPaidCatalog"),
+            OptionalBool(preflight, "isReady"),
+            ParseBlockers(preflight));
+    }
+
+    private static IReadOnlyList<EventTicketCatalogPaidPreflightBlockerState> ParseBlockers(JsonElement preflight)
+    {
+        if (!preflight.TryGetProperty("blockers", out JsonElement blockers)
+            || blockers.ValueKind != JsonValueKind.Array)
+        {
+            return [];
+        }
+
+        var parsed = new List<EventTicketCatalogPaidPreflightBlockerState>();
+        foreach (JsonElement blocker in blockers.EnumerateArray())
+        {
+            string? code = OptionalString(blocker, "code");
+            string? explanation = OptionalString(blocker, "explanation");
+            if (!string.IsNullOrWhiteSpace(code) && !string.IsNullOrWhiteSpace(explanation))
+            {
+                parsed.Add(new EventTicketCatalogPaidPreflightBlockerState(code, explanation));
+            }
+        }
+
+        return parsed;
+    }
+
+    private static EventTicketCatalogPaidPreflightBlockerState? ParseBlocker(Blockers2 blocker) =>
+        !string.IsNullOrWhiteSpace(blocker.Code) && !string.IsNullOrWhiteSpace(blocker.Explanation)
+            ? new EventTicketCatalogPaidPreflightBlockerState(blocker.Code, blocker.Explanation)
+            : null;
 }
+
+public sealed record EventTicketCatalogPaidPreflightState(
+    bool IsPaidCatalog,
+    bool IsReady,
+    IReadOnlyList<EventTicketCatalogPaidPreflightBlockerState> Blockers);
+
+public sealed record EventTicketCatalogPaidPreflightBlockerState(string Code, string Explanation);
 
 public sealed record EventTicketTypeState(
     Guid Id,

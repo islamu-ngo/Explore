@@ -1,0 +1,37 @@
+/* ABOUTME: Isolated responsive layout for tenant paid-event policy narrowing. */
+/* ABOUTME: Uses shared tokens and logical properties for ceiling summaries and risk controls. */
+
+.tenant-paid-policy,
+.tenant-paid-policy__group,
+.tenant-paid-policy__summary {
+    display: grid;
+    gap: var(--isl-space-4);
+}
+
+.tenant-paid-policy__summary,
+.tenant-paid-policy__currency {
+    padding: var(--isl-space-4);
+    border: var(--isl-card-border);
+    border-radius: var(--isl-radius-card);
+}
+
+.tenant-paid-policy__currency {
+    display: grid;
+    grid-template-columns: minmax(5rem, 0.4fr) repeat(3, minmax(0, 1fr));
+    gap: var(--isl-space-3);
+    align-items: center;
+}
+
+.tenant-paid-policy__protections {
+    display: grid;
+    gap: var(--isl-space-2);
+    margin: 0;
+    padding-inline-start: var(--isl-space-6);
+}
+
+@media (max-width: 59.997em) {
+    .tenant-paid-policy__currency {
+        grid-template-columns: 1fr;
+        align-items: stretch;
+    }
+}

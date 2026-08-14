@@ -3,6 +3,7 @@
 
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
+using Explore.Application.Contracts.Services;
 using Explore.Application.Features.OrganizerPaymentConnections.Commands;
 using Explore.Application.DTOs.OrganizerPaymentConnections;
 using Explore.Application.Responses;
@@ -62,6 +63,45 @@ public sealed class GetOrganizerPaymentConnectionQueryHandler(
     }
 }
 
+public sealed class GetEventOrganizerPaymentConnectionQueryHandler(
+    IEventRepository eventRepository,
+    IOrganizerPaymentProviderConnectionRepository repository,
+    IOrganizerPaymentCommerceConfiguration commerceConfiguration,
+    ITenantContext tenantContext)
+    : IRequestHandler<GetEventOrganizerPaymentConnectionQuery, EventOrganizerPaymentConnectionManagementDto?>
+{
+    public async Task<EventOrganizerPaymentConnectionManagementDto?> Handle(GetEventOrganizerPaymentConnectionQuery request, CancellationToken cancellationToken)
+    {
+        Event? eventTarget = await eventRepository.GetEventWithDetails(request.EventId);
+        if (eventTarget?.TenantId != tenantContext.TenantId || eventTarget.OrganizerActorId is null)
+        {
+            return null;
+        }
+
+        OrganizerPaymentProviderConnection? connection = await repository.GetActiveByScopeAsync(
+            eventTarget.TenantId,
+            eventTarget.OrganizerActorId.Value,
+            commerceConfiguration.ProviderCode,
+            commerceConfiguration.ConnectPlatformId,
+            cancellationToken);
+
+        return new EventOrganizerPaymentConnectionManagementDto
+        {
+            TenantId = eventTarget.TenantId,
+            EventId = eventTarget.Id,
+            ActorId = eventTarget.ActorId,
+            ActorUserId = eventTarget.Actor?.UserId,
+            ActorOrganizationId = eventTarget.Actor?.OrganizationId,
+            ActorGroupId = eventTarget.Actor?.GroupId,
+            OrganizerActorId = eventTarget.OrganizerActorId.Value,
+            OrganizerUserId = eventTarget.OrganizerActor?.UserId,
+            OrganizerOrganizationId = eventTarget.OrganizerActor?.OrganizationId,
+            OrganizerGroupId = eventTarget.OrganizerActor?.GroupId,
+            Connection = connection is null ? null : OrganizerPaymentConnectionMapper.ToDto(connection)
+        };
+    }
+}
+
 internal static class OrganizerPaymentActorAccess
 {
     internal static async Task<bool> AuthorizeAsync(
@@ -97,24 +137,12 @@ internal static class OrganizerPaymentConnectionMapper
 {
     internal static OrganizerPaymentConnectionDto ToDto(OrganizerPaymentProviderConnection connection) => new()
     {
-        Id = connection.Id,
-        TenantId = connection.TenantId,
-        OrganizerActorId = connection.OrganizerActorId,
-        ProviderCode = connection.ProviderCode,
-        ConnectPlatformId = connection.ConnectPlatformId,
-        ExternalAccountId = connection.ExternalAccountId,
         StatusId = connection.StatusId,
         MerchantCountryCode = connection.MerchantCountryCode,
         ChargeCapabilityStateId = connection.ChargeCapabilityStateId,
         RequirementsStateId = connection.RequirementsStateId,
         SupportedCurrencyCodes = connection.SupportedCurrencyCodes,
-        LastReadinessObservedAt = connection.LastReadinessObservedAt,
-        LastReadinessEvidenceRevision = connection.LastReadinessEvidenceRevision,
-        ReplacesConnectionId = connection.ReplacesConnectionId,
-        ReplacedByConnectionId = connection.ReplacedByConnectionId,
-        ReplacedAt = connection.ReplacedAt,
-        DisabledAt = connection.DisabledAt,
-        DisabledReasonCode = connection.DisabledReasonCode
+        LastReadinessObservedAt = connection.LastReadinessObservedAt
     };
 }
 

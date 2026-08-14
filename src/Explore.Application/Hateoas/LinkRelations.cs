@@ -353,6 +353,9 @@ public static class LinkRelations
     public const string CloneDraft = "clone-draft";
     public const string CreateTicketType = "create-type";
     public const string CreateCapacityPool = "create-pool";
+    public const string CommercialDisclosures = "commercial-disclosures";
+    public const string PaymentConnection = "payment-connection";
+    public const string StartOnboarding = "start-onboarding";
     public const string StartRegistration = "start-registration";
     public const string StartGuestRegistration = "start-guest-registration";
     public const string SignInToRegister = "sign-in-to-register";

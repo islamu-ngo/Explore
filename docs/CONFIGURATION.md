@@ -835,8 +835,8 @@ Endpoint and secret safety rules:
 
 - Non-local PDP/Admin API endpoints must use safe TLS-capable URLs. Unsafe endpoint changes are rejected before provider settings are persisted or sync/cache invalidation runs.
 - Runtime failure logs must not include raw PDP/Admin API endpoints, Admin API credentials, JWTs/tokens, response bodies, or exception objects/messages.
-- A tenant with `cerbos.mode=custom_endpoint` and a blank PDP endpoint remains in BYO mode. Runtime authorization applies the tenant `failure_mode` instead of falling back to the instance PDP, while any explicit BYO Admin API configuration is still preserved for package operations.
-- `failure_mode=closed` activates provider-instance safe mode for local fallback decisions; `failure_mode=open` uses standard local RBAC fallback only for that tenant BYO failure path.
+- A tenant with `cerbos.mode=custom_endpoint` and a blank PDP endpoint remains in BYO mode. Runtime authorization activates safe mode instead of falling back to the instance PDP, while any explicit BYO Admin API configuration is still preserved for package operations.
+- Any BYO PDP failure activates provider-instance safe mode for local fallback decisions; `failure_mode=open` is retained only as a deprecated parsed value and does not enable standard local RBAC fallback.
 
 ### Email Dispatch Scheduler Configuration
 
@@ -1455,9 +1455,13 @@ Generate one P-256 VAPID key pair with a trusted Web Push tool, store it in depl
 
 Delivery policy is server-owned. Account-security refreshes retain for 5 minutes at high urgency; trust-safety for 1 hour at high urgency; registration/event updates for 6 hours at normal urgency; billing/legal and organization/group/product updates for 24 hours at normal or low urgency; marketing for 6 hours at very-low urgency. Every message sets a category `Topic` so the push service can coalesce pending refreshes, and retries stop at the TTL boundary.
 
-## Planned Paid-Event Configuration Boundary
+## Paid-Event Configuration Boundary
 
-ADR-022 through ADR-024 approve the configuration hierarchy. `Payments:Stripe:Mode` accepts only `Test` or `Live` and defaults to `Test`; the platform secret must use the matching `sk_test_` or `sk_live_` prefix, and Stripe account/webhook livemode evidence must match before readiness is trusted. Task 16.3 defines the instance/server-only Stripe secret names: `payments.stripe.platform_secret_key` and `payments.stripe.webhook_secret`. The registry maps them from Infisical `/stripe/STRIPE_PLATFORM_SECRET_KEY` and `/stripe/STRIPE_WEBHOOK_SECRET`; self-hosters own and supply their own Stripe platform values, and ISLAMU-hosted credentials are never distributed. Runtime checkout, refunds, and dispute handling remain deferred. Tenants may only narrow enabled organizer kinds, currencies, verification, and risk limits. Organizers connect only their own eligible actor merchant account and choose one permitted event currency. No administrator fallback merchant exists. `ProtectedDelayedPayout` remains absent unless Stripe, legal, Islamic-finance, and operator approval evidence is configured and current.
+`Payments:Stripe:Mode` accepts only `Test` or `Live` and defaults to `Test`; the platform secret must use the matching `sk_test_` or `sk_live_` prefix, and Stripe account/webhook livemode evidence must match before readiness is trusted. Task 16.5 also binds non-secret commerce identity from `Payments:OrganizerDirect`: `ProviderCode` and `ConnectPlatformId`. Both must be configured for paid publication and hosted onboarding; neither belongs in browser DTOs.
+
+`OrganizerPaymentReadinessReconciliation` controls the hosted readiness worker. `Enabled` defaults to `true`; `BatchSize` defaults to `25` and is `1..100`; `StaleIntervalMinutes` defaults to `5` and is `1..1440`; `PollingIntervalSeconds` defaults to `60` and is `5..3600`; `InitialDelaySeconds` defaults to `5` and is `0..300`. The worker is not registered in `Testing` and is not registered when disabled.
+
+Instance and tenant paid-event policies are database-governed versioned settings rather than deployment configuration. The instance policy is the ceiling; tenant policy can only narrow allowed organizer kinds and currencies, risk ceilings, review thresholds, and cannot weaken mandatory refund protections or verification/review floors. Runtime checkout, refunds, and dispute handling remain deferred. Organizers connect only their own eligible actor merchant account; no administrator fallback merchant exists. `ProtectedDelayedPayout` remains absent unless its separate approvals are current.
 
 ## Related
 

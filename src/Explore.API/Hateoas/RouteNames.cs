@@ -156,6 +156,12 @@ public static class RouteNames
     public const string CreateEventCapacityPool = "CreateEventCapacityPool";
     public const string UpdateEventCapacityPool = "UpdateEventCapacityPool";
     public const string DeleteEventCapacityPool = "DeleteEventCapacityPool";
+    public const string GetPaidEventPublicationPreflight = "GetPaidEventPublicationPreflight";
+    public const string UpdateEventTicketCatalogCommercialDisclosures = "UpdateEventTicketCatalogCommercialDisclosures";
+    public const string GetEventOrganizerPaymentConnection = "GetEventOrganizerPaymentConnection";
+    public const string StartEventOrganizerPaymentOnboarding = "StartEventOrganizerPaymentOnboarding";
+    public const string ReturnEventOrganizerPaymentOnboarding = "ReturnEventOrganizerPaymentOnboarding";
+    public const string RefreshEventOrganizerPaymentOnboarding = "RefreshEventOrganizerPaymentOnboarding";
     public const string PublishEventTicketCatalog = "PublishEventTicketCatalog";
     public const string GetEventOrganizerClaims = "GetEventOrganizerClaims";
     public const string GetEventOrganizerClaim = "GetEventOrganizerClaim";
@@ -544,6 +550,8 @@ public static class RouteNames
     public const string GetTenantStorageSettings = "GetTenantStorageSettings";
     public const string PatchTenantStorageSettings = "PatchTenantStorageSettings";
     public const string TestTenantStorageConnection = "TestTenantStorageConnection";
+    public const string GetTenantPaidEventPolicySettings = "GetTenantPaidEventPolicySettings";
+    public const string UpdateTenantPaidEventPolicySettings = "UpdateTenantPaidEventPolicySettings";
 
     #endregion
 
@@ -911,6 +919,8 @@ public static class RouteNames
 
     public const string GetInstancePlatformMonetizationSettings = "GetInstancePlatformMonetizationSettings";
     public const string UpdateInstancePlatformMonetizationSettings = "UpdateInstancePlatformMonetizationSettings";
+    public const string GetInstancePaidEventPolicySettings = "GetInstancePaidEventPolicySettings";
+    public const string UpdateInstancePaidEventPolicySettings = "UpdateInstancePaidEventPolicySettings";
 
     public const string GetControlPlaneOverview = "GetControlPlaneOverview";
     public const string GetControlPlaneDomains = "GetControlPlaneDomains";

@@ -11,6 +11,7 @@ using Explore.Blazor.Client.Contracts.Services.CustomProperties;
 using Explore.Blazor.Client.Contracts.Services.EventReporting;
 using Explore.Blazor.Client.Contracts.Services.Events;
 using Explore.Blazor.Client.Contracts.Services.Federation;
+using Explore.Blazor.Client.Contracts.Services.PaidEventPolicies;
 using Explore.Blazor.Client.Contracts.Services.Footer;
 using Explore.Blazor.Client.Contracts.Services.Lookup;
 using Explore.Blazor.Client.Contracts.Services.Notifications;
@@ -72,6 +73,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IEventTicketingService, EventTicketingService>();
         services.AddScoped<IRegistrationFormAuthoringService, RegistrationFormAuthoringService>();
         services.AddScoped<IPlatformMonetizationService, PlatformMonetizationService>();
+        services.AddScoped<IPaidEventPolicyService, PaidEventPolicyService>();
         services.AddScoped<IOrganizationService, OrganizationService>();
         services.AddScoped<IGroupService, GroupService>();
         services.AddScoped<IOrganizationMemberService, OrganizationMemberService>();

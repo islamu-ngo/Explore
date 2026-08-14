@@ -1,0 +1,112 @@
+﻿{
+  "pageNumber": 1,
+  "pageSize": 5,
+  "totalCount": 1,
+  "totalPages": 1,
+  "hasPrevious": false,
+  "hasNext": false,
+  "_links": {
+    "self": {
+      "href": "/api/event?pageNumber=1&pageSize=5"
+    },
+    "first": {
+      "href": "/api/event?pageNumber=1&pageSize=5"
+    },
+    "last": {
+      "href": "/api/event?pageNumber=1&pageSize=5"
+    },
+    "create": {
+      "href": "/api/event",
+      "title": "Create new event",
+      "method": "POST"
+    },
+    "my-events": {
+      "href": "/api/event/my",
+      "title": "My events",
+      "method": "GET"
+    }
+  },
+  "_embedded": {
+    "items": [
+      {
+        "source": "local",
+        "event": {
+          "id": "Guid_1",
+          "title": "Published Visibility Event 0d20de8c2a814235a3565fb851494e00",
+          "publicCode": "e331fb71aec3",
+          "eventTypeId": 0,
+          "audienceGenderId": 0,
+          "audienceAgeId": 0,
+          "actorId": "Guid_2",
+          "actorDisplayName": "Default Visibility Actor",
+          "actorTypeId": 1,
+          "actorTypeFullName": "User",
+          "actorUserId": "Guid_3",
+          "provenanceTypeCode": "ORGANIZER_CREATED",
+          "featuredImageId": "Guid_Empty",
+          "participationConfiguration": {
+            "eventId": "Guid_1",
+            "concurrencyStamp": "Guid_4",
+            "participationHandlingModeId": 1,
+            "participationHandlingModeCode": "INFORMATION_ONLY",
+            "participationHandlingModeName": "Information only",
+            "advanceRegistrationObligationId": 1,
+            "advanceRegistrationObligationCode": "NOT_APPLICABLE",
+            "advanceRegistrationObligationName": "Not applicable"
+          },
+          "eventStatusId": 2,
+          "eventStatusFullName": "Published",
+          "visibilityTypeId": 1,
+          "visibilityTypeFullName": "Public",
+          "eventFormatId": 1,
+          "eventFormatFullName": "Local (In-Person)",
+          "sessionCount": 1,
+          "firstSessionDate": "2026-08-21",
+          "lastSessionDate": "2026-08-21",
+          "firstSessionStartUtc": "DateTimeOffset_1",
+          "isPast": false,
+          "totalViews": 0,
+          "createdAtUtc": "DateTimeOffset_2",
+          "tenantId": "Guid_5"
+        },
+        "_links": {
+          "self": {
+            "href": "/api/event/9709c7bd-9f6f-4085-aaa1-1dcae34c1020",
+            "title": "Published Visibility Event 0d20de8c2a814235a3565fb851494e00",
+            "method": "GET"
+          },
+          "sessions": {
+            "href": "/api/eventsession/by-event/9709c7bd-9f6f-4085-aaa1-1dcae34c1020",
+            "title": "1 sessions",
+            "method": "GET"
+          },
+          "actor": {
+            "href": "/api/actor/f047ddd7-4165-441d-8298-aca87bf3c02c",
+            "title": "Default Visibility Actor",
+            "method": "GET"
+          },
+          "event-report-options": {
+            "href": "/api/event-reports/events/9709c7bd-9f6f-4085-aaa1-1dcae34c1020/options",
+            "title": "Event report options",
+            "method": "GET"
+          },
+          "report-event": {
+            "href": "/api/event-reports",
+            "title": "Report event",
+            "method": "POST"
+          },
+          "edit": {
+            "href": "/api/event/9709c7bd-9f6f-4085-aaa1-1dcae34c1020",
+            "title": "Update event",
+            "method": "PATCH"
+          },
+          "delete": {
+            "href": "/api/event/9709c7bd-9f6f-4085-aaa1-1dcae34c1020",
+            "title": "Delete event",
+            "method": "DELETE"
+          }
+        }
+      }
+    ]
+  }
+}

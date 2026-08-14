@@ -1967,6 +1967,7 @@ This matrix is the meaning of full Stripe support here. Stripe Billing/subscript
 - **Effort:** XL
 
 #### Task 16.5: Admin/Studio configuration, publication preflight, Cerbos, and HAL
+- **Status:** Complete. Instance and tenant policy administration, exact-organizer paid-commerce authorization, fresh publication preflight, HAL-gated Admin/Studio behavior, bounded hosted onboarding/readiness contracts, regenerated OpenAPI/NSwag/inventory, and canonical documentation are independently confirmed. Browser contracts retain identifiers only as server-side `[JsonIgnore]` HAL metadata.
 - **Type:** create/modify
 - **Layer:** Application/API/Cerbos/Blazor
 - **Files:** Admin paid-policy page, Studio payment connection/readiness surface, event/catalog publish preflight, route/link constants/policies, generated OpenAPI/NSwag/docs.
