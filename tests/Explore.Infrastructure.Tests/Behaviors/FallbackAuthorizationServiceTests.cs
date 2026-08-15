@@ -176,6 +176,10 @@ public class FallbackAuthorizationServiceTests
         Guid.NewGuid(),
         organizationId ?? TestOrgId);
 
+    private static ContactShareAuthorizationFacts ContactShareFacts(Guid? tenantId = null) => new(
+        tenantId ?? TestTenantId,
+        TestOrgId);
+
     private static Dictionary<string, object> SupportAccessAttributes(Guid? targetTenantId = null) => new()
     {
         ["tenantId"] = (targetTenantId ?? TestTenantId).ToString("D"),
@@ -184,6 +188,37 @@ public class FallbackAuthorizationServiceTests
         ["mode"] = "ReadOnly",
         ["status"] = "Active"
     };
+
+    [Test]
+    public async Task AuthorizeAsync_ContactShareTypedFacts_AllowsOrganizationAdmin()
+    {
+        _adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(false);
+        _adminContext.IsTenantAdminAsync(TestTenantId, Arg.Any<CancellationToken>()).Returns(false);
+        _adminContext.IsOrganizationAdminAsync(TestOrgId, Arg.Any<CancellationToken>()).Returns(true);
+
+        var decision = await _service.AuthorizeAsync(new AuthorizationRequest(
+            ResourceKinds.EventContactShareConsent,
+            TestOrgId.ToString("D"),
+            AuthorizationActions.ExportSharedContacts,
+            Facts: ContactShareFacts()));
+
+        await Assert.That(decision.IsAllowed).IsTrue();
+    }
+
+    [Test]
+    public async Task AuthorizeAsync_ContactShareTypedFacts_DeniesWrongTenant()
+    {
+        _adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(false);
+        _adminContext.IsOrganizationAdminAsync(TestOrgId, Arg.Any<CancellationToken>()).Returns(true);
+
+        var decision = await _service.AuthorizeAsync(new AuthorizationRequest(
+            ResourceKinds.EventContactShareConsent,
+            TestOrgId.ToString("D"),
+            AuthorizationActions.ExportSharedContacts,
+            Facts: ContactShareFacts(Guid.NewGuid())));
+
+        await Assert.That(decision.IsAllowed).IsFalse();
+    }
 
     private static Dictionary<string, object> WebhookOwnerAttributes(
         WebhookConsumerKind ownerKind,

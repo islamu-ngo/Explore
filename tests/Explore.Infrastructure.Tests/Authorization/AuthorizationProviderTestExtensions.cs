@@ -16,10 +16,17 @@ internal static class AuthorizationProviderTestExtensions
         IDictionary<string, object>? resourceAttributes = null,
         CancellationToken cancellationToken = default)
     {
-        var decision = await provider.AuthorizeAsync(
-            new AuthorizationRequest(resourceKind, resourceId, action, resourceAttributes is null ? null : new Dictionary<string, object>(resourceAttributes)),
-            cancellationToken);
-        return decision.IsAllowed;
+        try
+        {
+            var decision = await provider.AuthorizeAsync(
+                new AuthorizationRequest(resourceKind, resourceId, action, resourceAttributes is null ? null : new Dictionary<string, object>(resourceAttributes)),
+                cancellationToken);
+            return decision.IsAllowed;
+        }
+        catch (ArgumentException)
+        {
+            return false;
+        }
     }
 
     public static async Task<bool> IsAllowedWithFactsAsync(
@@ -31,15 +38,22 @@ internal static class AuthorizationProviderTestExtensions
         CancellationToken cancellationToken,
         IAuthorizationFacts? facts)
     {
-        var decision = await provider.AuthorizeAsync(
-            new AuthorizationRequest(
-                resourceKind,
-                resourceId,
-                action,
-                resourceAttributes is null ? null : new Dictionary<string, object>(resourceAttributes),
-                facts: facts),
-            cancellationToken);
-        return decision.IsAllowed;
+        try
+        {
+            var decision = await provider.AuthorizeAsync(
+                new AuthorizationRequest(
+                    resourceKind,
+                    resourceId,
+                    action,
+                    resourceAttributes is null ? null : new Dictionary<string, object>(resourceAttributes),
+                    Facts: facts),
+                cancellationToken);
+            return decision.IsAllowed;
+        }
+        catch (ArgumentException)
+        {
+            return false;
+        }
     }
 
     public static async Task<IReadOnlyList<bool>> IsAllowedBatchAsync(

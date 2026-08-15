@@ -907,6 +907,9 @@ public partial class FallbackAuthorizationService
         if (action is not ("viewsharedcontacts" or "exportsharedcontacts"))
             return false;
 
+        if (ResolveTenantId(resourceAttributes) != _tenantContext.TenantId)
+            return false;
+
         return await EvaluateOrgScopedAccessAsync("islamuevent_event_contact_share_consent", resourceId, action, resourceAttributes, cancellationToken);
     }
 

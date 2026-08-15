@@ -75,26 +75,30 @@ public static class ResourceDescriptors
         ResourceKinds.Event,
         dto => dto.Id.ToString(),
         EventAttributes,
-        dto => new AuthorizationScope(TenantId: dto.TenantId.ToString()));
+        dto => new AuthorizationScope(TenantId: dto.TenantId.ToString()),
+        EventFacts);
 
     public static readonly ResourceDescriptor<EventDto> EventOrganizerClaimForEvent = new(
         ResourceKinds.EventOrganizerClaim,
         dto => dto.Id.ToString(),
         EventAttributes,
-        dto => new AuthorizationScope(TenantId: dto.TenantId.ToString()));
+        dto => new AuthorizationScope(TenantId: dto.TenantId.ToString()),
+        EventFacts);
 
     /// <summary>List DTO variant for collection item-level permission checks.</summary>
     public static readonly ResourceDescriptor<EventListDto> EventList = new(
         ResourceKinds.Event,
         dto => dto.Id.ToString(),
         EventListAttributes,
-        dto => new AuthorizationScope(TenantId: dto.TenantId.ToString()));
+        dto => new AuthorizationScope(TenantId: dto.TenantId.ToString()),
+        EventListFacts);
 
     public static readonly ResourceDescriptor<Explore.Domain.Event> EventAuthorizationTarget = new(
         ResourceKinds.Event,
         eventEntity => eventEntity.Id.ToString(),
         EventAuthorizationTargetAttributes,
-        eventEntity => new AuthorizationScope(TenantId: eventEntity.TenantId.ToString()));
+        eventEntity => new AuthorizationScope(TenantId: eventEntity.TenantId.ToString()),
+        EventAuthorizationTargetFacts);
 
     public static readonly ResourceDescriptor<OrganizationDto> Organization = new(
         ResourceKinds.Organization,
@@ -185,7 +189,8 @@ public static class ResourceDescriptors
             ["mode"] = dto.ModeName,
             ["status"] = dto.StatusName
         },
-        dto => new AuthorizationScope(TenantId: dto.TargetTenantId.ToString()));
+        dto => new AuthorizationScope(TenantId: dto.TargetTenantId.ToString()),
+        dto => new SupportAccessSessionAuthorizationFacts(dto.TargetTenantId, dto.Id, dto.ActorUserId, dto.ModeName, dto.StatusName));
 
     public static readonly ResourceDescriptor<SupportAccessAuditEventDto> SupportAccessAuditEvent = new(
         ResourceKinds.SupportAccessSession,
@@ -197,7 +202,8 @@ public static class ResourceDescriptors
             ["auditEventId"] = dto.Id.ToString(),
             ["eventType"] = dto.EventTypeName
         },
-        dto => new AuthorizationScope(TenantId: dto.TargetTenantId.ToString()));
+        dto => new AuthorizationScope(TenantId: dto.TargetTenantId.ToString()),
+        dto => new SupportAccessSessionAuthorizationFacts(dto.TargetTenantId, dto.SupportAccessSessionId, null, null, null));
 
     public static readonly ResourceDescriptor<WebhookConsumerDto> WebhookConsumer = new(
         ResourceKinds.Webhook,
@@ -205,7 +211,8 @@ public static class ResourceDescriptors
         WebhookConsumerAttributes,
         dto => new AuthorizationScope(
             TenantId: dto.TenantId?.ToString(),
-            OrganizationId: dto.OrganizationId?.ToString()));
+            OrganizationId: dto.OrganizationId?.ToString()),
+        WebhookConsumerFacts);
 
     public static readonly ResourceDescriptor<WebhookEndpointDto> WebhookEndpoint = new(
         ResourceKinds.Webhook,
@@ -215,7 +222,8 @@ public static class ResourceDescriptors
             TenantId: dto.TenantId?.ToString(),
             OrganizationId: dto.OwnerKindId == (int)WebhookConsumerKind.Organization
                 ? dto.OwnerId.ToString()
-                : null));
+                : null),
+        WebhookEndpointFacts);
 
     public static readonly ResourceDescriptor<WebhookMessageDto> WebhookMessage = new(
         ResourceKinds.Webhook,
@@ -306,7 +314,8 @@ public static class ResourceDescriptors
             ["eventId"] = dto.EventId.ToString(),
             ["tenantId"] = dto.TenantId.ToString()
         },
-        dto => new AuthorizationScope(TenantId: dto.TenantId.ToString()));
+        dto => new AuthorizationScope(TenantId: dto.TenantId.ToString()),
+        dto => new EventSessionAuthorizationFacts(dto.TenantId, dto.EventId, dto.Id, null));
 
     public static readonly ResourceDescriptor<EventSessionListDto> EventSessionList = new(
         ResourceKinds.EventSession,
@@ -316,7 +325,8 @@ public static class ResourceDescriptors
             ["eventId"] = dto.EventId.ToString(),
             ["tenantId"] = dto.TenantId.ToString()
         },
-        dto => new AuthorizationScope(TenantId: dto.TenantId.ToString()));
+        dto => new AuthorizationScope(TenantId: dto.TenantId.ToString()),
+        dto => new EventSessionAuthorizationFacts(dto.TenantId, dto.EventId, dto.Id, null));
 
     public static readonly ResourceDescriptor<EventSessionGroupDto> EventSessionGroup = new(
         ResourceKinds.EventSessionGroup,
@@ -449,7 +459,8 @@ public static class ResourceDescriptors
             ["visibility"] = dto.Visibility,
             ["lifecycleState"] = dto.LifecycleState
         },
-        dto => new AuthorizationScope(TenantId: dto.TenantId.ToString()));
+        dto => new AuthorizationScope(TenantId: dto.TenantId.ToString()),
+        dto => new PersistedStorageObjectAuthorizationFacts(dto.TenantId, dto.Id, dto.Visibility, dto.LifecycleState, null, null, null));
 
     public static readonly ResourceDescriptor<OrganizationMemberDto> OrganizationMember = new(
         ResourceKinds.OrganizationMember,
@@ -462,7 +473,8 @@ public static class ResourceDescriptors
         },
         dto => new AuthorizationScope(
             TenantId: dto.TenantId.ToString(),
-            OrganizationId: dto.OrganizationId.ToString()));
+            OrganizationId: dto.OrganizationId.ToString()),
+        dto => new OrganizationMemberAuthorizationFacts(dto.TenantId, dto.OrganizationId, dto.Id, dto.UserId));
 
     public static readonly ResourceDescriptor<OrganizationReviewDto> OrganizationReview = new(
         ResourceKinds.OrganizationReview,
@@ -734,6 +746,34 @@ public static class ResourceDescriptors
         return attributes;
     }
 
+    private static EventAuthorizationFacts EventFacts(EventDto dto) => new(
+        dto.TenantId,
+        dto.Id,
+        dto.ActorId,
+        dto.ActorUserId,
+        dto.ActorOrganizationId,
+        dto.ActorGroupId,
+        dto.OrganizerActorId,
+        dto.OrganizerActorUserId,
+        dto.OrganizerActorOrganizationId,
+        dto.OrganizerActorGroupId,
+        dto.ProvenanceTypeCode ?? dto.ProvenanceTypeId.ToString(),
+        dto.SubmittedByUserId);
+
+    private static EventAuthorizationFacts EventListFacts(EventListDto dto) => new(
+        dto.TenantId,
+        dto.Id,
+        dto.ActorId,
+        dto.ActorUserId,
+        dto.ActorOrganizationId,
+        dto.ActorGroupId,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null);
+
     private static Dictionary<string, object> EventPublicActionAttributes(EventPublicActionDto dto)
     {
         var attributes = EventChildAttributes(
@@ -773,6 +813,16 @@ public static class ResourceDescriptors
         return attributes;
     }
 
+    private static EventOrganizerClaimAuthorizationFacts EventOrganizerClaimFacts(EventOrganizerClaimDto dto) => new(
+        dto.TenantId,
+        dto.EventId,
+        dto.Id,
+        dto.ClaimantActorId,
+        dto.ClaimantActorUserId,
+        dto.ClaimantActorOrganizationId,
+        dto.ClaimantActorGroupId,
+        dto.StatusCode ?? dto.StatusId.ToString());
+
     private static Dictionary<string, object> EventChildAttributes(
         Guid eventId,
         Guid tenantId,
@@ -809,6 +859,42 @@ public static class ResourceDescriptors
         AddIfPresent(attributes, "organizerGroupId", eventEntity.OrganizerActor?.GroupId);
         AddIfPresent(attributes, "submittedByUserId", eventEntity.SubmittedByUserId);
         return attributes;
+    }
+
+    private static EventAuthorizationFacts EventAuthorizationTargetFacts(Explore.Domain.Event eventEntity) => new(
+        eventEntity.TenantId,
+        eventEntity.Id,
+        eventEntity.ActorId,
+        eventEntity.Actor?.UserId,
+        eventEntity.Actor?.OrganizationId,
+        eventEntity.Actor?.GroupId,
+        eventEntity.OrganizerActorId,
+        eventEntity.OrganizerActor?.UserId,
+        eventEntity.OrganizerActor?.OrganizationId,
+        eventEntity.OrganizerActor?.GroupId,
+        eventEntity.EventProvenanceType?.MasterCode ?? eventEntity.EventProvenanceTypeId.ToString(),
+        eventEntity.SubmittedByUserId);
+
+    private static WebhookOwnershipAuthorizationFacts WebhookConsumerFacts(WebhookConsumerDto dto) => new(
+        (WebhookConsumerKind)dto.ConsumerKindId,
+        dto.OwnerId,
+        dto.TenantId,
+        dto.InstanceId,
+        dto.OrganizationId,
+        dto.GroupId,
+        dto.OwnerUserId);
+
+    private static WebhookOwnershipAuthorizationFacts WebhookEndpointFacts(WebhookEndpointDto dto)
+    {
+        var kind = (WebhookConsumerKind)dto.OwnerKindId;
+        return new WebhookOwnershipAuthorizationFacts(
+            kind,
+            dto.OwnerId,
+            dto.TenantId,
+            dto.InstanceId,
+            kind == WebhookConsumerKind.Organization ? dto.OwnerId : null,
+            kind == WebhookConsumerKind.Group ? dto.OwnerId : null,
+            kind == WebhookConsumerKind.User ? dto.OwnerId : null);
     }
 
     private static Dictionary<string, object> BaseEventAttributes(Guid eventId, Guid tenantId, Guid actorId) => new()

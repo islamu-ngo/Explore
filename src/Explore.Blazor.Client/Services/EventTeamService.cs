@@ -20,17 +20,16 @@ public class EventTeamService : IEventTeamService
         _logger = logger;
     }
 
-    public async Task<ICollection<EventTeamMemberDto>> GetTeamMembersAsync(Guid eventId, bool includeInactive = false)
+    public async Task<HalCollectionResourceOfEventTeamMemberDto> GetTeamMembersAsync(Guid eventId, bool includeInactive = false)
     {
         try
         {
-            var result = await _client.GetEventTeamAsync(eventId, includeInactive);
-            return result ?? new List<EventTeamMemberDto>();
+            return await _client.GetEventTeamAsync(eventId, includeInactive);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error fetching team for event {EventId}", eventId);
-            return new List<EventTeamMemberDto>();
+            return new HalCollectionResourceOfEventTeamMemberDto();
         }
     }
 

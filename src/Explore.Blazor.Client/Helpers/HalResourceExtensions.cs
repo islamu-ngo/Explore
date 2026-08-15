@@ -33,6 +33,14 @@ public static class HalResourceExtensions
         return DeserializeItems<EventListDto>(collection._embedded.Items);
     }
 
+    public static ICollection<EventTeamMemberDto> GetItems(this HalCollectionResourceOfEventTeamMemberDto collection)
+    {
+        if (collection._embedded?.Items == null)
+            return [];
+
+        return DeserializeItems<EventTeamMemberDto>(collection._embedded.Items);
+    }
+
     public static ICollection<EventListDto> GetItems(this HalCollectionResourceOfEventDiscoveryItemDto collection)
     {
         if (collection._embedded?.Items is not { Count: > 0 } items)

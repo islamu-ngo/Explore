@@ -163,6 +163,13 @@ public static class RouteNames
     public const string ReturnEventOrganizerPaymentOnboarding = "ReturnEventOrganizerPaymentOnboarding";
     public const string RefreshEventOrganizerPaymentOnboarding = "RefreshEventOrganizerPaymentOnboarding";
     public const string PublishEventTicketCatalog = "PublishEventTicketCatalog";
+    public const string GetEventPromotions = "GetEventPromotions";
+    public const string GetEventPromotion = "GetEventPromotion";
+    public const string CreateEventPromotionDraft = "CreateEventPromotionDraft";
+    public const string ReviseEventPromotion = "ReviseEventPromotion";
+    public const string PublishEventPromotion = "PublishEventPromotion";
+    public const string RevokeEventPromotion = "RevokeEventPromotion";
+    public const string RotateEventPromotionCode = "RotateEventPromotionCode";
     public const string GetEventOrganizerClaims = "GetEventOrganizerClaims";
     public const string GetEventOrganizerClaim = "GetEventOrganizerClaim";
     public const string GetClaimantOrganizerClaims = "GetClaimantOrganizerClaims";
@@ -348,6 +355,10 @@ public static class RouteNames
     public const string AssignAuthenticatedRegistrationOrderTickets = "AssignAuthenticatedRegistrationOrderTickets";
     public const string ImportAuthenticatedRegistrationOrderCompanyAssignmentsCsv = "ImportAuthenticatedRegistrationOrderCompanyAssignmentsCsv";
     public const string DeferAuthenticatedRegistrationOrderTickets = "DeferAuthenticatedRegistrationOrderTickets";
+    public const string ApplyGuestRegistrationOrderPromotion = "ApplyGuestRegistrationOrderPromotion";
+    public const string RemoveGuestRegistrationOrderPromotion = "RemoveGuestRegistrationOrderPromotion";
+    public const string ApplyAuthenticatedRegistrationOrderPromotion = "ApplyAuthenticatedRegistrationOrderPromotion";
+    public const string RemoveAuthenticatedRegistrationOrderPromotion = "RemoveAuthenticatedRegistrationOrderPromotion";
     public const string GetStudioContext = "GetStudioContext";
 
     #endregion

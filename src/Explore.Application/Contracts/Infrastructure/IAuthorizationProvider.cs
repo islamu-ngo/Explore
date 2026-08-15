@@ -120,7 +120,7 @@ public sealed record AuthorizationDecision(
         new(AuthorizationDecisionOutcome.Deny, reasonCode, provider);
 }
 
-public record AuthorizationRequest(
+public sealed record AuthorizationRequest(
     AuthorizationCapability Capability,
     string ResourceId,
     IReadOnlyDictionary<string, object>? ResourceAttributes = null,
@@ -210,33 +210,5 @@ public record AuthorizationRequest(
         builder.Append(':');
         builder.Append(value);
         builder.Append('|');
-    }
-}
-
-public sealed record AuthorizationCheck : AuthorizationRequest
-{
-    public AuthorizationCheck(
-        AuthorizationCapability capability,
-        string resourceId,
-        IReadOnlyDictionary<string, object>? resourceAttributes = null,
-        AuthorizationScope? scope = null,
-        IAuthorizationFacts? facts = null,
-        AuthorizationSubject? subject = null,
-        AuthorizationTenant? tenant = null)
-        : base(capability, resourceId, resourceAttributes, scope, facts, subject, tenant)
-    {
-    }
-
-    public AuthorizationCheck(
-        string resourceKind,
-        string resourceId,
-        string action,
-        IReadOnlyDictionary<string, object>? ResourceAttributes = null,
-        AuthorizationScope? Scope = null,
-        IAuthorizationFacts? Facts = null,
-        AuthorizationSubject? Subject = null,
-        AuthorizationTenant? Tenant = null)
-        : base(resourceKind, resourceId, action, ResourceAttributes, Scope, Facts, Subject, Tenant)
-    {
     }
 }

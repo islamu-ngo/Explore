@@ -105,14 +105,16 @@ public class CerbosAuthorizationServiceTests
         var checks = new List<AuthorizationRequest>
         {
             new("islamuevent_organization", "org-1", "update", null),
-            new("islamuevent_tenant_setting", "setting-key", "read", null)
+            new("islamuevent_tenant_setting", "setting-key", AuthorizationActions.View, null)
         };
 
-        var result = await service.IsAllowedBatchAsync(checks);
+        var result = await service.AuthorizeBatchAsync(checks);
 
         await Assert.That(result.Count).IsEqualTo(2);
-        await Assert.That(result[0]).IsFalse();
-        await Assert.That(result[1]).IsFalse();
+        await Assert.That(result.All(decision => !decision.IsAllowed)).IsTrue();
+        await Assert.That(result.All(decision => decision.Provider.ProviderId == "cerbos")).IsTrue();
+        await Assert.That(result.All(decision => decision.Provider.ObservedRevision is null)).IsTrue();
+        await Assert.That(result.All(decision => decision.ReasonCode == AuthorizationDecisionReasonCodes.MissingSubject)).IsTrue();
         await _cerbosClient.DidNotReceive().CheckResourcesAsync(
             Arg.Any<CheckResourcesRequest>(), Arg.Any<Metadata>());
     }
@@ -283,6 +285,76 @@ public class CerbosAuthorizationServiceTests
         await Assert.That(result[0]).IsFalse();
         await _cerbosClient.DidNotReceive().CheckResourcesAsync(
             Arg.Any<CheckResourcesRequest>(), Arg.Any<Metadata>());
+    }
+
+    [Test]
+    public async Task IsAllowedBatchAsync_EventTypedFacts_ProjectToCerbosResourceAttributes()
+    {
+        var userId = Guid.NewGuid();
+        var tenantId = Guid.NewGuid();
+        var eventId = Guid.NewGuid();
+        var actorId = Guid.NewGuid();
+        var organizerOrganizationId = Guid.NewGuid();
+
+        _adminContext.UserId.Returns(userId);
+        _adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(false);
+        _adminContext.GetAdminTenantIdsAsync(Arg.Any<CancellationToken>()).Returns([]);
+        _adminContext.GetAdminOrganizationIdsAsync(Arg.Any<CancellationToken>()).Returns([]);
+        _adminContext.GetAdminGroupIdsAsync(Arg.Any<CancellationToken>()).Returns([]);
+        _tenantContext.TenantId.Returns(tenantId);
+        var eventAuthoritySnapshotService = Substitute.For<IEventAuthoritySnapshotService>();
+        eventAuthoritySnapshotService.GetForUserAndEventsAsync(
+                tenantId,
+                userId,
+                Arg.Is<IReadOnlyCollection<Guid>>(ids => ids != null && ids.Contains(eventId)),
+                Arg.Any<CancellationToken>())
+            .Returns(new EventAuthoritySnapshot(
+                tenantId,
+                userId,
+                new Dictionary<Guid, EventAuthorityForUser>()));
+
+        Cerbos.Api.V1.Request.CheckResourcesRequest? capturedRequest = null;
+        var protoResponse = new Cerbos.Api.V1.Response.CheckResourcesResponse();
+        protoResponse.Results.Add(CreateResultEntry(eventId.ToString("D"), ResourceKinds.Event, AuthorizationActions.Update, Effect.Allow));
+
+        _cerbosClient.CheckResourcesAsync(Arg.Any<CheckResourcesRequest>(), Arg.Any<Metadata>())
+            .Returns(call =>
+            {
+                capturedRequest = call.ArgAt<CheckResourcesRequest>(0).ToCheckResourcesRequest();
+                return new CheckResourcesResponse(protoResponse);
+            });
+
+        var service = CreateService(eventAuthoritySnapshotService: eventAuthoritySnapshotService);
+        var result = await service.AuthorizeBatchAsync([
+            new AuthorizationRequest(
+                ResourceKinds.Event,
+                eventId.ToString("D"),
+                AuthorizationActions.Update,
+                Facts: new EventAuthorizationFacts(
+                    tenantId,
+                    eventId,
+                    actorId,
+                    null,
+                    null,
+                    null,
+                    actorId,
+                    null,
+                    organizerOrganizationId,
+                    null,
+                    "LOCAL",
+                    userId))
+        ]);
+
+        var decision = result.Single();
+        await Assert.That(decision.IsAllowed).IsTrue();
+        await Assert.That(decision.Provider.ProviderId).IsEqualTo("cerbos");
+        await Assert.That(decision.Provider.ObservedRevision).IsNull();
+        await Assert.That(decision.ReasonCode).IsEqualTo(AuthorizationDecisionReasonCodes.Allowed);
+        await Assert.That(capturedRequest).IsNotNull();
+        var attributes = capturedRequest!.Resources[0].Resource.Attr;
+        await Assert.That(attributes["tenantId"].StringValue).IsEqualTo(tenantId.ToString("D"));
+        await Assert.That(attributes["eventId"].StringValue).IsEqualTo(eventId.ToString("D"));
+        await Assert.That(attributes["organizerOrganizationId"].StringValue).IsEqualTo(organizerOrganizationId.ToString("D"));
     }
 
     [Test]
@@ -568,9 +640,6 @@ public class CerbosAuthorizationServiceTests
         _adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(false);
         _adminContext.GetAdminTenantIdsAsync(Arg.Any<CancellationToken>()).Returns([tenantId]);
         _adminContext.GetAdminOrganizationIdsAsync(Arg.Any<CancellationToken>()).Returns([]);
-        _settingsResolver.ResolveWithMetadataAsync("events.require_approval", Arg.Any<SettingContext>(), Arg.Any<CancellationToken>())
-            .Returns(new ResolvedSetting { Key = "events.require_approval", IsLocked = true });
-
         Cerbos.Api.V1.Request.CheckResourcesRequest? capturedRequest = null;
 
         var protoResponse = new Cerbos.Api.V1.Response.CheckResourcesResponse();
@@ -584,9 +653,22 @@ public class CerbosAuthorizationServiceTests
             });
 
         var service = CreateService();
-        var allowed = await service.CheckSettingAccessAsync("events.require_approval", "update", tenantId: tenantId);
+        var decision = await service.AuthorizeAsync(new AuthorizationRequest(
+            ResourceKinds.TenantSetting,
+            "events.require_approval",
+            AuthorizationActions.Update,
+            new Dictionary<string, object>
+            {
+                ["settingKey"] = "events.require_approval",
+                ["tenantId"] = tenantId.ToString("D"),
+                ["isLockedByInstance"] = true
+            },
+            new AuthorizationScope(TenantId: tenantId.ToString("D"))));
 
-        await Assert.That(allowed).IsFalse();
+        await Assert.That(decision.IsAllowed).IsFalse();
+        await Assert.That(decision.Provider.ProviderId).IsEqualTo("cerbos");
+        await Assert.That(decision.Provider.ObservedRevision).IsNull();
+        await Assert.That(decision.ReasonCode).IsEqualTo(AuthorizationDecisionReasonCodes.Denied);
         await Assert.That(capturedRequest).IsNotNull();
 
         var resource = capturedRequest!.Resources[0];

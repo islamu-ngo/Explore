@@ -51,12 +51,13 @@ public sealed class AuthorizationBehavior<TRequest, TResponse>(
             resourceAttributes,
             cancellationToken);
 
+        var factsForProvider = resolvedContext.Facts ?? facts;
         await EnforceAuthorizationAsync(
             attribute.Resource,
             resolvedContext.ResourceId ?? resourceId,
             attribute.Action,
-            resolvedContext.Attributes,
-            resolvedContext.Facts ?? facts,
+            factsForProvider is null ? resolvedContext.Attributes : null,
+            factsForProvider,
             typeof(TRequest).Name,
             cancellationToken);
         return await next(cancellationToken);

@@ -134,7 +134,7 @@ public class RuntimeAuthorizationProviderTests
     }
 
     [Test]
-    public async Task IsAllowedBatchAsync_WithInstanceCerbosUnavailable_AllowsSettingChecksThroughLocalAdminParity()
+    public async Task AuthorizeBatchAsync_WithInstanceCerbosUnavailable_DeniesSettingChecksWithSafeMetadata()
     {
         var fixture = CreateRuntimeProviderFixture();
         fixture.AdminContext.UserId.Returns(Guid.NewGuid());
@@ -144,7 +144,7 @@ public class RuntimeAuthorizationProviderTests
         fixture.CerbosClient.CheckResourcesAsync(Arg.Any<CheckResourcesRequest>(), Arg.Any<Metadata>())
             .Returns<CheckResourcesResponse>(_ => throw CreateUnavailableRpcException());
 
-        var results = await fixture.RuntimeProvider.IsAllowedBatchAsync(
+        var results = await fixture.RuntimeProvider.AuthorizeBatchAsync(
         [
             new AuthorizationRequest(
                 ResourceKinds.InstanceSetting,
@@ -158,8 +158,18 @@ public class RuntimeAuthorizationProviderTests
                 new Dictionary<string, object> { ["settingKey"] = "storage" })
         ]);
 
-        await Assert.That(results).IsEquivalentTo([true, true]);
+        await Assert.That(results).Count().IsEqualTo(2);
+        await Assert.That(results.All(result =>
+            result.Outcome == AuthorizationDecisionOutcome.Deny &&
+            result.ReasonCode == AuthorizationDecisionReasonCodes.ProviderUnavailable &&
+            result.Provider == AuthorizationProviderMetadata.Cerbos &&
+            result.Provider.ObservedRevision is null)).IsTrue();
         await fixture.CerbosClient.Received(1).CheckResourcesAsync(Arg.Any<CheckResourcesRequest>(), Arg.Any<Metadata>());
+        var errorLog = fixture.RuntimeLogger.ReceivedCalls()
+            .Single(call => Equals(call.GetArguments()[0], LogLevel.Error))
+            .GetArguments()[2]
+            ?.ToString();
+        await Assert.That(ProviderUnavailableLogStateIsSafe(errorLog)).IsTrue();
     }
 
     [Test]
@@ -321,39 +331,43 @@ public class RuntimeAuthorizationProviderTests
     }
 
     [Test]
-    [Arguments(nameof(CreateStorageUploadSessionCommand), true)]
-    [Arguments("019ecd1d-6b34-7b05-9945-970edd3c1440", false)]
-    public async Task IsAllowedBatchAsync_WithInstanceCerbosMode_UsesLocalAuthorizationForStorageUploadSessionGate(
-        string resourceId,
-        bool includeUploadMetadata)
+    [Arguments(true)]
+    [Arguments(false)]
+    public async Task AuthorizeBatchAsync_WithInstanceCerbosMode_UsesTypedStorageUploadContract(
+        bool canonicalResourceId)
     {
         var fixture = CreateRuntimeProviderFixture();
-        fixture.AdminContext.UserId.Returns(Guid.NewGuid());
+        var userId = Guid.NewGuid();
+        var organizationId = Guid.NewGuid();
+        fixture.AdminContext.UserId.Returns(userId);
         fixture.AdminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(false);
+        fixture.AdminContext.IsOrganizationAdminAsync(organizationId, Arg.Any<CancellationToken>()).Returns(true);
         fixture.SystemSettingRepository.GetByKey(GovernanceSettingKeys.Security.AuthorizationProvider)
             .Returns(CreateAuthorizationProviderSetting("cerbos"));
 
-        var attributes = new Dictionary<string, object>
-        {
-            ["tenantId"] = TestTenantId.ToString()
-        };
-
-        if (includeUploadMetadata)
-        {
-            attributes["purpose"] = "event_image";
-            attributes["visibility"] = "public_image";
-        }
-
-        var results = await fixture.RuntimeProvider.IsAllowedBatchAsync(
+        var results = await fixture.RuntimeProvider.AuthorizeBatchAsync(
         [
             new AuthorizationRequest(
                 ResourceKinds.StorageObject,
-                resourceId,
+                canonicalResourceId
+                    ? nameof(CreateStorageUploadSessionCommand)
+                    : "019ecd1d-6b34-7b05-9945-970edd3c1440",
                 AuthorizationActions.Create,
-                attributes)
+                Facts: new StorageUploadIntentFacts(
+                    userId,
+                    TestTenantId,
+                    StorageOwningResourceKinds.OrganizationTenant,
+                    Guid.NewGuid(),
+                    organizationId))
         ]);
 
-        await Assert.That(results).IsEquivalentTo([true]);
+        await Assert.That(results).Count().IsEqualTo(1);
+        await Assert.That(results[0].Outcome).IsEqualTo(
+            canonicalResourceId ? AuthorizationDecisionOutcome.Allow : AuthorizationDecisionOutcome.Deny);
+        await Assert.That(results[0].ReasonCode).IsEqualTo(
+            canonicalResourceId ? AuthorizationDecisionReasonCodes.Allowed : AuthorizationDecisionReasonCodes.Denied);
+        await Assert.That(results[0].Provider).IsEqualTo(AuthorizationProviderMetadata.Local);
+        await Assert.That(results[0].Provider.ObservedRevision).IsNull();
         await fixture.CerbosClient.DidNotReceive().CheckResourcesAsync(
             Arg.Any<CheckResourcesRequest>(),
             Arg.Any<Metadata>());
@@ -962,6 +976,16 @@ public class RuntimeAuthorizationProviderTests
             && rendered.Contains("FailureType=InvalidOperationException", StringComparison.Ordinal)
             && !rendered.Contains(exceptionMessage, StringComparison.Ordinal)
             && !rendered.Contains("abc123", StringComparison.Ordinal);
+    }
+
+    private static bool ProviderUnavailableLogStateIsSafe(string? rendered)
+    {
+        return rendered is not null
+            && rendered.Contains("FailureType=RpcException", StringComparison.Ordinal)
+            && !rendered.Contains("storage", StringComparison.OrdinalIgnoreCase)
+            && !rendered.Contains("settingKey", StringComparison.Ordinal)
+            && !rendered.Contains(TestTenantId.ToString("D"), StringComparison.OrdinalIgnoreCase)
+            && !rendered.Contains("tenant-secret unavailable", StringComparison.Ordinal);
     }
 
     [Test]

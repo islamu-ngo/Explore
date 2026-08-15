@@ -56,9 +56,12 @@ public class AuthorizationProductionGuardrailTests
 
         var provider = scope.ServiceProvider.GetRequiredService<IAuthorizationProvider>();
 
-        var result = await provider.IsAllowedAsync(ResourceKinds.Event, "test-resource", AuthorizationActions.Create);
+        var result = await provider.AuthorizeAsync(new AuthorizationRequest(
+            ResourceKinds.Event,
+            "test-resource",
+            AuthorizationActions.Create));
 
-        await Assert.That(result).IsFalse().Because("with no Cerbos endpoint and authorization.provider unset, " +
+        await Assert.That(result.IsAllowed).IsFalse().Because("with no Cerbos endpoint and authorization.provider unset, " +
         "the provider must default to denying, not allowing");
     }
 

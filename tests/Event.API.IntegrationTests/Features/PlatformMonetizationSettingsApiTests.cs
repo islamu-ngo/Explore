@@ -363,6 +363,32 @@ public sealed class PlatformMonetizationSettingsRuntimeApiTests
     {
         public bool AllowUpdateInBatch { get; init; } = true;
 
+        public async Task<AuthorizationDecision> AuthorizeAsync(
+            AuthorizationRequest request,
+            CancellationToken cancellationToken = default)
+        {
+            var allowed = await IsAllowedAsync(
+                request.ResourceKind,
+                request.ResourceId,
+                request.Action,
+                request.ResourceAttributes is null
+                    ? null
+                    : new Dictionary<string, object>(request.ResourceAttributes),
+                cancellationToken);
+            return allowed
+                ? AuthorizationDecision.Allow(AuthorizationProviderMetadata.Local)
+                : AuthorizationDecision.Deny(AuthorizationProviderMetadata.Local);
+        }
+
+        public async Task<IReadOnlyList<AuthorizationDecision>> AuthorizeBatchAsync(
+            IReadOnlyList<AuthorizationRequest> requests,
+            CancellationToken cancellationToken = default) =>
+            (await IsAllowedBatchAsync(requests, cancellationToken))
+                .Select(allowed => allowed
+                    ? AuthorizationDecision.Allow(AuthorizationProviderMetadata.Local)
+                    : AuthorizationDecision.Deny(AuthorizationProviderMetadata.Local))
+                .ToArray();
+
         public Task<bool> IsAllowedAsync(string resourceKind, string resourceId, string action, IDictionary<string, object>? resourceAttributes = null, CancellationToken cancellationToken = default) => Task.FromResult(true);
 
         public Task<IReadOnlyList<bool>> IsAllowedBatchAsync(IReadOnlyList<AuthorizationRequest> checks, CancellationToken cancellationToken = default) =>

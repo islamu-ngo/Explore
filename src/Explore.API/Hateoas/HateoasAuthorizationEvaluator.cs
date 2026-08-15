@@ -91,10 +91,14 @@ public sealed class HateoasAuthorizationEvaluator : IHateoasAuthorizationEvaluat
                 pendingChecks,
                 results,
                 httpContext.RequestAborted);
+            pendingChecks = await EnrichEventTeamChecksAsync(
+                pendingChecks,
+                results,
+                httpContext.RequestAborted);
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "HATEOAS trusted registration-form context resolution failed; denying permission-bound links.");
+            _logger.LogWarning(ex, "HATEOAS trusted resource context resolution failed; denying permission-bound links.");
             return results;
         }
 
@@ -195,8 +199,9 @@ public sealed class HateoasAuthorizationEvaluator : IHateoasAuthorizationEvaluat
             ?? ExtractResourceId(definition.RouteValues)
             ?? definition.RouteName;
 
-        var attrs = definition.PermissionResourceAttributes;
-        return new AuthorizationRequest(definition.PermissionResourceKind, resourceId, action, attrs, definition.PermissionScope);
+        var facts = definition.PermissionFacts;
+        var attrs = facts is null ? definition.PermissionResourceAttributes : null;
+        return new AuthorizationRequest(definition.PermissionResourceKind, resourceId, action, attrs, definition.PermissionScope, facts);
     }
 
     private static bool RequiresExplicitPermissionAction(LinkDefinition definition) =>
@@ -255,6 +260,72 @@ public sealed class HateoasAuthorizationEvaluator : IHateoasAuthorizationEvaluat
             Add(attributes, "organizerOrganizationId", eventEntity.OrganizerActor?.OrganizationId);
             Add(attributes, "organizerGroupId", eventEntity.OrganizerActor?.GroupId);
             var trusted = check with { ResourceAttributes = attributes };
+            enriched.Add((index, trusted, trusted.ToDeduplicationKey()));
+        }
+
+        return enriched;
+    }
+
+    private async Task<List<(int Index, AuthorizationRequest Check, string Key)>> EnrichEventTeamChecksAsync(
+        List<(int Index, AuthorizationRequest Check, string Key)> pendingChecks,
+        bool[] results,
+        CancellationToken cancellationToken)
+    {
+        var eventTeamChecks = pendingChecks.Where(item =>
+            item.Check.ResourceKind == ResourceKinds.Event &&
+            item.Check.Action == AuthorizationActions.Events.ManageTeam &&
+            item.Check.Facts is null)
+            .ToArray();
+        if (eventTeamChecks.Length == 0)
+            return pendingChecks;
+
+        Guid[] eventIds = eventTeamChecks
+            .Select(item => Guid.TryParse(item.Check.ResourceId, out Guid eventId) ? eventId : Guid.Empty)
+            .Where(eventId => eventId != Guid.Empty)
+            .Distinct()
+            .ToArray();
+        if (eventIds.Length > IEventRepository.MaximumAuthorizationTargetBatchSize)
+            throw new InvalidOperationException("Event-team HAL event batch exceeds the authorization lookup bound.");
+
+        IReadOnlyDictionary<Guid, Event> events = eventIds.Length == 0
+            ? new Dictionary<Guid, Event>()
+            : (await _eventRepository.GetAuthorizationTargetsByIdsAsync(eventIds, cancellationToken))
+                .Where(item => item.TenantId == _tenantContext.TenantId)
+                .ToDictionary(item => item.Id);
+        var enriched = new List<(int Index, AuthorizationRequest Check, string Key)>(pendingChecks.Count);
+        foreach ((int index, AuthorizationRequest check, string key) in pendingChecks)
+        {
+            if (check.ResourceKind != ResourceKinds.Event ||
+                check.Action != AuthorizationActions.Events.ManageTeam ||
+                check.Facts is not null)
+            {
+                enriched.Add((index, check, key));
+                continue;
+            }
+
+            if (!Guid.TryParse(check.ResourceId, out Guid eventId) || !events.TryGetValue(eventId, out Event? eventEntity))
+            {
+                results[index] = false;
+                continue;
+            }
+
+            var trusted = check with
+            {
+                ResourceAttributes = null,
+                Facts = new EventAuthorizationFacts(
+                    eventEntity.TenantId,
+                    eventEntity.Id,
+                    eventEntity.ActorId,
+                    eventEntity.Actor?.UserId,
+                    eventEntity.Actor?.OrganizationId,
+                    eventEntity.Actor?.GroupId,
+                    eventEntity.OrganizerActorId,
+                    eventEntity.OrganizerActor?.UserId,
+                    eventEntity.OrganizerActor?.OrganizationId,
+                    eventEntity.OrganizerActor?.GroupId,
+                    null,
+                    eventEntity.SubmittedByUserId)
+            };
             enriched.Add((index, trusted, trusted.ToDeduplicationKey()));
         }
 

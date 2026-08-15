@@ -76,8 +76,9 @@ public sealed class MutateAuthenticatedRegistrationParticipantsCommandHandler(
             new AuthorizationRequest(
                 AuthorizationCapabilityCatalog.Require(ResourceKinds.Event, AuthorizationActions.Events.ManageRegistrations),
                 eventEntity.Id.ToString("D"),
-                new Dictionary<string, object>(ResourceDescriptors.EventAuthorizationTarget.GetResourceAttributes(eventEntity)),
-                ResourceDescriptors.EventAuthorizationTarget.GetScope(eventEntity)),
+                ResourceAttributes: null,
+                Scope: ResourceDescriptors.EventAuthorizationTarget.GetScope(eventEntity),
+                Facts: ResourceDescriptors.EventAuthorizationTarget.GetFacts(eventEntity)),
             cancellationToken);
         return decision.IsAllowed;
     }

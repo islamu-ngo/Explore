@@ -22,6 +22,25 @@ public class StubAuthorizationProvider : IAuthorizationProvider
     /// </summary>
     public Func<AuthorizationRequest, bool>? CheckPredicate { get; set; }
 
+    public async Task<AuthorizationDecision> AuthorizeAsync(
+        AuthorizationRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        var allowed = (await IsAllowedBatchAsync([request], cancellationToken))[0];
+        return allowed
+            ? AuthorizationDecision.Allow(AuthorizationProviderMetadata.Local)
+            : AuthorizationDecision.Deny(AuthorizationProviderMetadata.Local);
+    }
+
+    public async Task<IReadOnlyList<AuthorizationDecision>> AuthorizeBatchAsync(
+        IReadOnlyList<AuthorizationRequest> requests,
+        CancellationToken cancellationToken = default) =>
+        (await IsAllowedBatchAsync(requests, cancellationToken))
+            .Select(allowed => allowed
+                ? AuthorizationDecision.Allow(AuthorizationProviderMetadata.Local)
+                : AuthorizationDecision.Deny(AuthorizationProviderMetadata.Local))
+            .ToArray();
+
     public Task<bool> IsAllowedAsync(string resourceKind, string resourceId, string action,
         IDictionary<string, object>? resourceAttributes = null, CancellationToken cancellationToken = default)
     {

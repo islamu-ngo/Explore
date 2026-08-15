@@ -41,13 +41,14 @@ public sealed class UpdateMyReportCommunicationConsentCommandHandlerTests
                 .Invoke(CancellationToken.None));
         _eventReportRepository.Update(Arg.Any<EventReport>()).Returns(Task.CompletedTask);
         _privacyErasureStateRepository.GetBySubjectAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns((PrivacyErasureSaga?)null);
-        _authorizationProvider.IsAllowedAsync(
-                ResourceKinds.User,
-                Arg.Any<string>(),
-                AuthorizationActions.Users.Update,
-                null,
+        _authorizationProvider.AuthorizeAsync(
+                Arg.Is<AuthorizationRequest>(request =>
+                    request != null &&
+                    request.ResourceKind == ResourceKinds.User &&
+                    request.Action == AuthorizationActions.Users.Update &&
+                    request.ResourceAttributes == null),
                 Arg.Any<CancellationToken>())
-            .Returns(true);
+            .Returns(AuthorizationDecision.Allow(AuthorizationProviderMetadata.Runtime));
         _timeProvider.GetUtcNow().Returns(new DateTimeOffset(ChangedAt));
     }
 
@@ -167,12 +168,7 @@ public sealed class UpdateMyReportCommunicationConsentCommandHandlerTests
         await _unitOfWork.DidNotReceive().ExecuteInTransactionAsync(
             Arg.Any<Func<CancellationToken, Task<BaseCommandResponse<Guid>>>>(),
             Arg.Any<CancellationToken>());
-        await _authorizationProvider.DidNotReceiveWithAnyArgs().IsAllowedAsync(
-            default!,
-            default!,
-            default!,
-            default,
-            default);
+        await _authorizationProvider.DidNotReceiveWithAnyArgs().AuthorizeAsync(default!, default);
     }
 
     [Test]
@@ -182,23 +178,27 @@ public sealed class UpdateMyReportCommunicationConsentCommandHandlerTests
         var reporterUserId = Guid.CreateVersion7();
         var reportId = Guid.CreateVersion7();
         ConfigureIdentity(tenantId, reporterUserId);
-        _authorizationProvider.IsAllowedAsync(
-                ResourceKinds.User,
-                reporterUserId.ToString(),
-                AuthorizationActions.Users.Update,
-                null,
+        _authorizationProvider.AuthorizeAsync(
+                Arg.Is<AuthorizationRequest>(request =>
+                    request != null &&
+                    request.ResourceKind == ResourceKinds.User &&
+                    request.ResourceId == reporterUserId.ToString() &&
+                    request.Action == AuthorizationActions.Users.Update &&
+                    request.ResourceAttributes == null),
                 Arg.Any<CancellationToken>())
-            .Returns(false);
+            .Returns(AuthorizationDecision.Deny(AuthorizationProviderMetadata.Runtime));
 
         await Assert.ThrowsAsync<AuthorizationException>(() => CreateHandler().Handle(
             CreateCommand(reportId, caseUpdates: true, followUp: true),
             CancellationToken.None));
 
-        await _authorizationProvider.Received(1).IsAllowedAsync(
-            ResourceKinds.User,
-            reporterUserId.ToString(),
-            AuthorizationActions.Users.Update,
-            null,
+        await _authorizationProvider.Received(1).AuthorizeAsync(
+            Arg.Is<AuthorizationRequest>(request =>
+                request != null &&
+                request.ResourceKind == ResourceKinds.User &&
+                request.ResourceId == reporterUserId.ToString() &&
+                request.Action == AuthorizationActions.Users.Update &&
+                request.ResourceAttributes == null),
             Arg.Any<CancellationToken>());
         await _unitOfWork.DidNotReceive().ExecuteInTransactionAsync(
             Arg.Any<Func<CancellationToken, Task<BaseCommandResponse<Guid>>>>(),

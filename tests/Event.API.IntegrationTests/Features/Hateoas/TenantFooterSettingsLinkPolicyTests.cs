@@ -85,10 +85,14 @@ public sealed class TenantFooterSettingsLinkPolicyTests
             "Test"));
         var definitions = new TenantFooterSettingsLinkPolicy().GetLinks(dto, user).ToArray();
         var authorizationProvider = Substitute.For<IAuthorizationProvider>();
-        authorizationProvider.IsAllowedBatchAsync(
+        authorizationProvider.AuthorizeBatchAsync(
                 Arg.Any<IReadOnlyList<AuthorizationRequest>>(),
                 Arg.Any<CancellationToken>())
-            .Returns([isAuthorized]);
+            .Returns([
+                isAuthorized
+                    ? AuthorizationDecision.Allow(AuthorizationProviderMetadata.Local)
+                    : AuthorizationDecision.Deny(AuthorizationProviderMetadata.Local)
+            ]);
         var evaluator = new HateoasAuthorizationEvaluator(
             authorizationProvider,
             Substitute.For<Explore.Application.Contracts.Persistence.IEventRepository>(),

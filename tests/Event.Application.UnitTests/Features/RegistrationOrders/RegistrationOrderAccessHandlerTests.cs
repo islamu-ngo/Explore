@@ -356,6 +356,26 @@ public sealed class RegistrationOrderAccessHandlerTests
     }
 
     [Test]
+    public async Task RegistrationOrderDtoFrom_ProjectsSafePromotionTotalsAndDisplayLabel()
+    {
+        RegistrationOrder order = CreateGuestOrder(accountUserId: Guid.CreateVersion7());
+        SetOrderSnapshot(order, nameof(RegistrationOrder.PreDiscountOrganizerDirectedTotalMinorSnapshot), 10_000L);
+        SetOrderSnapshot(order, nameof(RegistrationOrder.PromotionDiscountTotalMinorSnapshot), 1_500L);
+        SetOrderSnapshot(order, nameof(RegistrationOrder.PostDiscountOrganizerDirectedTotalMinorSnapshot), 8_500L);
+        SetOrderSnapshot(order, nameof(RegistrationOrder.AppliedPromotionDisplayLabelSnapshot), "****1234");
+        SetOrderSnapshot(order, nameof(RegistrationOrder.AppliedPromotionCodeIdSnapshot), Guid.CreateVersion7());
+
+        RegistrationOrderDto dto = RegistrationOrderDto.From(order);
+        string json = JsonSerializer.Serialize(dto);
+
+        await Assert.That(dto.PreDiscountOrganizerDirectedTotalMinor).IsEqualTo(10_000L);
+        await Assert.That(dto.PromotionDiscountTotalMinor).IsEqualTo(1_500L);
+        await Assert.That(dto.PostDiscountOrganizerDirectedTotalMinor).IsEqualTo(8_500L);
+        await Assert.That(dto.AppliedPromotionDisplayLabel).IsEqualTo("****1234");
+        await Assert.That(json).DoesNotContain(nameof(RegistrationOrder.AppliedPromotionCodeIdSnapshot));
+    }
+
+    [Test]
     public async Task StartAuthenticatedRegistrationOrderWhenAnonymousRejectsWithoutStartingOrCreatingAnAccount()
     {
         _currentUser.IsAuthenticated.Returns(false);
@@ -431,16 +451,17 @@ public sealed class RegistrationOrderAccessHandlerTests
         var query = new GetEventRegistrationOrdersQuery(_eventId);
         var handlerInvoked = false;
 
-        authorization.IsAllowedAsync(
-                ResourceKinds.Event,
-                _eventId.ToString(),
-                AuthorizationActions.Events.ManageRegistrations,
-                Arg.Is<IDictionary<string, object>?>(attributes =>
-                    attributes != null &&
-                    attributes.ContainsKey("eventId") &&
-                    Equals(attributes["eventId"], _eventId.ToString())),
+        authorization.AuthorizeAsync(
+                Arg.Is<AuthorizationRequest>(request =>
+                    request != null &&
+                    request.ResourceKind == ResourceKinds.Event &&
+                    request.ResourceId == _eventId.ToString() &&
+                    request.Action == AuthorizationActions.Events.ManageRegistrations &&
+                    request.ResourceAttributes != null &&
+                    request.ResourceAttributes.ContainsKey("eventId") &&
+                    Equals(request.ResourceAttributes["eventId"], _eventId.ToString())),
                 Arg.Any<CancellationToken>())
-            .Returns(false);
+            .Returns(AuthorizationDecision.Deny(AuthorizationProviderMetadata.Runtime));
 
         await Assert.ThrowsAsync<AuthorizationException>(async () =>
             await behavior.Handle(
@@ -654,6 +675,9 @@ public sealed class RegistrationOrderAccessHandlerTests
             UtcNow.AddMinutes(-1),
             expiresAt ?? UtcNow.AddMinutes(15));
     }
+
+    private static void SetOrderSnapshot(RegistrationOrder order, string propertyName, object value) =>
+        typeof(RegistrationOrder).GetProperty(propertyName)!.SetValue(order, value);
 
     private sealed class FixedTimeProvider(DateTime utcNow) : TimeProvider
     {

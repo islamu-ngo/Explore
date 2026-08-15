@@ -129,7 +129,7 @@
                                FullWidth="true"
                                Margin="Margin.Dense"
                                AnchorOrigin="Origin.BottomCenter"
-                               Disabled="@(_creationContext is not null && _creationContext.CanCreate != true)"
+                               Disabled="@(_creationContext is null || _creationContext.CanCreate != true)"
                                Class="mb-3 create-event__publisher-selector">
                         @foreach (var option in GetPublisherChoices())
                         {
@@ -162,68 +162,6 @@
                         </MudAlert>
                     }
 
-                    @if (_creationContext is null && _publisherMode == "organization")
-                    {
-                        <MudSelect T="Guid?"
-                                   Value="_selectedOrganizationId"
-                                   ValueChanged="OnOrganizationDropdownChanged"
-                                   Label="Select Organization"
-                                   Variant="Variant.Outlined"
-                                   FullWidth="true"
-                                   Margin="Margin.Dense"
-                                   AnchorOrigin="Origin.BottomCenter"
-                                   Class="mb-3 create-event__publisher-dropdown">
-                            @if (_myOrganizations != null && _myOrganizations.Any())
-                            {
-                                @foreach (var org in _myOrganizations.Where(o => o.Id.HasValue))
-                                {
-                                    <MudSelectItem T="Guid?" Value="@org.Id" Disabled="@(!CanPublishAsOrganization(org.Id))">@org.FullName</MudSelectItem>
-                                }
-                            }
-                            <MudSelectItem T="Guid?" Value="@CreateOrgSentinel">
-                                <div class="d-flex align-center gap-1">
-                                    <MudIcon Icon="@Icons.Material.Filled.Add" Size="Size.Small" Color="Color.Primary" />
-                                    <MudText Color="Color.Primary">Create Organization</MudText>
-                                </div>
-                            </MudSelectItem>
-                        </MudSelect>
-                    }
-
-                    @if (_creationContext is null && _publisherMode == "group")
-                    {
-                        <MudSelect T="Guid?"
-                                   Value="_selectedGroupId"
-                                   ValueChanged="OnGroupDropdownChanged"
-                                   Label="Select Group"
-                                   Variant="Variant.Outlined"
-                                   FullWidth="true"
-                                   Margin="Margin.Dense"
-                                   AnchorOrigin="Origin.BottomCenter"
-                                   Class="mb-3 create-event__publisher-dropdown">
-                            @if (_myGroups != null && _myGroups.Any())
-                            {
-                                @foreach (var group in _myGroups)
-                                {
-                                    <MudSelectItem T="Guid?" Value="@group.Id" Disabled="@(!CanPublishAsGroup(group.Id))">@group.FullName</MudSelectItem>
-                                }
-                            }
-                            <MudSelectItem T="Guid?" Value="@CreateGroupSentinel">
-                                <div class="d-flex align-center gap-1">
-                                    <MudIcon Icon="@Icons.Material.Filled.Add" Size="Size.Small" Color="Color.Primary" />
-                                    <MudText Color="Color.Primary">Create Group</MudText>
-                                </div>
-                            </MudSelectItem>
-                        </MudSelect>
-                    }
-
-                    @if (!string.IsNullOrEmpty(_organizationRoleError))
-                    {
-                        <MudAlert Severity="Severity.Error" Dense="true" Class="mb-2">@_organizationRoleError</MudAlert>
-                    }
-                    @if (!string.IsNullOrEmpty(_groupRoleError))
-                    {
-                        <MudAlert Severity="Severity.Error" Dense="true" Class="mb-2">@_groupRoleError</MudAlert>
-                    }
 
                     @* --- Event Title (large, Luma-style) --- *@
                     <MudTextField T="string" @bind-Value="createDto.Title"

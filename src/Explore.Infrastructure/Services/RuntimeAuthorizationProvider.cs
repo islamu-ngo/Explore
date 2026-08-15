@@ -212,16 +212,6 @@ public sealed class RuntimeAuthorizationProvider : IAuthorizationProvider, IAuth
         }
         catch (Exception ex) when (provider == _cerbosProvider)
         {
-            if (UsesSettingAuthorization(checks))
-            {
-                _logger.LogWarning(
-                    "Instance Cerbos provider unavailable for setting authorization batch ({Count} checks). " +
-                    "Using local setting-governance parity so administrator affordances match setting command authorization. FailureType={FailureType}",
-                    checks.Count,
-                    ex.GetType().Name);
-                return await _localProvider.AuthorizeBatchAsync(checks, cancellationToken);
-            }
-
             // When Cerbos is the configured instance authorization provider and is unavailable,
             // deny all checks. Falling back to a potentially more permissive local RBAC
             // would silently bypass the policies the operator explicitly chose to enforce.
@@ -295,9 +285,9 @@ public sealed class RuntimeAuthorizationProvider : IAuthorizationProvider, IAuth
         AuthorizationRequest check,
         ISupportAccessContext supportContext)
     {
-        var attributes = check.ResourceAttributes is null
+        var attributes = TrustedAttributes(check) is null
             ? new Dictionary<string, object>()
-            : new Dictionary<string, object>(check.ResourceAttributes);
+            : TrustedAttributes(check)!;
 
         attributes["supportAccessActive"] = supportContext.IsActive;
         attributes["supportAccessWasForwarded"] = supportContext.WasForwarded;
@@ -361,7 +351,7 @@ public sealed class RuntimeAuthorizationProvider : IAuthorizationProvider, IAuth
         if (!supportContext.TargetTenantId.HasValue || supportContext.TargetTenantId.Value == Guid.Empty)
             return "support_access_missing_target_tenant";
 
-        if (!TryResolveGuidAttribute(check.ResourceAttributes, "tenantId", out var resourceTenantId))
+        if (!TryResolveGuidAttribute(TrustedAttributes(check), "tenantId", out var resourceTenantId))
             return "support_access_missing_tenant_context";
 
         return resourceTenantId == supportContext.TargetTenantId.Value
@@ -371,7 +361,7 @@ public sealed class RuntimeAuthorizationProvider : IAuthorizationProvider, IAuth
 
     private static bool IsSupportAccessBoundedResource(AuthorizationRequest check)
     {
-        if (HasTenantAttribute(check.ResourceAttributes))
+        if (HasTenantAttribute(TrustedAttributes(check)))
             return check.ResourceKind is not ResourceKinds.SupportAccessSession;
 
         return check.ResourceKind is
@@ -601,8 +591,19 @@ public sealed class RuntimeAuthorizationProvider : IAuthorizationProvider, IAuth
 
     private static bool HasAuthorizationPhase(AuthorizationRequest check, string phase)
     {
-        return check.ResourceAttributes?.TryGetValue("authorizationPhase", out var value) == true
+        return TrustedAttributes(check)?.TryGetValue("authorizationPhase", out var value) == true
             && string.Equals(value?.ToString(), phase, StringComparison.Ordinal);
+    }
+
+    private static Dictionary<string, object>? TrustedAttributes(AuthorizationRequest request)
+    {
+        var factAttributes = AuthorizationFactsAttributeProjection.ToAttributes(request.Facts);
+        if (factAttributes is not null)
+            return factAttributes;
+
+        return request.ResourceAttributes is null
+            ? null
+            : new Dictionary<string, object>(request.ResourceAttributes);
     }
 
     private static bool UsesSettingAuthorization(IReadOnlyList<AuthorizationRequest> checks)

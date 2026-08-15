@@ -80,8 +80,9 @@ public class GetManagedEventsByActorRequestHandler : IRequestHandler<GetManagedE
                 descriptor.Kind,
                 descriptor.GetResourceId(dto),
                 AuthorizationActions.Events.ViewManagement,
-                descriptor.GetResourceAttributes(dto),
-                descriptor.GetScope(dto)))
+                ResourceAttributes: null,
+                Scope: descriptor.GetScope(dto),
+                Facts: descriptor.GetFacts(dto)))
             .ToList();
 
         IReadOnlyList<bool> decisions;

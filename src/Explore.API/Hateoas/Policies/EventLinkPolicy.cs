@@ -577,7 +577,13 @@ public sealed class EventDetailLinkPolicy : ILinkPolicy<EventDto>
                         HttpMethods.Post,
                         "Start registration",
                         RequiresAuth: true)
-                    .RequirePermission(AuthorizationActions.Create, ResourceKinds.RegistrationOrder, dto.Id.ToString(), ResourceDescriptors.Event.GetResourceAttributes(dto), ResourceDescriptors.Event.GetScope(dto));
+                    .RequirePermission(
+                        AuthorizationActions.Create,
+                        ResourceKinds.RegistrationOrder,
+                        dto.Id.ToString(),
+                        resourceAttributes: null,
+                        scope: ResourceDescriptors.Event.GetScope(dto),
+                        facts: ResourceDescriptors.Event.GetFacts(dto));
                 }
                 else if (dto.ParticipationConfiguration?.IdentityAccessModeId is
                     (int)IdentityAccessModeEnum.GuestAllowed or (int)IdentityAccessModeEnum.CapabilityTokenAllowed)

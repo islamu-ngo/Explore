@@ -4,7 +4,6 @@
 using System.Reflection;
 using Blazouter.Services;
 using Explore.Blazor.Client.Clients;
-using Explore.Blazor.Client.Helpers;
 using Explore.Blazor.Client.Pages.Events;
 using Explore.Blazor.Client.Pages.Events.Models;
 using Explore.Blazor.Client.Services;
@@ -26,7 +25,6 @@ public class CreateEventTests : IDisposable
 {
     private readonly BlazorTestContext _ctx;
     private readonly IEventService _eventService;
-    private readonly IOrganizationService _organizationService;
     private readonly IUserService _userService;
     private readonly IAdminService _adminService;
     private readonly ICategoryService _categoryService;
@@ -39,11 +37,8 @@ public class CreateEventTests : IDisposable
     public CreateEventTests()
     {
         _ctx = new BlazorTestContext();
-        _ctx.AddGroupServiceMock();
-
         // Create mocks for all required services
         _eventService = Substitute.For<IEventService>();
-        _organizationService = Substitute.For<IOrganizationService>();
         _userService = Substitute.For<IUserService>();
         _adminService = Substitute.For<IAdminService>();
         _categoryService = Substitute.For<ICategoryService>();
@@ -55,7 +50,6 @@ public class CreateEventTests : IDisposable
 
         // Register services
         _ctx.Services.AddSingleton(_eventService);
-        _ctx.Services.AddSingleton(_organizationService);
         _ctx.Services.AddSingleton(_userService);
         _ctx.Services.AddSingleton(_adminService);
         _ctx.Services.AddSingleton(_categoryService);
@@ -90,16 +84,12 @@ public class CreateEventTests : IDisposable
         var user = new UserDto { Id = Guid.NewGuid(), FirstName = "Test", LastName = "User", Email = "test@example.com" };
         _userService.GetCurrentUserAsync().Returns(user);
 
-        // Organization service - user has permission to create events
         var orgId = Guid.NewGuid();
         var org = new OrganizationListDto
         {
             Id = orgId,
-            FullName = "Test Organization",
-            CurrentUserRoleId = RoleHelper.OrgAdmin
+            FullName = "Test Organization"
         };
-        _organizationService.GetOrganizationsByUserAsync(Arg.Any<Guid>()).Returns(new List<OrganizationListDto> { org });
-        _organizationService.GetMyOrganizationsAsync().Returns(new List<OrganizationListDto> { org });
 
         // Admin service lookups
         _adminService.GetEventTypesAsync().Returns(new List<EventTypeListDto>
@@ -750,7 +740,6 @@ public class CreateEventTests : IDisposable
         // Assert - component behavior loads principal context dependencies
         await _userService.Received(1).GetCurrentUserAsync();
         await _eventService.Received(1).GetEventCreationContextAsync(Arg.Any<CancellationToken>());
-        await _organizationService.Received().GetMyOrganizationsAsync();
         await _categoryService.Received().GetAllCategoriesAsync();
         await _tagService.Received().GetAllTagsAsync();
         await _locationService.DidNotReceive().GetAllLocationsAsync();
@@ -781,6 +770,11 @@ public class CreateEventTests : IDisposable
             }
         }, TimeSpan.FromSeconds(3));
 
+        SetPrivateField(cut.Instance, "_publisherMode", "organization");
+        await InvokePrivateAsync(cut.Instance, "OnPublisherSelectionChanged", "personal");
+        await Assert.That(GetPrivateField<string>(cut.Instance, "_publisherMode")).IsEqualTo("organization");
+
+        SetPrivateField(cut.Instance, "_publisherMode", "personal");
         PrepareValidSubmitState(cut.Instance);
 
         // Act
@@ -790,6 +784,194 @@ public class CreateEventTests : IDisposable
         await _eventService.DidNotReceive().CreateEventAsync(Arg.Any<CreateEventDraftRequestDto>());
         var error = GetSubmitError(cut.Instance);
         await Assert.That(error).Contains("No available publisher");
+    }
+
+    [Test]
+    public async Task CreateEvent_WhenContextAuthorizesOrganization_RendersServerPublisherOption()
+    {
+        _ctx.SetAuthenticatedUser(Guid.NewGuid(), "Test User");
+
+        var cut = _ctx.RenderMudComponent<CreateEvent>();
+        cut.WaitForElement(".create-event__publisher-selector");
+
+        var context = await _eventService.GetEventCreationContextAsync(CancellationToken.None);
+        var organizationId = context.PublisherOptions!.Single(option => option.PublisherMode == "organization").PublisherId;
+        await InvokePrivateAsync(cut.Instance, "OnPublisherSelectionChanged", $"organization:{organizationId:D}");
+
+        await Assert.That(GetPrivateField<string>(cut.Instance, "_publisherMode")).IsEqualTo("organization");
+        await Assert.That(GetPrivateField<Guid?>(cut.Instance, "_selectedOrganizationId")).IsEqualTo(organizationId);
+    }
+
+    [Test]
+    public async Task CreateEvent_WhenContextDeniesOrganization_DoesNotSelectOrSubmit()
+    {
+        var organizationId = Guid.NewGuid();
+        _eventService.GetEventCreationContextAsync(Arg.Any<CancellationToken>()).Returns(new EventCreationContextDto
+        {
+            CanCreate = true,
+            PublisherOptions = new List<EventCreationPublisherOptionDto>
+            {
+                new() { PublisherMode = "personal", DisplayName = "Personal profile", CanPublish = true },
+                new()
+                {
+                    PublisherMode = "organization",
+                    PublisherId = organizationId,
+                    DisplayName = "Organization with local admin data",
+                    CanPublish = false,
+                    Reason = "Organization publishing is unavailable."
+                }
+            }
+        });
+        _ctx.SetAuthenticatedUser(Guid.NewGuid(), "Test User");
+
+        var cut = _ctx.RenderMudComponent<CreateEvent>();
+        cut.WaitForElement(".create-event__publisher-selector");
+
+        await InvokePrivateAsync(cut.Instance, "OnPublisherSelectionChanged", $"organization:{organizationId:D}");
+        await Assert.That(GetPrivateField<string>(cut.Instance, "_publisherMode")).IsEqualTo("personal");
+
+        SetPrivateField(cut.Instance, "_publisherMode", "organization");
+        SetPrivateField<Guid?>(cut.Instance, "_selectedOrganizationId", organizationId);
+        PrepareValidSubmitState(cut.Instance);
+
+        await InvokePrivateAsync(cut.Instance, "HandleSubmit");
+
+        await _eventService.DidNotReceive().CreateEventAsync(Arg.Any<CreateEventDraftRequestDto>());
+        await Assert.That(GetSubmitError(cut.Instance)).Contains("Select an available publisher");
+    }
+
+    [Test]
+    public async Task CreateEvent_WhenContextFails_RendersNoPublisherOptionsAndBlocksForcedPersonalSubmission()
+    {
+        _eventService.GetEventCreationContextAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<EventCreationContextDto>(new HttpRequestException("Unavailable")));
+        _ctx.SetAuthenticatedUser(Guid.NewGuid(), "Test User");
+
+        var cut = _ctx.RenderMudComponent<CreateEvent>();
+        cut.WaitForAssertion(() =>
+        {
+            if (!cut.Markup.Contains("Creation permissions could not be loaded. Publishing is unavailable.", StringComparison.Ordinal)
+                || cut.Markup.Contains("Select Organization", StringComparison.Ordinal)
+                || cut.Markup.Contains("Create Organization", StringComparison.Ordinal)
+                || cut.Markup.Contains("Personal profile", StringComparison.Ordinal))
+            {
+                throw new InvalidOperationException("Creation-context failure exposed a publisher fallback.");
+            }
+        }, TimeSpan.FromSeconds(3));
+
+        SetPrivateField(cut.Instance, "_publisherMode", "personal");
+        PrepareValidSubmitState(cut.Instance);
+
+        await InvokePrivateAsync(cut.Instance, "HandleSubmit");
+
+        await _eventService.DidNotReceive().CreateEventAsync(Arg.Any<CreateEventDraftRequestDto>());
+        await Assert.That(GetSubmitError(cut.Instance)).Contains("Creation permissions could not be loaded");
+    }
+
+    [Test]
+    public async Task CreateEvent_WhenContextIsNull_RendersNoPublisherOptionsAndBlocksSubmission()
+    {
+        _eventService.GetEventCreationContextAsync(Arg.Any<CancellationToken>()).Returns((EventCreationContextDto?)null!);
+        _ctx.SetAuthenticatedUser(Guid.NewGuid(), "Test User");
+
+        var cut = _ctx.RenderMudComponent<CreateEvent>();
+        cut.WaitForAssertion(() =>
+        {
+            if (!cut.Markup.Contains("Creation permissions could not be loaded. Publishing is unavailable.", StringComparison.Ordinal)
+                || cut.Markup.Contains("Personal profile", StringComparison.Ordinal))
+            {
+                throw new InvalidOperationException("A null creation context exposed a publisher option.");
+            }
+        }, TimeSpan.FromSeconds(3));
+
+        PrepareValidSubmitState(cut.Instance);
+
+        await InvokePrivateAsync(cut.Instance, "HandleSubmit");
+
+        await _eventService.DidNotReceive().CreateEventAsync(Arg.Any<CreateEventDraftRequestDto>());
+        await Assert.That(GetSubmitError(cut.Instance)).Contains("Creation permissions could not be loaded");
+    }
+
+    [Test]
+    public async Task ManualEvidence_CapturesSanitizedPublisherContextStates()
+    {
+        _ctx.SetAuthenticatedUser(Guid.NewGuid(), "Test User");
+
+        var available = _ctx.RenderMudComponent<CreateEvent>();
+        available.WaitForElement(".create-event__publisher-selector");
+        var availableContext = await _eventService.GetEventCreationContextAsync(CancellationToken.None);
+        var organizationId = availableContext.PublisherOptions!.Single(option => option.PublisherMode == "organization").PublisherId;
+        await InvokePrivateAsync(available.Instance, "OnPublisherSelectionChanged", $"organization:{organizationId:D}");
+        var availableMode = GetPrivateField<string>(available.Instance, "_publisherMode");
+        var availableMarkup = available.Markup;
+        available.Dispose();
+
+        using var deniedFixture = new CreateEventTests();
+        deniedFixture._eventService.GetEventCreationContextAsync(Arg.Any<CancellationToken>()).Returns(new EventCreationContextDto
+        {
+            CanCreate = true,
+            PublisherOptions =
+            [
+                new() { PublisherMode = "personal", DisplayName = "Personal profile", CanPublish = true },
+                new()
+                {
+                    PublisherMode = "organization",
+                    PublisherId = organizationId,
+                    DisplayName = "Test Organization",
+                    CanPublish = false,
+                    Reason = "Organization publishing is unavailable."
+                }
+            ]
+        });
+        deniedFixture._ctx.SetAuthenticatedUser(Guid.NewGuid(), "Test User");
+        var denied = deniedFixture._ctx.RenderMudComponent<CreateEvent>();
+        denied.WaitForElement(".create-event__publisher-selector");
+        await InvokePrivateAsync(denied.Instance, "OnPublisherSelectionChanged", $"organization:{organizationId:D}");
+        var deniedMode = GetPrivateField<string>(denied.Instance, "_publisherMode");
+        var deniedMarkup = denied.Markup;
+        denied.Dispose();
+
+        using var missingFixture = new CreateEventTests();
+        missingFixture._eventService.GetEventCreationContextAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<EventCreationContextDto>(new HttpRequestException("Unavailable")));
+        missingFixture._ctx.SetAuthenticatedUser(Guid.NewGuid(), "Test User");
+        var missing = missingFixture._ctx.RenderMudComponent<CreateEvent>();
+        missing.WaitForAssertion(() =>
+        {
+            if (!missing.Markup.Contains("Creation permissions could not be loaded. Publishing is unavailable.", StringComparison.Ordinal))
+            {
+                throw new InvalidOperationException("Creation-context failure was not rendered.");
+            }
+        }, TimeSpan.FromSeconds(3));
+        await Assert.That(missing.Markup).DoesNotContain("Personal profile");
+
+        var artifact = $"""
+            <!doctype html>
+            <html lang="en"><body>
+            <h1>Create Event publisher-context bUnit manual QA</h1>
+            <section data-scenario="context-available" data-selected-mode="{availableMode}">{availableMarkup}</section>
+            <section data-scenario="context-denied" data-selected-mode="{deniedMode}">{deniedMarkup}</section>
+            <section data-scenario="context-missing" data-publisher-options="none" data-submit-disabled="true">{missing.Markup}</section>
+            </body></html>
+            """;
+        artifact = System.Text.RegularExpressions.Regex.Replace(
+            artifact,
+            "[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}",
+            "[redacted-guid]");
+        artifact = System.Text.RegularExpressions.Regex.Replace(artifact, "[\\w.+-]+@[\\w.-]+", "[redacted-email]");
+
+        await Assert.That(artifact).Contains("data-selected-mode=\"organization\"");
+        await Assert.That(artifact).Contains("data-selected-mode=\"personal\"");
+        await Assert.That(artifact).Contains("Creation permissions could not be loaded. Publishing is unavailable.");
+        await Assert.That(artifact).Contains("data-publisher-options=\"none\"");
+        await Assert.That(artifact).Contains("data-submit-disabled=\"true\"");
+        await Assert.That(artifact).DoesNotContain("Select Organization");
+        await Assert.That(artifact).DoesNotContain("Create Organization");
+
+        var evidenceDirectory = Environment.GetEnvironmentVariable("PHASE2_TASK22_UI_EVIDENCE_DIR")
+            ?? Path.Combine(Directory.GetCurrentDirectory(), ".omo", "evidence", "phase2-task22-create-event");
+        Directory.CreateDirectory(evidenceDirectory);
+        await File.WriteAllTextAsync(Path.Combine(evidenceDirectory, "publisher-context-states.html"), artifact);
     }
 
     [Test]
@@ -1386,7 +1568,12 @@ public class CreateEventTests : IDisposable
             return;
         }
 
-        throw new InvalidOperationException($"Private method {methodName} did not return a Task.");
+        if (result is null)
+        {
+            return;
+        }
+
+        throw new InvalidOperationException($"Private method {methodName} returned an unsupported result.");
     }
 
     private static Task SubmitReviewAndPublishAsync(CreateEvent component)

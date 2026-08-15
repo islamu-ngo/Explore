@@ -6,9 +6,7 @@
 @using Explore.Blazor.Client.Helpers
 @using Explore.Blazor.Client.Pages.Organizations
 @using Explore.Blazor.Client.Pages.Organizations.Dialogs
-@using System.Security.Claims
 @inject IOrganizationMemberService MemberService
-@inject AuthenticationStateProvider AuthenticationStateProvider
 @inject IDialogService DialogService
 @inject ISnackbar Snackbar
 @inject NavigationManager Navigation
@@ -128,7 +126,6 @@
     private List<OrganizationMemberDto> _members = new();
     private bool _loading = true;
     private bool _canCreateMembers;
-    private Guid? _currentUserId;
     private string? _errorMessage;
 
     protected override async Task OnInitializedAsync()
@@ -146,15 +143,12 @@
 
     private static bool CanEditMember(OrganizationMemberDto member)
     {
-        return member.RoleId != RoleHelper.OrgCreator
-            && member.HasHalLink("edit");
+        return member.HasHalLink("edit");
     }
 
     private bool CanDeleteMember(OrganizationMemberDto member)
     {
-        return member.RoleId != RoleHelper.OrgCreator
-            && member.UserId != _currentUserId
-            && member.HasHalLink("delete");
+        return member.HasHalLink("delete");
     }
 
     private async Task LoadMembers()
@@ -163,9 +157,6 @@
         _errorMessage = null;
         try
         {
-            var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
-            _currentUserId = ExtractUserId(authState.User);
-
             var result = await MemberService.GetMembersWithAffordancesAsync(OrganizationId);
             _members = result.Members.ToList();
             _canCreateMembers = result.CanCreate;
@@ -251,15 +242,6 @@
         {
             _errorMessage = $"Failed to remove member: {ex.Message}";
         }
-    }
-
-    private static Guid? ExtractUserId(ClaimsPrincipal user)
-    {
-        var raw = user.FindFirst("sub")?.Value
-            ?? user.FindFirst(ClaimTypes.NameIdentifier)?.Value
-            ?? user.FindFirst("sid")?.Value;
-
-        return Guid.TryParse(raw, out var userId) ? userId : null;
     }
 
     private void NavigateToMembers()

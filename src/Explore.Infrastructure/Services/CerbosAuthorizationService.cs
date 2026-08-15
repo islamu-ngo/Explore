@@ -258,22 +258,24 @@ public class CerbosAuthorizationService : IAuthorizationProvider
                     entry = entry.WithScope(effectiveTenantId);
 
                 // Map resource attributes to Cerbos AttributeValue types
-                if (check.ResourceAttributes is not null)
+                var attributes = TrustedAttributes(check);
+
+                if (attributes is not null)
                 {
-                    foreach (var (key, value) in check.ResourceAttributes)
+                    foreach (var (key, value) in attributes)
                         entry = entry.WithAttribute(key, ToAttributeValue(value));
                 }
 
                 // Auto-enrich with tenantId when not explicitly provided in resource attributes.
                 // Required for Cerbos derived role evaluation (tenant admin checks resource.attr.tenantId).
                 if (effectiveTenantId is not null &&
-                    (check.ResourceAttributes is null || !check.ResourceAttributes.ContainsKey("tenantId")))
+                    (attributes is null || !attributes.ContainsKey("tenantId")))
                 {
                     entry = entry.WithAttribute("tenantId", AttributeValue.StringValue(effectiveTenantId));
                 }
 
                 if (check.ResourceKind == ResourceKinds.RegistrationForm &&
-                    (check.ResourceAttributes is null || !check.ResourceAttributes.ContainsKey("isMachine")))
+                    (attributes is null || !attributes.ContainsKey("isMachine")))
                 {
                     entry = entry.WithAttribute("isMachine", AttributeValue.BoolValue(isMachine));
                 }
@@ -288,10 +290,11 @@ public class CerbosAuthorizationService : IAuthorizationProvider
         var eventIds = new HashSet<Guid>();
         foreach (var check in checks)
         {
-            if (check.ResourceAttributes is null)
+            var attributes = TrustedAttributes(check);
+            if (attributes is null)
                 continue;
 
-            if (check.ResourceAttributes.TryGetValue("eventId", out var eventIdObj))
+            if (attributes.TryGetValue("eventId", out var eventIdObj))
             {
                 var eventIdStr = eventIdObj?.ToString();
                 if (Guid.TryParse(eventIdStr, out var eventId))
@@ -311,7 +314,8 @@ public class CerbosAuthorizationService : IAuthorizationProvider
                 return scopedTenantId;
             }
 
-            if (check.ResourceAttributes?.TryGetValue("tenantId", out var tenantIdObj) == true)
+            var attributes = TrustedAttributes(check);
+            if (attributes?.TryGetValue("tenantId", out var tenantIdObj) == true)
             {
                 var tenantIdStr = tenantIdObj?.ToString();
                 if (Guid.TryParse(tenantIdStr, out var tenantId))
@@ -342,18 +346,29 @@ public class CerbosAuthorizationService : IAuthorizationProvider
                     ? AuthorizationDecision.Allow(AuthorizationProviderMetadata.Cerbos)
                     : AuthorizationDecision.Deny(AuthorizationProviderMetadata.Cerbos);
                 _logger.LogDebug(
-                    "Cerbos decision: effect={Effect} resource={Resource}/{ResourceId} action={Action} requestId={RequestId} correlationId={CorrelationId}",
-                    effect, check.ResourceKind, check.ResourceId, check.Action, requestId, correlationId);
+                    "Cerbos decision: effect={Effect} resource={Resource} action={Action} requestId={RequestId} correlationId={CorrelationId}",
+                    effect, check.ResourceKind, check.Action, requestId, correlationId);
                 continue;
             }
 
             _logger.LogWarning(
-                "Cerbos decision missing. Default deny for resource={Resource}/{ResourceId} action={Action} requestId={RequestId} correlationId={CorrelationId}",
-                check.ResourceKind, check.ResourceId, check.Action, requestId, correlationId);
+                "Cerbos decision missing. Default deny for resource={Resource} action={Action} requestId={RequestId} correlationId={CorrelationId}",
+                check.ResourceKind, check.Action, requestId, correlationId);
             decisions[i] = AuthorizationDecision.Deny(AuthorizationProviderMetadata.Cerbos, AuthorizationDecisionReasonCodes.ProviderError);
         }
 
         return decisions;
+    }
+
+    private static Dictionary<string, object>? TrustedAttributes(AuthorizationRequest request)
+    {
+        var factAttributes = AuthorizationFactsAttributeProjection.ToAttributes(request.Facts);
+        if (factAttributes is not null)
+            return factAttributes;
+
+        return request.ResourceAttributes is null
+            ? null
+            : new Dictionary<string, object>(request.ResourceAttributes);
     }
 
     private static Cerbos.Api.V1.Response.CheckResourcesResponse.Types.ResultEntry? FindResultEntry(

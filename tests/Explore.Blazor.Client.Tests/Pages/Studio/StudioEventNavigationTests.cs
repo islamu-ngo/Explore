@@ -13,10 +13,16 @@ public sealed class StudioEventNavigationTests : IDisposable
 {
     private readonly BlazorTestContext _ctx = new();
     private readonly IEventService _eventService;
+    private readonly IEventTicketingService _ticketingService;
+    private readonly IEventPromotionService _promotionService;
 
     public StudioEventNavigationTests()
     {
         _eventService = _ctx.AddMockService<IEventService>();
+        _ticketingService = _ctx.AddMockService<IEventTicketingService>();
+        _promotionService = _ctx.AddMockService<IEventPromotionService>();
+        _ticketingService.GetCatalogAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns((EventTicketCatalogState?)null);
         _ctx.Services.AddScoped<StudioEventContextState>();
     }
 
@@ -103,6 +109,62 @@ public sealed class StudioEventNavigationTests : IDisposable
     }
 
     [Test]
+    public async Task Render_WithoutPromotionManagementRelation_OmitsPromotionsSection()
+    {
+        var resource = CreateEvent("edit");
+        _eventService.GetEventByIdAsync(resource.Id!.Value).Returns(resource);
+
+        var cut = _ctx.RenderMudComponent<StudioEventNavigation>(parameters => parameters
+            .Add(component => component.EventId, resource.Id.Value));
+
+        cut.WaitForElement("[data-testid='studio-event-navigation']");
+        await Assert.That(cut.FindAll("[data-event-section='promotions']")).IsEmpty();
+    }
+
+    [Test]
+    public async Task Render_PromotionsSectionRequiresCreatePromotionCollectionRelation()
+    {
+        var resource = CreateEvent("manage-ticket-types");
+        var catalogVersionId = Guid.CreateVersion7();
+        _eventService.GetEventByIdAsync(resource.Id!.Value).Returns(resource);
+        _ticketingService.GetCatalogAsync(resource.Id.Value, Arg.Any<CancellationToken>())
+            .Returns(Catalog(resource.Id.Value, catalogVersionId));
+        _promotionService.GetPromotionsAsync(resource.Id.Value, catalogVersionId, Arg.Any<CancellationToken>())
+            .Returns(PromotionManagementCollectionState.Create(
+                resource.Id.Value,
+                catalogVersionId,
+                [],
+                new Dictionary<string, HalLink>
+                {
+                    ["create-promotion"] = new() { Href = $"/api/events/{resource.Id}/promotions", Method = "POST" }
+                }));
+
+        var cut = _ctx.RenderMudComponent<StudioEventNavigation>(parameters => parameters
+            .Add(component => component.EventId, resource.Id.Value));
+
+        cut.WaitForElement("[data-event-section='promotions']");
+        await Assert.That(cut.FindAll("[data-event-section='promotions']").Count).IsEqualTo(1);
+    }
+
+    [Test]
+    public async Task Render_PromotionCollectionWithoutCreateRelation_OmitsPromotionsSection()
+    {
+        var resource = CreateEvent("manage-ticket-types");
+        var catalogVersionId = Guid.CreateVersion7();
+        _eventService.GetEventByIdAsync(resource.Id!.Value).Returns(resource);
+        _ticketingService.GetCatalogAsync(resource.Id.Value, Arg.Any<CancellationToken>())
+            .Returns(Catalog(resource.Id.Value, catalogVersionId));
+        _promotionService.GetPromotionsAsync(resource.Id.Value, catalogVersionId, Arg.Any<CancellationToken>())
+            .Returns(PromotionManagementCollectionState.Create(resource.Id.Value, catalogVersionId, []));
+
+        var cut = _ctx.RenderMudComponent<StudioEventNavigation>(parameters => parameters
+            .Add(component => component.EventId, resource.Id.Value));
+
+        cut.WaitForElement("[data-testid='studio-event-navigation']");
+        await Assert.That(cut.FindAll("[data-event-section='promotions']")).IsEmpty();
+    }
+
+    [Test]
     public async Task Render_FormsSectionRequiresManageRegistrationWorkflowRelation()
     {
         var resource = CreateEvent();
@@ -149,4 +211,16 @@ public sealed class StudioEventNavigationTests : IDisposable
                 relation => relation,
                 relation => (object)new { href = $"/api/event/{resource.Id}", method = "GET" }));
     }
+
+    private static EventTicketCatalogState Catalog(Guid eventId, Guid catalogVersionId) => new(
+        eventId,
+        catalogVersionId,
+        1,
+        "USD",
+        1,
+        "DRAFT",
+        "Draft",
+        [],
+        [],
+        new Dictionary<string, HalLink>(StringComparer.Ordinal));
 }

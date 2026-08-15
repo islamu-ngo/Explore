@@ -54,20 +54,23 @@ public sealed class GetStudioContextQueryHandler(
                     ResourceKinds.Event,
                     eventEntity.Id.ToString("D"),
                     AuthorizationActions.Events.ManageRegistrations,
-                    ResourceDescriptors.EventAuthorizationTarget.GetResourceAttributes(eventEntity),
-                    ResourceDescriptors.EventAuthorizationTarget.GetScope(eventEntity)),
+                    ResourceAttributes: null,
+                    Scope: ResourceDescriptors.EventAuthorizationTarget.GetScope(eventEntity),
+                    Facts: ResourceDescriptors.EventAuthorizationTarget.GetFacts(eventEntity)),
                 new AuthorizationRequest(
                     ResourceKinds.Event,
                     eventEntity.Id.ToString("D"),
                     AuthorizationActions.Events.ManageRegistrationChannels,
-                    ResourceDescriptors.EventAuthorizationTarget.GetResourceAttributes(eventEntity),
-                    ResourceDescriptors.EventAuthorizationTarget.GetScope(eventEntity)),
+                    ResourceAttributes: null,
+                    Scope: ResourceDescriptors.EventAuthorizationTarget.GetScope(eventEntity),
+                    Facts: ResourceDescriptors.EventAuthorizationTarget.GetFacts(eventEntity)),
                 new AuthorizationRequest(
                     ResourceKinds.Event,
                     eventEntity.Id.ToString("D"),
                     AuthorizationActions.Events.ViewRegistrationProviderHealth,
-                    ResourceDescriptors.EventAuthorizationTarget.GetResourceAttributes(eventEntity),
-                    ResourceDescriptors.EventAuthorizationTarget.GetScope(eventEntity))
+                    ResourceAttributes: null,
+                    Scope: ResourceDescriptors.EventAuthorizationTarget.GetScope(eventEntity),
+                    Facts: ResourceDescriptors.EventAuthorizationTarget.GetFacts(eventEntity))
             })
             .ToList();
         if (checks.Count == 0)

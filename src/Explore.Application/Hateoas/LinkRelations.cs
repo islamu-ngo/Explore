@@ -183,6 +183,8 @@ public static class LinkRelations
     /// </summary>
     public const string Team = "team";
 
+    public const string AssignEventRole = "assign-event-role";
+
     /// <summary>
     /// Registration action for an event or session.
     /// </summary>
@@ -356,6 +358,12 @@ public static class LinkRelations
     public const string CommercialDisclosures = "commercial-disclosures";
     public const string PaymentConnection = "payment-connection";
     public const string StartOnboarding = "start-onboarding";
+    public const string Promotions = "promotions";
+    public const string CreatePromotion = "create-promotion";
+    public const string RevisePromotion = "revise-promotion";
+    public const string RotatePromotionCode = "rotate-promotion-code";
+    public const string ApplyPromotion = "apply-promotion";
+    public const string RemovePromotion = "remove-promotion";
     public const string StartRegistration = "start-registration";
     public const string StartGuestRegistration = "start-guest-registration";
     public const string SignInToRegister = "sign-in-to-register";

@@ -428,6 +428,32 @@ public class AuthorizationPipelineIntegrationTests : IAsyncDisposable
             _orgMemberships = orgMemberships;
         }
 
+        public async Task<AuthorizationDecision> AuthorizeAsync(
+            AuthorizationRequest request,
+            CancellationToken cancellationToken = default)
+        {
+            var allowed = await IsAllowedAsync(
+                request.ResourceKind,
+                request.ResourceId,
+                request.Action,
+                request.ResourceAttributes is null
+                    ? null
+                    : new Dictionary<string, object>(request.ResourceAttributes),
+                cancellationToken);
+            return allowed
+                ? AuthorizationDecision.Allow(AuthorizationProviderMetadata.Cerbos)
+                : AuthorizationDecision.Deny(AuthorizationProviderMetadata.Cerbos);
+        }
+
+        public async Task<IReadOnlyList<AuthorizationDecision>> AuthorizeBatchAsync(
+            IReadOnlyList<AuthorizationRequest> requests,
+            CancellationToken cancellationToken = default) =>
+            (await IsAllowedBatchAsync(requests, cancellationToken))
+                .Select(allowed => allowed
+                    ? AuthorizationDecision.Allow(AuthorizationProviderMetadata.Cerbos)
+                    : AuthorizationDecision.Deny(AuthorizationProviderMetadata.Cerbos))
+                .ToArray();
+
         public async Task<bool> IsAllowedAsync(
             string resourceKind,
             string resourceId,

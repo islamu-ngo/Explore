@@ -5,6 +5,7 @@ using Asp.Versioning;
 using Explore.API.Attributes;
 using Explore.API.ExceptionHandling;
 using Explore.API.Hateoas;
+using Explore.API.Hateoas.Policies;
 using Explore.Application.Contracts.Identity;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.DTOs.EventRoleAssignment;
@@ -27,15 +28,18 @@ public class EventTeamController : ControllerBase
     private readonly IMediator _mediator;
     private readonly IAdminContext _adminContext;
     private readonly ITenantContext _tenantContext;
+    private readonly IResourceAssembler<EventTeamMemberDto, EventTeamMemberDto> _resourceAssembler;
 
     public EventTeamController(
         IMediator mediator,
         IAdminContext adminContext,
-        ITenantContext tenantContext)
+        ITenantContext tenantContext,
+        IResourceAssembler<EventTeamMemberDto, EventTeamMemberDto> resourceAssembler)
     {
         _mediator = mediator;
         _adminContext = adminContext;
         _tenantContext = tenantContext;
+        _resourceAssembler = resourceAssembler;
     }
 
     [Authorize]
@@ -43,8 +47,10 @@ public class EventTeamController : ControllerBase
     [HttpGet("by-event/{eventId:guid}", Name = RouteNames.GetEventTeam)]
     [EndpointSummary("Get Event Team")]
     [EndpointDescription("List all team members for an event with their role assignments.")]
-    [ProducesResponseType(typeof(List<EventTeamMemberDto>), StatusCodes.Status200OK)]
-    public async Task<ActionResult<List<EventTeamMemberDto>>> GetTeam(
+    [ProducesResponseType(typeof(HalCollectionResource<EventTeamMemberDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    public async Task<ActionResult<HalCollectionResource<EventTeamMemberDto>>> GetTeam(
         Guid eventId,
         [FromQuery] bool includeInactive = false,
         CancellationToken cancellationToken = default)
@@ -56,7 +62,13 @@ public class EventTeamController : ControllerBase
             IncludeInactive = includeInactive
         }, cancellationToken);
 
-        return Ok(result);
+        var resource = await _resourceAssembler.ToCollectionResource(
+            result,
+            RouteNames.GetEventTeam,
+            new EventTeamCollectionAuthorizationContext(_tenantContext.TenantId, eventId),
+            HttpContext);
+
+        return Ok(resource);
     }
 
     [Authorize]

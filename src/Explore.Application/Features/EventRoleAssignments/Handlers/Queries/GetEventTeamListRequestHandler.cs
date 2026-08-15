@@ -33,6 +33,8 @@ public sealed class GetEventTeamListRequestHandler
         return assignments
             .Select(a => new EventTeamMemberDto
             {
+                TenantId = a.TenantId,
+                EventId = a.EventId,
                 AssignmentId = a.Id,
                 UserId = a.UserId,
                 UserEmail = a.User.Email,

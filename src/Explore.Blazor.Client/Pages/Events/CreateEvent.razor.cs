@@ -35,8 +35,6 @@ public partial class CreateEvent : IDisposable
     private const int NoRecovery = 5;
 
     [Inject] protected IEventService EventService { get; set; } = null!;
-    [Inject] protected IOrganizationService OrganizationService { get; set; } = null!;
-    [Inject] protected IGroupService GroupService { get; set; } = null!;
     [Inject] protected IUserService UserService { get; set; } = null!;
     [Inject] protected IAdminService AdminService { get; set; } = null!;
     [Inject] protected IImageStorageService ImageStorageService { get; set; } = null!;
@@ -51,25 +49,12 @@ public partial class CreateEvent : IDisposable
     [Inject] private IEventRegistrationPolicyService RegistrationPolicyService { get; set; } = default!;
     [Inject] private MainContentAppearanceState MainContentAppearanceState { get; set; } = default!;
 
-    // Sentinel Guid values for "Create Organization" / "Create Group" dropdown items
-    private static readonly Guid CreateOrgSentinelValue = Guid.Parse("00000000-0000-0000-0000-000000000001");
-    private static readonly Guid CreateGroupSentinelValue = Guid.Parse("00000000-0000-0000-0000-000000000002");
-    private static readonly Guid? CreateOrgSentinel = CreateOrgSentinelValue;
-    private static readonly Guid? CreateGroupSentinel = CreateGroupSentinelValue;
-
     // Publisher selection state
     private string _publisherMode = "personal";
     private Guid? _selectedOrganizationId;
-    private ICollection<OrganizationListDto>? _myOrganizations;
-    private string _organizationRoleError = string.Empty;
     private Guid? _selectedGroupId;
-    private ICollection<GroupListDto>? _myGroups;
-    private string _groupRoleError = string.Empty;
     private EventCreationContextDto? _creationContext;
     private string _creationContextError = string.Empty;
-
-    private const int GroupCreatorRoleId = 30;
-    private const int GroupAdminRoleId = 31;
 
     // Form state
     private Guid? _currentUserId;
@@ -107,9 +92,8 @@ public partial class CreateEvent : IDisposable
         _submitState.IsSubmitting
         || _isUploadingImage
         || _isLoadingTemplatePreview
-        || (_creationContext is not null && _creationContext.CanCreate != true)
-        || !string.IsNullOrEmpty(_organizationRoleError)
-        || !string.IsNullOrEmpty(_groupRoleError);
+        || _creationContext is null
+        || _creationContext.CanCreate != true;
     private bool isLoading = true;
     private bool _dataLoaded = false;
     private int? selectedMadhabId = null;
@@ -528,9 +512,9 @@ public partial class CreateEvent : IDisposable
 
     private IReadOnlyList<PublisherChoice> GetPublisherChoices()
     {
-        if (_creationContext?.PublisherOptions?.Any() == true)
+        if (_creationContext?.PublisherOptions is { Count: > 0 } options)
         {
-            return _creationContext.PublisherOptions
+            return options
                 .Select(option => new PublisherChoice(
                     BuildPublisherKey(option.PublisherMode, option.PublisherId),
                     option.PublisherMode,
@@ -543,12 +527,7 @@ public partial class CreateEvent : IDisposable
                 .ToList();
         }
 
-        return new[]
-        {
-            new PublisherChoice(BuildPublisherKey("personal", null), "personal", null, CanSelectPublisherMode("personal"), "Personal profile", "Personal profile"),
-            new PublisherChoice(BuildPublisherKey("organization", null), "organization", null, CanSelectPublisherMode("organization"), "Organization", "Choose an organization below"),
-            new PublisherChoice(BuildPublisherKey("group", null), "group", null, CanSelectPublisherMode("group"), "Group", "Choose a group below")
-        };
+        return [];
     }
 
     private void OnPublisherSelectionChanged(string? key)
@@ -558,23 +537,14 @@ public partial class CreateEvent : IDisposable
             return;
         }
 
-        if (_creationContext is not null)
+        if (_creationContext is null || GetPublisherOption(mode, publisherId)?.CanPublish != true)
         {
-            var option = GetPublisherOption(mode, publisherId);
-            if (option?.CanPublish != true)
-            {
-                return;
-            }
-
-            _publisherMode = mode;
-            _selectedOrganizationId = mode == "organization" ? publisherId : null;
-            _selectedGroupId = mode == "group" ? publisherId : null;
-            _organizationRoleError = string.Empty;
-            _groupRoleError = string.Empty;
             return;
         }
 
-        SetPublisherMode(mode);
+        _publisherMode = mode;
+        _selectedOrganizationId = mode == "organization" ? publisherId : null;
+        _selectedGroupId = mode == "group" ? publisherId : null;
     }
 
     private static string BuildPublisherKey(string? mode, Guid? publisherId) =>
@@ -615,91 +585,6 @@ public partial class CreateEvent : IDisposable
         "group" => Icons.Material.Filled.Group,
         _ => Icons.Material.Filled.Person
     };
-
-    private void SetPublisherMode(string mode)
-    {
-        if (!CanSelectPublisherMode(mode))
-        {
-            return;
-        }
-
-        _publisherMode = mode;
-        if (mode == "personal")
-        {
-            _selectedOrganizationId = null;
-            _selectedGroupId = null;
-            _organizationRoleError = string.Empty;
-            _groupRoleError = string.Empty;
-        }
-        else if (mode == "organization")
-        {
-            _selectedGroupId = null;
-            _groupRoleError = string.Empty;
-        }
-        else if (mode == "group")
-        {
-            _selectedOrganizationId = null;
-            _organizationRoleError = string.Empty;
-        }
-    }
-
-    private void OnOrganizationDropdownChanged(Guid? value)
-    {
-        if (value.HasValue && value.Value == CreateOrgSentinelValue)
-        {
-            _selectedOrganizationId = null;
-            Navigation.NavigateTo("/organizations/create");
-            return;
-        }
-
-        _selectedOrganizationId = value;
-        _organizationRoleError = string.Empty;
-
-        if (value.HasValue)
-        {
-            var contextOption = GetPublisherOption("organization", value.Value);
-            if (_creationContext is not null && contextOption?.CanPublish != true)
-            {
-                _organizationRoleError = contextOption?.Reason ?? "You cannot publish events for this organization.";
-                return;
-            }
-
-            var org = _myOrganizations?.FirstOrDefault(o => o.Id == value.Value);
-            if (_creationContext is null && org?.CurrentUserRoleId != null && !RoleHelper.CanManage(org.CurrentUserRoleId))
-            {
-                _organizationRoleError = "You don't have the authority to publish events for this organization. Only Creator, Co-Owner, or Admin roles can publish.";
-            }
-        }
-    }
-
-    private void OnGroupDropdownChanged(Guid? value)
-    {
-        if (value.HasValue && value.Value == CreateGroupSentinelValue)
-        {
-            _selectedGroupId = null;
-            Navigation.NavigateTo("/groups/create");
-            return;
-        }
-
-        _selectedGroupId = value;
-        _groupRoleError = string.Empty;
-
-        if (value.HasValue)
-        {
-            var contextOption = GetPublisherOption("group", value.Value);
-            if (_creationContext is not null && contextOption?.CanPublish != true)
-            {
-                _groupRoleError = contextOption?.Reason ?? "You cannot publish events for this group.";
-                return;
-            }
-
-            var group = _myGroups?.FirstOrDefault(g => g.Id == value.Value);
-            if (_creationContext is null && group?.CurrentUserRoleId != null && !CanPublishAsGroup(group.CurrentUserRoleId))
-            {
-                _groupRoleError = "You don't have the authority to publish events for this group. Only Creator or Admin roles can publish.";
-            }
-        }
-    }
 
     private sealed record PublisherChoice(
         string Key,
@@ -984,28 +869,6 @@ public partial class CreateEvent : IDisposable
 
             await LoadCreationContextAsync();
 
-            try
-            {
-                _myOrganizations = await OrganizationService.GetMyOrganizationsAsync();
-                Logger.LogInformation("Loaded {Count} organizations", _myOrganizations?.Count ?? 0);
-            }
-            catch (Exception ex)
-            {
-                Logger.LogError(ex, "Error loading user organizations");
-                _myOrganizations = new List<OrganizationListDto>();
-            }
-
-            try
-            {
-                _myGroups = await GroupService.GetMyGroupsAsync();
-                Logger.LogInformation("Loaded {Count} groups", _myGroups?.Count ?? 0);
-            }
-            catch (Exception ex)
-            {
-                Logger.LogError(ex, "Error loading user groups");
-                _myGroups = new List<GroupListDto>();
-            }
-
             var eventTypesTask = AdminService.GetEventTypesAsync();
             var audienceGendersTask = AdminService.GetAudienceGendersAsync();
             var audienceAgesTask = AdminService.GetAudienceAgesAsync();
@@ -1105,13 +968,21 @@ public partial class CreateEvent : IDisposable
     {
         _submitState.Reset();
 
+        if (_creationContext is null)
+        {
+            _submitState.Fail(_creationContextError is { Length: > 0 }
+                ? _creationContextError
+                : "Creation permissions could not be loaded. Publishing is unavailable.");
+            return false;
+        }
+
         if (string.IsNullOrWhiteSpace(createDto.Title))
         {
             _submitState.Fail("Event name is required.");
             return false;
         }
 
-        if (_creationContext is not null && _creationContext.CanCreate != true)
+        if (_creationContext.CanCreate != true)
         {
             _submitState.Fail(_creationContext.UnavailableReason ?? "You do not have access to create events.");
             return false;
@@ -1130,12 +1001,7 @@ public partial class CreateEvent : IDisposable
                 _submitState.Fail("Please select an organization.");
                 return false;
             }
-            if (!string.IsNullOrEmpty(_organizationRoleError))
-            {
-                _submitState.Fail(_organizationRoleError);
-                return false;
-            }
-            if (_creationContext is not null && GetPublisherOption("organization", _selectedOrganizationId.Value)?.CanPublish != true)
+            if (GetPublisherOption("organization", _selectedOrganizationId.Value)?.CanPublish != true)
             {
                 _submitState.Fail("You cannot publish events for the selected organization.");
                 return false;
@@ -1149,12 +1015,7 @@ public partial class CreateEvent : IDisposable
                 _submitState.Fail("Please select a group.");
                 return false;
             }
-            if (!string.IsNullOrEmpty(_groupRoleError))
-            {
-                _submitState.Fail(_groupRoleError);
-                return false;
-            }
-            if (_creationContext is not null && GetPublisherOption("group", _selectedGroupId.Value)?.CanPublish != true)
+            if (GetPublisherOption("group", _selectedGroupId.Value)?.CanPublish != true)
             {
                 _submitState.Fail("You cannot publish events for the selected group.");
                 return false;
@@ -1177,13 +1038,19 @@ public partial class CreateEvent : IDisposable
         try
         {
             _creationContext = await EventService.GetEventCreationContextAsync();
+            if (_creationContext is null)
+            {
+                _creationContextError = "Creation permissions could not be loaded. Publishing is unavailable.";
+                return;
+            }
+
             ApplyCreationContextDefaults();
         }
         catch (Exception ex)
         {
             Logger.LogError(ex, "Error loading event creation context");
             _creationContext = null;
-            _creationContextError = "Creation permissions could not be loaded. You can continue filling the form, but publishing may fail.";
+            _creationContextError = "Creation permissions could not be loaded. Publishing is unavailable.";
         }
     }
 
@@ -1216,9 +1083,6 @@ public partial class CreateEvent : IDisposable
         _publisherMode = defaultMode;
         _selectedOrganizationId = null;
         _selectedGroupId = null;
-        _organizationRoleError = string.Empty;
-        _groupRoleError = string.Empty;
-
         if (_publisherMode == "organization")
         {
             _selectedOrganizationId = GetFirstPublishableOption("organization")?.PublisherId;
@@ -1239,50 +1103,13 @@ public partial class CreateEvent : IDisposable
 
     private bool CanSelectPublisherMode(string mode)
     {
-        if (_creationContext is null)
-        {
-            return true;
-        }
-
         return mode switch
         {
             "personal" => GetPublisherOption("personal", null)?.CanPublish == true,
-            "organization" => _creationContext.AllowOrganizationPublishing == true && GetFirstPublishableOption("organization") is not null,
-            "group" => _creationContext.AllowGroupPublishing == true && GetFirstPublishableOption("group") is not null,
+            "organization" => GetFirstPublishableOption("organization") is not null,
+            "group" => GetFirstPublishableOption("group") is not null,
             _ => false
         };
-    }
-
-    private bool CanPublishAsOrganization(Guid? organizationId)
-    {
-        if (organizationId == CreateOrgSentinel)
-        {
-            return CanSelectPublisherMode("organization");
-        }
-
-        if (_creationContext is null)
-        {
-            var org = _myOrganizations?.FirstOrDefault(o => o.Id == organizationId);
-            return org?.CurrentUserRoleId is null || RoleHelper.CanManage(org.CurrentUserRoleId);
-        }
-
-        return GetPublisherOption("organization", organizationId)?.CanPublish == true;
-    }
-
-    private bool CanPublishAsGroup(Guid? groupId)
-    {
-        if (groupId == CreateGroupSentinel)
-        {
-            return CanSelectPublisherMode("group");
-        }
-
-        if (_creationContext is null)
-        {
-            var group = _myGroups?.FirstOrDefault(g => g.Id == groupId);
-            return group?.CurrentUserRoleId is null || CanPublishAsGroup(group.CurrentUserRoleId);
-        }
-
-        return GetPublisherOption("group", groupId)?.CanPublish == true;
     }
 
     private async Task HandleSubmit() => await SubmitEventAsync(CreateEventSubmitIntent.ReviewAndPublish);
@@ -1478,33 +1305,12 @@ public partial class CreateEvent : IDisposable
         if (_publisherMode == "personal")
             return "Publishing as yourself (User Reported)";
 
-        if (_selectedOrganizationId.HasValue && _myOrganizations != null)
-        {
-            var org = _myOrganizations.FirstOrDefault(o => o.Id == _selectedOrganizationId.Value);
-            if (org != null) return $"Publishing for {org.FullName}";
-        }
-
-        if (_publisherMode == "group" && _selectedGroupId.HasValue && _myGroups != null)
-        {
-            var group = _myGroups.FirstOrDefault(g => g.Id == _selectedGroupId.Value);
-            if (group != null) return $"Publishing for {group.FullName}";
-        }
-
-        return "Select who is publishing this event";
+        var publisherId = _publisherMode == "organization" ? _selectedOrganizationId : _selectedGroupId;
+        var publisher = GetPublisherOption(_publisherMode, publisherId);
+        return publisher?.DisplayName is { Length: > 0 } displayName
+            ? $"Publishing for {displayName}"
+            : "Select who is publishing this event";
     }
-
-    private static string GetRoleName(int roleId) => roleId switch
-    {
-        GroupCreatorRoleId => "Group Creator",
-        GroupAdminRoleId => "Group Admin",
-        32 => "Group Moderator",
-        33 => "Group Member",
-        _ => RoleHelper.GetRoleName(roleId)
-    };
-
-    private static bool CanPublishAsGroup(int? roleId) => roleId is GroupCreatorRoleId or GroupAdminRoleId;
-
-    private static bool CanPublishAsGroup(RoleEnum? role) => CanPublishAsGroup(RoleHelper.ToRoleId(role));
 
     // ========== Timezone Methods ==========
 

@@ -37,7 +37,8 @@ public sealed class PaidEventPublicationPreflightServiceTests
         _tenant.TenantId.Returns(_tenantId);
         _commerceConfiguration.ProviderCode.Returns("stripe");
         _commerceConfiguration.ConnectPlatformId.Returns("platform-live-eu");
-        _authorization.IsAllowedAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<IDictionary<string, object>?>(), Arg.Any<CancellationToken>()).Returns(true);
+        _authorization.AuthorizeAsync(Arg.Any<AuthorizationRequest>(), Arg.Any<CancellationToken>())
+            .Returns(AuthorizationDecision.Allow(AuthorizationProviderMetadata.Runtime));
     }
 
     [Test]
@@ -148,7 +149,14 @@ public sealed class PaidEventPublicationPreflightServiceTests
     {
         Actor organizer = CreateOrganizer(ActorTypeEnum.Organization);
         ConfigureReadyFacts(organizer, ["USD"]);
-        _authorization.IsAllowedAsync(ResourceKinds.Event, _eventId.ToString(), AuthorizationActions.Events.ManagePaidEventCommerce, Arg.Any<IDictionary<string, object>?>(), Arg.Any<CancellationToken>()).Returns(false);
+        _authorization.AuthorizeAsync(
+                Arg.Is<AuthorizationRequest>(request =>
+                    request != null &&
+                    request.ResourceKind == ResourceKinds.Event &&
+                    request.ResourceId == _eventId.ToString() &&
+                    request.Action == AuthorizationActions.Events.ManagePaidEventCommerce),
+                Arg.Any<CancellationToken>())
+            .Returns(AuthorizationDecision.Deny(AuthorizationProviderMetadata.Runtime));
 
         PaidEventPublicationPreflightDto result = await CreateService().AssessAsync(_eventId, CreateEvent(organizer), CreateReadyPaidDraft(), CancellationToken.None);
 
@@ -160,13 +168,18 @@ public sealed class PaidEventPublicationPreflightServiceTests
     {
         Actor organizer = CreateOrganizer(ActorTypeEnum.Organization);
         ConfigureReadyFacts(organizer, ["USD"]);
-        _authorization.IsAllowedAsync(
-                ResourceKinds.Event,
-                _eventId.ToString(),
-                AuthorizationActions.Events.ManagePaidEventCommerce,
-                Arg.Is<IDictionary<string, object>?>(attributes => attributes != null && (string)attributes["organizerActorId"] == organizer.Id.ToString()),
+        _authorization.AuthorizeAsync(
+                Arg.Is<AuthorizationRequest>(request =>
+                    request != null &&
+                    request.ResourceKind == ResourceKinds.Event &&
+                    request.ResourceId == _eventId.ToString() &&
+                    request.Action == AuthorizationActions.Events.ManagePaidEventCommerce &&
+                    request.ResourceAttributes == null &&
+                    request.Facts != null &&
+                    request.Facts.GetType() == typeof(EventAuthorizationFacts) &&
+                    ((EventAuthorizationFacts)request.Facts).OrganizerActorId == organizer.Id),
                 Arg.Any<CancellationToken>())
-            .Returns(true);
+            .Returns(AuthorizationDecision.Allow(AuthorizationProviderMetadata.Runtime));
 
         PaidEventPublicationPreflightDto result = await CreateService().AssessAsync(_eventId, CreateEvent(organizer), CreateReadyPaidDraft(), CancellationToken.None);
 

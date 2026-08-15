@@ -109,8 +109,9 @@ public sealed class PaidEventPublicationPreflightService(
             new AuthorizationRequest(
                 AuthorizationCapabilityCatalog.Require(ResourceKinds.Event, AuthorizationActions.Events.ManagePaidEventCommerce),
                 eventTarget.Id.ToString(),
-                OrganizerAttributes(eventTarget),
-                ResourceDescriptors.EventAuthorizationTarget.GetScope(eventTarget)),
+                ResourceAttributes: null,
+                Scope: ResourceDescriptors.EventAuthorizationTarget.GetScope(eventTarget),
+                Facts: ResourceDescriptors.EventAuthorizationTarget.GetFacts(eventTarget)),
             cancellationToken);
         if (!commerceDecision.IsAllowed)
         {
@@ -208,28 +209,6 @@ public sealed class PaidEventPublicationPreflightService(
         string.IsNullOrWhiteSpace(catalog.MerchantDisclosureText)
         || string.IsNullOrWhiteSpace(catalog.RefundPolicyDisclosureText)
         || string.IsNullOrWhiteSpace(catalog.SupportContactDisclosureText);
-
-    private static Dictionary<string, object> OrganizerAttributes(Event eventTarget)
-    {
-        var attributes = new Dictionary<string, object>
-        {
-            ["eventId"] = eventTarget.Id.ToString(),
-            ["tenantId"] = eventTarget.TenantId.ToString()
-        };
-        Add(attributes, "organizerActorId", eventTarget.OrganizerActorId);
-        Add(attributes, "organizerUserId", eventTarget.OrganizerActor?.UserId);
-        Add(attributes, "organizerOrganizationId", eventTarget.OrganizerActor?.OrganizationId);
-        Add(attributes, "organizerGroupId", eventTarget.OrganizerActor?.GroupId);
-        return attributes;
-    }
-
-    private static void Add(Dictionary<string, object> attributes, string key, Guid? value)
-    {
-        if (value is { } id)
-        {
-            attributes[key] = id.ToString();
-        }
-    }
 
     private static PaidEventPublicationPreflightDto Result(Guid eventId, Guid? catalogId, bool isPaid, IReadOnlyList<PaidEventPublicationPreflightBlockerDto> blockers) => new()
     {

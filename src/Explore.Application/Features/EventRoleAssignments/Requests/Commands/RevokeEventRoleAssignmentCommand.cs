@@ -1,15 +1,28 @@
 // ABOUTME: Command for revoking an event role assignment while preserving audit history.
 // ABOUTME: Enforces last-owner protection and same-event authority ceiling.
 
+using Explore.Application.Authorization;
 using Explore.Application.Responses;
+using Explore.Domain.Constants;
 using MediatR;
 
 namespace Explore.Application.Features.EventRoleAssignments.Requests.Commands;
 
-public sealed class RevokeEventRoleAssignmentCommand : IRequest<BaseCommandResponse<Guid>>
+[AuthorizeResource(ResourceKinds.Event, AuthorizationActions.Events.ManageTeam)]
+public sealed class RevokeEventRoleAssignmentCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
 {
     public Guid TenantId { get; set; }
     public Guid EventId { get; set; }
     public Guid AssignmentId { get; set; }
     public Guid ActorUserId { get; set; }
+
+    string? ISecureRequest.ResourceId => EventId == Guid.Empty ? null : EventId.ToString("D");
+
+    IDictionary<string, object>? ISecureRequest.ResourceAttributes => EventId == Guid.Empty
+        ? null
+        : new Dictionary<string, object>
+        {
+            ["tenantId"] = TenantId.ToString("D"),
+            ["eventId"] = EventId.ToString("D")
+        };
 }

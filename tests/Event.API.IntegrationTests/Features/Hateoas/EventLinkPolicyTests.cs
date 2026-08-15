@@ -669,10 +669,45 @@ public sealed class EventLinkPolicyTests
         await Assert.That(platform.PermissionResourceKind).IsEqualTo(ResourceKinds.RegistrationOrder);
         await Assert.That(platform.PermissionResourceId).IsEqualTo(eventId.ToString());
         await Assert.That(platform.PermissionScope?.TenantId).IsEqualTo(tenantId.ToString());
-        await Assert.That(platform.PermissionResourceAttributes!["eventId"]).IsEqualTo(eventId.ToString());
-        await Assert.That(platform.PermissionResourceAttributes["tenantId"]).IsEqualTo(tenantId.ToString());
-        await Assert.That(platform.PermissionResourceAttributes["organizerUserId"]).IsEqualTo(organizerUserId.ToString());
+        await Assert.That(platform.PermissionResourceAttributes).IsNull();
+        await Assert.That(platform.PermissionFacts).IsTypeOf<EventAuthorizationFacts>();
+        var facts = (EventAuthorizationFacts)platform.PermissionFacts!;
+        await Assert.That(facts.EventId).IsEqualTo(eventId);
+        await Assert.That(facts.TenantId).IsEqualTo(tenantId);
+        await Assert.That(facts.OrganizerUserId).IsEqualTo(organizerUserId);
         await Assert.That(platformLinks.Any(link => link.Rel == LinkRelations.SignInToRegister)).IsFalse();
+    }
+
+    [Test]
+    public async Task PlatformManagedRegistrationStart_UsesTypedEventFacts()
+    {
+        Guid eventId = Guid.NewGuid();
+        Guid tenantId = Guid.NewGuid();
+        Guid organizerUserId = Guid.NewGuid();
+        var dto = CreateEventDto(
+            eventId,
+            tenantId,
+            Guid.NewGuid(),
+            status: EventStatusEnum.Published,
+            statusName: "Published",
+            statusCode: "PUBLISHED");
+        dto.OrganizerActorUserId = organizerUserId;
+        dto.ParticipationConfiguration = new EventParticipationConfigurationDto
+        {
+            ParticipationHandlingModeId = (int)ParticipationHandlingModeEnum.PlatformManaged
+        };
+
+        LinkDefinition link = new EventDetailLinkPolicy()
+            .GetLinks(dto, new ClaimsPrincipal(new ClaimsIdentity("test")))
+            .Single(candidate => candidate.Rel == LinkRelations.StartRegistration);
+
+        await Assert.That(link.PermissionResourceKind).IsEqualTo(ResourceKinds.RegistrationOrder);
+        await Assert.That(link.PermissionResourceAttributes).IsNull();
+        await Assert.That(link.PermissionFacts).IsTypeOf<EventAuthorizationFacts>();
+        var facts = (EventAuthorizationFacts)link.PermissionFacts!;
+        await Assert.That(facts.EventId).IsEqualTo(eventId);
+        await Assert.That(facts.TenantId).IsEqualTo(tenantId);
+        await Assert.That(facts.OrganizerUserId).IsEqualTo(organizerUserId);
     }
 
     [Test]

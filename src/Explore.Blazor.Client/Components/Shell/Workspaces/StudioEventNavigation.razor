@@ -1,8 +1,11 @@
 @* ABOUTME: Event-level Studio navigation derived exclusively from event HAL relations. *@
 @* ABOUTME: Replaces actor navigation while preserving an explicit return to the managed-event list. *@
 @using Explore.Blazor.Client.Pages.Studio
+@using Explore.Blazor.Client.Contracts.Services.Events
 @implements IDisposable
 @inject StudioEventContextState EventContext
+@inject IEventTicketingService Ticketing
+@inject IEventPromotionService Promotions
 
 <nav class="studio-event-navigation" aria-label="Event management navigation" data-testid="studio-event-navigation">
     <MudNavMenu Dense="false" Class="studio-event-navigation__menu px-2">
@@ -56,6 +59,12 @@
                     Orders
                 </MudNavLink>
             }
+            @if (_promotionNavigationAvailable)
+            {
+                <MudNavLink Href="@($"{StudioRoute}/promotions")" Icon="@Icons.Material.Outlined.LocalOffer" Match="NavLinkMatch.All" data-event-section="promotions">
+                    Promotions
+                </MudNavLink>
+            }
             @if (HasIntegrationRelation(Resource))
             {
                 <MudNavLink Href="@($"{StudioRoute}/integrations")" Icon="@Icons.Material.Outlined.Extension" Match="NavLinkMatch.All" data-event-section="integrations">
@@ -107,12 +116,16 @@
     private string StudioRoute => $"/studio/events/{EventId}";
     private string PublicEventRoute => EventUrlHelper.BuildPublicPath(Resource?.Slug, Resource?.PublicCode)
         ?? $"/events/{EventId}/edit";
+    private CancellationTokenSource? _promotionRequest;
+    private long _promotionLoadGeneration;
+    private bool _promotionNavigationAvailable;
 
     protected override async Task OnParametersSetAsync()
     {
         EventContext.Changed -= OnContextChanged;
         EventContext.Changed += OnContextChanged;
         await EventContext.LoadAsync(EventId);
+        await LoadPromotionNavigationAsync();
     }
 
     private static bool HasScheduleRelation(EventDto resource) =>
@@ -126,11 +139,53 @@
         resource.HasHalLink("manage-registration-channels")
         || resource.HasHalLink("view-registration-provider-health");
 
-    private void OnContextChanged() => _ = InvokeAsync(StateHasChanged);
+    private async Task LoadPromotionNavigationAsync()
+    {
+        _promotionRequest?.Cancel();
+        _promotionRequest?.Dispose();
+        var generation = ++_promotionLoadGeneration;
+        var eventId = EventId;
+        _promotionNavigationAvailable = false;
+        if (Resource is not { } resource
+            || (!resource.HasHalLink("manage-ticket-types") && !resource.HasHalLink("manage-capacity-pools")))
+        {
+            return;
+        }
+
+        var request = new CancellationTokenSource();
+        _promotionRequest = request;
+        try
+        {
+            EventTicketCatalogState? catalog = await Ticketing.GetCatalogAsync(eventId, request.Token);
+            PromotionManagementCollectionState? promotions = catalog?.CatalogId is { } catalogVersionId
+                ? await Promotions.GetPromotionsAsync(eventId, catalogVersionId, request.Token)
+                : null;
+            if (generation == _promotionLoadGeneration && EventId == eventId && ReferenceEquals(_promotionRequest, request))
+            {
+                _promotionNavigationAvailable = promotions?.HasLink("create-promotion") == true;
+            }
+        }
+        catch (OperationCanceledException) when (request.IsCancellationRequested)
+        {
+        }
+        catch (Exception)
+        {
+            _promotionNavigationAvailable = false;
+        }
+    }
+
+    private void OnContextChanged() => _ = InvokeAsync(async () =>
+    {
+        await LoadPromotionNavigationAsync();
+        StateHasChanged();
+    });
 
     public void Dispose()
     {
         EventContext.Changed -= OnContextChanged;
+        ++_promotionLoadGeneration;
+        _promotionRequest?.Cancel();
+        _promotionRequest?.Dispose();
         GC.SuppressFinalize(this);
     }
 }

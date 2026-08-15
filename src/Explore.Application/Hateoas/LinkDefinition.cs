@@ -35,6 +35,7 @@ public sealed record LinkDefinition(
     string? PermissionResourceId = null,
     IReadOnlyDictionary<string, object>? PermissionResourceAttributes = null,
     AuthorizationScope? PermissionScope = null,
+    IAuthorizationFacts? PermissionFacts = null,
     bool AdvertiseWhenAnonymous = false)
 {
     /// <summary>
@@ -112,13 +113,15 @@ public sealed record LinkDefinition(
         string action,
         string? resourceId = null,
         IReadOnlyDictionary<string, object>? resourceAttributes = null,
-        AuthorizationScope? scope = null) =>
+        AuthorizationScope? scope = null,
+        IAuthorizationFacts? facts = null) =>
         this with
         {
             PermissionResourceKind = resourceKind,
             PermissionAction = action,
             PermissionResourceId = resourceId,
             PermissionResourceAttributes = resourceAttributes,
-            PermissionScope = scope
+            PermissionScope = scope,
+            PermissionFacts = facts
         };
 }

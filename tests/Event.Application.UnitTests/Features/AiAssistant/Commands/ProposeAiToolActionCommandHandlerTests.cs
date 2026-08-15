@@ -30,13 +30,10 @@ public sealed class ProposeAiToolActionCommandHandlerTests
         _currentUserService.IsAuthenticated.Returns(true);
         _currentUserService.UserId.Returns(_userId);
         _authorizationProvider
-            .IsAllowedAsync(
-                Arg.Any<string>(),
-                Arg.Any<string>(),
-                Arg.Any<string>(),
-                Arg.Any<IDictionary<string, object>?>(),
+            .AuthorizeAsync(
+                Arg.Any<AuthorizationRequest>(),
                 Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult(true));
+            .Returns(AuthorizationDecision.Allow(AuthorizationProviderMetadata.Runtime));
         _eventRepository
             .GetAuthorizationTargetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(call => Task.FromResult<Explore.Domain.Event?>(CreateEvent((Guid)call[0]!, _tenantId)));
@@ -121,13 +118,14 @@ public sealed class ProposeAiToolActionCommandHandlerTests
         _conversationRepository.GetByIdForUpdateAsync(_conversationId, Arg.Any<CancellationToken>())
             .Returns(conversation);
         _authorizationProvider
-            .IsAllowedAsync(
-                ResourceKinds.Event,
-                eventId.ToString(),
-                AuthorizationActions.Events.ModerateHeavy,
-                Arg.Any<IDictionary<string, object>?>(),
+            .AuthorizeAsync(
+                Arg.Is<AuthorizationRequest>(request =>
+                    request != null &&
+                    request.ResourceKind == ResourceKinds.Event &&
+                    request.ResourceId == eventId.ToString() &&
+                    request.Action == AuthorizationActions.Events.ModerateHeavy),
                 Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult(false));
+            .Returns(AuthorizationDecision.Deny(AuthorizationProviderMetadata.Runtime));
 
         var result = await CreateHandler().Handle(CreateCommand(
             toolName: "HeavyModerateEvent",
@@ -155,14 +153,15 @@ public sealed class ProposeAiToolActionCommandHandlerTests
         await Assert.That(result.Success).IsTrue();
         await Assert.That(conversation.ProposedActions.Count).IsEqualTo(1);
         await Assert.That(conversation.ProposedActions.Single().Kind).IsEqualTo(AiProposedActionKind.HeavyModerateEvent);
-        await _authorizationProvider.Received(1).IsAllowedAsync(
-            ResourceKinds.Event,
-            eventId.ToString(),
-            AuthorizationActions.Events.ModerateHeavy,
-            Arg.Is<IDictionary<string, object>?>(attributes =>
-                HasGuidAttribute(attributes, "tenantId", _tenantId) &&
-                HasGuidAttribute(attributes, "eventId", eventId) &&
-                HasGuidAttribute(attributes, "actorId", actorId)),
+        await _authorizationProvider.Received(1).AuthorizeAsync(
+            Arg.Is<AuthorizationRequest>(request =>
+                request != null &&
+                request.ResourceKind == ResourceKinds.Event &&
+                request.ResourceId == eventId.ToString() &&
+                request.Action == AuthorizationActions.Events.ModerateHeavy &&
+                HasGuidAttribute(request.ResourceAttributes, "tenantId", _tenantId) &&
+                HasGuidAttribute(request.ResourceAttributes, "eventId", eventId) &&
+                HasGuidAttribute(request.ResourceAttributes, "actorId", actorId)),
             Arg.Any<CancellationToken>());
         await _conversationRepository.Received(1).Update(conversation);
     }
@@ -183,13 +182,14 @@ public sealed class ProposeAiToolActionCommandHandlerTests
             payloadJson: CreateHeavyModerationPayload(eventId)), CancellationToken.None);
 
         await Assert.That(result.Success).IsTrue();
-        await _authorizationProvider.Received(1).IsAllowedAsync(
-            ResourceKinds.Event,
-            eventId.ToString(),
-            AuthorizationActions.Events.ModerateHeavy,
-            Arg.Is<IDictionary<string, object>?>(attributes =>
-                HasGuidAttribute(attributes, "tenantId", targetTenantId) &&
-                HasGuidAttribute(attributes, "eventId", eventId)),
+        await _authorizationProvider.Received(1).AuthorizeAsync(
+            Arg.Is<AuthorizationRequest>(request =>
+                request != null &&
+                request.ResourceKind == ResourceKinds.Event &&
+                request.ResourceId == eventId.ToString() &&
+                request.Action == AuthorizationActions.Events.ModerateHeavy &&
+                HasGuidAttribute(request.ResourceAttributes, "tenantId", targetTenantId) &&
+                HasGuidAttribute(request.ResourceAttributes, "eventId", eventId)),
             Arg.Any<CancellationToken>());
     }
 
@@ -210,7 +210,7 @@ public sealed class ProposeAiToolActionCommandHandlerTests
         await Assert.That(result.Success).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("tool_authorization_denied");
         await Assert.That(conversation.ProposedActions).IsEmpty();
-        await _authorizationProvider.DidNotReceiveWithAnyArgs().IsAllowedAsync(default!, default!, default!, default, default);
+        await _authorizationProvider.DidNotReceiveWithAnyArgs().AuthorizeAsync(default!, default);
         await _conversationRepository.DidNotReceiveWithAnyArgs().Update(default!);
     }
 
@@ -458,7 +458,7 @@ public sealed class ProposeAiToolActionCommandHandlerTests
           """;
 
     private static bool HasGuidAttribute(
-        IDictionary<string, object>? attributes,
+        IReadOnlyDictionary<string, object>? attributes,
         string name,
         Guid expected)
         => attributes?.TryGetValue(name, out var value) == true &&

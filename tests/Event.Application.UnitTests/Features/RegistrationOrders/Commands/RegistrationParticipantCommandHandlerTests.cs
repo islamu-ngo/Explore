@@ -313,7 +313,7 @@ public sealed class RegistrationParticipantCommandHandlerTests
             Defer = new DeferRegistrationTicketCommandHandler(commandService);
             BulkDefer = new BulkDeferRegistrationTicketsCommandHandler(commandService);
             Lifecycle = new RegistrationOrderLifecycleService(
-                _inventory, _participants, _catalogs, _contributions, _sessions, _outbox, _unitOfWork, _finalization,
+                _inventory, Substitute.For<IPromotionRedemptionRepository>(), _participants, _catalogs, _contributions, _sessions, _outbox, _unitOfWork, _finalization,
                 new FixedTimeProvider(UtcNow));
         }
 

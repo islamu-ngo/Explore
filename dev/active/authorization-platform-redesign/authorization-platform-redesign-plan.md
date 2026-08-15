@@ -3,13 +3,14 @@
 
 # Authorization Platform Redesign — Implementation Plan
 
-Last Updated: 2026-08-14 Europe/Brussels
+Last Updated: 2026-08-15 Europe/Brussels
 
 ## 0. Planning Metadata
 
 - **Original request:** Improve the authorization redesign implementation plan after deep repository analysis and current industry research; do not implement runtime behavior.
 - **Task directory:** `dev/active/authorization-platform-redesign/`
-- **Status:** Re-baselined after Senior CTO review; awaiting implementation approval.
+- **Status:** Implementation active. Phase 0 is complete; Phase 1 Task 1.1 and Phase 2 Tasks 2.1-2.3 are open after independent review found legacy dictionary influence, EventTeam enforcement drift, and incomplete provider-parity evidence.
+- **Implementation progress:** 5/18 implementation tasks complete; Phases 3-5 have not started.
 - **Primary intent:** `cerbos-policy-change`.
 - **Supporting intents when their slices activate:** `add-cqrs-handler`, `add-get-endpoint`, `add-write-endpoint`, `add-hal-link`, `update-repository-query`, `add-ef-migration`, `blazor-component-affordance`, `bff-auth-bug`, `openapi-contract-change`, and `ip-clean-room-governance`.
 - **Breaking-change posture:** Development-only contracts may be removed directly. No compatibility adapters, dual production authorities, or legacy policy translation layer.

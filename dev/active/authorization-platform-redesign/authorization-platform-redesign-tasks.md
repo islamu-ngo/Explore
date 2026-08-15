@@ -7,10 +7,10 @@ Last Updated: 2026-08-15 Europe/Brussels
 
 ## Status Summary
 
-- **Overall status:** Implementation active; Phase 0 is complete and Phase 1 is in progress.
-- **Completed:** 3/18 implementation tasks; phase verification is tracked separately.
-- **Current priority:** Introduce the typed Application authorization boundary and trusted storage pre-create facts.
-- **Next recommended slice:** Phase 1, Task 1.1: add the typed core contract and `StorageUploadIntentFacts` without provider or Domain leakage.
+- **Overall status:** Implementation active. Phase 0 is complete. Phase 1's typed port exists, but its no-dictionary/no-legacy-influence criterion is reopened after independent review. Phase 2 UI fallbacks and six focused provider regressions are repaired; canonical EventTeam enforcement and full provider parity remain open.
+- **Completed:** 5/18 implementation tasks; phase verification is tracked separately.
+- **Current priority:** Finish EventTeam's shared MediatR/HAL `events.manage-team` path, remove legacy dictionary influence from migrated requests, then execute the full provider-neutral Local/Cerbos corpus with safe diagnostics.
+- **Next recommended slice:** Complete the EventTeam canonical server path and trusted typed facts, then execute every Phase 0 scenario category against both provider semantics. The seven-case event-view adapter test is smoke coverage only.
 
 ## Implementation Maintenance Rules
 
@@ -43,15 +43,15 @@ Last Updated: 2026-08-15 Europe/Brussels
 
 ## Phase 1: Typed Application decision contract 🟡 IN PROGRESS
 
-- [ ] **Task 1.1 — Typed boundary:** add Application-owned request, decision, stable reason-code, provider-metadata, and closed capability-catalog contracts; prohibit arbitrary action/resource strings and fact dictionaries.
-- [ ] **Task 1.2 — Trusted resolvers:** translate authenticated callers and loaded entities into typed subject/resource/facts while preserving tenant, support-session, machine-caller, callback, and suspended/deleted-principal boundaries.
-- [ ] **Task 1.3 — Provider port adaptation:** place Local and Cerbos implementations behind one asynchronous, cancellation-aware typed port without moving provider concerns into Domain.
+- [ ] **Task 1.1 — Typed boundary 🟡 REOPENED:** the typed contracts and closed capability catalog exist, but `AuthorizationRequest.ResourceAttributes` still has production influence when typed facts are absent.
+- [x] **Task 1.2 — Trusted resolvers:** translate authenticated callers and loaded entities into typed subject/resource/facts while preserving tenant, support-session, machine-caller, callback, and suspended/deleted-principal boundaries.
+- [x] **Task 1.3 — Provider port adaptation:** place Local and Cerbos implementations behind one asynchronous, cancellation-aware typed port without moving provider concerns into Domain.
 
 ### Phase 1 Acceptance
 
-- [ ] Domain owns only business facts/invariants and has no provider, Cerbos, HTTP, or policy-representation dependency.
-- [ ] Missing/invalid subject, tenant, resource, or fact input produces a stable fail-closed decision.
-- [ ] Architecture rules enforce the new ownership boundary.
+- [x] Domain owns only business facts/invariants and has no provider, Cerbos, HTTP, or policy-representation dependency.
+- [x] Missing/invalid subject, tenant, resource, or fact input produces a stable fail-closed decision.
+- [x] Architecture rules enforce the new ownership boundary.
 
 ### Phase 1 Verification — RUN ONCE AFTER ALL PHASE TASKS
 
@@ -59,11 +59,11 @@ Last Updated: 2026-08-15 Europe/Brussels
 - [ ] `dotnet test --project tests/Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet`
 - [ ] Record exact results and any unrelated pre-existing failure in context.
 
-## Phase 2: Canonical MediatR/HAL cutover and provider parity ⏳ NOT STARTED
+## Phase 2: Canonical MediatR/HAL cutover and provider parity 🟡 IN PROGRESS
 
-- [ ] **Task 2.1 — Joint cutover:** switch `AuthorizationBehavior`, runtime routing, and `HateoasAuthorizationEvaluator` to the typed port in one review slice; remove production influence from the old contract.
-- [ ] **Task 2.2 — HAL normalization:** normalize and batch candidate actions through the same request semantics, then materialize only allowed links; remove protected Blazor role/claim fallbacks.
-- [ ] **Task 2.3 — Behavioral parity:** execute the Phase 0 corpus against Local and Cerbos adapters and add safe differential diagnostics for capability, expected/actual outcome, provider, reason, and observed revision.
+- [ ] **Task 2.1 — Joint cutover 🟡 REOPENED:** MediatR/HAL call the typed port, but migrated requests still fall back to arbitrary resource-attribute dictionaries when typed facts are absent.
+- [ ] **Task 2.2 — HAL normalization 🟡 IN PROGRESS:** organization-member, EventTeam, and event-publisher client fallbacks are removed and EventTeam preserves collection/item links; its CQRS reads/writes must still enforce the same typed `events.manage-team` request as HAL.
+- [ ] **Task 2.3 — Behavioral parity 🟡 NEEDS FIX:** the six focused Cerbos/runtime regressions are green, but the current seven-case event-view adapter smoke test neither covers the full Phase 0 corpus nor executes live Cerbos policy semantics.
 
 ### Phase 2 Acceptance
 

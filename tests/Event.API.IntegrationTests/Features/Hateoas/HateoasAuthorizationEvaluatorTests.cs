@@ -75,15 +75,15 @@ public class HateoasAuthorizationEvaluatorTests
                 .WithPermission("islamuevent_event", "update", "id-1"),
         };
 
-        _authProvider.IsAllowedBatchAsync(
+        _authProvider.AuthorizeBatchAsync(
             Arg.Any<IReadOnlyList<AuthorizationRequest>>(),
             Arg.Any<CancellationToken>())
-            .Returns([true]);
+            .Returns(Decisions(true));
 
         var result = await _sut.AreLinksAllowedAsync(links, AuthenticatedUser(), _httpContext);
 
         await Assert.That(result[0]).IsTrue();
-        await _authProvider.Received(1).IsAllowedBatchAsync(
+        await _authProvider.Received(1).AuthorizeBatchAsync(
             Arg.Is<IReadOnlyList<AuthorizationRequest>>(checks => checks.Count == 1),
             Arg.Any<CancellationToken>());
     }
@@ -103,13 +103,13 @@ public class HateoasAuthorizationEvaluatorTests
                 Arg.Any<CancellationToken>())
             .Returns([AuthorizationEvent(tenantId, eventId, attackerUserId, organizerUserId)]);
         IReadOnlyList<AuthorizationRequest>? captured = null;
-        _authProvider.IsAllowedBatchAsync(
+        _authProvider.AuthorizeBatchAsync(
                 Arg.Any<IReadOnlyList<AuthorizationRequest>>(),
                 Arg.Any<CancellationToken>())
             .Returns(call =>
             {
                 captured = call.Arg<IReadOnlyList<AuthorizationRequest>>();
-                return captured.Select(_ => true).ToArray();
+                return Decisions(captured.Select(_ => true).ToArray());
             });
         var evaluator = new HateoasAuthorizationEvaluator(_authProvider, repository, tenantContext, _logger);
         Dictionary<string, object> spoofed = new()
@@ -164,7 +164,7 @@ public class HateoasAuthorizationEvaluatorTests
             _httpContext);
 
         await Assert.That(result.All(value => !value)).IsTrue();
-        await authorizationProvider.DidNotReceive().IsAllowedBatchAsync(
+        await authorizationProvider.DidNotReceive().AuthorizeBatchAsync(
             Arg.Any<IReadOnlyList<AuthorizationRequest>>(),
             Arg.Any<CancellationToken>());
     }
@@ -200,17 +200,17 @@ public class HateoasAuthorizationEvaluatorTests
                 Guid.CreateVersion7())]);
         if (scenario == "provider-failure")
         {
-            authorizationProvider.IsAllowedBatchAsync(
+            authorizationProvider.AuthorizeBatchAsync(
                     Arg.Any<IReadOnlyList<AuthorizationRequest>>(),
                     Arg.Any<CancellationToken>())
                 .ThrowsAsync(new HttpRequestException("provider unavailable"));
         }
         else
         {
-            authorizationProvider.IsAllowedBatchAsync(
+            authorizationProvider.AuthorizeBatchAsync(
                     Arg.Any<IReadOnlyList<AuthorizationRequest>>(),
                     Arg.Any<CancellationToken>())
-                .Returns([providerAllows]);
+                .Returns(Decisions(providerAllows));
         }
         var evaluator = new HateoasAuthorizationEvaluator(authorizationProvider, repository, tenantContext, _logger);
         Dictionary<string, object> attributes = scenario == "missing-resource-facts"
@@ -227,13 +227,13 @@ public class HateoasAuthorizationEvaluatorTests
         await Assert.That(result).IsEquivalentTo([expectedAllowed]);
         if (providerReached)
         {
-            await authorizationProvider.Received(1).IsAllowedBatchAsync(
+            await authorizationProvider.Received(1).AuthorizeBatchAsync(
                 Arg.Any<IReadOnlyList<AuthorizationRequest>>(),
                 Arg.Any<CancellationToken>());
         }
         else
         {
-            await authorizationProvider.DidNotReceive().IsAllowedBatchAsync(
+            await authorizationProvider.DidNotReceive().AuthorizeBatchAsync(
                 Arg.Any<IReadOnlyList<AuthorizationRequest>>(),
                 Arg.Any<CancellationToken>());
         }
@@ -259,7 +259,7 @@ public class HateoasAuthorizationEvaluatorTests
         await repository.DidNotReceive().GetAuthorizationTargetsByIdsAsync(
             Arg.Any<IReadOnlyCollection<Guid>>(),
             Arg.Any<CancellationToken>());
-        await authorizationProvider.DidNotReceive().IsAllowedBatchAsync(
+        await authorizationProvider.DidNotReceive().AuthorizeBatchAsync(
             Arg.Any<IReadOnlyList<AuthorizationRequest>>(),
             Arg.Any<CancellationToken>());
     }
@@ -277,16 +277,16 @@ public class HateoasAuthorizationEvaluatorTests
                 .WithPermission("islamuevent_event", "update", "id-1"),
         };
 
-        _authProvider.IsAllowedBatchAsync(
+        _authProvider.AuthorizeBatchAsync(
             Arg.Any<IReadOnlyList<AuthorizationRequest>>(),
             Arg.Any<CancellationToken>())
-            .Returns([true]);
+            .Returns(Decisions(true));
 
         var result = await _sut.AreLinksAllowedAsync(links, AuthenticatedUser(), _httpContext);
 
         await Assert.That(result[0]).IsTrue();
         await Assert.That(result[1]).IsTrue();
-        await _authProvider.Received(1).IsAllowedBatchAsync(
+        await _authProvider.Received(1).AuthorizeBatchAsync(
             Arg.Is<IReadOnlyList<AuthorizationRequest>>(checks => checks.Count == 1),
             Arg.Any<CancellationToken>());
     }
@@ -305,16 +305,16 @@ public class HateoasAuthorizationEvaluatorTests
                 .WithPermission("islamuevent_event", "update", "event-1", scope: orgScope),
         };
 
-        _authProvider.IsAllowedBatchAsync(
+        _authProvider.AuthorizeBatchAsync(
             Arg.Any<IReadOnlyList<AuthorizationRequest>>(),
             Arg.Any<CancellationToken>())
-            .Returns([true, false]);
+            .Returns(Decisions(true, false));
 
         var result = await _sut.AreLinksAllowedAsync(links, AuthenticatedUser(), _httpContext);
 
         await Assert.That(result[0]).IsTrue();
         await Assert.That(result[1]).IsFalse();
-        await _authProvider.Received(1).IsAllowedBatchAsync(
+        await _authProvider.Received(1).AuthorizeBatchAsync(
             Arg.Is<IReadOnlyList<AuthorizationRequest>>(checks => ChecksContainScopes(checks, tenantScope, orgScope)),
             Arg.Any<CancellationToken>());
     }
@@ -339,16 +339,16 @@ public class HateoasAuthorizationEvaluatorTests
                     new Dictionary<string, object> { ["tenantId"] = "tenant-2", ["ownerId"] = "owner-1" }),
         };
 
-        _authProvider.IsAllowedBatchAsync(
+        _authProvider.AuthorizeBatchAsync(
             Arg.Any<IReadOnlyList<AuthorizationRequest>>(),
             Arg.Any<CancellationToken>())
-            .Returns([true, false]);
+            .Returns(Decisions(true, false));
 
         var result = await _sut.AreLinksAllowedAsync(links, AuthenticatedUser(), _httpContext);
 
         await Assert.That(result[0]).IsTrue();
         await Assert.That(result[1]).IsFalse();
-        await _authProvider.Received(1).IsAllowedBatchAsync(
+        await _authProvider.Received(1).AuthorizeBatchAsync(
             Arg.Is<IReadOnlyList<AuthorizationRequest>>(checks => ChecksContainTenantAttributes(checks, "tenant-1", "tenant-2")),
             Arg.Any<CancellationToken>());
     }
@@ -406,15 +406,15 @@ public class HateoasAuthorizationEvaluatorTests
                 .RequirePermission("update", descriptor, resource),
         };
 
-        _authProvider.IsAllowedBatchAsync(
+        _authProvider.AuthorizeBatchAsync(
             Arg.Any<IReadOnlyList<AuthorizationRequest>>(),
             Arg.Any<CancellationToken>())
-            .Returns([true]);
+            .Returns(Decisions(true));
 
         var result = await _sut.AreLinksAllowedAsync(links, AuthenticatedUser(), _httpContext);
 
         await Assert.That(result[0]).IsTrue();
-        await _authProvider.Received(1).IsAllowedBatchAsync(
+        await _authProvider.Received(1).AuthorizeBatchAsync(
             Arg.Is<IReadOnlyList<AuthorizationRequest>>(checks => CheckContainsScopeAndAttributes(checks, "tenant-1", "org-1")),
             Arg.Any<CancellationToken>());
     }
@@ -435,10 +435,10 @@ public class HateoasAuthorizationEvaluatorTests
         };
 
         // Provider returns 2 decisions for 2 unique checks: update=allowed, delete=denied
-        _authProvider.IsAllowedBatchAsync(
+        _authProvider.AuthorizeBatchAsync(
             Arg.Any<IReadOnlyList<AuthorizationRequest>>(),
             Arg.Any<CancellationToken>())
-            .Returns([true, false]);
+            .Returns(Decisions(true, false));
 
         var result = await _sut.AreLinksAllowedAsync(links, AuthenticatedUser(), _httpContext);
 
@@ -460,7 +460,7 @@ public class HateoasAuthorizationEvaluatorTests
                 .WithPermission("islamuevent_event", "delete", "id-1"),
         };
 
-        _authProvider.IsAllowedBatchAsync(
+        _authProvider.AuthorizeBatchAsync(
             Arg.Any<IReadOnlyList<AuthorizationRequest>>(),
             Arg.Any<CancellationToken>())
             .ThrowsAsync(new HttpRequestException("Cerbos unreachable"));
@@ -486,7 +486,7 @@ public class HateoasAuthorizationEvaluatorTests
         var result = await _sut.AreLinksAllowedAsync(links, AuthenticatedUser(), _httpContext);
 
         await Assert.That(result[0]).IsFalse();
-        await _authProvider.DidNotReceive().IsAllowedBatchAsync(
+        await _authProvider.DidNotReceive().AuthorizeBatchAsync(
             Arg.Any<IReadOnlyList<AuthorizationRequest>>(),
             Arg.Any<CancellationToken>());
     }
@@ -507,7 +507,7 @@ public class HateoasAuthorizationEvaluatorTests
         var result = await _sut.AreLinksAllowedAsync(links, AuthenticatedUser(), _httpContext);
 
         await Assert.That(result[0]).IsFalse();
-        await _authProvider.DidNotReceive().IsAllowedBatchAsync(
+        await _authProvider.DidNotReceive().AuthorizeBatchAsync(
             Arg.Any<IReadOnlyList<AuthorizationRequest>>(),
             Arg.Any<CancellationToken>());
     }
@@ -541,7 +541,7 @@ public class HateoasAuthorizationEvaluatorTests
         var result = await _sut.AreLinksAllowedAsync(links, null, _httpContext);
 
         await Assert.That(result[0]).IsTrue();
-        await _authProvider.DidNotReceive().IsAllowedBatchAsync(
+        await _authProvider.DidNotReceive().AuthorizeBatchAsync(
             Arg.Any<IReadOnlyList<AuthorizationRequest>>(),
             Arg.Any<CancellationToken>());
     }
@@ -571,10 +571,10 @@ public class HateoasAuthorizationEvaluatorTests
                 .WithPermission("islamuevent_event", "update", "id-1"),
         };
 
-        _authProvider.IsAllowedBatchAsync(
+        _authProvider.AuthorizeBatchAsync(
             Arg.Any<IReadOnlyList<AuthorizationRequest>>(),
             Arg.Any<CancellationToken>())
-            .Returns([true]);
+            .Returns(Decisions(true));
 
         var result = await _sut.AreLinksAllowedAsync(links, AuthenticatedUser("Admin"), _httpContext);
 
@@ -597,10 +597,10 @@ public class HateoasAuthorizationEvaluatorTests
                 .WithPermission("islamuevent_event", "create", "islamuevent_event"),                   // Permission check → depends on provider
         };
 
-        _authProvider.IsAllowedBatchAsync(
+        _authProvider.AuthorizeBatchAsync(
             Arg.Any<IReadOnlyList<AuthorizationRequest>>(),
             Arg.Any<CancellationToken>())
-            .Returns([false, true]); // delete=denied, create=allowed
+            .Returns(Decisions(false, true)); // delete=denied, create=allowed
 
         var result = await _sut.AreLinksAllowedAsync(links, AuthenticatedUser(), _httpContext);
 
@@ -617,6 +617,13 @@ public class HateoasAuthorizationEvaluatorTests
         checks.Count == 2 &&
         checks.Any(check => check.Scope == first) &&
         checks.Any(check => check.Scope == second);
+
+    private static IReadOnlyList<AuthorizationDecision> Decisions(params bool[] allowed) =>
+        allowed
+            .Select(value => value
+                ? AuthorizationDecision.Allow(AuthorizationProviderMetadata.Local)
+                : AuthorizationDecision.Deny(AuthorizationProviderMetadata.Local))
+            .ToArray();
 
     private static bool ChecksContainTenantAttributes(
         IReadOnlyList<AuthorizationRequest> checks,

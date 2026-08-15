@@ -37,9 +37,7 @@ public partial class FallbackAuthorizationService
         for (var i = 0; i < checks.Count; i++)
         {
             var check = checks[i];
-            var attributes = check.ResourceAttributes is null
-                ? null
-                : new Dictionary<string, object>(check.ResourceAttributes);
+            var attributes = TrustedAttributes(check);
             var allowed = EvaluateWithProfile(profile, eventAuthority, check.ResourceKind, check.ResourceId, check.Action, attributes, check.Facts);
             results[i] = allowed
                 ? AuthorizationDecision.Allow(AuthorizationProviderMetadata.Local)
@@ -194,6 +192,7 @@ public partial class FallbackAuthorizationService
                 action,
                 resourceAttributes),
             "islamuevent_event_contact_share_consent" => action is "viewsharedcontacts" or "exportsharedcontacts"
+                && EvaluateTenantScopedWithProfile(profile, resourceAttributes)
                 && IsAdminForOrgScope(profile, resourceAttributes, resourceId),
             "islamuevent_storage_object"
                 => EvaluateStorageObjectWithProfile(profile, resourceId, action, resourceAttributes, facts),
@@ -552,7 +551,7 @@ public partial class FallbackAuthorizationService
             .Select(check => TryResolveEventContext(
                 check.ResourceKind,
                 check.ResourceId,
-                check.ResourceAttributes is null ? null : new Dictionary<string, object>(check.ResourceAttributes),
+                TrustedAttributes(check),
                 out var tenantId,
                 out var eventId)
                 && tenantId == profile.TenantId

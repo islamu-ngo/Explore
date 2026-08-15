@@ -85,17 +85,58 @@ public partial class FallbackAuthorizationService : IAuthorizationProvider
         if (string.IsNullOrWhiteSpace(request.ResourceId))
             return AuthorizationDecision.Deny(AuthorizationProviderMetadata.Local, AuthorizationDecisionReasonCodes.InvalidRequest);
 
+        var resourceAttributes = TrustedAttributes(request);
+        resourceAttributes = await AddTenantSettingLockAttributeAsync(request, resourceAttributes, cancellationToken);
+
         var allowed = await IsAllowedCoreAsync(
             request.ResourceKind,
             request.ResourceId,
             request.Action,
-            request.ResourceAttributes is null ? null : new Dictionary<string, object>(request.ResourceAttributes),
+            resourceAttributes,
             cancellationToken,
             request.Facts);
 
         return allowed
             ? AuthorizationDecision.Allow(AuthorizationProviderMetadata.Local)
             : AuthorizationDecision.Deny(AuthorizationProviderMetadata.Local);
+    }
+
+    private static Dictionary<string, object>? TrustedAttributes(AuthorizationRequest request)
+    {
+        var factAttributes = AuthorizationFactsAttributeProjection.ToAttributes(request.Facts);
+        if (factAttributes is not null)
+            return factAttributes;
+
+        return request.ResourceAttributes is null
+            ? null
+            : new Dictionary<string, object>(request.ResourceAttributes);
+    }
+
+    private async Task<Dictionary<string, object>?> AddTenantSettingLockAttributeAsync(
+        AuthorizationRequest request,
+        Dictionary<string, object>? resourceAttributes,
+        CancellationToken cancellationToken)
+    {
+        if (request.ResourceKind != ResourceKinds.TenantSetting
+            || resourceAttributes?.ContainsKey("isLockedByInstance") == true)
+        {
+            return resourceAttributes;
+        }
+
+        var tenantId = ResolveTenantId(resourceAttributes);
+        var resolved = await _resolver.ResolveWithMetadataAsync(
+            request.ResourceId,
+            new SettingContext(tenantId),
+            cancellationToken);
+
+        if (resolved?.IsLocked != true)
+        {
+            return resourceAttributes;
+        }
+
+        resourceAttributes ??= [];
+        resourceAttributes["isLockedByInstance"] = true;
+        return resourceAttributes;
     }
 
     private async Task<bool> IsAllowedCoreAsync(

@@ -81,8 +81,9 @@ public sealed class EventLocationManagementAuthorizationService(
                 descriptor.Kind,
                 descriptor.GetResourceId(target),
                 AuthorizationActions.Events.ViewManagement,
-                descriptor.GetResourceAttributes(target),
-                descriptor.GetScope(target)))
+                ResourceAttributes: null,
+                Scope: descriptor.GetScope(target),
+                Facts: descriptor.GetFacts(target)))
             .ToArray();
 
         IReadOnlyList<AuthorizationDecision> providerDecisions = [];

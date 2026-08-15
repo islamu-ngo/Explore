@@ -162,18 +162,17 @@ public sealed class WebhookPortalHttpContainmentTests
         IWebhookAuditEventWriter? auditWriter = null)
     {
         var authorizationProvider = Substitute.For<IAuthorizationProvider>();
-        authorizationProvider.IsAllowedAsync(
-                Arg.Any<string>(),
-                Arg.Any<string>(),
-                Arg.Any<string>(),
-                Arg.Any<IDictionary<string, object>?>(),
+        authorizationProvider.AuthorizeAsync(
+                Arg.Any<AuthorizationRequest>(),
                 Arg.Any<CancellationToken>())
-            .Returns(true);
-        authorizationProvider.IsAllowedBatchAsync(
+            .Returns(AuthorizationDecision.Allow(AuthorizationProviderMetadata.Local));
+        authorizationProvider.AuthorizeBatchAsync(
                 Arg.Any<IReadOnlyList<AuthorizationRequest>>(),
                 Arg.Any<CancellationToken>())
-            .Returns(call => Task.FromResult<IReadOnlyList<bool>>(
-                call.ArgAt<IReadOnlyList<AuthorizationRequest>>(0).Select(_ => true).ToArray()));
+            .Returns(call => Task.FromResult<IReadOnlyList<AuthorizationDecision>>(
+                call.ArgAt<IReadOnlyList<AuthorizationRequest>>(0)
+                    .Select(_ => AuthorizationDecision.Allow(AuthorizationProviderMetadata.Local))
+                    .ToArray()));
 
         var factory = new PortalFactory(svixClient, auditWriter)
         {

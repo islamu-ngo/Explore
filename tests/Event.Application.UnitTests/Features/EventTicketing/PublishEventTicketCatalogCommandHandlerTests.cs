@@ -240,8 +240,8 @@ public sealed class PublishEventTicketCatalogCommandHandlerTests
         ConfigurePaymentPlatform();
         _connections.GetActiveByScopeAsync(_tenantId, organizer.Id, "stripe", "platform-live-eu", Arg.Any<CancellationToken>())
             .Returns(CreateReadyConnection(organizer.Id));
-        _authorization.IsAllowedAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<IDictionary<string, object>?>(), Arg.Any<CancellationToken>())
-            .Returns(false);
+        _authorization.AuthorizeAsync(Arg.Any<AuthorizationRequest>(), Arg.Any<CancellationToken>())
+            .Returns(AuthorizationDecision.Deny(AuthorizationProviderMetadata.Runtime));
 
         await Assert.ThrowsAsync<AuthorizationException>(() => CreateHandler(unitOfWork).Handle(
             new PublishEventTicketCatalogCommand { EventId = _eventId },
@@ -496,8 +496,14 @@ public sealed class PublishEventTicketCatalogCommandHandlerTests
         ConfigurePaymentPlatform();
         _connections.GetActiveByScopeAsync(_tenantId, organizer.Id, "stripe", "platform-live-eu", Arg.Any<CancellationToken>())
             .Returns(CreateReadyConnection(organizer.Id));
-        _authorization.IsAllowedAsync(ResourceKinds.Event, _eventId.ToString(), AuthorizationActions.Events.ManagePaidEventCommerce, Arg.Any<IDictionary<string, object>?>(), Arg.Any<CancellationToken>())
-            .Returns(true);
+        _authorization.AuthorizeAsync(
+                Arg.Is<AuthorizationRequest>(request =>
+                    request != null &&
+                    request.ResourceKind == ResourceKinds.Event &&
+                    request.ResourceId == _eventId.ToString() &&
+                    request.Action == AuthorizationActions.Events.ManagePaidEventCommerce),
+                Arg.Any<CancellationToken>())
+            .Returns(AuthorizationDecision.Allow(AuthorizationProviderMetadata.Runtime));
     }
 
     private OrganizerPaymentProviderConnection CreateReadyConnection(Guid organizerActorId)

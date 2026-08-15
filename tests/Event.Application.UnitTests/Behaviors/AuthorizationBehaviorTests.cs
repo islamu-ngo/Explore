@@ -61,6 +61,11 @@ namespace Event.Application.UnitTests.Behaviors;
 
 public class AuthorizationBehaviorTests
 {
+    private static readonly AuthorizationDecision AllowedDecision =
+        AuthorizationDecision.Allow(AuthorizationProviderMetadata.Runtime);
+    private static readonly AuthorizationDecision DeniedDecision =
+        AuthorizationDecision.Deny(AuthorizationProviderMetadata.Runtime);
+
     private readonly IAuthorizationProvider _authService;
 
     public AuthorizationBehaviorTests()
@@ -78,11 +83,13 @@ public class AuthorizationBehaviorTests
         var command = new TestAttributeCommand();
         var expectedResponse = new BaseCommandResponse<Guid> { Success = true };
 
-        _authService.IsAllowedAsync(
-            "islamuevent_instance_setting", Arg.Any<string>(), "update",
-            Arg.Any<IDictionary<string, object>?>(),
+        _authService.AuthorizeAsync(
+            Arg.Is<AuthorizationRequest>(request =>
+                request != null &&
+                request.ResourceKind == "islamuevent_instance_setting" &&
+                request.Action == "update"),
             Arg.Any<CancellationToken>())
-            .Returns(true);
+            .Returns(AllowedDecision);
 
         // Act
         var result = await attrBehavior.Handle(command, _ => Task.FromResult(expectedResponse), CancellationToken.None);
@@ -100,11 +107,10 @@ public class AuthorizationBehaviorTests
             Substitute.For<ILogger<AuthorizationBehavior<TestAttributeCommand, BaseCommandResponse<Guid>>>>());
         var command = new TestAttributeCommand();
 
-        _authService.IsAllowedAsync(
-            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),
-            Arg.Any<IDictionary<string, object>?>(),
+        _authService.AuthorizeAsync(
+            Arg.Any<AuthorizationRequest>(),
             Arg.Any<CancellationToken>())
-            .Returns(false);
+            .Returns(DeniedDecision);
 
         // Act & Assert
         await Assert.ThrowsAsync<AuthorizationException>(async () =>
@@ -126,9 +132,8 @@ public class AuthorizationBehaviorTests
 
         // Assert
         await Assert.That(result.Success).IsTrue();
-        await _authService.DidNotReceive().IsAllowedAsync(
-            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),
-            Arg.Any<IDictionary<string, object>?>(),
+        await _authService.DidNotReceive().AuthorizeAsync(
+            Arg.Any<AuthorizationRequest>(),
             Arg.Any<CancellationToken>());
     }
 
@@ -142,22 +147,22 @@ public class AuthorizationBehaviorTests
         var command = new TestSecureCommand();
         var expectedResponse = new BaseCommandResponse<Guid> { Success = true };
 
-        _authService.IsAllowedAsync(
-            "islamuevent_organization", command.OrganizationId.ToString(), "update",
-            Arg.Any<IDictionary<string, object>?>(),
+        _authService.AuthorizeAsync(
+            MatchesAuthorizationRequest(
+                "islamuevent_organization", command.OrganizationId.ToString(), "update"),
             Arg.Any<CancellationToken>())
-            .Returns(true);
+            .Returns(AllowedDecision);
 
         // Act
         var result = await secureBehavior.Handle(command, _ => Task.FromResult(expectedResponse), CancellationToken.None);
 
         // Assert
         await Assert.That(result.Success).IsTrue();
-        await _authService.Received(1).IsAllowedAsync(
-            "islamuevent_organization",
-            command.OrganizationId.ToString(),
-            "update",
-            Arg.Any<IDictionary<string, object>?>(),
+        await _authService.Received(1).AuthorizeAsync(
+            MatchesAuthorizationRequest(
+                "islamuevent_organization",
+                command.OrganizationId.ToString(),
+                "update"),
             Arg.Any<CancellationToken>());
     }
 
@@ -170,11 +175,10 @@ public class AuthorizationBehaviorTests
             Substitute.For<ILogger<AuthorizationBehavior<TestSecureCommand, BaseCommandResponse<Guid>>>>());
         var command = new TestSecureCommand();
 
-        _authService.IsAllowedAsync(
-            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),
-            Arg.Any<IDictionary<string, object>?>(),
+        _authService.AuthorizeAsync(
+            Arg.Any<AuthorizationRequest>(),
             Arg.Any<CancellationToken>())
-            .Returns(false);
+            .Returns(DeniedDecision);
 
         // Act & Assert
         await Assert.ThrowsAsync<AuthorizationException>(async () =>
@@ -191,22 +195,24 @@ public class AuthorizationBehaviorTests
         var command = new TestSecureCommandWithAttributes();
         var expectedResponse = new BaseCommandResponse<Guid> { Success = true };
 
-        _authService.IsAllowedAsync(
-            "islamuevent_organization", command.OrganizationId.ToString(), "delete",
-            Arg.Is<IDictionary<string, object>?>(d => d != null && d.ContainsKey("tenantId")),
+        _authService.AuthorizeAsync(
+            MatchesAuthorizationRequest(
+                "islamuevent_organization", command.OrganizationId.ToString(), "delete",
+                attributes => attributes != null && attributes.ContainsKey("tenantId")),
             Arg.Any<CancellationToken>())
-            .Returns(true);
+            .Returns(AllowedDecision);
 
         // Act
         var result = await secureBehavior.Handle(command, _ => Task.FromResult(expectedResponse), CancellationToken.None);
 
         // Assert
         await Assert.That(result.Success).IsTrue();
-        await _authService.Received(1).IsAllowedAsync(
-            "islamuevent_organization",
-            command.OrganizationId.ToString(),
-            "delete",
-            Arg.Is<IDictionary<string, object>?>(d => d != null && d.ContainsKey("tenantId")),
+        await _authService.Received(1).AuthorizeAsync(
+            MatchesAuthorizationRequest(
+                "islamuevent_organization",
+                command.OrganizationId.ToString(),
+                "delete",
+                attributes => attributes != null && attributes.ContainsKey("tenantId")),
             Arg.Any<CancellationToken>());
     }
 
@@ -234,26 +240,28 @@ public class AuthorizationBehaviorTests
         };
         var expectedResponse = new BaseCommandResponse<Guid> { Success = true };
 
-        _authService.IsAllowedAsync(
+        _authService.AuthorizeAsync(
+            MatchesAuthorizationRequest(
                 ResourceKinds.Event,
                 CreateEventCommand.PreCreateResourceId,
                 AuthorizationActions.Create,
-                Arg.Is<IDictionary<string, object>?>(attributes =>
+                attributes =>
                     attributes != null
                     && attributes["authorizationPhase"].Equals(CreateEventCommand.PreCreateAuthorizationPhase)
                     && attributes["organizationId"].Equals(organizationId.ToString())
                     && attributes["groupId"].Equals(groupId.ToString())),
                 Arg.Any<CancellationToken>())
-            .Returns(true);
+            .Returns(AllowedDecision);
 
         var result = await secureBehavior.Handle(command, _ => Task.FromResult(expectedResponse), CancellationToken.None);
 
         await Assert.That(result.Success).IsTrue();
-        await _authService.Received(1).IsAllowedAsync(
+        await _authService.Received(1).AuthorizeAsync(
+            MatchesAuthorizationRequest(
             ResourceKinds.Event,
             CreateEventCommand.PreCreateResourceId,
             AuthorizationActions.Create,
-            Arg.Is<IDictionary<string, object>?>(attributes =>
+            attributes =>
                 attributes != null
                 && attributes["authorizationPhase"].Equals(CreateEventCommand.PreCreateAuthorizationPhase)
                 && attributes["organizationId"].Equals(organizationId.ToString())
@@ -282,24 +290,26 @@ public class AuthorizationBehaviorTests
         };
         var expectedResponse = new BaseCommandResponse<Guid> { Success = true };
 
-        _authService.IsAllowedAsync(
+        _authService.AuthorizeAsync(
+            MatchesAuthorizationRequest(
                 ResourceKinds.Organization,
                 CreateOrganizationCommand.PreCreateResourceId,
                 AuthorizationActions.Create,
-                Arg.Is<IDictionary<string, object>?>(attributes =>
+                attributes =>
                     attributes != null
                     && attributes["authorizationPhase"].Equals(CreateOrganizationCommand.PreCreateAuthorizationPhase)),
                 Arg.Any<CancellationToken>())
-            .Returns(true);
+            .Returns(AllowedDecision);
 
         var result = await secureBehavior.Handle(command, _ => Task.FromResult(expectedResponse), CancellationToken.None);
 
         await Assert.That(result.Success).IsTrue();
-        await _authService.Received(1).IsAllowedAsync(
+        await _authService.Received(1).AuthorizeAsync(
+            MatchesAuthorizationRequest(
             ResourceKinds.Organization,
             CreateOrganizationCommand.PreCreateResourceId,
             AuthorizationActions.Create,
-            Arg.Is<IDictionary<string, object>?>(attributes =>
+            attributes =>
                 attributes != null
                 && attributes["authorizationPhase"].Equals(CreateOrganizationCommand.PreCreateAuthorizationPhase)),
             Arg.Any<CancellationToken>());
@@ -319,24 +329,24 @@ public class AuthorizationBehaviorTests
         };
         var expectedResponse = new BaseCommandResponse<Guid> { Success = true };
 
-        _authService.IsAllowedAsync(
+        _authService.AuthorizeAsync(
+            MatchesAuthorizationRequest(
                 ResourceKinds.Event,
                 eventId.ToString(),
                 AuthorizationActions.Update,
-                Arg.Is<IDictionary<string, object>?>(attributes =>
-                    attributes != null && attributes["eventId"].Equals(eventId.ToString())),
+                attributes => attributes != null && attributes["eventId"].Equals(eventId.ToString())),
                 Arg.Any<CancellationToken>())
-            .Returns(true);
+            .Returns(AllowedDecision);
 
         var result = await secureBehavior.Handle(command, _ => Task.FromResult(expectedResponse), CancellationToken.None);
 
         await Assert.That(result.Success).IsTrue();
-        await _authService.Received(1).IsAllowedAsync(
+        await _authService.Received(1).AuthorizeAsync(
+            MatchesAuthorizationRequest(
             ResourceKinds.Event,
             eventId.ToString(),
             AuthorizationActions.Update,
-            Arg.Is<IDictionary<string, object>?>(attributes =>
-                attributes != null && attributes["eventId"].Equals(eventId.ToString())),
+            attributes => attributes != null && attributes["eventId"].Equals(eventId.ToString())),
             Arg.Any<CancellationToken>());
     }
 
@@ -393,11 +403,12 @@ public class AuthorizationBehaviorTests
             EventFormat = null!,
             VisibilityType = null!
         });
-        _authService.IsAllowedAsync(
+        _authService.AuthorizeAsync(
+            MatchesAuthorizationRequest(
                 ResourceKinds.Event,
                 eventId.ToString(),
                 AuthorizationActions.Update,
-                Arg.Is<IDictionary<string, object>?>(attributes =>
+                attributes =>
                     attributes != null
                     && attributes["eventId"].Equals(eventId.ToString())
                     && attributes["tenantId"].Equals(tenantId.ToString())
@@ -406,7 +417,7 @@ public class AuthorizationBehaviorTests
                     && attributes["organizerUserId"].Equals(organizerUserId.ToString())
                     && attributes["organizationId"].Equals(organizationId.ToString())),
                 Arg.Any<CancellationToken>())
-            .Returns(true);
+            .Returns(AllowedDecision);
 
         var result = await secureBehavior.Handle(command, _ => Task.FromResult(expectedResponse), CancellationToken.None);
 
@@ -464,11 +475,12 @@ public class AuthorizationBehaviorTests
                 ["organizerUserId"] = attackerId.ToString("D"),
                 ["status"] = "DRAFT"
             });
-        _authService.IsAllowedAsync(
+        _authService.AuthorizeAsync(
+            MatchesAuthorizationRequest(
                 ResourceKinds.RegistrationForm,
                 formId.ToString("D"),
                 AuthorizationActions.RegistrationForms.Update,
-                Arg.Is<IDictionary<string, object>?>(attributes =>
+                attributes =>
                     attributes != null
                     && attributes["tenantId"].Equals(tenantId.ToString("D"))
                     && attributes["eventId"].Equals(eventId.ToString("D"))
@@ -477,7 +489,7 @@ public class AuthorizationBehaviorTests
                     && attributes["status"].Equals("DRAFT")
                     && !attributes.Values.Contains(attackerId.ToString("D"))),
                 Arg.Any<CancellationToken>())
-            .Returns(true);
+            .Returns(AllowedDecision);
         var behavior = new AuthorizationBehavior<TestRegistrationFormSecureCommand, BaseCommandResponse<Guid>>(
             _authService,
             Substitute.For<ILogger<AuthorizationBehavior<TestRegistrationFormSecureCommand, BaseCommandResponse<Guid>>>>(),
@@ -508,7 +520,7 @@ public class AuthorizationBehaviorTests
                 command,
                 _ => Task.FromResult(new BaseCommandResponse<Guid> { Success = true }),
                 CancellationToken.None));
-        await _authService.DidNotReceiveWithAnyArgs().IsAllowedAsync(default!, default!, default!, default, default);
+        await _authService.DidNotReceiveWithAnyArgs().AuthorizeAsync(default!, default);
     }
 
     [Test]
@@ -533,7 +545,7 @@ public class AuthorizationBehaviorTests
                 command,
                 _ => Task.FromResult(new BaseCommandResponse<Guid> { Success = true }),
                 CancellationToken.None));
-        await _authService.DidNotReceiveWithAnyArgs().IsAllowedAsync(default!, default!, default!, default, default);
+        await _authService.DidNotReceiveWithAnyArgs().AuthorizeAsync(default!, default);
     }
 
     [Test]
@@ -549,13 +561,14 @@ public class AuthorizationBehaviorTests
             var nextCalled = false;
             var expectedResponse = new BaseCommandResponse<Guid> { Success = true };
 
-            authService.IsAllowedAsync(
+            authService.AuthorizeAsync(
+                MatchesAuthorizationRequest(
                     ResourceKinds.Event,
                     scenario.ResourceId,
                     AuthorizationActions.Update,
-                    Arg.Is<IDictionary<string, object>?>(attributes => HasExactAuthorizationContext(attributes, scenario.Attributes)),
+                    attributes => HasExactAuthorizationContext(attributes, scenario.Attributes)),
                     Arg.Any<CancellationToken>())
-                .Returns(scenario.AllowedByProvider);
+                .Returns(scenario.AllowedByProvider ? AllowedDecision : DeniedDecision);
 
             async Task<BaseCommandResponse<Guid>> Act() => await behavior.Handle(
                 command,
@@ -579,11 +592,12 @@ public class AuthorizationBehaviorTests
                 await Assert.That(nextCalled).IsFalse();
             }
 
-            await authService.Received(1).IsAllowedAsync(
+            await authService.Received(1).AuthorizeAsync(
+                MatchesAuthorizationRequest(
                 ResourceKinds.Event,
                 scenario.ResourceId,
                 AuthorizationActions.Update,
-                Arg.Is<IDictionary<string, object>?>(attributes => HasExactAuthorizationContext(attributes, scenario.Attributes)),
+                attributes => HasExactAuthorizationContext(attributes, scenario.Attributes)),
                 Arg.Any<CancellationToken>());
         }
     }
@@ -618,7 +632,7 @@ public class AuthorizationBehaviorTests
                 CancellationToken.None));
 
             await Assert.That(nextCalled).IsFalse();
-            await authService.DidNotReceiveWithAnyArgs().IsAllowedAsync(default!, default!, default!, default, default);
+            await authService.DidNotReceiveWithAnyArgs().AuthorizeAsync(default!, default);
         }
     }
 
@@ -644,17 +658,18 @@ public class AuthorizationBehaviorTests
             Event = null!,
             Tenant = null!
         });
-        _authService.IsAllowedAsync(
+        _authService.AuthorizeAsync(
+            MatchesAuthorizationRequest(
                 ResourceKinds.EventSession,
                 eventSessionId.ToString(),
                 AuthorizationActions.Update,
-                Arg.Is<IDictionary<string, object>?>(attributes =>
+                attributes =>
                     attributes != null
                     && attributes["eventSessionId"].Equals(eventSessionId.ToString())
                     && attributes["eventId"].Equals(eventId.ToString())
                     && attributes["tenantId"].Equals(tenantId.ToString())),
                 Arg.Any<CancellationToken>())
-            .Returns(true);
+            .Returns(AllowedDecision);
 
         var result = await secureBehavior.Handle(command, _ => Task.FromResult(expectedResponse), CancellationToken.None);
 
@@ -701,17 +716,18 @@ public class AuthorizationBehaviorTests
             RoleId = 2,
             Role = null!
         });
-        _authService.IsAllowedAsync(
+        _authService.AuthorizeAsync(
+            MatchesAuthorizationRequest(
                 ResourceKinds.OrganizationMember,
                 memberId.ToString(),
                 AuthorizationActions.OrganizationMembers.View,
-                Arg.Is<IDictionary<string, object>?>(attributes =>
+                attributes =>
                     attributes != null
                     && attributes["tenantId"].Equals(tenantId.ToString())
                     && attributes["organizationId"].Equals(organizationId.ToString())
                     && attributes["userId"].Equals(userId.ToString())),
                 Arg.Any<CancellationToken>())
-            .Returns(true);
+            .Returns(AllowedDecision);
 
         var result = await secureBehavior.Handle(request, _ => Task.FromResult<OrganizationMemberDto?>(expectedResponse), CancellationToken.None);
 
@@ -762,16 +778,17 @@ public class AuthorizationBehaviorTests
             Purpose = StorageObjectPurposes.LegacyImage,
             LifecycleState = StorageObjectLifecycleStates.Active
         });
-        _authService.IsAllowedAsync(
+        _authService.AuthorizeAsync(
+            MatchesAuthorizationRequest(
                 ResourceKinds.StorageObject,
                 storageObjectId.ToString(),
                 AuthorizationActions.Update,
-                Arg.Is<IDictionary<string, object>?>(attributes =>
+                attributes =>
                     attributes != null
                     && attributes["storageObjectId"].Equals(storageObjectId.ToString("D"))
                     && attributes["tenantId"].Equals(persistedTenantId.ToString("D"))),
                 Arg.Any<CancellationToken>())
-            .Returns(true);
+            .Returns(AllowedDecision);
 
         var result = await secureBehavior.Handle(command, _ => Task.FromResult(expectedResponse), CancellationToken.None);
 
@@ -808,16 +825,17 @@ public class AuthorizationBehaviorTests
             EventFormat = null!,
             VisibilityType = null!
         });
-        _authService.IsAllowedAsync(
+        _authService.AuthorizeAsync(
+            MatchesAuthorizationRequest(
                 ResourceKinds.CustomPropertyProjection,
                 eventId.ToString("D"),
                 AuthorizationActions.CustomPropertyProjections.View,
-                Arg.Is<IDictionary<string, object>?>(attributes =>
+                attributes =>
                     attributes != null
                     && attributes["eventId"].Equals(eventId.ToString("D"))
                     && attributes["tenantId"].Equals(tenantId.ToString("D"))),
                 Arg.Any<CancellationToken>())
-            .Returns(true);
+            .Returns(AllowedDecision);
 
         var result = await secureBehavior.Handle(request, _ => Task.FromResult(expectedResponse), CancellationToken.None);
 
@@ -851,17 +869,18 @@ public class AuthorizationBehaviorTests
             Event = null!,
             Tenant = null!
         });
-        _authService.IsAllowedAsync(
+        _authService.AuthorizeAsync(
+            MatchesAuthorizationRequest(
                 ResourceKinds.CustomPropertyProjection,
                 eventSessionId.ToString("D"),
                 AuthorizationActions.CustomPropertyProjections.View,
-                Arg.Is<IDictionary<string, object>?>(attributes =>
+                attributes =>
                     attributes != null
                     && attributes["eventSessionId"].Equals(eventSessionId.ToString("D"))
                     && attributes["eventId"].Equals(eventId.ToString("D"))
                     && attributes["tenantId"].Equals(tenantId.ToString("D"))),
                 Arg.Any<CancellationToken>())
-            .Returns(true);
+            .Returns(AllowedDecision);
 
         var result = await secureBehavior.Handle(request, _ => Task.FromResult(expectedResponse), CancellationToken.None);
 
@@ -901,14 +920,14 @@ public class AuthorizationBehaviorTests
             },
             ExpectedConcurrencyStamp = expectedConcurrencyStamp
         };
-        _authService.IsAllowedAsync(
+        _authService.AuthorizeAsync(
+            MatchesAuthorizationRequest(
                 ResourceKinds.Tenant,
                 tenantId.ToString(),
                 AuthorizationActions.Update,
-                Arg.Is<IDictionary<string, object>?>(attributes =>
-                    attributes != null && attributes["tenantId"].Equals(tenantId.ToString())),
+                attributes => attributes != null && attributes["tenantId"].Equals(tenantId.ToString())),
                 Arg.Any<CancellationToken>())
-            .Returns(true);
+            .Returns(AllowedDecision);
         var behavior = new AuthorizationBehavior<UpdateCustomPropertyDefinitionCommand, BaseCommandResponse<Guid>>(
             _authService,
             Substitute.For<ILogger<AuthorizationBehavior<UpdateCustomPropertyDefinitionCommand, BaseCommandResponse<Guid>>>>(),
@@ -924,11 +943,12 @@ public class AuthorizationBehaviorTests
         await Assert.That(command.DefinitionId).IsEqualTo(definitionId);
         await Assert.That(command.ExpectedConcurrencyStamp).IsEqualTo(expectedConcurrencyStamp);
         await repository.Received(1).GetDefinitionWithDetails(definitionId);
-        await _authService.Received(1).IsAllowedAsync(
+        await _authService.Received(1).AuthorizeAsync(
+            MatchesAuthorizationRequest(
             ResourceKinds.Tenant,
             tenantId.ToString(),
             AuthorizationActions.Update,
-            Arg.Is<IDictionary<string, object>?>(attributes => HasExactAuthorizationContext(attributes, expectedAuthorizationContext)),
+            attributes => HasExactAuthorizationContext(attributes, expectedAuthorizationContext)),
             Arg.Any<CancellationToken>());
     }
 
@@ -963,13 +983,14 @@ public class AuthorizationBehaviorTests
             },
             ExpectedConcurrencyStamp = expectedConcurrencyStamp
         };
-        _authService.IsAllowedAsync(
+        _authService.AuthorizeAsync(
+            MatchesAuthorizationRequest(
                 ResourceKinds.Tenant,
                 tenantId.ToString(),
                 AuthorizationActions.Update,
-                Arg.Is<IDictionary<string, object>?>(attributes => HasExactAuthorizationContext(attributes, expectedAuthorizationContext)),
+                attributes => HasExactAuthorizationContext(attributes, expectedAuthorizationContext)),
                 Arg.Any<CancellationToken>())
-            .Returns(true);
+            .Returns(AllowedDecision);
         var behavior = new AuthorizationBehavior<UpdateEventCustomPropertyDefinitionCommand, BaseCommandResponse<Guid>>(
             _authService,
             Substitute.For<ILogger<AuthorizationBehavior<UpdateEventCustomPropertyDefinitionCommand, BaseCommandResponse<Guid>>>>(),
@@ -985,11 +1006,12 @@ public class AuthorizationBehaviorTests
         await Assert.That(command.DefinitionId).IsEqualTo(definitionId);
         await Assert.That(command.ExpectedConcurrencyStamp).IsEqualTo(expectedConcurrencyStamp);
         await repository.Received(1).GetDefinitionWithDetails(definitionId);
-        await _authService.Received(1).IsAllowedAsync(
+        await _authService.Received(1).AuthorizeAsync(
+            MatchesAuthorizationRequest(
             ResourceKinds.Tenant,
             tenantId.ToString(),
             AuthorizationActions.Update,
-            Arg.Is<IDictionary<string, object>?>(attributes => HasExactAuthorizationContext(attributes, expectedAuthorizationContext)),
+            attributes => HasExactAuthorizationContext(attributes, expectedAuthorizationContext)),
             Arg.Any<CancellationToken>());
     }
 
@@ -1024,13 +1046,14 @@ public class AuthorizationBehaviorTests
             },
             ExpectedConcurrencyStamp = expectedConcurrencyStamp
         };
-        _authService.IsAllowedAsync(
+        _authService.AuthorizeAsync(
+            MatchesAuthorizationRequest(
                 ResourceKinds.Tenant,
                 tenantId.ToString(),
                 AuthorizationActions.Update,
-                Arg.Is<IDictionary<string, object>?>(attributes => HasExactAuthorizationContext(attributes, expectedAuthorizationContext)),
+                attributes => HasExactAuthorizationContext(attributes, expectedAuthorizationContext)),
                 Arg.Any<CancellationToken>())
-            .Returns(true);
+            .Returns(AllowedDecision);
         var behavior = new AuthorizationBehavior<UpdateEventSessionCustomPropertyDefinitionCommand, BaseCommandResponse<Guid>>(
             _authService,
             Substitute.For<ILogger<AuthorizationBehavior<UpdateEventSessionCustomPropertyDefinitionCommand, BaseCommandResponse<Guid>>>>(),
@@ -1046,11 +1069,12 @@ public class AuthorizationBehaviorTests
         await Assert.That(command.DefinitionId).IsEqualTo(definitionId);
         await Assert.That(command.ExpectedConcurrencyStamp).IsEqualTo(expectedConcurrencyStamp);
         await repository.Received(1).GetDefinitionWithDetails(definitionId);
-        await _authService.Received(1).IsAllowedAsync(
+        await _authService.Received(1).AuthorizeAsync(
+            MatchesAuthorizationRequest(
             ResourceKinds.Tenant,
             tenantId.ToString(),
             AuthorizationActions.Update,
-            Arg.Is<IDictionary<string, object>?>(attributes => HasExactAuthorizationContext(attributes, expectedAuthorizationContext)),
+            attributes => HasExactAuthorizationContext(attributes, expectedAuthorizationContext)),
             Arg.Any<CancellationToken>());
     }
 
@@ -1083,14 +1107,14 @@ public class AuthorizationBehaviorTests
                 Metadata = new UpdateEventTemplateMetadataDto { DisplayName = "Conference 2027" }
             }
         };
-        _authService.IsAllowedAsync(
+        _authService.AuthorizeAsync(
+            MatchesAuthorizationRequest(
                 ResourceKinds.Tenant,
                 tenantId.ToString(),
                 AuthorizationActions.Update,
-                Arg.Is<IDictionary<string, object>?>(attributes =>
-                    attributes != null && attributes["tenantId"].Equals(tenantId.ToString())),
+                attributes => attributes != null && attributes["tenantId"].Equals(tenantId.ToString())),
                 Arg.Any<CancellationToken>())
-            .Returns(true);
+            .Returns(AllowedDecision);
         var behavior = new AuthorizationBehavior<UpdateEventTemplateCommand, BaseCommandResponse<Guid>>(
             _authService,
             Substitute.For<ILogger<AuthorizationBehavior<UpdateEventTemplateCommand, BaseCommandResponse<Guid>>>>(),
@@ -1106,11 +1130,12 @@ public class AuthorizationBehaviorTests
         await Assert.That(command.TemplateId).IsEqualTo(templateId);
         await Assert.That(command.ExpectedConcurrencyStamp).IsEqualTo(expectedConcurrencyStamp);
         await repository.Received(1).GetTemplateWithDetails(templateId);
-        await _authService.Received(1).IsAllowedAsync(
+        await _authService.Received(1).AuthorizeAsync(
+            MatchesAuthorizationRequest(
             ResourceKinds.Tenant,
             tenantId.ToString(),
             AuthorizationActions.Update,
-            Arg.Is<IDictionary<string, object>?>(attributes => HasExactAuthorizationContext(attributes, expectedAuthorizationContext)),
+            attributes => HasExactAuthorizationContext(attributes, expectedAuthorizationContext)),
             Arg.Any<CancellationToken>());
     }
 
@@ -1144,14 +1169,14 @@ public class AuthorizationBehaviorTests
                 Metadata = new UpdateEventSessionTemplateMetadataDto { DisplayName = "Opening Keynote" }
             }
         };
-        _authService.IsAllowedAsync(
+        _authService.AuthorizeAsync(
+            MatchesAuthorizationRequest(
                 ResourceKinds.Tenant,
                 tenantId.ToString(),
                 AuthorizationActions.Update,
-                Arg.Is<IDictionary<string, object>?>(attributes =>
-                    attributes != null && attributes["tenantId"].Equals(tenantId.ToString())),
+                attributes => attributes != null && attributes["tenantId"].Equals(tenantId.ToString())),
                 Arg.Any<CancellationToken>())
-            .Returns(true);
+            .Returns(AllowedDecision);
         var behavior = new AuthorizationBehavior<UpdateEventSessionTemplateCommand, BaseCommandResponse<Guid>>(
             _authService,
             Substitute.For<ILogger<AuthorizationBehavior<UpdateEventSessionTemplateCommand, BaseCommandResponse<Guid>>>>(),
@@ -1167,11 +1192,12 @@ public class AuthorizationBehaviorTests
         await Assert.That(command.SessionTemplateId).IsEqualTo(sessionTemplateId);
         await Assert.That(command.ExpectedConcurrencyStamp).IsEqualTo(expectedConcurrencyStamp);
         await repository.Received(1).GetSessionTemplateWithDetails(sessionTemplateId);
-        await _authService.Received(1).IsAllowedAsync(
+        await _authService.Received(1).AuthorizeAsync(
+            MatchesAuthorizationRequest(
             ResourceKinds.Tenant,
             tenantId.ToString(),
             AuthorizationActions.Update,
-            Arg.Is<IDictionary<string, object>?>(attributes => HasExactAuthorizationContext(attributes, expectedAuthorizationContext)),
+            attributes => HasExactAuthorizationContext(attributes, expectedAuthorizationContext)),
             Arg.Any<CancellationToken>());
     }
 
@@ -1220,13 +1246,14 @@ public class AuthorizationBehaviorTests
                 Language = new UpdateEventSessionLanguageLanguageDto { LanguageId = 2 }
             }
         };
-        _authService.IsAllowedAsync(
+        _authService.AuthorizeAsync(
+            MatchesAuthorizationRequest(
                 ResourceKinds.EventSession,
                 persistedSessionId.ToString(),
                 AuthorizationActions.Update,
-                Arg.Is<IDictionary<string, object>?>(attributes => HasExactAuthorizationContext(attributes, expectedAuthorizationContext)),
+                attributes => HasExactAuthorizationContext(attributes, expectedAuthorizationContext)),
                 Arg.Any<CancellationToken>())
-            .Returns(true);
+            .Returns(AllowedDecision);
         var behavior = new AuthorizationBehavior<UpdateEventSessionLanguageCommand, BaseCommandResponse<int>>(
             _authService,
             Substitute.For<ILogger<AuthorizationBehavior<UpdateEventSessionLanguageCommand, BaseCommandResponse<int>>>>(),
@@ -1244,11 +1271,12 @@ public class AuthorizationBehaviorTests
         await Assert.That(command.ExpectedConcurrencyStamp).IsEqualTo(expectedConcurrencyStamp);
         await assignmentRepository.Received(1).GetById(assignmentId);
         await sessionRepository.Received(1).GetSessionWithDetails(persistedSessionId);
-        await _authService.Received(1).IsAllowedAsync(
+        await _authService.Received(1).AuthorizeAsync(
+            MatchesAuthorizationRequest(
             ResourceKinds.EventSession,
             persistedSessionId.ToString(),
             AuthorizationActions.Update,
-            Arg.Is<IDictionary<string, object>?>(attributes => HasExactAuthorizationContext(attributes, expectedAuthorizationContext)),
+            attributes => HasExactAuthorizationContext(attributes, expectedAuthorizationContext)),
             Arg.Any<CancellationToken>());
     }
 
@@ -1297,13 +1325,13 @@ public class AuthorizationBehaviorTests
             ["organizationId"] = organizationId.ToString()
         };
         eventRepository.GetEventWithDetails(persistedEventId).Returns(authorizationEvent);
-        _authService.IsAllowedAsync(
-                ResourceKinds.Event,
-                persistedEventId.ToString(),
-                AuthorizationActions.Update,
-                Arg.Any<IDictionary<string, object>?>(),
+        _authService.AuthorizeAsync(
+                MatchesAuthorizationRequest(
+                    ResourceKinds.Event,
+                    persistedEventId.ToString(),
+                    AuthorizationActions.Update),
                 Arg.Any<CancellationToken>())
-            .Returns(true);
+            .Returns(AllowedDecision);
         var behavior = new AuthorizationBehavior<UpdateEventCategoriesCommand, BaseCommandResponse<Guid>>(
             _authService,
             Substitute.For<ILogger<AuthorizationBehavior<UpdateEventCategoriesCommand, BaseCommandResponse<Guid>>>>(),
@@ -1318,11 +1346,12 @@ public class AuthorizationBehaviorTests
         await Assert.That(command.ExpectedConcurrencyStamp).IsEqualTo(expectedConcurrencyStamp);
         await assignmentRepository.Received(1).GetById(assignmentId);
         await eventRepository.Received(1).GetEventWithDetails(persistedEventId);
-        await _authService.Received(1).IsAllowedAsync(
+        await _authService.Received(1).AuthorizeAsync(
+            MatchesAuthorizationRequest(
             ResourceKinds.Event,
             persistedEventId.ToString(),
             AuthorizationActions.Update,
-            Arg.Is<IDictionary<string, object>?>(attributes => HasExactAuthorizationContext(attributes, expectedAuthorizationContext)),
+            attributes => HasExactAuthorizationContext(attributes, expectedAuthorizationContext)),
             Arg.Any<CancellationToken>());
     }
 
@@ -1371,13 +1400,13 @@ public class AuthorizationBehaviorTests
             ["organizationId"] = organizationId.ToString()
         };
         eventRepository.GetEventWithDetails(persistedEventId).Returns(authorizationEvent);
-        _authService.IsAllowedAsync(
-                ResourceKinds.Event,
-                persistedEventId.ToString(),
-                AuthorizationActions.Update,
-                Arg.Any<IDictionary<string, object>?>(),
+        _authService.AuthorizeAsync(
+                MatchesAuthorizationRequest(
+                    ResourceKinds.Event,
+                    persistedEventId.ToString(),
+                    AuthorizationActions.Update),
                 Arg.Any<CancellationToken>())
-            .Returns(true);
+            .Returns(AllowedDecision);
         var behavior = new AuthorizationBehavior<UpdateEventTagsCommand, BaseCommandResponse<Guid>>(
             _authService,
             Substitute.For<ILogger<AuthorizationBehavior<UpdateEventTagsCommand, BaseCommandResponse<Guid>>>>(),
@@ -1392,11 +1421,12 @@ public class AuthorizationBehaviorTests
         await Assert.That(command.ExpectedConcurrencyStamp).IsEqualTo(expectedConcurrencyStamp);
         await assignmentRepository.Received(1).GetById(assignmentId);
         await eventRepository.Received(1).GetEventWithDetails(persistedEventId);
-        await _authService.Received(1).IsAllowedAsync(
+        await _authService.Received(1).AuthorizeAsync(
+            MatchesAuthorizationRequest(
             ResourceKinds.Event,
             persistedEventId.ToString(),
             AuthorizationActions.Update,
-            Arg.Is<IDictionary<string, object>?>(attributes => HasExactAuthorizationContext(attributes, expectedAuthorizationContext)),
+            attributes => HasExactAuthorizationContext(attributes, expectedAuthorizationContext)),
             Arg.Any<CancellationToken>());
     }
 
@@ -1443,17 +1473,18 @@ public class AuthorizationBehaviorTests
                 TenantId = tenantId,
                 Tenant = null!
             });
-        _authService.IsAllowedAsync(
+        _authService.AuthorizeAsync(
+            MatchesAuthorizationRequest(
                 ResourceKinds.EventSessionAgendaItem,
                 assignmentId.ToString(),
                 AuthorizationActions.Update,
-                Arg.Is<IDictionary<string, object>?>(attributes =>
+                attributes =>
                     attributes != null
                     && attributes["eventSessionId"].Equals(sessionId.ToString())
                     && attributes["eventId"].Equals(eventId.ToString())
                     && attributes["tenantId"].Equals(tenantId.ToString())),
                 Arg.Any<CancellationToken>())
-            .Returns(true);
+            .Returns(AllowedDecision);
         var behavior = new AuthorizationBehavior<UpdateEventSessionAgendaItemCommand, BaseCommandResponse<Guid>>(
             _authService,
             Substitute.For<ILogger<AuthorizationBehavior<UpdateEventSessionAgendaItemCommand, BaseCommandResponse<Guid>>>>(),
@@ -1466,11 +1497,12 @@ public class AuthorizationBehaviorTests
         await Assert.That(command.EventId).IsEqualTo(Guid.Empty);
         await Assert.That(command.TenantId).IsEqualTo(Guid.Empty);
         await assignmentRepository.Received(1).GetByIdWithDetails(assignmentId, Arg.Any<CancellationToken>());
-        await _authService.Received(1).IsAllowedAsync(
+        await _authService.Received(1).AuthorizeAsync(
+            MatchesAuthorizationRequest(
             ResourceKinds.EventSessionAgendaItem,
             assignmentId.ToString(),
             AuthorizationActions.Update,
-            Arg.Is<IDictionary<string, object>?>(attributes => HasExactAuthorizationContext(attributes, expectedAuthorizationContext)),
+            attributes => HasExactAuthorizationContext(attributes, expectedAuthorizationContext)),
             Arg.Any<CancellationToken>());
     }
 
@@ -1509,16 +1541,17 @@ public class AuthorizationBehaviorTests
                 TenantId = tenantId,
                 Tenant = null!
             });
-        _authService.IsAllowedAsync(
+        _authService.AuthorizeAsync(
+            MatchesAuthorizationRequest(
                 ResourceKinds.EventSessionGroup,
                 assignmentId.ToString(),
                 AuthorizationActions.Update,
-                Arg.Is<IDictionary<string, object>?>(attributes =>
+                attributes =>
                     attributes != null
                     && attributes["eventId"].Equals(eventId.ToString())
                     && attributes["tenantId"].Equals(tenantId.ToString())),
                 Arg.Any<CancellationToken>())
-            .Returns(true);
+            .Returns(AllowedDecision);
         var behavior = new AuthorizationBehavior<UpdateEventSessionGroupCommand, BaseCommandResponse<Guid>>(
             _authService,
             Substitute.For<ILogger<AuthorizationBehavior<UpdateEventSessionGroupCommand, BaseCommandResponse<Guid>>>>(),
@@ -1531,11 +1564,12 @@ public class AuthorizationBehaviorTests
         await Assert.That(command.TenantId).IsNotEqualTo(tenantId);
         await Assert.That(command.ExpectedConcurrencyStamp).IsEqualTo(expectedConcurrencyStamp);
         await assignmentRepository.Received(1).GetForUpdateAsync(assignmentId, Arg.Any<CancellationToken>());
-        await _authService.Received(1).IsAllowedAsync(
+        await _authService.Received(1).AuthorizeAsync(
+            MatchesAuthorizationRequest(
             ResourceKinds.EventSessionGroup,
             assignmentId.ToString(),
             AuthorizationActions.Update,
-            Arg.Is<IDictionary<string, object>?>(attributes => HasExactAuthorizationContext(attributes, expectedAuthorizationContext)),
+            attributes => HasExactAuthorizationContext(attributes, expectedAuthorizationContext)),
             Arg.Any<CancellationToken>());
     }
 
@@ -1584,17 +1618,18 @@ public class AuthorizationBehaviorTests
             TenantId = tenantId,
             Tenant = null!
         });
-        _authService.IsAllowedAsync(
+        _authService.AuthorizeAsync(
+            MatchesAuthorizationRequest(
                 ResourceKinds.EventSession,
                 sessionId.ToString(),
                 AuthorizationActions.Update,
-                Arg.Is<IDictionary<string, object>?>(attributes =>
+                attributes =>
                     attributes != null
                     && attributes["eventSessionId"].Equals(sessionId.ToString())
                     && attributes["eventId"].Equals(eventId.ToString())
                     && attributes["tenantId"].Equals(tenantId.ToString())),
                 Arg.Any<CancellationToken>())
-            .Returns(true);
+            .Returns(AllowedDecision);
         var behavior = new AuthorizationBehavior<UpdateEventSessionSpeakerCommand, BaseCommandResponse<Guid>>(
             _authService,
             Substitute.For<ILogger<AuthorizationBehavior<UpdateEventSessionSpeakerCommand, BaseCommandResponse<Guid>>>>(),
@@ -1609,11 +1644,12 @@ public class AuthorizationBehaviorTests
         await Assert.That(command.ExpectedConcurrencyStamp).IsEqualTo(expectedConcurrencyStamp);
         await assignmentRepository.Received(1).GetById(assignmentId);
         await sessionRepository.Received(1).GetSessionWithDetails(sessionId);
-        await _authService.Received(1).IsAllowedAsync(
+        await _authService.Received(1).AuthorizeAsync(
+            MatchesAuthorizationRequest(
             ResourceKinds.EventSession,
             sessionId.ToString(),
             AuthorizationActions.Update,
-            Arg.Is<IDictionary<string, object>?>(attributes => HasExactAuthorizationContext(attributes, expectedAuthorizationContext)),
+            attributes => HasExactAuthorizationContext(attributes, expectedAuthorizationContext)),
             Arg.Any<CancellationToken>());
     }
 
@@ -1638,7 +1674,7 @@ public class AuthorizationBehaviorTests
             command,
             _ => Task.FromResult(new BaseCommandResponse<Guid> { Success = true }),
             CancellationToken.None));
-        await _authService.DidNotReceiveWithAnyArgs().IsAllowedAsync(default!, default!, default!, default, default);
+        await _authService.DidNotReceiveWithAnyArgs().AuthorizeAsync(default!, default);
     }
 
     [Test]
@@ -1687,7 +1723,7 @@ public class AuthorizationBehaviorTests
             command,
             _ => Task.FromResult(new BaseCommandResponse<Guid> { Success = true }),
             CancellationToken.None));
-        await _authService.DidNotReceiveWithAnyArgs().IsAllowedAsync(default!, default!, default!, default, default);
+        await _authService.DidNotReceiveWithAnyArgs().AuthorizeAsync(default!, default);
     }
 
     [Test]
@@ -1702,18 +1738,19 @@ public class AuthorizationBehaviorTests
             eventId,
             tenantId,
             organizationId));
-        _authService.IsAllowedAsync(
+        _authService.AuthorizeAsync(
+            MatchesAuthorizationRequest(
                 ResourceKinds.EventOrganizerClaim,
                 eventId.ToString(),
                 AuthorizationActions.Events.ReviewOrganizerClaim,
-                Arg.Is<IDictionary<string, object>?>(attributes =>
+                attributes =>
                     attributes != null
                     && attributes["claimId"].Equals(claimId.ToString())
                     && attributes["eventId"].Equals(eventId.ToString())
                     && attributes["tenantId"].Equals(tenantId.ToString())
                     && attributes["organizationId"].Equals(organizationId.ToString())),
                 Arg.Any<CancellationToken>())
-            .Returns(true);
+            .Returns(AllowedDecision);
         var behavior = new AuthorizationBehavior<ReviewEventOrganizerClaimCommand, BaseCommandResponse<Guid>>(
             _authService,
             Substitute.For<ILogger<AuthorizationBehavior<ReviewEventOrganizerClaimCommand, BaseCommandResponse<Guid>>>>(),
@@ -1782,23 +1819,22 @@ public class AuthorizationBehaviorTests
             ["claimId"] = claim.Id.ToString("D"),
             ["claimantActorId"] = claimantActorId.ToString("D"),
             ["status"] = claim.Status is null ? claim.StatusId.ToString() : claim.Status.MasterCode,
-            ["claimantUserId"] = claimantUserId.ToString("D"),
-            ["actorId"] = authorizationEvent.ActorId.ToString("D"),
-            ["organizationId"] = organizationId.ToString("D")
+            ["claimantUserId"] = claimantUserId.ToString("D")
         };
         eventRepository.GetEventWithDetails(persistedEventId).Returns(authorizationEvent);
-        _authService.IsAllowedAsync(
+        _authService.AuthorizeAsync(
+            MatchesAuthorizationRequest(
                 ResourceKinds.EventOrganizerClaim,
                 claim.Id.ToString("D"),
                 AuthorizationActions.Events.WithdrawOrganizerClaim,
-                Arg.Is<IDictionary<string, object>?>(attributes =>
+                attributes =>
                     attributes != null
                     && attributes["eventId"].Equals(persistedEventId.ToString("D"))
                     && attributes["claimId"].Equals(claim.Id.ToString("D"))
                     && attributes["claimantActorId"].Equals(claimantActorId.ToString("D"))
                     && attributes["claimantUserId"].Equals(claimantUserId.ToString("D"))),
                 Arg.Any<CancellationToken>())
-            .Returns(true);
+            .Returns(AllowedDecision);
         var behavior = new AuthorizationBehavior<WithdrawEventOrganizerClaimCommand, BaseCommandResponse<Guid>>(
             _authService,
             Substitute.For<ILogger<AuthorizationBehavior<WithdrawEventOrganizerClaimCommand, BaseCommandResponse<Guid>>>>(),
@@ -1824,11 +1860,12 @@ public class AuthorizationBehaviorTests
         await actorRepository.Received(1).GetActorWithDetails(claimantActorId, Arg.Any<CancellationToken>());
         await eventRepository.Received(1).GetEventWithDetails(persistedEventId);
         await eventRepository.DidNotReceive().GetEventWithDetails(routeEventId);
-        await _authService.Received(1).IsAllowedAsync(
+        await _authService.Received(1).AuthorizeAsync(
+            MatchesAuthorizationRequest(
             ResourceKinds.EventOrganizerClaim,
             claim.Id.ToString("D"),
             AuthorizationActions.Events.WithdrawOrganizerClaim,
-            Arg.Is<IDictionary<string, object>?>(attributes => HasExactAuthorizationContext(attributes, expectedAuthorizationContext)),
+            attributes => HasExactAuthorizationContext(attributes, expectedAuthorizationContext)),
             Arg.Any<CancellationToken>());
     }
 
@@ -1842,11 +1879,11 @@ public class AuthorizationBehaviorTests
         var command = new TestSecureCommandWithNullId();
         var expectedResponse = new BaseCommandResponse<Guid> { Success = true };
 
-        _authService.IsAllowedAsync(
-            "islamuevent_organization", nameof(TestSecureCommandWithNullId), "delete",
-            Arg.Any<IDictionary<string, object>?>(),
+        _authService.AuthorizeAsync(
+            MatchesAuthorizationRequest(
+                "islamuevent_organization", nameof(TestSecureCommandWithNullId), "delete"),
             Arg.Any<CancellationToken>())
-            .Returns(true);
+            .Returns(AllowedDecision);
 
         // Act
         var result = await secureBehavior.Handle(command, _ => Task.FromResult(expectedResponse), CancellationToken.None);
@@ -1854,11 +1891,11 @@ public class AuthorizationBehaviorTests
 
         // Assert
         await Assert.That(result.Success).IsTrue();
-        await _authService.Received(1).IsAllowedAsync(
-            "islamuevent_organization",
-            nameof(TestSecureCommandWithNullId),
-            "delete",
-            Arg.Any<IDictionary<string, object>?>(),
+        await _authService.Received(1).AuthorizeAsync(
+            MatchesAuthorizationRequest(
+                "islamuevent_organization",
+                nameof(TestSecureCommandWithNullId),
+                "delete"),
             Arg.Any<CancellationToken>());
     }
 
@@ -1932,8 +1969,21 @@ public class AuthorizationBehaviorTests
         && attributes["userId"].Equals(attendeeUserId.ToString("D"))
         && attributes["organizationId"].Equals(organizationId.ToString("D"));
 
+    private static AuthorizationRequest MatchesAuthorizationRequest(
+        string resourceKind,
+        string resourceId,
+        string action,
+        Func<IReadOnlyDictionary<string, object>?, bool>? matchesAttributes = null) =>
+        Arg.Is<AuthorizationRequest>(request =>
+            request != null &&
+            request.ResourceKind == resourceKind &&
+            request.ResourceId == resourceId &&
+            request.Action == action &&
+            (matchesAttributes == null || matchesAttributes(
+                request.ResourceAttributes ?? AuthorizationFactsAttributeProjection.ToAttributes(request.Facts))));
+
     private static bool HasExactAuthorizationContext(
-        IDictionary<string, object>? attributes,
+        IReadOnlyDictionary<string, object>? attributes,
         IReadOnlyDictionary<string, string> expectedAttributes) =>
         attributes is not null &&
         attributes.Count == expectedAttributes.Count &&

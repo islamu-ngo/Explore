@@ -2,11 +2,18 @@
 // ABOUTME: Used by GetEventTeamListRequest for team management UI and API responses.
 
 using Explore.Domain.Enums;
+using System.Text.Json.Serialization;
 
 namespace Explore.Application.DTOs.EventRoleAssignment;
 
 public sealed class EventTeamMemberDto
 {
+    [JsonIgnore]
+    public Guid TenantId { get; set; }
+
+    [JsonIgnore]
+    public Guid EventId { get; set; }
+
     public Guid AssignmentId { get; set; }
     public Guid UserId { get; set; }
     public required string UserEmail { get; set; }

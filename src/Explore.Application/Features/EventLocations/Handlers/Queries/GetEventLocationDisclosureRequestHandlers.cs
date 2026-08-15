@@ -216,8 +216,9 @@ internal static class EventLocationManagementProjection
             descriptor.Kind,
             descriptor.GetResourceId(authorizationTarget),
             AuthorizationActions.Update,
-            descriptor.GetResourceAttributes(authorizationTarget),
-            descriptor.GetScope(authorizationTarget));
+            ResourceAttributes: null,
+            Scope: descriptor.GetScope(authorizationTarget),
+            Facts: descriptor.GetFacts(authorizationTarget));
 
         return EventLocationManagementDto.FromDisclosureResult(
             result,

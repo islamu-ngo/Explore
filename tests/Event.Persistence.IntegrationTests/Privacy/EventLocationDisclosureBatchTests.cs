@@ -469,31 +469,24 @@ public sealed class EventLocationDisclosureBatchTests(RegistrationCoveragePostgr
         public int BatchCalls { get; private set; }
         public IReadOnlyList<AuthorizationRequest> LastChecks { get; private set; } = [];
 
-        public Task<bool> IsAllowedAsync(
-            string resourceKind,
-            string resourceId,
-            string action,
-            IDictionary<string, object>? resourceAttributes = null,
+        public Task<AuthorizationDecision> AuthorizeAsync(
+            AuthorizationRequest request,
             CancellationToken cancellationToken = default) =>
             throw new InvalidOperationException("Disclosure must use one authorization batch.");
 
-        public Task<IReadOnlyList<bool>> IsAllowedBatchAsync(
-            IReadOnlyList<AuthorizationRequest> checks,
+        public Task<IReadOnlyList<AuthorizationDecision>> AuthorizeBatchAsync(
+            IReadOnlyList<AuthorizationRequest> requests,
             CancellationToken cancellationToken = default)
         {
             cancellationToken.ThrowIfCancellationRequested();
             BatchCalls++;
-            LastChecks = checks;
-            return Task.FromResult<IReadOnlyList<bool>>(Enumerable.Repeat(allow, checks.Count).ToArray());
+            LastChecks = requests;
+            var decision = allow
+                ? AuthorizationDecision.Allow(AuthorizationProviderMetadata.Local)
+                : AuthorizationDecision.Deny(AuthorizationProviderMetadata.Local);
+            return Task.FromResult<IReadOnlyList<AuthorizationDecision>>(
+                Enumerable.Repeat(decision, requests.Count).ToArray());
         }
-
-        public Task<bool> CheckSettingAccessAsync(
-            string settingKey,
-            string action,
-            Guid? tenantId = null,
-            Guid? organizationId = null,
-            CancellationToken cancellationToken = default) =>
-            throw new InvalidOperationException("Disclosure must not authorize settings.");
     }
 
     private sealed class SelectCommandInterceptor : DbCommandInterceptor

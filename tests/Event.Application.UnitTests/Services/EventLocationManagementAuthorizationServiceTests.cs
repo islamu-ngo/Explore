@@ -38,10 +38,10 @@ public sealed class EventLocationManagementAuthorizationServiceTests
             .Returns([CreateEvent(tenantId, eventId)]);
         var authorizationProvider = Substitute.For<IAuthorizationProvider>();
         IReadOnlyList<AuthorizationRequest>? observedChecks = null;
-        authorizationProvider.IsAllowedBatchAsync(
+        authorizationProvider.AuthorizeBatchAsync(
                 Arg.Do<IReadOnlyList<AuthorizationRequest>>(checks => observedChecks = checks),
                 Arg.Any<CancellationToken>())
-            .Returns([true]);
+            .Returns([AuthorizationDecision.Allow(AuthorizationProviderMetadata.Runtime)]);
         var currentUser = AuthenticatedUser(requesterUserId);
         var auditService = Substitute.For<IEventLocationExactReadAuditService>();
         IReadOnlyCollection<EventLocationExactReadAuditRequest>? observedAudits = null;
@@ -67,7 +67,9 @@ public sealed class EventLocationManagementAuthorizationServiceTests
         await Assert.That(check.ResourceId).IsEqualTo(eventId.ToString());
         await Assert.That(check.Action).IsEqualTo(AuthorizationActions.Events.ViewManagement);
         await Assert.That(check.Scope?.TenantId).IsEqualTo(tenantId.ToString());
-        await Assert.That(check.ResourceAttributes?["tenantId"]).IsEqualTo(tenantId.ToString());
+        await Assert.That(check.ResourceAttributes).IsNull();
+        await Assert.That(check.Facts).IsTypeOf<EventAuthorizationFacts>();
+        await Assert.That(((EventAuthorizationFacts)check.Facts!).TenantId).IsEqualTo(tenantId);
         await Assert.That(observedAudits).IsNotNull();
         await Assert.That(observedAudits!.Select(audit => audit.EventLocationId))
             .IsEquivalentTo(placements.Select(placement => placement.Id));
@@ -81,7 +83,7 @@ public sealed class EventLocationManagementAuthorizationServiceTests
         await eventRepository.Received(1).GetAuthorizationTargetsByIdsAsync(
             Arg.Any<IReadOnlyCollection<Guid>>(),
             Arg.Any<CancellationToken>());
-        await authorizationProvider.Received(1).IsAllowedBatchAsync(
+        await authorizationProvider.Received(1).AuthorizeBatchAsync(
             Arg.Any<IReadOnlyList<AuthorizationRequest>>(),
             Arg.Any<CancellationToken>());
         await auditService.Received(1).RecordManyAsync(
@@ -104,10 +106,10 @@ public sealed class EventLocationManagementAuthorizationServiceTests
                 Arg.Any<CancellationToken>())
             .Returns([CreateEvent(tenantId, eventId)]);
         var authorizationProvider = Substitute.For<IAuthorizationProvider>();
-        authorizationProvider.IsAllowedBatchAsync(
+        authorizationProvider.AuthorizeBatchAsync(
                 Arg.Any<IReadOnlyList<AuthorizationRequest>>(),
                 Arg.Any<CancellationToken>())
-            .Returns([true]);
+            .Returns([AuthorizationDecision.Allow(AuthorizationProviderMetadata.Runtime)]);
         var auditService = Substitute.For<IEventLocationExactReadAuditService>();
         auditService.RecordManyAsync(
                 Arg.Any<IReadOnlyCollection<EventLocationExactReadAuditRequest>>(),
@@ -146,7 +148,7 @@ public sealed class EventLocationManagementAuthorizationServiceTests
                 Arg.Any<CancellationToken>())
             .Returns([]);
         var authorizationProvider = Substitute.For<IAuthorizationProvider>();
-        authorizationProvider.IsAllowedBatchAsync(
+        authorizationProvider.AuthorizeBatchAsync(
                 Arg.Any<IReadOnlyList<AuthorizationRequest>>(),
                 Arg.Any<CancellationToken>())
             .Returns([]);
@@ -176,7 +178,7 @@ public sealed class EventLocationManagementAuthorizationServiceTests
         ICall providerCall = authorizationProvider.ReceivedCalls().Single();
         var observedChecks = (IReadOnlyList<AuthorizationRequest>)providerCall.GetArguments()[0]!;
         await Assert.That(observedChecks).IsEmpty();
-        await authorizationProvider.Received(1).IsAllowedBatchAsync(
+        await authorizationProvider.Received(1).AuthorizeBatchAsync(
             Arg.Any<IReadOnlyList<AuthorizationRequest>>(),
             Arg.Any<CancellationToken>());
     }

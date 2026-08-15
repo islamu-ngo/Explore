@@ -16,7 +16,6 @@ namespace Explore.Blazor.Client.Pages.Events.Components;
 public partial class EventTeamManager
 {
     [Parameter] public Guid EventId { get; set; }
-    [Parameter] public bool CanManageTeam { get; set; }
 
     [Inject] private IEventTeamService EventTeamService { get; set; } = null!;
     [Inject] private IDialogService DialogService { get; set; } = null!;
@@ -26,8 +25,8 @@ public partial class EventTeamManager
 
     private List<EventTeamMemberDto> _members = [];
     private List<EventRolePresetDto> _assignablePresets = [];
+    private HalCollectionResourceOfEventTeamMemberDto _team = new();
     private bool _loading = true;
-    private bool _canManageTeam;
     private string? _errorMessage;
 
     private string _searchString = "";
@@ -40,22 +39,21 @@ public partial class EventTeamManager
                         (x.UserEmail?.Contains(_searchString, StringComparison.OrdinalIgnoreCase) ?? false))
             .Where(x => _roleFilter == null || x.RoleId == _roleFilter);
 
-    private bool CanWriteTeam => _canManageTeam && _assignablePresets.Count > 0;
+    private bool HasAssignEventRoleLink => _team._links?.ContainsKey("assign-event-role") == true;
+
+    private bool CanAssignTeamRole => HasAssignEventRoleLink && _assignablePresets.Count > 0;
 
     private bool HasAnyMemberActions => _members.Any(m => CanRevokeMember(m));
 
     protected override async Task OnParametersSetAsync()
     {
-        _canManageTeam = CanManageTeam;
         await LoadTeamMembers();
         await LoadAssignablePresets();
     }
 
     private bool CanRevokeMember(EventTeamMemberDto member)
     {
-        if (!CanWriteTeam) return false;
-        if (member.RoleId == RoleHelper.EventOwner) return false;
-        return member.IsEffective == true;
+        return member.HasHalLink("revoke");
     }
 
     private async Task LoadTeamMembers()
@@ -64,8 +62,8 @@ public partial class EventTeamManager
         _errorMessage = null;
         try
         {
-            var result = await EventTeamService.GetTeamMembersAsync(EventId, includeInactive: false);
-            _members = result.ToList();
+            _team = await EventTeamService.GetTeamMembersAsync(EventId, includeInactive: false);
+            _members = _team.GetItems().ToList();
         }
         catch (Exception ex)
         {
@@ -82,7 +80,7 @@ public partial class EventTeamManager
     {
         _assignablePresets = [];
 
-        if (!_canManageTeam)
+        if (!HasAssignEventRoleLink)
         {
             return;
         }
@@ -100,7 +98,7 @@ public partial class EventTeamManager
 
     private async Task OpenAssignDialog()
     {
-        if (!CanWriteTeam) return;
+        if (!CanAssignTeamRole) return;
 
         var parameters = new DialogParameters
         {

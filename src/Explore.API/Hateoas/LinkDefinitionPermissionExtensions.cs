@@ -15,27 +15,7 @@ public static class LinkDefinitionPermissionExtensions
 {
     /// <summary>
     /// Attaches a permission check using an <see cref="AuthorizationActions"/> string constant.
-    /// Resolves the resource kind from <typeparamref name="TResource"/> via the registry.
-    /// </summary>
-    public static LinkDefinition RequirePermission<TResource>(
-        this LinkDefinition definition,
-        string action,
-        TResource resource,
-        string? resourceId = null,
-        IReadOnlyDictionary<string, object>? resourceAttributes = null,
-        AuthorizationScope? scope = null)
-        where TResource : class
-    {
-        ArgumentNullException.ThrowIfNull(resource);
-
-        var resourceKind = ResourceDescriptorRegistry.ResolveResourceKind(typeof(TResource));
-
-        return definition.WithPermission(resourceKind, action, resourceId, resourceAttributes, scope);
-    }
-
-    /// <summary>
-    /// Attaches a permission check using an <see cref="AuthorizationActions"/> string constant.
-    /// Resolves the resource kind from the specified <paramref name="resourceType"/> via the registry.
+    /// Uses the specified <paramref name="resourceKind"/> directly.
     /// </summary>
     public static LinkDefinition RequirePermission(
         this LinkDefinition definition,
@@ -43,9 +23,10 @@ public static class LinkDefinitionPermissionExtensions
         string resourceKind,
         string? resourceId = null,
         IReadOnlyDictionary<string, object>? resourceAttributes = null,
-        AuthorizationScope? scope = null)
+        AuthorizationScope? scope = null,
+        IAuthorizationFacts? facts = null)
     {
-        return definition.WithPermission(resourceKind, action, resourceId, resourceAttributes, scope);
+        return definition.WithPermission(resourceKind, action, resourceId, resourceAttributes, scope, facts);
     }
 
     /// <summary>
@@ -86,11 +67,13 @@ public static class LinkDefinitionPermissionExtensions
         ArgumentNullException.ThrowIfNull(descriptor);
         ArgumentNullException.ThrowIfNull(resource);
 
+        var facts = descriptor.GetFacts(resource);
         return definition.WithPermission(
             descriptor.Kind,
             action,
             descriptor.GetResourceId(resource),
-            descriptor.GetResourceAttributes(resource),
-            descriptor.GetScope(resource));
+            facts is null ? descriptor.GetResourceAttributes(resource) : null,
+            descriptor.GetScope(resource),
+            facts);
     }
 }

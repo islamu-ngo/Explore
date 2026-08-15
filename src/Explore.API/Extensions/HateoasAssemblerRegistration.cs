@@ -23,6 +23,7 @@ using Explore.Application.DTOs.EventCustomProperty;
 using Explore.Application.DTOs.EventDay;
 using Explore.Application.DTOs.EventOrganizerClaim;
 using Explore.Application.DTOs.EventReporting;
+using Explore.Application.DTOs.EventRoleAssignment;
 using Explore.Application.DTOs.EventSeries;
 using Explore.Application.DTOs.EventSession;
 using Explore.Application.DTOs.EventSessionAgendaItem;
@@ -87,6 +88,9 @@ public static class HateoasAssemblerRegistration
         services.AddScoped<ILinkPolicy<EventDto>, EventDetailLinkPolicy>();
         services.AddScoped<ICollectionLinkPolicy<EventListDto>, EventCollectionLinkPolicy>();
         services.AddScoped<IResourceAssembler<EventDto, EventListDto>, EventResourceAssembler>();
+        services.AddScoped<ILinkPolicy<EventTeamMemberDto>, EventTeamMemberDetailLinkPolicy>();
+        services.AddScoped<ICollectionLinkPolicy<EventTeamMemberDto>, EventTeamMemberCollectionLinkPolicy>();
+        services.AddScoped<IResourceAssembler<EventTeamMemberDto, EventTeamMemberDto>, EventTeamMemberResourceAssembler>();
         services.AddScoped<EventTicketCatalogManagementLinkPolicy>();
         services.AddScoped<ILinkPolicy<EventTicketCatalogManagementDto>, EventTicketCatalogManagementLinkPolicy>();
         services.AddScoped<ICollectionLinkPolicy<EventTicketCatalogManagementDto>, EventTicketCatalogManagementCollectionLinkPolicy>();

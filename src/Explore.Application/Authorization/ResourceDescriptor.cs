@@ -1,5 +1,5 @@
 // ABOUTME: Generic implementation of IAuthorizableResourceDescriptor using delegate-based property extraction.
-// ABOUTME: Each instance is configured with lambdas for extracting resource ID, attributes, and scope from a DTO.
+// ABOUTME: Each instance is configured with lambdas for extracting resource ID, facts, attributes, and scope from a DTO.
 
 namespace Explore.Application.Authorization;
 
@@ -19,6 +19,7 @@ public sealed class ResourceDescriptor<TResource> : IAuthorizableResourceDescrip
 
     private readonly Func<TResource, string> _getResourceId;
     private readonly Func<TResource, IReadOnlyDictionary<string, object>>? _getResourceAttributes;
+    private readonly Func<TResource, IAuthorizationFacts?>? _getFacts;
     private readonly Func<TResource, AuthorizationScope>? _getScope;
 
     /// <summary>
@@ -38,7 +39,8 @@ public sealed class ResourceDescriptor<TResource> : IAuthorizableResourceDescrip
         string kind,
         Func<TResource, string> getResourceId,
         Func<TResource, IReadOnlyDictionary<string, object>>? getResourceAttributes = null,
-        Func<TResource, AuthorizationScope>? getScope = null)
+        Func<TResource, AuthorizationScope>? getScope = null,
+        Func<TResource, IAuthorizationFacts?>? getFacts = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(kind);
         ArgumentNullException.ThrowIfNull(getResourceId);
@@ -47,6 +49,7 @@ public sealed class ResourceDescriptor<TResource> : IAuthorizableResourceDescrip
         _getResourceId = getResourceId;
         _getResourceAttributes = getResourceAttributes;
         _getScope = getScope;
+        _getFacts = getFacts;
     }
 
     /// <inheritdoc />
@@ -58,6 +61,8 @@ public sealed class ResourceDescriptor<TResource> : IAuthorizableResourceDescrip
     /// <inheritdoc />
     public IReadOnlyDictionary<string, object> GetResourceAttributes(TResource resource) =>
         _getResourceAttributes?.Invoke(resource) ?? EmptyAttributes;
+
+    public IAuthorizationFacts? GetFacts(TResource resource) => _getFacts?.Invoke(resource);
 
     /// <inheritdoc />
     public AuthorizationScope GetScope(TResource resource) =>

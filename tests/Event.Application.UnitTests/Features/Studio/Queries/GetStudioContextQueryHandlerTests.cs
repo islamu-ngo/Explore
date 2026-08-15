@@ -85,8 +85,12 @@ public sealed class GetStudioContextQueryHandlerTests
         _actorContexts.ResolveAuthorizedActorAsync(_tenantId, _userId, actorId, Arg.Any<CancellationToken>())
             .Returns(AiAssistantActorContextResolution.Success(actorId, []));
         _events.GetEventsByActorWithDetails(actorId, Arg.Any<CancellationToken>()).Returns([managedEvent]);
-        _authorization.IsAllowedBatchAsync(Arg.Any<IReadOnlyList<AuthorizationRequest>>(), Arg.Any<CancellationToken>())
-            .Returns([true, true, true]);
+        _authorization.AuthorizeBatchAsync(Arg.Any<IReadOnlyList<AuthorizationRequest>>(), Arg.Any<CancellationToken>())
+            .Returns([
+                AuthorizationDecision.Allow(AuthorizationProviderMetadata.Runtime),
+                AuthorizationDecision.Allow(AuthorizationProviderMetadata.Runtime),
+                AuthorizationDecision.Allow(AuthorizationProviderMetadata.Runtime)
+            ]);
 
         StudioContextDto result = await CreateHandler().Handle(new GetStudioContextQuery(actorId), CancellationToken.None);
 
@@ -94,12 +98,13 @@ public sealed class GetStudioContextQueryHandlerTests
         await Assert.That(result.AllowedLinkRelations).Contains(LinkRelations.ViewParticipants);
         await Assert.That(result.AllowedLinkRelations).Contains(LinkRelations.ManageRegistrationChannels);
         await Assert.That(result.AllowedLinkRelations).Contains(LinkRelations.ViewRegistrationProviderHealth);
-        await _authorization.Received(1).IsAllowedBatchAsync(
+        await _authorization.Received(1).AuthorizeBatchAsync(
             Arg.Is<IReadOnlyList<AuthorizationRequest>>(checks =>
                 checks.Count == 3 &&
                 checks[0].ResourceKind == ResourceKinds.Event &&
                 checks[0].Action == AuthorizationActions.Events.ManageRegistrations &&
                 checks[0].ResourceId == managedEvent.Id.ToString("D") &&
+                checks.All(check => check.ResourceAttributes == null && check.Facts != null && check.Facts.GetType() == typeof(EventAuthorizationFacts)) &&
                 checks[1].Action == AuthorizationActions.Events.ManageRegistrationChannels &&
                 checks[2].Action == AuthorizationActions.Events.ViewRegistrationProviderHealth),
             Arg.Any<CancellationToken>());
@@ -117,7 +122,7 @@ public sealed class GetStudioContextQueryHandlerTests
         StudioContextDto result = await CreateHandler().Handle(new GetStudioContextQuery(actorId), CancellationToken.None);
 
         await Assert.That(result.AllowedLinkRelations).IsEmpty();
-        _ = await _authorization.DidNotReceive().IsAllowedBatchAsync(
+        _ = await _authorization.DidNotReceive().AuthorizeBatchAsync(
             Arg.Any<IReadOnlyList<AuthorizationRequest>>(),
             Arg.Any<CancellationToken>());
     }

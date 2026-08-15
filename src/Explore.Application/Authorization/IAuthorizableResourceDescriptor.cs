@@ -43,6 +43,8 @@ public interface IAuthorizableResourceDescriptor<in TResource>
     /// </summary>
     IReadOnlyDictionary<string, object> GetResourceAttributes(TResource resource);
 
+    IAuthorizationFacts? GetFacts(TResource resource) => null;
+
     /// <summary>
     /// Extracts the authorization scope for per-tenant/org policy resolution.
     /// </summary>

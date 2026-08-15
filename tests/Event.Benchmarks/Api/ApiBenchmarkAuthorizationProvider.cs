@@ -9,31 +9,15 @@ internal sealed class ApiBenchmarkAuthorizationProvider : IAuthorizationProvider
 {
     public static readonly ApiBenchmarkAuthorizationProvider AllowAll = new();
 
-    public Task<bool> IsAllowedAsync(
-        string resourceKind,
-        string resourceId,
-        string action,
-        IDictionary<string, object>? resourceAttributes = null,
-        CancellationToken cancellationToken = default)
-    {
-        return Task.FromResult(true);
-    }
+    public Task<AuthorizationDecision> AuthorizeAsync(
+        AuthorizationRequest request,
+        CancellationToken cancellationToken = default) =>
+        Task.FromResult(AuthorizationDecision.Allow(AuthorizationProviderMetadata.Local));
 
-    public Task<IReadOnlyList<bool>> IsAllowedBatchAsync(
-        IReadOnlyList<AuthorizationRequest> checks,
-        CancellationToken cancellationToken = default)
-    {
-        IReadOnlyList<bool> results = checks.Select(_ => true).ToList();
-        return Task.FromResult(results);
-    }
-
-    public Task<bool> CheckSettingAccessAsync(
-        string settingKey,
-        string action,
-        Guid? tenantId = null,
-        Guid? organizationId = null,
-        CancellationToken cancellationToken = default)
-    {
-        return Task.FromResult(true);
-    }
+    public Task<IReadOnlyList<AuthorizationDecision>> AuthorizeBatchAsync(
+        IReadOnlyList<AuthorizationRequest> requests,
+        CancellationToken cancellationToken = default) =>
+        Task.FromResult<IReadOnlyList<AuthorizationDecision>>(requests
+            .Select(_ => AuthorizationDecision.Allow(AuthorizationProviderMetadata.Local))
+            .ToArray());
 }
