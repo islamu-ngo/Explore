@@ -40,7 +40,7 @@ Last Updated: 2026-08-15 Europe/Brussels
 
 ### ⚠️ BLOCKERS
 
-- The local .NET workload manifest set is currently inconsistent (`MSB4242`, missing workload set `10.0.301.1`). Focused tests run with `MSBuildEnableWorkloadResolver=false`; repair of the developer SDK installation is outside this workstream.
+- ~~The local .NET workload manifest set is inconsistent (`MSB4242`, missing workload set `10.0.301.1`).~~ **RESOLVED 2026-08-15.** 2026-08-15 SDK update: `dotnet workload repair` was run and the host SDK is healthy (`wasm-tools 10.0.109/10.0.100`); the `MSBuildEnableWorkloadResolver=false` workaround is no longer required. Focused tests previously recorded under the workaround should be re-run with literal commands when this workstream next verifies; no such re-run has been performed yet.
 - Permission widening remains forbidden without separate explicit approval.
 - Tavily MCP research was attempted as requested but every call returned HTTP 432 because the configured Tavily plan usage limit was exceeded. Context7 and primary-source Anysearch results were used for the remaining research.
 - Phase 2 must complete provider-neutral Local/Cerbos parity and differential diagnostics without compatibility shims; the focused Local contact-share mismatch is resolved.
