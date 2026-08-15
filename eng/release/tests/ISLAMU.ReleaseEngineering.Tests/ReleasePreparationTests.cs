@@ -8,7 +8,7 @@ using ISLAMU.ReleaseEngineering;
 
 namespace ISLAMU.ReleaseEngineering.Tests;
 
-[NotInParallel]
+[NotInParallel("RuntimePromotionTrustRoot")]
 public sealed class ReleasePreparationTests
 {
     private static readonly System.Text.Json.JsonSerializerOptions ContextJsonOptions = new()
@@ -270,6 +270,31 @@ public sealed class ReleasePreparationTests
     }
 
     [Test]
+    public async Task PrepareCommandRejectsBaselineDescriptorWhenStableSemVerTagIsReachable()
+    {
+        if (OperatingSystem.IsWindows())
+        {
+            return;
+        }
+
+        using var accepted = new PreparationFixture();
+        using var rejected = new PreparationFixture();
+
+        (int acceptedCode, string acceptedOutput, byte[] acceptedNotes) = accepted.RunBaselineCommand("0.1.0", includeReachableStableTag: false);
+        (int rejectedCode, string rejectedOutput, byte[] rejectedNotes) = rejected.RunBaselineCommand("0.2.0", includeReachableStableTag: true);
+
+        await Assert.That(acceptedCode).IsEqualTo(Program.Success);
+        await Assert.That(acceptedOutput).IsEqualTo("docs(release): prepare 0.1.0\n\nChangelog: skip\nChangelog-Reason: release metadata commit\n");
+        await Assert.That(acceptedNotes).IsNotEmpty();
+        await Assert.That(File.Exists(accepted.CommandContextPath)).IsTrue();
+        await Assert.That(File.ReadAllText(accepted.CommandContextPath)).Contains("\"version\": \"0.1.0\"");
+        await Assert.That(rejectedCode).IsEqualTo(Program.ToolchainRejected);
+        await Assert.That(rejectedOutput).IsEqualTo("prepare_failed: git_baseline_stable_tag_exists:v0.1.0\n");
+        await Assert.That(rejectedNotes).IsEmpty();
+        await Assert.That(File.Exists(rejected.CommandContextPath)).IsFalse();
+    }
+
+    [Test]
     public async Task PrepareCommandRejectsMissingReleaseDirectoryOperand()
     {
         using var output = new StringWriter();
@@ -440,6 +465,46 @@ public sealed class ReleasePreparationTests
             }
         }
 
+        public (int ExitCode, string Output, byte[] Notes) RunBaselineCommand(string version, bool includeReachableStableTag)
+        {
+            string cliReleaseDirectory = EnsureBaselineCommandRepository(version, includeReachableStableTag);
+            WriteRenderer(version);
+            RewriteManifestAndReceipt();
+
+            var variables = new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["ISLAMU_RELEASE_TRUSTED_BUNDLE"] = bundleRoot,
+                ["ISLAMU_RELEASE_PROMOTION_RECEIPT"] = receiptPath,
+                ["ISLAMU_RELEASE_PROMOTION_SIGNATURE"] = signaturePath,
+                ["ISLAMU_RELEASE_PROMOTION_PRINCIPAL"] = "fixture-tooling-promoter",
+                ["ISLAMU_RELEASE_MANIFEST_SHA256"] = Digest(Path.Combine(bundleRoot, "trusted-bundle.manifest.json")),
+                ["ISLAMU_RELEASE_BUNDLE_ID"] = "islamu-release-engineering",
+                ["ISLAMU_RELEASE_BUNDLE_VERSION"] = "1.0.0",
+                ["ISLAMU_RELEASE_POLICY_VERSION"] = "policy-v1",
+                ["ISLAMU_RELEASE_CONFIG_VERSION"] = "config-v1",
+                ["ISLAMU_RELEASE_TRUST_VERSION"] = "trust-v1",
+            };
+            Dictionary<string, string?> originalVariables = variables.Keys.ToDictionary(name => name, Environment.GetEnvironmentVariable, StringComparer.Ordinal);
+            try
+            {
+                foreach ((string name, string value) in variables) Environment.SetEnvironmentVariable(name, value);
+                using RuntimePromotionTrustRootScope trustRoot = RuntimePromotionTrustRootScope.Use(allowedSignersPath);
+                using var output = new StringWriter();
+                int exitCode = PrepareCommand.Run(
+                    ["prepare", $"docs/releases/{version}"],
+                    output,
+                    candidateRoot,
+                    "linux-x64",
+                    TimeSpan.FromSeconds(2));
+                string notesPath = Path.Combine(cliReleaseDirectory, "release-notes.md");
+                return (exitCode, output.ToString(), File.Exists(notesPath) ? File.ReadAllBytes(notesPath) : []);
+            }
+            finally
+            {
+                foreach ((string name, string? value) in originalVariables) Environment.SetEnvironmentVariable(name, value);
+            }
+        }
+
         public (int ExitCode, string Output) RunBadCommand()
         {
             string cliReleaseDirectory = EnsureCommandRepository("# generated-region\n");
@@ -527,11 +592,11 @@ public sealed class ReleasePreparationTests
             }
         }
 
-        private void WriteRenderer()
+        private void WriteRenderer(string version = "1.1.0")
         {
             string body = RendererFails
                 ? "exit 7"
-                : "if [ \"$1\" = \"--version\" ]; then printf 'git-cliff 2.13.1\\n'; exit 0; fi\nprintf '# Release 1.1.0\\n\\n- registration: let attendees correct registration details (cccccccccccc)\\n'";
+                : $"if [ \"$1\" = \"--version\" ]; then printf 'git-cliff 2.13.1\\n'; exit 0; fi\nprintf '# Release {version}\\n\\n- registration: let attendees correct registration details (cccccccccccc)\\n'";
             File.WriteAllText(executablePath, "#!/bin/sh\n" + body + "\n");
             if (!OperatingSystem.IsWindows())
             {
@@ -578,6 +643,51 @@ public sealed class ReleasePreparationTests
             File.WriteAllText(CommandSummaryPath, summary);
             File.WriteAllText(Path.Combine(candidateRoot, "context.json"), "caller supplied context must be ignored\n");
             File.WriteAllText(Path.Combine(candidateRoot, "range.txt"), new string('f', 40) + "\n");
+            File.WriteAllText(Path.Combine(candidateRoot, "docs", "releases", "changes", "CHG-2026-0001.yaml"),
+                "Change-Id: CHG-2026-0001\nTitle: Registration worker restart\nType: feat\nScope: registration\nSummary: Attendees can now correct registration details.\nSupersedes: []\nImpacts:\n  Breaking:\n    Reference: docs/releases/README.md\n    Disposition: not-applicable\n  Security:\n    Reference: docs/SECURITY.md\n    Disposition: not-applicable\n  Migration:\n    Reference: docs/RELEASE_RUNBOOK.md\n    Disposition: not-applicable\n  Configuration:\n    Reference: docs/CONFIGURATION.md\n    Disposition: not-applicable\n  OpenAPI:\n    Reference: docs/API_CHANGELOG.md\n    Disposition: not-applicable\n  Operator:\n    Reference: docs/RELEASE_RUNBOOK.md\n    Disposition: documented\n    Detail: Restart registration workers after deployment.\n");
+            return cliReleaseDirectory;
+        }
+
+        private string EnsureBaselineCommandRepository(string version, bool includeReachableStableTag)
+        {
+            string baselineRef = "changelog-baseline-2026-08-15";
+            string line = "v" + string.Join('.', version.Split('.')[0], version.Split('.')[1]);
+            Directory.CreateDirectory(Path.Combine(candidateRoot, "eng", "release", "policy"));
+            File.WriteAllText(Path.Combine(candidateRoot, "eng", "release", "policy", "release-policy.yaml"),
+                "schemaVersion: 1\nmaximumCommitMessageBytes: 8192\nreleaseVisibleTypes:\n  - feat\n  - fix\n  - perf\n  - revert\n  - docs\ninternalTypes:\n  - test\n  - refactor\n  - style\n  - build\n  - ci\n  - chore\nrequiredBreakingSignals:\n  bang: true\n  footer: BREAKING CHANGE\nskipTrailer: Changelog\nskipValue: skip\nskipReasonTrailer: Changelog-Reason\n");
+            File.WriteAllText(Path.Combine(candidateRoot, "eng", "release", "policy", "scope-registry.yaml"),
+                "schemaVersion: 1\npublicScopes:\n  - events\n  - registration\nengineeringScopes:\n  - release\n");
+            Git("init", "--initial-branch=main");
+            string baselineOid = Commit("baseline lower bound");
+            Git("-c", "user.name=Release Test", "-c", "user.email=release@example.invalid", "tag", "-a", baselineRef, baselineOid, "-m", baselineRef);
+            string baselineTagObjectId = Git("rev-parse", $"refs/tags/{baselineRef}^{{object}}").Trim();
+            Directory.CreateDirectory(Path.Combine(candidateRoot, "docs", "releases", "baselines"));
+            File.WriteAllBytes(Path.Combine(candidateRoot, "docs", "releases", "baselines", baselineRef + ".v1.json"), CanonicalArtifactPolicy.CanonicalizeJson(JsonSerializer.Serialize(new
+            {
+                schemaVersion = "release-baseline.v1",
+                baselineRef,
+                targetOid = baselineOid,
+                tagObjectId = baselineTagObjectId,
+            })).Bytes!);
+
+            if (includeReachableStableTag)
+            {
+                string stable = Commit("existing governed stable");
+                Git("-c", "user.name=Release Test", "-c", "user.email=release@example.invalid", "tag", "-a", "v0.1.0", stable, "-m", "v0.1.0");
+            }
+
+            string feature = Commit("feat(registration): let attendees correct registration details\n\nChange-Id: CHG-2026-0001");
+            Git("branch", "-f", line, feature);
+
+            string cliReleaseDirectory = Path.Combine(candidateRoot, "docs", "releases", version);
+            Directory.CreateDirectory(cliReleaseDirectory);
+            Directory.CreateDirectory(Path.Combine(candidateRoot, "docs", "releases", "changes"));
+            CommandReleasePath = Path.Combine(cliReleaseDirectory, "release.yaml");
+            CommandSummaryPath = Path.Combine(cliReleaseDirectory, "summary.md");
+            CommandContextPath = Path.Combine(cliReleaseDirectory, "release-context.v1.json");
+            File.WriteAllText(CommandReleasePath,
+                $"Version: {version}\nLine: {line}\nRelease-Date: 2026-08-14\nBase-Stable-Tag: {baselineRef}\nPrevious-Published-Tag: {baselineRef}\nRelease-Range:\n  Base-Ref: {baselineRef}\n  Base-Oid: {baselineOid}\n  Previous-Ref: {baselineRef}\n  Previous-Oid: {baselineOid}\nCompatibility:\n  - v1\nImpact-Dispositions:\n  breaking: not-applicable\n  security: not-applicable\n  migration: not-applicable\n  configuration: not-applicable\n  openapi: not-applicable\n  operator: documented\n");
+            File.WriteAllText(CommandSummaryPath, "Attendees can now correct registration details.\n");
             File.WriteAllText(Path.Combine(candidateRoot, "docs", "releases", "changes", "CHG-2026-0001.yaml"),
                 "Change-Id: CHG-2026-0001\nTitle: Registration worker restart\nType: feat\nScope: registration\nSummary: Attendees can now correct registration details.\nSupersedes: []\nImpacts:\n  Breaking:\n    Reference: docs/releases/README.md\n    Disposition: not-applicable\n  Security:\n    Reference: docs/SECURITY.md\n    Disposition: not-applicable\n  Migration:\n    Reference: docs/RELEASE_RUNBOOK.md\n    Disposition: not-applicable\n  Configuration:\n    Reference: docs/CONFIGURATION.md\n    Disposition: not-applicable\n  OpenAPI:\n    Reference: docs/API_CHANGELOG.md\n    Disposition: not-applicable\n  Operator:\n    Reference: docs/RELEASE_RUNBOOK.md\n    Disposition: documented\n    Detail: Restart registration workers after deployment.\n");
             return cliReleaseDirectory;

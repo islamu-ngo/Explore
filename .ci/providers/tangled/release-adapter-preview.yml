@@ -1,0 +1,15 @@
+# ABOUTME: Minimal Tangled preview discovery workflow for untrusted candidate feedback.
+# ABOUTME: Runs only preview reporting with no final protected-release job surface.
+
+name: Release Adapter Preview Discovery
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  release-adapter-preview:
+    runs-on: linux
+    steps:
+      - run: |
+          printf '%s\n' 'release-adapter-preview: no-op-safe Tangled discovery'

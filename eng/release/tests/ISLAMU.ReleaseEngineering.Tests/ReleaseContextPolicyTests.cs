@@ -24,6 +24,40 @@ public sealed class ReleaseContextPolicyTests
     }
 
     [Test]
+    public async Task FirstGovernedReleaseCanUseVerifiedBaselineLowerBoundWithoutSemVerHistory()
+    {
+        const string baselineRef = "changelog-baseline-2026-08-15";
+        ReleaseInputValidationResult preOne = ReleaseInputPolicy.Validate(ReleaseYaml("0.1.0", "v0.1", baselineRef, baselineRef, FullOid('a'), FullOid('a')), [], []);
+        ReleaseInputValidationResult laterSemVer = ReleaseInputPolicy.Validate(ReleaseYaml("2.0.0", "v2.0", baselineRef, baselineRef, FullOid('a'), FullOid('a')), [], []);
+        ReleaseCommit[] commits = [new(FullOid('c'), "feat(events): publish first governed release notes")];
+
+        ReleaseContextValidationResult preOneResult = ReleaseContextPolicy.Build(preOne, commits, Policy, verifiedBaselineRef: baselineRef, verifiedBaselineOid: FullOid('a'));
+        ReleaseContextValidationResult laterResult = ReleaseContextPolicy.Build(laterSemVer, commits, Policy, verifiedBaselineRef: baselineRef, verifiedBaselineOid: FullOid('a'));
+
+        await Assert.That(preOneResult.IsValid).IsTrue();
+        await Assert.That(preOneResult.Context?.Release.Version).IsEqualTo("0.1.0");
+        await Assert.That(preOneResult.Context?.Release.BaseStableTag).IsEqualTo(baselineRef);
+        await Assert.That(preOneResult.Context?.Release.PreviousPublishedTag).IsEqualTo(baselineRef);
+        await Assert.That(preOneResult.Context?.Evidence.BaseStableOid).IsEqualTo(FullOid('a'));
+        await Assert.That(preOneResult.Context?.Evidence.PreviousPublishedOid).IsEqualTo(FullOid('a'));
+        await Assert.That(laterResult.IsValid).IsTrue();
+        await Assert.That(laterResult.Context?.Release.Version).IsEqualTo("2.0.0");
+    }
+
+    [Test]
+    public async Task BaselineLowerBoundRequiresExplicitVerifiedEvidence()
+    {
+        const string baselineRef = "changelog-baseline-2026-08-15";
+        ReleaseInputValidationResult firstInput = ReleaseInputPolicy.Validate(ReleaseYaml("0.1.0", "v0.1", baselineRef, baselineRef, FullOid('a'), FullOid('a')), [], []);
+
+        ReleaseContextValidationResult missingEvidence = ReleaseContextPolicy.Build(firstInput, [], Policy);
+        ReleaseContextValidationResult wrongEvidence = ReleaseContextPolicy.Build(firstInput, [], Policy, verifiedBaselineRef: baselineRef, verifiedBaselineOid: FullOid('b'));
+
+        await Assert.That(missingEvidence.Diagnostics).Contains("context_baseline_evidence_required");
+        await Assert.That(wrongEvidence.Diagnostics).Contains("context_baseline_evidence_mismatch");
+    }
+
+    [Test]
     public async Task PrereleaseContextIsCumulativeFromStableAndDoesNotAdvanceMain()
     {
         ReleaseInputValidationResult input = ReleaseInputPolicy.Validate(ReleaseYaml("1.2.0-beta.2", "v1.2", "v1.1.0", "v1.2.0-beta.1", FullOid('d'), FullOid('e')), [], []);

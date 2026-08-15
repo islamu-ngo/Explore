@@ -66,6 +66,92 @@ public sealed class GitRepositoryValidatorTests
     }
 
     [Test]
+    public async Task BaselineTagsAreIgnoredByStrictSemVerReleaseTagDiscovery()
+    {
+        using var repo = GitRepositoryFixture.Create();
+        string baseline = repo.Commit("baseline");
+        repo.AnnotatedTag("changelog-baseline-2026-08-15", baseline);
+        string v100 = repo.Commit("v1.0.0");
+        repo.AnnotatedTag("v1.0.0", v100);
+        string candidate = repo.Commit("v1.0.1 preparation");
+        repo.Branch("v1.0", candidate);
+
+        GitReleaseValidationResult result = GitRepositoryValidator.Validate(new GitReleaseValidationRequest(
+            repo.Path,
+            "v1.0",
+            "1.0.1",
+            "refs/tags/v1.0.0",
+            "refs/tags/v1.0.0",
+            "refs/heads/v1.0",
+            candidate));
+
+        await Assert.That(result.IsValid).IsTrue();
+        await Assert.That(result.Diagnostics).DoesNotContain("git_malformed_tag_ref:refs/tags/changelog-baseline-2026-08-15");
+    }
+
+    [Test]
+    public async Task BaselineLowerBoundAllowsAnySelectedSemVerWhenNoGovernedStableTagExists()
+    {
+        using var preOne = GitRepositoryFixture.Create();
+        string preOneBaseline = preOne.Commit("baseline");
+        preOne.AnnotatedTag("changelog-baseline-2026-08-15", preOneBaseline);
+        string preOneCandidate = preOne.Commit("0.1.0 preparation");
+        preOne.Branch("v0.1", preOneCandidate);
+
+        using var laterSemVer = GitRepositoryFixture.Create();
+        string laterBaseline = laterSemVer.Commit("baseline");
+        laterSemVer.AnnotatedTag("changelog-baseline-2026-08-15", laterBaseline);
+        string laterCandidate = laterSemVer.Commit("2.0.0 preparation");
+        laterSemVer.Branch("v2.0", laterCandidate);
+
+        GitReleaseValidationResult preOneResult = GitRepositoryValidator.Validate(new GitReleaseValidationRequest(
+            preOne.Path,
+            "v0.1",
+            "0.1.0",
+            "refs/tags/changelog-baseline-2026-08-15",
+            "refs/tags/changelog-baseline-2026-08-15",
+            "refs/heads/v0.1",
+            preOneCandidate));
+        GitReleaseValidationResult laterResult = GitRepositoryValidator.Validate(new GitReleaseValidationRequest(
+            laterSemVer.Path,
+            "v2.0",
+            "2.0.0",
+            "refs/tags/changelog-baseline-2026-08-15",
+            "refs/tags/changelog-baseline-2026-08-15",
+            "refs/heads/v2.0",
+            laterCandidate));
+
+        await Assert.That(preOneResult.IsValid).IsTrue();
+        await Assert.That(preOneResult.Identity?.BaseStableTag).IsEqualTo("changelog-baseline-2026-08-15");
+        await Assert.That(laterResult.IsValid).IsTrue();
+        await Assert.That(laterResult.Identity?.BaseStableTag).IsEqualTo("changelog-baseline-2026-08-15");
+    }
+
+    [Test]
+    public async Task BaselineLowerBoundFailsWhenReachableGovernedStableSemVerTagAlreadyExists()
+    {
+        using var repo = GitRepositoryFixture.Create();
+        string baseline = repo.Commit("baseline");
+        repo.AnnotatedTag("changelog-baseline-2026-08-15", baseline);
+        string stable = repo.Commit("existing governed stable");
+        repo.AnnotatedTag("v0.1.0", stable);
+        string candidate = repo.Commit("0.2.0 preparation");
+        repo.Branch("v0.2", candidate);
+
+        GitReleaseValidationResult result = GitRepositoryValidator.Validate(new GitReleaseValidationRequest(
+            repo.Path,
+            "v0.2",
+            "0.2.0",
+            "refs/tags/changelog-baseline-2026-08-15",
+            "refs/tags/changelog-baseline-2026-08-15",
+            "refs/heads/v0.2",
+            candidate));
+
+        await Assert.That(result.IsValid).IsFalse();
+        await Assert.That(result.Diagnostics).Contains("git_baseline_stable_tag_exists:v0.1.0");
+    }
+
+    [Test]
     public async Task MovedDescriptorSelectedTagFailsExpectedCommitIdentity()
     {
         using var repo = GitRepositoryFixture.Create();

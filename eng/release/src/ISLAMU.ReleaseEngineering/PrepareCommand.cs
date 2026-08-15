@@ -50,9 +50,10 @@ public static class PrepareCommand
             }
 
             ReleaseDescriptor descriptor = descriptorOnly.Descriptor;
-            if (!ValidatePinnedObjects(root, descriptor))
+            string? pinnedObjectsDiagnostic = ValidatePinnedObjects(root, descriptor);
+            if (pinnedObjectsDiagnostic is not null)
             {
-                return Reject(output, "prepare_release_range_moved");
+                return Reject(output, pinnedObjectsDiagnostic);
             }
 
             ReleaseCommit[] commits = ReadGitRange(root, descriptor.PreviousPublishedTag, $"refs/heads/{descriptor.Line}");
@@ -75,8 +76,9 @@ public static class PrepareCommand
                 return Reject(output, "prepare_fragment_missing");
             }
 
+            VerifiedBaseline? baseline = TryReadBaseline(root, descriptor);
             ReleaseInputValidationResult input = ReleaseInputPolicy.Validate(releaseYaml, fragments, []);
-            ReleaseContextValidationResult context = ReleaseContextPolicy.Build(input, commits, ReleasePolicy.LoadFromRepositoryRoot(root));
+            ReleaseContextValidationResult context = ReleaseContextPolicy.Build(input, commits, ReleasePolicy.LoadFromRepositoryRoot(root), verifiedBaselineRef: baseline?.Ref, verifiedBaselineOid: baseline?.TargetOid);
             if (!context.IsValid || context.Json is null)
             {
                 return Reject(output, "prepare_context_invalid");
@@ -131,16 +133,48 @@ public static class PrepareCommand
         }
     }
 
-    private static bool ValidatePinnedObjects(string repositoryRoot, ReleaseDescriptor descriptor)
+    private static string? ValidatePinnedObjects(string repositoryRoot, ReleaseDescriptor descriptor)
     {
+        if (ReleaseInputPolicy.IsBaselineRef(descriptor.BaseStableTag) || ReleaseInputPolicy.IsBaselineRef(descriptor.PreviousPublishedTag))
+        {
+            if (!BaselineEvidencePolicy.TryRead(repositoryRoot, descriptor.BaseStableTag, out VerifiedBaseline baseline) ||
+                descriptor.BaseStableTag != descriptor.PreviousPublishedTag ||
+                descriptor.ReleaseRange.BaseRef != descriptor.BaseStableTag ||
+                descriptor.ReleaseRange.PreviousRef != descriptor.PreviousPublishedTag ||
+                descriptor.ReleaseRange.BaseOid != baseline.TargetOid ||
+                descriptor.ReleaseRange.PreviousOid != baseline.TargetOid ||
+                RunGit(repositoryRoot, "rev-parse", $"{descriptor.BaseStableTag}^{{commit}}").Trim() != baseline.TargetOid ||
+                RunGit(repositoryRoot, "rev-parse", $"{descriptor.BaseStableTag}^{{object}}").Trim() != baseline.TagObjectId)
+            {
+                return "prepare_release_range_moved";
+            }
+
+            GitReleaseValidationResult git = GitRepositoryValidator.Validate(new GitReleaseValidationRequest(
+                repositoryRoot,
+                descriptor.Line,
+                descriptor.Version,
+                $"refs/tags/{descriptor.BaseStableTag}",
+                $"refs/tags/{descriptor.PreviousPublishedTag}",
+                $"refs/heads/{descriptor.Line}",
+                RunGit(repositoryRoot, "rev-parse", $"refs/heads/{descriptor.Line}^{{commit}}").Trim()));
+            return git.IsValid ? null : git.Diagnostics.Count == 0 ? "prepare_release_range_moved" : git.Diagnostics[0];
+        }
+
         string baseOid = RunGit(repositoryRoot, "rev-parse", $"{descriptor.BaseStableTag}^{{commit}}").Trim();
         string previousOid = RunGit(repositoryRoot, "rev-parse", $"{descriptor.PreviousPublishedTag}^{{commit}}").Trim();
         string lineOid = RunGit(repositoryRoot, "rev-parse", $"refs/heads/{descriptor.Line}^{{commit}}").Trim();
 
         return string.Equals(descriptor.ReleaseRange.BaseOid, baseOid, StringComparison.Ordinal) &&
             string.Equals(descriptor.ReleaseRange.PreviousOid, previousOid, StringComparison.Ordinal) &&
-            !string.Equals(lineOid, previousOid, StringComparison.Ordinal);
+            !string.Equals(lineOid, previousOid, StringComparison.Ordinal)
+            ? null
+            : "prepare_release_range_moved";
     }
+
+    private static VerifiedBaseline? TryReadBaseline(string repositoryRoot, ReleaseDescriptor descriptor) =>
+        ReleaseInputPolicy.IsBaselineRef(descriptor.BaseStableTag) && BaselineEvidencePolicy.TryRead(repositoryRoot, descriptor.BaseStableTag, out VerifiedBaseline baseline)
+            ? baseline
+            : null;
 
     private static ReleaseCommit[] ReadGitRange(string repositoryRoot, string previousPublishedTag, string releaseBranchRef)
     {

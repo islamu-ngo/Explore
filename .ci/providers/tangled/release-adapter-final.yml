@@ -1,0 +1,14 @@
+# ABOUTME: Minimal Tangled final discovery workflow for manually reviewed external-control evidence.
+# ABOUTME: Keeps final protected-release reporting out of push and pull-request origins.
+
+name: Release Adapter Final Discovery
+
+on:
+  manual:
+
+jobs:
+  release-adapter-final:
+    runs-on: linux
+    steps:
+      - run: |
+          printf '%s\n' 'release-adapter-final: transport-only no-checkout discovery'

@@ -3,8 +3,14 @@ ABOUTME: v0.1.0 implemented scope mirrors API WORK ITEMS.md and v1.0.0 planned s
 
 # Changelog — ISLAMU Event Platform
 
+> **Frozen pre-automation planning/history:** This file predates the governed
+> release engine. It is preserved as planning and historical classification only,
+> not generated release history, not canonical release evidence, and not proof that
+> any SemVer tag or public version has been published.
+
 > All notable changes are documented in version files.
-> This project follows [Semantic Versioning 2.0.0](https://semver.org/).
+> Future governed releases will follow [Semantic Versioning 2.0.0](https://semver.org/)
+> after explicit steward approval and signed-tag activation.
 
 **Last Updated:** 2026-03-27
 
@@ -12,7 +18,7 @@ ABOUTME: v0.1.0 implemented scope mirrors API WORK ITEMS.md and v1.0.0 planned s
 
 ## [Unreleased]
 
-Features merged to `develop` branch, not yet released:
+Planning/history notes for features merged to `develop` branch, not yet released:
 
 - **Outbox pattern** — transactional outbox with `OutboxProcessor` background service, exponential backoff retry, dead-letter queue, optimistic concurrency. Specialized variants: `PdsSyncOutbox`, `PolicyChangeOutbox`.
 - **Footer management** — tenant-configurable footer with link groups, social links, 4 templates (standard-3-col, standard-2-col, minimal, community), instance governance locking. 11 API endpoints + admin UI.
@@ -29,22 +35,24 @@ Features merged to `develop` branch, not yet released:
 
 | Version | Title | Released | Status |
 |---------|-------|----------|--------|
-| [v0.1.0](v0.1.0.md) | First Public Release (Beta) | TBD | 🚀 **CURRENT** |
-| [v1.0.0](v1.0.0.md) | Planned Stable Release | TBD | ⏳ **PLANNED** |
+| [v0.1.0](v0.1.0.md) | First Public Release (Beta) | TBD | Frozen planning/history |
+| [v1.0.0](v1.0.0.md) | Planned Stable Release | TBD | Frozen planning/history |
 
 ---
 
 ## Versioning Policy
 
-### Current Phase: Pre-1.0 Beta (0.1.0)
+### Current Phase: Frozen Pre-Automation Planning
 
-- **Major version zero (0.y.z)** indicates initial development.
-- **Implemented baseline for v0.1.0** is tracked in `v0.1.0.md` under **Implemented (v0.1.0)**.
+- The repository has no governed release tag yet.
+- **Implemented planning baseline for v0.1.0** is tracked in `v0.1.0.md` under **Implemented (v0.1.0)**.
 - **Planned scope for v1.0.0** is tracked in `v1.0.0.md` under **Planned (v1.0.0)**.
 
 ### Progression to 1.0.0
 
-The project will move to **v1.0.0** after planned backlog completion and release validation.
+The first governed version will be selected only after explicit Project Steward approval,
+signed baseline activation, and the governed release runbook. Do not reclassify this
+frozen planning file into generated release history.
 
 ---
 
@@ -64,5 +72,5 @@ The project will move to **v1.0.0** after planned backlog completion and release
 
 ## Notes
 
-- All currently implemented baseline work is classified under `v0.1.0`.
-- All enterprise-next backlog items are classified under planned `v1.0.0`.
+- All currently implemented baseline work remains historically classified under the frozen `v0.1.0` planning note.
+- All enterprise-next backlog items remain historically classified under the frozen planned `v1.0.0` note.

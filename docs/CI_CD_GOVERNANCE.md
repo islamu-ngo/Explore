@@ -11,7 +11,7 @@ ABOUTME: Separates repository settings from workflow YAML so required gates stay
 
 This page is the source of truth for CI/CD governance. `.ci/` owns shared CI/CD implementation such as reusable scripts, policy validators, evidence writers, the OpenAPI Spectral ruleset, local composite actions, and mirror-provider CI/CD definitions. GitHub-native workflow discovery files stay in `.github/workflows/` because GitHub Actions requires that path.
 
-GitHub remains the authoritative deployment surface for production and staging because the current release evidence model depends on GitHub environments, retained artifacts, GHCR/GitHub attestation verification, and Coolify deployment evidence. Codeberg and other mirrors should be configured provider-side to read CI/CD definitions from `.ci/`; do not add root-level provider adapter folders unless this governance document is updated with a reviewed provider contract.
+GitHub remains the authoritative deployment surface for production and staging because the current release evidence model depends on GitHub environments, retained artifacts, GHCR/GitHub attestation verification, and Coolify deployment evidence. Codeberg and other mirrors should be configured provider-side to read CI/CD definitions from `.ci/`; root-level provider adapter folders remain forbidden because the reviewed release adapter contract lives under `.ci/release/` and `.ci/providers/`.
 
 Do not symlink `.github` to `.ci`. GitHub discovers workflows from `.github/workflows`, local reusable workflow calls require `.github/workflows/{filename}`, and reusable workflow subdirectories are not supported.
 
@@ -52,6 +52,54 @@ authorized disclosure boundary.
 See [ADR-025](adr/ADR-025-provider-neutral-release-governance.md),
 [RELEASE_POLICY.md](RELEASE_POLICY.md), and [RELEASE_RUNBOOK.md](RELEASE_RUNBOOK.md)
 for the distinct architecture, normative policy, and future operator procedure.
+
+### Prospective release provider adapters
+
+The provider adapter contract is defined in `.ci/release/adapter-contract.md` and
+machine-checked by `.ci/release/provider-definition.schema.json` plus
+`.ci/scripts/validate-release-provider-adapters.cs`. Provider manifests live under
+`.ci/providers/<provider-id>/provider-definition.v1.json`; discovery workflows stay
+beside the manifest unless the forge requires a fixed discovery path such as
+`.github/workflows/`.
+
+The first reviewed provider set is:
+
+| Provider | Definition | Discovery surface | Current status |
+|---|---|---|---|
+| Forgejo / Codeberg | `.ci/providers/forgejo-codeberg/provider-definition.v1.json` | `.ci/providers/forgejo-codeberg/release-adapter-preview.yml`, `.ci/providers/forgejo-codeberg/release-adapter-final.yml` | No-checkout discovery-only; protected final actions require a trusted self-hosted runner, default-branch proof, and separate activation evidence. |
+| Tangled | `.ci/providers/tangled/provider-definition.v1.json` | `.ci/providers/tangled/release-adapter-preview.yml`, `.ci/providers/tangled/release-adapter-final.yml` | No-checkout discovery-only; protected-ref CAS and release publication are unsupported without external operator evidence and future default-branch proof. |
+| GitHub | `.ci/providers/github/provider-definition.v1.json` | `.github/workflows/release-adapter-preview.yml`, `.github/workflows/release-adapter-final.yml` | Discovery-only; PR preview is read-only and final discovery is `workflow_dispatch` behind the `production` environment. |
+
+All provider definitions must keep `release-adapter-preview` and
+`release-adapter-final` as always-present required check surfaces. Preview lanes are
+read-only `contents:read` only and must not receive secrets, write permissions, or
+OIDC token authority. Final lanes must run only trusted default-branch code after
+candidate code has stopped unless they are transport-only no-checkout discovery jobs.
+GitHub discovery checks out `${{ github.event.repository.default_branch }}`, not the
+event SHA. Forgejo/Codeberg and Tangled final discovery jobs currently perform no
+checkout and declare `trustedRef = "no-checkout-discovery"`; the validator permits that
+mode only while the final workflow contains no checkout, candidate ref/path, external
+command, mutable action/image, or nonliteral execution. Any activated release execution
+must migrate to default-branch proof before running release logic. Provider plans may
+transport full Git object IDs, immutable bundle paths and hashes, artifact retention
+details, required checks, and protected-ref compare-and-swap inputs; they must not
+enrich or replace canonical release identity. Provider manifests cannot self-assert
+external operator evidence for unsupported capabilities; Tangled protected-ref or
+release publication planning requires a separate bounded external-control evidence
+input to the validator.
+
+Final events are allowlisted per provider. GitHub is `workflow_dispatch` only.
+Forgejo/Codeberg is the reviewed trusted `workflow_dispatch` lane only. Tangled is
+`manual` or reviewed `tag_push` only. Pull-request-origin final events, including
+`pull_request_target`, are forbidden even when other final-lane flags claim trusted
+code.
+
+The validator compares each manifest's declared discovery workflow files against the
+manifest: declared actions must be the external actions actually used, final
+environment approval must be backed by an environment in the final workflow, GitHub
+final checkout must use `${{ github.event.repository.default_branch }}`, transport-only
+`no-checkout-discovery` final workflows must stay literal no-op jobs, and preview
+workflows must not also expose final events.
 
 ### Prospective trust-lane separation
 
@@ -208,7 +256,7 @@ The repository should expose only two CI/CD directories by default:
 - `.github/` for GitHub-required metadata, GitHub Actions discovery, issue templates, PR templates, CODEOWNERS, and Dependabot.
 - `.ci/` for shared CI/CD implementation and mirror-provider CI/CD definitions.
 
-Provider-specific root directories such as `.forgejo/`, `.woodpecker/`, or `.tangled/` are intentionally not used. Configure Codeberg or other mirrors to load CI/CD from `.ci/` when the provider supports a custom pipeline path. Do not add deploy secrets, registry publish credentials, Coolify webhooks, or environment promotion behavior to non-GitHub mirrors until this document defines equivalent secret isolation, artifact retention, immutable image evidence, smoke-check evidence, and rollback evidence for that provider.
+Provider-specific root directories such as `.forgejo/`, `.woodpecker/`, or `.tangled/` are intentionally not used. Configure Codeberg or other mirrors to load CI/CD from `.ci/` when the provider supports a custom pipeline path. Do not add deploy secrets, registry publish credentials, Coolify webhooks, or environment promotion behavior to non-GitHub mirrors until this document defines equivalent secret isolation, artifact retention, immutable image evidence, smoke-check evidence, and rollback evidence for that provider. Release-adapter definitions are the only approved provider-specific CI/CD folders today, and they stay under `.ci/providers/`.
 
 ### Workflow Static Analysis Policy
 

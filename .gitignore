@@ -79,6 +79,9 @@ storage-data/
 [Dd]ebugPublic/
 [Rr]elease/
 [Rr]eleases/
+!/.ci/release/
+!/.ci/release/adapter-contract.md
+!/.ci/release/provider-definition.schema.json
 !/docs/releases/
 !/docs/releases/**
 !/eng/release/

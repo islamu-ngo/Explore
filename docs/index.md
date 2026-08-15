@@ -148,8 +148,8 @@ Start with [README.md](../README.md) if you are new to the project. Use this pag
 - [ACCESSIBILITY_ARTIFACTS.md](ACCESSIBILITY_ARTIFACTS.md) - statement, AT matrix, release gate checklist.
 - [PUBLIC_DOCS_ROADMAP.md](PUBLIC_DOCS_ROADMAP.md) - deferred public documentation website plan.
 - [API_CHANGELOG.md](API_CHANGELOG.md) - API-specific change log.
-- [semantic_versioning/CHANGELOG.md](semantic_versioning/CHANGELOG.md) - release history.
-- [semantic_versioning/v0.1.0.md](semantic_versioning/v0.1.0.md) - v0.1.0 historical notes.
+- [semantic_versioning/CHANGELOG.md](semantic_versioning/CHANGELOG.md) - frozen pre-automation release planning/history.
+- [semantic_versioning/v0.1.0.md](semantic_versioning/v0.1.0.md) - frozen v0.1.0 planning/history notes.
 - [adr/ADR-001-authorization-provider-architecture.md](adr/ADR-001-authorization-provider-architecture.md) - authorization provider architecture.
 - [adr/ADR-002-outbox-pattern.md](adr/ADR-002-outbox-pattern.md) - outbox pattern for reliable messaging.
 - [adr/ADR-003-css-layer-architecture.md](adr/ADR-003-css-layer-architecture.md) - CSS @layer architecture.

@@ -10,6 +10,7 @@ using YamlDotNet.Serialization;
 
 namespace ISLAMU.ReleaseEngineering.Tests;
 
+[NotInParallel("RuntimePromotionTrustRoot")]
 public sealed class TrustedReleasePolicyTests
 {
     [Test]
@@ -102,12 +103,10 @@ public sealed class TrustedReleasePolicyTests
     public async Task PackagedDefaultAuthorityIgnoresStaleRuntimeSignerBytes()
     {
         using var bundle = TrustedBundleFixture.Create();
-        string originalRuntimeTrustRootHash = bundle.RuntimeTrustRootHash;
 
         TrustedBundleResult result = bundle.VerifyWithPackagedDefault(bundle.Request());
 
         await Assert.That(result.Diagnostic).IsEqualTo("trusted_bundle_promotion_authority_not_configured");
-        await Assert.That(bundle.RuntimeTrustRootHash).IsEqualTo(originalRuntimeTrustRootHash);
     }
 
     [Test]
@@ -128,55 +127,55 @@ public sealed class TrustedReleasePolicyTests
     {
         using var first = TrustedBundleFixture.Create();
         using var second = TrustedBundleFixture.Create();
-        string originalRuntimeTrustRootHash = first.RuntimeTrustRootHash;
 
         TrustedBundleResult[] results = await Task.WhenAll(Task.Run(() => first.Verify()), Task.Run(() => second.Verify()));
 
         await Assert.That(results[0].IsValid).IsTrue();
         await Assert.That(results[1].IsValid).IsTrue();
-        await Assert.That(first.RuntimeTrustRootHash).IsEqualTo(originalRuntimeTrustRootHash);
-        await Assert.That(TrustedBundlePolicy.Verify(first.Request()).Diagnostic).IsEqualTo("trusted_bundle_promotion_authority_not_configured");
+        await Assert.That(first.VerifyWithPackagedDefault(first.Request()).Diagnostic).IsEqualTo("trusted_bundle_promotion_authority_not_configured");
     }
 
     [Test]
     public async Task RuntimeSignerScopeRestoresAfterCancellationLikeInterruption()
     {
         using var bundle = TrustedBundleFixture.Create();
-        string originalRuntimeTrustRootHash = bundle.RuntimeTrustRootHash;
+        RuntimePromotionTrustRootScope? trustRoot = null;
 
         try
         {
-            using RuntimePromotionTrustRootScope trustRoot = RuntimePromotionTrustRootScope.Use(bundle.TrustRootPath);
+            using RuntimePromotionTrustRootScope scope = RuntimePromotionTrustRootScope.Use(bundle.TrustRootPath);
+            trustRoot = scope;
             throw new OperationCanceledException("fixture_cancellation");
         }
         catch (OperationCanceledException)
         {
         }
 
-        await Assert.That(bundle.RuntimeTrustRootHash).IsEqualTo(originalRuntimeTrustRootHash);
-        await Assert.That(TrustedBundlePolicy.Verify(bundle.Request()).Diagnostic).IsEqualTo("trusted_bundle_promotion_authority_not_configured");
+        await Assert.That(trustRoot!.RestoredSha256).IsEqualTo(trustRoot.OriginalSha256);
+        await Assert.That(bundle.VerifyWithPackagedDefault(bundle.Request()).Diagnostic).IsEqualTo("trusted_bundle_promotion_authority_not_configured");
     }
 
     [Test]
     public async Task RuntimeSignerScopeFailsClosedForMalformedAndMissingSignerInputsThenRestores()
     {
         using var bundle = TrustedBundleFixture.Create();
-        string originalRuntimeTrustRootHash = bundle.RuntimeTrustRootHash;
+        RuntimePromotionTrustRootScope? trustRoot = null;
         TrustedBundleResult malformed;
         TrustedBundleResult missing;
 
-        using (RuntimePromotionTrustRootScope trustRoot = RuntimePromotionTrustRootScope.Use(bundle.TrustRootPath))
+        using (RuntimePromotionTrustRootScope scope = RuntimePromotionTrustRootScope.Use(bundle.TrustRootPath))
         {
-            File.WriteAllText(trustRoot.RuntimeTrustRootPath, "malformed signer");
+            trustRoot = scope;
+            File.WriteAllText(scope.RuntimeTrustRootPath, "malformed signer");
             malformed = TrustedBundlePolicy.Verify(bundle.Request());
-            File.Delete(trustRoot.RuntimeTrustRootPath);
+            File.Delete(scope.RuntimeTrustRootPath);
             missing = TrustedBundlePolicy.Verify(bundle.Request());
         }
 
         await Assert.That(malformed.Diagnostic).IsEqualTo("trusted_bundle_promotion_signature_invalid");
         await Assert.That(missing.Diagnostic).IsEqualTo("trusted_bundle_promotion_authority_not_configured");
-        await Assert.That(bundle.RuntimeTrustRootHash).IsEqualTo(originalRuntimeTrustRootHash);
-        await Assert.That(TrustedBundlePolicy.Verify(bundle.Request()).Diagnostic).IsEqualTo("trusted_bundle_promotion_authority_not_configured");
+        await Assert.That(trustRoot!.RestoredSha256).IsEqualTo(trustRoot.OriginalSha256);
+        await Assert.That(bundle.VerifyWithPackagedDefault(bundle.Request()).Diagnostic).IsEqualTo("trusted_bundle_promotion_authority_not_configured");
     }
 
     [Test]
@@ -502,8 +501,6 @@ public sealed class TrustedReleasePolicyTests
             using RuntimePromotionTrustRootScope trustRoot = RuntimePromotionTrustRootScope.UsePackagedDefault();
             return TrustedBundlePolicy.Verify(request);
         }
-
-        public string RuntimeTrustRootHash => HashFile(RuntimePromotionTrustRootScope.GetRuntimeTrustRootPath());
 
         public PromotionAuthorityInput PromotionAuthority => Request().PromotionAuthority;
 

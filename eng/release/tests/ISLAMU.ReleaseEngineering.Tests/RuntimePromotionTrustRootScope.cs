@@ -29,6 +29,7 @@ internal sealed class RuntimePromotionTrustRootScope : IDisposable
 
             if (!processGateHeld) throw new IOException("runtime_promotion_trust_root_lock_timeout");
             originalBytes = File.Exists(RuntimeTrustRootPath) ? File.ReadAllBytes(RuntimeTrustRootPath) : null;
+            OriginalSha256 = Sha256(originalBytes);
             AtomicWrite(RuntimeTrustRootPath, File.ReadAllBytes(sourcePath));
         }
         catch
@@ -40,6 +41,8 @@ internal sealed class RuntimePromotionTrustRootScope : IDisposable
     }
 
     public string RuntimeTrustRootPath { get; }
+    public string OriginalSha256 { get; private set; } = string.Empty;
+    public string RestoredSha256 { get; private set; } = string.Empty;
 
     public static RuntimePromotionTrustRootScope Use(string sourcePath) => new(sourcePath);
 
@@ -61,6 +64,8 @@ internal sealed class RuntimePromotionTrustRootScope : IDisposable
             {
                 AtomicWrite(RuntimeTrustRootPath, originalBytes);
             }
+
+            RestoredSha256 = Sha256(File.Exists(RuntimeTrustRootPath) ? File.ReadAllBytes(RuntimeTrustRootPath) : null);
         }
         finally
         {
@@ -83,4 +88,8 @@ internal sealed class RuntimePromotionTrustRootScope : IDisposable
             if (File.Exists(tempPath)) File.Delete(tempPath);
         }
     }
+
+    private static string Sha256(byte[]? bytes) => bytes is null
+        ? "absent"
+        : Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(bytes));
 }

@@ -55,6 +55,7 @@ public static class ReleaseInputPolicy
     private static readonly Regex VersionPattern = new("^[0-9]+\\.[0-9]+\\.[0-9]+(?:-(?:alpha|beta|rc)\\.[0-9]+)?$", RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100));
     private static readonly Regex LinePattern = new("^v[0-9]+\\.[0-9]+$", RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100));
     private static readonly Regex TagPattern = new("^v[0-9]+\\.[0-9]+\\.[0-9]+(?:-(?:alpha|beta|rc)\\.[0-9]+)?$", RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100));
+    private static readonly Regex BaselineRefPattern = new("^changelog-baseline-[0-9]{4}-[0-9]{2}-[0-9]{2}$", RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100));
     private static readonly Regex ChangeIdPattern = new("^CHG-[0-9]{4}-[0-9]{4}$", RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100));
     private static readonly Regex FullOidPattern = new("^(?:[0-9a-f]{40}|[0-9a-f]{64})$", RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100));
     private static readonly Regex GroupPattern = new("^[a-z0-9]+(?:-[a-z0-9]+)*$", RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100));
@@ -134,8 +135,9 @@ public static class ReleaseInputPolicy
             diagnostics.Add("release_malformed_date");
         }
 
-        ValidateTag(baseStableTag, "Base-Stable-Tag", diagnostics);
-        ValidateTag(previousPublishedTag, "Previous-Published-Tag", diagnostics);
+        ValidateTagOrBaseline(baseStableTag, "Base-Stable-Tag", diagnostics);
+        ValidateTagOrBaseline(previousPublishedTag, "Previous-Published-Tag", diagnostics);
+        ValidateBaselineRange(baseStableTag, previousPublishedTag, releaseRange, diagnostics);
         if (compatibility.Length == 0)
         {
             diagnostics.Add("release_missing_compatibility_reference");
@@ -356,14 +358,14 @@ public static class ReleaseInputPolicy
         string previousRef = Scalar(range!, "Previous-Ref", "release-range", diagnostics);
         string previousOid = Scalar(range!, "Previous-Oid", "release-range", diagnostics);
 
-        if (!TagPattern.IsMatch(baseRef))
+        if (!IsTagOrBaseline(baseRef))
         {
-            diagnostics.Add("release_malformed_range_ref:Base-Ref");
+            diagnostics.Add(BaselineLike(baseRef) ? "release_malformed_baseline_ref:Base-Ref" : "release_malformed_range_ref:Base-Ref");
         }
 
-        if (!TagPattern.IsMatch(previousRef))
+        if (!IsTagOrBaseline(previousRef))
         {
-            diagnostics.Add("release_malformed_range_ref:Previous-Ref");
+            diagnostics.Add(BaselineLike(previousRef) ? "release_malformed_baseline_ref:Previous-Ref" : "release_malformed_range_ref:Previous-Ref");
         }
 
         if (!FullOidPattern.IsMatch(baseOid))
@@ -387,6 +389,30 @@ public static class ReleaseInputPolicy
         }
 
         return new ReleaseRangeReference(baseRef, baseOid, previousRef, previousOid);
+    }
+
+    private static void ValidateBaselineRange(string baseStableTag, string previousPublishedTag, ReleaseRangeReference releaseRange, List<string> diagnostics)
+    {
+        bool anyBaseline = IsBaselineRef(baseStableTag) ||
+            IsBaselineRef(previousPublishedTag) ||
+            IsBaselineRef(releaseRange.BaseRef) ||
+            IsBaselineRef(releaseRange.PreviousRef);
+        if (!anyBaseline)
+        {
+            return;
+        }
+
+        if (!IsBaselineRef(baseStableTag) ||
+            !IsBaselineRef(previousPublishedTag) ||
+            !IsBaselineRef(releaseRange.BaseRef) ||
+            !IsBaselineRef(releaseRange.PreviousRef) ||
+            !string.Equals(baseStableTag, previousPublishedTag, StringComparison.Ordinal) ||
+            !string.Equals(releaseRange.BaseRef, baseStableTag, StringComparison.Ordinal) ||
+            !string.Equals(releaseRange.PreviousRef, previousPublishedTag, StringComparison.Ordinal) ||
+            !string.Equals(releaseRange.BaseOid, releaseRange.PreviousOid, StringComparison.Ordinal))
+        {
+            diagnostics.Add("release_baseline_range_mismatch");
+        }
     }
 
     private static void ValidateSupersedes(IReadOnlyList<PublicChangeFragment> fragments, List<string> diagnostics)
@@ -545,13 +571,31 @@ public static class ReleaseInputPolicy
         return map is not null;
     }
 
-    private static void ValidateTag(string value, string key, List<string> diagnostics)
+    private static void ValidateTagOrBaseline(string value, string key, List<string> diagnostics)
     {
-        if (!TagPattern.IsMatch(value))
+        if (IsTagOrBaseline(value))
+        {
+            if (string.Equals(value, "v0.0.0", StringComparison.Ordinal))
+            {
+                diagnostics.Add("release_fake_semver_baseline");
+            }
+
+            return;
+        }
+
+        if (BaselineLike(value))
+        {
+            diagnostics.Add($"release_malformed_baseline_ref:{key}");
+        }
+        else
         {
             diagnostics.Add($"release_malformed_tag:{key}");
         }
     }
+
+    internal static bool IsBaselineRef(string value) => BaselineRefPattern.IsMatch(value);
+    private static bool IsTagOrBaseline(string value) => TagPattern.IsMatch(value) || BaselineRefPattern.IsMatch(value);
+    private static bool BaselineLike(string value) => value.StartsWith("changelog-baseline-", StringComparison.Ordinal);
 
     private static bool ContainsRestrictedMarker(YamlNode node)
     {

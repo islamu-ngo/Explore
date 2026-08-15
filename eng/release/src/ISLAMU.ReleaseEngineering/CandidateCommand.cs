@@ -133,8 +133,9 @@ public static class CandidateCommand
                 return Reject(output, "candidate_fragment_missing");
             }
 
+            VerifiedBaseline? baseline = TryReadBaseline(root, descriptor);
             ReleaseInputValidationResult input = ReleaseInputPolicy.Validate(releaseYaml, fragments, []);
-            ReleaseContextValidationResult context = ReleaseContextPolicy.Build(input, commitsThroughB, policy);
+            ReleaseContextValidationResult context = ReleaseContextPolicy.Build(input, commitsThroughB, policy, verifiedBaselineRef: baseline?.Ref, verifiedBaselineOid: baseline?.TargetOid);
             if (!context.IsValid || context.Context is null || context.Json is null)
             {
                 return Reject(output, "candidate_context_invalid");
@@ -331,6 +332,11 @@ public static class CandidateCommand
                 .ToArray()
             : [];
     }
+
+    private static VerifiedBaseline? TryReadBaseline(string repositoryRoot, ReleaseDescriptor descriptor) =>
+        ReleaseInputPolicy.IsBaselineRef(descriptor.BaseStableTag) && BaselineEvidencePolicy.TryRead(repositoryRoot, descriptor.BaseStableTag, out VerifiedBaseline baseline)
+            ? baseline
+            : null;
 
     private static ReleaseCommit[] ReadGitRange(string repositoryRoot, string previousPublishedTag, string candidateOid)
     {

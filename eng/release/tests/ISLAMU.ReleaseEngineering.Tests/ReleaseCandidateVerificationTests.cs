@@ -8,7 +8,7 @@ using ISLAMU.ReleaseEngineering;
 
 namespace ISLAMU.ReleaseEngineering.Tests;
 
-[NotInParallel]
+[NotInParallel("RuntimePromotionTrustRoot")]
 public sealed class ReleaseCandidateVerificationTests
 {
     [Test]

@@ -1,0 +1,36 @@
+# ABOUTME: Advertises the GitHub release-adapter final check without activating releases.
+# ABOUTME: Uses workflow_dispatch, production approval, and default-branch trusted code only.
+name: Release Adapter Final Discovery
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-adapter-final-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  release-adapter-final:
+    name: release-adapter-final
+    if: ${{ github.event_name == 'workflow_dispatch' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: production
+    steps:
+      - name: Checkout trusted default branch only
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          persist-credentials: false
+      - name: Setup .NET
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          global-json-file: global.json
+      - name: Report final adapter contract
+        env:
+          RestorePackagesWithLockFile: "false"
+        run: |
+          printf '%s\n' 'release-adapter-final: environment-approved trusted-code discovery only'

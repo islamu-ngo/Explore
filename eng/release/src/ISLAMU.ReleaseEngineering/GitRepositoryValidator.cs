@@ -42,6 +42,7 @@ public static class GitRepositoryValidator
     private static readonly TimeSpan DefaultTimeout = TimeSpan.FromSeconds(5);
     private static readonly Regex LinePattern = new("^v(?<major>0|[1-9][0-9]*)\\.(?<minor>0|[1-9][0-9]*)$", RegexOptions.CultureInvariant | RegexOptions.ExplicitCapture, TimeSpan.FromMilliseconds(100));
     private static readonly Regex VersionPattern = new("^(?<major>0|[1-9][0-9]*)\\.(?<minor>0|[1-9][0-9]*)\\.(?<patch>0|[1-9][0-9]*)(?:-(?<stage>alpha|beta|rc)\\.(?<number>[1-9][0-9]*))?$", RegexOptions.CultureInvariant | RegexOptions.ExplicitCapture, TimeSpan.FromMilliseconds(100));
+    private static readonly Regex BaselineRefPattern = new("^changelog-baseline-[0-9]{4}-[0-9]{2}-[0-9]{2}$", RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100));
 
     public static GitReleaseValidationResult Validate(GitReleaseValidationRequest request) => Validate(request, DefaultTimeout);
 
@@ -91,7 +92,8 @@ public static class GitRepositoryValidator
 
         ValidateExpectedTagObject(request, baseStable, oidLength, diagnostics);
         ValidateExpectedTagObject(request, previousPublished, oidLength, diagnostics);
-        ValidateDescriptorVersions(request, selectedValid ? selected : default, baseStable?.Version, previousPublished?.Version, diagnostics);
+        bool baseline = IsBaselineTagRef(request.BaseStableRef) || IsBaselineTagRef(request.PreviousPublishedRef);
+        ValidateDescriptorVersions(request, selectedValid ? selected : default, baseStable, previousPublished, diagnostics);
 
         if (candidateOid.Length != 0 && releaseHeadOid.Length != 0 && !string.Equals(candidateOid, releaseHeadOid, StringComparison.Ordinal))
         {
@@ -124,9 +126,14 @@ public static class GitRepositoryValidator
             diagnostics.Add($"git_wrong_line_tag:{baseStable.Name}");
         }
 
-        if (candidateOid.Length != 0 && selectedValid && previousPublished is not null)
+        if (candidateOid.Length != 0 && baseline)
         {
-            ValidateAmbientTags(git, request, selected, previousPublished.Version, candidateOid, oidLength, diagnostics);
+            ValidateNoReachableStableTags(git, request, candidateOid, oidLength, diagnostics);
+        }
+
+        if (candidateOid.Length != 0 && selectedValid && previousPublished is not null && previousPublished.Version is not null)
+        {
+            ValidateAmbientTags(git, request, selected, previousPublished.Version.Value, candidateOid, oidLength, diagnostics);
         }
 
         if (promisorRepository && diagnostics.Any(diagnostic => diagnostic.StartsWith("git_missing_object:", StringComparison.Ordinal)))
@@ -203,10 +210,20 @@ public static class GitRepositoryValidator
     private static void ValidateDescriptorVersions(
         GitReleaseValidationRequest request,
         SemanticVersion selected,
-        SemanticVersion? baseStable,
-        SemanticVersion? previousPublished,
+        GitResolvedTag? baseStable,
+        GitResolvedTag? previousPublished,
         List<string> diagnostics)
     {
+        bool baseline = IsBaselineTagRef(request.BaseStableRef) || IsBaselineTagRef(request.PreviousPublishedRef);
+        if (baseline)
+        {
+            if (!IsBaselineTagRef(request.BaseStableRef) || !IsBaselineTagRef(request.PreviousPublishedRef) || request.BaseStableRef != request.PreviousPublishedRef)
+            {
+                diagnostics.Add("git_baseline_range_mismatch");
+            }
+            return;
+        }
+
         if (!TryParseTagRef(request.BaseStableRef, out _, out SemanticVersion parsedBase) || parsedBase.IsPrerelease)
         {
             diagnostics.Add("git_base_stable_tag_malformed");
@@ -217,17 +234,17 @@ public static class GitRepositoryValidator
             diagnostics.Add("git_previous_published_tag_malformed");
         }
 
-        if (baseStable is not null && !baseStable.Value.Equals(parsedBase))
+        if (baseStable?.Version is not null && !baseStable.Version.Value.Equals(parsedBase))
         {
             diagnostics.Add("git_base_stable_tag_malformed");
         }
 
-        if (previousPublished is not null && !previousPublished.Value.Equals(parsedPrevious))
+        if (previousPublished?.Version is not null && !previousPublished.Version.Value.Equals(parsedPrevious))
         {
             diagnostics.Add("git_previous_published_tag_malformed");
         }
 
-        if (previousPublished is not null && previousPublished.Value.CompareTo(selected) >= 0)
+        if (previousPublished?.Version is not null && previousPublished.Version.Value.CompareTo(selected) >= 0)
         {
             diagnostics.Add("git_previous_tag_not_before_selected");
         }
@@ -246,9 +263,30 @@ public static class GitRepositoryValidator
         }
     }
 
+    private static void ValidateNoReachableStableTags(Git git, GitReleaseValidationRequest request, string candidateOid, int oidLength, List<string> diagnostics)
+    {
+        string output = git.RunScalar(diagnostics, "git_tag_scan_failed", "for-each-ref", "--format=%(refname)", "refs/tags");
+        foreach (string tagRef in output.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+        {
+            if (string.Equals(tagRef, request.BaseStableRef, StringComparison.Ordinal) ||
+                string.Equals(tagRef, request.PreviousPublishedRef, StringComparison.Ordinal) ||
+                !TryParseTagRef(tagRef, out string tag, out SemanticVersion version) ||
+                version.IsPrerelease)
+            {
+                continue;
+            }
+
+            GitResolvedTag? resolved = ResolveAnnotatedTag(git, tagRef, oidLength, diagnostics);
+            if (resolved is not null && git.IsSuccess("merge-base", "--is-ancestor", resolved.CommitOid, candidateOid))
+            {
+                diagnostics.Add($"git_baseline_stable_tag_exists:{tag}");
+            }
+        }
+    }
+
     private static GitResolvedTag? ResolveAnnotatedTag(Git git, string tagRef, int oidLength, List<string> diagnostics)
     {
-        if (!TryParseTagRef(tagRef, out string tag, out SemanticVersion version))
+        if (!TryParseTagRef(tagRef, out string tag, out SemanticVersion version) && !TryParseBaselineTagRef(tagRef, out tag))
         {
             diagnostics.Add($"git_malformed_tag_ref:{tagRef}");
             return null;
@@ -268,7 +306,8 @@ public static class GitRepositoryValidator
 
         string tagObjectOid = ResolveObject(git, tagRef, oidLength, $"tag:{tag}", diagnostics);
         string commitOid = ResolveCommit(git, tagRef, oidLength, $"tag_target:{tag}", diagnostics, requireFullOid: false);
-        return tagObjectOid.Length == 0 || commitOid.Length == 0 ? null : new GitResolvedTag(tag, version, commitOid, tagObjectOid);
+        SemanticVersion? resolvedVersion = TryParseTagRef(tagRef, out _, out SemanticVersion parsed) ? parsed : null;
+        return tagObjectOid.Length == 0 || commitOid.Length == 0 ? null : new GitResolvedTag(tag, resolvedVersion, commitOid, tagObjectOid);
     }
 
     private static void ValidateAmbientTags(
@@ -319,6 +358,15 @@ public static class GitRepositoryValidator
         tag = tagRef[prefix.Length..];
         return SemanticVersion.TryParseTag(tag, out version);
     }
+
+    private static bool TryParseBaselineTagRef(string tagRef, out string tag)
+    {
+        const string prefix = "refs/tags/";
+        tag = tagRef.StartsWith(prefix, StringComparison.Ordinal) ? tagRef[prefix.Length..] : string.Empty;
+        return BaselineRefPattern.IsMatch(tag);
+    }
+
+    private static bool IsBaselineTagRef(string tagRef) => TryParseBaselineTagRef(tagRef, out _);
 
     private static string ResolveCommit(Git git, string reference, int oidLength, string label, List<string> diagnostics, bool requireFullOid)
     {
@@ -377,7 +425,7 @@ public static class GitRepositoryValidator
 
     private static GitReleaseValidationResult Invalid(IReadOnlyList<string> diagnostics) => new(false, null, diagnostics.Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal).ToArray());
 
-    private sealed record GitResolvedTag(string Name, SemanticVersion Version, string CommitOid, string TagObjectOid);
+    private sealed record GitResolvedTag(string Name, SemanticVersion? Version, string CommitOid, string TagObjectOid);
 
     private readonly struct SemanticVersion : IComparable<SemanticVersion>
     {

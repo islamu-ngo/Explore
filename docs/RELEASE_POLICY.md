@@ -52,6 +52,19 @@ steps.
   IDs; abbreviated display IDs require collision-safe validation.
 - Release tags MUST be SSH-signed annotated tags. Lightweight, unsigned,
   unauthorized, revoked, or replaced tags MUST fail verification.
+- The first governed release MAY use one explicit lower-bound tag named exactly
+  `changelog-baseline-YYYY-MM-DD` instead of SemVer history, but only after an
+  operator verifies that annotated SSH-signed tag with the promoted bundle and records
+  both the full tag object ID and full target commit ID in `release-baseline.v1`
+  evidence. This baseline is not a release, is not SemVer history, and MUST be ignored
+  by strict SemVer release-tag discovery. The selected version remains an external
+  steward approval decision; tooling MUST NOT infer first-release eligibility from a
+  hardcoded version number.
+- Fake SemVer baselines such as `v0.0.0`, lightweight tags, unsigned tags,
+  unauthorized signers, recreated/moved tags, wrong dates, wrong targets, and short
+  object IDs MUST fail closed. If any governed stable SemVer tag is already reachable
+  from the candidate, baseline lower bounds MUST fail closed and the release MUST use
+  stable SemVer tags as its lower bound.
 - Candidate and final manifests MUST be distinct: the pre-tag candidate digest MAY
   be referenced by tag text, while post-tag evidence MUST record the tag object ID.
 - Canonical artifacts MUST omit author/committer identities, raw commit bodies,

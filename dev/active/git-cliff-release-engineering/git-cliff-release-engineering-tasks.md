@@ -3,17 +3,20 @@
 
 # Git-Cliff Release Engineering - Task Checklist
 
-Last Updated: 2026-08-14 Europe/Brussels
+Last Updated: 2026-08-15 Europe/Brussels
 
 ## Status Summary
 
-- **Overall status:** Active implementation; Phase 1 remains blocked by unrelated architecture-test failures.
-- **Completed:** 15/18 implementation tasks. Phase verification is tracked separately.
-- **Current priority:** Run the Phase 5 build and release-engine verification gates.
-- **Next recommended slice:** Close Phase 5, then resolve the selected non-GitHub forge decision for Task 6.1.
-- **Known future decision:** Select the first non-GitHub forge before Task 6.1 completes.
+- **Overall status:** Active implementation; Phase 1 and Phase 5 verification remain blocked outside the release-engine slice.
+- **Completed:** 16/18 implementation tasks. Phase verification is tracked separately.
+- **Current priority:** Independently verify the version-agnostic Task 6.2 baseline follow-up.
+- **Next recommended slice:** If confirmed, complete Task 6.2 and execute the Task 6.3 synthetic advisory release flow.
+- **Current handoff:** `git-cliff-release-engineering-handoff.md` records exact current evidence, blockers, and continuation steps.
+- **Forge selection:** The Project Steward selected Forgejo/Codeberg, Tangled, and GitHub on 2026-08-15.
 - **Phase-gate exception:** On 2026-08-14 the user explicitly authorized Tasks 2-5 to continue while the Phase 1 architecture checkbox remains blocked by four unrelated shared-worktree failures.
 - **Current Phase 1 gate evidence:** Exit 2; 377 total, 372 passed, 4 failed, 1 skipped. Independent escalation confirmed the same four product/architecture-contract failures remain outside release-engineering scope; the checkbox stays open.
+- **Current Phase 5 gate evidence:** Release-engine tests pass 172/172 with clean diagnostics and evidence smoke under `MSBuildEnableWorkloadResolver=false`; literal commands are host-blocked by missing workload manifests, while the workaround full build hits unrelated authorization API compile errors in the shared dirty tree.
+- **Phase 6 continuation exception:** On 2026-08-15 the Project Steward selected all three adapters and authorized continuation past the documented Phase 5 environment/shared-tree blockers.
 
 ## Implementation Maintenance Rules
 
@@ -156,7 +159,7 @@ Last Updated: 2026-08-14 Europe/Brussels
 
 ## Phase 6: Provider Adapters, Prospective Cutover, And Activation - NOT STARTED
 
-- [ ] **6.1 Define The Adapter Contract And Add The Selected Forge Adapter**
+- [x] **6.1 Define The Adapter Contract And Add The Selected Forge Adapter**
   - **Files:** new `.ci/release/adapter-contract.md`, selected provider definition under `.ci/providers/<selected-provider>/`; existing `.ci/README.md`, `docs/CI_CD_GOVERNANCE.md`, provider settings docs.
   - **Acceptance:** Selected forge is recorded; full Git/trusted-bundle/explicit-input/artifact/protected-ref contract is implemented; candidate jobs are unprivileged; final jobs run only trusted code; canonical checksums equal local output.
   - **Effort:** L

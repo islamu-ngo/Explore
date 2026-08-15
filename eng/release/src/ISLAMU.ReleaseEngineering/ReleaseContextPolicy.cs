@@ -74,7 +74,9 @@ public static class ReleaseContextPolicy
         ReleaseInputValidationResult input,
         IEnumerable<ReleaseCommit> commits,
         ReleasePolicy policy,
-        string? gitCliffSuggestedVersion = null)
+        string? gitCliffSuggestedVersion = null,
+        string? verifiedBaselineRef = null,
+        string? verifiedBaselineOid = null)
     {
         ArgumentNullException.ThrowIfNull(input);
         ArgumentNullException.ThrowIfNull(commits);
@@ -96,16 +98,28 @@ public static class ReleaseContextPolicy
             return Invalid(diagnostics);
         }
 
-        if (!SemanticVersion.TryParseTag(descriptor.BaseStableTag, out SemanticVersion baseStable) || baseStable.IsPrerelease)
+        bool firstReleaseBaseline = ReleaseInputPolicy.IsBaselineRef(descriptor.BaseStableTag) || ReleaseInputPolicy.IsBaselineRef(descriptor.PreviousPublishedTag);
+        SemanticVersion baseStable;
+        SemanticVersion previousPublished;
+        if (firstReleaseBaseline)
         {
-            diagnostics.Add("context_malformed_base_stable_tag");
-            return Invalid(diagnostics);
+            ValidateFirstReleaseBaseline(descriptor, verifiedBaselineRef, verifiedBaselineOid, diagnostics);
+            baseStable = new SemanticVersion(0, 0, 0, null, null);
+            previousPublished = baseStable;
         }
-
-        if (!SemanticVersion.TryParseTag(descriptor.PreviousPublishedTag, out SemanticVersion previousPublished))
+        else
         {
-            diagnostics.Add("context_malformed_previous_published_tag");
-            return Invalid(diagnostics);
+            if (!SemanticVersion.TryParseTag(descriptor.BaseStableTag, out baseStable) || baseStable.IsPrerelease)
+            {
+                diagnostics.Add("context_malformed_base_stable_tag");
+                return Invalid(diagnostics);
+            }
+
+            if (!SemanticVersion.TryParseTag(descriptor.PreviousPublishedTag, out previousPublished))
+            {
+                diagnostics.Add("context_malformed_previous_published_tag");
+                return Invalid(diagnostics);
+            }
         }
 
         ValidateVersionLine(selected, descriptor.Line, diagnostics);
@@ -154,6 +168,33 @@ public static class ReleaseContextPolicy
 
         string json = JsonSerializer.Serialize(context, JsonOptions) + "\n";
         return new ReleaseContextValidationResult(true, context, json, []);
+    }
+
+    private static void ValidateFirstReleaseBaseline(
+        ReleaseDescriptor descriptor,
+        string? verifiedBaselineRef,
+        string? verifiedBaselineOid,
+        List<string> diagnostics)
+    {
+        if (!string.Equals(descriptor.BaseStableTag, descriptor.PreviousPublishedTag, StringComparison.Ordinal) ||
+            !string.Equals(descriptor.ReleaseRange.BaseRef, descriptor.BaseStableTag, StringComparison.Ordinal) ||
+            !string.Equals(descriptor.ReleaseRange.PreviousRef, descriptor.PreviousPublishedTag, StringComparison.Ordinal) ||
+            !string.Equals(descriptor.ReleaseRange.BaseOid, descriptor.ReleaseRange.PreviousOid, StringComparison.Ordinal))
+        {
+            diagnostics.Add("context_baseline_range_mismatch");
+        }
+
+        if (verifiedBaselineRef is null || verifiedBaselineOid is null)
+        {
+            diagnostics.Add("context_baseline_evidence_required");
+            return;
+        }
+
+        if (!string.Equals(verifiedBaselineRef, descriptor.BaseStableTag, StringComparison.Ordinal) ||
+            !string.Equals(verifiedBaselineOid, descriptor.ReleaseRange.BaseOid, StringComparison.Ordinal))
+        {
+            diagnostics.Add("context_baseline_evidence_mismatch");
+        }
     }
 
     private static List<CommitPolicyResult> EvaluateCommits(List<ReleaseCommit> commits, ReleasePolicy policy, List<string> diagnostics)

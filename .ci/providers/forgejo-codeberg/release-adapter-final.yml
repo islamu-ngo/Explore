@@ -1,0 +1,17 @@
+# ABOUTME: Minimal Forgejo/Codeberg final discovery workflow for trusted self-hosted release review.
+# ABOUTME: Keeps final protected-release reporting out of push and pull-request origins.
+
+name: Release Adapter Final Discovery
+
+on:
+  workflow_dispatch:
+
+jobs:
+  release-adapter-final:
+    name: release-adapter-final
+    runs-on: self-hosted
+    environment: production
+    steps:
+      - name: Report final adapter contract
+        run: |
+          printf '%s\n' 'release-adapter-final: transport-only no-checkout discovery'

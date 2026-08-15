@@ -6,8 +6,8 @@ ABOUTME: Covers minimum viable stack, optional services, setup, migrations, heal
 > **Audience:** Operators and DevOps engineers  
 > **Status:** Implemented  
 > **Owner:** Platform/Ops  
-> **Last Verified:** 2026-08-11
-> **Source Anchors:** `docker-compose.yml`, `src/Event.Standalone/Dockerfile`, `src/Event.MigrationService/Dockerfile`, `src/Event.Standalone/Program.cs`, `src/Explore.API/Hosting/ApiHostStartupExtensions.cs`
+> **Last Verified:** 2026-08-15
+> **Source Anchors:** `docker-compose.yml`, `src/Event.Standalone/Dockerfile`, `src/Event.MigrationService/Dockerfile`, `src/Event.Standalone/Program.cs`, `src/Explore.API/Hosting/ApiHostStartupExtensions.cs`, `src/Explore.Application/Configuration/PromotionCodeLookupOptions.cs`, `src/Explore.Domain/Secrets/SecretDefinitionRegistry.cs`, `src/Explore.Infrastructure/Services/Registration/PromotionCodeDigestService.cs`
 
 ---
 
@@ -582,6 +582,12 @@ The primary file must not be `/app/data/privacy_erasure_authority.db`.
 
 For the complete variable reference, see [CONFIGURATION.md](CONFIGURATION.md).
 
+Promotion codes require the native non-secret setting `Promotions__CodeLookup__ActiveKeyVersion` (default `1`) plus an instance `SecretBinding` for `promotions.code_lookup_hmac_key` with the matching qualifier, such as `v1`. An environment-backed initial binding may point at `PROMOTIONS_CODE_LOOKUP_HMAC_KEY`; its value is standard Base64 for at least 32 random bytes. Infisical uses `/promotions/PROMOTIONS_CODE_LOOKUP_HMAC_KEY`, and application-managed deployments may instead use an inline-encrypted binding.
+
+The checked-in Split Compose file passes an explicit environment allow-list and does not currently forward these promotion names from `.env`. Setting them in `.env` alone therefore has no effect: provision the binding through the secret control plane, or explicitly inject the native option and chosen version-specific secret variable into the API container in your deployment configuration. Standalone/direct-process deployments may supply the native names directly. The resolver deliberately has no source fallback. Missing bindings, missing values, invalid Base64, and values shorter than 32 bytes fail closed when a code is published, rotated, or applied.
+
+For HMAC-key rotation, create a distinct source coordinate for the new value, add the new qualified binding first, change the active version, restart API replicas, and keep every older key whose version is still referenced by an active promotion code. Do not overwrite a key in place or point overlapping qualifiers at one mutable environment variable. Organizer-facing code rotation is separate: it retires the old code and shows the replacement plaintext once in Studio. Neither flow enables Stripe capture or any Phase 18 payment runtime.
+
 ---
 
 ## First-Run Setup
@@ -1084,6 +1090,7 @@ data; use a separately planned export/import procedure.
 | SQLite permission denied | An existing `/app/data` volume was created with incompatible ownership | Recreate only an empty disposable volume, or correct the existing volume ownership to UID/GID `1654`; do not run the application image as root |
 | `/health` fails on port `8080` | Startup migration is still failing or a runtime dependency is unready | Read the standalone container log, then probe `curl --fail http://localhost:8080/health` from the host |
 | Database provider validation fails | Missing/invalid native `Database__*` field, wrong TLS policy, or MariaDB flavor/version omitted | Use the provider matrix in [Configuration](CONFIGURATION.md#standalone-provider-overrides); direct image execution does not translate legacy `DATABASE_*` aliases |
+| Promotion create, publish, rotation, or apply fails after a key change | Missing qualified binding, active-version mismatch, malformed Base64, short key, or an older active code still references a removed version | Restore the exact `v{version}` instance binding, verify the secret decodes to at least 32 bytes, restart after changing `Promotions__CodeLookup__ActiveKeyVersion`, and retain old versions until no active code references them. Never log or paste the key, digest, or a real attendee code. |
 
 ### Diagnostic Tool
 
@@ -1109,7 +1116,7 @@ For comprehensive troubleshooting, see [TROUBLESHOOTING.md](TROUBLESHOOTING.md).
 
 ### Paid Events And Stripe Connect
 
-ADR-022 approves Stripe Connect `OrganizerDirect` as the first paid-event profile. Each deployment supplies and operates its own instance/server-only `payments.stripe.platform_secret_key` and `payments.stripe.webhook_secret`, mapped from Infisical `/stripe/STRIPE_PLATFORM_SECRET_KEY` and `/stripe/STRIPE_WEBHOOK_SECRET`, plus `Payments:OrganizerDirect:ProviderCode` and `ConnectPlatformId`. Phase 16 implements policy administration, bounded hosted organizer onboarding, private readiness reads, signed account-readiness intake, and stale-readiness reconciliation. Instance policy sets the ceiling; tenant policy may only narrow it. Paid publication requires current server preflight, disclosures, configured commerce, and a ready connection for the event's exact organizer actor, never an administrator fallback merchant. Reconciliation is enabled by default and bounded by `OrganizerPaymentReadinessReconciliation` settings; disable it only when another operator-controlled readiness process exists. Checkout, capture, refunds, disputes, admission, QR/check-in, transfers, payouts, and legal/tax/invoice support remain out of scope. `ProtectedDelayedPayout` is not escrow and remains unavailable without its separate approvals.
+ADR-022 approves Stripe Connect `OrganizerDirect` as the first paid-event profile. Each deployment supplies and operates its own instance/server-only `payments.stripe.platform_secret_key` and `payments.stripe.webhook_secret`, mapped from Infisical `/stripe/STRIPE_PLATFORM_SECRET_KEY` and `/stripe/STRIPE_WEBHOOK_SECRET`, plus `Payments:OrganizerDirect:ProviderCode` and `ConnectPlatformId`. Phase 16 implements policy administration, bounded hosted organizer onboarding, private readiness reads, signed account-readiness intake, and stale-readiness reconciliation. Phase 17 adds promotion-backed order repricing and zero-due finalization without invoking a payment provider. Instance policy sets the ceiling; tenant policy may only narrow it. Paid publication requires current server preflight, disclosures, configured commerce, and a ready connection for the event's exact organizer actor, never an administrator fallback merchant. Reconciliation is enabled by default and bounded by `OrganizerPaymentReadinessReconciliation` settings; disable it only when another operator-controlled readiness process exists. Nonzero payment checkout/capture and the remaining Phase 18 payment runtime, refunds, disputes, admission, QR/check-in, transfers, payouts, and legal/tax/invoice support remain out of scope. `ProtectedDelayedPayout` is not escrow and remains unavailable without its separate approvals.
 
 ### PostGIS Proximity Discovery
 

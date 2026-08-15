@@ -61,9 +61,14 @@ public static class Program
             return MainCommand.Run(args, output, Environment.CurrentDirectory, ProcessTimeout);
         }
 
+        if (string.Equals(args[0], "verify-baseline", StringComparison.Ordinal))
+        {
+            return BaselineCommand.Run(args, output, Environment.CurrentDirectory, ProcessTimeout);
+        }
+
         if (!string.Equals(args[0], "verify-tools", StringComparison.Ordinal))
         {
-            output.WriteLine("unknown_command: supported commands are prepare, verify-candidate, tag-message, verify-tag, verify-main, and verify-tools");
+            output.WriteLine("unknown_command: supported commands are prepare, verify-candidate, tag-message, verify-tag, verify-main, verify-baseline, and verify-tools");
             return UsageError;
         }
 
@@ -227,7 +232,7 @@ public static class Program
 
     private static int WriteUsage(TextWriter output)
     {
-        output.WriteLine("usage: release-engine verify-tools | prepare <release-directory> | verify-candidate <release-directory> <candidate-oid> | tag-message <release-directory> | verify-tag <release-directory> <tag-name> | verify-main <release-directory> <expected-old-origin-main-oid> <tag-object-oid>");
+        output.WriteLine("usage: release-engine verify-tools | prepare <release-directory> | verify-candidate <release-directory> <candidate-oid> | tag-message <release-directory> | verify-tag <release-directory> <tag-name> | verify-main <release-directory> <expected-old-origin-main-oid> <tag-object-oid> | verify-baseline <baseline-ref> <target-oid> <tag-object-oid>");
         return UsageError;
     }
 

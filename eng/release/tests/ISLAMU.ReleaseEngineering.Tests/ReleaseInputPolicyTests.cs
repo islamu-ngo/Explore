@@ -237,6 +237,38 @@ public sealed class ReleaseInputPolicyTests
     }
 
     [Test]
+    public async Task FirstReleaseBaselineRangeAcceptsOnlyExactDatedNonSemVerRefAndFullObjectIds()
+    {
+        string baseline = ValidReleaseYaml()
+            .Replace("Base-Stable-Tag: v1.0.0", "Base-Stable-Tag: changelog-baseline-2026-08-15", StringComparison.Ordinal)
+            .Replace("Previous-Published-Tag: v1.0.0", "Previous-Published-Tag: changelog-baseline-2026-08-15", StringComparison.Ordinal)
+            .Replace("Base-Ref: v1.0.0", "Base-Ref: changelog-baseline-2026-08-15", StringComparison.Ordinal)
+            .Replace("Previous-Ref: v1.0.0", "Previous-Ref: changelog-baseline-2026-08-15", StringComparison.Ordinal)
+            .Replace(FullOid('b'), FullOid('a'), StringComparison.Ordinal);
+        string fakeSemver = baseline.Replace("changelog-baseline-2026-08-15", "v0.0.0", StringComparison.Ordinal);
+        string wrongDate = baseline.Replace("changelog-baseline-2026-08-15", "changelog-baseline-2026-8-15", StringComparison.Ordinal);
+        string shortOid = baseline.Replace(FullOid('a'), "0123456789ab", StringComparison.Ordinal);
+        string mixedLowerBound = baseline.Replace("Previous-Published-Tag: changelog-baseline-2026-08-15", "Previous-Published-Tag: v0.1.0", StringComparison.Ordinal)
+            .Replace("Previous-Ref: changelog-baseline-2026-08-15", "Previous-Ref: v0.1.0", StringComparison.Ordinal);
+        string splitBaselineOid = baseline.Replace($"Previous-Oid: {FullOid('a')}", $"Previous-Oid: {FullOid('b')}", StringComparison.Ordinal);
+
+        ReleaseInputValidationResult accepted = ReleaseInputPolicy.Validate(baseline, [], []);
+        ReleaseInputValidationResult fakeSemverResult = ReleaseInputPolicy.Validate(fakeSemver, [], []);
+        ReleaseInputValidationResult wrongDateResult = ReleaseInputPolicy.Validate(wrongDate, [], []);
+        ReleaseInputValidationResult shortOidResult = ReleaseInputPolicy.Validate(shortOid, [], []);
+        ReleaseInputValidationResult mixedLowerBoundResult = ReleaseInputPolicy.Validate(mixedLowerBound, [], []);
+        ReleaseInputValidationResult splitBaselineOidResult = ReleaseInputPolicy.Validate(splitBaselineOid, [], []);
+
+        await Assert.That(accepted.IsValid).IsTrue();
+        await Assert.That(accepted.Descriptor?.BaseStableTag).IsEqualTo("changelog-baseline-2026-08-15");
+        await Assert.That(fakeSemverResult.Diagnostics).Contains("release_fake_semver_baseline");
+        await Assert.That(wrongDateResult.Diagnostics).Contains("release_malformed_baseline_ref:Base-Stable-Tag");
+        await Assert.That(shortOidResult.Diagnostics).Contains("release_malformed_full_oid:Release-Range:Base-Oid");
+        await Assert.That(mixedLowerBoundResult.Diagnostics).Contains("release_baseline_range_mismatch");
+        await Assert.That(splitBaselineOidResult.Diagnostics).Contains("release_baseline_range_mismatch");
+    }
+
+    [Test]
     public async Task PublicInputsRejectSecretsAndForgeMetadataButAllowProductNames()
     {
         string privateKey = Fragment("CHG-2026-0002").Replace("single credential", "-----BEGIN PRIVATE KEY-----", StringComparison.Ordinal);

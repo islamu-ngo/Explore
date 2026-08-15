@@ -23,30 +23,98 @@ dotnet run .ci/scripts/generate-release-evidence-bundle.cs -- artifacts release-
 
 ## Future governed release flow
 
-1. An operator selects a governed `v<major>.<minor>` line and prepares only
+1. Before the first governed release only, meaning no governed stable SemVer release
+   tag is reachable from the candidate, an operator may activate one explicit
+   `changelog-baseline-YYYY-MM-DD` lower-bound tag after Project Steward approval.
+   The tag is created outside the verifier as an SSH-signed annotated tag targeting
+   the eventual merged activation commit, then verified with exact full IDs:
+
+   ```sh
+   dotnet run --project eng/release/src/ISLAMU.ReleaseEngineering/ISLAMU.ReleaseEngineering.csproj -- \
+     verify-baseline changelog-baseline-YYYY-MM-DD <full-target-oid> <full-tag-object-id>
+   ```
+
+   The verifier writes `docs/releases/baselines/changelog-baseline-YYYY-MM-DD.v1.json`.
+   It never creates, deletes, moves, signs, pushes, publishes, or fetches tags. If the
+   tag is lightweight, unsigned, unauthorized, recreated, moved, date-malformed,
+   target-mismatched, or supplied with a short object ID, stop and restart from a
+   reviewed operator action. Do not use `v0.0.0` or any fake SemVer tag as a baseline,
+   and do not treat the selected version number as proof that this is the first
+   governed release.
+2. An operator selects a governed `v<major>.<minor>` line and prepares only
    `release.yaml` and `summary.md`; public high-impact facts are supplied through
    validated change fragments.
-2. The trusted bundle validates complete Git objects, policy, range, version,
+3. The trusted bundle validates complete Git objects, policy, range, version,
    impacts, and public inputs. It normalizes context and calls the promoted
    git-cliff renderer with the `VerifiedTrustedBundle` capability returned by
    successful bundle verification. Candidate jobs never pass raw config, lock,
    executable, or digest inputs into rendering. The renderer passes
    `--config <trusted>`, `--from-context <context>`, `--offline`, and `--no-exec`
    from an isolated non-Git working directory after rechecking bundle-owned bytes.
-3. The preparation command generates `release-notes.md` and creates the reviewed
+4. The preparation command generates `release-notes.md` and creates the reviewed
    preparation commit `B`. The message explicitly explains its release-metadata
    changelog skip so the generated note does not include itself.
-4. The authoritative bundle verifies candidate `B` and emits deterministic
+5. The authoritative bundle verifies candidate `B` and emits deterministic
    pre-tag candidate evidence. Review preserves `B` through a fast-forward-only
    compare-and-swap update; any replacement requires regeneration and review.
-5. An authorized release operator creates an SSH-signed annotated tag targeting
+6. An authorized release operator creates an SSH-signed annotated tag targeting
    exactly `B`. Tag verification records signer, tag object ID, candidate digest,
    policy/tool hashes, and note/context hashes in final evidence.
-6. For the newest stable release only, protected `main` advances by normal
+7. For the newest stable release only, protected `main` advances by normal
    fast-forward to exactly `B`. Prereleases and older-line patches do not move
    `main` backwards.
-7. The provider adapter retains artifacts and may publish a derived enriched view,
+8. The provider adapter retains artifacts and may publish a derived enriched view,
    but it cannot alter canonical notes, identity, or approval.
+
+### Provider adapter planning
+
+Before a forge-specific adapter transports retained artifacts or protected-ref inputs,
+validate the provider definitions and write transport plans from explicit local release
+inputs:
+
+```sh
+dotnet run .ci/scripts/validate-release-provider-adapters.cs -- \
+  --providers .ci/providers \
+  --inputs /absolute/path/release-adapter-inputs.v1.json \
+  --bundle-root /absolute/path/promoted-bundle-root \
+  --output /absolute/path/release-adapter-plans
+```
+
+The input file supplies `release-adapter-inputs.v1`, full target/tag/protected-ref
+object IDs, the promoted bundle relative path, expected bundle SHA-256, artifact
+manifest SHA-256, tag name, and dirty-worktree status. The validator rejects path
+aliases, short object IDs, checksum drift, preview secrets, final candidate-code
+authority, preview write/OIDC permissions, mutable GitHub Actions pins, missing
+required checks, provider/action misrepresentation, symlink/reparse/hardlink aliases,
+and metadata-canonical plans before publishing output.
+
+For a provider action whose capability is unsupported, pass separate external control
+evidence only after an operator has recorded the provider-side control:
+
+```sh
+dotnet run .ci/scripts/validate-release-provider-adapters.cs -- \
+  --providers .ci/providers \
+  --provider tangled \
+  --operation publish-release \
+  --external-control-evidence /absolute/path/external-control-evidence.v1.json \
+  --inputs /absolute/path/release-adapter-inputs.v1.json \
+  --bundle-root /absolute/path/promoted-bundle-root \
+  --output /absolute/path/release-adapter-plans
+```
+
+The provider manifest cannot provide this evidence itself. The evidence file is bounded
+and must exactly match `providerId`, `operation`, and the unsupported capability.
+
+Successful output is bounded:
+
+```text
+adapter_validation_passed: providers=<count>
+```
+
+The resulting `*.transport-plan.v1.json` files are provider transport instructions
+only. They preserve checksum equality across Forgejo/Codeberg, Tangled, and GitHub;
+they do not render notes, sign tags, classify commits, choose versions, publish
+releases, or update protected refs by themselves.
 
 ## Required controls before activation
 
@@ -300,6 +368,10 @@ recorded. `eng/release/trust/allowed-signers` and the verifier-owned
 `eng/release/trust/promotion-allowed-signers` are intentionally comment-only until a
 reviewed promotion adds real principals and public keys, so activation returns
 `trusted_bundle_promotion_authority_not_configured` and fails closed.
+
+The first-release baseline is also blocked until the Project Steward approves the first
+governed version and the real merged activation commit exists. Do not create a real
+baseline tag, signed release tag, or versioned release directory from placeholders.
 
 ### Restricted security input
 

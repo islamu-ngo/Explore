@@ -3,9 +3,9 @@
 
 # Git-Cliff Release Engineering - Context
 
-Last Updated: 2026-08-14 Europe/Brussels
+Last Updated: 2026-08-15 Europe/Brussels
 
-## SESSION PROGRESS (2026-08-14 Europe/Brussels)
+## SESSION PROGRESS (2026-08-15 Europe/Brussels)
 
 ### COMPLETED
 
@@ -83,15 +83,34 @@ Last Updated: 2026-08-14 Europe/Brussels
   noncanonical, preserves all prior evidence categories, checksums release and
   governance artifacts, and rejects identity drift plus Unix/Windows filesystem
   aliases before publishing staged output.
+- Phase 5 release-engine behavior is code-confirmed: 172/172 tests, clean
+  diagnostics/whitespace, deterministic evidence-bundle smoke, and comment-only
+  production trust roots. Formal phase closure is blocked because the literal
+  .NET commands fail on missing local workload manifests and the documented
+  workaround full build currently hits unrelated authorization API compile churn.
+- Completed expanded Task 6.1 for the steward-selected Forgejo/Codeberg,
+  Tangled, and GitHub adapters. A strict transport-only contract and validator
+  now enforce unprivileged previews, trusted/no-checkout final discovery,
+  separate Tangled control evidence, filesystem alias safety, provider-neutral
+  checksum equality, and truthful provider limitations. Independent verification
+  passed 187/187 release tests and all three plans emitted identical canonical
+  input and promoted-bundle checksums.
+- Implemented the Task 6.2 baseline follow-up without creating repository refs.
+  The release engine now verifies authorized signed non-SemVer baseline tags and
+  permits them for any steward-approved first governed SemVer release; a reachable
+  governed stable tag blocks reuse. Focused tests passed 21/21, the prepare
+  regression passed 1/1, and the release suite passed 197/197. Independent
+  post-repair confirmation is still pending because the review session timed out.
 
 ### IN PROGRESS
 
-- Phase 5 build and release-engine verification gates.
+- Task 6.2 independent post-repair verification. See
+  `git-cliff-release-engineering-handoff.md` before continuing.
 
 ### NEXT
 
-1. Run the Phase 5 build and release-engine test gates.
-2. Resolve the first non-GitHub forge selection required by Task 6.1.
+1. Independently verify the version-agnostic Task 6.2 baseline repair.
+2. If confirmed, mark Task 6.2 complete and run the Task 6.3 advisory flow.
 3. Rerun the open Phase 1 architecture gate after unrelated worktree changes settle.
 
 ### BLOCKERS
@@ -100,7 +119,11 @@ Last Updated: 2026-08-14 Europe/Brussels
   records four non-release failures: DTO naming, generated-client ownership,
   tenant bypass-reason usage, and User-PII inventory coverage. The user
   explicitly authorized Tasks 2-5 to continue without closing this checkbox.
-- Task 6.1 requires the Project Steward to name the first non-GitHub forge before its adapter path is finalized.
+- Phase 5 cannot formally close while the literal .NET workload resolver is
+  broken and the workaround full solution build has unrelated authorization API
+  compile failures. The release-engine project itself passes 172/172.
+- The Project Steward selected Forgejo/Codeberg, Tangled, and GitHub on
+  2026-08-15 and authorized continuation past the documented Phase 5 blockers.
 - Task 3.3 requires real release signer principals/keys and an artifact-promotion authority before activation, but their absence does not block earlier implementation.
 
 ## Quick Resume
@@ -110,16 +133,17 @@ Last Updated: 2026-08-14 Europe/Brussels
 3. Resume from the current priority in `git-cliff-release-engineering-tasks.md`.
 4. Treat `tasks.md` as the hot ledger; update this context only after a phase, decision, blocker, validation failure, material discovery, or handoff.
 5. Preserve the unrelated dirty worktree. Do not restore deleted files or edit migration/payment/registration/agent-context work unless a later task explicitly owns the exact path.
+6. Read `git-cliff-release-engineering-handoff.md` for the current exact next step, evidence caveats, and operator blockers.
 
 ## Current Repository Facts
 
 | Fact | Verified evidence |
 |---|---|
 | Current branch | `develop` |
-| Current HEAD | `3e9c90fed55073f77fc0410d837b6bf3cb8e2aac` |
+| Current HEAD | `eee61969a4b6e6757242ae02dd748524ed540713` |
 | Commit counts | `develop`: 2,122; `main`: 206; `main..develop`: 1,916 |
 | Release tags | None |
-| Active/paused overlap | None found for git-cliff, changelog, or release engineering |
+| Active/paused overlap | Shared worktree has extensive concurrent unrelated changes; preserve them. |
 | Current release process | Manual SemVer tags and manually authored GitHub Releases |
 | Current release-note source | `docs/semantic_versioning/CHANGELOG.md` plus version companions; mixes Unreleased history and roadmap |
 | Shared CI implementation | `.ci/` with file-based C# scripts |

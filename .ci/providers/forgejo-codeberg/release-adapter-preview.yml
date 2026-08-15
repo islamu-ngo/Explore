@@ -1,0 +1,17 @@
+# ABOUTME: Minimal Forgejo/Codeberg preview discovery workflow for mirror candidate feedback.
+# ABOUTME: Runs only no-op-safe preview reporting without final protected operations.
+
+name: Release Adapter Preview Discovery
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  release-adapter-preview:
+    name: release-adapter-preview
+    runs-on: self-hosted
+    steps:
+      - name: Report preview adapter contract
+        run: |
+          printf '%s\n' 'release-adapter-preview: no-op-safe read-only discovery'

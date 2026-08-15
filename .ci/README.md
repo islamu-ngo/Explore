@@ -14,8 +14,31 @@ All shared scripts, policy validators, evidence writers, local composite actions
 Current layout:
 
 - `.ci/actions/deploy-coolify/` contains the shared GitHub Coolify deployment composite action.
+- `.ci/providers/` contains provider release-adapter definitions and discovery workflows for transport-only release lanes.
+- `.ci/release/` contains the provider-neutral release adapter contract and strict provider manifest schema.
 - `.ci/scripts/` contains file-based C# policy and evidence scripts invoked with `dotnet run <script>.cs -- ...`.
 - `.ci/spectral.yaml` contains the project-owned OpenAPI lint ruleset.
+
+`validate-release-provider-adapters.cs` validates `.ci/providers/*/provider-definition.v1.json`
+against the provider-neutral adapter contract and writes deterministic
+`*.transport-plan.v1.json` files. It also checks the declared discovery workflows so
+manifest events, actions, final environment approval, trusted default-branch refs, and
+transport-only no-checkout discovery claims match the reviewed workflow files. The
+plans carry explicit local release inputs, full Git object IDs, protected-ref
+compare-and-swap IDs, required check names, and canonical checksum equality only. They
+deliberately do not choose versions, classify commits, render notes, sign tags, publish
+releases, mutate protected refs, or make provider metadata canonical.
+
+Current provider definitions are:
+
+- `forgejo-codeberg`: no-checkout discovery-only mirror adapter that requires a trusted
+  self-hosted final runner and default-branch proof before protected release actions can
+  activate.
+- `tangled`: discovery-only mirror adapter that records artifact support but marks
+  protected-ref compare-and-swap and release publication as unsupported unless an
+  operator supplies separate external evidence; activated execution must add default-branch proof.
+- `github`: discovery-only GitHub adapter with a no-secret `pull_request` preview
+  lane and an environment-approved `workflow_dispatch` final lane.
 
 `generate-release-evidence-bundle.cs` is a durable bundle index, not a release
 identity generator. Release-mode bundle generation requires exactly one retained
