@@ -252,7 +252,7 @@ public static class AuthenticationExtensions
                                   scopes,
                                   ResourceKinds.Event,
                                   AuthorizationActions.Events.ModerateHeavy))))
-            .AddPolicy(TickerQSchedulerOptions.InstanceAdminPolicyName, policy => policy
+            .AddPolicy(QuartzSchedulerSettings.InstanceAdminPolicyName, policy => policy
                 .RequireAuthenticatedUser()
                 .RequireClaim(AdminClaimTypes.InstanceAdmin, "true"))
             .AddPolicy(ManagedControlPlaneAuthorizationPolicies.Read, policy => policy

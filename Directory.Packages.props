@@ -141,6 +141,10 @@
     <PackageVersion Include="OpenTelemetry.Instrumentation.Http" Version="1.17.0" />
     <PackageVersion Include="OpenTelemetry.Instrumentation.Runtime" Version="1.17.0" />
     <PackageVersion Include="Polly" Version="8.7.0" />
+    <PackageVersion Include="Quartz" Version="3.19.1" />
+    <PackageVersion Include="Quartz.AspNetCore" Version="3.19.1" />
+    <PackageVersion Include="Quartz.Extensions.Hosting" Version="3.19.1" />
+    <PackageVersion Include="Quartz.Serialization.SystemTextJson" Version="3.19.1" />
     <PackageVersion Include="RabbitMQ.Client" Version="7.2.1" />
     <PackageVersion Include="Refit.HttpClientFactory" Version="14.0.1" />
     <PackageVersion Include="Respawn" Version="7.0.0" />
@@ -165,10 +169,6 @@
     <PackageVersion Include="Testcontainers.RabbitMq" Version="4.13.0" />
     <PackageVersion Include="Testcontainers.Redis" Version="4.13.0" />
     <PackageVersion Include="Testcontainers" Version="4.13.0" />
-    <PackageVersion Include="TickerQ" Version="10.4.0" />
-    <PackageVersion Include="TickerQ.Dashboard" Version="10.4.0" />
-    <PackageVersion Include="TickerQ.EntityFrameworkCore" Version="10.4.0" />
-    <PackageVersion Include="TickerQ.Instrumentation.OpenTelemetry" Version="10.4.0" />
     <PackageVersion Include="TUnit" Version="1.63.0" />
     <PackageVersion Include="Verify.TUnit" Version="31.28.0" />
     <PackageVersion Include="WebPush" Version="1.0.13" />

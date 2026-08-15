@@ -41,7 +41,8 @@ Self-hosting ISLAMU Event delivers a superior alternative:
 > **Split deployments run `Event.MigrationService` before the API.** The
 > standalone image applies the same application, Data Protection, and authority
 > migrations in-process before its HTTP listener starts. The API separately owns
-> TickerQ operational migrations, and TickerQ is PostgreSQL-only.
+> the Quartz scheduler schema, which is idempotent DDL rather than an EF Core
+> migration and is supported on every primary provider, including SQLite.
 
 Everything outside `Event.Standalone` and its SQLite persistence — including
 server databases, Redis or Valkey, Keycloak, Cerbos, MinIO/S3, SMTP or Mailpit,
@@ -531,7 +532,7 @@ The namespace rule is automatic; operators do not select a prefix:
 
 | Provider | Application boundary | Example | Recommended instance layout |
 |---|---|---|---|
-| PostgreSQL | `DATABASE_DATABASE` + `DATABASE_SCHEMA` | `islamu_event.users` | Different schemas may share one database when TickerQ is disabled; otherwise use separate databases because TickerQ owns the fixed `ticker` schema. |
+| PostgreSQL | `DATABASE_DATABASE` + `DATABASE_SCHEMA` | `islamu_event.users` | Different schemas may share one database; give each instance a distinct `Scheduler:Quartz:SchedulerName` so the co-located `QRTZ_` scheduler tables are not contended. |
 | SQL Server | `DATABASE_DATABASE` + `DATABASE_SCHEMA` | `islamu_event.users` | Assign a distinct schema to each instance sharing a database. |
 | SQLite | Durable local `DATABASE_DATABASE` file + forced `ie_` prefix | `ie_users` | One file and one application replica per instance. |
 | MariaDB / MySQL | `DATABASE_DATABASE` + forced `ie_` prefix | `ie_users` | Create a separate database per instance on the same server; the prefix is an additional collision guard. |
@@ -930,9 +931,10 @@ The API uses a PostgreSQL-based outbox pattern for email dispatch. Configure the
 > Before testing external SMTP, use Mailpit first: send one product dispatch, confirm the outbox settles, then inspect the captured message at `http://localhost:8025`.
 
 **RabbitMQ dispatch** is optional transport infrastructure. Basic dispatch
-requires no broker. TickerQ is available only with PostgreSQL; set
-`EmailDispatchProcessor:Mode=HostedService` for SQLite, SQL Server, MariaDB, or
-MySQL. Enable RabbitMQ only if you have an operator-provided broker and set
+requires no broker. The Quartz scheduler provides durable dispatch scheduling on
+every primary provider, including standalone SQLite; `HostedService` remains
+available as a scheduler-free timer. Enable RabbitMQ only if you have an
+operator-provided broker and set
 `EmailDispatchRabbitMq:Enabled=true`.
 
 ---

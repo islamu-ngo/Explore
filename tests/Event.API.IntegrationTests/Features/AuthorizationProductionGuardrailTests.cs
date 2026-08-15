@@ -132,7 +132,7 @@ public class AuthorizationProductionGuardrailTests
                     ["Cerbos:GrpcEndpoint"] = "http://localhost:19999",
                     ["Cerbos:PlaintextMode"] = "true",
                     ["EmailDispatchProcessor:Enabled"] = "false",
-                    ["Scheduler:TickerQ:Enabled"] = "false",
+                    ["Scheduler:Quartz:Enabled"] = "false",
                     ["WebhookDeliveryProcessor:Enabled"] = "false",
                     ["IncomingWebhookProcessing:Enabled"] = "false",
                     ["HttpsRedirection:Enabled"] = "false",
@@ -202,7 +202,7 @@ public class AuthorizationProductionGuardrailTests
                     ["Cerbos:GrpcEndpoint"] = "http://localhost:19999",
                     ["Cerbos:PlaintextMode"] = "true",
                     ["EmailDispatchProcessor:Enabled"] = "false",
-                    ["Scheduler:TickerQ:Enabled"] = "false",
+                    ["Scheduler:Quartz:Enabled"] = "false",
                     ["WebhookDeliveryProcessor:Enabled"] = "false",
                     ["IncomingWebhookProcessing:Enabled"] = "false",
                     ["HttpsRedirection:Enabled"] = "false",
@@ -250,7 +250,7 @@ public class AuthorizationProductionGuardrailTests
         builder.UseSetting("Database:Runtime:TlsMode", "Prefer");
         builder.UseSetting("Database:Runtime:TrustServerCertificate", "false");
         builder.UseSetting("EmailDispatchProcessor:Enabled", "false");
-        builder.UseSetting("Scheduler:TickerQ:Enabled", "false");
+        builder.UseSetting("Scheduler:Quartz:Enabled", "false");
         builder.UseSetting("WebhookDeliveryProcessor:Enabled", "false");
         builder.UseSetting("IncomingWebhookProcessing:Enabled", "false");
         builder.UseSetting("HttpsRedirection:Enabled", "false");

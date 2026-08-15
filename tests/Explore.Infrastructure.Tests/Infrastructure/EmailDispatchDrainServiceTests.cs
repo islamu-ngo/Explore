@@ -161,7 +161,7 @@ public sealed class EmailDispatchDrainServiceTests
         var result = await fixture.Service.ProcessSingleAsync(
             dispatch.TenantId,
             dispatch.PublishEventId,
-            "tickerq-drain",
+            "quartz-drain",
             CancellationToken.None);
 
         await Assert.That(result.Outcome).IsEqualTo(EmailDispatchDrainOutcome.Skipped);
@@ -227,7 +227,7 @@ public sealed class EmailDispatchDrainServiceTests
         var result = await fixture.Service.ProcessSingleAsync(
             dispatch.TenantId,
             dispatch.PublishEventId,
-            "tickerq-drain",
+            "quartz-drain",
             CancellationToken.None);
 
         await Assert.That(result.Outcome).IsEqualTo(EmailDispatchDrainOutcome.Sent);
@@ -261,7 +261,7 @@ public sealed class EmailDispatchDrainServiceTests
         var result = await fixture.Service.ProcessSingleAsync(
             dispatch.TenantId,
             dispatch.PublishEventId,
-            "tickerq-drain",
+            "quartz-drain",
             CancellationToken.None);
 
         await Assert.That(result.Outcome).IsEqualTo(EmailDispatchDrainOutcome.Skipped);
@@ -330,7 +330,7 @@ public sealed class EmailDispatchDrainServiceTests
         EmailDispatchSingleDrainResult result = await fixture.Service.ProcessSingleAsync(
             dispatch.TenantId,
             dispatch.PublishEventId,
-            "tickerq-drain",
+            "quartz-drain",
             CancellationToken.None);
 
         await Assert.That(result.Outcome).IsEqualTo(EmailDispatchDrainOutcome.Unknown);
@@ -358,7 +358,7 @@ public sealed class EmailDispatchDrainServiceTests
         EmailDispatchSingleDrainResult result = await fixture.Service.ProcessSingleAsync(
             dispatch.TenantId,
             dispatch.PublishEventId,
-            "tickerq-drain",
+            "quartz-drain",
             CancellationToken.None);
 
         await Assert.That(result.Outcome).IsEqualTo(EmailDispatchDrainOutcome.Unknown);
@@ -383,7 +383,7 @@ public sealed class EmailDispatchDrainServiceTests
         EmailDispatchSingleDrainResult result = await fixture.Service.ProcessSingleAsync(
             dispatch.TenantId,
             dispatch.PublishEventId,
-            "tickerq-drain",
+            "quartz-drain",
             CancellationToken.None);
 
         await Assert.That(result.Outcome).IsEqualTo(EmailDispatchDrainOutcome.Sent);
@@ -414,7 +414,7 @@ public sealed class EmailDispatchDrainServiceTests
         var result = await fixture.Service.ProcessSingleAsync(
             dispatch.TenantId,
             dispatch.PublishEventId,
-            "tickerq-drain",
+            "quartz-drain",
             CancellationToken.None);
 
         await Assert.That(result.Outcome).IsEqualTo(EmailDispatchDrainOutcome.Sent);
@@ -444,7 +444,7 @@ public sealed class EmailDispatchDrainServiceTests
         EmailDispatchSingleDrainResult result = await fixture.Service.ProcessSingleAsync(
             dispatch.TenantId,
             dispatch.PublishEventId,
-            "tickerq-drain",
+            "quartz-drain",
             CancellationToken.None);
 
         await Assert.That(result.Outcome).IsEqualTo(EmailDispatchDrainOutcome.Sent);
@@ -481,7 +481,7 @@ public sealed class EmailDispatchDrainServiceTests
             var result = await fixture.Service.ProcessSingleAsync(
                 dispatch.TenantId,
                 dispatch.PublishEventId,
-                "tickerq-drain",
+                "quartz-drain",
                 CancellationToken.None);
 
             await Assert.That(result.Outcome).IsEqualTo(EmailDispatchDrainOutcome.Sent);
@@ -512,7 +512,7 @@ public sealed class EmailDispatchDrainServiceTests
         var result = await fixture.Service.ProcessSingleAsync(
             dispatch.TenantId,
             dispatch.PublishEventId,
-            "tickerq-drain",
+            "quartz-drain",
             CancellationToken.None);
 
         await Assert.That(result.Outcome).IsEqualTo(EmailDispatchDrainOutcome.Skipped);
@@ -543,7 +543,7 @@ public sealed class EmailDispatchDrainServiceTests
         var result = await fixture.Service.ProcessSingleAsync(
             dispatch.TenantId,
             dispatch.PublishEventId,
-            "tickerq-drain",
+            "quartz-drain",
             CancellationToken.None);
 
         await Assert.That(result.Outcome).IsEqualTo(EmailDispatchDrainOutcome.Skipped);
@@ -590,7 +590,7 @@ public sealed class EmailDispatchDrainServiceTests
             var result = await fixture.Service.ProcessSingleAsync(
                 dispatch.TenantId,
                 dispatch.PublishEventId,
-                "tickerq-drain",
+                "quartz-drain",
                 CancellationToken.None);
 
             await Assert.That(result.Outcome).IsEqualTo(EmailDispatchDrainOutcome.Skipped);
@@ -620,7 +620,7 @@ public sealed class EmailDispatchDrainServiceTests
         EmailDispatchSingleDrainResult result = await fixture.Service.ProcessSingleAsync(
             dispatch.TenantId,
             dispatch.PublishEventId,
-            "tickerq-drain",
+            "quartz-drain",
             CancellationToken.None);
 
         await Assert.That(result.Outcome).IsEqualTo(EmailDispatchDrainOutcome.RetryScheduled);
@@ -657,7 +657,7 @@ public sealed class EmailDispatchDrainServiceTests
         var result = await fixture.Service.ProcessSingleAsync(
             dispatch.TenantId,
             dispatch.PublishEventId,
-            "tickerq-drain",
+            "quartz-drain",
             CancellationToken.None);
 
         await Assert.That(result.Outcome).IsEqualTo(EmailDispatchDrainOutcome.RetryScheduled);
@@ -694,7 +694,7 @@ public sealed class EmailDispatchDrainServiceTests
         EmailDispatchSingleDrainResult result = await fixture.Service.ProcessSingleAsync(
             dispatch.TenantId,
             dispatch.PublishEventId,
-            "tickerq-drain",
+            "quartz-drain",
             CancellationToken.None);
 
         await Assert.That(result.Outcome).IsEqualTo(EmailDispatchDrainOutcome.RetryScheduled);
@@ -733,7 +733,7 @@ public sealed class EmailDispatchDrainServiceTests
         EmailDispatchSingleDrainResult result = await fixture.Service.ProcessSingleAsync(
             dispatch.TenantId,
             dispatch.PublishEventId,
-            "tickerq-drain",
+            "quartz-drain",
             CancellationToken.None);
 
         await Assert.That(result.Outcome).IsEqualTo(EmailDispatchDrainOutcome.DeadLettered);
@@ -762,7 +762,7 @@ public sealed class EmailDispatchDrainServiceTests
         EmailDispatchSingleDrainResult result = await fixture.Service.ProcessSingleAsync(
             dispatch.TenantId,
             dispatch.PublishEventId,
-            "tickerq-drain",
+            "quartz-drain",
             CancellationToken.None);
 
         await Assert.That(result.Outcome).IsEqualTo(EmailDispatchDrainOutcome.Unknown);
@@ -792,7 +792,7 @@ public sealed class EmailDispatchDrainServiceTests
             fixture.Service.ProcessSingleAsync(
                 dispatch.TenantId,
                 dispatch.PublishEventId,
-                "tickerq-drain",
+                "quartz-drain",
                 CancellationToken.None));
 
         await Assert.That(exception.Message).Contains("database unavailable");
@@ -818,7 +818,7 @@ public sealed class EmailDispatchDrainServiceTests
         await Assert.ThrowsAsync<OperationCanceledException>(() => fixture.Service.ProcessSingleAsync(
             dispatch.TenantId,
             dispatch.PublishEventId,
-            "tickerq-drain",
+            "quartz-drain",
             cancellation.Token));
 
         await Assert.That(dispatch.Status).IsEqualTo(EmailDispatchStatus.RetryScheduled);
@@ -848,7 +848,7 @@ public sealed class EmailDispatchDrainServiceTests
         var result = await fixture.Service.ProcessSingleAsync(
             dispatch.TenantId,
             dispatch.PublishEventId,
-            "tickerq-drain",
+            "quartz-drain",
             CancellationToken.None);
 
         await Assert.That(result.Outcome).IsEqualTo(EmailDispatchDrainOutcome.Deferred);

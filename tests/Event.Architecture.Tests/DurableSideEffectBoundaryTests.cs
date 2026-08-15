@@ -13,7 +13,7 @@ public sealed class DurableSideEffectBoundaryTests
         @"BasicPublish\s*\(|BasicAck\s*\(|BasicReject\s*\(|BasicNack\s*\(|RabbitMQ\.Client|MQContract\.RabbitMQ",
         RegexOptions.Compiled);
     private static readonly Regex SchedulerOperationPattern = new(
-        @"TickerQ|TickerFunction|AddTickerQ|UseTickerQ|ITicker|TimeTicker|CronTicker",
+        @"Quartz|ISchedulerFactory|IScheduler\b|JobDataMap|TriggerBuilder|JobBuilder|CronScheduleBuilder|SimpleScheduleBuilder|DisallowConcurrentExecution",
         RegexOptions.Compiled);
     private static readonly Regex SchedulerPayloadSensitivePattern = new(
         @"(?:(?<![A-Za-z0-9])|(?<=[a-z0-9]))(?i:EmailMessage|Recipient|RecipientEmail|ToAddress|Subject|Body|HtmlBody|TextBody|Smtp|ProviderMessageId|RawError|ExceptionMessage|AccessToken|Secret)(?![a-z0-9])|(?<!User)(?:(?<![A-Za-z0-9])|(?<=[a-z0-9]))(?i:Secrets)(?![a-z0-9])",
@@ -51,7 +51,7 @@ public sealed class DurableSideEffectBoundaryTests
         }
 
         await Assert.That(violations).IsEmpty()
-            .Because("Application handlers must create durable intent rows and leave SMTP/RabbitMQ/TickerQ side effects to approved background infrastructure.");
+            .Because("Application handlers must create durable intent rows and leave SMTP/RabbitMQ/scheduler side effects to approved background infrastructure.");
     }
 
     [Test]
@@ -106,11 +106,11 @@ public sealed class DurableSideEffectBoundaryTests
         }
 
         await Assert.That(violations).IsEmpty()
-            .Because("Domain entities may model durable intent and state, but must not know SMTP, RabbitMQ, or TickerQ.");
+            .Because("Domain entities may model durable intent and state, but must not know SMTP, RabbitMQ, or the scheduler.");
     }
 
     [Test]
-    public async Task TickerQEmailDispatchJobShouldNotCarryEmailPayloadOrSecrets()
+    public async Task SchedulerEmailDispatchJobShouldNotCarryEmailPayloadOrSecrets()
     {
         string repoRoot = FindRepoRoot();
         string schedulerRoot = Path.Combine(repoRoot, "src", "Explore.API", "Scheduling");
@@ -129,11 +129,11 @@ public sealed class DurableSideEffectBoundaryTests
         }
 
         await Assert.That(violations).IsEmpty()
-            .Because("TickerQ jobs must trigger pointer-only or payload-free work; email body, recipients, subjects, provider IDs, raw errors, and secrets stay out of scheduler state.");
+            .Because("Scheduler jobs must trigger pointer-only or payload-free work; email body, recipients, subjects, provider IDs, raw errors, and secrets stay out of scheduler state.");
     }
 
     [Test]
-    public async Task TickerQPayloadScannerShouldIgnoreUsingDirectivesButFlagSensitiveDeclarations()
+    public async Task SchedulerPayloadScannerShouldIgnoreUsingDirectivesButFlagSensitiveDeclarations()
     {
         const string content = """
             using Explore.Secrets.Database;

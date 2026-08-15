@@ -8,7 +8,7 @@ public class EmailDispatchProcessorSettings
     public const string SectionName = "EmailDispatchProcessor";
 
     public bool Enabled { get; set; } = true;
-    public EmailDispatchProcessorMode Mode { get; set; } = EmailDispatchProcessorMode.TickerQ;
+    public EmailDispatchProcessorMode Mode { get; set; } = EmailDispatchProcessorMode.Quartz;
     public int PollingIntervalSeconds { get; set; } = 5;
     public int BatchSize { get; set; } = 50;
     public int MaxRowsPerTenantPerBatch { get; set; } = 5;
@@ -43,6 +43,6 @@ public class EmailDispatchProcessorSettings
 public enum EmailDispatchProcessorMode
 {
     Disabled = 0,
-    TickerQ = 1,
+    Quartz = 1,
     HostedService = 2
 }

@@ -1,5 +1,5 @@
 // ABOUTME: Scheduler-neutral descriptor for platform background jobs.
-// ABOUTME: Exposes operational contracts without leaking TickerQ persistence or dashboard internals.
+// ABOUTME: Exposes operational contracts without leaking scheduler persistence or operator-surface internals.
 
 namespace Explore.Application.Contracts.Scheduling;
 

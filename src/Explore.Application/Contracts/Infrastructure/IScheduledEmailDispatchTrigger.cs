@@ -1,5 +1,5 @@
 // ABOUTME: Infrastructure port for asking a scheduler to wake a persisted EmailDispatchOutbox row.
-// ABOUTME: Keeps Application independent from TickerQ while allowing delayed lifecycle work to be accelerated.
+// ABOUTME: Keeps Application independent from the scheduler while allowing delayed lifecycle work to be accelerated.
 
 namespace Explore.Application.Contracts.Infrastructure;
 

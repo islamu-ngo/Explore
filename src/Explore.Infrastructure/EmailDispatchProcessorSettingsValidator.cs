@@ -20,7 +20,7 @@ public sealed class EmailDispatchProcessorSettingsValidator : IValidateOptions<E
 
         if (!Enum.IsDefined(options.Mode))
         {
-            failures.Add("EmailDispatchProcessor:Mode must be Disabled, TickerQ, or HostedService.");
+            failures.Add("EmailDispatchProcessor:Mode must be Disabled, Quartz, or HostedService.");
         }
 
         if (options.PollingIntervalSeconds <= 0)

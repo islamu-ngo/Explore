@@ -29,7 +29,7 @@ public sealed class EmailDispatchHealthCheckTests
         var settings = new EmailDispatchProcessorSettings
         {
             Enabled = true,
-            Mode = EmailDispatchProcessorMode.TickerQ,
+            Mode = EmailDispatchProcessorMode.Quartz,
             PollingIntervalSeconds = 7,
             BatchSize = 12,
             MaxAttemptCount = 4,
@@ -42,10 +42,10 @@ public sealed class EmailDispatchHealthCheckTests
             HealthTenantSampleLimit = 3,
             ConsumerId = "test-consumer"
         };
-        var schedulerOptions = new TickerQSchedulerOptions
+        var schedulerOptions = new QuartzSchedulerSettings
         {
             Enabled = true,
-            DashboardEnabled = false
+            StatusEndpointEnabled = false
         };
         var setup = CreateHealthCheck(
             settings,
@@ -59,9 +59,9 @@ public sealed class EmailDispatchHealthCheckTests
         var result = await setup.HealthCheck.CheckHealthAsync(new HealthCheckContext());
 
         await Assert.That(result.Status).IsEqualTo(HealthStatus.Healthy);
-        await Assert.That(result.Description).Contains("TickerQ");
+        await Assert.That(result.Description).Contains("Quartz");
         await Assert.That(result.Data).ContainsKey("enabled").And.Value.IsEqualTo(true);
-        await Assert.That(result.Data).ContainsKey("mode").And.Value.IsEqualTo(nameof(EmailDispatchProcessorMode.TickerQ));
+        await Assert.That(result.Data).ContainsKey("mode").And.Value.IsEqualTo(nameof(EmailDispatchProcessorMode.Quartz));
         await Assert.That(result.Data).ContainsKey("pollingIntervalSeconds").And.Value.IsEqualTo(7);
         await Assert.That(result.Data).ContainsKey("batchSize").And.Value.IsEqualTo(12);
         await Assert.That(result.Data).ContainsKey("maxAttemptCount").And.Value.IsEqualTo(4);
@@ -81,8 +81,8 @@ public sealed class EmailDispatchHealthCheckTests
         await Assert.That(result.Data).ContainsKey("oldestActivePendingAgeSeconds");
         await Assert.That(result.Data).ContainsKey("tenantBacklogSample");
         await Assert.That(result.Data).ContainsKey("consumerId").And.Value.IsEqualTo("test-consumer");
-        await Assert.That(result.Data).ContainsKey("tickerQEnabled").And.Value.IsEqualTo(true);
-        await Assert.That(result.Data).ContainsKey("tickerQDashboardEnabled").And.Value.IsEqualTo(false);
+        await Assert.That(result.Data).ContainsKey("schedulerEnabled").And.Value.IsEqualTo(true);
+        await Assert.That(result.Data).ContainsKey("schedulerStatusEndpointEnabled").And.Value.IsEqualTo(false);
         await Assert.That(result.Data.Keys).DoesNotContain(key => key.Contains("body", StringComparison.OrdinalIgnoreCase));
         await Assert.That(result.Data.Keys).DoesNotContain(key => key.Contains("recipient", StringComparison.OrdinalIgnoreCase));
         await Assert.That(result.Data.Keys).DoesNotContain(key => key.Contains("secret", StringComparison.OrdinalIgnoreCase));
@@ -123,7 +123,7 @@ public sealed class EmailDispatchHealthCheckTests
             Mode = EmailDispatchProcessorMode.Disabled,
             ConsumerId = "disabled-mode"
         };
-        var schedulerOptions = new TickerQSchedulerOptions
+        var schedulerOptions = new QuartzSchedulerSettings
         {
             Enabled = true
         };
@@ -146,15 +146,15 @@ public sealed class EmailDispatchHealthCheckTests
     }
 
     [Test]
-    public async Task CheckHealthAsyncWhenTickerQModeHasDisabledSchedulerReturnsUnhealthy()
+    public async Task CheckHealthAsyncWhenQuartzModeHasDisabledSchedulerReturnsUnhealthy()
     {
         var settings = new EmailDispatchProcessorSettings
         {
             Enabled = true,
-            Mode = EmailDispatchProcessorMode.TickerQ,
-            ConsumerId = "tickerq-disabled"
+            Mode = EmailDispatchProcessorMode.Quartz,
+            ConsumerId = "quartz-disabled"
         };
-        var schedulerOptions = new TickerQSchedulerOptions
+        var schedulerOptions = new QuartzSchedulerSettings
         {
             Enabled = false
         };
@@ -164,9 +164,9 @@ public sealed class EmailDispatchHealthCheckTests
         var result = await setup.HealthCheck.CheckHealthAsync(new HealthCheckContext());
 
         await Assert.That(result.Status).IsEqualTo(HealthStatus.Unhealthy);
-        await Assert.That(result.Description).Contains("TickerQ");
-        await Assert.That(result.Data).ContainsKey("mode").And.Value.IsEqualTo(nameof(EmailDispatchProcessorMode.TickerQ));
-        await Assert.That(result.Data).ContainsKey("tickerQEnabled").And.Value.IsEqualTo(false);
+        await Assert.That(result.Description).Contains("Quartz");
+        await Assert.That(result.Data).ContainsKey("mode").And.Value.IsEqualTo(nameof(EmailDispatchProcessorMode.Quartz));
+        await Assert.That(result.Data).ContainsKey("schedulerEnabled").And.Value.IsEqualTo(false);
         await setup.Repository.DidNotReceiveWithAnyArgs().CountDueDispatchAsync(default, default);
         await setup.Repository.DidNotReceiveWithAnyArgs().CountRetryScheduledAsync(default);
         await setup.Repository.DidNotReceiveWithAnyArgs().CountStaleProcessingAsync(default, default);
@@ -185,7 +185,7 @@ public sealed class EmailDispatchHealthCheckTests
             Mode = EmailDispatchProcessorMode.HostedService,
             ConsumerId = "hosted-service"
         };
-        var schedulerOptions = new TickerQSchedulerOptions
+        var schedulerOptions = new QuartzSchedulerSettings
         {
             Enabled = false
         };
@@ -197,7 +197,7 @@ public sealed class EmailDispatchHealthCheckTests
         await Assert.That(result.Status).IsEqualTo(HealthStatus.Healthy);
         await Assert.That(result.Description).Contains("hosted service");
         await Assert.That(result.Data).ContainsKey("mode").And.Value.IsEqualTo(nameof(EmailDispatchProcessorMode.HostedService));
-        await Assert.That(result.Data).ContainsKey("tickerQEnabled").And.Value.IsEqualTo(false);
+        await Assert.That(result.Data).ContainsKey("schedulerEnabled").And.Value.IsEqualTo(false);
     }
 
     [Test]
@@ -207,11 +207,11 @@ public sealed class EmailDispatchHealthCheckTests
             new EmailDispatchProcessorSettings
             {
                 Enabled = true,
-                Mode = EmailDispatchProcessorMode.TickerQ,
+                Mode = EmailDispatchProcessorMode.Quartz,
                 HealthStaleProcessingWarningThreshold = 1,
                 ConsumerId = "stale-processing"
             },
-            new TickerQSchedulerOptions { Enabled = true },
+            new QuartzSchedulerSettings { Enabled = true },
             staleProcessingCount: 1);
         using var services = setup.Services;
 
@@ -229,11 +229,11 @@ public sealed class EmailDispatchHealthCheckTests
             new EmailDispatchProcessorSettings
             {
                 Enabled = true,
-                Mode = EmailDispatchProcessorMode.TickerQ,
+                Mode = EmailDispatchProcessorMode.Quartz,
                 HealthDeadLetterWarningThreshold = 1,
                 ConsumerId = "dead-letter"
             },
-            new TickerQSchedulerOptions { Enabled = true },
+            new QuartzSchedulerSettings { Enabled = true },
             deadLetteredCount: 1);
         using var services = setup.Services;
 
@@ -251,11 +251,11 @@ public sealed class EmailDispatchHealthCheckTests
             new EmailDispatchProcessorSettings
             {
                 Enabled = true,
-                Mode = EmailDispatchProcessorMode.TickerQ,
+                Mode = EmailDispatchProcessorMode.Quartz,
                 HealthUnknownWarningThreshold = 1,
                 ConsumerId = "unknown-health"
             },
-            new TickerQSchedulerOptions { Enabled = true },
+            new QuartzSchedulerSettings { Enabled = true },
             unknownCount: 1,
             parkedCount: 5,
             optionalReminderDeferralActive: true);
@@ -277,11 +277,11 @@ public sealed class EmailDispatchHealthCheckTests
             new EmailDispatchProcessorSettings
             {
                 Enabled = true,
-                Mode = EmailDispatchProcessorMode.TickerQ,
+                Mode = EmailDispatchProcessorMode.Quartz,
                 HealthDueDispatchWarningThreshold = 2,
                 ConsumerId = "retry-backlog"
             },
-            new TickerQSchedulerOptions { Enabled = true },
+            new QuartzSchedulerSettings { Enabled = true },
             dueDispatchCount: 2,
             retryScheduledCount: 1);
         using var services = setup.Services;
@@ -302,14 +302,14 @@ public sealed class EmailDispatchHealthCheckTests
             new EmailDispatchProcessorSettings
             {
                 Enabled = true,
-                Mode = EmailDispatchProcessorMode.TickerQ,
+                Mode = EmailDispatchProcessorMode.Quartz,
                 HealthDueDispatchWarningThreshold = 100,
                 HealthOldestPendingWarningSeconds = 60,
                 HealthTenantBacklogWarningThreshold = 3,
                 HealthTenantSampleLimit = 1,
                 ConsumerId = "fairness-health"
             },
-            new TickerQSchedulerOptions { Enabled = true },
+            new QuartzSchedulerSettings { Enabled = true },
             dueDispatchCount: 3,
             oldestDueCreatedAt: DateTime.UtcNow.AddMinutes(-5),
             dueDispatchByTenant: new Dictionary<Guid, int> { [tenantId] = 3, [Guid.CreateVersion7()] = 2 });
@@ -334,10 +334,10 @@ public sealed class EmailDispatchHealthCheckTests
             new EmailDispatchProcessorSettings
             {
                 Enabled = true,
-                Mode = EmailDispatchProcessorMode.TickerQ,
+                Mode = EmailDispatchProcessorMode.Quartz,
                 ConsumerId = "public-health"
             },
-            new TickerQSchedulerOptions { Enabled = true },
+            new QuartzSchedulerSettings { Enabled = true },
             dueDispatchByTenant: new Dictionary<Guid, int> { [tenantId] = 2 });
         using var services = setup.Services;
         var result = await setup.HealthCheck.CheckHealthAsync(new HealthCheckContext());
@@ -387,7 +387,7 @@ public sealed class EmailDispatchHealthCheckTests
         ServiceProvider Services,
         IEmailDispatchOutboxRepository Repository) CreateHealthCheck(
             EmailDispatchProcessorSettings settings,
-            TickerQSchedulerOptions? schedulerOptions = null,
+            QuartzSchedulerSettings? schedulerOptions = null,
             int dueDispatchCount = 0,
             int retryScheduledCount = 0,
             int staleProcessingCount = 0,
@@ -431,7 +431,7 @@ public sealed class EmailDispatchHealthCheckTests
             .BuildServiceProvider();
         var healthCheck = new EmailDispatchHealthCheck(
             Options.Create(settings),
-            Options.Create(schedulerOptions ?? new TickerQSchedulerOptions()),
+            Options.Create(schedulerOptions ?? new QuartzSchedulerSettings()),
             services.GetRequiredService<IServiceScopeFactory>(),
             CreateMetrics());
 

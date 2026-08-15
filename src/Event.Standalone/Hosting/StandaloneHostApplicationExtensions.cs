@@ -24,7 +24,7 @@ public static class StandaloneHostApplicationExtensions
         GracefulShutdownState shutdownState)
     {
         var mcpPath = app.Services.GetRequiredService<IOptions<McpAdapterSettings>>().Value.EndpointPath;
-        var schedulerPath = app.Configuration.GetValue<string>("Scheduler:TickerQ:DashboardPath")
+        var schedulerPath = app.Configuration.GetValue<string>("Scheduler:Quartz:StatusEndpointPath")
             ?? "/admin/scheduler";
 
         var routeClassifier = new ApiHostRouteClassifier(

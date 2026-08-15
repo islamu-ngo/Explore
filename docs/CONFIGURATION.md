@@ -188,9 +188,9 @@ the API or Blazor containers.
 
 | Provider | Required shape | Default port / namespace | Operational boundary |
 |---|---|---|---|
-| `PostgreSql` | Host, database, and role credentials; `ServerFlavor`/`ServerVersion` forbidden | `5432`; configurable schema, default `islamu_event`; clean unprefixed table names | Full primary support; only provider supported by TickerQ and the external erasure authority. |
+| `PostgreSql` | Host, database, and role credentials; `ServerFlavor`/`ServerVersion` forbidden | `5432`; configurable schema, default `islamu_event`; clean unprefixed table names | Full primary support; only provider supported by the external erasure authority. Quartz scheduling is supported on every provider. |
 | `Sqlite` | `Database` is a persisted local file path; host, port, credentials, flavor, and version forbidden | no port; forced fixed table prefix `ie_` | Single application instance only. In-memory, URI, and network paths are rejected. |
-| `SqlServer` | Host, database, and role credentials; `ServerFlavor`/`ServerVersion` forbidden | `1433`; configurable schema, default `islamu_event`; clean unprefixed table names | Full primary support; use `HostedService` email dispatch because TickerQ is unavailable. |
+| `SqlServer` | Host, database, and role credentials; `ServerFlavor`/`ServerVersion` forbidden | `1433`; configurable schema, default `islamu_event`; clean unprefixed table names | Full primary support; `Quartz` and `HostedService` email dispatch are both available. |
 | `MariaDb` | Host, database, role credentials, `ServerFlavor=MariaDb`, and explicit `ServerVersion` | `3306`; forced fixed table prefix `ie_` | Full primary support; explicit version selects the EF SQL dialect. Prefer a separate database per deployment instance. |
 | `MySql` | Host, database, role credentials, `ServerFlavor=MySql`, and explicit `ServerVersion` | `3306`; forced fixed table prefix `ie_` | Full primary support; explicit version selects the EF SQL dialect. Prefer a separate database per deployment instance. |
 
@@ -213,11 +213,12 @@ table and to its EF migration history tables. The field may remain at its
 default for those providers, but changing it does not disable or rename the
 prefix.
 
-This boundary covers the application-owned relational model. PostgreSQL
-TickerQ operational tables remain in the separately governed fixed `ticker`
-schema. Deployments that enable TickerQ must not run multiple ISLAMU instances
-against the same PostgreSQL database; use separate databases, or select the
-portable `HostedService` email-dispatch mode for schema-isolated instances.
+This boundary covers the application-owned relational model. Quartz scheduler
+tables are co-located in the same database under the `Scheduler:Quartz:TablePrefix`
+prefix (default `QRTZ_`); they are raw ADO tables and are not part of any EF Core
+model or migration chain. Deployments that share one database between ISLAMU
+instances must give each instance a distinct `Scheduler:Quartz:SchedulerName`, or
+use separate databases, so the instances do not contend for the same scheduler rows.
 
 Changing `Database:Schema` points the application at another namespace; it is
 not an automatic rename or data move. Back up the source, provision grants,
@@ -468,7 +469,7 @@ Runtime configuration currently uses the .NET sections below:
 
 `keycloak.smtp_mode` is an operational policy label, not an ISLAMU SMTP provider switch. Use `managed` when Keycloak/provider SMTP is managed outside this deployment. Use a self-hosted/shared-SMTP mode only to configure the Keycloak realm SMTP server with deployment-owned credentials. In both modes, Keycloak remains the sender and owner of identity lifecycle emails; shared SMTP credentials do not transfer email decision ownership to ISLAMU Event.
 
-`keycloak.theme_sync_enabled` is a future automation policy for applying platform-managed Keycloak theme assets. Keycloak email themes live under the Keycloak theme `email` type and customize templates such as password-reset or execute-actions messages. Theme sync changes Keycloak-owned templates only; it does not route identity lifecycle mail through `EmailDispatchOutbox`, `IEmailService`, RabbitMQ, or TickerQ.
+`keycloak.theme_sync_enabled` is a future automation policy for applying platform-managed Keycloak theme assets. Keycloak email themes live under the Keycloak theme `email` type and customize templates such as password-reset or execute-actions messages. Theme sync changes Keycloak-owned templates only; it does not route identity lifecycle mail through `EmailDispatchOutbox`, `IEmailService`, RabbitMQ, or the Quartz scheduler.
 
 Local development may point a self-hosted Keycloak realm SMTP configuration at Mailpit for inspection. That is still Keycloak realm SMTP plumbing. Product Basic Dispatch Mailpit settings under `email.*` remain separate and should not be treated as production defaults for Keycloak.
 
@@ -855,17 +856,17 @@ Endpoint and secret safety rules:
 Basic Dispatch Mode uses the selected primary database as the durable source of
 truth and the existing SMTP abstraction as the transport. It does **not**
 require RabbitMQ. Registration confirmation creates an `EmailDispatchOutbox`
-row in the registration transaction. TickerQ can trigger the shared drain only
-when `Database:Provider=PostgreSql`; for SQLite, SQL Server, MariaDB, and MySQL,
-set `EmailDispatchProcessor:Mode=HostedService`. Both triggers call the same
-drain service and preserve the same outbox, retry, and idempotency semantics.
+row in the registration transaction. The Quartz scheduler can trigger the shared
+drain on every supported primary provider, including SQLite; `HostedService`
+remains available as a scheduler-free timer alternative. Both triggers call the
+same drain service and preserve the same outbox, retry, and idempotency semantics.
 
 Static dispatch settings bind from `EmailDispatchProcessor` and are validated at startup with `ValidateOnStart`:
 
 | Key | Default | Description |
 |---|---:|---|
 | `Enabled` | `true` | Enables Basic Dispatch Mode. When disabled, the `email-dispatch` readiness check reports `Degraded` intentionally. |
-| `Mode` | `TickerQ` | Selects `TickerQ`, `HostedService`, or `Disabled`. `TickerQ` is PostgreSQL-only and fails startup on every other primary provider; `HostedService` is the portable timer wrapper over the same drain. |
+| `Mode` | `Quartz` | Selects `Quartz`, `HostedService`, or `Disabled`. `Quartz` uses the durable ADO job store on every supported primary provider; `HostedService` is the portable timer wrapper over the same drain. |
 | `PollingIntervalSeconds` | `5` | Delay between polling loops. Must be greater than zero. |
 | `BatchSize` | `50` | Maximum rows claimed per loop. Valid range `1..1000`. |
 | `MaxRowsPerTenantPerBatch` | `5` | Fair-round cap for one tenant in a batch. Valid range `1..BatchSize`, up to `1000`. |
@@ -937,20 +938,32 @@ Email content retention binds from `EmailDispatchRetention` and is validated at 
 
 Redaction clears recipient, subject, plain/HTML body, reply-to, provider/correlation identifiers, and content-bearing attempt/receipt/delivery fields while retaining typed, non-PII identifiers, categories, state, and timestamps. `ContentRedactedAt` is a permanent replay and provider-handoff fence; changing these settings cannot reconstruct redacted material.
 
-TickerQ host settings bind from `Scheduler:TickerQ`:
+Quartz host settings bind from `Scheduler:Quartz`:
 
 | Key | Default | Description |
 |---|---:|---|
-| `Enabled` | `true` | Enables the TickerQ scheduler host when `EmailDispatchProcessor:Mode=TickerQ`. If this is `false` while EmailDispatch is in `TickerQ` mode, `email-dispatch` readiness is unhealthy. |
-| `Schema` | `ticker` | PostgreSQL schema for TickerQ operational tables. This is migration-backed and currently must remain `ticker`; changing it requires a matching scheduler migration strategy. |
-| `MaxConcurrency` | processor count | Maximum TickerQ scheduler concurrency. Must be greater than zero. |
-| `NodeIdentifier` | machine name | Scheduler node identity for multi-node diagnostics. Must not be blank. |
-| `DashboardEnabled` | `false` | Enables the TickerQ dashboard. Keep disabled unless instance operators explicitly need scheduler internals. |
-| `DashboardPath` | `/admin/scheduler` | Absolute non-root dashboard path when enabled. |
-| `DashboardAuthorizationPolicy` | `tickerq_instance_admin` | Host authorization policy for the dashboard. Must not be blank or anonymous when dashboard is enabled. The API enforces this policy on the dashboard path before TickerQ serves dashboard content. |
-| `DashboardSessionTimeoutMinutes` | `30` | Dashboard session timeout. Must be greater than zero when dashboard is enabled. |
+| `Enabled` | `true` | Enables the Quartz scheduler host when `EmailDispatchProcessor:Mode=Quartz`. If this is `false` while EmailDispatch is in `Quartz` mode, `email-dispatch` readiness is unhealthy. |
+| `SchedulerName` | `islamu-event-scheduler` | Logical scheduler identity recorded in the persistent store. Keep it stable for a deployment; give co-located instances distinct names when they share one database. |
+| `InstanceId` | `AUTO` | `AUTO` lets Quartz generate a unique per-process id. Clustering requires `AUTO`. |
+| `MaxConcurrency` | processor count | Maximum scheduler worker concurrency. Must be greater than zero. |
+| `UsePersistentStore` | `true` | Uses the durable ADO job store. When `false` the scheduler runs in memory and loses scheduled work on restart. |
+| `TablePrefix` | `QRTZ_` | Prefix for the co-located scheduler tables. Letters, digits, and underscores only, because it is inlined into DDL. |
+| `ClusteringEnabled` | `false` | Enables the database-backed clustering protocol. Requires `UsePersistentStore=true` and `InstanceId=AUTO`. |
+| `ClusterCheckinIntervalSeconds` | `20` | Node check-in interval when clustering is enabled. Must be greater than zero. |
+| `ApplySchemaOnStartup` | `true` | Applies the embedded idempotent scheduler DDL during API startup. Disable only when a separate migration job owns the scheduler schema. |
+| `StatusEndpointEnabled` | `false` | Exposes the read-only scheduler status endpoint. Keep disabled unless instance operators explicitly need scheduler internals. |
+| `StatusEndpointPath` | `/admin/scheduler` | Absolute non-root path for the status endpoint when enabled. |
+| `StatusEndpointAuthorizationPolicy` | `quartz_instance_admin` | Host authorization policy for the status endpoint. Must not be blank or anonymous when the endpoint is enabled. The API enforces this policy on the path before any scheduler state is read. |
 
-TickerQ is scheduler state only. It must not contain email bodies, recipients, subjects, SMTP credentials, provider message IDs, raw exceptions, tenant secrets, or access tokens. The product/operator source of truth remains `EmailDispatchOutbox` and the HAL-gated EmailDispatch admin API, not the TickerQ dashboard.
+Quartz holds scheduler state only. It must not contain email bodies, recipients, subjects, SMTP credentials, provider message IDs, raw exceptions, tenant secrets, or access tokens; one-off triggers carry pointer-only JSON. The product/operator source of truth remains `EmailDispatchOutbox` and the HAL-gated EmailDispatch admin API, not the scheduler status endpoint.
+
+#### Scheduler schema ownership
+
+Quartz tables are **not** EF Core migrations. The API ships provider-specific,
+idempotent DDL as embedded resources and applies it at startup when
+`ApplySchemaOnStartup` is true. The scripts only ever create missing tables and
+indexes; they contain no `DROP` or `TRUNCATE` statements, so re-running them
+cannot lose scheduler state.
 
 ### Email Dispatch RabbitMQ Configuration
 

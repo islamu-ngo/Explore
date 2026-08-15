@@ -102,10 +102,10 @@ public static class ApiHostApplicationExtensions
     private static void UseApiHostScheduler(WebApplication app, ApiHostCompositionState state)
     {
         if (!state.IsOpenApiGeneration &&
-            state.UseTickerQEmailDispatch &&
-            TickerQSchedulerExtensions.IsTickerQSchedulerEnabled(app.Configuration, app.Environment))
+            state.UseQuartzEmailDispatch &&
+            QuartzSchedulerExtensions.IsQuartzSchedulerEnabled(app.Configuration, app.Environment))
         {
-            app.UseApiTickerQScheduler();
+            app.UseApiQuartzScheduler();
         }
     }
 
@@ -131,6 +131,13 @@ public static class ApiHostApplicationExtensions
         }
 
         app.MapControllers();
+        if (!state.IsOpenApiGeneration &&
+            state.UseQuartzEmailDispatch &&
+            QuartzSchedulerExtensions.IsQuartzSchedulerEnabled(app.Configuration, app.Environment))
+        {
+            app.MapApiQuartzSchedulerEndpoints();
+        }
+
         var mcpAdapterSettings = app.Services.GetRequiredService<IOptions<McpAdapterSettings>>().Value;
         if (mcpAdapterSettings.Enabled && !state.IsOpenApiGeneration)
         {

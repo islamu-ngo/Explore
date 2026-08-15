@@ -136,7 +136,7 @@ public sealed class StandaloneHostGraphTests
             factory.Services.GetServices<EndpointDataSource>(),
             factory.Services.GetRequiredService<IOptions<McpAdapterSettings>>().Value.EndpointPath,
             factory.Services.GetRequiredService<IConfiguration>()
-                .GetValue<string>("Scheduler:TickerQ:DashboardPath") ?? "/admin/scheduler");
+                .GetValue<string>("Scheduler:Quartz:StatusEndpointPath") ?? "/admin/scheduler");
         var apiControllerRoutes = factory.Services.GetServices<EndpointDataSource>()
             .SelectMany(source => source.Endpoints)
             .OfType<RouteEndpoint>()

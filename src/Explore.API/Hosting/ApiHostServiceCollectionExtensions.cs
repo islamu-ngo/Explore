@@ -44,7 +44,7 @@ namespace Explore.API.Hosting;
 
 public sealed record ApiHostCompositionState(
     bool IsOpenApiGeneration,
-    bool UseTickerQEmailDispatch,
+    bool UseQuartzEmailDispatch,
     bool HttpsRedirectionEnabled);
 
 public static class ApiHostServiceCollectionExtensions
@@ -169,15 +169,15 @@ public static class ApiHostServiceCollectionExtensions
         var integrationSyncProcessorSettings = builder.Configuration
             .GetSection(IntegrationSyncProcessorSettings.SectionName)
             .Get<IntegrationSyncProcessorSettings>() ?? new IntegrationSyncProcessorSettings();
-        var useTickerQEmailDispatch = emailDispatchProcessorSettings.Enabled &&
-            emailDispatchProcessorSettings.Mode == EmailDispatchProcessorMode.TickerQ;
+        var useQuartzEmailDispatch = emailDispatchProcessorSettings.Enabled &&
+            emailDispatchProcessorSettings.Mode == EmailDispatchProcessorMode.Quartz;
 
         builder.Services.AddSingleton<EmailDispatchHostedDrainRunner>();
         builder.Services.AddSingleton<IntegrationSyncHostedDrainRunner>();
-        builder.Services.AddApiTickerQScheduler(
+        builder.Services.AddApiQuartzScheduler(
             builder.Configuration,
             builder.Environment,
-            enabled: useTickerQEmailDispatch && !isOpenApiGeneration);
+            enabled: useQuartzEmailDispatch && !isOpenApiGeneration);
 
         var skipDbContext = builder.Environment.IsEnvironment("Testing") || isOpenApiGeneration;
         builder.Services.ConfigurePersistenceServices(
@@ -512,7 +512,7 @@ public static class ApiHostServiceCollectionExtensions
 
         return new ApiHostCompositionState(
             isOpenApiGeneration,
-            useTickerQEmailDispatch,
+            useQuartzEmailDispatch,
             httpsRedirectionEnabled);
     }
 }

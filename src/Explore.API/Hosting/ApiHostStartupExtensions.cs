@@ -91,11 +91,11 @@ public static class ApiHostStartupExtensions
                         "Application and Data Protection migrations are owned by Event.MigrationService outside Development.");
                 }
 
-                if (state.UseTickerQEmailDispatch)
+                if (state.UseQuartzEmailDispatch)
                 {
-                    logger.LogInformation("Applying TickerQ scheduler migrations...");
-                    await app.MigrateTickerQSchedulerAsync();
-                    logger.LogInformation("TickerQ scheduler migrations completed successfully.");
+                    logger.LogInformation("Applying Quartz scheduler schema...");
+                    await app.ApplyQuartzSchedulerSchemaAsync(shutdownCts.Token);
+                    logger.LogInformation("Quartz scheduler schema applied successfully.");
                 }
             }
             catch (Exception exception)

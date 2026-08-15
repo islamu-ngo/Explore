@@ -341,7 +341,7 @@ jobs:
             trust_server_certificate: "false"
             server_flavor: ""
             server_version: ""
-            email_dispatch_mode: TickerQ
+            email_dispatch_mode: Quartz
             health_options: >-
               --health-cmd "pg_isready -U event -d event_mdb"
               --health-interval 5s
@@ -357,7 +357,7 @@ jobs:
             trust_server_certificate: "false"
             server_flavor: ""
             server_version: ""
-            email_dispatch_mode: HostedService
+            email_dispatch_mode: Quartz
             health_options: ""
           - provider: SqlServer
             engine_image: mcr.microsoft.com/mssql/server:2022-CU21-ubuntu-22.04@sha256:b1395aa51b4ec39981883560f1379ea9eba2a1c0719bf8e6477902769316bb79

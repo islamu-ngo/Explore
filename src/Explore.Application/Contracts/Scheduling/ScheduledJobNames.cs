@@ -1,5 +1,5 @@
 // ABOUTME: Stable operational job names for platform-owned scheduled work.
-// ABOUTME: Keeps scheduler identifiers centralized so TickerQ names do not drift from Application contracts.
+// ABOUTME: Keeps scheduler identifiers centralized so scheduler job names do not drift from Application contracts.
 
 namespace Explore.Application.Contracts.Scheduling;
 

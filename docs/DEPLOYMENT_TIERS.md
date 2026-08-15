@@ -83,11 +83,12 @@ Deployment tier does not change the relational namespace rule:
 - MariaDB and MySQL force `ie_`; create a distinct database for each instance
   on the same server rather than placing production and staging in one database.
 
-PostgreSQL TickerQ state is outside the application schema in the fixed
-`ticker` schema. Tier 2/3 deployments that run more than one ISLAMU instance
-must use separate PostgreSQL databases while TickerQ is enabled, or use the
-portable HostedService email-dispatch mode before sharing a database through
-separate application schemas.
+Quartz scheduler state is co-located in the application database under the
+`QRTZ_` table prefix on every provider, so Tier 1 standalone SQLite gets the same
+durable scheduling as Tier 2/3. Tier 2/3 deployments that run more than one
+ISLAMU instance against one database must give each instance a distinct
+`Scheduler:Quartz:SchedulerName`, or enable `Scheduler:Quartz:ClusteringEnabled`
+when the instances are intended to act as one cooperating cluster.
 
 ## Upgrade Path
 

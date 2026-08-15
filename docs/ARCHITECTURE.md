@@ -56,9 +56,9 @@ The provider-specific EF composition boundary owns physical names. PostgreSQL
 and SQL Server apply `Database:Schema` (default `islamu_event`) and retain clean
 table names. SQLite, MariaDB, and MySQL apply the fixed non-configurable `ie_`
 prefix; deployment instances isolate through distinct SQLite files or
-MariaDB/MySQL databases. PostgreSQL TickerQ state remains outside the
-application schema in its fixed `ticker` schema, so TickerQ-enabled instances
-must not share one PostgreSQL database.
+MariaDB/MySQL databases. Quartz scheduler state is co-located in the same
+database under the `QRTZ_` table prefix on every provider, created by idempotent
+DDL rather than an EF Core migration.
 
 ## Request Flow
 1. HTTP request enters the middleware pipeline (exception handling → security headers → correlation ID → logging → compression → HATEOAS → routing → timeouts → auth → rate limiting → authorization → output cache → ETag → idempotency).
@@ -185,7 +185,7 @@ The system uses a transactional outbox for reliable asynchronous event delivery:
 5. After `MaxRetryCount` exhausted, messages are dead-lettered and remain in the database for manual inspection.
 6. Optimistic concurrency via `TryMarkAsProcessing` prevents duplicate processing across workers.
 
-Handlers, controllers, automation executors, and sequence processors create durable intent only. They must not send SMTP, publish RabbitMQ, or schedule TickerQ jobs directly. Side effects are owned by approved background workers, scheduler functions, or Infrastructure dispatch components.
+Handlers, controllers, automation executors, and sequence processors create durable intent only. They must not send SMTP, publish RabbitMQ, or schedule Quartz jobs directly. Side effects are owned by approved background workers, scheduler functions, or Infrastructure dispatch components.
 
 Event publication currently writes one general outbox message in the same transaction: the internal `EventPublishedNotificationFanoutRequested` message for subscription fanout. `CompositeOutboxMessageDispatcher` routes it to `EventPublishedNotificationFanoutService`, which creates idempotent durable in-app notifications for eligible active actor subscribers. Retired external `EventPublished` broker rows are not produced and fail closed if encountered.
 
@@ -194,14 +194,14 @@ Notification refresh uses a one-way authenticated SSE endpoint at `GET /api/noti
 Specialized outbox variants exist for specific subsystems:
 - `PdsSyncOutbox` — AT Protocol federation sync (DID, Collection, RecordKey, PdsHost).
 - `PolicyChangeOutbox` — authorization policy change propagation (SettingScope).
-- `EmailDispatchOutbox` — Basic Dispatch Mode email delivery state for registration confirmation and future lifecycle email workflows. The selected primary database owns delivery state; PostgreSQL may use TickerQ to schedule drain execution, while other providers use the HostedService trigger. SMTP/RabbitMQ are transports only.
+- `EmailDispatchOutbox` — Basic Dispatch Mode email delivery state for registration confirmation and future lifecycle email workflows. The selected primary database owns delivery state; Quartz schedules drain execution on every provider, with HostedService available as a scheduler-free trigger. SMTP/RabbitMQ are transports only.
 - `IntegrationSyncOutbox` — durable external integration sync intent for Listmonk and future providers. Handlers enqueue provider/resource payload snapshots; background drains own external I/O and retry/dead-letter state.
 - `WebPushDispatchOutbox` — VAPID web push notification dispatch queue (Endpoint, P256dh, Auth, Retries).
 - `IncomingWebhookEffectOutbox` — provider incoming webhook effect reconciliation outbox for Coop callback repairs.
 
 ### Lifecycle email delivery architecture
 
-The workstream at `dev/active/email-responsibility-architecture/` separates one recipient occurrence into `NotificationIntent` (business meaning), `NotificationDelivery` (channel authorization/outcome), and `EmailDispatchOutbox` (SMTP execution). The selected primary database remains the only SMTP ledger; TickerQ and RabbitMQ carry pointers only. Application-owned transactions atomically persist all recipient channel rows, while fanout mutations persist one immutable occurrence and a PII-free pointer for a resumable worker.
+The workstream at `dev/active/email-responsibility-architecture/` separates one recipient occurrence into `NotificationIntent` (business meaning), `NotificationDelivery` (channel authorization/outcome), and `EmailDispatchOutbox` (SMTP execution). The selected primary database remains the only SMTP ledger; the scheduler and RabbitMQ carry pointers only. Application-owned transactions atomically persist all recipient channel rows, while fanout mutations persist one immutable occurrence and a PII-free pointer for a resumable worker.
 
 Report-decision execution adds a separate decision-owned durability seam. Each local or Coop `EventReportDecision` owns one `EventReportDecisionExecution`; conditional PostgreSQL updates fence enforcement and completion leases. Light/heavy actions must resolve the exact source-bound `EventModerationRecord` before the execution enters `CompletionPending`. Case/report mutation, organizer warnings, reporter outcome intent/deliveries, and execution completion then commit in one serializable transaction. This prevents a response-loss retry from repeating moderation or sending an outcome before truthful enforcement.
 
@@ -216,7 +216,7 @@ See [OUTBOX_PATTERN.md](OUTBOX_PATTERN.md) for full entity model, configuration,
 | `OutboxProcessor` | General outbox message dispatch with retry/dead-letter | Configurable (default 5s) |
 | `PdsSyncWorker` | Fenced, bounded-parallel AT Protocol event/RSVP delivery from committed `PdsSyncOutbox` rows, including retry/reconciliation and URI/CID settlement | Configurable, default 5s |
 | `AtprotoJetstreamSubscriber` | One globally leased, allowlisted consumer for canonical community event/RSVP materialization, tombstones, quarantine, and cursor advancement | Capability-aware reconnect loop with bounded backoff |
-| TickerQ `email-dispatch-drain` | Default Basic Dispatch Mode trigger for draining `EmailDispatchOutbox` through the shared drain service | Cron, default every 10s |
+| Quartz `email-dispatch-drain` | Default Basic Dispatch Mode trigger for draining `EmailDispatchOutbox` through the shared drain service | Cron `*/10 * * * * ?`, every 10s |
 | `EmailDispatchProcessor` | Hosted-service fallback trigger over the same EmailDispatch drain service | Configurable fallback |
 | `CompositeOutboxMessageDispatcher` | Dispatch component used by `OutboxProcessor` to route internal notification fanout, moderation fanout, and report provider sync messages | Invoked per outbox message |
 | `EmailDispatchRabbitMqPointerPublisherService` | Optional RabbitMQ producer loop that publishes pointer-only messages for due `EmailDispatchOutbox` rows after durable storage exists | Configurable polling, default 5s |

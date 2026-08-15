@@ -184,7 +184,7 @@ Use `ISafeAuthDiagnosticsPolicy` for BFF auth challenge and OIDC remote-failure 
 
 Keycloak-backed identity lifecycle email is account-authority owned. ISLAMU Event may request a Keycloak required-action email and record a local delegation audit, but Keycloak owns the action token, email template rendering, SMTP handoff, and delivery attempt.
 
-- Email verification, password reset, email update verification, MFA, and other Keycloak required-action emails must not be routed through `EmailDispatchOutbox`, `IEmailService`, RabbitMQ, TickerQ, or product unsubscribe flows.
+- Email verification, password reset, email update verification, MFA, and other Keycloak required-action emails must not be routed through `EmailDispatchOutbox`, `IEmailService`, RabbitMQ, the Quartz scheduler, or product unsubscribe flows.
 - Local results, logs, telemetry, and delegation audit rows may include only safe status, action, account-authority kind, local intent/delegation ids, HTTP status code, and normalized reason codes.
 - They must not include Keycloak admin tokens, provider secrets, raw Keycloak response bodies, action tokens, rendered email subjects or bodies, theme output, SMTP passwords, or secret-derived metadata.
 - Keycloak email theme customization changes Keycloak-owned templates only. It does not make ISLAMU Event the sender or decision owner for identity lifecycle messages.

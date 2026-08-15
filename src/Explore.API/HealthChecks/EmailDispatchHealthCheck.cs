@@ -13,7 +13,7 @@ namespace Explore.API.HealthChecks;
 
 public sealed class EmailDispatchHealthCheck(
     IOptions<EmailDispatchProcessorSettings> options,
-    IOptions<TickerQSchedulerOptions> schedulerOptions,
+    IOptions<QuartzSchedulerSettings> schedulerOptions,
     IServiceScopeFactory scopeFactory,
     BusinessMetrics metrics) : IHealthCheck
 {
@@ -38,8 +38,9 @@ public sealed class EmailDispatchHealthCheck(
             ["oldestPendingWarningSeconds"] = settings.HealthOldestPendingWarningSeconds,
             ["tenantBacklogWarningThreshold"] = settings.HealthTenantBacklogWarningThreshold,
             ["consumerId"] = settings.ConsumerId,
-            ["tickerQEnabled"] = scheduler.Enabled,
-            ["tickerQDashboardEnabled"] = scheduler.DashboardEnabled
+            ["schedulerEnabled"] = scheduler.Enabled,
+            ["schedulerPersistentStore"] = scheduler.UsePersistentStore,
+            ["schedulerStatusEndpointEnabled"] = scheduler.StatusEndpointEnabled
         };
 
         if (!settings.Enabled)
@@ -56,10 +57,10 @@ public sealed class EmailDispatchHealthCheck(
                 data: data);
         }
 
-        if (settings.Mode == EmailDispatchProcessorMode.TickerQ && !scheduler.Enabled)
+        if (settings.Mode == EmailDispatchProcessorMode.Quartz && !scheduler.Enabled)
         {
             return HealthCheckResult.Unhealthy(
-                "Basic email dispatch is configured for TickerQ, but TickerQ scheduler is disabled.",
+                "Basic email dispatch is configured for Quartz, but the Quartz scheduler is disabled.",
                 data: data);
         }
 
@@ -159,8 +160,8 @@ public sealed class EmailDispatchHealthCheck(
         }
 
         return HealthCheckResult.Healthy(
-            settings.Mode == EmailDispatchProcessorMode.TickerQ
-                ? "Basic email dispatch is scheduled by TickerQ."
+            settings.Mode == EmailDispatchProcessorMode.Quartz
+                ? "Basic email dispatch is scheduled by Quartz."
                 : "Basic email dispatch hosted service is enabled.",
             data);
     }

@@ -16,7 +16,7 @@ public sealed class ScheduledJobRegistry : IScheduledJobRegistry
             ScheduledJobPayloadKind.None,
             ScheduledJobOperationalStatus.Implemented,
             "Claims due EmailDispatchOutbox rows and executes approved dispatch transports.",
-            "*/10 * * * * *"),
+            "*/10 * * * * ?"),
         new(
             ScheduledJobNames.EventReminderDispatch,
             "EventLifecycle",
@@ -45,7 +45,7 @@ public sealed class ScheduledJobRegistry : IScheduledJobRegistry
             ScheduledJobPayloadKind.None,
             ScheduledJobOperationalStatus.Implemented,
             "Marks stale EmailDispatchOutbox processing leases as Unknown for operator review.",
-            "0 */1 * * * *"),
+            "0 */1 * * * ?"),
         new(
             ScheduledJobNames.DeadLetterSummary,
             "Operations",

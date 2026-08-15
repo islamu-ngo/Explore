@@ -1,0 +1,118 @@
+// ABOUTME: Unit-style tests for Quartz scheduler startup configuration validation.
+// ABOUTME: Proves status-endpoint and clustering settings fail fast before unsafe operational exposure.
+
+using Explore.API.Configuration;
+using TUnit.Core;
+
+namespace ApiIntegrationTests.Features;
+
+public sealed class QuartzSchedulerSettingsValidatorTests
+{
+    private readonly QuartzSchedulerSettingsValidator _validator = new();
+
+    [Test]
+    public async Task ValidateDefaultSettingsReturnsSuccess()
+    {
+        var result = _validator.Validate(null, new QuartzSchedulerSettings());
+
+        await Assert.That(result.Succeeded).IsTrue();
+    }
+
+    [Test]
+    public async Task ValidateRejectsInvalidSchedulerShape()
+    {
+        var result = _validator.Validate(null, new QuartzSchedulerSettings
+        {
+            SchedulerName = " ",
+            InstanceId = " ",
+            MaxConcurrency = 0,
+            TablePrefix = " "
+        });
+
+        await Assert.That(result.Succeeded).IsFalse();
+        await Assert.That(result.FailureMessage).Contains("SchedulerName");
+        await Assert.That(result.FailureMessage).Contains("InstanceId");
+        await Assert.That(result.FailureMessage).Contains("MaxConcurrency");
+        await Assert.That(result.FailureMessage).Contains("TablePrefix");
+    }
+
+    [Test]
+    public async Task ValidateRejectsTablePrefixThatIsUnsafeToInlineIntoDdl()
+    {
+        var result = _validator.Validate(null, new QuartzSchedulerSettings
+        {
+            TablePrefix = "QRTZ_\"; DROP TABLE users; --"
+        });
+
+        await Assert.That(result.Succeeded).IsFalse();
+        await Assert.That(result.FailureMessage).Contains("TablePrefix");
+    }
+
+    [Test]
+    public async Task ValidateRejectsStatusEndpointWithoutSafeAuthorization()
+    {
+        var result = _validator.Validate(null, new QuartzSchedulerSettings
+        {
+            StatusEndpointEnabled = true,
+            StatusEndpointPath = "admin/scheduler",
+            StatusEndpointAuthorizationPolicy = "AllowAnonymous"
+        });
+
+        await Assert.That(result.Succeeded).IsFalse();
+        await Assert.That(result.FailureMessage).Contains("StatusEndpointPath");
+        await Assert.That(result.FailureMessage).Contains("StatusEndpointAuthorizationPolicy");
+    }
+
+    [Test]
+    public async Task ValidateRejectsRootStatusEndpointPath()
+    {
+        var result = _validator.Validate(null, new QuartzSchedulerSettings
+        {
+            StatusEndpointEnabled = true,
+            StatusEndpointPath = "/"
+        });
+
+        await Assert.That(result.Succeeded).IsFalse();
+        await Assert.That(result.FailureMessage).Contains("StatusEndpointPath");
+    }
+
+    [Test]
+    public async Task ValidateRejectsClusteringWithoutPersistentStore()
+    {
+        var result = _validator.Validate(null, new QuartzSchedulerSettings
+        {
+            ClusteringEnabled = true,
+            UsePersistentStore = false
+        });
+
+        await Assert.That(result.Succeeded).IsFalse();
+        await Assert.That(result.FailureMessage).Contains("UsePersistentStore");
+    }
+
+    [Test]
+    public async Task ValidateRejectsClusteringWithSharedInstanceIdentity()
+    {
+        var result = _validator.Validate(null, new QuartzSchedulerSettings
+        {
+            ClusteringEnabled = true,
+            InstanceId = "fixed-node",
+            ClusterCheckinIntervalSeconds = 0
+        });
+
+        await Assert.That(result.Succeeded).IsFalse();
+        await Assert.That(result.FailureMessage).Contains("InstanceId");
+        await Assert.That(result.FailureMessage).Contains("ClusterCheckinIntervalSeconds");
+    }
+
+    [Test]
+    public async Task ValidateAcceptsClusteringWithAutoInstanceIdentity()
+    {
+        var result = _validator.Validate(null, new QuartzSchedulerSettings
+        {
+            ClusteringEnabled = true,
+            InstanceId = QuartzSchedulerSettings.AutoInstanceId
+        });
+
+        await Assert.That(result.Succeeded).IsTrue();
+    }
+}

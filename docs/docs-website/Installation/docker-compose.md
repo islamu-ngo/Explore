@@ -25,9 +25,11 @@ Namespace selection is automatic from the provider:
   `ie_users`. The prefix is not configurable. Give each SQLite instance its own
   local file and each MariaDB/MySQL instance its own database.
 
-PostgreSQL TickerQ uses its own fixed `ticker` schema. Do not share one
-PostgreSQL database between multiple TickerQ-enabled ISLAMU instances; use
-separate databases or the portable HostedService email-dispatch mode.
+Quartz scheduler tables are co-located in the application database under the
+`QRTZ_` prefix. When sharing one database between ISLAMU instances, give each a
+distinct `Scheduler:Quartz:SchedulerName`; otherwise use separate databases, or
+set `Scheduler:Quartz:ClusteringEnabled=true` when the instances are meant to
+cooperate as one scheduler cluster.
 
 PostgreSQL remains the default Compose profile. The release test matrix records the exact engine versions currently exercised in CI; treat those as tested baselines, not as a promise that every other engine version is supported.
 
@@ -40,7 +42,7 @@ docker compose run --rm event-migrationservice
 docker compose up -d
 ```
 
-MigrationService selects the provider-specific application and Data Protection migration assemblies, initializes the configured privacy-erasure authority, and seeds governed data. Run the migration command a second time during an upgrade rehearsal to prove idempotency. A deployed API does not migrate those schemas. The API owns only TickerQ's operational schema, and TickerQ is PostgreSQL-only; select `EmailDispatchProcessor__Mode=HostedService` for SQLite, SQL Server, MariaDB, or MySQL.
+MigrationService selects the provider-specific application and Data Protection migration assemblies, initializes the configured privacy-erasure authority, and seeds governed data. Run the migration command a second time during an upgrade rehearsal to prove idempotency. A deployed API does not migrate those schemas. The API owns only the Quartz scheduler schema, which is applied as idempotent DDL on every supported provider.
 
 ## Protect the privacy-erasure authority
 

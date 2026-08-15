@@ -9,6 +9,7 @@
     <PackageReference Include="Bogus" />
     <PackageReference Include="Cerbos.Sdk" />
     <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" />
+    <PackageReference Include="Microsoft.Data.Sqlite" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" />
     <PackageReference Include="NSubstitute" />
     <PackageReference Include="Respawn" />

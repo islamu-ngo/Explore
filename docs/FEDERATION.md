@@ -50,7 +50,7 @@ ATProto OAuth login is implemented, while PDS account hosting is not. Identity l
 
 - External PDS hosts own email confirmation, password reset, email update, account migration, and PDS security email for their accounts.
 - Future ISLAMU-operated PDS cells also own those PDS credential emails for the accounts they host, even when ISLAMU operates the infrastructure or shares SMTP plumbing.
-- ISLAMU Event must not send PDS credential-token emails through product `EmailDispatchOutbox`, `IEmailService`, RabbitMQ, TickerQ, or product unsubscribe flows.
+- ISLAMU Event must not send PDS credential-token emails through product `EmailDispatchOutbox`, `IEmailService`, RabbitMQ, the Quartz scheduler, or product unsubscribe flows.
 - If ATProto account email is unavailable or unverified for product notification purposes, collect a separately verified app-level notification email or use in-app notifications.
 
 ### ⏳ Not Yet Implemented (Protocol Roadmap)

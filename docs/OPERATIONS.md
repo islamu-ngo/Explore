@@ -260,10 +260,9 @@ exit blocks API rollout. Run it twice in deployment rehearsal to prove there is
 no pending work on the second pass.
 
 The API binds `Database:Runtime`. Development retains application migration and
-seed convenience; production/staging do not. The API owns only its TickerQ
-operational schema migration, which is enabled exclusively for PostgreSQL.
-Select `EmailDispatchProcessor:Mode=HostedService` on SQLite, SQL Server,
-MariaDB, and MySQL.
+seed convenience; production/staging do not. The API owns only the Quartz
+scheduler schema, which is applied as idempotent DDL rather than an EF Core
+migration and works on every supported primary provider, including SQLite.
 
 | Provider | Application migrations | Data Protection migrations | Namespace/history |
 |---|---|---|---|
@@ -356,7 +355,7 @@ Readiness interpretation:
 | `oidc-discovery` | API, Blazor, Control Plane BFF | OIDC metadata valid, or OIDC is not configured | Not used | Configured OIDC metadata endpoint is unreachable or invalid |
 | `atproto-authentication` | Blazor | AT Protocol login is disabled, or its canonical public URL/callback, key ring, and state/session stores are ready | Not used | Login is enabled but a bounded prerequisite is unavailable |
 | `smtp` | API | SMTP connection/auth succeeds | SMTP is not configured | Configured SMTP is unreachable or authentication fails |
-| `email-dispatch` | API | Selected Basic Dispatch trigger is enabled (`TickerQ` scheduler or hosted-service fallback) and outbox counts are below warning thresholds | Dispatch is intentionally disabled, due dispatch backlog crosses threshold, stale `Processing` rows cross threshold, or `DeadLettered` rows cross threshold | TickerQ mode selected while scheduler is disabled; invalid dispatch/scheduler options fail startup; RabbitMQ is not checked in Basic mode |
+| `email-dispatch` | API | Selected Basic Dispatch trigger is enabled (`Quartz` scheduler or hosted-service fallback) and outbox counts are below warning thresholds | Dispatch is intentionally disabled, due dispatch backlog crosses threshold, stale `Processing` rows cross threshold, or `DeadLettered` rows cross threshold | `Quartz` mode selected while scheduler is disabled; invalid dispatch/scheduler options fail startup; RabbitMQ is not checked in Basic mode |
 | `email-dispatch-retention-cleanup` | API | Retention cleanup is enabled in redaction or dry-run mode | Cleanup is intentionally disabled | Invalid retention options fail startup |
 | `email-dispatch-rabbitmq` | API | RabbitMQ Dispatch Mode is disabled, or enabled and topology can be declared | Not used | RabbitMQ mode is enabled but the broker/topology is unreachable or invalid |
 | `web-push-dispatch` | API | Web Push is disabled, or enabled with bounded backlog/retry/lease/failure counts | Due, stale-processing, or terminal-failure counts crossed configured warning thresholds | Invalid VAPID/worker settings fail startup |
@@ -384,7 +383,7 @@ Operational rules:
 - SMTP readiness is launch-critical when email is enabled. A 2026-07-04 FullLocal proof stopped Mailpit through `aspire resource mailpit stop` and API `/health` correctly returned HTTP 503 with `smtp` Unhealthy, then returned HTTP 200 Healthy after Mailpit restart. The SMTP readiness registration is bounded to five seconds; the follow-up proof returned HTTP 503 in `5.014s` with `smtp` Unhealthy and recovered to HTTP 200 after Mailpit restart.
 - Instance Cerbos readiness follows authorization fail-closed semantics: if the operator selected `authorization.provider=cerbos`, an unreachable PDP makes `/health` unhealthy rather than silently falling back to local RBAC.
 - Local authorization mode skips Cerbos readiness, so self-hosted/local deployments do not need a Cerbos PDP unless explicitly selected.
-- Basic Email Dispatch Mode skips RabbitMQ readiness entirely. A self-hosted deployment can send registration confirmation email with API + PostgreSQL + configured SMTP only. The default trigger is TickerQ `email-dispatch-drain`; the hosted service mode is a fallback over the same drain service. The `email-dispatch` readiness payload also reports safe aggregate outbox counts for due dispatch backlog, retry-scheduled rows, stale processing leases, and dead-letter rows.
+- Basic Email Dispatch Mode skips RabbitMQ readiness entirely. A self-hosted deployment can send registration confirmation email with API + PostgreSQL + configured SMTP only. The default trigger is the Quartz `email-dispatch-drain` job; the hosted service mode is a fallback over the same drain service. The `email-dispatch` readiness payload also reports safe aggregate outbox counts for due dispatch backlog, retry-scheduled rows, stale processing leases, and dead-letter rows.
 - Web Push readiness is healthy while `WebPush:Enabled=false`. When enabled, `web-push-dispatch` exposes only bounded aggregate dispatch counts and thresholds; it never exposes subscription endpoints, browser keys, VAPID material, tenant IDs, payloads, or provider bodies. Push-service `404`/`410` outcomes deactivate stale subscriptions transactionally, while retryable `429`/`5xx` outcomes remain bounded by the dispatch TTL and maximum attempts.
 - The control-plane operations endpoint includes a `moderation-reporting` status card for managed reporting routing. It reports aggregate-only provider sync metrics (`pending-sync`, `stuck-pending-sync`, `failed-sync`, `disabled-sync`, `ignored-sync`) and active-tenant lock impact metrics (`reporting-locked-tenants`, `reporting-unlocked-tenants`, `osprey-locked-tenants`, `coop-locked-tenants`). `Reporting:Health:StuckProviderSyncMinutes` defaults to `120`; `Reporting:Health:FailedProviderSyncWarningThreshold` defaults to `1`. These metrics are safe for operators and must not include tenant identifiers, report identifiers, provider URLs, API keys, webhook secrets, correlation IDs, provider payloads, or raw provider errors.
 - RabbitMQ Dispatch Mode is optional transport infrastructure. When `EmailDispatchRabbitMq:Enabled=false`, the `email-dispatch-rabbitmq` check is healthy without opening a broker connection. When enabled, missing broker connectivity or failed topology declaration is unhealthy because the operator explicitly selected RabbitMQ transport.
@@ -770,13 +769,13 @@ No additional configuration keys were added for SSE refresh hints in this implem
 Registration confirmation email is handled as a durable side effect:
 
 1. The registration command creates an `EmailDispatchOutbox` row in the same primary-database transaction as registration state.
-2. With PostgreSQL, TickerQ `email-dispatch-drain` triggers the shared drain service. SQLite, SQL Server, MariaDB, and MySQL must use `EmailDispatchProcessor:Mode=HostedService`, whose hosted timer calls the same service.
-3. Batch, TickerQ, hosted-service, and RabbitMQ pointer paths enter the same atomic claim operation. Provider-specific database locking applies the instance drain pause, fair tenant rounds, required-work priority, paused-tenant exclusion, and global/per-tenant `Processing` ceilings without incrementing `AttemptCount`. Dispatch-time eligibility rechecks the instance pause to close the claim-to-provider race.
+2. The Quartz `email-dispatch-drain` job triggers the shared drain service on every supported primary provider, including SQLite. `EmailDispatchProcessor:Mode=HostedService` remains available as a scheduler-free timer over the same service.
+3. Batch, Quartz, hosted-service, and RabbitMQ pointer paths enter the same atomic claim operation. Provider-specific database locking applies the instance drain pause, fair tenant rounds, required-work priority, paused-tenant exclusion, and global/per-tenant `Processing` ceilings without incrementing `AttemptCount`. Dispatch-time eligibility rechecks the instance pause to close the claim-to-provider race.
 4. The conditional eligibility transition rechecks current authorization, consent, preference, and verified address, then reserves both persisted SMTP buckets against the database clock. Rate deferral releases the lease without creating an attempt, receipt, or provider fence.
 5. An admitted transition atomically decrements the global and tenant buckets, increments `AttemptCount`, and creates the processing receipt plus `provider_handoff_started` attempt fence before SMTP I/O.
-6. SMTP is called through `IEmailService`; handlers and controllers do not send SMTP, publish RabbitMQ, or schedule TickerQ jobs directly.
+6. SMTP is called through `IEmailService`; handlers and controllers do not send SMTP, publish RabbitMQ, or schedule Quartz jobs directly.
 7. Provider acceptance, provider failure, and acceptance reconciliation use tenant/outbox/lease/attempt-fenced transactions to align `EmailDispatchOutbox`, `EmailDispatchAttempt`, `EmailDispatchReceipt`, and `NotificationDelivery`.
-8. TickerQ `email-dispatch-recovery-scan` returns stale unfenced claims to `RetryScheduled` and marks only fenced or partially fenced provider uncertainty `Unknown`; the hosted-service fallback runs the same recovery scan before each drain loop.
+8. The Quartz `email-dispatch-recovery-scan` job returns stale unfenced claims to `RetryScheduled` and marks only fenced or partially fenced provider uncertainty `Unknown`; the hosted-service fallback runs the same recovery scan before each drain loop.
 
 When an absolute public base URL is configured through `PublicBaseUrl`, `App:PublicBaseUrl`, or `Application:PublicBaseUrl`, categorized lifecycle messages include `List-Unsubscribe`, `List-Unsubscribe-Post: List-Unsubscribe=One-Click`, and a visible unsubscribe URL appended to the plain text and HTML bodies. Public launch deployments should configure the public base URL; otherwise the dispatch path still sends allowed email, but it cannot emit absolute unsubscribe links.
 
@@ -787,28 +786,28 @@ Operator signals:
 | `email-dispatch` health check | Selected dispatch mode, safe settings, persisted optional-reminder deferral, and active non-paused aggregate counts including due, retry, stale processing, unknown, parked, and dead-lettered rows. Parked rows are informational; unknown rows degrade at the configured threshold. |
 | `explore.email_dispatch.attempts` | Provider-handoff outcome counter for sent, unknown, retry-scheduled, and dead-lettered attempts. Closed-vocabulary labels omit tenant identity. |
 | `explore.email_dispatch.operational_outcomes` | Eligibility-skip and SMTP-rate-deferral counter. These outcomes do not claim provider I/O occurred. |
-| TickerQ dashboard | Optional instance-admin-only scheduler internals. It is disabled by default and is not the product/operator source of truth for email delivery state. |
+| Scheduler status endpoint | Optional instance-admin-only, read-only scheduler internals at `Scheduler:Quartz:StatusEndpointPath`. It is disabled by default and is not the product/operator source of truth for email delivery state. |
 | Structured drain logs | Include dispatch/outbox IDs, tenant IDs, outcomes, retry delay, and normalized failure category; do not include bodies, recipients, subjects, secrets, provider message IDs, or raw SMTP error text. |
 
 Timeout-like SMTP outcomes are recorded as `Unknown` instead of blind retry. Use the HAL `reconcile` action only after provider evidence supports `Delivered` or `NotDelivered`; the transaction aligns outbox, current attempt, receipt, and notification delivery. Generic replay excludes `Unknown`, while `resolve-without-replay` remains the explicit unresolved/abandon path. Skipped rows are terminal.
 
-Crash-window recovery follows the durable handoff evidence. If a node dies after claim but before `provider_handoff_started`, the scan clears the exact lease and schedules an immediate safe retry with `processing_lease_released`; no SMTP attempt was consumed. If the current attempt has the provider fence, or a processing receipt shows a partial fence, recovery atomically marks the outbox/current attempt/receipt/delivery graph `Unknown` with `processing_lease_expired`. Operators must reconcile fenced uncertainty before replay. Recovery selects bounded rows with `FOR UPDATE SKIP LOCKED` and never infers SMTP success from TickerQ or RabbitMQ state.
+Crash-window recovery follows the durable handoff evidence. If a node dies after claim but before `provider_handoff_started`, the scan clears the exact lease and schedules an immediate safe retry with `processing_lease_released`; no SMTP attempt was consumed. If the current attempt has the provider fence, or a processing receipt shows a partial fence, recovery atomically marks the outbox/current attempt/receipt/delivery graph `Unknown` with `processing_lease_expired`. Operators must reconcile fenced uncertainty before replay. Recovery selects bounded rows with `FOR UPDATE SKIP LOCKED` and never infers SMTP success from scheduler or RabbitMQ state.
 
-TickerQ retries are infrastructure retries. Expected SMTP/provider outcomes should be caught by the drain service and persisted in `EmailDispatchOutbox`; only unexpected infrastructure failures should bubble to TickerQ as failed job executions.
+The durable `EmailDispatchOutbox` drain is the single retry authority. Expected SMTP/provider outcomes are caught by the drain service and persisted in `EmailDispatchOutbox`; only unexpected infrastructure failures bubble to the scheduler as failed job executions. One-off reminder triggers are deliberately not retried by the scheduler: a failed wake-up leaves the outbox row due, and the next `email-dispatch-drain` pass picks it up.
 
-TickerQ operational state is stored by the API-owned `ApiTickerQDbContext` in the PostgreSQL `ticker` schema. The schema is fixed to `ticker` by startup validation because the scheduler migration owns concrete table placement; do not change `Scheduler:TickerQ:Schema` without adding a matching migration path. The scheduler DbContext also keeps its EF migration history table in the `ticker` schema so it never reads the primary application's snake_case migration history rows.
+Quartz operational state lives in the primary application database under the `Scheduler:Quartz:TablePrefix` prefix (default `QRTZ_`). These are raw ADO tables created by embedded, idempotent DDL, not EF Core migrations, so there is no second `DbContext` and no second migration chain. The same table set works on PostgreSQL, SQLite, SQL Server, MariaDB, and MySQL.
 
-Dashboard protection is enforced twice: TickerQ is configured with host authentication, and the API wraps `UseTickerQ()` with an instance-admin authorization guard for the configured dashboard path. If `Scheduler:TickerQ:DashboardEnabled=false`, the dashboard route is not exposed.
+Status-endpoint protection is enforced twice: authorization middleware challenges or forbids on the configured path before any scheduler state is read, and the mapped endpoint additionally requires the instance-admin policy. If `Scheduler:Quartz:StatusEndpointEnabled=false`, the route is not exposed at all.
 
 The scheduler job catalog is Application-owned through `IScheduledJobRegistry`. Current implemented jobs are:
 
 | Job | Schedule type | Payload | Source of truth |
 |---|---|---|---|
-| `email-dispatch-drain` | Cron, every 10 seconds | None | `EmailDispatchOutbox` pending/retry state |
-| `email-dispatch-recovery-scan` | Cron, every minute | None | Stale `EmailDispatchOutbox` processing leases |
+| `email-dispatch-drain` | Cron `*/10 * * * * ?` (every 10 seconds) | None | `EmailDispatchOutbox` pending/retry state |
+| `email-dispatch-recovery-scan` | Cron `0 */1 * * * ?` (every minute) | None | Stale `EmailDispatchOutbox` processing leases |
 | `event-reminder-dispatch` | One-off time trigger | Pointer-only IDs | Pre-persisted `EmailDispatchOutbox` row |
 
-Planned-only jobs are `general-outbox-drain`, `pds-sync-drain`, `dead-letter-summary`, `waitlist-promotion-scan`, and `tenant-maintenance-scan`. Do not migrate general outbox or PDS workers to TickerQ until EmailDispatch has green multi-node duplicate execution and crash-window recovery proof.
+Planned-only jobs are `general-outbox-drain`, `pds-sync-drain`, `dead-letter-summary`, `waitlist-promotion-scan`, and `tenant-maintenance-scan`. Do not migrate general outbox or PDS workers to Quartz until EmailDispatch has green multi-node duplicate execution and crash-window recovery proof.
 
 ### Lifecycle-Email Operations
 
@@ -870,7 +869,7 @@ Operational boundaries:
 | Concern | Guidance |
 |---|---|
 | Source of truth | Keycloak is the source of truth for required-action tokens, rendered templates, and provider-side delivery. Local delegation audit proves ISLAMU requested the action; it is not delivery state. |
-| Product dispatch separation | Do not inspect `email-dispatch` health, `EmailDispatchOutbox`, RabbitMQ dispatch queues, or TickerQ jobs for Keycloak identity email delivery. Use Keycloak realm SMTP/theme settings and Keycloak logs. |
+| Product dispatch separation | Do not inspect `email-dispatch` health, `EmailDispatchOutbox`, RabbitMQ dispatch queues, or Quartz jobs for Keycloak identity email delivery. Use Keycloak realm SMTP/theme settings and Keycloak logs. |
 | `keycloak.smtp_mode` | Operational policy label only. `managed` means SMTP is provider-managed outside this deployment. Self-hosted/shared-SMTP modes may configure Keycloak realm SMTP from deployment credentials, but ownership remains Keycloak. |
 | Local Mailpit | Local Keycloak can point its realm SMTP at Mailpit for developer inspection. This is separate from product Basic Dispatch Mailpit settings and must not be documented as a production default. |
 | Theme sync | Keycloak email templates live in the Keycloak `email` theme type. A future `keycloak.theme_sync_enabled` automation may apply theme assets, but rendered content and sending stay Keycloak-owned. |
@@ -1202,7 +1201,7 @@ For delayed or failed publication, keep the local event authoritative. Inspect t
 ## Incident Triage Quick Checks
 
 1. Check `/health` and `/alive`.
-2. Check MigrationService logs for primary, Data Protection, authority, or seeding failures; check API logs for runtime-provider validation and TickerQ-only schema failures.
+2. Check MigrationService logs for primary, Data Protection, authority, or seeding failures; check API logs for runtime-provider validation and scheduler schema failures.
 3. Check rate-limit/timeouts if clients receive `429` or `504`.
 4. Check tenant resolution and deployment mode (`deployment.mode`) if tenant-scoped behavior is wrong.
 5. Check setup-secret mode if onboarding is blocked.
