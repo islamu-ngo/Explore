@@ -115,6 +115,9 @@ public sealed class MicrosoftFormsRegistrationProviderDescriptorTests
         public Task<ResolvedSecret?> ResolveAsync(string settingKey, Guid? tenantId, CancellationToken cancellationToken = default) =>
             Task.FromResult<ResolvedSecret?>(null);
 
+        public Task<ResolvedSecret?> ResolveQualifiedAsync(string settingKey, SecretScope scope, Guid? scopeId, string qualifier, CancellationToken cancellationToken = default) =>
+            Task.FromResult<ResolvedSecret?>(null);
+
         public Task<ResolvedSecret?> ResolveTenantBindingAsync(Guid tenantId, Guid bindingId, CancellationToken cancellationToken = default) =>
             Task.FromResult<ResolvedSecret?>(bindingId == WebhookBindingId
                 ? new ResolvedSecret("test", "callback-key", SecretSourceType.EnvironmentVariable, SecretScope.Tenant, tenantId, UtcNow)

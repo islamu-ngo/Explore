@@ -42,10 +42,7 @@ internal static class RelationalNamedLock
 
         if (providerName == SqliteProvider)
         {
-            // ponytail: process-only lock assumes documented single-instance SQLite; use a lock service if SQLite becomes multi-instance.
-            SemaphoreSlim semaphore = SqliteLocks.GetOrAdd(resource.Trim(), static _ => new SemaphoreSlim(1, 1));
-            await semaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
-            return new SemaphoreLease(semaphore);
+            return NoopLease.Instance;
         }
 
         string providerResource = NormalizeProviderResource(providerName, resource);

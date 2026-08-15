@@ -14,7 +14,7 @@ namespace Event.Application.UnitTests.Services;
 
 public sealed class FormSchemaArtifactGeneratorTests
 {
-    private const string GoldenHash = "b56f180c1115886d07216877e76a91344ac7c4b2745b4047ad58cec9d86a8baa";
+    private const string GoldenHash = "6a00e655fa6f96c3269904be33f91b4d69cd6f2ccbe22c9ddb0ecb7609d21e7c";
     private static readonly DateTime Now = new(2026, 8, 1, 10, 0, 0, DateTimeKind.Utc);
     private static readonly IFormSchemaArtifactGenerator Generator = new FormSchemaArtifactGenerator();
 
@@ -24,6 +24,7 @@ public sealed class FormSchemaArtifactGeneratorTests
         FormSchemaArtifactBundle artifacts = Generator.Generate(Build());
 
         await Assert.That(artifacts.DataSchemaJson).Contains("\"$schema\":\"https://json-schema.org/draft/2020-12/schema\"");
+        await Assert.That(artifacts.DataSchemaJson).Contains("\"x-isExportable\":false");
         await Assert.That(artifacts.UiSchemaJson).Contains("\"sections\"");
         await Assert.That(artifacts.LogicSchemaJson).Contains("\"rules\"");
         await Assert.That(artifacts.MappingArtifactJson).IsEqualTo("{\"fields\":[],\"options\":[]}");

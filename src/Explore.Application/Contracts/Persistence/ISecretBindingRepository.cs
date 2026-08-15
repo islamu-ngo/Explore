@@ -29,6 +29,13 @@ public interface ISecretBindingRepository : IGenericRepository<SecretBinding, Gu
         Guid? scopeId,
         CancellationToken cancellationToken = default);
 
+    Task<SecretBinding?> GetByKeyScopeAndQualifierAsync(
+        string settingKey,
+        SecretScope scope,
+        Guid? scopeId,
+        string qualifier,
+        CancellationToken cancellationToken = default);
+
     /// <summary>
     /// Gets all bindings defined at a specific scope. Use with
     /// <c>scope=Instance, scopeId=null</c> to list instance-wide bindings,
@@ -59,5 +66,12 @@ public interface ISecretBindingRepository : IGenericRepository<SecretBinding, Gu
         string settingKey,
         SecretScope scope,
         Guid? scopeId,
+        CancellationToken cancellationToken = default);
+
+    Task<bool> ExistsForScopeAndQualifierAsync(
+        string settingKey,
+        SecretScope scope,
+        Guid? scopeId,
+        string qualifier,
         CancellationToken cancellationToken = default);
 }

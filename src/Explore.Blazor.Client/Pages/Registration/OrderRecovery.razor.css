@@ -9,7 +9,8 @@
 
 .registration-order-recovery__state,
 .registration-order-recovery__summary,
-.registration-order-recovery__details {
+.registration-order-recovery__details,
+.registration-order-recovery__promotion {
     display: grid;
     gap: var(--isl-space-3);
     padding: var(--isl-space-4);
@@ -22,4 +23,37 @@
     gap: var(--isl-space-1);
     margin: 0;
     padding-inline-start: var(--isl-space-5);
+}
+
+.registration-order-recovery__promotion,
+.registration-order-recovery__totals {
+    display: grid;
+    gap: var(--isl-space-3);
+}
+
+.registration-order-recovery__promotion-form,
+.registration-order-recovery__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--isl-space-3);
+    align-items: center;
+}
+
+.registration-order-recovery__promotion-status {
+    padding: var(--isl-space-3);
+    border: 1px solid var(--isl-color-border);
+    border-radius: var(--isl-radius-card);
+}
+
+.registration-order-recovery__totals > div {
+    display: flex;
+    justify-content: space-between;
+    gap: var(--isl-space-4);
+    border-block-end: 1px solid var(--isl-color-divider);
+    padding-block-end: var(--isl-space-2);
+}
+
+.registration-order-recovery__totals dd {
+    margin: 0;
+    text-align: end;
 }

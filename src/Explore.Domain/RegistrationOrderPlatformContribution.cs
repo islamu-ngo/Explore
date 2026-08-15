@@ -77,8 +77,8 @@ public sealed class RegistrationOrderPlatformContribution : ITenantEntity, IAudi
 
         PlatformContributionOption option = setting.Options.SingleOrDefault(option => option.ContributionBasisPoints == contributionBasisPoints)
             ?? throw new ArgumentException("Contribution selection is not enabled by the setting.", nameof(contributionBasisPoints));
-        long amountMinor = option.CalculateAmountMinor(organizerDirectedTotalMinor);
-        return amountMinor == 0
+        long amountMinor = MinorUnitMath.ApplyBasisPoints(organizerDirectedTotalMinor, option.ContributionBasisPoints);
+        return contributionBasisPoints == 0
             ? null
             : new RegistrationOrderPlatformContribution(
                 registrationOrderId,
@@ -87,5 +87,15 @@ public sealed class RegistrationOrderPlatformContribution : ITenantEntity, IAudi
                 contributionBasisPoints,
                 amountMinor,
                 currency.Code);
+    }
+
+    public void Reprice(long organizerDirectedTotalMinor)
+    {
+        if (organizerDirectedTotalMinor < 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(organizerDirectedTotalMinor));
+        }
+
+        AmountMinor = MinorUnitMath.ApplyBasisPoints(organizerDirectedTotalMinor, ContributionBasisPointsSnapshot);
     }
 }

@@ -33,6 +33,8 @@ public sealed class RegistrationOrderLine : ITenantEntity, IAuditableEntity, ICo
         ChosenUnitPriceAmountSnapshot = chosenUnitPriceAmountSnapshot;
         CurrencyCodeSnapshot = ticketType.CurrencyCode;
         LineSubtotalSnapshot = MinorUnitMath.Multiply(unitPriceAmountSnapshot, quantity);
+        PreDiscountLineSubtotalMinorSnapshot = LineSubtotalSnapshot;
+        PostDiscountLineSubtotalMinorSnapshot = LineSubtotalSnapshot;
         TicketTypeNameSnapshot = ticketType.Name;
         TicketPricingModeSnapshot = ticketType.TicketPricingModeId;
         MinimumPriceAmountSnapshot = ticketType.MinimumPriceMinor;
@@ -58,6 +60,12 @@ public sealed class RegistrationOrderLine : ITenantEntity, IAuditableEntity, ICo
     public string CurrencyCodeSnapshot { get; private set; } = string.Empty;
 
     public long LineSubtotalSnapshot { get; private set; }
+
+    public long PreDiscountLineSubtotalMinorSnapshot { get; private set; }
+
+    public long PromotionDiscountAmountMinorSnapshot { get; private set; }
+
+    public long PostDiscountLineSubtotalMinorSnapshot { get; private set; }
 
     public string TicketTypeNameSnapshot { get; private set; } = string.Empty;
 
@@ -145,6 +153,27 @@ public sealed class RegistrationOrderLine : ITenantEntity, IAuditableEntity, ICo
             unitPriceAmount,
             chosenSnapshot,
             policyVersionSnapshot);
+    }
+
+    public void ApplyPromotionDiscount(PromotionLineDiscountAllocation allocation)
+    {
+        if (allocation.LineId != Id || allocation.PreDiscountLineSubtotalMinor != LineSubtotalSnapshot ||
+            allocation.DiscountMinor < 0 || allocation.PostDiscountLineSubtotalMinor < 0 ||
+            allocation.PostDiscountLineSubtotalMinor != LineSubtotalSnapshot - allocation.DiscountMinor)
+        {
+            throw new ArgumentException("Promotion allocation does not match the line snapshot.", nameof(allocation));
+        }
+
+        PreDiscountLineSubtotalMinorSnapshot = allocation.PreDiscountLineSubtotalMinor;
+        PromotionDiscountAmountMinorSnapshot = allocation.DiscountMinor;
+        PostDiscountLineSubtotalMinorSnapshot = allocation.PostDiscountLineSubtotalMinor;
+    }
+
+    public void ClearPromotionDiscount()
+    {
+        PreDiscountLineSubtotalMinorSnapshot = LineSubtotalSnapshot;
+        PromotionDiscountAmountMinorSnapshot = 0;
+        PostDiscountLineSubtotalMinorSnapshot = LineSubtotalSnapshot;
     }
 
     private static (long UnitPriceAmount, long? ChosenSnapshot) ResolveUnitPrice(

@@ -88,6 +88,23 @@ public sealed class AuditingSecretResolverDecorator : ISecretResolver
         return result;
     }
 
+    public async Task<ResolvedSecret?> ResolveQualifiedAsync(
+        string settingKey,
+        SecretScope scope,
+        Guid? scopeId,
+        string qualifier,
+        CancellationToken cancellationToken = default)
+    {
+        var result = await _inner.ResolveQualifiedAsync(settingKey, scope, scopeId, qualifier, cancellationToken)
+            .ConfigureAwait(false);
+        if (result is null)
+        {
+            _logger.LogDebug("Secret resolution miss: settingKey={SettingKey} scope={Scope} scopeId={ScopeId}", settingKey, scope, scopeId);
+        }
+
+        return result;
+    }
+
     /// <inheritdoc />
     public Task InvalidateAsync(
         string settingKey,

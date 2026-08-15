@@ -18,6 +18,9 @@ public sealed class RegistrationOrderLineConfiguration : IEntityTypeConfiguratio
         builder.Property(line => line.UnitPriceAmountSnapshot).HasColumnType("bigint");
         builder.Property(line => line.ChosenUnitPriceAmountSnapshot).HasColumnType("bigint");
         builder.Property(line => line.LineSubtotalSnapshot).HasColumnType("bigint");
+        builder.Property(line => line.PreDiscountLineSubtotalMinorSnapshot).HasColumnType("bigint");
+        builder.Property(line => line.PromotionDiscountAmountMinorSnapshot).HasColumnType("bigint");
+        builder.Property(line => line.PostDiscountLineSubtotalMinorSnapshot).HasColumnType("bigint");
         builder.Property(line => line.MinimumPriceAmountSnapshot).HasColumnType("bigint");
         builder.Property(line => line.SuggestedPriceAmountSnapshot).HasColumnType("bigint");
         builder.Property(line => line.CreatedAt).IsRequired();

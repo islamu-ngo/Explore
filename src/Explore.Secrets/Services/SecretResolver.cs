@@ -113,6 +113,41 @@ public sealed class SecretResolver : ISecretResolver
         return await ResolveBoundBindingAsync(binding, cancellationToken).ConfigureAwait(false);
     }
 
+    public async Task<ResolvedSecret?> ResolveQualifiedAsync(
+        string settingKey,
+        SecretScope scope,
+        Guid? scopeId,
+        string qualifier,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(settingKey);
+        ArgumentException.ThrowIfNullOrWhiteSpace(qualifier);
+
+        var stopwatch = Stopwatch.StartNew();
+        try
+        {
+            SecretBinding? binding = await _bindings.GetByKeyScopeAndQualifierAsync(
+                settingKey,
+                scope,
+                scopeId,
+                qualifier,
+                cancellationToken).ConfigureAwait(false);
+
+            if (binding is null)
+            {
+                _metrics.RecordMiss(settingKey, source: null);
+                return null;
+            }
+
+            return await ResolveBoundBindingAsync(binding, cancellationToken).ConfigureAwait(false);
+        }
+        finally
+        {
+            stopwatch.Stop();
+            _metrics.RecordDuration(settingKey, stopwatch.Elapsed.TotalMilliseconds);
+        }
+    }
+
     /// <inheritdoc />
     public Task InvalidateAsync(
         string settingKey,

@@ -340,6 +340,7 @@ public sealed class RegistrationOrderTests
 
         catalog.AddTicketType(ticketType, null);
         catalog.AddEntitlement(ticketType, TicketTypeEntitlement.CreateForEvent(ticketType.Id, catalog.TenantId, catalog.EventId, 1));
+        catalog.UpdateCommercialDisclosures("Merchant", "Refund", "Support");
         catalog.Publish();
         return catalog;
     }

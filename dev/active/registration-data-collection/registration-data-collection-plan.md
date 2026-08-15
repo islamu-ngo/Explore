@@ -3,9 +3,26 @@
 
 # Registration Data Collection & Participation Platform — Implementation Plan
 
-Last Updated: 2026-08-14 Europe/Brussels
+Last Updated: 2026-08-15 Europe/Brussels
 
 ---
+
+## Handoff - 2026-08-15 Europe/Brussels: Phase 17 Verification Approved / User Acceptance Pending
+
+### Current State
+- Tasks 17.1-17.5 are implemented and independently confirmed. Promotions are versioned, event/catalog-scoped local commercial state with fixed-minor or basis-point discounts, deterministic integer-minor allocation, immediate server-timed revocation affecting only future redemptions, ticket eligibility, validity windows, total redemption limits, and verified-purchaser limits. Orders and lines retain immutable pre-discount, discount, and post-discount snapshots; discounts are applied before platform fees and voluntary contribution.
+- `PromotionReservation` owns the live redemption slot. Apply/remove/finalize/cancel/reject/expiry paths are idempotent, count Active plus Consumed use, release or consume exactly once, and share deterministic persistence lock ordering with capacity holds. Five generated `AddEventPromotionCodes` migrations and snapshots cover PostgreSQL, SQLite, SQL Server, MariaDB, and MySQL; all five migration-owner pending-model checks passed.
+- Promotion lookup uses the dedicated instance/server-only `promotions.code_lookup_hmac_key` secret with qualified versions `v{LookupKeyVersion}` and non-secret `Promotions:CodeLookup:ActiveKeyVersion`. Infrastructure computes tenant/event-scoped HMAC-SHA256 digests, resolves every persisted candidate key version, compares in fixed time, and fails closed when retained key material is unavailable. Plaintext is returned only once from create/rotate commands; ordinary API, HAL, generated-client, UI, logs, and evidence expose only masked display labels and safe totals.
+- Organizer management and authenticated/guest order apply/remove flows are CQRS/API operations governed by exact commercial/order authority, write or PublicTransactional controls, idempotency, rate limits, and server-authored HAL relations. The generated NSwag client now carries a typed `HalResourceOfPromotionManagementDto` collection. Studio and checkout surfaces use those relations only, clear one-time plaintext on lifecycle changes, cancel stale work, and announce separate organizer, discount, fee, contribution, and final totals accessibly.
+
+### Validation
+- Independent Wave 1-3 and final F1-F5 verdicts are confirmed. Evidence is retained under `.omo/evidence/phase17-domain/`, `.omo/evidence/phase17-application/`, `.omo/evidence/phase17-persistence/`, `.omo/evidence/phase17-api/`, `.omo/evidence/phase17-ui/`, and `.omo/evidence/phase17-closeout/`.
+- Current closeout evidence includes Domain 805/805, Secrets 230/230, API promotion controller 7/7, promotion privacy Architecture 4/4, Studio promotions 12/12, checkout recovery 41/41, registration-order service 6/6, event-promotion service 2/2, lifecycle 42/42, full Application 3708/3708, five-provider model parity/pending-model checks, one-winner redemption races, and nine SQLite lifecycle scenarios. The resolver-disabled Release build passes with zero errors.
+- Deterministic UI artifacts are `.omo/evidence/phase17-ui/studio.html` and `.omo/evidence/phase17-ui/checkout.html`; F4 approved their visual/accessibility structure with explicit no-browser/no-pixel limitations. No browser, Aspire, Docker, live database, or live provider execution is claimed. The full Persistence environment gap remains precisely attributed and focused Phase 17 persistence passes 16/16.
+
+### Next Action
+1. Surface the five unconditional PASS receipts and wait for user acceptance before making the final Phase 17 completion declaration.
+2. Keep Phase 18 and every later payment/refund/admission/payout task unchecked until a separate implementation request starts that slice.
 
 ## Handoff - 2026-08-14 Europe/Brussels: Phase 16.4 Complete
 
@@ -1979,6 +1996,7 @@ This matrix is the meaning of full Stripe support here. Stripe Billing/subscript
 ---
 
 ### Phase 17: Promotion Codes And Immutable Checkout Pricing
+- **Status:** Tasks 17.1-17.5, canonical documentation, phase-end verification, and F1-F5 are approved. User acceptance remains the final declaration boundary; Phase 18 has not started.
 - **Goal:** Add provider-neutral, reservation-aware discounts before any paid Checkout session is created.
 - **Depends on:** Phase 16 and existing order/hold/catalog core.
 - **Relevant files:** new `EventPromotion`, `EventPromotionCode`, `PromotionRedemptionReservation`, promotion/status/discount lookups/rules; order/line commercial snapshots; CQRS/API/Cerbos/HAL; Studio promotion and attendee checkout surfaces.

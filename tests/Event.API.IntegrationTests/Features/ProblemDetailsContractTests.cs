@@ -359,6 +359,30 @@ public class ProblemDetailsContractTests
     }
 
     [Test]
+    public async Task QuotaExceededDetails_SerializesWithoutTenantIdButKeepsOtherQuotaFields()
+    {
+        var tenantId = Guid.NewGuid();
+        var details = new QuotaExceededDetails(
+            "event.custom_properties.max_options_per_definition",
+            Limit: 2,
+            Actual: 4,
+            Attempted: 5,
+            Scope: "event_custom_property_options",
+            TenantId: tenantId);
+
+        using JsonDocument document = JsonDocument.Parse(JsonSerializer.Serialize(details, JsonSerializerOptions.Web));
+        JsonElement root = document.RootElement;
+
+        await Assert.That(details.TenantId).IsEqualTo(tenantId);
+        await Assert.That(root.GetProperty("quotaKey").GetString()).IsEqualTo("event.custom_properties.max_options_per_definition");
+        await Assert.That(root.GetProperty("limit").GetInt32()).IsEqualTo(2);
+        await Assert.That(root.GetProperty("actual").GetInt32()).IsEqualTo(4);
+        await Assert.That(root.GetProperty("attempted").GetInt32()).IsEqualTo(5);
+        await Assert.That(root.GetProperty("scope").GetString()).IsEqualTo("event_custom_property_options");
+        await Assert.That(root.TryGetProperty("tenantId", out _)).IsFalse();
+    }
+
+    [Test]
     public async Task GlobalExceptionHandler_OnConcurrentUpdateException_Returns409ProblemDetailsWithStableExtensions()
     {
         var entityId = Guid.NewGuid();

@@ -164,6 +164,12 @@ public static class ApplicationServicesRegistration
             .ValidateOnStart();
         services.AddOptions<OrganizerPaymentCommerceOptions>()
             .Bind(configuration.GetSection(OrganizerPaymentCommerceOptions.SectionName));
+        services.AddOptions<PromotionCodeLookupOptions>()
+            .Bind(configuration.GetSection(PromotionCodeLookupOptions.SectionName))
+            .Validate(
+                options => options.ActiveKeyVersion >= 1,
+                "Promotions:CodeLookup:ActiveKeyVersion must be greater than or equal to 1.")
+            .ValidateOnStart();
         services.AddScoped<IOrganizerPaymentCommerceConfiguration>(provider =>
             provider.GetRequiredService<Microsoft.Extensions.Options.IOptions<OrganizerPaymentCommerceOptions>>().Value);
         services.AddSingleton<IValidateOptions<OrganizerPaymentReadinessReconciliationOptions>, OrganizerPaymentReadinessReconciliationOptionsValidator>();

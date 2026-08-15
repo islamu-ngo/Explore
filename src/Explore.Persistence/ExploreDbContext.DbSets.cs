@@ -161,6 +161,9 @@ public partial class ExploreDbContext
     public DbSet<RegistrationOrderLine> RegistrationOrderLines { get; set; }
     public DbSet<RegistrationOrderPii> RegistrationOrderPii { get; set; }
     public DbSet<RegistrationOrderPlatformContribution> RegistrationOrderPlatformContributions { get; set; }
+    public DbSet<PromotionDefinition> PromotionDefinitions { get; set; }
+    public DbSet<PromotionCode> PromotionCodes { get; set; }
+    public DbSet<PromotionReservation> PromotionReservations { get; set; }
     public DbSet<RegistrationInventoryHold> RegistrationInventoryHolds { get; set; }
     public DbSet<RegistrationParticipant> RegistrationParticipants { get; set; }
     public DbSet<RegistrationParticipantPii> RegistrationParticipantPii { get; set; }
@@ -230,6 +233,8 @@ public partial class ExploreDbContext
     public DbSet<AssignmentStatus> AssignmentStatuses { get; set; }
     public DbSet<RegistrationOrderStatus> RegistrationOrderStatuses { get; set; }
     public DbSet<RegistrationInventoryHoldStatus> RegistrationInventoryHoldStatuses { get; set; }
+    public DbSet<PromotionDefinitionStatus> PromotionDefinitionStatuses { get; set; }
+    public DbSet<PromotionReservationStatus> PromotionReservationStatuses { get; set; }
     public DbSet<RegistrationRequirementCriticality> RegistrationRequirementCriticalities { get; set; }
     public DbSet<RegistrationRequirementCompletionEffect> RegistrationRequirementCompletionEffects { get; set; }
     public DbSet<RegistrationAnswerSyncMode> RegistrationAnswerSyncModes { get; set; }

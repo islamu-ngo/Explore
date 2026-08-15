@@ -105,7 +105,9 @@ public partial class EventApiClient
             request.Headers.TryAddWithoutValidation("Idempotency-Key", CreateEventIdempotencyKey.Value);
         }
 
-        if (request.Method != HttpMethod.Get && IsGuestRegistrationOrderRequest(url))
+        if (request.Method != HttpMethod.Get
+            && IsGuestRegistrationOrderRequest(url)
+            && !request.Headers.Contains("Idempotency-Key"))
         {
             request.Headers.TryAddWithoutValidation(
                 "Idempotency-Key",

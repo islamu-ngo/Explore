@@ -40,6 +40,23 @@ public class SecretBindingRepository : GenericRepository<SecretBinding, Guid>, I
                 cancellationToken);
     }
 
+    public Task<SecretBinding?> GetByKeyScopeAndQualifierAsync(
+        string settingKey,
+        SecretScope scope,
+        Guid? scopeId,
+        string qualifier,
+        CancellationToken cancellationToken = default)
+    {
+        return _dbContext.SecretBindings
+            .AsNoTracking()
+            .FirstOrDefaultAsync(
+                b => b.SettingKey == settingKey
+                      && b.Qualifier == qualifier
+                      && b.SettingScopeId == ToSettingScopeId(scope)
+                      && b.ScopeId == scopeId,
+                cancellationToken);
+    }
+
     public async Task<IReadOnlyList<SecretBinding>> GetByScopeAsync(
         SecretScope scope,
         Guid? scopeId,
@@ -89,6 +106,23 @@ public class SecretBindingRepository : GenericRepository<SecretBinding, Guid>, I
                       && b.Qualifier == string.Empty
                       && b.SettingScopeId == ToSettingScopeId(scope)
                      && b.ScopeId == scopeId,
+                cancellationToken);
+    }
+
+    public Task<bool> ExistsForScopeAndQualifierAsync(
+        string settingKey,
+        SecretScope scope,
+        Guid? scopeId,
+        string qualifier,
+        CancellationToken cancellationToken = default)
+    {
+        return _dbContext.SecretBindings
+            .AsNoTracking()
+            .AnyAsync(
+                b => b.SettingKey == settingKey
+                      && b.Qualifier == qualifier
+                      && b.SettingScopeId == ToSettingScopeId(scope)
+                      && b.ScopeId == scopeId,
                 cancellationToken);
     }
 }

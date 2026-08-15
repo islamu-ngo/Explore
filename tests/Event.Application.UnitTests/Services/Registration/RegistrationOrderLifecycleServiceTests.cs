@@ -19,12 +19,157 @@ public sealed class RegistrationOrderLifecycleServiceTests
     private readonly Guid _tenantId = Guid.CreateVersion7();
     private readonly Guid _eventId = Guid.CreateVersion7();
     private readonly IRegistrationInventoryRepository _inventory = Substitute.For<IRegistrationInventoryRepository>();
+    private readonly IPromotionRedemptionRepository _promotions = Substitute.For<IPromotionRedemptionRepository>();
     private readonly IRegistrationParticipantRepository _participants = Substitute.For<IRegistrationParticipantRepository>();
     private readonly IEventTicketCatalogRepository _catalogs = Substitute.For<IEventTicketCatalogRepository>();
     private readonly IPlatformContributionSettingRepository _contributionSettings = Substitute.For<IPlatformContributionSettingRepository>();
     private readonly IEventSessionRepository _sessions = Substitute.For<IEventSessionRepository>();
     private readonly IOutboxRepository _outbox = Substitute.For<IOutboxRepository>();
     private readonly IRegistrationFinalizationRepository _finalization = Substitute.For<IRegistrationFinalizationRepository>();
+
+    [Test]
+    public async Task FinalizeFreeAsyncWhenPromotionReservationIsActiveConsumesItBeforeConfirming()
+    {
+        (RegistrationOrder order, EventTicketCatalogVersion catalog, EventTicketType ticket) = CreateOrder(capacityBacked: true);
+        RegistrationInventoryHold hold = RegistrationInventoryHold.Create(
+            order.Id, ticket.CapacityPoolId!.Value, ticket.Id, _tenantId, 1, UtcNow, UtcNow.AddMinutes(15));
+        MoveTo(order, RegistrationOrderStatusEnum.ReadyForCheckout);
+        PromotionReservation reservation = CreateActivePromotionReservation(order, catalog);
+        ConfigureFinalization(order, catalog, [], [], []);
+        ConfigureOrder(order, [hold]);
+        _promotions.GetActiveReservationForUpdateAsync(_tenantId, order.Id, Arg.Any<CancellationToken>()).Returns(reservation);
+        _inventory.TryConsumeActiveHoldsForOrderAsync(order.Id, _tenantId, UtcNow, Arg.Any<CancellationToken>()).Returns(1);
+
+        RegistrationOrderLifecycleResponseDto result = await CreateService().FinalizeFreeAsync(order.Id, _tenantId, CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await Assert.That(reservation.PromotionReservationStatusId).IsEqualTo((int)PromotionReservationStatusEnum.Consumed);
+        Received.InOrder(() =>
+        {
+            _promotions.GetActiveReservationForUpdateAsync(_tenantId, order.Id, Arg.Any<CancellationToken>());
+            _inventory.GetPoolsForUpdateAsync(
+                Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.SequenceEqual(new[] { ticket.CapacityPoolId!.Value })),
+                order.EventId,
+                _tenantId,
+                Arg.Any<CancellationToken>());
+            _inventory.TryConsumeActiveHoldsForOrderAsync(order.Id, _tenantId, UtcNow, Arg.Any<CancellationToken>());
+        });
+    }
+
+    [Test]
+    public async Task CancelAsyncWhenPromotionReservationIsActiveReleasesItBeforeHoldRelease()
+    {
+        (RegistrationOrder order, EventTicketCatalogVersion catalog, EventTicketType ticket) = CreateOrder(capacityBacked: true);
+        RegistrationInventoryHold hold = RegistrationInventoryHold.Create(
+            order.Id, ticket.CapacityPoolId!.Value, ticket.Id, _tenantId, 1, UtcNow, UtcNow.AddMinutes(15));
+        MoveTo(order, RegistrationOrderStatusEnum.ReadyForCheckout);
+        PromotionReservation reservation = CreateActivePromotionReservation(order, catalog);
+        ConfigureOrder(order, [hold]);
+        _promotions.GetActiveReservationForUpdateAsync(_tenantId, order.Id, Arg.Any<CancellationToken>()).Returns(reservation);
+        _inventory.TryReleaseActiveHoldsForOrderAsync(
+                order.Id,
+                _tenantId,
+                RegistrationInventoryHoldStatusEnum.Cancelled,
+                UtcNow,
+                Arg.Any<CancellationToken>())
+            .Returns(1);
+
+        RegistrationOrderLifecycleResponseDto result = await CreateService().CancelAsync(order.Id, _tenantId, CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await Assert.That(reservation.PromotionReservationStatusId).IsEqualTo((int)PromotionReservationStatusEnum.Released);
+        await _promotions.Received(1).GetActiveReservationForUpdateAsync(_tenantId, order.Id, Arg.Any<CancellationToken>());
+        Received.InOrder(() =>
+        {
+            _promotions.GetActiveReservationForUpdateAsync(_tenantId, order.Id, Arg.Any<CancellationToken>());
+            _inventory.GetPoolsForUpdateAsync(
+                Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.SequenceEqual(new[] { ticket.CapacityPoolId!.Value })),
+                order.EventId,
+                _tenantId,
+                Arg.Any<CancellationToken>());
+            _inventory.TryReleaseActiveHoldsForOrderAsync(
+                order.Id,
+                _tenantId,
+                RegistrationInventoryHoldStatusEnum.Cancelled,
+                UtcNow,
+                Arg.Any<CancellationToken>());
+        });
+    }
+
+    [Test]
+    public async Task CancelAsyncUsesOneSerializableTransactionAndNoOrdinaryTransaction()
+    {
+        (RegistrationOrder order, _, _) = CreateOrder(addLine: false);
+        MoveTo(order, RegistrationOrderStatusEnum.AwaitingRequirements);
+        ConfigureOrder(order, []);
+        _inventory.TryReleaseActiveHoldsForOrderAsync(
+                order.Id,
+                _tenantId,
+                RegistrationInventoryHoldStatusEnum.Cancelled,
+                UtcNow,
+                Arg.Any<CancellationToken>())
+            .Returns(1);
+        _outbox.Create(Arg.Any<OutboxMessage>()).Returns(call => Task.FromResult(call.ArgAt<OutboxMessage>(0)));
+        var unitOfWork = new CountingUnitOfWork();
+        using var cancellation = new CancellationTokenSource();
+
+        RegistrationOrderLifecycleResponseDto result = await CreateService(unitOfWork)
+            .CancelAsync(order.Id, _tenantId, cancellation.Token);
+
+        await Assert.That(result.Success).IsTrue();
+        await Assert.That(unitOfWork.SerializableCount).IsEqualTo(1);
+        await Assert.That(unitOfWork.TransactionCount).IsEqualTo(0);
+        await Assert.That(unitOfWork.LastSerializableToken).IsEqualTo(cancellation.Token);
+    }
+
+    [Test]
+    public async Task RejectAsyncUsesOneSerializableTransactionAndNoOrdinaryTransaction()
+    {
+        (RegistrationOrder order, _, _) = CreateOrder(addLine: false);
+        MoveTo(order, RegistrationOrderStatusEnum.AwaitingApproval);
+        ConfigureOrder(order, []);
+        _inventory.TryReleaseActiveHoldsForOrderAsync(
+                order.Id,
+                _tenantId,
+                RegistrationInventoryHoldStatusEnum.Released,
+                UtcNow,
+                Arg.Any<CancellationToken>())
+            .Returns(1);
+        _outbox.Create(Arg.Any<OutboxMessage>()).Returns(call => Task.FromResult(call.ArgAt<OutboxMessage>(0)));
+        var unitOfWork = new CountingUnitOfWork();
+
+        RegistrationOrderLifecycleResponseDto result = await CreateService(unitOfWork)
+            .RejectAsync(order.Id, _tenantId, CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.Order!.StatusId).IsEqualTo((int)RegistrationOrderStatusEnum.Rejected);
+        await Assert.That(unitOfWork.SerializableCount).IsEqualTo(1);
+        await Assert.That(unitOfWork.TransactionCount).IsEqualTo(0);
+    }
+
+    [Test]
+    public async Task CancelAsyncWhenAlreadyCancelledDoesNotDuplicateLifecycleEffects()
+    {
+        (RegistrationOrder order, _, _) = CreateOrder(addLine: false);
+        MoveTo(order, RegistrationOrderStatusEnum.AwaitingRequirements);
+        order.TransitionTo(RegistrationOrderStatusEnum.Cancelled, UtcNow);
+        ConfigureOrder(order, []);
+        var unitOfWork = new CountingUnitOfWork();
+
+        RegistrationOrderLifecycleResponseDto result = await CreateService(unitOfWork)
+            .CancelAsync(order.Id, _tenantId, CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await Assert.That(unitOfWork.SerializableCount).IsEqualTo(1);
+        await Assert.That(unitOfWork.TransactionCount).IsEqualTo(0);
+        await _inventory.DidNotReceive().TryReleaseActiveHoldsForOrderAsync(
+            Arg.Any<Guid>(),
+            Arg.Any<Guid>(),
+            Arg.Any<RegistrationInventoryHoldStatusEnum>(),
+            Arg.Any<DateTime>(),
+            Arg.Any<CancellationToken>());
+        await _outbox.DidNotReceive().Create(Arg.Any<OutboxMessage>());
+    }
 
     [Test]
     public async Task ReadyForCheckoutRequiresEveryMandatoryRequirementFulfillment()
@@ -407,6 +552,7 @@ public sealed class RegistrationOrderLifecycleServiceTests
         (RegistrationOrder order, EventTicketCatalogVersion catalog, _) = CreateOrder(capacityBacked: true);
         MoveTo(order, RegistrationOrderStatusEnum.ReadyForCheckout);
         _inventory.GetOrderWithLinesAsync(order.Id, _tenantId, Arg.Any<CancellationToken>()).Returns(order);
+        _inventory.GetOrderForUpdateWithLinesAsync(order.Id, _tenantId, Arg.Any<CancellationToken>()).Returns(order);
         _inventory.GetHoldsByOrderAsync(order.Id, _tenantId, Arg.Any<CancellationToken>()).Returns([]);
         _inventory.TryTransitionOrderAsync(
                 order.Id,
@@ -493,6 +639,44 @@ public sealed class RegistrationOrderLifecycleServiceTests
         await Assert.That(reservations).HasSingleItem();
         await Assert.That(reservations.Single().TicketTypeId).IsEqualTo(ticket.Id);
         await Assert.That(reservations.Single().CapacityPoolId).IsEqualTo(ticket.CapacityPoolId!.Value);
+    }
+
+    [Test]
+    public async Task ReadyForCheckoutAsyncWhenPromotionIsActiveLocksPromotionBeforeCapacityReservation()
+    {
+        (RegistrationOrder order, EventTicketCatalogVersion catalog, _) = CreateOrder(
+            capacityBacked: true,
+            holdPolicy: CapacityHoldPolicyEnum.NoHoldUntilReady);
+        MoveTo(order, RegistrationOrderStatusEnum.AwaitingRequirements);
+        PromotionReservation reservation = CreateActivePromotionReservation(order, catalog);
+        ConfigureOrder(order, []);
+        _catalogs.GetOrderCatalogAsync(catalog.Id, _eventId, _tenantId, Arg.Any<CancellationToken>()).Returns(catalog);
+        _sessions.GetSessionsByEvent(_eventId).Returns([CreateOpenSession()]);
+        _promotions.GetActiveReservationForUpdateAsync(_tenantId, order.Id, Arg.Any<CancellationToken>()).Returns(reservation);
+        _inventory.ReserveNonTimedHoldsAsync(
+                _eventId,
+                _tenantId,
+                Arg.Any<IReadOnlyCollection<RegistrationInventoryReservation>>(),
+                approvalGranted: false,
+                UtcNow,
+                Arg.Any<CancellationToken>())
+            .Returns(new RegistrationInventoryReservationResult(Reserved: true, RequiresApproval: false, ShouldWaitlist: false));
+
+        RegistrationOrderLifecycleResponseDto result = await CreateService().ReadyForCheckoutAsync(order.Id, _tenantId, CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        Received.InOrder(() =>
+        {
+            _inventory.GetOrderForUpdateWithLinesAsync(order.Id, _tenantId, Arg.Any<CancellationToken>());
+            _promotions.GetActiveReservationForUpdateAsync(_tenantId, order.Id, Arg.Any<CancellationToken>());
+            _inventory.ReserveNonTimedHoldsAsync(
+                _eventId,
+                _tenantId,
+                Arg.Any<IReadOnlyCollection<RegistrationInventoryReservation>>(),
+                approvalGranted: false,
+                UtcNow,
+                Arg.Any<CancellationToken>());
+        });
     }
 
     [Test]
@@ -764,6 +948,7 @@ public sealed class RegistrationOrderLifecycleServiceTests
         (RegistrationOrder order, EventTicketCatalogVersion catalog) = CreateTwoLineCapacityOrder();
         MoveTo(order, RegistrationOrderStatusEnum.AwaitingRequirements);
         _inventory.GetOrderWithLinesAsync(order.Id, _tenantId, Arg.Any<CancellationToken>()).Returns(order);
+        _inventory.GetOrderForUpdateWithLinesAsync(order.Id, _tenantId, Arg.Any<CancellationToken>()).Returns(order);
         _catalogs.GetOrderCatalogAsync(catalog.Id, _eventId, _tenantId, Arg.Any<CancellationToken>()).Returns(catalog);
         _sessions.GetSessionsByEvent(_eventId).Returns([CreateOpenSession()]);
         _inventory.TryTransitionOrderAsync(
@@ -822,6 +1007,7 @@ public sealed class RegistrationOrderLifecycleServiceTests
             UtcNow,
             Arg.Any<CancellationToken>());
         await _outbox.Received(1).Create(Arg.Is<OutboxMessage>(entry => entry.EventType == "RegistrationOrderCancelled"));
+        await _inventory.Received(1).SaveChangesAsync(Arg.Any<CancellationToken>());
     }
 
     [Test]
@@ -1045,6 +1231,57 @@ public sealed class RegistrationOrderLifecycleServiceTests
     }
 
     [Test]
+    public async Task RecoverExpiredHoldAsyncWhenWaitlistedWithPromotionReleasesPromotionAndHoldsOnce()
+    {
+        (RegistrationOrder order, EventTicketCatalogVersion catalog, EventTicketType ticket) = CreateOrder(
+            capacityBacked: true,
+            holdPolicy: CapacityHoldPolicyEnum.WaitlistWhenFull);
+        MoveTo(order, RegistrationOrderStatusEnum.ReadyForCheckout);
+        order.TransitionTo(RegistrationOrderStatusEnum.NeedsReconciliation, UtcNow);
+        RegistrationInventoryHold hold = RegistrationInventoryHold.Create(order.Id, ticket.CapacityPoolId!.Value, ticket.Id, _tenantId, 1, UtcNow, UtcNow.AddMinutes(15));
+        PromotionReservation reservation = CreateActivePromotionReservation(order, catalog);
+        ConfigureOrder(order, [hold]);
+        _catalogs.GetOrderCatalogAsync(catalog.Id, _eventId, _tenantId, Arg.Any<CancellationToken>()).Returns(catalog);
+        _promotions.GetActiveReservationForUpdateAsync(_tenantId, order.Id, Arg.Any<CancellationToken>()).Returns(reservation);
+        _inventory.ReserveRecoveredHoldsAsync(
+                _eventId,
+                _tenantId,
+                Arg.Any<IReadOnlyCollection<RegistrationInventoryReservation>>(),
+                UtcNow,
+                Arg.Any<CancellationToken>())
+            .Returns(new RegistrationInventoryReservationResult(Reserved: false, RequiresApproval: false, ShouldWaitlist: true));
+        _inventory.TryReleaseActiveHoldsForOrderAsync(
+                order.Id,
+                _tenantId,
+                RegistrationInventoryHoldStatusEnum.Released,
+                UtcNow,
+                Arg.Any<CancellationToken>())
+            .Returns(1);
+
+        RegistrationOrderLifecycleResponseDto result = await CreateService().RecoverExpiredHoldAsync(order.Id, _tenantId, CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.Order!.StatusId).IsEqualTo((int)RegistrationOrderStatusEnum.Waitlisted);
+        await Assert.That(reservation.PromotionReservationStatusId).IsEqualTo((int)PromotionReservationStatusEnum.Released);
+        Received.InOrder(() =>
+        {
+            _promotions.GetActiveReservationForUpdateAsync(_tenantId, order.Id, Arg.Any<CancellationToken>());
+            _inventory.GetPoolsForUpdateAsync(
+                Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.SequenceEqual(new[] { ticket.CapacityPoolId!.Value })),
+                order.EventId,
+                _tenantId,
+                Arg.Any<CancellationToken>());
+            _inventory.TryReleaseActiveHoldsForOrderAsync(
+                order.Id,
+                _tenantId,
+                RegistrationInventoryHoldStatusEnum.Released,
+                UtcNow,
+                Arg.Any<CancellationToken>());
+        });
+        await _inventory.Received(1).SaveChangesAsync(Arg.Any<CancellationToken>());
+    }
+
+    [Test]
     public async Task RecoverExpiredHoldAsyncWhenAConcurrentAttemptAlreadyResolvedReturnsCurrentStateWithoutASecondReservation()
     {
         (RegistrationOrder order, _, _) = CreateOrder(capacityBacked: true);
@@ -1070,6 +1307,7 @@ public sealed class RegistrationOrderLifecycleServiceTests
         MoveTo(order, RegistrationOrderStatusEnum.AwaitingRequirements);
         var messages = new List<OutboxMessage>();
         _inventory.GetOrderWithLinesAsync(order.Id, _tenantId, Arg.Any<CancellationToken>()).Returns(order);
+        _inventory.GetOrderForUpdateWithLinesAsync(order.Id, _tenantId, Arg.Any<CancellationToken>()).Returns(order);
         _inventory.TryTransitionOrderAsync(
                 order.Id,
                 _tenantId,
@@ -1101,6 +1339,7 @@ public sealed class RegistrationOrderLifecycleServiceTests
 
     private RegistrationOrderLifecycleService CreateService(IUnitOfWork? unitOfWork = null) => new(
         _inventory,
+        _promotions,
         _participants,
         _catalogs,
         _contributionSettings,
@@ -1110,9 +1349,34 @@ public sealed class RegistrationOrderLifecycleServiceTests
         _finalization,
         new FixedTimeProvider(UtcNow));
 
+    private static PromotionReservation CreateActivePromotionReservation(
+        RegistrationOrder order,
+        EventTicketCatalogVersion catalog)
+    {
+        PromotionScopeMetadata scope = PromotionScopeMetadata.Create(
+            order.TenantId,
+            order.EventId,
+            order.TicketCatalogVersionId,
+            catalog.VersionNumber,
+            order.CurrencyCode);
+        PromotionDefinition definition = PromotionDefinition.CreateDraft(
+            scope,
+            "Checkout discount",
+            PromotionEligibility.AllTickets(),
+            PromotionDiscountRule.FixedMinor(order.CurrencyCode, 1, maximumDiscountMinor: null),
+            UtcNow.AddDays(-1),
+            UtcNow.AddDays(1),
+            totalRedemptionLimit: 10,
+            perVerifiedPurchaserLimit: 1);
+        definition.Publish(UtcNow.AddMinutes(-1));
+        PromotionCode code = PromotionCode.Create(definition, "T1", scope);
+        return PromotionReservation.Reserve(Guid.CreateVersion7(), order, definition, code, UtcNow);
+    }
+
     private void ConfigureOrder(RegistrationOrder order, IReadOnlyList<RegistrationInventoryHold> holds)
     {
         _inventory.GetOrderWithLinesAsync(order.Id, _tenantId, Arg.Any<CancellationToken>()).Returns(order);
+        _inventory.GetOrderForUpdateWithLinesAsync(order.Id, _tenantId, Arg.Any<CancellationToken>()).Returns(order);
         _inventory.GetHoldsByOrderAsync(order.Id, _tenantId, Arg.Any<CancellationToken>()).Returns(holds);
         _inventory.TryTransitionOrderAsync(
                 order.Id,
@@ -1344,6 +1608,32 @@ public sealed class RegistrationOrderLifecycleServiceTests
         public Task ExecuteInTransactionAsync(Func<CancellationToken, Task> operation, CancellationToken ct = default) => operation(ct);
         public Task<T> ExecuteInTransactionAsync<T>(Func<CancellationToken, Task<T>> operation, CancellationToken ct = default) => operation(ct);
         public Task<T> ExecuteSerializableAsync<T>(Func<CancellationToken, Task<T>> operation, CancellationToken ct = default) => operation(ct);
+    }
+
+    private sealed class CountingUnitOfWork : IUnitOfWork
+    {
+        public int TransactionCount { get; private set; }
+        public int SerializableCount { get; private set; }
+        public CancellationToken LastSerializableToken { get; private set; }
+
+        public Task ExecuteInTransactionAsync(Func<CancellationToken, Task> operation, CancellationToken ct = default)
+        {
+            TransactionCount++;
+            return operation(ct);
+        }
+
+        public Task<T> ExecuteInTransactionAsync<T>(Func<CancellationToken, Task<T>> operation, CancellationToken ct = default)
+        {
+            TransactionCount++;
+            return operation(ct);
+        }
+
+        public Task<T> ExecuteSerializableAsync<T>(Func<CancellationToken, Task<T>> operation, CancellationToken ct = default)
+        {
+            SerializableCount++;
+            LastSerializableToken = ct;
+            return operation(ct);
+        }
     }
 
     private sealed class RetryingUnitOfWork : IUnitOfWork

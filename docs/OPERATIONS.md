@@ -6,8 +6,8 @@ ABOUTME: Captures current behavior implemented in API, Blazor BFF, migration ser
 > **Audience:** Operators | Contributors | AI agents
 > **Status:** Mixed
 > **Owner:** Platform/Ops
-> **Last Verified:** 2026-08-05
-> **Source Anchors:** `Explore.AppHost/AppHost.cs`, `Explore.API/Program.cs`, `Explore.API/HealthChecks/StorageReadinessHealthCheck.cs`, `Explore.API/HealthChecks/StorageReconciliationHealthCheck.cs`, `Explore.API/BackgroundServices/StorageReconciliationProcessor.cs`, `Explore.Infrastructure/StorageObjectDeletionService.cs`, `Explore.ServiceDefaults/`, `docker-compose.yml`, `docs/SELF_HOSTING.md`, `docs/BACKUP_RESTORE_UPGRADE.md`, `docs/TROUBLESHOOTING.md`
+> **Last Verified:** 2026-08-15
+> **Source Anchors:** `Explore.AppHost/AppHost.cs`, `Explore.API/Program.cs`, `Explore.API/HealthChecks/StorageReadinessHealthCheck.cs`, `Explore.API/HealthChecks/StorageReconciliationHealthCheck.cs`, `Explore.API/BackgroundServices/StorageReconciliationProcessor.cs`, `Explore.Infrastructure/StorageObjectDeletionService.cs`, `Explore.Infrastructure/Services/Registration/PromotionCodeDigestService.cs`, `Explore.Persistence/Repositories/PromotionManagementRepository.cs`, `Explore.Persistence/Repositories/PromotionRedemptionRepository.cs`, `Explore.ServiceDefaults/`, `docker-compose.yml`, `docs/SELF_HOSTING.md`, `docs/BACKUP_RESTORE_UPGRADE.md`, `docs/TROUBLESHOOTING.md`
 
 This page is the operational reference for implemented runtime behavior. Task procedures should live in dedicated runbooks and be linked from here.
 
@@ -669,6 +669,23 @@ Operator sequence:
 4. For browser embeds, verify the connection approved origin. The BFF emits a per-route CSP `frame-src` for the descriptor origin and rejects arbitrary iframe input; iframe navigation is display-only, so use status polling for completion.
 
 Five Phase 9 initial application migration IDs exist for the supported providers: PostgreSQL `20260810001244_InitialPostgreSqlApplication`, SQLite `20260810001310_InitialSqliteApplication`, SQL Server `20260810001317_InitialSqlServerApplication`, MariaDB `20260810001325_InitialMariaDbApplication`, and MySQL `20260810001333_InitialMySqlApplication`. They are generated artifacts; do not patch them by hand.
+
+### Promotion Code Operations
+
+Promotion lookup is keyed, versioned, and fail-closed. `Promotions:CodeLookup:ActiveKeyVersion` selects the `v{version}` instance binding for new publish and organizer code-rotation writes. Application reads query the distinct key versions used by active codes in the event/catalog scope and compute candidates with every corresponding qualified key; there is no secret-source fallback.
+
+HMAC trust-root rotation runbook:
+
+1. Generate at least 32 random bytes, encode them as standard Base64, store them at a distinct external source coordinate, and provision a new instance `promotions.code_lookup_hmac_key` binding under the next qualifier without altering the old binding or its source value.
+2. Change `Promotions:CodeLookup:ActiveKeyVersion` to that positive version and restart API replicas. New publish and organizer code-rotation writes now pin the new version.
+3. Exercise one controlled create/apply path. Observe only success/failure and masked display labels; never put the key, raw promotion code, lookup digest, binding coordinates, tenant/event IDs, or internal code IDs in logs, tickets, screenshots, metrics, health output, or support artifacts.
+4. Query authoritative administrative/database state for active code rows grouped by `LookupKeyVersion`. Remove an old qualified binding only after its active count is zero. Overwriting an existing version's key destroys lookup compatibility and is not rotation.
+
+Organizer code rotation and definition revocation are different controls. `rotate-code` retires the currently active code row, creates a replacement under the active HMAC-key version, and returns the replacement plaintext once; subsequent management reads remain masked. `revoke` has no meaningful request body or caller timestamp: the server `TimeProvider` records an immediate decision that blocks new redemption. It does not rewrite previously accepted orders, reservations, or pricing snapshots. Operators should use the exact HAL action exposed by Studio and must not edit code, digest, active, retirement, reservation, or redemption rows directly.
+
+Failure behavior is intentionally bounded. An invalid attendee code, ineligible/expired/revoked definition, exhausted limit, or conflicting reservation produces the same generic unavailable outcome. A missing qualified key, invalid Base64, or fewer than 32 decoded bytes prevents the keyed operation rather than falling back or exposing comparison detail. Restore the exact qualified binding or roll the configured active version back to a still-provisioned key; do not regenerate a value under an existing qualifier.
+
+Checkout displays the server snapshots for pre-discount organizer amount, promotion discount, post-discount organizer amount, platform fee, voluntary contribution, and final total separately. When the final total is zero and the order resource emits `finalize`, authenticated or capability-scoped guest checkout finalizes through the registration-order lifecycle without a payment-provider call. Nonzero payment checkout/capture remains a Phase 18 boundary.
 
 ### Support Access Operations
 

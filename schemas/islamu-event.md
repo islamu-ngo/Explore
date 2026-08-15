@@ -366,6 +366,32 @@ Table "registration_order_statuses" {
   Note: 'Lookup: registration-order workflow lifecycle. Values: DRAFT(1) through NEEDS_RECONCILIATION(13). Runtime-seeded.'
 }
 
+Table "promotion_definition_statuses" {
+  "id" int [pk, not null]
+  "master_code" varchar(100) [not null]
+  "full_name" varchar(200) [not null]
+  "description" varchar(500)
+
+  indexes {
+    master_code [unique, name: 'ix_promotion_definition_statuses_master_code']
+  }
+
+  Note: 'Lookup: promotion-definition lifecycle. Values: DRAFT(1), PUBLISHED(2), REVOKED(3). Runtime-seeded.'
+}
+
+Table "promotion_reservation_statuses" {
+  "id" int [pk, not null]
+  "master_code" varchar(100) [not null]
+  "full_name" varchar(200) [not null]
+  "description" varchar(500)
+
+  indexes {
+    master_code [unique, name: 'ix_promotion_reservation_statuses_master_code']
+  }
+
+  Note: 'Lookup: promotion-reservation lifecycle. Values: ACTIVE(1), CONSUMED(2), RELEASED(3), EXPIRED(4). Runtime-seeded.'
+}
+
 Table "registration_inventory_hold_statuses" {
   "id" int [pk, not null]
   "master_code" varchar(100) [not null]
@@ -4499,6 +4525,13 @@ Table "registration_orders" {
   "platform_fee_total_minor_snapshot" bigint [not null]
   "organizer_earnings_total_minor_snapshot" bigint [not null]
   "platform_contribution_total_minor_snapshot" bigint [not null]
+  "pre_discount_organizer_directed_total_minor_snapshot" bigint [not null, default: 0]
+  "promotion_discount_total_minor_snapshot" bigint [not null, default: 0]
+  "post_discount_organizer_directed_total_minor_snapshot" bigint [not null, default: 0]
+  "applied_promotion_definition_version_id_snapshot" uuid
+  "applied_promotion_code_id_snapshot" uuid
+  "applied_promotion_display_label_snapshot" varchar(16)
+  "active_promotion_reservation_id" uuid
   "total_due_minor_snapshot" bigint [not null]
   "concurrency_stamp" uuid [not null]
   "created_at" timestamptz [not null]
@@ -4514,6 +4547,8 @@ Table "registration_orders" {
     booking_party_type_id [name: 'ix_registration_orders_booking_party_type_id']
     registration_order_status_id [name: 'ix_registration_orders_registration_order_status_id']
     (tenant_id, event_id, registration_order_status_id) [name: 'ix_registration_orders_tenant_id_event_id_registration_order_s']
+    (tenant_id, applied_promotion_code_id_snapshot) [name: 'ix_registration_orders_tenant_id_applied_promotion_code_id_sna']
+    (tenant_id, applied_promotion_definition_version_id_snapshot) [name: 'ix_registration_orders_tenant_id_applied_promotion_definition_']
     (tenant_id, expires_at) [name: 'ix_registration_orders_tenant_id_expires_at']
     (tenant_id, ticket_catalog_version_id) [name: 'ix_registration_orders_tenant_id_ticket_catalog_version_id']
   }
@@ -4563,6 +4598,9 @@ Table "registration_order_lines" {
   "chosen_unit_price_amount_snapshot" bigint
   "currency_code_snapshot" varchar(3) [not null]
   "line_subtotal_snapshot" bigint [not null]
+  "pre_discount_line_subtotal_minor_snapshot" bigint [not null, default: 0]
+  "promotion_discount_amount_minor_snapshot" bigint [not null, default: 0]
+  "post_discount_line_subtotal_minor_snapshot" bigint [not null, default: 0]
   "ticket_type_name_snapshot" varchar(200) [not null]
   "ticket_pricing_mode_snapshot" int [not null]
   "minimum_price_amount_snapshot" bigint
@@ -4584,6 +4622,100 @@ Table "registration_order_lines" {
   }
 
   Note: 'Immutable selected-ticket and price snapshots for one registration order.'
+}
+
+Table "promotion_definitions" {
+  "id" uuid [pk, not null, note: 'uuidv7 app-side']
+  "definition_group_id" uuid [not null]
+  "tenant_id" uuid [not null]
+  "version_number" int [not null]
+  "promotion_definition_status_id" int [not null]
+  "scope_metadata" text [not null]
+  "display_label" varchar(200) [not null]
+  "eligibility" text [not null]
+  "discount_rule" text [not null]
+  "starts_at_utc" timestamptz [not null]
+  "ends_at_utc" timestamptz [not null]
+  "total_redemption_limit" int
+  "per_verified_purchaser_limit" int
+  "published_at_utc" timestamptz
+  "revoked_at_utc" timestamptz
+  "created_at" timestamptz [not null]
+  "created_by" uuid
+  "updated_at" timestamptz
+  "updated_by" uuid
+  "scope_currency_code" varchar(3) [not null]
+  "scope_event_id" uuid [not null]
+  "scope_ticket_catalog_version_id" uuid [not null]
+  "scope_ticket_catalog_version_number" int [not null]
+
+  indexes {
+    (tenant_id, id) [unique, name: 'ak_promotion_definitions_tenant_id_id']
+    promotion_definition_status_id [name: 'ix_promotion_definitions_promotion_definition_status_id']
+    (tenant_id, definition_group_id, version_number) [unique, name: 'ix_promotion_definitions_tenant_id_definition_group_id_version']
+    (tenant_id, scope_event_id, scope_ticket_catalog_version_id, promotion_definition_status_id) [name: 'ix_promotion_definitions_tenant_id_scope_event_id_scope_ticket']
+  }
+
+  Note: 'Tenant-scoped versioned promotion definition with scope, eligibility, discount, lifecycle, and redemption-limit metadata.'
+}
+
+Table "promotion_codes" {
+  "id" uuid [pk, not null, note: 'uuidv7 app-side']
+  "tenant_id" uuid [not null]
+  "promotion_definition_version_id" uuid [not null]
+  "scope_metadata" text [not null]
+  "display_label" varchar(16) [not null]
+  "created_at" timestamptz [not null]
+  "created_by" uuid
+  "updated_at" timestamptz
+  "updated_by" uuid
+  "is_active" boolean [not null, default: true]
+  "lookup_digest" varchar(128) [not null, note: 'Opaque digest only; raw promotion codes are never stored.']
+  "lookup_key_version" int [not null]
+  "retired_at_utc" timestamptz
+  "scope_currency_code" varchar(3) [not null]
+  "scope_event_id" uuid [not null]
+  "scope_ticket_catalog_version_id" uuid [not null]
+  "scope_ticket_catalog_version_number" int [not null]
+
+  indexes {
+    (tenant_id, id) [unique, name: 'ak_promotion_codes_tenant_id_id']
+    (tenant_id, promotion_definition_version_id, is_active) [name: 'ix_promotion_codes_tenant_id_promotion_definition_version_id_i']
+    (tenant_id, scope_event_id, scope_ticket_catalog_version_id, lookup_key_version) [name: 'ix_promotion_codes_tenant_id_scope_event_id_scope_ticket_catal']
+    (tenant_id, scope_event_id, scope_ticket_catalog_version_id, lookup_key_version, lookup_digest) [unique, name: 'ix_promotion_codes_tenant_id_scope_event_id_scope_ticket_catal1']
+  }
+
+  Note: 'Tenant-scoped promotion code identity using versioned lookup digests and display-only labels.'
+}
+
+Table "promotion_reservations" {
+  "id" uuid [pk, not null, note: 'uuidv7 app-side']
+  "tenant_id" uuid [not null]
+  "registration_order_id" uuid [not null]
+  "promotion_definition_version_id" uuid [not null]
+  "promotion_code_id" uuid [not null]
+  "promotion_reservation_status_id" int [not null]
+  "order_reservation_slot" uuid [not null]
+  "reserved_at_utc" timestamptz [not null]
+  "consumed_at_utc" timestamptz
+  "released_at_utc" timestamptz
+  "expired_at_utc" timestamptz
+  "concurrency_stamp" uuid [not null]
+  "created_at" timestamptz [not null]
+  "created_by" uuid
+  "updated_at" timestamptz
+  "updated_by" uuid
+
+  indexes {
+    (tenant_id, id) [unique, name: 'ak_promotion_reservations_tenant_id_id']
+    promotion_reservation_status_id [name: 'ix_promotion_reservations_promotion_reservation_status_id']
+    (registration_order_id, order_reservation_slot) [unique, name: 'ix_promotion_reservations_registration_order_id_order_reservat']
+    (tenant_id, promotion_code_id) [name: 'ix_promotion_reservations_tenant_id_promotion_code_id']
+    (tenant_id, promotion_definition_version_id, promotion_reservation_status_id) [name: 'ix_promotion_reservations_tenant_id_promotion_definition_versi']
+    (tenant_id, registration_order_id) [name: 'ix_promotion_reservations_tenant_id_registration_order_id']
+  }
+
+  Note: 'Tenant-scoped promotion usage reservation. Checks: active rows use the zero slot; consumed/released/expired rows use id as slot, and exactly the matching terminal timestamp is set.'
 }
 
 Table "participant_types" {
@@ -5856,6 +5988,7 @@ Table "registration_order_pii" {
   "normalized_email" varchar(320)
   "phone" varchar(50)
   "organization_name" varchar(200)
+  "is_email_verified" boolean [not null, default: false]
   "retention_until" timestamptz
   "created_at" timestamptz [not null]
   "created_by" uuid
@@ -7136,6 +7269,8 @@ Ref: "registration_orders".("tenant_id", "event_id") > "events".("tenant_id", "i
 Ref: "registration_orders".("tenant_id", "ticket_catalog_version_id") > "event_ticket_catalog_versions".("tenant_id", "id") [delete: restrict]
 Ref: "registration_orders"."booking_party_type_id" > "booking_party_types"."id" [delete: restrict]
 Ref: "registration_orders"."registration_order_status_id" > "registration_order_statuses"."id" [delete: restrict]
+Ref: "registration_orders".("tenant_id", "applied_promotion_code_id_snapshot") > "promotion_codes".("tenant_id", "id") [delete: restrict]
+Ref: "registration_orders".("tenant_id", "applied_promotion_definition_version_id_snapshot") > "promotion_definitions".("tenant_id", "id") [delete: restrict]
 Ref: "registration_inventory_holds"."tenant_id" > "tenants"."id" [delete: restrict]
 Ref: "registration_inventory_holds".("tenant_id", "registration_order_id") > "registration_orders".("tenant_id", "id") [delete: restrict]
 Ref: "registration_inventory_holds".("tenant_id", "capacity_pool_id") > "event_capacity_pools".("tenant_id", "id") [delete: restrict]
@@ -7144,6 +7279,15 @@ Ref: "registration_inventory_holds"."registration_inventory_hold_status_id" > "r
 Ref: "registration_order_lines".("tenant_id", "registration_order_id") > "registration_orders".("tenant_id", "id") [delete: restrict]
 Ref: "registration_order_lines".("tenant_id", "ticket_type_id") > "event_ticket_types".("tenant_id", "id") [delete: restrict]
 Ref: "registration_order_lines".("tenant_id", "ticket_catalog_version_id") > "event_ticket_catalog_versions".("tenant_id", "id") [delete: restrict]
+Ref: "promotion_definitions"."tenant_id" > "tenants"."id" [delete: restrict]
+Ref: "promotion_definitions"."promotion_definition_status_id" > "promotion_definition_statuses"."id" [delete: restrict]
+Ref: "promotion_codes"."tenant_id" > "tenants"."id" [delete: restrict]
+Ref: "promotion_codes".("tenant_id", "promotion_definition_version_id") > "promotion_definitions".("tenant_id", "id") [delete: restrict]
+Ref: "promotion_reservations"."tenant_id" > "tenants"."id" [delete: restrict]
+Ref: "promotion_reservations".("tenant_id", "registration_order_id") > "registration_orders".("tenant_id", "id") [delete: restrict]
+Ref: "promotion_reservations".("tenant_id", "promotion_definition_version_id") > "promotion_definitions".("tenant_id", "id") [delete: restrict]
+Ref: "promotion_reservations".("tenant_id", "promotion_code_id") > "promotion_codes".("tenant_id", "id") [delete: restrict]
+Ref: "promotion_reservations"."promotion_reservation_status_id" > "promotion_reservation_statuses"."id" [delete: restrict]
 Ref: "registration_participants"."tenant_id" > "tenants"."id" [delete: restrict]
 Ref: "registration_participants".("tenant_id", "registration_order_id") > "registration_orders".("tenant_id", "id") [delete: restrict]
 Ref: "registration_participants"."linked_user_id" > "users"."id" [delete: restrict]

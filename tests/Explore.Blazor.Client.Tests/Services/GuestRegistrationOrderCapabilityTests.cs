@@ -52,11 +52,28 @@ public sealed class GuestRegistrationOrderCapabilityTests
         await Assert.That(handler.HasIdempotencyKey).IsTrue();
     }
 
+    [Test]
+    public async Task ApplyGuestPromotion_SendsSingleExplicitIdempotencyKey()
+    {
+        var handler = new CapturingHandler();
+        var client = new EventApiClient(new HttpClient(handler) { BaseAddress = new Uri("https://event.test/") });
+
+        await client.ApplyGuestRegistrationOrderPromotionAsync(
+            Guid.CreateVersion7(),
+            Guid.CreateVersion7(),
+            new PromotionCodeRequest { Code = "GUEST10" },
+            "opaque-capability",
+            Guid.CreateVersion7().ToString("N"));
+
+        await Assert.That(handler.IdempotencyKeyCount).IsEqualTo(1);
+    }
+
     private sealed class CapturingHandler : HttpMessageHandler
     {
         public Uri? RequestUri { get; private set; }
         public string? RequestBody { get; private set; }
         public bool HasIdempotencyKey { get; private set; }
+        public int IdempotencyKeyCount { get; private set; }
         public bool IncludeCapabilityHeader { get; init; } = true;
 
         protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
@@ -64,6 +81,7 @@ public sealed class GuestRegistrationOrderCapabilityTests
             RequestUri = request.RequestUri;
             RequestBody = request.Content is null ? string.Empty : await request.Content.ReadAsStringAsync(cancellationToken);
             HasIdempotencyKey = request.Headers.Contains("Idempotency-Key");
+            IdempotencyKeyCount = request.Headers.TryGetValues("Idempotency-Key", out var values) ? values.Count() : 0;
             var isStart = request.RequestUri?.AbsolutePath.EndsWith("/guest", StringComparison.OrdinalIgnoreCase) == true;
             var response = new HttpResponseMessage(isStart ? HttpStatusCode.Created : HttpStatusCode.OK)
             {

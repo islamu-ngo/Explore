@@ -71,6 +71,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<INativeRegistrationFormService, NativeRegistrationFormService>();
         services.AddScoped<IGuestRegistrationOrderCapabilityStore, GuestRegistrationOrderCapabilityStore>();
         services.AddScoped<IEventTicketingService, EventTicketingService>();
+        services.AddScoped<IEventPromotionService, EventPromotionService>();
         services.AddScoped<IRegistrationFormAuthoringService, RegistrationFormAuthoringService>();
         services.AddScoped<IPlatformMonetizationService, PlatformMonetizationService>();
         services.AddScoped<IPaidEventPolicyService, PaidEventPolicyService>();

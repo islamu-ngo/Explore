@@ -13,6 +13,7 @@ using Explore.API.OpenApi;
 using Explore.Application.Contracts.Hateoas;
 using Explore.Application.DTOs.RegistrationOrders;
 using Explore.Application.DTOs.RegistrationSubmissions;
+using Explore.Application.Features.Promotions.Requests.Commands;
 using Explore.Application.Features.RegistrationOrders.Requests.Commands;
 using Explore.Application.Features.RegistrationOrders.Requests.Queries;
 using Explore.Application.Features.RegistrationSubmissions.Commands;
@@ -49,6 +50,12 @@ public sealed class RegistrationOrderControllerTests
             nameof(RegistrationOrderController.ContinueGuest), "guest/{orderId:guid}/continue", RouteNames.ContinueGuestRegistrationOrder,
             EndpointClass.PublicTransactional, requiresIdempotency: true);
         await AssertRoute<RegistrationOrderController, HttpPostAttribute>(
+            nameof(RegistrationOrderController.ApplyGuestPromotion), "guest/{orderId:guid}/promotion", RouteNames.ApplyGuestRegistrationOrderPromotion,
+            EndpointClass.PublicTransactional, requiresIdempotency: true);
+        await AssertRoute<RegistrationOrderController, HttpDeleteAttribute>(
+            nameof(RegistrationOrderController.RemoveGuestPromotion), "guest/{orderId:guid}/promotion", RouteNames.RemoveGuestRegistrationOrderPromotion,
+            EndpointClass.PublicTransactional, requiresIdempotency: true);
+        await AssertRoute<RegistrationOrderController, HttpPostAttribute>(
             nameof(RegistrationOrderController.FinalizeGuest), "guest/{orderId:guid}/finalize", RouteNames.FinalizeGuestRegistrationOrder,
             EndpointClass.PublicTransactional, requiresIdempotency: true);
         await AssertRoute<RegistrationOrderController, HttpDeleteAttribute>(
@@ -78,6 +85,12 @@ public sealed class RegistrationOrderControllerTests
         await AssertRoute<RegistrationOrderController, HttpPostAttribute>(
             nameof(RegistrationOrderController.ContinueAuthenticated), "{orderId:guid}/continue", RouteNames.ContinueAuthenticatedRegistrationOrder,
             EndpointClass.Authenticated, requiresIdempotency: false);
+        await AssertRoute<RegistrationOrderController, HttpPostAttribute>(
+            nameof(RegistrationOrderController.ApplyAuthenticatedPromotion), "{orderId:guid}/promotion", RouteNames.ApplyAuthenticatedRegistrationOrderPromotion,
+            EndpointClass.Authenticated, requiresIdempotency: true);
+        await AssertRoute<RegistrationOrderController, HttpDeleteAttribute>(
+            nameof(RegistrationOrderController.RemoveAuthenticatedPromotion), "{orderId:guid}/promotion", RouteNames.RemoveAuthenticatedRegistrationOrderPromotion,
+            EndpointClass.Authenticated, requiresIdempotency: true);
         await AssertRoute<RegistrationOrderController, HttpPostAttribute>(
             nameof(RegistrationOrderController.FinalizeAuthenticated), "{orderId:guid}/finalize", RouteNames.FinalizeAuthenticatedRegistrationOrder,
             EndpointClass.Authenticated, requiresIdempotency: false);
@@ -262,6 +275,33 @@ public sealed class RegistrationOrderControllerTests
     }
 
     [Test]
+    public async Task PromotionRoutes_DispatchCapabilityAndCurrentAccountWrappersAndGenericFailures()
+    {
+        var mediator = Substitute.For<IMediator>();
+        var eventId = Guid.CreateVersion7();
+        var orderId = Guid.CreateVersion7();
+        mediator.Send(Arg.Any<ApplyGuestPromotionCodeToRegistrationOrderCommand>(), Arg.Any<CancellationToken>()).Returns(PromotionFailure(orderId));
+        mediator.Send(Arg.Any<RemoveGuestPromotionFromRegistrationOrderCommand>(), Arg.Any<CancellationToken>()).Returns(PromotionFailure(orderId));
+        mediator.Send(Arg.Any<ApplyAuthenticatedPromotionCodeToRegistrationOrderCommand>(), Arg.Any<CancellationToken>()).Returns(PromotionSuccess(orderId));
+        mediator.Send(Arg.Any<RemoveAuthenticatedPromotionFromRegistrationOrderCommand>(), Arg.Any<CancellationToken>()).Returns(PromotionSuccess(orderId));
+        var controller = CreateController(mediator);
+
+        var guestApply = await controller.ApplyGuestPromotion(eventId, orderId, "guest-capability", new PromotionCodeRequest("SAVE10"), Guid.CreateVersion7().ToString("N"));
+        var guestRemove = await controller.RemoveGuestPromotion(eventId, orderId, "guest-capability", Guid.CreateVersion7().ToString("N"));
+        var authenticatedApply = await controller.ApplyAuthenticatedPromotion(eventId, orderId, new PromotionCodeRequest("SAVE10"), Guid.CreateVersion7().ToString("N"));
+        var authenticatedRemove = await controller.RemoveAuthenticatedPromotion(eventId, orderId, Guid.CreateVersion7().ToString("N"));
+
+        await Assert.That((guestApply.Result as ObjectResult)?.StatusCode).IsEqualTo(StatusCodes.Status404NotFound);
+        await Assert.That(JsonSerializer.Serialize((guestRemove.Result as ObjectResult)?.Value)).DoesNotContain("guest-capability");
+        await Assert.That((authenticatedApply.Result as OkObjectResult)?.Value).IsTypeOf<PromotionRedemptionResponseDto>();
+        await Assert.That((authenticatedRemove.Result as OkObjectResult)?.Value).IsTypeOf<PromotionRedemptionResponseDto>();
+        _ = mediator.Received(1).Send(Arg.Is<ApplyGuestPromotionCodeToRegistrationOrderCommand>(command => command.EventId == eventId && command.OrderId == orderId && command.CapabilityToken == "guest-capability" && command.Code == "SAVE10"), Arg.Any<CancellationToken>());
+        _ = mediator.Received(1).Send(Arg.Is<RemoveGuestPromotionFromRegistrationOrderCommand>(command => command.CapabilityToken == "guest-capability"), Arg.Any<CancellationToken>());
+        _ = mediator.Received(1).Send(Arg.Is<ApplyAuthenticatedPromotionCodeToRegistrationOrderCommand>(command => command.EventId == eventId && command.OrderId == orderId && command.Code == "SAVE10"), Arg.Any<CancellationToken>());
+        _ = mediator.Received(1).Send(Arg.Is<RemoveAuthenticatedPromotionFromRegistrationOrderCommand>(command => command.EventId == eventId && command.OrderId == orderId), Arg.Any<CancellationToken>());
+    }
+
+    [Test]
     public async Task ParticipantHalMutationRelationsFollowServerManageDecision()
     {
         var mediator = Substitute.For<IMediator>();
@@ -374,7 +414,54 @@ public sealed class RegistrationOrderControllerTests
         await Assert.That(resource?.Data).IsEqualTo(guestOrder);
         await Assert.That(resource?.Links).ContainsKey(LinkRelations.Self);
         await Assert.That(resource?.Links).ContainsKey(LinkRelations.ClaimRegistrationOrder);
+        await Assert.That(resource?.Links).DoesNotContainKey(LinkRelations.ApplyPromotion);
+        await Assert.That(resource?.Links).DoesNotContainKey(LinkRelations.RemovePromotion);
         await assembler.DidNotReceive().ToResource(Arg.Any<RegistrationOrderDto>(), Arg.Any<HttpContext>());
+    }
+
+    [Test]
+    public async Task GuestReadyForCheckoutHal_WithoutPromotionExposesApplyOnlyWithoutCapabilityInUrls()
+    {
+        var mediator = Substitute.For<IMediator>();
+        var order = new GuestRegistrationOrderDto
+        {
+            Id = Guid.CreateVersion7(),
+            EventId = Guid.CreateVersion7(),
+            StatusCode = "READY_FOR_CHECKOUT"
+        };
+        mediator.Send(Arg.Any<GetGuestRegistrationOrderQuery>(), Arg.Any<CancellationToken>()).Returns(order);
+        var controller = CreateController(mediator);
+
+        ActionResult<HalResource<GuestRegistrationOrderDto>> result = await controller.GetGuest(
+            order.EventId, order.Id, "opaque-capability");
+
+        var resource = (result.Result as OkObjectResult)?.Value as HalResource<GuestRegistrationOrderDto>;
+        await Assert.That(resource?.Links).ContainsKey(LinkRelations.ApplyPromotion);
+        await Assert.That(resource?.Links).DoesNotContainKey(LinkRelations.RemovePromotion);
+        await Assert.That(JsonSerializer.Serialize(resource?.Links)).DoesNotContain("opaque-capability");
+    }
+
+    [Test]
+    public async Task GuestReadyForCheckoutHal_WithPromotionExposesRemoveOnlyWithoutCapabilityInUrls()
+    {
+        var mediator = Substitute.For<IMediator>();
+        var order = new GuestRegistrationOrderDto
+        {
+            Id = Guid.CreateVersion7(),
+            EventId = Guid.CreateVersion7(),
+            StatusCode = "READY_FOR_CHECKOUT",
+            AppliedPromotionDisplayLabel = "Launch discount"
+        };
+        mediator.Send(Arg.Any<GetGuestRegistrationOrderQuery>(), Arg.Any<CancellationToken>()).Returns(order);
+        var controller = CreateController(mediator);
+
+        ActionResult<HalResource<GuestRegistrationOrderDto>> result = await controller.GetGuest(
+            order.EventId, order.Id, "opaque-capability");
+
+        var resource = (result.Result as OkObjectResult)?.Value as HalResource<GuestRegistrationOrderDto>;
+        await Assert.That(resource?.Links).ContainsKey(LinkRelations.RemovePromotion);
+        await Assert.That(resource?.Links).DoesNotContainKey(LinkRelations.ApplyPromotion);
+        await Assert.That(JsonSerializer.Serialize(resource?.Links)).DoesNotContain("opaque-capability");
     }
 
     [Test]
@@ -424,6 +511,21 @@ public sealed class RegistrationOrderControllerTests
     {
         Id = Guid.CreateVersion7(),
         EventId = Guid.CreateVersion7()
+    };
+
+    private static PromotionRedemptionResponseDto PromotionSuccess(Guid orderId) => new()
+    {
+        Id = orderId,
+        Success = true,
+        TotalDueMinor = 0
+    };
+
+    private static PromotionRedemptionResponseDto PromotionFailure(Guid orderId) => new()
+    {
+        Id = orderId,
+        Success = false,
+        FailureCode = PromotionRedemptionFailureCodes.Unavailable,
+        Message = "Promotion cannot be changed for this order."
     };
 
     private static async Task AssertNativeSubmissionRoute(

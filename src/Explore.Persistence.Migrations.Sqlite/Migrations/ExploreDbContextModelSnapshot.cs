@@ -17266,6 +17266,387 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         });
                 });
 
+            modelBuilder.Entity("Explore.Domain.PromotionCode", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("created_by");
+
+                    b.Property<string>("DisplayLabel")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("display_label");
+
+                    b.Property<bool>("IsActive")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(true)
+                        .HasColumnName("is_active");
+
+                    b.Property<string>("LookupDigest")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("lookup_digest");
+
+                    b.Property<int>("LookupKeyVersion")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("lookup_key_version");
+
+                    b.Property<Guid>("PromotionDefinitionVersionId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("promotion_definition_version_id");
+
+                    b.Property<DateTime?>("RetiredAtUtc")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("retired_at_utc");
+
+                    b.Property<string>("ScopeCurrencyCode")
+                        .IsRequired()
+                        .HasMaxLength(3)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("scope_currency_code");
+
+                    b.Property<Guid>("ScopeEventId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("scope_event_id");
+
+                    b.Property<string>("ScopeMetadata")
+                        .IsRequired()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("scope_metadata");
+
+                    b.Property<Guid>("ScopeTicketCatalogVersionId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("scope_ticket_catalog_version_id");
+
+                    b.Property<int>("ScopeTicketCatalogVersionNumber")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("scope_ticket_catalog_version_number");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_ie_promotion_codes");
+
+                    b.HasAlternateKey("TenantId", "Id")
+                        .HasName("ak_promotion_codes_tenant_id_id");
+
+                    b.HasIndex("TenantId", "PromotionDefinitionVersionId", "IsActive")
+                        .HasDatabaseName("ix_ie_promotion_codes_tenant_id_promotion_definition_version_id_is_active");
+
+                    b.HasIndex("TenantId", "ScopeEventId", "ScopeTicketCatalogVersionId", "LookupKeyVersion")
+                        .HasDatabaseName("ix_ie_promotion_codes_tenant_id_scope_event_id_scope_ticket_catalog_version_id_lookup_key_version");
+
+                    b.HasIndex("TenantId", "ScopeEventId", "ScopeTicketCatalogVersionId", "LookupKeyVersion", "LookupDigest")
+                        .IsUnique()
+                        .HasDatabaseName("ix_ie_promotion_codes_tenant_id_scope_event_id_scope_ticket_catalog_version_id_lookup_key_version_lookup_digest");
+
+                    b.ToTable("ie_promotion_codes", (string)null);
+                });
+
+            modelBuilder.Entity("Explore.Domain.PromotionDefinition", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("created_by");
+
+                    b.Property<Guid>("DefinitionGroupId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("definition_group_id");
+
+                    b.Property<string>("DiscountRule")
+                        .IsRequired()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("discount_rule");
+
+                    b.Property<string>("DisplayLabel")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("display_label");
+
+                    b.Property<string>("Eligibility")
+                        .IsRequired()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("eligibility");
+
+                    b.Property<DateTime>("EndsAtUtc")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("ends_at_utc");
+
+                    b.Property<int?>("PerVerifiedPurchaserLimit")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("per_verified_purchaser_limit");
+
+                    b.Property<int>("PromotionDefinitionStatusId")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("promotion_definition_status_id");
+
+                    b.Property<DateTime?>("PublishedAtUtc")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("published_at_utc");
+
+                    b.Property<DateTime?>("RevokedAtUtc")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("revoked_at_utc");
+
+                    b.Property<string>("ScopeCurrencyCode")
+                        .IsRequired()
+                        .HasMaxLength(3)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("scope_currency_code");
+
+                    b.Property<Guid>("ScopeEventId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("scope_event_id");
+
+                    b.Property<string>("ScopeMetadata")
+                        .IsRequired()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("scope_metadata");
+
+                    b.Property<Guid>("ScopeTicketCatalogVersionId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("scope_ticket_catalog_version_id");
+
+                    b.Property<int>("ScopeTicketCatalogVersionNumber")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("scope_ticket_catalog_version_number");
+
+                    b.Property<DateTime>("StartsAtUtc")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("starts_at_utc");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<int?>("TotalRedemptionLimit")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("total_redemption_limit");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("updated_by");
+
+                    b.Property<int>("VersionNumber")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("version_number");
+
+                    b.HasKey("Id")
+                        .HasName("pk_ie_promotion_definitions");
+
+                    b.HasAlternateKey("TenantId", "Id")
+                        .HasName("ak_promotion_definitions_tenant_id_id");
+
+                    b.HasIndex("PromotionDefinitionStatusId")
+                        .HasDatabaseName("ix_ie_promotion_definitions_promotion_definition_status_id");
+
+                    b.HasIndex("TenantId", "DefinitionGroupId", "VersionNumber")
+                        .IsUnique()
+                        .HasDatabaseName("ix_ie_promotion_definitions_tenant_id_definition_group_id_version_number");
+
+                    b.HasIndex("TenantId", "ScopeEventId", "ScopeTicketCatalogVersionId", "PromotionDefinitionStatusId")
+                        .HasDatabaseName("ix_ie_promotion_definitions_tenant_id_scope_event_id_scope_ticket_catalog_version_id_promotion_definition_status_id");
+
+                    b.ToTable("ie_promotion_definitions", (string)null);
+                });
+
+            modelBuilder.Entity("Explore.Domain.PromotionDefinitionStatus", b =>
+                {
+                    b.Property<int>("Id")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("description");
+
+                    b.Property<string>("FullName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("full_name");
+
+                    b.Property<string>("MasterCode")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("master_code");
+
+                    b.HasKey("Id")
+                        .HasName("pk_ie_promotion_definition_statuses");
+
+                    b.HasIndex("MasterCode")
+                        .IsUnique()
+                        .HasDatabaseName("ix_ie_promotion_definition_statuses_master_code");
+
+                    b.ToTable("ie_promotion_definition_statuses", (string)null);
+                });
+
+            modelBuilder.Entity("Explore.Domain.PromotionReservation", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("ConcurrencyStamp")
+                        .IsConcurrencyToken()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("concurrency_stamp");
+
+                    b.Property<DateTime?>("ConsumedAtUtc")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("consumed_at_utc");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTime?>("ExpiredAtUtc")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("expired_at_utc");
+
+                    b.Property<Guid>("OrderReservationSlot")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("order_reservation_slot");
+
+                    b.Property<Guid>("PromotionCodeId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("promotion_code_id");
+
+                    b.Property<Guid>("PromotionDefinitionVersionId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("promotion_definition_version_id");
+
+                    b.Property<int>("PromotionReservationStatusId")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("promotion_reservation_status_id");
+
+                    b.Property<Guid>("RegistrationOrderId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("registration_order_id");
+
+                    b.Property<DateTime?>("ReleasedAtUtc")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("released_at_utc");
+
+                    b.Property<DateTime>("ReservedAtUtc")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("reserved_at_utc");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_ie_promotion_reservations");
+
+                    b.HasAlternateKey("TenantId", "Id")
+                        .HasName("ak_promotion_reservations_tenant_id_id");
+
+                    b.HasIndex("PromotionReservationStatusId")
+                        .HasDatabaseName("ix_ie_promotion_reservations_promotion_reservation_status_id");
+
+                    b.HasIndex("RegistrationOrderId", "OrderReservationSlot")
+                        .IsUnique()
+                        .HasDatabaseName("ix_ie_promotion_reservations_registration_order_id_order_reservation_slot");
+
+                    b.HasIndex("TenantId", "PromotionCodeId")
+                        .HasDatabaseName("ix_ie_promotion_reservations_tenant_id_promotion_code_id");
+
+                    b.HasIndex("TenantId", "RegistrationOrderId")
+                        .HasDatabaseName("ix_ie_promotion_reservations_tenant_id_registration_order_id");
+
+                    b.HasIndex("TenantId", "PromotionDefinitionVersionId", "PromotionReservationStatusId")
+                        .HasDatabaseName("ix_ie_promotion_reservations_tenant_id_promotion_definition_version_id_promotion_reservation_status_id");
+
+                    b.ToTable("ie_promotion_reservations", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_promotion_reservation_active_slot", "(promotion_reservation_status_id = 1 AND order_reservation_slot = '00000000-0000-0000-0000-000000000000') OR (promotion_reservation_status_id <> 1 AND order_reservation_slot = id)");
+
+                            t.HasCheckConstraint("ck_promotion_reservation_status_timestamps", "(promotion_reservation_status_id = 1 AND consumed_at_utc IS NULL AND released_at_utc IS NULL AND expired_at_utc IS NULL) OR (promotion_reservation_status_id = 2 AND consumed_at_utc IS NOT NULL AND released_at_utc IS NULL AND expired_at_utc IS NULL) OR (promotion_reservation_status_id = 3 AND consumed_at_utc IS NULL AND released_at_utc IS NOT NULL AND expired_at_utc IS NULL) OR (promotion_reservation_status_id = 4 AND consumed_at_utc IS NULL AND released_at_utc IS NULL AND expired_at_utc IS NOT NULL)");
+                        });
+                });
+
+            modelBuilder.Entity("Explore.Domain.PromotionReservationStatus", b =>
+                {
+                    b.Property<int>("Id")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("description");
+
+                    b.Property<string>("FullName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("full_name");
+
+                    b.Property<string>("MasterCode")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("master_code");
+
+                    b.HasKey("Id")
+                        .HasName("pk_ie_promotion_reservation_statuses");
+
+                    b.HasIndex("MasterCode")
+                        .IsUnique()
+                        .HasDatabaseName("ix_ie_promotion_reservation_statuses_master_code");
+
+                    b.ToTable("ie_promotion_reservation_statuses", (string)null);
+                });
+
             modelBuilder.Entity("Explore.Domain.RegistrationAmendment", b =>
                 {
                     b.Property<Guid>("Id")
@@ -19598,6 +19979,23 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnType("TEXT")
                         .HasColumnName("account_user_id");
 
+                    b.Property<Guid?>("ActivePromotionReservationId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("active_promotion_reservation_id");
+
+                    b.Property<Guid?>("AppliedPromotionCodeIdSnapshot")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("applied_promotion_code_id_snapshot");
+
+                    b.Property<Guid?>("AppliedPromotionDefinitionVersionIdSnapshot")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("applied_promotion_definition_version_id_snapshot");
+
+                    b.Property<string>("AppliedPromotionDisplayLabelSnapshot")
+                        .HasMaxLength(16)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("applied_promotion_display_label_snapshot");
+
                     b.Property<int>("BookingPartyTypeId")
                         .HasColumnType("INTEGER")
                         .HasColumnName("booking_party_type_id");
@@ -19676,6 +20074,18 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnType("bigint")
                         .HasColumnName("platform_fee_total_minor_snapshot");
 
+                    b.Property<long>("PostDiscountOrganizerDirectedTotalMinorSnapshot")
+                        .HasColumnType("bigint")
+                        .HasColumnName("post_discount_organizer_directed_total_minor_snapshot");
+
+                    b.Property<long>("PreDiscountOrganizerDirectedTotalMinorSnapshot")
+                        .HasColumnType("bigint")
+                        .HasColumnName("pre_discount_organizer_directed_total_minor_snapshot");
+
+                    b.Property<long>("PromotionDiscountTotalMinorSnapshot")
+                        .HasColumnType("bigint")
+                        .HasColumnName("promotion_discount_total_minor_snapshot");
+
                     b.Property<Guid?>("PurchaserActorId")
                         .HasColumnType("TEXT")
                         .HasColumnName("purchaser_actor_id");
@@ -19740,6 +20150,12 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                     b.HasIndex("RegistrationOrderStatusId")
                         .HasDatabaseName("ix_ie_registration_orders_registration_order_status_id");
 
+                    b.HasIndex("TenantId", "AppliedPromotionCodeIdSnapshot")
+                        .HasDatabaseName("ix_ie_registration_orders_tenant_id_applied_promotion_code_id_snapshot");
+
+                    b.HasIndex("TenantId", "AppliedPromotionDefinitionVersionIdSnapshot")
+                        .HasDatabaseName("ix_ie_registration_orders_tenant_id_applied_promotion_definition_version_id_snapshot");
+
                     b.HasIndex("TenantId", "ExpiresAt")
                         .HasDatabaseName("ix_ie_registration_orders_tenant_id_expires_at");
 
@@ -19798,6 +20214,18 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                     b.Property<int?>("PlatformFeePolicyVersionSnapshot")
                         .HasColumnType("INTEGER")
                         .HasColumnName("platform_fee_policy_version_snapshot");
+
+                    b.Property<long>("PostDiscountLineSubtotalMinorSnapshot")
+                        .HasColumnType("bigint")
+                        .HasColumnName("post_discount_line_subtotal_minor_snapshot");
+
+                    b.Property<long>("PreDiscountLineSubtotalMinorSnapshot")
+                        .HasColumnType("bigint")
+                        .HasColumnName("pre_discount_line_subtotal_minor_snapshot");
+
+                    b.Property<long>("PromotionDiscountAmountMinorSnapshot")
+                        .HasColumnType("bigint")
+                        .HasColumnName("promotion_discount_amount_minor_snapshot");
 
                     b.Property<int>("Quantity")
                         .HasColumnType("INTEGER")
@@ -19893,6 +20321,12 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasMaxLength(320)
                         .HasColumnType("TEXT")
                         .HasColumnName("email");
+
+                    b.Property<bool>("IsEmailVerified")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_email_verified");
 
                     b.Property<string>("NormalizedEmail")
                         .HasMaxLength(320)
@@ -35952,6 +36386,82 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasConstraintName("fk_ie_privacy_erasure_replay_checkpoints_ie_privacy_erasure_replay_checkpoints_previous_checkpoint_id");
                 });
 
+            modelBuilder.Entity("Explore.Domain.PromotionCode", b =>
+                {
+                    b.HasOne("Explore.Domain.Tenant", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_ie_promotion_codes_tenants_tenant_id");
+
+                    b.HasOne("Explore.Domain.PromotionDefinition", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "PromotionDefinitionVersionId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_ie_promotion_codes_promotion_definitions_tenant_id_promotion_definition_version_id");
+                });
+
+            modelBuilder.Entity("Explore.Domain.PromotionDefinition", b =>
+                {
+                    b.HasOne("Explore.Domain.PromotionDefinitionStatus", null)
+                        .WithMany()
+                        .HasForeignKey("PromotionDefinitionStatusId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_ie_promotion_definitions_promotion_definition_statuses_promotion_definition_status_id");
+
+                    b.HasOne("Explore.Domain.Tenant", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_ie_promotion_definitions_tenants_tenant_id");
+                });
+
+            modelBuilder.Entity("Explore.Domain.PromotionReservation", b =>
+                {
+                    b.HasOne("Explore.Domain.PromotionReservationStatus", null)
+                        .WithMany()
+                        .HasForeignKey("PromotionReservationStatusId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_ie_promotion_reservations_promotion_reservation_statuses_promotion_reservation_status_id");
+
+                    b.HasOne("Explore.Domain.Tenant", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_ie_promotion_reservations_tenants_tenant_id");
+
+                    b.HasOne("Explore.Domain.PromotionCode", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "PromotionCodeId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_ie_promotion_reservations_ie_promotion_codes_tenant_id_promotion_code_id");
+
+                    b.HasOne("Explore.Domain.PromotionDefinition", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "PromotionDefinitionVersionId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_ie_promotion_reservations_ie_promotion_definitions_tenant_id_promotion_definition_version_id");
+
+                    b.HasOne("Explore.Domain.RegistrationOrder", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "RegistrationOrderId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_ie_promotion_reservations_registration_orders_tenant_id_registration_order_id");
+                });
+
             modelBuilder.Entity("Explore.Domain.RegistrationAmendment", b =>
                 {
                     b.HasOne("Explore.Domain.Tenant", null)
@@ -36581,6 +37091,20 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasConstraintName("fk_ie_registration_orders_tenants_tenant_id");
+
+                    b.HasOne("Explore.Domain.PromotionCode", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "AppliedPromotionCodeIdSnapshot")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_ie_registration_orders_ie_promotion_codes_tenant_id_applied_promotion_code_id_snapshot");
+
+                    b.HasOne("Explore.Domain.PromotionDefinition", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "AppliedPromotionDefinitionVersionIdSnapshot")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_ie_registration_orders_ie_promotion_definitions_tenant_id_applied_promotion_definition_version_id_snapshot");
 
                     b.HasOne("Explore.Domain.Event", null)
                         .WithMany()

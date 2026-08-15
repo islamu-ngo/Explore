@@ -16,6 +16,37 @@ namespace Explore.Secrets.UnitTests.Services;
 public sealed class SecretResolverBindingTests
 {
     [Test]
+    public async Task ISecretResolver_RequiresExplicitQualifiedResolutionImplementation()
+    {
+        var method = typeof(ISecretResolver).GetMethod(nameof(ISecretResolver.ResolveQualifiedAsync));
+
+        await Assert.That(method).IsNotNull();
+        await Assert.That(method!.IsAbstract).IsTrue();
+    }
+
+    [Test]
+    public async Task ResolveAsync_CharacterizesExistingTenantToInstanceBindingFallback()
+    {
+        Guid tenantId = Guid.CreateVersion7();
+        SecretBinding binding = SecretBinding.CreateEnvironmentVariable(
+            SecretDefinitionRegistry.Keys.Stripe.WebhookSecret,
+            SecretScope.Instance,
+            scopeId: null,
+            "WEBHOOK_SECRET");
+        binding.Id = Guid.CreateVersion7();
+        var resolver = Resolver([binding], new Dictionary<Guid, string> { [binding.Id] = "secret" });
+
+        ResolvedSecret? resolved = await resolver.ResolveAsync(
+            SecretDefinitionRegistry.Keys.Stripe.WebhookSecret,
+            tenantId,
+            CancellationToken.None);
+
+        await Assert.That(resolved).IsNotNull();
+        await Assert.That(resolved!.Scope).IsEqualTo(SecretScope.Instance);
+        await Assert.That(resolved.Value).IsEqualTo("secret");
+    }
+
+    [Test]
     public async Task ResolveTenantBindingAsync_UsesExactQualifiedTenantBinding()
     {
         Guid tenantId = Guid.CreateVersion7();
@@ -66,6 +97,65 @@ public sealed class SecretResolverBindingTests
         await Assert.That(resolved).IsNull();
     }
 
+    [Test]
+    public async Task ResolveQualifiedAsync_UsesExactQualifierWithoutTenantFallback()
+    {
+        Guid tenantId = Guid.CreateVersion7();
+        SecretBinding tenantBinding = SecretBinding.CreateEnvironmentVariable(
+            SecretDefinitionRegistry.Keys.Storage.AccessKeyId,
+            SecretScope.Tenant,
+            tenantId,
+            "TENANT_PROMOTION_KEY",
+            qualifier: "v7");
+        tenantBinding.Id = Guid.CreateVersion7();
+        SecretBinding instanceBinding = SecretBinding.CreateEnvironmentVariable(
+            SecretDefinitionRegistry.Keys.Storage.AccessKeyId,
+            SecretScope.Instance,
+            scopeId: null,
+            "INSTANCE_PROMOTION_KEY",
+            qualifier: "v7");
+        instanceBinding.Id = Guid.CreateVersion7();
+        var resolver = Resolver([tenantBinding, instanceBinding], new Dictionary<Guid, string>
+        {
+            [tenantBinding.Id] = "tenant-secret",
+            [instanceBinding.Id] = "instance-secret"
+        });
+
+        ResolvedSecret? resolved = await resolver.ResolveQualifiedAsync(
+            SecretDefinitionRegistry.Keys.Storage.AccessKeyId,
+            SecretScope.Instance,
+            scopeId: null,
+            "v7",
+            CancellationToken.None);
+
+        await Assert.That(resolved).IsNotNull();
+        await Assert.That(resolved!.Value).IsEqualTo("instance-secret");
+        await Assert.That(resolved.Scope).IsEqualTo(SecretScope.Instance);
+        await Assert.That(resolved.ScopeId).IsNull();
+    }
+
+    [Test]
+    public async Task ResolveQualifiedAsync_MissingQualifierReturnsNull()
+    {
+        SecretBinding binding = SecretBinding.CreateEnvironmentVariable(
+            SecretDefinitionRegistry.Keys.Promotions.CodeLookupHmacKey,
+            SecretScope.Instance,
+            scopeId: null,
+            "PROMOTION_KEY",
+            qualifier: "v1");
+        binding.Id = Guid.CreateVersion7();
+        var resolver = Resolver([binding], new Dictionary<Guid, string> { [binding.Id] = "secret" });
+
+        ResolvedSecret? resolved = await resolver.ResolveQualifiedAsync(
+            SecretDefinitionRegistry.Keys.Promotions.CodeLookupHmacKey,
+            SecretScope.Instance,
+            scopeId: null,
+            "v2",
+            CancellationToken.None);
+
+        await Assert.That(resolved).IsNull();
+    }
+
     private static SecretResolver Resolver(IReadOnlyList<SecretBinding> bindings, IReadOnlyDictionary<Guid, string> values)
     {
         return new SecretResolver(
@@ -82,12 +172,16 @@ public sealed class SecretResolverBindingTests
             Task.FromResult(bindings.SingleOrDefault(binding => binding.ScopeId == tenantId && binding.Id == bindingId));
         public Task<SecretBinding?> GetByKeyAndScopeAsync(string settingKey, SecretScope scope, Guid? scopeId, CancellationToken cancellationToken = default) =>
             Task.FromResult(bindings.SingleOrDefault(binding => binding.SettingKey == settingKey && binding.Scope == scope && binding.ScopeId == scopeId && binding.Qualifier == string.Empty));
+        public Task<SecretBinding?> GetByKeyScopeAndQualifierAsync(string settingKey, SecretScope scope, Guid? scopeId, string qualifier, CancellationToken cancellationToken = default) =>
+            Task.FromResult(bindings.SingleOrDefault(binding => binding.SettingKey == settingKey && binding.Scope == scope && binding.ScopeId == scopeId && binding.Qualifier == qualifier));
         public Task<IReadOnlyList<SecretBinding>> GetByScopeAsync(SecretScope scope, Guid? scopeId, CancellationToken cancellationToken = default) =>
             Task.FromResult<IReadOnlyList<SecretBinding>>([.. bindings.Where(binding => binding.Scope == scope && binding.ScopeId == scopeId)]);
         public Task<IReadOnlyList<SecretBinding>> GetAllForKeyAsync(string settingKey, CancellationToken cancellationToken = default) =>
             Task.FromResult<IReadOnlyList<SecretBinding>>([.. bindings.Where(binding => binding.SettingKey == settingKey)]);
         public Task<bool> ExistsForScopeAsync(string settingKey, SecretScope scope, Guid? scopeId, CancellationToken cancellationToken = default) =>
             Task.FromResult(bindings.Any(binding => binding.SettingKey == settingKey && binding.Scope == scope && binding.ScopeId == scopeId && binding.Qualifier == string.Empty));
+        public Task<bool> ExistsForScopeAndQualifierAsync(string settingKey, SecretScope scope, Guid? scopeId, string qualifier, CancellationToken cancellationToken = default) =>
+            Task.FromResult(bindings.Any(binding => binding.SettingKey == settingKey && binding.Scope == scope && binding.ScopeId == scopeId && binding.Qualifier == qualifier));
         public Task<SecretBinding?> GetById(Guid id) => Task.FromResult(bindings.SingleOrDefault(binding => binding.Id == id));
         public Task<IReadOnlyList<SecretBinding>> GetAll() => Task.FromResult(bindings);
         public Task<(IReadOnlyList<SecretBinding> Items, int TotalCount)> GetAllPaged(int pageNumber, int pageSize) => Task.FromResult((bindings, bindings.Count));

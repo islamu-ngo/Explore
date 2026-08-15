@@ -58,4 +58,32 @@ public sealed class StripeSecretDefinitionTests
                 key: definition.DefaultInfisicalKey)).Throws<ArgumentException>();
         }
     }
+
+    [Test]
+    public async Task RegistryDefinesInstanceScopedPromotionCodeLookupHmacKey()
+    {
+        var definition = SecretDefinitionRegistry.GetRequired(SecretDefinitionRegistry.Keys.Promotions.CodeLookupHmacKey);
+
+        await Assert.That(definition.Key).IsEqualTo("promotions.code_lookup_hmac_key");
+        await Assert.That(definition.AllowedScopes.SequenceEqual([SecretScope.Instance])).IsTrue();
+        await Assert.That(definition.DefaultInfisicalPath).IsEqualTo("/promotions");
+        await Assert.That(definition.DefaultInfisicalKey).IsEqualTo("PROMOTIONS_CODE_LOOKUP_HMAC_KEY");
+        await Assert.That(definition.DefaultEnvironmentVariableName).IsEqualTo("PROMOTIONS_CODE_LOOKUP_HMAC_KEY");
+        await Assert.That(definition.IsBootstrapSecret).IsFalse();
+
+        var binding = SecretBinding.CreateEnvironmentVariable(
+            definition.Key,
+            SecretScope.Instance,
+            scopeId: null,
+            definition.DefaultEnvironmentVariableName,
+            qualifier: "v17");
+
+        await Assert.That(binding.Qualifier).IsEqualTo("v17");
+        await Assert.That(() => SecretBinding.CreateEnvironmentVariable(
+            definition.Key,
+            SecretScope.Tenant,
+            Guid.CreateVersion7(),
+            definition.DefaultEnvironmentVariableName,
+            qualifier: "v17")).Throws<ArgumentException>();
+    }
 }

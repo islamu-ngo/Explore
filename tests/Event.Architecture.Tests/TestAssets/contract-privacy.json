@@ -1,0 +1,20 @@
+{
+  "_aboutme": [
+    "ABOUTME: Sanitized promotion contract privacy evidence derived from the canonical OpenAPI and generated client.",
+    "ABOUTME: Captures response-type splits and quota tenant-field absence without exposing runtime values."
+  ],
+  "promotionCommandResponses": {
+    "CreateEventPromotionDraft": "PromotionCodeIssuedCommandResponseDto",
+    "ReviseEventPromotion": "PromotionManagementCommandResponseDto",
+    "PublishEventPromotion": "PromotionManagementCommandResponseDto",
+    "RevokeEventPromotion": "PromotionManagementCommandResponseDto",
+    "RotateEventPromotionCode": "PromotionCodeIssuedCommandResponseDto"
+  },
+  "quotaExceededDetails": {
+    "schemaContainsTenantId": false,
+    "generatedClientContainsTenantId": false,
+    "reachableFromPromotionManagementCommandResponseDto": true,
+    "reachableFromPromotionCodeIssuedCommandResponseDto": true,
+    "tenantIdReachableThroughQuotaDetails": false
+  }
+}

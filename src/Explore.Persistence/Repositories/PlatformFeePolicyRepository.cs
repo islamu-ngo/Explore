@@ -13,6 +13,10 @@ public sealed class PlatformFeePolicyRepository(ExploreDbContext dbContext) : IP
         dbContext.PlatformFeePolicies.AsNoTracking().Include(policy => policy.FixedCharges)
             .SingleOrDefaultAsync(policy => policy.IsActive, cancellationToken);
 
+    public Task<PlatformFeePolicy?> GetVersionAsync(int versionNumber, CancellationToken cancellationToken = default) =>
+        dbContext.PlatformFeePolicies.AsNoTracking().Include(policy => policy.FixedCharges)
+            .SingleOrDefaultAsync(policy => policy.VersionNumber == versionNumber, cancellationToken);
+
     public async Task AddAsync(PlatformFeePolicy policy, CancellationToken cancellationToken)
     {
         await dbContext.PlatformFeePolicies.AddAsync(policy, cancellationToken);

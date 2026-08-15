@@ -39,26 +39,34 @@ public sealed class RegistrationInventoryRepository(ExploreDbContext dbContext) 
                 order => order.Id == orderId && order.TenantId == tenantId,
                 cancellationToken);
 
-    public Task<RegistrationOrder?> GetOrderForUpdateWithLinesAsync(
+    public async Task<RegistrationOrder?> GetOrderForUpdateWithLinesAsync(
         Guid orderId,
         Guid tenantId,
-        CancellationToken cancellationToken) =>
-        dbContext.RegistrationOrders
+        CancellationToken cancellationToken)
+    {
+        await AcquireOrderLockIfTransactionalAsync(tenantId, orderId, cancellationToken);
+        return await dbContext.RegistrationOrders
             .Include(order => order.Lines)
             .Include(order => order.PlatformContribution)
             .FirstOrDefaultAsync(
                 order => order.Id == orderId && order.TenantId == tenantId,
                 cancellationToken);
+    }
 
-    public Task<RegistrationOrder?> GetOrderForUpdateWithPiiAsync(
+    public async Task<RegistrationOrder?> GetOrderForUpdateWithPiiAsync(
         Guid orderId,
         Guid tenantId,
-        CancellationToken cancellationToken) =>
-        dbContext.RegistrationOrders
+        CancellationToken cancellationToken)
+    {
+        await AcquireOrderLockIfTransactionalAsync(tenantId, orderId, cancellationToken);
+        return await dbContext.RegistrationOrders
+            .Include(order => order.Lines)
+            .Include(order => order.PlatformContribution)
             .Include(order => order.Pii)
             .FirstOrDefaultAsync(
                 order => order.Id == orderId && order.TenantId == tenantId,
                 cancellationToken);
+    }
 
     public async Task<IReadOnlyList<RegistrationInventoryHold>> GetHoldsByOrderAsync(
         Guid orderId,
@@ -464,6 +472,14 @@ public sealed class RegistrationInventoryRepository(ExploreDbContext dbContext) 
               AND registration_order.{{orderStatus}} = ANY({7})
               AND registration_order.{{orderDeleted}} = false
             """;
+    }
+
+    private async Task AcquireOrderLockIfTransactionalAsync(Guid tenantId, Guid orderId, CancellationToken cancellationToken)
+    {
+        if (dbContext.Database.CurrentTransaction is not null)
+        {
+            await RelationalNamedLock.AcquireTransactionAsync(dbContext, $"registration-order:{tenantId:N}:{orderId:N}", cancellationToken);
+        }
     }
 
     public async Task<bool> TryConsumeActiveHoldAsync(Guid holdId, DateTime utcNow, CancellationToken cancellationToken)

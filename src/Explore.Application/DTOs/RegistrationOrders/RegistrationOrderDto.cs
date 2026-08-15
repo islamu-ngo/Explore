@@ -21,6 +21,10 @@ public sealed class RegistrationOrderDto
     public string StatusCode { get; init; } = string.Empty;
     public string StatusName { get; init; } = string.Empty;
     public string CurrencyCode { get; init; } = string.Empty;
+    public long PreDiscountOrganizerDirectedTotalMinor { get; init; }
+    public long PromotionDiscountTotalMinor { get; init; }
+    public long PostDiscountOrganizerDirectedTotalMinor { get; init; }
+    public string? AppliedPromotionDisplayLabel { get; init; }
     public long OrganizerDirectedTotalMinor { get; init; }
     public long PlatformFeeTotalMinor { get; init; }
     public long OrganizerEarningsTotalMinor { get; init; }
@@ -52,6 +56,10 @@ public sealed class RegistrationOrderDto
             StatusCode = ToCode(status),
             StatusName = ToName(status),
             CurrencyCode = order.CurrencyCode,
+            PreDiscountOrganizerDirectedTotalMinor = order.PreDiscountOrganizerDirectedTotalMinorSnapshot,
+            PromotionDiscountTotalMinor = order.PromotionDiscountTotalMinorSnapshot,
+            PostDiscountOrganizerDirectedTotalMinor = order.PostDiscountOrganizerDirectedTotalMinorSnapshot,
+            AppliedPromotionDisplayLabel = order.AppliedPromotionDisplayLabelSnapshot,
             OrganizerDirectedTotalMinor = order.OrganizerDirectedTotalMinorSnapshot,
             PlatformFeeTotalMinor = order.PlatformFeeTotalMinorSnapshot,
             OrganizerEarningsTotalMinor = order.OrganizerEarningsTotalMinorSnapshot,

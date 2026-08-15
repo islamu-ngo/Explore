@@ -73,6 +73,7 @@ public static class LookupTableSeeder
         await SeedTicketingLookupsAsync(context, cancellationToken);
         await SeedParticipantLookupsAsync(context, cancellationToken);
         await SeedRegistrationOrderLookupsAsync(context, cancellationToken);
+        await SeedPromotionLookupsAsync(context, cancellationToken);
         await SeedRegistrationWorkflowLookupsAsync(context, cancellationToken);
         await SeedRegistrationFormLookupsAsync(context, cancellationToken);
         await SeedRegistrationRetentionLookupsAsync(context, cancellationToken);
@@ -1826,6 +1827,24 @@ public static class LookupTableSeeder
             new RegistrationInventoryHoldStatus { Id = (int)RegistrationInventoryHoldStatusEnum.Expired, MasterCode = "EXPIRED", FullName = "Expired" },
             new RegistrationInventoryHoldStatus { Id = (int)RegistrationInventoryHoldStatusEnum.Cancelled, MasterCode = "CANCELLED", FullName = "Cancelled" }
         ], row => row.Id, ct);
+    }
+
+    internal static async Task SeedPromotionLookupsAsync(ExploreDbContext context, CancellationToken ct)
+    {
+        await AddMissingLookupRowsAsync(context.PromotionDefinitionStatuses,
+        [
+            new() { Id = (int)PromotionDefinitionStatusEnum.Draft, MasterCode = "DRAFT", FullName = "Draft", Description = "Promotion definition is editable and not redeemable" },
+            new() { Id = (int)PromotionDefinitionStatusEnum.Published, MasterCode = "PUBLISHED", FullName = "Published", Description = "Promotion definition can be redeemed within its configured window" },
+            new() { Id = (int)PromotionDefinitionStatusEnum.Revoked, MasterCode = "REVOKED", FullName = "Revoked", Description = "Promotion definition is retained historically but no longer redeemable after the effective time" }
+        ], ct);
+
+        await AddMissingLookupRowsAsync(context.PromotionReservationStatuses,
+        [
+            new() { Id = (int)PromotionReservationStatusEnum.Active, MasterCode = "ACTIVE", FullName = "Active", Description = "Reservation is holding the order's active promotion slot" },
+            new() { Id = (int)PromotionReservationStatusEnum.Consumed, MasterCode = "CONSUMED", FullName = "Consumed", Description = "Reservation was consumed by order finalization" },
+            new() { Id = (int)PromotionReservationStatusEnum.Released, MasterCode = "RELEASED", FullName = "Released", Description = "Reservation was explicitly released before finalization" },
+            new() { Id = (int)PromotionReservationStatusEnum.Expired, MasterCode = "EXPIRED", FullName = "Expired", Description = "Reservation expired during order recovery" }
+        ], ct);
     }
 
     internal static async Task SeedPlatformMonetizationDefaultsAsync(ExploreDbContext context, CancellationToken ct)

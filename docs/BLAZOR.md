@@ -6,8 +6,8 @@ ABOUTME: Keeps token handling, proxying, render policy, service state, and clien
 > **Audience:** Contributors | Frontend | AI agents
 > **Status:** Implemented
 > **Owner:** Frontend
-> **Last Verified:** 2026-08-05
-> **Source Anchors:** `Explore.Blazor/Program.cs`, `Explore.Blazor/Hosting/`, `Explore.Blazor/Extensions/`, `Explore.Blazor/Services/InProcessEventApiTransport.cs`, `Event.Standalone/Program.cs`, `Event.Standalone/Middleware/CombinedApiBridgeMiddleware.cs`, `Event.Web.BffHosting/Security/EventBffRequestEnricher.cs`, `Explore.Blazor/Components/ControlPlane/`, `Explore.Blazor.Client/Explore.Blazor.Client.csproj`, `Explore.Blazor.Client/Components/Discovery/`, `Explore.Blazor.Client/Services/`, `Explore.Blazor.Client/Layout/`, `Explore.Blazor.Client/Pages/Studio/`, `Explore.Blazor.Client/Pages/Admin/Instance/`, `docs/RENDER_POLICIES.md`, `docs/DESIGN_SYSTEM.md`
+> **Last Verified:** 2026-08-15
+> **Source Anchors:** `Explore.Blazor/Program.cs`, `Explore.Blazor/Hosting/`, `Explore.Blazor/Extensions/`, `Explore.Blazor/Services/InProcessEventApiTransport.cs`, `Event.Standalone/Program.cs`, `Event.Standalone/Middleware/CombinedApiBridgeMiddleware.cs`, `Event.Web.BffHosting/Security/EventBffRequestEnricher.cs`, `Explore.Blazor/Components/ControlPlane/`, `Explore.Blazor.Client/Explore.Blazor.Client.csproj`, `Explore.Blazor.Client/Components/Discovery/`, `Explore.Blazor.Client/Services/`, `Explore.Blazor.Client/Services/EventPromotionService.cs`, `Explore.Blazor.Client/Services/RegistrationOrderService.cs`, `Explore.Blazor.Client/Layout/`, `Explore.Blazor.Client/Pages/Studio/StudioEventPromotions.razor`, `Explore.Blazor.Client/Pages/Registration/OrderRecovery.razor`, `Explore.Blazor.Client/Pages/Registration/GuestOrderRecovery.razor`, `Explore.Blazor.Client/Pages/Admin/Instance/`, `docs/RENDER_POLICIES.md`, `docs/DESIGN_SYSTEM.md`
 
 ## Scope
 
@@ -300,6 +300,18 @@ Blazor registration flows must classify that command response through `EventList
 Studio participation configuration lives at `/studio/events/{eventId}/registration`. Both the sidebar entry and direct route fail closed unless the event resource contains `configure-participation`. The editor preserves the participation resource's own concurrency stamp, submits through `IEventService`, and keeps dependent mode, obligation, identity-access, and recovery choices within the Domain-valid combinations. Attendee-facing participation links never authorize the Studio route.
 
 Create Event collects participation handling explicitly and defaults only to `INFORMATION_ONLY + NOT_APPLICABLE`. Registration policy remains an independent scope/admission choice and never implies platform-managed, guest, or recovery behavior.
+
+### Studio Promotions And Checkout
+
+Studio promotion management lives at `/studio/events/{eventId}/promotions`. The event shell exposes the section only when the event resource has `create-promotion` and identifies a ticket-catalog version. The loaded promotion collection must independently advertise `create-promotion`; each item must independently advertise `revise-promotion`, `publish`, `revoke`, or `rotate-promotion-code` before the matching control is rendered or dispatched. Revoke sends no caller-selected effective timestamp; the server owns the immediate decision time. Status, roles, claims, and local booleans never substitute for those exact relations.
+
+`StudioEventPromotions` calls `IEventPromotionService`; `EventPromotionService` is the only promotion-specific wrapper over the NSwag-generated `IEventApiClient`. Management reads contain masked display labels, not lookup digests or internal code identifiers. Create and code-rotation responses reveal the organizer-entered plaintext code once so it can be copied. The component clears that value and all code inputs on acknowledgement, event/catalog identity change, mutation failure, and disposal; subsequent reads continue to show only the masked label.
+
+Authenticated and guest checkout recovery use the same server-authored order state but different transport authority. `/registration/events/{eventId}/orders/{orderId}` uses the BFF-held authenticated session. `/registration/guest/events/{eventId}/orders/{orderId}` requires the opaque capability captured from `X-Registration-Order-Capability` at guest-order creation and kept only in the scoped `IGuestRegistrationOrderCapabilityStore`; the generated client sends it on guest operations. Neither page stores bearer tokens or capabilities in browser storage, logs them, or derives guest authority from route IDs.
+
+Both recovery pages call `IRegistrationOrderService`, clear the entered code as soon as an apply request starts, and render apply/remove/finalize controls only from `apply-promotion`, `remove-promotion`, and `finalize`. They display the server-calculated pre-discount organizer amount, promotion discount, post-discount organizer amount, platform fee, voluntary contribution, and final total as separate fields. A zero-due order can finalize when the server emits `finalize`; the client does not require or initiate a payment-provider flow. Stripe capture and all Phase 18 payment runtime remain outside this UI.
+
+Promotion loads and mutations are cancellation- and disposal-aware so stale completions cannot replace a newer event/order state. Guest route changes clear the previous order before capability lookup and fail closed when the new event/order tuple has no stored capability. Load/success messages use polite announcements, failures use alert/assertive announcements, and one-time or mutation feedback receives programmatic focus. Scoped styles use design tokens and logical properties so the same structure remains keyboard-visible and RTL-safe.
 
 ### Studio Ticket Catalog Management
 

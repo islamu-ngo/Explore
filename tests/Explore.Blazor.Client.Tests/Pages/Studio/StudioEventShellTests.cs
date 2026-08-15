@@ -15,11 +15,16 @@ public sealed class StudioEventShellTests : IDisposable
 {
     private readonly BlazorTestContext _ctx = new();
     private readonly IEventService _eventService;
+    private readonly IEventTicketingService _ticketingService;
+    private readonly IEventPromotionService _promotionService;
 
     public StudioEventShellTests()
     {
         _eventService = _ctx.AddMockService<IEventService>();
-        _ctx.AddMockService<IEventTicketingService>();
+        _ticketingService = _ctx.AddMockService<IEventTicketingService>();
+        _promotionService = _ctx.AddMockService<IEventPromotionService>();
+        _ticketingService.GetCatalogAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns((EventTicketCatalogState?)null);
         _ctx.AddMockService<IRegistrationFormAuthoringService>();
         _ctx.AddMockService<IEventDayService>();
         _ctx.AddMockService<Explore.Blazor.Client.Contracts.Services.Accessibility.IAccessibilityAnnouncerService>();
@@ -30,6 +35,59 @@ public sealed class StudioEventShellTests : IDisposable
     }
 
     public void Dispose() => _ctx.Dispose();
+
+    [Test]
+    public async Task PromotionsRoute_WithoutCatalog_FailsClosedInsidePromotionComponent()
+    {
+        var resource = CreateEvent();
+        _eventService.GetEventByIdAsync(resource.Id!.Value).Returns(resource);
+        _ctx.Services.GetRequiredService<NavigationManager>()
+            .NavigateTo($"/studio/events/{resource.Id}/promotions");
+
+        var cut = _ctx.RenderMudComponent<StudioEventShell>(parameters => parameters
+            .Add(component => component.EventId, resource.Id.Value));
+
+        cut.WaitForElement("[data-testid='studio-event-promotions']");
+        cut.WaitForAssertion(() => cut.Markup.Contains("Promotion management is not available", StringComparison.Ordinal));
+        await Assert.That(cut.FindAll("[data-testid='show-create-promotion']")).IsEmpty();
+        await _promotionService.DidNotReceive().GetPromotionsAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task PromotionsRoute_WithCreateCollectionRelation_RendersManagementSurface()
+    {
+        var resource = CreateEvent("manage-ticket-types");
+        var catalogVersionId = Guid.CreateVersion7();
+        _eventService.GetEventByIdAsync(resource.Id!.Value).Returns(resource);
+        _ticketingService.GetCatalogAsync(resource.Id.Value, Arg.Any<CancellationToken>()).Returns(new EventTicketCatalogState(
+            resource.Id.Value,
+            catalogVersionId,
+            1,
+            "USD",
+            1,
+            "DRAFT",
+            "Draft",
+            [],
+            [],
+            new Dictionary<string, HalLink>(StringComparer.Ordinal)));
+        _promotionService.GetPromotionsAsync(resource.Id.Value, catalogVersionId, Arg.Any<CancellationToken>())
+            .Returns(PromotionManagementCollectionState.Create(
+                resource.Id.Value,
+                catalogVersionId,
+                [],
+                new Dictionary<string, HalLink>
+                {
+                    ["create-promotion"] = new() { Href = $"/api/events/{resource.Id}/promotions", Method = "POST" }
+                }));
+        _ctx.Services.GetRequiredService<NavigationManager>()
+            .NavigateTo($"/studio/events/{resource.Id}/promotions");
+
+        var cut = _ctx.RenderMudComponent<StudioEventShell>(parameters => parameters
+            .Add(component => component.EventId, resource.Id.Value));
+
+        cut.WaitForElement("[data-testid='show-create-promotion']");
+        await Assert.That(cut.FindAll("[data-testid='studio-event-promotions']").Count).IsEqualTo(1);
+    }
 
     [Test]
     public async Task RegistrationRoute_WithoutConfigureParticipationRelation_FailsClosed()

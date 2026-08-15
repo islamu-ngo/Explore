@@ -3,7 +3,10 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\Explore.Infrastructure\Explore.Infrastructure.csproj" />
     <ProjectReference Include="..\..\src\Explore.Persistence\Explore.Persistence.csproj" />
+    <ProjectReference Include="..\..\src\Explore.Persistence.Migrations.MariaDb\Explore.Persistence.Migrations.MariaDb.csproj" />
+    <ProjectReference Include="..\..\src\Explore.Persistence.Migrations.MySql\Explore.Persistence.Migrations.MySql.csproj" />
     <ProjectReference Include="..\..\src\Explore.Persistence.Migrations.Sqlite\Explore.Persistence.Migrations.Sqlite.csproj" />
+    <ProjectReference Include="..\..\src\Explore.Persistence.Migrations.SqlServer\Explore.Persistence.Migrations.SqlServer.csproj" />
     <ProjectReference Include="..\..\src\Explore.Persistence.PrivacyErasureAuthority.Migrations.Sqlite\Explore.Persistence.PrivacyErasureAuthority.Migrations.Sqlite.csproj" />
     <ProjectReference Include="..\..\src\Explore.Domain\Explore.Domain.csproj" />
   </ItemGroup>

@@ -4,6 +4,7 @@
 @page "/studio/events/{EventId:guid}/schedule"
 @page "/studio/events/{EventId:guid}/registration"
 @page "/studio/events/{EventId:guid}/tickets"
+@page "/studio/events/{EventId:guid}/promotions"
 @page "/studio/events/{EventId:guid}/orders"
 @page "/studio/events/{EventId:guid}/integrations"
 @page "/studio/events/{EventId:guid}/forms"
@@ -99,6 +100,10 @@
                     <StudioOrderList EventId="EventId" />
                 }
             }
+            else if (Section == "promotions")
+            {
+                <StudioEventPromotions EventId="EventId" />
+            }
             else if (Section == "forms")
             {
                 @if (!CanManageRegistrationWorkflow)
@@ -165,6 +170,7 @@
         "schedule" => "Schedule",
         "registration" => "Registration",
         "tickets" => "Tickets",
+        "promotions" => "Promotions",
         "orders" => "Orders",
         "integrations" => "Integrations",
         "forms" => "Forms",
@@ -177,6 +183,7 @@
         "schedule" => "Manage this event's sessions in the existing event editor.",
         "registration" => "Define how people participate, whether advance registration applies, and which identity options are available.",
         "tickets" => "Define ticket types, shared capacity pools, prices, limits, and admission entitlements.",
+        "promotions" => "Create and manage event promotion codes when the server advertises the required affordances.",
         "orders" => "Review registration order status and server-calculated commercial snapshots.",
         "integrations" => "Connect registration providers, monitor health, and reconcile provider submissions.",
         "forms" => "Author versioned registration questions, conditional rules, and publication readiness.",
@@ -219,6 +226,7 @@
         return path.EndsWith("/schedule", StringComparison.OrdinalIgnoreCase) ? "schedule"
             : path.EndsWith("/registration", StringComparison.OrdinalIgnoreCase) ? "registration"
             : path.EndsWith("/tickets", StringComparison.OrdinalIgnoreCase) ? "tickets"
+            : path.EndsWith("/promotions", StringComparison.OrdinalIgnoreCase) ? "promotions"
             : path.EndsWith("/orders", StringComparison.OrdinalIgnoreCase) ? "orders"
             : path.EndsWith("/integrations", StringComparison.OrdinalIgnoreCase) ? "integrations"
             : path.EndsWith("/forms", StringComparison.OrdinalIgnoreCase) ? "forms"
@@ -231,4 +239,5 @@
     {
         await EventContext.ReloadAsync(EventId);
     }
+
 }

@@ -12,6 +12,7 @@ using Explore.API.Models;
 using Explore.Application.Contracts.Hateoas;
 using Explore.Application.DTOs.RegistrationOrders;
 using Explore.Application.DTOs.RegistrationSubmissions;
+using Explore.Application.Features.Promotions.Requests.Commands;
 using Explore.Application.Features.RegistrationOrders.Requests.Commands;
 using Explore.Application.Features.RegistrationOrders.Requests.Queries;
 using Explore.Application.Features.RegistrationSubmissions.Commands;
@@ -338,6 +339,44 @@ public sealed class RegistrationOrderController(
             HttpContext);
         return Ok(resource);
     }
+
+    [AllowAnonymous]
+    [EndpointClassification(EndpointClass.PublicTransactional)]
+    [EnableRateLimiting(RateLimitingExtensions.PublicTransactionalPolicy)]
+    [RequireIdempotencyKey]
+    [ProtectIdempotencyReplay("Cache-Control")]
+    [HttpPost("guest/{orderId:guid}/promotion", Name = RouteNames.ApplyGuestRegistrationOrderPromotion)]
+    [EndpointSummary("Apply guest registration order promotion")]
+    [Consumes(HateoasConstants.JsonMediaType)]
+    [ProducesResponseType(typeof(PromotionRedemptionResponseDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status429TooManyRequests)]
+    public async Task<ActionResult<PromotionRedemptionResponseDto>> ApplyGuestPromotion(
+        Guid eventId,
+        Guid orderId,
+        [FromHeader(Name = CapabilityHeader)] string? capability,
+        [FromBody] PromotionCodeRequest request,
+        [FromHeader(Name = IdempotencyKeyHeader)] string? idempotencyKey,
+        CancellationToken cancellationToken = default) => MapPromotionRedemption(await mediator.Send(
+        new ApplyGuestPromotionCodeToRegistrationOrderCommand(eventId, orderId, capability, request.Code), cancellationToken));
+
+    [AllowAnonymous]
+    [EndpointClassification(EndpointClass.PublicTransactional)]
+    [EnableRateLimiting(RateLimitingExtensions.PublicTransactionalPolicy)]
+    [RequireIdempotencyKey]
+    [ProtectIdempotencyReplay("Cache-Control")]
+    [HttpDelete("guest/{orderId:guid}/promotion", Name = RouteNames.RemoveGuestRegistrationOrderPromotion)]
+    [EndpointSummary("Remove guest registration order promotion")]
+    [ProducesResponseType(typeof(PromotionRedemptionResponseDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status429TooManyRequests)]
+    public async Task<ActionResult<PromotionRedemptionResponseDto>> RemoveGuestPromotion(
+        Guid eventId,
+        Guid orderId,
+        [FromHeader(Name = CapabilityHeader)] string? capability,
+        [FromHeader(Name = IdempotencyKeyHeader)] string? idempotencyKey,
+        CancellationToken cancellationToken = default) => MapPromotionRedemption(await mediator.Send(
+        new RemoveGuestPromotionFromRegistrationOrderCommand(eventId, orderId, capability), cancellationToken));
 
     [AllowAnonymous]
     [EndpointClassification(EndpointClass.PublicTransactional)]
@@ -714,6 +753,40 @@ public sealed class RegistrationOrderController(
     [Authorize]
     [EndpointClassification(EndpointClass.Authenticated)]
     [EnableRateLimiting(RateLimitingExtensions.WritePolicy)]
+    [RequireIdempotencyKey]
+    [HttpPost("{orderId:guid}/promotion", Name = RouteNames.ApplyAuthenticatedRegistrationOrderPromotion)]
+    [EndpointSummary("Apply registration order promotion")]
+    [Consumes(HateoasConstants.JsonMediaType)]
+    [ProducesResponseType(typeof(PromotionRedemptionResponseDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<PromotionRedemptionResponseDto>> ApplyAuthenticatedPromotion(
+        Guid eventId,
+        Guid orderId,
+        [FromBody] PromotionCodeRequest request,
+        [FromHeader(Name = IdempotencyKeyHeader)] string? idempotencyKey,
+        CancellationToken cancellationToken = default) => MapPromotionRedemption(await mediator.Send(
+        new ApplyAuthenticatedPromotionCodeToRegistrationOrderCommand(eventId, orderId, request.Code), cancellationToken));
+
+    [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
+    [EnableRateLimiting(RateLimitingExtensions.WritePolicy)]
+    [RequireIdempotencyKey]
+    [HttpDelete("{orderId:guid}/promotion", Name = RouteNames.RemoveAuthenticatedRegistrationOrderPromotion)]
+    [EndpointSummary("Remove registration order promotion")]
+    [ProducesResponseType(typeof(PromotionRedemptionResponseDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<PromotionRedemptionResponseDto>> RemoveAuthenticatedPromotion(
+        Guid eventId,
+        Guid orderId,
+        [FromHeader(Name = IdempotencyKeyHeader)] string? idempotencyKey,
+        CancellationToken cancellationToken = default) => MapPromotionRedemption(await mediator.Send(
+        new RemoveAuthenticatedPromotionFromRegistrationOrderCommand(eventId, orderId), cancellationToken));
+
+    [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
+    [EnableRateLimiting(RateLimitingExtensions.WritePolicy)]
     [HttpPost("{orderId:guid}/continue", Name = RouteNames.ContinueAuthenticatedRegistrationOrder)]
     [EndpointSummary("Continue authenticated registration order")]
     [EndpointDescription("Advances a registration order owned by the authenticated current account.")]
@@ -1002,6 +1075,9 @@ public sealed class RegistrationOrderController(
                 ? this.ToNotFoundProblem(RegistrationOrderNotFoundProblem)
                 : this.ToCommandValidationProblem(response, RegistrationOrderValidationProblem);
 
+    private ActionResult<PromotionRedemptionResponseDto> MapPromotionRedemption(PromotionRedemptionResponseDto response) =>
+        response.Success ? Ok(response) : this.ToNotFoundProblem(RegistrationOrderNotFoundProblem);
+
     private HalResource<GuestRegistrationOrderDto> ToGuestHalResource(GuestRegistrationOrderDto order)
     {
         var values = new { eventId = order.EventId, orderId = order.Id };
@@ -1024,6 +1100,15 @@ public sealed class RegistrationOrderController(
 
         if (order.StatusCode == "READY_FOR_CHECKOUT")
         {
+            if (string.IsNullOrWhiteSpace(order.AppliedPromotionDisplayLabel))
+            {
+                resource.WithLink(LinkRelations.ApplyPromotion, HalLink.CreateAction(Url.Link(RouteNames.ApplyGuestRegistrationOrderPromotion, values)!, HttpMethods.Post));
+            }
+            else
+            {
+                resource.WithLink(LinkRelations.RemovePromotion, HalLink.CreateAction(Url.Link(RouteNames.RemoveGuestRegistrationOrderPromotion, values)!, HttpMethods.Delete));
+            }
+
             resource.WithLink(LinkRelations.Finalize, HalLink.CreateAction(Url.Link(RouteNames.FinalizeGuestRegistrationOrder, values)!, HttpMethods.Post));
         }
 

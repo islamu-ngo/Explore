@@ -1,6 +1,8 @@
 // ABOUTME: Structured quota failure metadata shared by command responses, exceptions, and API ProblemDetails mapping.
 // ABOUTME: Prevents quota handling from relying on ad hoc string parsing while keeping HTTP concerns out of Application.
 
+using System.Text.Json.Serialization;
+
 namespace Explore.Application.Responses;
 
 public sealed record QuotaExceededDetails(
@@ -9,7 +11,7 @@ public sealed record QuotaExceededDetails(
     int? Actual,
     int? Attempted,
     string Scope,
-    Guid? TenantId = null)
+    [property: JsonIgnore] Guid? TenantId = null)
 {
     public string ToErrorMessage()
     {

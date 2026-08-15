@@ -79,6 +79,48 @@ public sealed class RegistrationOrderService(
     public Task<HalResourceOfRegistrationOrderDto?> CancelCurrentAsync(Guid eventId, Guid orderId, CancellationToken cancellationToken = default) =>
         ExecuteAsync(() => apiClient.CancelAuthenticatedRegistrationOrderAsync(eventId, orderId, cancellationToken: cancellationToken));
 
+    public async Task<HalResourceOfRegistrationOrderDto?> ApplyCurrentPromotionAsync(
+        Guid eventId,
+        Guid orderId,
+        HalResourceOfRegistrationOrderDto order,
+        string code,
+        CancellationToken cancellationToken = default)
+    {
+        if (order._links?.ContainsKey("apply-promotion") != true || string.IsNullOrWhiteSpace(code))
+        {
+            return null;
+        }
+
+        return await ExecuteAsync(() => apiClient.ApplyAuthenticatedRegistrationOrderPromotionAsync(
+            eventId,
+            orderId,
+            new PromotionCodeRequest { Code = code.Trim() },
+            idempotency_Key: NewIdempotencyKey(),
+            cancellationToken: cancellationToken)) is null
+            ? null
+            : await GetCurrentAsync(eventId, orderId, cancellationToken);
+    }
+
+    public async Task<HalResourceOfRegistrationOrderDto?> RemoveCurrentPromotionAsync(
+        Guid eventId,
+        Guid orderId,
+        HalResourceOfRegistrationOrderDto order,
+        CancellationToken cancellationToken = default)
+    {
+        if (order._links?.ContainsKey("remove-promotion") != true)
+        {
+            return null;
+        }
+
+        return await ExecuteAsync(() => apiClient.RemoveAuthenticatedRegistrationOrderPromotionAsync(
+            eventId,
+            orderId,
+            idempotency_Key: NewIdempotencyKey(),
+            cancellationToken: cancellationToken)) is null
+            ? null
+            : await GetCurrentAsync(eventId, orderId, cancellationToken);
+    }
+
     public Task<HalResourceOfRegistrationOrderParticipantsDto?> GetCurrentParticipantsAsync(
         Guid eventId,
         Guid orderId,
@@ -259,6 +301,52 @@ public sealed class RegistrationOrderService(
     public Task<GuestRegistrationOrderLifecycleResponseDto?> FinalizeGuestAsync(Guid eventId, Guid orderId, GuestRegistrationOrderCapability capability, CancellationToken cancellationToken = default) =>
         ExecuteAsync(() => apiClient.FinalizeGuestRegistrationOrderAsync(eventId, orderId, capability.Value, cancellationToken: cancellationToken));
 
+    public async Task<HalResourceOfGuestRegistrationOrderDto?> ApplyGuestPromotionAsync(
+        Guid eventId,
+        Guid orderId,
+        GuestRegistrationOrderCapability capability,
+        HalResourceOfGuestRegistrationOrderDto order,
+        string code,
+        CancellationToken cancellationToken = default)
+    {
+        if (order._links?.ContainsKey("apply-promotion") != true || string.IsNullOrWhiteSpace(code))
+        {
+            return null;
+        }
+
+        return await ExecuteAsync(() => apiClient.ApplyGuestRegistrationOrderPromotionAsync(
+            eventId,
+            orderId,
+            new PromotionCodeRequest { Code = code.Trim() },
+            capability.Value,
+            NewIdempotencyKey(),
+            cancellationToken: cancellationToken)) is null
+            ? null
+            : await GetGuestAsync(eventId, orderId, capability, cancellationToken);
+    }
+
+    public async Task<HalResourceOfGuestRegistrationOrderDto?> RemoveGuestPromotionAsync(
+        Guid eventId,
+        Guid orderId,
+        GuestRegistrationOrderCapability capability,
+        HalResourceOfGuestRegistrationOrderDto order,
+        CancellationToken cancellationToken = default)
+    {
+        if (order._links?.ContainsKey("remove-promotion") != true)
+        {
+            return null;
+        }
+
+        return await ExecuteAsync(() => apiClient.RemoveGuestRegistrationOrderPromotionAsync(
+            eventId,
+            orderId,
+            capability.Value,
+            NewIdempotencyKey(),
+            cancellationToken: cancellationToken)) is null
+            ? null
+            : await GetGuestAsync(eventId, orderId, capability, cancellationToken);
+    }
+
     private async Task<T?> ExecuteAsync<T>(Func<Task<T>> execute)
         where T : class
     {
@@ -272,4 +360,6 @@ public sealed class RegistrationOrderService(
             return null;
         }
     }
+
+    private static string NewIdempotencyKey() => Guid.CreateVersion7().ToString("D");
 }

@@ -1,0 +1,565 @@
+@* ABOUTME: HAL-gated organizer promotion management for one Studio event. *@
+@* ABOUTME: Keeps codes transient while exposing complete definition, lifecycle, and ticket-scope controls. *@
+@using Explore.Blazor.Client.Clients
+@using Explore.Blazor.Client.Contracts.Services.Accessibility
+@using Explore.Blazor.Client.Contracts.Services.Events
+@implements IDisposable
+@inject IEventPromotionService Promotions
+@inject IEventTicketingService Ticketing
+@inject IAccessibilityAnnouncerService Announcer
+@inject IAccessibilityFocusService FocusService
+
+<section class="studio-event-promotions" aria-labelledby="studio-promotions-title" data-testid="studio-event-promotions">
+    <div class="studio-event-promotions__header">
+        <div>
+            <h3 id="studio-promotions-title" class="mud-typography mud-typography-h6">Promotion codes</h3>
+            <MudText Typo="Typo.body2" Color="Color.Secondary">Create discounts for all tickets or selected ticket types.</MudText>
+        </div>
+        @if (_state?.HasLink("create-promotion") == true)
+        {
+            <AppButton OnClick="BeginCreate" Disabled="_mutating" StartIcon="@Icons.Material.Filled.Add" data-testid="show-create-promotion">New promotion</AppButton>
+        }
+    </div>
+
+    @if (_loading)
+    {
+        <div class="studio-event-promotions__state" role="status">Loading promotions…</div>
+    }
+    else if (_state is null)
+    {
+        <div class="studio-event-promotions__state" role="alert">Promotion management is not available for this event.</div>
+    }
+    else
+    {
+        @if (_form is not null)
+        {
+            <EditForm Model="_form" OnSubmit="@(_ => SaveDefinitionAsync())" class="studio-event-promotions__form" data-testid="promotion-definition-form">
+                <h4>@(_revisionTarget is null ? "New promotion" : "Revise promotion")</h4>
+                <MudTextField T="string" Label="Promotion label" @bind-Value="_form.DisplayLabel" Disabled="_mutating" data-testid="promotion-display-label-input" />
+                @if (_revisionTarget is null)
+                {
+                    <MudTextField T="string" Label="Promotion code" InputType="InputType.Password" @bind-Value="_definitionCode" Disabled="_mutating" autocomplete="new-password" data-testid="promotion-code-input" />
+                }
+                <MudSelect T="string" Label="Discount type" @bind-Value="_form.DiscountKind" Disabled="_mutating" data-testid="promotion-discount-kind">
+                    <MudSelectItem T="string" Value="@("fixed")">Fixed amount</MudSelectItem>
+                    <MudSelectItem T="string" Value="@("basis_points")">Percentage</MudSelectItem>
+                </MudSelect>
+                @if (_form.DiscountKind == "fixed")
+                {
+                    <MudNumericField T="long?" Label="Discount in minor currency units" @bind-Value="_form.FixedDiscountMinor" Min="1" Disabled="_mutating" data-testid="promotion-fixed-discount" />
+                }
+                else
+                {
+                    <MudNumericField T="int?" Label="Discount in basis points" @bind-Value="_form.BasisPointDiscount" Min="1" Max="10000" Disabled="_mutating" data-testid="promotion-basis-points" />
+                    <MudNumericField T="long?" Label="Maximum discount in minor currency units (optional)" @bind-Value="_form.MaximumDiscountMinor" Min="1" Disabled="_mutating" data-testid="promotion-maximum-discount" />
+                }
+                <div class="studio-event-promotions__dates">
+                    <label for="promotion-starts-at">Starts at (UTC)</label>
+                    <input id="promotion-starts-at" type="datetime-local" @bind="_form.StartsAtUtc" @bind:format="yyyy-MM-ddTHH:mm" disabled="@_mutating" data-testid="promotion-starts-at" />
+                    <label for="promotion-ends-at">Ends at (UTC)</label>
+                    <input id="promotion-ends-at" type="datetime-local" @bind="_form.EndsAtUtc" @bind:format="yyyy-MM-ddTHH:mm" disabled="@_mutating" data-testid="promotion-ends-at" />
+                </div>
+                <MudNumericField T="int?" Label="Total redemption limit (optional)" @bind-Value="_form.TotalRedemptionLimit" Min="1" Disabled="_mutating" data-testid="promotion-total-limit" />
+                <MudNumericField T="int?" Label="Per verified purchaser limit (optional)" @bind-Value="_form.PerVerifiedPurchaserLimit" Min="1" Disabled="_mutating" data-testid="promotion-purchaser-limit" />
+                <fieldset class="studio-event-promotions__scope">
+                    <legend>Eligible tickets</legend>
+                    <MudCheckBox T="bool" Label="All ticket types" @bind-Value="_form.IncludesAllTickets" Disabled="_mutating" data-testid="promotion-all-tickets" />
+                    @if (!_form.IncludesAllTickets)
+                    {
+                        @foreach (EventTicketTypeState ticketType in _catalog?.TicketTypes ?? [])
+                        {
+                            <MudCheckBox T="bool"
+                                         Label="@ticketType.Name"
+                                         Value="@_form.EligibleTicketTypeIds.Contains(ticketType.Id)"
+                                         ValueChanged="@(selected => SetTicketEligibility(ticketType.Id, selected))"
+                                         Disabled="_mutating" />
+                        }
+                    }
+                </fieldset>
+                @if (!_form.IsValid || (_revisionTarget is null && string.IsNullOrWhiteSpace(_definitionCode)))
+                {
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">Complete the label, discount, UTC window, and ticket scope before saving.</MudText>
+                }
+                <div class="studio-event-promotions__actions">
+                    <AppButton ButtonType="ButtonType.Submit" Disabled="@(_mutating || !_form.IsValid || (_revisionTarget is null && string.IsNullOrWhiteSpace(_definitionCode)))" data-testid="save-promotion-definition">
+                        @(_revisionTarget is null ? "Create draft" : "Create revision")
+                    </AppButton>
+                    <AppButton OnClick="CancelEditor" Variant="Variant.Text" Disabled="_mutating">Cancel</AppButton>
+                </div>
+            </EditForm>
+        }
+
+        @if (_codeActionTarget is not null)
+        {
+            <form class="studio-event-promotions__form" @onsubmit="SubmitCodeActionAsync" @onsubmit:preventDefault data-testid="promotion-code-action-form">
+                <h4>@(_codeAction == PromotionCodeAction.Publish ? "Publish promotion" : "Rotate promotion code")</h4>
+                <MudTextField T="string" Label="Promotion code" InputType="InputType.Password" @bind-Value="_actionCode" Disabled="_mutating" autocomplete="new-password" data-testid="promotion-action-code-input" />
+                <div class="studio-event-promotions__actions">
+                    <AppButton ButtonType="ButtonType.Submit" Disabled="@(_mutating || string.IsNullOrWhiteSpace(_actionCode))" data-testid="submit-promotion-code-action">
+                        @(_codeAction == PromotionCodeAction.Publish ? "Publish" : "Rotate code")
+                    </AppButton>
+                    <AppButton OnClick="CancelCodeAction" Variant="Variant.Text" Disabled="_mutating">Cancel</AppButton>
+                </div>
+            </form>
+        }
+
+        @if (!string.IsNullOrWhiteSpace(_issuedCode))
+        {
+            <div id="studio-promotion-feedback" class="studio-event-promotions__issued" role="status" tabindex="-1" data-testid="promotion-issued-code">
+                <p>Copy this promotion code now. It will not be shown again.</p>
+                <output>@_issuedCode</output>
+                <AppButton OnClick="DismissIssuedCode" Variant="Variant.Outlined" data-testid="dismiss-issued-code">I copied the code</AppButton>
+            </div>
+        }
+        @if (!string.IsNullOrWhiteSpace(_error))
+        {
+            <div id="studio-promotion-feedback" class="studio-event-promotions__message" role="alert" tabindex="-1" data-testid="promotion-error">@_error</div>
+        }
+        else if (!string.IsNullOrWhiteSpace(_status))
+        {
+            <div id="studio-promotion-feedback" class="studio-event-promotions__message" role="status" tabindex="-1" data-testid="promotion-status">@_status</div>
+        }
+
+        @if (_state.Items.Count == 0)
+        {
+            <p class="studio-event-promotions__empty">No promotions yet.</p>
+        }
+        else
+        {
+            <div class="studio-event-promotions__list">
+                @foreach (PromotionManagementItemState promotion in _state.Items)
+                {
+                    <article class="studio-event-promotions__card" data-testid="promotion-card">
+                        <div>
+                            <h4>@promotion.DisplayLabel</h4>
+                            <p>Status: @promotion.StatusName</p>
+                            <p>Window: @promotion.StartsAtUtc.ToString("yyyy-MM-dd HH:mm 'UTC'") to @promotion.EndsAtUtc.ToString("yyyy-MM-dd HH:mm 'UTC'")</p>
+                            <p>Discount: @FormatDiscount(promotion)</p>
+                            <p>Limits: @FormatLimits(promotion)</p>
+                            <p>Ticket scope: @(promotion.IncludesAllTickets ? "All ticket types" : $"{promotion.EligibleTicketTypeIds.Count} selected ticket type(s)")</p>
+                            @if (!string.IsNullOrWhiteSpace(promotion.PromotionCodeDisplayLabel))
+                            {
+                                <p class="studio-event-promotions__masked">Masked code: @promotion.PromotionCodeDisplayLabel</p>
+                            }
+                        </div>
+                        <div class="studio-event-promotions__actions">
+                            @if (promotion.HasLink("revise-promotion"))
+                            {
+                                <AppButton OnClick="@(() => BeginRevision(promotion))" Disabled="_mutating" Variant="Variant.Outlined" data-testid="revise-promotion">Revise</AppButton>
+                            }
+                            @if (promotion.HasLink("publish"))
+                            {
+                                <AppButton OnClick="@(() => BeginCodeAction(promotion, PromotionCodeAction.Publish))" Disabled="_mutating" data-testid="publish-promotion">Publish</AppButton>
+                            }
+                            @if (promotion.HasLink("revoke"))
+                            {
+                                <AppButton OnClick="@(() => RevokeAsync(promotion))" Disabled="_mutating" Color="Color.Error" data-testid="revoke-promotion">Revoke</AppButton>
+                            }
+                            @if (promotion.HasLink("rotate-promotion-code"))
+                            {
+                                <AppButton OnClick="@(() => BeginCodeAction(promotion, PromotionCodeAction.Rotate))" Disabled="_mutating" Variant="Variant.Outlined" data-testid="rotate-promotion-code">Rotate code</AppButton>
+                            }
+                        </div>
+                    </article>
+                }
+            </div>
+        }
+    }
+</section>
+
+@code {
+    [Parameter] public Guid EventId { get; set; }
+
+    private EventTicketCatalogState? _catalog;
+    private PromotionManagementCollectionState? _state;
+    private PromotionEditModel? _form;
+    private PromotionManagementItemState? _revisionTarget;
+    private PromotionManagementItemState? _codeActionTarget;
+    private PromotionCodeAction _codeAction;
+    private CancellationTokenSource? _requests;
+    private bool _loading;
+    private bool _mutating;
+    private bool _disposed;
+    private long _loadGeneration;
+    private Guid _parameterEventId;
+    private string _definitionCode = string.Empty;
+    private string _actionCode = string.Empty;
+    private string? _issuedCode;
+    private string? _error;
+    private string? _status;
+
+    protected override Task OnParametersSetAsync()
+    {
+        if (_parameterEventId != EventId)
+        {
+            _parameterEventId = EventId;
+            ClearEditorsAndSensitiveValues();
+        }
+
+        return LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _requests?.Cancel();
+        _requests?.Dispose();
+        var generation = ++_loadGeneration;
+        var eventId = EventId;
+        if (_disposed || eventId == Guid.Empty)
+        {
+            _catalog = null;
+            _state = null;
+            _loading = false;
+            return;
+        }
+
+        var request = new CancellationTokenSource();
+        _requests = request;
+        _loading = true;
+        _error = null;
+        try
+        {
+            EventTicketCatalogState? catalog = await Ticketing.GetCatalogAsync(eventId, request.Token);
+            PromotionManagementCollectionState? state = catalog?.CatalogId is { } catalogVersionId
+                ? await Promotions.GetPromotionsAsync(eventId, catalogVersionId, request.Token)
+                : null;
+            if (!IsCurrentLoad(generation, eventId, request))
+            {
+                return;
+            }
+
+            _catalog = catalog;
+            _state = state;
+            await Announcer.AnnouncePoliteAsync($"Promotion management loaded: {_state?.Items.Count ?? 0} promotions.");
+        }
+        catch (OperationCanceledException) when (request.IsCancellationRequested)
+        {
+        }
+        catch (Exception)
+        {
+            if (!IsCurrentLoad(generation, eventId, request))
+            {
+                return;
+            }
+
+            _catalog = null;
+            _state = null;
+            _error = "Promotion management could not be loaded.";
+            await Announcer.AnnounceAssertiveAsync(_error);
+        }
+        finally
+        {
+            if (IsCurrentLoad(generation, eventId, request))
+            {
+                _loading = false;
+            }
+        }
+    }
+
+    private void BeginCreate()
+    {
+        ClearEditorsAndSensitiveValues();
+        _form = new PromotionEditModel();
+    }
+
+    private void BeginRevision(PromotionManagementItemState promotion)
+    {
+        ClearEditorsAndSensitiveValues();
+        _revisionTarget = promotion;
+        _form = PromotionEditModel.From(promotion);
+    }
+
+    private void BeginCodeAction(PromotionManagementItemState promotion, PromotionCodeAction action)
+    {
+        ClearEditorsAndSensitiveValues();
+        _codeActionTarget = promotion;
+        _codeAction = action;
+    }
+
+    private void CancelEditor()
+    {
+        _form = null;
+        _revisionTarget = null;
+        _definitionCode = string.Empty;
+    }
+
+    private void CancelCodeAction()
+    {
+        _codeActionTarget = null;
+        _actionCode = string.Empty;
+    }
+
+    private void SetTicketEligibility(Guid ticketTypeId, bool selected)
+    {
+        if (selected)
+        {
+            _form?.EligibleTicketTypeIds.Add(ticketTypeId);
+        }
+        else
+        {
+            _form?.EligibleTicketTypeIds.Remove(ticketTypeId);
+        }
+    }
+
+    private Task SaveDefinitionAsync()
+    {
+        PromotionEditModel? form = _form;
+        PromotionManagementItemState? revision = _revisionTarget;
+        if (form is null || !form.IsValid || (revision is null && string.IsNullOrWhiteSpace(_definitionCode)))
+        {
+            return Task.CompletedTask;
+        }
+
+        return MutateAsync(async cancellationToken =>
+        {
+            var eventId = EventId;
+            var catalogVersionId = _catalog?.CatalogId;
+            if (catalogVersionId is null)
+            {
+                await ShowMutationErrorAsync();
+                return;
+            }
+
+            if (revision is null)
+            {
+                PromotionCodeIssuedCommandResponseDto response = await Promotions.CreateDraftAsync(
+                    eventId,
+                    form.ToCreateRequest(catalogVersionId.Value, _definitionCode),
+                    cancellationToken);
+                if (!IsCurrentIdentity(eventId))
+                {
+                    return;
+                }
+
+                if (response.Success != true || string.IsNullOrWhiteSpace(response.IssuedCode))
+                {
+                    await ShowMutationErrorAsync();
+                    return;
+                }
+
+                _issuedCode = response.IssuedCode;
+                _definitionCode = string.Empty;
+                _form = null;
+                await ShowIssuedCodeAsync(eventId, "Promotion draft created. Copy the code now; it will not be shown again.");
+            }
+            else
+            {
+                PromotionManagementCommandResponseDto response = await Promotions.ReviseAsync(
+                    eventId,
+                    revision.DefinitionId,
+                    form.ToReviseRequest(),
+                    cancellationToken);
+                if (!IsCurrentIdentity(eventId))
+                {
+                    return;
+                }
+
+                if (response.Success != true)
+                {
+                    await ShowMutationErrorAsync();
+                    return;
+                }
+
+                _form = null;
+                _revisionTarget = null;
+                await ReloadAndShowStatusAsync(eventId, "Promotion revision created.");
+            }
+        });
+    }
+
+    private Task SubmitCodeActionAsync()
+    {
+        PromotionManagementItemState? target = _codeActionTarget;
+        string code = _actionCode;
+        PromotionCodeAction action = _codeAction;
+        if (target is null || string.IsNullOrWhiteSpace(code))
+        {
+            return Task.CompletedTask;
+        }
+
+        return MutateAsync(async cancellationToken =>
+        {
+            var eventId = EventId;
+            if (action == PromotionCodeAction.Publish)
+            {
+                PromotionManagementCommandResponseDto response = await Promotions.PublishAsync(
+                    eventId,
+                    target.DefinitionId,
+                    new PromotionCodeRequest { Code = code },
+                    cancellationToken);
+                if (!IsCurrentIdentity(eventId))
+                {
+                    return;
+                }
+
+                _actionCode = string.Empty;
+                _codeActionTarget = null;
+                if (response.Success != true)
+                {
+                    await ShowMutationErrorAsync();
+                    return;
+                }
+
+                await ReloadAndShowStatusAsync(eventId, "Promotion published.");
+                return;
+            }
+
+            PromotionCodeIssuedCommandResponseDto rotated = await Promotions.RotateCodeAsync(
+                eventId,
+                target.DefinitionId,
+                new PromotionCodeRequest { Code = code },
+                cancellationToken);
+            if (!IsCurrentIdentity(eventId))
+            {
+                return;
+            }
+
+            _actionCode = string.Empty;
+            _codeActionTarget = null;
+            if (rotated.Success != true || string.IsNullOrWhiteSpace(rotated.IssuedCode))
+            {
+                await ShowMutationErrorAsync();
+                return;
+            }
+
+            _issuedCode = rotated.IssuedCode;
+            await ShowIssuedCodeAsync(eventId, "Promotion code rotated. Copy the code now; it will not be shown again.");
+        });
+    }
+
+    private Task RevokeAsync(PromotionManagementItemState promotion) => MutateAsync(async cancellationToken =>
+    {
+        var eventId = EventId;
+        PromotionManagementCommandResponseDto response = await Promotions.RevokeAsync(
+            eventId,
+            promotion.DefinitionId,
+            new RevokePromotionRequest(),
+            cancellationToken);
+        if (!IsCurrentIdentity(eventId))
+        {
+            return;
+        }
+
+        if (response.Success != true)
+        {
+            await ShowMutationErrorAsync();
+            return;
+        }
+
+        await ReloadAndShowStatusAsync(eventId, "Promotion revoked.");
+    });
+
+    private async Task MutateAsync(Func<CancellationToken, Task> action)
+    {
+        if (_mutating || _disposed)
+        {
+            return;
+        }
+
+        _mutating = true;
+        var eventId = EventId;
+        _error = null;
+        _status = null;
+        try
+        {
+            await action(_requests?.Token ?? CancellationToken.None);
+        }
+        catch (OperationCanceledException) when (_requests?.IsCancellationRequested == true)
+        {
+        }
+        catch (Exception)
+        {
+            if (IsCurrentIdentity(eventId))
+            {
+                await ShowMutationErrorAsync();
+            }
+        }
+        finally
+        {
+            _mutating = false;
+        }
+    }
+
+    private async Task ShowIssuedCodeAsync(Guid eventId, string announcement)
+    {
+        await LoadAsync();
+        if (!IsCurrentIdentity(eventId))
+        {
+            return;
+        }
+
+        await Announcer.AnnouncePoliteAsync(announcement);
+        await InvokeAsync(StateHasChanged);
+        await FocusService.FocusByIdAsync("studio-promotion-feedback", true);
+    }
+
+    private async Task ReloadAndShowStatusAsync(Guid eventId, string status)
+    {
+        await LoadAsync();
+        if (!IsCurrentIdentity(eventId) || _state is null)
+        {
+            return;
+        }
+
+        _status = status;
+        await Announcer.AnnouncePoliteAsync(status);
+        await InvokeAsync(StateHasChanged);
+        await FocusService.FocusByIdAsync("studio-promotion-feedback", true);
+    }
+
+    private async Task ShowMutationErrorAsync()
+    {
+        ClearSensitiveValues();
+        _error = "Promotion could not be changed.";
+        await Announcer.AnnounceAssertiveAsync(_error);
+        await InvokeAsync(StateHasChanged);
+        await FocusService.FocusByIdAsync("studio-promotion-feedback", true);
+    }
+
+    private static string FormatDiscount(PromotionManagementItemState promotion) => promotion.DiscountKind == "basis_points"
+        ? $"{(promotion.BasisPointDiscount ?? 0) / 100m:0.##}%" + (promotion.MaximumDiscountMinor is { } max ? $", capped at {max} minor units ({promotion.CurrencyCode})" : string.Empty)
+        : $"{promotion.FixedDiscountMinor ?? 0} minor units ({promotion.CurrencyCode})";
+
+    private static string FormatLimits(PromotionManagementItemState promotion) =>
+        $"total {(promotion.TotalRedemptionLimit?.ToString() ?? "unlimited")}, per verified purchaser {(promotion.PerVerifiedPurchaserLimit?.ToString() ?? "unlimited")}";
+
+    private void DismissIssuedCode() => _issuedCode = null;
+
+    public void Dispose()
+    {
+        _disposed = true;
+        ++_loadGeneration;
+        ClearEditorsAndSensitiveValues();
+        _requests?.Cancel();
+        _requests?.Dispose();
+        GC.SuppressFinalize(this);
+    }
+
+    private bool IsCurrentIdentity(Guid eventId) => !_disposed && EventId == eventId;
+
+    private bool IsCurrentLoad(long generation, Guid eventId, CancellationTokenSource request) =>
+        IsCurrentIdentity(eventId)
+        && generation == _loadGeneration
+        && ReferenceEquals(_requests, request);
+
+    private void ClearEditorsAndSensitiveValues()
+    {
+        _form = null;
+        _revisionTarget = null;
+        _codeActionTarget = null;
+        ClearSensitiveValues();
+    }
+
+    private void ClearSensitiveValues()
+    {
+        _issuedCode = null;
+        _definitionCode = string.Empty;
+        _actionCode = string.Empty;
+    }
+
+    private enum PromotionCodeAction
+    {
+        Publish,
+        Rotate
+    }
+}

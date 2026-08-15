@@ -265,6 +265,114 @@ public sealed class ExploreDbContextModelProviderTests
         }
     }
 
+    [Test]
+    [Arguments("PostgreSql")]
+    [Arguments("Sqlite")]
+    [Arguments("SqlServer")]
+    [Arguments("MariaDb")]
+    [Arguments("MySql")]
+    public async Task PromotionModelUsesPortableOneActiveReservationShape(string provider)
+    {
+        using var context = CreateContext(provider);
+        IModel model = context.GetService<IDesignTimeModel>().Model;
+
+        IEntityType reservation = model.FindEntityType(typeof(Explore.Domain.PromotionReservation))!;
+        await Assert.That(reservation).IsNotNull();
+        await Assert.That(reservation.FindDeclaredQueryFilter(Explore.Persistence.QueryFilters.QueryFilterNames.Tenant)).IsNotNull();
+        await Assert.That(reservation.FindIndex([
+            reservation.FindProperty(nameof(Explore.Domain.PromotionReservation.RegistrationOrderId))!,
+            reservation.FindProperty(nameof(Explore.Domain.PromotionReservation.OrderReservationSlot))!
+        ])?.IsUnique).IsTrue();
+        await Assert.That(reservation.GetCheckConstraints().Any(constraint => constraint.Name == "ck_promotion_reservation_active_slot")).IsTrue();
+        await Assert.That(reservation.GetCheckConstraints().Any(constraint => constraint.Name == "ck_promotion_reservation_status_timestamps")).IsTrue();
+
+        IEntityType code = model.FindEntityType(typeof(Explore.Domain.PromotionCode))!;
+        await Assert.That(code.FindProperty("LookupDigest")!.GetMaxLength()).IsEqualTo(128);
+        await Assert.That(code.GetIndexes().Any(index => index.IsUnique && index.Properties.Select(property => property.Name).SequenceEqual([
+            "TenantId", "ScopeEventId", "ScopeTicketCatalogVersionId", "LookupKeyVersion", "LookupDigest"
+        ]))).IsTrue();
+        await Assert.That(code.GetIndexes().Where(index => index.Properties.Any(property => property.Name == "IsActive")).All(index => index.GetFilter() is null)).IsTrue();
+    }
+
+    [Test]
+    [Arguments("PostgreSql")]
+    [Arguments("Sqlite")]
+    [Arguments("SqlServer")]
+    [Arguments("MariaDb")]
+    [Arguments("MySql")]
+    public async Task PromotionModelMapsHistoricalOrderSnapshotsAndVerifiedEmail(string provider)
+    {
+        using var context = CreateContext(provider);
+        IModel model = context.GetService<IDesignTimeModel>().Model;
+
+        IEntityType order = model.FindEntityType(typeof(Explore.Domain.RegistrationOrder))!;
+        foreach (string property in new[]
+                 {
+                     nameof(Explore.Domain.RegistrationOrder.PreDiscountOrganizerDirectedTotalMinorSnapshot),
+                     nameof(Explore.Domain.RegistrationOrder.PromotionDiscountTotalMinorSnapshot),
+                     nameof(Explore.Domain.RegistrationOrder.PostDiscountOrganizerDirectedTotalMinorSnapshot)
+                 })
+        {
+            await Assert.That(order.FindProperty(property)!.GetColumnType()).IsEqualTo("bigint");
+        }
+
+        IEntityType line = model.FindEntityType(typeof(Explore.Domain.RegistrationOrderLine))!;
+        foreach (string property in new[]
+                 {
+                     nameof(Explore.Domain.RegistrationOrderLine.PreDiscountLineSubtotalMinorSnapshot),
+                     nameof(Explore.Domain.RegistrationOrderLine.PromotionDiscountAmountMinorSnapshot),
+                     nameof(Explore.Domain.RegistrationOrderLine.PostDiscountLineSubtotalMinorSnapshot)
+                 })
+        {
+            await Assert.That(line.FindProperty(property)!.GetColumnType()).IsEqualTo("bigint");
+        }
+
+        IEntityType pii = model.FindEntityType(typeof(Explore.Domain.RegistrationOrderPii))!;
+        await Assert.That(pii.FindProperty(nameof(Explore.Domain.RegistrationOrderPii.IsEmailVerified))!.GetDefaultValue()).IsEqualTo(false);
+    }
+
+    [Test]
+    [Arguments("src/Explore.Persistence/Migrations/20260815062551_AddEventPromotionCodes.cs")]
+    [Arguments("src/Explore.Persistence.Migrations.Sqlite/Migrations/20260815062627_AddEventPromotionCodes.cs")]
+    [Arguments("src/Explore.Persistence.Migrations.SqlServer/Migrations/20260815062801_AddEventPromotionCodes.cs")]
+    [Arguments("src/Explore.Persistence.Migrations.MariaDb/Migrations/20260815062813_AddEventPromotionCodes.cs")]
+    [Arguments("src/Explore.Persistence.Migrations.MySql/Migrations/20260815063136_AddEventPromotionCodes.cs")]
+    public async Task GeneratedPromotionMigrationBackfillsHistoricalSnapshotColumns(string migrationPath)
+    {
+        string source = await File.ReadAllTextAsync(Path.Combine(GetRepositoryRoot(), migrationPath));
+
+        await Assert.That(source).Contains("pre_discount_organizer_directed_total_minor_snapshot");
+        await Assert.That(source).Contains("post_discount_organizer_directed_total_minor_snapshot");
+        await Assert.That(source).Contains("organizer_directed_total_minor_snapshot");
+        await Assert.That(source).Contains("pre_discount_line_subtotal_minor_snapshot");
+        await Assert.That(source).Contains("post_discount_line_subtotal_minor_snapshot");
+        await Assert.That(source).Contains("line_subtotal_snapshot");
+        await Assert.That(source).Contains("migrationBuilder.Sql");
+    }
+
+    [Test]
+    [Arguments("PostgreSql")]
+    [Arguments("Sqlite")]
+    [Arguments("SqlServer")]
+    [Arguments("MariaDb")]
+    [Arguments("MySql")]
+    public async Task PromotionLookupsAreGlobalStableIntegerTables(string provider)
+    {
+        using var context = CreateContext(provider);
+        IModel model = context.GetService<IDesignTimeModel>().Model;
+
+        foreach (Type lookupType in new[] { typeof(Explore.Domain.PromotionDefinitionStatus), typeof(Explore.Domain.PromotionReservationStatus) })
+        {
+            IEntityType lookup = model.FindEntityType(lookupType)!;
+            await Assert.That(lookup.FindPrimaryKey()!.Properties.Single().ClrType).IsEqualTo(typeof(int));
+            await Assert.That(lookup.FindProperty("Id")!.ValueGenerated).IsEqualTo(ValueGenerated.Never);
+            await Assert.That(lookup.FindProperty("MasterCode")!.GetMaxLength()).IsEqualTo(100);
+            await Assert.That(lookup.GetIndexes().Any(index => index.IsUnique && index.Properties.Single().Name == "MasterCode")).IsTrue();
+            await Assert.That(lookup.FindDeclaredQueryFilter(Explore.Persistence.QueryFilters.QueryFilterNames.Tenant)).IsNull();
+            await Assert.That(lookup.GetSeedData().Count).IsEqualTo(0);
+        }
+    }
+
     private static bool IsMySqlAsciiIdentityProperty(IReadOnlyProperty property) =>
         (property.DeclaringType.ClrType == typeof(Explore.Domain.AtprotoIdentity) &&
          property.Name == nameof(Explore.Domain.AtprotoIdentity.Did)) ||
@@ -319,6 +427,17 @@ public sealed class ExploreDbContextModelProviderTests
 
         builder.UseSnakeCaseNamingConvention();
         return new ExploreDbContext(builder.Options);
+    }
+
+    private static string GetRepositoryRoot()
+    {
+        var directory = new DirectoryInfo(AppContext.BaseDirectory);
+        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "global.json")))
+        {
+            directory = directory.Parent;
+        }
+
+        return directory?.FullName ?? throw new InvalidOperationException("Could not locate repository root.");
     }
 
     private static int EstimateMySqlIndexWidth(IReadOnlyIndex index)

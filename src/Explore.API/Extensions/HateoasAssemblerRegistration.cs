@@ -35,6 +35,7 @@ using Explore.Application.DTOs.EventSessionTemplate;
 using Explore.Application.DTOs.EventTemplate;
 using Explore.Application.DTOs.EventTicketing;
 using Explore.Application.DTOs.Footer;
+using Explore.Application.Features.Promotions;
 using Explore.Application.DTOs.Group;
 using Explore.Application.DTOs.GroupMember;
 using Explore.Application.DTOs.Location;
@@ -101,6 +102,9 @@ public static class HateoasAssemblerRegistration
         services.AddScoped<ILinkPolicy<EventOrganizerPaymentConnectionManagementDto>, OrganizerPaymentConnectionLinkPolicy>();
         services.AddScoped<ICollectionLinkPolicy<EventOrganizerPaymentConnectionManagementDto>, OrganizerPaymentConnectionCollectionLinkPolicy>();
         services.AddScoped<IResourceAssembler<EventOrganizerPaymentConnectionManagementDto, EventOrganizerPaymentConnectionManagementDto>, OrganizerPaymentConnectionResourceAssembler>();
+        services.AddScoped<ILinkPolicy<PromotionManagementDto>, PromotionManagementLinkPolicy>();
+        services.AddScoped<ICollectionLinkPolicy<PromotionManagementDto>, PromotionManagementCollectionLinkPolicy>();
+        services.AddScoped<IResourceAssembler<PromotionManagementDto, PromotionManagementDto>, PromotionManagementResourceAssembler>();
         services.AddScoped<RegistrationWorkflowLinkPolicy>();
         services.AddScoped<ILinkPolicy<RegistrationWorkflowDto>>(provider => provider.GetRequiredService<RegistrationWorkflowLinkPolicy>());
         services.AddScoped<ICollectionLinkPolicy<RegistrationWorkflowDto>, RegistrationWorkflowCollectionLinkPolicy>();

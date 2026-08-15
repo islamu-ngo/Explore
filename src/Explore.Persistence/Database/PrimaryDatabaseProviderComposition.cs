@@ -126,6 +126,7 @@ public static class PrimaryDatabaseProviderComposition
                         providerOptions.MigrationsAssembly(migrationsAssembly);
                         providerOptions.MigrationsHistoryTable(migrationsHistory.Table);
                     });
+                optionsBuilder.ReplaceService<IMigrationsSqlGenerator, ConfigurableSqliteMigrationsSqlGenerator>();
                 break;
 
             case PrimaryDatabaseProvider.SqlServer:
@@ -148,6 +149,7 @@ public static class PrimaryDatabaseProviderComposition
                         providerOptions.MigrationsAssembly(migrationsAssembly);
                         providerOptions.MigrationsHistoryTable(migrationsHistory.Table);
                     });
+                optionsBuilder.ReplaceService<IMigrationsSqlGenerator, ConfigurableMySqlMigrationsSqlGenerator>();
                 break;
 
             case PrimaryDatabaseProvider.MySql:
@@ -159,12 +161,14 @@ public static class PrimaryDatabaseProviderComposition
                         providerOptions.MigrationsAssembly(migrationsAssembly);
                         providerOptions.MigrationsHistoryTable(migrationsHistory.Table);
                     });
+                optionsBuilder.ReplaceService<IMigrationsSqlGenerator, ConfigurableMySqlMigrationsSqlGenerator>();
                 break;
 
             default:
                 throw new InvalidOperationException($"Unsupported primary database provider '{options.Provider}'.");
         }
 
+        optionsBuilder.ReplaceService<IMigrationsModelDiffer, PromotionSnapshotBackfillMigrationsModelDiffer>();
         optionsBuilder.UseSnakeCaseNamingConvention();
         return database;
     }

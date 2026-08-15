@@ -6,7 +6,7 @@ ABOUTME: Authoritative source for Explore.API patterns — middleware order, req
 > **Audience:** Integrators | Contributors | AI agents
 > **Status:** Implemented
 > **Owner:** API
-> **Last Verified:** 2026-08-14
+> **Last Verified:** 2026-08-15
 > **Source Anchors:** `Explore.API/Program.cs`, `Explore.API/Controllers/`, `Explore.API/Middleware/`, `Explore.API/Hateoas/`, `Explore.API/Authentication/`, `Explore.API/Extensions/`, `Explore.API/OpenApi/`, `Explore.API/Explore.API.csproj`, `Explore.Blazor.Client/Explore.Blazor.Client.csproj`, `Event.API.IntegrationTests/Features/ContractInvariantsTests.cs`, `Event.API.IntegrationTests/Features/OpenApiParityTests.cs`
 
 ## Scope
@@ -261,6 +261,37 @@ Paid-event policy settings are separate from instance monetization:
 | `PUT /api/tenants/{tenantId}/settings/paid-event-policy` | `UpdateTenantPaidEventPolicySettings` | `[Authorize]`, `private, no-store` | Revises a tenant-only narrowing of that ceiling. |
 
 The paid-management resources expose actions only through their exact HAL relations: `preflight`, `commercial-disclosures`, `payment-connection`, `start-onboarding`, and `publish`. A paid publish relation requires both fresh readiness and `manage-paid-event-commerce` for the event's persisted organizer actor. Policy responses expose policy values without policy or tenant identifiers. The connection response exposes only status, merchant country, charge-capability state, requirements state, supported currencies, and readiness timestamp. It omits provider, platform, account, tenant, actor, connection, lineage, and evidence identifiers. Checkout, capture, refunds, disputes, admission, QR/check-in, transfers, payouts, and legal/tax/invoice support are not API behavior.
+
+### Event Promotion And Order Redemption Endpoints
+
+Organizer promotion management is authenticated, event-scoped, and `private, no-store` for reads. Every operation authorizes `manage-paid-event-commerce` against the persisted Event organizer; the feature is available only for a platform-managed Event and an exact scoped ticket catalog.
+
+| Route | Route Name | Protection | Purpose |
+|---|---|---|---|
+| `GET /api/events/{eventId}/promotions?ticketCatalogVersionId={id}` | `GetEventPromotions` | `[Authorize]`, `private, no-store` | Lists safe definition versions and masked active-code labels for one exact catalog. |
+| `GET /api/events/{eventId}/promotions/{promotionDefinitionId}` | `GetEventPromotion` | `[Authorize]`, `private, no-store` | Returns one safe promotion-management HAL resource. |
+| `POST /api/events/{eventId}/promotions` | `CreateEventPromotionDraft` | `[Authorize]`, `Write`, `Idempotency-Key` | Creates a draft and returns the submitted code once as `issuedCode`; no plaintext or digest is present in the management DTO. |
+| `PUT /api/events/{eventId}/promotions/{promotionDefinitionId}` | `ReviseEventPromotion` | `[Authorize]`, `Write`, `Idempotency-Key` | Creates the next draft version from a published definition; it does not mutate the published version. |
+| `POST /api/events/{eventId}/promotions/{promotionDefinitionId}/publish` | `PublishEventPromotion` | `[Authorize]`, `Write`, `Idempotency-Key` | Publishes a draft and persists only the versioned digest and masked suffix for its submitted code. |
+| `POST /api/events/{eventId}/promotions/{promotionDefinitionId}/revoke` | `RevokeEventPromotion` | `[Authorize]`, `Write`, `Idempotency-Key` | Immediately revokes a published definition at the server-owned decision instant; callers cannot schedule an effective time. |
+| `POST /api/events/{eventId}/promotions/{promotionDefinitionId}/code:rotate` | `RotateEventPromotionCode` | `[Authorize]`, `Write`, `Idempotency-Key` | Retires the active code, creates its replacement, and returns the replacement plaintext once as `issuedCode`. |
+
+The management resource DTO exposes only event/catalog/version/currency, definition group/version/status, eligibility, discount parameters, UTC window, redemption limits, and a masked `promotionCodeDisplayLabel`. Tenant, actor, and organizer identifiers are server-only HAL authorization metadata marked `[JsonIgnore]`. Digests, lookup-key versions, active/retired storage flags, and reservation IDs are absent from JSON and generated clients. Plaintext appears in generated request models only where a caller must submit a code; among responses, only successful create and rotate command wrappers expose the one-time `issuedCode`. Collection HAL advertises `create-promotion`; draft items may advertise only `publish`; published items may advertise `revise-promotion`, `revoke`, and `rotate-promotion-code`. Link presence, not a role or status guess, is the client action authority.
+
+Authenticated and capability-scoped guest orders expose matching apply/remove operations only while the order is `READY_FOR_CHECKOUT`:
+
+| Route | Route Name | Protection |
+|---|---|---|
+| `POST /api/events/{eventId}/registration-orders/{orderId}/promotion` | `ApplyAuthenticatedRegistrationOrderPromotion` | `[Authorize]`, `Write`, `Idempotency-Key` |
+| `DELETE /api/events/{eventId}/registration-orders/{orderId}/promotion` | `RemoveAuthenticatedRegistrationOrderPromotion` | `[Authorize]`, `Write`, `Idempotency-Key` |
+| `POST /api/events/{eventId}/registration-orders/guest/{orderId}/promotion` | `ApplyGuestRegistrationOrderPromotion` | `[AllowAnonymous]`, `PublicTransactional`, `Idempotency-Key`, `X-Registration-Order-Capability` |
+| `DELETE /api/events/{eventId}/registration-orders/guest/{orderId}/promotion` | `RemoveGuestRegistrationOrderPromotion` | `[AllowAnonymous]`, `PublicTransactional`, `Idempotency-Key`, `X-Registration-Order-Capability` |
+
+Guest operations use the fixed 10-per-60-second effective-IP `public_transactional` window with queue limit zero. Browser-originated unsafe requests still cross the BFF antiforgery boundary. Both guest responses protect idempotency replay metadata. Authenticated operations use the per-user `Write` policy. The capability is header-only and is compared with the opaque hash on the exact tenant/Event/order row after order-expiry validation; it never enters a URL, response body, HAL link, log, or generated DTO.
+
+Apply accepts `{ "code": "..." }`. Lookup normalizes the code, computes candidates for only the key versions already represented by active scoped codes, then rechecks tenant, Event, catalog, currency, window, eligibility, limits, one-active-reservation, and pinned fee-policy facts inside one serializable transaction. Wrong order ownership/capability, an empty or overlong submitted code, unknown or retired code, wrong scope, exhausted limit, inactive definition, an existing promotion, and pricing mismatch all collapse to the same registration-order `404`; the API does not reveal which predicate failed. Syntactically malformed JSON remains subject to the API's global safe `400` validation contract before the redemption handler runs. Success returns only the masked applied label plus promotion discount, platform fee, platform contribution, and final due totals. Order reads expose aggregate pre-discount, discount, post-discount, organizer-directed, fee, organizer-earnings, contribution, and final totals in one currency; `organizerDirectedTotalMinor` equals `postDiscountOrganizerDirectedTotalMinor`. They do not expose raw code, digests, key versions, promotion IDs, reservation IDs, or authorization booleans.
+
+Order HAL exposes exactly one of `apply-promotion` or `remove-promotion` in `READY_FOR_CHECKOUT`; authenticated links pass through normal registration-order authorization and guest links remain capability-bound at execution. Promotion removal clears the applied snapshot and reprices from pinned facts. Phase 17 does not add `PaymentAttempt`, provider Checkout creation, payment-success callbacks, or payment reconciliation; those remain Phase 18.
 
 ### Registration Form Authoring Endpoints
 

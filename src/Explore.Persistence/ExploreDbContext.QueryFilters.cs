@@ -82,6 +82,15 @@ public partial class ExploreDbContext
         modelBuilder.Entity<RegistrationOrderPlatformContribution>()
             .HasQueryFilter(QueryFilterNames.Tenant, e => IsTenantFilterBypassed || e.TenantId == TenantFilterTenantId);
 
+        modelBuilder.Entity<PromotionDefinition>()
+            .HasQueryFilter(QueryFilterNames.Tenant, e => IsTenantFilterBypassed || e.TenantId == TenantFilterTenantId);
+
+        modelBuilder.Entity<PromotionCode>()
+            .HasQueryFilter(QueryFilterNames.Tenant, e => IsTenantFilterBypassed || e.TenantId == TenantFilterTenantId);
+
+        modelBuilder.Entity<PromotionReservation>()
+            .HasQueryFilter(QueryFilterNames.Tenant, e => IsTenantFilterBypassed || e.TenantId == TenantFilterTenantId);
+
         modelBuilder.Entity<RegistrationInventoryHold>()
             .HasQueryFilter(QueryFilterNames.Tenant, e => IsTenantFilterBypassed || e.TenantId == TenantFilterTenantId)
             .HasQueryFilter(QueryFilterNames.SoftDelete, e => !e.IsDeleted);

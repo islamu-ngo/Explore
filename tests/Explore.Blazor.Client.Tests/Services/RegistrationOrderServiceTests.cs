@@ -47,4 +47,160 @@ public sealed class RegistrationOrderServiceTests : IDisposable
             Arg.Any<StartRegistrationOrderRequest>(),
             Arg.Any<CancellationToken>());
     }
+
+    [Test]
+    public async Task ApplyCurrentPromotionAsync_WithoutApplyPromotionRelation_DoesNotCallGeneratedClient()
+    {
+        var order = CreateOrder();
+
+        var result = await _service.ApplyCurrentPromotionAsync(order.EventId!.Value, order.Id!.Value, order, "SAVE10");
+
+        await Assert.That(result).IsNull();
+        await _apiClient.DidNotReceive().ApplyAuthenticatedRegistrationOrderPromotionAsync(
+            Arg.Any<Guid>(),
+            Arg.Any<Guid>(),
+            Arg.Any<PromotionCodeRequest>(),
+            Arg.Any<string?>(),
+            Arg.Any<string?>(),
+            Arg.Any<string?>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task ApplyCurrentPromotionAsync_WithApplyPromotionRelation_UsesGeneratedClientThenReloadsOrder()
+    {
+        var order = CreateOrder("apply-promotion");
+        var updated = CreateOrder("remove-promotion");
+        updated.Id = order.Id;
+        updated.EventId = order.EventId;
+        _apiClient.ApplyAuthenticatedRegistrationOrderPromotionAsync(
+                order.EventId!.Value,
+                order.Id!.Value,
+                Arg.Is<PromotionCodeRequest>(request => request.Code == "SAVE10"),
+                Arg.Is<string?>(value => IsUuid7(value)),
+                Arg.Any<string?>(),
+                Arg.Any<string?>(),
+                Arg.Any<CancellationToken>())
+            .Returns(new PromotionRedemptionResponseDto { AppliedPromotionDisplayLabel = "Promotion ending in 10" });
+        _apiClient.GetCurrentRegistrationOrderAsync(order.EventId.Value, order.Id.Value, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(updated);
+
+        var result = await _service.ApplyCurrentPromotionAsync(order.EventId.Value, order.Id.Value, order, "SAVE10");
+
+        await Assert.That(result).IsSameReferenceAs(updated);
+        await _apiClient.Received(1).ApplyAuthenticatedRegistrationOrderPromotionAsync(
+            order.EventId.Value,
+            order.Id.Value,
+            Arg.Any<PromotionCodeRequest>(),
+            Arg.Is<string?>(value => IsUuid7(value)),
+            Arg.Any<string?>(),
+            Arg.Any<string?>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task RemoveCurrentPromotionAsync_WithoutRemovePromotionRelation_DoesNotCallGeneratedClient()
+    {
+        var order = CreateOrder();
+
+        var result = await _service.RemoveCurrentPromotionAsync(order.EventId!.Value, order.Id!.Value, order);
+
+        await Assert.That(result).IsNull();
+        await _apiClient.DidNotReceive().RemoveAuthenticatedRegistrationOrderPromotionAsync(
+            Arg.Any<Guid>(),
+            Arg.Any<Guid>(),
+            Arg.Any<string?>(),
+            Arg.Any<string?>(),
+            Arg.Any<string?>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task RemoveGuestPromotionAsync_WithRemovePromotionRelation_PreservesCapabilityHeaderTransport()
+    {
+        var order = CreateGuestOrder("remove-promotion");
+        var capability = new GuestRegistrationOrderCapability("opaque-capability");
+        _apiClient.RemoveGuestRegistrationOrderPromotionAsync(
+                order.EventId!.Value,
+                order.Id!.Value,
+                capability.Value,
+                Arg.Is<string?>(value => IsUuid7(value)),
+                Arg.Any<string?>(),
+                Arg.Any<string?>(),
+                Arg.Any<CancellationToken>())
+            .Returns(new PromotionRedemptionResponseDto());
+        _apiClient.GetGuestRegistrationOrderAsync(order.EventId.Value, order.Id.Value, capability.Value, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(order);
+
+        var result = await _service.RemoveGuestPromotionAsync(order.EventId.Value, order.Id.Value, capability, order);
+
+        await Assert.That(result).IsSameReferenceAs(order);
+        await _apiClient.Received(1).RemoveGuestRegistrationOrderPromotionAsync(
+            order.EventId.Value,
+            order.Id.Value,
+            capability.Value,
+            Arg.Is<string?>(value => IsUuid7(value)),
+            Arg.Any<string?>(),
+            Arg.Any<string?>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task ApplyGuestPromotionAsync_WithoutApplyPromotionRelation_DoesNotSendCapabilityOrCode()
+    {
+        var order = CreateGuestOrder();
+
+        var result = await _service.ApplyGuestPromotionAsync(
+            order.EventId!.Value,
+            order.Id!.Value,
+            new GuestRegistrationOrderCapability("opaque-capability"),
+            order,
+            "SAVE10");
+
+        await Assert.That(result).IsNull();
+        await _apiClient.DidNotReceive().ApplyGuestRegistrationOrderPromotionAsync(
+            Arg.Any<Guid>(),
+            Arg.Any<Guid>(),
+            Arg.Any<PromotionCodeRequest>(),
+            Arg.Any<string?>(),
+            Arg.Any<string?>(),
+            Arg.Any<string?>(),
+            Arg.Any<string?>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    private static HalResourceOfRegistrationOrderDto CreateOrder(params string[] relations)
+    {
+        var order = new HalResourceOfRegistrationOrderDto
+        {
+            Id = Guid.CreateVersion7(),
+            EventId = Guid.CreateVersion7()
+        };
+        foreach (var relation in relations)
+        {
+            order._links ??= new Dictionary<string, HalLink>();
+            order._links[relation] = new HalLink { Href = $"/orders/{order.Id}/{relation}", Method = "POST" };
+        }
+
+        return order;
+    }
+
+    private static HalResourceOfGuestRegistrationOrderDto CreateGuestOrder(params string[] relations)
+    {
+        var order = new HalResourceOfGuestRegistrationOrderDto
+        {
+            Id = Guid.CreateVersion7(),
+            EventId = Guid.CreateVersion7()
+        };
+        foreach (var relation in relations)
+        {
+            order._links ??= new Dictionary<string, HalLink>();
+            order._links[relation] = new HalLink { Href = $"/guest/orders/{order.Id}/{relation}", Method = "POST" };
+        }
+
+        return order;
+    }
+
+    private static bool IsUuid7(string? value) =>
+        Guid.TryParse(value, out Guid idempotencyKey) && idempotencyKey.Version == 7;
 }

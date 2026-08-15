@@ -4,9 +4,12 @@
 @using Microsoft.AspNetCore.Authorization
 @using Explore.Blazor.Client.Helpers
 @using Explore.Blazor.Client.Components.Registration.FormRenderer
+@using Explore.Blazor.Client.Contracts.Services.Accessibility
 @attribute [Authorize]
 @rendermode InteractiveServer
 @inject IRegistrationOrderService RegistrationOrderService
+@inject IAccessibilityAnnouncerService Announcer
+@inject IAccessibilityFocusService Focus
 @implements IDisposable
 
 <PageTitle>Registration order</PageTitle>
@@ -41,11 +44,56 @@
                     <li>@(line.Quantity ?? 0) × @(line.TicketTypeName ?? "Ticket") — @RegistrationOrderMoneyFormatter.Format(line.SubtotalMinor, line.CurrencyCode ?? _order.CurrencyCode)</li>
                 }
             </ul>
-            <MudText Typo="Typo.body1">Total due: @RegistrationOrderMoneyFormatter.Format(_order.TotalDueMinor, _order.CurrencyCode)</MudText>
+            <dl class="registration-order-recovery__totals" aria-label="Order pricing totals">
+                <div><dt>Organizer amount before promotion</dt><dd>@RegistrationOrderMoneyFormatter.Format(_order.PreDiscountOrganizerDirectedTotalMinor, _order.CurrencyCode)</dd></div>
+                <div><dt>Promotion discount</dt><dd>@RegistrationOrderMoneyFormatter.Format(_order.PromotionDiscountTotalMinor, _order.CurrencyCode)</dd></div>
+                <div><dt>Organizer amount after promotion</dt><dd>@RegistrationOrderMoneyFormatter.Format(_order.PostDiscountOrganizerDirectedTotalMinor ?? _order.OrganizerDirectedTotalMinor, _order.CurrencyCode)</dd></div>
+                <div><dt>Platform fee</dt><dd>@RegistrationOrderMoneyFormatter.Format(_order.PlatformFeeTotalMinor, _order.CurrencyCode)</dd></div>
+                <div><dt>Voluntary contribution</dt><dd>@RegistrationOrderMoneyFormatter.Format(_order.PlatformContributionTotalMinor, _order.CurrencyCode)</dd></div>
+                <div><dt>Final total</dt><dd>@RegistrationOrderMoneyFormatter.Format(_order.TotalDueMinor, _order.CurrencyCode)</dd></div>
+            </dl>
         </section>
+
+        @if (HasPromotionState)
+        {
+            <section class="registration-order-recovery__promotion" aria-labelledby="registration-order-promotion">
+                <MudText Id="registration-order-promotion" Typo="Typo.h5" HtmlTag="h2">Promotion</MudText>
+                @if (CanRemovePromotion)
+                {
+                    <MudText Typo="Typo.body2">@(_order.AppliedPromotionDisplayLabel ?? "A promotion is applied.")</MudText>
+                    <MudText Typo="Typo.body2">Remove this promotion before applying a different code.</MudText>
+                    <AppButton Variant="Variant.Outlined" Disabled="_isPromotionBusy" OnClick="RemovePromotionAsync">Remove promotion</AppButton>
+                }
+                else if (!string.IsNullOrWhiteSpace(_order.AppliedPromotionDisplayLabel))
+                {
+                    <MudText Typo="Typo.body2">@_order.AppliedPromotionDisplayLabel</MudText>
+                    <MudText Typo="Typo.body2">Remove this promotion before applying a different code.</MudText>
+                }
+                else if (CanApplyPromotion)
+                {
+                    <form class="registration-order-recovery__promotion-form" @onsubmit="ApplyPromotionAsync" @onsubmit:preventDefault="true">
+                        <MudTextField T="string" Id="promotion-code" Label="Promotion code" aria-label="Promotion code" @bind-Value="_promotionCode" Immediate="true" Disabled="_isPromotionBusy" />
+                        <AppButton ButtonType="ButtonType.Submit" Disabled="@(_isPromotionBusy || string.IsNullOrWhiteSpace(_promotionCode))">Apply promotion code</AppButton>
+                    </form>
+                }
+
+                @if (_promotionMessage is not null)
+                {
+                    <div id="promotion-status" class="registration-order-recovery__promotion-status" role="@(_promotionMessageIsError ? "alert" : "status")" aria-live="@(_promotionMessageIsError ? "assertive" : "polite")" tabindex="-1">@_promotionMessage</div>
+                }
+            </section>
+        }
 
         @if (_order.PlatformContribution?.Options is { Count: > 0 })
         {
+            @if (!string.IsNullOrWhiteSpace(_order.PlatformContribution.Heading))
+            {
+                <MudText Typo="Typo.h6" HtmlTag="h2">@_order.PlatformContribution.Heading</MudText>
+            }
+            @if (!string.IsNullOrWhiteSpace(_order.PlatformContribution.Body))
+            {
+                <MudText Typo="Typo.body2">@_order.PlatformContribution.Body</MudText>
+            }
             <MudSelect T="int?" Label="Platform contribution" @bind-Value="_contributionBasisPoints">
                 @foreach (var option in _order.PlatformContribution.Options)
                 {
@@ -90,15 +138,37 @@
     private bool _isLoading = true;
     private string? _error;
     private int? _contributionBasisPoints;
+    private string _promotionCode = string.Empty;
+    private string? _promotionMessage;
+    private bool _promotionMessageIsError;
+    private bool _isPromotionBusy;
+    private CancellationTokenSource? _promotionCancellation;
+    private bool _disposed;
+    private long _loadGeneration;
     private Timer? _timer;
 
-    protected override async Task OnParametersSetAsync() => await LoadAsync();
+    private bool CanApplyPromotion => _order?._links?.ContainsKey("apply-promotion") == true && !CanRemovePromotion;
+    private bool CanRemovePromotion => _order?._links?.ContainsKey("remove-promotion") == true;
+    private bool HasPromotionState => CanApplyPromotion || CanRemovePromotion || !string.IsNullOrWhiteSpace(_order?.AppliedPromotionDisplayLabel);
+
+    protected override async Task OnParametersSetAsync()
+    {
+        CancelPromotionMutation();
+        await LoadAsync();
+    }
 
     private async Task LoadAsync()
     {
+        var generation = ++_loadGeneration;
         _isLoading = true;
         _error = null;
-        _order = await RegistrationOrderService.GetCurrentAsync(EventId, OrderId);
+        var order = await RegistrationOrderService.GetCurrentAsync(EventId, OrderId);
+        if (_disposed || generation != _loadGeneration)
+        {
+            return;
+        }
+
+        _order = order;
         _contributionBasisPoints = _order?.PlatformContribution?.SelectedBasisPoints;
         _isLoading = false;
         _timer?.Dispose();
@@ -121,6 +191,89 @@
 
     private Task FinalizeAsync() => ApplyAsync(() => RegistrationOrderService.FinalizeCurrentAsync(EventId, OrderId));
 
+    private Task ApplyPromotionAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_promotionCode))
+        {
+            return Task.CompletedTask;
+        }
+
+        var code = _promotionCode;
+        return UpdatePromotionAsync(
+            cancellationToken => RegistrationOrderService.ApplyCurrentPromotionAsync(EventId, OrderId, _order!, code, cancellationToken),
+            "Promotion applied.",
+            "We could not apply that promotion to this order.");
+    }
+
+    private Task RemovePromotionAsync() => UpdatePromotionAsync(
+        cancellationToken => RegistrationOrderService.RemoveCurrentPromotionAsync(EventId, OrderId, _order!, cancellationToken),
+        "Promotion removed from your order.",
+        "We could not remove the promotion from this order.");
+
+    private async Task UpdatePromotionAsync(
+        Func<CancellationToken, Task<HalResourceOfRegistrationOrderDto?>> operation,
+        string successMessage,
+        string failureMessage)
+    {
+        if (_isPromotionBusy || _disposed)
+        {
+            return;
+        }
+
+        _isPromotionBusy = true;
+        _promotionMessage = null;
+        _promotionCode = string.Empty;
+        var cancellation = new CancellationTokenSource();
+        _promotionCancellation = cancellation;
+        var cancellationToken = cancellation.Token;
+        try
+        {
+            var order = await operation(cancellationToken);
+            if (cancellationToken.IsCancellationRequested || _disposed)
+            {
+                return;
+            }
+
+            if (order is null)
+            {
+                _promotionMessage = failureMessage;
+                _promotionMessageIsError = true;
+                await Announcer.AnnounceAssertiveAsync(_promotionMessage);
+                if (!cancellationToken.IsCancellationRequested && !_disposed)
+                {
+                    await Focus.FocusAsync("#promotion-status");
+                }
+                return;
+            }
+
+            _order = order;
+            _contributionBasisPoints = order.PlatformContribution?.SelectedBasisPoints;
+            _promotionMessage = successMessage;
+            _promotionMessageIsError = false;
+            await Announcer.AnnouncePoliteAsync(_promotionMessage);
+            if (!cancellationToken.IsCancellationRequested && !_disposed)
+            {
+                await Focus.FocusAsync("#promotion-status");
+            }
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+        }
+        finally
+        {
+            if (ReferenceEquals(_promotionCancellation, cancellation))
+            {
+                _promotionCancellation = null;
+                if (!_disposed)
+                {
+                    _isPromotionBusy = false;
+                }
+            }
+
+            cancellation.Dispose();
+        }
+    }
+
     private async Task ApplyAsync(Func<Task<HalResourceOfRegistrationOrderDto?>> operation)
     {
         var order = await operation();
@@ -136,5 +289,23 @@
 
     private static string FormatPercentage(int? basisPoints) => $"{basisPoints.GetValueOrDefault() / 100m:0.##}%";
 
-    public void Dispose() => _timer?.Dispose();
+    private void CancelPromotionMutation()
+    {
+        _promotionCancellation?.Cancel();
+        _promotionCancellation?.Dispose();
+        _promotionCancellation = null;
+        _isPromotionBusy = false;
+    }
+
+    public void Dispose()
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        _disposed = true;
+        CancelPromotionMutation();
+        _timer?.Dispose();
+    }
 }

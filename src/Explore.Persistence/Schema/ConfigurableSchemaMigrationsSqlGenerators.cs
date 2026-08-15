@@ -4,7 +4,10 @@
 using System.Collections;
 using System.Reflection;
 using Explore.Persistence.Database;
+using Microting.EntityFrameworkCore.MySql.Infrastructure.Internal;
+using Microting.EntityFrameworkCore.MySql.Migrations;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Migrations.Operations;
 using Microsoft.EntityFrameworkCore.Update;
@@ -47,6 +50,37 @@ internal sealed class ConfigurableSqlServerMigrationsSqlGenerator(
     }
 }
 
+internal sealed class ConfigurableSqliteMigrationsSqlGenerator(
+    MigrationsSqlGeneratorDependencies dependencies,
+    IRelationalAnnotationProvider migrationsAnnotations)
+    : SqliteMigrationsSqlGenerator(dependencies, migrationsAnnotations)
+{
+    public override IReadOnlyList<MigrationCommand> Generate(
+        IReadOnlyList<MigrationOperation> operations,
+        Microsoft.EntityFrameworkCore.Metadata.IModel? model = null,
+        MigrationsSqlGenerationOptions options = MigrationsSqlGenerationOptions.Default)
+        => ConfigurableSchemaMigrationOperations.AppendPromotionCodeBackfill(
+            base.Generate(operations, model, options),
+            operations,
+            Dependencies);
+}
+
+internal sealed class ConfigurableMySqlMigrationsSqlGenerator(
+    MigrationsSqlGeneratorDependencies dependencies,
+    ICommandBatchPreparer commandBatchPreparer,
+    IMySqlOptions options)
+    : MySqlMigrationsSqlGenerator(dependencies, commandBatchPreparer, options)
+{
+    public override IReadOnlyList<MigrationCommand> Generate(
+        IReadOnlyList<MigrationOperation> operations,
+        Microsoft.EntityFrameworkCore.Metadata.IModel? model = null,
+        MigrationsSqlGenerationOptions sqlOptions = MigrationsSqlGenerationOptions.Default)
+        => ConfigurableSchemaMigrationOperations.AppendPromotionCodeBackfill(
+            base.Generate(operations, model, sqlOptions),
+            operations,
+            Dependencies);
+}
+
 internal static class ConfigurableSchemaMigrationOperations
 {
     public static void Rewrite(IReadOnlyList<MigrationOperation> operations, Microsoft.EntityFrameworkCore.DbContext context)
@@ -67,6 +101,7 @@ internal static class ConfigurableSchemaMigrationOperations
         IReadOnlyList<MigrationCommand> commands,
         MigrationsSqlGeneratorDependencies dependencies)
     {
+        commands = AppendPromotionCodeBackfill(commands, [], dependencies);
         var configuredSchema = GetConfiguredSchema(dependencies.CurrentContext.Context);
         if (StringComparer.Ordinal.Equals(configuredSchema, RelationalModelNamespace.DefaultSchema))
         {
@@ -90,10 +125,104 @@ internal static class ConfigurableSchemaMigrationOperations
         }).ToArray();
     }
 
+    public static IReadOnlyList<MigrationCommand> AppendPromotionCodeBackfill(
+        IReadOnlyList<MigrationCommand> commands,
+        IReadOnlyList<MigrationOperation> operations,
+        MigrationsSqlGeneratorDependencies dependencies)
+    {
+        if (CommandTextContainsPromotionCodeBackfill(commands) ||
+            (!AddsPromotionCodeSnapshotColumns(operations) && !CommandTextAddsPromotionCodeSnapshotColumns(commands)))
+        {
+            return commands;
+        }
+
+        if (commands.Count == 0)
+        {
+            return commands;
+        }
+
+        var backfill = BuildPromotionCodeBackfillSql(dependencies.CurrentContext.Context);
+        var relationalCommand = dependencies.CommandBuilderFactory.Create()
+            .Append(backfill)
+            .Build();
+        return commands
+            .Concat([
+                new MigrationCommand(
+                    relationalCommand,
+                    dependencies.CurrentContext.Context,
+                    commands[^1].CommandLogger,
+                    transactionSuppressed: false)
+            ])
+            .ToArray();
+    }
+
     private static string GetConfiguredSchema(Microsoft.EntityFrameworkCore.DbContext context) =>
         context.GetService<IDbContextOptions>()
             .FindExtension<RelationalNamespaceOptionsExtension>()?.TargetSchema
         ?? RelationalModelNamespace.DefaultSchema;
+
+    private static bool AddsPromotionCodeSnapshotColumns(IReadOnlyList<MigrationOperation> operations) =>
+        operations.OfType<AddColumnOperation>().Any(operation =>
+            StringComparer.Ordinal.Equals(operation.Table, "registration_orders") &&
+            StringComparer.Ordinal.Equals(operation.Name, "pre_discount_organizer_directed_total_minor_snapshot")) &&
+        operations.OfType<AddColumnOperation>().Any(operation =>
+            StringComparer.Ordinal.Equals(operation.Table, "registration_order_lines") &&
+            StringComparer.Ordinal.Equals(operation.Name, "pre_discount_line_subtotal_minor_snapshot"));
+
+    private static bool CommandTextAddsPromotionCodeSnapshotColumns(IReadOnlyList<MigrationCommand> commands)
+    {
+        var text = string.Join('\n', commands.Select(command => command.CommandText));
+        return text.Contains("pre_discount_organizer_directed_total_minor_snapshot", StringComparison.Ordinal) &&
+               text.Contains("pre_discount_line_subtotal_minor_snapshot", StringComparison.Ordinal) &&
+               !text.Contains("line_subtotal_snapshot\"", StringComparison.Ordinal) &&
+               !text.Contains("line_subtotal_snapshot]", StringComparison.Ordinal) &&
+               !text.Contains("line_subtotal_snapshot`", StringComparison.Ordinal);
+    }
+
+    private static bool CommandTextContainsPromotionCodeBackfill(IReadOnlyList<MigrationCommand> commands)
+    {
+        var text = string.Join('\n', commands.Select(command => command.CommandText));
+        return text.Contains("organizer_directed_total_minor_snapshot", StringComparison.Ordinal) &&
+               text.Contains("line_subtotal_snapshot", StringComparison.Ordinal);
+    }
+
+    private static string BuildPromotionCodeBackfillSql(Microsoft.EntityFrameworkCore.DbContext context)
+    {
+        var provider = context.Database.ProviderName ?? string.Empty;
+        var prefix = UsesPrefixedTables(provider) ? RelationalModelNamespace.Prefix : string.Empty;
+        var schema = UsesSchemas(provider) ? GetConfiguredSchema(context) : null;
+        var quote = QuoteStyle(provider);
+        var orders = Table(schema, prefix + "registration_orders", quote);
+        var lines = Table(schema, prefix + "registration_order_lines", quote);
+
+        return $"""
+               UPDATE {orders}
+               SET {Identifier("pre_discount_organizer_directed_total_minor_snapshot", quote)} = {Identifier("organizer_directed_total_minor_snapshot", quote)},
+                   {Identifier("post_discount_organizer_directed_total_minor_snapshot", quote)} = {Identifier("organizer_directed_total_minor_snapshot", quote)};
+               UPDATE {lines}
+               SET {Identifier("pre_discount_line_subtotal_minor_snapshot", quote)} = {Identifier("line_subtotal_snapshot", quote)},
+                   {Identifier("post_discount_line_subtotal_minor_snapshot", quote)} = {Identifier("line_subtotal_snapshot", quote)};
+               """;
+    }
+
+    private static bool UsesSchemas(string provider) =>
+        provider.Contains("Npgsql", StringComparison.OrdinalIgnoreCase) ||
+        provider.Contains("SqlServer", StringComparison.OrdinalIgnoreCase);
+
+    private static bool UsesPrefixedTables(string provider) => !UsesSchemas(provider);
+
+    private static string QuoteStyle(string provider) =>
+        provider.Contains("MySql", StringComparison.OrdinalIgnoreCase) ? "`" :
+        provider.Contains("SqlServer", StringComparison.OrdinalIgnoreCase) ? "[]" :
+        "\"";
+
+    private static string Table(string? schema, string name, string quote) => schema is null
+        ? Identifier(name, quote)
+        : $"{Identifier(schema, quote)}.{Identifier(name, quote)}";
+
+    private static string Identifier(string value, string quote) => quote == "[]"
+        ? $"[{value.Replace("]", "]]", StringComparison.Ordinal)}]"
+        : $"{quote}{value.Replace(quote, quote + quote, StringComparison.Ordinal)}{quote}";
 
     private static void RewriteOperation(MigrationOperation operation, string configuredSchema)
     {

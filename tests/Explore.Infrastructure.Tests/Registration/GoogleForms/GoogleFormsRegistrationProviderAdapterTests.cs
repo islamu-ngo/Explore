@@ -667,6 +667,9 @@ public sealed class GoogleFormsRegistrationProviderAdapterTests
     {
         public Task<ResolvedSecret?> ResolveAsync(string settingKey, Guid? tenantId, CancellationToken cancellationToken = default) => Task.FromResult<ResolvedSecret?>(null);
 
+        public Task<ResolvedSecret?> ResolveQualifiedAsync(string settingKey, SecretScope scope, Guid? scopeId, string qualifier, CancellationToken cancellationToken = default) =>
+            Task.FromResult<ResolvedSecret?>(null);
+
         public Task<ResolvedSecret?> ResolveTenantBindingAsync(Guid tenantId, Guid bindingId, CancellationToken cancellationToken = default) =>
             Task.FromResult(secrets.TryGetValue(bindingId, out string? value)
                 ? new ResolvedSecret("test", value, SecretSourceType.EnvironmentVariable, SecretScope.Tenant, tenantId, UtcNow)
@@ -678,6 +681,8 @@ public sealed class GoogleFormsRegistrationProviderAdapterTests
     private sealed class ThrowingSecretResolver : ISecretResolver
     {
         public Task<ResolvedSecret?> ResolveAsync(string settingKey, Guid? tenantId, CancellationToken cancellationToken = default) => throw new InvalidOperationException("secret resolver should not be reached");
+
+        public Task<ResolvedSecret?> ResolveQualifiedAsync(string settingKey, SecretScope scope, Guid? scopeId, string qualifier, CancellationToken cancellationToken = default) => throw new InvalidOperationException("secret resolver should not be reached");
 
         public Task<ResolvedSecret?> ResolveTenantBindingAsync(Guid tenantId, Guid bindingId, CancellationToken cancellationToken = default) => throw new InvalidOperationException("secret resolver should not be reached");
 

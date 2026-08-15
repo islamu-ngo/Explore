@@ -83,6 +83,11 @@ public static class SecretDefinitionRegistry
             public const string WebhookSecret = "payments.stripe.webhook_secret";
         }
 
+        public static class Promotions
+        {
+            public const string CodeLookupHmacKey = "promotions.code_lookup_hmac_key";
+        }
+
         public static class Atproto
         {
             public const string OAuthClientPrivateJwks = "auth.atproto.oauth_client_private_jwks";
@@ -373,6 +378,18 @@ public static class SecretDefinitionRegistry
                 DefaultEnvironmentVariableName = "STRIPE_WEBHOOK_SECRET",
                 IsBootstrapSecret = false,
                 Description = "Stripe webhook signing secret reference.",
+            },
+
+            new()
+            {
+                Key = Keys.Promotions.CodeLookupHmacKey,
+                AllowedScopes = instanceOnly,
+                AllowedSources = nonBootstrapSources,
+                DefaultInfisicalPath = "/promotions",
+                DefaultInfisicalKey = "PROMOTIONS_CODE_LOOKUP_HMAC_KEY",
+                DefaultEnvironmentVariableName = "PROMOTIONS_CODE_LOOKUP_HMAC_KEY",
+                IsBootstrapSecret = false,
+                Description = "Versioned backend-only HMAC key for promotion-code lookup digests.",
             },
 
             new()

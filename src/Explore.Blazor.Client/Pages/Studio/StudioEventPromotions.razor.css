@@ -1,0 +1,63 @@
+/* ABOUTME: Scoped BEM layout for Studio promotion management and one-time-code feedback. */
+/* ABOUTME: Uses design tokens and logical spacing so the surface remains RTL-safe. */
+
+.studio-event-promotions {
+    display: grid;
+    gap: var(--isl-space-4);
+}
+
+.studio-event-promotions__header,
+.studio-event-promotions__actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--isl-space-3);
+}
+
+.studio-event-promotions__form,
+.studio-event-promotions__card,
+.studio-event-promotions__issued {
+    display: grid;
+    gap: var(--isl-space-3);
+    padding: var(--isl-space-4);
+    border: 1px solid var(--isl-color-border);
+    border-radius: var(--isl-radius-card);
+}
+
+.studio-event-promotions__list {
+    display: grid;
+    gap: var(--isl-space-4);
+}
+
+.studio-event-promotions__dates,
+.studio-event-promotions__scope {
+    display: grid;
+    gap: var(--isl-space-2);
+}
+
+.studio-event-promotions__dates input {
+    min-block-size: var(--isl-target-min);
+    padding-block: var(--isl-space-2);
+    padding-inline: var(--isl-space-3);
+    color: var(--mud-palette-text-primary);
+    background: var(--mud-palette-surface);
+    border: 1px solid var(--isl-color-border);
+    border-radius: var(--mud-default-borderradius);
+}
+
+.studio-event-promotions__scope {
+    padding: var(--isl-space-3);
+    border: 1px solid var(--isl-color-border);
+    border-radius: var(--mud-default-borderradius);
+}
+
+.studio-event-promotions__masked {
+    font-family: var(--isl-font-family-secondary);
+    overflow-wrap: anywhere;
+}
+
+.studio-event-promotions__message,
+.studio-event-promotions__state {
+    padding-block: var(--isl-space-3);
+}

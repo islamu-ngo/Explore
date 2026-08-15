@@ -31,6 +31,13 @@ public interface ISecretResolver
         Guid? tenantId,
         CancellationToken cancellationToken = default);
 
+    Task<ResolvedSecret?> ResolveQualifiedAsync(
+        string settingKey,
+        SecretScope scope,
+        Guid? scopeId,
+        string qualifier,
+        CancellationToken cancellationToken = default);
+
     Task<ResolvedSecret?> ResolveTenantBindingAsync(
         Guid tenantId,
         Guid bindingId,

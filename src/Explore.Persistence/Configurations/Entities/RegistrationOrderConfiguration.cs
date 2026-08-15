@@ -32,6 +32,10 @@ public sealed class RegistrationOrderConfiguration : IEntityTypeConfiguration<Re
         builder.Property(order => order.GuestAccessTokenHash)
             .HasConversion(hash => hash!.Value, value => CapabilityTokenHash.Create(value))
             .HasMaxLength(44);
+        builder.Property(order => order.AppliedPromotionDisplayLabelSnapshot).HasMaxLength(16);
+        builder.Property(order => order.PreDiscountOrganizerDirectedTotalMinorSnapshot).HasColumnType("bigint");
+        builder.Property(order => order.PromotionDiscountTotalMinorSnapshot).HasColumnType("bigint");
+        builder.Property(order => order.PostDiscountOrganizerDirectedTotalMinorSnapshot).HasColumnType("bigint");
         builder.Property(order => order.OrganizerDirectedTotalMinorSnapshot).HasColumnType("bigint");
         builder.Property(order => order.PlatformFeeTotalMinorSnapshot).HasColumnType("bigint");
         builder.Property(order => order.OrganizerEarningsTotalMinorSnapshot).HasColumnType("bigint");
@@ -74,6 +78,10 @@ public sealed class RegistrationOrderConfiguration : IEntityTypeConfiguration<Re
             .HasPrincipalKey(@event => new { @event.TenantId, @event.Id }).OnDelete(DeleteBehavior.Restrict);
         builder.HasOne<EventTicketCatalogVersion>().WithMany().HasForeignKey(order => new { order.TenantId, order.TicketCatalogVersionId })
             .HasPrincipalKey(catalog => new { catalog.TenantId, catalog.Id }).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne<PromotionDefinition>().WithMany().HasForeignKey(order => new { order.TenantId, order.AppliedPromotionDefinitionVersionIdSnapshot })
+            .HasPrincipalKey(definition => new { definition.TenantId, definition.Id }).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne<PromotionCode>().WithMany().HasForeignKey(order => new { order.TenantId, order.AppliedPromotionCodeIdSnapshot })
+            .HasPrincipalKey(code => new { code.TenantId, code.Id }).OnDelete(DeleteBehavior.Restrict);
         builder.HasOne(order => order.BookingPartyType).WithMany().HasForeignKey(order => order.BookingPartyTypeId).OnDelete(DeleteBehavior.Restrict);
         builder.HasOne(order => order.RegistrationOrderStatus).WithMany().HasForeignKey(order => order.RegistrationOrderStatusId).OnDelete(DeleteBehavior.Restrict);
         builder.HasMany(order => order.Lines).WithOne().HasForeignKey(line => new { line.TenantId, line.RegistrationOrderId })

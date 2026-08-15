@@ -44,6 +44,7 @@ using Explore.Infrastructure.Services.Keycloak;
 using Explore.Infrastructure.Services.Moderation;
 using Explore.Infrastructure.Services.Moderation.Coop;
 using Explore.Infrastructure.Services.Privacy;
+using Explore.Infrastructure.Services.Registration;
 using Explore.Infrastructure.Services.Registration.Providers.Formbricks;
 using Explore.Infrastructure.Services.Registration.Providers.GoogleForms;
 using Explore.Infrastructure.Services.Registration.Providers.MicrosoftForms;
@@ -144,6 +145,7 @@ public static class InfrastructureServicesRegistration
         services.AddScoped<IRegistrationProviderDescriptor>(sp => sp.GetRequiredService<GoogleSheetsRegistrationProviderSubmissionSink>());
         services.AddScoped<IRegistrationProviderDescriptor>(sp => sp.GetRequiredService<WebhookRegistrationProviderSubmissionSink>());
         services.AddScoped<IRegistrationProviderRegistry, RegistrationProviderRegistry>();
+        services.AddScoped<IPromotionCodeDigestService, PromotionCodeDigestService>();
         services.AddSingleton<IGooglePubSubOidcTokenValidator, GooglePubSubOidcTokenValidator>();
         services.AddScoped<RegistrationProviderSubscriptionLifecycleService>();
         services.AddHttpClient(FormbricksRegistrationProviderAdapter.HttpClientName, client =>

@@ -12,6 +12,7 @@ namespace Explore.Application.Services.Registration;
 
 public sealed class RegistrationOrderLifecycleService(
     IRegistrationInventoryRepository inventory,
+    IPromotionRedemptionRepository promotions,
     IRegistrationParticipantRepository participants,
     IEventTicketCatalogRepository catalogs,
     IPlatformContributionSettingRepository contributionSettings,
@@ -134,7 +135,7 @@ public sealed class RegistrationOrderLifecycleService(
         {
             return await unitOfWork.ExecuteSerializableAsync(async token =>
             {
-                RegistrationOrder? order = await inventory.GetOrderWithLinesAsync(orderId, tenantId, token);
+                RegistrationOrder? order = await inventory.GetOrderForUpdateWithLinesAsync(orderId, tenantId, token);
                 if (order is null)
                 {
                     return Missing(orderId);
@@ -151,6 +152,8 @@ public sealed class RegistrationOrderLifecycleService(
                 {
                     return Failure(orderId, order, "Registration order still has mandatory requirements.");
                 }
+
+                await LoadActivePromotionForUpdateAsync(order, token);
 
                 if (requiresApproval)
                 {
@@ -198,6 +201,7 @@ public sealed class RegistrationOrderLifecycleService(
                         throw new LifecycleRaceException();
                     }
 
+                    await inventory.SaveChangesAsync(token);
                     return Success(order, RegistrationOrderStatusEnum.Waitlisted, "Registration order is waitlisted while capacity is unavailable.");
                 }
 
@@ -247,7 +251,7 @@ public sealed class RegistrationOrderLifecycleService(
         {
             return await unitOfWork.ExecuteSerializableAsync(async token =>
             {
-                RegistrationOrder? order = await inventory.GetOrderWithLinesAsync(orderId, tenantId, token);
+                RegistrationOrder? order = await inventory.GetOrderForUpdateWithLinesAsync(orderId, tenantId, token);
                 if (order is null)
                 {
                     return Missing(orderId);
@@ -258,6 +262,8 @@ public sealed class RegistrationOrderLifecycleService(
                 {
                     return Success(order, status, "Registration order approval was already resolved.");
                 }
+
+                await LoadActivePromotionForUpdateAsync(order, token);
 
                 RegistrationInventoryReservationResult reservation = await ReserveCapacityAsync(
                     order,
@@ -289,6 +295,7 @@ public sealed class RegistrationOrderLifecycleService(
                         throw new LifecycleRaceException();
                     }
 
+                    await inventory.SaveChangesAsync(token);
                     return Success(order, RegistrationOrderStatusEnum.Waitlisted, "Registration order is waitlisted while capacity is unavailable.");
                 }
 
@@ -332,9 +339,9 @@ public sealed class RegistrationOrderLifecycleService(
     {
         DateTime now = timeProvider.GetUtcNow().UtcDateTime;
         Guid outboxMessageId = Guid.CreateVersion7();
-        return await unitOfWork.ExecuteInTransactionAsync(async token =>
+        return await unitOfWork.ExecuteSerializableAsync(async token =>
         {
-            RegistrationOrder? order = await inventory.GetOrderWithLinesAsync(orderId, tenantId, token);
+            RegistrationOrder? order = await inventory.GetOrderForUpdateWithLinesAsync(orderId, tenantId, token);
             if (order is null)
             {
                 return Missing(orderId);
@@ -356,6 +363,8 @@ public sealed class RegistrationOrderLifecycleService(
                 return await CurrentOrConflictAsync(orderId, tenantId, "Registration order changed while it was cancelled.", token);
             }
 
+            await ReleaseActivePromotionAsync(order, now, token);
+            await LockActiveHoldCapacityPoolsAsync(order, token);
             await inventory.TryReleaseActiveHoldsForOrderAsync(
                 order.Id,
                 tenantId,
@@ -364,6 +373,7 @@ public sealed class RegistrationOrderLifecycleService(
                 token);
             await outbox.Create(RegistrationOrderOutboxMessageFactory.Create(
                 outboxMessageId, order, RegistrationOrderStatusEnum.Cancelled, now));
+            await inventory.SaveChangesAsync(token);
             return Success(order, RegistrationOrderStatusEnum.Cancelled, "Registration order cancelled.");
         }, cancellationToken);
     }
@@ -402,7 +412,7 @@ public sealed class RegistrationOrderLifecycleService(
         {
             return await unitOfWork.ExecuteSerializableAsync(async token =>
             {
-                RegistrationOrder? order = await inventory.GetOrderWithLinesAsync(orderId, tenantId, token);
+                RegistrationOrder? order = await inventory.GetOrderForUpdateWithLinesAsync(orderId, tenantId, token);
                 if (order is null)
                 {
                     return Missing(orderId);
@@ -449,10 +459,12 @@ public sealed class RegistrationOrderLifecycleService(
                     throw new LifecycleRaceException();
                 }
 
+                await ConsumeActivePromotionAsync(order, now, token);
                 IReadOnlyList<RegistrationInventoryHold> holds = await inventory.GetHoldsByOrderAsync(order.Id, tenantId, token);
                 RegistrationInventoryHold[] activeHolds = holds
                     .Where(hold => hold.RegistrationInventoryHoldStatusId == (int)RegistrationInventoryHoldStatusEnum.Active)
                     .ToArray();
+                await LockCapacityPoolsAsync(order, activeHolds, token);
                 if (!HasValidActiveHolds(activeHolds, plan.CapacityReservations, now)
                     || await inventory.TryConsumeActiveHoldsForOrderAsync(order.Id, tenantId, now, token) != activeHolds.Length)
                 {
@@ -472,6 +484,8 @@ public sealed class RegistrationOrderLifecycleService(
                 {
                     throw new LifecycleRaceException();
                 }
+
+                await inventory.SaveChangesAsync(token);
 
                 return Success(order, RegistrationOrderStatusEnum.Confirmed, "Registration order confirmed.");
             }, cancellationToken);
@@ -507,7 +521,7 @@ public sealed class RegistrationOrderLifecycleService(
         {
             return await unitOfWork.ExecuteSerializableAsync(async token =>
             {
-                RegistrationOrder? order = await inventory.GetOrderWithLinesAsync(orderId, tenantId, token);
+                RegistrationOrder? order = await inventory.GetOrderForUpdateWithLinesAsync(orderId, tenantId, token);
                 if (order is null)
                 {
                     return Missing(orderId);
@@ -518,6 +532,8 @@ public sealed class RegistrationOrderLifecycleService(
                 {
                     return Success(order, status, "Registration order hold recovery was already resolved.");
                 }
+
+                await ReleaseActivePromotionAsync(order, now, token);
 
                 RegistrationInventoryReservationResult reservation = await inventory.ReserveRecoveredHoldsAsync(
                     order.EventId,
@@ -537,7 +553,7 @@ public sealed class RegistrationOrderLifecycleService(
                         : throw new CapacityUnavailableException();
                 if (destination == RegistrationOrderStatusEnum.Waitlisted)
                 {
-                    await ReleaseActiveHoldsForWaitlistAsync(order, now, token);
+                    await ReleaseActiveHoldsForWaitlistAsync(order, now, token, releasePromotion: false);
                 }
 
                 if (!await inventory.TryTransitionOrderAsync(
@@ -550,6 +566,8 @@ public sealed class RegistrationOrderLifecycleService(
                 {
                     throw new LifecycleRaceException();
                 }
+
+                await inventory.SaveChangesAsync(token);
 
                 return Success(
                     order,
@@ -598,9 +616,9 @@ public sealed class RegistrationOrderLifecycleService(
     {
         DateTime now = timeProvider.GetUtcNow().UtcDateTime;
         Guid outboxMessageId = Guid.CreateVersion7();
-        return await unitOfWork.ExecuteInTransactionAsync(async token =>
+        return await unitOfWork.ExecuteSerializableAsync(async token =>
         {
-            RegistrationOrder? order = await inventory.GetOrderWithLinesAsync(orderId, tenantId, token);
+            RegistrationOrder? order = await inventory.GetOrderForUpdateWithLinesAsync(orderId, tenantId, token);
             if (order is null)
             {
                 return Missing(orderId);
@@ -617,11 +635,19 @@ public sealed class RegistrationOrderLifecycleService(
                 return await CurrentOrConflictAsync(orderId, tenantId, "Registration order changed before its decision was recorded.", token);
             }
 
+            await ReleaseActivePromotionAsync(order, now, token);
+            await LockActiveHoldCapacityPoolsAsync(order, token);
             await inventory.TryReleaseActiveHoldsForOrderAsync(order.Id, tenantId, holdOutcome, now, token);
             await outbox.Create(RegistrationOrderOutboxMessageFactory.Create(outboxMessageId, order, desiredStatus, now));
+            await inventory.SaveChangesAsync(token);
             return Success(order, desiredStatus, message);
         }, cancellationToken);
     }
+
+    private async Task LoadActivePromotionForUpdateAsync(
+        RegistrationOrder order,
+        CancellationToken cancellationToken) =>
+        _ = await promotions.GetActiveReservationForUpdateAsync(order.TenantId, order.Id, cancellationToken);
 
     private async Task<CapacityReservationPlan> PrepareCapacityReservationPlanAsync(
         RegistrationOrder order,
@@ -703,8 +729,14 @@ public sealed class RegistrationOrderLifecycleService(
     private async Task ReleaseActiveHoldsForWaitlistAsync(
         RegistrationOrder order,
         DateTime now,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        bool releasePromotion = true)
     {
+        if (releasePromotion)
+        {
+            await ReleaseActivePromotionAsync(order, now, cancellationToken);
+        }
+
         IReadOnlyList<RegistrationInventoryHold> holds = await inventory.GetHoldsByOrderAsync(
             order.Id,
             order.TenantId,
@@ -716,6 +748,7 @@ public sealed class RegistrationOrderLifecycleService(
             return;
         }
 
+        await LockCapacityPoolsAsync(order, holds, cancellationToken);
         int releasedHoldCount = await inventory.TryReleaseActiveHoldsForOrderAsync(
             order.Id,
             order.TenantId,
@@ -723,6 +756,59 @@ public sealed class RegistrationOrderLifecycleService(
             now,
             cancellationToken);
         if (releasedHoldCount != activeHoldCount)
+        {
+            throw new LifecycleRaceException();
+        }
+    }
+
+    private async Task LockActiveHoldCapacityPoolsAsync(
+        RegistrationOrder order,
+        CancellationToken cancellationToken)
+    {
+        IReadOnlyList<RegistrationInventoryHold> holds = await inventory.GetHoldsByOrderAsync(
+            order.Id,
+            order.TenantId,
+            cancellationToken);
+        await LockCapacityPoolsAsync(order, holds, cancellationToken);
+    }
+
+    private async Task LockCapacityPoolsAsync(
+        RegistrationOrder order,
+        IEnumerable<RegistrationInventoryHold> holds,
+        CancellationToken cancellationToken)
+    {
+        Guid[] capacityPoolIds = holds
+            .Where(hold => hold.RegistrationInventoryHoldStatusId == (int)RegistrationInventoryHoldStatusEnum.Active)
+            .Select(hold => hold.CapacityPoolId)
+            .ToArray();
+        await inventory.GetPoolsForUpdateAsync(capacityPoolIds, order.EventId, order.TenantId, cancellationToken);
+    }
+
+    private async Task ConsumeActivePromotionAsync(
+        RegistrationOrder order,
+        DateTime now,
+        CancellationToken cancellationToken)
+    {
+        PromotionReservation? reservation = await promotions.GetActiveReservationForUpdateAsync(
+            order.TenantId,
+            order.Id,
+            cancellationToken);
+        if (reservation is not null && !reservation.TryConsume(now))
+        {
+            throw new LifecycleRaceException();
+        }
+    }
+
+    private async Task ReleaseActivePromotionAsync(
+        RegistrationOrder order,
+        DateTime now,
+        CancellationToken cancellationToken)
+    {
+        PromotionReservation? reservation = await promotions.GetActiveReservationForUpdateAsync(
+            order.TenantId,
+            order.Id,
+            cancellationToken);
+        if (reservation is not null && !reservation.TryRelease(now))
         {
             throw new LifecycleRaceException();
         }

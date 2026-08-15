@@ -20,7 +20,11 @@ public sealed class RegistrationOrderLinkPolicy : ILinkPolicy<RegistrationOrderD
                 new { eventId = dto.EventId, orderId = dto.Id },
                 HttpMethods.Get,
                 RequiresAuth: true)
-            .RequirePermission(AuthorizationActions.RegistrationOrders.View, ResourceKinds.RegistrationOrder, dto.Id.ToString("D"), Attributes(dto));
+            .RequirePermission(
+                AuthorizationActions.RegistrationOrders.View,
+                resourceKind: ResourceKinds.RegistrationOrder,
+                resourceId: dto.Id.ToString("D"),
+                resourceAttributes: Attributes(dto));
 
         yield return new LinkDefinition(
                 LinkRelations.ViewParticipants,
@@ -29,7 +33,11 @@ public sealed class RegistrationOrderLinkPolicy : ILinkPolicy<RegistrationOrderD
                 HttpMethods.Get,
                 "View participants",
                 RequiresAuth: true)
-            .RequirePermission(AuthorizationActions.RegistrationOrders.View, ResourceKinds.RegistrationOrder, dto.Id.ToString("D"), Attributes(dto));
+            .RequirePermission(
+                AuthorizationActions.RegistrationOrders.View,
+                resourceKind: ResourceKinds.RegistrationOrder,
+                resourceId: dto.Id.ToString("D"),
+                resourceAttributes: Attributes(dto));
 
         if (dto.StatusCode is "AWAITING_REQUIREMENTS" or "READY_FOR_CHECKOUT")
         {
@@ -40,7 +48,11 @@ public sealed class RegistrationOrderLinkPolicy : ILinkPolicy<RegistrationOrderD
                     HttpMethods.Post,
                     "Continue registration",
                     RequiresAuth: true)
-                .RequirePermission(AuthorizationActions.RegistrationOrders.Continue, ResourceKinds.RegistrationOrder, dto.Id.ToString("D"), Attributes(dto));
+                .RequirePermission(
+                    AuthorizationActions.RegistrationOrders.Continue,
+                    resourceKind: ResourceKinds.RegistrationOrder,
+                    resourceId: dto.Id.ToString("D"),
+                    resourceAttributes: Attributes(dto));
         }
 
         if (dto.StatusCode == "AWAITING_REQUIREMENTS")
@@ -52,11 +64,46 @@ public sealed class RegistrationOrderLinkPolicy : ILinkPolicy<RegistrationOrderD
                     HttpMethods.Get,
                     "Continue registration requirements",
                     RequiresAuth: true)
-                .RequirePermission(AuthorizationActions.RegistrationOrders.Continue, ResourceKinds.RegistrationOrder, dto.Id.ToString("D"), Attributes(dto));
+                .RequirePermission(
+                    AuthorizationActions.RegistrationOrders.Continue,
+                    resourceKind: ResourceKinds.RegistrationOrder,
+                    resourceId: dto.Id.ToString("D"),
+                    resourceAttributes: Attributes(dto));
         }
 
         if (dto.StatusCode == "READY_FOR_CHECKOUT")
         {
+            if (string.IsNullOrWhiteSpace(dto.AppliedPromotionDisplayLabel))
+            {
+                yield return new LinkDefinition(
+                        LinkRelations.ApplyPromotion,
+                        RouteNames.ApplyAuthenticatedRegistrationOrderPromotion,
+                        new { eventId = dto.EventId, orderId = dto.Id },
+                        HttpMethods.Post,
+                        "Apply promotion",
+                        RequiresAuth: true)
+                    .RequirePermission(
+                        AuthorizationActions.RegistrationOrders.Continue,
+                        resourceKind: ResourceKinds.RegistrationOrder,
+                        resourceId: dto.Id.ToString("D"),
+                        resourceAttributes: Attributes(dto));
+            }
+            else
+            {
+                yield return new LinkDefinition(
+                        LinkRelations.RemovePromotion,
+                        RouteNames.RemoveAuthenticatedRegistrationOrderPromotion,
+                        new { eventId = dto.EventId, orderId = dto.Id },
+                        HttpMethods.Delete,
+                        "Remove promotion",
+                        RequiresAuth: true)
+                    .RequirePermission(
+                        AuthorizationActions.RegistrationOrders.Continue,
+                        resourceKind: ResourceKinds.RegistrationOrder,
+                        resourceId: dto.Id.ToString("D"),
+                        resourceAttributes: Attributes(dto));
+            }
+
             yield return new LinkDefinition(
                     LinkRelations.Finalize,
                     RouteNames.FinalizeAuthenticatedRegistrationOrder,
@@ -64,7 +111,11 @@ public sealed class RegistrationOrderLinkPolicy : ILinkPolicy<RegistrationOrderD
                     HttpMethods.Post,
                     "Finalize registration",
                     RequiresAuth: true)
-                .RequirePermission(AuthorizationActions.RegistrationOrders.Finalize, ResourceKinds.RegistrationOrder, dto.Id.ToString("D"), Attributes(dto));
+                .RequirePermission(
+                    AuthorizationActions.RegistrationOrders.Finalize,
+                    resourceKind: ResourceKinds.RegistrationOrder,
+                    resourceId: dto.Id.ToString("D"),
+                    resourceAttributes: Attributes(dto));
         }
 
         yield return new LinkDefinition(
@@ -74,7 +125,11 @@ public sealed class RegistrationOrderLinkPolicy : ILinkPolicy<RegistrationOrderD
                 HttpMethods.Delete,
                 "Cancel registration order",
                 RequiresAuth: true)
-            .RequirePermission(AuthorizationActions.RegistrationOrders.Cancel, ResourceKinds.RegistrationOrder, dto.Id.ToString("D"), Attributes(dto));
+            .RequirePermission(
+                AuthorizationActions.RegistrationOrders.Cancel,
+                resourceKind: ResourceKinds.RegistrationOrder,
+                resourceId: dto.Id.ToString("D"),
+                resourceAttributes: Attributes(dto));
     }
 
     private static Dictionary<string, object> Attributes(RegistrationOrderDto dto) => new()

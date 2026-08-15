@@ -92,6 +92,20 @@ public sealed class RegistrationOrder : ITenantEntity, IAuditableEntity, ISoftDe
 
     public RegistrationOrderPlatformContribution? PlatformContribution { get; private set; }
 
+    public Guid? AppliedPromotionDefinitionVersionIdSnapshot { get; private set; }
+
+    public Guid? AppliedPromotionCodeIdSnapshot { get; private set; }
+
+    public string? AppliedPromotionDisplayLabelSnapshot { get; private set; }
+
+    public Guid? ActivePromotionReservationId { get; private set; }
+
+    public long PreDiscountOrganizerDirectedTotalMinorSnapshot { get; private set; }
+
+    public long PromotionDiscountTotalMinorSnapshot { get; private set; }
+
+    public long PostDiscountOrganizerDirectedTotalMinorSnapshot { get; private set; }
+
     public long OrganizerDirectedTotalMinorSnapshot { get; private set; }
 
     public long PlatformFeeTotalMinorSnapshot { get; private set; }
@@ -232,6 +246,8 @@ public sealed class RegistrationOrder : ITenantEntity, IAuditableEntity, ISoftDe
             throw new InvalidOperationException("The verified account email does not match the registration order contact email.");
         }
 
+        Pii.MarkEmailVerified(verifiedNormalizedEmail);
+
         if (AccountUserId == accountUserId)
         {
             return false;
@@ -251,7 +267,7 @@ public sealed class RegistrationOrder : ITenantEntity, IAuditableEntity, ISoftDe
     {
         EnsureCommercialFactsMutable();
         if (contribution is not null &&
-            (contribution.RegistrationOrderId != Id || contribution.TenantId != TenantId || contribution.CurrencyCode != CurrencyCode || contribution.AmountMinor <= 0))
+            (contribution.RegistrationOrderId != Id || contribution.TenantId != TenantId || contribution.CurrencyCode != CurrencyCode || contribution.AmountMinor < 0))
         {
             throw new ArgumentException("Platform contribution does not match the order.", nameof(contribution));
         }
@@ -264,7 +280,7 @@ public sealed class RegistrationOrder : ITenantEntity, IAuditableEntity, ISoftDe
         ArgumentNullException.ThrowIfNull(totals);
         EnsureCommercialFactsMutable();
 
-        long lineTotal = _lines.Aggregate(0L, static (total, line) => MinorUnitMath.Add(total, line.LineSubtotalSnapshot));
+        long lineTotal = _lines.Aggregate(0L, static (total, line) => MinorUnitMath.Add(total, line.PostDiscountLineSubtotalMinorSnapshot));
         long contributionTotal = PlatformContribution?.AmountMinor ?? 0;
         if (!string.Equals(totals.CurrencyCode, CurrencyCode, StringComparison.Ordinal) ||
             totals.OrganizerDirectedTotalMinor != lineTotal || totals.PlatformContributionTotalMinor != contributionTotal)
@@ -272,11 +288,112 @@ public sealed class RegistrationOrder : ITenantEntity, IAuditableEntity, ISoftDe
             throw new ArgumentException("Order totals do not match the pinned order snapshots.", nameof(totals));
         }
 
+        PreDiscountOrganizerDirectedTotalMinorSnapshot = _lines.Aggregate(0L, static (total, line) => MinorUnitMath.Add(total, line.PreDiscountLineSubtotalMinorSnapshot));
+        PromotionDiscountTotalMinorSnapshot = _lines.Aggregate(0L, static (total, line) => MinorUnitMath.Add(total, line.PromotionDiscountAmountMinorSnapshot));
+        PostDiscountOrganizerDirectedTotalMinorSnapshot = totals.OrganizerDirectedTotalMinor;
         OrganizerDirectedTotalMinorSnapshot = totals.OrganizerDirectedTotalMinor;
         PlatformFeeTotalMinorSnapshot = totals.PlatformFeeTotalMinor;
         OrganizerEarningsTotalMinorSnapshot = totals.OrganizerEarningsTotalMinor;
         PlatformContributionTotalMinorSnapshot = totals.PlatformContributionTotalMinor;
         TotalDueMinorSnapshot = totals.TotalDueMinor;
+    }
+
+    public bool ApplyPromotion(
+        PromotionReservation reservation,
+        PromotionDefinition definition,
+        PromotionCode code,
+        DateTime evaluatedAtUtc,
+        int currentTotalRedemptions,
+        int currentPurchaserRedemptions,
+        PlatformFeePolicy? feePolicy)
+    {
+        ArgumentNullException.ThrowIfNull(reservation);
+        ArgumentNullException.ThrowIfNull(definition);
+        ArgumentNullException.ThrowIfNull(code);
+        EnsureCommercialFactsMutable();
+        EnsurePromotionScopeMatchesOrder(definition, code);
+        EnsureFeePolicyMatchesPinnedLines(feePolicy);
+
+        if (reservation.RegistrationOrderId != Id || reservation.TenantId != TenantId || reservation.PromotionDefinitionVersionId != definition.Id ||
+            reservation.PromotionCodeId != code.Id || reservation.PromotionReservationStatusId != (int)PromotionReservationStatusEnum.Active ||
+            reservation.OrderReservationSlot != Guid.Empty)
+        {
+            throw new ArgumentException("Active promotion reservation does not match the order.", nameof(reservation));
+        }
+
+        if (ActivePromotionReservationId == reservation.Id && AppliedPromotionCodeIdSnapshot == code.Id)
+        {
+            return false;
+        }
+
+        if (ActivePromotionReservationId.HasValue || AppliedPromotionCodeIdSnapshot.HasValue)
+        {
+            throw new InvalidOperationException("Remove the active promotion before applying another code.");
+        }
+
+        PromotionDiscountAllocation allocation = PromotionDiscountAllocator.Allocate(
+            definition,
+            _lines.Select(line => new PromotionDiscountLine(line.Id, line.TicketTypeId, line.CurrencyCodeSnapshot, line.LineSubtotalSnapshot)).ToArray(),
+            evaluatedAtUtc,
+            currentTotalRedemptions,
+            currentPurchaserRedemptions);
+        foreach (PromotionLineDiscountAllocation lineAllocation in allocation.LineAllocations)
+        {
+            _lines.Single(line => line.Id == lineAllocation.LineId).ApplyPromotionDiscount(lineAllocation);
+        }
+
+        AppliedPromotionDefinitionVersionIdSnapshot = definition.Id;
+        AppliedPromotionCodeIdSnapshot = code.Id;
+        AppliedPromotionDisplayLabelSnapshot = code.DisplayLabel;
+        ActivePromotionReservationId = reservation.Id;
+        RepriceFromCurrentLines(feePolicy);
+        return true;
+    }
+
+    public bool RemovePromotion(PromotionReservation reservation, DateTime releasedAtUtc, PlatformFeePolicy? feePolicy)
+    {
+        ArgumentNullException.ThrowIfNull(reservation);
+        EnsureCommercialFactsMutable();
+
+        if (AppliedPromotionCodeIdSnapshot is null && ActivePromotionReservationId is null)
+        {
+            return false;
+        }
+
+        if (ActivePromotionReservationId != reservation.Id || reservation.RegistrationOrderId != Id || reservation.TenantId != TenantId)
+        {
+            throw new InvalidOperationException("The active promotion reservation must be released before another code can be applied.");
+        }
+
+        EnsureFeePolicyMatchesPinnedLines(feePolicy);
+
+        reservation.TryRelease(releasedAtUtc);
+        foreach (RegistrationOrderLine line in _lines)
+        {
+            line.ClearPromotionDiscount();
+        }
+
+        AppliedPromotionDefinitionVersionIdSnapshot = null;
+        AppliedPromotionCodeIdSnapshot = null;
+        AppliedPromotionDisplayLabelSnapshot = null;
+        ActivePromotionReservationId = null;
+        RepriceFromCurrentLines(feePolicy);
+        return true;
+    }
+
+    public VerifiedPurchaserIdentity? GetVerifiedPurchaserIdentity()
+    {
+        if (AccountUserId.HasValue)
+        {
+            return VerifiedPurchaserIdentity.Account(AccountUserId.Value);
+        }
+
+        if (Pii is { IsEmailVerified: true, NormalizedEmail: not null })
+        {
+            return VerifiedPurchaserIdentity.Email(Pii.NormalizedEmail);
+        }
+
+        return PurchaserActorId.HasValue ? VerifiedPurchaserIdentity.Actor(PurchaserActorId.Value) : null;
     }
 
     public void TransitionTo(RegistrationOrderStatusEnum desiredStatus, DateTime timestamp)
@@ -366,7 +483,7 @@ public sealed class RegistrationOrder : ITenantEntity, IAuditableEntity, ISoftDe
 
     private long GetVerifiedTotalDueSnapshot()
     {
-        long lineTotal = _lines.Aggregate(0L, static (total, line) => MinorUnitMath.Add(total, line.LineSubtotalSnapshot));
+        long lineTotal = _lines.Aggregate(0L, static (total, line) => MinorUnitMath.Add(total, line.PostDiscountLineSubtotalMinorSnapshot));
         long contributionTotal = PlatformContribution?.AmountMinor ?? 0;
         long expectedTotalDue = MinorUnitMath.Add(lineTotal, contributionTotal);
 
@@ -391,5 +508,47 @@ public sealed class RegistrationOrder : ITenantEntity, IAuditableEntity, ISoftDe
         }
 
         return value;
+    }
+
+    private void EnsurePromotionScopeMatchesOrder(PromotionDefinition definition, PromotionCode code)
+    {
+        if (definition.TenantId != TenantId || code.TenantId != TenantId ||
+            code.PromotionDefinitionVersionId != definition.Id ||
+            definition.ScopeMetadata != code.ScopeMetadata ||
+            definition.ScopeMetadata.EventId != EventId ||
+            definition.ScopeMetadata.TicketCatalogVersionId != TicketCatalogVersionId ||
+            !string.Equals(definition.ScopeMetadata.CurrencyCode, CurrencyCode, StringComparison.Ordinal))
+        {
+            throw new ArgumentException("Promotion scope must match the order event and ticket catalog version.");
+        }
+    }
+
+    private void EnsureFeePolicyMatchesPinnedLines(PlatformFeePolicy? feePolicy)
+    {
+        int?[] pinnedVersions = _lines.Select(static line => line.PlatformFeePolicyVersionSnapshot).Distinct().ToArray();
+        if (pinnedVersions.Length > 1)
+        {
+            throw new InvalidOperationException("Order lines must agree on one pinned platform fee policy version.");
+        }
+
+        int? pinnedVersion = pinnedVersions.SingleOrDefault();
+        int? suppliedVersion = feePolicy?.VersionNumber;
+        if (pinnedVersion != suppliedVersion)
+        {
+            throw new InvalidOperationException("Supplied platform fee policy version must match the order lines' pinned version.");
+        }
+    }
+
+    private void RepriceFromCurrentLines(PlatformFeePolicy? feePolicy)
+    {
+        long postDiscountOrganizerTotal = _lines.Aggregate(0L, static (total, line) => MinorUnitMath.Add(total, line.PostDiscountLineSubtotalMinorSnapshot));
+        PlatformContribution?.Reprice(postDiscountOrganizerTotal);
+        long platformFee = feePolicy?.CalculateFeeMinor(CurrencyCode, postDiscountOrganizerTotal) ?? 0;
+        ApplyTotals(RegistrationOrderTotalsSnapshot.Create(
+            CurrencyCode,
+            postDiscountOrganizerTotal,
+            platformFee,
+            postDiscountOrganizerTotal - platformFee,
+            PlatformContribution?.AmountMinor ?? 0));
     }
 }

@@ -16,6 +16,7 @@ public sealed class RegistrationOrderPiiConfiguration : IEntityTypeConfiguration
         builder.Property(pii => pii.ContactName).HasMaxLength(200);
         builder.Property(pii => pii.Email).HasMaxLength(320);
         builder.Property(pii => pii.NormalizedEmail).HasMaxLength(320);
+        builder.Property(pii => pii.IsEmailVerified).HasDefaultValue(false);
         builder.Property(pii => pii.Phone).HasMaxLength(50);
         builder.Property(pii => pii.OrganizationName).HasMaxLength(200);
         builder.Property(pii => pii.RetentionUntil).HasColumnType("timestamp with time zone");
