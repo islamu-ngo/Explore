@@ -3,7 +3,55 @@
 
 # API-Wide Code Liability Reduction — Evidence Register
 
-Last Updated: 2026-08-14 Europe/Brussels
+Last Updated: 2026-08-15 Europe/Brussels
+
+## 2026-08-15 Re-Verification (Senior CTO review)
+
+### Toolchain — supersedes the 2026-08-14 build diagnosis below
+
+The earlier record attributed the build failure to the `Explore.Blazor.Client` WebAssembly SDK task host (`MSB4216`/`MSB4027`). That diagnosis is **wrong and is retracted**. The actual failure is repository-wide and occurs at SDK resolution, before any compilation:
+
+```
+error MSB4242: SDK Resolver Failure: "Microsoft.DotNet.MSBuildWorkloadSdkResolver" failed while
+attempting to resolve the SDK "Microsoft.NET.SDK.WorkloadAutoImportPropsLocator".
+System.InvalidOperationException: Workload set version 10.0.301.1 has missing manifests
+likely removed by package management. Run "dotnet workload repair" to fix this.
+```
+
+Reproduced 2026-08-15 for both `src/Explore.API/Explore.API.csproj` and `tests/Event.Architecture.Tests/Event.Architecture.Tests.csproj` (Release, `-m:1`, `--no-restore`), each failing in ~0.1s. `dotnet workload list` throws the same exception. `global.json` pins `sdk.version` `10.0.301`; the installed SDK is `10.0.302`.
+
+Consequence: the claim below that the API, Application, and architecture projects "each compile successfully" is **not currently reproducible** and must be re-established in Phase 0.1 rather than carried forward. The `0 errors, 758 warnings` baseline is likewise unverified, and contradicts the entry below recording the same command as exiting 1 during restore with 0 warnings and 0 errors. Phase 0.1 must record the real numbers with SDK version and date, and delete whichever record is wrong.
+
+### Re-measured scale (working-tree HEAD, 2026-08-15)
+
+| Metric | 2026-08-13 audit | 2026-08-15 verified | Delta |
+|---|---|---|---|
+| `Explore.API` files / C# lines | — / 62,201 | 480 / 62,881 | +680 |
+| Controller files / lines | 119 / 24,882 | 121 / 25,326 | +2 files, +444 |
+| `HateoasAssemblerRegistration.cs` lines / `AddScoped` | — / 278 | 456 / 293 | +15 registrations |
+| `RegistrationOrderController.cs` | 1,061 | 1,142 | +81 |
+| `EventController.cs` | 1,033 | 1,033 | 0 |
+| `WebhooksController.cs` | 1,025 | 1,025 | 0 |
+| `InstanceSettingsController.cs` | 854 | 858 | +4 |
+| `ControlPlaneController.cs` | 672 | 672 | 0 |
+| `BackgroundServices` files / lines | 33 / 2,046 | 34 / 2,110 | +1 file, +64 |
+| `ApiHostServiceCollectionExtensions.cs` | 509 | 518 | +9 |
+| `EventManagementMcpTools.cs` | 2,516 | 2,516 | 0 |
+| `CommandResponseResultMapper.cs` | 643 | 643 | 0 |
+
+Confirmed unchanged: `MapCommandResponse` has 15 controller call sites (16 API-wide); controllers contain 42 `FindFirst` and 44 `User.Find*` occurrences; 12 controllers retain private `Map*Failure`/`To*Problem` members; `ExploreControllerBase` is 147 lines and still service-locates `IUserContext` on line 17.
+
+This is the evidence for moving the architecture ratchets from Phase 8 to Phase 1: over two days in which this workstream removed 174 lines, the API grew by 680.
+
+### Newly surfaced facts
+
+- **`Explore.API/Hateoas` is 170 files / 14,360 lines.** `HateoasAssemblerRegistration.cs` is 3.2% of it. `RouteNames.cs` (1,052) and `EventLinkPolicy.cs` (762) are the two largest HAL files and are out of scope. Phase 4 must not imply HAL is solved.
+- **TickerQ 10.4.0 is already a dependency.** `Directory.Packages.props` pins `TickerQ`, `TickerQ.Dashboard`, `TickerQ.EntityFrameworkCore`, and `TickerQ.Instrumentation.OpenTelemetry`; all four are referenced by `Explore.API.csproj`. `ApiHostServiceCollectionExtensions.cs:177` calls `AddApiTickerQScheduler`, `ApiHostStartupExtensions.cs:97` applies its migrations, `ApiHostApplicationExtensions.cs:108` mounts it — gated to `EmailDispatchProcessorMode.TickerQ`. A bespoke periodic-worker base class would be a second permanent scheduling concept. Phase 5.1 must decide the authority before any worker code moves.
+- **Controller partitioning is client-safe — verified, not assumed.** Every action declares `Name = RouteNames.*`; `OperationIdInvariantTransformer` (registered at `ApiHostServiceCollectionExtensions.cs:266`) rejects placeholder operationIds; `ContractInvariantsTests.OpenApiDocument_OperationIdsAreUnique` enforces uniqueness; `src/Explore.Blazor.Client/nswag.json` sets `operationGenerationMode: SingleClientFromOperationId`. OperationIds and generated `EventApiClient` method names are therefore independent of controller class names. `schemas/openapi_islamu-event.json` contains 756 operations.
+- **`EventApiClient.g.cs` is 152,132 lines** of generated client. Repository-wide LOC is not a maintainability signal; the plan's rejection of LOC-percentage targets is correct.
+- **17 files in `BackgroundServices` use `Task.Delay`.** `OutboxProcessor.cs` (243 lines) is the largest and is excluded from consolidation as the durable side-effect authority.
+- **Test-project ownership gap.** `tests/Explore.Infrastructure.Tests/Identity/UserContextTests.cs` is named in the Phase 2 characterization as authoritative, but no phase in the previous plan ever ran `Explore.Infrastructure.Tests`. Likewise `Event.Persistence.IntegrationTests` owns outbox/retention semantics that Phase 5 changes and was never run. Both are now phase gates (plan §7).
+- **Concurrent-workstream collision.** `dev/active/` holds 15 workstreams and `dev/pause/` holds 9. Six actively own the five hotspot controllers and eight background workers this plan targets. The previous artifacts recorded only that unrelated files were dirty; no overlap analysis existed. The binding matrix is now in `context.md`.
 
 ## Phase 1 Baseline
 
