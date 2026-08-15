@@ -83,13 +83,14 @@ public class EventSessionRepository : GenericRepository<EventSession, Guid>, IEv
 
     public async Task<List<EventSession>> GetSessionsByEvent(Guid eventId)
     {
-        return await _dbContext.EventSessions
+        List<EventSession> sessions = await _dbContext.EventSessions
             .AsNoTracking()
             .AsSplitQuery()
             .IncludeStandardDetails()
             .Where(s => s.EventId == eventId)
-            .OrderBy(s => s.StartTime)
             .ToListAsync();
+
+        return sessions.OrderBy(s => s.StartTime).ToList();
     }
 
     public async Task<List<EventSession>> GetPublicSessionsByEventAsync(
