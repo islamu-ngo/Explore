@@ -583,3 +583,5 @@ dev/report/visuals/
 .qa-cookie/
 .debug-journal.md
 evidence/mdb-real-postgres-qa/
+.cursorrules
+jean.json
