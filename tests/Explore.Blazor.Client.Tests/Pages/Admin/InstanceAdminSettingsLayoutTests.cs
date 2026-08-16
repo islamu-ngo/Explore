@@ -5,6 +5,7 @@ using System.Reflection;
 using Explore.Blazor.Client.Contracts.Services.ControlPlane;
 using Explore.Blazor.Client.Contracts.Services.Federation;
 using Explore.Blazor.Client.Contracts.Services.PaidEventPolicies;
+using Explore.Blazor.Client.Contracts.Services.Scheduling;
 using Explore.Blazor.Client.Models;
 using Explore.Blazor.Client.Pages.Events;
 using Explore.Blazor.Client.Tests.Common.Authentication;
@@ -22,6 +23,7 @@ public sealed class InstanceAdminSettingsLayoutTests : IDisposable
     private readonly IUserService _userService;
     private readonly IPlatformMonetizationService _monetizationService;
     private readonly IPaidEventPolicyService _paidEventPolicyService;
+    private readonly ISchedulerAdminService _schedulerAdminService;
 
     public InstanceAdminSettingsLayoutTests()
     {
@@ -29,6 +31,10 @@ public sealed class InstanceAdminSettingsLayoutTests : IDisposable
         _ctx.AddShellStateMocks();
         _ctx.SetAuthenticatedUser(Guid.NewGuid(), "Instance Admin", "admin@example.com");
         _ctx.AddMockService<IControlPlaneOperationsService>();
+
+        // The layout discovers the scheduler section by asking the server for it. The default substitute returns
+        // no resource, which is the "host has not enabled the scheduler admin API" case every other test assumes.
+        _schedulerAdminService = _ctx.AddMockService<ISchedulerAdminService>();
 
         _instanceOnboardingService = _ctx.AddMockService<IInstanceOnboardingService>();
         _tenantOnboardingService = _ctx.AddMockService<ITenantOnboardingService>();
@@ -44,6 +50,59 @@ public sealed class InstanceAdminSettingsLayoutTests : IDisposable
     }
 
     public void Dispose() => _ctx.Dispose();
+
+    /// <summary>
+    /// Whether the scheduler section exists is a server fact: the host may not expose the administration API at
+    /// all. The layout must therefore render the item from the served resource, never from the administrator's
+    /// local claims.
+    /// </summary>
+    [Test]
+    public async Task InstanceAdminSettingsLayout_WhenSchedulerAdminApiIsServed_ExposesSchedulerNavigation()
+    {
+        _schedulerAdminService.GetOverviewAsync(Arg.Any<CancellationToken>())
+            .Returns(new HalResourceOfSchedulerAdminOverviewDto());
+
+        IRenderedComponent<DynamicComponent> cut = RenderInstanceAdminSettingsLayout();
+
+        cut.WaitForAssertion(() =>
+        {
+            if (!cut.Markup.Contains("Background Scheduler", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException("Background Scheduler navigation item was not rendered.");
+            }
+        });
+
+        await Assert.That(cut.Markup).Contains("Background Scheduler", StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Test]
+    public async Task InstanceAdminSettingsLayout_WhenSchedulerAdminApiIsAbsent_HidesSchedulerNavigation()
+    {
+        _schedulerAdminService.GetOverviewAsync(Arg.Any<CancellationToken>())
+            .Returns((HalResourceOfSchedulerAdminOverviewDto?)null);
+
+        IRenderedComponent<DynamicComponent> cut = RenderInstanceAdminSettingsLayout();
+
+        cut.WaitForAssertion(() =>
+        {
+            if (!cut.Markup.Contains("Support Access", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException("Operations navigation group was not rendered.");
+            }
+        });
+
+        await Assert.That(cut.Markup).DoesNotContain("Background Scheduler", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private IRenderedComponent<DynamicComponent> RenderInstanceAdminSettingsLayout()
+    {
+        Type componentType = typeof(EventList).Assembly
+            .GetTypes()
+            .First(type => type.Name == "InstanceAdminSettingsLayout" && typeof(IComponent).IsAssignableFrom(type));
+
+        return _ctx.RenderMudComponent<DynamicComponent>(parameters =>
+            parameters.Add(component => component.Type, componentType));
+    }
 
     [Test]
     public async Task InstanceAdminSettingsLayout_SingleTenant_ExposesPublicExperienceNavigation()

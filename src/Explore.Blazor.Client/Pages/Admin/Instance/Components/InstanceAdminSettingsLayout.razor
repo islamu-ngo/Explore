@@ -7,6 +7,7 @@
 @using Explore.Blazor.Client.Clients
 @using Explore.Blazor.Client.Components.Forms
 @using Explore.Blazor.Client.Constants
+@using Explore.Blazor.Client.Contracts.Services.Scheduling
 @using Explore.Blazor.Client.Contracts.Services.Webhooks
 @using Explore.Blazor.Client.Pages.User.Components
 
@@ -17,6 +18,7 @@
 @inject AiAssistantState AiAssistantState
 @inject ISnackbar Snackbar
 @inject NavigationManager Navigation
+@inject ISchedulerAdminService SchedulerAdminService
 
 <div class="settings-layout">
     <MudContainer MaxWidth="MaxWidth.Large" Class="py-8">
@@ -260,6 +262,10 @@
                         {
                             <SupportAccessConsoleSection />
                         }
+                        else if (_currentSection == "scheduler" && _schedulerAvailable)
+                        {
+                            <InstanceSchedulerSection />
+                        }
                         else if (_currentSection == "support-access-evidence")
                         {
                             <Explore.Blazor.Client.Pages.Admin.Tenant.Components.TenantSupportAccessEvidenceSection TenantId="TenantConstants.DefaultTenantId" />
@@ -356,6 +362,7 @@
     private bool _isLoading = true;
     private FormSubmitState _submitState = new();
     private bool _canEdit;
+    private bool _schedulerAvailable;
     private bool _identityReady;
     private bool _canManageTenant;
     private bool _hasAnnouncementBar;
@@ -387,6 +394,10 @@
             _isLoading = false;
             return;
         }
+
+        // Discovery, not authorization: the resource is served only when this host exposes the scheduler
+        // administration API and this caller may read it, so its presence alone decides whether the item appears.
+        _schedulerAvailable = await SchedulerAdminService.GetOverviewAsync() is not null;
 
         // Load all sub-resources in parallel
         var deploymentTask = InstanceOnboardingService.GetDeploymentModeAsync();
@@ -865,10 +876,11 @@
                 new("webhooks",         Icons.Material.Filled.Webhook,         "Webhooks",         Group: "Developer"),
             ]);
 
+            AddSchedulerNavItem(navItems);
             return navItems;
         }
 
-        return
+        List<NavItem> multiTenantNavItems =
         [
             new("governance",       Icons.Material.Filled.Gavel,           "Governance"),
             new("tenants",          Icons.Material.Filled.DomainAdd,       "Tenants"),
@@ -891,6 +903,37 @@
             new("access-tokens",    Icons.Material.Filled.Key,             "Access Tokens",    Group: "Developer"),
             new("webhooks",         Icons.Material.Filled.Webhook,         "Webhooks",         Group: "Developer"),
         ];
+
+        AddSchedulerNavItem(multiTenantNavItems);
+        return multiTenantNavItems;
+    }
+
+    /// <summary>
+    /// The scheduler item exists only when the server actually served its resource. Availability is a server fact
+    /// here — a host may run with the scheduler administration API switched off — so it is discovered rather than
+    /// inferred from the signed-in administrator's claims.
+    /// </summary>
+    private void AddSchedulerNavItem(List<NavItem> navItems)
+    {
+        if (!_schedulerAvailable)
+        {
+            return;
+        }
+
+        var developerIndex = navItems.FindIndex(item => item.Group == "Developer");
+        var schedulerItem = new NavItem(
+            "scheduler",
+            Icons.Material.Filled.Schedule,
+            "Background Scheduler",
+            Group: "Operations");
+
+        if (developerIndex < 0)
+        {
+            navItems.Add(schedulerItem);
+            return;
+        }
+
+        navItems.Insert(developerIndex, schedulerItem);
     }
 
     private void SelectSection(string section)

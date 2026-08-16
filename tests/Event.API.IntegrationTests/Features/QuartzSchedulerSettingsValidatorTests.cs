@@ -115,4 +115,82 @@ public sealed class QuartzSchedulerSettingsValidatorTests
 
         await Assert.That(result.Succeeded).IsTrue();
     }
+
+    [Test]
+    public async Task ValidateRejectsAdminApiWithoutScheduler()
+    {
+        var result = _validator.Validate(null, new QuartzSchedulerSettings
+        {
+            Enabled = false,
+            AdminApiEnabled = true
+        });
+
+        await Assert.That(result.Succeeded).IsFalse();
+        await Assert.That(result.FailureMessage).Contains("AdminApiEnabled");
+    }
+
+    [Test]
+    public async Task ValidateRejectsDashboardWithoutScheduler()
+    {
+        var result = _validator.Validate(null, new QuartzSchedulerSettings
+        {
+            Enabled = false,
+            DashboardEnabled = true
+        });
+
+        await Assert.That(result.Succeeded).IsFalse();
+        await Assert.That(result.FailureMessage).Contains("DashboardEnabled");
+    }
+
+    [Test]
+    public async Task ValidateRejectsDashboardWithUnroutablePath()
+    {
+        var result = _validator.Validate(null, new QuartzSchedulerSettings
+        {
+            DashboardEnabled = true,
+            DashboardPath = "/"
+        });
+
+        await Assert.That(result.Succeeded).IsFalse();
+        await Assert.That(result.FailureMessage).Contains("DashboardPath");
+    }
+
+    [Test]
+    public async Task ValidateRejectsAnonymousDashboardAuthorization()
+    {
+        var result = _validator.Validate(null, new QuartzSchedulerSettings
+        {
+            DashboardEnabled = true,
+            DashboardAuthorizationPolicy = "AllowAnonymous"
+        });
+
+        await Assert.That(result.Succeeded).IsFalse();
+        await Assert.That(result.FailureMessage).Contains("DashboardAuthorizationPolicy");
+    }
+
+    [Test]
+    public async Task ValidateAcceptsEnabledOperatorSurfaces()
+    {
+        var result = _validator.Validate(null, new QuartzSchedulerSettings
+        {
+            AdminApiEnabled = true,
+            AdminApiReadOnly = false,
+            DashboardEnabled = true,
+            DashboardReadOnly = false
+        });
+
+        await Assert.That(result.Succeeded).IsTrue();
+    }
+
+    [Test]
+    public async Task DefaultSettingsKeepOperatorSurfacesDisabledAndReadOnly()
+    {
+        var settings = new QuartzSchedulerSettings();
+
+        await Assert.That(settings.AdminApiEnabled).IsFalse();
+        await Assert.That(settings.DashboardEnabled).IsFalse();
+        await Assert.That(settings.AdminApiReadOnly).IsTrue();
+        await Assert.That(settings.DashboardReadOnly).IsTrue();
+        await Assert.That(settings.DashboardPath).IsEqualTo(QuartzSchedulerSettings.DefaultDashboardPath);
+    }
 }

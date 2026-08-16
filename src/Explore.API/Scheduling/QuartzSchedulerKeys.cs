@@ -35,6 +35,30 @@ public static class QuartzSchedulerKeys
     public static readonly JobKey EventReminderDispatch =
         new(ScheduledJobNames.EventReminderDispatch, OnDemandGroup);
 
+    public static readonly JobKey IdempotencyCleanup =
+        new(ScheduledJobNames.IdempotencyCleanup, RecurringGroup);
+
+    public static readonly JobKey AiRetentionCleanup =
+        new(ScheduledJobNames.AiRetentionCleanup, RecurringGroup);
+
+    public static readonly JobKey EmailDispatchRetentionCleanup =
+        new(ScheduledJobNames.EmailDispatchRetentionCleanup, RecurringGroup);
+
+    public static readonly JobKey WebhookRetentionCleanup =
+        new(ScheduledJobNames.WebhookRetentionCleanup, RecurringGroup);
+
+    public static readonly JobKey PrivacyErasureCredentialCleanup =
+        new(ScheduledJobNames.PrivacyErasureCredentialCleanup, RecurringGroup);
+
+    public static readonly JobKey StorageReconciliation =
+        new(ScheduledJobNames.StorageReconciliation, RecurringGroup);
+
+    public static readonly JobKey RegistrationRetentionCleanup =
+        new(ScheduledJobNames.RegistrationRetentionCleanup, RecurringGroup);
+
+    public static readonly JobKey OrganizerPaymentReadinessReconciliation =
+        new(ScheduledJobNames.OrganizerPaymentReadinessReconciliation, RecurringGroup);
+
     public static TriggerKey RecurringTriggerFor(JobKey jobKey)
     {
         ArgumentNullException.ThrowIfNull(jobKey);

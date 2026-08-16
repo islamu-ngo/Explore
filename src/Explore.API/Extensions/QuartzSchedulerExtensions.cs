@@ -13,6 +13,10 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Options;
 using Quartz;
 using Quartz.AspNetCore;
+using Explore.Application.Configuration;
+using Explore.Infrastructure;
+using Explore.Infrastructure.Webhooks;
+using Explore.Application.Features.OrganizerPaymentConnections;
 
 namespace Explore.API.Extensions;
 
@@ -40,8 +44,17 @@ public static class QuartzSchedulerExtensions
             .ValidateOnStart();
         services.AddSingleton<IValidateOptions<QuartzSchedulerSettings>, QuartzSchedulerSettingsValidator>();
 
+        // The administration policy is registered unconditionally so the operator surface can always explain why
+        // it is unavailable. Without it a host with scheduling disabled would fail dependency resolution instead.
+        services.TryAddSingleton<ISchedulerAdminPolicy, SchedulerAdminPolicy>();
+
+        // Registered unconditionally alongside the policy: a refused action on a scheduler-less host is still an
+        // attempted privileged operation and must leave a record.
+        services.TryAddSingleton<ISchedulerAdminAuditSink, LoggingSchedulerAdminAuditSink>();
+
         if (!enabled || !settings.Enabled || environment.IsEnvironment("Testing"))
         {
+            services.TryAddSingleton<ISchedulerOperations, UnavailableSchedulerOperations>();
             return services;
         }
 
@@ -51,6 +64,7 @@ public static class QuartzSchedulerExtensions
         services.RemoveAll<IScheduledEmailDispatchTrigger>();
         services.AddScoped<IScheduledEmailDispatchTrigger, QuartzScheduledEmailDispatchTrigger>();
         services.AddSingleton<QuartzSchemaInitializer>();
+        services.TryAddSingleton<ISchedulerOperations, QuartzSchedulerOperations>();
 
         services.AddQuartz(quartz =>
         {
@@ -69,6 +83,7 @@ public static class QuartzSchedulerExtensions
             }
 
             RegisterRecurringJobs(quartz, settings);
+            RegisterMaintenanceSweeps(quartz, configuration);
             RegisterOnDemandJobs(quartz);
         });
 
@@ -278,6 +293,142 @@ public static class QuartzSchedulerExtensions
             .WithIdentity(QuartzSchedulerKeys.EventReminderDispatch)
             .WithDescription("Wakes a pre-persisted event reminder EmailDispatchOutbox row at its scheduled time.")
             .StoreDurably());
+    }
+
+    /// <summary>
+    /// Registers the periodic maintenance sweeps that previously each ran as a hand-rolled
+    /// <c>BackgroundService</c> timer loop. Enablement and cadence stay in each feature's own settings section
+    /// so operator-facing configuration keys are unchanged; only the mechanism moved.
+    /// </summary>
+    private static void RegisterMaintenanceSweeps(
+        IServiceCollectionQuartzConfigurator quartz,
+        IConfiguration configuration)
+    {
+        var idempotency = Bind<IdempotencyCleanupSettings>(configuration, IdempotencyCleanupSettings.SectionName);
+        AddSweepJob<IdempotencyCleanupJob>(
+            quartz,
+            QuartzSchedulerKeys.IdempotencyCleanup,
+            "Removes expired idempotency replay-cache rows.",
+            idempotency.Enabled,
+            idempotency.InitialDelaySeconds,
+            idempotency.PollingIntervalMinutes);
+
+        var aiRetention = Bind<AiRetentionCleanupSettings>(configuration, AiRetentionCleanupSettings.SectionName);
+        AddSweepJob<AiRetentionCleanupJob>(
+            quartz,
+            QuartzSchedulerKeys.AiRetentionCleanup,
+            "Applies AI conversation retention policy across tenants.",
+            aiRetention.Enabled,
+            aiRetention.InitialDelaySeconds,
+            aiRetention.PollingIntervalMinutes);
+
+        var emailRetention = Bind<EmailDispatchRetentionSettings>(configuration, EmailDispatchRetentionSettings.SectionName);
+        AddSweepJob<EmailDispatchRetentionCleanupJob>(
+            quartz,
+            QuartzSchedulerKeys.EmailDispatchRetentionCleanup,
+            "Applies email dispatch outbox and receipt retention policy.",
+            emailRetention.Enabled,
+            emailRetention.InitialDelaySeconds,
+            emailRetention.PollingIntervalMinutes);
+
+        var webhookRetention = Bind<WebhookRetentionSettings>(configuration, WebhookRetentionSettings.SectionName);
+        AddSweepJob<WebhookRetentionCleanupJob>(
+            quartz,
+            QuartzSchedulerKeys.WebhookRetentionCleanup,
+            "Applies webhook message and delivery-attempt retention policy across tenants.",
+            webhookRetention.Enabled,
+            webhookRetention.InitialDelaySeconds,
+            webhookRetention.PollingIntervalMinutes);
+
+        var storage = Bind<StorageReconciliationSettings>(configuration, StorageReconciliationSettings.SectionName);
+        AddSweepJob<StorageReconciliationJob>(
+            quartz,
+            QuartzSchedulerKeys.StorageReconciliation,
+            "Reconciles storage object state against the configured provider.",
+            storage.Enabled,
+            storage.InitialDelaySeconds,
+            storage.PollingIntervalMinutes);
+
+        // Registration retention has no settings section: its cadence is fixed by the immutable-deadline
+        // policy rather than being operator-tunable, so the schedule is stated here rather than bound.
+        AddSweepJob<RegistrationRetentionCleanupJob>(
+            quartz,
+            QuartzSchedulerKeys.RegistrationRetentionCleanup,
+            "Applies registration answer and PII retention deadlines for every active tenant.",
+            enabled: true,
+            initialDelaySeconds: 300,
+            TimeSpan.FromDays(1));
+
+        var organizerPayment = Bind<OrganizerPaymentReadinessReconciliationOptions>(
+            configuration,
+            OrganizerPaymentReadinessReconciliationOptions.SectionName);
+        AddSweepJob<OrganizerPaymentReadinessReconciliationJob>(
+            quartz,
+            QuartzSchedulerKeys.OrganizerPaymentReadinessReconciliation,
+            "Refreshes stale organizer payment provider readiness state.",
+            organizerPayment.Enabled,
+            organizerPayment.InitialDelaySeconds,
+            TimeSpan.FromSeconds(Math.Max(5, organizerPayment.PollingIntervalSeconds)));
+
+        // Privacy erasure credential cleanup keeps its own settings shape: its cadence is expressed as a
+        // TimeSpan poll interval shared with the provider lease machinery rather than as whole minutes.
+        var privacyErasure = Bind<PrivacyErasureOptions>(configuration, PrivacyErasureOptions.SectionName);
+        AddSweepJob<PrivacyErasureCredentialCleanupJob>(
+            quartz,
+            QuartzSchedulerKeys.PrivacyErasureCredentialCleanup,
+            "Expires privacy-erasure provider credentials and locators past their retention horizon.",
+            privacyErasure.RetentionCleanupEnabled,
+            initialDelaySeconds: 0,
+            privacyErasure.ProviderPollingInterval);
+    }
+
+    private static TSettings Bind<TSettings>(IConfiguration configuration, string sectionName)
+        where TSettings : new()
+        => configuration.GetSection(sectionName).Get<TSettings>() ?? new TSettings();
+
+    private static void AddSweepJob<TJob>(
+        IServiceCollectionQuartzConfigurator quartz,
+        JobKey jobKey,
+        string description,
+        bool enabled,
+        int initialDelaySeconds,
+        int intervalMinutes)
+        where TJob : IJob
+        => AddSweepJob<TJob>(quartz, jobKey, description, enabled, initialDelaySeconds, TimeSpan.FromMinutes(Math.Max(1, intervalMinutes)));
+
+    /// <summary>
+    /// A disabled sweep is simply not registered, which keeps a turned-off feature out of the persistent
+    /// store entirely instead of leaving a dormant trigger for operators to puzzle over.
+    /// </summary>
+    private static void AddSweepJob<TJob>(
+        IServiceCollectionQuartzConfigurator quartz,
+        JobKey jobKey,
+        string description,
+        bool enabled,
+        int initialDelaySeconds,
+        TimeSpan interval)
+        where TJob : IJob
+    {
+        if (!enabled)
+        {
+            return;
+        }
+
+        quartz.AddJob<TJob>(job => job
+            .WithIdentity(jobKey)
+            .WithDescription(description)
+            .StoreDurably());
+
+        quartz.AddTrigger(trigger => trigger
+            .WithIdentity(QuartzSchedulerKeys.RecurringTriggerFor(jobKey))
+            .ForJob(jobKey)
+            .StartAt(DateTimeOffset.UtcNow.AddSeconds(Math.Max(0, initialDelaySeconds)))
+            .WithSimpleSchedule(schedule => schedule
+                .WithInterval(interval)
+                .RepeatForever()
+                // Maintenance sweeps are idempotent and horizon-based, so a backlog of missed runs collapses
+                // into the next pass rather than firing once per skipped interval after downtime.
+                .WithMisfireHandlingInstructionNextWithRemainingCount()));
     }
 
     private static void AddCronJob<TJob>(

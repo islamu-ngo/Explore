@@ -76,6 +76,37 @@ public sealed class QuartzSchedulerSettingsValidator : IValidateOptions<QuartzSc
             }
         }
 
+        // An operator surface over a scheduler that was never started would report a permanently empty instance,
+        // which reads as "nothing is scheduled" rather than "scheduling is off". Fail fast instead.
+        if (options.AdminApiEnabled && !options.Enabled)
+        {
+            failures.Add("Scheduler:Quartz:AdminApiEnabled requires Scheduler:Quartz:Enabled to be true.");
+        }
+
+        if (options.DashboardEnabled)
+        {
+            if (!options.Enabled)
+            {
+                failures.Add("Scheduler:Quartz:DashboardEnabled requires Scheduler:Quartz:Enabled to be true.");
+            }
+
+            if (string.IsNullOrWhiteSpace(options.DashboardPath) ||
+                options.DashboardPath[0] != '/' ||
+                options.DashboardPath == "/")
+            {
+                failures.Add("Scheduler:Quartz:DashboardPath must be an absolute non-root path when the dashboard is enabled.");
+            }
+
+            if (string.IsNullOrWhiteSpace(options.DashboardAuthorizationPolicy))
+            {
+                failures.Add("Scheduler:Quartz:DashboardAuthorizationPolicy is required when the dashboard is enabled.");
+            }
+            else if (options.DashboardAuthorizationPolicy.Equals("AllowAnonymous", StringComparison.OrdinalIgnoreCase))
+            {
+                failures.Add("Scheduler:Quartz:DashboardAuthorizationPolicy must not allow anonymous scheduler access.");
+            }
+        }
+
         return failures.Count == 0
             ? ValidateOptionsResult.Success
             : ValidateOptionsResult.Fail(failures);

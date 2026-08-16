@@ -65,6 +65,26 @@ public sealed class QuartzSchemaInitializerTests
         }
     }
 
+    /// <summary>
+    /// Quartz probes for this column and silently degrades — it logs that <c>ScheduledFireTimeUtc</c> will not
+    /// be corrected for misfired triggers rather than failing. Since the platform configures misfire handling
+    /// explicitly, a missing column would be an invisible correctness loss, so every provider must define it.
+    /// </summary>
+    [Test]
+    [Arguments(PrimaryDatabaseProvider.PostgreSql)]
+    [Arguments(PrimaryDatabaseProvider.Sqlite)]
+    [Arguments(PrimaryDatabaseProvider.SqlServer)]
+    [Arguments(PrimaryDatabaseProvider.MariaDb)]
+    [Arguments(PrimaryDatabaseProvider.MySql)]
+    public async Task TriggersTableCarriesTheMisfireOriginalFireTimeColumn(PrimaryDatabaseProvider provider)
+    {
+        var script = string.Join('\n', QuartzSchemaInitializer.BuildStatements(provider, "QRTZ_"));
+
+        await Assert.That(script.Contains("MISFIRE_ORIG_FIRE_TIME", StringComparison.OrdinalIgnoreCase))
+            .IsTrue()
+            .Because($"{provider} misfire handling silently loses fire-time correction without this column.");
+    }
+
     [Test]
     public async Task BuildStatementsHonorsACustomTablePrefix()
     {

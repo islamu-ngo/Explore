@@ -9,6 +9,7 @@ public sealed class QuartzSchedulerSettings
     public const string InstanceAdminPolicyName = "quartz_instance_admin";
     public const string DefaultTablePrefix = "QRTZ_";
     public const string DefaultStatusEndpointPath = "/admin/scheduler";
+    public const string DefaultDashboardPath = "/quartz";
     public const string AutoInstanceId = "AUTO";
 
     public bool Enabled { get; set; } = true;
@@ -40,4 +41,33 @@ public sealed class QuartzSchedulerSettings
     public string StatusEndpointPath { get; set; } = DefaultStatusEndpointPath;
 
     public string StatusEndpointAuthorizationPolicy { get; set; } = InstanceAdminPolicyName;
+
+    /// <summary>
+    /// Enables the first-party scheduler administration API under <c>/api/admin/scheduler</c>. It is an operator
+    /// surface that widens the authenticated attack surface, so it stays opt-in rather than on by default.
+    /// </summary>
+    public bool AdminApiEnabled { get; set; }
+
+    /// <summary>
+    /// Keeps the administration API to reads only. Write affordances disappear from HAL, so a client that gates
+    /// on links stops offering the actions rather than discovering them and failing at call time.
+    /// </summary>
+    public bool AdminApiReadOnly { get; set; } = true;
+
+    /// <summary>
+    /// Mounts the first-party Quartz.NET Blazor dashboard. Only a host that owns Razor components can serve it,
+    /// so the combined <c>Event.Standalone</c> process honours this flag and the split API host ignores it.
+    /// </summary>
+    public bool DashboardEnabled { get; set; }
+
+    /// <summary>Disables the dashboard's own mutating controls without affecting the administration API.</summary>
+    public bool DashboardReadOnly { get; set; } = true;
+
+    /// <summary>
+    /// Base path for the dashboard UI. The package fixes this to <c>/quartz</c> whenever the dashboard shares an
+    /// existing Blazor app's endpoints, which is exactly how the combined host mounts it.
+    /// </summary>
+    public string DashboardPath { get; set; } = DefaultDashboardPath;
+
+    public string DashboardAuthorizationPolicy { get; set; } = InstanceAdminPolicyName;
 }

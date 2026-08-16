@@ -1,0 +1,299 @@
+@* ABOUTME: Instance scheduler administration section showing live scheduler state and scheduled job control. *@
+@* ABOUTME: Every control is gated on server-emitted HAL affordances rather than on local role inspection. *@
+
+@using MudBlazor
+@using Explore.Blazor.Client.Clients
+@using Explore.Blazor.Client.Contracts.Scheduling
+@using Explore.Blazor.Client.Helpers
+
+<div class="settings-section scheduler-section">
+    <div class="settings-section-header">
+        <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Start" Class="scheduler-section__header">
+            <div>
+                <MudText Typo="Typo.h5" HtmlTag="h2" Style="font-weight: 700;">Background Scheduler</MudText>
+                <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-1">
+                    Inspect the instance job scheduler, review trigger states and fire times, and control scheduled work.
+                </MudText>
+            </div>
+            <MudChip T="string"
+                     Color="@StateChipColor"
+                     Variant="Variant.Outlined"
+                     Icon="@StateIcon">
+                @StateLabel
+            </MudChip>
+        </MudStack>
+    </div>
+
+    @if (_isLoading)
+    {
+        <MudStack AlignItems="AlignItems.Center" Class="scheduler-section__loading">
+            <MudProgressCircular Indeterminate="true" Color="Color.Primary" aria-label="Loading scheduler state" />
+            <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-4">Loading scheduler state…</MudText>
+        </MudStack>
+    }
+    else if (_overview is null)
+    {
+        <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Class="scheduler-section__alert">
+            The scheduler administration API is not enabled on this host. Set
+            <code>Scheduler__Quartz__AdminApiEnabled=true</code> to expose it.
+        </MudAlert>
+    }
+    else
+    {
+        @if (!string.IsNullOrWhiteSpace(_message))
+        {
+            <MudAlert Severity="@_messageSeverity"
+                      Variant="Variant.Outlined"
+                      Class="scheduler-section__alert"
+                      ShowCloseIcon="true"
+                      CloseIconClicked="ClearMessage">
+                @_message
+            </MudAlert>
+        }
+
+        @if (_overview.Available != true)
+        {
+            <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined" Class="scheduler-section__alert">
+                Background scheduling is disabled on this host, so no jobs are running. Scheduled work such as email
+                dispatch and retention sweeps will not execute until it is enabled.
+            </MudAlert>
+        }
+        else if (_overview.ReadOnly == true)
+        {
+            <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Class="scheduler-section__alert">
+                The scheduler is read-only on this host. Set <code>Scheduler__Quartz__AdminApiReadOnly=false</code>
+                to allow pausing, resuming, and running jobs from here.
+            </MudAlert>
+        }
+
+        @if (_overview.ExecutingViewIsNodeLocal == true)
+        {
+            <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Class="scheduler-section__alert">
+                This instance is clustered. The <strong>running</strong> indicator and the cancellation action apply
+                to node <code>@(_overview.InstanceId)</code> only — a job executing on another node will not appear
+                as running here, and cannot be cancelled from this node.
+            </MudAlert>
+        }
+
+        <dl class="scheduler-section__metrics" aria-label="Scheduler status">
+            <div class="scheduler-section__metric">
+                <dt><MudText Typo="Typo.overline" Color="Color.Secondary">Scheduler</MudText></dt>
+                <dd><MudText Typo="Typo.h6">@(_overview.SchedulerName ?? "—")</MudText></dd>
+            </div>
+            <div class="scheduler-section__metric">
+                <dt><MudText Typo="Typo.overline" Color="Color.Secondary">Instance</MudText></dt>
+                <dd><MudText Typo="Typo.h6">@(_overview.InstanceId ?? "—")</MudText></dd>
+            </div>
+            <div class="scheduler-section__metric">
+                <dt><MudText Typo="Typo.overline" Color="Color.Secondary">Jobs</MudText></dt>
+                <dd><MudText Typo="Typo.h6">@(_overview.JobCount ?? 0)</MudText></dd>
+            </div>
+            <div class="scheduler-section__metric">
+                <dt><MudText Typo="Typo.overline" Color="Color.Secondary">Paused</MudText></dt>
+                <dd><MudText Typo="Typo.h6">@(_overview.PausedJobCount ?? 0)</MudText></dd>
+            </div>
+            <div class="scheduler-section__metric">
+                <dt><MudText Typo="Typo.overline" Color="Color.Secondary">Running now</MudText></dt>
+                <dd><MudText Typo="Typo.h6">@(_overview.ExecutingJobCount ?? 0)</MudText></dd>
+            </div>
+            <div class="scheduler-section__metric">
+                <dt><MudText Typo="Typo.overline" Color="Color.Secondary">Persistence</MudText></dt>
+                <dd>
+                    <MudText Typo="Typo.h6">
+                        @(_overview.SupportsPersistence == true ? "Durable" : "In-memory")@(_overview.Clustered == true ? " · clustered" : string.Empty)
+                    </MudText>
+                </dd>
+            </div>
+        </dl>
+
+        <MudStack Row="true" Spacing="2" Class="scheduler-section__actions" Wrap="Wrap.Wrap">
+            @if (_overview.HasLink(SchedulerAdminLinkRelations.Pause))
+            {
+                <MudButton Variant="Variant.Outlined"
+                           Color="Color.Warning"
+                           StartIcon="@Icons.Material.Filled.Pause"
+                           Disabled="@_isBusy"
+                           OnClick="BeginPauseScheduler">
+                    Pause scheduler
+                </MudButton>
+            }
+            @if (_overview.HasLink(SchedulerAdminLinkRelations.Resume))
+            {
+                <MudButton Variant="Variant.Filled"
+                           Color="Color.Primary"
+                           StartIcon="@Icons.Material.Filled.PlayArrow"
+                           Disabled="@_isBusy"
+                           OnClick="ResumeSchedulerAsync">
+                    Resume scheduler
+                </MudButton>
+            }
+            <MudButton Variant="Variant.Text"
+                       Color="Color.Default"
+                       StartIcon="@Icons.Material.Filled.Refresh"
+                       Disabled="@_isBusy"
+                       OnClick="RefreshAsync">
+                Refresh
+            </MudButton>
+        </MudStack>
+
+        @if (_isConfirmingPause)
+        {
+            <MudPaper Elevation="0" Class="scheduler-section__confirm" role="group" aria-label="Confirm pausing the scheduler">
+                <MudText Typo="Typo.subtitle2" HtmlTag="h3">Pause all background work?</MudText>
+                <MudText Typo="Typo.body2" Color="Color.Secondary">
+                    This stops email dispatch, retention sweeps, and storage reconciliation until the scheduler is
+                    resumed. Type the scheduler name <code>@(_overview.SchedulerName)</code> to confirm.
+                </MudText>
+                <MudTextField @bind-Value="_pauseConfirmation"
+                              Label="Scheduler name"
+                              Variant="Variant.Outlined"
+                              Immediate="true"
+                              Class="mt-3"
+                              Disabled="@_isBusy" />
+                <MudStack Row="true" Spacing="2" Class="mt-3">
+                    <MudButton Variant="Variant.Filled"
+                               Color="Color.Warning"
+                               Disabled="@(_isBusy || !CanConfirmPause)"
+                               OnClick="ConfirmPauseSchedulerAsync">
+                        Pause scheduler
+                    </MudButton>
+                    <MudButton Variant="Variant.Text" Disabled="@_isBusy" OnClick="CancelPauseScheduler">
+                        Cancel
+                    </MudButton>
+                </MudStack>
+            </MudPaper>
+        }
+
+        <MudTable T="HalResourceOfSchedulerAdminJobDto"
+                  Items="@_jobs"
+                  Dense="true"
+                  Hover="true"
+                  Breakpoint="Breakpoint.Sm"
+                  Elevation="0"
+                  Class="scheduler-section__table"
+                  aria-label="Scheduled jobs">
+            <HeaderContent>
+                <MudTh>Job</MudTh>
+                <MudTh>Owner</MudTh>
+                <MudTh>State</MudTh>
+                <MudTh>Schedule</MudTh>
+                <MudTh>Next run</MudTh>
+                <MudTh>Last run</MudTh>
+                <MudTh>Actions</MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd DataLabel="Job">
+                    <div class="scheduler-section__job">
+                        <MudText Typo="Typo.body2" Style="font-weight: 600;">@context.Name</MudText>
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">@context.Group</MudText>
+                        @if (!string.IsNullOrWhiteSpace(context.Description))
+                        {
+                            <MudText Typo="Typo.caption" Color="Color.Secondary" Class="scheduler-section__job-description">
+                                @context.Description
+                            </MudText>
+                        }
+                    </div>
+                </MudTd>
+                <MudTd DataLabel="Owner">@(context.Owner ?? "—")</MudTd>
+                <MudTd DataLabel="State">
+                    <MudChip T="string" Size="Size.Small" Color="@JobStateColor(context.State)" Variant="Variant.Text">
+                        @JobStateLabel(context.State)
+                    </MudChip>
+                    @if (context.Executing == true)
+                    {
+                        <MudChip T="string" Size="Size.Small" Color="Color.Info" Variant="Variant.Text">running</MudChip>
+                    }
+                </MudTd>
+                <MudTd DataLabel="Schedule">
+                    <MudText Typo="Typo.caption">@ScheduleSummary(context)</MudText>
+                </MudTd>
+                <MudTd DataLabel="Next run">@FormatFireTime(context.NextFireTimeUtc)</MudTd>
+                <MudTd DataLabel="Last run">@FormatFireTime(context.PreviousFireTimeUtc)</MudTd>
+                <MudTd DataLabel="Actions">
+                    <MudStack Row="true" Spacing="1" Wrap="Wrap.Wrap">
+                        @if (context.HasLink(SchedulerAdminLinkRelations.Trigger))
+                        {
+                            <MudTooltip Text="Run this job now">
+                                <MudIconButton Icon="@Icons.Material.Filled.FlashOn"
+                                               Size="Size.Small"
+                                               Color="Color.Primary"
+                                               Disabled="@_isBusy"
+                                               aria-label="@($"Run {context.Name} now")"
+                                               OnClick="@(() => TriggerJobAsync(context))" />
+                            </MudTooltip>
+                        }
+                        @if (context.HasLink(SchedulerAdminLinkRelations.Pause))
+                        {
+                            <MudTooltip Text="Pause this job">
+                                <MudIconButton Icon="@Icons.Material.Filled.Pause"
+                                               Size="Size.Small"
+                                               Color="Color.Warning"
+                                               Disabled="@_isBusy"
+                                               aria-label="@($"Pause {context.Name}")"
+                                               OnClick="@(() => PauseJobAsync(context))" />
+                            </MudTooltip>
+                        }
+                        @if (context.HasLink(SchedulerAdminLinkRelations.Resume))
+                        {
+                            <MudTooltip Text="Resume this job">
+                                <MudIconButton Icon="@Icons.Material.Filled.PlayArrow"
+                                               Size="Size.Small"
+                                               Color="Color.Success"
+                                               Disabled="@_isBusy"
+                                               aria-label="@($"Resume {context.Name}")"
+                                               OnClick="@(() => ResumeJobAsync(context))" />
+                            </MudTooltip>
+                        }
+                        @if (context.HasLink(SchedulerAdminLinkRelations.ResetError))
+                        {
+                            <MudTooltip Text="Clear the error state so this job fires on schedule again">
+                                <MudIconButton Icon="@Icons.Material.Filled.RestartAlt"
+                                               Size="Size.Small"
+                                               Color="Color.Error"
+                                               Disabled="@_isBusy"
+                                               aria-label="@($"Clear error state for {context.Name}")"
+                                               OnClick="@(() => ResetJobErrorStateAsync(context))" />
+                            </MudTooltip>
+                        }
+                        @if (context.HasLink(SchedulerAdminLinkRelations.Interrupt))
+                        {
+                            <MudTooltip Text="Request cancellation of this run">
+                                <MudIconButton Icon="@Icons.Material.Filled.Cancel"
+                                               Size="Size.Small"
+                                               Color="Color.Warning"
+                                               Disabled="@_isBusy"
+                                               aria-label="@($"Request cancellation of {context.Name}")"
+                                               OnClick="@(() => InterruptJobAsync(context))" />
+                            </MudTooltip>
+                        }
+                    </MudStack>
+                </MudTd>
+            </RowTemplate>
+            <NoRecordsContent>
+                <MudText Typo="Typo.body2" Color="Color.Secondary">
+                    No jobs are registered in the scheduler.
+                </MudText>
+            </NoRecordsContent>
+        </MudTable>
+
+        @if (_plannedJobs.Count > 0)
+        {
+            <div class="scheduler-section__planned">
+                <MudText Typo="Typo.subtitle2" HtmlTag="h3">Planned but not scheduled</MudText>
+                <MudText Typo="Typo.caption" Color="Color.Secondary">
+                    These jobs are declared in the platform catalog but have no scheduler registration yet.
+                </MudText>
+                <MudStack Row="true" Spacing="1" Wrap="Wrap.Wrap" Class="mt-2">
+                    @foreach (var planned in _plannedJobs)
+                    {
+                        <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Default">@planned</MudChip>
+                    }
+                </MudStack>
+            </div>
+        }
+
+        <MudText Typo="Typo.caption" Color="Color.Secondary" Class="scheduler-section__timestamp">
+            State captured @FormatFireTime(_overview.GeneratedAtUtc).
+        </MudText>
+    }
+</div>

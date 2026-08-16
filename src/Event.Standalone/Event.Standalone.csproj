@@ -27,6 +27,12 @@
     <ProjectReference Include="..\Explore.Blazor\Explore.Blazor.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- The combined host is the only topology where Blazor and the scheduler share a process, so it is the
+         only project that may reference the dashboard. -->
+    <PackageReference Include="Quartz.Dashboard" />
+  </ItemGroup>
+
   <Target Name="CopyProviderMigrationsToOutput" AfterTargets="Build">
     <ItemGroup>
       <ProviderMigrationAssembly Include="$(MSBuildProjectDirectory)/../Explore.Persistence*.Migrations.*/bin/$(Configuration)/$(TargetFramework)/Explore.Persistence*.Migrations.*.dll" />

@@ -143,6 +143,9 @@
     <PackageVersion Include="Polly" Version="8.7.0" />
     <PackageVersion Include="Quartz" Version="3.19.1" />
     <PackageVersion Include="Quartz.AspNetCore" Version="3.19.1" />
+    <!-- Operator dashboard UI. Referenced only by Event.Standalone: it is a Blazor Server app and must not
+         reach the split-mode API host, which deliberately carries no Razor component infrastructure. -->
+    <PackageVersion Include="Quartz.Dashboard" Version="3.19.1" />
     <PackageVersion Include="Quartz.Extensions.Hosting" Version="3.19.1" />
     <PackageVersion Include="Quartz.Serialization.SystemTextJson" Version="3.19.1" />
     <PackageVersion Include="RabbitMQ.Client" Version="7.2.1" />

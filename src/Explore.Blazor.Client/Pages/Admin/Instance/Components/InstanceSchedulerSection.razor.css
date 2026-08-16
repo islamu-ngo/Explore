@@ -1,0 +1,74 @@
+/* ABOUTME: Scoped layout styles for the instance scheduler administration section. */
+/* ABOUTME: Provides status tiles, a scrollable job table, and responsive action rows. */
+
+.scheduler-section {
+    display: flex;
+    flex-direction: column;
+    gap: var(--isl-space-4);
+}
+
+.scheduler-section__header {
+    gap: var(--isl-space-3);
+}
+
+.scheduler-section__alert,
+.scheduler-section__timestamp {
+    margin-block-start: var(--isl-space-3);
+}
+
+.scheduler-section__loading {
+    padding-block: var(--isl-space-6);
+}
+
+.scheduler-section__metrics {
+    display: grid;
+    gap: var(--isl-space-3);
+    grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+    margin: 0;
+}
+
+.scheduler-section__metric {
+    border: 1px solid var(--mud-palette-lines-default);
+    border-radius: var(--isl-radius-md);
+    min-block-size: 5rem;
+    padding-block: var(--isl-space-3);
+    padding-inline: var(--isl-space-3);
+}
+
+.scheduler-section__metric dt,
+.scheduler-section__metric dd {
+    margin: 0;
+}
+
+.scheduler-section__actions {
+    margin-block-start: var(--isl-space-2);
+}
+
+/* The job table can exceed the settings column on narrow viewports; scrolling it in place keeps the
+   surrounding settings layout from scrolling horizontally as a whole. */
+.scheduler-section__table {
+    max-inline-size: 100%;
+    overflow-x: auto;
+}
+
+.scheduler-section__job {
+    display: flex;
+    flex-direction: column;
+    gap: 0.125rem;
+}
+
+.scheduler-section__job-description {
+    max-inline-size: 28rem;
+}
+
+.scheduler-section__planned {
+    border-block-start: 1px solid var(--mud-palette-lines-default);
+    padding-block-start: var(--isl-space-3);
+}
+
+.scheduler-section__confirm {
+    border: 1px solid var(--mud-palette-warning);
+    border-radius: var(--isl-radius-md);
+    margin-block-start: var(--isl-space-3);
+    padding: var(--isl-space-4);
+}

@@ -29,6 +29,7 @@ if (!builder.Environment.IsEnvironment("Testing"))
 var apiHost = builder.AddApiHostServices(() => shutdownState.IsShuttingDown);
 builder.AddBlazorHostServices(hostProfile, shutdownState);
 builder.Services.AddCombinedApiBridge();
+builder.AddStandaloneSchedulerDashboard();
 
 var app = builder.Build();
 var primaryDatabase = PrimaryDatabaseConfiguration.BindRuntime(app.Configuration);

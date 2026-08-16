@@ -99,6 +99,11 @@ public static class StandaloneHostApplicationExtensions
     {
         app.MapApiHostEndpoints(apiHost);
         app.MapBlazorHostEndpoints(blazorProfile);
+
+        // Mapped after the Blazor endpoints so the dashboard's concrete page routes are registered alongside
+        // them; its paths are outside the API-owned set, so the combined host routes them through the Blazor
+        // branch and its cookie authentication rather than the bearer API bridge.
+        app.MapStandaloneSchedulerDashboard();
         return app;
     }
 

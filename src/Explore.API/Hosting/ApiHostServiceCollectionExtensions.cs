@@ -287,88 +287,13 @@ public static class ApiHostServiceCollectionExtensions
                 "ATProto PDS lease duration must be between 30 and 900 seconds.")
             .ValidateOnStart();
 
-        if (!isOpenApiGeneration && !builder.Environment.IsEnvironment("Testing"))
-        {
-            builder.Services.AddHostedService<Explore.Infrastructure.Services.Federation.AtprotoJetstreamSubscriber>();
-            builder.Services.AddHostedService<PdsSyncWorker>();
-        }
-
-        builder.Services.AddSingleton<IAiAssistantRunQueue, AiAssistantRunQueue>();
-        if (!isOpenApiGeneration)
-        {
-            builder.Services.AddHostedService<AiAssistantRunWorker>();
-            builder.Services.AddHostedService<OutboxProcessor>();
-            if (!builder.Environment.IsEnvironment("Testing"))
-            {
-                builder.Services.AddHostedService<NotificationFanoutProcessor>();
-                builder.Services.AddHostedService<IdempotencyCleanupProcessor>();
-                builder.Services.AddHostedService<InventoryHoldExpiryWorker>();
-            builder.Services.AddHostedService<RegistrationFinalizationWorker>();
-            builder.Services.AddHostedService<RegistrationProviderSubmissionWriteWorker>();
-            builder.Services.AddHostedService<RegistrationProviderSubscriptionLifecycleWorker>();
-            builder.Services.AddHostedService<PrivacyErasureCredentialCleanupProcessor>();
-                builder.Services.AddHostedService<EmailDispatchRetentionCleanupProcessor>();
-                builder.Services.AddHostedService<AiRetentionCleanupProcessor>();
-                builder.Services.AddHostedService<RegistrationRetentionCleanupProcessor>();
-                builder.Services.AddHostedService<WebhookRetentionCleanupProcessor>();
-                builder.Services.AddHostedService<WebhookBulkReplayProcessor>();
-                builder.Services.AddHostedService<StorageReconciliationProcessor>();
-            }
-
-            if (emailDispatchProcessorSettings.Enabled &&
-                emailDispatchProcessorSettings.Mode == EmailDispatchProcessorMode.HostedService)
-            {
-                builder.Services.AddHostedService<EmailDispatchProcessor>();
-            }
-
-            if (!builder.Environment.IsEnvironment("Testing") && integrationSyncProcessorSettings.Enabled)
-            {
-                builder.Services.AddHostedService<IntegrationSyncProcessor>();
-            }
-
-            if (!builder.Environment.IsEnvironment("Testing") && webhookDeliveryProcessorSettings.Enabled)
-            {
-                builder.Services.AddHostedService<WebhookDeliveryProcessor>();
-            }
-
-            if (!builder.Environment.IsEnvironment("Testing") && incomingWebhookProcessingSettings.Enabled)
-            {
-                builder.Services.AddHostedService<IncomingWebhookProcessor>();
-                builder.Services.AddHostedService<IncomingWebhookEffectProcessor>();
-            }
-
-            var organizerPaymentReadinessSettings = builder.Configuration
-                .GetSection(OrganizerPaymentReadinessReconciliationOptions.SectionName)
-                .Get<OrganizerPaymentReadinessReconciliationOptions>() ?? new OrganizerPaymentReadinessReconciliationOptions();
-            if (!builder.Environment.IsEnvironment("Testing") && organizerPaymentReadinessSettings.Enabled)
-            {
-                builder.Services.AddHostedService<OrganizerPaymentReadinessReconciliationWorker>();
-            }
-
-            if (!builder.Environment.IsEnvironment("Testing"))
-            {
-                builder.Services.AddHostedService<WebhookEventTypeCatalogSyncWorker>();
-                builder.Services.AddHostedService<SvixWebhookEventTypeSyncWorker>();
-            }
-
-            if (emailDispatchRabbitMqSettings.Enabled)
-            {
-                builder.Services.AddHostedService<EmailDispatchRabbitMqPointerPublisherService>();
-                builder.Services.AddHostedService<EmailDispatchRabbitMqConsumerService>();
-                if (emailDispatchRabbitMqSettings.DeadLetterReplayEnabled)
-                {
-                    builder.Services.AddHostedService<EmailDispatchRabbitMqDeadLetterReplayService>();
-                }
-            }
-        }
-
-        if (!isOpenApiGeneration && !builder.Environment.IsEnvironment("Testing"))
-        {
-            builder.Services.AddHostedService<ManagedControlPlaneRegistrationWorker>();
-            builder.Services.AddHostedService<AiProviderSettingsBootstrapWorker>();
-            builder.Services.AddSingleton<CerbosPolicyBootSyncRunner>();
-            builder.Services.AddHostedService<CerbosPolicyBootSyncWorker>();
-        }
+        builder.AddApiBackgroundProcessing(
+            isOpenApiGeneration,
+            emailDispatchProcessorSettings,
+            integrationSyncProcessorSettings,
+            webhookDeliveryProcessorSettings,
+            incomingWebhookProcessingSettings,
+            emailDispatchRabbitMqSettings);
 
         builder.Services.AddApiCors(builder.Configuration);
         builder.Host.UseSerilog(
@@ -437,6 +362,10 @@ public static class ApiHostServiceCollectionExtensions
                 "notification-fanout",
                 failureStatus: HealthStatus.Unhealthy,
                 tags: ["ready", "notification", "fanout", "infrastructure"])
+            .AddCheck<SchedulerHealthCheck>(
+                "scheduler",
+                failureStatus: HealthStatus.Unhealthy,
+                tags: ["ready", "scheduler", "background", "infrastructure"])
             .AddCheck<IdempotencyCleanupHealthCheck>(
                 "idempotency-cleanup",
                 failureStatus: HealthStatus.Unhealthy,
@@ -503,6 +432,8 @@ public static class ApiHostServiceCollectionExtensions
                 .WithResources<AiAssistantMcpResources>()
                 .WithResources<EventManagementMcpResources>()
                 .WithPrompts<AiAssistantMcpPrompts>();
+            // Scoped because the disclosure gateway it wraps resolves per-request tenant disclosure policy.
+            builder.Services.AddScoped<Explore.API.Mcp.EventMcpLocationDisclosureGuard>();
             builder.Services.AddSingleton<IConfigureOptions<McpServerOptions>, AiMcpProjectedToolOptionsSetup>();
         }
 
@@ -514,5 +445,99 @@ public static class ApiHostServiceCollectionExtensions
             isOpenApiGeneration,
             useQuartzEmailDispatch,
             httpsRedirectionEnabled);
+    }
+
+
+    /// <summary>
+    /// Registers every long-running in-process worker the API host owns, in one place, with its enablement
+    /// condition stated inline.
+    /// <para>
+    /// The topology is deliberately literal rather than data-driven: which workers run in which environment,
+    /// and under which feature flag, is an operational fact self-hosters need to be able to read off the
+    /// composition root. Periodic maintenance sweeps are absent here because they moved to the Quartz
+    /// scheduler — see <c>QuartzSchedulerExtensions.RegisterMaintenanceSweeps</c>.
+    /// </para>
+    /// <para>
+    /// OpenAPI generation runs the host to emit a document, so nothing that would start doing real work may
+    /// be registered during it; the <c>Testing</c> environment is excluded for the same reason.
+    /// </para>
+    /// </summary>
+    private static void AddApiBackgroundProcessing(
+        this WebApplicationBuilder builder,
+        bool isOpenApiGeneration,
+        EmailDispatchProcessorSettings emailDispatchProcessorSettings,
+        IntegrationSyncProcessorSettings integrationSyncProcessorSettings,
+        WebhookDeliveryProcessorSettings webhookDeliveryProcessorSettings,
+        IncomingWebhookProcessingSettings incomingWebhookProcessingSettings,
+        EmailDispatchRabbitMqSettings emailDispatchRabbitMqSettings)
+    {
+        var isTesting = builder.Environment.IsEnvironment("Testing");
+
+        if (!isOpenApiGeneration && !isTesting)
+        {
+            builder.Services.AddHostedService<Explore.Infrastructure.Services.Federation.AtprotoJetstreamSubscriber>();
+            builder.Services.AddHostedService<PdsSyncWorker>();
+        }
+
+        builder.Services.AddSingleton<IAiAssistantRunQueue, AiAssistantRunQueue>();
+        if (isOpenApiGeneration)
+        {
+            return;
+        }
+
+        builder.Services.AddHostedService<AiAssistantRunWorker>();
+        builder.Services.AddHostedService<OutboxProcessor>();
+
+        if (!isTesting)
+        {
+            builder.Services.AddHostedService<NotificationFanoutProcessor>();
+            builder.Services.AddHostedService<InventoryHoldExpiryWorker>();
+            builder.Services.AddHostedService<RegistrationFinalizationWorker>();
+            builder.Services.AddHostedService<RegistrationProviderSubmissionWriteWorker>();
+            builder.Services.AddHostedService<RegistrationProviderSubscriptionLifecycleWorker>();
+            builder.Services.AddHostedService<WebhookBulkReplayProcessor>();
+            builder.Services.AddHostedService<WebhookEventTypeCatalogSyncWorker>();
+            builder.Services.AddHostedService<SvixWebhookEventTypeSyncWorker>();
+            builder.Services.AddHostedService<ManagedControlPlaneRegistrationWorker>();
+            builder.Services.AddHostedService<AiProviderSettingsBootstrapWorker>();
+            builder.Services.AddSingleton<CerbosPolicyBootSyncRunner>();
+            builder.Services.AddHostedService<CerbosPolicyBootSyncWorker>();
+        }
+
+        // The hosted-service dispatch loop is the scheduler-free fallback for the same drain service the
+        // Quartz `email-dispatch-drain` job uses; exactly one of the two modes runs.
+        if (emailDispatchProcessorSettings.Enabled &&
+            emailDispatchProcessorSettings.Mode == EmailDispatchProcessorMode.HostedService)
+        {
+            builder.Services.AddHostedService<EmailDispatchProcessor>();
+        }
+
+        if (!isTesting && integrationSyncProcessorSettings.Enabled)
+        {
+            builder.Services.AddHostedService<IntegrationSyncProcessor>();
+        }
+
+        if (!isTesting && webhookDeliveryProcessorSettings.Enabled)
+        {
+            builder.Services.AddHostedService<WebhookDeliveryProcessor>();
+        }
+
+        if (!isTesting && incomingWebhookProcessingSettings.Enabled)
+        {
+            builder.Services.AddHostedService<IncomingWebhookProcessor>();
+            builder.Services.AddHostedService<IncomingWebhookEffectProcessor>();
+        }
+
+        if (!emailDispatchRabbitMqSettings.Enabled)
+        {
+            return;
+        }
+
+        builder.Services.AddHostedService<EmailDispatchRabbitMqPointerPublisherService>();
+        builder.Services.AddHostedService<EmailDispatchRabbitMqConsumerService>();
+        if (emailDispatchRabbitMqSettings.DeadLetterReplayEnabled)
+        {
+            builder.Services.AddHostedService<EmailDispatchRabbitMqDeadLetterReplayService>();
+        }
     }
 }

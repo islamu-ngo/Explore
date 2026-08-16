@@ -1,8 +1,8 @@
-// ABOUTME: API-hosted organizer payment readiness reconciliation worker composition tests.
-// ABOUTME: Proves Testing registration stays disabled and RunOnce delegates through a fresh scoped service graph.
+// ABOUTME: Organizer payment readiness reconciliation scheduling and execution tests.
+// ABOUTME: Proves the sweep stays off in Testing and that one job pass drives the scoped reconciliation service.
 
 using Event.Api.IntegrationTests.Fixtures;
-using Explore.API.BackgroundServices;
+using Explore.API.Scheduling;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
 using Explore.Application.Features.OrganizerPaymentConnections;
@@ -11,6 +11,8 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
+using NSubstitute;
+using Quartz;
 
 namespace Event.Api.IntegrationTests.Features;
 
@@ -20,20 +22,25 @@ public sealed class OrganizerPaymentReadinessReconciliationWorkerTests
     private static readonly Guid ActorId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000020");
     private static readonly DateTime Now = new(2026, 8, 14, 12, 0, 0, DateTimeKind.Utc);
 
+    /// <summary>
+    /// The reconciliation runs as a Quartz job now, so "does not run under test" is a statement about the
+    /// scheduler host rather than about one hosted service type.
+    /// </summary>
     [Test]
-    public async Task ApiHost_DoesNotRegisterOrganizerPaymentReadinessWorkerInTesting()
+    public async Task ApiHost_DoesNotStartTheSchedulerInTesting()
     {
         await using var factory = new CustomWebApplicationFactory();
 
-        Type[] hostedServiceTypes = factory.Services.GetServices<IHostedService>()
+        var schedulerHostTypes = factory.Services.GetServices<IHostedService>()
             .Select(service => service.GetType())
+            .Where(type => type.Namespace?.StartsWith("Quartz", StringComparison.Ordinal) == true)
             .ToArray();
 
-        await Assert.That(hostedServiceTypes).DoesNotContain(typeof(OrganizerPaymentReadinessReconciliationWorker));
+        await Assert.That(schedulerHostTypes).IsEmpty();
     }
 
     [Test]
-    public async Task WorkerRunOnce_DelegatesThroughScopedReconciliationService()
+    public async Task JobPass_DrivesTheScopedReconciliationService()
     {
         var repository = new FakeOrganizerPaymentConnectionRepository();
         OrganizerPaymentProviderConnection connection = OrganizerPaymentProviderConnection.Create(
@@ -60,14 +67,13 @@ public sealed class OrganizerPaymentReadinessReconciliationWorkerTests
         }));
         services.AddScoped<OrganizerPaymentReadinessReconciliationService>();
         await using ServiceProvider serviceProvider = services.BuildServiceProvider();
-        var worker = new OrganizerPaymentReadinessReconciliationWorker(
-            serviceProvider.GetRequiredService<IServiceScopeFactory>(),
-            Options.Create(new OrganizerPaymentReadinessReconciliationOptions { InitialDelaySeconds = 0 }),
-            NullLogger<OrganizerPaymentReadinessReconciliationWorker>.Instance);
+        await using AsyncServiceScope scope = serviceProvider.CreateAsyncScope();
+        var job = new OrganizerPaymentReadinessReconciliationJob(
+            scope.ServiceProvider.GetRequiredService<OrganizerPaymentReadinessReconciliationService>(),
+            NullLogger<OrganizerPaymentReadinessReconciliationJob>.Instance);
 
-        OrganizerPaymentReadinessReconciliationResult result = await worker.RunOnceAsync(CancellationToken.None);
+        await job.Execute(Substitute.For<IJobExecutionContext>());
 
-        await Assert.That(result.UpdatedCount).IsEqualTo(1);
         await Assert.That(provider.ReadinessCalls).IsEqualTo(1);
         await Assert.That(connection.StatusId).IsEqualTo((int)Explore.Domain.Enums.OrganizerPaymentProviderConnectionStatusEnum.Ready);
     }
