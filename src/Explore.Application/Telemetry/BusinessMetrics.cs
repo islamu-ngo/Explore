@@ -2,6 +2,7 @@
 // ABOUTME: Tracks domain activity plus moderation, external API-key, email-dispatch, storage, notification fanout, and governance signals.
 
 using System.Diagnostics.Metrics;
+using Explore.Application.Contracts.Scheduling;
 using Explore.Application.Features.SupportAccess;
 using Explore.Application.Responses;
 using Explore.Domain;
@@ -22,6 +23,7 @@ public sealed class BusinessMetrics : IDisposable
     private readonly Counter<long> _eventsCreated;
     private readonly Counter<long> _eventsPublished;
     private readonly Counter<long> _eventModerationActions;
+    private readonly Counter<long> _schedulerAdminActions;
     private readonly Counter<long> _eventReportSubmissions;
     private readonly Counter<long> _eventReportWorkflowActions;
     private readonly Counter<long> _eventReportProviderSyncs;
@@ -117,6 +119,11 @@ public sealed class BusinessMetrics : IDisposable
             "explore.events.published",
             unit: "{event}",
             description: "Total number of events published");
+
+        _schedulerAdminActions = meter.CreateCounter<long>(
+            "explore.scheduler.admin_actions",
+            unit: "{action}",
+            description: "Operator-initiated scheduler control actions by bounded action kind and outcome");
 
         _eventModerationActions = meter.CreateCounter<long>(
             "explore.events.moderation_actions",
@@ -551,6 +558,40 @@ public sealed class BusinessMetrics : IDisposable
             new KeyValuePair<string, object?>("surface", NormalizeEventPublicActionSurface(surface)),
             new KeyValuePair<string, object?>("outcome", "redirect_issued"));
     }
+
+    /// <summary>
+    /// Records one operator-initiated scheduler control action. The scheduler is instance-level infrastructure, so
+    /// this metric deliberately carries no tenant or principal identity — accountability for <em>who</em> acted
+    /// belongs in the audit record, not in a metric dimension that would explode cardinality.
+    /// </summary>
+    public void RecordSchedulerAdminAction(string? action, string? outcome)
+    {
+        _schedulerAdminActions.Add(1,
+            new KeyValuePair<string, object?>("action", NormalizeSchedulerAdminAction(action)),
+            new KeyValuePair<string, object?>("outcome", NormalizeSchedulerAdminOutcome(outcome)));
+    }
+
+    private static string NormalizeSchedulerAdminAction(string? action) => action switch
+    {
+        SchedulerAdminAuditActions.PauseScheduler => SchedulerAdminAuditActions.PauseScheduler,
+        SchedulerAdminAuditActions.ResumeScheduler => SchedulerAdminAuditActions.ResumeScheduler,
+        SchedulerAdminAuditActions.PauseJob => SchedulerAdminAuditActions.PauseJob,
+        SchedulerAdminAuditActions.ResumeJob => SchedulerAdminAuditActions.ResumeJob,
+        SchedulerAdminAuditActions.TriggerJob => SchedulerAdminAuditActions.TriggerJob,
+        SchedulerAdminAuditActions.ResetJobErrorState => SchedulerAdminAuditActions.ResetJobErrorState,
+        SchedulerAdminAuditActions.InterruptJob => SchedulerAdminAuditActions.InterruptJob,
+        _ => "unknown"
+    };
+
+    private static string NormalizeSchedulerAdminOutcome(string? outcome) => outcome switch
+    {
+        "succeeded" => "succeeded",
+        FailureCodes.NotFound => FailureCodes.NotFound,
+        FailureCodes.SchedulerReadOnly => FailureCodes.SchedulerReadOnly,
+        FailureCodes.SchedulerUnavailable => FailureCodes.SchedulerUnavailable,
+        FailureCodes.SchedulerActionNotApplicable => FailureCodes.SchedulerActionNotApplicable,
+        _ => "refused"
+    };
 
     public void RecordEventModerationAction(
         string? tenantId,

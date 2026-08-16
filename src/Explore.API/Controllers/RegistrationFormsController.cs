@@ -377,7 +377,7 @@ public sealed class RegistrationFormsController(
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<BaseCommandResponse<Guid>>> CreateTemplate(RegistrationFormTemplateInput input, CancellationToken ct)
+    public async Task<ActionResult<BaseCommandResponse<Guid>>> CreateTemplate(RegistrationFormTemplateInputDto input, CancellationToken ct)
     {
         BaseCommandResponse<Guid> response = await mediator.Send(new CreateRegistrationFormTemplateCommand(input), ct);
         return response.Success
@@ -393,7 +393,7 @@ public sealed class RegistrationFormsController(
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
-    public async Task<ActionResult<BaseCommandResponse<Guid>>> InstantiateTemplate(Guid templateId, InstantiateRegistrationFormTemplateInput input, CancellationToken ct)
+    public async Task<ActionResult<BaseCommandResponse<Guid>>> InstantiateTemplate(Guid templateId, InstantiateRegistrationFormTemplateInputDto input, CancellationToken ct)
     {
         BaseCommandResponse<Guid> response = await mediator.Send(new InstantiateRegistrationFormTemplateCommand(templateId, input), ct);
         return response.Success

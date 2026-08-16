@@ -1,25 +1,68 @@
-ABOUTME: Fallback order for extracting user ID from claims.
-ABOUTME: Keep extraction consistent across API and handlers.
+ABOUTME: The single authority for turning a ClaimsPrincipal into a platform user id.
+ABOUTME: Prevents the divergent per-caller extraction helpers this repository previously accumulated.
 
-# User ID Extraction Pattern
+# User ID Extraction
 
 ## Rule (Required)
-Use this fallback order when extracting a user ID from `ClaimsPrincipal`:
 
-1. `sub`
-2. `http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier`
-3. `sid`
+**Do not write an extraction helper.** Call the one that exists:
 
-## Minimal Example
 ```csharp
-var userId = user.FindFirst("sub")?.Value
-    ?? user.FindFirst("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier")?.Value
-    ?? user.FindFirst("sid")?.Value;
+using Explore.Application.Authentication;
+
+Guid? userId = principal.GetPlatformUserId();          // null when unauthenticated
+Guid required = principal.GetRequiredPlatformUserId(); // throws UnauthorizedAccessException
 ```
 
-## Notes
-- If missing, treat as unauthenticated (return 401 or equivalent).
-- Keep parsing centralized; don’t duplicate logic in multiple controllers.
-- `internal_user_id` is a separate local-user claim used by some BFF/UI helpers after identity resolution. It is not part of the standard fallback chain.
+In a controller, `ExploreControllerBase` already projects these as `CurrentUserId` and `RequiredUserId`.
+In Application code that cannot see a principal, take `IUserContext` — it delegates to the same extensions.
 
-**Related**: `auth-patterns` skill.
+## The Chain
+
+`PlatformIdentityPrincipalExtensions.GetPlatformUserId` tries, in order, accepting only GUID-parseable values:
+
+1. `sub`
+2. `ClaimTypes.NameIdentifier`
+3. `sid`
+4. `internal_user_id`
+
+The provider claims come **before** `internal_user_id` deliberately: for platform-managed accounts the provider
+subject *is* the local user id, and preferring it keeps one identifier authoritative. This ordering is pinned by
+`Explore.Infrastructure.Tests/Identity/UserContextTests.cs` — treat it as a contract, not a default.
+
+## When The Subject Is Not A Platform User Id
+
+ATProto DIDs and Google subjects are not GUIDs, so the chain above returns `null` unless `internal_user_id` is
+present. Resolve the linked local account instead of guessing:
+
+```csharp
+Guid? userId = await mediator.ResolveCurrentUserIdAsync(User, cancellationToken);
+```
+
+That short-circuits on `internal_user_id`, then looks the account up by provider identity. A `null` result is an
+authentication outcome to map — never a reason to fall back to a different identity source.
+
+## Provider Bootstrap
+
+First-login and account-sync flows need the external account, not the local id:
+
+```csharp
+ProviderIdentity? identity = User.GetProviderIdentity();  // null => treat as unauthenticated
+```
+
+It returns the subject, provider (`keycloak` / `google` / `atproto`), provider id (the DID for ATProto),
+email, and verified flag as one value, so a partially-populated identity cannot be assembled by accident.
+
+## Purpose-Bound Schemes Are Separate
+
+API-key, setup-secret, managed-control-plane, ATProto session, and privacy-erasure receipt principals validate
+their own claims at the authentication boundary. They are protocol validation, not ambient user identity.
+Do **not** route them through the chain above — merging them widens trust.
+
+## Why This Is A Rule
+
+Three subtly different chains once coexisted here: `UserContext` used four claims, a principal extension used
+two, and a base controller preferred `internal_user_id` first. They disagreed about who the caller was.
+`ApiLiabilityRatchetTests` now holds controller claim parsing to a named allowlist so a fourth cannot appear.
+
+**Related**: `auth-patterns` skill; `docs/CODEBASE_INSIGHTS.md` §15.

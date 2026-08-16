@@ -108,9 +108,9 @@ public sealed class EventLocationPrivacyApiMetadataTests
             GetAction<EventSessionGroupController>(nameof(EventSessionGroupController.GetSessions)),
             GetAction<EventAgendaItemController>(nameof(EventAgendaItemController.GetByEvent)),
             GetAction<EventAgendaItemController>(nameof(EventAgendaItemController.GetById)),
-            GetAction<EventController>(nameof(EventController.GetProgramSummary)),
+            GetAction<EventManagementReadController>(nameof(EventManagementReadController.GetProgramSummary)),
             GetAction<EventAgendaItemController>(nameof(EventAgendaItemController.GetAgendaProjection)),
-            GetAction<EventController>(nameof(EventController.GetCalendar)),
+            GetAction<EventCalendarController>(nameof(EventCalendarController.GetCalendar)),
             GetAction<EventSessionAgendaItemController>(nameof(EventSessionAgendaItemController.GetAll)),
             GetAction<EventSessionAgendaItemController>(nameof(EventSessionAgendaItemController.GetById)),
             GetAction<EventSessionAgendaItemController>(nameof(EventSessionAgendaItemController.GetBySession))
@@ -192,8 +192,8 @@ public sealed class EventLocationPrivacyApiMetadataTests
             (GetAction<EventAgendaItemController>(nameof(EventAgendaItemController.GetManagedByEvent)), typeof(GetManagedEventAgendaItemsByEventRequest)),
             (GetAction<EventAgendaItemController>(nameof(EventAgendaItemController.GetManagedById)), typeof(GetManagedEventAgendaItemDetailRequest)),
             (GetAction<EventSessionAgendaItemController>(nameof(EventSessionAgendaItemController.GetManagedBySession)), typeof(GetManagedAgendaItemsBySessionRequest)),
-            (GetAction<EventController>(nameof(EventController.GetSessionCreateContext)), typeof(GetEventSessionCreateContextRequest)),
-            (GetAction<EventController>(nameof(EventController.GetManagedProgramSummary)), typeof(GetManagedEventProgramSummaryRequest))
+            (GetAction<EventManagementReadController>(nameof(EventManagementReadController.GetSessionCreateContext)), typeof(GetEventSessionCreateContextRequest)),
+            (GetAction<EventManagementReadController>(nameof(EventManagementReadController.GetManagedProgramSummary)), typeof(GetManagedEventProgramSummaryRequest))
         ];
 
         var violations = new List<string>();

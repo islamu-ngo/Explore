@@ -14,6 +14,7 @@ using Explore.Domain.Federation;
 using MediatR;
 using Microsoft.Extensions.Caching.Hybrid;
 using Microsoft.Extensions.Logging;
+using Explore.Application.Features.Events.Moderation;
 
 namespace Explore.Application.Features.Events.Handlers.Commands;
 
@@ -34,6 +35,25 @@ public sealed class UnmoderateEventCommandHandler(
 
     public async Task<BaseCommandResponse<Guid>> Handle(UnmoderateEventCommand request, CancellationToken cancellationToken)
     {
+        // Reason metadata is normalized here rather than at the transport boundary so every caller of this
+        // command — HTTP, MCP, or an internal moderation flow — is held to the same audit-code shape.
+        if (!EventModerationReasonCodePolicy.TryNormalizeUnmoderation(
+                request.ReasonCode,
+                request.CorrelationId,
+                out var reasonMetadata,
+                out var reasonFailureCode,
+                out var reasonError))
+        {
+            return new BaseCommandResponse<Guid>
+            {
+                Id = request.Id,
+                Success = false,
+                Message = reasonError,
+                Errors = [reasonError ?? "Moderation metadata is invalid."],
+                FailureCode = reasonFailureCode,
+            };
+        }
+
         if (currentUserService.UserId is not { } moderatorUserId)
         {
             metrics.RecordEventModerationAction(null, ActionKind, "failed", "user_unresolved", irreversible: false);
@@ -103,8 +123,8 @@ public sealed class UnmoderateEventCommandHandler(
             var unmoderationRecord = EventModerationRecord.CreateUnmoderation(
                 latestModerationRecord,
                 moderatorUserId,
-                request.ReasonCode,
-                request.CorrelationId,
+                reasonMetadata.ReasonCode,
+                reasonMetadata.CorrelationId,
                 unmoderatedAt);
 
             @event.EventStatusId = (int)EventStatusEnum.Published;

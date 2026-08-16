@@ -42,6 +42,25 @@ public sealed class HeavyRedactEventCommandHandler(
 
     public async Task<BaseCommandResponse<Guid>> Handle(HeavyRedactEventCommand request, CancellationToken cancellationToken)
     {
+        // Reason metadata is normalized here rather than at the transport boundary so every caller of this
+        // command — HTTP, MCP, or an internal moderation flow — is held to the same audit-code shape.
+        if (!EventModerationReasonCodePolicy.TryNormalizeHeavy(
+                request.ReasonCode,
+                request.CorrelationId,
+                out var reasonMetadata,
+                out var reasonFailureCode,
+                out var reasonError))
+        {
+            return new BaseCommandResponse<Guid>
+            {
+                Id = request.Id,
+                Success = false,
+                Message = reasonError,
+                Errors = [reasonError ?? "Moderation metadata is invalid."],
+                FailureCode = reasonFailureCode,
+            };
+        }
+
         var moderatorUserId = currentUserService.UserId;
         if (moderatorUserId is null && !HasSourceReportDecision(request))
         {
@@ -103,9 +122,9 @@ public sealed class HeavyRedactEventCommandHandler(
                     @event.TenantId,
                     @event.Id,
                     moderatorUserId,
-                    request.ReasonCode,
+                    reasonMetadata.ReasonCode,
                     @event.EventStatusId,
-                    request.CorrelationId,
+                    reasonMetadata.CorrelationId,
                     redactedAt);
 
                 if (!TryLinkSourceReportDecision(moderationRecord, request.SourceReportId, request.SourceReportDecisionId, out var sourceLinkError))

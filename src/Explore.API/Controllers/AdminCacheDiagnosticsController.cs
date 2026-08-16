@@ -2,6 +2,7 @@
 // ABOUTME: Hidden from API docs and disabled unless an explicit diagnostics flag is enabled.
 
 using System.Security.Claims;
+using Explore.Application.Authentication;
 using Asp.Versioning;
 using Explore.API.Attributes;
 using Explore.API.ExceptionHandling;
@@ -36,12 +37,8 @@ public sealed class AdminCacheDiagnosticsController : ExploreControllerBase
             return this.ToNotFoundProblem(AdminCacheDiagnosticsNotFoundProblem);
         }
 
-        var providerSubject = ResolveProviderSubject();
-        var provider = string.IsNullOrWhiteSpace(providerSubject) ? null : ResolveAuthProvider();
-        var providerId = provider is null || providerSubject is null
-            ? null
-            : ResolveProviderId(providerSubject, provider);
-        var resolvedUserId = await ResolveCurrentUserIdAsync(mediator, cancellationToken);
+        var providerIdentity = User.GetProviderIdentity();
+        var resolvedUserId = await mediator.ResolveCurrentUserIdAsync(User, cancellationToken);
 
         return Ok(new AdminCacheCurrentUserDiagnostics(
             User.Identity?.AuthenticationType,
@@ -49,8 +46,8 @@ public sealed class AdminCacheDiagnosticsController : ExploreControllerBase
             User.FindFirst("sub")?.Value,
             User.FindFirst("sid")?.Value,
             User.FindFirst(ClaimTypes.NameIdentifier)?.Value,
-            provider,
-            providerId,
+            providerIdentity?.Provider,
+            providerIdentity?.ProviderId,
             resolvedUserId));
     }
 

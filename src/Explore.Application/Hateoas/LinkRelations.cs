@@ -483,4 +483,26 @@ public static class LinkRelations
     public const string RejectAction = "reject-action";
 
     #endregion
+
+    #region Scheduler Administration
+
+    /// <summary>Navigation link from the scheduler overview to its scheduled-job collection.</summary>
+    public const string SchedulerJobs = "jobs";
+
+    /// <summary>Action link for moving the scheduler, or one job, out of firing state.</summary>
+    public const string SchedulerPause = "pause";
+
+    /// <summary>Action link for returning the scheduler, or one job, to firing state.</summary>
+    public const string SchedulerResume = "resume";
+
+    /// <summary>Action link for running one scheduled job immediately without changing its schedule.</summary>
+    public const string SchedulerTrigger = "trigger";
+
+    /// <summary>Action link for clearing a job's triggers out of the scheduler's error state.</summary>
+    public const string SchedulerResetError = "reset-error";
+
+    /// <summary>Action link for requesting cancellation of a job's currently executing instances.</summary>
+    public const string SchedulerInterrupt = "interrupt";
+
+    #endregion
 }

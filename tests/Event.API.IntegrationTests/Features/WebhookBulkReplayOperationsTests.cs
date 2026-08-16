@@ -213,7 +213,9 @@ public sealed class WebhookBulkReplayOperationsTests
         var httpContext = new DefaultHttpContext
         {
             RequestServices = services.BuildServiceProvider(),
-            User = new ClaimsPrincipal(new ClaimsIdentity(authenticationType: "TestAuth"))
+            User = new ClaimsPrincipal(new ClaimsIdentity(
+                [new Claim("sub", _actorUserId.ToString("D"))],
+                authenticationType: "TestAuth"))
         };
         return new WebhookBulkReplaysController(_mediator, _tenantContext, _assembler)
         {

@@ -13,7 +13,7 @@ public sealed class WebhookPayloadNoStoreTests
     [Test]
     public async Task PayloadEndpoint_DeclaresAndEmitsNoStoreOnDeniedResponse()
     {
-        var method = typeof(WebhooksController).GetMethod(nameof(WebhooksController.GetMessagePayload));
+        var method = typeof(WebhookMessagesController).GetMethod(nameof(WebhookMessagesController.GetMessagePayload));
         var responseCache = method!
             .GetCustomAttributes(typeof(ResponseCacheAttribute), inherit: true)
             .Cast<ResponseCacheAttribute>()

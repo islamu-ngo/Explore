@@ -7,7 +7,7 @@ ABOUTME: Covers outgoing providers plus signed Svix and Stripe Connect incoming 
 > **Status:** Implemented
 > **Owner:** Platform/Ops
 > **Last Verified:** 2026-08-14
-> **Source Anchors:** `Explore.Application/Webhooks/`, `Explore.Infrastructure/Webhooks/`, `Explore.Infrastructure/HealthChecks/`, `Explore.API/Controllers/WebhooksController.cs`, `Explore.API/Controllers/IncomingWebhooksController.cs`, `Explore.AppHost/AppHost.cs`, `docker-compose.yml`, `.env.example`, `docs/API.md`, `docs/SECURITY-MODEL.md`
+> **Source Anchors:** `Explore.Application/Webhooks/`, `Explore.Infrastructure/Webhooks/`, `Explore.Infrastructure/HealthChecks/`, `Explore.API/Controllers/WebhooksController.cs`, `Explore.API/Controllers/WebhookEndpointsController.cs`, `Explore.API/Controllers/WebhookMessagesController.cs`, `Explore.API/Controllers/WebhooksControllerBase.cs`, `Explore.API/Controllers/IncomingWebhooksController.cs`, `Explore.AppHost/AppHost.cs`, `docker-compose.yml`, `.env.example`, `docs/API.md`, `docs/SECURITY-MODEL.md`
 
 Webhooks in this document are outgoing product notifications sent by ISLAMU Event to external systems. Incoming provider callbacks are separate API ingestion routes; see [INTEGRATIONS.md](INTEGRATIONS.md).
 

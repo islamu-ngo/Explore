@@ -152,6 +152,10 @@ internal static class HalOpenApiSchemaCatalog
         typeof(Explore.Application.DTOs.RegistrationSubmissions.NativeRegistrationProviderLaunchDescriptorDto),
         typeof(Explore.Application.DTOs.RegistrationSubmissions.NativeRegistrationRequirementProgressCollectionDto),
         typeof(Explore.Application.DTOs.Registration.RegistrationAnswerFileDto),
+        typeof(Explore.Application.DTOs.RegistrationAnalytics.RegistrationAnswerAnalyticsDto),
+        typeof(Explore.Application.DTOs.RegistrationAnalytics.RegistrationAnswerFieldAggregateDto),
+        typeof(Explore.Application.DTOs.RegistrationAnalytics.RegistrationAnswerAggregateCellDto),
+        typeof(Explore.Application.DTOs.RegistrationAnalytics.RegistrationAnswerNumericAggregateDto),
         typeof(Explore.Application.DTOs.RegistrationProviders.RegistrationProviderBindingHealthDto),
         typeof(Explore.Application.DTOs.RegistrationProviders.RegistrationProviderParkedQueueItemDto),
         typeof(Explore.Application.DTOs.RegistrationProviders.RegistrationProviderConnectionDto),
@@ -209,6 +213,12 @@ internal static class HalOpenApiSchemaCatalog
         typeof(Explore.Application.DTOs.Tenant.TenantStorageSettingsDto),
         typeof(Explore.Application.DTOs.Settings.EffectiveSettingDto),
         typeof(Explore.Application.DTOs.Settings.SettingGroupResponseDto),
+
+        // Scheduler administration DTOs
+        typeof(Explore.Application.DTOs.Scheduling.SchedulerAdminOverviewDto),
+        typeof(Explore.Application.DTOs.Scheduling.SchedulerAdminJobDto),
+        typeof(Explore.Application.DTOs.Scheduling.SchedulerAdminTriggerDto),
+        typeof(Explore.Application.DTOs.Scheduling.SchedulerPauseRequestDto),
     ];
 
     public static IReadOnlyDictionary<string, Type> DetailResourceMappings { get; } = new Dictionary<string, Type>
@@ -243,6 +253,7 @@ internal static class HalOpenApiSchemaCatalog
         ["HalResourceOfNativeRegistrationProviderLaunchDescriptorDto"] = typeof(Explore.Application.DTOs.RegistrationSubmissions.NativeRegistrationProviderLaunchDescriptorDto),
         ["HalResourceOfNativeRegistrationRequirementProgressCollectionDto"] = typeof(Explore.Application.DTOs.RegistrationSubmissions.NativeRegistrationRequirementProgressCollectionDto),
         ["HalResourceOfRegistrationAnswerFileDto"] = typeof(Explore.Application.DTOs.Registration.RegistrationAnswerFileDto),
+        ["HalResourceOfRegistrationAnswerAnalyticsDto"] = typeof(Explore.Application.DTOs.RegistrationAnalytics.RegistrationAnswerAnalyticsDto),
         ["HalResourceOfRegistrationProviderBindingHealthDto"] = typeof(Explore.Application.DTOs.RegistrationProviders.RegistrationProviderBindingHealthDto),
         ["HalResourceOfRegistrationProviderParkedQueueItemDto"] = typeof(Explore.Application.DTOs.RegistrationProviders.RegistrationProviderParkedQueueItemDto),
         ["HalResourceOfRegistrationProviderConnectionDto"] = typeof(Explore.Application.DTOs.RegistrationProviders.RegistrationProviderConnectionDto),
@@ -339,6 +350,8 @@ internal static class HalOpenApiSchemaCatalog
         ["HalResourceOfEventSessionSpeakerListDto"] = typeof(Explore.Application.DTOs.EventSessionSpeaker.EventSessionSpeakerListDto),
         ["HalResourceOfEventSessionLanguageDto"] = typeof(Explore.Application.DTOs.EventSessionLanguage.EventSessionLanguageDto),
         ["HalResourceOfEventSessionLanguageListDto"] = typeof(Explore.Application.DTOs.EventSessionLanguage.EventSessionLanguageListDto),
+        ["HalResourceOfSchedulerAdminOverviewDto"] = typeof(Explore.Application.DTOs.Scheduling.SchedulerAdminOverviewDto),
+        ["HalResourceOfSchedulerAdminJobDto"] = typeof(Explore.Application.DTOs.Scheduling.SchedulerAdminJobDto),
     };
 
     public static IReadOnlyDictionary<string, string> CollectionEmbeddedItemResourceMappings { get; } = new Dictionary<string, string>
@@ -382,6 +395,7 @@ internal static class HalOpenApiSchemaCatalog
         ["HalCollectionEmbeddedOfOrganizationTenantEvidenceDto"] = "HalResourceOfOrganizationTenantEvidenceDto",
         ["HalCollectionEmbeddedOfOrganizationReviewDto"] = "HalResourceOfOrganizationReviewDto",
         ["HalCollectionEmbeddedOfEmailDispatchStatusDto"] = "HalResourceOfEmailDispatchStatusDto",
+        ["HalCollectionEmbeddedOfSchedulerAdminJobDto"] = "HalResourceOfSchedulerAdminJobDto",
         ["HalCollectionEmbeddedOfSupportAccessSessionDto"] = "HalResourceOfSupportAccessSessionDto",
         ["HalCollectionEmbeddedOfSupportAccessAuditEventDto"] = "HalResourceOfSupportAccessAuditEventDto",
         ["HalCollectionEmbeddedOfProjectionStatusDto"] = "HalResourceOfProjectionStatusDto",

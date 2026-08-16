@@ -34,16 +34,16 @@ public sealed class ControlPlaneControllerPolicyTests
     {
         string[] actionNames =
         [
-            nameof(ControlPlaneController.ActivateTenant),
-            nameof(ControlPlaneController.SuspendTenant),
-            nameof(ControlPlaneController.ArchiveTenant),
-            nameof(ControlPlaneController.ReactivateTenant),
-            nameof(ControlPlaneController.ScheduleTenantPurge)
+            nameof(ControlPlaneTenantLifecycleController.ActivateTenant),
+            nameof(ControlPlaneTenantLifecycleController.SuspendTenant),
+            nameof(ControlPlaneTenantLifecycleController.ArchiveTenant),
+            nameof(ControlPlaneTenantLifecycleController.ReactivateTenant),
+            nameof(ControlPlaneTenantLifecycleController.ScheduleTenantPurge)
         ];
 
         foreach (var actionName in actionNames)
         {
-            var action = typeof(ControlPlaneController).GetMethod(actionName);
+            var action = ControlPlaneFamilyAction(actionName);
             var conflict = action?.GetCustomAttributes<ProducesResponseTypeAttribute>()
                 .SingleOrDefault(attribute => attribute.StatusCode == StatusCodes.Status409Conflict);
 
@@ -54,8 +54,20 @@ public sealed class ControlPlaneControllerPolicyTests
 
     private static IEnumerable<MethodInfo> PublicActionMethods()
     {
-        return typeof(ControlPlaneController)
-            .GetMethods(BindingFlags.Instance | BindingFlags.Public | BindingFlags.DeclaredOnly)
+        return ControlPlaneFamily
+            .SelectMany(type => type.GetMethods(BindingFlags.Instance | BindingFlags.Public | BindingFlags.DeclaredOnly))
             .Where(method => !method.IsSpecialName);
     }
+
+    /// <summary>The controllers the original ControlPlaneController was partitioned into.</summary>
+    private static readonly Type[] ControlPlaneFamily =
+    [
+        typeof(ControlPlaneController),
+        typeof(ControlPlaneTenantPlanController),
+        typeof(ControlPlaneTenantConfigurationController),
+        typeof(ControlPlaneTenantLifecycleController),
+    ];
+
+    private static MethodInfo? ControlPlaneFamilyAction(string actionName) =>
+        ControlPlaneFamily.Select(type => type.GetMethod(actionName)).FirstOrDefault(method => method is not null);
 }

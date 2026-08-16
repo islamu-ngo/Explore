@@ -265,6 +265,26 @@ dotnet test --project <ProjectPath> --configuration Release -- --report-trx --re
 
 ## Architecture Tests
 
+### Forward-Only Liability Ratchets
+
+`ApiLiabilityRatchetTests` freezes each liability class the API is actively removing — controller service
+location, controller claim parsing, private failure switches, hand-rolled timer loops, controller size, and
+HAL registration boilerplate.
+
+Each baseline is an **exact allowlist, not a ceiling**, and that is the point:
+
+- introducing a new occurrence fails, and
+- removing an occurrence *without deleting its allowlist entry* also fails.
+
+The second direction is what makes the lists shrink monotonically — a completed migration cannot leave a stale
+entry behind for the count to silently refill into. Every entry carries the reason it still exists. Never relax
+a ratchet to make a change pass; delist the entry the change actually fixed.
+
+`HateoasRegistrationGraphTests` does the same job for the HAL service graph: it pins lifetime uniformity,
+duplicate-free registration, and assembler-to-policy pairing, and prints the full descriptor inventory so a
+registration refactor can be diffed entry by entry.
+
+
 `Event.Architecture.Tests` enforces project-wide conventions through reflection-based tests. These are not optional — they are CI gates.
 
 ### Convention Categories

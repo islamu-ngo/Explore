@@ -35,13 +35,13 @@ public sealed class CreateEventDraftRequestDto
     public CreateUpdateIslamicAspectDto? IslamicAspect { get; set; }
     public List<Guid> CategoryIds { get; set; } = [];
     public List<Guid> TagIds { get; set; } = [];
-    public List<CreateEventLocationRequest> Locations { get; set; } = [];
-    public List<CreateEventSessionRequest> Sessions { get; set; } = [];
-    public List<CreateEventDayRequest> Days { get; set; } = [];
-    public List<CreateEventRoomRequest> Rooms { get; set; } = [];
-    public List<CreateEventAgendaItemRequest> AgendaItems { get; set; } = [];
+    public List<CreateEventLocationDto> Locations { get; set; } = [];
+    public List<CreateEventGraphSessionDto> Sessions { get; set; } = [];
+    public List<CreateEventGraphDayDto> Days { get; set; } = [];
+    public List<CreateEventRoomDto> Rooms { get; set; } = [];
+    public List<CreateEventGraphAgendaItemDto> AgendaItems { get; set; } = [];
 
-    public CreateEventRequest ToCreateEventRequest() => new()
+    public CreateEventDto ToCreateEventDto() => new()
     {
         Title = Title,
         Subtitle = Subtitle,

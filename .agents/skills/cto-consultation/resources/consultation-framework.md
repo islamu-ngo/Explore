@@ -82,7 +82,7 @@ When deciding whether infrastructure should be required, optional, or hidden:
 4. Product admin surface if operators need stable business state, replay, audit, configuration, or remediation.
 5. Infrastructure dashboard only for instance operators and never as the product source of truth.
 
-Example: TickerQ can be a default scheduler trigger for Basic Dispatch Mode, but its dashboard should remain disabled by default, instance-admin-only, and secondary to EmailDispatchOutbox state, health checks, metrics, and HAL-gated product admin APIs.
+Example: Quartz.NET is the default scheduler trigger for Basic Dispatch Mode, but its status endpoint should remain disabled by default, instance-admin-only, and secondary to EmailDispatchOutbox state, health checks, metrics, and HAL-gated product admin APIs.
 
 ## Organizer Analytics Pattern
 

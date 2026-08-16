@@ -306,7 +306,7 @@ Add this to any document that uses placeholders:
 | Entity | PascalCase, singular | `Event`, `Order` |
 | DbSet | PascalCase, plural | `Events`, `Orders` |
 | Repository | I{Entity}Repository | `IEventRepository` |
-| Controller | {Entity}Controller | `EventController` |
+| Controller | {Entity}Controller, or {Entity}{Capability}Controller once a family partitions | `EventController`, `EventModerationController` |
 | DTO | {Entity}Dto, {Entity}ListDto | `EventDto`, `EventListDto` |
 | Command | {Verb}{Entity}Command | `CreateEventCommand` |
 | Query | Get{Entity}*Request | `GetEventListRequest` |
@@ -354,6 +354,7 @@ These principles guide all documentation and should be followed when implementin
 - **[GOVERNANCE.md](GOVERNANCE.md)** - Coding conventions (project-agnostic)
 - **[QUICK_REFERENCE.md](QUICK_REFERENCE.md)** - Critical rules summary
 - **[ARCHITECTURE.md](ARCHITECTURE.md)** - System architecture patterns
+- **[NAMING_CONVENTIONS.md](NAMING_CONVENTIONS.md)** - Capability-partitioned controller families and the rules for splitting one
 
 ---
 

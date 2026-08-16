@@ -55,7 +55,7 @@ public sealed class ControlPlaneDeploymentModeController(
     [EndpointSummary("Transition Deployment Mode")]
     [EndpointDescription("Runs the Control Plane deployment-mode runbook after validating typed confirmation and tenant-count preconditions.")]
     [ProducesResponseType(typeof(BaseCommandResponse<ControlPlaneDeploymentModeTransitionDto>), StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(BaseCommandResponse<ControlPlaneDeploymentModeTransitionDto>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     public async Task<ActionResult<BaseCommandResponse<ControlPlaneDeploymentModeTransitionDto>>> Transition(

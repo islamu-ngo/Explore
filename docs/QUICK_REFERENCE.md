@@ -12,14 +12,14 @@ ABOUTME: Focuses on non-inferable constraints and project-specific behavior.
 6. Keep file-scoped namespaces for new C# files.
 7. Avoid deleting seemingly unused `using` statements blindly.
 8. `GET` endpoints are typically `[AllowAnonymous]`; write endpoints are protected with `[Authorize]`.
-9. User ID fallback order is `sub` -> `nameidentifier` -> `sid`.
+9. User ID fallback order is `sub` -> `nameidentifier` -> `sid` -> `internal_user_id`, GUID-parseable values only. `Explore.Application.Authentication.PlatformIdentityPrincipalExtensions` is the **single** authority for it; `IUserContext` delegates there. Never re-derive identity from raw claims.
 10. HAL responses are default; `Prefer: return=minimal` can remove link-heavy payloads.
 11. Most create/update commands use `BaseCommandResponse<TId>`; many delete commands currently use `bool`.
 12. Tenant isolation is enforced centrally by global query filters in `ExploreDbContext`; do not bypass casually.
-13. Exception handling uses chained `IExceptionHandler` (not middleware); all errors return RFC 7807 ProblemDetails.
+13. Exception handling uses chained `IExceptionHandler` (not middleware); **every** error response is RFC 7807 ProblemDetails — handler-generated failures included, via `CommandFailurePolicy` or `MapCommandResponse`. Never return a raw `BaseCommandResponse` as a failure body.
 14. Rate limiting is disabled in `Testing` environment (all policies replaced with `NoLimiter`).
 15. Middleware pipeline order in `Program.cs` is critical — do not rearrange without understanding dependencies.
-16. HATEOAS link policies use `yield return` pattern; each entity has separate detail and collection policies.
+16. HATEOAS link policies use `yield return` pattern; each entity has separate detail and collection policies. Register families with `AddHalResource<...>`, which supplies the default `HalResourceAssembler<TDto,TListDto>` — do not write an assembler subclass that only forwards constructor arguments.
 17. `EventQuerySpecification` is an immutable builder — every `With*()` call returns a new instance.
 18. Module-conditional filters (Islamic, Tech) are silently ignored when the module is disabled for the tenant.
 19. ETag middleware uses weak ETags (SHA256) — only on `application/json` and `application/hal+json` responses.
@@ -29,7 +29,10 @@ ABOUTME: Focuses on non-inferable constraints and project-specific behavior.
 23. **Blazor is fully isolated from API implementation layers**: `Explore.Blazor`, `Explore.Blazor.Client`, and their tests must not reference Domain, Application, Infrastructure, or Persistence. Backend communication and backend/domain models come only from the generated `IEventApiClient` contract.
 24. **EF Core migrations and model snapshots are generated artifacts**: Never hand-edit them. Correct the entity/configuration or migration-generation extension, delete the unapplied development migration, and regenerate it with `dotnet ef migrations`.
 25. **External behavior research is clean-room only**: Implementation context may contain neutral functional requirements and repository-native design material, never third-party source, snippets, ASTs, SQL, migrations, tests, comments, or assets. Independently design the implementation's structure, sequence, and organization and record provenance under [`docs/legal/IP_GOVERNANCE.md`](legal/IP_GOVERNANCE.md).
-26. **Dependencies must preserve outbound licensing options**: Do not add a library, package, image, asset, or generated component whose terms prevent ISLAMU-owned material from being offered under any outbound license the Project Steward may select under the CLA. Third-party material always retains its own terms; commercial or exceptional use requires documented approval for each distribution mode.
+26. **Controllers never resolve services from the container.** `HttpContext.RequestServices` is banned in `Explore.API/Controllers`; take a constructor dependency, or read the request principal directly. Enforced by `ApiLiabilityRatchetTests`.
+27. **Periodic work belongs to the Quartz.NET scheduler**, not to a hand-rolled `BackgroundService` timer loop. Register a sweep with `AddSweepJob<TJob>`; a job is one pass and nothing else. Queue-driven drains and the durable `OutboxProcessor` are deliberate exceptions.
+28. **Controllers are partitioned by route capability.** A controller that accumulates several capabilities gets split, keeping every route template and `Name = RouteNames.*` verbatim so operationIds and the generated client do not move. Shared behavior across a split family becomes an explicit base class, never copied code.
+29. **Dependencies must preserve outbound licensing options**: Do not add a library, package, image, asset, or generated component whose terms prevent ISLAMU-owned material from being offered under any outbound license the Project Steward may select under the CLA. Third-party material always retains its own terms; commercial or exceptional use requires documented approval for each distribution mode.
 
 ## Multi-Tenancy Reminder
 Runtime tenant resolution:
@@ -71,7 +74,11 @@ Every new controller action MUST have:
 4. **Explicit response typing** — `[ProducesResponseType<T>]` for success + error responses
 5. **No overloaded semantics** — one action per HTTP verb + route template combination
 
-Enforced by: `ApiContractArchitectureTests`, `EndpointClassificationArchitectureTests`, `ContractInvariantsTests`.
+6. **No container access** — no `HttpContext.RequestServices`; dependencies arrive through the constructor
+7. **No private failure switch** — declare a `CommandFailurePolicy` (or use `MapCommandResponse`) instead of a per-action `switch` over `FailureCode`
+8. **Identity from the principal** — `CurrentUserId` / `RequiredUserId`, or `mediator.ResolveCurrentUserIdAsync(User, ct)` when the provider subject is not a platform user id
+
+Enforced by: `ApiContractArchitectureTests`, `EndpointClassificationArchitectureTests`, `ContractInvariantsTests`, `ApiLiabilityRatchetTests`.
 
 ## API Rate Limiting Quick Reference
 
@@ -111,11 +118,14 @@ All disabled in `Testing` environment.
 | 2 | Validator lifetime | `var validator = new CreateEventValidator(); var result = await validator.ValidateAsync(cmd, ct);` | Constructor-injected `IValidator<T>` (DI-bound) |
 | 3 | ID types | `public int CountryId` (lookup), `public Guid Id` (aggregate), `public long Size` (bytes/cursor) | `public long CountryId` for a lookup FK |
 | 4 | GET auth attribute | `[HttpGet("events", Name = RouteNames.ListEvents)] [AllowAnonymous]` | `[HttpGet]` with no explicit route template or name |
-| 5 | User ID extraction | Helper that falls back `sub` → `nameidentifier` → `sid` (exact order) | `User.FindFirst(ClaimTypes.NameIdentifier)?.Value` alone |
+| 5 | User ID extraction | `User.GetPlatformUserId()` / `User.GetRequiredPlatformUserId()` from `PlatformIdentityPrincipalExtensions` | `User.FindFirst(ClaimTypes.NameIdentifier)?.Value`, or resolving `IUserContext` from `HttpContext.RequestServices` |
 | 6 | UI action gating | `@if (dto.HasHalLink("edit")) { <AppButton /> }` driven by API `_links` | `@if (authState.User.IsInRole("Admin"))` (local claim check) |
 | 7 | Tenant filter override | `ctx.Events.IgnoreQueryFilters([QueryFilterNames.SoftDelete])` (named filter only) | `ctx.Events.IgnoreQueryFilters()` (drops Tenant filter — security bug) |
 | 8 | Specification builder | `var spec = new EventQuerySpecification().WithTitle(x).WithDate(y);` returns new instances | `spec.Title = x; spec.Date = y;` (mutates existing instance) |
 | 9 | Command response | `Task<BaseCommandResponse<Guid>> Handle(CreateEventCommand cmd, CancellationToken ct)` | `Task<EventDto> Handle(CreateEventCommand cmd)` (missing wrapper + no CT) |
 | 10 | HAL link policy | `yield return new LinkDefinition("edit", Url.Link(RouteNames.EditEvent, new { id })!, HttpMethods.Put);` | `links.Add(new LinkDefinition(...))` (list mutation instead of `yield return`) |
+| 11 | Command failure body | `return TicketingFailures.Map(this, response);` (declared `CommandFailurePolicy` → ProblemDetails) | `return BadRequest(response);` (raw command object as the error body) |
+| 12 | HAL registration | `services.AddHalResource<CategoryDto, CategoryListDto, CategoryDetailLinkPolicy, CategoryCollectionLinkPolicy>();` | Three raw `AddScoped` calls, or an empty `CategoryResourceAssembler` subclass that only forwards its constructor |
+| 13 | Periodic worker | Quartz `IJob` doing one pass, registered via `AddSweepJob<TJob>` | `BackgroundService` with `while (!ct.IsCancellationRequested) { …; await Task.Delay(interval, ct); }` |
 
 These are enforced by `Event.Architecture.Tests` and the `.agents/rules/` path-scoped rule files — see [`.agents/rules/README.md`](../.agents/rules/README.md).

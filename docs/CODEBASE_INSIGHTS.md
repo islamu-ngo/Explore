@@ -363,16 +363,36 @@ Commands don't throw for validation failures. They return `BaseCommandResponse<T
 
 ---
 
-## 15. ExploreControllerBase and Identity Resolution
+## 15. Identity Resolution
 
-All controllers that access user identity inherit from `ExploreControllerBase` (not `ControllerBase` directly). The base class provides:
-- `protected IUserContext UserContext` — Lazy-resolved via `HttpContext.RequestServices.GetRequiredService<IUserContext>()`
-- `protected Guid? CurrentUserId` — Nullable user ID from claims (fallback order: `internal_user_id` → `sub` → `nameidentifier` → `sid`)
-- `protected Guid RequiredUserId` — Throws `UnauthorizedAccessException` if no authenticated user
+`Explore.Application.Authentication.PlatformIdentityPrincipalExtensions` is the single authority that turns an
+authenticated `ClaimsPrincipal` into platform identity. Identity derivation is a pure function of the
+principal, so any caller already holding one — a controller through `ControllerBase.User`, middleware through
+`HttpContext.User`, infrastructure through `IHttpContextAccessor` — reads it directly instead of resolving a
+service to ask who the caller is.
 
-**Why lazy resolution?** Avoids the "service not available during construction" problem with pooled DbContext scenarios. No constructor injection needed — controllers just change their base class.
+- `principal.GetPlatformUserId()` — nullable user id using the documented fallback chain
+  `sub → nameidentifier → sid → internal_user_id`, accepting only GUID-parseable values. The provider claims
+  are tried before `internal_user_id` deliberately: for platform-managed accounts the provider subject *is*
+  the local id. This ordering is pinned by `Explore.Infrastructure.Tests/Identity/UserContextTests.cs`.
+- `principal.GetRequiredPlatformUserId()` — same, throwing `UnauthorizedAccessException` when absent.
+- `principal.GetProviderIdentity()` — reconstructs the external provider account (subject, provider,
+  provider id, email, verified flag) for first-login bootstrap and account sync. Returns `null` when no
+  provider subject exists, which callers must treat as unauthenticated.
+- `mediator.ResolveCurrentUserIdAsync(User, ct)` — for principals whose provider subject is not itself a
+  platform user id (ATProto DIDs, Google subjects): short-circuits on `internal_user_id`, otherwise resolves
+  the linked local account through the Application query.
 
-Controllers that don't need identity (most GET-only lookup controllers) still inherit `ControllerBase` directly. The architecture test `ControllersAccessingIdentity_ShouldInherit_ExploreControllerBase` enforces this.
+`ExploreControllerBase` now only projects those extensions (`CurrentUserId`, `RequiredUserId`) and parses
+`If-Match` concurrency stamps. It resolves nothing from the container, and `Explore.Infrastructure.Identity.UserContext`
+delegates to the same extensions so `IUserContext` consumers cannot drift from the chain above.
+
+**Purpose-bound schemes stay separate.** API-key, setup-secret, managed-control-plane, ATProto session, and
+privacy-erasure receipt principals validate their own claims at the authentication boundary. They are protocol
+validation, not ambient user identity, and collapsing them into the chain above would widen trust.
+
+The `ApiLiabilityRatchetTests` guardrail keeps `HttpContext.RequestServices` out of controllers entirely and
+holds controller claim parsing to a named, comment-justified allowlist.
 
 ---
 

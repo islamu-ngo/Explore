@@ -94,11 +94,11 @@ public sealed class AiProposedActionCommandHandlerTests
         await Assert.That(action.ResultResourceId).IsEqualTo(_eventId);
         await Assert.That(action.ConfirmedBy).IsEqualTo(_userId);
         await Assert.That(sentCommand).IsNotNull();
-        await Assert.That(sentCommand!.Request.Title).IsEqualTo("Community Dinner");
-        await Assert.That(sentCommand.Request.Sessions).IsEmpty();
-        await Assert.That(sentCommand.Request.Days).IsEmpty();
-        await Assert.That(sentCommand.Request.Rooms).IsEmpty();
-        await Assert.That(sentCommand.Request.AgendaItems).IsEmpty();
+        await Assert.That(sentCommand!.EventDto.Title).IsEqualTo("Community Dinner");
+        await Assert.That(sentCommand.EventDto.Sessions).IsEmpty();
+        await Assert.That(sentCommand.EventDto.Days).IsEmpty();
+        await Assert.That(sentCommand.EventDto.Rooms).IsEmpty();
+        await Assert.That(sentCommand.EventDto.AgendaItems).IsEmpty();
         await _conversationRepository.Received(1).CreateToolExecutionAsync(
             Arg.Is<AiToolExecution>(execution =>
                 execution.TenantId == _tenantId
@@ -168,8 +168,8 @@ public sealed class AiProposedActionCommandHandlerTests
         await Assert.That(finalizeCommand.ContentType).IsEqualTo("image/png");
         await Assert.That(finalizedBytes).IsEquivalentTo(imageBytes);
         await Assert.That(sentCommand).IsNotNull();
-        await Assert.That(sentCommand!.Request.FeaturedImageId).IsEqualTo(storageObjectId);
-        await Assert.That(sentCommand.Request.Title).IsEqualTo("Poster Event");
+        await Assert.That(sentCommand!.EventDto.FeaturedImageId).IsEqualTo(storageObjectId);
+        await Assert.That(sentCommand.EventDto.Title).IsEqualTo("Poster Event");
     }
 
     [Test]
@@ -263,8 +263,8 @@ public sealed class AiProposedActionCommandHandlerTests
         await Assert.That(result.Success).IsTrue();
         await Assert.That(action.Status).IsEqualTo(AiProposedActionStatus.Executed);
         await Assert.That(sentCommand).IsNotNull();
-        await Assert.That(sentCommand!.Request.OrganizationId).IsEqualTo(organizationId);
-        await Assert.That(sentCommand.Request.Title).IsEqualTo("Community Dinner");
+        await Assert.That(sentCommand!.EventDto.OrganizationId).IsEqualTo(organizationId);
+        await Assert.That(sentCommand.EventDto.Title).IsEqualTo("Community Dinner");
     }
 
     [Test]
@@ -299,14 +299,14 @@ public sealed class AiProposedActionCommandHandlerTests
 
         await Assert.That(result.Success).IsTrue();
         await Assert.That(sentCommand).IsNotNull();
-        await Assert.That(sentCommand!.Request.EventTypeId).IsEqualTo(999);
-        await Assert.That(sentCommand.Request.AudienceGenderId).IsEqualTo(999);
-        await Assert.That(sentCommand.Request.AudienceAgeId).IsEqualTo(999);
-        await Assert.That(sentCommand.Request.VisibilityTypeId).IsEqualTo(999);
-        await Assert.That(sentCommand.Request.EventFormatId).IsEqualTo(999);
-        await Assert.That(sentCommand.Request.MadhabId).IsEqualTo(999);
-        await Assert.That(sentCommand.Request.CategoryIds).IsEquivalentTo([categoryId]);
-        await Assert.That(sentCommand.Request.TagIds).IsEquivalentTo([tagId]);
+        await Assert.That(sentCommand!.EventDto.EventTypeId).IsEqualTo(999);
+        await Assert.That(sentCommand.EventDto.AudienceGenderId).IsEqualTo(999);
+        await Assert.That(sentCommand.EventDto.AudienceAgeId).IsEqualTo(999);
+        await Assert.That(sentCommand.EventDto.VisibilityTypeId).IsEqualTo(999);
+        await Assert.That(sentCommand.EventDto.EventFormatId).IsEqualTo(999);
+        await Assert.That(sentCommand.EventDto.MadhabId).IsEqualTo(999);
+        await Assert.That(sentCommand.EventDto.CategoryIds).IsEquivalentTo([categoryId]);
+        await Assert.That(sentCommand.EventDto.TagIds).IsEquivalentTo([tagId]);
     }
 
     [Test]
@@ -351,14 +351,14 @@ public sealed class AiProposedActionCommandHandlerTests
 
         await Assert.That(result.Success).IsTrue();
         await Assert.That(sentCommand).IsNotNull();
-        await Assert.That(sentCommand!.Request.IslamicAspect).IsNotNull();
-        await Assert.That(sentCommand.Request.IslamicAspect!.GenderMode).IsEqualTo(GenderSegregationMode.Segregated);
-        await Assert.That(sentCommand.Request.Locations.Single().TempKey).IsEqualTo("primary-location");
-        await Assert.That(sentCommand.Request.Rooms.Single().LocationTempKey).IsEqualTo("primary-location");
-        await Assert.That(sentCommand.Request.Sessions.Single().Title).IsEqualTo("Opening Lecture");
-        await Assert.That(sentCommand.Request.Sessions.Single().RoomTempKey).IsEqualTo("primary-room");
-        await Assert.That(sentCommand.Request.Sessions.Single().SpeakerActorIds).IsEquivalentTo([speakerActorId]);
-        await Assert.That(sentCommand.Request.AgendaItems).IsEmpty();
+        await Assert.That(sentCommand!.EventDto.IslamicAspect).IsNotNull();
+        await Assert.That(sentCommand.EventDto.IslamicAspect!.GenderMode).IsEqualTo(GenderSegregationMode.Segregated);
+        await Assert.That(sentCommand.EventDto.Locations.Single().TempKey).IsEqualTo("primary-location");
+        await Assert.That(sentCommand.EventDto.Rooms.Single().LocationTempKey).IsEqualTo("primary-location");
+        await Assert.That(sentCommand.EventDto.Sessions.Single().Title).IsEqualTo("Opening Lecture");
+        await Assert.That(sentCommand.EventDto.Sessions.Single().RoomTempKey).IsEqualTo("primary-room");
+        await Assert.That(sentCommand.EventDto.Sessions.Single().SpeakerActorIds).IsEquivalentTo([speakerActorId]);
+        await Assert.That(sentCommand.EventDto.AgendaItems).IsEmpty();
     }
 
     [Test]
@@ -386,8 +386,8 @@ public sealed class AiProposedActionCommandHandlerTests
 
         await Assert.That(result.Success).IsTrue();
         await Assert.That(sentCommand).IsNotNull();
-        await Assert.That(sentCommand!.Request.OrganizationId).IsEqualTo(selectedOrganizationId);
-        await Assert.That(sentCommand.Request.GroupId).IsNull();
+        await Assert.That(sentCommand!.EventDto.OrganizationId).IsEqualTo(selectedOrganizationId);
+        await Assert.That(sentCommand.EventDto.GroupId).IsNull();
     }
 
     [Test]
@@ -413,8 +413,8 @@ public sealed class AiProposedActionCommandHandlerTests
 
         await Assert.That(result.Success).IsTrue();
         await Assert.That(sentCommand).IsNotNull();
-        await Assert.That(sentCommand!.Request.OrganizationId).IsNull();
-        await Assert.That(sentCommand.Request.GroupId).IsNull();
+        await Assert.That(sentCommand!.EventDto.OrganizationId).IsNull();
+        await Assert.That(sentCommand.EventDto.GroupId).IsNull();
     }
 
 
@@ -442,8 +442,8 @@ public sealed class AiProposedActionCommandHandlerTests
 
         await Assert.That(result.Success).IsTrue();
         await Assert.That(sentCommand).IsNotNull();
-        await Assert.That(sentCommand!.Request.OrganizationId).IsNull();
-        await Assert.That(sentCommand.Request.GroupId).IsEqualTo(selectedGroupId);
+        await Assert.That(sentCommand!.EventDto.OrganizationId).IsNull();
+        await Assert.That(sentCommand.EventDto.GroupId).IsEqualTo(selectedGroupId);
     }
 
     [Test]

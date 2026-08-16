@@ -933,6 +933,16 @@ public static class RouteNames
     public const string GetInstancePaidEventPolicySettings = "GetInstancePaidEventPolicySettings";
     public const string UpdateInstancePaidEventPolicySettings = "UpdateInstancePaidEventPolicySettings";
 
+    public const string GetSchedulerAdminOverview = "GetSchedulerAdminOverview";
+    public const string GetSchedulerAdminJobs = "GetSchedulerAdminJobs";
+    public const string PauseScheduler = "PauseScheduler";
+    public const string ResumeScheduler = "ResumeScheduler";
+    public const string PauseSchedulerJob = "PauseSchedulerJob";
+    public const string ResumeSchedulerJob = "ResumeSchedulerJob";
+    public const string TriggerSchedulerJob = "TriggerSchedulerJob";
+    public const string ResetSchedulerJobErrorState = "ResetSchedulerJobErrorState";
+    public const string InterruptSchedulerJob = "InterruptSchedulerJob";
+
     public const string GetControlPlaneOverview = "GetControlPlaneOverview";
     public const string GetControlPlaneDomains = "GetControlPlaneDomains";
     public const string GetControlPlaneOperations = "GetControlPlaneOperations";

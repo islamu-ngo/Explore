@@ -2,6 +2,7 @@
 // ABOUTME: Provides status check, onboarding completion, secret validation, and setup-time auth provider config.
 
 using System.Security.Claims;
+using Explore.Application.Authentication;
 using Asp.Versioning;
 using Explore.API.Attributes;
 using Explore.API.ExceptionHandling;
@@ -132,8 +133,8 @@ public class InstanceOnboardingController : ExploreControllerBase
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status429TooManyRequests)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> Complete([FromBody] CompleteInstanceOnboardingRequest settings, CancellationToken cancellationToken = default)
     {
-        var providerSubject = ResolveProviderSubject();
-        var currentUserId = await ResolveCurrentUserIdAsync(_mediator, cancellationToken);
+        var providerSubject = User.GetProviderSubject();
+        var currentUserId = await _mediator.ResolveCurrentUserIdAsync(User, cancellationToken);
         if (!currentUserId.HasValue && !string.IsNullOrWhiteSpace(providerSubject))
         {
             currentUserId = Guid.CreateVersion7();
@@ -158,23 +159,19 @@ public class InstanceOnboardingController : ExploreControllerBase
         }
 
         providerSubject ??= currentUserId.Value.ToString("D");
-        var authProvider = ResolveAuthProvider();
-        var email = User.FindFirst("email")?.Value
-            ?? User.FindFirst(ClaimTypes.Email)?.Value;
+        var authProvider = User.GetAuthProvider();
+        var email = User.GetEmail();
         var command = new CompleteInstanceOnboardingCommand
         {
             UserId = currentUserId.Value,
             Settings = settings,
             Email = email,
-            FirstName = User.FindFirst("given_name")?.Value
-                ?? User.FindFirst(ClaimTypes.GivenName)?.Value,
-            LastName = User.FindFirst("family_name")?.Value
-                ?? User.FindFirst(ClaimTypes.Surname)?.Value,
-            Username = User.FindFirst("preferred_username")?.Value
-                ?? User.FindFirst(ClaimTypes.Name)?.Value,
+            FirstName = User.GetFirstName(),
+            LastName = User.GetLastName(),
+            Username = User.GetUsername(),
             AuthProvider = authProvider,
-            AuthProviderId = ResolveProviderId(providerSubject, authProvider),
-            EmailVerified = ResolveEmailVerified(authProvider, email ?? string.Empty)
+            AuthProviderId = User.GetProviderId(providerSubject, authProvider),
+            EmailVerified = User.GetEmailVerified(authProvider, email ?? string.Empty)
         };
 
         var response = await _mediator.Send(command, cancellationToken);

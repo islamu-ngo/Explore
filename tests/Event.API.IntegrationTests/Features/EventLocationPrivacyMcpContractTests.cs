@@ -77,7 +77,10 @@ public sealed class EventLocationPrivacyMcpContractTests
     {
         await Assert.That(typeof(EventManagementMcpTools).GetConstructors()
             .Single()
-            .GetParameters()).Contains(parameter => parameter.ParameterType == typeof(IAiContextGateway)).Because("location-bearing MCP tool context must pass through the disclosure gateway");
+            .GetParameters()).Contains(parameter => parameter.ParameterType == typeof(EventMcpLocationDisclosureGuard)).Because("location-bearing MCP tool context must pass through the disclosure guard");
+        await Assert.That(typeof(EventMcpLocationDisclosureGuard).GetConstructors()
+            .Single()
+            .GetParameters()).Contains(parameter => parameter.ParameterType == typeof(IAiContextGateway)).Because("the disclosure guard must pass location context through the AI context gateway");
     }
 
     [Test]
@@ -317,12 +320,16 @@ public sealed class EventLocationPrivacyMcpContractTests
             [typeof(IResourceAssembler<EventDto, EventListDto>)] = eventResourceAssembler
                 ?? Substitute.For<IResourceAssembler<EventDto, EventListDto>>(),
             [typeof(IHttpContextAccessor)] = httpContextAccessor ?? Substitute.For<IHttpContextAccessor>(),
-            [typeof(IAiContextGateway)] = gateway
+            [typeof(EventMcpLocationDisclosureGuard)] = new EventMcpLocationDisclosureGuard(gateway)
         };
         var constructor = typeof(EventManagementMcpTools).GetConstructors().Single();
         var parameters = constructor.GetParameters();
 
-        await Assert.That(parameters).Contains(parameter => parameter.ParameterType == typeof(IAiContextGateway)).Because("the public-session MCP path must receive the disclosure gateway");
+        // The tools class reaches the gateway through the disclosure guard, so the guarantee is asserted
+        // across both hops rather than on a single constructor.
+        await Assert.That(parameters).Contains(parameter => parameter.ParameterType == typeof(EventMcpLocationDisclosureGuard)).Because("the public-session MCP path must receive the location disclosure guard");
+        await Assert.That(typeof(EventMcpLocationDisclosureGuard).GetConstructors().Single().GetParameters())
+            .Contains(parameter => parameter.ParameterType == typeof(IAiContextGateway)).Because("the disclosure guard must resolve its ceilings through the AI context gateway");
 
         return (EventManagementMcpTools)constructor.Invoke(
             parameters.Select(parameter => dependencies[parameter.ParameterType]).ToArray());

@@ -90,7 +90,7 @@ public class EventsControllerTests
     [Test]
     public async Task GetManagementDetailsRoute_UsesExplicitAuthenticatedContract()
     {
-        var action = typeof(EventController).GetMethod(nameof(EventController.GetManagementDetails))!;
+        var action = typeof(EventManagementReadController).GetMethod(nameof(EventManagementReadController.GetManagementDetails))!;
         var route = action.GetCustomAttribute<HttpGetAttribute>()!;
         var classification = action.GetCustomAttribute<EndpointClassificationAttribute>()!;
 
@@ -112,7 +112,7 @@ public class EventsControllerTests
     public async Task GetModerationHistoryRoute_UsesExplicitAuthenticatedManagementContract()
     {
         var id = Guid.NewGuid();
-        var action = typeof(EventController).GetMethod(nameof(EventController.GetModerationHistory))!;
+        var action = typeof(EventModerationController).GetMethod(nameof(EventModerationController.GetModerationHistory))!;
         var route = action.GetCustomAttribute<HttpGetAttribute>()!;
         var classification = action.GetCustomAttribute<EndpointClassificationAttribute>()!;
 
@@ -137,7 +137,7 @@ public class EventsControllerTests
     public async Task GetPublishReadinessRoute_UsesExplicitAuthenticatedLifecycleContract()
     {
         var id = Guid.NewGuid();
-        var action = typeof(EventController).GetMethod(nameof(EventController.GetPublishReadiness))!;
+        var action = typeof(EventManagementReadController).GetMethod(nameof(EventManagementReadController.GetPublishReadiness))!;
         var route = action.GetCustomAttribute<HttpGetAttribute>()!;
         var classification = action.GetCustomAttribute<EndpointClassificationAttribute>()!;
 
@@ -162,7 +162,7 @@ public class EventsControllerTests
     public async Task ImportRoute_UsesExplicitAuthenticatedLifecycleContract()
     {
         var tenantId = Guid.NewGuid();
-        var action = typeof(EventController).GetMethod(nameof(EventController.Import))!;
+        var action = typeof(EventLifecycleController).GetMethod(nameof(EventLifecycleController.Import))!;
         var route = action.GetCustomAttribute<HttpPostAttribute>()!;
         var classification = action.GetCustomAttribute<EndpointClassificationAttribute>()!;
 
@@ -201,21 +201,21 @@ public class EventsControllerTests
     public async Task EventLifecyclePostRoutes_UseExplicitAuthenticatedContracts()
     {
         await AssertEventLifecyclePostRoute(
-            nameof(EventController.Publish),
+            nameof(EventLifecycleController.Publish),
             "{id:guid}/publish",
             RouteNames.PublishEvent,
             typeof(PublishEventCommand),
             AuthorizationActions.Update);
 
         await AssertEventLifecyclePostRoute(
-            nameof(EventController.Archive),
+            nameof(EventLifecycleController.Archive),
             "{id:guid}/archive",
             RouteNames.ArchiveEvent,
             typeof(ArchiveEventCommand),
             AuthorizationActions.Update);
 
         await AssertEventLifecyclePostRoute(
-            nameof(EventController.Cancel),
+            nameof(EventLifecycleController.Cancel),
             "{id:guid}/cancel",
             RouteNames.CancelEvent,
             typeof(CancelEventCommand),
@@ -225,7 +225,7 @@ public class EventsControllerTests
     [Test]
     public async Task ModerateLightRoute_UsesExplicitAuthenticatedContract()
     {
-        var action = typeof(EventController).GetMethod(nameof(EventController.ModerateLight))!;
+        var action = typeof(EventModerationController).GetMethod(nameof(EventModerationController.ModerateLight))!;
         var route = action.GetCustomAttribute<HttpPostAttribute>()!;
         var classification = action.GetCustomAttribute<EndpointClassificationAttribute>()!;
 
@@ -243,7 +243,7 @@ public class EventsControllerTests
     [Test]
     public async Task ModerateHeavyRoute_UsesExplicitAuthenticatedContract()
     {
-        var action = typeof(EventController).GetMethod(nameof(EventController.ModerateHeavy))!;
+        var action = typeof(EventModerationController).GetMethod(nameof(EventModerationController.ModerateHeavy))!;
         var route = action.GetCustomAttribute<HttpPostAttribute>()!;
         var classification = action.GetCustomAttribute<EndpointClassificationAttribute>()!;
 
@@ -263,7 +263,7 @@ public class EventsControllerTests
     [Test]
     public async Task UnmoderateRoute_UsesExplicitAuthenticatedContract()
     {
-        var action = typeof(EventController).GetMethod(nameof(EventController.Unmoderate))!;
+        var action = typeof(EventModerationController).GetMethod(nameof(EventModerationController.Unmoderate))!;
         var route = action.GetCustomAttribute<HttpPostAttribute>()!;
         var classification = action.GetCustomAttribute<EndpointClassificationAttribute>()!;
 
@@ -285,7 +285,9 @@ public class EventsControllerTests
         Type commandType,
         string authorizationAction)
     {
-        var action = typeof(EventController).GetMethod(actionName)!;
+        // Lifecycle writes moved to EventLifecycleController when the family was partitioned; the route
+        // metadata this asserts is unchanged, only its owning class is.
+        var action = EventFamilyAction(actionName);
         var route = action.GetCustomAttribute<HttpPostAttribute>()!;
         var classification = action.GetCustomAttribute<EndpointClassificationAttribute>()!;
 
@@ -319,4 +321,14 @@ public class EventsControllerTests
         await Assert.That(requestParameter!.GetCustomAttribute<FromBodyAttribute>()).IsNotNull();
         await Assert.That(action.GetCustomAttribute<ConsumesAttribute>()?.ContentTypes.Contains("application/json")).IsTrue();
     }
+
+    /// <summary>Finds an action by name across the controllers the original EventController was split into.</summary>
+    private static MethodInfo EventFamilyAction(string actionName) => new[]
+    {
+        typeof(EventController),
+        typeof(EventLifecycleController),
+        typeof(EventModerationController),
+        typeof(EventCalendarController),
+        typeof(EventManagementReadController),
+    }.Select(type => type.GetMethod(actionName)).Single(method => method is not null)!;
 }

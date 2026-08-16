@@ -6,6 +6,7 @@ using Explore.API.Attributes;
 using Explore.API.ExceptionHandling;
 using Explore.API.Hateoas;
 using Explore.API.Models;
+using Explore.Application.Authentication;
 using Explore.Application.DTOs.Notification;
 using Explore.Application.DTOs.Organization;
 using Explore.Application.Features.Notifications.Requests.Commands;
@@ -117,7 +118,7 @@ public class OrganizationController : ExploreControllerBase
         [FromQuery] PaginationQueryRequest query,
         CancellationToken cancellationToken = default)
     {
-        var userId = await ResolveCurrentUserIdAsync(_mediator, cancellationToken);
+        var userId = await _mediator.ResolveCurrentUserIdAsync(User, cancellationToken);
         if (!userId.HasValue)
         {
             return this.ToAuthenticationRequiredProblem(detail: "The authenticated principal could not be resolved to an application user.");
@@ -256,7 +257,7 @@ public class OrganizationController : ExploreControllerBase
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> Create([FromBody] CreateOrganizationDto organization, CancellationToken cancellationToken = default)
     {
-        var userId = await ResolveCurrentUserIdAsync(_mediator, cancellationToken);
+        var userId = await _mediator.ResolveCurrentUserIdAsync(User, cancellationToken);
         if (!userId.HasValue)
         {
             return this.ToAuthenticationRequiredProblem(detail: "The authenticated principal could not be resolved to an application user.");

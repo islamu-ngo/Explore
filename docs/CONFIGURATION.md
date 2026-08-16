@@ -132,15 +132,25 @@ Commonly consumed sections in code:
 - `PublicBaseUrl`, `App:PublicBaseUrl`, or `Application:PublicBaseUrl`
 - `Bff:AdminHosts` and `Bff:AdminHostAllowedIpRanges`
 - `Storage:Local:*` (deployment-managed local filesystem storage)
-- `StorageReconciliation:*` (dry-run-first storage drift worker)
+- `StorageReconciliation:*` (dry-run-first storage drift sweep; runs as the `storage-reconciliation` Quartz job)
 - `S3Settings:*` (fallback source for storage resolver)
 - `SecretProvider:*`
 - `SecretRefresh:*`
 - `EmailDispatchProcessor:*` (Basic Dispatch Mode background worker)
 - `EmailDispatchRabbitMq:*` (optional RabbitMQ Dispatch Mode transport foundation)
-- `EmailDispatchRetention:*` (bounded email content redaction worker)
-- `IdempotencyCleanup:*` (expired write-retry replay-cache cleanup)
-- `AiRetentionCleanup:*` (scheduled tenant-scoped AI conversation retention cleanup)
+- `EmailDispatchRetention:*` (bounded email content redaction; `email-dispatch-retention-cleanup` Quartz job)
+- `IdempotencyCleanup:*` (expired write-retry replay-cache cleanup; `idempotency-cleanup` Quartz job)
+- `AiRetentionCleanup:*` (tenant-scoped AI conversation retention; `ai-retention-cleanup` Quartz job)
+- `WebhookRetention:*` (webhook message/attempt retention; `webhook-retention-cleanup` Quartz job)
+- `OrganizerPaymentReadinessReconciliation:*` (`organizer-payment-readiness-reconciliation` Quartz job)
+- `PrivacyErasure:ProviderPollingInterval` and `PrivacyErasure:RetentionCleanupEnabled` (`privacy-erasure-credential-cleanup` Quartz job)
+
+> **Maintenance sweeps run on the scheduler.** The keys above are unchanged from when these ran as in-process
+> timer loops — same section, same `Enabled` flag, same interval value — but the work is now Quartz jobs.
+> Two consequences follow: a sweep whose `Enabled` flag is false is not registered at all (rather than
+> starting and immediately returning), and **`Scheduler:Quartz:Enabled=false` disables these sweeps too**.
+> An operator turning the scheduler off must intend retention and reconciliation to stop.
+> See `docs/OPERATIONS.md` for the job catalog and the upgrade note on changed log-line shape.
 - `AiProvider:*` (AI provider readiness/egress validation foundation)
 - `Reporting:*` (local event-report submission limits, evidence retention, and provider runtime mode)
 - `Listmonk:*` (deployment bootstrap for subscriber synchronization defaults and credentials)
@@ -954,6 +964,40 @@ Quartz host settings bind from `Scheduler:Quartz`:
 | `StatusEndpointEnabled` | `false` | Exposes the read-only scheduler status endpoint. Keep disabled unless instance operators explicitly need scheduler internals. |
 | `StatusEndpointPath` | `/admin/scheduler` | Absolute non-root path for the status endpoint when enabled. |
 | `StatusEndpointAuthorizationPolicy` | `quartz_instance_admin` | Host authorization policy for the status endpoint. Must not be blank or anonymous when the endpoint is enabled. The API enforces this policy on the path before any scheduler state is read. |
+| `AdminApiEnabled` | `false` | Exposes the first-party scheduler administration API under `/api/admin/scheduler`. When disabled every action answers `404`, so HAL-driven clients omit the scheduler section entirely. Requires `Enabled=true`. |
+| `AdminApiReadOnly` | `true` | Restricts the administration API to reads. Write affordances are withheld from HAL and mutating requests are refused before the scheduler is touched, so an advertised control and an accepted action can never disagree. |
+| `DashboardEnabled` | `false` | Mounts the first-party Quartz.NET Blazor dashboard. Honoured only by the combined `Event.Standalone` host, where Razor components and the scheduler share a process; the split-mode API host ignores it. Requires `Enabled=true`. |
+| `DashboardReadOnly` | `true` | Disables the dashboard's own mutating controls. Independent of `AdminApiReadOnly`. |
+| `DashboardPath` | `/quartz` | Absolute non-root base path for the dashboard UI. |
+| `DashboardAuthorizationPolicy` | `quartz_instance_admin` | Authorization policy applied across the dashboard's pages, SignalR circuit, and static assets. Must not be blank or anonymous when the dashboard is enabled. |
+
+#### Scheduler monitoring and accountability
+
+Independent of the operator surfaces below, the scheduler always publishes:
+
+- A **`scheduler` readiness check** on `/health`, tagged `ready`. It reports `Degraded` when scheduling is disabled
+  or the scheduler is in standby, and `Unhealthy` when the scheduler is shut down, unavailable while enabled, or has
+  jobs whose triggers are in the error state. A paused scheduler or an error-stuck job is therefore visible to
+  monitoring rather than silently doing nothing.
+- **Structured audit records** for every attempted control action — successes and refusals alike — carrying the
+  acting principal, action, target job, outcome, and correlation id. These go to the host's structured log pipeline
+  for forwarding to a log store or SIEM.
+- An **`explore.scheduler.admin_actions`** OpenTelemetry counter, labelled by action and outcome, with no tenant or
+  principal identity.
+
+#### Choosing a scheduler operator surface
+
+| Surface | Topology | Enable with | What it gives |
+|---|---|---|---|
+| Status endpoint | Any | `StatusEndpointEnabled` | A single read-only JSON document for scripted checks. No UI. |
+| Administration API + admin UI | Split **and** standalone | `AdminApiEnabled` | Scheduler lifecycle, job list with trigger states and fire times, and pause/resume/run-now actions, served as HAL and rendered by the **Background Scheduler** section under Instance Settings. |
+| Quartz.NET dashboard | Standalone only | `DashboardEnabled` | The upstream Quartz dashboard at `DashboardPath`, including calendars, execution history, and live logs. |
+
+The administration API and the dashboard are independent; enabling one does not
+enable the other. The administration API is the portable choice because it works
+in both topologies and follows the platform's own authorization and HAL
+affordance rules. The dashboard is a deeper upstream tool and only exists where
+Blazor and the scheduler share a process.
 
 Quartz holds scheduler state only. It must not contain email bodies, recipients, subjects, SMTP credentials, provider message IDs, raw exceptions, tenant secrets, or access tokens; one-off triggers carry pointer-only JSON. The product/operator source of truth remains `EmailDispatchOutbox` and the HAL-gated EmailDispatch admin API, not the scheduler status endpoint.
 

@@ -695,7 +695,7 @@ Reporter communication contracts use two required, independently selected boolea
 ### Architecture
 The HATEOAS system uses a layered architecture to ensure "Plug-and-Play" compatibility for all consumers:
 
-1. **`ResourceAssemblerBase<TDto, TListDto>`** — Base class for assembling HAL responses. Implements the high-performance **4-Phase Capability Planning Pipeline**.
+1. **`ResourceAssemblerBase<TDto, TListDto>`** — Base class for assembling HAL responses. Implements the high-performance **4-Phase Capability Planning Pipeline**. Most families need no assembly behavior of their own and use the concrete generic **`HalResourceAssembler<TDto, TListDto>`**, registered by `AddHalResource<...>`; declare a subclass only when a family genuinely assembles differently.
 2. **`ILinkPolicy<TDto>`** / **`ICollectionLinkPolicy<TDto>`** — Per-entity link definitions using the `yield return` pattern.
 3. **`LinkDefinition`** — Metadata for a link, including relation, route, and authorization requirements.
 4. **`HateoasAuthorizationEvaluator`** — The engine that batches and deduplicated permission checks.
@@ -847,10 +847,25 @@ Standard pagination via `PaginatedResult<T>`:
 3. Explicit purge flows return `BaseCommandResponse<CustomPropertyPurgeResultDto>` and are admin-only operations that hard-delete only dependency-free custom-property definitions.
 4. Query flows return DTOs or `PaginatedResult<TDto>` wrappers.
 5. All responses wrapped in HAL format by default.
+6. **`BaseCommandResponse<T>` is a success body only.** A failed command never serializes as the command response; it becomes RFC 7807 ProblemDetails. Do not declare `[ProducesResponseType(typeof(BaseCommandResponse<T>), …)]` for a 4xx or 5xx status.
 
 ---
 
 ## Error Handling
+
+### Handler-Generated Failures
+
+Not every failure is an exception. A command handler that returns `Success = false` with a `FailureCode`
+produces a ProblemDetails response too, through one of two API-layer authorities:
+
+| Authority | Use |
+|---|---|
+| `CommandFailurePolicy` | A capability with its own failure vocabulary. Declare the table once as a `static readonly` field — `ValidatedBy(validation).NotFound(descriptor, codes…).Conflict(title, detail, codes…)` — then call `Policy.Map(this, response)`. Rules match in declaration order; policies are immutable and compose, so a variant is the base policy plus one rule. |
+| `MapCommandResponse` | A capability using the shared `FailureCodes` vocabulary: `not_found` → 404, `admin_required` → 403, `authentication_required` → 401, `concurrency_conflict` → 409, anything else → 400 `ValidationProblemDetails`. |
+
+An unmatched failure code falls through to a validation problem rather than collapsing into an untyped 400,
+so distinct failures stay distinguishable to clients. Writing a private `switch` over `FailureCode` in a
+controller is forbidden — that is how two endpoints in the same product came to fail in two different formats.
 
 ### Chained IExceptionHandler Pattern
 Exception handling uses .NET 8+ `IExceptionHandler` chain (not middleware):
@@ -1079,7 +1094,7 @@ Write operations support the `Idempotency-Key` HTTP header for safe retries:
 - Required claim or result persistence failures return `503 Service Unavailable` with code `idempotency_unavailable`, never a successful write response.
 - Persisted responses must have status `200` through `499`, body size at or below 1 MB, and blank, `application/json`, or `application/problem+json` content type.
 - `5xx`, large, or non-JSON responses are not persisted for replay.
-- Keys expire after 24 hours for replay eligibility. Expired rows are ignored by reads; the `IdempotencyCleanupProcessor` physically deletes expired rows after the configured `IdempotencyCleanup:ExpirationGraceHours` safety buffer.
+- Keys expire after 24 hours for replay eligibility. Expired rows are ignored by reads; the `idempotency-cleanup` Quartz job physically deletes expired rows after the configured `IdempotencyCleanup:ExpirationGraceHours` safety buffer.
 - Entity: `IdempotencyRecord` with `Key`, `TenantId`, request fingerprint fields, `StatusCode`, `ResponseBody`, `CreatedAt`, and `ExpiresAt`.
 
 ---

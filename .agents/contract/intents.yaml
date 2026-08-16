@@ -480,6 +480,66 @@ intents:
       - quality-verifier-agent
       - change-reviewer-agent
 
+  - id: schedule-background-work
+    title: "Add or change recurring background work (Quartz job or hosted service)"
+    category: infrastructure
+    triggers:
+      - "add a scheduled job"
+      - "add a background service"
+      - "recurring cleanup"
+      - "periodic sweep"
+      - "change a cron schedule"
+      - "retention cleanup job"
+    must_read_docs:
+      - docs/OPERATIONS.md
+      - docs/ARCHITECTURE.md
+      - docs/QUICK_REFERENCE.md
+      - docs/CONFIGURATION.md
+      - docs/OUTBOX_PATTERN.md
+    load_skills:
+      - outbox-pattern
+      - clean-architecture-rules
+    load_rules:
+      - .agents/rules/api-scheduling.md
+      - .agents/rules/application-layer.md
+      - .agents/rules/efcore-persistence.md
+      - .agents/rules/tests.md
+    paths_in_scope:
+      - "src/Explore.API/Scheduling/**/*.cs"
+      - "src/Explore.API/BackgroundServices/**/*.cs"
+      - "src/Explore.API/Extensions/QuartzSchedulerExtensions.cs"
+      - "src/Explore.API/Configuration/QuartzSchedulerSettings*.cs"
+      - "src/Explore.Application/Contracts/Scheduling/**/*.cs"
+      - "src/Explore.API/appsettings*.json"
+      - "docs/OPERATIONS.md"
+      - "docs/CONFIGURATION.md"
+    minimum_tests:
+      - Event.Persistence.IntegrationTests
+      - Event.API.IntegrationTests
+      - Event.Architecture.Tests
+    docs_to_update:
+      - docs/OPERATIONS.md
+      - docs/CONFIGURATION.md
+    unique_acceptance:
+      - "Quartz is the only scheduler; no bespoke timer loop or second scheduling package is introduced"
+      - "The job body is a single pass — enablement, interval, cancellation, exception containment, and DI scope belong to the scheduler"
+      - "Registration goes through AddSweepJob/AddCronJob, and a disabled sweep is not registered at all"
+      - "The job identifier lives in ScheduledJobNames and is treated as an operational contract, since renaming one orphans its persisted trigger"
+      - "JobDataMap payloads carry durable identifiers only; content stays in the application database"
+      - "Quartz types stay inside Explore.API; Application code depends on IScheduledJobRegistry"
+      - "Job identifiers, log event names, health-check names, metric names, and configuration keys are operator-visible and documented in the same slice"
+    forbidden_without_approval:
+      - "Introducing a second scheduling mechanism, or reintroducing TickerQ"
+      - "Moving retry, fencing, lease, or outbox semantics up into the scheduling layer"
+      - "Converting OutboxProcessor or a retry-until-success bootstrap worker into a recurring trigger"
+      - "Renaming an existing scheduled job identifier or its completion log event"
+    related_agents:
+      - architect-agent
+      - backend-engineer-agent
+      - platform-operations-agent
+      - quality-verifier-agent
+      - change-reviewer-agent
+
   - id: ip-clean-room-governance
     title: "Establish or apply IP clean-room and outbound-license governance"
     category: cross-cutting
@@ -516,7 +576,7 @@ intents:
       - ".agents/skills/review-pr/SKILL.md"
       - ".github/PULL_REQUEST_TEMPLATE.md"
       - "dev/_journal/journal.md"
-      - "tests/Event.Architecture.Tests/AgentContextGovernanceTests.cs"
+      - "tests/Event.Architecture.Tests/**/*.cs"
     minimum_tests:
       - Event.Architecture.Tests
     docs_to_update:

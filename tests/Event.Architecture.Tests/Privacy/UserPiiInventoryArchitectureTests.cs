@@ -434,7 +434,7 @@ public sealed class UserPiiInventoryArchitectureTests
                 "UserPii.Email",
                 "TenantInvitation.Email",
                 "EventRegistration.LinkedUserId",
-                "EventContactShareExportItem.EmailSnapshot",
+                "EventContactShareExportItem.ExportedFieldSnapshot",
                 "Notification.UserId",
                 "EmailDispatchOutbox.RecipientEmail",
                 "WebPushSubscription.Endpoint",

@@ -14,7 +14,7 @@ Use this skill when the user wants strategic or architectural consultation rathe
 ## When to Load
 - Keywords: CTO, consult, architecture decision, product direction, enterprise, self-hosting, market, competition, best practice, legal, juridical, infrastructure decision.
 - Feature questions where the user asks whether to build, defer, make optional, make required, expose in UI, or choose between alternatives.
-- Examples: TickerQ dashboard optionality, organizer analytics dashboard, event discovery vs organization-centric UX, RabbitMQ/Cerbos/MinIO/provider choices, federation roadmap, extensibility packs.
+- Examples: scheduler status-surface optionality, organizer analytics dashboard, event discovery vs organization-centric UX, RabbitMQ/Cerbos/MinIO/provider choices, federation roadmap, extensibility packs.
 - Any consulting answer that must balance small community deployments, enterprise deployments, white-label tenants, and the public ISLAMU-hosted instance.
 - Use together with implementation skills if the consultation becomes a concrete code change.
 
@@ -67,7 +67,7 @@ Consultation output shape:
 
 ```text
 Example stance:
-TickerQ should remain a default internal scheduler for Basic Dispatch Mode, while its dashboard stays optional, instance-admin-only, and never the source of truth for email delivery state.
+Quartz.NET is the single internal scheduler, including for Basic Dispatch Mode. Its status surface stays optional, instance-admin-only, and never the source of truth for email delivery state — `EmailDispatchOutbox` is.
 ```
 
 ## Verification Hooks

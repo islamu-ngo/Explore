@@ -99,30 +99,50 @@ public sealed class InstanceOnboardingOpenApiContractTests
     {
         (string ActionName, string Template, string RouteName, Type RequestType)[] patchActions =
         [
-            (nameof(InstanceSettingsController.UpdateModuleSettings), "modules", RouteNames.UpdateInstanceModuleSettings, typeof(PatchModuleSettingsDto)),
-            (nameof(InstanceSettingsController.UpdateEventPolicy), "events", RouteNames.UpdateInstanceEventPolicy, typeof(PatchEventPolicyDto)),
-            (nameof(InstanceSettingsController.UpdateOrganizationPolicy), "organizations", RouteNames.UpdateInstanceOrganizationPolicy, typeof(PatchOrganizationPolicyDto)),
-            (nameof(InstanceSettingsController.UpdateBrandingSettings), "branding", RouteNames.UpdateInstanceBrandingSettings, typeof(PatchBrandingSettingsDto)),
-            (nameof(InstanceSettingsController.UpdateDomainSettings), "domains", RouteNames.UpdateInstanceDomainSettings, typeof(PatchDomainSettingsDto)),
-            (nameof(InstanceSettingsController.UpdateTenantDelegationSettings), "tenant-delegation", RouteNames.UpdateInstanceTenantDelegationSettings, typeof(PatchTenantDelegationSettingsDto)),
-            (nameof(InstanceSettingsController.UpdateAdminPortalSettings), "admin-portal", RouteNames.UpdateInstanceAdminPortalSettings, typeof(PatchAdminPortalSettingsDto)),
-            (nameof(InstanceSettingsController.UpdateAiAssistantGovernanceSettings), "ai-assistant", RouteNames.UpdateInstanceAiAssistantGovernanceSettings, typeof(PatchAiAssistantGovernanceSettingsDto)),
-            (nameof(InstanceSettingsController.UpdateMcpGovernanceSettings), "mcp", RouteNames.UpdateInstanceMcpGovernanceSettings, typeof(PatchMcpGovernanceSettingsDto)),
-            (nameof(InstanceSettingsController.UpdateRenderPolicySettings), "render-policy", RouteNames.UpdateInstanceRenderPolicySettings, typeof(PatchRenderPolicySettingsDto)),
-            (nameof(InstanceSettingsController.UpdateStorageSettings), "storage", RouteNames.UpdateInstanceStorageSettings, typeof(PatchInstanceStorageSettingsDto)),
-            (nameof(InstanceSettingsController.UpdateSmtpSettings), "smtp", RouteNames.UpdateInstanceSmtpSettings, typeof(PatchInstanceSmtpSettingsDto)),
-            (nameof(InstanceSettingsController.UpdateResolverConfiguration), "resolver-config", RouteNames.UpdateInstanceResolverConfiguration, typeof(PatchResolverConfigurationDto)),
-            (nameof(InstanceSettingsController.UpdateAnalyticsGovernanceSettings), "analytics-governance", RouteNames.UpdateInstanceAnalyticsGovernanceSettings, typeof(PatchAnalyticsGovernanceSettingsDto)),
-            (nameof(InstanceSettingsController.UpdateFooterGovernanceSettings), "footer-governance", RouteNames.UpdateFooterGovernanceSettings, typeof(PatchFooterGovernanceSettingsDto)),
-            (nameof(InstanceSettingsController.UpdateAuthProviderConfiguration), "auth-provider", RouteNames.UpdateInstanceAuthProviderConfiguration, typeof(PatchAuthProviderConfigurationDto)),
-            (nameof(InstanceSettingsController.UpdateAuthorizationProviderConfiguration), "authz-provider", RouteNames.UpdateInstanceAuthorizationProviderConfiguration, typeof(PatchAuthorizationProviderConfigurationDto))
+            (nameof(InstanceGovernanceSettingsController.UpdateModuleSettings), "modules", RouteNames.UpdateInstanceModuleSettings, typeof(PatchModuleSettingsDto)),
+            (nameof(InstanceGovernanceSettingsController.UpdateEventPolicy), "events", RouteNames.UpdateInstanceEventPolicy, typeof(PatchEventPolicyDto)),
+            (nameof(InstanceGovernanceSettingsController.UpdateOrganizationPolicy), "organizations", RouteNames.UpdateInstanceOrganizationPolicy, typeof(PatchOrganizationPolicyDto)),
+            (nameof(InstancePresentationSettingsController.UpdateBrandingSettings), "branding", RouteNames.UpdateInstanceBrandingSettings, typeof(PatchBrandingSettingsDto)),
+            (nameof(InstancePresentationSettingsController.UpdateDomainSettings), "domains", RouteNames.UpdateInstanceDomainSettings, typeof(PatchDomainSettingsDto)),
+            (nameof(InstanceGovernanceSettingsController.UpdateTenantDelegationSettings), "tenant-delegation", RouteNames.UpdateInstanceTenantDelegationSettings, typeof(PatchTenantDelegationSettingsDto)),
+            (nameof(InstancePresentationSettingsController.UpdateAdminPortalSettings), "admin-portal", RouteNames.UpdateInstanceAdminPortalSettings, typeof(PatchAdminPortalSettingsDto)),
+            (nameof(InstanceGovernanceSettingsController.UpdateAiAssistantGovernanceSettings), "ai-assistant", RouteNames.UpdateInstanceAiAssistantGovernanceSettings, typeof(PatchAiAssistantGovernanceSettingsDto)),
+            (nameof(InstanceGovernanceSettingsController.UpdateMcpGovernanceSettings), "mcp", RouteNames.UpdateInstanceMcpGovernanceSettings, typeof(PatchMcpGovernanceSettingsDto)),
+            (nameof(InstancePresentationSettingsController.UpdateRenderPolicySettings), "render-policy", RouteNames.UpdateInstanceRenderPolicySettings, typeof(PatchRenderPolicySettingsDto)),
+            (nameof(InstanceStorageSettingsController.UpdateStorageSettings), "storage", RouteNames.UpdateInstanceStorageSettings, typeof(PatchInstanceStorageSettingsDto)),
+            (nameof(InstanceMessagingSettingsController.UpdateSmtpSettings), "smtp", RouteNames.UpdateInstanceSmtpSettings, typeof(PatchInstanceSmtpSettingsDto)),
+            (nameof(InstanceMessagingSettingsController.UpdateResolverConfiguration), "resolver-config", RouteNames.UpdateInstanceResolverConfiguration, typeof(PatchResolverConfigurationDto)),
+            (nameof(InstanceGovernanceSettingsController.UpdateAnalyticsGovernanceSettings), "analytics-governance", RouteNames.UpdateInstanceAnalyticsGovernanceSettings, typeof(PatchAnalyticsGovernanceSettingsDto)),
+            (nameof(InstanceGovernanceSettingsController.UpdateFooterGovernanceSettings), "footer-governance", RouteNames.UpdateFooterGovernanceSettings, typeof(PatchFooterGovernanceSettingsDto)),
+            (nameof(InstanceAuthenticationSettingsController.UpdateAuthProviderConfiguration), "auth-provider", RouteNames.UpdateInstanceAuthProviderConfiguration, typeof(PatchAuthProviderConfigurationDto)),
+            (nameof(InstanceAuthorizationSettingsController.UpdateAuthorizationProviderConfiguration), "authz-provider", RouteNames.UpdateInstanceAuthorizationProviderConfiguration, typeof(PatchAuthorizationProviderConfigurationDto))
         ];
 
-        await Assert.That(typeof(InstanceSettingsController).GetCustomAttribute<AuthorizeAttribute>()).IsNotNull();
+        // Each settings capability is its own controller now; every one of them must still be [Authorize].
+        foreach (var settingsController in new[]
+                 {
+                     typeof(InstanceGovernanceSettingsController),
+                     typeof(InstancePresentationSettingsController),
+                     typeof(InstanceStorageSettingsController),
+                     typeof(InstanceMessagingSettingsController),
+                     typeof(InstanceAuthenticationSettingsController),
+                     typeof(InstanceAuthorizationSettingsController),
+                 })
+        {
+            await Assert.That(settingsController.GetCustomAttribute<AuthorizeAttribute>()).IsNotNull();
+        }
 
         foreach (var (actionName, template, routeName, requestType) in patchActions)
         {
-            var action = typeof(InstanceSettingsController).GetMethod(actionName)!;
+            var action = new[]
+            {
+                typeof(InstanceGovernanceSettingsController),
+                typeof(InstancePresentationSettingsController),
+                typeof(InstanceStorageSettingsController),
+                typeof(InstanceMessagingSettingsController),
+                typeof(InstanceAuthenticationSettingsController),
+                typeof(InstanceAuthorizationSettingsController),
+            }.Select(type => type.GetMethod(actionName)).Single(method => method is not null)!;
             var patch = action.GetCustomAttribute<HttpPatchAttribute>();
             var body = action.GetParameters().Single(parameter => parameter.GetCustomAttribute<FromBodyAttribute>() is not null);
 

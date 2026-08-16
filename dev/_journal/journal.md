@@ -992,3 +992,60 @@ When startup is blocked by data that violates an earlier migration, do not try t
 - [ ] Stays in journal only (one-off debugging lesson)
 
 ---
+
+[2026-08-16 Europe/Brussels] — A planned third-party API did not exist, and a router replacement broke the vendor's documented integration path
+
+**Context**: Implementing the `quartz-dashboard-integration` workstream. The plan specified `MapQuartzHttpApi()` from
+`Quartz.Dashboard` 3.19.1 as the split-mode REST surface, and the `MapQuartzDashboard(blazorBuilder)` coexistence
+overload for embedding the dashboard in `Event.Standalone`.
+
+**Symptom / Observation**: Two independent planning assumptions were false.
+
+1. `MapQuartzHttpApi()` does not exist in the package. Reflection over the shipped `Quartz.Dashboard.dll` exported
+   types and the official package documentation both show the complete public surface as `AddQuartzDashboard`,
+   `MapQuartzDashboard` (two overloads), `QuartzDashboardOptions`, and `IDashboardAuthorizationFilter`. There is no
+   API-only hosting mode at all; `MapQuartzDashboard` returns a `RazorComponentsEndpointConventionBuilder`, so it
+   structurally requires Razor component infrastructure.
+2. The documented coexistence overload cannot work in this repository. It expects the host's `Router` to resolve the
+   dashboard's attribute-routed pages via `AdditionalAssemblies`. This application routes through **Blazouter**
+   (`Blazouter.Components.Router`), which resolves only components listed in an explicit `RouteConfig` table and has
+   no attribute-route fallback. Dashboard paths would render the app's not-found page.
+
+**Root Cause**: Plan-time research relied on prose descriptions rather than the shipped assembly's public API, and did
+not account for this repository having replaced the standard Blazor router.
+
+**Resolution**:
+- Replaced the borrowed REST surface with a first-party vertical slice: `ISchedulerOperations` /
+  `ISchedulerAdminPolicy` Application contracts, a Quartz adapter confined to `Explore.API/Scheduling/`, MediatR
+  queries/commands, and a thin HAL controller at `/api/admin/scheduler`.
+- Used the **self-contained** `MapQuartzDashboard()` in `Event.Standalone`, which brings the dashboard's own root
+  component and route table and is therefore independent of the host router. Verified empirically in a scratchpad
+  probe: with `MapRazorComponents<App>()` already mapped and a router that does not know the dashboard, `/quartz`
+  and `/quartz/jobs` returned 200 with real dashboard markup and `_content/` assets resolved under `MapStaticAssets()`.
+
+**Why This Matters for Future Work**:
+- Verify a third-party API against the shipped assembly's exported types before planning around it. Downloading the
+  `.nupkg` and dumping public members with `MetadataLoadContext` takes minutes and is decisive where prose is not.
+- **A first-party endpoint was the better design regardless.** The plan's own constraint "HAL links gate UI
+  affordances" was unsatisfiable against a third-party endpoint, which emits no HAL links — so the planned Phase 2
+  gated buttons could never have worked. When a constraint and a dependency contradict each other, that is a signal
+  the dependency is wrong for the job, not that the constraint needs relaxing.
+- **Blazouter is a landmine for embedded Blazor packages.** Any third-party Blazor library whose pages rely on
+  `@page` + `AdditionalAssemblies` will silently fail to route here. Such a package must either be mounted
+  self-contained or have its page types added to the Blazouter table — and the latter is usually unacceptable
+  because `Explore.Blazor.Client` is compiled into the WebAssembly bundle.
+
+**References**:
+- `dev/active/quartz-dashboard-integration/quartz-dashboard-integration-plan.md` §5 Decisions E–H
+- `dev/report/quartznet-background-jobs-implementation-report.md` §7
+- `src/Event.Standalone/Hosting/StandaloneSchedulerDashboardExtensions.cs`
+- `src/Explore.Blazor.Client/Routes.razor` (Blazouter explicit route table)
+
+**Promotion Consideration**:
+- [ ] Candidate for `docs/QUICK_REFERENCE.md` (new non-inferable rule)
+- [x] Candidate for new `.claude/rules/*.md` entry (embedded third-party Blazor packages vs Blazouter routing)
+- [ ] Candidate for skill update
+- [ ] Candidate for ADR / `MAJOR_DECISIONS.md`
+- [ ] Stays in journal only (one-off debugging lesson)
+
+---

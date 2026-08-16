@@ -7,6 +7,7 @@ using Asp.Versioning;
 using Explore.API.Attributes;
 using Explore.API.ExceptionHandling;
 using Explore.API.Hateoas;
+using Explore.Application.Authentication;
 using Explore.Application.DTOs.EventReporting;
 using Explore.Application.Features.EventReporting.Requests.Commands;
 using Explore.Application.Responses;
@@ -39,7 +40,7 @@ public sealed class InstanceModerationReportingSettingsController(IMediator medi
         [FromBody] UpdateReportingProviderLocksDto locks,
         CancellationToken cancellationToken = default)
     {
-        Guid? userId = await ResolveCurrentUserIdAsync(mediator, cancellationToken);
+        Guid? userId = await mediator.ResolveCurrentUserIdAsync(User, cancellationToken);
         if (!userId.HasValue)
         {
             return this.ToAuthenticationRequiredProblem(

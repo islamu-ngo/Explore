@@ -21,7 +21,7 @@ public interface IStrategyResolver
     /// <returns>List of applicable strategies ordered by priority.</returns>
     Task<IReadOnlyList<IEventStrategy>> GetApplicableStrategiesAsync(
         Guid tenantId,
-        CreateEventRequest request,
+        CreateEventDto dto,
         CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -33,7 +33,7 @@ public interface IStrategyResolver
     /// <returns>Combined validation result from all strategies.</returns>
     Task<ValidationResult> ValidateWithStrategiesAsync(
         Guid tenantId,
-        CreateEventRequest request,
+        CreateEventDto dto,
         CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -46,7 +46,7 @@ public interface IStrategyResolver
     Task ExecutePostCreateAsync(
         Guid tenantId,
         Event @event,
-        CreateEventRequest request,
+        CreateEventDto dto,
         CancellationToken cancellationToken = default);
 
     /// <summary>

@@ -47,7 +47,7 @@ public sealed class CreateEventDraftAiToolExecutor(IMediator mediator)
 
         BaseCommandResponse<Guid> createResult = await mediator.Send(new CreateEventCommand
         {
-            Request = draft.ToCreateEventRequest()
+            EventDto = draft.ToCreateEventDto()
         }, cancellationToken);
 
         if (!createResult.Success || createResult.Id == Guid.Empty)

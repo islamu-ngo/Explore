@@ -7,7 +7,7 @@ ABOUTME: Focuses on enforced behavior in code (BFF, MediatR authorization, and f
 > **Status:** Mixed
 > **Owner:** Security
 > **Last Verified:** 2026-08-09
-> **Source Anchors:** `docker-compose.yml`, `src/Event.Standalone/Dockerfile`, `Event.Standalone/Program.cs`, `Event.Standalone/Middleware/CombinedApiBridgeMiddleware.cs`, `Explore.Secrets/Database/PrimaryDatabaseConfiguration.cs`, `Explore.Blazor/Hosting/`, `Explore.Blazor/Services/InProcessEventApiTransport.cs`, `Event.Web.BffHosting/Security/EventBffRequestEnricher.cs`, `Event.Web.BffHosting/Security/BffProxyHeaderSanitizer.cs`, `Explore.API/BackgroundServices/PrivacyErasureStartupGate.cs`, `Explore.API/BackgroundServices/PrivacyErasureCredentialCleanupProcessor.cs`, `Explore.API/Controllers/PrivacyErasureController.cs`, `Explore.API/HealthChecks/PrivacyErasureReadinessHealthCheck.cs`, `Explore.Application/Services/RetainedAuthorityPrivacyErasureWorkflow.cs`, `Explore.Infrastructure/PrivacyErasureCredentialCleanupService.cs`, `Explore.Infrastructure/Services/Privacy/PrivacyErasureReplayService.cs`, `Explore.Persistence/Repositories/PrivacyErasureProviderWorkRepository.cs`, `Explore.Domain/PrivacyErasure*.cs`, `docs/AUTHORIZATION.md`
+> **Source Anchors:** `docker-compose.yml`, `src/Event.Standalone/Dockerfile`, `Event.Standalone/Program.cs`, `Event.Standalone/Middleware/CombinedApiBridgeMiddleware.cs`, `Explore.Secrets/Database/PrimaryDatabaseConfiguration.cs`, `Explore.Blazor/Hosting/`, `Explore.Blazor/Services/InProcessEventApiTransport.cs`, `Event.Web.BffHosting/Security/EventBffRequestEnricher.cs`, `Event.Web.BffHosting/Security/BffProxyHeaderSanitizer.cs`, `Explore.API/BackgroundServices/PrivacyErasureStartupGate.cs`, `Explore.API/Scheduling/MaintenanceSweepJobs.cs`, `Explore.API/Controllers/PrivacyErasureController.cs`, `Explore.API/HealthChecks/PrivacyErasureReadinessHealthCheck.cs`, `Explore.Application/Services/RetainedAuthorityPrivacyErasureWorkflow.cs`, `Explore.Infrastructure/PrivacyErasureCredentialCleanupService.cs`, `Explore.Infrastructure/Services/Privacy/PrivacyErasureReplayService.cs`, `Explore.Persistence/Repositories/PrivacyErasureProviderWorkRepository.cs`, `Explore.Domain/PrivacyErasure*.cs`, `docs/AUTHORIZATION.md`
 
 ## Security Model
 
@@ -536,14 +536,26 @@ JSON schemas in `cerbos/policies/_schemas/` enforce structural contracts across 
 
 ## Claim Fallback Rules in Code
 
-Preferred user ID extraction order across API and BFF paths:
+`Explore.Application.Authentication.PlatformIdentityPrincipalExtensions` is the single authority for turning a
+`ClaimsPrincipal` into a platform user id. `IUserContext` and `ExploreControllerBase` both delegate to it, so
+there is one chain rather than the three divergent ones that previously coexisted.
 
-- `sub` -> `ClaimTypes.NameIdentifier` -> `sid`
+Order, accepting only GUID-parseable values:
+
+- `sub` -> `ClaimTypes.NameIdentifier` -> `sid` -> `internal_user_id`
 
 Notes:
 
-- `internal_user_id` is a separate local-user claim added by BFF enrichment for UI/admin helpers. It is not the general fallback chain.
-- A few BFF-only helpers currently stop at `sub` -> `ClaimTypes.NameIdentifier` where the server-authenticated session is already authoritative.
+- `internal_user_id` is a BFF-enriched local-user claim added after external identity resolution. It is the
+  **last** link in the chain, not a separate one: the provider claims come first because for platform-managed
+  accounts the provider subject *is* the local user id, which keeps a single identifier authoritative.
+- When the subject is not a GUID at all (ATProto DIDs, Google subjects), the chain yields `null`. Resolve the
+  linked local account with `IMediator.ResolveCurrentUserIdAsync(principal, ct)` rather than reading a different
+  claim — a `null` result is an authentication outcome to map, not a reason to fall back elsewhere.
+- Purpose-bound schemes (API key, setup secret, managed control plane, ATProto session, privacy-erasure receipt)
+  validate their own claims at the authentication boundary and deliberately do **not** route through this chain.
+- A few BFF-only helpers stop at `sub` -> `ClaimTypes.NameIdentifier` where the server-authenticated session is
+  already authoritative.
 
 ## Client-Side Authorization Scope
 

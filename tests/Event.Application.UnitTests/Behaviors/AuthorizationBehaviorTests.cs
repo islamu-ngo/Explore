@@ -226,7 +226,7 @@ public class AuthorizationBehaviorTests
         var groupId = Guid.NewGuid();
         var command = new CreateEventCommand
         {
-            Request = new CreateEventRequest
+            EventDto = new CreateEventDto
             {
                 Title = "Community Dinner",
                 ParticipationConfiguration = new ConfigureEventParticipationDto

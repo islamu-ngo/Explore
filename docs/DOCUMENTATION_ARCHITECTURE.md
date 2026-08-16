@@ -17,10 +17,10 @@ Use Diátaxis intent categories to prevent one page from becoming a mixed manual
 
 | Intent | Reader Question | Use For | Example Docs |
 |---|---|---|---|
-| Tutorial | How do I learn the path once? | Guided first-run or first-contribution flows | `GETTING_STARTED.md`, future `FIRST_CONTRIBUTION.md` |
-| How-to | How do I complete this task safely? | Operator/admin procedures and runbooks | `SELF_HOSTING.md`, `BACKUP_RESTORE_UPGRADE.md` |
+| Tutorial | How do I learn the path once? | Guided first-run or first-contribution flows | `GETTING_STARTED.md`, `FIRST_CONTRIBUTION.md`, `DEVELOPER_GUIDE.md` |
+| How-to | How do I complete this task safely? | Developer blueprints, operator/admin procedures and runbooks | `CONTRIBUTOR_RECIPES.md`, `SELF_HOSTING.md`, `BACKUP_RESTORE_UPGRADE.md` |
 | Reference | What are the exact keys/contracts? | Stable facts, settings, APIs, commands | `CONFIGURATION.md`, `SECRETS.md`, `API.md` |
-| Explanation | Why is the system designed this way? | Architecture, tradeoffs, governance | `ARCHITECTURE.md`, ADRs, `GOVERNANCE.md` |
+| Explanation | Why is the system designed this way? | Architecture, request flows, tradeoffs, governance | `ARCHITECTURE_OVERVIEW.md`, `REQUEST_FLOWS.md`, `ARCHITECTURE.md`, ADRs, `GOVERNANCE.md` |
 
 If a page needs two intents, split the task steps from the reference table and link between them.
 
@@ -30,12 +30,12 @@ Use `README.md` as the public entry point. It should route new readers by task a
 
 | Audience | Start Here | Then Read |
 |---|---|---|
-| Evaluators | `README.md`, `PROJECT.md` | `ARCHITECTURE.md`, `SECURITY-MODEL.md`, `SELF_HOSTING.md` |
-| Local developers | `GETTING_STARTED.md` | `TESTING.md`, `TROUBLESHOOTING.md` |
+| Evaluators | `README.md`, `PROJECT.md` | `ARCHITECTURE_OVERVIEW.md`, `SECURITY-MODEL.md`, `SELF_HOSTING.md` |
+| Local developers | `GETTING_STARTED.md` | `DEVELOPER_GUIDE.md`, `TESTING.md`, `TROUBLESHOOTING.md` |
 | Operators | `SELF_HOSTING.md` | `CONFIGURATION.md`, `SECRETS.md`, `OPERATIONS.md`, `BACKUP_RESTORE_UPGRADE.md`, `RELEASE_CHECKLIST.md` |
 | Instance and tenant admins | `ADMIN_GUIDE.md` | `ADMIN_HIERARCHY.md`, `DEPLOYMENT_MODES.md`, `AUTHORIZATION_PATTERNS.md`, product feature docs |
 | Integrators | `API_COOKBOOK.md` | `API.md`, `API_CHANGELOG.md`, `SECURITY-MODEL.md`, `CONFIGURATION.md` |
-| Contributors | `FIRST_CONTRIBUTION.md` | `CONTRIBUTING.md`, `TESTING.md`, `QUICK_REFERENCE.md`, `DOCUMENTATION_STYLE_GUIDE.md` |
+| Contributors | `DEVELOPER_GUIDE.md` | `ARCHITECTURE_OVERVIEW.md`, `REQUEST_FLOWS.md`, `CONTRIBUTOR_RECIPES.md`, `CONTRIBUTING.md`, `QUICK_REFERENCE.md` |
 | AI agents | `AGENTS.md` | `.agents/contract/README.md`, `.agents/contract/intents.yaml`, `dev/_journal/README.md` |
 
 ## Canonical Docs And Owners
@@ -49,7 +49,7 @@ Each canonical doc has an owner category. Ownership means the category is respon
 | API | `API.md`, `API_CHANGELOG.md`, OpenAPI/client-generation guidance in `GOVERNANCE.md` |
 | Frontend | `BLAZOR.md`, `DESIGN_SYSTEM.md`, `ACCESSIBILITY.md`, `RENDER_POLICIES.md` |
 | Product/Admin | `ADMIN_HIERARCHY.md`, feature/admin workflow docs |
-| Contributor Experience | `CONTRIBUTING.md`, `TESTING.md`, `DOCUMENTATION_STYLE_GUIDE.md`, this document |
+| Contributor Experience | `DEVELOPER_GUIDE.md`, `ARCHITECTURE_OVERVIEW.md`, `REQUEST_FLOWS.md`, `CONTRIBUTOR_RECIPES.md`, `CONTRIBUTING.md`, `TESTING.md`, `DOCUMENTATION_STYLE_GUIDE.md`, this document |
 | Agent Context | `AGENTS.md`, `.agents/contract/`, `.agents/skills/`, `dev/_journal/` |
 
 ## Metadata Policy

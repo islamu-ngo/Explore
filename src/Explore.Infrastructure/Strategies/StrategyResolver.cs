@@ -31,7 +31,7 @@ public class StrategyResolver : IStrategyResolver
 
     public async Task<IReadOnlyList<IEventStrategy>> GetApplicableStrategiesAsync(
         Guid tenantId,
-        CreateEventRequest request,
+        CreateEventDto dto,
         CancellationToken cancellationToken = default)
     {
         var applicableStrategies = new List<IEventStrategy>();
@@ -51,7 +51,7 @@ public class StrategyResolver : IStrategyResolver
             }
 
             // Check if strategy is applicable to the request
-            if (strategy.IsApplicable(request))
+            if (strategy.IsApplicable(dto))
             {
                 applicableStrategies.Add(strategy);
                 _logger.LogDebug(
@@ -68,17 +68,17 @@ public class StrategyResolver : IStrategyResolver
 
     public async Task<ValidationResult> ValidateWithStrategiesAsync(
         Guid tenantId,
-        CreateEventRequest request,
+        CreateEventDto dto,
         CancellationToken cancellationToken = default)
     {
         var result = new ValidationResult();
-        var strategies = await GetApplicableStrategiesAsync(tenantId, request, cancellationToken);
+        var strategies = await GetApplicableStrategiesAsync(tenantId, dto, cancellationToken);
 
         foreach (var strategy in strategies)
         {
             try
             {
-                var strategyResult = await strategy.ValidateAsync(request, cancellationToken);
+                var strategyResult = await strategy.ValidateAsync(dto, cancellationToken);
                 if (!strategyResult.IsValid)
                 {
                     result.Errors.AddRange(strategyResult.Errors);
@@ -105,10 +105,10 @@ public class StrategyResolver : IStrategyResolver
     public async Task ExecutePostCreateAsync(
         Guid tenantId,
         Event @event,
-        CreateEventRequest request,
+        CreateEventDto dto,
         CancellationToken cancellationToken = default)
     {
-        var strategies = await GetApplicableStrategiesAsync(tenantId, request, cancellationToken);
+        var strategies = await GetApplicableStrategiesAsync(tenantId, dto, cancellationToken);
 
         foreach (var strategy in strategies)
         {

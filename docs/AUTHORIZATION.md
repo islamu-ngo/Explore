@@ -286,8 +286,9 @@ Participation requirement writes use `[AuthorizeResource(ResourceKinds.Registrat
 
 ### 6.2. Claim-Based Authorization
 
--   **User ID Extraction**: The standard fallback chain for user identity extraction is `sub` -> `nameidentifier` -> `sid`.
--   **`internal_user_id`**: This is a separate BFF-enriched local-user claim used by some UI/admin helpers after external identity resolution. It is not part of the general fallback chain.
+-   **User ID Extraction**: `Explore.Application.Authentication.PlatformIdentityPrincipalExtensions` is the single authority. The chain is `sub` -> `nameidentifier` -> `sid` -> `internal_user_id`, accepting only GUID-parseable values. Call `principal.GetPlatformUserId()` / `GetRequiredPlatformUserId()` — or `CurrentUserId` / `RequiredUserId` on `ExploreControllerBase` — never a hand-rolled `FindFirst`.
+-   **`internal_user_id`**: A BFF-enriched local-user claim added after external identity resolution. It is the **last** link in the chain: the provider claims are tried first because for platform-managed accounts the provider subject *is* the local user id.
+-   **Non-GUID subjects**: ATProto DIDs and Google subjects yield `null` from the chain. Resolve the linked local account with `IMediator.ResolveCurrentUserIdAsync(principal, ct)`; treat `null` as an authentication outcome to map, not as a prompt to read another claim.
 -   **Admin Claims**: A `BffAdminClaimsTransformation` service enriches the user's principal with specific `admin` claims after authentication, which can be used for UI-level authorization checks.
 
 ## 7. Related Documentation

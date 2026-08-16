@@ -3,7 +3,26 @@
 
 # API-Wide Code Liability Reduction — Implementation Plan
 
-Last Updated: 2026-08-15 Europe/Brussels
+Last Updated: 2026-08-16 Europe/Brussels
+
+## 0. Execution Status (2026-08-16)
+
+Phases 0–6 and 8.2/8.3 are **delivered and verified**. Phase 7 (hotspot controller partition) and Phase 8.1
+(composition-root extraction, which depends on it) remain. See `...-tasks.md` for the task-level ledger and
+`...-context.md` for the current verification baseline.
+
+Two planning questions this document left open are now closed:
+
+- **§2.5 scheduling authority — resolved as option A.** TickerQ was removed from the repository upstream and
+  Quartz.NET 3.19.1 with an ADO job store is the platform scheduler. Eight periodic sweeps migrated onto it;
+  no bespoke lifecycle was introduced. Excluded workers are named with reasons in `tasks.md`.
+- **§2.3 concurrent-workstream collision — no longer gating.** Execution is single-agent, so Phase 7 family
+  order is chosen by coupling rather than by owner idleness. The matrix is retained as documentation of which
+  workstream owns which surface.
+
+The plan's central bet — that enforcement must precede migration — held. Every ratchet installed in Phase 1
+caught its own liability class during the phases that followed, and because the baselines are exact sets
+rather than ceilings, each successful migration forced its own baseline entry to be deleted.
 
 ## 1. Objective
 

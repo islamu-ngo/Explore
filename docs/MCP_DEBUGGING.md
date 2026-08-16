@@ -56,7 +56,11 @@ dotnet build Explore.API/Explore.API.csproj --configuration Debug --verbosity qu
 Set breakpoints in:
 
 - `Explore.API/Mcp/AiToolRegistryMcpTools.cs` for `list_ai_tool_contracts`;
-- `Explore.API/Mcp/EventManagementMcpTools.cs` for public event reads, authenticated event-management reads, program/custom-property/registration/team/template contexts, and sync contexts;
+- `Explore.API/Mcp/EventManagementMcpTools.cs` holds the `[McpServerTool]` entry points themselves: public event reads, authenticated event-management reads, program/custom-property/registration/team/template contexts, and sync contexts. Tool discovery is attribute-based, so tool methods stay on this class. Its collaborators are:
+  - `EventMcpBounds.cs` — every size and truncation ceiling in one place. These are one disclosure budget, not thirty independent numbers; raising one widens what an assistant can pull in a single turn.
+  - `EventMcpDescriptorMappers.cs` — pure DTO→descriptor projections. No I/O, no authorization, no ambient state, so a response shape can be reasoned about without a request or a tenant.
+  - `EventMcpLocationDisclosureGuard.cs` — the fail-closed AI location-disclosure boundary. It runs every location value through the AI context gateway and throws unless the gateway confirms the exact expected disclosure.
+  - `EventMcpTextFilters.cs` — blank-entry filtering applied before bounds, so truncation counts reflect real content;
 - `Explore.API/Mcp/EventManagementMcpResources.cs` for the scoped `event_management_context` resource template;
 - `Explore.API/Mcp/AiAssistantMcpTools.cs` for generic proposal calls;
 - `Explore.API/Mcp/AiMcpProjectedToolFactory.cs` for projected `propose_*` tools;

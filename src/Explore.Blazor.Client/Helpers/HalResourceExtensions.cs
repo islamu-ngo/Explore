@@ -830,6 +830,34 @@ public static class HalResourceExtensions
     public static bool HasLink(this HalResourceOfEventDto dto, string linkRel)
         => dto._links?.ContainsKey(linkRel) == true;
 
+    // ========== Scheduler Administration Extensions ==========
+
+    public static bool HasLink(this HalResourceOfSchedulerAdminOverviewDto dto, string linkRel)
+        => dto._links?.ContainsKey(linkRel) == true;
+
+    /// <summary>
+    /// Affordance check for one scheduled job. Each row carries its own link map, so a paused job and a running
+    /// job in the same table legitimately answer differently for the same relation.
+    /// </summary>
+    public static bool HasLink(this HalResourceOfSchedulerAdminJobDto dto, string linkRel)
+        => dto._links?.ContainsKey(linkRel) == true;
+
+    /// <summary>
+    /// Materializes embedded job rows as HAL resources rather than bare DTOs. The generator types the collection
+    /// as <c>object</c>, and deserializing to the plain DTO here would discard each row's <c>_links</c> — which is
+    /// precisely the data the table needs to decide which per-job controls to render.
+    /// </summary>
+    public static IReadOnlyList<HalResourceOfSchedulerAdminJobDto> SchedulerJobs(
+        this HalCollectionResourceOfSchedulerAdminJobDto? resource)
+    {
+        if (resource?._embedded?.Items is not { } items)
+        {
+            return [];
+        }
+
+        return [.. DeserializeItems<HalResourceOfSchedulerAdminJobDto>(items)];
+    }
+
     public static bool HasHalLink(this HalResourceOfGroupDto dto, string linkRel)
         => dto._links?.ContainsKey(linkRel) == true;
 

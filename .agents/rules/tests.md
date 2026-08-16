@@ -22,6 +22,10 @@ related_intents: [add-get-endpoint, add-write-endpoint, add-cqrs-handler, add-ef
 - **Pristine Output**: Test runs must have zero stray warnings, stack traces, or noisy logs.
 - **Runtime Realism**: Keep in-process integration tests deterministic; use explicit runtime lanes when real provider infrastructure is the behavior under test.
 - **Project Role Balance**: Assertions must live in the project matching the host profile (e.g., Domain logic in `Domain.UnitTests`, not API tests).
+- **Forward-Only Ratchets**: `ApiLiabilityRatchetTests` freezes each liability class as an **exact** allowlist, not a ceiling. Introducing an occurrence fails, and removing one without deleting its entry fails too — that second direction is what keeps the list shrinking. Every entry carries the reason it still exists. Never relax a ratchet to make a change pass; delist the entry the change actually fixed.
+- **Substitute the Principal, Not the Identity Service**: controller tests must set real claims on `ControllerContext.HttpContext.User` rather than mocking `IUserContext` through the container. Mocking the service means the test never exercises the claim chain it claims to cover.
+- **Assert Across a Split Family**: after a controller is partitioned, contract tests that look actions up by name must search the whole family (see `EventFamilyAction`, `WebhookFamilyAction`) rather than one hardcoded class — that is what the assertion always meant.
+- **Container Runtime**: Testcontainers-backed tests need a Docker-compatible endpoint. Under Podman, export `DOCKER_HOST=unix:///run/user/$(id -u)/podman/podman.sock`, `TESTCONTAINERS_RYUK_DISABLED=true`, and `TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE`. Without them the suite reports hundreds of `DockerUnavailableException` failures that look like a mass regression — check the endpoint before the code.
 
 ## Must Read
 - [docs/QUICK_REFERENCE.md#build-and-test-baseline](../../docs/QUICK_REFERENCE.md#build-and-test-baseline)

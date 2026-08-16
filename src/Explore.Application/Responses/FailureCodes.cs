@@ -42,4 +42,15 @@ public static class FailureCodes
     public const string DeploymentModeChangeBlockedByActiveTenants =
         "DeploymentModeChangeBlockedByActiveTenants";
 
+    /// <summary>Scheduler control was requested on a host that runs with background scheduling disabled.</summary>
+    public const string SchedulerUnavailable = "scheduler_unavailable";
+
+    /// <summary>Scheduler control was requested while the host is configured as a read-only operator surface.</summary>
+    public const string SchedulerReadOnly = "scheduler_read_only";
+
+    /// <summary>A scheduler recovery action no longer applies: nothing was executing, or no trigger was in error.</summary>
+    public const string SchedulerActionNotApplicable = "scheduler_action_not_applicable";
+
+    /// <summary>An instance-wide scheduler action was attempted without its required typed confirmation.</summary>
+    public const string SchedulerConfirmationRequired = "scheduler_confirmation_required";
 }

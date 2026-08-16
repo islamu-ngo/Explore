@@ -6,6 +6,7 @@ using Explore.API.Attributes;
 using Explore.API.ExceptionHandling;
 using Explore.API.Hateoas;
 using Explore.API.Models;
+using Explore.Application.Authentication;
 using Explore.Application.DTOs.Group;
 using Explore.Application.DTOs.Notification;
 using Explore.Application.Features.Groups.Requests.Commands;
@@ -247,7 +248,7 @@ public class GroupController : ExploreControllerBase
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> Create([FromBody] CreateGroupDto group, CancellationToken cancellationToken = default)
     {
-        var userId = await ResolveCurrentUserIdAsync(_mediator, cancellationToken);
+        var userId = await _mediator.ResolveCurrentUserIdAsync(User, cancellationToken);
         if (!userId.HasValue)
         {
             return this.ToAuthenticationRequiredProblem(

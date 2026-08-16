@@ -29,7 +29,7 @@ public sealed class EventControllerCalendarTests
 
     private readonly IMediator _mediator = Substitute.For<IMediator>();
     private readonly IPublicUrlBuilder _publicUrlBuilder = Substitute.For<IPublicUrlBuilder>();
-    private readonly EventController _controller;
+    private readonly EventCalendarController _controller;
 
     public EventControllerCalendarTests()
     {
@@ -39,11 +39,8 @@ public sealed class EventControllerCalendarTests
         };
         httpContext.Request.Path = "/api/event/22222222-3333-4444-5555-666666666666/calendar";
 
-        _controller = new EventController(
+        _controller = new EventCalendarController(
             _mediator,
-            Substitute.For<ILogger<EventController>>(),
-            Substitute.For<IResourceAssembler<EventDto, EventListDto>>(),
-            Substitute.For<IResourceAssembler<EventDiscoveryItemDto>>(),
             new IcalNetEventCalendarFileBuilder(),
             _publicUrlBuilder)
         {
@@ -112,7 +109,7 @@ public sealed class EventControllerCalendarTests
     [Category("CalendarPrivacy")]
     public async Task AttendeeCalendarContract_UsesSeparateAuthenticatedAction()
     {
-        MethodInfo? action = typeof(EventController).GetMethod("GetAttendeeCalendar");
+        MethodInfo? action = typeof(EventCalendarController).GetMethod("GetAttendeeCalendar");
 
         await Assert.That(action).IsNotNull();
         await Assert.That(action!.GetCustomAttribute<AuthorizeAttribute>()).IsNotNull();

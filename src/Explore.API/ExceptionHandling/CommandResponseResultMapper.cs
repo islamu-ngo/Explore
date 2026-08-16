@@ -12,6 +12,16 @@ namespace Explore.API.ExceptionHandling;
 
 internal static class CommandResponseResultMapper
 {
+    private static readonly ApiValidationProblemDescriptor CommandValidationProblem = new(
+        "command",
+        "Command validation failed",
+        "The command could not be completed.");
+
+    private static readonly ApiNotFoundProblemDescriptor CommandNotFoundProblem = new(
+        "Resource not found",
+        "The requested resource was not found.",
+        FailureCodes.NotFound);
+
     private static readonly ApiValidationProblemDescriptor StorageUploadValidationProblem = new(
         "storageUpload",
         "Storage upload validation failed",
@@ -37,10 +47,25 @@ internal static class CommandResponseResultMapper
         "Instance auth-provider configuration validation failed",
         "Instance auth-provider configuration update failed.");
 
+    /// <summary>
+    /// Maps a command result for capabilities that use the platform's shared failure vocabulary rather than a
+    /// feature-specific <see cref="CommandFailurePolicy"/>.
+    /// <para>
+    /// Failures emit RFC 7807 <c>ProblemDetails</c>, the same shape every other failure path in the API
+    /// produces. This previously returned the bare <c>BaseCommandResponse</c> as the body, which meant two
+    /// endpoints in the same product could fail in two different formats — clients had to branch on which
+    /// endpoint they called before they could read an error. <c>[ApiController]</c> already promises
+    /// ProblemDetails for framework-generated failures, so returning anything else from handler-generated
+    /// failures made the API inconsistent with itself.
+    /// </para>
+    /// </summary>
     public static ActionResult MapCommandResponse<TKey>(
         this ControllerBase controller,
         BaseCommandResponse<TKey> response)
     {
+        ArgumentNullException.ThrowIfNull(controller);
+        ArgumentNullException.ThrowIfNull(response);
+
         if (response.Success)
         {
             return controller.Ok(response);
@@ -48,10 +73,17 @@ internal static class CommandResponseResultMapper
 
         return response.FailureCode switch
         {
-            FailureCodes.NotFound => controller.NotFound(response),
-            FailureCodes.AdminRequired => controller.StatusCode(StatusCodes.Status403Forbidden, response),
-            FailureCodes.ConcurrencyConflict => controller.Conflict(response),
-            _ => controller.BadRequest(response)
+            FailureCodes.NotFound => controller.ToNotFoundProblem(
+                CommandNotFoundProblem,
+                response.Message),
+            FailureCodes.AdminRequired => controller.ToForbiddenProblem(
+                detail: response.Message ?? "The authenticated principal is not authorized to perform this operation."),
+            FailureCodes.AuthenticationRequired => controller.ToAuthenticationRequiredProblem(),
+            FailureCodes.ConcurrencyConflict => controller.ToCommandConflictProblem(
+                response,
+                "Concurrency conflict",
+                "The resource was modified by another request."),
+            _ => controller.ToCommandValidationProblem(response, CommandValidationProblem),
         };
     }
 

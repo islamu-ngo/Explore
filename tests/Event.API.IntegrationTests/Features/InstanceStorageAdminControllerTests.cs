@@ -137,20 +137,17 @@ public sealed class InstanceStorageAdminControllerTests
         await mediator.DidNotReceive().Send(Arg.Any<RecalculateInstanceStorageUsageCommand>(), Arg.Any<CancellationToken>());
     }
 
-    private static InstanceSettingsController CreateController(
+    private static InstanceStorageSettingsController CreateController(
         IMediator mediator,
         IAdminContext adminContext,
         ISetupSecretProvider? setupSecretProvider = null,
         IResourceAssembler<InstanceStorageSettingsDto, InstanceStorageSettingsDto>? storageSettingsAssembler = null)
     {
-        return new InstanceSettingsController(
+        return new InstanceStorageSettingsController(
             mediator,
+            storageSettingsAssembler ?? Substitute.For<IResourceAssembler<InstanceStorageSettingsDto, InstanceStorageSettingsDto>>(),
             adminContext,
-            setupSecretProvider ?? Substitute.For<ISetupSecretProvider>(),
-            Substitute.For<IDeploymentModeProvider>(),
-            Substitute.For<IAuthProviderConfigurationService>(),
-            Substitute.For<IAuthorizationProviderConfigurationService>(),
-            storageSettingsAssembler ?? Substitute.For<IResourceAssembler<InstanceStorageSettingsDto, InstanceStorageSettingsDto>>())
+            setupSecretProvider ?? Substitute.For<ISetupSecretProvider>())
         {
             ControllerContext = new ControllerContext
             {

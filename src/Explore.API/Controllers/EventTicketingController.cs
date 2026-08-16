@@ -43,6 +43,18 @@ public sealed class EventTicketingController(
         "Resource not found",
         "The requested resource was not found.");
 
+    private static readonly CommandFailurePolicy TicketingFailures = CommandFailurePolicy
+        .ValidatedBy(TicketingValidationProblem)
+        .NotFound(NotFoundProblem, "event_ticketing_not_found")
+        .Conflict(
+            "Event ticketing conflict",
+            "Event ticketing configuration was updated by another request.",
+            "event_ticketing_concurrency_conflict");
+
+    private static readonly CommandFailurePolicy OrganizerPaymentFailures = CommandFailurePolicy
+        .ValidatedBy(TicketingValidationProblem)
+        .NotFound(NotFoundProblem, "organizer_payment_event_not_found");
+
     [HttpGet("", Name = RouteNames.GetEventTicketCatalogManagement)]
     [PrivateNoStore]
     [ProducesResponseType(typeof(HalResource<EventTicketCatalogManagementDto>), StatusCodes.Status200OK)]
@@ -216,7 +228,7 @@ public sealed class EventTicketingController(
         }
 
         BaseCommandResponse<OrganizerPaymentOnboardingLinkResult> response = await mediator.Send(new CreateOrganizerPaymentOnboardingLinkCommand(eventId, returnUrl, refreshUrl), ct);
-        return response.Success ? Ok(response) : MapPaymentFailure(response);
+        return response.Success ? Ok(response) : OrganizerPaymentFailures.Map(this, response);
     }
 
     [HttpGet("payment-connection/onboarding/return", Name = RouteNames.ReturnEventOrganizerPaymentOnboarding)]
@@ -251,7 +263,7 @@ public sealed class EventTicketingController(
         where T : IRequest<BaseCommandResponse<Guid>>
     {
         BaseCommandResponse<Guid> response = await mediator.Send(command, ct);
-        return response.Success ? Ok(response) : MapFailure(response);
+        return response.Success ? Ok(response) : TicketingFailures.Map(this, response);
     }
 
     private async Task<ActionResult<BaseCommandResponse<Guid>>> SendCreated<T>(
@@ -262,24 +274,8 @@ public sealed class EventTicketingController(
         where T : IRequest<BaseCommandResponse<Guid>>
     {
         BaseCommandResponse<Guid> response = await mediator.Send(command, ct);
-        return response.Success ? CreatedAtRoute(route, values, response) : MapFailure(response);
+        return response.Success ? CreatedAtRoute(route, values, response) : TicketingFailures.Map(this, response);
     }
-
-    private ActionResult MapFailure(BaseCommandResponse<Guid> response) => response.FailureCode switch
-    {
-        "event_ticketing_not_found" => this.ToNotFoundProblem(NotFoundProblem),
-        "event_ticketing_concurrency_conflict" => this.ToCommandConflictProblem(
-            response,
-            "Event ticketing conflict",
-            "Event ticketing configuration was updated by another request."),
-        _ => this.ToCommandValidationProblem(response, TicketingValidationProblem)
-    };
-
-    private ActionResult MapPaymentFailure(BaseCommandResponse<OrganizerPaymentOnboardingLinkResult> response) => response.FailureCode switch
-    {
-        "organizer_payment_event_not_found" => this.ToNotFoundProblem(NotFoundProblem),
-        _ => this.ToCommandValidationProblem(response, TicketingValidationProblem)
-    };
 
     private bool TryGenerateAbsoluteRouteUrl(string routeName, Guid eventId, out Uri? uri)
     {

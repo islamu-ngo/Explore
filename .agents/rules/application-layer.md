@@ -19,6 +19,8 @@ related_intents: [add-cqrs-handler, add-get-endpoint, add-write-endpoint, update
 - **Contract Adherence**: Queries return DTOs shaped for the consumer; Commands return `BaseCommandResponse<TId>`.
 - **Dependency Direction**: Reference Domain-only contracts and abstractions; never reach "outward" into API, Blazor, or persistence implementation details.
 - **Cancellation**: Always pass `CancellationToken` through to all async calls (repository, cache, etc.).
+- **Domain Rules Belong Here**: a rule that validates or normalizes command input must run in the handler, not at a transport boundary. A rule enforced only in a controller is bypassed by MCP tools and internal callers. Report the outcome as a `FailureCode` on the response; the API layer decides its HTTP shape.
+- **Identity Semantics**: `Explore.Application.Authentication.PlatformIdentityPrincipalExtensions` owns the `sub -> nameidentifier -> sid -> internal_user_id` chain and provider-account reconstruction. `IUserContext` delegates to it. Add identity semantics there, never in a second place — three divergent chains previously coexisted and disagreed.
 
 ## Must Read
 - [docs/QUICK_REFERENCE.md#critical-rules](../../docs/QUICK_REFERENCE.md#critical-rules) (Rules #1, #2, #5, #11)

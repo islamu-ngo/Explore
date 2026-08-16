@@ -30,7 +30,7 @@ public interface IEventStrategy
     /// <param name="dto">The event DTO being validated.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>Validation result with any errors.</returns>
-    Task<ValidationResult> ValidateAsync(CreateEventRequest request, CancellationToken cancellationToken = default);
+    Task<ValidationResult> ValidateAsync(CreateEventDto dto, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Applies module-specific business logic after event creation.
@@ -60,7 +60,7 @@ public interface IEventStrategy
     /// </summary>
     /// <param name="dto">The DTO to check.</param>
     /// <returns>True if this strategy should be applied.</returns>
-    bool IsApplicable(CreateEventRequest request);
+    bool IsApplicable(CreateEventDto dto);
 }
 
 /// <summary>

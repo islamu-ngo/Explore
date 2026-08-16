@@ -45,6 +45,10 @@ public sealed class EventPromotionsController(
         "Promotion not found",
         "Promotion was not found.");
 
+    private static readonly CommandFailurePolicy PromotionManagementFailures = CommandFailurePolicy
+        .ValidatedBy(PromotionValidationProblem)
+        .NotFound(PromotionNotFoundProblem, PromotionManagementNotFound);
+
     [HttpGet("", Name = RouteNames.GetEventPromotions)]
     [PrivateNoStore]
     [ProducesResponseType(typeof(HalCollectionResource<PromotionManagementDto>), StatusCodes.Status200OK)]
@@ -122,7 +126,7 @@ public sealed class EventPromotionsController(
             request.EligibleTicketTypeIds), cancellationToken);
         return response.Success
             ? CreatedAtRoute(RouteNames.GetEventPromotion, new { eventId, promotionDefinitionId = response.Id }, response)
-            : MapManagementFailure(response);
+            : PromotionManagementFailures.Map(this, response);
     }
 
     [HttpPut("{promotionDefinitionId:guid}", Name = RouteNames.ReviseEventPromotion)]
@@ -206,10 +210,5 @@ public sealed class EventPromotionsController(
 
     private ActionResult<TResponse> MapManagementSuccess<TResponse>(TResponse response)
         where TResponse : PromotionManagementCommandResponseDto =>
-        response.Success ? Ok(response) : MapManagementFailure(response);
-
-    private ActionResult MapManagementFailure(PromotionManagementCommandResponseDto response) =>
-        response.FailureCode == PromotionManagementNotFound
-            ? this.ToNotFoundProblem(PromotionNotFoundProblem)
-            : this.ToCommandValidationProblem(response, PromotionValidationProblem);
+        response.Success ? Ok(response) : PromotionManagementFailures.Map(this, response);
 }

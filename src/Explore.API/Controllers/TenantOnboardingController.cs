@@ -6,6 +6,7 @@ using Explore.API.Attributes;
 using Explore.API.ExceptionHandling;
 using Explore.API.Filters;
 using Explore.API.Hateoas;
+using Explore.Application.Authentication;
 using Explore.Application.DTOs.Onboarding;
 using Explore.Application.DTOs.TenantPolicy;
 using Explore.Application.Features.TenantOnboarding.Requests.Commands;
@@ -86,7 +87,7 @@ public class TenantOnboardingController : ExploreControllerBase
         [FromServices] IOutputCacheStore cacheStore,
         CancellationToken cancellationToken = default)
     {
-        var currentUserId = await ResolveCurrentUserIdAsync(_mediator, cancellationToken);
+        var currentUserId = await _mediator.ResolveCurrentUserIdAsync(User, cancellationToken);
         if (!currentUserId.HasValue)
         {
             return this.ToAuthenticationRequiredProblem(
@@ -121,7 +122,7 @@ public class TenantOnboardingController : ExploreControllerBase
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> SaveStep([FromBody] SaveTenantOnboardingStepDto dto, CancellationToken cancellationToken = default)
     {
-        var currentUserId = await ResolveCurrentUserIdAsync(_mediator, cancellationToken);
+        var currentUserId = await _mediator.ResolveCurrentUserIdAsync(User, cancellationToken);
         if (!currentUserId.HasValue)
         {
             return this.ToAuthenticationRequiredProblem(

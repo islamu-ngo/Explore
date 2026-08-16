@@ -162,17 +162,17 @@ public sealed class WebhookProviderPublicationOperationsTests
         [
             nameof(WebhooksController.GetConsumers),
             nameof(WebhooksController.GetConsumer),
-            nameof(WebhooksController.GetEndpoints),
-            nameof(WebhooksController.GetEndpoint),
-            nameof(WebhooksController.GetMessages),
-            nameof(WebhooksController.GetMessage),
-            nameof(WebhooksController.GetDeliveryAttempts),
-            nameof(WebhooksController.GetDeliveryAttempt)
+            nameof(WebhookEndpointsController.GetEndpoints),
+            nameof(WebhookEndpointsController.GetEndpoint),
+            nameof(WebhookMessagesController.GetMessages),
+            nameof(WebhookMessagesController.GetMessage),
+            nameof(WebhookMessagesController.GetDeliveryAttempts),
+            nameof(WebhookMessagesController.GetDeliveryAttempt)
         ];
 
         foreach (var actionName in actionNames)
         {
-            var action = typeof(WebhooksController).GetMethod(actionName)!;
+            var action = WebhookFamilyAction(actionName)!;
             await Assert.That(action.GetCustomAttribute<AllowAnonymousAttribute>()).IsNotNull();
             await Assert.That(action.GetCustomAttribute<EndpointClassificationAttribute>()?.Class)
                 .IsEqualTo(EndpointClass.Public);
@@ -191,7 +191,9 @@ public sealed class WebhookProviderPublicationOperationsTests
         var httpContext = new DefaultHttpContext
         {
             RequestServices = services.BuildServiceProvider(),
-            User = new ClaimsPrincipal(new ClaimsIdentity(authenticationType: "TestAuth"))
+            User = new ClaimsPrincipal(new ClaimsIdentity(
+                [new Claim("sub", _actorUserId.ToString("D"))],
+                authenticationType: "TestAuth"))
         };
 
         return new WebhookProviderPublicationsController(_mediator, _tenantContext, _assembler)
@@ -230,4 +232,12 @@ public sealed class WebhookProviderPublicationOperationsTests
             EventContractVersion = 1,
             ConcurrencyVersion = 4
         };
+
+    /// <summary>Finds an action across the controllers the original WebhooksController was partitioned into.</summary>
+    private static MethodInfo? WebhookFamilyAction(string actionName) => new[]
+    {
+        typeof(WebhooksController),
+        typeof(WebhookEndpointsController),
+        typeof(WebhookMessagesController),
+    }.Select(type => type.GetMethod(actionName)).FirstOrDefault(method => method is not null);
 }

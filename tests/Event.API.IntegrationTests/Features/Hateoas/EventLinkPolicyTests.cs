@@ -202,10 +202,13 @@ public sealed class EventLinkPolicyTests
             await Assert.That(link.PermissionAction).IsEqualTo(AuthorizationActions.Update);
             await Assert.That(link.PermissionResourceId).IsEqualTo(eventId.ToString());
             await Assert.That(link.PermissionScope?.TenantId).IsEqualTo(tenantId.ToString());
-            await Assert.That(link.PermissionResourceAttributes).IsNotNull();
-            await Assert.That(link.PermissionResourceAttributes!["eventId"]).IsEqualTo(eventId.ToString());
-            await Assert.That(link.PermissionResourceAttributes["tenantId"]).IsEqualTo(tenantId.ToString());
-            await Assert.That(link.PermissionResourceAttributes["organizationId"]).IsEqualTo(organizationId.ToString());
+            // Descriptors that publish typed facts intentionally omit the stringly-typed attribute bag;
+            // the HAL evaluator reads facts in preference to attributes, so that is what is asserted.
+            var linkFacts = link.PermissionFacts as EventAuthorizationFacts;
+            await Assert.That(linkFacts).IsNotNull();
+            await Assert.That(linkFacts!.EventId).IsEqualTo(eventId);
+            await Assert.That(linkFacts.TenantId).IsEqualTo(tenantId);
+            await Assert.That(linkFacts.OrganizationId).IsEqualTo(organizationId);
         }
     }
 
@@ -223,11 +226,14 @@ public sealed class EventLinkPolicyTests
 
         var publish = links.Single(definition => definition.Rel == LinkRelations.Publish);
 
-        await Assert.That(publish.PermissionResourceAttributes).IsNotNull();
-        await Assert.That(publish.PermissionResourceAttributes!["eventId"]).IsEqualTo(eventId.ToString());
-        await Assert.That(publish.PermissionResourceAttributes["tenantId"]).IsEqualTo(tenantId.ToString());
-        await Assert.That(publish.PermissionResourceAttributes["userId"]).IsEqualTo(userId.ToString());
-        await Assert.That(publish.PermissionResourceAttributes.ContainsKey("organizationId")).IsFalse();
+        // Descriptors that publish typed facts intentionally omit the stringly-typed attribute bag;
+        // the HAL evaluator reads facts in preference to attributes, so that is what is asserted.
+        var publishFacts = publish.PermissionFacts as EventAuthorizationFacts;
+        await Assert.That(publishFacts).IsNotNull();
+        await Assert.That(publishFacts!.EventId).IsEqualTo(eventId);
+        await Assert.That(publishFacts.TenantId).IsEqualTo(tenantId);
+        await Assert.That(publishFacts.UserId).IsEqualTo(userId);
+        await Assert.That(publishFacts.OrganizationId).IsNull();
     }
 
     [Test]
@@ -254,9 +260,12 @@ public sealed class EventLinkPolicyTests
         await Assert.That(moderate.RouteName).IsEqualTo(RouteNames.ModerateEventLight);
         await Assert.That(moderate.PermissionAction).IsEqualTo(AuthorizationActions.Events.ModerateLight);
         await Assert.That(moderate.PermissionResourceId).IsEqualTo(eventId.ToString());
-        await Assert.That(moderate.PermissionResourceAttributes).IsNotNull();
-        await Assert.That(moderate.PermissionResourceAttributes!["eventId"]).IsEqualTo(eventId.ToString());
-        await Assert.That(moderate.PermissionResourceAttributes["tenantId"]).IsEqualTo(tenantId.ToString());
+        // Descriptors that publish typed facts intentionally omit the stringly-typed attribute bag;
+        // the HAL evaluator reads facts in preference to attributes, so that is what is asserted.
+        var moderateFacts = moderate.PermissionFacts as EventAuthorizationFacts;
+        await Assert.That(moderateFacts).IsNotNull();
+        await Assert.That(moderateFacts!.EventId).IsEqualTo(eventId);
+        await Assert.That(moderateFacts.TenantId).IsEqualTo(tenantId);
     }
 
     [Test]
@@ -283,9 +292,12 @@ public sealed class EventLinkPolicyTests
         await Assert.That(moderate.RouteName).IsEqualTo(RouteNames.ModerateEventHeavy);
         await Assert.That(moderate.PermissionAction).IsEqualTo(AuthorizationActions.Events.ModerateHeavy);
         await Assert.That(moderate.PermissionResourceId).IsEqualTo(eventId.ToString());
-        await Assert.That(moderate.PermissionResourceAttributes).IsNotNull();
-        await Assert.That(moderate.PermissionResourceAttributes!["eventId"]).IsEqualTo(eventId.ToString());
-        await Assert.That(moderate.PermissionResourceAttributes["tenantId"]).IsEqualTo(tenantId.ToString());
+        // Descriptors that publish typed facts intentionally omit the stringly-typed attribute bag;
+        // the HAL evaluator reads facts in preference to attributes, so that is what is asserted.
+        var moderateFacts = moderate.PermissionFacts as EventAuthorizationFacts;
+        await Assert.That(moderateFacts).IsNotNull();
+        await Assert.That(moderateFacts!.EventId).IsEqualTo(eventId);
+        await Assert.That(moderateFacts.TenantId).IsEqualTo(tenantId);
     }
 
     [Test]
@@ -326,9 +338,12 @@ public sealed class EventLinkPolicyTests
         await Assert.That(unmoderate.RouteName).IsEqualTo(RouteNames.UnmoderateEvent);
         await Assert.That(unmoderate.PermissionAction).IsEqualTo(AuthorizationActions.Events.Unmoderate);
         await Assert.That(unmoderate.PermissionResourceId).IsEqualTo(eventId.ToString());
-        await Assert.That(unmoderate.PermissionResourceAttributes).IsNotNull();
-        await Assert.That(unmoderate.PermissionResourceAttributes!["eventId"]).IsEqualTo(eventId.ToString());
-        await Assert.That(unmoderate.PermissionResourceAttributes["tenantId"]).IsEqualTo(tenantId.ToString());
+        // Descriptors that publish typed facts intentionally omit the stringly-typed attribute bag;
+        // the HAL evaluator reads facts in preference to attributes, so that is what is asserted.
+        var unmoderateFacts = unmoderate.PermissionFacts as EventAuthorizationFacts;
+        await Assert.That(unmoderateFacts).IsNotNull();
+        await Assert.That(unmoderateFacts!.EventId).IsEqualTo(eventId);
+        await Assert.That(unmoderateFacts.TenantId).IsEqualTo(tenantId);
     }
 
     [Test]
@@ -424,8 +439,13 @@ public sealed class EventLinkPolicyTests
         var claim = links.Single(definition => definition.Rel == LinkRelations.ClaimEvent);
         await Assert.That(claim.PermissionResourceKind).IsEqualTo(ResourceKinds.EventOrganizerClaim);
         await Assert.That(claim.PermissionResourceId).IsEqualTo(eventId.ToString());
-        await Assert.That(claim.PermissionResourceAttributes!["eventId"]).IsEqualTo(eventId.ToString());
-        await Assert.That(claim.PermissionResourceAttributes["tenantId"]).IsEqualTo(dto.TenantId.ToString());
+        var claimFacts = claim.PermissionFacts as EventAuthorizationFacts;
+
+        await Assert.That(claimFacts).IsNotNull();
+
+        await Assert.That(claimFacts!.EventId).IsEqualTo(eventId);
+
+        await Assert.That(claimFacts.TenantId).IsEqualTo(dto.TenantId);
 
         var claims = links.Single(definition => definition.Rel == LinkRelations.OrganizerClaims);
         await Assert.That(claims.PermissionResourceKind).IsEqualTo(ResourceKinds.EventOrganizerClaim);
@@ -567,8 +587,10 @@ public sealed class EventLinkPolicyTests
         await Assert.That(configure.RequiresAuth).IsTrue();
         await Assert.That(configure.PermissionAction).IsEqualTo(AuthorizationActions.Events.ManageRegistrations);
         await Assert.That(configure.PermissionResourceKind).IsEqualTo(ResourceKinds.Event);
-        await Assert.That(configure.PermissionResourceAttributes!["actorId"]).IsEqualTo(baseDto.ActorId.ToString());
-        await Assert.That(configure.PermissionResourceAttributes["organizerActorId"]).IsEqualTo(organizerActorId.ToString());
+        var configureFacts = configure.PermissionFacts as EventAuthorizationFacts;
+        await Assert.That(configureFacts).IsNotNull();
+        await Assert.That(configureFacts!.ActorId).IsEqualTo(baseDto.ActorId);
+        await Assert.That(configureFacts.OrganizerActorId).IsEqualTo(organizerActorId);
         await Assert.That(new RouteValueDictionary(configure.RouteValues)["eventId"]).IsEqualTo(eventId);
 
         foreach (var mode in new[] { ParticipationHandlingModeEnum.InformationOnly, ParticipationHandlingModeEnum.WalkIn })
@@ -746,8 +768,13 @@ public sealed class EventLinkPolicyTests
             await Assert.That(link.PermissionResourceKind).IsEqualTo(ResourceKinds.Event);
             await Assert.That(link.PermissionResourceId).IsEqualTo(dto.Id.ToString());
             await Assert.That(link.PermissionScope?.TenantId).IsEqualTo(dto.TenantId.ToString());
-            await Assert.That(link.PermissionResourceAttributes!["eventId"]).IsEqualTo(dto.Id.ToString());
-            await Assert.That(link.PermissionResourceAttributes["tenantId"]).IsEqualTo(dto.TenantId.ToString());
+            var linkFacts = link.PermissionFacts as EventAuthorizationFacts;
+
+            await Assert.That(linkFacts).IsNotNull();
+
+            await Assert.That(linkFacts!.EventId).IsEqualTo(dto.Id);
+
+            await Assert.That(linkFacts.TenantId).IsEqualTo(dto.TenantId);
         }
 
         var orders = platformLinks.Single(link => link.Rel == LinkRelations.ViewRegistrationOrders);

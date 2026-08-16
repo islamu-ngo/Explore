@@ -235,7 +235,7 @@ public class CreateEventCommandHandlerTests
         var tenantId = Guid.NewGuid();
         var command = new CreateEventCommand
         {
-            Request = new CreateEventRequest
+            EventDto = new CreateEventDto
             {
                 Title = "Test Event",
                 ParticipationConfiguration = CreateParticipationConfiguration(),
@@ -277,11 +277,11 @@ public class CreateEventCommandHandlerTests
     {
         var imageId = Guid.NewGuid();
         var tenantId = Guid.NewGuid();
-        CreateEventSessionRequest session = CreateSessionRequest();
+        CreateEventGraphSessionDto session = CreateSessionRequest();
         session.FeaturedImageId = useSessionImage ? imageId : null;
         var command = new CreateEventCommand
         {
-            Request = new CreateEventRequest
+            EventDto = new CreateEventDto
             {
                 Title = "Unsafe nested image",
                 ParticipationConfiguration = CreateParticipationConfiguration(),
@@ -290,7 +290,7 @@ public class CreateEventCommandHandlerTests
                     ? []
                     :
                     [
-                        new CreateEventDayRequest
+                        new CreateEventGraphDayDto
                         {
                             LocalDate = DateOnly.FromDateTime(session.StartTime.UtcDateTime),
                             BannerImageId = imageId
@@ -338,7 +338,7 @@ public class CreateEventCommandHandlerTests
         var tenantId = Guid.NewGuid();
         var command = new CreateEventCommand
         {
-            Request = new CreateEventRequest
+            EventDto = new CreateEventDto
             {
                 Title = "Generic Event",
                 ParticipationConfiguration = CreateParticipationConfiguration(),
@@ -370,7 +370,7 @@ public class CreateEventCommandHandlerTests
         var actorId = Guid.NewGuid();
         var command = new CreateEventCommand
         {
-            Request = new CreateEventRequest
+            EventDto = new CreateEventDto
             {
                 Title = "Imported program",
                 ParticipationConfiguration = CreateParticipationConfiguration(),
@@ -403,7 +403,7 @@ public class CreateEventCommandHandlerTests
         var tenantId = Guid.NewGuid();
         var command = new CreateEventCommand
         {
-            Request = new CreateEventRequest
+            EventDto = new CreateEventDto
             {
                 Title = "Published without program items",
                 ParticipationConfiguration = CreateParticipationConfiguration(),
@@ -461,7 +461,7 @@ public class CreateEventCommandHandlerTests
         var tenantId = Guid.NewGuid();
         var command = new CreateEventCommand
         {
-            Request = new CreateEventRequest
+            EventDto = new CreateEventDto
             {
                 Title = "Community event",
                 ParticipationConfiguration = CreateParticipationConfiguration(),
@@ -529,14 +529,14 @@ public class CreateEventCommandHandlerTests
         var tenantId = Guid.NewGuid();
         var command = new CreateEventCommand
         {
-            Request = new CreateEventRequest
+            EventDto = new CreateEventDto
             {
                 Title = "Poster venue event",
                 ParticipationConfiguration = CreateParticipationConfiguration(),
                 EventStatusId = (int)EventStatusEnum.Published,
                 Locations =
                 [
-                    new CreateEventLocationRequest
+                    new CreateEventLocationDto
                     {
                         TempKey = "primary-location",
                         FullName = "Islamic Centre Brussels",
@@ -548,7 +548,7 @@ public class CreateEventCommandHandlerTests
                 ],
                 Rooms =
                 [
-                    new CreateEventRoomRequest
+                    new CreateEventRoomDto
                     {
                         TempKey = "primary-room",
                         LocationTempKey = "primary-location",
@@ -604,7 +604,7 @@ public class CreateEventCommandHandlerTests
         var tenantId = Guid.NewGuid();
         var command = new CreateEventCommand
         {
-            Request = new CreateEventRequest
+            EventDto = new CreateEventDto
             {
                 Title = "Draft with internal sessions",
                 ParticipationConfiguration = CreateParticipationConfiguration(),
@@ -639,7 +639,7 @@ public class CreateEventCommandHandlerTests
         var speakerActorId = Guid.NewGuid();
         var command = new CreateEventCommand
         {
-            Request = new CreateEventRequest
+            EventDto = new CreateEventDto
             {
                 Title = "Structured Poster Event",
                 ParticipationConfiguration = CreateParticipationConfiguration(),
@@ -649,7 +649,7 @@ public class CreateEventCommandHandlerTests
                 },
                 Locations =
                 [
-                    new CreateEventLocationRequest
+                    new CreateEventLocationDto
                     {
                         TempKey = "main-location",
                         FullName = "Islamic Centre Brussels",
@@ -662,7 +662,7 @@ public class CreateEventCommandHandlerTests
                 ],
                 Rooms =
                 [
-                    new CreateEventRoomRequest
+                    new CreateEventRoomDto
                     {
                         TempKey = "main-hall",
                         LocationTempKey = "main-location",
@@ -671,7 +671,7 @@ public class CreateEventCommandHandlerTests
                 ],
                 Sessions =
                 [
-                    new CreateEventSessionRequest
+                    new CreateEventGraphSessionDto
                     {
                         Title = "Keynote",
                         RoomTempKey = "main-hall",
@@ -683,7 +683,7 @@ public class CreateEventCommandHandlerTests
                 ],
                 AgendaItems =
                 [
-                    new CreateEventAgendaItemRequest
+                    new CreateEventGraphAgendaItemDto
                     {
                         Title = "Doors open",
                         RoomTempKey = "main-hall",
@@ -744,7 +744,7 @@ public class CreateEventCommandHandlerTests
 
         var command = new CreateEventCommand
         {
-            Request = new CreateEventRequest
+            EventDto = new CreateEventDto
             {
                 Title = "Invalid Islamic Event",
                 ParticipationConfiguration = CreateParticipationConfiguration(),
@@ -768,7 +768,7 @@ public class CreateEventCommandHandlerTests
         var organizationId = Guid.NewGuid();
         var command = new CreateEventCommand
         {
-            Request = new CreateEventRequest
+            EventDto = new CreateEventDto
             {
                 OrganizationId = organizationId,
                 Title = "Test Event",
@@ -806,7 +806,7 @@ public class CreateEventCommandHandlerTests
         var tenantId = Guid.NewGuid();
         var command = new CreateEventCommand
         {
-            Request = new CreateEventRequest
+            EventDto = new CreateEventDto
             {
                 Title = "Owner Test Event",
                 ParticipationConfiguration = CreateParticipationConfiguration(),
@@ -850,7 +850,7 @@ public class CreateEventCommandHandlerTests
         var actorId = Guid.NewGuid();
         var command = new CreateEventCommand
         {
-            Request = new CreateEventRequest
+            EventDto = new CreateEventDto
             {
                 Title = "Community report",
                 ParticipationConfiguration = CreateParticipationConfiguration(),
@@ -878,7 +878,7 @@ public class CreateEventCommandHandlerTests
         var createdMessages = new List<OutboxMessage>();
         var command = new CreateEventCommand
         {
-            Request = new CreateEventRequest
+            EventDto = new CreateEventDto
             {
                 Title = "Published Event",
                 ParticipationConfiguration = CreateParticipationConfiguration(),
@@ -941,7 +941,7 @@ public class CreateEventCommandHandlerTests
         var tenantId = Guid.NewGuid();
         var command = new CreateEventCommand
         {
-            Request = new CreateEventRequest
+            EventDto = new CreateEventDto
             {
                 Title = "Published Event",
                 ParticipationConfiguration = CreateParticipationConfiguration(),
@@ -999,7 +999,7 @@ public class CreateEventCommandHandlerTests
 
         var result = await _handler.Handle(new CreateEventCommand
         {
-            Request = new CreateEventRequest
+            EventDto = new CreateEventDto
             {
                 Title = "Platform-managed event",
                 ParticipationConfiguration = CreateTicketingParticipationConfiguration(ParticipationHandlingModeEnum.PlatformManaged)
@@ -1026,7 +1026,7 @@ public class CreateEventCommandHandlerTests
 
         var result = await _handler.Handle(new CreateEventCommand
         {
-            Request = new CreateEventRequest
+            EventDto = new CreateEventDto
             {
                 Title = "External-managed event",
                 ParticipationConfiguration = CreateTicketingParticipationConfiguration(ParticipationHandlingModeEnum.ExternalManaged)
@@ -1048,7 +1048,7 @@ public class CreateEventCommandHandlerTests
 
         var result = await _handler.Handle(new CreateEventCommand
         {
-            Request = new CreateEventRequest
+            EventDto = new CreateEventDto
             {
                 Title = "Listing-only event",
                 ParticipationConfiguration = CreateTicketingParticipationConfiguration(ParticipationHandlingModeEnum.InformationOnly)
@@ -1080,7 +1080,7 @@ public class CreateEventCommandHandlerTests
         _ => CreateParticipationConfiguration()
     };
 
-    private static CreateEventSessionRequest CreateSessionRequest() => new()
+    private static CreateEventGraphSessionDto CreateSessionRequest() => new()
     {
         Title = "Opening Session",
         StartTime = DateTimeOffset.UtcNow.AddDays(1),

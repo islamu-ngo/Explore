@@ -66,7 +66,7 @@ DDL rather than an EF Core migration.
 3. MediatR pipeline behaviors execute: `PerformanceBehavior` (>500ms warning), `AuthorizationBehavior` (resource-level permission checks via `IAuthorizedRequest` / `[AuthorizeResource]`; uses reflection caching and emits OpenTelemetry activity spans).
 4. Handler orchestrates validation (manually instantiated validators), repository calls, mapping.
 5. Persistence layer returns entities; handlers map to DTO/response contracts.
-6. Controller delegates to `ResourceAssemblerBase` for HATEOAS HAL wrapping with authorization-aware link generation.
+6. Controller delegates to an `IResourceAssembler<TDto, TListDto>` — by default the generic `HalResourceAssembler<TDto, TListDto>` over `ResourceAssemblerBase` — for HATEOAS HAL wrapping with authorization-aware link generation.
 
 ## BFF Model (Blazor)
 1. Browser authenticates via OIDC through BFF endpoints.
@@ -221,13 +221,36 @@ See [OUTBOX_PATTERN.md](OUTBOX_PATTERN.md) for full entity model, configuration,
 | `CompositeOutboxMessageDispatcher` | Dispatch component used by `OutboxProcessor` to route internal notification fanout, moderation fanout, and report provider sync messages | Invoked per outbox message |
 | `EmailDispatchRabbitMqPointerPublisherService` | Optional RabbitMQ producer loop that publishes pointer-only messages for due `EmailDispatchOutbox` rows after durable storage exists | Configurable polling, default 5s |
 | `IntegrationSyncDrainService` | Claims due `IntegrationSyncOutbox` rows and dispatches Listmonk subscription synchronization through Infrastructure clients | Configurable polling/backoff |
-| `WebPushDispatchWorker` | Background queue processor for `WebPushDispatchOutbox` VAPID push notifications | Configurable polling (default 5s) |
-| `PrivacyErasureSagaProcessor` | Background saga worker processing account erasure steps (`DELETE /api/user`) across tenant subsystems | Configurable polling |
-| `StorageReconciliationWorker` | Dry-run-first storage reconciliation worker identifying orphaned/missing S3 storage objects | Periodic background loop |
-| `IdempotencyCleanupService` / `EmailDispatchRetentionCleanupService` / `AiRetentionCleanupService` | Purges expired idempotency records, old email logs, and AI conversation history per retention policies | Scheduled periodic cleanup |
+| `NotificationFanoutProcessor` | Durable in-app notification fanout for event publication | Configurable polling |
 | `WebhookDeliveryProcessor` | Processes outgoing product webhooks to external endpoints (Local, Svix, Composite) | Configurable queue drain |
 
 These background services and scheduler triggers use optimistic locking or durable claim semantics for multi-worker safety and are availability-gated where dependent services are required.
+
+### Periodic Maintenance Sweeps Run On Quartz
+
+Retention, cleanup, and reconciliation sweeps are **Quartz jobs**, not hosted-service timer loops. Each job in
+`Explore.API/Scheduling/MaintenanceSweepJobs.cs` performs one pass and nothing else; enablement, initial delay,
+interval, cancellation, exception containment, and per-execution DI scope belong to the scheduler.
+
+| Job | Work |
+|---|---|
+| `idempotency-cleanup` | Expired idempotency replay-cache rows |
+| `ai-retention-cleanup` | AI conversation retention across tenants |
+| `email-dispatch-retention-cleanup` | Email dispatch content retention |
+| `webhook-retention-cleanup` | Webhook message and attempt retention |
+| `registration-retention-cleanup` | Per-tenant registration answer/PII deadlines |
+| `storage-reconciliation` | Storage object state vs. provider |
+| `privacy-erasure-credential-cleanup` | Expired provider credentials and locators |
+| `organizer-payment-readiness-reconciliation` | Stale organizer payment connections |
+
+Because trigger state lives in the `QRTZ_` tables, a restart resumes the existing cadence rather than
+restarting every interval from zero, and missed occurrences during downtime collapse into one next run. With
+clustering enabled each sweep runs on exactly one node instead of on every node.
+
+The hosted services that remain are deliberate: `OutboxProcessor` is the durable side-effect authority whose
+fencing is coupled to its own loop, `ManagedControlPlaneRegistrationWorker` is a retry-until-registered
+bootstrap that returns on success, and the rest are queue- or event-driven rather than interval-driven. See
+`docs/OPERATIONS.md` for the operator-facing job catalog and upgrade note.
 
 ## Local Runtime Endpoints
 - Split default API: `https://localhost:7039`

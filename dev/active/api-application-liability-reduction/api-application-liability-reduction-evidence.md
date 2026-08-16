@@ -3,7 +3,190 @@
 
 # API-Wide Code Liability Reduction — Evidence Register
 
-Last Updated: 2026-08-15 Europe/Brussels
+Last Updated: 2026-08-16 Europe/Brussels
+
+## Phase 7 + 8.1 Evidence (2026-08-16)
+
+### Contract equivalence proof for the controller partition
+
+The five hotspot controllers were split into capability controllers. Because ASP.NET Core derives operationIds
+from `[Http*(Name = ...)]` — not from the controller class — and NSwag is configured
+`operationGenerationMode: SingleClientFromOperationId`, a class-level split is invisible to clients **provided
+every action keeps its route name**. That was verified rather than assumed:
+
+| Check | Result |
+|---|---|
+| OpenAPI paths added / removed | **0 / 0** |
+| operationIds | **identical**, 756 operations |
+| `components` section | **identical** |
+| Per-operation differences excluding `tags` | **0** |
+| Generated `EventApiClient` public methods | **756, identical** |
+
+The sole document change is the `tags` array, which now names the real capability. That is a documentation
+grouping improvement, recorded in `docs/API_CHANGELOG.md`.
+
+### Family sizes after partition
+
+| Family | Before | After |
+|---|---|---|
+| Event | 1,033 | 334 + Lifecycle 321 + Moderation 194 + ManagementRead 211 + Calendar 154 |
+| RegistrationOrder | 1,146 | 78 + Guest 514 + Authenticated 457 + Base 257 |
+| Webhooks | 987 | 403 + Endpoints 316 + Messages 330 + Base 77 |
+| InstanceSettings | 859 | **deleted** — six capability controllers + Base |
+| ControlPlane | 673 | 166 + TenantPlan 249 + TenantConfiguration 246 + TenantLifecycle 200 |
+
+Controllers over 500 lines fell from **7 to 3**, none of them a former hotspot.
+
+### Phase 7.1 — a domain rule that lived in the wrong layer
+
+Event moderation reason-code normalization was implemented as four private controller helpers wrapping
+`EventModerationReasonCodePolicy`. Only HTTP callers were subject to it; an MCP or internal caller of
+`ModerateEventCommand` bypassed it entirely. Moving the normalization into the three command handlers makes
+the rule unconditional and removed ~79 lines of controller code. The failure shape is unchanged: the handler
+returns the same failure code and error text the controller previously built by hand.
+
+### Shared behavior became explicit bases, not duplication
+
+Splitting a controller surfaces what its actions were quietly sharing. Three of those turned out to be real
+boundaries worth naming:
+
+- `InstanceSettingsControllerBase` — the instance-admin-**or**-active-setup-secret rule. Six settings surfaces
+  now inherit one implementation; a surface that re-implemented it slightly differently would have been a way
+  to configure an instance without being its administrator.
+- `WebhooksControllerBase` — server-resolved ownership scope for collection links, so a pagination URL can
+  never be built from a caller-supplied owner id.
+- `RegistrationOrderControllerBase` — the native-attempt/requirement/participant protocol shared by guest and
+  authenticated checkout, so the two doors cannot drift into accepting different registrations.
+
+### Phase 8.1 — composition root
+
+`AddApiBackgroundProcessing` now owns the in-process worker topology, with each enablement condition stated
+inline and no reflection; `AddApiHostServices` fell from ~460 to 393 lines. Extracting it also surfaced a dead
+`if` block left behind when the organizer-payment worker moved to Quartz — the settings were still bound and
+tested, but the body was empty.
+
+### Test-suite repointing
+
+The partition broke contract tests that reflect over controller types by name. They were repointed rather than
+weakened, and two patterns emerged worth keeping:
+
+- Unit-style controller tests now resolve constructor arguments **by parameter type** from a pool, so a
+  capability controller that declares only the dependencies it uses no longer breaks a shared factory.
+- Contract tests that assert across a whole family (`EventFamilyAction`, `ControlPlaneFamilyAction`,
+  `RegistrationFamilyAction`, `WebhookFamilyAction`) look an action up across the family rather than on one
+  hardcoded class, which is what the assertion actually meant all along.
+
+### Verification caveat worth recording
+
+Mid-session the Docker daemon stopped, and every Testcontainers-backed test failed with
+`DockerUnavailableException` — 538 failures that looked like a catastrophic regression and were purely
+environmental. With Podman the suite needs `DOCKER_HOST`, `TESTCONTAINERS_RYUK_DISABLED`, and
+`TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE` exported. Any future "mass regression" should be checked against the
+container endpoint before the code.
+
+## Delivery Evidence (2026-08-16) — Phases 1–6, 8.2/8.3
+
+### Measured outcomes
+
+| Liability | Before | After | Proof |
+|---|---|---|---|
+| Controller service location (`HttpContext.RequestServices`) | 1 | **0** | Ratchet A baseline is now empty |
+| Divergent identity claim chains | 3 | **1** | `PlatformIdentityPrincipalExtensions`; `UserContext` and `GetAuthenticatedUserId` delegate |
+| `ExploreControllerBase` | 147 lines | **48 lines** | Provider reconstruction and the locator removed |
+| Controller files parsing identity claims | 7 | **5** | All remaining are purpose-bound or diagnostic, each with a recorded reason |
+| Private controller failure mappers | 11 across 4 files | **1** | Ratchet C; survivor is feature-specific |
+| `HateoasAssemblerRegistration.cs` `AddScoped` | 296 | **27** | Ratchet F; service graph diffed 293 → 293, byte-identical |
+| `Task.Delay` periodic worker files | 17 | **10** | Ratchet D; 8 migrated to Quartz, remainder characterized exclusions |
+| `EventManagementMcpTools.cs` | 2,516 lines | **1,463 lines** | Split into 4 focused modules; MCP protocol surface untouched |
+| Release build warnings | 13,535 | **9,290** | Same canonical command |
+
+### HAL service-graph equivalence (Phase 4.2 acceptance)
+
+The full descriptor inventory — service type, implementation type, and lifetime for all 293 HAL registrations
+— was captured before and after the helper migration and diffed. The result was **identical**, which is the
+plan's stated acceptance criterion for changing registration style without changing what resolves. The
+inventory is reproducible from `HateoasRegistrationGraphTests.HalRegistrationInventory_IsStableAndNonEmpty`.
+
+### Regression attribution (Phase 2b)
+
+The identity migration initially produced 8 apparent API-integration failures. A baseline run in an isolated
+git worktree at HEAD established that **25 failures are pre-existing**. Of the 8, all traced to six
+unit-style controller tests that substituted `IUserContext` through the service-location seam while leaving
+the principal claim-less. They were fixed by giving those principals real `sub` claims, which makes them
+exercise the genuine claim→identity path rather than mocking it away. Final position: **25 failures, equal to
+baseline**, with one baseline failure (`OpenApiDocument_PublicHalDetailResourceSchemasAreNotEmpty`) *fixed* by
+the Phase 0 HAL wrapper registration.
+
+### Design decisions worth preserving
+
+- **Identity as a pure function.** `UserContext` only ever used `IHttpContextAccessor` to reach the principal;
+  the claim logic itself was pure. Recognizing that removed the need to thread an identity dependency through
+  25 controller constructors — the extensions read `ControllerBase.User`, which the controller already has.
+- **The pinned fallback order was deliberate.** `UserContextTests` asserts `sub` wins over `internal_user_id`.
+  Consolidation preserved that ordering rather than "improving" it, because for platform-managed accounts the
+  provider subject *is* the local id.
+- **Composable failure policies.** `CommandFailurePolicy` is immutable, so `GuestStartFailures` is expressed as
+  `OrderLifecycleFailures` plus one rule. The relationship between a capability's policies became visible
+  instead of being three near-identical literals.
+- **Exact allowlists, not ceilings.** A ratchet that only rejects *new* violations lets a fixed violation's
+  entry rot. Making the baseline an exact set means a successful migration fails the hygiene test until the
+  entry is deleted, which is what makes the ratchets monotonic.
+
+## Phase 0 Closure (2026-08-16) — verification baseline established
+
+### 0.1 Toolchain and build baseline
+
+The SDK workload blocker recorded on 2026-08-15 is **resolved** (repo commit `68b6f7848`). Verified 2026-08-16 on SDK `10.0.302`:
+
+| Command | Result |
+|---|---|
+| `dotnet build --configuration Release --verbosity quiet` (solution) | **Build succeeded — 0 errors, 13,535 warnings** (pre-Phase-0 measurement) |
+| Same, after Phase 0 fixes | **Build succeeded — 0 errors, 12,917 warnings** |
+| `dotnet build src/Explore.API/Explore.API.csproj` | 0 errors, 999 warnings |
+
+The plan's long-standing `758 warnings` figure is **wrong and is retracted**; the real solution-wide count is an order of magnitude higher. `12,917` is the authoritative baseline for "warning-neutral" claims from this point. The contradictory `0 warnings / exited 1 during restore` record is also retracted.
+
+### 0.2 Known architecture failures — all four closed
+
+Baseline run: **383 total, 378 passed, 4 failed, 1 skipped.** Final run after fixes: **383 total, 382 passed, 0 failed, 1 skipped.**
+
+| # | Failing test | Root cause | Fix |
+|---|---|---|---|
+| 1 | `Runtime tenant-filter bypasses must use approved reason constants` | `RegistrationFormAuthoringRepository.GetTemplateSourceVersionAsync` passed a raw string `"registration-form-template-source-version"` to `IgnoreTenantFilter` | Added `TenantFilterBypassReasons.RegistrationFormTemplateSourceVersion` and referenced it. The bypass itself is legitimate — bounded by an exact event/form/version id tuple. |
+| 2 | `DTOs_ShouldEndWith_Dto` | `RegistrationFormTemplateInput` and `InstantiateRegistrationFormTemplateInput` violated the `Dto` suffix convention | Renamed both to `…InputDto` across Application, API, Blazor, and tests, rather than growing the exemption list. OpenAPI and the NSwag client were regenerated through the documented workflow. |
+| 3 | `BlazorProductionBackendContracts_ShouldComeFromGeneratedApiClient` | `HalResourceOfRegistrationAnswerAnalyticsDto` was **never registered** in `HalOpenApiSchemaCatalog`, so OpenAPI emitted `"HalResourceOfRegistrationAnswerAnalyticsDto": { }` — an empty wrapper — and a hand-written Blazor mirror was added to compensate | Registered the wrapper and its three nested analytics DTOs in the catalog. The schema now emits full properties and three named components instead of inline anonymous shapes; NSwag now generates `RegistrationAnswerFieldAggregateDto`, `RegistrationAnswerAggregateCellDto`, and `RegistrationAnswerNumericAggregateDto` by name. Deleted `src/Explore.Blazor.Client/Clients/RegistrationAnswerAnalyticsClientDtos.cs`. Anonymous generated classes dropped 18 → 16. |
+| 4 | `InventoryCoversCurrentEfAndDesignatedProviderSurfaces` | The PII inventory named properties that do not exist on the EF model, which **masked nine further real gaps** behind an early assertion | See below. |
+
+### 0.2a Privacy findings surfaced by fixing failure #4
+
+This was not a naming nit. Two inventory rows pointed at non-existent columns, so the columns that actually hold the data were uncovered, and the early assertion prevented the rest of the test from ever running:
+
+- `EventContactShareConsent.UserId` → corrected to `UserSubjectId` (the real column).
+- `EventContactShareExportItem.EmailSnapshot` → corrected to `ExportedFieldSnapshot` (the real column, which carries the exported contact payload). Also corrected in the test's required-coverage list.
+
+With the early assertion passing, EF-model traversal then revealed six uncovered user-linked columns and three uncovered external provider surfaces, all now inventoried:
+
+| Copy / surface | Disposition |
+|---|---|
+| `EventContactShareConsentHistory.UserId` | HardDelete |
+| `EventContactShareConsentHistory.EmailSnapshot` | HardDelete |
+| `EventContactShareConsentHistory.EmailNormalizedSnapshot` | HardDelete |
+| `EventContactShareExport.ContentHash` | Anonymize — export integrity verification |
+| `RegistrationAmendment.ActorUserId` | Anonymize — amendment accountability |
+| `RegistrationOrder.AppliedPromotionDisplayLabelSnapshot` | BoundedRetain — financial reconciliation |
+| `provider:stripe:connect-account` (`StripeConnectAccountAdapter`) | ExternalAction — RevokeOrUnlinkExternalIdentity |
+| `provider:google-sheets:submission-row` (`GoogleSheetsRegistrationProviderSubmissionSink`) | ExternalAction — ExpireLocalMetadataWithoutRecall (organizer-owned document; delivered rows cannot be recalled) |
+| `provider:registration-webhook:submission-payload` (`WebhookRegistrationProviderSubmissionSink`) | ExternalAction — CorrectOrDeleteProviderCopy |
+
+### 0.3 Concurrent-workstream collision status
+
+The user confirmed on 2026-08-16 that no other agent is working in this repository. The collision matrix therefore no longer gates phase ordering, and Design Rule 14 is satisfied by definition for this execution. The matrix is retained in `context.md` as documentation of which workstreams own which surfaces, but Phase 7 is no longer blocked on owner idleness.
+
+### 0.4 Scheduling authority — decided
+
+TickerQ has been **removed from the repository**. The platform now uses **Quartz.NET 3.19.1** (`Quartz`, `Quartz.AspNetCore`, `Quartz.Extensions.Hosting`, `Quartz.Serialization.SystemTextJson`) with an ADO job store that works across PostgreSQL, SQLite, SQL Server, MySQL, and MariaDB, optional clustering, an instance-admin status endpoint, and an embedded-SQL schema initializer. This settles plan §2.5 as **option A**: Quartz.NET is the periodic scheduling authority, and Phase 5 migrates qualifying `Task.Delay` workers onto it rather than introducing any bespoke lifecycle.
+
+Established pattern to follow: `QuartzSchedulerExtensions.AddCronJob<TJob>` (durable job + cron trigger + `WithMisfireHandlingInstructionDoNothing`), job keys derived from `ScheduledJobNames` in `Explore.Application.Contracts.Scheduling`, `[DisallowConcurrentExecution]` on jobs, pointer-only `JobDataMap` payloads, and scheduler disabled in the `Testing` environment.
 
 ## 2026-08-15 Re-Verification (Senior CTO review)
 

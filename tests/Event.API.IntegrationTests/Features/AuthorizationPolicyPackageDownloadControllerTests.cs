@@ -53,14 +53,11 @@ public sealed class AuthorizationPolicyPackageDownloadControllerTests
             .Returns(archive);
         var adminContext = Substitute.For<IAdminContext>();
         adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(true);
-        var controller = new InstanceSettingsController(
+        var controller = new InstanceAuthorizationSettingsController(
             mediator,
-            adminContext,
-            Substitute.For<ISetupSecretProvider>(),
-            Substitute.For<IDeploymentModeProvider>(),
-            Substitute.For<IAuthProviderConfigurationService>(),
             Substitute.For<IAuthorizationProviderConfigurationService>(),
-            Substitute.For<IResourceAssembler<InstanceStorageSettingsDto, InstanceStorageSettingsDto>>());
+            adminContext,
+            Substitute.For<ISetupSecretProvider>());
 
         IActionResult result = await controller.DownloadAuthorizationPolicyPackage(CancellationToken.None);
 
@@ -80,14 +77,11 @@ public sealed class AuthorizationPolicyPackageDownloadControllerTests
         adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(false);
         var setupSecretProvider = Substitute.For<ISetupSecretProvider>();
         setupSecretProvider.IsSetupModeActive.Returns(false);
-        var controller = new InstanceSettingsController(
+        var controller = new InstanceAuthorizationSettingsController(
             mediator,
-            adminContext,
-            setupSecretProvider,
-            Substitute.For<IDeploymentModeProvider>(),
-            Substitute.For<IAuthProviderConfigurationService>(),
             Substitute.For<IAuthorizationProviderConfigurationService>(),
-            Substitute.For<IResourceAssembler<InstanceStorageSettingsDto, InstanceStorageSettingsDto>>())
+            adminContext,
+            setupSecretProvider)
         {
             ControllerContext = new ControllerContext
             {

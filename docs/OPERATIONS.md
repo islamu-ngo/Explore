@@ -7,7 +7,7 @@ ABOUTME: Captures current behavior implemented in API, Blazor BFF, migration ser
 > **Status:** Mixed
 > **Owner:** Platform/Ops
 > **Last Verified:** 2026-08-15
-> **Source Anchors:** `Explore.AppHost/AppHost.cs`, `Explore.API/Program.cs`, `Explore.API/HealthChecks/StorageReadinessHealthCheck.cs`, `Explore.API/HealthChecks/StorageReconciliationHealthCheck.cs`, `Explore.API/BackgroundServices/StorageReconciliationProcessor.cs`, `Explore.Infrastructure/StorageObjectDeletionService.cs`, `Explore.Infrastructure/Services/Registration/PromotionCodeDigestService.cs`, `Explore.Persistence/Repositories/PromotionManagementRepository.cs`, `Explore.Persistence/Repositories/PromotionRedemptionRepository.cs`, `Explore.ServiceDefaults/`, `docker-compose.yml`, `docs/SELF_HOSTING.md`, `docs/BACKUP_RESTORE_UPGRADE.md`, `docs/TROUBLESHOOTING.md`
+> **Source Anchors:** `Explore.AppHost/AppHost.cs`, `Explore.API/Program.cs`, `Explore.API/HealthChecks/StorageReadinessHealthCheck.cs`, `Explore.API/HealthChecks/StorageReconciliationHealthCheck.cs`, `Explore.API/Scheduling/MaintenanceSweepJobs.cs`, `Explore.Infrastructure/StorageObjectDeletionService.cs`, `Explore.Infrastructure/Services/Registration/PromotionCodeDigestService.cs`, `Explore.Persistence/Repositories/PromotionManagementRepository.cs`, `Explore.Persistence/Repositories/PromotionRedemptionRepository.cs`, `Explore.ServiceDefaults/`, `docker-compose.yml`, `docs/SELF_HOSTING.md`, `docs/BACKUP_RESTORE_UPGRADE.md`, `docs/TROUBLESHOOTING.md`
 
 This page is the operational reference for implemented runtime behavior. Task procedures should live in dedicated runbooks and be linked from here.
 
@@ -787,6 +787,8 @@ Operator signals:
 | `explore.email_dispatch.attempts` | Provider-handoff outcome counter for sent, unknown, retry-scheduled, and dead-lettered attempts. Closed-vocabulary labels omit tenant identity. |
 | `explore.email_dispatch.operational_outcomes` | Eligibility-skip and SMTP-rate-deferral counter. These outcomes do not claim provider I/O occurred. |
 | Scheduler status endpoint | Optional instance-admin-only, read-only scheduler internals at `Scheduler:Quartz:StatusEndpointPath`. It is disabled by default and is not the product/operator source of truth for email delivery state. |
+| Scheduler administration API and admin UI | Optional instance-admin surface at `/api/admin/scheduler`, rendered by the **Background Scheduler** section under Instance Settings. Enabled with `Scheduler:Quartz:AdminApiEnabled`; read-only until `Scheduler:Quartz:AdminApiReadOnly=false`. Works in both split and standalone topologies. |
+| Quartz.NET dashboard | Optional upstream dashboard at `Scheduler:Quartz:DashboardPath` (default `/quartz`), available only in the combined `Event.Standalone` host. Enabled with `Scheduler:Quartz:DashboardEnabled`. |
 | Structured drain logs | Include dispatch/outbox IDs, tenant IDs, outcomes, retry delay, and normalized failure category; do not include bodies, recipients, subjects, secrets, provider message IDs, or raw SMTP error text. |
 
 Timeout-like SMTP outcomes are recorded as `Unknown` instead of blind retry. Use the HAL `reconcile` action only after provider evidence supports `Delivered` or `NotDelivered`; the transaction aligns outbox, current attempt, receipt, and notification delivery. Generic replay excludes `Unknown`, while `resolve-without-replay` remains the explicit unresolved/abandon path. Skipped rows are terminal.
@@ -799,6 +801,38 @@ Quartz operational state lives in the primary application database under the `Sc
 
 Status-endpoint protection is enforced twice: authorization middleware challenges or forbids on the configured path before any scheduler state is read, and the mapped endpoint additionally requires the instance-admin policy. If `Scheduler:Quartz:StatusEndpointEnabled=false`, the route is not exposed at all.
 
+#### Scheduler administration surfaces
+
+Three independent operator surfaces exist over the same scheduler; all are disabled by default.
+
+- **Status endpoint** — one read-only JSON document for scripted checks. No UI.
+- **Administration API and admin UI** (`Scheduler:Quartz:AdminApiEnabled`) — the portable surface, available in both
+  split and standalone topologies. It is a normal versioned HAL controller under `/api/admin/scheduler`, authorized as
+  instance-setting `View` for reads and `Update` for controls, and rendered by the **Background Scheduler** section in
+  Instance Settings. Operators get scheduler lifecycle state, the job table with trigger states and next/previous fire
+  times, and pause/resume/run-now actions. `Scheduler:Quartz:AdminApiReadOnly` defaults to `true`: control links are
+  withheld from HAL and mutating requests are refused before the scheduler is touched, so the UI cannot offer a control
+  that the API would then reject. When the API is disabled every route answers `404` and the settings section does not
+  appear at all, because the client discovers the section from the served resource rather than from local claims.
+- **Quartz.NET dashboard** (`Scheduler:Quartz:DashboardEnabled`) — the upstream Blazor dashboard, mounted only by the
+  combined `Event.Standalone` host, where Razor components and the scheduler share a process. The split-mode API host
+  has no Razor infrastructure and ignores the flag. It is mounted self-contained under its own root component, so it
+  does not participate in the application's client router, and its paths sit outside the API-owned route set and
+  therefore authenticate through the Blazor cookie pipeline rather than the bearer API bridge.
+
+Two recovery actions exist alongside the lifecycle controls, and they appear only for the state they repair. A job
+whose triggers have entered the scheduler's error state offers **clear error state**, which returns those triggers to
+normal firing — nothing else clears that state, so a job left in it stops running silently. A currently executing job
+offers **request cancellation**, which signals the running job's cancellation token; this is cooperative, so a job
+that does not observe cancellation continues to completion. Either action reports
+`scheduler_action_not_applicable` when the job's state moved on before the request arrived, rather than reporting a
+success that changed nothing.
+
+Pausing the scheduler moves it to standby rather than shutting it down: running jobs finish, no further triggers fire,
+and the scheduler can be resumed in-process. A shutdown scheduler would need a host restart, turning a routine pause
+into an outage. Pausing an individual job pauses its triggers without removing its schedule, and triggering a job runs
+it once immediately while leaving its schedule untouched.
+
 The scheduler job catalog is Application-owned through `IScheduledJobRegistry`. Current implemented jobs are:
 
 | Job | Schedule type | Payload | Source of truth |
@@ -806,12 +840,49 @@ The scheduler job catalog is Application-owned through `IScheduledJobRegistry`. 
 | `email-dispatch-drain` | Cron `*/10 * * * * ?` (every 10 seconds) | None | `EmailDispatchOutbox` pending/retry state |
 | `email-dispatch-recovery-scan` | Cron `0 */1 * * * ?` (every minute) | None | Stale `EmailDispatchOutbox` processing leases |
 | `event-reminder-dispatch` | One-off time trigger | Pointer-only IDs | Pre-persisted `EmailDispatchOutbox` row |
+| `idempotency-cleanup` | Interval, `IdempotencyCleanup:PollingIntervalMinutes` | None | Expired `idempotency_records` |
+| `ai-retention-cleanup` | Interval, `AiRetentionCleanup:PollingIntervalMinutes` | None | Per-tenant `ai_assistant.retention_days` |
+| `email-dispatch-retention-cleanup` | Interval, `EmailDispatchRetention:PollingIntervalMinutes` | None | Email dispatch content retention horizon |
+| `webhook-retention-cleanup` | Interval, `WebhookRetention:PollingIntervalMinutes` | None | Webhook message/attempt retention horizon |
+| `registration-retention-cleanup` | Interval, fixed 1 day | None | Immutable per-tenant registration retention deadlines |
+| `storage-reconciliation` | Interval, `StorageReconciliation:PollingIntervalMinutes` | None | Storage object state vs. provider |
+| `privacy-erasure-credential-cleanup` | Interval, `PrivacyErasure:ProviderPollingInterval` | None | Expired provider credentials/locators |
+| `organizer-payment-readiness-reconciliation` | Interval, `OrganizerPaymentReadinessReconciliation:PollingIntervalSeconds` | None | Stale organizer payment connections |
 
 Planned-only jobs are `general-outbox-drain`, `pds-sync-drain`, `dead-letter-summary`, `waitlist-promotion-scan`, and `tenant-maintenance-scan`. Do not migrate general outbox or PDS workers to Quartz until EmailDispatch has green multi-node duplicate execution and crash-window recovery proof.
 
+#### Upgrade note — maintenance sweeps moved to the scheduler
+
+The eight maintenance sweeps above previously ran as in-process `BackgroundService` timer loops. They now run as
+Quartz jobs. **No configuration key changed**: each sweep still reads the same section, the same `Enabled`
+flag, and the same interval value, so an existing `appsettings` or environment configuration keeps working
+unchanged.
+
+What changes for operators:
+
+- **Log lines.** Each sweep previously logged its own start/stop and per-loop messages. Completion is now
+  logged uniformly as `Scheduled job {JobName} completed.` with `JobName` set to the identifier in the table
+  above. Alerts or log queries that matched the old per-worker text must be repointed at `JobName`.
+- **Disabled sweeps are absent, not idle.** A sweep whose `Enabled` flag is false is no longer registered with
+  the scheduler at all, so it does not appear in the scheduler status endpoint. Previously it started and
+  immediately returned.
+- **Schedule state now survives restarts.** Trigger state lives in the `QRTZ_` tables, so a restart resumes the
+  existing cadence instead of restarting every interval from zero. Missed occurrences during downtime collapse
+  into a single next run rather than replaying one pass per skipped interval.
+- **`Scheduler:Quartz:Enabled=false` now also disables these sweeps.** They are scheduler jobs, so turning the
+  scheduler off turns them off. Operators who disable the scheduler must confirm they intend retention and
+  reconciliation to stop.
+- **Clustering.** With `Scheduler:Quartz:ClusteringEnabled=true`, each sweep runs on exactly one node instead of
+  on every node, which removes the duplicate-work that the old per-process loops caused in multi-node
+  deployments.
+
+`OutboxProcessor` and the queue-driven webhook, integration-sync, and PDS processors were deliberately **not**
+migrated: their fencing and retry semantics are coupled to their own loops, and moving them is gated on the
+multi-node proof required above.
+
 ### Lifecycle-Email Operations
 
-The selected primary database remains the email delivery ledger. Parent-aware content retention is implemented by `EmailDispatchRetentionCleanupProcessor`: it runs bounded transactional passes, supports dry-run, and records only counts and cutoff timestamps in logs.
+The selected primary database remains the email delivery ledger. Parent-aware content retention is implemented by the `email-dispatch-retention-cleanup` Quartz job (`EmailDispatchRetentionCleanupJob`): it runs bounded transactional passes, supports dry-run, and records only counts and cutoff timestamps in logs.
 
 - Sent and skipped content redacts after the configured 180-day default; attempt and receipt free text/provider IDs follow the selected parent in the same transaction.
 - Dead-lettered, `Unknown`, and parked replay material remains until its explicit resolution timestamp, then follows the same retention clock. `ContentRedactedAt` permanently removes replay authority.
@@ -1245,8 +1316,8 @@ Lifecycle classes:
 | `outbox_messages`, `pds_sync_outbox`, `policy_change_outbox` | Durable side-effect ledger | Transactional outbox processors | Processors update status; no completed-row cleanup | Completed rows: 30 days. Failed/dead-lettered rows: retain until operator resolution, then 90 days | Consider monthly `CreatedAt` range partitions when completed rows dominate scans; worker indexes must keep pending/retry rows hot | Add cleanup that deletes only completed/resolved rows and never deletes pending, processing, retry, failed, or dead-letter rows |
 | `email_dispatch_outbox` | Durable side-effect ledger with email PII snapshots | Registration/email dispatch state machine | Implemented: bounded/dry-runnable redaction after sent/skipped or explicitly resolved retention cutoff; purged tenants are immediate; `ContentRedactedAt` blocks replay | Sent rows: 180 days. Dead-lettered/unknown/parked rows: retain until operator resolution, then 180 days | Consider monthly `CreatedAt` range partitions when dispatch history exceeds 25M rows or status polling slows | Monitor bounded cleanup duration/counts and add a dedicated readiness signal if operational evidence requires one |
 | `email_dispatch_attempts`, `email_dispatch_receipts` | Durable side-effect ledger | Email dispatch drain/consumer idempotency | Implemented: free-text errors and provider IDs redact transactionally with the selected parent; typed outcomes and timestamps remain | Attempts/receipts follow parent retention; failed/unknown evidence stays while parent is unresolved | Partition only with parent strategy; independent partitioning risks expensive parent/child maintenance | Keep parent-aware regression coverage in the persistence gate |
-| `ai_conversations`, `ai_messages`, `ai_runs`, `ai_conversation_references`, `ai_proposed_actions`, `ai_tool_executions` | User-facing operational state with provider/prompt sensitivity | AI assistant conversation, proposal, and confirmed-tool audit flows | Implemented: `AiRetentionCleanupProcessor` iterates active tenants, binds tenant context, resolves each tenant's `ai_assistant.retention_days`, supports `AiRetentionCleanup:DryRun`, redacts message content/action payload/reference summaries/failure messages/tool failure messages, and soft-deletes expired conversation shells through tenant-filtered repository cleanup. | 30 days by default via `ai_assistant.retention_days`, tenant-configurable through governance settings | Do not partition initially; cleanup predicates use tenant plus conversation age and should stay index-backed until AI history volume proves otherwise | Monitor `ai-retention-cleanup` readiness and `explore.ai.retention.*` metrics before broad history enablement; never log prompt content, action payloads, provider responses, or model secrets |
-| `idempotency_records` | Ephemeral safety cache | `IdempotencyMiddleware` / `IIdempotencyRepository` | Implemented: reads ignore expired rows, and `IdempotencyCleanupProcessor` deletes rows older than `ExpiresAt + IdempotencyCleanup:ExpirationGraceHours` in bounded batches; dry-run is available | Delete after `ExpiresAt + 24h` safety buffer by default | Do not partition initially; TTL delete by `ExpiresAt` should be enough unless write volume is extreme | Monitor `idempotency-cleanup` readiness and cleanup metrics; revisit only if delete volume or index bloat threatens SLOs |
+| `ai_conversations`, `ai_messages`, `ai_runs`, `ai_conversation_references`, `ai_proposed_actions`, `ai_tool_executions` | User-facing operational state with provider/prompt sensitivity | AI assistant conversation, proposal, and confirmed-tool audit flows | Implemented: the `ai-retention-cleanup` Quartz job (`AiRetentionCleanupJob`) iterates active tenants, binds tenant context, resolves each tenant's `ai_assistant.retention_days`, supports `AiRetentionCleanup:DryRun`, redacts message content/action payload/reference summaries/failure messages/tool failure messages, and soft-deletes expired conversation shells through tenant-filtered repository cleanup. | 30 days by default via `ai_assistant.retention_days`, tenant-configurable through governance settings | Do not partition initially; cleanup predicates use tenant plus conversation age and should stay index-backed until AI history volume proves otherwise | Monitor `ai-retention-cleanup` readiness and `explore.ai.retention.*` metrics before broad history enablement; never log prompt content, action payloads, provider responses, or model secrets |
+| `idempotency_records` | Ephemeral safety cache | `IdempotencyMiddleware` / `IIdempotencyRepository` | Implemented: reads ignore expired rows, and the `idempotency-cleanup` Quartz job (`IdempotencyCleanupJob`) deletes rows older than `ExpiresAt + IdempotencyCleanup:ExpirationGraceHours` in bounded batches; dry-run is available | Delete after `ExpiresAt + 24h` safety buffer by default | Do not partition initially; TTL delete by `ExpiresAt` should be enough unless write volume is extreme | Monitor `idempotency-cleanup` readiness and cleanup metrics; revisit only if delete volume or index bloat threatens SLOs |
 | `custom_property_projection_dirty_scope` | Rebuildable projection/cache backlog | Projection rebuild/drain coordination | Drained rows remain; pending rows are quota-bounded | Pending rows stay until drained; drained rows retained 7 days for diagnostics | No partitioning initially; the table is quota-bounded per tenant | Add drained-row cleanup and metrics for deleted/drained/pending counts |
 | `event_custom_property_projections`, `event_session_custom_property_projections` | Rebuildable projection/cache | Projection updaters from Layer 3 values | Rebuild and source deletes replace/remove rows; no age cleanup | No independent age retention; rows live while source values and exposure rules require them | Consider tenant/hash or event-date-adjacent strategy only after projection query SLOs require it; range partitioning by `UpdatedAt` is not useful for most lookup predicates | Keep rebuild-first recovery; add periodic consistency checks before partitioning |
 | `external_api_key_quotas` | Operational accounting ledger | External API key quota service | Cascade delete when key is physically deleted; no age cleanup | 24 monthly periods by default for usage reporting | Do not partition initially; one row per key per period should stay small | Add retention by `PeriodEnd` with tenant/admin reporting guardrails |

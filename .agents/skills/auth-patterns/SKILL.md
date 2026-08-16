@@ -41,22 +41,21 @@ Use this skill for browser-to-BFF-to-API authentication flow, endpoint protectio
 3. Logging raw JWTs leaks secrets into traces, logs, and support artifacts.
 4. Disabling the `Tenant` query filter during runtime request handling creates cross-tenant authorization and data-isolation bugs.
 5. Validating only `aud` or only `azp` allows unauthorized clients to present otherwise valid tokens.
+6. Writing a local claim-extraction helper creates a second identity chain that will silently disagree with the first about who the caller is.
+7. Resolving `IUserContext` from `HttpContext.RequestServices` inside a controller hides an ambient dependency and is banned by `ApiLiabilityRatchetTests`.
 
 ## Minimal Examples
 ```csharp
-public static class ClaimsPrincipalExtensions
-{
-    public static string GetRequiredUserId(this ClaimsPrincipal user)
-    {
-        string? userId = user.FindFirstValue("sub")
-            ?? user.FindFirstValue(ClaimTypes.NameIdentifier)
-            ?? user.FindFirstValue("sid");
+// Identity derivation is a pure function of the principal and already has one authority.
+// Do not write another extraction helper — see resources/user-id-extraction.md.
+using Explore.Application.Authentication;
 
-        return string.IsNullOrWhiteSpace(userId)
-            ? throw new UnauthorizedAccessException("Missing user id claim.")
-            : userId;
-    }
-}
+Guid? userId = principal.GetPlatformUserId();           // sub -> nameidentifier -> sid -> internal_user_id
+Guid required = principal.GetRequiredPlatformUserId();  // throws UnauthorizedAccessException
+
+// In a controller, ExploreControllerBase already exposes CurrentUserId / RequiredUserId.
+// When the provider subject is not a platform user id (ATProto DID, Google subject):
+Guid? resolved = await mediator.ResolveCurrentUserIdAsync(User, cancellationToken);
 ```
 
 ```csharp

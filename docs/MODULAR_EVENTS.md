@@ -45,13 +45,17 @@ Session Islamic aspect includes prayer-relative scheduling fields and ritual fla
 
 ## API Surface
 
-Aspect-specific endpoints live under `EventController`:
+Aspect-specific endpoints live under `EventAspectController` (route `api/event`):
 
 - `GET /api/event/{id}/aspects/islamic`
-- `PUT /api/event/{id}/aspects/islamic`
+- `GET /api/event/{id}/management-aspects/islamic`
+- `POST /api/event/{id}/aspects/islamic`
+- `PATCH /api/event/{id}/aspects/islamic`
 - `DELETE /api/event/{id}/aspects/islamic`
 - `GET /api/event/{id}/aspects/tech`
-- `PUT /api/event/{id}/aspects/tech`
+- `GET /api/event/{id}/management-aspects/tech`
+- `POST /api/event/{id}/aspects/tech`
+- `PATCH /api/event/{id}/aspects/tech`
 - `DELETE /api/event/{id}/aspects/tech`
 
 Aspect updates require authorization; read endpoints are anonymous.

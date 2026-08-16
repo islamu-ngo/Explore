@@ -5,6 +5,7 @@ using Asp.Versioning;
 using Explore.API.Attributes;
 using Explore.API.ExceptionHandling;
 using Explore.API.Hateoas;
+using Explore.Application.Authentication;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.DTOs.OrganizationMember;
 using Explore.Application.Features.OrganizationMembers.Requests.Commands;
@@ -128,7 +129,7 @@ public class OrganizationMemberController : ExploreControllerBase
     [HttpGet("invitations", Name = RouteNames.GetMyOrganizationInvitations)]
     public async Task<ActionResult<List<OrganizationInvitationDto>>> GetMyInvitations(CancellationToken cancellationToken = default)
     {
-        var email = UserContext.Email;
+        var email = User.GetEmail();
         if (string.IsNullOrEmpty(email))
         {
             return this.ToAuthenticationRequiredProblem(

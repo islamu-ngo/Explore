@@ -42,6 +42,8 @@ All source files use **PascalCase** matching the primary class/type name:
 | Repository implementation | `{EntityName}Repository.cs` | `EventRepository.cs` |
 | EF Configuration | `{EntityName}Configuration.cs` | `EventConfiguration.cs` |
 | Controller | `{EntityName}Controller.cs` | `EventController.cs` |
+| Capability controller | `{EntityName}{Capability}Controller.cs` | `EventModerationController.cs` |
+| Controller family base | `{Family}ControllerBase.cs` | `WebhooksControllerBase.cs` |
 | Blazor page | `{PageName}.razor` + `{PageName}.razor.cs` | `EventList.razor` |
 | Blazor CSS | `{PageName}.razor.css` | `EventList.razor.css` |
 | Client service | `{EntityName}Service.cs` | `EventService.cs` |
@@ -204,7 +206,7 @@ Implementations in: `Explore.Persistence/Repositories/`
 
 ## Controller Naming
 
-Controllers are named `{EntityName}Controller` and placed in `Explore.API/Controllers/`. They map 1:1 with domain aggregates:
+Controllers are named `{EntityName}Controller` and placed in `Explore.API/Controllers/`. Most map 1:1 with domain aggregates:
 
 | Controller | Route |
 |---|---|
@@ -213,6 +215,28 @@ Controllers are named `{EntityName}Controller` and placed in `Explore.API/Contro
 | `EventSessionController` | `api/eventsession` |
 
 Route convention: `api/[controller]` (controller name lowercased, no hyphens).
+
+### Capability-Partitioned Families
+
+An aggregate whose surface grows past one capability is split into `{EntityName}{Capability}Controller`
+siblings that **share the original route**, stated explicitly rather than via the `[controller]` token:
+
+| Family | Controllers | Shared route |
+|---|---|---|
+| Event | `EventController`, `EventLifecycleController`, `EventModerationController`, `EventCalendarController`, `EventManagementReadController` | `api/Event` |
+| Registration order | `RegistrationOrderController`, `GuestRegistrationOrderController`, `AuthenticatedRegistrationOrderController` | `api/events/{eventId:guid}/registration-orders` |
+| Webhooks | `WebhooksController`, `WebhookEndpointsController`, `WebhookMessagesController` | `api/webhooks` |
+| Instance settings | `Instance{Governance,Presentation,Storage,Messaging,Authentication,Authorization}SettingsController` | `api/instance/settings` |
+| Control plane | `ControlPlaneController`, `ControlPlaneTenant{Plan,Configuration,Lifecycle}Controller` | `api/admin/control-plane` |
+
+Rules for a partition:
+
+- Use an **explicit** `[Route("...")]`; the `[controller]` token would change the URL.
+- Carry every action's `Name = RouteNames.*` across verbatim — the route name pins the `operationId` and
+  therefore the generated client method, so the split stays invisible to clients.
+- Behavior shared across the family becomes a `{Family}ControllerBase`, never duplicated code.
+- The OpenAPI `tags` array does change, because it derives from the class name. That is documentation
+  grouping only and is the intended outcome.
 
 ---
 

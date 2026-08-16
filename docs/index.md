@@ -15,7 +15,9 @@ Start with [README.md](../README.md) if you are new to the project. Use this pag
 
 | I need to... | Start Here | Then Read |
 |---|---|---|
-| Understand the product and current scope | [PROJECT.md](PROJECT.md) | [ARCHITECTURE.md](ARCHITECTURE.md), [SECURITY-MODEL.md](SECURITY-MODEL.md) |
+| Understand the whole codebase & mental model | [DEVELOPER_GUIDE.md](DEVELOPER_GUIDE.md) | [ARCHITECTURE_OVERVIEW.md](ARCHITECTURE_OVERVIEW.md), [REQUEST_FLOWS.md](REQUEST_FLOWS.md) |
+| Follow step-by-step feature recipes | [CONTRIBUTOR_RECIPES.md](CONTRIBUTOR_RECIPES.md) | [QUICK_REFERENCE.md](QUICK_REFERENCE.md), [TESTING.md](TESTING.md) |
+| Understand the product and current scope | [PROJECT.md](PROJECT.md) | [ARCHITECTURE_OVERVIEW.md](ARCHITECTURE_OVERVIEW.md), [SECURITY-MODEL.md](SECURITY-MODEL.md) |
 | Run the app locally | [GETTING_STARTED.md](GETTING_STARTED.md) | [TESTING.md](TESTING.md), [TROUBLESHOOTING.md](TROUBLESHOOTING.md) |
 | Self-host or operate a deployment | [SELF_HOSTING.md](SELF_HOSTING.md) | [CONFIGURATION.md](CONFIGURATION.md), [SECRETS.md](SECRETS.md), [OPERATIONS.md](OPERATIONS.md), [BACKUP_RESTORE_UPGRADE.md](BACKUP_RESTORE_UPGRADE.md) |
 | Troubleshoot a failure | [TROUBLESHOOTING.md](TROUBLESHOOTING.md) | [OPERATIONS.md](OPERATIONS.md), [CONFIGURATION.md](CONFIGURATION.md), [TEST_RELIABILITY.md](TEST_RELIABILITY.md) |
@@ -23,7 +25,7 @@ Start with [README.md](../README.md) if you are new to the project. Use this pag
 | Configure tenants, admins, or branding | [ADMIN_GUIDE.md](ADMIN_GUIDE.md) | [ADMIN_HIERARCHY.md](ADMIN_HIERARCHY.md), [DEPLOYMENT_MODES.md](DEPLOYMENT_MODES.md), [MULTI_TENANCY.md](MULTI_TENANCY.md) |
 | Integrate with the API | [API_COOKBOOK.md](API_COOKBOOK.md) | [API.md](API.md), [WEBHOOKS.md](WEBHOOKS.md), [INTEGRATIONS.md](INTEGRATIONS.md), [API_CHANGELOG.md](API_CHANGELOG.md), [SECURITY-MODEL.md](SECURITY-MODEL.md) |
 | Change authorization or Cerbos behavior | [AUTHORIZATION.md](AUTHORIZATION.md) | [AUTHORIZATION_PATTERNS.md](AUTHORIZATION_PATTERNS.md), [SECURITY-MODEL.md](SECURITY-MODEL.md), [OPERATIONS.md](OPERATIONS.md) |
-| Contribute code or docs | [FIRST_CONTRIBUTION.md](FIRST_CONTRIBUTION.md) | [CONTRIBUTING.md](CONTRIBUTING.md), [QUICK_REFERENCE.md](QUICK_REFERENCE.md), [TESTING.md](TESTING.md) |
+| Contribute code or docs | [DEVELOPER_GUIDE.md](DEVELOPER_GUIDE.md) | [CONTRIBUTOR_RECIPES.md](CONTRIBUTOR_RECIPES.md), [CONTRIBUTING.md](CONTRIBUTING.md), [QUICK_REFERENCE.md](QUICK_REFERENCE.md) |
 | Research external behavior or assess a dependency license | [IP Governance](legal/IP_GOVERNANCE.md) | [CLA](../legal/CLA.md), [Dual Versioning](DUAL_VERSIONING.md), [CI/CD Governance](CI_CD_GOVERNANCE.md) |
 | Work on Blazor UI | [BLAZOR.md](BLAZOR.md) | [DESIGN_SYSTEM.md](DESIGN_SYSTEM.md), [ACCESSIBILITY.md](ACCESSIBILITY.md), [RENDER_POLICIES.md](RENDER_POLICIES.md) |
 | Use an AI coding agent | [../AGENTS.md](../AGENTS.md) | [../.agents/contract/intents.yaml](../.agents/contract/intents.yaml), [QUICK_REFERENCE.md](QUICK_REFERENCE.md), [../dev/_journal/README.md](../dev/_journal/README.md) |
@@ -37,11 +39,17 @@ Start with [README.md](../README.md) if you are new to the project. Use this pag
 ## Read First
 
 - [README.md](../README.md) - product overview and top-level route into the docs.
+- [DEVELOPER_GUIDE.md](DEVELOPER_GUIDE.md) - orientation, 5-minute mental model, and invariant survival guide.
+- [ARCHITECTURE_OVERVIEW.md](ARCHITECTURE_OVERVIEW.md) - high-level visual architecture, C4 container map, and component interactions.
+- [REQUEST_FLOWS.md](REQUEST_FLOWS.md) - end-to-end execution flows with detailed sequence diagrams.
+- [CONTRIBUTOR_RECIPES.md](CONTRIBUTOR_RECIPES.md) - practical blueprints for adding entities, CQRS slices, APIs, and pages.
 - [GETTING_STARTED.md](GETTING_STARTED.md) - shortest local build, run, and first-contribution path.
 - [QUICK_REFERENCE.md](QUICK_REFERENCE.md) - implementation constraints that are easy to violate.
 - [AGENTS.md](../AGENTS.md) - contribution contract used by contributors and AI agents.
 
 ## Core Architecture
+- [ARCHITECTURE_OVERVIEW.md](ARCHITECTURE_OVERVIEW.md) - high-level visual architecture, C4 diagrams, and component interactions.
+- [REQUEST_FLOWS.md](REQUEST_FLOWS.md) - end-to-end request lifecycles with sequence diagrams.
 - [ARCHITECTURE.md](ARCHITECTURE.md) - layer boundaries, BFF model, CQRS flow.
 - [DOMAIN.md](DOMAIN.md) - domain entities and important relationships.
 - [API.md](API.md) - API conventions, HAL behavior, filters, caching, error shape.

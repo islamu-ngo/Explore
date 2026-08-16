@@ -268,7 +268,7 @@ Explore.API/
 ├── Program.cs                     — Application entry point, DI registration, middleware pipeline (slimmed via extensions)
 ├── appsettings.json               — Configuration (connection strings, auth, storage, rate limiting, timeouts)
 ├── Controllers/                   — API controllers (one per entity/aggregate)
-│   ├── ExploreControllerBase.cs   — Abstract base with IUserContext (CurrentUserId, RequiredUserId)
+│   ├── ExploreControllerBase.cs   — Projects identity from ControllerBase.User; parses If-Match stamps
 │   ├── EventController.cs         — Event CRUD with specification pattern filtering via [FromQuery] EventFilterRequest
 │   ├── EventTicketingController.cs — Event-scoped ticket catalog versions, ticket types, capacity pools
 │   ├── OrganizationController.cs  — Organization endpoints
@@ -276,7 +276,19 @@ Explore.API/
 │   ├── TenantOnboardingController.cs   — Tenant setup wizard
 │   ├── ControlPlaneController.cs — Multi-tenant instance console API (`[RequireMultiTenant]`)
 │   ├── FooterController.cs         — Footer link groups, links, settings, governance (11 endpoints)
-│   └── [100+ controllers]         — Inherit ExploreControllerBase; GET=AllowAnonymous, POST/PUT/DELETE=Authorize
+│   ├── EventController.cs         — Public event discovery and detail reads
+│   ├── EventLifecycleController.cs — Create/import/publish/update/archive/cancel/delete
+│   ├── EventModerationController.cs — Light/heavy moderation and reversal
+│   ├── EventCalendarController.cs — ICS export, organizer and attendee-scoped
+│   ├── EventManagementReadController.cs — Organizer read contexts and publish readiness
+│   ├── GuestRegistrationOrderController.cs      — Capability-token guest checkout
+│   ├── AuthenticatedRegistrationOrderController.cs — Account-scoped checkout
+│   ├── RegistrationOrderControllerBase.cs — Shared native-attempt/participant protocol
+│   ├── WebhookEndpointsController.cs / WebhookMessagesController.cs / WebhooksControllerBase.cs
+│   ├── ControlPlaneTenantPlanController.cs / …TenantConfigurationController.cs / …TenantLifecycleController.cs
+│   ├── Instance{Governance,Presentation,Storage,Messaging,Authentication,Authorization}SettingsController.cs
+│   │                                  — split from InstanceSettingsController; share InstanceSettingsControllerBase
+│   └── [100+ controllers]         — GET=AllowAnonymous, POST/PUT/DELETE=Authorize; failures map via CommandFailurePolicy
 ├── Models/                        — API transport models (not DTOs)
 │   └── EventFilterRequest.cs      — 42-property filter model for [FromQuery] binding
 ├── Services/                      — API-layer services
@@ -313,19 +325,23 @@ Explore.API/
 │   ├── HateoasAuthorizationEvaluator.cs — Batch evaluates link permissions (fail-closed)
 │   ├── HateoasConstants.cs            — Link relation names, media types
 │   ├── RouteNames.cs                  — 100+ named route constants
-│   ├── Assemblers/                    — Entity-specific assemblers (EventAssembler, OrganizationAssembler, etc.)
+│   ├── HalResourceAssembler.cs        — Default generic assembler; families needing no custom assembly use it
+│   ├── Assemblers/                    — Only families that genuinely assemble differently declare a type here
 │   └── Policies/                      — Entity-specific link policies (EventLinkPolicy, etc.)
 ├── OpenApi/                       — Scalar/OpenAPI customization and build-time contract transformers
 │   ├── HalDtoSchemaTransformer.cs — Native OpenAPI HAL schema shaping
 │   ├── EndpointClassificationTransformer.cs — Emits endpoint tenant-mode/admin metadata
 │   └── HalSchemaFilter.cs         — Swashbuckle transition HAL schema shaping
-├── BackgroundServices/            — Hosted background workers
-│   ├── OutboxProcessor.cs         — Polls outbox_messages, dispatches events, retry + dead-letter
+├── Scheduling/                    — Quartz.NET jobs and scheduler surface (the periodic-work authority)
+│   ├── MaintenanceSweepJobs.cs    — The eight retention/cleanup/reconciliation sweeps; one pass each
+│   ├── QuartzSchedulerKeys.cs     — Job/trigger keys derived from ScheduledJobNames
+│   ├── QuartzSchemaInitializer.cs — Embedded, idempotent ADO job-store DDL per provider
+│   └── QuartzSchedulerStatusEndpoint.cs — Instance-admin-only, read-only scheduler status
+├── BackgroundServices/            — Hosted workers that are NOT periodic sweeps
+│   ├── OutboxProcessor.cs         — Durable side-effect authority; fencing coupled to its own loop
 │   ├── PdsSyncWorker.cs           — ATProto PDS synchronization (outbox pattern, exponential backoff)
-│   ├── WebPushDispatchWorker.cs   — Background VAPID web push notification dispatcher
-│   ├── PrivacyErasureSagaProcessor.cs — Background account erasure saga processor
-│   ├── StorageReconciliationWorker.cs — Periodic S3 storage object reconciliation worker
-│   └── WebhookDeliveryProcessor.cs — Outgoing product webhooks delivery worker
+│   ├── ManagedControlPlaneRegistrationWorker.cs — Retry-until-registered bootstrap; returns on success
+│   └── WebhookDeliveryProcessor.cs — Outgoing product webhooks delivery worker (queue drain)
 ├── Static/                        — Static file serving configuration
 ├── schemas/openapi_islamu-event.json — Generated OpenAPI specification
 └── Properties/

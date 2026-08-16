@@ -208,7 +208,7 @@ public sealed class CreateEventDraftAiActionMapper
                 RitualRequirementsJson = Normalize(aspect.RitualRequirementsJson)
             };
 
-    private static List<CreateEventLocationRequest> NormalizeLocation(CreateEventDraftLocationPayload? location)
+    private static List<CreateEventLocationDto> NormalizeLocation(CreateEventDraftLocationPayload? location)
     {
         if (location is null || !HasCompleteLocation(location))
         {
@@ -217,7 +217,7 @@ public sealed class CreateEventDraftAiActionMapper
 
         return
         [
-            new CreateEventLocationRequest
+            new CreateEventLocationDto
             {
                 TempKey = PrimaryLocationTempKey,
                 FullName = NormalizeRequired(location.FullName),
@@ -232,7 +232,7 @@ public sealed class CreateEventDraftAiActionMapper
         ];
     }
 
-    private static List<CreateEventRoomRequest> NormalizeRoom(CreateEventDraftRoomPayload? room, bool hasPrimaryLocation)
+    private static List<CreateEventRoomDto> NormalizeRoom(CreateEventDraftRoomPayload? room, bool hasPrimaryLocation)
     {
         if (room is null || !hasPrimaryLocation || string.IsNullOrWhiteSpace(room.Name))
         {
@@ -241,7 +241,7 @@ public sealed class CreateEventDraftAiActionMapper
 
         return
         [
-            new CreateEventRoomRequest
+            new CreateEventRoomDto
             {
                 TempKey = PrimaryRoomTempKey,
                 LocationTempKey = PrimaryLocationTempKey,
@@ -253,7 +253,7 @@ public sealed class CreateEventDraftAiActionMapper
         ];
     }
 
-    private static List<CreateEventSessionRequest> NormalizeSession(
+    private static List<CreateEventGraphSessionDto> NormalizeSession(
         CreateEventDraftSessionPayload? session,
         bool hasPrimaryLocation,
         bool hasPrimaryRoom)
@@ -265,7 +265,7 @@ public sealed class CreateEventDraftAiActionMapper
 
         return
         [
-            new CreateEventSessionRequest
+            new CreateEventGraphSessionDto
             {
                 TempKey = "primary-session",
                 RoomTempKey = hasPrimaryLocation && hasPrimaryRoom ? PrimaryRoomTempKey : null,

@@ -210,12 +210,6 @@ public class NamingConventionTests
         {
             "InstanceGovernanceSettings",
             "CompleteInstanceOnboardingRequest",
-            "CreateEventRequest",
-            "CreateEventSessionRequest",
-            "CreateEventDayRequest",
-            "CreateEventLocationRequest",
-            "CreateEventRoomRequest",
-            "CreateEventAgendaItemRequest",
             "UpdateTenantPolicyRequest",
             "BatchUpdateMode",  // Enum, not a DTO
             "UiThemeInputRules",  // Utility class, not a DTO

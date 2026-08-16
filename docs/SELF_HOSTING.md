@@ -967,6 +967,58 @@ operator-provided broker and set
 | `atproto-authentication` | Disabled AT Protocol login is healthy dormant state |
 | `idempotency-cleanup` | Healthy in delete or dry-run mode |
 
+### Background Scheduler Monitoring
+
+Background work — email dispatch drain, retention sweeps, storage reconciliation
+— runs on the Quartz.NET scheduler. Three optional operator surfaces expose it,
+all disabled by default so a deployment adds no admin attack surface it did not
+ask for.
+
+**Recommended for most deployments — the admin UI.** Set:
+
+```bash
+Scheduler__Quartz__AdminApiEnabled=true
+```
+
+A **Background Scheduler** entry then appears under Instance Settings →
+Operations for instance administrators. It shows whether the scheduler is
+running or in standby, how many jobs are registered, paused, and executing, and
+a table of every job with its owner, trigger state, schedule, and next/previous
+run times. This works in **both** deployment topologies (split API + Blazor, and
+the standalone container).
+
+Controls (pause/resume the scheduler, pause/resume/run a single job) stay hidden
+until you also set:
+
+```bash
+Scheduler__Quartz__AdminApiReadOnly=false
+```
+
+Leaving the default `true` in production is deliberate: read-only mode withholds
+the control affordances from the API response, so the UI cannot present a button
+that would be refused.
+
+**Standalone only — the upstream Quartz dashboard.** The combined container can
+additionally mount Quartz.NET's own dashboard, which adds calendars, execution
+history, and live logs:
+
+```bash
+Scheduler__Quartz__DashboardEnabled=true
+```
+
+It is served at `/quartz` and requires an instance administrator session. This
+option exists only in the standalone container, where the web UI and the
+scheduler share one process. In split deployments the API host runs no web UI,
+so use the admin UI above.
+
+**For scripted checks**, `Scheduler__Quartz__StatusEndpointEnabled=true` exposes
+a single read-only JSON document at `/admin/scheduler` instead of a UI.
+
+> Note: the scheduler surfaces report scheduling state only — job names,
+> trigger states, and fire times. They never expose email bodies, recipients,
+> provider credentials, or tenant content. Email delivery state remains owned by
+> the EmailDispatch admin API, not the scheduler.
+
 ### Support Access
 
 Admin support access is off by default (`support_access.enabled=false`). Enable it only after operational approval, audit retention, and tenant trust communication are ready. Keep `support_access.allow_write_mode=false` unless you have an explicit break-glass approval process.

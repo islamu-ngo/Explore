@@ -1,4 +1,4 @@
-// ABOUTME: Handler for the canonical single-submit Create Event graph command.
+// ABOUTME: Handler for the canonical single-submit CreateEventDto graph command.
 // ABOUTME: Validates, resolves publisher ownership, persists event graph atomically, and creates initial EventOwner role assignment.
 
 using System;
@@ -186,7 +186,7 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
     public async Task<BaseCommandResponse<Guid>> Handle(CreateEventCommand request, CancellationToken cancellationToken)
     {
         var response = new BaseCommandResponse<Guid>();
-        var dto = request.Request;
+        var dto = request.EventDto;
         var currentUserId = _userContext.GetRequiredUserId();
 
         var validationErrors = await ValidateRequestAsync(dto, cancellationToken);
@@ -307,9 +307,9 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
         return response;
     }
 
-    private async Task<List<string>> ValidateRequestAsync(CreateEventRequest request, CancellationToken cancellationToken)
+    private async Task<List<string>> ValidateRequestAsync(CreateEventDto request, CancellationToken cancellationToken)
     {
-        var validator = new CreateEventRequestValidator(
+        var validator = new CreateEventDtoValidator(
             _audienceAgeRepository,
             _audienceGenderRepository,
             _eventTypeRepository,
@@ -335,11 +335,11 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
         return validationResult.Errors.Select(e => e.ErrorMessage).ToList();
     }
 
-    private Task<EventActorResult> ResolvePublisherActorAsync(CreateEventRequest request, Guid currentUserId, CancellationToken cancellationToken) =>
+    private Task<EventActorResult> ResolvePublisherActorAsync(CreateEventDto request, Guid currentUserId, CancellationToken cancellationToken) =>
         _actorResolver.ResolveAsync(currentUserId, request.OrganizationId, request.GroupId, cancellationToken);
 
     private Event BuildEventEntity(
-        CreateEventRequest dto,
+        CreateEventDto dto,
         EventActorResult actorResult,
         string timezoneId,
         Guid currentUserId,
@@ -419,7 +419,7 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
 
     private static string GeneratePublicCode() => Guid.CreateVersion7().ToString("N")[..12];
 
-    private async Task AssignFeaturedImageActorAsync(CreateEventRequest dto, Guid actorId)
+    private async Task AssignFeaturedImageActorAsync(CreateEventDto dto, Guid actorId)
     {
         if (!dto.FeaturedImageId.HasValue) return;
 
@@ -430,7 +430,7 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
         await _storageObjectRepository.Update(storageObject);
     }
 
-    private async Task CreateEventIslamicAspectAsync(CreateEventRequest dto, Event eventEntity, CancellationToken ct)
+    private async Task CreateEventIslamicAspectAsync(CreateEventDto dto, Event eventEntity, CancellationToken ct)
     {
         if (dto.IslamicAspect is null) return;
 
@@ -473,7 +473,7 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
     }
 
     private async Task<(Dictionary<string, EventDay> ByKey, Dictionary<DateOnly, EventDay> ByDate)> CreateEventDaysAsync(
-        CreateEventRequest dto,
+        CreateEventDto dto,
         Event eventEntity,
         string timezoneId,
         CancellationToken ct)
@@ -532,7 +532,7 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
         return (byKey, byDate);
     }
 
-    private async Task<Dictionary<string, Location>> CreateLocationsAsync(CreateEventRequest dto, CancellationToken ct)
+    private async Task<Dictionary<string, Location>> CreateLocationsAsync(CreateEventDto dto, CancellationToken ct)
     {
         var byKey = new Dictionary<string, Location>(StringComparer.OrdinalIgnoreCase);
 
@@ -563,7 +563,7 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
     }
 
     private async Task<Dictionary<string, LocationRoom>> CreateRoomsAsync(
-        CreateEventRequest dto,
+        CreateEventDto dto,
         IReadOnlyDictionary<string, Location> locationMap,
         CancellationToken ct)
     {
@@ -595,7 +595,7 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
     }
 
     private async Task CreateSessionsAsync(
-        CreateEventRequest dto,
+        CreateEventDto dto,
         Event eventEntity,
         IReadOnlyDictionary<string, Location> locationMap,
         (Dictionary<string, EventDay> ByKey, Dictionary<DateOnly, EventDay> ByDate) dayMaps,
@@ -663,7 +663,7 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
     }
 
     private async Task CreateDefaultSessionAsync(
-        CreateEventRequest dto,
+        CreateEventDto dto,
         Event eventEntity,
         IReadOnlyDictionary<string, Location> locationMap,
         IReadOnlyDictionary<string, LocationRoom> roomMap,
@@ -720,7 +720,7 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
         return await _eventSessionRepository.Create(session);
     }
 
-    private async Task CreateSessionAspectsAsync(CreateEventSessionRequest sessionDto, EventSession session, CancellationToken ct)
+    private async Task CreateSessionAspectsAsync(CreateEventGraphSessionDto sessionDto, EventSession session, CancellationToken ct)
     {
         if (sessionDto.IslamicAspect is null) return;
 
@@ -743,7 +743,7 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
         await _eventSessionIslamicAspectRepository.Create(aspect);
     }
 
-    private async Task CreateSessionLanguagesAsync(CreateEventSessionRequest sessionDto, EventSession session, CancellationToken ct)
+    private async Task CreateSessionLanguagesAsync(CreateEventGraphSessionDto sessionDto, EventSession session, CancellationToken ct)
     {
         foreach (var languageId in sessionDto.LanguageIds.Distinct())
         {
@@ -759,7 +759,7 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
         }
     }
 
-    private async Task CreateSessionSpeakersAsync(CreateEventSessionRequest sessionDto, EventSession session, CancellationToken ct)
+    private async Task CreateSessionSpeakersAsync(CreateEventGraphSessionDto sessionDto, EventSession session, CancellationToken ct)
     {
         foreach (var actorId in sessionDto.SpeakerActorIds.Distinct())
         {
@@ -776,7 +776,7 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
     }
 
     private async Task CreateEventAgendaItemsAsync(
-        CreateEventRequest dto,
+        CreateEventDto dto,
         Event eventEntity,
         IReadOnlyDictionary<string, Location> locationMap,
         (Dictionary<string, EventDay> ByKey, Dictionary<DateOnly, EventDay> ByDate) dayMaps,
@@ -813,7 +813,7 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
         }
     }
 
-    private async Task CreateCategoryAndTagAssignmentsAsync(CreateEventRequest dto, Event eventEntity, CancellationToken ct)
+    private async Task CreateCategoryAndTagAssignmentsAsync(CreateEventDto dto, Event eventEntity, CancellationToken ct)
     {
         foreach (var categoryId in dto.CategoryIds.Distinct())
         {
@@ -842,7 +842,7 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
         }
     }
 
-    private async Task InstantiateTemplatePropertiesAsync(CreateEventRequest dto, Event eventEntity, Guid currentUserId, DateTimeOffset createdAt, CancellationToken ct)
+    private async Task InstantiateTemplatePropertiesAsync(CreateEventDto dto, Event eventEntity, Guid currentUserId, DateTimeOffset createdAt, CancellationToken ct)
     {
         if (!dto.TemplateId.HasValue) return;
 
@@ -878,7 +878,7 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
     }
 
     private async Task InstantiateSessionTemplatePropertiesAsync(
-        CreateEventSessionRequest dto,
+        CreateEventGraphSessionDto dto,
         EventSession session,
         Guid currentUserId,
         DateTimeOffset createdAt,
@@ -931,7 +931,7 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
     }
 
     private static Guid? ResolveDefaultRoomId(
-        CreateEventRequest dto,
+        CreateEventDto dto,
         IReadOnlyDictionary<string, LocationRoom> roomMap)
     {
         var roomRequest = dto.Rooms
@@ -944,7 +944,7 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
     }
 
     private static Guid? ResolveDefaultLocationId(
-        CreateEventRequest dto,
+        CreateEventDto dto,
         IReadOnlyDictionary<string, Location> locationMap,
         IReadOnlyDictionary<string, LocationRoom> roomMap,
         Guid? roomId)
@@ -1006,7 +1006,7 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
         return dayMaps.ByDate.TryGetValue(localDate, out var dateDay) ? dateDay.Id : null;
     }
 
-    private static string ResolveTimezoneId(CreateEventRequest dto) =>
+    private static string ResolveTimezoneId(CreateEventDto dto) =>
         ScheduleTimeZoneResolver.NormalizeOrUtc(
             !string.IsNullOrWhiteSpace(dto.EventTimeZoneId)
                 ? dto.EventTimeZoneId

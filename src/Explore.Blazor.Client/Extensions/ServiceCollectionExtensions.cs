@@ -29,7 +29,9 @@ using Explore.Blazor.Client.Services.EventSessionTemplateSync;
 using Explore.Blazor.Client.Services.EventTemplateSync;
 using Explore.Blazor.Client.Services.Http;
 using Explore.Blazor.Client.Services.Interop;
+using Explore.Blazor.Client.Contracts.Services.Scheduling;
 using Explore.Blazor.Client.Services.Lookup;
+using Explore.Blazor.Client.Services.Scheduling;
 using Explore.Blazor.Client.Services.Shell;
 using Explore.Blazor.Client.Services.Webhooks;
 using Microsoft.Extensions.DependencyInjection;
@@ -58,6 +60,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IControlPlaneOperationsService>(provider => provider.GetRequiredService<ExploreControlPlaneApiAdapter>());
         services.AddScoped<IControlPlanePlanCatalogService>(provider => provider.GetRequiredService<ExploreControlPlaneApiAdapter>());
         services.AddScoped<IControlPlaneTenantConfigurationService>(provider => provider.GetRequiredService<ExploreControlPlaneApiAdapter>());
+        services.AddScoped<ISchedulerAdminService, SchedulerAdminApiAdapter>();
         services.AddScoped<IExternalApiKeyService, ExternalApiKeyService>();
         services.AddScoped<IWebhookManagementService, WebhookManagementService>();
         services.AddScoped<IWebhookOperationsService, WebhookOperationsService>();

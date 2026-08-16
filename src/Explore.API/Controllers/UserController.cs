@@ -2,6 +2,7 @@
 // ABOUTME: Manages user account data, profile updates, and user-specific settings.
 
 using System.Security.Claims;
+using Explore.Application.Authentication;
 using Asp.Versioning;
 using Explore.API.Attributes;
 using Explore.API.ExceptionHandling;
@@ -60,31 +61,20 @@ public class UserController : ExploreControllerBase
     [EndpointDescription("Creates or updates the user in the local database and ensures external provider linkage. Also creates the user's personal Actor if new user. Call this after login/registration.")]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> SyncUser(CancellationToken cancellationToken = default)
     {
-        var providerSubject = User.FindFirst("sub")?.Value
-                             ?? User.FindFirst(ClaimTypes.NameIdentifier)?.Value
-                             ?? User.FindFirst("sid")?.Value;
-
-        if (string.IsNullOrWhiteSpace(providerSubject))
+        var providerIdentity = User.GetProviderIdentity();
+        if (providerIdentity is null)
         {
             return this.ToAuthenticationRequiredProblem(
                 detail: "Could not resolve provider identity from authentication token.");
         }
 
-        var email = User.FindFirst("email")?.Value
-                    ?? User.FindFirst(ClaimTypes.Email)?.Value
-                    ?? string.Empty;
-
-        var firstName = User.FindFirst("given_name")?.Value
-                        ?? User.FindFirst(ClaimTypes.GivenName)?.Value
-                        ?? string.Empty;
-
-        var lastName = User.FindFirst("family_name")?.Value
-                       ?? User.FindFirst(ClaimTypes.Surname)?.Value
-                       ?? string.Empty;
-
-        var provider = ResolveAuthProvider();
-        var providerId = ResolveProviderId(providerSubject, provider);
-        var emailVerified = ResolveEmailVerified(provider, email);
+        var providerSubject = providerIdentity.Subject;
+        var email = providerIdentity.Email;
+        var firstName = User.GetFirstName() ?? string.Empty;
+        var lastName = User.GetLastName() ?? string.Empty;
+        var provider = providerIdentity.Provider;
+        var providerId = providerIdentity.ProviderId;
+        var emailVerified = providerIdentity.EmailVerified;
 
         var userIdGuid = Guid.TryParse(providerSubject, out var parsedGuid)
             ? parsedGuid
@@ -118,7 +108,7 @@ public class UserController : ExploreControllerBase
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<HalResource<UserDto>>> GetCurrentUser(CancellationToken cancellationToken = default)
     {
-        var currentUserId = await ResolveCurrentUserIdAsync(cancellationToken);
+        var currentUserId = await _mediator.ResolveCurrentUserIdAsync(User, cancellationToken);
         if (!currentUserId.HasValue)
         {
             return this.ToAuthenticationRequiredProblem();
@@ -144,7 +134,7 @@ public class UserController : ExploreControllerBase
     [EndpointDescription("Returns instance, tenant, organization, and group admin status for the authenticated user. Consumed by BFF and route authorization.")]
     public async Task<ActionResult<AdminAuthorityDto>> GetAdminAuthority(CancellationToken cancellationToken = default)
     {
-        var currentUserId = await ResolveCurrentUserIdAsync(cancellationToken);
+        var currentUserId = await _mediator.ResolveCurrentUserIdAsync(User, cancellationToken);
         if (!currentUserId.HasValue)
         {
             return this.ToAuthenticationRequiredProblem(
@@ -167,7 +157,7 @@ public class UserController : ExploreControllerBase
     [ProducesResponseType(typeof(UserTenantRedirectionDto), StatusCodes.Status200OK)]
     public async Task<ActionResult<UserTenantRedirectionDto>> ResolveTenantRedirection(CancellationToken cancellationToken = default)
     {
-        var currentUserId = await ResolveCurrentUserIdAsync(cancellationToken);
+        var currentUserId = await _mediator.ResolveCurrentUserIdAsync(User, cancellationToken);
         if (!currentUserId.HasValue)
         {
             return this.ToAuthenticationRequiredProblem();
@@ -189,7 +179,7 @@ public class UserController : ExploreControllerBase
     [ProducesResponseType(typeof(bool), StatusCodes.Status200OK)]
     public async Task<ActionResult<bool>> UpdateLastActiveTenant(Guid tenantId, CancellationToken cancellationToken = default)
     {
-        var currentUserId = await ResolveCurrentUserIdAsync(cancellationToken);
+        var currentUserId = await _mediator.ResolveCurrentUserIdAsync(User, cancellationToken);
         if (!currentUserId.HasValue)
         {
             return this.ToAuthenticationRequiredProblem();
@@ -218,7 +208,7 @@ public class UserController : ExploreControllerBase
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     public async Task<ActionResult<List<OrganizationListDto>>> GetUserOrganizations(Guid userId, CancellationToken cancellationToken = default)
     {
-        var currentUserId = await ResolveCurrentUserIdAsync(cancellationToken);
+        var currentUserId = await _mediator.ResolveCurrentUserIdAsync(User, cancellationToken);
         if (!currentUserId.HasValue)
         {
             return this.ToAuthenticationRequiredProblem();
@@ -244,7 +234,7 @@ public class UserController : ExploreControllerBase
         [FromHeader(Name = "If-Match")] string? ifMatch,
         CancellationToken cancellationToken = default)
     {
-        var currentUserId = await ResolveCurrentUserIdAsync(cancellationToken);
+        var currentUserId = await _mediator.ResolveCurrentUserIdAsync(User, cancellationToken);
         if (!currentUserId.HasValue)
         {
             return this.ToAuthenticationRequiredProblem();
@@ -289,7 +279,7 @@ public class UserController : ExploreControllerBase
         [FromHeader(Name = "Idempotency-Key")] string? idempotencyKey,
         CancellationToken cancellationToken = default)
     {
-        var currentUserId = await ResolveCurrentUserIdAsync(cancellationToken);
+        var currentUserId = await _mediator.ResolveCurrentUserIdAsync(User, cancellationToken);
         if (!currentUserId.HasValue)
         {
             return this.ToAuthenticationRequiredProblem();
@@ -308,11 +298,6 @@ public class UserController : ExploreControllerBase
         Response.Headers.CacheControl = "private, no-store";
         Response.Headers.RetryAfter = "5";
         return AcceptedAtRoute(RouteNames.GetPrivacyErasureStatus, routeValues: null, value: result);
-    }
-
-    private async Task<Guid?> ResolveCurrentUserIdAsync(CancellationToken cancellationToken)
-    {
-        return await base.ResolveCurrentUserIdAsync(_mediator, cancellationToken);
     }
 
 }

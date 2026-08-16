@@ -40,13 +40,11 @@ public static class ApiAuthenticationPrincipalExtensions
         return new ApiKeyPrincipalContext(keyId, tenantId, ownerType, ownerId, scopes);
     }
 
-    public static Guid? GetAuthenticatedUserId(this ClaimsPrincipal principal)
-    {
-        var candidate = principal.FindFirst("sub")?.Value
-                        ?? principal.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-
-        return Guid.TryParse(candidate, out var parsed) ? parsed : null;
-    }
+    /// <summary>
+    /// Delegates to <see cref="PlatformIdentityPrincipalExtensions.GetPlatformUserId"/> so diagnostics report
+    /// the same identity the platform actually authorizes against, rather than a shorter private chain.
+    /// </summary>
+    public static Guid? GetAuthenticatedUserId(this ClaimsPrincipal principal) => principal.GetPlatformUserId();
 
     public static string? GetAuthenticationMethod(this ClaimsPrincipal principal)
     {

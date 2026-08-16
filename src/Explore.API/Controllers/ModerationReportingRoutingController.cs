@@ -5,6 +5,7 @@ using Asp.Versioning;
 using Explore.API.Attributes;
 using Explore.API.ExceptionHandling;
 using Explore.API.Hateoas;
+using Explore.Application.Authentication;
 using Explore.Application.Contracts.Hateoas;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.DTOs.EventReporting;
@@ -70,7 +71,7 @@ public sealed class ModerationReportingRoutingController(
         [FromBody] UpdateReportingRoutingSettingsDto settings,
         CancellationToken cancellationToken = default)
     {
-        var userId = await ResolveCurrentUserIdAsync(mediator, cancellationToken);
+        var userId = await mediator.ResolveCurrentUserIdAsync(User, cancellationToken);
         if (!userId.HasValue)
         {
             return this.ToAuthenticationRequiredProblem(
@@ -106,7 +107,7 @@ public sealed class ModerationReportingRoutingController(
         [FromRoute] EventReportExternalProvider provider,
         CancellationToken cancellationToken = default)
     {
-        var userId = await ResolveCurrentUserIdAsync(mediator, cancellationToken);
+        var userId = await mediator.ResolveCurrentUserIdAsync(User, cancellationToken);
         if (!userId.HasValue)
         {
             return this.ToAuthenticationRequiredProblem(

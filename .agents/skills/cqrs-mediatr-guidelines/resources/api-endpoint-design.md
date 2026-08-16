@@ -32,7 +32,13 @@ Use route constraints for clarity (`{id:guid}`) where applicable.
 - Unauthorized: `403 Forbidden`
 - Missing resource: `404 NotFound`
 
+**Every failure body is RFC 7807 ProblemDetails.** Never return the command response itself on failure — a
+caller would have to know which endpoint it hit before it could parse an error. Success returns the envelope;
+failure returns a problem.
+
 ## Controller Pattern
+
+A command whose failure codes map to a single status uses the generic mapper:
 
 ```csharp
 [HttpPost]
@@ -41,17 +47,33 @@ public async Task<ActionResult<BaseCommandResponse<Guid>>> Create(
     [FromBody] CreateEntityDto dto,
     CancellationToken cancellationToken)
 {
-    var response = await _mediator.Send(new CreateEntityCommand { EntityDto = dto }, cancellationToken);
+    var response = await mediator.Send(new CreateEntityCommand { EntityDto = dto }, cancellationToken);
 
     if (!response.Success)
-        return BadRequest(response);
+        return this.MapCommandResponse(response);   // ProblemDetails, status from FailureCode
 
-    return CreatedAtRoute(
-        RouteNames.GetEntityById,
-        new { id = response.Id },
-        response);
+    return CreatedAtRoute(RouteNames.GetEntityById, new { id = response.Id }, response);
 }
 ```
+
+A command with a richer failure vocabulary declares a `CommandFailurePolicy` instead of an `if`/`switch` chain,
+so the mapping is a named, reusable, declaration-ordered value rather than per-endpoint branching:
+
+```csharp
+private static readonly ApiNotFoundProblemDescriptor PromotionNotFoundProblem = new(
+    "Promotion not found",
+    "Promotion was not found.");
+
+private static readonly CommandFailurePolicy PromotionManagementFailures = CommandFailurePolicy
+    .ValidatedBy(PromotionValidationProblem)
+    .NotFound(PromotionNotFoundProblem, PromotionManagementNotFound);
+```
+
+Rules are evaluated in declaration order, and a policy composes: a stricter variant is built from a base policy
+rather than copied (`GuestStartFailures = OrderLifecycleFailures.AuthenticationRequired(...)`).
+
+See `docs/API.md` § "Handler-Generated Failures" for which of the two to reach for. Do not hand-roll a private
+failure-to-status mapper — `ApiLiabilityRatchetTests` holds those to a named allowlist.
 
 ## Handler Pattern Boundary
 

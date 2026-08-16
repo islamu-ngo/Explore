@@ -1221,7 +1221,7 @@ public partial class CreateEvent : IDisposable
 
     private bool ApplyInlineSessionForIntent(CreateEventSubmitIntent intent)
     {
-        createDto.Sessions = new List<CreateEventSessionRequest>();
+        createDto.Sessions = new List<CreateEventGraphSessionDto>();
 
         if (intent != CreateEventSubmitIntent.ReviewAndPublish)
         {
@@ -1253,7 +1253,7 @@ public partial class CreateEvent : IDisposable
             return false;
         }
 
-        createDto.Sessions = new List<CreateEventSessionRequest>
+        createDto.Sessions = new List<CreateEventGraphSessionDto>
         {
             new()
             {
@@ -1366,11 +1366,11 @@ public partial class CreateEvent : IDisposable
         createDto.Slug = string.IsNullOrWhiteSpace(createDto.Slug) ? null : createDto.Slug.Trim();
         createDto.CategoryIds = selectedCategoryIds.ToList();
         createDto.TagIds = selectedTagIds.ToList();
-        createDto.Locations ??= new List<CreateEventLocationRequest>();
-        createDto.Sessions ??= new List<CreateEventSessionRequest>();
-        createDto.Days ??= new List<CreateEventDayRequest>();
-        createDto.Rooms ??= new List<CreateEventRoomRequest>();
-        createDto.AgendaItems ??= new List<CreateEventAgendaItemRequest>();
+        createDto.Locations ??= new List<CreateEventLocationDto>();
+        createDto.Sessions ??= new List<CreateEventGraphSessionDto>();
+        createDto.Days ??= new List<CreateEventGraphDayDto>();
+        createDto.Rooms ??= new List<CreateEventRoomDto>();
+        createDto.AgendaItems ??= new List<CreateEventGraphAgendaItemDto>();
 
     }
 }

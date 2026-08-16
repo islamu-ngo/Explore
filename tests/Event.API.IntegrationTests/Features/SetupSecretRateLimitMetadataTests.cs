@@ -209,17 +209,17 @@ public sealed class SetupSecretRateLimitMetadataTests
 
     private static IReadOnlyList<MethodInfo> CanonicalProviderPatchActions() =>
     [
-        typeof(InstanceSettingsController).GetMethod(nameof(InstanceSettingsController.UpdateAuthProviderConfiguration))
+        typeof(InstanceAuthenticationSettingsController).GetMethod(nameof(InstanceAuthenticationSettingsController.UpdateAuthProviderConfiguration))
             ?? throw new InvalidOperationException("The auth-provider PATCH action is missing."),
-        typeof(InstanceSettingsController).GetMethod(nameof(InstanceSettingsController.UpdateAuthorizationProviderConfiguration))
+        typeof(InstanceAuthorizationSettingsController).GetMethod(nameof(InstanceAuthorizationSettingsController.UpdateAuthorizationProviderConfiguration))
             ?? throw new InvalidOperationException("The authz-provider PATCH action is missing.")
     ];
 
     private static IReadOnlyList<MethodInfo> CanonicalProviderGetActions() =>
     [
-        typeof(InstanceSettingsController).GetMethod(nameof(InstanceSettingsController.GetAuthProviderConfiguration))
+        typeof(InstanceAuthenticationSettingsController).GetMethod(nameof(InstanceAuthenticationSettingsController.GetAuthProviderConfiguration))
             ?? throw new InvalidOperationException("The auth-provider GET action is missing."),
-        typeof(InstanceSettingsController).GetMethod(nameof(InstanceSettingsController.GetAuthorizationProviderConfiguration))
+        typeof(InstanceAuthorizationSettingsController).GetMethod(nameof(InstanceAuthorizationSettingsController.GetAuthorizationProviderConfiguration))
             ?? throw new InvalidOperationException("The authz-provider GET action is missing.")
     ];
 

@@ -47,7 +47,7 @@ public sealed class CreateEventDraftAiActionMapperTests
         await Assert.That(result.Draft.CategoryIds).IsEquivalentTo([categoryId]);
         await Assert.That(result.Draft.TagIds).IsEquivalentTo([tagId]);
 
-        var createRequest = result.Draft.ToCreateEventRequest();
+        var createRequest = result.Draft.ToCreateEventDto();
         await Assert.That(createRequest.EventStatusId).IsEqualTo(1);
         await Assert.That(createRequest.Sessions).IsEmpty();
         await Assert.That(createRequest.Days).IsEmpty();

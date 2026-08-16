@@ -275,11 +275,8 @@ public sealed class AtprotoEventDiscoveryApiTests
     {
         var controller = new EventController(
             mediator,
-            Substitute.For<ILogger<EventController>>(),
             Substitute.For<IResourceAssembler<EventDto, EventListDto>>(),
-            discoveryAssembler,
-            new IcalNetEventCalendarFileBuilder(),
-            Substitute.For<IPublicUrlBuilder>())
+            discoveryAssembler)
         {
             ControllerContext = new ControllerContext
             {

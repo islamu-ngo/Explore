@@ -38,35 +38,35 @@ public sealed class RegistrationOrderControllerTests
     [Test]
     public async Task GuestRoutes_UseCapabilityScopedPublicTransactionalContracts()
     {
-        var controller = typeof(RegistrationOrderController);
+        var controller = typeof(GuestRegistrationOrderController);
 
-        await AssertRoute<RegistrationOrderController, HttpPostAttribute>(
-            nameof(RegistrationOrderController.StartGuest), "guest", RouteNames.StartGuestRegistrationOrder,
+        await AssertRoute<GuestRegistrationOrderController, HttpPostAttribute>(
+            nameof(GuestRegistrationOrderController.StartGuest), "guest", RouteNames.StartGuestRegistrationOrder,
             EndpointClass.PublicTransactional, requiresIdempotency: true);
-        await AssertRoute<RegistrationOrderController, HttpGetAttribute>(
-            nameof(RegistrationOrderController.GetGuest), "guest/{orderId:guid}", RouteNames.GetGuestRegistrationOrder,
+        await AssertRoute<GuestRegistrationOrderController, HttpGetAttribute>(
+            nameof(GuestRegistrationOrderController.GetGuest), "guest/{orderId:guid}", RouteNames.GetGuestRegistrationOrder,
             EndpointClass.Public, requiresIdempotency: false);
-        await AssertRoute<RegistrationOrderController, HttpPostAttribute>(
-            nameof(RegistrationOrderController.ContinueGuest), "guest/{orderId:guid}/continue", RouteNames.ContinueGuestRegistrationOrder,
+        await AssertRoute<GuestRegistrationOrderController, HttpPostAttribute>(
+            nameof(GuestRegistrationOrderController.ContinueGuest), "guest/{orderId:guid}/continue", RouteNames.ContinueGuestRegistrationOrder,
             EndpointClass.PublicTransactional, requiresIdempotency: true);
-        await AssertRoute<RegistrationOrderController, HttpPostAttribute>(
-            nameof(RegistrationOrderController.ApplyGuestPromotion), "guest/{orderId:guid}/promotion", RouteNames.ApplyGuestRegistrationOrderPromotion,
+        await AssertRoute<GuestRegistrationOrderController, HttpPostAttribute>(
+            nameof(GuestRegistrationOrderController.ApplyGuestPromotion), "guest/{orderId:guid}/promotion", RouteNames.ApplyGuestRegistrationOrderPromotion,
             EndpointClass.PublicTransactional, requiresIdempotency: true);
-        await AssertRoute<RegistrationOrderController, HttpDeleteAttribute>(
-            nameof(RegistrationOrderController.RemoveGuestPromotion), "guest/{orderId:guid}/promotion", RouteNames.RemoveGuestRegistrationOrderPromotion,
+        await AssertRoute<GuestRegistrationOrderController, HttpDeleteAttribute>(
+            nameof(GuestRegistrationOrderController.RemoveGuestPromotion), "guest/{orderId:guid}/promotion", RouteNames.RemoveGuestRegistrationOrderPromotion,
             EndpointClass.PublicTransactional, requiresIdempotency: true);
-        await AssertRoute<RegistrationOrderController, HttpPostAttribute>(
-            nameof(RegistrationOrderController.FinalizeGuest), "guest/{orderId:guid}/finalize", RouteNames.FinalizeGuestRegistrationOrder,
+        await AssertRoute<GuestRegistrationOrderController, HttpPostAttribute>(
+            nameof(GuestRegistrationOrderController.FinalizeGuest), "guest/{orderId:guid}/finalize", RouteNames.FinalizeGuestRegistrationOrder,
             EndpointClass.PublicTransactional, requiresIdempotency: true);
-        await AssertRoute<RegistrationOrderController, HttpDeleteAttribute>(
-            nameof(RegistrationOrderController.CancelGuest), "guest/{orderId:guid}", RouteNames.CancelGuestRegistrationOrder,
+        await AssertRoute<GuestRegistrationOrderController, HttpDeleteAttribute>(
+            nameof(GuestRegistrationOrderController.CancelGuest), "guest/{orderId:guid}", RouteNames.CancelGuestRegistrationOrder,
             EndpointClass.PublicTransactional, requiresIdempotency: true);
 
-        await AssertRoute<RegistrationOrderController, HttpPostAttribute>(
-            nameof(RegistrationOrderController.ClaimGuest), "guest/{orderId:guid}/claim", RouteNames.ClaimGuestRegistrationOrder,
+        await AssertRoute<GuestRegistrationOrderController, HttpPostAttribute>(
+            nameof(GuestRegistrationOrderController.ClaimGuest), "guest/{orderId:guid}/claim", RouteNames.ClaimGuestRegistrationOrder,
             EndpointClass.Authenticated, requiresIdempotency: true);
 
-        MethodInfo guestRead = controller.GetMethod(nameof(RegistrationOrderController.GetGuest))!;
+        MethodInfo guestRead = controller.GetMethod(nameof(GuestRegistrationOrderController.GetGuest))!;
         await Assert.That(guestRead.GetCustomAttribute<PrivateNoStoreAttribute>()).IsNotNull();
         ParameterInfo capability = guestRead.GetParameters()
             .Single(parameter => parameter.GetCustomAttribute<FromHeaderAttribute>()?.Name == CapabilityHeader);
@@ -76,32 +76,32 @@ public sealed class RegistrationOrderControllerTests
     [Test]
     public async Task AuthenticatedRoutes_UseCurrentAccountContracts()
     {
-        await AssertRoute<RegistrationOrderController, HttpPostAttribute>(
-            nameof(RegistrationOrderController.StartAuthenticated), string.Empty, RouteNames.StartAuthenticatedRegistrationOrder,
+        await AssertRoute<AuthenticatedRegistrationOrderController, HttpPostAttribute>(
+            nameof(AuthenticatedRegistrationOrderController.StartAuthenticated), string.Empty, RouteNames.StartAuthenticatedRegistrationOrder,
             EndpointClass.Authenticated, requiresIdempotency: false);
-        await AssertRoute<RegistrationOrderController, HttpGetAttribute>(
-            nameof(RegistrationOrderController.GetCurrent), "{orderId:guid}", RouteNames.GetCurrentRegistrationOrder,
+        await AssertRoute<AuthenticatedRegistrationOrderController, HttpGetAttribute>(
+            nameof(AuthenticatedRegistrationOrderController.GetCurrent), "{orderId:guid}", RouteNames.GetCurrentRegistrationOrder,
             EndpointClass.Authenticated, requiresIdempotency: false);
-        await AssertRoute<RegistrationOrderController, HttpPostAttribute>(
-            nameof(RegistrationOrderController.ContinueAuthenticated), "{orderId:guid}/continue", RouteNames.ContinueAuthenticatedRegistrationOrder,
+        await AssertRoute<AuthenticatedRegistrationOrderController, HttpPostAttribute>(
+            nameof(AuthenticatedRegistrationOrderController.ContinueAuthenticated), "{orderId:guid}/continue", RouteNames.ContinueAuthenticatedRegistrationOrder,
             EndpointClass.Authenticated, requiresIdempotency: false);
-        await AssertRoute<RegistrationOrderController, HttpPostAttribute>(
-            nameof(RegistrationOrderController.ApplyAuthenticatedPromotion), "{orderId:guid}/promotion", RouteNames.ApplyAuthenticatedRegistrationOrderPromotion,
+        await AssertRoute<AuthenticatedRegistrationOrderController, HttpPostAttribute>(
+            nameof(AuthenticatedRegistrationOrderController.ApplyAuthenticatedPromotion), "{orderId:guid}/promotion", RouteNames.ApplyAuthenticatedRegistrationOrderPromotion,
             EndpointClass.Authenticated, requiresIdempotency: true);
-        await AssertRoute<RegistrationOrderController, HttpDeleteAttribute>(
-            nameof(RegistrationOrderController.RemoveAuthenticatedPromotion), "{orderId:guid}/promotion", RouteNames.RemoveAuthenticatedRegistrationOrderPromotion,
+        await AssertRoute<AuthenticatedRegistrationOrderController, HttpDeleteAttribute>(
+            nameof(AuthenticatedRegistrationOrderController.RemoveAuthenticatedPromotion), "{orderId:guid}/promotion", RouteNames.RemoveAuthenticatedRegistrationOrderPromotion,
             EndpointClass.Authenticated, requiresIdempotency: true);
-        await AssertRoute<RegistrationOrderController, HttpPostAttribute>(
-            nameof(RegistrationOrderController.FinalizeAuthenticated), "{orderId:guid}/finalize", RouteNames.FinalizeAuthenticatedRegistrationOrder,
+        await AssertRoute<AuthenticatedRegistrationOrderController, HttpPostAttribute>(
+            nameof(AuthenticatedRegistrationOrderController.FinalizeAuthenticated), "{orderId:guid}/finalize", RouteNames.FinalizeAuthenticatedRegistrationOrder,
             EndpointClass.Authenticated, requiresIdempotency: false);
-        await AssertRoute<RegistrationOrderController, HttpDeleteAttribute>(
-            nameof(RegistrationOrderController.CancelAuthenticated), "{orderId:guid}", RouteNames.CancelAuthenticatedRegistrationOrder,
+        await AssertRoute<AuthenticatedRegistrationOrderController, HttpDeleteAttribute>(
+            nameof(AuthenticatedRegistrationOrderController.CancelAuthenticated), "{orderId:guid}", RouteNames.CancelAuthenticatedRegistrationOrder,
             EndpointClass.Authenticated, requiresIdempotency: false);
-        await AssertRoute<RegistrationOrderController, HttpGetAttribute>(
-            nameof(RegistrationOrderController.GetAuthenticatedParticipants), "{orderId:guid}/participants", RouteNames.GetAuthenticatedRegistrationOrderParticipants,
+        await AssertRoute<AuthenticatedRegistrationOrderController, HttpGetAttribute>(
+            nameof(AuthenticatedRegistrationOrderController.GetAuthenticatedParticipants), "{orderId:guid}/participants", RouteNames.GetAuthenticatedRegistrationOrderParticipants,
             EndpointClass.Authenticated, requiresIdempotency: false);
-        await AssertRoute<RegistrationOrderController, HttpPostAttribute>(
-            nameof(RegistrationOrderController.AddAuthenticatedParticipant), "{orderId:guid}/participants", RouteNames.AddAuthenticatedRegistrationOrderParticipant,
+        await AssertRoute<AuthenticatedRegistrationOrderController, HttpPostAttribute>(
+            nameof(AuthenticatedRegistrationOrderController.AddAuthenticatedParticipant), "{orderId:guid}/participants", RouteNames.AddAuthenticatedRegistrationOrderParticipant,
             EndpointClass.Authenticated, requiresIdempotency: true);
     }
 
@@ -135,7 +135,7 @@ public sealed class RegistrationOrderControllerTests
                 Guid.CreateVersion7(), requirementId, channelId, bindingId, formId, versionId, "redirect", true,
                 "https://forms.example.test/start", "Provider registration", true, "manual", "ok", [],
                 new NativeRegistrationRequirementProgressDto(0, 0, 0, 0, false))));
-        var controller = CreateController(mediator);
+        var controller = CreateController<AuthenticatedRegistrationOrderController>(mediator);
 
         await controller.LaunchAuthenticatedNativeAttempt(eventId, orderId, "idem", new LaunchNativeRegistrationAttemptRequest(
             requirementId, channelId, formId, versionId, null, oldAttemptId));
@@ -151,14 +151,14 @@ public sealed class RegistrationOrderControllerTests
     [Test]
     public async Task GuestParticipantRoutes_KeepCapabilityInHeaderAndWritesTransactional()
     {
-        await AssertRoute<RegistrationOrderController, HttpGetAttribute>(
-            nameof(RegistrationOrderController.GetGuestParticipants), "guest/{orderId:guid}/participants", RouteNames.GetGuestRegistrationOrderParticipants,
+        await AssertRoute<GuestRegistrationOrderController, HttpGetAttribute>(
+            nameof(GuestRegistrationOrderController.GetGuestParticipants), "guest/{orderId:guid}/participants", RouteNames.GetGuestRegistrationOrderParticipants,
             EndpointClass.Public, requiresIdempotency: false);
-        await AssertRoute<RegistrationOrderController, HttpPostAttribute>(
-            nameof(RegistrationOrderController.AddGuestParticipant), "guest/{orderId:guid}/participants", RouteNames.AddGuestRegistrationOrderParticipant,
+        await AssertRoute<GuestRegistrationOrderController, HttpPostAttribute>(
+            nameof(GuestRegistrationOrderController.AddGuestParticipant), "guest/{orderId:guid}/participants", RouteNames.AddGuestRegistrationOrderParticipant,
             EndpointClass.PublicTransactional, requiresIdempotency: true);
 
-        MethodInfo read = typeof(RegistrationOrderController).GetMethod(nameof(RegistrationOrderController.GetGuestParticipants))!;
+        MethodInfo read = typeof(GuestRegistrationOrderController).GetMethod(nameof(GuestRegistrationOrderController.GetGuestParticipants))!;
         ParameterInfo capability = read.GetParameters()
             .Single(parameter => parameter.GetCustomAttribute<FromHeaderAttribute>()?.Name == CapabilityHeader);
         await Assert.That(capability.ParameterType).IsEqualTo(typeof(string));
@@ -199,7 +199,7 @@ public sealed class RegistrationOrderControllerTests
                 Arg.Any<object?>(),
                 Arg.Any<HttpContext>())
             .Returns(collection);
-        var controller = CreateController(mediator, assembler);
+        var controller = CreateController<RegistrationOrderController>(mediator, assembler);
 
         ActionResult<HalCollectionResource<RegistrationOrderDto>> result = await controller.GetEventOrders(eventId);
 
@@ -214,12 +214,12 @@ public sealed class RegistrationOrderControllerTests
     {
         foreach (string actionName in new[]
                  {
-                     nameof(RegistrationOrderController.StartGuest),
-                     nameof(RegistrationOrderController.ContinueGuest),
-                     nameof(RegistrationOrderController.FinalizeGuest)
+                     nameof(GuestRegistrationOrderController.StartGuest),
+                     nameof(GuestRegistrationOrderController.ContinueGuest),
+                     nameof(GuestRegistrationOrderController.FinalizeGuest)
                  })
         {
-            MethodInfo action = typeof(RegistrationOrderController).GetMethod(actionName)!;
+            MethodInfo action = RegistrationFamilyAction(actionName)!;
             var operation = new OpenApiOperation();
 
             bool applied = EndpointClassificationTransformer.ApplyIdempotencyKeyRequirement(
@@ -243,7 +243,7 @@ public sealed class RegistrationOrderControllerTests
                 Success = true,
                 GuestCapabilityToken = token
             }));
-        var controller = CreateController(mediator);
+        var controller = CreateController<GuestRegistrationOrderController>(mediator);
         var request = CreateStartRequest(platformContributionBasisPoints: 500);
         var eventId = Guid.CreateVersion7();
 
@@ -264,7 +264,7 @@ public sealed class RegistrationOrderControllerTests
         var mediator = Substitute.For<IMediator>();
         mediator.Send(Arg.Any<GetGuestRegistrationOrderQuery>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<GuestRegistrationOrderDto?>(null));
-        var controller = CreateController(mediator);
+        var controller = CreateController<GuestRegistrationOrderController>(mediator);
 
         ActionResult<HalResource<GuestRegistrationOrderDto>> result = await controller.GetGuest(
             Guid.CreateVersion7(), Guid.CreateVersion7(), "guessed-capability");
@@ -284,12 +284,15 @@ public sealed class RegistrationOrderControllerTests
         mediator.Send(Arg.Any<RemoveGuestPromotionFromRegistrationOrderCommand>(), Arg.Any<CancellationToken>()).Returns(PromotionFailure(orderId));
         mediator.Send(Arg.Any<ApplyAuthenticatedPromotionCodeToRegistrationOrderCommand>(), Arg.Any<CancellationToken>()).Returns(PromotionSuccess(orderId));
         mediator.Send(Arg.Any<RemoveAuthenticatedPromotionFromRegistrationOrderCommand>(), Arg.Any<CancellationToken>()).Returns(PromotionSuccess(orderId));
-        var controller = CreateController(mediator);
+        // Guest and authenticated promotion now live on their own capability controllers; this test asserts
+        // both doors behave identically, so it drives both.
+        var guestController = CreateController<GuestRegistrationOrderController>(mediator);
+        var authenticatedController = CreateController<AuthenticatedRegistrationOrderController>(mediator);
 
-        var guestApply = await controller.ApplyGuestPromotion(eventId, orderId, "guest-capability", new PromotionCodeRequest("SAVE10"), Guid.CreateVersion7().ToString("N"));
-        var guestRemove = await controller.RemoveGuestPromotion(eventId, orderId, "guest-capability", Guid.CreateVersion7().ToString("N"));
-        var authenticatedApply = await controller.ApplyAuthenticatedPromotion(eventId, orderId, new PromotionCodeRequest("SAVE10"), Guid.CreateVersion7().ToString("N"));
-        var authenticatedRemove = await controller.RemoveAuthenticatedPromotion(eventId, orderId, Guid.CreateVersion7().ToString("N"));
+        var guestApply = await guestController.ApplyGuestPromotion(eventId, orderId, "guest-capability", new PromotionCodeRequest("SAVE10"), Guid.CreateVersion7().ToString("N"));
+        var guestRemove = await guestController.RemoveGuestPromotion(eventId, orderId, "guest-capability", Guid.CreateVersion7().ToString("N"));
+        var authenticatedApply = await authenticatedController.ApplyAuthenticatedPromotion(eventId, orderId, new PromotionCodeRequest("SAVE10"), Guid.CreateVersion7().ToString("N"));
+        var authenticatedRemove = await authenticatedController.RemoveAuthenticatedPromotion(eventId, orderId, Guid.CreateVersion7().ToString("N"));
 
         await Assert.That((guestApply.Result as ObjectResult)?.StatusCode).IsEqualTo(StatusCodes.Status404NotFound);
         await Assert.That(JsonSerializer.Serialize((guestRemove.Result as ObjectResult)?.Value)).DoesNotContain("guest-capability");
@@ -311,7 +314,7 @@ public sealed class RegistrationOrderControllerTests
         var manageable = viewOnly with { CanManage = true };
         mediator.Send(Arg.Any<GetAuthenticatedRegistrationOrderParticipantsQuery>(), Arg.Any<CancellationToken>())
             .Returns(viewOnly, manageable);
-        var controller = CreateController(mediator);
+        var controller = CreateController<AuthenticatedRegistrationOrderController>(mediator);
 
         var organizerResult = await controller.GetAuthenticatedParticipants(eventId, orderId);
         var ownerResult = await controller.GetAuthenticatedParticipants(eventId, orderId);
@@ -331,7 +334,7 @@ public sealed class RegistrationOrderControllerTests
         var mediator = Substitute.For<IMediator>();
         mediator.Send(Arg.Any<ContinueGuestRegistrationOrderCommand>(), Arg.Any<CancellationToken>())
             .Returns(new GuestRegistrationOrderLifecycleResponseDto { Id = Guid.CreateVersion7(), Success = true });
-        var controller = CreateController(mediator);
+        var controller = CreateController<GuestRegistrationOrderController>(mediator);
 
         await controller.ContinueGuest(
             Guid.CreateVersion7(),
@@ -356,7 +359,7 @@ public sealed class RegistrationOrderControllerTests
                 FailureCode = "registration_order_identity_required",
                 Message = "Registration order requires an authenticated account."
             }));
-        var controller = CreateController(mediator);
+        var controller = CreateController<GuestRegistrationOrderController>(mediator);
 
         ActionResult<GuestRegistrationOrderStartDto> result = await controller.StartGuest(
             Guid.CreateVersion7(), CreateStartRequest());
@@ -381,7 +384,7 @@ public sealed class RegistrationOrderControllerTests
         mediator.Send(Arg.Any<CancelAuthenticatedRegistrationOrderCommand>(), Arg.Any<CancellationToken>()).Returns(
             new RegistrationOrderLifecycleResponseDto { Id = order.Id, Success = true, Order = order });
         assembler.ToResource(order, Arg.Any<HttpContext>()).Returns(resource);
-        var controller = CreateController(mediator, assembler);
+        var controller = CreateController<AuthenticatedRegistrationOrderController>(mediator, assembler);
 
         var current = await controller.GetCurrent(order.EventId, order.Id);
         var continued = await controller.ContinueAuthenticated(order.EventId, order.Id);
@@ -405,7 +408,7 @@ public sealed class RegistrationOrderControllerTests
         var assembler = Substitute.For<IResourceAssembler<RegistrationOrderDto, RegistrationOrderDto>>();
         var guestOrder = new GuestRegistrationOrderDto { Id = Guid.CreateVersion7(), EventId = Guid.CreateVersion7() };
         mediator.Send(Arg.Any<GetGuestRegistrationOrderQuery>(), Arg.Any<CancellationToken>()).Returns(guestOrder);
-        var controller = CreateController(mediator, assembler);
+        var controller = CreateController<GuestRegistrationOrderController>(mediator, assembler);
 
         ActionResult<HalResource<GuestRegistrationOrderDto>> result = await controller.GetGuest(
             guestOrder.EventId, guestOrder.Id, "opaque-capability");
@@ -430,7 +433,7 @@ public sealed class RegistrationOrderControllerTests
             StatusCode = "READY_FOR_CHECKOUT"
         };
         mediator.Send(Arg.Any<GetGuestRegistrationOrderQuery>(), Arg.Any<CancellationToken>()).Returns(order);
-        var controller = CreateController(mediator);
+        var controller = CreateController<GuestRegistrationOrderController>(mediator);
 
         ActionResult<HalResource<GuestRegistrationOrderDto>> result = await controller.GetGuest(
             order.EventId, order.Id, "opaque-capability");
@@ -453,7 +456,7 @@ public sealed class RegistrationOrderControllerTests
             AppliedPromotionDisplayLabel = "Launch discount"
         };
         mediator.Send(Arg.Any<GetGuestRegistrationOrderQuery>(), Arg.Any<CancellationToken>()).Returns(order);
-        var controller = CreateController(mediator);
+        var controller = CreateController<GuestRegistrationOrderController>(mediator);
 
         ActionResult<HalResource<GuestRegistrationOrderDto>> result = await controller.GetGuest(
             order.EventId, order.Id, "opaque-capability");
@@ -478,7 +481,7 @@ public sealed class RegistrationOrderControllerTests
                 FailureCode = "registration_order_already_linked",
                 Message = "Registration order is already linked to another account."
             });
-        var controller = CreateController(mediator);
+        var controller = CreateController<GuestRegistrationOrderController>(mediator);
 
         ActionResult<BaseCommandResponse<Guid>> result = await controller.ClaimGuest(eventId, orderId, "guest-token");
 
@@ -490,16 +493,18 @@ public sealed class RegistrationOrderControllerTests
             Arg.Any<CancellationToken>());
     }
 
-    private static RegistrationOrderController CreateController(
+    private static TController CreateController<TController>(
         IMediator mediator,
         IResourceAssembler<RegistrationOrderDto, RegistrationOrderDto>? assembler = null)
+        where TController : ControllerBase
     {
-        var controller = new RegistrationOrderController(
+        // The guest, authenticated, and event-management registration controllers share one constructor
+        // shape, so one factory serves all three capability surfaces.
+        var controller = (TController)Activator.CreateInstance(
+            typeof(TController),
             mediator,
-            assembler ?? Substitute.For<IResourceAssembler<RegistrationOrderDto, RegistrationOrderDto>>())
-        {
-            ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() }
-        };
+            assembler ?? Substitute.For<IResourceAssembler<RegistrationOrderDto, RegistrationOrderDto>>())!;
+        controller.ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() };
         var url = Substitute.For<IUrlHelper>();
         url.Link(Arg.Any<string>(), Arg.Any<object>()).Returns(call => $"/api/routes/{call.ArgAt<string>(0)}");
         controller.Url = url;
@@ -533,7 +538,7 @@ public sealed class RegistrationOrderControllerTests
         string routeTemplate,
         EndpointClass endpointClass)
     {
-        MethodInfo? action = typeof(RegistrationOrderController).GetMethod(actionName);
+        MethodInfo? action = RegistrationFamilyAction(actionName);
         await Assert.That(action).IsNotNull();
         var route = action!.GetCustomAttribute<HttpPostAttribute>();
         await Assert.That(route?.Template).IsEqualTo(routeTemplate);
@@ -587,4 +592,15 @@ public sealed class RegistrationOrderControllerTests
             .IsEqualTo(requiresIdempotency);
         await Assert.That(action.GetCustomAttributes<ProducesResponseTypeAttribute>()).IsNotEmpty();
     }
+
+    /// <summary>
+    /// Finds an action across the controllers the original RegistrationOrderController was partitioned into.
+    /// Guest and authenticated checkout are separate surfaces now, but these contracts still apply to both.
+    /// </summary>
+    private static MethodInfo? RegistrationFamilyAction(string actionName) => new[]
+    {
+        typeof(RegistrationOrderController),
+        typeof(GuestRegistrationOrderController),
+        typeof(AuthenticatedRegistrationOrderController),
+    }.Select(type => type.GetMethod(actionName)).FirstOrDefault(method => method is not null);
 }

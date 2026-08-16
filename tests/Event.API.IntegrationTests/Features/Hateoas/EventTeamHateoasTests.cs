@@ -258,7 +258,7 @@ public sealed class EventTeamHateoasTests
                 Title = call.Arg<LinkDefinition>().Title
             });
 
-        var assembler = new EventTeamMemberResourceAssembler(
+        var assembler = new HalResourceAssembler<EventTeamMemberDto, EventTeamMemberDto>(
             linkGenerator,
             new EventTeamMemberDetailLinkPolicy(),
             new EventTeamMemberCollectionLinkPolicy());
@@ -330,7 +330,7 @@ public sealed class EventTeamHateoasTests
     }
 
     private sealed class TestAssembler(
-        EventTeamMemberResourceAssembler assembler,
+        HalResourceAssembler<EventTeamMemberDto, EventTeamMemberDto> assembler,
         IHateoasAuthorizationEvaluator evaluator)
     {
         public Task<HalCollectionResource<EventTeamMemberDto>> ToCollectionResource(
