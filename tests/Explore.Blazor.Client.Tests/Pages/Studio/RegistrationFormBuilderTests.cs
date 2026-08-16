@@ -140,7 +140,7 @@ public sealed class RegistrationFormBuilderTests : IDisposable
         };
         _service.GetWorkflowAsync(eventId, Arg.Any<CancellationToken>()).Returns(workflow, refreshed);
         _service.GetTemplatesAsync(Arg.Any<CancellationToken>()).Returns(TemplateCollection(templateId, "Template form", instantiate));
-        _service.InstantiateTemplateAsync(templateId, Arg.Any<InstantiateRegistrationFormTemplateInput>(), Arg.Any<HalLink>(), Arg.Any<CancellationToken>()).Returns(formId);
+        _service.InstantiateTemplateAsync(templateId, Arg.Any<InstantiateRegistrationFormTemplateInputDto>(), Arg.Any<HalLink>(), Arg.Any<CancellationToken>()).Returns(formId);
         _service.GetFormAsync(eventId, formId, Arg.Any<CancellationToken>()).Returns(new HalResourceOfRegistrationFormDto { Id = formId, EventId = eventId, Name = "Template form", Namespace = "event", Key = "template-form", Versions = [new RegistrationFormVersionSummaryDto { Id = versionId, Version = 1, StatusCode = "DRAFT", StatusName = "Draft", LanguageTag = "en" }] });
         HalResourceOfRegistrationFormVersionDto version = VersionGraph(eventId, formId, "DRAFT");
         version.Id = versionId;
@@ -153,7 +153,7 @@ public sealed class RegistrationFormBuilderTests : IDisposable
 
         cut.WaitForElement("[data-testid='registration-form-version']");
         await _service.Received(1).InstantiateTemplateAsync(templateId,
-            Arg.Is<InstantiateRegistrationFormTemplateInput>(input =>
+            Arg.Is<InstantiateRegistrationFormTemplateInputDto>(input =>
                 input.EventId == eventId && input.WorkflowId == workflowId && input.ExpectedWorkflowConcurrencyStamp == workflowStamp && input.Key == "template-form"),
             Arg.Is<HalLink>(link => link.Href == instantiate.Href && link.Method == instantiate.Method),
             Arg.Any<CancellationToken>());

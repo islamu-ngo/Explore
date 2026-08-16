@@ -16,7 +16,7 @@ public sealed record RegistrationFormTemplateDto(
     Guid SourceRegistrationFormVersionId,
     Guid ConcurrencyStamp);
 
-public sealed record RegistrationFormTemplateInput(
+public sealed record RegistrationFormTemplateInputDto(
     string Name,
     string Description,
     string Category,
@@ -26,7 +26,7 @@ public sealed record RegistrationFormTemplateInput(
     Guid SourceRegistrationFormVersionId,
     bool IsPlatformOwned);
 
-public sealed record InstantiateRegistrationFormTemplateInput(
+public sealed record InstantiateRegistrationFormTemplateInputDto(
     Guid EventId,
     Guid WorkflowId,
     string Namespace,

@@ -34,7 +34,7 @@ public sealed class RegistrationFormAuthoringService(IEventApiClient apiClient) 
             ?? throw new InvalidOperationException("The form response did not contain an identifier.");
     }
 
-    public async Task<Guid> InstantiateTemplateAsync(Guid templateId, InstantiateRegistrationFormTemplateInput input, HalLink link, CancellationToken cancellationToken = default)
+    public async Task<Guid> InstantiateTemplateAsync(Guid templateId, InstantiateRegistrationFormTemplateInputDto input, HalLink link, CancellationToken cancellationToken = default)
     {
         RegistrationFormHal.Require(link, "POST", $"/api/registration-form-templates/{templateId}/instantiate");
         return (await apiClient.InstantiateRegistrationFormTemplateAsync(templateId, input, cancellationToken: cancellationToken)).Id

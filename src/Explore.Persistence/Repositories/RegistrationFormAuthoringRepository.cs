@@ -98,7 +98,7 @@ public sealed class RegistrationFormAuthoringRepository(ExploreDbContext dbConte
         Guid versionId,
         CancellationToken cancellationToken) =>
         VersionGraph()
-            .IgnoreTenantFilter("registration-form-template-source-version")
+            .IgnoreTenantFilter(TenantFilterBypassReasons.RegistrationFormTemplateSourceVersion)
             .AsNoTracking()
             .FirstOrDefaultAsync(
                 version => version.EventId == eventId &&

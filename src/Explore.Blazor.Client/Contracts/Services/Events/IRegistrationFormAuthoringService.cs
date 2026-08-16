@@ -13,7 +13,7 @@ public interface IRegistrationFormAuthoringService
     Task<HalResourceOfRegistrationFormVersionDto> GetVersionAsync(Guid eventId, Guid formId, Guid versionId, CancellationToken cancellationToken = default);
     Task<HalResourceOfRegistrationAnswerAnalyticsDto> GetAnalyticsAsync(Guid eventId, Guid formId, Guid formVersionId, HalLink link, CancellationToken cancellationToken = default);
     Task<Guid> CreateFormAsync(Guid eventId, Guid workflowId, Guid concurrencyStamp, RegistrationFormInput input, HalLink link, CancellationToken cancellationToken = default);
-    Task<Guid> InstantiateTemplateAsync(Guid templateId, InstantiateRegistrationFormTemplateInput input, HalLink link, CancellationToken cancellationToken = default);
+    Task<Guid> InstantiateTemplateAsync(Guid templateId, InstantiateRegistrationFormTemplateInputDto input, HalLink link, CancellationToken cancellationToken = default);
     Task<Guid> CreateVersionAsync(Guid eventId, Guid formId, Guid concurrencyStamp, RegistrationFormVersionInput input, HalLink link, CancellationToken cancellationToken = default);
     Task<Guid> AddSectionAsync(Guid eventId, Guid formId, Guid versionId, Guid concurrencyStamp, RegistrationFormSectionInput input, HalLink link, CancellationToken cancellationToken = default);
     Task UpdateSectionAsync(Guid eventId, Guid formId, Guid versionId, Guid sectionId, Guid concurrencyStamp, RegistrationFormSectionInput input, HalLink link, CancellationToken cancellationToken = default);

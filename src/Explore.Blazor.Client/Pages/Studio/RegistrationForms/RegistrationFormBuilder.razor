@@ -520,7 +520,7 @@
     {
         TemplateOption template = _templates.Single(item => item.Id == _templateId);
         Guid id = await Authoring.InstantiateTemplateAsync(template.Id,
-            new InstantiateRegistrationFormTemplateInput
+            new InstantiateRegistrationFormTemplateInputDto
             {
                 EventId = eventId,
                 WorkflowId = _workflow!.Id,

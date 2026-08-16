@@ -130,7 +130,7 @@ public static class ComponentDataBuilder
     /// <summary>
     /// Generates fake CreateEventDraftRequestDto for form testing.
     /// </summary>
-    public static Faker<CreateEventDraftRequestDto> CreateEventRequest => new Faker<CreateEventDraftRequestDto>()
+    public static Faker<CreateEventDraftRequestDto> CreateEventDraftDto => new Faker<CreateEventDraftRequestDto>()
         .RuleFor(e => e.Title, f => f.Lorem.Sentence(3, 5))
         .RuleFor(e => e.Subtitle, f => f.Lorem.Sentence(5, 10))
         .RuleFor(e => e.Description, f => f.Lorem.Paragraph())
@@ -144,6 +144,8 @@ public static class ComponentDataBuilder
             ParticipationHandlingModeId = 1,
             AdvanceRegistrationObligationId = 1
         });
+
+    public static Faker<CreateEventDraftRequestDto> CreateEventRequest => CreateEventDraftDto;
 
     #endregion
 

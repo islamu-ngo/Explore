@@ -121,4 +121,7 @@ public static class TenantFilterBypassReasons
 
     public const string WebPushSubscriptionEndpointOwnership =
         "Web Push subscription endpoint ownership lookup uses the globally unique endpoint as a bounded predicate.";
+
+    public const string RegistrationFormTemplateSourceVersion =
+        "Registration form authoring reads one shared template source version across tenants using the exact event, form, and version id tuple.";
 }

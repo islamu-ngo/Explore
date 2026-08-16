@@ -49,7 +49,7 @@ public sealed class RegistrationFormAuthoringServiceTests
         var service = new RegistrationFormAuthoringService(api);
         Guid templateId = Guid.CreateVersion7();
         Guid formId = Guid.CreateVersion7();
-        var input = new InstantiateRegistrationFormTemplateInput
+        var input = new InstantiateRegistrationFormTemplateInputDto
         {
             EventId = Guid.CreateVersion7(),
             WorkflowId = Guid.CreateVersion7(),
@@ -73,7 +73,7 @@ public sealed class RegistrationFormAuthoringServiceTests
     {
         IEventApiClient api = Substitute.For<IEventApiClient>();
         var service = new RegistrationFormAuthoringService(api);
-        var input = new InstantiateRegistrationFormTemplateInput { EventId = Guid.CreateVersion7(), WorkflowId = Guid.CreateVersion7(), Namespace = "event", Key = "attendee", Name = "Attendee", ExpectedWorkflowConcurrencyStamp = Guid.CreateVersion7() };
+        var input = new InstantiateRegistrationFormTemplateInputDto { EventId = Guid.CreateVersion7(), WorkflowId = Guid.CreateVersion7(), Namespace = "event", Key = "attendee", Name = "Attendee", ExpectedWorkflowConcurrencyStamp = Guid.CreateVersion7() };
         var stale = new HalLink { Href = $"/api/registration-form-templates/{Guid.CreateVersion7()}/instantiate", Method = "POST" };
 
         await Assert.That(async () => await service.InstantiateTemplateAsync(Guid.CreateVersion7(), input, stale)).Throws<InvalidOperationException>();

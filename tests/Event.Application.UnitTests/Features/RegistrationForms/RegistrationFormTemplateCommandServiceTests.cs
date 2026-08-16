@@ -88,7 +88,7 @@ public sealed class RegistrationFormTemplateCommandServiceTests
         RegistrationFormTemplateCommandService service = Service(tenantId, forms, templates, events, isInstanceAdmin: false);
 
         BaseCommandResponse<Guid> result = await service.InstantiateAsync(
-            new InstantiateRegistrationFormTemplateCommand(template.Id, new InstantiateRegistrationFormTemplateInput(
+            new InstantiateRegistrationFormTemplateCommand(template.Id, new InstantiateRegistrationFormTemplateInputDto(
                 source.EventId, workflow.Id, "tenant.registration", "copy", "Copy", workflow.ConcurrencyStamp)), CancellationToken.None);
 
         await Assert.That(result.Success).IsTrue();
@@ -115,7 +115,7 @@ public sealed class RegistrationFormTemplateCommandServiceTests
 
         await Assert.That(() => service.InstantiateAsync(new InstantiateRegistrationFormTemplateCommand(
                 otherTemplate.Id,
-                new InstantiateRegistrationFormTemplateInput(source.EventId, Guid.CreateVersion7(), "tenant", "copy", "Copy", Guid.CreateVersion7())), CancellationToken.None))
+                new InstantiateRegistrationFormTemplateInputDto(source.EventId, Guid.CreateVersion7(), "tenant", "copy", "Copy", Guid.CreateVersion7())), CancellationToken.None))
             .Throws<NotFoundException>();
     }
 
@@ -128,7 +128,7 @@ public sealed class RegistrationFormTemplateCommandServiceTests
             .Single();
         var command = new InstantiateRegistrationFormTemplateCommand(
             Guid.CreateVersion7(),
-            new InstantiateRegistrationFormTemplateInput(Guid.CreateVersion7(), Guid.CreateVersion7(), "tenant", "copy", "Copy", Guid.CreateVersion7()));
+            new InstantiateRegistrationFormTemplateInputDto(Guid.CreateVersion7(), Guid.CreateVersion7(), "tenant", "copy", "Copy", Guid.CreateVersion7()));
 
         await Assert.That(attribute.Resource).IsEqualTo(ResourceKinds.Event);
         await Assert.That(attribute.Action).IsEqualTo(AuthorizationActions.Events.ManageRegistrationWorkflow);
@@ -156,7 +156,7 @@ public sealed class RegistrationFormTemplateCommandServiceTests
             new FixedTimeProvider(Now.AddMinutes(10)));
     }
 
-    private static RegistrationFormTemplateInput Input(RegistrationFormVersion source, bool isPlatformOwned) => new(
+    private static RegistrationFormTemplateInputDto Input(RegistrationFormVersion source, bool isPlatformOwned) => new(
         "Template", "Description", "Registration", null,
         source.EventId, source.RegistrationFormId, source.Id, isPlatformOwned);
 
