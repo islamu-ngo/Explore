@@ -22,8 +22,8 @@
         "source": "local",
         "event": {
           "id": "Guid_1",
-          "title": "Actor Other Published 3d13e1b245114b1c97119b08173e591a",
-          "publicCode": "af0e98877acd",
+          "title": "Published Visibility Event 2d92fed9fed24edabc77dbd85ea2a288",
+          "publicCode": "7f318127bd20",
           "eventTypeId": 0,
           "audienceGenderId": 0,
           "audienceAgeId": 0,
@@ -51,8 +51,8 @@
           "eventFormatId": 1,
           "eventFormatFullName": "Local (In-Person)",
           "sessionCount": 1,
-          "firstSessionDate": "2026-08-23",
-          "lastSessionDate": "2026-08-23",
+          "firstSessionDate": "2026-08-25",
+          "lastSessionDate": "2026-08-25",
           "firstSessionStartUtc": "DateTimeOffset_1",
           "isPast": false,
           "totalViews": 0,
@@ -61,22 +61,22 @@
         },
         "_links": {
           "self": {
-            "href": "/api/event/18e1ad50-baad-4556-bed8-ef07c3baf6f3",
-            "title": "Actor Other Published 3d13e1b245114b1c97119b08173e591a",
+            "href": "/api/event/f9b36922-7123-4653-b89a-c8099324d6e7",
+            "title": "Published Visibility Event 2d92fed9fed24edabc77dbd85ea2a288",
             "method": "GET"
           },
           "sessions": {
-            "href": "/api/eventsession/by-event/18e1ad50-baad-4556-bed8-ef07c3baf6f3",
+            "href": "/api/eventsession/by-event/f9b36922-7123-4653-b89a-c8099324d6e7",
             "title": "1 sessions",
             "method": "GET"
           },
           "actor": {
-            "href": "/api/actor/71600aba-c08e-4af0-a39e-6320033623cb",
+            "href": "/api/actor/295ad5bc-a761-4045-8028-d2407bccba6d",
             "title": "Default Visibility Actor",
             "method": "GET"
           },
           "event-report-options": {
-            "href": "/api/event-reports/events/18e1ad50-baad-4556-bed8-ef07c3baf6f3/options",
+            "href": "/api/event-reports/events/f9b36922-7123-4653-b89a-c8099324d6e7/options",
             "title": "Event report options",
             "method": "GET"
           },
@@ -91,21 +91,21 @@
         "source": "local",
         "event": {
           "id": "Guid_6",
-          "title": "Actor Matching Published 3d13e1b245114b1c97119b08173e591a",
-          "publicCode": "017ffc6d9296",
+          "title": "Actor Other Published cd19b31e752f479182dceff0f08408c1",
+          "publicCode": "edbb3410089a",
           "eventTypeId": 0,
           "audienceGenderId": 0,
           "audienceAgeId": 0,
-          "actorId": "Guid_7",
-          "actorDisplayName": "Actor Filter Owner",
+          "actorId": "Guid_2",
+          "actorDisplayName": "Default Visibility Actor",
           "actorTypeId": 1,
           "actorTypeFullName": "User",
-          "actorUserId": "Guid_8",
+          "actorUserId": "Guid_3",
           "provenanceTypeCode": "ORGANIZER_CREATED",
           "featuredImageId": "Guid_Empty",
           "participationConfiguration": {
             "eventId": "Guid_6",
-            "concurrencyStamp": "Guid_9",
+            "concurrencyStamp": "Guid_7",
             "participationHandlingModeId": 1,
             "participationHandlingModeCode": "INFORMATION_ONLY",
             "participationHandlingModeName": "Information only",
@@ -120,32 +120,32 @@
           "eventFormatId": 1,
           "eventFormatFullName": "Local (In-Person)",
           "sessionCount": 1,
-          "firstSessionDate": "2026-08-23",
-          "lastSessionDate": "2026-08-23",
+          "firstSessionDate": "2026-08-25",
+          "lastSessionDate": "2026-08-25",
           "firstSessionStartUtc": "DateTimeOffset_3",
           "isPast": false,
           "totalViews": 0,
-          "createdAtUtc": "DateTimeOffset_2",
+          "createdAtUtc": "DateTimeOffset_4",
           "tenantId": "Guid_5"
         },
         "_links": {
           "self": {
-            "href": "/api/event/8e1b38be-1816-468b-84b3-d17180e696ed",
-            "title": "Actor Matching Published 3d13e1b245114b1c97119b08173e591a",
+            "href": "/api/event/3cae2666-0c10-4b06-b91e-8edaf490dd6c",
+            "title": "Actor Other Published cd19b31e752f479182dceff0f08408c1",
             "method": "GET"
           },
           "sessions": {
-            "href": "/api/eventsession/by-event/8e1b38be-1816-468b-84b3-d17180e696ed",
+            "href": "/api/eventsession/by-event/3cae2666-0c10-4b06-b91e-8edaf490dd6c",
             "title": "1 sessions",
             "method": "GET"
           },
           "actor": {
-            "href": "/api/actor/f3c02901-dcfd-416e-9d8f-cd2eb8a11ad1",
-            "title": "Actor Filter Owner",
+            "href": "/api/actor/295ad5bc-a761-4045-8028-d2407bccba6d",
+            "title": "Default Visibility Actor",
             "method": "GET"
           },
           "event-report-options": {
-            "href": "/api/event-reports/events/8e1b38be-1816-468b-84b3-d17180e696ed/options",
+            "href": "/api/event-reports/events/3cae2666-0c10-4b06-b91e-8edaf490dd6c/options",
             "title": "Event report options",
             "method": "GET"
           },
@@ -159,21 +159,21 @@
       {
         "source": "local",
         "event": {
-          "id": "Guid_10",
-          "title": "Published Visibility Event a2d5ccb282b8449fac2e09e736bb75a0",
-          "publicCode": "3916d7ec4733",
+          "id": "Guid_8",
+          "title": "Actor Matching Published cd19b31e752f479182dceff0f08408c1",
+          "publicCode": "abcf9357f1e5",
           "eventTypeId": 0,
           "audienceGenderId": 0,
           "audienceAgeId": 0,
-          "actorId": "Guid_2",
-          "actorDisplayName": "Default Visibility Actor",
+          "actorId": "Guid_9",
+          "actorDisplayName": "Actor Filter Owner",
           "actorTypeId": 1,
           "actorTypeFullName": "User",
-          "actorUserId": "Guid_3",
+          "actorUserId": "Guid_10",
           "provenanceTypeCode": "ORGANIZER_CREATED",
           "featuredImageId": "Guid_Empty",
           "participationConfiguration": {
-            "eventId": "Guid_10",
+            "eventId": "Guid_8",
             "concurrencyStamp": "Guid_11",
             "participationHandlingModeId": 1,
             "participationHandlingModeCode": "INFORMATION_ONLY",
@@ -189,32 +189,32 @@
           "eventFormatId": 1,
           "eventFormatFullName": "Local (In-Person)",
           "sessionCount": 1,
-          "firstSessionDate": "2026-08-23",
-          "lastSessionDate": "2026-08-23",
-          "firstSessionStartUtc": "DateTimeOffset_4",
+          "firstSessionDate": "2026-08-25",
+          "lastSessionDate": "2026-08-25",
+          "firstSessionStartUtc": "DateTimeOffset_5",
           "isPast": false,
           "totalViews": 0,
-          "createdAtUtc": "DateTimeOffset_5",
+          "createdAtUtc": "DateTimeOffset_4",
           "tenantId": "Guid_5"
         },
         "_links": {
           "self": {
-            "href": "/api/event/791d126a-89ed-4cde-9558-0c3edddfeb50",
-            "title": "Published Visibility Event a2d5ccb282b8449fac2e09e736bb75a0",
+            "href": "/api/event/29da279c-2cc9-4f30-9c1c-d523b7e49f73",
+            "title": "Actor Matching Published cd19b31e752f479182dceff0f08408c1",
             "method": "GET"
           },
           "sessions": {
-            "href": "/api/eventsession/by-event/791d126a-89ed-4cde-9558-0c3edddfeb50",
+            "href": "/api/eventsession/by-event/29da279c-2cc9-4f30-9c1c-d523b7e49f73",
             "title": "1 sessions",
             "method": "GET"
           },
           "actor": {
-            "href": "/api/actor/71600aba-c08e-4af0-a39e-6320033623cb",
-            "title": "Default Visibility Actor",
+            "href": "/api/actor/516ecfce-035f-40ef-a6cb-236e963e03a8",
+            "title": "Actor Filter Owner",
             "method": "GET"
           },
           "event-report-options": {
-            "href": "/api/event-reports/events/791d126a-89ed-4cde-9558-0c3edddfeb50/options",
+            "href": "/api/event-reports/events/29da279c-2cc9-4f30-9c1c-d523b7e49f73/options",
             "title": "Event report options",
             "method": "GET"
           },
