@@ -169,3 +169,4 @@ Start with [README.md](../README.md) if you are new to the project. Use this pag
 - [adr/ADR-010-mcp-adapter-hosting-strategy.md](adr/ADR-010-mcp-adapter-hosting-strategy.md) - MCP adapter hosting, transport, auth, tenancy, and disable posture.
 - [adr/ADR-011-local-mcp-stdio-diagnostic-host.md](adr/ADR-011-local-mcp-stdio-diagnostic-host.md) - local-only stdio diagnostic-host decision and deferral.
 - [adr/ADR-021-keycloak-authentication-standard.md](adr/ADR-021-keycloak-authentication-standard.md) - standardizing platform authentication on Keycloak and authorization on Cerbos.
+- [adr/ADR-026-domain-owned-lifecycle-and-contextual-completeness.md](adr/ADR-026-domain-owned-lifecycle-and-contextual-completeness.md) - technology-neutral lifecycle ownership, contextual completeness, nullable persistence, and layered validation.
