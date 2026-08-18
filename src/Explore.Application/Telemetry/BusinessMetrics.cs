@@ -15,7 +15,7 @@ namespace Explore.Application.Telemetry;
 /// Metrics use metric-specific bounded tags; not every metric includes tenant_id.
 /// Meter name: "Explore.Business"
 /// </summary>
-public sealed class BusinessMetrics : IDisposable
+public sealed class BusinessMetrics : ISchedulerJobTelemetry, IDisposable
 {
     public const string MeterName = "Explore.Business";
 
@@ -24,6 +24,8 @@ public sealed class BusinessMetrics : IDisposable
     private readonly Counter<long> _eventsPublished;
     private readonly Counter<long> _eventModerationActions;
     private readonly Counter<long> _schedulerAdminActions;
+    private readonly Counter<long> _schedulerJobExecutions;
+    private readonly Histogram<double> _schedulerJobDuration;
     private readonly Counter<long> _eventReportSubmissions;
     private readonly Counter<long> _eventReportWorkflowActions;
     private readonly Counter<long> _eventReportProviderSyncs;
@@ -124,6 +126,16 @@ public sealed class BusinessMetrics : IDisposable
             "explore.scheduler.admin_actions",
             unit: "{action}",
             description: "Operator-initiated scheduler control actions by bounded action kind and outcome");
+
+        _schedulerJobExecutions = meter.CreateCounter<long>(
+            "explore.scheduler.job_executions",
+            unit: "{execution}",
+            description: "Scheduled job executions by catalog job name, scheduler group, and outcome");
+
+        _schedulerJobDuration = meter.CreateHistogram<double>(
+            "explore.scheduler.job_duration",
+            unit: "s",
+            description: "Scheduled job execution duration in seconds by catalog job name and scheduler group");
 
         _eventModerationActions = meter.CreateCounter<long>(
             "explore.events.moderation_actions",
@@ -564,6 +576,42 @@ public sealed class BusinessMetrics : IDisposable
     /// this metric deliberately carries no tenant or principal identity — accountability for <em>who</em> acted
     /// belongs in the audit record, not in a metric dimension that would explode cardinality.
     /// </summary>
+    /// <summary>
+    /// Records one scheduled job execution. Labels are restricted to the job's scheduler identity and a
+    /// bounded outcome: a job's payload identifies a tenant and an aggregate, and metric labels are a
+    /// high-cardinality, long-retention, widely-exported surface that must never carry either.
+    /// </summary>
+    public void RecordSchedulerJobExecution(string? jobName, string? jobGroup, string? outcome, double durationSeconds)
+    {
+        var normalizedJobName = NormalizeSchedulerJobName(jobName);
+        var normalizedGroup = NormalizeTag(jobGroup);
+
+        _schedulerJobExecutions.Add(1,
+            new KeyValuePair<string, object?>("job_name", normalizedJobName),
+            new KeyValuePair<string, object?>("job_group", normalizedGroup),
+            new KeyValuePair<string, object?>("outcome", NormalizeSchedulerJobOutcome(outcome)));
+
+        _schedulerJobDuration.Record(Math.Max(0, durationSeconds),
+            new KeyValuePair<string, object?>("job_name", normalizedJobName),
+            new KeyValuePair<string, object?>("job_group", normalizedGroup));
+    }
+
+    /// <summary>
+    /// Job names are collapsed to the Application-owned catalog. An unrecognized name becomes
+    /// <c>other</c> rather than becoming its own time series, so an ad-hoc or test job — or a future rename
+    /// that misses this catalog — cannot grow the metric's cardinality without bound.
+    /// </summary>
+    private static string NormalizeSchedulerJobName(string? jobName)
+        => jobName is not null && ScheduledJobNames.All.Contains(jobName) ? jobName : "other";
+
+    private static string NormalizeSchedulerJobOutcome(string? outcome) => NormalizeTag(outcome) switch
+    {
+        SchedulerJobOutcomes.Succeeded => SchedulerJobOutcomes.Succeeded,
+        SchedulerJobOutcomes.Failed => SchedulerJobOutcomes.Failed,
+        SchedulerJobOutcomes.Vetoed => SchedulerJobOutcomes.Vetoed,
+        _ => "unknown"
+    };
+
     public void RecordSchedulerAdminAction(string? action, string? outcome)
     {
         _schedulerAdminActions.Add(1,

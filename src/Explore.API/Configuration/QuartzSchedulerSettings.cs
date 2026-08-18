@@ -36,6 +36,15 @@ public sealed class QuartzSchedulerSettings
     /// <summary>Applies the idempotent scheduler DDL at startup; disable when a migration job owns schema.</summary>
     public bool ApplySchemaOnStartup { get; set; } = true;
 
+    /// <summary>
+    /// Asks Quartz to verify the persistent store's tables and columns during scheduler initialization.
+    /// It is on by default because the alternative failure mode is silent: Quartz downgrades a missing
+    /// optional column to a warning and keeps running with degraded behaviour, which this platform has
+    /// already shipped once. Validation turns that class of drift into a startup failure that names the
+    /// offending table. It is meaningful only over a persistent store.
+    /// </summary>
+    public bool ValidateSchemaOnStartup { get; set; } = true;
+
     public bool StatusEndpointEnabled { get; set; }
 
     public string StatusEndpointPath { get; set; } = DefaultStatusEndpointPath;

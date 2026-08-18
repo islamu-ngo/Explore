@@ -1,6 +1,8 @@
 // ABOUTME: Centralized Quartz job and trigger keys derived from the Application scheduled-job catalog.
 // ABOUTME: Keeps scheduler identity stable across restarts so the persistent store recognizes existing rows.
 
+using System.Security.Cryptography;
+using System.Text;
 using Explore.Application.Contracts.Scheduling;
 using Quartz;
 
@@ -23,8 +25,14 @@ public static class QuartzSchedulerKeys
 
     public const string EmailDispatchRecoveryScanCron = "0 */1 * * * ?";
 
-    /// <summary><see cref="JobDataMap"/> entry holding the JSON-serialized dispatch pointer.</summary>
-    public const string DispatchPointerDataKey = "dispatchPointer";
+    /// <summary>
+    /// Five minutes, not the one minute the polling worker used: the per-order deadline trigger now handles
+    /// the punctual case, so this sweep only has to catch orders no deadline covered.
+    /// </summary>
+    public const string InventoryHoldExpiryReconciliationCron = "0 */5 * * * ?";
+
+    /// <summary>Matches the ten-second cadence of the polling worker this job replaced.</summary>
+    public const string RegistrationFinalizationDrainCron = "*/10 * * * * ?";
 
     public static readonly JobKey EmailDispatchDrain =
         new(ScheduledJobNames.EmailDispatchDrain, RecurringGroup);
@@ -59,9 +67,71 @@ public static class QuartzSchedulerKeys
     public static readonly JobKey OrganizerPaymentReadinessReconciliation =
         new(ScheduledJobNames.OrganizerPaymentReadinessReconciliation, RecurringGroup);
 
+    public static readonly JobKey InventoryHoldExpiry =
+        new(ScheduledJobNames.InventoryHoldExpiry, OnDemandGroup);
+
+    public static readonly JobKey InventoryHoldExpiryReconciliation =
+        new(ScheduledJobNames.InventoryHoldExpiryReconciliation, RecurringGroup);
+
+    public static readonly JobKey RegistrationFinalizationDrain =
+        new(ScheduledJobNames.RegistrationFinalizationDrain, RecurringGroup);
+
     public static TriggerKey RecurringTriggerFor(JobKey jobKey)
     {
         ArgumentNullException.ThrowIfNull(jobKey);
         return new TriggerKey(jobKey.Name, jobKey.Group);
+    }
+
+    /// <summary>
+    /// Jobs that may be woken by a <see cref="ScheduledDeadline"/>. The map is closed on purpose: an
+    /// unknown job name is a caller mistake that should be reported, not a trigger quietly attached to a
+    /// job that does not exist and can therefore never run.
+    /// </summary>
+    private static readonly Dictionary<string, JobKey> DeadlineJobKeysByName = new(StringComparer.Ordinal)
+    {
+        [ScheduledJobNames.EventReminderDispatch] = EventReminderDispatch,
+        [ScheduledJobNames.InventoryHoldExpiry] = InventoryHoldExpiry,
+    };
+
+    public static bool TryResolveDeadlineJob(string jobName, out JobKey jobKey)
+        => DeadlineJobKeysByName.TryGetValue(jobName, out jobKey!);
+
+    /// <summary>
+    /// Builds the deterministic trigger identity for one deadline. Determinism is what makes
+    /// re-registration a replacement rather than a duplicate, and what lets cancellation find the trigger
+    /// again in a later process.
+    /// </summary>
+    public static TriggerKey DeadlineTriggerFor(string jobName, string deadlineKey)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(jobName);
+        ArgumentException.ThrowIfNullOrWhiteSpace(deadlineKey);
+
+        var name = string.Concat(jobName, DeadlineKeySeparator, deadlineKey);
+
+        // MySQL/MariaDB store trigger names in VARCHAR(200). A caller-supplied key long enough to overflow
+        // that would fail at insert time on one provider only, so an over-long name collapses to a stable
+        // digest instead: still deterministic, so cancellation and replacement keep working.
+        return new TriggerKey(
+            name.Length <= MaxTriggerNameLength ? name : BuildDigestedTriggerName(jobName, deadlineKey),
+            OnDemandGroup);
+    }
+
+    private const string DeadlineKeySeparator = ":";
+
+    /// <summary>Narrowest trigger-name column across the supported providers (MySQL/MariaDB).</summary>
+    private const int MaxTriggerNameLength = 200;
+
+    private static string BuildDigestedTriggerName(string jobName, string deadlineKey)
+    {
+        var digest = Convert.ToHexStringLower(
+            SHA256.HashData(Encoding.UTF8.GetBytes(deadlineKey)));
+
+        // Keep the job name readable in operator tooling, then spend the remaining budget on the digest.
+        var availableForJobName = MaxTriggerNameLength - DeadlineKeySeparator.Length - digest.Length;
+        var truncatedJobName = jobName.Length <= availableForJobName
+            ? jobName
+            : jobName[..Math.Max(0, availableForJobName)];
+
+        return string.Concat(truncatedJobName, DeadlineKeySeparator, digest);
     }
 }

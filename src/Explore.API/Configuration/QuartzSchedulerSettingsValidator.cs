@@ -57,6 +57,14 @@ public sealed class QuartzSchedulerSettingsValidator : IValidateOptions<QuartzSc
             }
         }
 
+        // Schema validation inspects the ADO job store's tables. Asking for it without a persistent store is
+        // not a harmless no-op — it is an operator who believes drift is being caught while nothing checks it.
+        if (options.ValidateSchemaOnStartup && !options.UsePersistentStore)
+        {
+            failures.Add(
+                "Scheduler:Quartz:ValidateSchemaOnStartup requires Scheduler:Quartz:UsePersistentStore to be true; there is no schema to validate on the in-memory store.");
+        }
+
         if (options.StatusEndpointEnabled)
         {
             if (string.IsNullOrWhiteSpace(options.StatusEndpointPath) ||

@@ -117,6 +117,39 @@ public sealed class QuartzSchedulerSettingsValidatorTests
     }
 
     [Test]
+    public async Task ValidateRejectsSchemaValidationWithoutPersistentStore()
+    {
+        var result = _validator.Validate(null, new QuartzSchedulerSettings
+        {
+            UsePersistentStore = false
+        });
+
+        await Assert.That(result.Succeeded).IsFalse();
+        await Assert.That(result.FailureMessage).Contains("ValidateSchemaOnStartup");
+        await Assert.That(result.FailureMessage).Contains("UsePersistentStore");
+    }
+
+    [Test]
+    public async Task ValidateAcceptsInMemoryStoreWhenSchemaValidationIsTurnedOffWithIt()
+    {
+        var result = _validator.Validate(null, new QuartzSchedulerSettings
+        {
+            UsePersistentStore = false,
+            ValidateSchemaOnStartup = false
+        });
+
+        await Assert.That(result.Succeeded).IsTrue();
+    }
+
+    [Test]
+    public async Task DefaultSettingsValidateTheSchedulerSchemaOnStartup()
+    {
+        var settings = new QuartzSchedulerSettings();
+
+        await Assert.That(settings.ValidateSchemaOnStartup).IsTrue();
+    }
+
+    [Test]
     public async Task ValidateRejectsAdminApiWithoutScheduler()
     {
         var result = _validator.Validate(null, new QuartzSchedulerSettings

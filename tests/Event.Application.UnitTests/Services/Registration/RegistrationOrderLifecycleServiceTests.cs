@@ -2,6 +2,7 @@
 // ABOUTME: Verifies free admission materialization, hold release, and approval routing without API exposure.
 
 using Explore.Application.Contracts.Persistence;
+using Explore.Application.Contracts.Scheduling;
 using Explore.Application.DTOs.RegistrationOrders;
 using Explore.Application.Services.Registration;
 using Explore.Domain;
@@ -26,6 +27,7 @@ public sealed class RegistrationOrderLifecycleServiceTests
     private readonly IEventSessionRepository _sessions = Substitute.For<IEventSessionRepository>();
     private readonly IOutboxRepository _outbox = Substitute.For<IOutboxRepository>();
     private readonly IRegistrationFinalizationRepository _finalization = Substitute.For<IRegistrationFinalizationRepository>();
+    private readonly IScheduledDeadlineDispatcher _deadlines = Substitute.For<IScheduledDeadlineDispatcher>();
 
     [Test]
     public async Task FinalizeFreeAsyncWhenPromotionReservationIsActiveConsumesItBeforeConfirming()
@@ -54,6 +56,47 @@ public sealed class RegistrationOrderLifecycleServiceTests
                 Arg.Any<CancellationToken>());
             _inventory.TryConsumeActiveHoldsForOrderAsync(order.Id, _tenantId, UtcNow, Arg.Any<CancellationToken>());
         });
+    }
+
+    /// <summary>
+    /// A cancelled order can never need its hold-expiry wake-up again, so the deadline is withdrawn as the
+    /// transition lands. Leaving it would accumulate one dead trigger per finished order in the scheduler
+    /// tables — the reason cancellation is centralized rather than left to each transition to remember.
+    /// </summary>
+    [Test]
+    public async Task CancelAsyncWithdrawsTheOrdersHoldExpiryDeadline()
+    {
+        (RegistrationOrder order, _, _) = CreateOrder(addLine: false);
+        MoveTo(order, RegistrationOrderStatusEnum.ReadyForCheckout);
+        ConfigureOrder(order, []);
+
+        RegistrationOrderLifecycleResponseDto result = await CreateService()
+            .CancelAsync(order.Id, _tenantId, CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await _deadlines.Received(1).CancelAsync(
+            ScheduledJobNames.InventoryHoldExpiry,
+            InventoryHoldDeadline.KeyFor(order.Id),
+            Arg.Any<CancellationToken>());
+    }
+
+    /// <summary>
+    /// A transition that leaves the order mid-flight must keep the deadline: the holds are still live and
+    /// still need releasing at their expiry.
+    /// </summary>
+    [Test]
+    public async Task ANonTerminalTransitionLeavesTheHoldExpiryDeadlineInPlace()
+    {
+        (RegistrationOrder order, _, _) = CreateOrder(addLine: false);
+        MoveTo(order, RegistrationOrderStatusEnum.AwaitingParticipantDetails);
+        ConfigureOrder(order, []);
+
+        await CreateService().SubmitAsync(order.Id, _tenantId, CancellationToken.None);
+
+        await _deadlines.DidNotReceive().CancelAsync(
+            Arg.Any<string>(),
+            Arg.Any<string>(),
+            Arg.Any<CancellationToken>());
     }
 
     [Test]
@@ -1347,6 +1390,7 @@ public sealed class RegistrationOrderLifecycleServiceTests
         _outbox,
         unitOfWork ?? new InlineUnitOfWork(),
         _finalization,
+        _deadlines,
         new FixedTimeProvider(UtcNow));
 
     private static PromotionReservation CreateActivePromotionReservation(

@@ -3,6 +3,7 @@
 
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
+using Explore.Application.Contracts.Scheduling;
 using Explore.Application.Contracts.Services;
 using Explore.Application.Features.RegistrationOrders.Requests.Commands;
 using Explore.Application.Features.RegistrationOrders.Validators;
@@ -10,6 +11,7 @@ using Explore.Application.Responses;
 using Explore.Domain;
 using Explore.Domain.Enums;
 using MediatR;
+using Microsoft.Extensions.Logging;
 
 namespace Explore.Application.Features.RegistrationOrders.Handlers.Commands;
 
@@ -22,6 +24,8 @@ public sealed class CreateOrderWithHoldCommandHandler(
     ITenantContext tenant,
     IOrganizerEarningsCalculator earningsCalculator,
     TimeProvider timeProvider,
+    IScheduledDeadlineDispatcher deadlines,
+    ILogger<CreateOrderWithHoldCommandHandler> logger,
     IUnitOfWork unitOfWork) :
     IRequestHandler<CreateRegistrationOrderWithHoldCommand, BaseCommandResponse<Guid>>,
     IRegistrationOrderStarter
@@ -65,9 +69,13 @@ public sealed class CreateOrderWithHoldCommandHandler(
                 _ => new StableLineIds(Guid.CreateVersion7(), Guid.CreateVersion7()));
         RegistrationParticipationSnapshot participation = RegistrationParticipationSnapshot.From(participationConfiguration);
 
+        // Captured inside the transaction, acted on only after it commits: scheduling a wake-up for an
+        // order that a rollback then erased would leave a trigger pointing at nothing.
+        DateTime? earliestHoldExpiry = null;
+
         try
         {
-            return await unitOfWork.ExecuteSerializableAsync(async token =>
+            BaseCommandResponse<Guid> response = await unitOfWork.ExecuteSerializableAsync(async token =>
             {
                 RegistrationOrder? existing = await inventory.GetOrderByIdAsync(orderId, tenant.TenantId, token);
                 if (existing is not null)
@@ -224,8 +232,16 @@ public sealed class CreateOrderWithHoldCommandHandler(
                     createdAt);
                 await inventory.AddOrderWithHoldsAsync(order, holds, token);
                 await inventory.SaveChangesAsync(token);
+                earliestHoldExpiry = holds.Length == 0 ? null : holds.Min(hold => hold.ExpiresAt);
                 return Success(order.Id, isWaitlisted ? "Registration order waitlisted." : "Registration order created.");
             }, cancellationToken);
+
+            if (response.Success && earliestHoldExpiry is not null)
+            {
+                await RegisterHoldExpiryDeadlineAsync(orderId, earliestHoldExpiry.Value, cancellationToken);
+            }
+
+            return response;
         }
         catch (ArgumentException exception)
         {
@@ -234,6 +250,38 @@ public sealed class CreateOrderWithHoldCommandHandler(
         catch (InvalidOperationException exception)
         {
             return Invalid(request.EventId, exception.Message);
+        }
+    }
+
+    /// <summary>
+    /// Asks the scheduler to wake at the order's earliest hold expiry so held capacity returns to sale at
+    /// its deadline instead of on the next sweep.
+    /// <para>
+    /// This is an optimization and is treated as one. The order is already committed by the time this runs,
+    /// so a scheduler outage must not surface as a failed order creation on the ticketing path — and it does
+    /// not need to, because <c>inventory-hold-expiry-reconciliation</c> still finds the order. A failure
+    /// costs latency, never work.
+    /// </para>
+    /// </summary>
+    private async Task RegisterHoldExpiryDeadlineAsync(
+        Guid orderId,
+        DateTime earliestHoldExpiry,
+        CancellationToken cancellationToken)
+    {
+        ScheduledDeadlineResult result = await deadlines.ScheduleAsync(
+            new ScheduledDeadline(
+                ScheduledJobNames.InventoryHoldExpiry,
+                InventoryHoldDeadline.KeyFor(orderId),
+                new DateTimeOffset(DateTime.SpecifyKind(earliestHoldExpiry, DateTimeKind.Utc)),
+                InventoryHoldDeadline.PointerFor(tenant.TenantId, orderId)),
+            cancellationToken);
+
+        if (!result.Scheduled)
+        {
+            logger.LogInformation(
+                "Hold-expiry deadline was not scheduled for order {OrderId}; the reconciliation sweep covers it. FailureCategory={FailureCategory}",
+                orderId,
+                result.FailureCategory);
         }
     }
 

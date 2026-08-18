@@ -833,6 +833,13 @@ and the scheduler can be resumed in-process. A shutdown scheduler would need a h
 into an outage. Pausing an individual job pauses its triggers without removing its schedule, and triggering a job runs
 it once immediately while leaving its schedule untouched.
 
+Changing anything in this section is governed by the **`schedule-background-work`** intent in
+[`.agents/contract/intents.yaml`](../.agents/contract/intents.yaml). It answers the contract's eight
+questions for scheduler work and encodes the invariants that have already caused defects here: Quartz types
+stay inside `Explore.API`, scheduler payloads stay pointer-only, scheduler tables are raw ADO rather than EF
+migrations, scheduler DDL is never destructive, cron expressions use Quartz's `?` day rule, and a missing
+optional column degrades silently rather than loudly.
+
 The scheduler job catalog is Application-owned through `IScheduledJobRegistry`. Current implemented jobs are:
 
 | Job | Schedule type | Payload | Source of truth |
@@ -848,6 +855,9 @@ The scheduler job catalog is Application-owned through `IScheduledJobRegistry`. 
 | `storage-reconciliation` | Interval, `StorageReconciliation:PollingIntervalMinutes` | None | Storage object state vs. provider |
 | `privacy-erasure-credential-cleanup` | Interval, `PrivacyErasure:ProviderPollingInterval` | None | Expired provider credentials/locators |
 | `organizer-payment-readiness-reconciliation` | Interval, `OrganizerPaymentReadinessReconciliation:PollingIntervalSeconds` | None | Stale organizer payment connections |
+| `inventory-hold-expiry` | One-off time trigger, per order | Pointer-only IDs | The order's earliest `RegistrationInventoryHold.ExpiresAt` |
+| `inventory-hold-expiry-reconciliation` | Cron `0 */5 * * * ?` (every 5 minutes) | None | Expired active holds and hold-expiry recovery targets |
+| `registration-finalization-drain` | Cron `*/10 * * * * ?` (every 10 seconds) | None | Durable registration-finalization effect claims |
 
 Planned-only jobs are `general-outbox-drain`, `pds-sync-drain`, `dead-letter-summary`, `waitlist-promotion-scan`, and `tenant-maintenance-scan`. Do not migrate general outbox or PDS workers to Quartz until EmailDispatch has green multi-node duplicate execution and crash-window recovery proof.
 
@@ -879,6 +889,63 @@ What changes for operators:
 `OutboxProcessor` and the queue-driven webhook, integration-sync, and PDS processors were deliberately **not**
 migrated: their fencing and retry semantics are coupled to their own loops, and moving them is gated on the
 multi-node proof required above.
+
+#### Upgrade note — registration finalization drain moved to the scheduler
+
+`RegistrationFinalizationWorker` was a `BackgroundService` polling every 10 seconds. It is now the
+`registration-finalization-drain` cron job on the same 10-second cadence. **Only the timer moved**: the job
+sends the identical `DrainRegistrationFinalizationEffectsCommand`, so the fenced claim, batch size (100), and
+lease duration (60s) are unchanged, and `[DisallowConcurrentExecution]` preserves the old loop's guarantee
+that a slow pass delays the next rather than overlapping it.
+
+The one operator-visible change is the claim's lease owner, which is now
+`registration-finalization-drain-job` instead of `registration-finalization-worker`. Queries or dashboards
+matching the old owner string must be repointed. This worker was chosen as the first drain migration
+precisely because its loop carried no logic of its own; the remaining queue drains keep their loops until
+this pattern has run in production.
+
+#### Scheduled job telemetry
+
+Every scheduled job — existing, migrated, or added later — is observed by one `IJobListener`
+(`SchedulerTelemetryJobListener`) rather than by per-job logging:
+
+- `explore.scheduler.job_executions` — counter labelled `job_name`, `job_group`, and `outcome`
+  (`succeeded` / `failed` / `vetoed`).
+- `explore.scheduler.job_duration` — histogram of execution seconds labelled `job_name` and `job_group`.
+
+`job_name` is collapsed to the `ScheduledJobNames` catalog; anything else reports as `other`, so an ad-hoc job
+cannot grow metric cardinality without bound. Labels deliberately carry **no tenant identity and no payload
+values** — a job's pointer identifies a tenant and an aggregate, and metric labels are exported and retained
+far more widely than logs. A `vetoed` execution never ran, and is counted separately so a trigger listener
+suppressing a job cannot look like that job running healthily.
+
+Every listener method is exception-contained: Quartz documents that an unhandled listener exception can
+disrupt the scheduling cycle, so a telemetry fault degrades to a missing metric rather than to a scheduler
+that silently stops firing every job in the process.
+
+#### Inventory-hold expiry — deadline plus sweep
+
+Registration capacity holds used to be released by a worker that polled every 60 seconds, so held inventory
+could stay unsellable for up to a minute past its expiry. That is now two jobs, and both are required:
+
+- **`inventory-hold-expiry`** is a one-off trigger registered when an order is created with holds, due at the
+  order's earliest hold expiry. It releases that one order's due holds and runs lifecycle recovery. It gives
+  punctuality — capacity returns to sale at the deadline rather than on the next poll.
+- **`inventory-hold-expiry-reconciliation`** is the correctness guarantee. It sweeps expired active holds
+  *and* hold-expiry recovery targets, catching three cases the trigger structurally cannot: holds that
+  pre-date the deployment and so have no registered deadline, deadlines lost with their scheduler row, and
+  orders that need lifecycle recovery after an interrupted expiry and never had a hold deadline at all.
+
+Because the trigger handles the punctual case, the sweep runs every five minutes rather than every minute.
+**Do not remove the sweep on the grounds that deadlines are precise** — precision and coverage are different
+properties, and only the sweep provides the second.
+
+Deadline registration is deliberately best-effort: it happens after the order-creation transaction commits,
+and a scheduler failure is logged and swallowed rather than failing the order, because the sweep still covers
+the order. Deadlines are keyed per order and withdrawn when an order reaches a terminal state (`Confirmed`,
+`Rejected`, `Expired`, `Cancelled`), which is what keeps `QRTZ_TRIGGERS` from accumulating one dead row per
+completed order. An orphaned deadline that does survive is harmless: it fires once, finds no due hold, and
+stops.
 
 ### Lifecycle-Email Operations
 

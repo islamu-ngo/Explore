@@ -961,6 +961,7 @@ Quartz host settings bind from `Scheduler:Quartz`:
 | `ClusteringEnabled` | `false` | Enables the database-backed clustering protocol. Requires `UsePersistentStore=true` and `InstanceId=AUTO`. |
 | `ClusterCheckinIntervalSeconds` | `20` | Node check-in interval when clustering is enabled. Must be greater than zero. |
 | `ApplySchemaOnStartup` | `true` | Applies the embedded idempotent scheduler DDL during API startup. Disable only when a separate migration job owns the scheduler schema. |
+| `ValidateSchemaOnStartup` | `true` | Asks Quartz to verify the job-store tables and columns while the scheduler initializes. It exists because the failure it catches is otherwise invisible: a missing *optional* column makes Quartz log a warning and keep running with that feature silently disabled — this platform shipped exactly such a defect (`MISFIRE_ORIG_FIRE_TIME`). With validation on, provider DDL drift fails startup and names the offending table instead. Requires `UsePersistentStore=true`; turn it off only as an operator escape hatch while a schema problem is being repaired, never to make a development build start. |
 | `StatusEndpointEnabled` | `false` | Exposes the read-only scheduler status endpoint. Keep disabled unless instance operators explicitly need scheduler internals. |
 | `StatusEndpointPath` | `/admin/scheduler` | Absolute non-root path for the status endpoint when enabled. |
 | `StatusEndpointAuthorizationPolicy` | `quartz_instance_admin` | Host authorization policy for the status endpoint. Must not be blank or anonymous when the endpoint is enabled. The API enforces this policy on the path before any scheduler state is read. |
@@ -970,6 +971,14 @@ Quartz host settings bind from `Scheduler:Quartz`:
 | `DashboardReadOnly` | `true` | Disables the dashboard's own mutating controls. Independent of `AdminApiReadOnly`. |
 | `DashboardPath` | `/quartz` | Absolute non-root base path for the dashboard UI. |
 | `DashboardAuthorizationPolicy` | `quartz_instance_admin` | Authorization policy applied across the dashboard's pages, SignalR circuit, and static assets. Must not be blank or anonymous when the dashboard is enabled. |
+
+Two scheduler cadences are fixed in code rather than exposed as configuration keys, because changing either
+in isolation would break the guarantee the pair provides:
+
+| Cadence | Value | Why it is not a setting |
+|---|---|---|
+| `inventory-hold-expiry` | Per order, at its earliest hold expiry | Derived from the order's own `ExpiresAt`; there is no interval to tune. |
+| `inventory-hold-expiry-reconciliation` | Cron `0 */5 * * * ?` | It is a safety net behind the per-order deadline, not the primary release path. Lowering it does not make holds expire sooner — the deadline already does that — and raising it only widens the window in which a *missed* deadline goes uncorrected. |
 
 #### Scheduler monitoring and accountability
 

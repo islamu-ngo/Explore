@@ -292,7 +292,7 @@ public static class ApplicationServicesRegistration
         services.AddScoped<AtprotoPdsRecoveryPolicyResolver>();
         services.AddScoped<IEventLifecyclePolicyProvider, EventLifecyclePolicyProvider>();
         services.AddScoped<IEventLifecycleReadinessEvaluator, EventLifecycleReadinessEvaluator>();
-        services.AddScoped<IScheduledEmailDispatchTrigger, NoOpScheduledEmailDispatchTrigger>();
+        services.AddScoped<IScheduledDeadlineDispatcher, NoOpScheduledDeadlineDispatcher>();
         services.AddSingleton<IScheduledJobRegistry, ScheduledJobRegistry>();
         services.AddSingleton<IWebhookEventTypeRegistry, WebhookEventTypeRegistry>();
         services.AddSingleton<IWebhookEventSchemaProvider, WebhookEventSchemaProvider>();

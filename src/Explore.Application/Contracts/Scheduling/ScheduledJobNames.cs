@@ -1,6 +1,8 @@
 // ABOUTME: Stable operational job names for platform-owned scheduled work.
 // ABOUTME: Keeps scheduler identifiers centralized so scheduler job names do not drift from Application contracts.
 
+using System.Collections.Frozen;
+
 namespace Explore.Application.Contracts.Scheduling;
 
 public static class ScheduledJobNames
@@ -24,4 +26,51 @@ public static class ScheduledJobNames
     public const string StorageReconciliation = "storage-reconciliation";
     public const string RegistrationRetentionCleanup = "registration-retention-cleanup";
     public const string OrganizerPaymentReadinessReconciliation = "organizer-payment-readiness-reconciliation";
+
+    // Inventory-hold expiry runs as a pair: a deadline trigger per order gives punctuality, and a low
+    // frequency sweep gives the correctness guarantee. Neither replaces the other — see the reconciliation
+    // job for why the sweep cannot be dropped once deadlines exist.
+    public const string InventoryHoldExpiry = "inventory-hold-expiry";
+    public const string InventoryHoldExpiryReconciliation = "inventory-hold-expiry-reconciliation";
+
+    /// <summary>Bounded drain migration: the timer moved to the scheduler, the claim semantics did not.</summary>
+    public const string RegistrationFinalizationDrain = "registration-finalization-drain";
+
+    /// <summary>
+    /// Every catalog name, used to bound telemetry label cardinality. Metric labels are exported and
+    /// retained far more widely than logs, so a job name that is not in this catalog is collapsed rather
+    /// than allowed to create its own time series.
+    /// </summary>
+    public static readonly FrozenSet<string> All = new[]
+    {
+        EmailDispatchDrain,
+        GeneralOutboxDrain,
+        PdsSyncDrain,
+        EmailDispatchRecoveryScan,
+        DeadLetterSummary,
+        EventReminderDispatch,
+        WaitlistPromotionScan,
+        TenantMaintenanceScan,
+        IdempotencyCleanup,
+        AiRetentionCleanup,
+        EmailDispatchRetentionCleanup,
+        WebhookRetentionCleanup,
+        PrivacyErasureCredentialCleanup,
+        StorageReconciliation,
+        RegistrationRetentionCleanup,
+        OrganizerPaymentReadinessReconciliation,
+        InventoryHoldExpiry,
+        InventoryHoldExpiryReconciliation,
+        RegistrationFinalizationDrain,
+    }.ToFrozenSet(StringComparer.Ordinal);
+}
+
+/// <summary>Bounded outcome vocabulary for scheduled job execution telemetry.</summary>
+public static class SchedulerJobOutcomes
+{
+    public const string Succeeded = "succeeded";
+    public const string Failed = "failed";
+
+    /// <summary>A trigger listener refused the execution; the job never ran.</summary>
+    public const string Vetoed = "vetoed";
 }

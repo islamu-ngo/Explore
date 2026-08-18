@@ -7,6 +7,7 @@ using Explore.Application.DTOs.RegistrationOrders;
 using Explore.Application.Features.RegistrationOrders.Handlers.Commands;
 using Explore.Application.Features.RegistrationOrders.Requests.Commands;
 using Explore.Application.Responses;
+using Explore.Application.Services;
 using Explore.Application.Services.Registration;
 using Explore.Domain;
 using Explore.Domain.Enums;
@@ -314,6 +315,7 @@ public sealed class RegistrationParticipantCommandHandlerTests
             BulkDefer = new BulkDeferRegistrationTicketsCommandHandler(commandService);
             Lifecycle = new RegistrationOrderLifecycleService(
                 _inventory, Substitute.For<IPromotionRedemptionRepository>(), _participants, _catalogs, _contributions, _sessions, _outbox, _unitOfWork, _finalization,
+                new NoOpScheduledDeadlineDispatcher(),
                 new FixedTimeProvider(UtcNow));
         }
 

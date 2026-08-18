@@ -1,10 +1,8 @@
 // ABOUTME: Unit-style tests for the API-hosted Quartz email dispatch jobs.
 // ABOUTME: Proves jobs delegate to Application drain contracts and treat scheduler payloads as pointers only.
 
-using System.Text.Json;
 using Event.Api.IntegrationTests.Fixtures;
 using Explore.API.Scheduling;
-using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Scheduling;
 using Explore.Application.Contracts.Services;
 using Explore.Application.Services;
@@ -72,12 +70,10 @@ public sealed class EmailDispatchQuartzJobsTests
             .Returns(new EmailDispatchSingleDrainResult(EmailDispatchDrainOutcome.Sent, Guid.CreateVersion7()));
         var job = new EventReminderDispatchJob(drainService, NullLogger<EventReminderDispatchJob>.Instance);
 
-        await job.Execute(CreateContext(new ScheduledEmailDispatchPointer(
+        await job.Execute(CreateContext(CreatePointer(
             tenantId,
             publishEventId,
-            EventLifecycleAutomationUseCases.EventReminder,
-            EventId: Guid.CreateVersion7(),
-            RegistrationIntentId: Guid.CreateVersion7())));
+            EventLifecycleAutomationUseCases.EventReminder)));
 
         await drainService.Received(1).ProcessSingleAsync(
             tenantId,
@@ -92,12 +88,10 @@ public sealed class EmailDispatchQuartzJobsTests
         var drainService = Substitute.For<IEmailDispatchDrainService>();
         var job = new EventReminderDispatchJob(drainService, NullLogger<EventReminderDispatchJob>.Instance);
 
-        await job.Execute(CreateContext(new ScheduledEmailDispatchPointer(
+        await job.Execute(CreateContext(CreatePointer(
             Guid.CreateVersion7(),
             Guid.CreateVersion7(),
-            "unsupported",
-            EventId: Guid.CreateVersion7(),
-            RegistrationIntentId: Guid.CreateVersion7())));
+            "unsupported")));
 
         await AssertNoSingleDrain(drainService);
     }
@@ -120,7 +114,29 @@ public sealed class EmailDispatchQuartzJobsTests
         var job = new EventReminderDispatchJob(drainService, NullLogger<EventReminderDispatchJob>.Instance);
         var dataMap = new JobDataMap
         {
-            { QuartzSchedulerKeys.DispatchPointerDataKey, "{ not-valid-json" }
+            { ScheduledDeadlinePointerKeys.TenantId, "not-a-guid" },
+            { ScheduledDeadlinePointerKeys.PublishEventId, "not-a-guid" },
+            { ScheduledDeadlinePointerKeys.UseCase, EventLifecycleAutomationUseCases.EventReminder }
+        };
+
+        await job.Execute(CreateContext(dataMap));
+
+        await AssertNoSingleDrain(drainService);
+    }
+
+    /// <summary>
+    /// The deadline envelope carries discrete string entries rather than one serialized object, so a
+    /// pointer that is missing a single identifier must still degrade to a no-op instead of throwing.
+    /// </summary>
+    [Test]
+    public async Task ReminderJobSkipsWhenPointerIsMissingAnIdentifier()
+    {
+        var drainService = Substitute.For<IEmailDispatchDrainService>();
+        var job = new EventReminderDispatchJob(drainService, NullLogger<EventReminderDispatchJob>.Instance);
+        var dataMap = new JobDataMap
+        {
+            { ScheduledDeadlinePointerKeys.TenantId, Guid.CreateVersion7().ToString() },
+            { ScheduledDeadlinePointerKeys.UseCase, EventLifecycleAutomationUseCases.EventReminder }
         };
 
         await job.Execute(CreateContext(dataMap));
@@ -137,12 +153,14 @@ public sealed class EmailDispatchQuartzJobsTests
             Arg.Any<CancellationToken>());
     }
 
-    private static IJobExecutionContext CreateContext(ScheduledEmailDispatchPointer pointer)
+    private static JobDataMap CreatePointer(Guid tenantId, Guid publishEventId, string useCase)
     {
-        return CreateContext(new JobDataMap
+        return new JobDataMap
         {
-            { QuartzSchedulerKeys.DispatchPointerDataKey, JsonSerializer.Serialize(pointer) }
-        });
+            { ScheduledDeadlinePointerKeys.TenantId, tenantId.ToString() },
+            { ScheduledDeadlinePointerKeys.PublishEventId, publishEventId.ToString() },
+            { ScheduledDeadlinePointerKeys.UseCase, useCase }
+        };
     }
 
     private static IJobExecutionContext CreateContext(JobDataMap? dataMap = null)

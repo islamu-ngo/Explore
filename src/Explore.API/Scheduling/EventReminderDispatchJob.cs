@@ -1,8 +1,7 @@
 // ABOUTME: Quartz job that wakes one pre-persisted event reminder EmailDispatchOutbox row at its due time.
 // ABOUTME: Resolves pointer-only scheduler payloads back into the durable EmailDispatchOutbox drain service.
 
-using System.Text.Json;
-using Explore.Application.Contracts.Infrastructure;
+using System.Globalization;
 using Explore.Application.Contracts.Scheduling;
 using Explore.Application.Contracts.Services;
 using Explore.Application.Services;
@@ -11,8 +10,9 @@ using Quartz;
 namespace Explore.API.Scheduling;
 
 /// <summary>
-/// The trigger carries only durable identifiers as JSON in the <see cref="JobDataMap"/>; message content and
-/// transport data stay in the application database, so a stale scheduler row can never resend real content.
+/// The trigger carries only durable identifiers as discrete string entries in the <see cref="JobDataMap"/>;
+/// message content and transport data stay in the application database, so a stale scheduler row can never
+/// resend real content.
 /// </summary>
 [DisallowConcurrentExecution]
 public sealed class EventReminderDispatchJob(
@@ -23,8 +23,8 @@ public sealed class EventReminderDispatchJob(
     {
         ArgumentNullException.ThrowIfNull(context);
 
-        var pointer = ReadPointer(context);
-        if (pointer is null)
+        if (!TryReadIdentifier(context, ScheduledDeadlinePointerKeys.TenantId, out var tenantId) ||
+            !TryReadIdentifier(context, ScheduledDeadlinePointerKeys.PublishEventId, out var publishEventId))
         {
             logger.LogWarning(
                 "Quartz job {JobName} skipped because no usable pointer was supplied.",
@@ -32,18 +32,19 @@ public sealed class EventReminderDispatchJob(
             return;
         }
 
-        if (!string.Equals(pointer.UseCase, EventLifecycleAutomationUseCases.EventReminder, StringComparison.Ordinal))
+        var useCase = ReadString(context, ScheduledDeadlinePointerKeys.UseCase);
+        if (!string.Equals(useCase, EventLifecycleAutomationUseCases.EventReminder, StringComparison.Ordinal))
         {
             logger.LogWarning(
                 "Quartz job {JobName} skipped unsupported use case {UseCase}.",
                 ScheduledJobNames.EventReminderDispatch,
-                pointer.UseCase);
+                useCase);
             return;
         }
 
         var result = await drainService.ProcessSingleAsync(
-            pointer.TenantId,
-            pointer.PublishEventId,
+            tenantId,
+            publishEventId,
             ScheduledJobNames.EventReminderDispatch,
             context.CancellationToken);
 
@@ -54,31 +55,23 @@ public sealed class EventReminderDispatchJob(
     }
 
     /// <summary>
-    /// Reads from the merged map so a payload supplied on either the job detail or the trigger is honored.
-    /// A malformed payload is a poison message: it is logged and dropped rather than retried forever.
+    /// Reads from the merged map so a value supplied on either the job detail or the trigger is honored.
+    /// An absent or unparsable identifier is a poison payload: it is logged and dropped rather than thrown,
+    /// because throwing would make the scheduler retry a trigger that can never succeed.
     /// </summary>
-    private ScheduledEmailDispatchPointer? ReadPointer(IJobExecutionContext context)
+    private static bool TryReadIdentifier(IJobExecutionContext context, string key, out Guid value)
     {
-        // GetString throws when the key is absent, so probe first: a trigger with no payload is a
-        // recoverable no-op, not an exception the scheduler should retry.
-        if (!context.MergedJobDataMap.TryGetValue(QuartzSchedulerKeys.DispatchPointerDataKey, out var rawPayload) ||
-            rawPayload is not string payload ||
-            string.IsNullOrWhiteSpace(payload))
-        {
-            return null;
-        }
+        return Guid.TryParse(ReadString(context, key), CultureInfo.InvariantCulture, out value);
+    }
 
-        try
-        {
-            return JsonSerializer.Deserialize<ScheduledEmailDispatchPointer>(payload);
-        }
-        catch (JsonException exception)
-        {
-            logger.LogWarning(
-                exception,
-                "Quartz job {JobName} could not deserialize its scheduled dispatch pointer.",
-                ScheduledJobNames.EventReminderDispatch);
-            return null;
-        }
+    /// <summary>
+    /// <c>GetString</c> throws when the key is absent, so the map is probed first: a trigger with no
+    /// payload is a recoverable no-op, not an exception the scheduler should retry.
+    /// </summary>
+    private static string? ReadString(IJobExecutionContext context, string key)
+    {
+        return context.MergedJobDataMap.TryGetValue(key, out var raw) && raw is string value
+            ? value
+            : null;
     }
 }

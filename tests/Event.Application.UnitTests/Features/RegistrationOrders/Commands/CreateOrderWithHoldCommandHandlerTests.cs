@@ -3,6 +3,7 @@
 
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
+using Explore.Application.Contracts.Scheduling;
 using Explore.Application.DTOs.RegistrationOrders;
 using Explore.Application.Features.RegistrationOrders.Handlers.Commands;
 using Explore.Application.Features.RegistrationOrders.Requests.Commands;
@@ -11,6 +12,7 @@ using Explore.Application.Services.Registration;
 using Explore.Domain;
 using Explore.Domain.Enums;
 using Explore.Domain.ValueObjects;
+using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 using TUnit.Assertions;
 using TUnit.Core;
@@ -29,6 +31,7 @@ public sealed class CreateOrderWithHoldCommandHandlerTests
     private readonly IPlatformFeePolicyRepository _feePolicies = Substitute.For<IPlatformFeePolicyRepository>();
     private readonly IPlatformContributionSettingRepository _contributionSettings = Substitute.For<IPlatformContributionSettingRepository>();
     private readonly ITenantContext _tenant = Substitute.For<ITenantContext>();
+    private readonly IScheduledDeadlineDispatcher _deadlines = Substitute.For<IScheduledDeadlineDispatcher>();
     private readonly Dictionary<Guid, RegistrationOrder> _orders = [];
     private readonly List<(RegistrationOrder Order, IReadOnlyCollection<RegistrationInventoryHold> Holds)> _saved = [];
 
@@ -62,6 +65,109 @@ public sealed class CreateOrderWithHoldCommandHandlerTests
                 Arg.Any<IReadOnlyCollection<Guid>>(),
                 Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, RegistrationTicketLimitUsage>());
+        _deadlines.ScheduleAsync(Arg.Any<ScheduledDeadline>(), Arg.Any<CancellationToken>())
+            .Returns(ScheduledDeadlineResult.Success());
+    }
+
+    /// <summary>
+    /// Held capacity is inventory nobody can buy, so the scheduler is asked to release it at the moment it
+    /// stops being reserved rather than on the next sweep. The deadline is keyed and pointed at the order.
+    /// </summary>
+    [Test]
+    public async Task HandleWhenTimedHoldIsCreatedRegistersAHoldExpiryDeadlineAtTheEarliestExpiry()
+    {
+        (EventTicketCatalogVersion catalog, EventTicketType ticket, EventCapacityPool pool) = CreatePublishedCatalog(
+            maximumQuantity: 2,
+            holdPolicy: CapacityHoldPolicyEnum.TimedHoldOnSelection);
+        _catalogs.GetPublishedCatalogAsync(_eventId, _tenantId, Arg.Any<CancellationToken>()).Returns(catalog);
+        _inventory.GetPoolsForUpdateAsync(Arg.Any<IReadOnlyCollection<Guid>>(), _eventId, _tenantId, Arg.Any<CancellationToken>())
+            .Returns([pool]);
+        _inventory.GetAllocatedQuantityAsync(pool.Id, _tenantId, Arg.Any<CancellationToken>()).Returns(0);
+
+        var result = await CreateHandler().Handle(CreateCommand(catalog.Id, ticket.Id, quantity: 1), CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        RegistrationInventoryHold hold = _saved.Single().Holds.Single();
+        await _deadlines.Received(1).ScheduleAsync(
+            Arg.Is<ScheduledDeadline>(deadline =>
+                deadline.JobName == ScheduledJobNames.InventoryHoldExpiry &&
+                deadline.DeadlineKey == InventoryHoldDeadline.KeyFor(result.Id) &&
+                deadline.DueAt == new DateTimeOffset(hold.ExpiresAt, TimeSpan.Zero)),
+            Arg.Any<CancellationToken>());
+    }
+
+    /// <summary>
+    /// Scheduler payloads reach durable storage outside the application's retention machinery, so the
+    /// pointer must stay identifiers-only rather than carrying anything about the buyer or the order.
+    /// </summary>
+    [Test]
+    public async Task HandleRegistersAHoldDeadlineCarryingOnlyDurableIdentifiers()
+    {
+        (EventTicketCatalogVersion catalog, EventTicketType ticket, EventCapacityPool pool) = CreatePublishedCatalog(
+            maximumQuantity: 2,
+            holdPolicy: CapacityHoldPolicyEnum.TimedHoldOnSelection);
+        _catalogs.GetPublishedCatalogAsync(_eventId, _tenantId, Arg.Any<CancellationToken>()).Returns(catalog);
+        _inventory.GetPoolsForUpdateAsync(Arg.Any<IReadOnlyCollection<Guid>>(), _eventId, _tenantId, Arg.Any<CancellationToken>())
+            .Returns([pool]);
+        _inventory.GetAllocatedQuantityAsync(pool.Id, _tenantId, Arg.Any<CancellationToken>()).Returns(0);
+        ScheduledDeadline? captured = null;
+        _deadlines.ScheduleAsync(Arg.Any<ScheduledDeadline>(), Arg.Any<CancellationToken>())
+            .Returns(callInfo =>
+            {
+                captured = callInfo.ArgAt<ScheduledDeadline>(0);
+                return ScheduledDeadlineResult.Success();
+            });
+
+        var result = await CreateHandler().Handle(CreateCommand(catalog.Id, ticket.Id, quantity: 1), CancellationToken.None);
+
+        await Assert.That(captured).IsNotNull();
+        await Assert.That(captured!.Pointer.Keys.Order()).IsEquivalentTo(
+            new[] { ScheduledDeadlinePointerKeys.RegistrationOrderId, ScheduledDeadlinePointerKeys.TenantId }.Order());
+        await Assert.That(captured.Pointer[ScheduledDeadlinePointerKeys.TenantId]).IsEqualTo(_tenantId.ToString("D"));
+        await Assert.That(captured.Pointer[ScheduledDeadlinePointerKeys.RegistrationOrderId])
+            .IsEqualTo(result.Id.ToString("D"));
+    }
+
+    /// <summary>
+    /// The deadline is punctuality, not correctness — the reconciliation sweep still finds the order — so a
+    /// scheduler outage must never turn into a failed order on the ticketing revenue path.
+    /// </summary>
+    [Test]
+    public async Task HandleStillSucceedsWhenTheSchedulerRefusesTheHoldDeadline()
+    {
+        (EventTicketCatalogVersion catalog, EventTicketType ticket, EventCapacityPool pool) = CreatePublishedCatalog(
+            maximumQuantity: 2,
+            holdPolicy: CapacityHoldPolicyEnum.TimedHoldOnSelection);
+        _catalogs.GetPublishedCatalogAsync(_eventId, _tenantId, Arg.Any<CancellationToken>()).Returns(catalog);
+        _inventory.GetPoolsForUpdateAsync(Arg.Any<IReadOnlyCollection<Guid>>(), _eventId, _tenantId, Arg.Any<CancellationToken>())
+            .Returns([pool]);
+        _inventory.GetAllocatedQuantityAsync(pool.Id, _tenantId, Arg.Any<CancellationToken>()).Returns(0);
+        _deadlines.ScheduleAsync(Arg.Any<ScheduledDeadline>(), Arg.Any<CancellationToken>())
+            .Returns(ScheduledDeadlineResult.NotScheduled(ScheduledDeadlineResult.SchedulerUnavailable));
+
+        var result = await CreateHandler().Handle(CreateCommand(catalog.Id, ticket.Id, quantity: 1), CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await Assert.That(_saved).HasSingleItem();
+    }
+
+    /// <summary>A waitlisted order reserved no capacity, so there is no expiry to wake up for.</summary>
+    [Test]
+    public async Task HandleWhenNoHoldIsCreatedRegistersNoDeadline()
+    {
+        (EventTicketCatalogVersion catalog, EventTicketType ticket, EventCapacityPool pool) = CreatePublishedCatalog(
+            maximumQuantity: 1,
+            holdPolicy: CapacityHoldPolicyEnum.WaitlistWhenFull);
+        _catalogs.GetPublishedCatalogAsync(_eventId, _tenantId, Arg.Any<CancellationToken>()).Returns(catalog);
+        _inventory.GetPoolsForUpdateAsync(Arg.Any<IReadOnlyCollection<Guid>>(), _eventId, _tenantId, Arg.Any<CancellationToken>())
+            .Returns([pool]);
+        _inventory.GetAllocatedQuantityAsync(pool.Id, _tenantId, Arg.Any<CancellationToken>()).Returns(1);
+
+        var result = await CreateHandler().Handle(CreateCommand(catalog.Id, ticket.Id, quantity: 1), CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await Assert.That(_saved.Single().Holds).IsEmpty();
+        await _deadlines.DidNotReceive().ScheduleAsync(Arg.Any<ScheduledDeadline>(), Arg.Any<CancellationToken>());
     }
 
     [Test]
@@ -623,6 +729,8 @@ public sealed class CreateOrderWithHoldCommandHandlerTests
         _tenant,
         new OrganizerEarningsCalculator(),
         new FixedTimeProvider(UtcNow),
+        _deadlines,
+        NullLogger<CreateOrderWithHoldCommandHandler>.Instance,
         unitOfWork ?? new RetryingUnitOfWork());
 
     private CreateRegistrationOrderWithHoldCommand CreateCommand(

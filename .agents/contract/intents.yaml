@@ -485,16 +485,23 @@ intents:
     category: infrastructure
     triggers:
       - "add a scheduled job"
+      - "add a background job"
+      - "background job"
       - "add a background service"
+      - "cron job"
+      - "scheduler change"
       - "recurring cleanup"
       - "periodic sweep"
       - "change a cron schedule"
       - "retention cleanup job"
+      - "schedule a deadline"
+      - "wake work at a future time"
     must_read_docs:
       - docs/OPERATIONS.md
       - docs/ARCHITECTURE.md
       - docs/QUICK_REFERENCE.md
       - docs/CONFIGURATION.md
+      - docs/TESTING.md
       - docs/OUTBOX_PATTERN.md
     load_skills:
       - outbox-pattern
@@ -510,6 +517,7 @@ intents:
       - "src/Explore.API/Extensions/QuartzSchedulerExtensions.cs"
       - "src/Explore.API/Configuration/QuartzSchedulerSettings*.cs"
       - "src/Explore.Application/Contracts/Scheduling/**/*.cs"
+      - "src/Explore.API/Resources/Quartz/**"
       - "src/Explore.API/appsettings*.json"
       - "docs/OPERATIONS.md"
       - "docs/CONFIGURATION.md"
@@ -528,8 +536,16 @@ intents:
       - "JobDataMap payloads carry durable identifiers only; content stays in the application database"
       - "Quartz types stay inside Explore.API; Application code depends on IScheduledJobRegistry"
       - "Job identifiers, log event names, health-check names, metric names, and configuration keys are operator-visible and documented in the same slice"
+      - "Cron expressions use Quartz's 6-or-7-field syntax with '?' in exactly one of day-of-month or day-of-week; a Unix 5-field expression is silently wrong here"
+      - "New scheduler columns are added to every provider script at once, because Quartz treats an absent optional column as a warning and keeps running with that behaviour disabled"
+      - "A deadline registered through IScheduledDeadlineDispatcher is paired with a reconciliation sweep that owns correctness, and its registration failure never fails the caller's transaction"
+      - "Listener code (IJobListener/ITriggerListener) is exception-contained in every method, because an unhandled listener exception can disrupt the scheduling cycle"
     forbidden_without_approval:
       - "Introducing a second scheduling mechanism, or reintroducing TickerQ"
+      - "Referencing Quartz types outside Explore.API, including from Explore.Application or Explore.Domain"
+      - "Placing payloads, PII, message content, secrets, or provider identifiers in a JobDataMap or ScheduledDeadline pointer"
+      - "Creating an EF Core migration for scheduler tables; the QRTZ_ schema is raw ADO shipped as embedded per-provider DDL"
+      - "Adding DROP, TRUNCATE, or any other destructive statement to a scheduler DDL script, which runs on every startup"
       - "Moving retry, fencing, lease, or outbox semantics up into the scheduling layer"
       - "Converting OutboxProcessor or a retry-until-success bootstrap worker into a recurring trigger"
       - "Renaming an existing scheduled job identifier or its completion log event"

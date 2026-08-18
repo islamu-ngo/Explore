@@ -2,6 +2,7 @@
 // ABOUTME: Keeps every lifecycle write in one unit-of-work transaction and creates only PII-free outbox intent.
 
 using Explore.Application.Contracts.Persistence;
+using Explore.Application.Contracts.Scheduling;
 using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.RegistrationOrders;
 using Explore.Domain;
@@ -20,6 +21,7 @@ public sealed class RegistrationOrderLifecycleService(
     IOutboxRepository outbox,
     IUnitOfWork unitOfWork,
     IRegistrationFinalizationRepository finalization,
+    IScheduledDeadlineDispatcher deadlines,
     TimeProvider timeProvider) : IRegistrationOrderLifecycleService
 {
     public Task<RegistrationOrderLifecycleResponseDto> SubmitAsync(
@@ -27,7 +29,86 @@ public sealed class RegistrationOrderLifecycleService(
         Guid tenantId,
         CancellationToken cancellationToken) => SubmitAsync(orderId, tenantId, null, cancellationToken);
 
-    public async Task<RegistrationOrderLifecycleResponseDto> SubmitAsync(
+    // Every public transition routes through WithdrawHoldDeadlineWhenTerminalAsync so that withdrawing a
+    // finished order's hold-expiry wake-up is a property of the service rather than a step each transition
+    // has to remember. Several transitions can end an order — reject, cancel, free finalization — and more
+    // will exist; hooking each one individually is exactly how one gets missed and leaves dead triggers
+    // accumulating in the scheduler tables.
+    public Task<RegistrationOrderLifecycleResponseDto> SubmitAsync(
+        Guid orderId,
+        Guid tenantId,
+        int? platformContributionBasisPoints,
+        CancellationToken cancellationToken) => WithdrawHoldDeadlineWhenTerminalAsync(
+            SubmitCoreAsync(orderId, tenantId, platformContributionBasisPoints, cancellationToken),
+            cancellationToken);
+
+    public Task<RegistrationOrderLifecycleResponseDto> ReadyForCheckoutAsync(
+        Guid orderId,
+        Guid tenantId,
+        CancellationToken cancellationToken) => WithdrawHoldDeadlineWhenTerminalAsync(
+            ReadyForCheckoutCoreAsync(orderId, tenantId, cancellationToken),
+            cancellationToken);
+
+    public Task<RegistrationOrderLifecycleResponseDto> ApproveAsync(
+        Guid orderId,
+        Guid tenantId,
+        CancellationToken cancellationToken) => WithdrawHoldDeadlineWhenTerminalAsync(
+            ApproveCoreAsync(orderId, tenantId, cancellationToken),
+            cancellationToken);
+
+    public Task<RegistrationOrderLifecycleResponseDto> RejectAsync(
+        Guid orderId,
+        Guid tenantId,
+        CancellationToken cancellationToken) => WithdrawHoldDeadlineWhenTerminalAsync(
+            RejectCoreAsync(orderId, tenantId, cancellationToken),
+            cancellationToken);
+
+    public Task<RegistrationOrderLifecycleResponseDto> CancelAsync(
+        Guid orderId,
+        Guid tenantId,
+        CancellationToken cancellationToken) => WithdrawHoldDeadlineWhenTerminalAsync(
+            CancelCoreAsync(orderId, tenantId, cancellationToken),
+            cancellationToken);
+
+    public Task<RegistrationOrderLifecycleResponseDto> FinalizeFreeAsync(
+        Guid orderId,
+        Guid tenantId,
+        CancellationToken cancellationToken) => WithdrawHoldDeadlineWhenTerminalAsync(
+            FinalizeFreeCoreAsync(orderId, tenantId, cancellationToken),
+            cancellationToken);
+
+    public Task<RegistrationOrderLifecycleResponseDto> RecoverExpiredHoldAsync(
+        Guid orderId,
+        Guid tenantId,
+        CancellationToken cancellationToken) => WithdrawHoldDeadlineWhenTerminalAsync(
+            RecoverExpiredHoldCoreAsync(orderId, tenantId, cancellationToken),
+            cancellationToken);
+
+    /// <summary>
+    /// Removes an order's pending hold-expiry deadline once the order reaches a state that can never need
+    /// it again. Failing to withdraw one is not a correctness problem — an orphaned deadline fires once,
+    /// finds no due hold, and stops — so this never disturbs the transition it follows.
+    /// </summary>
+    private async Task<RegistrationOrderLifecycleResponseDto> WithdrawHoldDeadlineWhenTerminalAsync(
+        Task<RegistrationOrderLifecycleResponseDto> transition,
+        CancellationToken cancellationToken)
+    {
+        RegistrationOrderLifecycleResponseDto response = await transition;
+
+        if (response.Success &&
+            response.Order is not null &&
+            RegistrationOrderRules.IsTerminal((RegistrationOrderStatusEnum)response.Order.StatusId))
+        {
+            await deadlines.CancelAsync(
+                ScheduledJobNames.InventoryHoldExpiry,
+                InventoryHoldDeadline.KeyFor(response.Id),
+                cancellationToken);
+        }
+
+        return response;
+    }
+
+    private async Task<RegistrationOrderLifecycleResponseDto> SubmitCoreAsync(
         Guid orderId,
         Guid tenantId,
         int? platformContributionBasisPoints,
@@ -108,7 +189,7 @@ public sealed class RegistrationOrderLifecycleService(
         }, cancellationToken);
     }
 
-    public async Task<RegistrationOrderLifecycleResponseDto> ReadyForCheckoutAsync(Guid orderId, Guid tenantId, CancellationToken cancellationToken)
+    private async Task<RegistrationOrderLifecycleResponseDto> ReadyForCheckoutCoreAsync(Guid orderId, Guid tenantId, CancellationToken cancellationToken)
     {
         DateTime now = timeProvider.GetUtcNow().UtcDateTime;
         RegistrationOrder? initialOrder = await inventory.GetOrderWithLinesAsync(orderId, tenantId, cancellationToken);
@@ -231,7 +312,7 @@ public sealed class RegistrationOrderLifecycleService(
         }
     }
 
-    public async Task<RegistrationOrderLifecycleResponseDto> ApproveAsync(Guid orderId, Guid tenantId, CancellationToken cancellationToken)
+    private async Task<RegistrationOrderLifecycleResponseDto> ApproveCoreAsync(Guid orderId, Guid tenantId, CancellationToken cancellationToken)
     {
         DateTime now = timeProvider.GetUtcNow().UtcDateTime;
         RegistrationOrder? initialOrder = await inventory.GetOrderWithLinesAsync(orderId, tenantId, cancellationToken);
@@ -325,7 +406,7 @@ public sealed class RegistrationOrderLifecycleService(
         }
     }
 
-    public Task<RegistrationOrderLifecycleResponseDto> RejectAsync(Guid orderId, Guid tenantId, CancellationToken cancellationToken) =>
+    private Task<RegistrationOrderLifecycleResponseDto> RejectCoreAsync(Guid orderId, Guid tenantId, CancellationToken cancellationToken) =>
         EndAsync(
             orderId,
             tenantId,
@@ -335,7 +416,7 @@ public sealed class RegistrationOrderLifecycleService(
             "Registration order rejected.",
             cancellationToken);
 
-    public async Task<RegistrationOrderLifecycleResponseDto> CancelAsync(Guid orderId, Guid tenantId, CancellationToken cancellationToken)
+    private async Task<RegistrationOrderLifecycleResponseDto> CancelCoreAsync(Guid orderId, Guid tenantId, CancellationToken cancellationToken)
     {
         DateTime now = timeProvider.GetUtcNow().UtcDateTime;
         Guid outboxMessageId = Guid.CreateVersion7();
@@ -378,7 +459,7 @@ public sealed class RegistrationOrderLifecycleService(
         }, cancellationToken);
     }
 
-    public async Task<RegistrationOrderLifecycleResponseDto> FinalizeFreeAsync(Guid orderId, Guid tenantId, CancellationToken cancellationToken)
+    private async Task<RegistrationOrderLifecycleResponseDto> FinalizeFreeCoreAsync(Guid orderId, Guid tenantId, CancellationToken cancellationToken)
     {
         DateTime now = timeProvider.GetUtcNow().UtcDateTime;
         RegistrationOrder? initialOrder = await inventory.GetOrderWithLinesAsync(orderId, tenantId, cancellationToken);
@@ -499,7 +580,7 @@ public sealed class RegistrationOrderLifecycleService(
         }
     }
 
-    public async Task<RegistrationOrderLifecycleResponseDto> RecoverExpiredHoldAsync(
+    private async Task<RegistrationOrderLifecycleResponseDto> RecoverExpiredHoldCoreAsync(
         Guid orderId,
         Guid tenantId,
         CancellationToken cancellationToken)

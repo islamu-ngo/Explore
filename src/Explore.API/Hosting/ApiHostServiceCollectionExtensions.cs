@@ -13,6 +13,7 @@ using Explore.API.Services.Calendar;
 using Explore.API.Services.OpenGraph;
 using Explore.Application;
 using Explore.Application.Contracts.Infrastructure;
+using Explore.Application.Contracts.Scheduling;
 using Explore.Application.Contracts.Services;
 using Explore.Application.Contracts.Services.Registration;
 using Explore.Application.Contracts.Webhooks;
@@ -198,6 +199,11 @@ public static class ApiHostServiceCollectionExtensions
         builder.Services.AddHateoasAssemblers();
         builder.Services.AddApiMediaTypeVersioning();
         builder.Services.AddSingleton<BusinessMetrics>();
+
+        // The scheduler's telemetry listener depends on the narrow recording port, not on the whole metrics
+        // surface; the same singleton instance backs both so job metrics land on the platform meter.
+        builder.Services.AddSingleton<ISchedulerJobTelemetry>(
+            provider => provider.GetRequiredService<BusinessMetrics>());
         builder.Services.AddSingleton<TranslationMetrics>();
         builder.Services.AddSingleton<ProjectionMetrics>();
         builder.Services.AddSingleton<RecyclableMemoryStreamManager>();
@@ -491,8 +497,6 @@ public static class ApiHostServiceCollectionExtensions
         if (!isTesting)
         {
             builder.Services.AddHostedService<NotificationFanoutProcessor>();
-            builder.Services.AddHostedService<InventoryHoldExpiryWorker>();
-            builder.Services.AddHostedService<RegistrationFinalizationWorker>();
             builder.Services.AddHostedService<RegistrationProviderSubmissionWriteWorker>();
             builder.Services.AddHostedService<RegistrationProviderSubscriptionLifecycleWorker>();
             builder.Services.AddHostedService<WebhookBulkReplayProcessor>();

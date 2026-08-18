@@ -1,6 +1,7 @@
 // ABOUTME: End-to-end proof that Tier 1 standalone SQLite gets durable Quartz scheduling from the embedded DDL.
 // ABOUTME: Applies the schema to a real SQLite file, runs a scheduler over it, and verifies state survives a restart.
 
+using Event.Api.IntegrationTests.Fixtures;
 using Explore.API.Scheduling;
 using Explore.Secrets.Database;
 using Microsoft.Data.Sqlite;
@@ -10,6 +11,7 @@ using TUnit.Core;
 
 namespace ApiIntegrationTests.Features;
 
+[NotInParallel(SchedulerProofConstraints.LiveScheduler)]
 public sealed class QuartzSqliteDurableSchedulingTests
 {
     private const string TablePrefix = "QRTZ_";
@@ -175,7 +177,7 @@ public sealed class QuartzSqliteDurableSchedulingTests
         public async Task<IScheduler> CreateSchedulerAsync()
         {
             var services = new ServiceCollection();
-            services.AddLogging();
+            services.AddSchedulerProofLogging();
             services.AddQuartz(quartz =>
             {
                 quartz.SchedulerName = "sqlite-durability-probe";
@@ -184,11 +186,16 @@ public sealed class QuartzSqliteDurableSchedulingTests
                 {
                     store.UseProperties = true;
                     store.UseSystemTextJsonSerializer();
-                    store.UseMicrosoftSQLite(ado =>
-                    {
-                        ado.ConnectionString = ConnectionString;
-                        ado.TablePrefix = TablePrefix;
-                    });
+                    // Quartz's connection manager is process-wide and keyed by data-source name. Several
+                    // schedulers live in one test process, so each needs its own name; otherwise disposing
+                    // one container shuts the shared provider down under the others.
+                    store.UseMicrosoftSQLite(
+                        ado =>
+                        {
+                            ado.ConnectionString = ConnectionString;
+                            ado.TablePrefix = TablePrefix;
+                        },
+                        dataSourceName: $"sqlite-probe-{Guid.CreateVersion7():N}");
                 });
             });
 

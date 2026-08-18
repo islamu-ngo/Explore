@@ -61,8 +61,8 @@ public static class QuartzSchedulerExtensions
         var runtimeDatabase = PrimaryDatabaseConfiguration.BindRuntime(configuration);
         var connectionString = PrimaryDatabaseConfiguration.BuildConnectionString(runtimeDatabase).ConnectionString;
 
-        services.RemoveAll<IScheduledEmailDispatchTrigger>();
-        services.AddScoped<IScheduledEmailDispatchTrigger, QuartzScheduledEmailDispatchTrigger>();
+        services.RemoveAll<IScheduledDeadlineDispatcher>();
+        services.AddScoped<IScheduledDeadlineDispatcher, QuartzScheduledDeadlineDispatcher>();
         services.AddSingleton<QuartzSchemaInitializer>();
         services.TryAddSingleton<ISchedulerOperations, QuartzSchedulerOperations>();
 
@@ -85,6 +85,12 @@ public static class QuartzSchedulerExtensions
             RegisterRecurringJobs(quartz, settings);
             RegisterMaintenanceSweeps(quartz, configuration);
             RegisterOnDemandJobs(quartz);
+
+            // One listener observes every job, including jobs added later that forget to report themselves.
+            // It is resolved from the container so it can reach BusinessMetrics; its own faults are
+            // contained inside the listener, because an unhandled listener exception can disrupt the
+            // scheduling cycle for every job in the process.
+            quartz.AddJobListener<SchedulerTelemetryJobListener>();
         });
 
         // WaitForJobsToComplete keeps a mid-flight dispatch batch from being torn off during container shutdown.
@@ -228,6 +234,11 @@ public static class QuartzSchedulerExtensions
             store.UseProperties = true;
             store.UseSystemTextJsonSerializer();
 
+            // Stated explicitly rather than left to the provider default: Quartz degrades gracefully when an
+            // optional column is missing — it logs a warning and silently drops the behaviour that column
+            // supports. Startup validation converts that into a loud failure naming the table.
+            store.PerformSchemaValidation = settings.ValidateSchemaOnStartup;
+
             void ConfigureAdo(SchedulerBuilder.AdoProviderOptions ado)
             {
                 ado.ConnectionString = connectionString;
@@ -280,18 +291,38 @@ public static class QuartzSchedulerExtensions
             QuartzSchedulerKeys.EmailDispatchRecoveryScanCron,
             "Marks stale EmailDispatchOutbox processing leases as Unknown for operator review.");
 
+        // The safety net behind the per-order hold-expiry deadline. It is registered unconditionally because
+        // correctness rests on it, not on the deadline trigger: pre-existing holds, lost triggers, and
+        // interrupted recoveries are only ever cleaned up here.
+        AddCronJob<InventoryHoldExpiryReconciliationJob>(
+            quartz,
+            QuartzSchedulerKeys.InventoryHoldExpiryReconciliation,
+            QuartzSchedulerKeys.InventoryHoldExpiryReconciliationCron,
+            "Releases expired registration capacity holds and recovers orders no hold deadline covered.");
+
+        AddCronJob<RegistrationFinalizationDrainJob>(
+            quartz,
+            QuartzSchedulerKeys.RegistrationFinalizationDrain,
+            QuartzSchedulerKeys.RegistrationFinalizationDrainCron,
+            "Drains durable registration-finalization effects under the shared fenced claim.");
+
         _ = settings;
     }
 
     /// <summary>
-    /// The reminder job is stored durably with no trigger of its own; runtime code attaches one-off triggers
-    /// to it through <see cref="QuartzScheduledEmailDispatchTrigger"/>.
+    /// Deadline-driven jobs are stored durably with no trigger of their own; runtime code attaches one-off
+    /// triggers to them through <see cref="QuartzScheduledDeadlineDispatcher"/>.
     /// </summary>
     private static void RegisterOnDemandJobs(IServiceCollectionQuartzConfigurator quartz)
     {
         quartz.AddJob<EventReminderDispatchJob>(job => job
             .WithIdentity(QuartzSchedulerKeys.EventReminderDispatch)
             .WithDescription("Wakes a pre-persisted event reminder EmailDispatchOutbox row at its scheduled time.")
+            .StoreDurably());
+
+        quartz.AddJob<InventoryHoldExpiryJob>(job => job
+            .WithIdentity(QuartzSchedulerKeys.InventoryHoldExpiry)
+            .WithDescription("Releases one registration order's due capacity holds at its earliest hold expiry.")
             .StoreDurably());
     }
 
