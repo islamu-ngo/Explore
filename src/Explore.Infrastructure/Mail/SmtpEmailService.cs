@@ -208,7 +208,8 @@ public class SmtpEmailService : IEmailService, IEmailConnectionTester
     {
         if (config.SkipCertificateValidation)
         {
-            client.ServerCertificateValidationCallback = (_, _, _, _) => true;
+            client.ServerCertificateValidationCallback = (_, _, _, sslPolicyErrors) =>
+                sslPolicyErrors == System.Net.Security.SslPolicyErrors.None;
         }
 
         client.Timeout = config.TimeoutSeconds * 1000;

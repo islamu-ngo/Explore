@@ -78,7 +78,7 @@ public class EventDayServiceTests
     public async Task GetDaysByEventAsync_ReturnsEmptyList_WhenApiThrows()
     {
         _apiClient.GetEventDaysByEventAsync(Arg.Any<Guid>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
-            .ThrowsAsync(new Exception("Network error"));
+            .ThrowsAsync(new InvalidOperationException("Network error"));
 
         var result = await _service.GetDaysByEventAsync(Guid.NewGuid());
 
@@ -135,7 +135,7 @@ public class EventDayServiceTests
     public async Task GetDayByIdAsync_ReturnsNull_WhenApiThrows()
     {
         _apiClient.GetEventDayByIdAsync(Arg.Any<Guid>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
-            .ThrowsAsync(new Exception("Server error"));
+            .ThrowsAsync(new InvalidOperationException("Server error"));
 
         var result = await _service.GetDayByIdAsync(Guid.NewGuid());
 
@@ -241,7 +241,7 @@ public class EventDayServiceTests
     public async Task DeleteDayAsync_ReturnsFalse_WhenApiThrows()
     {
         _apiClient.DeleteEventDayAsync(Arg.Any<Guid>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
-            .ThrowsAsync(new Exception("Delete failed"));
+            .ThrowsAsync(new InvalidOperationException("Delete failed"));
 
         var result = await _service.DeleteDayAsync(Guid.NewGuid());
 

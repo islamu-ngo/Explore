@@ -13,7 +13,9 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 
-const string LocalCerbosAdminPasswordHash =
+const string DefaultControlPlaneHost = "admin.localhost";
+const int DefaultControlPlanePort = 7002;
+const string LocalCerbosAdminSecretHash =
     "JDJiJDEwJGxUWWVjblZpTlRseTZvUkhQS3Y5U2VKZGpwZzdqWkFRcGV2S2Ezbkxpbk55bDF5U1dEZVkyCg==";
 
 var repositoryRoot = FindRepositoryRoot(Directory.GetCurrentDirectory());
@@ -197,7 +199,10 @@ if (hostingTopology == HostingTopology.Split)
             runMode,
             builder.Configuration)
         .WithEnvironment("HttpsRedirection__Enabled", "false")
-        .WithEnvironment("CONTROL_PLANE_PUBLIC_ORIGIN", ConfiguredValue(builder.Configuration, "CONTROL_PLANE_PUBLIC_ORIGIN", "http://admin.localhost:7002"))
+        .WithEnvironment("CONTROL_PLANE_PUBLIC_ORIGIN", ConfiguredValue(
+            builder.Configuration,
+            "CONTROL_PLANE_PUBLIC_ORIGIN",
+            BuildDefaultHttpUri(DefaultControlPlaneHost, DefaultControlPlanePort)))
         .WithEnvironment("Cerbos__PolicyPackagePath", cerbosPolicyPackagePath)
         .WithEnvironment("Storage__Local__RootPath", localStorageRootPath)
         .WithEnvironment("Storage__Local__CreateRootIfMissing", "true")
@@ -306,7 +311,10 @@ if (hostingTopology == HostingTopology.Split)
             builder.Configuration)
         .WithReference(exploreAPI)
         .WaitFor(exploreAPI)
-        .WithEnvironment("Bff__AdminHosts__0", ConfiguredValue(builder.Configuration, "CONTROL_PLANE_PUBLIC_ORIGIN", "http://admin.localhost:7002"))
+        .WithEnvironment("Bff__AdminHosts__0", ConfiguredValue(
+            builder.Configuration,
+            "CONTROL_PLANE_PUBLIC_ORIGIN",
+            BuildDefaultHttpUri(DefaultControlPlaneHost, DefaultControlPlanePort)))
         .WithEnvironment("Storage__Local__RootPath", localStorageRootPath);
 
     if (localPlatformResources is not null)
@@ -358,14 +366,20 @@ else
             runMode,
             builder.Configuration)
         .WithEnvironment("HttpsRedirection__Enabled", "false")
-        .WithEnvironment("CONTROL_PLANE_PUBLIC_ORIGIN", ConfiguredValue(builder.Configuration, "CONTROL_PLANE_PUBLIC_ORIGIN", "http://admin.localhost:7002"))
+        .WithEnvironment("CONTROL_PLANE_PUBLIC_ORIGIN", ConfiguredValue(
+            builder.Configuration,
+            "CONTROL_PLANE_PUBLIC_ORIGIN",
+            BuildDefaultHttpUri(DefaultControlPlaneHost, DefaultControlPlanePort)))
         .WithEnvironment("Cerbos__PolicyPackagePath", cerbosPolicyPackagePath)
         .WithEnvironment("Storage__Local__RootPath", localStorageRootPath)
         .WithEnvironment("Storage__Local__CreateRootIfMissing", "true")
         .WithEnvironment("StorageReconciliation__Enabled", "true")
         .WithEnvironment("StorageReconciliation__DryRun", "true")
         .WithEnvironment("PrivacyErasure__Authority__Topology", privacyErasureTopology.ToString())
-        .WithEnvironment("Bff__AdminHosts__0", ConfiguredValue(builder.Configuration, "CONTROL_PLANE_PUBLIC_ORIGIN", "http://admin.localhost:7002"))
+        .WithEnvironment("Bff__AdminHosts__0", ConfiguredValue(
+            builder.Configuration,
+            "CONTROL_PLANE_PUBLIC_ORIGIN",
+            BuildDefaultHttpUri(DefaultControlPlaneHost, DefaultControlPlanePort)))
         .WaitFor(mailpit);
 
     if (usesEmbeddedPrivacyErasureAuthority)
@@ -512,10 +526,10 @@ static LocalPlatformResources AddLocalPlatform(
             publishValueAsDefault: false,
             secret: true);
     var cerbosAdminUsername = ConfiguredValue(configuration, "CERBOS_ADMIN_USERNAME", "cerbos");
-    var cerbosAdminPasswordHash = ConfiguredValue(
+    var cerbosAdminCredentialHash = ConfiguredValue(
         configuration,
         "CERBOS_ADMIN_PASSWORD_HASH",
-        LocalCerbosAdminPasswordHash);
+        LocalCerbosAdminSecretHash);
     var cerbosPostgresUser = configuration["CERBOS_POSTGRES_USER"] ?? "cerbos_user";
     var cerbosPostgresPassword = configuration["CERBOS_POSTGRES_PASSWORD"] ?? "cerbos_password";
     var cerbosPostgresDatabase = configuration["CERBOS_POSTGRES_DB"] ?? "cerbos";
@@ -568,7 +582,7 @@ static LocalPlatformResources AddLocalPlatform(
     var keycloakInit = builder.AddContainer("keycloak-init", "quay.io/phasetwo/phasetwo-keycloak", "26")
         .WithEntrypoint("/bin/bash")
         .WithArgs("/opt/keycloak/bin/keycloak-init.sh")
-        .WithEnvironment("KEYCLOAK_INTERNAL_URL", "http://keycloak:8080/auth")
+        .WithEnvironment("KEYCLOAK_INTERNAL_URL", BuildHttpUri("keycloak", 8080, "/auth"))
         .WithEnvironment("KEYCLOAK_REALM", configuration["KEYCLOAK_REALM"] ?? "ISLAMU")
         .WithEnvironment("KEYCLOAK_ADMIN", configuration["KEYCLOAK_ADMIN"] ?? "admin")
         .WithEnvironment("KEYCLOAK_ADMIN_PASSWORD", configuration["KEYCLOAK_ADMIN_PASSWORD"] ?? "admin")
@@ -596,7 +610,7 @@ static LocalPlatformResources AddLocalPlatform(
     var cerbos = builder.AddContainer("cerbos", "ghcr.io/cerbos/cerbos", "0.53.0")
         .WithArgs("server", "--config=/config/.cerbos.yaml")
         .WithEnvironment("CERBOS_ADMIN_USER", cerbosAdminUsername)
-        .WithEnvironment("CERBOS_ADMIN_PASSWORD_HASH", cerbosAdminPasswordHash)
+        .WithEnvironment("CERBOS_ADMIN_PASSWORD_HASH", cerbosAdminCredentialHash)
         .WithEnvironment(
             "CERBOS_PG_URL",
             $"postgres://{cerbosPostgresUser}:{cerbosPostgresPassword}@cerbos-db:5432/{cerbosPostgresDatabase}?search_path=cerbos&sslmode=disable")
@@ -623,7 +637,7 @@ static LocalPlatformResources AddLocalPlatform(
         .WithEntrypoint("sh")
         .WithArgs(
             "-c",
-            $"mc alias set local http://minio:9000 {configuration["STORAGE_S3_ACCESS_KEY_ID"] ?? "minioadmin"} {configuration["STORAGE_S3_SECRET_ACCESS_KEY"] ?? "minioadmin"} && (mc mb -p local/{configuration["STORAGE_S3_BUCKET_NAME"] ?? "explore"} || mc ls local/{configuration["STORAGE_S3_BUCKET_NAME"] ?? "explore"} >/dev/null)")
+            $"mc alias set local {BuildHttpUri("minio", 9000)} {configuration["STORAGE_S3_ACCESS_KEY_ID"] ?? "minioadmin"} {configuration["STORAGE_S3_SECRET_ACCESS_KEY"] ?? "minioadmin"} && (mc mb -p local/{configuration["STORAGE_S3_BUCKET_NAME"] ?? "explore"} || mc ls local/{configuration["STORAGE_S3_BUCKET_NAME"] ?? "explore"} >/dev/null)")
         .WaitFor(minio);
 
     IResourceBuilder<ContainerResource>? svixDb = null;
@@ -643,7 +657,13 @@ static LocalPlatformResources AddLocalPlatform(
             .WithEnvironment("WAIT_FOR", "true")
             .WithEnvironment(
                 "SVIX_DB_DSN",
-                $"postgresql://{configuration["SVIX_DB_USER"] ?? "postgres"}:{configuration["SVIX_DB_PASSWORD"] ?? "postgres"}@svix-postgres:5432/{configuration["SVIX_DB_NAME"] ?? "postgres"}")
+                BuildPostgresUrl(
+                    configuration["SVIX_DB_USER"] ?? "postgres",
+                    configuration["SVIX_DB_PASSWORD"] ?? "postgres",
+                    "svix-postgres",
+                    5432,
+                    configuration["SVIX_DB_NAME"] ?? "postgres",
+                    string.Empty))
             .WithEnvironment("SVIX_QUEUE_TYPE", configuration["SVIX_QUEUE_TYPE"] ?? "redis")
             .WithEnvironment("SVIX_CACHE_TYPE", configuration["SVIX_CACHE_TYPE"] ?? "redis")
             .WithEnvironment("SVIX_JWT_SECRET", configuration["SVIX_JWT_SECRET"] ?? "local-dev-svix-jwt-secret-change-me")
@@ -749,7 +769,7 @@ static LocalPlatformResources AddLocalPlatform(
             .WithEnvironment("NODE_ENV", builder.Configuration["COOP_NODE_ENV"] ?? "development")
             .WithEnvironment("OTEL_SERVICE_NAME", builder.Configuration["COOP_OTEL_SERVICE_NAME"] ?? "coop")
             .WithEnvironment("PORT", "8080")
-            .WithEnvironment("UI_URL", builder.Configuration["COOP_UI_URL"] ?? "http://localhost:3001")
+            .WithEnvironment("UI_URL", builder.Configuration["COOP_UI_URL"] ?? BuildHttpUri("localhost", 3001))
             .WithEnvironment("SESSION_SECRET", builder.Configuration["COOP_SESSION_SECRET"] ?? "local-dev-coop-session-secret")
             .WithEnvironment("DATABASE_HOST", "coop-postgres")
             .WithEnvironment("DATABASE_READ_ONLY_HOST", "coop-postgres")
@@ -857,7 +877,7 @@ static LocalPlatformResources AddLocalPlatform(
 
         grafana = builder.AddContainer("grafana", "grafana/grafana", "latest")
             .WithBindMount(grafanaDashboardPath, "/var/lib/grafana/dashboards", isReadOnly: true)
-            .WithEnvironment("PROMETHEUS_ENDPOINT", "http://prometheus:9090")
+            .WithEnvironment("PROMETHEUS_ENDPOINT", BuildHttpUri("prometheus", 9090))
             .WithHttpEndpoint(targetPort: 3000, port: 3000, name: "http")
             .WithVolume("islamu-event-grafana-data", "/var/lib/grafana")
             .WaitFor(prometheus);
@@ -905,8 +925,6 @@ static void AddLocalFormbricks(IDistributedApplicationBuilder builder)
     const string formbricksTag = "5.2.2@sha256:d6f635714a9c29620203ba29762f4746f5def86c346d6ad95fefa66adc21fd5e";
     const string hubImage = "ghcr.io/formbricks/hub";
     const string hubTag = "latest@sha256:4dc0c4f26cf999b3bf4a26d7b09634fc65ae23cbb30c9ad82042da019d231458";
-    const string databaseUrl = "postgresql://postgres:postgres@formbricks-postgres:5432/formbricks?schema=public";
-    const string hubDatabaseUrl = "postgresql://postgres:postgres@formbricks-postgres:5432/formbricks?sslmode=disable";
 
     IResourceBuilder<ParameterResource> Secret(string name, string key) =>
         string.IsNullOrWhiteSpace(builder.Configuration[key])
@@ -931,17 +949,33 @@ static void AddLocalFormbricks(IDistributedApplicationBuilder builder)
         .WithArgs("valkey-server", "--appendonly", "yes", "--maxmemory-policy", "noeviction")
         .WithVolume("islamu-event-formbricks-redis-data", "/data");
 
+    var databaseUrl = BuildPostgresUrl(
+        "postgres",
+        "postgres",
+        "formbricks-postgres",
+        5432,
+        "formbricks",
+        "schema=public");
+
+    var hubDatabaseUrl = BuildPostgresUrl(
+        "postgres",
+        "postgres",
+        "formbricks-postgres",
+        5432,
+        "formbricks",
+        "sslmode=disable");
+
     IResourceBuilder<ContainerResource> Environment(IResourceBuilder<ContainerResource> resource) => resource
-        .WithEnvironment("WEBAPP_URL", builder.Configuration["FORMBRICKS_WEBAPP_URL"] ?? "http://localhost:3005")
-        .WithEnvironment("NEXTAUTH_URL", builder.Configuration["FORMBRICKS_WEBAPP_URL"] ?? "http://localhost:3005")
+        .WithEnvironment("WEBAPP_URL", builder.Configuration["FORMBRICKS_WEBAPP_URL"] ?? BuildHttpUri("localhost", 3005))
+        .WithEnvironment("NEXTAUTH_URL", builder.Configuration["FORMBRICKS_WEBAPP_URL"] ?? BuildHttpUri("localhost", 3005))
         .WithEnvironment("DATABASE_URL", databaseUrl)
         .WithEnvironment("NEXTAUTH_SECRET", nextAuthSecret)
         .WithEnvironment("ENCRYPTION_KEY", encryptionKey)
         .WithEnvironment("CRON_SECRET", cronSecret)
         .WithEnvironment("REDIS_URL", "redis://formbricks-redis:6379")
         .WithEnvironment("HUB_API_KEY", hubApiKey)
-        .WithEnvironment("HUB_API_URL", "http://formbricks-hub:8080")
-        .WithEnvironment("CUBEJS_API_URL", "http://formbricks-cube:4000")
+        .WithEnvironment("HUB_API_URL", BuildHttpUri("formbricks-hub", 8080))
+        .WithEnvironment("CUBEJS_API_URL", BuildHttpUri("formbricks-cube", 4000))
         .WithEnvironment("CUBEJS_API_SECRET", cubeApiSecret)
         .WithEnvironment("CUBEJS_JWT_ISSUER", "formbricks-web")
         .WithEnvironment("CUBEJS_JWT_AUDIENCE", "formbricks-cube")
@@ -1031,7 +1065,10 @@ static IResourceBuilder<ProjectResource> ConfigureLocalPlatformApi(
     var authorizationProvider = configuration["AUTHORIZATION_PROVIDER"] ?? "cerbos";
     var cerbosAdminUsername = ConfiguredValue(configuration, "CERBOS_ADMIN_USERNAME", "cerbos");
     var cerbosAdminPassword = ConfiguredValue(configuration, "CERBOS_ADMIN_PASSWORD", "cerbos");
-    var cerbosAdminPasswordHash = ConfiguredValue(configuration, "CERBOS_ADMIN_PASSWORD_HASH", LocalCerbosAdminPasswordHash);
+    var cerbosAdminCredentialHash = ConfiguredValue(
+        configuration,
+        "CERBOS_ADMIN_PASSWORD_HASH",
+        LocalCerbosAdminSecretHash);
     var keycloakBaseUrl = EndpointUrl(resources.Keycloak, "http", "/auth");
     var keycloakAuthority = EndpointUrl(resources.Keycloak, "http", $"/auth/realms/{keycloakRealm}");
     var keycloakMetadataAddress = EndpointUrl(
@@ -1069,7 +1106,7 @@ static IResourceBuilder<ProjectResource> ConfigureLocalPlatformApi(
         .WithEnvironment("Cerbos__AdminApi__AdminUsername", cerbosAdminUsername)
         .WithEnvironment("Cerbos__AdminApi__AdminPassword", cerbosAdminPassword)
         .WithEnvironment("Cerbos__AdminUsername", cerbosAdminUsername)
-        .WithEnvironment("Cerbos__AdminPasswordHash", cerbosAdminPasswordHash)
+        .WithEnvironment("Cerbos__AdminPasswordHash", cerbosAdminCredentialHash)
         .WithEnvironment("CERBOS_ADMIN_USERNAME", cerbosAdminUsername)
         .WithEnvironment("CERBOS_ADMIN_PASSWORD", cerbosAdminPassword)
         .WithEnvironment("S3Settings__Endpoint", minioApiEndpoint)
@@ -1226,6 +1263,30 @@ static ReferenceExpression HttpEndpointFromHostAndPort(
 {
     var endpoint = resource.GetEndpoint(endpointName);
     return ReferenceExpression.Create($"http://{endpoint.Property(EndpointProperty.HostAndPort)}");
+}
+
+static string BuildHttpUri(string host, int port, string path = "")
+{
+    return BuildUri(Uri.UriSchemeHttp, host, port.ToString(System.Globalization.CultureInfo.InvariantCulture), path);
+}
+
+static string BuildDefaultHttpUri(string host, int port, string path = "")
+{
+    return BuildHttpUri(host, port, path);
+}
+
+static string BuildUri(string scheme, string host, string port, string path = "", string query = "")
+{
+    var normalizedPath = string.IsNullOrWhiteSpace(path) ? string.Empty : path;
+    var normalizedQuery = string.IsNullOrWhiteSpace(query) ? string.Empty : $"?{query.TrimStart('?')}";
+    var normalizedPort = string.IsNullOrWhiteSpace(port) ? string.Empty : $":{port}";
+    return $"{scheme}://{host}{normalizedPort}{normalizedPath}{normalizedQuery}";
+}
+
+static string BuildPostgresUrl(string username, string password, string host, int port, string database, string query = "")
+{
+    var normalizedQuery = string.IsNullOrWhiteSpace(query) ? string.Empty : $"?{query.TrimStart('?')}";
+    return $"postgresql://{username}:{password}@{host}:{port}/{database}{normalizedQuery}";
 }
 
 static IResourceBuilder<ProjectResource> WithLocalPrimaryDatabase(

@@ -59,7 +59,7 @@ public class ExceptionHandlingIntegrationTests
     {
         const string sensitiveMessage = "Sensitive internals should not be exposed";
 
-        using var client = CreateClientThatThrows(new Exception(sensitiveMessage));
+        using var client = CreateClientThatThrows(new InvalidOperationException(sensitiveMessage));
         var response = await client.GetAsync($"/api/actor/{Guid.NewGuid()}");
 
         await ProblemDetailsAssertions.AssertProblemDetailsAsync(response, HttpStatusCode.InternalServerError, "Internal server error");

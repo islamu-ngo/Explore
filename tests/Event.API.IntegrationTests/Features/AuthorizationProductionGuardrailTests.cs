@@ -161,7 +161,8 @@ public class AuthorizationProductionGuardrailTests
                     {
                         SslOptions = new SslClientAuthenticationOptions
                         {
-                            RemoteCertificateValidationCallback = (_, _, _, _) => true
+                            RemoteCertificateValidationCallback = (_, _, _, sslPolicyErrors) =>
+                                sslPolicyErrors == System.Net.Security.SslPolicyErrors.None
                         }
                     };
                 });
@@ -231,7 +232,8 @@ public class AuthorizationProductionGuardrailTests
                     {
                         SslOptions = new SslClientAuthenticationOptions
                         {
-                            RemoteCertificateValidationCallback = (_, _, _, _) => true
+                            RemoteCertificateValidationCallback = (_, _, _, sslPolicyErrors) =>
+                                sslPolicyErrors == System.Net.Security.SslPolicyErrors.None
                         }
                     };
                 });

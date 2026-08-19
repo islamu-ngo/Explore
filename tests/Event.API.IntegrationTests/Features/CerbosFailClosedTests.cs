@@ -246,7 +246,8 @@ public class CerbosFailClosedTests : IAsyncDisposable
                         {
                             SslOptions = new SslClientAuthenticationOptions
                             {
-                                RemoteCertificateValidationCallback = (_, _, _, _) => true
+                                RemoteCertificateValidationCallback = (_, _, _, sslPolicyErrors) =>
+                                    sslPolicyErrors == System.Net.Security.SslPolicyErrors.None
                             },
                             ConnectCallback = async (context, ct) =>
                             {

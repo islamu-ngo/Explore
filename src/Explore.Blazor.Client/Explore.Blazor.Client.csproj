@@ -10,6 +10,8 @@
          DISABLED: Can cause WASM runtime failures when IL interpreter is needed (reflection, late-bound calls).
          Only enable in Release after thorough testing. See: https://learn.microsoft.com/en-us/aspnet/core/blazor/performance/webassembly-runtime-performance -->
     <WasmStripILAfterAOT>false</WasmStripILAfterAOT>
+    <MudAllowedAttributePattern>HTMLAttributes</MudAllowedAttributePattern>
+    <MudAllowedAttributeList>Elevation,Title,Id,DropdownWidth,Dense,Checked,T,PanelClass,Image,DisablePadding,AriaLabel,Icon,IsInitiallyExpanded,CheckedChanged,IsExpanded,IsExpandedChanged,OnClick,AccessibleName,AlignItems,LabelPosition,DisableToolbar,Clickable,id,dir,onclick,autocomplete,title,onkeydown,tabindex,rel</MudAllowedAttributeList>
   </PropertyGroup>
 
   <ItemGroup>

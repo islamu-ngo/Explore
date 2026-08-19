@@ -220,7 +220,7 @@ public class ImageStorageServiceTests
         var result = _service.GenerateLocalPreviewFromBytes(fileData);
 
         // Assert
-        await Assert.That(result.StartsWith("data:image/jpeg;base64,")).IsTrue();
+        await Assert.That(result.StartsWith("data:image/jpeg;base64,", StringComparison.Ordinal)).IsTrue();
     }
 
     [Test]

@@ -53,7 +53,7 @@ public class EventSeriesServiceTests
         };
 
         _apiClient.UpdateEventSeriesAsync(seriesId, dto, $"\"{stamp:D}\"", Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
-            .ThrowsAsync(new Exception("Conflict"));
+            .ThrowsAsync(new InvalidOperationException("Conflict"));
 
         var result = await _service.UpdateSeriesAsync(seriesId, stamp, dto);
 

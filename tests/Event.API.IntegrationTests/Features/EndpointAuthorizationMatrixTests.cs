@@ -1124,7 +1124,8 @@ public class EndpointAuthorizationMatrixTests : IAsyncDisposable
                         PooledConnectionLifetime = TimeSpan.FromMinutes(2),
                         SslOptions = new SslClientAuthenticationOptions
                         {
-                            RemoteCertificateValidationCallback = (_, _, _, _) => true
+                            RemoteCertificateValidationCallback = (_, _, _, sslPolicyErrors) =>
+                                sslPolicyErrors == System.Net.Security.SslPolicyErrors.None
                         },
                         ConnectCallback = async (context, cancellationToken) =>
                         {

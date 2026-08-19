@@ -229,8 +229,7 @@ public sealed class RegistrationAnswerPostgreSqlPersistenceTests(PostgreSqlConta
             "integer_value = 1", "ck_registration_answers_exactly_one_value");
         await AssertRejectedUpdateAsync(scope.AnswerId,
             "text_value = NULL, integer_value = 1", "ck_registration_answers_value_matches_field_type");
-        await AssertRejectedUpdateAsync(scope.AnswerId,
-            $"order_subject_id = NULL, participant_subject_id = '{Guid.CreateVersion7()}', answer_subject_type_id = 3",
+        await AssertRejectedUpdateAsync(scope.AnswerId, Guid.CreateVersion7(),
             "ck_registration_answers_subject_shape");
 
         await using ExploreDbContext context = fixture.CreateDbContext();
@@ -589,9 +588,28 @@ public sealed class RegistrationAnswerPostgreSqlPersistenceTests(PostgreSqlConta
 
     private async Task AssertRejectedUpdateAsync(Guid answerId, string assignment, string constraint)
     {
+        string updateSql = assignment switch
+        {
+            "integer_value = 1" =>
+                "UPDATE " + AnswerTable + " SET integer_value = 1 WHERE id = {0}",
+            "text_value = NULL, integer_value = 1" =>
+                "UPDATE " + AnswerTable + " SET text_value = NULL, integer_value = 1 WHERE id = {0}",
+            _ => throw new ArgumentOutOfRangeException(nameof(assignment), assignment, "Unhandled assignment fixture.")
+        };
+
         await using ExploreDbContext context = fixture.CreateDbContext();
-        DbUpdateException rejected = await AssertDatabaseFailureAsync(() => context.Database.ExecuteSqlRawAsync(
-            $"UPDATE {AnswerTable} SET {assignment} WHERE id = {{0}}", answerId));
+        DbUpdateException rejected = await AssertDatabaseFailureAsync(() => context.Database.ExecuteSqlRawAsync(updateSql, answerId));
+        await Assert.That(FindPostgresException(rejected).ConstraintName).IsEqualTo(constraint);
+    }
+
+    private async Task AssertRejectedUpdateAsync(Guid answerId, Guid participantSubjectId, string constraint)
+    {
+        const string subjectShapeSql = "UPDATE " + AnswerTable +
+            " SET order_subject_id = NULL, participant_subject_id = {0}, answer_subject_type_id = 3 WHERE id = {1}";
+
+        await using ExploreDbContext context = fixture.CreateDbContext();
+        DbUpdateException rejected = await AssertDatabaseFailureAsync(() =>
+            context.Database.ExecuteSqlRawAsync(subjectShapeSql, participantSubjectId, answerId));
         await Assert.That(FindPostgresException(rejected).ConstraintName).IsEqualTo(constraint);
     }
 

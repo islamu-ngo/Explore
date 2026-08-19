@@ -647,8 +647,8 @@ public sealed class DockHostTests : IDisposable
 
         cut.WaitForAssertion(() =>
         {
-            scrollManager.Received(1).LockScrollAsync("body", "scroll-locked").GetAwaiter().GetResult();
-            focusService.Received(1).SaveFocusAsync().GetAwaiter().GetResult();
+            scrollManager.Received(1).LockScrollAsync("body", "scroll-locked");
+            focusService.Received(1).SaveFocusAsync();
         }, timeout: TimeSpan.FromSeconds(2));
 
         await host.TriggerEventAsync("onkeydown", new KeyboardEventArgs { Key = "Escape" });
@@ -656,8 +656,8 @@ public sealed class DockHostTests : IDisposable
         await Assert.That(_dockLayoutState.GetPanel(inspectorPanelId)?.State.IsOpen).IsFalse();
         cut.WaitForAssertion(() =>
         {
-            scrollManager.Received(1).UnlockScrollAsync("body", "scroll-locked").GetAwaiter().GetResult();
-            focusService.Received(1).RestoreFocusAsync("#main-content").GetAwaiter().GetResult();
+            scrollManager.Received(1).UnlockScrollAsync("body", "scroll-locked");
+            focusService.Received(1).RestoreFocusAsync("#main-content");
         }, timeout: TimeSpan.FromSeconds(2));
     }
 
@@ -1004,10 +1004,8 @@ public sealed class DockHostTests : IDisposable
 
     private static void ConfigureScrollManager(IScrollManager scrollManager)
     {
-#pragma warning disable CA2012 // NSubstitute setup captures ValueTask-returning calls without awaiting them.
-        scrollManager.LockScrollAsync(Arg.Any<string>(), Arg.Any<string>()).Returns(ValueTask.CompletedTask);
-        scrollManager.UnlockScrollAsync(Arg.Any<string>(), Arg.Any<string>()).Returns(ValueTask.CompletedTask);
-#pragma warning restore CA2012
+        scrollManager.LockScrollAsync(Arg.Any<string>(), Arg.Any<string>()).Returns(default(ValueTask));
+        scrollManager.UnlockScrollAsync(Arg.Any<string>(), Arg.Any<string>()).Returns(default(ValueTask));
     }
 
     private void ConfigureViewport(Breakpoint breakpoint, int? width = null)

@@ -117,7 +117,8 @@ public partial class AiContextGatewayBypassTests
         var matches = new List<(Type, Type)>();
         foreach (var type in assembly.GetTypes())
         {
-            if (type.Namespace is null || !type.Namespace.StartsWith(namespacePrefix))
+            if (type.Namespace is null ||
+                !type.Namespace.StartsWith(namespacePrefix, StringComparison.Ordinal))
             {
                 continue;
             }
@@ -151,7 +152,7 @@ public partial class AiContextGatewayBypassTests
             return false;
         }
 
-        if (type.Namespace.StartsWith("Explore.Application.Contracts.Persistence"))
+        if (type.Namespace.StartsWith("Explore.Application.Contracts.Persistence", StringComparison.Ordinal))
         {
             return PiiEntityTypeNames.Any(pii =>
                 type.Name.Contains(pii) || (type.IsGenericType && type.GenericTypeArguments.Any(a => a.Name == pii)));

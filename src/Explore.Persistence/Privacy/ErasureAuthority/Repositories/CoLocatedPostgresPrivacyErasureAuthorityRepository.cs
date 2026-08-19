@@ -29,11 +29,13 @@ public sealed class CoLocatedPostgresPrivacyErasureAuthorityRepository(
             IsolationLevel.ReadCommitted,
             cancellationToken);
         string counterTable = GetCounterTable();
-        await dbContext.Database.ExecuteSqlRawAsync(
-            $"INSERT INTO {counterTable} (singleton, last_sequence) VALUES (true, 0) ON CONFLICT(singleton) DO NOTHING;",
-            cancellationToken);
+        string initializeCounterSql = "INSERT INTO " + counterTable +
+            " (singleton, last_sequence) VALUES (true, 0) ON CONFLICT(singleton) DO NOTHING;";
+        await dbContext.Database.ExecuteSqlRawAsync(initializeCounterSql, cancellationToken);
+
+        string lockCounterSql = "SELECT * FROM " + counterTable + " FOR UPDATE";
         PrivacyErasureCounter counter = await dbContext.AuthorityCounters
-            .FromSqlRaw($"SELECT * FROM {counterTable} FOR UPDATE")
+            .FromSqlRaw(lockCounterSql)
             .SingleAsync(cancellationToken);
         PrivacyErasureIntent? existing = await dbContext.ErasureIntents
             .SingleOrDefaultAsync(item => item.IntentId == intent.IntentId, cancellationToken);

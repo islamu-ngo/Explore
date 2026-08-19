@@ -35,7 +35,7 @@ public sealed class RegistrationProviderCallbackUriBuilder(
     }
 
     private static Uri EnsureTrailingSlash(Uri value) =>
-        value.AbsoluteUri.EndsWith("/", StringComparison.Ordinal) ? value : new Uri(value.AbsoluteUri + '/', UriKind.Absolute);
+        value.AbsoluteUri.EndsWith('/') ? value : new Uri(value.AbsoluteUri + '/', UriKind.Absolute);
 
     private static bool IsBlockedHost(string host)
     {

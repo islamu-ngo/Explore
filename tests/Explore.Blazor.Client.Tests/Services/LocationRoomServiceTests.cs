@@ -40,7 +40,7 @@ public class LocationRoomServiceTests
     public async Task GetRoomsByLocationAsync_ReturnsEmptyList_WhenApiThrows()
     {
         _apiClient.GetLocationRoomsByLocationAsync(Arg.Any<Guid>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
-            .ThrowsAsync(new Exception("Network error"));
+            .ThrowsAsync(new InvalidOperationException("Network error"));
 
         var result = await _service.GetRoomsByLocationAsync(Guid.NewGuid());
 
@@ -96,7 +96,7 @@ public class LocationRoomServiceTests
     public async Task GetRoomByIdAsync_ReturnsNull_WhenApiThrows()
     {
         _apiClient.GetLocationRoomByIdAsync(Arg.Any<Guid>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
-            .ThrowsAsync(new Exception("Server error"));
+            .ThrowsAsync(new InvalidOperationException("Server error"));
 
         var result = await _service.GetRoomByIdAsync(Guid.NewGuid());
 
@@ -197,7 +197,7 @@ public class LocationRoomServiceTests
     public async Task DeleteRoomAsync_ReturnsFalse_WhenApiThrows()
     {
         _apiClient.DeleteLocationRoomAsync(Arg.Any<Guid>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
-            .ThrowsAsync(new Exception("Delete failed"));
+            .ThrowsAsync(new InvalidOperationException("Delete failed"));
 
         var result = await _service.DeleteRoomAsync(Guid.NewGuid());
 

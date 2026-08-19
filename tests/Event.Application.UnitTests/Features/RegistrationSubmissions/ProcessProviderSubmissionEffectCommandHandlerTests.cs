@@ -423,7 +423,7 @@ public sealed class ProcessProviderSubmissionEffectCommandHandlerTests
                 Arg.Any<CancellationToken>())
             .Returns(call => Task.FromResult(new RegistrationSubmissionPersistenceResult(
                 RegistrationSubmissionPersistenceOutcome.Inserted, call.ArgAt<RegistrationSubmission>(1))));
-        var handler = CreateHandler(scope, repositories, new StaticReceiptProtector(scope, verifiedAt: DateTimeOffset.UtcNow.AddDays(-7)));
+        var handler = CreateHandler(scope, repositories, new StaticReceiptProtector(scope, verifiedAt: new DateTimeOffset(Now.AddDays(-7))));
 
         ProviderSubmissionEffectResult result = await handler.Handle(CreateCommand(scope), CancellationToken.None);
 

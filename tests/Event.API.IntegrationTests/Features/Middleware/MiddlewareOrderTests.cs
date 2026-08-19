@@ -147,7 +147,7 @@ public class MiddlewareOrderTests
     [Test]
     public async Task ExceptionHandler_CatchesUnexpected_ReturnsSanitized500()
     {
-        using var client = CreateClientThatThrows(new Exception("Internal details"));
+        using var client = CreateClientThatThrows(new InvalidOperationException("Internal details"));
 
         var response = await client.GetAsync($"/api/actor/{Guid.NewGuid()}");
 

@@ -224,8 +224,8 @@ public class HateoasLinkGeneratorTests
             {
                 var href = link.Value.GetProperty("href").GetString()!;
                 // Should not contain http:// or https://
-                await Assert.That(href.StartsWith("http://")).IsFalse();
-                await Assert.That(href.StartsWith("https://")).IsFalse();
+                await Assert.That(href.StartsWith("http://", StringComparison.Ordinal)).IsFalse();
+                await Assert.That(href.StartsWith("https://", StringComparison.Ordinal)).IsFalse();
             }
         }
     }

@@ -182,7 +182,7 @@ public class NamingConventionTests
                         name = name.Substring(0, idx);
                     }
                 }
-                return !name.EndsWith("Validator");
+                return !name.EndsWith("Validator", StringComparison.Ordinal);
             })
             .ToList();
 

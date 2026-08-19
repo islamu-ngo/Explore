@@ -43,7 +43,7 @@ public class EventAgendaItemServiceTests
     public async Task GetAgendaItemsByEventAsync_ReturnsEmptyList_WhenApiThrows()
     {
         _apiClient.GetEventAgendaItemsByEventAsync(Arg.Any<Guid>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
-            .ThrowsAsync(new Exception("Network error"));
+            .ThrowsAsync(new InvalidOperationException("Network error"));
 
         var result = await _service.GetAgendaItemsByEventAsync(Guid.NewGuid());
 
@@ -104,7 +104,7 @@ public class EventAgendaItemServiceTests
     public async Task GetAgendaItemByIdAsync_ReturnsNull_WhenApiThrows()
     {
         _apiClient.GetEventAgendaItemByIdAsync(Arg.Any<Guid>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
-            .ThrowsAsync(new Exception("Server error"));
+            .ThrowsAsync(new InvalidOperationException("Server error"));
 
         var result = await _service.GetAgendaItemByIdAsync(Guid.NewGuid());
 
@@ -250,7 +250,7 @@ public class EventAgendaItemServiceTests
     public async Task DeleteAgendaItemAsync_ReturnsFalse_WhenApiThrows()
     {
         _apiClient.DeleteEventAgendaItemAsync(Arg.Any<Guid>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
-            .ThrowsAsync(new Exception("Delete failed"));
+            .ThrowsAsync(new InvalidOperationException("Delete failed"));
 
         var result = await _service.DeleteAgendaItemAsync(Guid.NewGuid());
 

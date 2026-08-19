@@ -122,7 +122,8 @@ public class SecurityWebApplicationFactory : WebApplicationFactory<Program>
                     PooledConnectionLifetime = TimeSpan.FromMinutes(2),
                     SslOptions = new SslClientAuthenticationOptions
                     {
-                        RemoteCertificateValidationCallback = (_, _, _, _) => true
+                        RemoteCertificateValidationCallback = (_, _, _, sslPolicyErrors) =>
+                            sslPolicyErrors == System.Net.Security.SslPolicyErrors.None
                     },
                     ConnectCallback = async (context, cancellationToken) =>
                     {

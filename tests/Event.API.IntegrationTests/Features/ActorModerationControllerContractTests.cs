@@ -176,7 +176,8 @@ public sealed class ActorModerationControllerContractTests
             {
                 Id = Guid.CreateVersion7(),
                 Success = false,
-                Message = "Authenticated instance administrator context is required."
+                Message = "Authenticated instance administrator context is required.",
+                FailureCode = FailureCodes.AuthenticationRequired
             }
         };
         using var factory = CreateFactory(mediator);
@@ -202,7 +203,8 @@ public sealed class ActorModerationControllerContractTests
             {
                 Id = Guid.CreateVersion7(),
                 Success = false,
-                Message = "Only instance administrators can moderate global actors."
+                Message = "Only instance administrators can moderate global actors.",
+                FailureCode = FailureCodes.AdminRequired
             }
         };
         using var factory = CreateFactory(mediator);
