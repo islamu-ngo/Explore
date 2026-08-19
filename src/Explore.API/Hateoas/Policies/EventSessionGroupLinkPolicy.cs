@@ -131,10 +131,4 @@ public sealed class EventSessionGroupCollectionLinkPolicy : ICollectionLinkPolic
             RequiresAuth: true)
             .RequirePermission(AuthorizationActions.Update, ResourceDescriptors.EventSessionGroupList, dto);
     }
-
-    /// <inheritdoc />
-    public IEnumerable<LinkDefinition> GetCollectionLinks(ClaimsPrincipal? user)
-    {
-        yield break;
-    }
 }

@@ -28,5 +28,5 @@ public sealed class UpdateEventCustomPropertyDefinitionAuthorizationContextEnric
     }
 
     private static AuthorizationContext TenantContext(Guid tenantId) =>
-        new(tenantId.ToString(), new Dictionary<string, object> { ["tenantId"] = tenantId.ToString() });
+        new(tenantId.ToString(), new TenantScopedAuthorizationFacts(tenantId));
 }

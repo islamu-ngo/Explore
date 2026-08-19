@@ -19,24 +19,13 @@ public sealed class RegistrationAnswerAnalyticsLinkPolicy : ILinkPolicy<Registra
                 new { eventId = dto.EventId, formId = dto.FormId, formVersionId = dto.FormVersionId },
                 HttpMethods.Get,
                 RequiresAuth: true)
-            .RequirePermission(AuthorizationActions.Events.ManageRegistrations, ResourceKinds.Event, dto.EventId.ToString("D"), new Dictionary<string, object>
-            {
-                ["eventId"] = dto.EventId.ToString("D"),
-                ["formId"] = dto.FormId.ToString("D"),
-                ["formVersionId"] = dto.FormVersionId.ToString("D")
-            });
+            .RequirePermission(
+                AuthorizationActions.Events.ManageRegistrations,
+                ResourceKinds.Event,
+                dto.EventId.ToString("D"),
+                facts: new EventScopedAuthorizationFacts(dto.TenantId, dto.EventId));
     }
 }
 
-public sealed class RegistrationAnswerAnalyticsCollectionLinkPolicy : ICollectionLinkPolicy<RegistrationAnswerAnalyticsDto>
-{
-    public IEnumerable<LinkDefinition> GetItemLinks(RegistrationAnswerAnalyticsDto dto, ClaimsPrincipal? user)
-    {
-        yield break;
-    }
-
-    public IEnumerable<LinkDefinition> GetCollectionLinks(ClaimsPrincipal? user)
-    {
-        yield break;
-    }
-}
+/// <summary>Analytics rows carry no affordances of their own; the contract's empty defaults apply.</summary>
+public sealed class RegistrationAnswerAnalyticsCollectionLinkPolicy : ICollectionLinkPolicy<RegistrationAnswerAnalyticsDto>;

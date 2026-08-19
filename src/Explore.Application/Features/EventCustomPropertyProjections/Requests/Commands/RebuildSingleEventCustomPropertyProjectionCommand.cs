@@ -14,11 +14,8 @@ public class RebuildSingleEventCustomPropertyProjectionCommand : IRequest<BaseCo
 
     string? ISecureRequest.ResourceId => EventId == Guid.Empty ? null : EventId.ToString("D");
 
-    IDictionary<string, object>? ISecureRequest.ResourceAttributes => EventId == Guid.Empty
+    IAuthorizationFacts? ISecureRequest.AuthorizationFacts =>
+        EventId == Guid.Empty
         ? null
-        : new Dictionary<string, object>
-        {
-            ["eventId"] = EventId.ToString("D"),
-            ["authorizationScope"] = "single_event_projection_rebuild"
-        };
+        : new CustomPropertyProjectionAuthorizationFacts(Guid.Empty, EventId, null);
 }

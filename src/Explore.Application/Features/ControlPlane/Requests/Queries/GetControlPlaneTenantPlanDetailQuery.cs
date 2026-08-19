@@ -16,9 +16,6 @@ public sealed class GetControlPlaneTenantPlanDetailQuery(string key) : IRequest<
 
     string? ISecureRequest.ResourceId => SettingKey;
 
-    IDictionary<string, object>? ISecureRequest.ResourceAttributes => new Dictionary<string, object>
-    {
-        ["settingKey"] = SettingKey,
-        ["planKey"] = Key
-    };
+    IAuthorizationFacts? ISecureRequest.AuthorizationFacts =>
+        InstanceScopedAuthorizationFacts.Instance;
 }

@@ -10,5 +10,6 @@ namespace Explore.Application.Features.EventTicketing.Requests.Queries;
 public sealed record GetEventTicketCatalogManagementQuery(Guid EventId) : IRequest<EventTicketCatalogManagementDto?>, ISecureRequest
 {
     string? ISecureRequest.ResourceId => EventId == Guid.Empty ? null : EventId.ToString();
-    IDictionary<string, object>? ISecureRequest.ResourceAttributes => new Dictionary<string, object> { ["eventId"] = EventId.ToString() };
+    IAuthorizationFacts? ISecureRequest.AuthorizationFacts =>
+        new EventScopedAuthorizationFacts(Guid.Empty, EventId);
 }

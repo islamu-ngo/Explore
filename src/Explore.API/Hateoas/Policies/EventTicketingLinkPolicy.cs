@@ -201,8 +201,8 @@ public sealed class EventTicketCatalogManagementLinkPolicy : ILinkPolicy<EventTi
         link.RequirePermission(AuthorizationActions.Events.ManageTickets,
             ResourceKinds.Event,
             catalog.EventId.ToString("D"),
-            BuildEventAttributes(catalog),
-            new AuthorizationScope(TenantId: catalog.TenantId.ToString("D")));
+            new AuthorizationScope(TenantId: catalog.TenantId.ToString("D")),
+            BuildEventFacts(catalog));
 
     private static LinkDefinition PublishLink(Guid eventId) => new(
         LinkRelations.Publish,
@@ -218,39 +218,23 @@ public sealed class EventTicketCatalogManagementLinkPolicy : ILinkPolicy<EventTi
         link.RequirePermission(AuthorizationActions.Events.ManagePaidEventCommerce,
             ResourceKinds.Event,
             catalog.EventId.ToString("D"),
-            BuildEventAttributes(catalog),
-            new AuthorizationScope(TenantId: catalog.TenantId.ToString("D")));
+            new AuthorizationScope(TenantId: catalog.TenantId.ToString("D")),
+            BuildEventFacts(catalog));
 
-    private static Dictionary<string, object> BuildEventAttributes(
-        EventTicketCatalogManagementDto catalog)
-    {
-        var attributes = new Dictionary<string, object>
-        {
-            ["eventId"] = catalog.EventId.ToString("D"),
-            ["tenantId"] = catalog.TenantId.ToString("D"),
-            ["actorId"] = catalog.ActorId.ToString("D")
-        };
-
-        AddIfPresent(attributes, "userId", catalog.ActorUserId);
-        AddIfPresent(attributes, "organizationId", catalog.ActorOrganizationId);
-        AddIfPresent(attributes, "groupId", catalog.ActorGroupId);
-        AddIfPresent(attributes, "organizerActorId", catalog.OrganizerActorId);
-        AddIfPresent(attributes, "organizerUserId", catalog.OrganizerUserId);
-        AddIfPresent(attributes, "organizerOrganizationId", catalog.OrganizerOrganizationId);
-        AddIfPresent(attributes, "organizerGroupId", catalog.OrganizerGroupId);
-        return attributes;
-    }
-
-    private static void AddIfPresent(
-        Dictionary<string, object> attributes,
-        string key,
-        Guid? value)
-    {
-        if (value.HasValue)
-        {
-            attributes[key] = value.Value.ToString("D");
-        }
-    }
+    private static IAuthorizationFacts BuildEventFacts(EventTicketCatalogManagementDto catalog) =>
+        new EventAuthorizationFacts(
+            catalog.TenantId,
+            catalog.EventId,
+            catalog.ActorId,
+            catalog.ActorUserId,
+            catalog.ActorOrganizationId,
+            catalog.ActorGroupId,
+            catalog.OrganizerActorId,
+            catalog.OrganizerUserId,
+            catalog.OrganizerOrganizationId,
+            catalog.OrganizerGroupId,
+            ProvenanceType: null,
+            SubmittedByUserId: null);
 }
 
 public sealed class EventTicketCatalogManagementCollectionLinkPolicy(

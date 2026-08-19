@@ -67,7 +67,6 @@ public sealed class EventLocationManagementAuthorizationServiceTests
         await Assert.That(check.ResourceId).IsEqualTo(eventId.ToString());
         await Assert.That(check.Action).IsEqualTo(AuthorizationActions.Events.ViewManagement);
         await Assert.That(check.Scope?.TenantId).IsEqualTo(tenantId.ToString());
-        await Assert.That(check.ResourceAttributes).IsNull();
         await Assert.That(check.Facts).IsTypeOf<EventAuthorizationFacts>();
         await Assert.That(((EventAuthorizationFacts)check.Facts!).TenantId).IsEqualTo(tenantId);
         await Assert.That(observedAudits).IsNotNull();

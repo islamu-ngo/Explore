@@ -50,7 +50,7 @@ public sealed class HateoasAuthorizationEvaluator : IHateoasAuthorizationEvaluat
             return [];
 
         var results = new bool[definitions.Count];
-        var pendingChecks = new List<(int Index, AuthorizationRequest Check, string Key)>();
+        var pendingChecks = new List<PendingCheck>();
 
         // Phase 1: Static checks (no provider call needed)
         for (var i = 0; i < definitions.Count; i++)
@@ -79,7 +79,7 @@ public sealed class HateoasAuthorizationEvaluator : IHateoasAuthorizationEvaluat
                 continue;
             }
 
-            pendingChecks.Add((i, check, check.ToDeduplicationKey()));
+            pendingChecks.Add(new PendingCheck(i, check));
         }
 
         if (pendingChecks.Count == 0)
@@ -87,11 +87,7 @@ public sealed class HateoasAuthorizationEvaluator : IHateoasAuthorizationEvaluat
 
         try
         {
-            pendingChecks = await EnrichRegistrationFormChecksAsync(
-                pendingChecks,
-                results,
-                httpContext.RequestAborted);
-            pendingChecks = await EnrichEventTeamChecksAsync(
+            pendingChecks = await ResolveTrustedEventFactsAsync(
                 pendingChecks,
                 results,
                 httpContext.RequestAborted);
@@ -107,15 +103,15 @@ public sealed class HateoasAuthorizationEvaluator : IHateoasAuthorizationEvaluat
 
         // Phase 2: Deduplicate — collapse identical checks before provider invocation
         var uniqueChecks = new List<AuthorizationRequest>();
-        var keyToDecisionIndex = new Dictionary<string, int>(StringComparer.Ordinal);
+        var keyToDecisionIndex = new Dictionary<AuthorizationRequestKey, int>();
 
-        foreach (var (_, check, key) in pendingChecks)
+        foreach (var pending in pendingChecks)
         {
-            if (keyToDecisionIndex.ContainsKey(key))
+            if (keyToDecisionIndex.ContainsKey(pending.Key))
                 continue;
 
-            keyToDecisionIndex[key] = uniqueChecks.Count;
-            uniqueChecks.Add(check);
+            keyToDecisionIndex[pending.Key] = uniqueChecks.Count;
+            uniqueChecks.Add(pending.Check);
         }
 
         var deduplicatedCount = pendingChecks.Count - uniqueChecks.Count;
@@ -139,10 +135,10 @@ public sealed class HateoasAuthorizationEvaluator : IHateoasAuthorizationEvaluat
             var allowed = await _authorizationProvider.AuthorizeBatchAsync(uniqueChecks);
 
             // Phase 4: Map decisions back to all original link indices via dedup key
-            foreach (var (index, _, key) in pendingChecks)
+            foreach (var pending in pendingChecks)
             {
-                var decisionIndex = keyToDecisionIndex[key];
-                results[index] = decisionIndex < allowed.Count && allowed[decisionIndex].IsAllowed;
+                var decisionIndex = keyToDecisionIndex[pending.Key];
+                results[pending.Index] = decisionIndex < allowed.Count && allowed[decisionIndex].IsAllowed;
             }
 
             activity?.SetTag("outcome", "success");
@@ -153,9 +149,9 @@ public sealed class HateoasAuthorizationEvaluator : IHateoasAuthorizationEvaluat
             _logger.LogWarning(ex, "HATEOAS batch authorization failed; denying all {Count} permission-bound links (fail-closed).", pendingChecks.Count);
             activity?.SetTag("outcome", "fail_closed");
 
-            foreach (var (index, _, _) in pendingChecks)
+            foreach (var pending in pendingChecks)
             {
-                results[index] = false;
+                results[pending.Index] = false;
             }
 
             return results;
@@ -199,156 +195,126 @@ public sealed class HateoasAuthorizationEvaluator : IHateoasAuthorizationEvaluat
             ?? ExtractResourceId(definition.RouteValues)
             ?? definition.RouteName;
 
-        var facts = definition.PermissionFacts;
-        var attrs = facts is null ? definition.PermissionResourceAttributes : null;
-        return new AuthorizationRequest(definition.PermissionResourceKind, resourceId, action, attrs, definition.PermissionScope, facts);
+        return new AuthorizationRequest(
+            definition.PermissionResourceKind,
+            resourceId,
+            action!,
+            definition.PermissionScope,
+            definition.PermissionFacts);
     }
 
     private static bool RequiresExplicitPermissionAction(LinkDefinition definition) =>
         !string.IsNullOrWhiteSpace(definition.PermissionResourceKind) &&
         string.IsNullOrWhiteSpace(definition.PermissionAction);
 
-    private async Task<List<(int Index, AuthorizationRequest Check, string Key)>> EnrichRegistrationFormChecksAsync(
-        List<(int Index, AuthorizationRequest Check, string Key)> pendingChecks,
+    /// <summary>
+    /// Rebuilds event authority from the database for the two candidate shapes a link policy cannot
+    /// supply itself: registration forms, which only know their parent event id, and event-team links,
+    /// which only know the event they hang off. Both then carry exactly the facts the MediatR resolver
+    /// would produce, so an affordance and its endpoint cannot disagree.
+    /// <para>
+    /// A candidate whose event is missing or belongs to another tenant is dropped, which suppresses the
+    /// link rather than asking the provider a question with untrusted inputs.
+    /// </para>
+    /// </summary>
+    private async Task<List<PendingCheck>> ResolveTrustedEventFactsAsync(
+        List<PendingCheck> pendingChecks,
         bool[] results,
         CancellationToken cancellationToken)
     {
-        Guid[] eventIds = pendingChecks
-            .Where(item => item.Check.ResourceKind == ResourceKinds.RegistrationForm)
-            .Select(item => EventId(item.Check.ResourceAttributes))
-            .Where(id => id != Guid.Empty)
+        var requested = pendingChecks
+            .Select(pending => RequiresTrustedEventLookup(pending.Check))
+            .ToArray();
+        Guid[] eventIds = requested
+            .Where(eventId => eventId is { } id && id != Guid.Empty)
+            .Select(eventId => eventId!.Value)
             .Distinct()
             .ToArray();
-        if (!pendingChecks.Any(item => item.Check.ResourceKind == ResourceKinds.RegistrationForm))
+        if (requested.All(eventId => eventId is null))
             return pendingChecks;
+
         if (eventIds.Length > IEventRepository.MaximumAuthorizationTargetBatchSize)
-            throw new InvalidOperationException("Registration-form HAL event batch exceeds the authorization lookup bound.");
+            throw new InvalidOperationException("HAL event authorization batch exceeds the authorization lookup bound.");
 
         IReadOnlyDictionary<Guid, Event> events = eventIds.Length == 0
             ? new Dictionary<Guid, Event>()
             : (await _eventRepository.GetAuthorizationTargetsByIdsAsync(eventIds, cancellationToken))
                 .Where(item => item.TenantId == _tenantContext.TenantId)
                 .ToDictionary(item => item.Id);
-        var enriched = new List<(int Index, AuthorizationRequest Check, string Key)>(pendingChecks.Count);
-        foreach ((int index, AuthorizationRequest check, string key) in pendingChecks)
+
+        var resolved = new List<PendingCheck>(pendingChecks.Count);
+        for (var i = 0; i < pendingChecks.Count; i++)
         {
-            if (check.ResourceKind != ResourceKinds.RegistrationForm)
+            var pending = pendingChecks[i];
+            if (requested[i] is not { } requestedEventId)
             {
-                enriched.Add((index, check, key));
+                resolved.Add(pending);
                 continue;
             }
 
-            if (!events.TryGetValue(EventId(check.ResourceAttributes), out Event? eventEntity))
+            if (!events.TryGetValue(requestedEventId, out Event? eventEntity))
             {
-                results[index] = false;
+                results[pending.Index] = false;
                 continue;
             }
 
-            var attributes = check.ResourceAttributes is null
-                ? new Dictionary<string, object>()
-                : new Dictionary<string, object>(check.ResourceAttributes);
-            foreach (string authorityKey in AuthorityAttributeKeys)
-                attributes.Remove(authorityKey);
-            attributes["eventId"] = eventEntity.Id.ToString("D");
-            attributes["tenantId"] = eventEntity.TenantId.ToString("D");
-            Add(attributes, "actorId", eventEntity.ActorId);
-            Add(attributes, "userId", eventEntity.Actor?.UserId);
-            Add(attributes, "organizationId", eventEntity.Actor?.OrganizationId);
-            Add(attributes, "groupId", eventEntity.Actor?.GroupId);
-            Add(attributes, "organizerActorId", eventEntity.OrganizerActorId);
-            Add(attributes, "organizerUserId", eventEntity.OrganizerActor?.UserId);
-            Add(attributes, "organizerOrganizationId", eventEntity.OrganizerActor?.OrganizationId);
-            Add(attributes, "organizerGroupId", eventEntity.OrganizerActor?.GroupId);
-            var trusted = check with { ResourceAttributes = attributes };
-            enriched.Add((index, trusted, trusted.ToDeduplicationKey()));
+            resolved.Add(new PendingCheck(
+                pending.Index,
+                pending.Check with { Facts = TrustedEventFacts(eventEntity) }));
         }
 
-        return enriched;
+        return resolved;
     }
 
-    private async Task<List<(int Index, AuthorizationRequest Check, string Key)>> EnrichEventTeamChecksAsync(
-        List<(int Index, AuthorizationRequest Check, string Key)> pendingChecks,
-        bool[] results,
-        CancellationToken cancellationToken)
+    /// <summary>
+    /// Returns the event id whose authority must be loaded server-side, or <see langword="null"/> when the
+    /// candidate already carries descriptor-published facts and needs no lookup.
+    /// <para>
+    /// A registration form is always decided as its parent event, so a candidate that names no event is
+    /// unresolvable rather than self-sufficient. It yields <see cref="Guid.Empty"/>, which no event can
+    /// match, and the caller denies it.
+    /// </para>
+    /// </summary>
+    private static Guid? RequiresTrustedEventLookup(AuthorizationRequest check)
     {
-        var eventTeamChecks = pendingChecks.Where(item =>
-            item.Check.ResourceKind == ResourceKinds.Event &&
-            item.Check.Action == AuthorizationActions.Events.ManageTeam &&
-            item.Check.Facts is null)
-            .ToArray();
-        if (eventTeamChecks.Length == 0)
-            return pendingChecks;
-
-        Guid[] eventIds = eventTeamChecks
-            .Select(item => Guid.TryParse(item.Check.ResourceId, out Guid eventId) ? eventId : Guid.Empty)
-            .Where(eventId => eventId != Guid.Empty)
-            .Distinct()
-            .ToArray();
-        if (eventIds.Length > IEventRepository.MaximumAuthorizationTargetBatchSize)
-            throw new InvalidOperationException("Event-team HAL event batch exceeds the authorization lookup bound.");
-
-        IReadOnlyDictionary<Guid, Event> events = eventIds.Length == 0
-            ? new Dictionary<Guid, Event>()
-            : (await _eventRepository.GetAuthorizationTargetsByIdsAsync(eventIds, cancellationToken))
-                .Where(item => item.TenantId == _tenantContext.TenantId)
-                .ToDictionary(item => item.Id);
-        var enriched = new List<(int Index, AuthorizationRequest Check, string Key)>(pendingChecks.Count);
-        foreach ((int index, AuthorizationRequest check, string key) in pendingChecks)
+        if (check.ResourceKind == ResourceKinds.RegistrationForm)
         {
-            if (check.ResourceKind != ResourceKinds.Event ||
-                check.Action != AuthorizationActions.Events.ManageTeam ||
-                check.Facts is not null)
+            return check.Facts switch
             {
-                enriched.Add((index, check, key));
-                continue;
-            }
-
-            if (!Guid.TryParse(check.ResourceId, out Guid eventId) || !events.TryGetValue(eventId, out Event? eventEntity))
-            {
-                results[index] = false;
-                continue;
-            }
-
-            var trusted = check with
-            {
-                ResourceAttributes = null,
-                Facts = new EventAuthorizationFacts(
-                    eventEntity.TenantId,
-                    eventEntity.Id,
-                    eventEntity.ActorId,
-                    eventEntity.Actor?.UserId,
-                    eventEntity.Actor?.OrganizationId,
-                    eventEntity.Actor?.GroupId,
-                    eventEntity.OrganizerActorId,
-                    eventEntity.OrganizerActor?.UserId,
-                    eventEntity.OrganizerActor?.OrganizationId,
-                    eventEntity.OrganizerActor?.GroupId,
-                    null,
-                    eventEntity.SubmittedByUserId)
+                EventScopedAuthorizationFacts facts => facts.EventId,
+                EventAuthorizationFacts facts => facts.EventId,
+                _ => Guid.Empty
             };
-            enriched.Add((index, trusted, trusted.ToDeduplicationKey()));
         }
 
-        return enriched;
+        if (check.ResourceKind == ResourceKinds.Event &&
+            check.Action == AuthorizationActions.Events.ManageTeam &&
+            check.Facts is null)
+        {
+            return Guid.TryParse(check.ResourceId, out Guid eventId) ? eventId : Guid.Empty;
+        }
+
+        return null;
     }
 
-    private static Guid EventId(IReadOnlyDictionary<string, object>? attributes) =>
-        attributes?.TryGetValue("eventId", out object? value) == true
-            && Guid.TryParse(value?.ToString(), out Guid eventId)
-                ? eventId
-                : Guid.Empty;
+    private static EventAuthorizationFacts TrustedEventFacts(Event eventEntity) => new(
+        eventEntity.TenantId,
+        eventEntity.Id,
+        eventEntity.ActorId,
+        eventEntity.Actor?.UserId,
+        eventEntity.Actor?.OrganizationId,
+        eventEntity.Actor?.GroupId,
+        eventEntity.OrganizerActorId,
+        eventEntity.OrganizerActor?.UserId,
+        eventEntity.OrganizerActor?.OrganizationId,
+        eventEntity.OrganizerActor?.GroupId,
+        eventEntity.EventProvenanceType?.MasterCode ?? eventEntity.EventProvenanceTypeId.ToString(),
+        eventEntity.SubmittedByUserId);
 
-    private static void Add(Dictionary<string, object> attributes, string key, Guid? value)
+    private sealed record PendingCheck(int Index, AuthorizationRequest Check)
     {
-        if (value is { } id)
-            attributes[key] = id.ToString("D");
+        public AuthorizationRequestKey Key { get; } = Check.ToDeduplicationKey();
     }
-
-    private static readonly string[] AuthorityAttributeKeys =
-    [
-        "tenantId", "eventId", "actorId", "userId", "organizationId", "groupId",
-        "organizerActorId", "organizerUserId", "organizerOrganizationId", "organizerGroupId"
-    ];
 
     private static string? ExtractResourceId(object? routeValues)
     {

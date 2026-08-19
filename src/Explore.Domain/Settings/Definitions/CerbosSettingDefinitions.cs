@@ -28,13 +28,6 @@ public static class CerbosSettingDefinitions
         Description: "Custom Cerbos gRPC endpoint URL",
         MaxScope: SettingScope.Tenant);
 
-    public static readonly SettingDefinition FailureMode = new(
-        Key: "cerbos.failure_mode",
-        ValueType: SettingValueType.String,
-        DefaultValue: "\"deny\"",
-        Category: "Cerbos",
-        Description: "Behavior when Cerbos is unreachable (deny, allow)");
-
     public static readonly SettingDefinition CustomAdminEndpoint = new(
         Key: "cerbos.custom_admin_endpoint",
         ValueType: SettingValueType.String,
@@ -63,7 +56,7 @@ public static class CerbosSettingDefinitions
 
     public static IReadOnlyList<SettingDefinition> All =>
     [
-        TenantCustomizationEnabled, Mode, CustomEndpoint, FailureMode,
+        TenantCustomizationEnabled, Mode, CustomEndpoint,
         CustomAdminEndpoint, CustomAdminUsername, CustomAdminPassword
     ];
 }

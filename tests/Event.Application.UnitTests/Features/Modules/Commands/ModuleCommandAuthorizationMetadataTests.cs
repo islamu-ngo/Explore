@@ -33,11 +33,11 @@ public sealed class ModuleCommandAuthorizationMetadataTests
             ModuleKey = "Mod_Tech"
         };
 
+        // The module key and the enable/disable intent are payload, not authority: both commands ask the
+        // same question, "may this caller administer this tenant".
         await Assert.That(command.ResourceId).IsEqualTo(TenantId.ToString("D"));
-        await Assert.That(command.ResourceAttributes).IsNotNull();
-        await Assert.That(command.ResourceAttributes!["tenantId"]).IsEqualTo(TenantId.ToString("D"));
-        await Assert.That(command.ResourceAttributes["moduleKey"]).IsEqualTo("Mod_Tech");
-        await Assert.That(command.ResourceAttributes["moduleAction"]).IsEqualTo("enable");
+        await Assert.That(command.AuthorizationFacts)
+            .IsEqualTo(new TenantScopedAuthorizationFacts(TenantId));
     }
 
     [Test]
@@ -50,9 +50,7 @@ public sealed class ModuleCommandAuthorizationMetadataTests
         };
 
         await Assert.That(command.ResourceId).IsEqualTo(TenantId.ToString("D"));
-        await Assert.That(command.ResourceAttributes).IsNotNull();
-        await Assert.That(command.ResourceAttributes!["tenantId"]).IsEqualTo(TenantId.ToString("D"));
-        await Assert.That(command.ResourceAttributes["moduleKey"]).IsEqualTo("Mod_Islamic");
-        await Assert.That(command.ResourceAttributes["moduleAction"]).IsEqualTo("disable");
+        await Assert.That(command.AuthorizationFacts)
+            .IsEqualTo(new TenantScopedAuthorizationFacts(TenantId));
     }
 }

@@ -39,8 +39,9 @@ public sealed class ControlPlaneTenantEffectiveConfigurationHateoasTests
         await Assert.That(self.PermissionResourceKind).IsEqualTo(ResourceKinds.InstanceSetting);
         await Assert.That(self.PermissionAction).IsEqualTo(AuthorizationActions.InstanceSettings.View);
         await Assert.That(self.PermissionResourceId).IsEqualTo(GetControlPlaneTenantEffectiveConfigurationQuery.SettingKey);
-        await Assert.That(self.PermissionResourceAttributes?["settingKey"]).IsEqualTo(GetControlPlaneTenantEffectiveConfigurationQuery.SettingKey);
-        await Assert.That(self.PermissionResourceAttributes?["tenantId"]).IsEqualTo(configuration.TenantId);
+        // Control-plane configuration is an instance-authority surface. The tenant it targets travels in the
+        // route, not in the policy facts, so no tenant identifier is published to the provider.
+        await Assert.That(self.PermissionFacts).IsEqualTo(InstanceScopedAuthorizationFacts.Instance);
 
         var assignment = links.Single(link => link.Rel == "plan-assignment");
         await Assert.That(assignment.RouteName).IsEqualTo(RouteNames.GetControlPlaneTenantPlanAssignment);
@@ -66,7 +67,7 @@ public sealed class ControlPlaneTenantEffectiveConfigurationHateoasTests
         await Assert.That(RouteValues(switchPlan)["tenantId"]).IsEqualTo(configuration.TenantId);
         await Assert.That(switchPlan.PermissionAction).IsEqualTo(AuthorizationActions.InstanceSettings.Update);
         await Assert.That(switchPlan.PermissionResourceId).IsEqualTo(SwitchControlPlaneTenantPlanAssignmentCommand.SettingKey);
-        await Assert.That(switchPlan.PermissionResourceAttributes?["tenantId"]).IsEqualTo(configuration.TenantId);
+        await Assert.That(switchPlan.PermissionFacts).IsEqualTo(InstanceScopedAuthorizationFacts.Instance);
 
         var apply = links.Single(link => link.Rel == "apply");
         await Assert.That(apply.RouteName).IsEqualTo(RouteNames.ApplyControlPlaneTenantPlanAssignment);
@@ -74,7 +75,7 @@ public sealed class ControlPlaneTenantEffectiveConfigurationHateoasTests
         await Assert.That(RouteValues(apply)["tenantId"]).IsEqualTo(configuration.TenantId);
         await Assert.That(RouteValues(apply)["assignmentId"]).IsEqualTo(assignmentId);
         await Assert.That(apply.PermissionResourceId).IsEqualTo(ApplyControlPlaneTenantPlanAssignmentCommand.SettingKey);
-        await Assert.That(apply.PermissionResourceAttributes?["assignmentId"]).IsEqualTo(assignmentId);
+        await Assert.That(apply.PermissionFacts).IsEqualTo(InstanceScopedAuthorizationFacts.Instance);
 
         var rollback = links.Single(link => link.Rel == "rollback");
         await Assert.That(rollback.RouteName).IsEqualTo(RouteNames.RollbackControlPlaneTenantPlanAssignment);
@@ -82,7 +83,7 @@ public sealed class ControlPlaneTenantEffectiveConfigurationHateoasTests
         await Assert.That(RouteValues(rollback)["tenantId"]).IsEqualTo(configuration.TenantId);
         await Assert.That(RouteValues(rollback)["assignmentId"]).IsEqualTo(rollbackAssignmentId);
         await Assert.That(rollback.PermissionResourceId).IsEqualTo(RollbackControlPlaneTenantPlanAssignmentCommand.SettingKey);
-        await Assert.That(rollback.PermissionResourceAttributes?["assignmentId"]).IsEqualTo(rollbackAssignmentId);
+        await Assert.That(rollback.PermissionFacts).IsEqualTo(InstanceScopedAuthorizationFacts.Instance);
     }
 
     [Test]
@@ -420,10 +421,7 @@ public sealed class ControlPlaneTenantEffectiveConfigurationHateoasTests
         await Assert.That(definition.PermissionResourceId).IsEqualTo(resourceId);
         await Assert.That(RouteValues(definition)["tenantId"]).IsEqualTo(tenantId);
         await Assert.That(RouteValues(definition)["key"]).IsEqualTo(targetKey);
-        await Assert.That(definition.PermissionResourceAttributes?["tenantId"]).IsEqualTo(tenantId.ToString());
-        await Assert.That(definition.PermissionResourceAttributes?["settingKey"]).IsEqualTo(resourceId);
-        await Assert.That(definition.PermissionResourceAttributes?["targetKey"]).IsEqualTo(targetKey);
-        await Assert.That(definition.PermissionResourceAttributes!.Values.All(value => value is string)).IsTrue();
+        await Assert.That(definition.PermissionFacts).IsEqualTo(InstanceScopedAuthorizationFacts.Instance);
     }
 
     private static string[] Relations(ControlPlaneTenantEffectiveSettingDto setting) =>

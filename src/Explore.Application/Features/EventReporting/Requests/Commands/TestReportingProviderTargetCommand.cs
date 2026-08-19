@@ -18,10 +18,6 @@ public sealed record TestReportingProviderTargetCommand(
 
     string? ISecureRequest.ResourceId => $"{TenantId}:{SettingKey}";
 
-    IDictionary<string, object>? ISecureRequest.ResourceAttributes => new Dictionary<string, object>
-    {
-        ["tenantId"] = TenantId.ToString(),
-        ["settingKey"] = SettingKey,
-        ["provider"] = Provider.ToString()
-    };
+    IAuthorizationFacts? ISecureRequest.AuthorizationFacts =>
+        new TenantSettingAuthorizationFacts(TenantId);
 }

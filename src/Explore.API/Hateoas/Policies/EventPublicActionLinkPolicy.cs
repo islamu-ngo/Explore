@@ -116,9 +116,4 @@ public sealed class EventPublicActionCollectionLinkPolicy : ICollectionLinkPolic
         EventPublicActionKindEnum.OrganizerContact => LinkRelations.OrganizerContact,
         _ => LinkRelations.Related
     };
-
-    public IEnumerable<LinkDefinition> GetCollectionLinks(ClaimsPrincipal? user)
-    {
-        yield break;
-    }
 }

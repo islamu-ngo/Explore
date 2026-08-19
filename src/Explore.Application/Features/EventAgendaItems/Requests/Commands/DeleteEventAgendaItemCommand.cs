@@ -13,5 +13,4 @@ public class DeleteEventAgendaItemCommand : IRequest<BaseCommandResponse<Guid>>,
     public Guid Id { get; set; }
 
     string? ISecureRequest.ResourceId => Id.ToString();
-    IDictionary<string, object>? ISecureRequest.ResourceAttributes => null;
 }

@@ -19,8 +19,6 @@ public class CreateOrganizationCommand : IRequest<BaseCommandResponse<Guid>>, IS
 
     string? ISecureRequest.ResourceId => PreCreateResourceId;
 
-    IDictionary<string, object>? ISecureRequest.ResourceAttributes => new Dictionary<string, object>
-    {
-        ["authorizationPhase"] = PreCreateAuthorizationPhase
-    };
+    IAuthorizationFacts? ISecureRequest.AuthorizationFacts =>
+        new PreCreateAuthorizationFacts(Guid.Empty, null, null, null);
 }

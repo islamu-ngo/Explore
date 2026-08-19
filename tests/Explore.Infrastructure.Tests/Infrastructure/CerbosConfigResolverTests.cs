@@ -45,11 +45,6 @@ public sealed class CerbosConfigResolverTests : IDisposable
                 Arg.Any<CancellationToken>())
             .Returns("custom_endpoint");
         _settingsResolver.ResolveAsync<string>(
-                GovernanceSettingKeys.Cerbos.FailureMode,
-                Arg.Any<SettingContext>(),
-                Arg.Any<CancellationToken>())
-            .Returns("closed");
-        _settingsResolver.ResolveAsync<string>(
                 GovernanceSettingKeys.Cerbos.CustomAdminEndpoint,
                 Arg.Any<SettingContext>(),
                 Arg.Any<CancellationToken>())
@@ -157,11 +152,6 @@ public sealed class CerbosConfigResolverTests : IDisposable
                 Arg.Any<CancellationToken>())
             .Returns(string.Empty);
         _settingsResolver.ResolveAsync<string>(
-                GovernanceSettingKeys.Cerbos.FailureMode,
-                Arg.Any<SettingContext>(),
-                Arg.Any<CancellationToken>())
-            .Returns("closed");
-        _settingsResolver.ResolveAsync<string>(
                 GovernanceSettingKeys.Cerbos.CustomAdminEndpoint,
                 Arg.Any<SettingContext>(),
                 Arg.Any<CancellationToken>())
@@ -182,7 +172,6 @@ public sealed class CerbosConfigResolverTests : IDisposable
 
         await Assert.That(result).IsNotNull();
         await Assert.That(result?.Mode).IsEqualTo(CerbosMode.CustomEndpoint);
-        await Assert.That(result?.FailureMode).IsEqualTo(CerbosFailureMode.Closed);
         await Assert.That(result?.Endpoint).IsEqualTo(string.Empty);
         await Assert.That(result?.AdminEndpoint).IsEqualTo("https://tenant-admin.example.com:8443");
         await Assert.That(result?.AdminUsername).IsEqualTo("tenant-admin");

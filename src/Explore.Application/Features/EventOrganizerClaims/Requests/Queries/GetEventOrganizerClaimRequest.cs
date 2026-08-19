@@ -12,9 +12,6 @@ public sealed record GetEventOrganizerClaimRequest(Guid EventId, Guid ClaimId)
     : IRequest<EventOrganizerClaimDto?>, ISecureRequest
 {
     string? ISecureRequest.ResourceId => EventId == Guid.Empty ? null : EventId.ToString();
-    IDictionary<string, object>? ISecureRequest.ResourceAttributes => new Dictionary<string, object>
-    {
-        ["eventId"] = EventId.ToString(),
-        ["claimId"] = ClaimId.ToString()
-    };
+    IAuthorizationFacts? ISecureRequest.AuthorizationFacts =>
+        new EventScopedAuthorizationFacts(Guid.Empty, EventId);
 }

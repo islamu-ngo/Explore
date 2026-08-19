@@ -1,5 +1,5 @@
-// ABOUTME: Contract for extracting authorization metadata from a resource (DTO) instance.
-// ABOUTME: Used by HATEOAS link policies and authorization evaluators to build Cerbos check requests.
+// ABOUTME: Contract for extracting typed authorization metadata from a resource (DTO) instance.
+// ABOUTME: Used by HATEOAS link policies and authorization evaluators to build provider-neutral checks.
 
 namespace Explore.Application.Authorization;
 
@@ -9,13 +9,14 @@ namespace Explore.Application.Authorization;
 /// Implementations live in the Application layer alongside their DTOs and are consumed by:
 /// <list type="bullet">
 ///   <item>HATEOAS link policies (API layer) — to build permission checks for links</item>
-///   <item><see cref="HateoasAuthorizationEvaluator"/> — to construct batch authorization requests</item>
+///   <item><c>HateoasAuthorizationEvaluator</c> — to construct batch authorization requests</item>
 ///   <item>Authorization behaviors — to extract resource context from command/query payloads</item>
 /// </list>
 /// </para>
 /// <para>
 /// Each resource kind should have one descriptor per DTO type that participates in authorization.
-/// Descriptors are transport-neutral — they know nothing about HTTP, routes, or link generation.
+/// Descriptors are transport-neutral — they know nothing about HTTP, routes, or link generation, and
+/// they publish closed <see cref="IAuthorizationFacts"/> records rather than provider attribute names.
 /// </para>
 /// </summary>
 /// <typeparam name="TResource">
@@ -25,7 +26,7 @@ namespace Explore.Application.Authorization;
 public interface IAuthorizableResourceDescriptor<in TResource>
 {
     /// <summary>
-    /// The Cerbos resource kind string (e.g., ResourceKinds.Event, ResourceKinds.Organization).
+    /// The resource kind string (e.g., ResourceKinds.Event, ResourceKinds.Organization).
     /// Must match a constant from <see cref="ResourceKinds"/>.
     /// </summary>
     string Kind { get; }
@@ -37,13 +38,10 @@ public interface IAuthorizableResourceDescriptor<in TResource>
     string GetResourceId(TResource resource);
 
     /// <summary>
-    /// Extracts resource attributes passed to Cerbos for policy evaluation.
-    /// Common attributes: tenantId, organizationId, actorId, ownerId.
-    /// Returns an empty dictionary when no attributes are needed.
+    /// Extracts the closed typed policy facts for this resource. Returning <c>null</c> means the
+    /// provider has no trusted input and must fail closed for fact-dependent capabilities.
     /// </summary>
-    IReadOnlyDictionary<string, object> GetResourceAttributes(TResource resource);
-
-    IAuthorizationFacts? GetFacts(TResource resource) => null;
+    IAuthorizationFacts? GetFacts(TResource resource);
 
     /// <summary>
     /// Extracts the authorization scope for per-tenant/org policy resolution.

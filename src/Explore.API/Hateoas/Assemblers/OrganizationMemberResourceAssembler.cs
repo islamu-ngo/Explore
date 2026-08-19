@@ -33,19 +33,17 @@ public sealed class OrganizationMemberResourceAssembler : ResourceAssemblerBase<
         var resource = await base.ToCollectionResource(items, routeName, additionalRouteValues, httpContext);
         if (TryGetOrganizationId(additionalRouteValues, out var organizationId))
         {
-            var organizationScopedAttributes = new Dictionary<string, object>
-            {
-                ["organizationId"] = organizationId.ToString()
-            };
-            var authorizationScope = new AuthorizationScope(OrganizationId: organizationId.ToString());
-
-            if (TryGetTenantId(additionalRouteValues, out var tenantId))
-            {
-                organizationScopedAttributes["tenantId"] = tenantId.ToString();
-                authorizationScope = new AuthorizationScope(
+            var hasTenant = TryGetTenantId(additionalRouteValues, out var tenantId);
+            var organizationScopedFacts = new OrganizationMemberAuthorizationFacts(
+                hasTenant ? tenantId : Guid.Empty,
+                organizationId,
+                MemberId: null,
+                UserId: null);
+            var authorizationScope = hasTenant
+                ? new AuthorizationScope(
                     TenantId: tenantId.ToString(),
-                    OrganizationId: organizationId.ToString());
-            }
+                    OrganizationId: organizationId.ToString())
+                : new AuthorizationScope(OrganizationId: organizationId.ToString());
 
             var createLinks = await GenerateLinks([
                 new LinkDefinition(
@@ -59,8 +57,8 @@ public sealed class OrganizationMemberResourceAssembler : ResourceAssemblerBase<
                         AuthorizationActions.Create,
                         ResourceKinds.OrganizationMember,
                         organizationId.ToString(),
-                        organizationScopedAttributes,
-                        authorizationScope)
+                        authorizationScope,
+                        organizationScopedFacts)
             ], httpContext.User, httpContext);
 
             foreach (var link in createLinks)

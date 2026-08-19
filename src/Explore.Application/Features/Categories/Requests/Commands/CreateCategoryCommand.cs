@@ -14,8 +14,6 @@ public class CreateCategoryCommand : IRequest<BaseCommandResponse<Guid>>, ISecur
     public required CreateCategoryDto CategoryDto { get; set; }
 
     string? ISecureRequest.ResourceId => null;
-    IDictionary<string, object>? ISecureRequest.ResourceAttributes =>
-        CategoryDto.TenantId != Guid.Empty
-            ? new Dictionary<string, object> { ["tenantId"] = CategoryDto.TenantId.ToString() }
-            : null;
+    IAuthorizationFacts? ISecureRequest.AuthorizationFacts =>
+        new TenantScopedAuthorizationFacts(CategoryDto.TenantId);
 }

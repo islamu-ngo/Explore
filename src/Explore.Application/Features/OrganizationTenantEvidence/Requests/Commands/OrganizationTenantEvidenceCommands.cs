@@ -16,10 +16,8 @@ public sealed class CreateOrganizationTenantEvidenceUploadSessionCommand
     public Guid OrganizationId { get; init; }
     public required CreateOrganizationTenantEvidenceUploadSessionDto Upload { get; init; }
     string? ISecureRequest.ResourceId => OrganizationId == Guid.Empty ? null : OrganizationId.ToString();
-    IDictionary<string, object>? ISecureRequest.ResourceAttributes => new Dictionary<string, object>
-    {
-        ["organizationId"] = OrganizationId.ToString()
-    };
+    IAuthorizationFacts? ISecureRequest.AuthorizationFacts =>
+        new OrganizationAuthorizationFacts(Guid.Empty, OrganizationId);
 }
 
 [AuthorizeResource(ResourceKinds.Organization, AuthorizationActions.Organizations.SubmitEvidence)]
@@ -29,10 +27,8 @@ public sealed class SubmitOrganizationTenantEvidenceCommand
     public Guid OrganizationId { get; init; }
     public required SubmitOrganizationTenantEvidenceDto Evidence { get; init; }
     string? ISecureRequest.ResourceId => OrganizationId == Guid.Empty ? null : OrganizationId.ToString();
-    IDictionary<string, object>? ISecureRequest.ResourceAttributes => new Dictionary<string, object>
-    {
-        ["organizationId"] = OrganizationId.ToString()
-    };
+    IAuthorizationFacts? ISecureRequest.AuthorizationFacts =>
+        new OrganizationAuthorizationFacts(Guid.Empty, OrganizationId);
 }
 
 [AuthorizeResource(ResourceKinds.Organization, AuthorizationActions.Organizations.ReviewEvidence)]
@@ -43,8 +39,6 @@ public sealed class ReviewOrganizationTenantEvidenceCommand
     public Guid EvidenceId { get; init; }
     public required ReviewOrganizationTenantEvidenceDto Review { get; init; }
     string? ISecureRequest.ResourceId => OrganizationId == Guid.Empty ? null : OrganizationId.ToString();
-    IDictionary<string, object>? ISecureRequest.ResourceAttributes => new Dictionary<string, object>
-    {
-        ["organizationId"] = OrganizationId.ToString()
-    };
+    IAuthorizationFacts? ISecureRequest.AuthorizationFacts =>
+        new OrganizationAuthorizationFacts(Guid.Empty, OrganizationId);
 }

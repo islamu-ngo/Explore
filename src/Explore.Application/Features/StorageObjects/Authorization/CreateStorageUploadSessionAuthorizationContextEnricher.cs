@@ -21,56 +21,30 @@ public sealed class CreateStorageUploadSessionAuthorizationContextEnricher(
     {
         var tenantId = tenantContext.TenantId;
         var upload = request.UploadSessionDto;
-        var attributes = CreateBaseAttributes(tenantId, upload.Purpose, upload.Visibility);
 
+        // Every early return yields no facts. The requested owner is caller input; only a loaded,
+        // tenant-matched participation is evidence, and without it the provider must deny.
         if (currentUserService.UserId is not { } subjectUserId ||
             tenantId == Guid.Empty ||
-            string.IsNullOrWhiteSpace(upload.OwningResourceKind) ||
-            upload.OwningResourceId is not { } owningResourceId)
+            upload.OwningResourceId is not { } owningResourceId ||
+            !string.Equals(upload.OwningResourceKind, StorageOwningResourceKinds.OrganizationTenant, StringComparison.Ordinal))
         {
-            return new AuthorizationContext(nameof(CreateStorageUploadSessionCommand), attributes);
-        }
-
-        if (!string.Equals(upload.OwningResourceKind, StorageOwningResourceKinds.OrganizationTenant, StringComparison.Ordinal))
-        {
-            return new AuthorizationContext(nameof(CreateStorageUploadSessionCommand), attributes);
+            return new AuthorizationContext(nameof(CreateStorageUploadSessionCommand));
         }
 
         var participation = await organizationTenantRepository.GetById(owningResourceId);
         if (participation is null || participation.TenantId != tenantId)
         {
-            return new AuthorizationContext(nameof(CreateStorageUploadSessionCommand), attributes);
+            return new AuthorizationContext(nameof(CreateStorageUploadSessionCommand));
         }
-
-        attributes["owningResourceKind"] = StorageOwningResourceKinds.OrganizationTenant;
-        attributes["owningResourceId"] = participation.Id.ToString("D");
-        attributes["owningOrganizationId"] = participation.OrganizationId.ToString("D");
 
         return new AuthorizationContext(
             nameof(CreateStorageUploadSessionCommand),
-            attributes,
             new StorageUploadIntentFacts(
                 subjectUserId,
                 participation.TenantId,
                 StorageOwningResourceKinds.OrganizationTenant,
                 participation.Id,
                 participation.OrganizationId));
-    }
-
-    private static Dictionary<string, object> CreateBaseAttributes(Guid tenantId, string purpose, string visibility)
-    {
-        var attributes = new Dictionary<string, object>
-        {
-            ["purpose"] = purpose,
-            ["visibility"] = visibility,
-            ["authorizationPhase"] = AuthorizationPhases.PreCreate
-        };
-
-        if (tenantId != Guid.Empty)
-        {
-            attributes["tenantId"] = tenantId.ToString("D");
-        }
-
-        return attributes;
     }
 }

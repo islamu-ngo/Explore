@@ -19,10 +19,6 @@ public sealed class CloneControlPlaneTenantPlanCommand(Guid sourceVersionId, str
 
     string? ISecureRequest.ResourceId => SettingKey;
 
-    IDictionary<string, object>? ISecureRequest.ResourceAttributes => new Dictionary<string, object>
-    {
-        ["settingKey"] = SettingKey,
-        ["sourceVersionId"] = SourceVersionId,
-        ["planKey"] = Key
-    };
+    IAuthorizationFacts? ISecureRequest.AuthorizationFacts =>
+        InstanceScopedAuthorizationFacts.Instance;
 }

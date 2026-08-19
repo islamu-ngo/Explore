@@ -16,12 +16,8 @@ public class GetEventCustomPropertyProjectionStatusQuery : IRequest<BaseCommandR
 
     string? ISecureRequest.ResourceId => TenantId == Guid.Empty ? null : TenantId.ToString("D");
 
-    IDictionary<string, object>? ISecureRequest.ResourceAttributes => TenantId == Guid.Empty
+    IAuthorizationFacts? ISecureRequest.AuthorizationFacts =>
+        TenantId == Guid.Empty
         ? null
-        : new Dictionary<string, object>
-        {
-            ["tenantId"] = TenantId.ToString("D"),
-            ["authorizationScope"] = "tenant_projection_status",
-            ["projectionName"] = IEventCustomPropertyProjectionUpdater.ProjectionName
-        };
+        : new CustomPropertyProjectionAuthorizationFacts(TenantId, null, null);
 }

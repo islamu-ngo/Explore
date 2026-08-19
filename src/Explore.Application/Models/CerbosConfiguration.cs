@@ -16,9 +16,6 @@ public class CerbosConfiguration
     /// <summary>Whether this tenant uses the instance PDP or a custom BYO endpoint.</summary>
     public CerbosMode Mode { get; set; } = CerbosMode.Instance;
 
-    /// <summary>Parsed legacy outage behavior. Runtime BYO PDP failures always activate safe mode.</summary>
-    public CerbosFailureMode FailureMode { get; set; } = CerbosFailureMode.Closed;
-
     /// <summary>Optional Admin API endpoint for policy management (BYO tenants).</summary>
     public string? AdminEndpoint { get; set; }
 
@@ -45,20 +42,3 @@ public enum CerbosMode
     CustomEndpoint = 1
 }
 
-/// <summary>
-/// Legacy behavior value when a tenant's Cerbos PDP is unreachable.
-/// Stored as string in TenantSetting (e.g., "closed", "open"); runtime failures always close.
-/// </summary>
-public enum CerbosFailureMode
-{
-    /// <summary>
-    /// Safe-Mode: only instance admin emergency access allowed, deny everything else.
-    /// Use when tenant policies might be stricter than the fallback — prevents security bypass.
-    /// </summary>
-    Closed = 0,
-
-    /// <summary>
-    /// Deprecated. Parsed for existing configuration values but ignored at runtime.
-    /// </summary>
-    Open = 1
-}

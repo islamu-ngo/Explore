@@ -52,7 +52,7 @@ Instance Cerbos failures are fail-closed. Network, timeout, or PDP-unavailable f
 BYO Cerbos failure handling:
 
 - Any BYO PDP failure activates fallback provider `SafeMode` (one-way latch: non-instance-admin traffic denied).
-- `failure_mode=open` is still parsed as a deprecated configuration value, but runtime authorization treats it as fail-closed and does not run standard local RBAC.
+- There is no fail-open configuration. The `cerbos.failure_mode` setting was deleted; runtime authorization always treats a BYO outage as fail-closed and does not run standard local RBAC.
 
 BYO config resolver failures activate provider-instance `SafeMode` instead of silently using local RBAC. A tenant configured with `cerbos.mode=custom_endpoint` but no custom PDP endpoint remains in BYO mode: runtime authorization activates safe mode, while explicit BYO Admin API configuration remains available for package sync/status operations.
 

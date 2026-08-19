@@ -42,7 +42,7 @@ public sealed class ControlPlaneDeploymentModeRunbookLinkPolicy : ILinkPolicy<Co
             .RequirePermission(AuthorizationActions.InstanceSettings.View,
                 ResourceKinds.InstanceSetting,
                 GetControlPlaneDeploymentModeRunbookQuery.SettingKey,
-                InstanceSettingAttributes(GetControlPlaneDeploymentModeRunbookQuery.SettingKey));
+                facts: InstanceScopedAuthorizationFacts.Instance);
 
     private static LinkDefinition TransitionLink(DeploymentMode targetMode, string title)
     {
@@ -60,24 +60,7 @@ public sealed class ControlPlaneDeploymentModeRunbookLinkPolicy : ILinkPolicy<Co
             .RequirePermission(AuthorizationActions.InstanceSettings.Update,
                 ResourceKinds.InstanceSetting,
                 TransitionControlPlaneDeploymentModeCommand.SettingKey,
-                InstanceSettingAttributes(TransitionControlPlaneDeploymentModeCommand.SettingKey, targetMode));
-    }
-
-    private static IReadOnlyDictionary<string, object> InstanceSettingAttributes(
-        string settingKey,
-        DeploymentMode? targetMode = null)
-    {
-        var attributes = new Dictionary<string, object>
-        {
-            ["settingKey"] = settingKey
-        };
-
-        if (targetMode is not null)
-        {
-            attributes["targetMode"] = targetMode.Value.ToString();
-        }
-
-        return attributes;
+                facts: InstanceScopedAuthorizationFacts.Instance);
     }
 }
 

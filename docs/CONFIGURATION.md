@@ -852,14 +852,15 @@ Background reconciliation binds from `Cerbos:PolicyBootSync`:
 | `TimeoutSeconds` | `60` | Maximum time for each verification-and-publish attempt. |
 
 For a Coolify-managed external Cerbos PDP, use [CERBOS_COOLIFY.md](CERBOS_COOLIFY.md) for the Docker Image tag, PostgreSQL schema bootstrap, Admin API password hash, gRPC routing, and `cerbosctl` upload flow. Compose and Aspire local infrastructure use the repository `cerbos/` folder directly.
-- When `Authorization:Provider` is blank, governance settings select the active provider (`AuthorizationProvider`). Explicit deployment intent takes precedence. Governance still owns whether tenant customization is enabled and per-tenant BYO values such as `cerbos.mode`, `cerbos.custom_endpoint`, `cerbos.failure_mode`, custom Admin API endpoint, and custom Admin API credentials.
+- When `Authorization:Provider` is blank, governance settings select the active provider (`AuthorizationProvider`). Explicit deployment intent takes precedence. Governance still owns whether tenant customization is enabled and per-tenant BYO values such as `cerbos.mode`, `cerbos.custom_endpoint`, custom Admin API endpoint, and custom Admin API credentials.
 
 Endpoint and secret safety rules:
 
 - Non-local PDP/Admin API endpoints must use safe TLS-capable URLs. Unsafe endpoint changes are rejected before provider settings are persisted or sync/cache invalidation runs.
 - Runtime failure logs must not include raw PDP/Admin API endpoints, Admin API credentials, JWTs/tokens, response bodies, or exception objects/messages.
 - A tenant with `cerbos.mode=custom_endpoint` and a blank PDP endpoint remains in BYO mode. Runtime authorization activates safe mode instead of falling back to the instance PDP, while any explicit BYO Admin API configuration is still preserved for package operations.
-- Any BYO PDP failure activates provider-instance safe mode for local fallback decisions; `failure_mode=open` is retained only as a deprecated parsed value and does not enable standard local RBAC fallback.
+- Any BYO PDP failure activates provider-instance safe mode for local fallback decisions. There is no fail-open setting: the `cerbos.failure_mode` governance key was deleted because it was parsed and then ignored at runtime, so it could only mislead an operator into believing they had configured fallback behaviour.
+- `Authorization:DenySensitiveActionsOnUnknownRevision` (default `true`) denies writes and sensitive disclosures when the Cerbos policy store revision cannot be established. Set it to `false` only for a deployment that manages the policy store entirely out of band, where the application can never observe a revision and the gate would otherwise deny permanently.
 
 ### Email Dispatch Scheduler Configuration
 

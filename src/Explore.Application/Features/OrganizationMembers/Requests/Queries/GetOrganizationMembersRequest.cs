@@ -17,9 +17,6 @@ public class GetOrganizationMembersRequest : IRequest<List<OrganizationMemberDto
 
     string? ISecureRequest.ResourceId => OrganizationId == Guid.Empty ? null : OrganizationId.ToString("D");
 
-    IDictionary<string, object>? ISecureRequest.ResourceAttributes => new Dictionary<string, object>
-    {
-        ["tenantId"] = TenantId.ToString("D"),
-        ["organizationId"] = OrganizationId.ToString("D")
-    };
+    IAuthorizationFacts? ISecureRequest.AuthorizationFacts =>
+        new OrganizationMemberAuthorizationFacts(TenantId, OrganizationId, null, null);
 }

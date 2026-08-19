@@ -440,6 +440,7 @@ public static class InfrastructureServicesRegistration
         services.AddScoped<IAuthorizationProvider>(sp => sp.GetRequiredService<RuntimeAuthorizationProvider>());
         services.AddScoped<IAuthorizationProviderModeCacheInvalidator>(sp => sp.GetRequiredService<RuntimeAuthorizationProvider>());
         services.AddScoped<IPolicyPackageService, CerbosPolicyPackageService>();
+        services.AddScoped<IAuthorizationRevisionProvider, CerbosStoreRevisionProvider>();
         services.AddScoped<IPolicySyncService, PolicySyncService>();
 
         // Event Strategies

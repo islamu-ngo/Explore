@@ -174,7 +174,6 @@ public sealed class PaidEventPublicationPreflightServiceTests
                     request.ResourceKind == ResourceKinds.Event &&
                     request.ResourceId == _eventId.ToString() &&
                     request.Action == AuthorizationActions.Events.ManagePaidEventCommerce &&
-                    request.ResourceAttributes == null &&
                     request.Facts != null &&
                     request.Facts.GetType() == typeof(EventAuthorizationFacts) &&
                     ((EventAuthorizationFacts)request.Facts).OrganizerActorId == organizer.Id),

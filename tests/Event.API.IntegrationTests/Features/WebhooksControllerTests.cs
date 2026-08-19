@@ -285,8 +285,7 @@ public sealed class WebhooksControllerTests
         var ownership = CreateOwnershipScope(ownerKind, ownerId);
         var context = Substitute.For<ICollectionAuthorizationContext>();
         context.AuthorizationResourceId.Returns(ownerId.ToString("D"));
-        context.AuthorizationResourceAttributes.Returns(
-            ResourceDescriptors.GetWebhookOwnerAttributes(ownership));
+        context.AuthorizationFacts.Returns(WebhookOwnershipAuthorizationFacts.From(ownership));
 
         LinkDefinition[] links =
         [
@@ -303,10 +302,13 @@ public sealed class WebhooksControllerTests
             await Assert.That(link.PermissionAction).IsEqualTo(AuthorizationActions.Webhooks.Create);
             await Assert.That(link.PermissionResourceKind).IsEqualTo(ResourceKinds.Webhook);
             await Assert.That(link.PermissionResourceId).IsEqualTo(ownerId.ToString("D"));
-            await Assert.That(link.PermissionResourceAttributes!["ownerKindId"]).IsEqualTo((int)ownerKind);
-            await Assert.That(link.PermissionResourceAttributes["ownerId"]).IsEqualTo(ownerId.ToString("D"));
-            await Assert.That(link.PermissionResourceAttributes.ContainsKey("tenantId"))
-                .IsEqualTo(ownerKind != WebhookConsumerKind.Instance);
+            await Assert.That(link.PermissionFacts).IsTypeOf<WebhookOwnershipAuthorizationFacts>();
+            var facts = (WebhookOwnershipAuthorizationFacts)link.PermissionFacts!;
+            await Assert.That(facts.Kind).IsEqualTo(ownerKind);
+            await Assert.That(facts.OwnerId).IsEqualTo(ownerId);
+            // Instance-owned webhooks carry no tenant: publishing one would invent a scope the owner
+            // does not have.
+            await Assert.That(facts.TenantId is not null).IsEqualTo(ownerKind != WebhookConsumerKind.Instance);
         }
     }
 
@@ -326,8 +328,7 @@ public sealed class WebhooksControllerTests
         var ownership = CreateOwnershipScope(ownerKind, ownerId);
         var context = Substitute.For<ICollectionAuthorizationContext>();
         context.AuthorizationResourceId.Returns(ownerId.ToString("D"));
-        context.AuthorizationResourceAttributes.Returns(
-            ResourceDescriptors.GetWebhookOwnerAttributes(ownership));
+        context.AuthorizationFacts.Returns(WebhookOwnershipAuthorizationFacts.From(ownership));
 
         var links = new WebhookMessageCollectionLinkPolicy(TimeProvider.System)
             .GetCollectionLinks(null, context)
@@ -342,7 +343,7 @@ public sealed class WebhooksControllerTests
             .IsEqualTo(expectsTenantOperations);
         await Assert.That(links.All(link => link.PermissionResourceId == ownerId.ToString("D"))).IsTrue();
         await Assert.That(links.All(link =>
-                link.PermissionResourceAttributes!["ownerKindId"].Equals((int)ownerKind)))
+                link.PermissionFacts is WebhookOwnershipAuthorizationFacts facts && facts.Kind == ownerKind))
             .IsTrue();
     }
 

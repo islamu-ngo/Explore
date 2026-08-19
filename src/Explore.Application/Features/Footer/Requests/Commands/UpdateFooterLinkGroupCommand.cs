@@ -15,13 +15,10 @@ public class UpdateFooterLinkGroupCommand : IRequest<BaseCommandResponse<Guid>>,
     public Guid GroupId { get; set; }
     public required PatchFooterLinkGroupDto Update { get; set; }
     string? ISecureRequest.ResourceId => TenantId == Guid.Empty ? null : TenantId.ToString("D");
-    IDictionary<string, object>? ISecureRequest.ResourceAttributes => TenantId == Guid.Empty
+    IAuthorizationFacts? ISecureRequest.AuthorizationFacts =>
+        TenantId == Guid.Empty
         ? null
-        : new Dictionary<string, object>
-        {
-            ["tenantId"] = TenantId.ToString("D"),
-            ["groupId"] = GroupId.ToString("D")
-        };
+        : new TenantScopedAuthorizationFacts(TenantId);
 
 }
 

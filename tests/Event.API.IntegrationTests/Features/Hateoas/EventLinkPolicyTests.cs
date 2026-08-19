@@ -97,10 +97,9 @@ public sealed class EventLinkPolicyTests
             await Assert.That(link.PermissionAction).IsEqualTo(AuthorizationActions.Create);
             await Assert.That(link.PermissionResourceId).IsEqualTo(eventId.ToString());
             await Assert.That(link.PermissionScope?.TenantId).IsEqualTo(tenantId.ToString());
-            await Assert.That(link.PermissionResourceAttributes).IsNotNull();
-            await Assert.That(link.PermissionResourceAttributes!["tenantId"]).IsEqualTo(tenantId.ToString());
-            await Assert.That(link.PermissionResourceAttributes["eventId"]).IsEqualTo(eventId.ToString());
-            await Assert.That(link.PermissionResourceAttributes["authorizationPhase"]).IsEqualTo(AuthorizationPhases.PreCreate);
+            // No session row exists yet, so the parent event is the only authority the create rules can weigh.
+            await Assert.That(link.PermissionFacts)
+                .IsEqualTo(new PreCreateAuthorizationFacts(tenantId, eventId));
         }
     }
 
@@ -128,8 +127,8 @@ public sealed class EventLinkPolicyTests
         await Assert.That(export.PermissionResourceKind).IsEqualTo(ResourceKinds.EventContactShareConsent);
         await Assert.That(export.PermissionAction).IsEqualTo(AuthorizationActions.ExportSharedContacts);
         await Assert.That(export.PermissionResourceId).IsEqualTo(organizerOrganizationId.ToString());
-        await Assert.That(export.PermissionResourceAttributes!["tenantId"]).IsEqualTo(tenantId);
-        await Assert.That(export.PermissionResourceAttributes["organizationId"]).IsEqualTo(organizerOrganizationId);
+        await Assert.That(export.PermissionFacts)
+            .IsEqualTo(new ContactShareAuthorizationFacts(tenantId, organizerOrganizationId));
     }
 
     [Test]
@@ -160,10 +159,11 @@ public sealed class EventLinkPolicyTests
     [Test]
     public async Task RegistrationAnalyticsResource_UsesExactScopedSelfLink()
     {
+        Guid tenantId = Guid.NewGuid();
         Guid eventId = Guid.NewGuid();
         Guid formId = Guid.NewGuid();
         Guid versionId = Guid.NewGuid();
-        var dto = new RegistrationAnswerAnalyticsDto(eventId, formId, versionId, 3, []);
+        var dto = new RegistrationAnswerAnalyticsDto(tenantId, eventId, formId, versionId, 3, []);
 
         LinkDefinition self = new RegistrationAnswerAnalyticsLinkPolicy()
             .GetLinks(dto, new ClaimsPrincipal(new ClaimsIdentity("test")))
@@ -178,8 +178,16 @@ public sealed class EventLinkPolicyTests
         await Assert.That(self.PermissionAction).IsEqualTo(AuthorizationActions.Events.ManageRegistrations);
         await Assert.That(self.PermissionResourceKind).IsEqualTo(ResourceKinds.Event);
         await Assert.That(self.PermissionResourceId).IsEqualTo(eventId.ToString("D"));
-        await Assert.That(self.PermissionResourceAttributes!["formId"]).IsEqualTo(formId.ToString("D"));
-        await Assert.That(self.PermissionResourceAttributes!["formVersionId"]).IsEqualTo(versionId.ToString("D"));
+        // Analytics reads authorize against the parent event. The form and version select which answers are
+        // summarized and travel in the route, not in the policy facts.
+        await Assert.That(self.PermissionFacts)
+            .IsEqualTo(new EventScopedAuthorizationFacts(tenantId, eventId));
+
+        // Regression guard: this link previously published Guid.Empty as its tenant. The wire projection drops
+        // unset Guids, so the evaluator received no tenantId, could not resolve an event context, and denied the
+        // link unconditionally — the affordance never rendered for anyone. Assert a real tenant, not just any value.
+        var facts = (EventScopedAuthorizationFacts)self.PermissionFacts!;
+        await Assert.That(facts.TenantId).IsNotEqualTo(Guid.Empty);
     }
 
     [Test]
@@ -691,7 +699,6 @@ public sealed class EventLinkPolicyTests
         await Assert.That(platform.PermissionResourceKind).IsEqualTo(ResourceKinds.RegistrationOrder);
         await Assert.That(platform.PermissionResourceId).IsEqualTo(eventId.ToString());
         await Assert.That(platform.PermissionScope?.TenantId).IsEqualTo(tenantId.ToString());
-        await Assert.That(platform.PermissionResourceAttributes).IsNull();
         await Assert.That(platform.PermissionFacts).IsTypeOf<EventAuthorizationFacts>();
         var facts = (EventAuthorizationFacts)platform.PermissionFacts!;
         await Assert.That(facts.EventId).IsEqualTo(eventId);
@@ -724,7 +731,6 @@ public sealed class EventLinkPolicyTests
             .Single(candidate => candidate.Rel == LinkRelations.StartRegistration);
 
         await Assert.That(link.PermissionResourceKind).IsEqualTo(ResourceKinds.RegistrationOrder);
-        await Assert.That(link.PermissionResourceAttributes).IsNull();
         await Assert.That(link.PermissionFacts).IsTypeOf<EventAuthorizationFacts>();
         var facts = (EventAuthorizationFacts)link.PermissionFacts!;
         await Assert.That(facts.EventId).IsEqualTo(eventId);

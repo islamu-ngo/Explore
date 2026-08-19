@@ -3,6 +3,12 @@ ABOUTME: Keeps release notes short and focused on externally observable API beha
 
 # API Changelog
 
+## 2026-08-19
+
+- **Additive: `GET /api/instance/settings/authz-provider/package/status`** returns `AuthorizationPolicyPackageStatusDto` — provider mode, package id and content hash, the policy revision observed in the Cerbos store, whether that revision is certain, health, warnings, and a per-issue recovery action. Requires instance administrator or active setup-secret authority. Deliberately distinct from the anonymous `authz-provider/status` readiness probe, which must not disclose whether authorization is currently degraded.
+- **Breaking (pre-v1): the `cerbos.failure_mode` governance setting was deleted.** It was inert in two ways at once: its definition documented the values `deny`/`allow` while its parser only recognised `open`, and `open` was ignored at runtime regardless. BYO PDP outages have always failed closed into safe mode and continue to. No client contract changes; the setting simply no longer exists.
+- **Behavioural: sensitive actions now deny with reason code `revision_uncertain`** when the Cerbos policy store revision cannot be established. Writes and the two shared-contact disclosure actions are gated; ordinary reads are not, so a policy-store outage degrades rather than blanks the product. Governed by `Authorization:DenySensitiveActionsOnUnknownRevision` (default `true`).
+
 ## 2026-08-16
 
 - **Breaking (pre-v1): control-plane command failures now return RFC 7807 `ProblemDetails` instead of a bare `BaseCommandResponse` body.** The shared `MapCommandResponse` helper — used by 15 control-plane endpoints covering tenant plans, tenant configuration, tenant lifecycle, and deployment mode — previously serialized the command response object itself on failure, while every other failure path in the API returned ProblemDetails. Two endpoints in the same product could therefore fail in two different formats. Failures now map as: `not_found` → 404 ProblemDetails, `admin_required` → 403, `authentication_required` → 401, `concurrency_conflict` → 409 (carrying the command id/message as extensions), everything else → 400 `ValidationProblemDetails`. Success responses are unchanged. `ProducesResponseType` metadata was corrected accordingly, so generated clients now type these error bodies as ProblemDetails.

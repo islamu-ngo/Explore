@@ -1,5 +1,5 @@
-// ABOUTME: Resolves generic authorization resource context after request-specific enrichers run.
-// ABOUTME: Preserves webhook ownership, persisted owner binding, and common resource enrichment.
+// ABOUTME: Resolves trusted authorization facts from loaded entities after request-specific enrichers run.
+// ABOUTME: Server-loaded state always overrides request-declared facts, and an unresolvable resource denies.
 
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
@@ -9,6 +9,16 @@ using Explore.Domain;
 
 namespace Explore.Application.Authorization;
 
+/// <summary>
+/// Turns a request plus its declared context into the trusted <see cref="IAuthorizationFacts"/> the
+/// provider evaluates.
+/// <para>
+/// For every resource kind that can be loaded server-side, the loaded entity is the authority: request
+/// input may select <em>which</em> resource is evaluated, never <em>what</em> is true about it. When the
+/// resource cannot be found, or belongs to another tenant, the resolver returns no facts so the provider
+/// fails closed.
+/// </para>
+/// </summary>
 public sealed class AuthorizationResourceContextResolver(
     IEventRepository? eventRepository = null,
     IOrganizationMemberRepository? organizationMemberRepository = null,
@@ -22,39 +32,58 @@ public sealed class AuthorizationResourceContextResolver(
         string resourceKind,
         string action,
         string resourceId,
-        IDictionary<string, object>? resourceAttributes,
+        IAuthorizationFacts? declaredFacts,
         CancellationToken cancellationToken)
         where TRequest : notnull
     {
         if (resourceKind == ResourceKinds.Webhook && request is IWebhookPersistedOwnerRequest persistedOwnerRequest)
         {
             var ownership = await ResolvePersistedWebhookOwnershipAsync(persistedOwnerRequest, cancellationToken);
-            resourceId = persistedOwnerRequest.OwnedResourceId.ToString("D");
-            resourceAttributes = CreateWebhookOwnerAttributes(ownership);
-            return new AuthorizationContext(resourceId, resourceAttributes, WebhookOwnershipAuthorizationFacts.From(ownership));
+            return new AuthorizationContext(
+                persistedOwnerRequest.OwnedResourceId.ToString("D"),
+                WebhookOwnershipAuthorizationFacts.From(ownership));
         }
-        else if (resourceKind == ResourceKinds.Webhook && request is IWebhookOwnerScopedRequest ownerScopedRequest)
+
+        if (resourceKind == ResourceKinds.Webhook && request is IWebhookOwnerScopedRequest ownerScopedRequest)
         {
             var ownership = await ResolveWebhookOwnershipAsync(ownerScopedRequest, cancellationToken);
-            resourceId = ownership.OwnerId.ToString("D");
-            resourceAttributes = CreateWebhookOwnerAttributes(ownership);
-            return new AuthorizationContext(resourceId, resourceAttributes, WebhookOwnershipAuthorizationFacts.From(ownership));
+            return new AuthorizationContext(
+                ownership.OwnerId.ToString("D"),
+                WebhookOwnershipAuthorizationFacts.From(ownership));
         }
 
-        resourceAttributes = await EnrichResourceAttributesAsync(
-            resourceKind,
-            resourceId,
-            resourceAttributes,
-            cancellationToken);
+        var facts = await ResolveTrustedFactsAsync(resourceKind, resourceId, declaredFacts, cancellationToken);
 
-        if (resourceKind == ResourceKinds.RegistrationForm && resourceAttributes is null)
+        if (resourceKind == ResourceKinds.RegistrationForm && facts is null)
         {
             throw new AuthorizationException(resourceKind, action);
         }
 
-        var facts = CreateFacts(resourceKind, resourceId, resourceAttributes);
-        BindPersistedUserOwner(request, resourceAttributes);
-        return new AuthorizationContext(resourceId, resourceAttributes, facts);
+        return new AuthorizationContext(resourceId, facts);
+    }
+
+    private async Task<IAuthorizationFacts?> ResolveTrustedFactsAsync(
+        string resourceKind,
+        string resourceId,
+        IAuthorizationFacts? declaredFacts,
+        CancellationToken cancellationToken)
+    {
+        // A pre-create check has no persisted row to load, so entity resolution cannot apply and must
+        // not erase the lifecycle facts the create rules match on.
+        if (declaredFacts is PreCreateAuthorizationFacts)
+            return declaredFacts;
+
+        return resourceKind switch
+        {
+            ResourceKinds.Event => await ResolveEventFactsAsync(resourceId, declaredFacts, cancellationToken),
+            ResourceKinds.EventOrganizerClaim => await ResolveOrganizerClaimFactsAsync(declaredFacts, cancellationToken),
+            ResourceKinds.RegistrationForm => await ResolveRegistrationFormFactsAsync(declaredFacts, cancellationToken),
+            ResourceKinds.EventSession => await ResolveEventSessionFactsAsync(resourceId, declaredFacts, cancellationToken),
+            ResourceKinds.OrganizationMember => await ResolveOrganizationMemberFactsAsync(resourceId, declaredFacts, cancellationToken),
+            ResourceKinds.StorageObject => await ResolveStorageObjectFactsAsync(resourceId, declaredFacts, cancellationToken),
+            ResourceKinds.CustomPropertyProjection => await ResolveProjectionFactsAsync(declaredFacts, cancellationToken),
+            _ => declaredFacts
+        };
     }
 
     private async Task<WebhookOwnershipScope> ResolveWebhookOwnershipAsync(
@@ -90,424 +119,202 @@ public sealed class AuthorizationResourceContextResolver(
             throw new AuthorizationException(ResourceKinds.Webhook, "resolve-persisted-owner");
     }
 
-    private static Dictionary<string, object> CreateWebhookOwnerAttributes(WebhookOwnershipScope ownership)
-    {
-        var attributes = new Dictionary<string, object>
-        {
-            ["ownerKindId"] = (int)ownership.Kind,
-            ["ownerKind"] = ownership.Kind.ToString().ToUpperInvariant(),
-            ["ownerId"] = ownership.OwnerId.ToString("D")
-        };
-
-        AddIfMissing(attributes, "tenantId", ownership.TenantId);
-        AddIfMissing(attributes, "instanceId", ownership.InstanceId);
-        AddIfMissing(attributes, "organizationId", ownership.OrganizationId);
-        AddIfMissing(attributes, "groupId", ownership.GroupId);
-        AddIfMissing(attributes, "userId", ownership.UserId);
-        return attributes;
-    }
-
-    private async Task<IDictionary<string, object>?> EnrichResourceAttributesAsync(
-        string resourceKind,
+    /// <summary>
+    /// Loads the event and rebuilds its authority facts. Pre-create checks carry no persisted event, so
+    /// the request-declared phase facts survive untouched.
+    /// </summary>
+    private async Task<IAuthorizationFacts?> ResolveEventFactsAsync(
         string resourceId,
-        IDictionary<string, object>? resourceAttributes,
-        CancellationToken cancellationToken)
-    {
-        return resourceKind switch
-        {
-            ResourceKinds.Event => await EnrichEventResourceAttributesAsync(resourceId, resourceAttributes, cancellationToken),
-            ResourceKinds.EventOrganizerClaim => resourceAttributes is not null &&
-                                                TryGetGuidAttribute(resourceAttributes, "eventId", out var eventId)
-                ? await EnrichEventResourceAttributesAsync(eventId.ToString("D"), resourceAttributes, cancellationToken)
-                : resourceAttributes,
-            ResourceKinds.RegistrationForm => resourceAttributes is not null &&
-                                                 TryGetGuidAttribute(resourceAttributes, "eventId", out var registrationEventId)
-                ? await EnrichRegistrationFormResourceAttributesAsync(
-                    registrationEventId,
-                    resourceAttributes,
-                    cancellationToken)
-                : null,
-            ResourceKinds.EventSession => await EnrichEventSessionResourceAttributesAsync(resourceId, resourceAttributes, cancellationToken),
-            ResourceKinds.OrganizationMember => await EnrichOrganizationMemberResourceAttributesAsync(resourceId, resourceAttributes, cancellationToken),
-            ResourceKinds.StorageObject => await EnrichStorageObjectResourceAttributesAsync(resourceId, resourceAttributes, cancellationToken),
-            ResourceKinds.CustomPropertyProjection => await EnrichCustomPropertyProjectionResourceAttributesAsync(resourceAttributes, cancellationToken),
-            _ => resourceAttributes
-        };
-    }
-
-    private static void BindPersistedUserOwner<TRequest>(
-        TRequest request,
-        IDictionary<string, object>? resourceAttributes)
-        where TRequest : notnull
-    {
-        if (request is IPersistedUserOwnerBoundRequest ownerBoundRequest &&
-            resourceAttributes is not null &&
-            TryGetGuidAttribute(resourceAttributes, "userId", out var ownerUserId))
-        {
-            ownerBoundRequest.ExpectedOwnerUserId = ownerUserId;
-        }
-    }
-
-    private async Task<IDictionary<string, object>?> EnrichCustomPropertyProjectionResourceAttributesAsync(
-        IDictionary<string, object>? resourceAttributes,
-        CancellationToken cancellationToken)
-    {
-        if (resourceAttributes is null || resourceAttributes.ContainsKey("tenantId"))
-            return resourceAttributes;
-
-        if (TryGetGuidAttribute(resourceAttributes, "eventId", out var eventId))
-        {
-            if (eventRepository is null)
-                return resourceAttributes;
-
-            var eventEntity = await eventRepository.GetEventWithDetails(eventId);
-            if (eventEntity is null)
-                return resourceAttributes;
-
-            var enriched = new Dictionary<string, object>(resourceAttributes);
-            AddIfMissing(enriched, "eventId", eventEntity.Id.ToString("D"));
-            AddIfMissing(enriched, "tenantId", eventEntity.TenantId.ToString("D"));
-            return enriched;
-        }
-
-        if (TryGetGuidAttribute(resourceAttributes, "eventSessionId", out var eventSessionId))
-        {
-            if (eventSessionRepository is null)
-                return resourceAttributes;
-
-            var session = await eventSessionRepository.GetSessionWithDetails(eventSessionId);
-            if (session is null)
-                return resourceAttributes;
-
-            var enriched = new Dictionary<string, object>(resourceAttributes);
-            AddIfMissing(enriched, "eventSessionId", session.Id.ToString("D"));
-            AddIfMissing(enriched, "eventId", session.EventId.ToString("D"));
-            AddIfMissing(enriched, "tenantId", session.TenantId.ToString("D"));
-            return enriched;
-        }
-
-        return resourceAttributes;
-    }
-
-    private async Task<IDictionary<string, object>?> EnrichEventResourceAttributesAsync(
-        string resourceId,
-        IDictionary<string, object>? resourceAttributes,
+        IAuthorizationFacts? declaredFacts,
         CancellationToken cancellationToken)
     {
         if (eventRepository is null || !Guid.TryParse(resourceId, out var eventId))
-            return resourceAttributes;
+            return declaredFacts;
 
         var eventEntity = await eventRepository.GetEventWithDetails(eventId);
-        if (eventEntity is null || tenantContext is not null && eventEntity.TenantId != tenantContext.TenantId)
+        if (!IsInCurrentTenant(eventEntity?.TenantId))
             return null;
 
-        var enriched = RemoveEventAuthorityAttributes(resourceAttributes);
-
-        AddIfMissing(enriched, "eventId", eventEntity.Id.ToString());
-        AddIfMissing(enriched, "tenantId", eventEntity.TenantId.ToString());
-        AddIfMissing(enriched, "actorId", eventEntity.ActorId.ToString());
-        AddIfMissing(enriched, "userId", eventEntity.Actor?.UserId);
-        AddIfMissing(enriched, "organizationId", eventEntity.Actor?.OrganizationId);
-        AddIfMissing(enriched, "groupId", eventEntity.Actor?.GroupId);
-        AddIfMissing(enriched, "organizerActorId", eventEntity.OrganizerActorId);
-        AddIfMissing(enriched, "organizerUserId", eventEntity.OrganizerActor?.UserId);
-        AddIfMissing(enriched, "organizerOrganizationId", eventEntity.OrganizerActor?.OrganizationId);
-        AddIfMissing(enriched, "organizerGroupId", eventEntity.OrganizerActor?.GroupId);
-
-        return enriched;
+        return CreateEventFacts(eventEntity!);
     }
 
-    private async Task<IDictionary<string, object>?> EnrichRegistrationFormResourceAttributesAsync(
-        Guid eventId,
-        IDictionary<string, object> resourceAttributes,
+    private async Task<IAuthorizationFacts?> ResolveOrganizerClaimFactsAsync(
+        IAuthorizationFacts? declaredFacts,
         CancellationToken cancellationToken)
     {
-        if (eventRepository is null)
-            return null;
-
-        var eventEntity = await eventRepository.GetEventWithDetails(eventId);
-        if (eventEntity is null || tenantContext is not null && eventEntity.TenantId != tenantContext.TenantId)
-            return null;
-
-        var enriched = new Dictionary<string, object>(resourceAttributes);
-        foreach (string key in new[]
-                 {
-                     "tenantId", "eventId", "actorId", "userId", "organizationId", "groupId",
-                     "organizerActorId", "organizerUserId", "organizerOrganizationId", "organizerGroupId"
-                 })
+        if (declaredFacts is EventOrganizerClaimAuthorizationFacts claimFacts)
         {
-            enriched.Remove(key);
+            return await IsEventInCurrentTenantAsync(claimFacts.EventId) ? claimFacts : null;
         }
 
-        enriched["eventId"] = eventEntity.Id.ToString("D");
-        enriched["tenantId"] = eventEntity.TenantId.ToString("D");
-        AddIfMissing(enriched, "actorId", eventEntity.ActorId);
-        AddIfMissing(enriched, "userId", eventEntity.Actor?.UserId);
-        AddIfMissing(enriched, "organizationId", eventEntity.Actor?.OrganizationId);
-        AddIfMissing(enriched, "groupId", eventEntity.Actor?.GroupId);
-        AddIfMissing(enriched, "organizerActorId", eventEntity.OrganizerActorId);
-        AddIfMissing(enriched, "organizerUserId", eventEntity.OrganizerActor?.UserId);
-        AddIfMissing(enriched, "organizerOrganizationId", eventEntity.OrganizerActor?.OrganizationId);
-        AddIfMissing(enriched, "organizerGroupId", eventEntity.OrganizerActor?.GroupId);
-        return enriched;
+        if (declaredFacts is EventScopedAuthorizationFacts scopedFacts)
+        {
+            return await ResolveEventFactsAsync(
+                scopedFacts.EventId.ToString("D"),
+                declaredFacts,
+                cancellationToken);
+        }
+
+        return declaredFacts is EventAuthorizationFacts eventFacts
+            ? await ResolveEventFactsAsync(eventFacts.EventId.ToString("D"), declaredFacts, cancellationToken)
+            : null;
     }
 
-    private async Task<IDictionary<string, object>?> EnrichEventSessionResourceAttributesAsync(
+    /// <summary>
+    /// Registration forms authorize as their parent event. A form whose event cannot be loaded inside the
+    /// current tenant produces no facts, and the caller converts that into a denial.
+    /// </summary>
+    private async Task<IAuthorizationFacts?> ResolveRegistrationFormFactsAsync(
+        IAuthorizationFacts? declaredFacts,
+        CancellationToken cancellationToken)
+    {
+        var eventId = EventIdOf(declaredFacts);
+        if (eventId is null || eventRepository is null)
+            return null;
+
+        var eventEntity = await eventRepository.GetEventWithDetails(eventId.Value);
+        return IsInCurrentTenant(eventEntity?.TenantId)
+            ? CreateEventFacts(eventEntity!)
+            : null;
+    }
+
+    private async Task<IAuthorizationFacts?> ResolveEventSessionFactsAsync(
         string resourceId,
-        IDictionary<string, object>? resourceAttributes,
+        IAuthorizationFacts? declaredFacts,
         CancellationToken cancellationToken)
     {
         if (eventSessionRepository is null || !Guid.TryParse(resourceId, out var eventSessionId))
-            return resourceAttributes;
+            return declaredFacts;
 
         var session = await eventSessionRepository.GetSessionWithDetails(eventSessionId);
-        if (session is null || tenantContext is not null && session.TenantId != tenantContext.TenantId)
+        if (!IsInCurrentTenant(session?.TenantId))
             return null;
 
-        var enriched = RemoveEventAuthorityAttributes(resourceAttributes);
-
-        AddIfMissing(enriched, "eventSessionId", session.Id.ToString());
-        AddIfMissing(enriched, "eventId", session.EventId.ToString());
-        AddIfMissing(enriched, "tenantId", session.TenantId.ToString());
-        return enriched;
+        return new EventScopedAuthorizationFacts(
+            session!.TenantId,
+            session.EventId,
+            session.Id);
     }
 
-    private async Task<IDictionary<string, object>?> EnrichStorageObjectResourceAttributesAsync(
+    private async Task<IAuthorizationFacts?> ResolveOrganizationMemberFactsAsync(
         string resourceId,
-        IDictionary<string, object>? resourceAttributes,
-        CancellationToken cancellationToken)
-    {
-        if (storageObjectRepository is null ||
-            IsStorageObjectCollectionScope(resourceAttributes) ||
-            !Guid.TryParse(resourceId, out var storageObjectId))
-        {
-            return resourceAttributes;
-        }
-
-        var storageObject = await storageObjectRepository.GetById(storageObjectId);
-        if (storageObject is null || tenantContext is not null && storageObject.TenantId != tenantContext.TenantId)
-            return null;
-
-        var enriched = resourceAttributes is null
-            ? new Dictionary<string, object>()
-            : new Dictionary<string, object>(resourceAttributes);
-
-        enriched["storageObjectId"] = storageObject.Id.ToString("D");
-        enriched["tenantId"] = storageObject.TenantId.ToString("D");
-        AddIfMissing(enriched, "visibility", storageObject.Visibility);
-        AddIfMissing(enriched, "lifecycleState", storageObject.LifecycleState);
-        AddIfMissing(enriched, "createdBy", storageObject.CreatedBy);
-        AddIfMissing(enriched, "owningResourceKind", storageObject.OwningResourceKind);
-        AddIfMissing(enriched, "owningResourceId", storageObject.OwningResourceId);
-        return enriched;
-    }
-
-    private async Task<IDictionary<string, object>?> EnrichOrganizationMemberResourceAttributesAsync(
-        string resourceId,
-        IDictionary<string, object>? resourceAttributes,
+        IAuthorizationFacts? declaredFacts,
         CancellationToken cancellationToken)
     {
         if (organizationMemberRepository is null || !Guid.TryParse(resourceId, out var memberId))
-            return resourceAttributes;
+            return declaredFacts;
 
         var member = await organizationMemberRepository.GetOrganizationMemberWithDetails(memberId);
-        if (member is null || tenantContext is not null && member.TenantId != tenantContext.TenantId)
+        if (!IsInCurrentTenant(member?.TenantId))
             return null;
 
-        var enriched = resourceAttributes is null
-            ? new Dictionary<string, object>()
-            : new Dictionary<string, object>(resourceAttributes);
-
-        AddIfMissing(enriched, "memberId", member.Id.ToString());
-        AddIfMissing(enriched, "tenantId", member.TenantId.ToString());
-        AddIfMissing(enriched, "organizationId", member.OrganizationTenant.OrganizationId.ToString());
-        AddIfMissing(enriched, "userId", member.UserId.ToString());
-        return enriched;
+        return new OrganizationMemberAuthorizationFacts(
+            member!.TenantId,
+            member.OrganizationTenant.OrganizationId,
+            member.Id,
+            member.UserId);
     }
 
-    private static bool IsStorageObjectCollectionScope(IDictionary<string, object>? attributes) =>
-        attributes?.TryGetValue("authorizationScope", out var scope) == true &&
-        string.Equals(scope?.ToString(), "collection", StringComparison.Ordinal);
-
-    private static IAuthorizationFacts? CreateFacts(
-        string resourceKind,
+    /// <summary>
+    /// Collection scopes have no single object to load, so their declared tenant facts stand. A persisted
+    /// object is always re-read: visibility and lifecycle drive content access and must not come from input.
+    /// </summary>
+    private async Task<IAuthorizationFacts?> ResolveStorageObjectFactsAsync(
         string resourceId,
-        IDictionary<string, object>? attributes)
+        IAuthorizationFacts? declaredFacts,
+        CancellationToken cancellationToken)
     {
-        if (attributes is null)
+        if (declaredFacts is StorageObjectCollectionAuthorizationFacts or StorageUploadIntentFacts)
+            return declaredFacts;
+
+        if (storageObjectRepository is null || !Guid.TryParse(resourceId, out var storageObjectId))
+            return declaredFacts;
+
+        var storageObject = await storageObjectRepository.GetById(storageObjectId);
+        if (!IsInCurrentTenant(storageObject?.TenantId))
             return null;
 
-        return resourceKind switch
+        return new PersistedStorageObjectAuthorizationFacts(
+            storageObject!.TenantId,
+            storageObject.Id,
+            storageObject.Visibility,
+            storageObject.LifecycleState,
+            storageObject.CreatedBy,
+            storageObject.OwningResourceKind,
+            storageObject.OwningResourceId);
+    }
+
+    /// <summary>
+    /// Custom-property projections are tenant-administered but addressed by event or session, so the
+    /// owning aggregate supplies the tenant the policy checks against.
+    /// </summary>
+    private async Task<IAuthorizationFacts?> ResolveProjectionFactsAsync(
+        IAuthorizationFacts? declaredFacts,
+        CancellationToken cancellationToken)
+    {
+        if (declaredFacts is not CustomPropertyProjectionAuthorizationFacts projectionFacts)
+            return declaredFacts;
+
+        if (projectionFacts.TenantId != Guid.Empty)
+            return projectionFacts;
+
+        if (projectionFacts.EventId is { } eventId && eventRepository is not null)
         {
-            ResourceKinds.Event => CreateEventFacts(attributes),
-            ResourceKinds.EventSession => CreateEventSessionFacts(resourceId, attributes),
-            ResourceKinds.EventOrganizerClaim => CreateEventOrganizerClaimFacts(resourceId, attributes),
-            ResourceKinds.OrganizationMember => CreateOrganizationMemberFacts(resourceId, attributes),
-            ResourceKinds.EventContactShareConsent => CreateContactShareFacts(resourceId, attributes),
-            ResourceKinds.SupportAccessSession => CreateSupportAccessSessionFacts(resourceId, attributes),
-            ResourceKinds.StorageObject when !IsStorageObjectCollectionScope(attributes) => CreateStorageObjectFacts(resourceId, attributes),
-            _ => null
-        };
-    }
-
-    private static EventAuthorizationFacts? CreateEventFacts(IDictionary<string, object> attributes)
-    {
-        return TryGetGuidAttribute(attributes, "tenantId", out var tenantId) &&
-               TryGetGuidAttribute(attributes, "eventId", out var eventId) &&
-               TryGetGuidAttribute(attributes, "actorId", out var actorId)
-            ? new EventAuthorizationFacts(
-                tenantId,
-                eventId,
-                actorId,
-                GetGuid(attributes, "userId"),
-                GetGuid(attributes, "organizationId"),
-                GetGuid(attributes, "groupId"),
-                GetGuid(attributes, "organizerActorId"),
-                GetGuid(attributes, "organizerUserId"),
-                GetGuid(attributes, "organizerOrganizationId"),
-                GetGuid(attributes, "organizerGroupId"),
-                GetString(attributes, "provenanceType"),
-                GetGuid(attributes, "submittedByUserId"))
-            : null;
-    }
-
-    private static EventSessionAuthorizationFacts? CreateEventSessionFacts(string resourceId, IDictionary<string, object> attributes)
-    {
-        var phase = GetString(attributes, "authorizationPhase");
-        var sessionId = string.Equals(phase, AuthorizationPhases.PreCreate, StringComparison.Ordinal)
-            ? (Guid?)null
-            : TryGetGuidAttribute(attributes, "eventSessionId", out var persistedSessionId)
-                ? persistedSessionId
-                : Guid.TryParse(resourceId, out var parsedSessionId)
-                    ? parsedSessionId
-                    : null;
-
-        return TryGetGuidAttribute(attributes, "tenantId", out var tenantId) &&
-               TryGetGuidAttribute(attributes, "eventId", out var eventId)
-            ? new EventSessionAuthorizationFacts(tenantId, eventId, sessionId, phase)
-            : null;
-    }
-
-    private static EventOrganizerClaimAuthorizationFacts? CreateEventOrganizerClaimFacts(string resourceId, IDictionary<string, object> attributes)
-    {
-        return TryGetGuidAttribute(attributes, "tenantId", out var tenantId) &&
-               TryGetGuidAttribute(attributes, "eventId", out var eventId) &&
-               (TryGetGuidAttribute(attributes, "claimId", out var claimId) || Guid.TryParse(resourceId, out claimId)) &&
-               TryGetGuidAttribute(attributes, "claimantActorId", out var claimantActorId) &&
-               GetString(attributes, "status") is { } status
-            ? new EventOrganizerClaimAuthorizationFacts(
-                tenantId,
-                eventId,
-                claimId,
-                claimantActorId,
-                GetGuid(attributes, "claimantUserId"),
-                GetGuid(attributes, "claimantOrganizationId"),
-                GetGuid(attributes, "claimantGroupId"),
-                status)
-            : null;
-    }
-
-    private static OrganizationMemberAuthorizationFacts? CreateOrganizationMemberFacts(string resourceId, IDictionary<string, object> attributes)
-    {
-        return TryGetGuidAttribute(attributes, "tenantId", out var tenantId) &&
-               (TryGetGuidAttribute(attributes, "organizationId", out var organizationId) || Guid.TryParse(resourceId, out organizationId))
-            ? new OrganizationMemberAuthorizationFacts(
-                tenantId,
-                organizationId,
-                GetGuid(attributes, "memberId"),
-                GetGuid(attributes, "userId"))
-            : null;
-    }
-
-    private static ContactShareAuthorizationFacts? CreateContactShareFacts(string resourceId, IDictionary<string, object> attributes)
-    {
-        return TryGetGuidAttribute(attributes, "tenantId", out var tenantId) &&
-               (TryGetGuidAttribute(attributes, "organizationId", out var organizationId) || Guid.TryParse(resourceId, out organizationId))
-            ? new ContactShareAuthorizationFacts(tenantId, organizationId)
-            : null;
-    }
-
-    private static SupportAccessSessionAuthorizationFacts? CreateSupportAccessSessionFacts(string resourceId, IDictionary<string, object> attributes)
-    {
-        return TryGetGuidAttribute(attributes, "tenantId", out var tenantId)
-            ? new SupportAccessSessionAuthorizationFacts(
-                tenantId,
-                GetGuid(attributes, "sessionId") ?? (Guid.TryParse(resourceId, out var id) ? id : null),
-                GetGuid(attributes, "actorUserId"),
-                GetString(attributes, "mode"),
-                GetString(attributes, "status"))
-            : null;
-    }
-
-    private static PersistedStorageObjectAuthorizationFacts? CreateStorageObjectFacts(string resourceId, IDictionary<string, object> attributes)
-    {
-        return TryGetGuidAttribute(attributes, "tenantId", out var tenantId) &&
-               (TryGetGuidAttribute(attributes, "storageObjectId", out var storageObjectId) || Guid.TryParse(resourceId, out storageObjectId)) &&
-               GetString(attributes, "visibility") is { } visibility &&
-               GetString(attributes, "lifecycleState") is { } lifecycleState
-            ? new PersistedStorageObjectAuthorizationFacts(
-                tenantId,
-                storageObjectId,
-                visibility,
-                lifecycleState,
-                GetString(attributes, "createdBy"),
-                GetString(attributes, "owningResourceKind"),
-                GetGuid(attributes, "owningResourceId"))
-            : null;
-    }
-
-    private static Dictionary<string, object> RemoveEventAuthorityAttributes(IDictionary<string, object>? attributes)
-    {
-        var filtered = attributes is null ? [] : new Dictionary<string, object>(attributes);
-        foreach (var key in new[]
-                 {
-                     "tenantId", "eventId", "eventSessionId", "actorId", "userId", "organizationId", "groupId",
-                     "organizerActorId", "organizerUserId", "organizerOrganizationId", "organizerGroupId",
-                     "provenanceType", "submittedByUserId"
-                 })
-        {
-            filtered.Remove(key);
+            var eventEntity = await eventRepository.GetEventWithDetails(eventId);
+            return eventEntity is null
+                ? projectionFacts
+                : projectionFacts with { TenantId = eventEntity.TenantId, EventId = eventEntity.Id };
         }
 
-        return filtered;
+        if (projectionFacts.EventSessionId is { } eventSessionId && eventSessionRepository is not null)
+        {
+            var session = await eventSessionRepository.GetSessionWithDetails(eventSessionId);
+            return session is null
+                ? projectionFacts
+                : projectionFacts with
+                {
+                    TenantId = session.TenantId,
+                    EventId = session.EventId,
+                    EventSessionId = session.Id
+                };
+        }
+
+        return projectionFacts;
     }
 
-    private static Guid? GetGuid(IDictionary<string, object> attributes, string name) =>
-        TryGetGuidAttribute(attributes, name, out var value) ? value : null;
-
-    private static string? GetString(IDictionary<string, object> attributes, string name) =>
-        attributes.TryGetValue(name, out var value) && !string.IsNullOrWhiteSpace(value?.ToString())
-            ? value.ToString()
-            : null;
-
-    private static bool TryGetGuidAttribute(
-        IDictionary<string, object> attributes,
-        string attributeName,
-        out Guid value)
+    private async Task<bool> IsEventInCurrentTenantAsync(Guid eventId)
     {
-        value = Guid.Empty;
-
-        if (!attributes.TryGetValue(attributeName, out var attributeValue))
-            return false;
-
-        if (attributeValue is Guid guidValue)
-        {
-            value = guidValue;
+        if (eventRepository is null)
             return true;
-        }
 
-        return attributeValue is string stringValue && Guid.TryParse(stringValue, out value);
+        var eventEntity = await eventRepository.GetEventWithDetails(eventId);
+        return IsInCurrentTenant(eventEntity?.TenantId);
     }
 
-    private static void AddIfMissing(IDictionary<string, object> attributes, string key, string? value)
+    private bool IsInCurrentTenant(Guid? resourceTenantId) =>
+        resourceTenantId is not null &&
+        (tenantContext is null || resourceTenantId == tenantContext.TenantId);
+
+    private static EventAuthorizationFacts CreateEventFacts(Event eventEntity) => new(
+        eventEntity.TenantId,
+        eventEntity.Id,
+        eventEntity.ActorId,
+        eventEntity.Actor?.UserId,
+        eventEntity.Actor?.OrganizationId,
+        eventEntity.Actor?.GroupId,
+        eventEntity.OrganizerActorId,
+        eventEntity.OrganizerActor?.UserId,
+        eventEntity.OrganizerActor?.OrganizationId,
+        eventEntity.OrganizerActor?.GroupId,
+        eventEntity.EventProvenanceType?.MasterCode ?? eventEntity.EventProvenanceTypeId.ToString(),
+        eventEntity.SubmittedByUserId);
+
+    private static Guid? EventIdOf(IAuthorizationFacts? facts) => facts switch
     {
-        if (!string.IsNullOrWhiteSpace(value) && !attributes.ContainsKey(key))
-            attributes[key] = value;
-    }
-
-    private static void AddIfMissing(IDictionary<string, object> attributes, string key, Guid? value)
-    {
-        if (value.HasValue && value.Value != Guid.Empty && !attributes.ContainsKey(key))
-            attributes[key] = value.Value.ToString();
-    }
+        EventAuthorizationFacts value => value.EventId,
+        EventScopedAuthorizationFacts value => value.EventId,
+        EventOrganizerClaimAuthorizationFacts value => value.EventId,
+        RegistrationOrderAuthorizationFacts value => value.EventId,
+        _ => null
+    };
 }

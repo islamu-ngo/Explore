@@ -1,16 +1,19 @@
-// ABOUTME: Authorization request interfaces for dynamic resource context and persisted owner binding.
-// ABOUTME: Lets the pipeline enrich policy inputs and carry an authorized owner snapshot into atomic writes.
+// ABOUTME: Authorization request interfaces for typed resource context and persisted owner binding.
+// ABOUTME: Lets a request name its resource and trusted facts without inventing provider policy inputs.
 
 namespace Explore.Application.Authorization;
 
 /// <summary>
 /// Optional companion interface for commands decorated with <see cref="AuthorizeResourceAttribute"/>.
 /// When a request implements this interface, the <see cref="Behaviors.AuthorizationBehavior{TRequest,TResponse}"/>
-/// pulls dynamic resource context (ResourceId, ResourceAttributes) from the request instance
-/// instead of using static defaults (typeof(TRequest).Name, null).
-///
-/// This is NOT a third authorization path — it enhances Path 2 ([AuthorizeResource]).
-/// Existing [AuthorizeResource] commands without ISecureRequest continue to work unchanged.
+/// pulls the resource identifier and the request-declared authorization facts from the request instance
+/// instead of using the static default (<c>typeof(TRequest).Name</c>).
+/// <para>
+/// This is NOT a third authorization path — it enhances Path 2 (<c>[AuthorizeResource]</c>).
+/// Facts declared here are request-scoped context, not authority: the
+/// <see cref="AuthorizationResourceContextResolver"/> overrides them with entity-loaded facts wherever a
+/// server-side lookup exists, and any capability whose provider requires facts denies when none survive.
+/// </para>
 /// </summary>
 public interface ISecureRequest
 {
@@ -21,13 +24,7 @@ public interface ISecureRequest
     string? ResourceId => null;
 
     /// <summary>
-    /// Additional resource attributes for policy evaluation (e.g., tenantId, isLocked).
-    /// Returns null when no additional attributes are needed.
+    /// Closed, typed policy facts for this request. Returns null when the resolver alone establishes them.
     /// </summary>
-    IDictionary<string, object>? ResourceAttributes => null;
-}
-
-public interface IPersistedUserOwnerBoundRequest
-{
-    Guid? ExpectedOwnerUserId { get; set; }
+    IAuthorizationFacts? AuthorizationFacts => null;
 }

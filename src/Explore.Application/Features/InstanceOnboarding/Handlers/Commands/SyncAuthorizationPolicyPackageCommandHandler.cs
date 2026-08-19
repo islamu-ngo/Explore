@@ -14,7 +14,8 @@ namespace Explore.Application.Features.InstanceOnboarding.Handlers.Commands;
 public sealed class SyncAuthorizationPolicyPackageCommandHandler(
     IPolicyPackageService policyPackageService,
     IAuthorizationProviderConfigurationService configurationService,
-    ILogger<SyncAuthorizationPolicyPackageCommandHandler> logger)
+    ILogger<SyncAuthorizationPolicyPackageCommandHandler> logger,
+    IAuthorizationRevisionProvider? revisionProvider = null)
     : IRequestHandler<SyncAuthorizationPolicyPackageCommand, BaseCommandResponse<Guid>>
 {
     public async Task<BaseCommandResponse<Guid>> Handle(
@@ -37,6 +38,12 @@ public sealed class SyncAuthorizationPolicyPackageCommandHandler(
             }
 
             var result = await policyPackageService.PublishAsync(cancellationToken);
+
+            // The store just changed, so any cached revision now describes the previous policy set.
+            // Invalidate on failure too: a partial publish also moves the store, and leaving a stale
+            // "certain" revision behind would let sensitive actions run against a half-published package.
+            revisionProvider?.Invalidate();
+
             if (result.Succeeded)
             {
                 logger.LogInformation(

@@ -79,9 +79,4 @@ public sealed class OrganizationTenantEvidenceCollectionLinkPolicy
             yield return OrganizationTenantEvidenceDetailLinkPolicy.Review(dto);
         }
     }
-
-    public IEnumerable<LinkDefinition> GetCollectionLinks(ClaimsPrincipal? user)
-    {
-        yield break;
-    }
 }

@@ -18,5 +18,4 @@ public class UpdateLocationRoomCommand : IRequest<BaseCommandResponse<Guid>>, IS
     public required UpdateLocationRoomDto UpdateLocationRoomDto { get; set; }
 
     string? ISecureRequest.ResourceId => LocationRoomId.ToString();
-    IDictionary<string, object>? ISecureRequest.ResourceAttributes => null;
 }

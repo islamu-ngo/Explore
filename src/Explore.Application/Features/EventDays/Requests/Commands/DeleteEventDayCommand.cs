@@ -13,5 +13,4 @@ public class DeleteEventDayCommand : IRequest<BaseCommandResponse<Guid>>, ISecur
     public Guid Id { get; set; }
 
     string? ISecureRequest.ResourceId => Id.ToString();
-    IDictionary<string, object>? ISecureRequest.ResourceAttributes => null;
 }

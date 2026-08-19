@@ -19,8 +19,8 @@ public sealed class TenantModerationReportingDashboardLinkPolicy : ILinkPolicy<T
             .RequirePermission(AuthorizationActions.TenantSettings.View,
                 ResourceKinds.TenantSetting,
                 TenantDashboardResourceId(dto),
-                TenantDashboardAttributes(dto),
-                TenantDashboardScope(dto));
+                TenantDashboardScope(dto),
+                new TenantSettingAuthorizationFacts(dto.TenantId, "moderation-reporting"));
 
         yield return new LinkDefinition(
                 "routing-state",
@@ -32,22 +32,13 @@ public sealed class TenantModerationReportingDashboardLinkPolicy : ILinkPolicy<T
             .RequirePermission(AuthorizationActions.TenantSettings.View,
                 ResourceKinds.TenantSetting,
                 TenantDashboardResourceId(dto),
-                TenantDashboardAttributes(dto),
-                TenantDashboardScope(dto));
+                TenantDashboardScope(dto),
+                new TenantSettingAuthorizationFacts(dto.TenantId, "moderation-reporting"));
     }
 
     private static string TenantDashboardResourceId(TenantModerationReportingDashboardDto dto)
     {
         return $"{dto.TenantId}:moderation-reporting";
-    }
-
-    private static IReadOnlyDictionary<string, object> TenantDashboardAttributes(TenantModerationReportingDashboardDto dto)
-    {
-        return new Dictionary<string, object>
-        {
-            ["tenantId"] = dto.TenantId.ToString(),
-            ["settingKey"] = "moderation-reporting"
-        };
     }
 
     private static AuthorizationScope TenantDashboardScope(TenantModerationReportingDashboardDto dto)

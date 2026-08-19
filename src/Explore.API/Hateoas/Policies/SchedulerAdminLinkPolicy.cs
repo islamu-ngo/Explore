@@ -184,8 +184,5 @@ internal static class SchedulerAdminLinks
                 action,
                 ResourceKinds.InstanceSetting,
                 GetSchedulerAdminOverviewQuery.SettingKey,
-                new Dictionary<string, object>
-                {
-                    ["settingKey"] = GetSchedulerAdminOverviewQuery.SettingKey
-                });
+                facts: InstanceScopedAuthorizationFacts.Instance);
 }

@@ -15,5 +15,4 @@ public class GetCustomPropertyGovernanceReportQuery : IRequest<PaginatedResult<C
     public GovernanceReportFilterDto Filter { get; set; } = new();
 
     string? ISecureRequest.ResourceId => null;
-    IDictionary<string, object>? ISecureRequest.ResourceAttributes => null;
 }

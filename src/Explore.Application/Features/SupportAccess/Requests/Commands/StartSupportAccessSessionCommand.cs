@@ -21,9 +21,6 @@ public sealed class StartSupportAccessSessionCommand : IRequest<SupportAccessSes
 
     string? ISecureRequest.ResourceId => TargetTenantId == Guid.Empty ? null : TargetTenantId.ToString("D");
 
-    IDictionary<string, object>? ISecureRequest.ResourceAttributes => new Dictionary<string, object>
-    {
-        ["tenantId"] = TargetTenantId.ToString("D"),
-        ["mode"] = Mode.ToString()
-    };
+    IAuthorizationFacts? ISecureRequest.AuthorizationFacts =>
+        new SupportAccessSessionAuthorizationFacts(TargetTenantId, null, null, null, null);
 }

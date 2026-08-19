@@ -15,11 +15,6 @@ public sealed class RetryWebhookDeliveryAttemptCommand
 
     string? ISecureRequest.ResourceId => AttemptId.ToString("D");
 
-    IDictionary<string, object>? ISecureRequest.ResourceAttributes => new Dictionary<string, object>
-    {
-        ["attemptId"] = AttemptId.ToString("D")
-    };
-
     WebhookOwnedResourceKind IWebhookPersistedOwnerRequest.OwnedResourceKind =>
         WebhookOwnedResourceKind.DeliveryAttempt;
 

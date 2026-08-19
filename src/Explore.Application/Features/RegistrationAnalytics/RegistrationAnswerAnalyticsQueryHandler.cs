@@ -27,7 +27,10 @@ public sealed class GetRegistrationAnswerAnalyticsQueryHandler(
             MinimumCellSize,
             cancellationToken);
 
+        // The tenant is published as a trusted fact for the HAL self link: the analytics resource is
+        // event-scoped, and the Local evaluator cannot resolve an event context without it.
         return projection is null ? null : new RegistrationAnswerAnalyticsDto(
+            tenantContext.TenantId,
             projection.EventId,
             projection.FormId,
             projection.FormVersionId,

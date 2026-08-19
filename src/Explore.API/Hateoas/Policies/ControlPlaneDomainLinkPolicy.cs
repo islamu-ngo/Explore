@@ -56,10 +56,7 @@ public sealed class ControlPlaneDomainLinkPolicy : ILinkPolicy<ControlPlaneDomai
             .RequirePermission(AuthorizationActions.InstanceSettings.View,
                 ResourceKinds.InstanceSetting,
                 settingKey,
-                new Dictionary<string, object>
-                {
-                    ["settingKey"] = settingKey
-                });
+                facts: InstanceScopedAuthorizationFacts.Instance);
 
     private static LinkDefinition InstanceSettingUpdateLink(
         string rel,
@@ -71,10 +68,7 @@ public sealed class ControlPlaneDomainLinkPolicy : ILinkPolicy<ControlPlaneDomai
             .RequirePermission(AuthorizationActions.InstanceSettings.Update,
                 ResourceKinds.InstanceSetting,
                 settingKey,
-                new Dictionary<string, object>
-                {
-                    ["settingKey"] = settingKey
-                });
+                facts: InstanceScopedAuthorizationFacts.Instance);
 }
 
 public sealed class ControlPlaneDomainCollectionLinkPolicy : ICollectionLinkPolicy<ControlPlaneDomainOverviewDto>

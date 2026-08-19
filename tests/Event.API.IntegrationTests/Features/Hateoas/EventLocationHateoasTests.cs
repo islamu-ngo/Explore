@@ -257,13 +257,20 @@ public sealed class EventLocationHateoasTests
                     ResourceKinds.Event,
                     eventId.ToString("D"),
                     AuthorizationActions.Update,
-                    new Dictionary<string, object>
-                    {
-                        ["eventId"] = eventId.ToString("D"),
-                        ["tenantId"] = tenantId.ToString("D"),
-                        ["actorId"] = actorId.ToString("D")
-                    },
-                    new AuthorizationScope(TenantId: tenantId.ToString("D")))
+                    new AuthorizationScope(TenantId: tenantId.ToString("D")),
+                    new EventAuthorizationFacts(
+                        tenantId,
+                        eventId,
+                        actorId,
+                        UserId: null,
+                        OrganizationId: null,
+                        GroupId: null,
+                        OrganizerActorId: null,
+                        OrganizerUserId: null,
+                        OrganizerOrganizationId: null,
+                        OrganizerGroupId: null,
+                        ProvenanceType: null,
+                        SubmittedByUserId: null))
                 : null);
 
     private static async Task AssertDirectMutationParityAsync(
@@ -275,12 +282,13 @@ public sealed class EventLocationHateoasTests
         await Assert.That(check.ResourceKind).IsEqualTo(ResourceKinds.Event);
         await Assert.That(check.ResourceId).IsEqualTo(eventId.ToString("D"));
         await Assert.That(check.Action).IsEqualTo(AuthorizationActions.Update);
-        await Assert.That(check.ResourceAttributes).IsNotNull();
-        await Assert.That(check.ResourceAttributes!["eventId"]).IsEqualTo(eventId.ToString("D"));
-        await Assert.That(Guid.TryParse(check.ResourceAttributes["tenantId"].ToString(), out _)).IsTrue();
-        await Assert.That(Guid.TryParse(check.ResourceAttributes["actorId"].ToString(), out _)).IsTrue();
-        await Assert.That(check.Scope?.TenantId)
-            .IsEqualTo(check.ResourceAttributes["tenantId"].ToString());
+        await Assert.That(check.Facts).IsTypeOf<EventAuthorizationFacts>();
+        var facts = (EventAuthorizationFacts)check.Facts!;
+        await Assert.That(facts.EventId).IsEqualTo(eventId);
+        await Assert.That(facts.TenantId).IsNotEqualTo(Guid.Empty);
+        await Assert.That(facts.ActorId).IsNotEqualTo(Guid.Empty);
+        // The scope the provider resolves policy with must name the same tenant the facts describe.
+        await Assert.That(check.Scope?.TenantId).IsEqualTo(facts.TenantId.ToString("D"));
     }
 
     private static T GetRouteValue<T>(object? routeValues, string name)

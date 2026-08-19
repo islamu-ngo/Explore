@@ -12,10 +12,8 @@ public abstract record PromotionManagementCommandBase(Guid EventId) : ISecureReq
 {
     public string? ResourceId => EventId.ToString();
 
-    public IDictionary<string, object>? ResourceAttributes => new Dictionary<string, object>
-    {
-        ["eventId"] = EventId.ToString()
-    };
+    IAuthorizationFacts? ISecureRequest.AuthorizationFacts =>
+        new EventScopedAuthorizationFacts(Guid.Empty, EventId);
 }
 
 public abstract record PromotionManagementCommandBase<TResponse>(Guid EventId) : PromotionManagementCommandBase(EventId), IRequest<TResponse>

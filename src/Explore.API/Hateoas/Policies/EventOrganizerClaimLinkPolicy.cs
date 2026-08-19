@@ -93,11 +93,6 @@ public sealed class EventOrganizerClaimCollectionLinkPolicy : ICollectionLinkPol
         }
     }
 
-    public IEnumerable<LinkDefinition> GetCollectionLinks(ClaimsPrincipal? user)
-    {
-        yield break;
-    }
-
     private static bool IsReviewable(int statusId) => statusId is
         (int)EventOrganizerClaimStatusEnum.Pending or
         (int)EventOrganizerClaimStatusEnum.EvidenceRequired;

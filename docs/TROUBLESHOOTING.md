@@ -376,7 +376,8 @@ The instance control plane exposes warning codes with operator remediation text.
 ### BYO Tenant PDP Failure
 
 - Any BYO PDP failure activates provider-instance safe mode and denies non-instance-admin checks.
-- `failure_mode=open` is parsed as a deprecated configuration value but no longer enables local RBAC fallback.
+- There is no fail-open configuration; the `cerbos.failure_mode` setting was deleted. A BYO PDP outage always fails closed into safe mode.
+- A sudden wave of denials with reason code `revision_uncertain` means the Cerbos policy store revision could not be established, so sensitive actions are failing closed. Check `GET api/instance/settings/authz-provider/package/status` for the observed revision, health, and recovery action.
 - BYO config resolver failures also activate provider-instance safe mode.
 
 ### Blank Custom PDP Endpoint

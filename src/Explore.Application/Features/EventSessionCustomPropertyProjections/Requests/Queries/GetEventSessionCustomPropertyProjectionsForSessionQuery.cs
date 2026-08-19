@@ -17,11 +17,8 @@ public class GetEventSessionCustomPropertyProjectionsForSessionQuery : IRequest<
 
     string? ISecureRequest.ResourceId => EventSessionId == Guid.Empty ? null : EventSessionId.ToString("D");
 
-    IDictionary<string, object>? ISecureRequest.ResourceAttributes => EventSessionId == Guid.Empty
+    IAuthorizationFacts? ISecureRequest.AuthorizationFacts =>
+        EventSessionId == Guid.Empty
         ? null
-        : new Dictionary<string, object>
-        {
-            ["eventSessionId"] = EventSessionId.ToString("D"),
-            ["authorizationScope"] = "event_session_projection_rows"
-        };
+        : new CustomPropertyProjectionAuthorizationFacts(Guid.Empty, null, EventSessionId);
 }

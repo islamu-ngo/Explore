@@ -1,6 +1,7 @@
 // ABOUTME: Defines custom OpenTelemetry business metrics for the platform.
 // ABOUTME: Tracks domain activity plus moderation, external API-key, email-dispatch, storage, notification fanout, and governance signals.
 
+using System.Diagnostics;
 using System.Diagnostics.Metrics;
 using Explore.Application.Contracts.Scheduling;
 using Explore.Application.Features.SupportAccess;
@@ -37,6 +38,7 @@ public sealed class BusinessMetrics : ISchedulerJobTelemetry, IDisposable
     private readonly Histogram<long> _registrationProviderSubscriptionWatches;
     private readonly Counter<long> _organizationsCreated;
     private readonly Counter<long> _authorizationDecisions;
+    private readonly Histogram<double> _authorizationDecisionDuration;
     private readonly Counter<long> _supportAccessLifecycleEvents;
     private readonly Counter<long> _supportAccessRequestAudits;
     private readonly Counter<long> _supportAccessSessionValidationDenials;
@@ -195,7 +197,12 @@ public sealed class BusinessMetrics : ISchedulerJobTelemetry, IDisposable
         _authorizationDecisions = meter.CreateCounter<long>(
             "explore.authorization.decisions",
             unit: "{decision}",
-            description: "Total authorization decisions (allowed/denied)");
+            description: "Total authorization decisions by capability, outcome, reason code, and deciding provider");
+
+        _authorizationDecisionDuration = meter.CreateHistogram<double>(
+            "explore.authorization.decision.duration",
+            unit: "ms",
+            description: "Time to reach an authorization decision, by capability and deciding provider");
 
         _supportAccessLifecycleEvents = meter.CreateCounter<long>(
             "explore.support_access.lifecycle_events",
@@ -736,12 +743,47 @@ public sealed class BusinessMetrics : ISchedulerJobTelemetry, IDisposable
             new KeyValuePair<string, object?>("tenant_id", tenantId ?? "default"));
     }
 
-    public void RecordAuthorizationDecision(string resource, string action, bool allowed)
+    /// <summary>
+    /// Records one authorization decision.
+    /// <para>
+    /// Every dimension here is drawn from a closed set: resource kinds and actions come from the
+    /// capability catalog, outcomes and reason codes from fixed constants, providers from the three
+    /// provider identifiers. Nothing derived from a request — no tenant, user, or resource identifier,
+    /// no token, no fact value — is admitted, because a metric dimension that grows with traffic turns
+    /// the metrics backend into a per-request store.
+    /// </para>
+    /// <para>
+    /// The observed policy revision is deliberately <em>not</em> a dimension. It is bounded at any instant
+    /// but changes on every policy publish, so over time it is unbounded. It belongs on the span and in
+    /// the log line, where a single decision can be attributed to a single policy set, and is passed here
+    /// only so the caller has one place to send everything.
+    /// </para>
+    /// </summary>
+    /// <param name="resourceKind">Catalogued resource kind. Never a resource identifier.</param>
+    /// <param name="action">Catalogued action verb.</param>
+    /// <param name="outcome">Decision outcome, allowed or denied.</param>
+    /// <param name="reasonCode">Closed-set reason code explaining the outcome.</param>
+    /// <param name="providerId">Which provider decided: local, cerbos, or runtime.</param>
+    /// <param name="durationMs">Wall time spent reaching the decision.</param>
+    public void RecordAuthorizationDecision(
+        string resourceKind,
+        string action,
+        string outcome,
+        string reasonCode,
+        string providerId,
+        double durationMs)
     {
-        _authorizationDecisions.Add(1,
-            new KeyValuePair<string, object?>("resource", resource),
-            new KeyValuePair<string, object?>("action", action),
-            new KeyValuePair<string, object?>("result", allowed ? "allowed" : "denied"));
+        var dimensions = new TagList
+        {
+            { "resource_kind", resourceKind },
+            { "action", action },
+            { "outcome", outcome },
+            { "reason_code", reasonCode },
+            { "provider", providerId }
+        };
+
+        _authorizationDecisions.Add(1, dimensions);
+        _authorizationDecisionDuration.Record(Math.Max(0, durationMs), dimensions);
     }
 
     public void RecordSupportAccessLifecycleEvent(

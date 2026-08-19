@@ -143,24 +143,15 @@ public class UpdateActorCommandHandler : IRequestHandler<UpdateActorCommand, Bas
             return;
         }
 
+        // Each editable group is authorized separately, but the policy question is identical: may this
+        // caller update this actor. The group name is a payload partition, not a policy fact.
         checks.Add(new AuthorizationRequest(
             ResourceKinds.Actor,
             actor.Id.ToString(),
             AuthorizationActions.Update,
-            ActorGroupAuthorizationAttributes(actor, groupName),
-            new AuthorizationScope(_tenantContext.TenantId.ToString())));
+            new AuthorizationScope(_tenantContext.TenantId.ToString()),
+            new ActorAuthorizationFacts(_tenantContext.TenantId, actor.Id, actor.UserId)));
     }
-
-    private IReadOnlyDictionary<string, object> ActorGroupAuthorizationAttributes(Actor actor, string groupName) =>
-        new Dictionary<string, object>
-        {
-            ["actorId"] = actor.Id.ToString(),
-            ["tenantId"] = _tenantContext.TenantId.ToString(),
-            ["userId"] = actor.UserId?.ToString() ?? string.Empty,
-            ["organizationId"] = actor.OrganizationId?.ToString() ?? string.Empty,
-            ["groupId"] = actor.GroupId?.ToString() ?? string.Empty,
-            ["actorUpdateGroup"] = groupName
-        };
 
     private static void ApplyProfile(Actor actor, UpdateActorProfileDto? dto)
     {

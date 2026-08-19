@@ -132,9 +132,9 @@ public sealed class EventPromotionsControllerTests
         {
             await Assert.That(link.PermissionResourceKind).IsEqualTo(ResourceKinds.Event);
             await Assert.That(link.PermissionAction).IsEqualTo(AuthorizationActions.Events.ManagePaidEventCommerce);
-            await Assert.That(link.PermissionResourceAttributes).DoesNotContainKey("code");
-            await Assert.That(link.PermissionResourceAttributes).DoesNotContainKey("digest");
-            await Assert.That(link.PermissionResourceAttributes).DoesNotContainKey("keyVersion");
+            // Promotion secrets are never policy inputs. The closed fact record makes that structural: the
+            // link may only publish event authority, so a code or digest has nowhere to leak into.
+            await Assert.That(link.PermissionFacts).IsTypeOf<EventAuthorizationFacts>();
         }
     }
 
@@ -155,15 +155,24 @@ public sealed class EventPromotionsControllerTests
         await Assert.That(create.PermissionResourceKind).IsEqualTo(ResourceKinds.Event);
         await Assert.That(create.PermissionAction).IsEqualTo(AuthorizationActions.Events.ManagePaidEventCommerce);
         await Assert.That(create.PermissionResourceId).IsEqualTo(eventId.ToString("D"));
-        await Assert.That(create.PermissionResourceAttributes["eventId"]).IsEqualTo(eventId.ToString("D"));
-        await Assert.That(create.PermissionResourceAttributes["ticketCatalogVersionId"]).IsEqualTo(catalogId.ToString("D"));
+        // The catalog version scopes which promotions are listed; authority stays on the parent event.
+        await Assert.That(create.PermissionFacts)
+            .IsEqualTo(new EventScopedAuthorizationFacts(tenantId, eventId));
         await Assert.That(create.PermissionScope?.TenantId).IsEqualTo(tenantId.ToString("D"));
     }
 
+    /// <summary>
+    /// Fail-closed omission: with no trusted collection owner resolved server-side, the create affordance
+    /// must not be advertised. Exercised through the context-aware overload the assembler actually calls,
+    /// passing a null context — the parameterless overload is a contract default that carries no owner and
+    /// so could never authorize a create in the first place.
+    /// </summary>
     [Test]
     public async Task PromotionCollectionHal_WithoutAuthorityContextDoesNotAdvertiseCreate()
     {
-        LinkDefinition[] links = new PromotionManagementCollectionLinkPolicy().GetCollectionLinks(null).ToArray();
+        ICollectionLinkPolicy<PromotionManagementDto> policy = new PromotionManagementCollectionLinkPolicy();
+
+        LinkDefinition[] links = policy.GetCollectionLinks(null, authorizationContext: null).ToArray();
 
         await Assert.That(links).IsEmpty();
     }
@@ -196,28 +205,25 @@ public sealed class EventPromotionsControllerTests
             Substitute.For<IHierarchicalSettingsResolver>(),
             tenant,
             Substitute.For<ILogger<FallbackAuthorizationService>>());
-        Dictionary<string, object> organizer = PromotionAuthorizationAttributes(tenantId, eventId, organizerUserId);
-        var contributor = new Dictionary<string, object>
+        EventAuthorizationFacts organizer = PromotionAuthorizationFacts(tenantId, eventId, organizerUserId);
+        var contributor = organizer with
         {
-            ["tenantId"] = tenantId,
-            ["eventId"] = eventId,
-            ["actorId"] = Guid.CreateVersion7(),
-            ["organizerActorId"] = Guid.CreateVersion7(),
-            ["organizerOrganizationId"] = organizerOrganizationId
+            OrganizerUserId = null,
+            OrganizerOrganizationId = organizerOrganizationId
         };
 
         bool organizerAllowed = (await authorization.AuthorizeAsync(new AuthorizationRequest(
             ResourceKinds.Event,
             eventId.ToString("D"),
             AuthorizationActions.Events.ManagePaidEventCommerce,
-            organizer))).IsAllowed;
+            Facts: organizer))).IsAllowed;
 
         admin.UserId.Returns(contributorUserId);
         bool contributorAllowed = (await authorization.AuthorizeAsync(new AuthorizationRequest(
             ResourceKinds.Event,
             eventId.ToString("D"),
             AuthorizationActions.Events.ManagePaidEventCommerce,
-            contributor))).IsAllowed;
+            Facts: contributor))).IsAllowed;
 
         admin.UserId.Returns(unrelatedAdminUserId);
         admin.IsTenantAdminAsync(tenantId, Arg.Any<CancellationToken>()).Returns(true);
@@ -225,7 +231,7 @@ public sealed class EventPromotionsControllerTests
             ResourceKinds.Event,
             eventId.ToString("D"),
             AuthorizationActions.Events.ManagePaidEventCommerce,
-            organizer))).IsAllowed;
+            Facts: organizer))).IsAllowed;
 
         machine.IsMachineCaller.Returns(true);
         machine.Current.Returns(new ApiKeyPrincipalContext(
@@ -238,7 +244,7 @@ public sealed class EventPromotionsControllerTests
             ResourceKinds.Event,
             eventId.ToString("D"),
             AuthorizationActions.Events.ManagePaidEventCommerce,
-            organizer))).IsAllowed;
+            Facts: organizer))).IsAllowed;
 
         await Assert.That(new[] { organizerAllowed, contributorAllowed, adminAllowed, machineAllowed })
             .IsEquivalentTo([true, false, false, false]);
@@ -285,17 +291,22 @@ public sealed class EventPromotionsControllerTests
         DiscountKind = "fixed"
     };
 
-    private static Dictionary<string, object> PromotionAuthorizationAttributes(
+    private static EventAuthorizationFacts PromotionAuthorizationFacts(
         Guid tenantId,
         Guid eventId,
-        Guid organizerUserId) => new()
-    {
-        ["tenantId"] = tenantId,
-        ["eventId"] = eventId,
-        ["actorId"] = Guid.CreateVersion7(),
-        ["organizerActorId"] = Guid.CreateVersion7(),
-        ["organizerUserId"] = organizerUserId
-    };
+        Guid organizerUserId) => new(
+        tenantId,
+        eventId,
+        ActorId: Guid.CreateVersion7(),
+        UserId: null,
+        OrganizationId: null,
+        GroupId: null,
+        OrganizerActorId: Guid.CreateVersion7(),
+        OrganizerUserId: organizerUserId,
+        OrganizerOrganizationId: null,
+        OrganizerGroupId: null,
+        ProvenanceType: null,
+        SubmittedByUserId: null);
 
     private static PromotionManagementCommandResponseDto Success(Guid id) => new() { Id = id, Success = true };
 

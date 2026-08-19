@@ -9,7 +9,7 @@ namespace Event.Application.UnitTests.Features.EventSessions.Commands;
 public class CreateEventSessionCommandSecurityTests
 {
     [Test]
-    public async Task ResourceAttributes_ShouldCarryTenantAndEventContext()
+    public async Task AuthorizationFacts_ShouldCarryPreCreateTenantAndEventContext()
     {
         var eventId = Guid.NewGuid();
         var tenantId = Guid.NewGuid();
@@ -23,8 +23,7 @@ public class CreateEventSessionCommandSecurityTests
         };
 
         await Assert.That(command.ResourceId).IsEqualTo(eventId.ToString());
-        await Assert.That(command.ResourceAttributes).IsNotNull();
-        await Assert.That(command.ResourceAttributes!["tenantId"]).IsEqualTo(tenantId.ToString());
-        await Assert.That(command.ResourceAttributes["eventId"]).IsEqualTo(eventId.ToString());
+        await Assert.That(command.AuthorizationFacts)
+            .IsEqualTo(new PreCreateAuthorizationFacts(tenantId, eventId));
     }
 }

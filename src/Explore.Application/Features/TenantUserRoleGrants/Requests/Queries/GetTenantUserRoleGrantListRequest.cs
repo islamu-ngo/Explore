@@ -14,8 +14,6 @@ public class GetTenantUserRoleGrantListRequest : IRequest<List<TenantUserRoleGra
 
     string? ISecureRequest.ResourceId => TenantId == Guid.Empty ? null : TenantId.ToString("D");
 
-    IDictionary<string, object>? ISecureRequest.ResourceAttributes => new Dictionary<string, object>
-    {
-        ["tenantId"] = TenantId.ToString("D")
-    };
+    IAuthorizationFacts? ISecureRequest.AuthorizationFacts =>
+        new TenantScopedAuthorizationFacts(TenantId);
 }

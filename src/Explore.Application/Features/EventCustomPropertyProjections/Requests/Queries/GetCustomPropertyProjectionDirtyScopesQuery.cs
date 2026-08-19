@@ -22,23 +22,6 @@ public class GetCustomPropertyProjectionDirtyScopesQuery : IRequest<PaginatedRes
             ? TenantId.ToString("D")
             : $"{TenantId:D}:{ProjectionName}";
 
-    IDictionary<string, object>? ISecureRequest.ResourceAttributes
-    {
-        get
-        {
-            if (TenantId == Guid.Empty)
-                return null;
-
-            var attributes = new Dictionary<string, object>
-            {
-                ["tenantId"] = TenantId.ToString("D"),
-                ["authorizationScope"] = "dirty_scope_collection"
-            };
-
-            if (!string.IsNullOrWhiteSpace(ProjectionName))
-                attributes["projectionName"] = ProjectionName;
-
-            return attributes;
-        }
-    }
+    IAuthorizationFacts? ISecureRequest.AuthorizationFacts =>
+        new CustomPropertyProjectionAuthorizationFacts(TenantId);
 }

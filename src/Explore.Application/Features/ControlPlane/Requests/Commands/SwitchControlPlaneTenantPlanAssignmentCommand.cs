@@ -22,10 +22,6 @@ public sealed class SwitchControlPlaneTenantPlanAssignmentCommand(
 
     string? ISecureRequest.ResourceId => SettingKey;
 
-    IDictionary<string, object>? ISecureRequest.ResourceAttributes => new Dictionary<string, object>
-    {
-        ["settingKey"] = SettingKey,
-        ["tenantId"] = TenantId,
-        ["tenantPlanVersionId"] = TenantPlanVersionId
-    };
+    IAuthorizationFacts? ISecureRequest.AuthorizationFacts =>
+        InstanceScopedAuthorizationFacts.Instance;
 }

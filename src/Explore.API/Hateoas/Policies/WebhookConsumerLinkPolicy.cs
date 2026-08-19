@@ -67,11 +67,6 @@ public sealed class WebhookConsumerCollectionLinkPolicy(ILinkPolicy<WebhookConsu
     public IEnumerable<LinkDefinition> GetItemLinks(WebhookConsumerDto dto, ClaimsPrincipal? user) =>
         detailPolicy.GetLinks(dto, user);
 
-    public IEnumerable<LinkDefinition> GetCollectionLinks(ClaimsPrincipal? user)
-    {
-        yield break;
-    }
-
     public IEnumerable<LinkDefinition> GetCollectionLinks(
         ClaimsPrincipal? user,
         ICollectionAuthorizationContext? authorizationContext)
@@ -91,6 +86,6 @@ public sealed class WebhookConsumerCollectionLinkPolicy(ILinkPolicy<WebhookConsu
             .RequirePermission(AuthorizationActions.Webhooks.Create,
                 ResourceKinds.Webhook,
                 authorizationContext.AuthorizationResourceId,
-                authorizationContext.AuthorizationResourceAttributes);
+                facts: authorizationContext.AuthorizationFacts);
     }
 }

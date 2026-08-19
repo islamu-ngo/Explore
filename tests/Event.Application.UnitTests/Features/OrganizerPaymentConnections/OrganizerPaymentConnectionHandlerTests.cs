@@ -559,7 +559,7 @@ public sealed class OrganizerPaymentConnectionHandlerTests
         await Assert.That(authorize.Resource).IsEqualTo(ResourceKinds.Event);
         await Assert.That(authorize.Action).IsEqualTo(AuthorizationActions.Events.ManagePaidEventCommerce);
         await Assert.That(request.ResourceId).IsEqualTo(EventId.ToString());
-        await Assert.That(request.ResourceAttributes!["eventId"]).IsEqualTo(EventId.ToString());
+        await Assert.That(request.AuthorizationFacts).IsTypeOf<EventScopedAuthorizationFacts>();
     }
 
     [Test]

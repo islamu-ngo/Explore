@@ -43,7 +43,7 @@ public sealed class RevokeTenantUserRoleGrantCommandHandlerTests
         await Assert.That(attribute!.Resource).IsEqualTo(ResourceKinds.TenantUserRoleGrant);
         await Assert.That(attribute.Action).IsEqualTo(AuthorizationActions.Delete);
         await Assert.That(secureRequest.ResourceId).IsEqualTo(grantId.ToString("D"));
-        await Assert.That(secureRequest.ResourceAttributes!["tenantId"]).IsEqualTo(tenantId.ToString("D"));
+        await Assert.That(secureRequest.AuthorizationFacts).IsEqualTo(new TenantScopedAuthorizationFacts(tenantId));
     }
 
     [Test]

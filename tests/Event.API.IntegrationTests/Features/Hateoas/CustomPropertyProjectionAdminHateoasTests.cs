@@ -34,15 +34,16 @@ public sealed class CustomPropertyProjectionAdminHateoasTests
         await Assert.That(self.PermissionResourceKind).IsEqualTo(ResourceKinds.CustomPropertyProjection);
         await Assert.That(self.PermissionAction).IsEqualTo(AuthorizationActions.CustomPropertyProjections.View);
         await Assert.That(GetRouteValue<Guid>(self.RouteValues, "tenantId")).IsEqualTo(tenantId);
-        await Assert.That(GetAttribute<Guid>(self, "tenantId")).IsEqualTo(tenantId);
-        await Assert.That(GetAttribute<string>(self, "projectionName")).IsEqualTo(dto.ProjectionName);
+        await Assert.That(self.PermissionFacts)
+            .IsEqualTo(new CustomPropertyProjectionAuthorizationFacts(tenantId));
 
         var rebuild = links.Single(link => link.Rel == "rebuild");
         await Assert.That(rebuild.RouteName).IsEqualTo(RouteNames.RebuildCustomPropertyProjection);
         await Assert.That(rebuild.RequiresAuth).IsTrue();
         await Assert.That(rebuild.PermissionResourceKind).IsEqualTo(ResourceKinds.CustomPropertyProjection);
         await Assert.That(rebuild.PermissionAction).IsEqualTo(AuthorizationActions.CustomPropertyProjections.Update);
-        await Assert.That(GetAttribute<Guid>(rebuild, "tenantId")).IsEqualTo(tenantId);
+        await Assert.That(rebuild.PermissionFacts)
+            .IsEqualTo(new CustomPropertyProjectionAuthorizationFacts(tenantId));
 
         var drainDirtyScopes = links.Single(link => link.Rel == "drain-dirty-scopes");
         await Assert.That(drainDirtyScopes.RouteName).IsEqualTo(RouteNames.DrainCustomPropertyProjectionDirtyScopes);
@@ -80,7 +81,8 @@ public sealed class CustomPropertyProjectionAdminHateoasTests
         await Assert.That(self.RouteName).IsEqualTo(RouteNames.GetSessionCustomPropertyProjectionStatus);
         await Assert.That(rebuild.RouteName).IsEqualTo(RouteNames.RebuildSessionCustomPropertyProjection);
         await Assert.That(GetRouteValue<Guid>(self.RouteValues, "tenantId")).IsEqualTo(tenantId);
-        await Assert.That(GetAttribute<string>(rebuild, "projectionName")).IsEqualTo(dto.ProjectionName);
+        await Assert.That(rebuild.PermissionFacts)
+            .IsEqualTo(new CustomPropertyProjectionAuthorizationFacts(dto.TenantId));
     }
 
     [Test]
@@ -107,10 +109,9 @@ public sealed class CustomPropertyProjectionAdminHateoasTests
         await Assert.That(drain.PermissionResourceKind).IsEqualTo(ResourceKinds.CustomPropertyProjection);
         await Assert.That(drain.PermissionAction).IsEqualTo(AuthorizationActions.CustomPropertyProjections.Update);
         await Assert.That(drain.PermissionResourceId).IsEqualTo("42");
-        await Assert.That(GetAttribute<Guid>(drain, "tenantId")).IsEqualTo(tenantId);
-        await Assert.That(GetAttribute<string>(drain, "projectionName")).IsEqualTo(dto.ProjectionName);
-        await Assert.That(GetAttribute<CustomPropertyProjectionScopeType>(drain, "scopeType")).IsEqualTo(CustomPropertyProjectionScopeType.Event);
-        await Assert.That(GetAttribute<Guid>(drain, "scopeId")).IsEqualTo(scopeId);
+        // The projection name and dirty scope name the row; tenant administration decides who may act on it.
+        await Assert.That(drain.PermissionFacts)
+            .IsEqualTo(new CustomPropertyProjectionAuthorizationFacts(tenantId));
 
         var drainAll = collectionLinks.Single(link => link.Rel == "drain-all");
         await Assert.That(drainAll.RouteName).IsEqualTo(RouteNames.DrainCustomPropertyProjectionDirtyScopes);
@@ -149,14 +150,4 @@ public sealed class CustomPropertyProjectionAdminHateoasTests
         return value is T typedValue ? typedValue : default;
     }
 
-    private static T? GetAttribute<T>(LinkDefinition link, string name)
-    {
-        if (link.PermissionResourceAttributes is null ||
-            !link.PermissionResourceAttributes.TryGetValue(name, out var value))
-        {
-            return default;
-        }
-
-        return value is T typedValue ? typedValue : default;
-    }
 }

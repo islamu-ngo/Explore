@@ -18,10 +18,6 @@ public class UpdateEventSessionAgendaItemCommand : IRequest<BaseCommandResponse<
     public Guid TenantId { get; set; }
 
     string? ISecureRequest.ResourceId => EventSessionAgendaItemId.ToString();
-    IDictionary<string, object>? ISecureRequest.ResourceAttributes => new Dictionary<string, object>
-    {
-        ["eventSessionId"] = EventSessionId.ToString(),
-        ["eventId"] = EventId.ToString(),
-        ["tenantId"] = TenantId.ToString()
-    };
+    IAuthorizationFacts? ISecureRequest.AuthorizationFacts =>
+        new EventScopedAuthorizationFacts(TenantId, EventId, EventSessionId);
 }

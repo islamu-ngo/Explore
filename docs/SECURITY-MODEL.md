@@ -413,7 +413,7 @@ Failure behavior:
 - Instance provider-mode read failures also enter the Cerbos fail-closed path and log only safe failure-type metadata; they do not default open to local RBAC.
 - BYO Cerbos:
   - Any PDP failure -> provider-instance fallback `SafeMode` (deny all except instance admin path).
-  - `failure_mode=open` is parsed as deprecated config but ignored at runtime; it does not enable local RBAC fallback.
+  - There is no fail-open configuration. The `cerbos.failure_mode` setting was deleted; BYO PDP outages always fail closed into safe mode.
   - BYO config resolver failures activate provider-instance safe mode instead of silently using local RBAC.
   - `cerbos.mode=custom_endpoint` with a blank PDP endpoint preserves BYO mode/failure mode and any explicit BYO Admin API config; runtime authorization activates safe mode rather than falling back to the instance PDP.
 

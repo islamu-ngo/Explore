@@ -72,7 +72,7 @@ public sealed class ControlPlaneTenantPlanDetailLinkPolicy : ILinkPolicy<Control
             .RequirePermission(AuthorizationActions.InstanceSettings.View,
                 ResourceKinds.InstanceSetting,
                 settingKey,
-                InstanceSettingAttributes(settingKey, planKey));
+                facts: InstanceScopedAuthorizationFacts.Instance);
 
     private static LinkDefinition UpdateLink(
         string rel,
@@ -87,36 +87,7 @@ public sealed class ControlPlaneTenantPlanDetailLinkPolicy : ILinkPolicy<Control
             .RequirePermission(AuthorizationActions.InstanceSettings.Update,
                 ResourceKinds.InstanceSetting,
                 settingKey,
-                InstanceSettingAttributes(settingKey, planKey, versionId, sourceVersionId));
-
-    private static IReadOnlyDictionary<string, object> InstanceSettingAttributes(
-        string settingKey,
-        string? planKey = null,
-        Guid? versionId = null,
-        Guid? sourceVersionId = null)
-    {
-        var attributes = new Dictionary<string, object>
-        {
-            ["settingKey"] = settingKey
-        };
-
-        if (!string.IsNullOrWhiteSpace(planKey))
-        {
-            attributes["planKey"] = planKey;
-        }
-
-        if (versionId.HasValue)
-        {
-            attributes["versionId"] = versionId.Value;
-        }
-
-        if (sourceVersionId.HasValue)
-        {
-            attributes["sourceVersionId"] = sourceVersionId.Value;
-        }
-
-        return attributes;
-    }
+                facts: InstanceScopedAuthorizationFacts.Instance);
 }
 
 internal static class ControlPlaneTenantPlanVersionLinks
@@ -189,32 +160,7 @@ internal static class ControlPlaneTenantPlanVersionLinks
             .RequirePermission(AuthorizationActions.InstanceSettings.Update,
                 ResourceKinds.InstanceSetting,
                 settingKey,
-                Attributes(settingKey, planKey, versionId, sourceVersionId));
-
-    private static IReadOnlyDictionary<string, object> Attributes(
-        string settingKey,
-        string planKey,
-        Guid? versionId,
-        Guid? sourceVersionId)
-    {
-        var attributes = new Dictionary<string, object>
-        {
-            ["settingKey"] = settingKey,
-            ["planKey"] = planKey
-        };
-
-        if (versionId.HasValue)
-        {
-            attributes["versionId"] = versionId.Value;
-        }
-
-        if (sourceVersionId.HasValue)
-        {
-            attributes["sourceVersionId"] = sourceVersionId.Value;
-        }
-
-        return attributes;
-    }
+                facts: InstanceScopedAuthorizationFacts.Instance);
 }
 
 public sealed class ControlPlaneTenantPlanCollectionLinkPolicy : ICollectionLinkPolicy<ControlPlaneTenantPlanListItemDto>
@@ -233,11 +179,7 @@ public sealed class ControlPlaneTenantPlanCollectionLinkPolicy : ICollectionLink
             .RequirePermission(AuthorizationActions.InstanceSettings.View,
                 ResourceKinds.InstanceSetting,
                 GetControlPlaneTenantPlanListQuery.SettingKey,
-                new Dictionary<string, object>
-                {
-                    ["settingKey"] = GetControlPlaneTenantPlanListQuery.SettingKey,
-                    ["planKey"] = dto.Key
-                });
+                facts: InstanceScopedAuthorizationFacts.Instance);
     }
 
     public IEnumerable<LinkDefinition> GetCollectionLinks(ClaimsPrincipal? user)
@@ -254,10 +196,7 @@ public sealed class ControlPlaneTenantPlanCollectionLinkPolicy : ICollectionLink
             .RequirePermission(AuthorizationActions.InstanceSettings.Update,
                 ResourceKinds.InstanceSetting,
                 CreateControlPlaneTenantPlanDraftCommand.SettingKey,
-                new Dictionary<string, object>
-                {
-                    ["settingKey"] = CreateControlPlaneTenantPlanDraftCommand.SettingKey
-                });
+                facts: InstanceScopedAuthorizationFacts.Instance);
 
         yield return new LinkDefinition(
             "validate",
@@ -269,10 +208,7 @@ public sealed class ControlPlaneTenantPlanCollectionLinkPolicy : ICollectionLink
             .RequirePermission(AuthorizationActions.InstanceSettings.View,
                 ResourceKinds.InstanceSetting,
                 ValidateControlPlaneTenantPlanDraftQuery.SettingKey,
-                new Dictionary<string, object>
-                {
-                    ["settingKey"] = ValidateControlPlaneTenantPlanDraftQuery.SettingKey
-                });
+                facts: InstanceScopedAuthorizationFacts.Instance);
 
         yield return new LinkDefinition(
             "preview-diff",
@@ -284,9 +220,6 @@ public sealed class ControlPlaneTenantPlanCollectionLinkPolicy : ICollectionLink
             .RequirePermission(AuthorizationActions.InstanceSettings.View,
                 ResourceKinds.InstanceSetting,
                 PreviewControlPlaneTenantPlanDiffQuery.SettingKey,
-                new Dictionary<string, object>
-                {
-                    ["settingKey"] = PreviewControlPlaneTenantPlanDiffQuery.SettingKey
-                });
+                facts: InstanceScopedAuthorizationFacts.Instance);
     }
 }

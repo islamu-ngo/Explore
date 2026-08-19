@@ -26,8 +26,8 @@ public sealed class ReportingRoutingStateLinkPolicy : ILinkPolicy<ReportingRouti
             .RequirePermission(AuthorizationActions.TenantSettings.View,
                 ResourceKinds.TenantSetting,
                 TenantRoutingStateResourceId(dto),
-                TenantRoutingStateAttributes(dto),
-                TenantRoutingStateScope(dto));
+                TenantRoutingStateScope(dto),
+                TenantRoutingStateFacts(dto));
 
         if (!dto.TenantProviderConfigurationLocked)
         {
@@ -39,8 +39,8 @@ public sealed class ReportingRoutingStateLinkPolicy : ILinkPolicy<ReportingRouti
                 .RequirePermission(AuthorizationActions.TenantSettings.Update,
                     ResourceKinds.TenantSetting,
                     TenantRoutingStateResourceId(dto),
-                    TenantRoutingStateAttributes(dto),
-                    TenantRoutingStateScope(dto));
+                    TenantRoutingStateScope(dto),
+                    TenantRoutingStateFacts(dto));
         }
 
         if (!dto.TenantProviderConfigurationLocked
@@ -55,8 +55,8 @@ public sealed class ReportingRoutingStateLinkPolicy : ILinkPolicy<ReportingRouti
                 .RequirePermission(AuthorizationActions.TenantSettings.Update,
                     ResourceKinds.TenantSetting,
                     TenantRoutingStateResourceId(dto),
-                    TenantRoutingStateAttributes(dto),
-                    TenantRoutingStateScope(dto));
+                    TenantRoutingStateScope(dto),
+                    TenantRoutingStateFacts(dto));
         }
 
         if (!dto.TenantProviderConfigurationLocked
@@ -71,21 +71,16 @@ public sealed class ReportingRoutingStateLinkPolicy : ILinkPolicy<ReportingRouti
                 .RequirePermission(AuthorizationActions.TenantSettings.Update,
                     ResourceKinds.TenantSetting,
                     TenantRoutingStateResourceId(dto),
-                    TenantRoutingStateAttributes(dto),
-                    TenantRoutingStateScope(dto));
+                    TenantRoutingStateScope(dto),
+                    TenantRoutingStateFacts(dto));
         }
     }
 
     private static string TenantRoutingStateResourceId(ReportingRoutingStateDto dto) =>
         $"{dto.TenantId}:{SettingKey}";
 
-    private static IReadOnlyDictionary<string, object> TenantRoutingStateAttributes(ReportingRoutingStateDto dto) =>
-        new Dictionary<string, object>
-        {
-            ["tenantId"] = dto.TenantId.ToString(),
-            ["settingKey"] = SettingKey,
-            ["isLockedByInstance"] = dto.TenantProviderConfigurationLocked
-        };
+    private static IAuthorizationFacts TenantRoutingStateFacts(ReportingRoutingStateDto dto) =>
+        new TenantSettingAuthorizationFacts(dto.TenantId, SettingKey, dto.TenantProviderConfigurationLocked);
 
     private static AuthorizationScope TenantRoutingStateScope(ReportingRoutingStateDto dto) =>
         new(TenantId: dto.TenantId.ToString());

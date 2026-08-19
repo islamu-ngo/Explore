@@ -46,7 +46,7 @@ public sealed class UpdateMyReportCommunicationConsentCommandHandlerTests
                     request != null &&
                     request.ResourceKind == ResourceKinds.User &&
                     request.Action == AuthorizationActions.Users.Update &&
-                    request.ResourceAttributes == null),
+                    request.Facts == null),
                 Arg.Any<CancellationToken>())
             .Returns(AuthorizationDecision.Allow(AuthorizationProviderMetadata.Runtime));
         _timeProvider.GetUtcNow().Returns(new DateTimeOffset(ChangedAt));
@@ -184,7 +184,7 @@ public sealed class UpdateMyReportCommunicationConsentCommandHandlerTests
                     request.ResourceKind == ResourceKinds.User &&
                     request.ResourceId == reporterUserId.ToString() &&
                     request.Action == AuthorizationActions.Users.Update &&
-                    request.ResourceAttributes == null),
+                    request.Facts == null),
                 Arg.Any<CancellationToken>())
             .Returns(AuthorizationDecision.Deny(AuthorizationProviderMetadata.Runtime));
 
@@ -198,7 +198,7 @@ public sealed class UpdateMyReportCommunicationConsentCommandHandlerTests
                 request.ResourceKind == ResourceKinds.User &&
                 request.ResourceId == reporterUserId.ToString() &&
                 request.Action == AuthorizationActions.Users.Update &&
-                request.ResourceAttributes == null),
+                request.Facts == null),
             Arg.Any<CancellationToken>());
         await _unitOfWork.DidNotReceive().ExecuteInTransactionAsync(
             Arg.Any<Func<CancellationToken, Task<BaseCommandResponse<Guid>>>>(),

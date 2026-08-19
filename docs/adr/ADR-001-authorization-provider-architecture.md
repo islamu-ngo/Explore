@@ -43,7 +43,7 @@ No retry policy is configured — fail-fast to deny is safer than retrying autho
 
 When BYO Cerbos fails:
 - local provider enters `SafeMode` (deny except explicit safe paths like instance-admin checks).
-- `failure_mode=open` is parsed as a deprecated configuration value but ignored at runtime.
+- ~~`failure_mode=open` is parsed as a deprecated configuration value but ignored at runtime.~~ **Superseded (2026-08-19):** the `cerbos.failure_mode` setting has been deleted entirely. It was documented as accepting `deny`/`allow` while its parser only recognised `open`, and `open` was ignored at runtime regardless — a control that appeared to govern fallback behaviour and governed nothing. BYO PDP outages always fail closed into safe mode; there is no configuration that changes this.
 
 When instance Cerbos fails:
 - All checks are denied. The operator chose Cerbos; falling back to a potentially more permissive

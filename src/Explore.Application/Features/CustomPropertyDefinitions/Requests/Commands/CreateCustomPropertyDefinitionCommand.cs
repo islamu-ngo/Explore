@@ -14,5 +14,4 @@ public class CreateCustomPropertyDefinitionCommand : IRequest<BaseCommandRespons
     public required CreateCustomPropertyDefinitionDto DefinitionDto { get; set; }
 
     string? ISecureRequest.ResourceId => null;
-    IDictionary<string, object>? ISecureRequest.ResourceAttributes => null;
 }

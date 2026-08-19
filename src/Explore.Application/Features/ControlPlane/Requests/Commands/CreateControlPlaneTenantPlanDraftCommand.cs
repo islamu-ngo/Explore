@@ -18,9 +18,6 @@ public sealed class CreateControlPlaneTenantPlanDraftCommand(TenantPlanDraft dra
 
     string? ISecureRequest.ResourceId => SettingKey;
 
-    IDictionary<string, object>? ISecureRequest.ResourceAttributes => new Dictionary<string, object>
-    {
-        ["settingKey"] = SettingKey,
-        ["planKey"] = Draft.Key
-    };
+    IAuthorizationFacts? ISecureRequest.AuthorizationFacts =>
+        InstanceScopedAuthorizationFacts.Instance;
 }

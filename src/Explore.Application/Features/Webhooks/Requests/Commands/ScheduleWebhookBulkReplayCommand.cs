@@ -23,8 +23,6 @@ public sealed class ScheduleWebhookBulkReplayCommand : IRequest<BaseCommandRespo
 
     string? ISecureRequest.ResourceId => TenantId.ToString("D");
 
-    IDictionary<string, object>? ISecureRequest.ResourceAttributes => new Dictionary<string, object>
-    {
-        ["tenantId"] = TenantId.ToString("D")
-    };
+    IAuthorizationFacts? ISecureRequest.AuthorizationFacts =>
+        new TenantScopedAuthorizationFacts(TenantId);
 }

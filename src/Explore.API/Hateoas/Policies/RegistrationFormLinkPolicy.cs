@@ -50,12 +50,14 @@ public sealed class RegistrationWorkflowLinkPolicy : ILinkPolicy<RegistrationWor
     private static LinkDefinition EventAction(string rel, string route, object values, string method, RegistrationWorkflowDto dto) =>
         new LinkDefinition(rel, route, values, method, RequiresAuth: true).RequirePermission(
             AuthorizationActions.Events.ManageRegistrationWorkflow, ResourceKinds.Event, dto.EventId.ToString(),
-            Attributes(dto.EventId), new AuthorizationScope(TenantId: dto.TenantId.ToString()));
+            new AuthorizationScope(TenantId: dto.TenantId.ToString()),
+            new EventScopedAuthorizationFacts(dto.TenantId, dto.EventId));
 
     private static LinkDefinition FormAction(string rel, string route, object values, string method, RegistrationWorkflowDto dto) =>
         new LinkDefinition(rel, route, values, method, RequiresAuth: true).RequirePermission(
             AuthorizationActions.RegistrationForms.Create, ResourceKinds.RegistrationForm, dto.EventId.ToString(),
-            Attributes(dto.EventId), new AuthorizationScope(TenantId: dto.TenantId.ToString()));
+            new AuthorizationScope(TenantId: dto.TenantId.ToString()),
+            new EventScopedAuthorizationFacts(dto.TenantId, dto.EventId));
 
     private static LinkDefinition RequirementAction(
         string rel,
@@ -73,14 +75,8 @@ public sealed class RegistrationWorkflowLinkPolicy : ILinkPolicy<RegistrationWor
                 action,
                 ResourceKinds.RegistrationForm,
                 requirement.Id.ToString(),
-                new Dictionary<string, object>
-                {
-                    ["eventId"] = workflow.EventId.ToString(),
-                    ["requirementId"] = requirement.Id.ToString()
-                },
-                new AuthorizationScope(TenantId: workflow.TenantId.ToString()));
-
-    private static Dictionary<string, object> Attributes(Guid eventId) => new() { ["eventId"] = eventId.ToString() };
+                new AuthorizationScope(TenantId: workflow.TenantId.ToString()),
+                new EventScopedAuthorizationFacts(workflow.TenantId, workflow.EventId));
 }
 
 public sealed class RegistrationFormLinkPolicy : ILinkPolicy<RegistrationFormDto>
@@ -100,8 +96,8 @@ public sealed class RegistrationFormLinkPolicy : ILinkPolicy<RegistrationFormDto
     internal static LinkDefinition Action(string rel, string route, object values, string method, string action, RegistrationFormDto dto) =>
         new LinkDefinition(rel, route, values, method, RequiresAuth: true).RequirePermission(
             action, ResourceKinds.RegistrationForm, dto.Id.ToString(),
-            new Dictionary<string, object> { ["eventId"] = dto.EventId.ToString(), ["formId"] = dto.Id.ToString() },
-            new AuthorizationScope(TenantId: dto.TenantId.ToString()));
+            new AuthorizationScope(TenantId: dto.TenantId.ToString()),
+            new EventScopedAuthorizationFacts(dto.TenantId, dto.EventId));
 }
 
 public sealed class RegistrationFormVersionLinkPolicy : ILinkPolicy<RegistrationFormVersionDto>
@@ -157,8 +153,8 @@ public sealed class RegistrationFormVersionLinkPolicy : ILinkPolicy<Registration
     private static LinkDefinition Action(string rel, string route, object values, string method, string action, RegistrationFormVersionDto dto) =>
         new LinkDefinition(rel, route, values, method, RequiresAuth: true).RequirePermission(
             action, ResourceKinds.RegistrationForm, dto.RegistrationFormId.ToString(),
-            new Dictionary<string, object> { ["eventId"] = dto.EventId.ToString(), ["formId"] = dto.RegistrationFormId.ToString(), ["versionId"] = dto.Id.ToString() },
-            new AuthorizationScope(TenantId: dto.TenantId.ToString()));
+            new AuthorizationScope(TenantId: dto.TenantId.ToString()),
+            new EventScopedAuthorizationFacts(dto.TenantId, dto.EventId));
 }
 
 public sealed class RegistrationFormPublishPreflightLinkPolicy : ILinkPolicy<RegistrationFormPublishPreflightDto>

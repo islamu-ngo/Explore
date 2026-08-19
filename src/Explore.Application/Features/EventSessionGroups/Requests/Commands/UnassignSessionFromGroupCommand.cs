@@ -16,9 +16,6 @@ public class UnassignSessionFromGroupCommand : IRequest<BaseCommandResponse<Guid
     public Guid TenantId { get; set; }
 
     string? ISecureRequest.ResourceId => EventId.ToString();
-    IDictionary<string, object>? ISecureRequest.ResourceAttributes => new Dictionary<string, object>
-    {
-        ["tenantId"] = TenantId.ToString(),
-        ["eventId"] = EventId.ToString()
-    };
+    IAuthorizationFacts? ISecureRequest.AuthorizationFacts =>
+        new EventScopedAuthorizationFacts(TenantId, EventId);
 }

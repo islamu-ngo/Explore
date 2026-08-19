@@ -16,8 +16,6 @@ public class UpdateTagCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequ
     public required UpdateTagDto Update { get; set; }
 
     string? ISecureRequest.ResourceId => TagId.ToString();
-    IDictionary<string, object>? ISecureRequest.ResourceAttributes =>
-        TenantId != Guid.Empty
-            ? new Dictionary<string, object> { ["tenantId"] = TenantId.ToString() }
-            : null;
+    IAuthorizationFacts? ISecureRequest.AuthorizationFacts =>
+        new TenantScopedAuthorizationFacts(TenantId);
 }

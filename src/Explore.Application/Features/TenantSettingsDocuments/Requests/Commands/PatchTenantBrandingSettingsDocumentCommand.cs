@@ -20,10 +20,6 @@ public sealed class PatchTenantBrandingSettingsDocumentCommand
 
     string? ISecureRequest.ResourceId => TenantId.ToString();
 
-    IDictionary<string, object>? ISecureRequest.ResourceAttributes => new Dictionary<string, object>
-    {
-        ["tenantId"] = TenantId.ToString(),
-        ["documentKey"] = "tenant.branding",
-        ["isLockedByInstance"] = IsLockedByInstance
-    };
+    IAuthorizationFacts? ISecureRequest.AuthorizationFacts =>
+        new TenantSettingAuthorizationFacts(TenantId, "tenant.branding");
 }

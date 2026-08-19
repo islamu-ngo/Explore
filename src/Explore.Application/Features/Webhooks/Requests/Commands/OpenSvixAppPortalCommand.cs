@@ -19,21 +19,6 @@ public sealed class OpenSvixAppPortalCommand
 
     string? ISecureRequest.ResourceId => ConsumerId.ToString("D");
 
-    IDictionary<string, object>? ISecureRequest.ResourceAttributes
-    {
-        get
-        {
-            var attributes = new Dictionary<string, object>
-            {
-                ["provider"] = "svix"
-            };
-
-            attributes["consumerId"] = ConsumerId.ToString("D");
-
-            return attributes;
-        }
-    }
-
     WebhookOwnedResourceKind IWebhookPersistedOwnerRequest.OwnedResourceKind =>
         WebhookOwnedResourceKind.Consumer;
 

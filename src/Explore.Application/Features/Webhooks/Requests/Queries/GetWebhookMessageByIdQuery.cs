@@ -15,11 +15,6 @@ public sealed class GetWebhookMessageByIdQuery
 
     string? ISecureRequest.ResourceId => MessageId.ToString("D");
 
-    IDictionary<string, object>? ISecureRequest.ResourceAttributes => new Dictionary<string, object>
-    {
-        ["messageId"] = MessageId.ToString("D")
-    };
-
     WebhookOwnedResourceKind IWebhookPersistedOwnerRequest.OwnedResourceKind =>
         WebhookOwnedResourceKind.Message;
 

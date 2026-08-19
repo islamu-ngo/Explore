@@ -204,7 +204,7 @@ public sealed class IncomingWebhookRedriveCommandHandlerTests
         await Assert.That(attribute!.Resource).IsEqualTo(ResourceKinds.Webhook);
         await Assert.That(attribute.Action).IsEqualTo(AuthorizationActions.Webhooks.RedriveIncoming);
         await Assert.That(request.ResourceId).IsEqualTo(messageId.ToString("D"));
-        await Assert.That(request.ResourceAttributes!["tenantId"]).IsEqualTo(tenantId.ToString("D"));
+        await Assert.That(request.AuthorizationFacts).IsEqualTo(new TenantScopedAuthorizationFacts(tenantId));
         await Assert.That(MachineScopeMapping.ScopesPermit(
             [ExternalApiKeyScopes.AdminTenant],
             ResourceKinds.Webhook,

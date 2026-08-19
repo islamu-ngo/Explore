@@ -1,0 +1,48 @@
+# ABOUTME: Public change fragment for the authorization platform redesign.
+# ABOUTME: Records the removed fail-open setting, the fail-closed revision gate, and operator impact.
+Change-Id: CHG-2026-0001
+Title: Single authorization decision path with observable policy state
+Type: feat
+Scope: access
+Summary: >-
+  Every permission decision is made by one configured provider from a closed set
+  of trusted facts, and operators can see which policy revision is live.
+Supersedes: []
+Impacts:
+  Breaking:
+    Reference: docs/AUTHORIZATION.md
+    Disposition: documented
+    Detail: >-
+      The cerbos.failure_mode governance setting is deleted. A deployment selects
+      either the local evaluator or Cerbos, and that choice decides every request,
+      so there is no per-failure fallback to configure. Deployments that set the
+      key must remove it; a stale value is no longer parsed.
+  Security:
+    Reference: docs/SECURITY-MODEL.md
+    Disposition: documented
+    Detail: >-
+      Removes a split decision path that let six capabilities bypass the selected
+      provider, and denies sensitive actions while the Cerbos policy revision is
+      unknown instead of deciding on unverified state.
+  Migration:
+    Reference: docs/RELEASE_RUNBOOK.md
+    Disposition: not-applicable
+    Detail: No schema or data migration is required.
+  Configuration:
+    Reference: docs/CONFIGURATION.md
+    Disposition: documented
+    Detail: >-
+      Adds Authorization:DenySensitiveActionsOnUnknownRevision, default true.
+  OpenAPI:
+    Reference: docs/API_CHANGELOG.md
+    Disposition: documented
+    Detail: >-
+      Adds the instance authorization policy package status endpoint and a tenant
+      identifier on the registration answer analytics resource.
+  Operator:
+    Reference: docs/OPERATIONS.md
+    Disposition: documented
+    Detail: >-
+      Policy package status reports mode, package identity, observed revision,
+      certainty, health, and a per-issue recovery action. Denials carrying the
+      revision_uncertain reason code indicate the revision could not be read.

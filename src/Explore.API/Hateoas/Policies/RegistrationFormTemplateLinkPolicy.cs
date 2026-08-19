@@ -15,6 +15,8 @@ public sealed class RegistrationFormTemplateLinkPolicy : ILinkPolicy<Registratio
     {
         yield return LinkDefinition.Self(RouteNames.GetRegistrationFormTemplate, new { templateId = dto.Id });
         yield return new LinkDefinition(LinkRelations.Collection, RouteNames.GetRegistrationFormTemplates);
+        // Instantiation has no target event yet, so the affordance is decided by authority over the tenant
+        // that owns the template. The command handler re-authorizes against the event once one is named.
         yield return new LinkDefinition(
             LinkRelations.Instantiate,
             RouteNames.InstantiateRegistrationFormTemplate,
@@ -24,8 +26,8 @@ public sealed class RegistrationFormTemplateLinkPolicy : ILinkPolicy<Registratio
                 AuthorizationActions.Events.ManageRegistrationWorkflow,
                 ResourceKinds.Event,
                 null,
-                new Dictionary<string, object> { ["templateId"] = dto.Id.ToString() },
-                dto.TenantId is null ? null : new AuthorizationScope(TenantId: dto.TenantId.ToString()));
+                dto.TenantId is null ? null : new AuthorizationScope(TenantId: dto.TenantId.ToString()),
+                TenantFacts(dto));
     }
 
     private static LinkDefinition Action(string rel, string route, object values, string method, string action, RegistrationFormTemplateDto dto) =>
@@ -33,8 +35,15 @@ public sealed class RegistrationFormTemplateLinkPolicy : ILinkPolicy<Registratio
             action,
             ResourceKinds.RegistrationForm,
             dto.Id.ToString(),
-            new Dictionary<string, object> { ["templateId"] = dto.Id.ToString() },
-            new AuthorizationScope(TenantId: dto.TenantId?.ToString()));
+            new AuthorizationScope(TenantId: dto.TenantId?.ToString()),
+            TenantFacts(dto));
+
+    /// <summary>
+    /// A template without a tenant belongs to no authority zone, so it publishes no facts and the provider
+    /// denies rather than falling back to the caller's ambient tenant.
+    /// </summary>
+    private static IAuthorizationFacts? TenantFacts(RegistrationFormTemplateDto dto) =>
+        dto.TenantId is { } tenantId ? new TenantScopedAuthorizationFacts(tenantId) : null;
 }
 
 public sealed class RegistrationFormTemplateCollectionLinkPolicy : ICollectionLinkPolicy<RegistrationFormTemplateDto>

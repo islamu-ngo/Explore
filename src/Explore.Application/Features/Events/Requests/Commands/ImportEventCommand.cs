@@ -15,8 +15,6 @@ public sealed class ImportEventCommand : IRequest<BaseCommandResponse<Guid>>, IS
 
     string? ISecureRequest.ResourceId => Request.TenantId.ToString();
 
-    IDictionary<string, object>? ISecureRequest.ResourceAttributes => new Dictionary<string, object>
-    {
-        ["tenantId"] = Request.TenantId.ToString()
-    };
+    IAuthorizationFacts? ISecureRequest.AuthorizationFacts =>
+        new TenantScopedAuthorizationFacts(Request.TenantId);
 }

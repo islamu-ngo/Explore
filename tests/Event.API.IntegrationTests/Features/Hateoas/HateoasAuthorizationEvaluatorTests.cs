@@ -112,20 +112,17 @@ public class HateoasAuthorizationEvaluatorTests
                 return Decisions(captured.Select(_ => true).ToArray());
             });
         var evaluator = new HateoasAuthorizationEvaluator(_authProvider, repository, tenantContext, _logger);
-        Dictionary<string, object> spoofed = new()
-        {
-            ["eventId"] = eventId.ToString("D"),
-            ["tenantId"] = Guid.CreateVersion7().ToString("D"),
-            ["organizerUserId"] = attackerUserId.ToString("D")
-        };
+        // The caller names the real event but a tenant it does not own. Only the event id may select which
+        // row is loaded; everything else must come from that row.
+        var spoofed = new EventScopedAuthorizationFacts(Guid.CreateVersion7(), eventId);
         LinkDefinition[] links =
         [
             LinkDefinition.Action("publish", "Publish", "POST").WithPermission(
-                ResourceKinds.RegistrationForm, AuthorizationActions.RegistrationForms.Publish, "form", spoofed),
+                ResourceKinds.RegistrationForm, AuthorizationActions.RegistrationForms.Publish, "form", facts: spoofed),
             LinkDefinition.Action("edit", "Edit", "PATCH").WithPermission(
-                ResourceKinds.RegistrationForm, AuthorizationActions.RegistrationForms.Update, "form", spoofed),
+                ResourceKinds.RegistrationForm, AuthorizationActions.RegistrationForms.Update, "form", facts: spoofed),
             LinkDefinition.Action("delete", "Delete", "DELETE").WithPermission(
-                ResourceKinds.RegistrationForm, AuthorizationActions.RegistrationForms.Delete, "form", spoofed)
+                ResourceKinds.RegistrationForm, AuthorizationActions.RegistrationForms.Delete, "form", facts: spoofed)
         ];
 
         IReadOnlyList<bool> result = await evaluator.AreLinksAllowedAsync(links, AuthenticatedUser(), _httpContext);
@@ -133,9 +130,10 @@ public class HateoasAuthorizationEvaluatorTests
         await Assert.That(result.All(value => value)).IsTrue();
         await Assert.That(captured).IsNotNull();
         await Assert.That(captured!.All(check =>
-            check.ResourceAttributes!["tenantId"].Equals(tenantId.ToString("D")) &&
-            check.ResourceAttributes["organizerUserId"].Equals(organizerUserId.ToString("D")) &&
-            check.ResourceAttributes["userId"].Equals(attackerUserId.ToString("D")))).IsTrue();
+            check.Facts is EventAuthorizationFacts facts &&
+            facts.TenantId == tenantId &&
+            facts.OrganizerUserId == organizerUserId &&
+            facts.UserId == attackerUserId)).IsTrue();
         await repository.Received(1).GetAuthorizationTargetsByIdsAsync(
             Arg.Any<IReadOnlyCollection<Guid>>(),
             Arg.Any<CancellationToken>());
@@ -154,9 +152,8 @@ public class HateoasAuthorizationEvaluatorTests
                 Arg.Any<CancellationToken>())
             .Returns([AuthorizationEvent(Guid.CreateVersion7(), eventId, Guid.CreateVersion7(), Guid.CreateVersion7())]);
         var evaluator = new HateoasAuthorizationEvaluator(authorizationProvider, repository, tenantContext, _logger);
-        LinkDefinition missing = RegistrationLink(new Dictionary<string, object>());
-        LinkDefinition crossTenant = RegistrationLink(
-            new Dictionary<string, object> { ["eventId"] = eventId.ToString("D") });
+        LinkDefinition missing = RegistrationLink(facts: null);
+        LinkDefinition crossTenant = RegistrationLink(new EventScopedAuthorizationFacts(Guid.CreateVersion7(), eventId));
 
         IReadOnlyList<bool> result = await evaluator.AreLinksAllowedAsync(
             [missing, crossTenant],
@@ -213,14 +210,17 @@ public class HateoasAuthorizationEvaluatorTests
                 .Returns(Decisions(providerAllows));
         }
         var evaluator = new HateoasAuthorizationEvaluator(authorizationProvider, repository, tenantContext, _logger);
-        Dictionary<string, object> attributes = scenario == "missing-resource-facts"
-            ? new Dictionary<string, object>()
-            : new Dictionary<string, object> { ["eventId"] = eventId.ToString("D") };
-        if (scenario != "missing-tenant-facts")
-            attributes["tenantId"] = tenantId.ToString("D");
+        IAuthorizationFacts? facts = scenario switch
+        {
+            // Without an event to load, the check has no parent authority and must fail before the provider.
+            "missing-resource-facts" => null,
+            // A declared tenant is never trusted anyway: the parent event supplies it.
+            "missing-tenant-facts" => new EventScopedAuthorizationFacts(Guid.Empty, eventId),
+            _ => new EventScopedAuthorizationFacts(tenantId, eventId)
+        };
 
         IReadOnlyList<bool> result = await evaluator.AreLinksAllowedAsync(
-            [RegistrationLink(attributes)],
+            [RegistrationLink(facts)],
             hasSubject ? AuthenticatedUser() : null,
             _httpContext);
 
@@ -247,10 +247,8 @@ public class HateoasAuthorizationEvaluatorTests
         ITenantContext tenantContext = Substitute.For<ITenantContext>();
         var evaluator = new HateoasAuthorizationEvaluator(authorizationProvider, repository, tenantContext, _logger);
         LinkDefinition[] links = Enumerable.Range(0, IEventRepository.MaximumAuthorizationTargetBatchSize + 1)
-            .Select(_ => RegistrationLink(new Dictionary<string, object>
-            {
-                ["eventId"] = Guid.CreateVersion7().ToString("D")
-            }))
+            .Select(_ => RegistrationLink(
+                new EventScopedAuthorizationFacts(Guid.CreateVersion7(), Guid.CreateVersion7())))
             .ToArray();
 
         IReadOnlyList<bool> result = await evaluator.AreLinksAllowedAsync(links, AuthenticatedUser(), _httpContext);
@@ -321,8 +319,11 @@ public class HateoasAuthorizationEvaluatorTests
 
     [Test]
     [DisplayName("Checks with different resource attributes are not deduplicated")]
-    public async Task ChecksWithDifferentAttributes_NotDeduplicated()
+    public async Task ChecksWithDifferentFacts_NotDeduplicated()
     {
+        var firstTenantId = Guid.CreateVersion7();
+        var secondTenantId = Guid.CreateVersion7();
+        var eventId = Guid.CreateVersion7();
         var links = new List<LinkDefinition>
         {
             LinkDefinition.Edit("UpdateTenantEvent")
@@ -330,13 +331,13 @@ public class HateoasAuthorizationEvaluatorTests
                     "islamuevent_event",
                     "update",
                     "event-1",
-                    new Dictionary<string, object> { ["tenantId"] = "tenant-1", ["ownerId"] = "owner-1" }),
+                    facts: new EventScopedAuthorizationFacts(firstTenantId, eventId)),
             LinkDefinition.Edit("UpdateOtherTenantEvent")
                 .WithPermission(
                     "islamuevent_event",
                     "update",
                     "event-1",
-                    new Dictionary<string, object> { ["tenantId"] = "tenant-2", ["ownerId"] = "owner-1" }),
+                    facts: new EventScopedAuthorizationFacts(secondTenantId, eventId)),
         };
 
         _authProvider.AuthorizeBatchAsync(
@@ -349,57 +350,70 @@ public class HateoasAuthorizationEvaluatorTests
         await Assert.That(result[0]).IsTrue();
         await Assert.That(result[1]).IsFalse();
         await _authProvider.Received(1).AuthorizeBatchAsync(
-            Arg.Is<IReadOnlyList<AuthorizationRequest>>(checks => ChecksContainTenantAttributes(checks, "tenant-1", "tenant-2")),
+            Arg.Is<IReadOnlyList<AuthorizationRequest>>(checks =>
+                ChecksContainTenantFacts(checks, firstTenantId, secondTenantId)),
             Arg.Any<CancellationToken>());
     }
 
+    /// <summary>
+    /// Two checks that name the same resource with equal facts collapse to one provider call. Facts are
+    /// records, so equality is structural and needs no canonicalization step of its own.
+    /// </summary>
     [Test]
-    [DisplayName("Dedup key canonicalizes attributes independent of insertion order")]
-    public async Task DedupKey_CanonicalizesAttributesIndependentOfInsertionOrder()
+    [DisplayName("Dedup key is equal for structurally equal facts")]
+    public async Task DedupKey_IsEqualForStructurallyEqualFacts()
     {
+        var tenantId = Guid.CreateVersion7();
+        var eventId = Guid.CreateVersion7();
         var first = new AuthorizationRequest(
             "islamuevent_event",
             "event-1",
             "update",
-            new Dictionary<string, object> { ["tenantId"] = "tenant-1", ["ownerId"] = "owner-1" },
-            AuthorizationScope.Empty);
+            AuthorizationScope.Empty,
+            new EventScopedAuthorizationFacts(tenantId, eventId));
         var second = new AuthorizationRequest(
             "islamuevent_event",
             "event-1",
             "update",
-            new Dictionary<string, object> { ["ownerId"] = "owner-1", ["tenantId"] = "tenant-1" });
+            AuthorizationScope.Empty,
+            new EventScopedAuthorizationFacts(tenantId, eventId));
 
         await Assert.That(first.ToDeduplicationKey()).IsEqualTo(second.ToDeduplicationKey());
     }
 
     [Test]
-    [DisplayName("Dedup key changes when resource attributes differ")]
-    public async Task DedupKey_ChangesWhenAttributesDiffer()
+    [DisplayName("Dedup key changes when facts differ")]
+    public async Task DedupKey_ChangesWhenFactsDiffer()
     {
+        var eventId = Guid.CreateVersion7();
         var first = new AuthorizationRequest(
             "islamuevent_event",
             "event-1",
             "update",
-            new Dictionary<string, object> { ["tenantId"] = "tenant-1" });
+            Facts: new EventScopedAuthorizationFacts(Guid.CreateVersion7(), eventId));
         var second = new AuthorizationRequest(
             "islamuevent_event",
             "event-1",
             "update",
-            new Dictionary<string, object> { ["tenantId"] = "tenant-2" });
+            Facts: new EventScopedAuthorizationFacts(Guid.CreateVersion7(), eventId));
 
         await Assert.That(first.ToDeduplicationKey()).IsNotEqualTo(second.ToDeduplicationKey());
     }
 
     [Test]
-    [DisplayName("Descriptor permission overload propagates scope to authorization provider")]
-    public async Task DescriptorPermission_PropagatesScopeToProvider()
+    [DisplayName("Descriptor permission overload propagates scope and facts to authorization provider")]
+    public async Task DescriptorPermission_PropagatesScopeAndFactsToProvider()
     {
-        var resource = new TestResource("resource-1", "tenant-1", "org-1");
+        var tenantId = Guid.CreateVersion7();
+        var organizationId = Guid.CreateVersion7();
+        var resource = new TestResource("resource-1", tenantId, organizationId);
         var descriptor = new ResourceDescriptor<TestResource>(
             "islamuevent_event",
             static candidate => candidate.Id,
-            static candidate => new Dictionary<string, object> { ["tenantId"] = candidate.TenantId },
-            static candidate => new AuthorizationScope(candidate.TenantId, candidate.OrganizationId));
+            static candidate => new OrganizationAuthorizationFacts(candidate.TenantId, candidate.OrganizationId),
+            static candidate => new AuthorizationScope(
+                candidate.TenantId.ToString("D"),
+                candidate.OrganizationId.ToString("D")));
         var links = new List<LinkDefinition>
         {
             LinkDefinition.Edit("UpdateResource")
@@ -415,7 +429,8 @@ public class HateoasAuthorizationEvaluatorTests
 
         await Assert.That(result[0]).IsTrue();
         await _authProvider.Received(1).AuthorizeBatchAsync(
-            Arg.Is<IReadOnlyList<AuthorizationRequest>>(checks => CheckContainsScopeAndAttributes(checks, "tenant-1", "org-1")),
+            Arg.Is<IReadOnlyList<AuthorizationRequest>>(checks =>
+                CheckContainsScopeAndFacts(checks, tenantId, organizationId)),
             Arg.Any<CancellationToken>());
     }
 
@@ -625,33 +640,28 @@ public class HateoasAuthorizationEvaluatorTests
                 : AuthorizationDecision.Deny(AuthorizationProviderMetadata.Local))
             .ToArray();
 
-    private static bool ChecksContainTenantAttributes(
+    private static bool ChecksContainTenantFacts(
         IReadOnlyList<AuthorizationRequest> checks,
-        string firstTenantId,
-        string secondTenantId) =>
+        Guid firstTenantId,
+        Guid secondTenantId) =>
         checks.Count == 2 &&
-        checks.Any(check => HasTenantId(check, firstTenantId)) &&
-        checks.Any(check => HasTenantId(check, secondTenantId));
+        checks.Any(check => check.Facts is EventScopedAuthorizationFacts { } facts && facts.TenantId == firstTenantId) &&
+        checks.Any(check => check.Facts is EventScopedAuthorizationFacts { } facts && facts.TenantId == secondTenantId);
 
-    private static bool CheckContainsScopeAndAttributes(
+    private static bool CheckContainsScopeAndFacts(
         IReadOnlyList<AuthorizationRequest> checks,
-        string tenantId,
-        string organizationId) =>
+        Guid tenantId,
+        Guid organizationId) =>
         checks.Count == 1 &&
-        checks[0].Scope == new AuthorizationScope(tenantId, organizationId) &&
-        HasTenantId(checks[0], tenantId);
+        checks[0].Scope == new AuthorizationScope(tenantId.ToString("D"), organizationId.ToString("D")) &&
+        Equals(checks[0].Facts, new OrganizationAuthorizationFacts(tenantId, organizationId));
 
-    private static bool HasTenantId(AuthorizationRequest check, string tenantId) =>
-        check.ResourceAttributes is not null &&
-        check.ResourceAttributes.TryGetValue("tenantId", out var value) &&
-        string.Equals(value as string, tenantId, StringComparison.Ordinal);
-
-    private static LinkDefinition RegistrationLink(IReadOnlyDictionary<string, object> attributes) =>
+    private static LinkDefinition RegistrationLink(IAuthorizationFacts? facts) =>
         LinkDefinition.Action("publish", "Publish", "POST").WithPermission(
             ResourceKinds.RegistrationForm,
             AuthorizationActions.RegistrationForms.Publish,
             "form",
-            attributes);
+            facts: facts);
 
     private static Explore.Domain.Event AuthorizationEvent(
         Guid tenantId,
@@ -691,5 +701,5 @@ public class HateoasAuthorizationEvaluatorTests
         };
     }
 
-    private sealed record TestResource(string Id, string TenantId, string OrganizationId);
+    private sealed record TestResource(string Id, Guid TenantId, Guid OrganizationId);
 }

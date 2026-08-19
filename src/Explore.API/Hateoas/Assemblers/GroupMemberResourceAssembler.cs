@@ -28,10 +28,11 @@ public sealed class GroupMemberResourceAssembler : ResourceAssemblerBase<GroupMe
         var resource = await base.ToCollectionResource(items, routeName, additionalRouteValues, httpContext);
         if (TryGetGroupId(additionalRouteValues, out var groupId))
         {
-            var groupScopedAttributes = new Dictionary<string, object>
-            {
-                ["groupId"] = groupId.ToString()
-            };
+            var groupScopedFacts = new GroupMemberAuthorizationFacts(
+                Guid.Empty,
+                groupId,
+                OrganizationId: null,
+                UserId: null);
 
             var createLinks = await GenerateLinks([
                 new LinkDefinition(
@@ -45,7 +46,7 @@ public sealed class GroupMemberResourceAssembler : ResourceAssemblerBase<GroupMe
                         AuthorizationActions.Create,
                         ResourceKinds.GroupMember,
                         groupId.ToString(),
-                        groupScopedAttributes)
+                        facts: groupScopedFacts)
             ], httpContext.User, httpContext);
 
             foreach (var link in createLinks)

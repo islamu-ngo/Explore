@@ -16,10 +16,6 @@ public sealed class CreateDraftEventSessionCommand : IRequest<BaseCommandRespons
 
     string? ISecureRequest.ResourceId => Request.EventId.ToString();
 
-    IDictionary<string, object>? ISecureRequest.ResourceAttributes => new Dictionary<string, object>
-    {
-        ["tenantId"] = TenantId.ToString(),
-        ["eventId"] = Request.EventId.ToString(),
-        ["authorizationPhase"] = AuthorizationPhases.PreCreate
-    };
+    IAuthorizationFacts? ISecureRequest.AuthorizationFacts =>
+        new PreCreateAuthorizationFacts(TenantId, Request.EventId, null, null);
 }

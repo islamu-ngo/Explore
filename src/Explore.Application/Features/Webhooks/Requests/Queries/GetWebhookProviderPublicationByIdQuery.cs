@@ -15,11 +15,8 @@ public sealed class GetWebhookProviderPublicationByIdQuery : IRequest<WebhookPro
 
     string? ISecureRequest.ResourceId => PublicationId == Guid.Empty ? null : PublicationId.ToString("D");
 
-    IDictionary<string, object>? ISecureRequest.ResourceAttributes => PublicationId == Guid.Empty
+    IAuthorizationFacts? ISecureRequest.AuthorizationFacts =>
+        PublicationId == Guid.Empty
         ? null
-        : new Dictionary<string, object>
-        {
-            ["tenantId"] = TenantId.ToString("D"),
-            ["publicationId"] = PublicationId.ToString("D")
-        };
+        : new TenantScopedAuthorizationFacts(TenantId);
 }

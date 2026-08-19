@@ -21,10 +21,6 @@ public sealed class LockControlPlaneTenantSettingCommand(Guid tenantId, string k
 
     string? ISecureRequest.ResourceId => SettingKey;
 
-    IDictionary<string, object>? ISecureRequest.ResourceAttributes => new Dictionary<string, object>
-    {
-        ["settingKey"] = SettingKey,
-        ["tenantId"] = tenantId.ToString(),
-        ["targetKey"] = key,
-    };
+    IAuthorizationFacts? ISecureRequest.AuthorizationFacts =>
+        InstanceScopedAuthorizationFacts.Instance;
 }

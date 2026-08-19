@@ -19,13 +19,8 @@ public sealed class RedriveIncomingWebhookEffectCommand : IRequest<BaseCommandRe
         ? null
         : EffectOutboxId.ToString("D");
 
-    IDictionary<string, object>? ISecureRequest.ResourceAttributes => TenantId == Guid.Empty
+    IAuthorizationFacts? ISecureRequest.AuthorizationFacts =>
+        TenantId == Guid.Empty
         ? null
-        : new Dictionary<string, object>
-        {
-            ["tenantId"] = TenantId.ToString("D"),
-            ["effectOutboxId"] = EffectOutboxId.ToString("D"),
-            ["expectedProcessingGeneration"] = ExpectedProcessingGeneration,
-            ["webhookOperation"] = "redrive-incoming-effect"
-        };
+        : new TenantScopedAuthorizationFacts(TenantId);
 }

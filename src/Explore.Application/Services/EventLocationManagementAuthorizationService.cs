@@ -81,7 +81,6 @@ public sealed class EventLocationManagementAuthorizationService(
                 descriptor.Kind,
                 descriptor.GetResourceId(target),
                 AuthorizationActions.Events.ViewManagement,
-                ResourceAttributes: null,
                 Scope: descriptor.GetScope(target),
                 Facts: descriptor.GetFacts(target)))
             .ToArray();

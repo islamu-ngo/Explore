@@ -68,45 +68,29 @@ public sealed class PromotionManagementLinkPolicy : ILinkPolicy<PromotionManagem
             AuthorizationActions.Events.ManagePaidEventCommerce,
             ResourceKinds.Event,
             dto.EventId.ToString("D"),
-            BuildEventAttributes(dto),
-            new AuthorizationScope(TenantId: dto.TenantId.ToString("D")));
+            new AuthorizationScope(TenantId: dto.TenantId.ToString("D")),
+            BuildEventFacts(dto));
 
-    private static Dictionary<string, object> BuildEventAttributes(PromotionManagementDto dto)
-    {
-        var attributes = new Dictionary<string, object>
-        {
-            ["eventId"] = dto.EventId.ToString("D"),
-            ["tenantId"] = dto.TenantId.ToString("D")
-        };
-        AddIfPresent(attributes, "actorId", dto.ActorId);
-        AddIfPresent(attributes, "userId", dto.ActorUserId);
-        AddIfPresent(attributes, "organizationId", dto.ActorOrganizationId);
-        AddIfPresent(attributes, "groupId", dto.ActorGroupId);
-        AddIfPresent(attributes, "organizerActorId", dto.OrganizerActorId);
-        AddIfPresent(attributes, "organizerUserId", dto.OrganizerUserId);
-        AddIfPresent(attributes, "organizerOrganizationId", dto.OrganizerOrganizationId);
-        AddIfPresent(attributes, "organizerGroupId", dto.OrganizerGroupId);
-        return attributes;
-    }
-
-    private static void AddIfPresent(Dictionary<string, object> attributes, string key, Guid? value)
-    {
-        if (value.HasValue)
-        {
-            attributes[key] = value.Value.ToString("D");
-        }
-    }
+    private static IAuthorizationFacts BuildEventFacts(PromotionManagementDto dto) =>
+        new EventAuthorizationFacts(
+            dto.TenantId,
+            dto.EventId,
+            dto.ActorId ?? Guid.Empty,
+            dto.ActorUserId,
+            dto.ActorOrganizationId,
+            dto.ActorGroupId,
+            dto.OrganizerActorId,
+            dto.OrganizerUserId,
+            dto.OrganizerOrganizationId,
+            dto.OrganizerGroupId,
+            ProvenanceType: null,
+            SubmittedByUserId: null);
 }
 
 public sealed class PromotionManagementCollectionLinkPolicy : ICollectionLinkPolicy<PromotionManagementDto>
 {
     public IEnumerable<LinkDefinition> GetItemLinks(PromotionManagementDto dto, ClaimsPrincipal? user) =>
         new PromotionManagementLinkPolicy().GetLinks(dto, user);
-
-    public IEnumerable<LinkDefinition> GetCollectionLinks(ClaimsPrincipal? user)
-    {
-        yield break;
-    }
 
     public IEnumerable<LinkDefinition> GetCollectionLinks(
         ClaimsPrincipal? user,
@@ -128,8 +112,8 @@ public sealed class PromotionManagementCollectionLinkPolicy : ICollectionLinkPol
                 AuthorizationActions.Events.ManagePaidEventCommerce,
                 ResourceKinds.Event,
                 context.AuthorizationResourceId,
-                context.AuthorizationResourceAttributes,
-                new AuthorizationScope(TenantId: context.TenantId.ToString("D")));
+                new AuthorizationScope(TenantId: context.TenantId.ToString("D")),
+                context.AuthorizationFacts);
     }
 }
 
@@ -140,11 +124,6 @@ public sealed record PromotionCollectionAuthorizationContext(
 {
     public string AuthorizationResourceId => EventId.ToString("D");
 
-    public IReadOnlyDictionary<string, object> AuthorizationResourceAttributes =>
-        new Dictionary<string, object>
-        {
-            ["eventId"] = EventId.ToString("D"),
-            ["ticketCatalogVersionId"] = TicketCatalogVersionId.ToString("D"),
-            ["tenantId"] = TenantId.ToString("D")
-        };
+    // The catalog version identifies which promotions are listed; the parent event decides who may act.
+    public IAuthorizationFacts? AuthorizationFacts => new EventScopedAuthorizationFacts(TenantId, EventId);
 }

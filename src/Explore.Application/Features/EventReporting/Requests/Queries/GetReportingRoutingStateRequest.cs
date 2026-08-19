@@ -14,9 +14,6 @@ public sealed record GetReportingRoutingStateRequest(Guid TenantId) : IRequest<R
 
     public string? ResourceId => $"{TenantId}:{SettingKey}";
 
-    public IDictionary<string, object>? ResourceAttributes => new Dictionary<string, object>
-    {
-        ["tenantId"] = TenantId.ToString(),
-        ["settingKey"] = SettingKey
-    };
+    IAuthorizationFacts? ISecureRequest.AuthorizationFacts =>
+        new TenantSettingAuthorizationFacts(TenantId);
 }

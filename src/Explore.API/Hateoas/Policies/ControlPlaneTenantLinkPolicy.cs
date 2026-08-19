@@ -46,11 +46,7 @@ public sealed class ControlPlaneTenantDetailLinkPolicy : ILinkPolicy<ControlPlan
             .RequirePermission(AuthorizationActions.InstanceSettings.View,
                 ResourceKinds.InstanceSetting,
                 GetControlPlaneTenantEffectiveConfigurationQuery.SettingKey,
-                new Dictionary<string, object>
-                {
-                    ["settingKey"] = GetControlPlaneTenantEffectiveConfigurationQuery.SettingKey,
-                    ["tenantId"] = dto.Id.ToString()
-                });
+                facts: InstanceScopedAuthorizationFacts.Instance);
 
         foreach (var link in ControlPlaneTenantLifecycleLinks.GetLinks(dto.Id, dto.StatusId))
         {
@@ -63,22 +59,7 @@ public sealed class ControlPlaneTenantDetailLinkPolicy : ILinkPolicy<ControlPlan
             .RequirePermission(AuthorizationActions.InstanceSettings.View,
                 ResourceKinds.InstanceSetting,
                 GetControlPlaneTenantListQuery.SettingKey,
-                InstanceSettingAttributes(GetControlPlaneTenantListQuery.SettingKey));
-
-    private static IReadOnlyDictionary<string, object> InstanceSettingAttributes(string settingKey, Guid? tenantId = null)
-    {
-        var attributes = new Dictionary<string, object>
-        {
-            ["settingKey"] = settingKey
-        };
-
-        if (tenantId.HasValue)
-        {
-            attributes["targetTenantId"] = tenantId.Value.ToString();
-        }
-
-        return attributes;
-    }
+                facts: InstanceScopedAuthorizationFacts.Instance);
 }
 
 public sealed class ControlPlaneTenantCollectionLinkPolicy : ICollectionLinkPolicy<ControlPlaneTenantListItemDto>
@@ -97,11 +78,7 @@ public sealed class ControlPlaneTenantCollectionLinkPolicy : ICollectionLinkPoli
             .RequirePermission(AuthorizationActions.InstanceSettings.View,
                 ResourceKinds.InstanceSetting,
                 GetControlPlaneTenantListQuery.SettingKey,
-                new Dictionary<string, object>
-                {
-                    ["settingKey"] = GetControlPlaneTenantListQuery.SettingKey,
-                    ["targetTenantId"] = dto.Id.ToString()
-                });
+                facts: InstanceScopedAuthorizationFacts.Instance);
 
         yield return new LinkDefinition(
             "configuration",
@@ -113,11 +90,7 @@ public sealed class ControlPlaneTenantCollectionLinkPolicy : ICollectionLinkPoli
             .RequirePermission(AuthorizationActions.InstanceSettings.View,
                 ResourceKinds.InstanceSetting,
                 GetControlPlaneTenantEffectiveConfigurationQuery.SettingKey,
-                new Dictionary<string, object>
-                {
-                    ["settingKey"] = GetControlPlaneTenantEffectiveConfigurationQuery.SettingKey,
-                    ["tenantId"] = dto.Id.ToString()
-                });
+                facts: InstanceScopedAuthorizationFacts.Instance);
 
         foreach (var link in ControlPlaneTenantLifecycleLinks.GetLinks(dto.Id, dto.StatusId))
         {
@@ -182,10 +155,5 @@ internal static class ControlPlaneTenantLifecycleLinks
             .RequirePermission(AuthorizationActions.InstanceSettings.Update,
                 ResourceKinds.InstanceSetting,
                 TransitionControlPlaneTenantLifecycleCommand.SettingKey,
-                new Dictionary<string, object>
-                {
-                    ["settingKey"] = TransitionControlPlaneTenantLifecycleCommand.SettingKey,
-                    ["targetTenantId"] = tenantId.ToString(),
-                    ["targetStatus"] = targetStatus.ToString()
-                });
+                facts: InstanceScopedAuthorizationFacts.Instance);
 }

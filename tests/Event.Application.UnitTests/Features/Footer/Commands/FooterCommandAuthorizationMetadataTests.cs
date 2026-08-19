@@ -81,15 +81,12 @@ public class FooterCommandAuthorizationMetadataTests
     public async Task TenantScopedFooterWriteCommandsExposeTenantAuthorizationContext(
         (ISecureRequest Command, string? ExpectedContextKey) testCase)
     {
-        var (command, expectedContextKey) = testCase;
+        var (command, _) = testCase;
 
+        // Footer links and groups are tenant-administered; the specific link identifies the row being
+        // edited, not a separate authority zone.
         await Assert.That(command.ResourceId).IsEqualTo(TenantId.ToString("D"));
-        await Assert.That(command.ResourceAttributes).IsNotNull();
-        await Assert.That(command.ResourceAttributes!["tenantId"]).IsEqualTo(TenantId.ToString("D"));
-
-        if (expectedContextKey is not null)
-        {
-            await Assert.That(command.ResourceAttributes.ContainsKey(expectedContextKey)).IsTrue();
-        }
+        await Assert.That(command.AuthorizationFacts)
+            .IsEqualTo(new TenantScopedAuthorizationFacts(TenantId));
     }
 }

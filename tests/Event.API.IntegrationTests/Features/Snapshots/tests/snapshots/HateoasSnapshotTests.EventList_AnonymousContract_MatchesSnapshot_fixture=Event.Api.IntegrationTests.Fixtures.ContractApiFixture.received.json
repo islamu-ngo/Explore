@@ -1,7 +1,7 @@
 ﻿{
   "pageNumber": 1,
   "pageSize": 5,
-  "totalCount": 3,
+  "totalCount": 2,
   "totalPages": 1,
   "hasPrevious": false,
   "hasNext": false,
@@ -22,8 +22,8 @@
         "source": "local",
         "event": {
           "id": "Guid_1",
-          "title": "Published Visibility Event 2d92fed9fed24edabc77dbd85ea2a288",
-          "publicCode": "7f318127bd20",
+          "title": "Actor Other Published 1c46419f06404a949a96a4543af140ee",
+          "publicCode": "81a64dad7449",
           "eventTypeId": 0,
           "audienceGenderId": 0,
           "audienceAgeId": 0,
@@ -51,8 +51,8 @@
           "eventFormatId": 1,
           "eventFormatFullName": "Local (In-Person)",
           "sessionCount": 1,
-          "firstSessionDate": "2026-08-25",
-          "lastSessionDate": "2026-08-25",
+          "firstSessionDate": "2026-08-26",
+          "lastSessionDate": "2026-08-26",
           "firstSessionStartUtc": "DateTimeOffset_1",
           "isPast": false,
           "totalViews": 0,
@@ -61,22 +61,22 @@
         },
         "_links": {
           "self": {
-            "href": "/api/event/f9b36922-7123-4653-b89a-c8099324d6e7",
-            "title": "Published Visibility Event 2d92fed9fed24edabc77dbd85ea2a288",
+            "href": "/api/event/9a8013fd-533b-4ce7-a5e9-8676eeb5ba62",
+            "title": "Actor Other Published 1c46419f06404a949a96a4543af140ee",
             "method": "GET"
           },
           "sessions": {
-            "href": "/api/eventsession/by-event/f9b36922-7123-4653-b89a-c8099324d6e7",
+            "href": "/api/eventsession/by-event/9a8013fd-533b-4ce7-a5e9-8676eeb5ba62",
             "title": "1 sessions",
             "method": "GET"
           },
           "actor": {
-            "href": "/api/actor/295ad5bc-a761-4045-8028-d2407bccba6d",
+            "href": "/api/actor/467d406f-8ac5-4ce1-874d-027b2edeb81b",
             "title": "Default Visibility Actor",
             "method": "GET"
           },
           "event-report-options": {
-            "href": "/api/event-reports/events/f9b36922-7123-4653-b89a-c8099324d6e7/options",
+            "href": "/api/event-reports/events/9a8013fd-533b-4ce7-a5e9-8676eeb5ba62/options",
             "title": "Event report options",
             "method": "GET"
           },
@@ -91,21 +91,21 @@
         "source": "local",
         "event": {
           "id": "Guid_6",
-          "title": "Actor Other Published cd19b31e752f479182dceff0f08408c1",
-          "publicCode": "edbb3410089a",
+          "title": "Actor Matching Published 1c46419f06404a949a96a4543af140ee",
+          "publicCode": "06863bda44fa",
           "eventTypeId": 0,
           "audienceGenderId": 0,
           "audienceAgeId": 0,
-          "actorId": "Guid_2",
-          "actorDisplayName": "Default Visibility Actor",
+          "actorId": "Guid_7",
+          "actorDisplayName": "Actor Filter Owner",
           "actorTypeId": 1,
           "actorTypeFullName": "User",
-          "actorUserId": "Guid_3",
+          "actorUserId": "Guid_8",
           "provenanceTypeCode": "ORGANIZER_CREATED",
           "featuredImageId": "Guid_Empty",
           "participationConfiguration": {
             "eventId": "Guid_6",
-            "concurrencyStamp": "Guid_7",
+            "concurrencyStamp": "Guid_9",
             "participationHandlingModeId": 1,
             "participationHandlingModeCode": "INFORMATION_ONLY",
             "participationHandlingModeName": "Information only",
@@ -120,101 +120,32 @@
           "eventFormatId": 1,
           "eventFormatFullName": "Local (In-Person)",
           "sessionCount": 1,
-          "firstSessionDate": "2026-08-25",
-          "lastSessionDate": "2026-08-25",
+          "firstSessionDate": "2026-08-26",
+          "lastSessionDate": "2026-08-26",
           "firstSessionStartUtc": "DateTimeOffset_3",
           "isPast": false,
           "totalViews": 0,
-          "createdAtUtc": "DateTimeOffset_4",
+          "createdAtUtc": "DateTimeOffset_2",
           "tenantId": "Guid_5"
         },
         "_links": {
           "self": {
-            "href": "/api/event/3cae2666-0c10-4b06-b91e-8edaf490dd6c",
-            "title": "Actor Other Published cd19b31e752f479182dceff0f08408c1",
+            "href": "/api/event/dd9459d1-8137-4190-9224-e979ef190b65",
+            "title": "Actor Matching Published 1c46419f06404a949a96a4543af140ee",
             "method": "GET"
           },
           "sessions": {
-            "href": "/api/eventsession/by-event/3cae2666-0c10-4b06-b91e-8edaf490dd6c",
+            "href": "/api/eventsession/by-event/dd9459d1-8137-4190-9224-e979ef190b65",
             "title": "1 sessions",
             "method": "GET"
           },
           "actor": {
-            "href": "/api/actor/295ad5bc-a761-4045-8028-d2407bccba6d",
-            "title": "Default Visibility Actor",
-            "method": "GET"
-          },
-          "event-report-options": {
-            "href": "/api/event-reports/events/3cae2666-0c10-4b06-b91e-8edaf490dd6c/options",
-            "title": "Event report options",
-            "method": "GET"
-          },
-          "report-event": {
-            "href": "/api/event-reports",
-            "title": "Report event",
-            "method": "POST"
-          }
-        }
-      },
-      {
-        "source": "local",
-        "event": {
-          "id": "Guid_8",
-          "title": "Actor Matching Published cd19b31e752f479182dceff0f08408c1",
-          "publicCode": "abcf9357f1e5",
-          "eventTypeId": 0,
-          "audienceGenderId": 0,
-          "audienceAgeId": 0,
-          "actorId": "Guid_9",
-          "actorDisplayName": "Actor Filter Owner",
-          "actorTypeId": 1,
-          "actorTypeFullName": "User",
-          "actorUserId": "Guid_10",
-          "provenanceTypeCode": "ORGANIZER_CREATED",
-          "featuredImageId": "Guid_Empty",
-          "participationConfiguration": {
-            "eventId": "Guid_8",
-            "concurrencyStamp": "Guid_11",
-            "participationHandlingModeId": 1,
-            "participationHandlingModeCode": "INFORMATION_ONLY",
-            "participationHandlingModeName": "Information only",
-            "advanceRegistrationObligationId": 1,
-            "advanceRegistrationObligationCode": "NOT_APPLICABLE",
-            "advanceRegistrationObligationName": "Not applicable"
-          },
-          "eventStatusId": 2,
-          "eventStatusFullName": "Published",
-          "visibilityTypeId": 1,
-          "visibilityTypeFullName": "Public",
-          "eventFormatId": 1,
-          "eventFormatFullName": "Local (In-Person)",
-          "sessionCount": 1,
-          "firstSessionDate": "2026-08-25",
-          "lastSessionDate": "2026-08-25",
-          "firstSessionStartUtc": "DateTimeOffset_5",
-          "isPast": false,
-          "totalViews": 0,
-          "createdAtUtc": "DateTimeOffset_4",
-          "tenantId": "Guid_5"
-        },
-        "_links": {
-          "self": {
-            "href": "/api/event/29da279c-2cc9-4f30-9c1c-d523b7e49f73",
-            "title": "Actor Matching Published cd19b31e752f479182dceff0f08408c1",
-            "method": "GET"
-          },
-          "sessions": {
-            "href": "/api/eventsession/by-event/29da279c-2cc9-4f30-9c1c-d523b7e49f73",
-            "title": "1 sessions",
-            "method": "GET"
-          },
-          "actor": {
-            "href": "/api/actor/516ecfce-035f-40ef-a6cb-236e963e03a8",
+            "href": "/api/actor/3c0a10e7-ab3f-43c1-b26c-64676722e69b",
             "title": "Actor Filter Owner",
             "method": "GET"
           },
           "event-report-options": {
-            "href": "/api/event-reports/events/29da279c-2cc9-4f30-9c1c-d523b7e49f73/options",
+            "href": "/api/event-reports/events/dd9459d1-8137-4190-9224-e979ef190b65/options",
             "title": "Event report options",
             "method": "GET"
           },

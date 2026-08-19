@@ -14,7 +14,6 @@ internal static class CerbosSettingsCacheInvalidation
         GovernanceSettingKeys.Cerbos.TenantCustomizationEnabled,
         GovernanceSettingKeys.Cerbos.Mode,
         GovernanceSettingKeys.Cerbos.CustomEndpoint,
-        GovernanceSettingKeys.Cerbos.FailureMode,
         GovernanceSettingKeys.Cerbos.CustomAdminEndpoint,
         GovernanceSettingKeys.Cerbos.GrpcEndpoint,
         InfrastructureSecretSettingKeys.Cerbos.CustomAdminUsername,

@@ -16,10 +16,6 @@ public class AddOrganizationMemberCommand : IRequest<BaseCommandResponse<Guid>>,
 
     string? ISecureRequest.ResourceId => AddOrganizationMemberDto.OrganizationId.ToString();
 
-    IDictionary<string, object>? ISecureRequest.ResourceAttributes =>
-        new Dictionary<string, object>
-        {
-            ["tenantId"] = TenantId.ToString("D"),
-            ["organizationId"] = AddOrganizationMemberDto.OrganizationId.ToString()
-        };
+    IAuthorizationFacts? ISecureRequest.AuthorizationFacts =>
+        new OrganizationMemberAuthorizationFacts(TenantId, AddOrganizationMemberDto.OrganizationId, null, null);
 }

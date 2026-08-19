@@ -14,5 +14,4 @@ public class CreateEventTemplateCommand : IRequest<BaseCommandResponse<Guid>>, I
     public required CreateEventTemplateDto TemplateDto { get; set; }
 
     string? ISecureRequest.ResourceId => null;
-    IDictionary<string, object>? ISecureRequest.ResourceAttributes => null;
 }

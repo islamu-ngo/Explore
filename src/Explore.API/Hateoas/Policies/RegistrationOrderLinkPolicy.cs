@@ -24,7 +24,7 @@ public sealed class RegistrationOrderLinkPolicy : ILinkPolicy<RegistrationOrderD
                 AuthorizationActions.RegistrationOrders.View,
                 resourceKind: ResourceKinds.RegistrationOrder,
                 resourceId: dto.Id.ToString("D"),
-                resourceAttributes: Attributes(dto));
+                facts: Facts(dto));
 
         yield return new LinkDefinition(
                 LinkRelations.ViewParticipants,
@@ -37,7 +37,7 @@ public sealed class RegistrationOrderLinkPolicy : ILinkPolicy<RegistrationOrderD
                 AuthorizationActions.RegistrationOrders.View,
                 resourceKind: ResourceKinds.RegistrationOrder,
                 resourceId: dto.Id.ToString("D"),
-                resourceAttributes: Attributes(dto));
+                facts: Facts(dto));
 
         if (dto.StatusCode is "AWAITING_REQUIREMENTS" or "READY_FOR_CHECKOUT")
         {
@@ -52,7 +52,7 @@ public sealed class RegistrationOrderLinkPolicy : ILinkPolicy<RegistrationOrderD
                     AuthorizationActions.RegistrationOrders.Continue,
                     resourceKind: ResourceKinds.RegistrationOrder,
                     resourceId: dto.Id.ToString("D"),
-                    resourceAttributes: Attributes(dto));
+                    facts: Facts(dto));
         }
 
         if (dto.StatusCode == "AWAITING_REQUIREMENTS")
@@ -68,7 +68,7 @@ public sealed class RegistrationOrderLinkPolicy : ILinkPolicy<RegistrationOrderD
                     AuthorizationActions.RegistrationOrders.Continue,
                     resourceKind: ResourceKinds.RegistrationOrder,
                     resourceId: dto.Id.ToString("D"),
-                    resourceAttributes: Attributes(dto));
+                    facts: Facts(dto));
         }
 
         if (dto.StatusCode == "READY_FOR_CHECKOUT")
@@ -86,7 +86,7 @@ public sealed class RegistrationOrderLinkPolicy : ILinkPolicy<RegistrationOrderD
                         AuthorizationActions.RegistrationOrders.Continue,
                         resourceKind: ResourceKinds.RegistrationOrder,
                         resourceId: dto.Id.ToString("D"),
-                        resourceAttributes: Attributes(dto));
+                        facts: Facts(dto));
             }
             else
             {
@@ -101,7 +101,7 @@ public sealed class RegistrationOrderLinkPolicy : ILinkPolicy<RegistrationOrderD
                         AuthorizationActions.RegistrationOrders.Continue,
                         resourceKind: ResourceKinds.RegistrationOrder,
                         resourceId: dto.Id.ToString("D"),
-                        resourceAttributes: Attributes(dto));
+                        facts: Facts(dto));
             }
 
             yield return new LinkDefinition(
@@ -115,7 +115,7 @@ public sealed class RegistrationOrderLinkPolicy : ILinkPolicy<RegistrationOrderD
                     AuthorizationActions.RegistrationOrders.Finalize,
                     resourceKind: ResourceKinds.RegistrationOrder,
                     resourceId: dto.Id.ToString("D"),
-                    resourceAttributes: Attributes(dto));
+                    facts: Facts(dto));
         }
 
         yield return new LinkDefinition(
@@ -129,26 +129,15 @@ public sealed class RegistrationOrderLinkPolicy : ILinkPolicy<RegistrationOrderD
                 AuthorizationActions.RegistrationOrders.Cancel,
                 resourceKind: ResourceKinds.RegistrationOrder,
                 resourceId: dto.Id.ToString("D"),
-                resourceAttributes: Attributes(dto));
+                facts: Facts(dto));
     }
 
-    private static Dictionary<string, object> Attributes(RegistrationOrderDto dto) => new()
-    {
-        ["tenantId"] = dto.TenantId.ToString("D"),
-        ["eventId"] = dto.EventId.ToString("D"),
-        ["accountUserId"] = dto.AccountUserId?.ToString("D") ?? string.Empty
-    };
+    private static IAuthorizationFacts Facts(RegistrationOrderDto dto) =>
+        new RegistrationOrderAuthorizationFacts(dto.TenantId, dto.EventId, dto.AccountUserId);
 }
 
-public sealed class RegistrationOrderCollectionLinkPolicy : ICollectionLinkPolicy<RegistrationOrderDto>
-{
-    public IEnumerable<LinkDefinition> GetItemLinks(RegistrationOrderDto dto, ClaimsPrincipal? user)
-    {
-        yield break;
-    }
-
-    public IEnumerable<LinkDefinition> GetCollectionLinks(ClaimsPrincipal? user)
-    {
-        yield break;
-    }
-}
+/// <summary>
+/// Order affordances are published on the detail policy, which has the order state needed to authorize
+/// them. The collection shape deliberately adds none.
+/// </summary>
+public sealed class RegistrationOrderCollectionLinkPolicy : ICollectionLinkPolicy<RegistrationOrderDto>;

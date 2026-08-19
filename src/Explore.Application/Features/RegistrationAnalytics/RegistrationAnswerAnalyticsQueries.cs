@@ -15,10 +15,6 @@ public sealed record GetRegistrationAnswerAnalyticsQuery(
 {
     string? ISecureRequest.ResourceId => EventId == Guid.Empty ? null : EventId.ToString("D");
 
-    IDictionary<string, object>? ISecureRequest.ResourceAttributes => new Dictionary<string, object>
-    {
-        ["eventId"] = EventId.ToString("D"),
-        ["formId"] = FormId.ToString("D"),
-        ["formVersionId"] = FormVersionId.ToString("D")
-    };
+    IAuthorizationFacts? ISecureRequest.AuthorizationFacts =>
+        new EventScopedAuthorizationFacts(Guid.Empty, EventId);
 }

@@ -241,8 +241,8 @@ public class ExportSharedContactsCommandHandlerTests
         var secureRequest = (ISecureRequest)command;
 
         await Assert.That(secureRequest.ResourceId).IsEqualTo(_orgId.ToString());
-        await Assert.That(secureRequest.ResourceAttributes!["organizationId"]).IsEqualTo(_orgId);
-        await Assert.That(secureRequest.ResourceAttributes!["tenantId"]).IsEqualTo(_tenantId);
+        await Assert.That(secureRequest.AuthorizationFacts)
+            .IsEqualTo(new ContactShareAuthorizationFacts(_tenantId, _orgId));
     }
 
     #endregion

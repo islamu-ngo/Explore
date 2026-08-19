@@ -31,7 +31,9 @@ public sealed class RegistrationFormTemplateLinkPolicyTests
         await Assert.That(instantiate.PermissionResourceKind).IsEqualTo(ResourceKinds.Event);
         await Assert.That(instantiate.PermissionAction).IsEqualTo(AuthorizationActions.Events.ManageRegistrationWorkflow);
         await Assert.That(instantiate.PermissionResourceId).IsNull();
-        await Assert.That(instantiate.PermissionResourceAttributes!["templateId"]).IsEqualTo(templateId.ToString());
+        // Instantiating a template is decided by authority over the target tenant; the template identifier
+        // names what is being copied and is not a policy input.
+        await Assert.That(instantiate.PermissionFacts).IsEqualTo(new TenantScopedAuthorizationFacts(tenantId));
         await Assert.That(instantiate.PermissionScope!.TenantId).IsEqualTo(tenantId.ToString());
         await Assert.That(create.PermissionResourceKind).IsEqualTo(ResourceKinds.RegistrationForm);
         await Assert.That(create.PermissionAction).IsEqualTo(AuthorizationActions.RegistrationForms.Create);

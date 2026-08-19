@@ -201,17 +201,16 @@ public sealed class RegistrationChannelLinkPolicy : ILinkPolicy<RegistrationChan
 {
     public IEnumerable<LinkDefinition> GetLinks(RegistrationChannelDto dto, ClaimsPrincipal? user)
     {
-        var attributes = RegistrationProviderManagementLinks.ChannelAttributes(dto.TenantId, dto.EventId, dto.RegistrationWorkflowId, dto.RegistrationRequirementId, dto.Id, dto.RegistrationProviderBindingId);
         yield return RegistrationProviderManagementLinks.EventPermissionLink(LinkRelations.Self, RouteNames.GetRegistrationChannels,
-            new { tenantId = dto.TenantId, eventId = dto.EventId, workflowId = dto.RegistrationWorkflowId, requirementId = dto.RegistrationRequirementId }, HttpMethods.Get, "Registration channels", AuthorizationActions.Events.ManageRegistrationChannels, dto.TenantId, dto.EventId, attributes);
+            new { tenantId = dto.TenantId, eventId = dto.EventId, workflowId = dto.RegistrationWorkflowId, requirementId = dto.RegistrationRequirementId }, HttpMethods.Get, "Registration channels", AuthorizationActions.Events.ManageRegistrationChannels, dto.TenantId, dto.EventId);
         yield return RegistrationProviderManagementLinks.EventPermissionLink(LinkRelations.Edit, RouteNames.UpdateRegistrationChannel,
-            new { tenantId = dto.TenantId, eventId = dto.EventId, workflowId = dto.RegistrationWorkflowId, requirementId = dto.RegistrationRequirementId, channelId = dto.Id }, HttpMethods.Put, "Update registration channel", AuthorizationActions.Events.ManageRegistrationChannels, dto.TenantId, dto.EventId, attributes);
+            new { tenantId = dto.TenantId, eventId = dto.EventId, workflowId = dto.RegistrationWorkflowId, requirementId = dto.RegistrationRequirementId, channelId = dto.Id }, HttpMethods.Put, "Update registration channel", AuthorizationActions.Events.ManageRegistrationChannels, dto.TenantId, dto.EventId);
         yield return RegistrationProviderManagementLinks.EventPermissionLink(LinkRelations.Delete, RouteNames.DeleteRegistrationChannel,
-            new { tenantId = dto.TenantId, eventId = dto.EventId, workflowId = dto.RegistrationWorkflowId, requirementId = dto.RegistrationRequirementId, channelId = dto.Id }, HttpMethods.Delete, "Delete registration channel", AuthorizationActions.Events.ManageRegistrationChannels, dto.TenantId, dto.EventId, attributes);
+            new { tenantId = dto.TenantId, eventId = dto.EventId, workflowId = dto.RegistrationWorkflowId, requirementId = dto.RegistrationRequirementId, channelId = dto.Id }, HttpMethods.Delete, "Delete registration channel", AuthorizationActions.Events.ManageRegistrationChannels, dto.TenantId, dto.EventId);
         if (!dto.IsNative && dto.RegistrationProviderBindingId is { } bindingId)
         {
             yield return RegistrationProviderManagementLinks.EventPermissionLink("launch-descriptor", RouteNames.GetRegistrationProviderLaunchDescriptor,
-                new { tenantId = dto.TenantId, eventId = dto.EventId, workflowId = dto.RegistrationWorkflowId, requirementId = dto.RegistrationRequirementId, channelId = dto.Id, bindingId }, HttpMethods.Get, "Registration provider launch descriptor", AuthorizationActions.Events.ManageRegistrationChannels, dto.TenantId, dto.EventId, attributes);
+                new { tenantId = dto.TenantId, eventId = dto.EventId, workflowId = dto.RegistrationWorkflowId, requirementId = dto.RegistrationRequirementId, channelId = dto.Id, bindingId }, HttpMethods.Get, "Registration provider launch descriptor", AuthorizationActions.Events.ManageRegistrationChannels, dto.TenantId, dto.EventId);
         }
     }
 }
@@ -237,8 +236,7 @@ public sealed class RegistrationChannelCollectionLinkPolicy : ICollectionLinkPol
             "Create registration channel",
             AuthorizationActions.Events.ManageRegistrationChannels,
             context.TenantId,
-            context.EventId,
-            context.WorkflowAttributes());
+            context.EventId);
     }
 }
 
@@ -248,8 +246,7 @@ public sealed class RegistrationProviderLaunchDescriptorLinkPolicy : ILinkPolicy
     {
         yield return RegistrationProviderManagementLinks.EventPermissionLink(LinkRelations.Self, RouteNames.GetRegistrationProviderLaunchDescriptor,
             new { tenantId = dto.TenantId, eventId = dto.EventId, workflowId = dto.WorkflowId, requirementId = dto.RequirementId, channelId = dto.ChannelId, bindingId = dto.BindingId },
-            HttpMethods.Get, "Registration provider launch descriptor", AuthorizationActions.Events.ManageRegistrationChannels, dto.TenantId, dto.EventId,
-            RegistrationProviderManagementLinks.ChannelAttributes(dto.TenantId, dto.EventId, dto.WorkflowId, dto.RequirementId, dto.ChannelId, dto.BindingId));
+            HttpMethods.Get, "Registration provider launch descriptor", AuthorizationActions.Events.ManageRegistrationChannels, dto.TenantId, dto.EventId);
     }
 
     public IEnumerable<LinkDefinition> GetItemLinks(RegistrationProviderLaunchDescriptorDto dto, ClaimsPrincipal? user) => GetLinks(dto, user);
@@ -259,27 +256,13 @@ public sealed class RegistrationProviderLaunchDescriptorLinkPolicy : ILinkPolicy
 
 internal static class RegistrationProviderManagementLinks
 {
-    public static LinkDefinition EventPermissionLink(string relation, string routeName, object? routeValues, string method, string title, string action, Guid tenantId, Guid eventId, IReadOnlyDictionary<string, object>? attributes = null) =>
+    public static LinkDefinition EventPermissionLink(string relation, string routeName, object? routeValues, string method, string title, string action, Guid tenantId, Guid eventId) =>
         new LinkDefinition(relation, routeName, routeValues, method, title, RequiresAuth: true)
-            .RequirePermission(action, ResourceKinds.Event, eventId.ToString("D"), attributes ?? RegistrationProviderAuthorization.EventAttributes(tenantId, eventId), new AuthorizationScope(TenantId: tenantId.ToString("D")));
+            .RequirePermission(action, ResourceKinds.Event, eventId.ToString("D"), new AuthorizationScope(TenantId: tenantId.ToString("D")), RegistrationProviderAuthorization.EventFacts(tenantId, eventId));
 
     public static LinkDefinition TenantPermissionLink(string relation, string routeName, object? routeValues, string method, string title, string action, Guid tenantId) =>
         new LinkDefinition(relation, routeName, routeValues, method, title, RequiresAuth: true)
-            .RequirePermission(action, ResourceKinds.Tenant, tenantId.ToString("D"), RegistrationProviderAuthorization.TenantAttributes(tenantId), new AuthorizationScope(TenantId: tenantId.ToString("D")));
-
-    public static IReadOnlyDictionary<string, object> ChannelAttributes(Guid tenantId, Guid eventId, Guid workflowId, Guid requirementId, Guid? channelId = null, Guid? bindingId = null)
-    {
-        var attributes = new Dictionary<string, object>
-        {
-            ["tenantId"] = tenantId.ToString("D"),
-            ["eventId"] = eventId.ToString("D"),
-            ["workflowId"] = workflowId.ToString("D"),
-            ["requirementId"] = requirementId.ToString("D")
-        };
-        if (channelId.HasValue) attributes["channelId"] = channelId.Value.ToString("D");
-        if (bindingId.HasValue) attributes["bindingId"] = bindingId.Value.ToString("D");
-        return attributes;
-    }
+            .RequirePermission(action, ResourceKinds.Tenant, tenantId.ToString("D"), new AuthorizationScope(TenantId: tenantId.ToString("D")), RegistrationProviderAuthorization.TenantFacts(tenantId));
 }
 
 public sealed class RegistrationProviderEventCollectionContext(Guid tenantId, Guid eventId) : ICollectionAuthorizationContext
@@ -289,10 +272,12 @@ public sealed class RegistrationProviderEventCollectionContext(Guid tenantId, Gu
 
     string ICollectionAuthorizationContext.AuthorizationResourceId => EventId.ToString("D");
 
-    IReadOnlyDictionary<string, object> ICollectionAuthorizationContext.AuthorizationResourceAttributes =>
-        RegistrationProviderAuthorization.EventAttributes(TenantId, EventId);
+    IAuthorizationFacts? ICollectionAuthorizationContext.AuthorizationFacts =>
+        RegistrationProviderAuthorization.EventFacts(TenantId, EventId);
 }
 
+// Workflow and requirement identifiers scope which channels are listed. Authorization stays on the
+// parent event, so they are route context rather than policy facts.
 public sealed class RegistrationProviderChannelCollectionContext(Guid tenantId, Guid eventId, Guid workflowId, Guid requirementId) : ICollectionAuthorizationContext
 {
     public Guid TenantId { get; } = tenantId;
@@ -302,9 +287,6 @@ public sealed class RegistrationProviderChannelCollectionContext(Guid tenantId, 
 
     string ICollectionAuthorizationContext.AuthorizationResourceId => EventId.ToString("D");
 
-    IReadOnlyDictionary<string, object> ICollectionAuthorizationContext.AuthorizationResourceAttributes =>
-        WorkflowAttributes();
-
-    internal IReadOnlyDictionary<string, object> WorkflowAttributes() =>
-        RegistrationProviderManagementLinks.ChannelAttributes(TenantId, EventId, WorkflowId, RequirementId);
+    IAuthorizationFacts? ICollectionAuthorizationContext.AuthorizationFacts =>
+        RegistrationProviderAuthorization.EventFacts(TenantId, EventId);
 }

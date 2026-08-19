@@ -19,6 +19,7 @@ This document consolidates all authorization-related knowledge for the platform.
     *   [Fallback RBAC Service](#42-fallback-rbac-service)
     *   [Provider Resolution Flow](#43-provider-resolution-flow)
     *   [Failure Modes](#44-failure-modes)
+    *   [Policy Revision, Drift, and Convergence](#47-policy-revision-drift-and-convergence)
 5.  [Roles and Permissions](#5-roles-and-permissions)
     *   [Administrative Hierarchy](#51-administrative-hierarchy)
     *   [Permission Boundaries](#52-permission-boundaries)
@@ -204,7 +205,7 @@ If reading the instance provider setting fails, runtime authorization uses the C
 The system is designed to fail safely — deny by default when the configured provider is unavailable.
 
 -   **Instance Cerbos Failure**: If the connection to the instance-level Cerbos PDP fails (e.g., network error, timeout), all authorization checks are denied. The operator explicitly chose Cerbos; falling back to a potentially more permissive local RBAC would silently bypass intended policies. Restore Cerbos connectivity or explicitly switch the authorization provider setting to local RBAC through instance administration to recover without Cerbos.
--   **BYO Cerbos Failure & The Safe-Mode Latch**: Any tenant BYO PDP failure triggers `FallbackAuthorizationService.ActivateSafeMode()`. Safe mode is a **one-way, thread-safe latch** for the provider instance: once activated, it logs a critical alert and denies all non-instance-admin requests to prevent bypassing stricter tenant policies. `failure_mode=open` remains parseable as a deprecated configuration value but is ignored at runtime; it never enables standard local RBAC fallback.
+-   **BYO Cerbos Failure & The Safe-Mode Latch**: Any tenant BYO PDP failure triggers `FallbackAuthorizationService.ActivateSafeMode()`. Once activated it logs a critical alert and denies all non-instance-admin requests, preventing a bypass of stricter tenant policies. The latch is scoped to the request, since `FallbackAuthorizationService` is registered scoped — it does not persist across requests and recovery needs no operator action. There is **no fail-open setting**: `cerbos.failure_mode` was deleted because it was parsed and then ignored at runtime, and a knob that appears to control fallback while controlling nothing is worse than none.
 -   **BYO Configuration Failure**: If tenant BYO configuration cannot be resolved, runtime authorization activates provider-instance safe mode instead of silently using local RBAC.
 -   **Blank BYO PDP Endpoint**: If a tenant explicitly sets `cerbos.mode=custom_endpoint` but leaves the custom PDP endpoint blank, the resolver preserves BYO mode, failure mode, and explicit BYO Admin API config. Runtime authorization activates safe mode; it does not fall back to the instance PDP or local RBAC.
 -   **Safe Logging**: Runtime failure logs avoid raw endpoints, Admin API credentials, JWTs/tokens, response bodies, and exception objects/messages. They keep safe operational metadata such as failure type, action, mode, counts, request id, and correlation id.
@@ -230,6 +231,41 @@ To prevent $N+1$ database queries during HATEOAS link evaluation for paginated r
 1.  **Authority Profile Pre-Resolution**: `FallbackAuthorizationService.Batch.cs` resolves an immutable `AuthorityProfile` (Instance Admin, Tenant Admin, Admin Org IDs, Admin Group IDs, Event Create Org/Group IDs) in **a single pass** at the start of a batch check.
 2.  **Batch Event Authority Snapshots**: `IEventAuthoritySnapshotService.GetForUserAndEventsAsync()` extracts distinct event IDs from all event-scoped checks and loads active `EventRoleAssignment` records in **a single SQL query**.
 3.  **In-Memory Evaluation Loop**: `EvaluateWithProfile()` evaluates all checks in CPU memory against the pre-resolved `AuthorityProfile` and event authority snapshot, executing batch checks in **$O(1)$ database calls**.
+
+### 4.7. Policy Revision, Drift, and Convergence
+
+Cerbos mode enforces whatever the PDP's policy store holds, which is not automatically the package this deployment published. Since the local carve-out was removed, no evaluator answers around a stale or unpublished store — so "which policy decided this?" has to be answerable rather than assumed.
+
+**How the revision is derived.** Cerbos exposes no store-wide revision or content hash. It does return a content hash per policy on `GET /admin/policy`, and that hash changes when a policy body is edited even if its identifier does not. `CerbosStoreRevision` folds those hashes — sorted by store identifier, since the PDP does not preserve request order — into a 16-character token. Nothing new is published or distributed; this is a read plus a deterministic fold over values Cerbos already computes.
+
+The token is comparable **only** against a previous observation of the same store on the same PDP version. It is never compared against the package `ContentHash`: different algorithms over different inputs, so they will never match. A PDP upgrade may shift the token with no policy change.
+
+**What each state means.**
+
+| Observed state | Meaning | Effect on decisions |
+| --- | --- | --- |
+| Revision observed | The store's exact policy set is identified | Decisions carry it in `AuthorizationProviderMetadata.ObservedRevision` |
+| Revision unknown | Admin API unreachable, unlistable, or package unhealthy | Sensitive actions deny with `revision_uncertain`; non-sensitive reads still proceed |
+| Store empty | Package was never published | PDP denies everything; status reports `PackageMismatch` |
+| Store incomplete | Publish was partial | Status reports `PackageMismatch` |
+
+**Fail-closed scope.** `AuthorizationActions.RequiresKnownPolicyRevision` uses a closed opt-in read set. Everything not on it — every write, plus `viewsharedcontacts` and `exportsharedcontacts`, which disclose consented registrant contact details — denies while the revision is unknown. An action nobody classified defaults to sensitive. Reads stay available deliberately: denying navigation on every Admin API blip converts a policy-store outage into a full product outage, whereas denying writes and sensitive disclosures bounds what an unidentified policy can actually do.
+
+BYO Cerbos is out of scope for this gate. A tenant's own PDP is published and versioned by that tenant, so the instance package revision says nothing about it.
+
+**Staleness and convergence bound.** The observed revision is cached per replica for **1 minute**, matching the provider-mode cache. Both the certain and uncertain results are cached, so an unreachable Admin API cannot turn into a per-batch stall on the request path.
+
+- `IAuthorizationRevisionProvider.Invalidate()` clears the observation on **the calling replica only**.
+- It is invoked after a policy package sync (success or failure — a partial publish also moves the store) and whenever the provider mode cache is invalidated.
+- **Other replicas converge within the cache duration.** There is no cross-replica invalidation and no distributed authorization event subsystem; convergence is bounded by expiry, not coordinated. During that window replicas may report different revisions, and a replica that has not yet re-observed may still deny sensitive actions after a successful publish elsewhere.
+
+**Readiness degradation.** An unhealthy package no longer reads as healthy: `PolicyPackageStatusResult.IsHealthy` is true only for `PolicyPackageIssueCode.None`. `PackageStatusUnknown` was previously counted healthy, which was defensible while a local evaluator answered around an unreachable store; nothing answers around it now.
+
+**Operator visibility and recovery.** `GET api/instance/settings/authz-provider/package/status` (instance-administrator gated) reports provider mode, package identity and hash, observed revision, whether it is certain, health, warnings, and a recovery action per issue code. It is deliberately separate from the anonymous `authz-provider/status` readiness probe, which must not disclose whether authorization is currently degraded.
+
+Recovery for the common cases: republish via `POST api/instance/settings/authz-provider/sync`; restore Admin API reachability if the store cannot be listed; grant the Admin API credentials policy-read permission if the listing succeeds but hashes cannot be read. A deployment that manages the store entirely out of band (read-only disk driver under GitOps) can never observe a revision, and should set `Authorization:DenySensitiveActionsOnUnknownRevision` to `false` — an explicit availability-over-integrity trade, not a default.
+
+**Decision telemetry.** Every decision is counted on `explore.authorization.decisions` with duration on `explore.authorization.decision.duration`, dimensioned by resource kind, action, outcome, reason code, and deciding provider. Denials additionally raise an `authorization.denied` span event carrying the observed revision. The revision is deliberately **not** a metric dimension: it is bounded at any instant but changes on every publish, so over a retention window it would multiply every other dimension without bound.
 
 ## 5. Roles and Permissions
 

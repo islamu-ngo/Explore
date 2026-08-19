@@ -51,7 +51,7 @@ public sealed class CreateTenantUserRoleGrantCommandHandlerTests
         await Assert.That(attribute!.Resource).IsEqualTo(ResourceKinds.TenantUserRoleGrant);
         await Assert.That(attribute.Action).IsEqualTo(AuthorizationActions.Create);
         await Assert.That(secureRequest.ResourceId).IsEqualTo(tenantId.ToString("D"));
-        await Assert.That(secureRequest.ResourceAttributes!["tenantId"]).IsEqualTo(tenantId.ToString("D"));
+        await Assert.That(secureRequest.AuthorizationFacts).IsEqualTo(new TenantScopedAuthorizationFacts(tenantId));
     }
 
     [Test]

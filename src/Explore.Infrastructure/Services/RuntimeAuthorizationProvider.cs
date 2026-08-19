@@ -35,9 +35,10 @@ namespace Explore.Infrastructure.Services;
 /// <list type="bullet">
 /// <item>Instance Cerbos failure → deny all checks. The operator chose Cerbos; falling back
 /// to a potentially more permissive local RBAC would silently bypass intended policies.</item>
-/// <item>BYO Cerbos failure - Safe-Mode activated (one-way latch): deny all except
-/// instance admin. Prevents bypassing stricter tenant policies. Legacy <c>FailureMode.Open</c>
-/// values are accepted for configuration parsing but ignored at runtime.</item>
+/// <item>BYO Cerbos failure - Safe-Mode activated: deny all except instance admin. Prevents
+/// bypassing stricter tenant policies. The latch is scoped to the request, so recovery needs no
+/// operator action. There is no configurable fail-open: an inert <c>cerbos.failure_mode</c> setting
+/// used to suggest otherwise and was deleted.</item>
 /// </list>
 /// <para><b>Setting access</b>: Always uses instance-level provider (never BYO).
 /// Settings are platform governance, not tenant-customizable.</para>
@@ -49,6 +50,7 @@ public sealed class RuntimeAuthorizationProvider : IAuthorizationProvider, IAuth
     private readonly ICerbosConfigResolver _cerbosConfigResolver;
     private readonly ISystemSettingRepository _systemSettingRepository;
     private readonly ISupportAccessSessionService? _supportAccessSessionService;
+    private readonly IAuthorizationRevisionProvider? _revisionProvider;
     private readonly IMemoryCache _cache;
     private readonly ILogger<RuntimeAuthorizationProvider> _logger;
     private readonly AuthorizationProviderDeploymentOptions _deploymentOptions;
@@ -66,8 +68,10 @@ public sealed class RuntimeAuthorizationProvider : IAuthorizationProvider, IAuth
         ILogger<RuntimeAuthorizationProvider> logger,
         IOptions<AuthorizationProviderDeploymentOptions> deploymentOptions,
         ISupportAccessSessionService? supportAccessSessionService = null,
+        IAuthorizationRevisionProvider? revisionProvider = null,
         BusinessMetrics? metrics = null)
     {
+        _revisionProvider = revisionProvider;
         _cerbosProvider = cerbosProvider;
         _localProvider = localProvider;
         _cerbosConfigResolver = cerbosConfigResolver;
@@ -99,6 +103,72 @@ public sealed class RuntimeAuthorizationProvider : IAuthorizationProvider, IAuth
         if (checks.Count == 0)
             return [];
 
+        var startedAt = Stopwatch.GetTimestamp();
+        var decisions = await EvaluateBatchAsync(checks, cancellationToken);
+        RecordDecisionTelemetry(checks, decisions, Stopwatch.GetElapsedTime(startedAt));
+        return decisions;
+    }
+
+    /// <summary>
+    /// Emits one bounded metric and one span event per decision.
+    /// <para>
+    /// This wraps every routing path — support-access boundary denials included — so a decision cannot be
+    /// returned without being counted. Batch duration is attributed to each decision in the batch rather
+    /// than divided among them: the question an operator asks is "how long does authorizing this
+    /// capability take", and a batched check genuinely did wait that long.
+    /// </para>
+    /// <para>
+    /// The observed revision goes on the span, never on the metric. See
+    /// <see cref="BusinessMetrics.RecordAuthorizationDecision"/> for why.
+    /// </para>
+    /// </summary>
+    private void RecordDecisionTelemetry(
+        IReadOnlyList<AuthorizationRequest> checks,
+        IReadOnlyList<AuthorizationDecision> decisions,
+        TimeSpan duration)
+    {
+        if (_metrics is null && Activity.Current is null)
+            return;
+
+        var durationMs = duration.TotalMilliseconds;
+        var activity = Activity.Current;
+
+        for (var i = 0; i < decisions.Count && i < checks.Count; i++)
+        {
+            var check = checks[i];
+            var decision = decisions[i];
+            var outcome = decision.IsAllowed ? "allowed" : "denied";
+
+            _metrics?.RecordAuthorizationDecision(
+                check.ResourceKind,
+                check.Action,
+                outcome,
+                decision.ReasonCode,
+                decision.Provider.ProviderId,
+                durationMs);
+
+            // Only denials get a span event. Tagging every allow would bury the interesting case in a
+            // trace that is mostly allows, and the metric already carries the allow counts.
+            if (activity is null || decision.IsAllowed)
+                continue;
+
+            activity.AddEvent(new ActivityEvent(
+                "authorization.denied",
+                tags: new ActivityTagsCollection
+                {
+                    { "authorization.resource_kind", check.ResourceKind },
+                    { "authorization.action", check.Action },
+                    { "authorization.reason_code", decision.ReasonCode },
+                    { "authorization.provider", decision.Provider.ProviderId },
+                    { "authorization.observed_revision", decision.Provider.ObservedRevision ?? "unknown" }
+                }));
+        }
+    }
+
+    private async Task<IReadOnlyList<AuthorizationDecision>> EvaluateBatchAsync(
+        IReadOnlyList<AuthorizationRequest> checks,
+        CancellationToken cancellationToken)
+    {
         var supportBoundary = await ApplySupportAccessBoundaryAsync(checks, cancellationToken);
         if (supportBoundary.EffectiveChecks.Count == 0)
             return supportBoundary.Results;
@@ -135,67 +205,11 @@ public sealed class RuntimeAuthorizationProvider : IAuthorizationProvider, IAuth
             return supportBoundary.Complete(evaluatedResults);
         }
 
-        // These checks have canonical local parity because handlers or pre-create flows enforce
-        // the resource-specific policy after the coarse authorization gate. Keep them local in
-        // instance-Cerbos mode so stale PDP policy packages cannot block canonical handlers.
-        var localCheckIndexes = GetHandlerOwnedLocalCheckIndexes(effectiveChecks);
-        if (localCheckIndexes.Count == effectiveChecks.Count)
-        {
-            evaluatedResults = await _localProvider.AuthorizeBatchAsync(effectiveChecks, cancellationToken);
-            return supportBoundary.Complete(evaluatedResults);
-        }
-
-        if (localCheckIndexes.Count > 0)
-        {
-            evaluatedResults = await ExecuteMixedLocalAndInstanceAsync(effectiveChecks, localCheckIndexes, cancellationToken);
-            return supportBoundary.Complete(evaluatedResults);
-        }
-
-        // Step 2: Fall back to instance-level provider resolution (Cerbos or Local)
+        // The selected instance provider decides the whole batch. There is no third "both" mode: splitting
+        // a batch between Local and Cerbos would make the local evaluator a second production authority,
+        // and a tightened Cerbos rule would then have no effect on the capabilities routed around it.
         evaluatedResults = await ExecuteInstanceProviderAsync(effectiveChecks, cancellationToken);
         return supportBoundary.Complete(evaluatedResults);
-    }
-
-    private async Task<IReadOnlyList<AuthorizationDecision>> ExecuteMixedLocalAndInstanceAsync(
-        IReadOnlyList<AuthorizationRequest> checks,
-        IReadOnlyList<int> localCheckIndexes,
-        CancellationToken cancellationToken)
-    {
-        var results = Enumerable.Repeat(
-            AuthorizationDecision.Deny(AuthorizationProviderMetadata.Runtime, AuthorizationDecisionReasonCodes.ProviderError),
-            checks.Count).ToArray();
-
-        var localChecks = localCheckIndexes
-            .Select(index => checks[index])
-            .ToArray();
-        var localResults = await _localProvider.AuthorizeBatchAsync(localChecks, cancellationToken);
-        for (var i = 0; i < localCheckIndexes.Count; i++)
-        {
-            results[localCheckIndexes[i]] = i < localResults.Count
-                ? localResults[i]
-                : AuthorizationDecision.Deny(AuthorizationProviderMetadata.Runtime, AuthorizationDecisionReasonCodes.ProviderError);
-        }
-
-        var localIndexSet = localCheckIndexes.ToHashSet();
-        var instanceCheckIndexes = Enumerable.Range(0, checks.Count)
-            .Where(index => !localIndexSet.Contains(index))
-            .ToArray();
-
-        if (instanceCheckIndexes.Length == 0)
-            return results;
-
-        var instanceChecks = instanceCheckIndexes
-            .Select(index => checks[index])
-            .ToArray();
-        var instanceResults = await ExecuteInstanceProviderAsync(instanceChecks, cancellationToken);
-        for (var i = 0; i < instanceCheckIndexes.Length; i++)
-        {
-            results[instanceCheckIndexes[i]] = i < instanceResults.Count
-                ? instanceResults[i]
-                : AuthorizationDecision.Deny(AuthorizationProviderMetadata.Runtime, AuthorizationDecisionReasonCodes.ProviderError);
-        }
-
-        return results;
     }
 
     private async Task<IReadOnlyList<AuthorizationDecision>> ExecuteInstanceProviderAsync(
@@ -206,9 +220,11 @@ public sealed class RuntimeAuthorizationProvider : IAuthorizationProvider, IAuth
 
         try
         {
-            return provider == _cerbosProvider
-                ? await _cerbosProvider.AuthorizeBatchWithUnavailableSignalAsync(checks, cancellationToken)
-                : await provider.AuthorizeBatchAsync(checks, cancellationToken);
+            if (provider != _cerbosProvider)
+                return await provider.AuthorizeBatchAsync(checks, cancellationToken);
+
+            var decisions = await _cerbosProvider.AuthorizeBatchWithUnavailableSignalAsync(checks, cancellationToken);
+            return await ApplyRevisionCertaintyAsync(checks, decisions, cancellationToken);
         }
         catch (Exception ex) when (provider == _cerbosProvider)
         {
@@ -225,6 +241,76 @@ public sealed class RuntimeAuthorizationProvider : IAuthorizationProvider, IAuth
                 .Select(_ => AuthorizationDecision.Deny(AuthorizationProviderMetadata.Cerbos, AuthorizationDecisionReasonCodes.ProviderUnavailable))
                 .ToArray();
         }
+    }
+
+    /// <summary>
+    /// Stamps instance-Cerbos decisions with the policy revision that produced them, and denies sensitive
+    /// actions when that revision cannot be established.
+    /// <para>
+    /// This lives here rather than in <see cref="CerbosAuthorizationService"/> because this is the only
+    /// component that knows which provider actually decided a batch. It applies to the instance PDP only:
+    /// a tenant's BYO PDP is published and versioned by that tenant, so the instance package revision says
+    /// nothing about it, and gating BYO on it would deny for a reason the tenant cannot act on.
+    /// </para>
+    /// <para>
+    /// Reads pass through unstamped-but-allowed on uncertainty. Denying navigation because a revision
+    /// could not be read would take the whole product down for a policy-store outage; denying writes and
+    /// sensitive disclosures bounds the blast radius to what an unknown policy could actually damage.
+    /// </para>
+    /// </summary>
+    private async Task<IReadOnlyList<AuthorizationDecision>> ApplyRevisionCertaintyAsync(
+        IReadOnlyList<AuthorizationRequest> checks,
+        IReadOnlyList<AuthorizationDecision> decisions,
+        CancellationToken cancellationToken)
+    {
+        if (_revisionProvider is null)
+            return decisions;
+
+        var revision = await _revisionProvider.GetCurrentAsync(cancellationToken);
+
+        if (revision.IsCertain)
+        {
+            var stamped = new AuthorizationProviderMetadata(
+                AuthorizationProviderMetadata.Cerbos.ProviderId,
+                revision.Value);
+
+            return decisions.Select(decision => decision with { Provider = stamped }).ToArray();
+        }
+
+        if (!_deploymentOptions.DenySensitiveActionsOnUnknownRevision)
+            return decisions;
+
+        var results = new AuthorizationDecision[decisions.Count];
+        var deniedCount = 0;
+
+        for (var i = 0; i < decisions.Count; i++)
+        {
+            var isSensitive = i < checks.Count
+                && AuthorizationActions.RequiresKnownPolicyRevision(checks[i].Action);
+
+            if (!isSensitive || !decisions[i].IsAllowed)
+            {
+                results[i] = decisions[i];
+                continue;
+            }
+
+            results[i] = AuthorizationDecision.Deny(
+                AuthorizationProviderMetadata.Cerbos,
+                AuthorizationDecisionReasonCodes.RevisionUncertain);
+            deniedCount++;
+        }
+
+        if (deniedCount > 0)
+        {
+            _logger.LogWarning(
+                "Denied {DeniedCount} of {Count} sensitive authorization check(s): the Cerbos policy revision " +
+                "could not be established, so an allow could not be attributed to a known policy. " +
+                "Restore Cerbos Admin API reachability or re-publish the policy package to resolve.",
+                deniedCount,
+                decisions.Count);
+        }
+
+        return results;
     }
 
     private async Task<SupportAccessBoundaryResult> ApplySupportAccessBoundaryAsync(
@@ -248,60 +334,37 @@ public sealed class RuntimeAuthorizationProvider : IAuthorizationProvider, IAuth
 
         for (var i = 0; i < checks.Count; i++)
         {
-            var enrichedCheck = EnrichWithSupportAccessContext(checks[i], supportContext);
-            if (!IsSupportAccessBoundedResource(enrichedCheck))
+            var check = checks[i];
+            if (!IsSupportAccessBoundedResource(check))
             {
-                effectiveChecks.Add(enrichedCheck);
+                effectiveChecks.Add(check);
                 originalIndexes.Add(i);
                 continue;
             }
 
-            var denialReason = GetSupportAccessBoundaryDenialReason(supportContext, enrichedCheck);
+            var denialReason = GetSupportAccessBoundaryDenialReason(supportContext, check);
             if (denialReason is null)
             {
-                effectiveChecks.Add(enrichedCheck);
+                effectiveChecks.Add(check);
                 originalIndexes.Add(i);
                 continue;
             }
 
             _metrics?.RecordSupportAccessBoundaryDenial(
                 denialReason,
-                enrichedCheck.Action,
+                check.Action,
                 supportContext.Mode?.ToString());
-            AddSupportAccessBoundaryDeniedTraceEvent(enrichedCheck, denialReason);
+            AddSupportAccessBoundaryDeniedTraceEvent(check, denialReason);
             _logger.LogWarning(
                 "Support-access authorization boundary denied resource={ResourceKind}/{ResourceId} action={Action} reason={Reason} sessionId={SupportAccessSessionId}",
-                enrichedCheck.ResourceKind,
-                enrichedCheck.ResourceId,
-                enrichedCheck.Action,
+                check.ResourceKind,
+                check.ResourceId,
+                check.Action,
                 denialReason,
                 supportContext.SessionId?.ToString("D") ?? "none");
         }
 
         return new SupportAccessBoundaryResult(effectiveChecks, originalIndexes, results);
-    }
-
-    private static AuthorizationRequest EnrichWithSupportAccessContext(
-        AuthorizationRequest check,
-        ISupportAccessContext supportContext)
-    {
-        var attributes = TrustedAttributes(check) is null
-            ? new Dictionary<string, object>()
-            : TrustedAttributes(check)!;
-
-        attributes["supportAccessActive"] = supportContext.IsActive;
-        attributes["supportAccessWasForwarded"] = supportContext.WasForwarded;
-        attributes["supportAccessAllowsWrites"] = supportContext.AllowsWrites;
-
-        AddIfPresent(attributes, "supportAccessSessionId", supportContext.SessionId);
-        AddIfPresent(attributes, "supportAccessActorUserId", supportContext.ActorUserId);
-        AddIfPresent(attributes, "supportAccessTargetTenantId", supportContext.TargetTenantId);
-        AddIfPresent(attributes, "supportAccessTargetTenantUserId", supportContext.TargetTenantUserId);
-
-        if (supportContext.Mode.HasValue)
-            attributes["supportAccessMode"] = supportContext.Mode.Value.ToString();
-
-        return check with { ResourceAttributes = attributes };
     }
 
     private static void AddSupportAccessTraceTags(ISupportAccessContext supportContext)
@@ -432,16 +495,16 @@ public sealed class RuntimeAuthorizationProvider : IAuthorizationProvider, IAuth
         return attributeValue is string stringValue && Guid.TryParse(stringValue, out value);
     }
 
-    private static void AddIfPresent(IDictionary<string, object> attributes, string key, Guid? value)
-    {
-        if (value.HasValue && value.Value != Guid.Empty)
-            attributes[key] = value.Value.ToString("D");
-    }
-
     public void InvalidateInstanceMode()
     {
         _cache.Remove(InstanceModeCacheKey);
-        _logger.LogInformation("Authorization provider mode cache invalidated");
+
+        // A mode change changes which policy store is authoritative, so the revision observed under the
+        // previous mode describes a store that no longer decides anything. Dropping both together keeps
+        // "which provider" and "which policy set" from disagreeing inside one cache window.
+        _revisionProvider?.Invalidate();
+
+        _logger.LogInformation("Authorization provider mode and policy revision caches invalidated");
     }
 
     /// <summary>
@@ -474,8 +537,7 @@ public sealed class RuntimeAuthorizationProvider : IAuthorizationProvider, IAuth
         catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
         {
             _logger.LogWarning(
-                "BYO Cerbos PDP unreachable. Activating safe mode regardless of configured failure_mode={FailureMode}. FailureType={FailureType}",
-                config.FailureMode,
+                "BYO Cerbos PDP unreachable. Activating safe mode. FailureType={FailureType}",
                 ex.GetType().Name);
 
             // Never fall back to instance PDP or standard local RBAC; tenant policies might be stricter.
@@ -530,81 +592,8 @@ public sealed class RuntimeAuthorizationProvider : IAuthorizationProvider, IAuth
         return mode == "cerbos" ? _cerbosProvider : _localProvider;
     }
 
-    private static IReadOnlyList<int> GetHandlerOwnedLocalCheckIndexes(IReadOnlyList<AuthorizationRequest> checks)
-    {
-        var indexes = new List<int>();
-        for (var i = 0; i < checks.Count; i++)
-        {
-            if (IsHandlerOwnedLocalCheck(checks[i]))
-                indexes.Add(i);
-        }
-
-        return indexes;
-    }
-
-    private static bool IsHandlerOwnedLocalCheck(AuthorizationRequest check)
-    {
-        return check.ResourceKind == ResourceKinds.AiConversation
-            || IsHandlerOwnedUserProfileUpdateCheck(check)
-            || IsHandlerOwnedEventCreateCheck(check)
-            || IsHandlerOwnedOrganizationCreateCheck(check)
-            || IsHandlerOwnedEventSessionPreCreateCheck(check)
-            || IsHandlerOwnedStorageUploadSessionCheck(check);
-    }
-
-    private static bool IsHandlerOwnedUserProfileUpdateCheck(AuthorizationRequest check)
-    {
-        return check.ResourceKind == ResourceKinds.User
-            && check.Action == AuthorizationActions.Update
-            && Guid.TryParse(check.ResourceId, out _);
-    }
-
-    private static bool IsHandlerOwnedEventCreateCheck(AuthorizationRequest check)
-    {
-        return check.ResourceKind == ResourceKinds.Event
-            && check.Action == AuthorizationActions.Create
-            && string.Equals(check.ResourceId, "create", StringComparison.Ordinal);
-    }
-
-    private static bool IsHandlerOwnedOrganizationCreateCheck(AuthorizationRequest check)
-    {
-        return check.ResourceKind == ResourceKinds.Organization
-            && check.Action == AuthorizationActions.Create
-            && string.Equals(check.ResourceId, CreateOrganizationCommand.PreCreateResourceId, StringComparison.Ordinal)
-            && HasAuthorizationPhase(check, CreateOrganizationCommand.PreCreateAuthorizationPhase);
-    }
-
-    private static bool IsHandlerOwnedEventSessionPreCreateCheck(AuthorizationRequest check)
-    {
-        return check.ResourceKind == ResourceKinds.EventSession
-            && check.Action == AuthorizationActions.Create
-            && HasAuthorizationPhase(check, AuthorizationPhases.PreCreate);
-    }
-
-    private static bool IsHandlerOwnedStorageUploadSessionCheck(AuthorizationRequest check)
-    {
-        return check.ResourceKind == ResourceKinds.StorageObject
-            && check.Action == AuthorizationActions.Create
-            && (string.Equals(check.ResourceId, nameof(CreateStorageUploadSessionCommand), StringComparison.Ordinal)
-                || Guid.TryParse(check.ResourceId, out _));
-    }
-
-    private static bool HasAuthorizationPhase(AuthorizationRequest check, string phase)
-    {
-        return TrustedAttributes(check)?.TryGetValue("authorizationPhase", out var value) == true
-            && string.Equals(value?.ToString(), phase, StringComparison.Ordinal);
-    }
-
-    private static Dictionary<string, object>? TrustedAttributes(AuthorizationRequest request)
-    {
-        var factAttributes = AuthorizationFactsAttributeProjection.ToAttributes(request.Facts);
-        if (factAttributes is not null)
-            return factAttributes;
-
-        return request.ResourceAttributes is null
-            ? null
-            : new Dictionary<string, object>(request.ResourceAttributes);
-    }
+    private static Dictionary<string, object>? TrustedAttributes(AuthorizationRequest request) =>
+        AuthorizationFactAttributeProjection.ToAttributes(request.Facts);
 
     private static bool UsesSettingAuthorization(IReadOnlyList<AuthorizationRequest> checks)
     {

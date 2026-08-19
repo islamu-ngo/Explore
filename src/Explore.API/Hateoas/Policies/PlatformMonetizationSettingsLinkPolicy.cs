@@ -18,7 +18,7 @@ public sealed class PlatformMonetizationSettingsLinkPolicy : ILinkPolicy<Platfor
             .RequirePermission(AuthorizationActions.InstanceSettings.View,
                 ResourceKinds.InstanceSetting,
                 GetPlatformMonetizationSettingsQuery.SettingKey,
-                Attributes());
+                facts: InstanceScopedAuthorizationFacts.Instance);
 
         yield return new LinkDefinition(
                 LinkRelations.Edit,
@@ -29,24 +29,10 @@ public sealed class PlatformMonetizationSettingsLinkPolicy : ILinkPolicy<Platfor
             .RequirePermission(AuthorizationActions.InstanceSettings.Update,
                 ResourceKinds.InstanceSetting,
                 GetPlatformMonetizationSettingsQuery.SettingKey,
-                Attributes());
+                facts: InstanceScopedAuthorizationFacts.Instance);
     }
 
-    private static IReadOnlyDictionary<string, object> Attributes() => new Dictionary<string, object>
-    {
-        ["settingKey"] = GetPlatformMonetizationSettingsQuery.SettingKey
-    };
 }
 
-public sealed class PlatformMonetizationSettingsCollectionLinkPolicy : ICollectionLinkPolicy<PlatformMonetizationSettingsDto>
-{
-    public IEnumerable<LinkDefinition> GetItemLinks(PlatformMonetizationSettingsDto dto, ClaimsPrincipal? user)
-    {
-        yield break;
-    }
-
-    public IEnumerable<LinkDefinition> GetCollectionLinks(ClaimsPrincipal? user)
-    {
-        yield break;
-    }
-}
+/// <summary>Monetization settings are a singleton resource; the collection shape has no affordances.</summary>
+public sealed class PlatformMonetizationSettingsCollectionLinkPolicy : ICollectionLinkPolicy<PlatformMonetizationSettingsDto>;

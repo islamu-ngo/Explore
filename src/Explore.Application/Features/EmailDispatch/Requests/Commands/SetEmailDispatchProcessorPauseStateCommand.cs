@@ -16,9 +16,6 @@ public sealed class SetEmailDispatchProcessorPauseStateCommand : IRequest<BaseCo
 
     string ISecureRequest.ResourceId => EmailDispatchProcessorControl.SettingKey;
 
-    IDictionary<string, object> ISecureRequest.ResourceAttributes => new Dictionary<string, object>
-    {
-        ["settingKey"] = EmailDispatchProcessorControl.SettingKey,
-        ["emailDispatchOperation"] = IsPaused ? "pause" : "resume"
-    };
+    IAuthorizationFacts? ISecureRequest.AuthorizationFacts =>
+        InstanceScopedAuthorizationFacts.Instance;
 }

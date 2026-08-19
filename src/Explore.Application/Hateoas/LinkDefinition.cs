@@ -18,8 +18,8 @@ using Explore.Application.Authorization;
 /// <param name="PermissionResourceKind">Optional resource kind used for action-level authorization.</param>
 /// <param name="PermissionAction">Optional permission action used for action-level authorization.</param>
 /// <param name="PermissionResourceId">Optional explicit resource identifier for permission checks.</param>
-/// <param name="PermissionResourceAttributes">Optional resource attributes passed to authorization provider.</param>
 /// <param name="PermissionScope">Optional tenant/org authorization scope passed to authorization provider.</param>
+/// <param name="PermissionFacts">Closed typed policy facts passed to the authorization provider.</param>
 /// <param name="AdvertiseWhenAnonymous">Whether an authenticated link may still be advertised to anonymous clients for login-intercept flows.</param>
 public sealed record LinkDefinition(
     string Rel,
@@ -33,7 +33,6 @@ public sealed record LinkDefinition(
     string? PermissionResourceKind = null,
     string? PermissionAction = null,
     string? PermissionResourceId = null,
-    IReadOnlyDictionary<string, object>? PermissionResourceAttributes = null,
     AuthorizationScope? PermissionScope = null,
     IAuthorizationFacts? PermissionFacts = null,
     bool AdvertiseWhenAnonymous = false)
@@ -112,7 +111,6 @@ public sealed record LinkDefinition(
         string resourceKind,
         string action,
         string? resourceId = null,
-        IReadOnlyDictionary<string, object>? resourceAttributes = null,
         AuthorizationScope? scope = null,
         IAuthorizationFacts? facts = null) =>
         this with
@@ -120,7 +118,6 @@ public sealed record LinkDefinition(
             PermissionResourceKind = resourceKind,
             PermissionAction = action,
             PermissionResourceId = resourceId,
-            PermissionResourceAttributes = resourceAttributes,
             PermissionScope = scope,
             PermissionFacts = facts
         };

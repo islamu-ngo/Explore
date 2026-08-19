@@ -28,7 +28,7 @@ public sealed class ControlPlaneOverviewHateoasTests
         await Assert.That(self.PermissionResourceKind).IsEqualTo(ResourceKinds.InstanceSetting);
         await Assert.That(self.PermissionAction).IsEqualTo(AuthorizationActions.InstanceSettings.View);
         await Assert.That(self.PermissionResourceId).IsEqualTo(GetControlPlaneOverviewQuery.SettingKey);
-        await Assert.That(self.PermissionResourceAttributes?["settingKey"]).IsEqualTo(GetControlPlaneOverviewQuery.SettingKey);
+        await Assert.That(self.PermissionFacts).IsEqualTo(InstanceScopedAuthorizationFacts.Instance);
 
         var domains = links.Single(link => link.Rel == "domains");
         await Assert.That(domains.RouteName).IsEqualTo(RouteNames.GetControlPlaneDomains);
@@ -49,8 +49,7 @@ public sealed class ControlPlaneOverviewHateoasTests
         await Assert.That(plans.PermissionResourceKind).IsEqualTo(ResourceKinds.InstanceSetting);
         await Assert.That(plans.PermissionAction).IsEqualTo(AuthorizationActions.InstanceSettings.View);
         await Assert.That(plans.PermissionResourceId).IsEqualTo(GetControlPlaneTenantPlanListQuery.SettingKey);
-        await Assert.That(plans.PermissionResourceAttributes?["settingKey"])
-            .IsEqualTo(GetControlPlaneTenantPlanListQuery.SettingKey);
+        await Assert.That(plans.PermissionFacts).IsEqualTo(InstanceScopedAuthorizationFacts.Instance);
 
         var storage = links.Single(link => link.Rel == "storage");
         await Assert.That(storage.RouteName).IsEqualTo(RouteNames.GetInstanceStorageSettings);

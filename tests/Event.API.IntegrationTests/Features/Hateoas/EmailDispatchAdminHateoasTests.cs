@@ -54,7 +54,7 @@ public sealed class EmailDispatchAdminHateoasTests
         await Assert.That(replay.PermissionAction).IsEqualTo(AuthorizationActions.EmailDispatches.Replay);
         await Assert.That(replay.PermissionResourceId).IsEqualTo(outboxId.ToString());
         await Assert.That(replay.PermissionScope?.TenantId).IsEqualTo(tenantId.ToString());
-        await AssertPermissionAttributes(replay, tenantId, outboxId, dto);
+        await AssertPermissionFacts(replay, tenantId, outboxId);
         await Assert.That(GetRouteValue<Guid>(replay.RouteValues, "tenantId")).IsEqualTo(tenantId);
         await Assert.That(GetRouteValue<Guid>(replay.RouteValues, "outboxId")).IsEqualTo(outboxId);
 
@@ -66,7 +66,7 @@ public sealed class EmailDispatchAdminHateoasTests
         await Assert.That(park.PermissionAction).IsEqualTo(AuthorizationActions.EmailDispatches.Park);
         await Assert.That(park.PermissionResourceId).IsEqualTo(outboxId.ToString());
         await Assert.That(park.PermissionScope?.TenantId).IsEqualTo(tenantId.ToString());
-        await AssertPermissionAttributes(park, tenantId, outboxId, dto);
+        await AssertPermissionFacts(park, tenantId, outboxId);
         await Assert.That(GetRouteValue<Guid>(park.RouteValues, "tenantId")).IsEqualTo(tenantId);
         await Assert.That(GetRouteValue<Guid>(park.RouteValues, "outboxId")).IsEqualTo(outboxId);
 
@@ -74,7 +74,7 @@ public sealed class EmailDispatchAdminHateoasTests
         await Assert.That(resolve.RouteName).IsEqualTo(RouteNames.ResolveEmailDispatchWithoutReplay);
         await Assert.That(resolve.Method).IsEqualTo("POST");
         await Assert.That(resolve.PermissionAction).IsEqualTo(AuthorizationActions.EmailDispatches.Resolve);
-        await AssertPermissionAttributes(resolve, tenantId, outboxId, dto);
+        await AssertPermissionFacts(resolve, tenantId, outboxId);
     }
 
     [Test]
@@ -158,17 +158,13 @@ public sealed class EmailDispatchAdminHateoasTests
         return value is T typedValue ? typedValue : default;
     }
 
-    private static async Task AssertPermissionAttributes(
-        LinkDefinition link,
-        Guid tenantId,
-        Guid outboxId,
-        EmailDispatchStatusDto dto)
+    /// <summary>
+    /// Email-dispatch administration is decided by tenant authority alone. The outbox row, its source and
+    /// its delivery status select which link is advertised; none of them is a policy input.
+    /// </summary>
+    private static async Task AssertPermissionFacts(LinkDefinition link, Guid tenantId, Guid outboxId)
     {
-        await Assert.That(link.PermissionResourceAttributes).IsNotNull();
-        await Assert.That(link.PermissionResourceAttributes!["tenantId"]).IsEqualTo(tenantId.ToString());
-        await Assert.That(link.PermissionResourceAttributes["outboxId"]).IsEqualTo(outboxId.ToString());
-        await Assert.That(link.PermissionResourceAttributes["sourceType"]).IsEqualTo(dto.SourceType);
-        await Assert.That(link.PermissionResourceAttributes["sourceId"]).IsEqualTo(dto.SourceId.ToString());
-        await Assert.That(link.PermissionResourceAttributes["deliveryStatus"]).IsEqualTo(dto.DeliveryStatus);
+        await Assert.That(link.PermissionResourceId).IsEqualTo(outboxId.ToString());
+        await Assert.That(link.PermissionFacts).IsEqualTo(new TenantScopedAuthorizationFacts(tenantId));
     }
 }

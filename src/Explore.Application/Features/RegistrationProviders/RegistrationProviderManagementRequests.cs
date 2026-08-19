@@ -13,7 +13,7 @@ public sealed record GetRegistrationProviderHealthQuery(Guid TenantId, Guid Even
     : IRequest<IReadOnlyList<RegistrationProviderBindingHealthDto>>, ISecureRequest
 {
     string? ISecureRequest.ResourceId => EventId == Guid.Empty ? null : EventId.ToString("D");
-    IDictionary<string, object>? ISecureRequest.ResourceAttributes => TenantId == Guid.Empty || EventId == Guid.Empty ? null : RegistrationProviderAuthorization.EventAttributes(TenantId, EventId);
+    IAuthorizationFacts? ISecureRequest.AuthorizationFacts => RegistrationProviderAuthorization.EventFacts(TenantId, EventId);
 }
 
 [AuthorizeResource(ResourceKinds.Event, AuthorizationActions.Events.ManageRegistrationChannels)]
@@ -21,7 +21,7 @@ public sealed record GetRegistrationProviderQueueQuery(Guid TenantId, Guid Event
     : IRequest<IReadOnlyList<RegistrationProviderParkedQueueItemDto>>, ISecureRequest
 {
     string? ISecureRequest.ResourceId => EventId == Guid.Empty ? null : EventId.ToString("D");
-    IDictionary<string, object>? ISecureRequest.ResourceAttributes => TenantId == Guid.Empty || EventId == Guid.Empty ? null : RegistrationProviderAuthorization.EventAttributes(TenantId, EventId);
+    IAuthorizationFacts? ISecureRequest.AuthorizationFacts => RegistrationProviderAuthorization.EventFacts(TenantId, EventId);
 }
 
 [AuthorizeResource(ResourceKinds.Event, AuthorizationActions.Events.ManageRegistrationChannels)]
@@ -29,7 +29,7 @@ public sealed record PollRegistrationProviderReconciliationCommand(Guid TenantId
     : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
 {
     string? ISecureRequest.ResourceId => EventId == Guid.Empty ? null : EventId.ToString("D");
-    IDictionary<string, object>? ISecureRequest.ResourceAttributes => TenantId == Guid.Empty || EventId == Guid.Empty ? null : RegistrationProviderAuthorization.EventAttributes(TenantId, EventId);
+    IAuthorizationFacts? ISecureRequest.AuthorizationFacts => RegistrationProviderAuthorization.EventFacts(TenantId, EventId);
 }
 
 [AuthorizeResource(ResourceKinds.Event, AuthorizationActions.Events.ManageRegistrationChannels)]
@@ -37,7 +37,7 @@ public sealed record QueueManualRegistrationProviderImportCommand(Guid TenantId,
     : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
 {
     string? ISecureRequest.ResourceId => EventId == Guid.Empty ? null : EventId.ToString("D");
-    IDictionary<string, object>? ISecureRequest.ResourceAttributes => TenantId == Guid.Empty || EventId == Guid.Empty ? null : RegistrationProviderAuthorization.EventAttributes(TenantId, EventId);
+    IAuthorizationFacts? ISecureRequest.AuthorizationFacts => RegistrationProviderAuthorization.EventFacts(TenantId, EventId);
 }
 
 [AuthorizeResource(ResourceKinds.Event, AuthorizationActions.Events.ManageRegistrationChannels)]
@@ -45,7 +45,7 @@ public sealed record RetryRegistrationProviderParkedItemCommand(Guid TenantId, G
     : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
 {
     string? ISecureRequest.ResourceId => EventId == Guid.Empty ? null : EventId.ToString("D");
-    IDictionary<string, object>? ISecureRequest.ResourceAttributes => TenantId == Guid.Empty || EventId == Guid.Empty ? null : RegistrationProviderAuthorization.EventAttributes(TenantId, EventId);
+    IAuthorizationFacts? ISecureRequest.AuthorizationFacts => RegistrationProviderAuthorization.EventFacts(TenantId, EventId);
 }
 
 [AuthorizeResource(ResourceKinds.Event, AuthorizationActions.Events.ManageRegistrationChannels)]
@@ -53,7 +53,7 @@ public sealed record ResolveRegistrationProviderQueueItemCommand(Guid TenantId, 
     : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
 {
     string? ISecureRequest.ResourceId => EventId == Guid.Empty ? null : EventId.ToString("D");
-    IDictionary<string, object>? ISecureRequest.ResourceAttributes => TenantId == Guid.Empty || EventId == Guid.Empty ? null : RegistrationProviderAuthorization.EventAttributes(TenantId, EventId);
+    IAuthorizationFacts? ISecureRequest.AuthorizationFacts => RegistrationProviderAuthorization.EventFacts(TenantId, EventId);
 }
 
 [AuthorizeResource(ResourceKinds.Event, AuthorizationActions.Events.ManageRegistrationChannels)]
@@ -61,7 +61,7 @@ public sealed record GetRegistrationProviderConnectionsQuery(Guid TenantId, Guid
     : IRequest<IReadOnlyList<RegistrationProviderConnectionDto>>, ISecureRequest
 {
     string? ISecureRequest.ResourceId => EventId == Guid.Empty ? null : EventId.ToString("D");
-    IDictionary<string, object>? ISecureRequest.ResourceAttributes => TenantId == Guid.Empty || EventId == Guid.Empty ? null : RegistrationProviderAuthorization.EventAttributes(TenantId, EventId);
+    IAuthorizationFacts? ISecureRequest.AuthorizationFacts => RegistrationProviderAuthorization.EventFacts(TenantId, EventId);
 }
 
 [AuthorizeResource(ResourceKinds.Tenant, AuthorizationActions.Tenants.Update)]
@@ -69,7 +69,7 @@ public sealed record GetRegistrationProviderConnectionQuery(Guid TenantId, Guid 
     : IRequest<RegistrationProviderConnectionDto?>, ISecureRequest
 {
     string? ISecureRequest.ResourceId => TenantId == Guid.Empty ? null : TenantId.ToString("D");
-    IDictionary<string, object>? ISecureRequest.ResourceAttributes => TenantId == Guid.Empty ? null : RegistrationProviderAuthorization.TenantAttributes(TenantId);
+    IAuthorizationFacts? ISecureRequest.AuthorizationFacts => RegistrationProviderAuthorization.TenantFacts(TenantId);
 }
 
 [AuthorizeResource(ResourceKinds.Tenant, AuthorizationActions.Tenants.Update)]
@@ -77,7 +77,7 @@ public sealed record UpsertRegistrationProviderConnectionCommand(Guid TenantId, 
     : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
 {
     string? ISecureRequest.ResourceId => TenantId == Guid.Empty ? null : TenantId.ToString("D");
-    IDictionary<string, object>? ISecureRequest.ResourceAttributes => TenantId == Guid.Empty ? null : RegistrationProviderAuthorization.TenantAttributes(TenantId);
+    IAuthorizationFacts? ISecureRequest.AuthorizationFacts => RegistrationProviderAuthorization.TenantFacts(TenantId);
 }
 
 [AuthorizeResource(ResourceKinds.Tenant, AuthorizationActions.Tenants.Update)]
@@ -85,7 +85,7 @@ public sealed record ReplaceRegistrationProviderApprovedOriginsCommand(Guid Tena
     : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
 {
     string? ISecureRequest.ResourceId => TenantId == Guid.Empty ? null : TenantId.ToString("D");
-    IDictionary<string, object>? ISecureRequest.ResourceAttributes => TenantId == Guid.Empty ? null : RegistrationProviderAuthorization.TenantAttributes(TenantId);
+    IAuthorizationFacts? ISecureRequest.AuthorizationFacts => RegistrationProviderAuthorization.TenantFacts(TenantId);
 }
 
 [AuthorizeResource(ResourceKinds.Tenant, AuthorizationActions.Tenants.Update)]
@@ -93,7 +93,7 @@ public sealed record DeleteRegistrationProviderConnectionCommand(Guid TenantId, 
     : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
 {
     string? ISecureRequest.ResourceId => TenantId == Guid.Empty ? null : TenantId.ToString("D");
-    IDictionary<string, object>? ISecureRequest.ResourceAttributes => TenantId == Guid.Empty ? null : RegistrationProviderAuthorization.TenantAttributes(TenantId);
+    IAuthorizationFacts? ISecureRequest.AuthorizationFacts => RegistrationProviderAuthorization.TenantFacts(TenantId);
 }
 
 [AuthorizeResource(ResourceKinds.Event, AuthorizationActions.Events.ManageRegistrationChannels)]
@@ -101,7 +101,7 @@ public sealed record GetRegistrationProviderBindingsQuery(Guid TenantId, Guid Ev
     : IRequest<IReadOnlyList<RegistrationProviderBindingDto>>, ISecureRequest
 {
     string? ISecureRequest.ResourceId => EventId == Guid.Empty ? null : EventId.ToString("D");
-    IDictionary<string, object>? ISecureRequest.ResourceAttributes => TenantId == Guid.Empty || EventId == Guid.Empty ? null : RegistrationProviderAuthorization.EventAttributes(TenantId, EventId);
+    IAuthorizationFacts? ISecureRequest.AuthorizationFacts => RegistrationProviderAuthorization.EventFacts(TenantId, EventId);
 }
 
 [AuthorizeResource(ResourceKinds.Event, AuthorizationActions.Events.ManageRegistrationChannels)]
@@ -109,7 +109,7 @@ public sealed record GetRegistrationProviderBindingQuery(Guid TenantId, Guid Eve
     : IRequest<RegistrationProviderBindingDto?>, ISecureRequest
 {
     string? ISecureRequest.ResourceId => EventId == Guid.Empty ? null : EventId.ToString("D");
-    IDictionary<string, object>? ISecureRequest.ResourceAttributes => TenantId == Guid.Empty || EventId == Guid.Empty ? null : RegistrationProviderAuthorization.EventAttributes(TenantId, EventId);
+    IAuthorizationFacts? ISecureRequest.AuthorizationFacts => RegistrationProviderAuthorization.EventFacts(TenantId, EventId);
 }
 
 [AuthorizeResource(ResourceKinds.Event, AuthorizationActions.Events.ManageRegistrationChannels)]
@@ -117,7 +117,7 @@ public sealed record CreateRegistrationProviderBindingCommand(Guid TenantId, Gui
     : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
 {
     string? ISecureRequest.ResourceId => EventId == Guid.Empty ? null : EventId.ToString("D");
-    IDictionary<string, object>? ISecureRequest.ResourceAttributes => TenantId == Guid.Empty || EventId == Guid.Empty ? null : RegistrationProviderAuthorization.EventAttributes(TenantId, EventId);
+    IAuthorizationFacts? ISecureRequest.AuthorizationFacts => RegistrationProviderAuthorization.EventFacts(TenantId, EventId);
 }
 
 [AuthorizeResource(ResourceKinds.Event, AuthorizationActions.Events.ManageRegistrationChannels)]
@@ -125,7 +125,7 @@ public sealed record UpdateRegistrationProviderBindingCommand(Guid TenantId, Gui
     : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
 {
     string? ISecureRequest.ResourceId => EventId == Guid.Empty ? null : EventId.ToString("D");
-    IDictionary<string, object>? ISecureRequest.ResourceAttributes => TenantId == Guid.Empty || EventId == Guid.Empty ? null : RegistrationProviderAuthorization.EventAttributes(TenantId, EventId);
+    IAuthorizationFacts? ISecureRequest.AuthorizationFacts => RegistrationProviderAuthorization.EventFacts(TenantId, EventId);
 }
 
 [AuthorizeResource(ResourceKinds.Event, AuthorizationActions.Events.ManageRegistrationChannels)]
@@ -133,7 +133,7 @@ public sealed record DeleteRegistrationProviderBindingCommand(Guid TenantId, Gui
     : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
 {
     string? ISecureRequest.ResourceId => EventId == Guid.Empty ? null : EventId.ToString("D");
-    IDictionary<string, object>? ISecureRequest.ResourceAttributes => TenantId == Guid.Empty || EventId == Guid.Empty ? null : RegistrationProviderAuthorization.EventAttributes(TenantId, EventId);
+    IAuthorizationFacts? ISecureRequest.AuthorizationFacts => RegistrationProviderAuthorization.EventFacts(TenantId, EventId);
 }
 
 [AuthorizeResource(ResourceKinds.Event, AuthorizationActions.Events.ManageRegistrationChannels)]
@@ -141,7 +141,7 @@ public sealed record PublishEventRegistrationProviderBindingCommand(Guid TenantI
     : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
 {
     string? ISecureRequest.ResourceId => EventId == Guid.Empty ? null : EventId.ToString("D");
-    IDictionary<string, object>? ISecureRequest.ResourceAttributes => TenantId == Guid.Empty || EventId == Guid.Empty ? null : RegistrationProviderAuthorization.EventAttributes(TenantId, EventId);
+    IAuthorizationFacts? ISecureRequest.AuthorizationFacts => RegistrationProviderAuthorization.EventFacts(TenantId, EventId);
 }
 
 [AuthorizeResource(ResourceKinds.Event, AuthorizationActions.Events.ManageRegistrationChannels)]
@@ -149,7 +149,7 @@ public sealed record ReplaceEventDraftRegistrationProviderMappingsCommand(Guid T
     : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
 {
     string? ISecureRequest.ResourceId => EventId == Guid.Empty ? null : EventId.ToString("D");
-    IDictionary<string, object>? ISecureRequest.ResourceAttributes => TenantId == Guid.Empty || EventId == Guid.Empty ? null : RegistrationProviderAuthorization.EventAttributes(TenantId, EventId);
+    IAuthorizationFacts? ISecureRequest.AuthorizationFacts => RegistrationProviderAuthorization.EventFacts(TenantId, EventId);
 }
 
 [AuthorizeResource(ResourceKinds.Event, AuthorizationActions.Events.ManageRegistrationChannels)]
@@ -157,7 +157,7 @@ public sealed record ImportExternalRegistrationProviderFormVersionCommand(Guid T
     : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
 {
     string? ISecureRequest.ResourceId => EventId == Guid.Empty ? null : EventId.ToString("D");
-    IDictionary<string, object>? ISecureRequest.ResourceAttributes => TenantId == Guid.Empty || EventId == Guid.Empty ? null : RegistrationProviderAuthorization.EventAttributes(TenantId, EventId);
+    IAuthorizationFacts? ISecureRequest.AuthorizationFacts => RegistrationProviderAuthorization.EventFacts(TenantId, EventId);
 }
 
 [AuthorizeResource(ResourceKinds.Event, AuthorizationActions.Events.ManageRegistrationChannels)]
@@ -165,7 +165,7 @@ public sealed record GetRegistrationChannelsQuery(Guid TenantId, Guid EventId, G
     : IRequest<IReadOnlyList<RegistrationChannelDto>>, ISecureRequest
 {
     string? ISecureRequest.ResourceId => EventId == Guid.Empty ? null : EventId.ToString("D");
-    IDictionary<string, object>? ISecureRequest.ResourceAttributes => TenantId == Guid.Empty || EventId == Guid.Empty ? null : RegistrationProviderAuthorization.EventAttributes(TenantId, EventId);
+    IAuthorizationFacts? ISecureRequest.AuthorizationFacts => RegistrationProviderAuthorization.EventFacts(TenantId, EventId);
 }
 
 [AuthorizeResource(ResourceKinds.Event, AuthorizationActions.Events.ManageRegistrationChannels)]
@@ -173,7 +173,7 @@ public sealed record UpsertRegistrationChannelCommand(Guid TenantId, Guid EventI
     : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
 {
     string? ISecureRequest.ResourceId => EventId == Guid.Empty ? null : EventId.ToString("D");
-    IDictionary<string, object>? ISecureRequest.ResourceAttributes => TenantId == Guid.Empty || EventId == Guid.Empty ? null : RegistrationProviderAuthorization.EventAttributes(TenantId, EventId);
+    IAuthorizationFacts? ISecureRequest.AuthorizationFacts => RegistrationProviderAuthorization.EventFacts(TenantId, EventId);
 }
 
 [AuthorizeResource(ResourceKinds.Event, AuthorizationActions.Events.ManageRegistrationChannels)]
@@ -181,7 +181,7 @@ public sealed record DeleteRegistrationChannelCommand(Guid TenantId, Guid EventI
     : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
 {
     string? ISecureRequest.ResourceId => EventId == Guid.Empty ? null : EventId.ToString("D");
-    IDictionary<string, object>? ISecureRequest.ResourceAttributes => TenantId == Guid.Empty || EventId == Guid.Empty ? null : RegistrationProviderAuthorization.EventAttributes(TenantId, EventId);
+    IAuthorizationFacts? ISecureRequest.AuthorizationFacts => RegistrationProviderAuthorization.EventFacts(TenantId, EventId);
 }
 
 [AuthorizeResource(ResourceKinds.Event, AuthorizationActions.Events.ManageRegistrationChannels)]
@@ -189,19 +189,20 @@ public sealed record GetRegistrationProviderLaunchDescriptorQuery(Guid TenantId,
     : IRequest<RegistrationProviderLaunchDescriptorDto>, ISecureRequest
 {
     string? ISecureRequest.ResourceId => EventId == Guid.Empty ? null : EventId.ToString("D");
-    IDictionary<string, object>? ISecureRequest.ResourceAttributes => TenantId == Guid.Empty || EventId == Guid.Empty ? null : RegistrationProviderAuthorization.EventAttributes(TenantId, EventId);
+    IAuthorizationFacts? ISecureRequest.AuthorizationFacts => RegistrationProviderAuthorization.EventFacts(TenantId, EventId);
 }
 
 public static class RegistrationProviderAuthorization
 {
-    public static Dictionary<string, object> EventAttributes(Guid tenantId, Guid eventId) => new()
-    {
-        ["tenantId"] = tenantId.ToString("D"),
-        ["eventId"] = eventId.ToString("D")
-    };
+    /// <summary>
+    /// Registration-provider management authorizes against its parent event. Missing tenant or event
+    /// context yields no facts, which denies rather than falling back to the ambient tenant.
+    /// </summary>
+    public static IAuthorizationFacts? EventFacts(Guid tenantId, Guid eventId) =>
+        tenantId == Guid.Empty || eventId == Guid.Empty
+            ? null
+            : new EventScopedAuthorizationFacts(tenantId, eventId);
 
-    public static Dictionary<string, object> TenantAttributes(Guid tenantId) => new()
-    {
-        ["tenantId"] = tenantId.ToString("D")
-    };
+    public static IAuthorizationFacts? TenantFacts(Guid tenantId) =>
+        tenantId == Guid.Empty ? null : new TenantScopedAuthorizationFacts(tenantId);
 }

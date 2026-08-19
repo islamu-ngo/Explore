@@ -114,10 +114,12 @@ public sealed class GlobalModerationCommandHandlerTests
 
         await Assert.That(actorRequest.ResourceId).IsEqualTo("global-actor-moderation");
         await Assert.That(identityRequest.ResourceId).IsEqualTo("global-actor-moderation");
-        await Assert.That(actorRequest.ResourceAttributes!["settingKey"])
-            .IsEqualTo("global-actor-moderation");
-        await Assert.That(identityRequest.ResourceAttributes!["settingKey"])
-            .IsEqualTo("global-actor-moderation");
+        // Global moderation is an instance-governance setting: the setting key names the row, and only
+        // instance administrators reach it, so no tenant or actor fact is published.
+        await Assert.That(actorRequest.AuthorizationFacts)
+            .IsEqualTo(InstanceScopedAuthorizationFacts.Instance);
+        await Assert.That(identityRequest.AuthorizationFacts)
+            .IsEqualTo(InstanceScopedAuthorizationFacts.Instance);
     }
 
     [Test]

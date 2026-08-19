@@ -28,7 +28,7 @@ public sealed class ControlPlaneOperationsHateoasTests
         await Assert.That(self.PermissionResourceKind).IsEqualTo(ResourceKinds.InstanceSetting);
         await Assert.That(self.PermissionAction).IsEqualTo(AuthorizationActions.InstanceSettings.View);
         await Assert.That(self.PermissionResourceId).IsEqualTo(GetControlPlaneOperationsQuery.SettingKey);
-        await Assert.That(self.PermissionResourceAttributes?["settingKey"]).IsEqualTo(GetControlPlaneOperationsQuery.SettingKey);
+        await Assert.That(self.PermissionFacts).IsEqualTo(InstanceScopedAuthorizationFacts.Instance);
 
         var overview = links.Single(link => link.Rel == "overview");
         await Assert.That(overview.RouteName).IsEqualTo(RouteNames.GetControlPlaneOverview);

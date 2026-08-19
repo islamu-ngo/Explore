@@ -39,10 +39,7 @@ public sealed class IncomingWebhookTenantExecutor(IServiceScopeFactory scopeFact
                 new AuthorizationRequest(
                     AuthorizationCapabilityCatalog.Require(ResourceKinds.Webhook, AuthorizationActions.Webhooks.ProcessIncoming),
                     claim.IncomingWebhookMessageId.ToString("N"),
-                    new Dictionary<string, object>
-                    {
-                        ["tenantId"] = claim.TenantId.ToString()
-                    }),
+                    Facts: new TenantScopedAuthorizationFacts(claim.TenantId)),
                 cancellationToken);
             if (!decision.IsAllowed)
             {

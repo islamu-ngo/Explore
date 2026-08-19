@@ -140,6 +140,28 @@ public sealed class InstanceAuthorizationSettingsController : InstanceSettingsCo
         }
     }
 
+    /// <summary>
+    /// Operator diagnostics for whether the PDP is serving the policy package this deployment published.
+    /// </summary>
+    /// <remarks>
+    /// Deliberately separate from the anonymous <c>authz-provider/status</c> readiness probe below. That
+    /// one answers "can onboarding proceed?" for an unauthenticated caller; this one reports the observed
+    /// policy revision and store health, which tells an attacker whether authorization is currently
+    /// degraded. It is gated on instance administration for that reason.
+    /// </remarks>
+    [HttpGet("authz-provider/package/status", Name = RouteNames.GetInstanceAuthorizationPolicyPackageStatus)]
+    [EndpointSummary("Get Authorization Policy Package Status")]
+    [EndpointDescription("Reports authorization policy package health, the observed policy store revision, and the recovery action. Requires instance administrator.")]
+    [ProducesResponseType(typeof(AuthorizationPolicyPackageStatusDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    public async Task<ActionResult<AuthorizationPolicyPackageStatusDto>> GetAuthorizationPolicyPackageStatus(CancellationToken cancellationToken = default)
+    {
+        if (!await IsInstanceAdminOrSetupAuthenticated(cancellationToken)) return this.ToForbiddenProblem(detail: "Instance administrator or active setup secret authority is required for this operation.");
+
+        var status = await _mediator.Send(new GetAuthorizationPolicyPackageStatusQuery(), cancellationToken);
+        return Ok(status);
+    }
+
     [HttpGet("authz-provider/status", Name = RouteNames.GetInstanceAuthorizationProviderConfigurationStatus)]
     [AllowAnonymous]
     [EndpointSummary("Check Authorization Provider Configuration Status")]

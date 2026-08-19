@@ -18,7 +18,8 @@ public class UpdateEventSessionTemplateCommand : IRequest<BaseCommandResponse<Gu
 
     string? ISecureRequest.ResourceId => TenantId == Guid.Empty ? null : TenantId.ToString();
 
-    IDictionary<string, object>? ISecureRequest.ResourceAttributes => TenantId == Guid.Empty
+    IAuthorizationFacts? ISecureRequest.AuthorizationFacts =>
+        TenantId == Guid.Empty
         ? null
-        : new Dictionary<string, object> { ["tenantId"] = TenantId.ToString() };
+        : new TenantScopedAuthorizationFacts(TenantId);
 }

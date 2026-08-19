@@ -14,9 +14,6 @@ public sealed record ReviseTenantPaidEventPolicyCommand(Guid TenantId, RevisePai
 {
     string? ISecureRequest.ResourceId => TenantId == Guid.Empty ? null : $"{TenantId}:paid-event-policy";
 
-    IDictionary<string, object>? ISecureRequest.ResourceAttributes => new Dictionary<string, object>
-    {
-        ["tenantId"] = TenantId.ToString(),
-        ["settingKey"] = "paid-event-policy"
-    };
+    IAuthorizationFacts? ISecureRequest.AuthorizationFacts =>
+        new TenantSettingAuthorizationFacts(TenantId);
 }

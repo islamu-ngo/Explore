@@ -457,9 +457,7 @@ public sealed class RegistrationOrderAccessHandlerTests
                     request.ResourceKind == ResourceKinds.Event &&
                     request.ResourceId == _eventId.ToString() &&
                     request.Action == AuthorizationActions.Events.ManageRegistrations &&
-                    request.ResourceAttributes != null &&
-                    request.ResourceAttributes.ContainsKey("eventId") &&
-                    Equals(request.ResourceAttributes["eventId"], _eventId.ToString())),
+                    Equals(request.Facts, new EventScopedAuthorizationFacts(Guid.Empty, _eventId))),
                 Arg.Any<CancellationToken>())
             .Returns(AuthorizationDecision.Deny(AuthorizationProviderMetadata.Runtime));
 

@@ -72,15 +72,5 @@ public sealed class StudioContextLinkPolicy : ILinkPolicy<StudioContextDto>
     }
 }
 
-public sealed class StudioContextCollectionLinkPolicy : ICollectionLinkPolicy<StudioContextDto>
-{
-    public IEnumerable<LinkDefinition> GetItemLinks(StudioContextDto dto, ClaimsPrincipal? user)
-    {
-        yield break;
-    }
-
-    public IEnumerable<LinkDefinition> GetCollectionLinks(ClaimsPrincipal? user)
-    {
-        yield break;
-    }
-}
+/// <summary>Studio context is a per-user singleton; its collection shape carries no affordances.</summary>
+public sealed class StudioContextCollectionLinkPolicy : ICollectionLinkPolicy<StudioContextDto>;

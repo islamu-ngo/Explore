@@ -15,10 +15,8 @@ public class SubscribeToActorCommand : IRequest<BaseCommandResponse<Guid>>, ISec
 
     public string? ResourceId => Subscription.TargetActorId == Guid.Empty ? null : Subscription.TargetActorId.ToString();
 
-    public IDictionary<string, object>? ResourceAttributes => Subscription.TargetActorId == Guid.Empty
+    IAuthorizationFacts? ISecureRequest.AuthorizationFacts =>
+        Subscription.TargetActorId == Guid.Empty
         ? null
-        : new Dictionary<string, object>
-        {
-            ["targetActorId"] = Subscription.TargetActorId.ToString()
-        };
+        : new PersonalResourceAuthorizationFacts(Guid.Empty, null);
 }

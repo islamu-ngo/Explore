@@ -137,7 +137,8 @@ public sealed class GroupMemberHateoasTests
         }
 
         return check.ResourceId == groupId.ToString()
-            || (check.ResourceAttributes?.TryGetValue("groupId", out var value) == true && value?.ToString() == groupId.ToString());
+            || (check.Facts is GroupAuthorizationFacts groupFacts && groupFacts.GroupId == groupId)
+            || (check.Facts is GroupMemberAuthorizationFacts memberFacts && memberFacts.GroupId == groupId);
     }
 
     private static TestAssembler CreateAssembler(Func<AuthorizationRequest, bool> predicate)

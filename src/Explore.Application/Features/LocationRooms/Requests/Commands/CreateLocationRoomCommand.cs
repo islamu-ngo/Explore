@@ -14,5 +14,4 @@ public class CreateLocationRoomCommand : IRequest<BaseCommandResponse<Guid>>, IS
     public required CreateLocationRoomDto LocationRoomDto { get; set; }
 
     string? ISecureRequest.ResourceId => null;
-    IDictionary<string, object>? ISecureRequest.ResourceAttributes => null;
 }

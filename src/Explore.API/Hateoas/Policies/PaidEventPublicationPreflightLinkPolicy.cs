@@ -27,38 +27,26 @@ public sealed class PaidEventPublicationPreflightLinkPolicy : ILinkPolicy<PaidEv
             "Publish ticket catalog",
             RequiresAuth: true);
         yield return dto.IsPaidCatalog
-            ? publish.RequirePermission(AuthorizationActions.Events.ManagePaidEventCommerce, ResourceKinds.Event, dto.EventId.ToString("D"), BuildEventAttributes(dto), BuildScope(dto))
-            : publish.RequirePermission(AuthorizationActions.Events.ManageTickets, ResourceKinds.Event, dto.EventId.ToString("D"), BuildEventAttributes(dto), BuildScope(dto));
+            ? publish.RequirePermission(AuthorizationActions.Events.ManagePaidEventCommerce, ResourceKinds.Event, dto.EventId.ToString("D"), BuildScope(dto), BuildEventFacts(dto))
+            : publish.RequirePermission(AuthorizationActions.Events.ManageTickets, ResourceKinds.Event, dto.EventId.ToString("D"), BuildScope(dto), BuildEventFacts(dto));
     }
 
-    private static Dictionary<string, object> BuildEventAttributes(PaidEventPublicationPreflightDto dto)
-    {
-        var attributes = new Dictionary<string, object>
-        {
-            ["eventId"] = dto.EventId.ToString("D"),
-            ["tenantId"] = dto.TenantId.ToString("D"),
-            ["actorId"] = dto.ActorId.ToString("D")
-        };
-
-        AddIfPresent(attributes, "userId", dto.ActorUserId);
-        AddIfPresent(attributes, "organizationId", dto.ActorOrganizationId);
-        AddIfPresent(attributes, "groupId", dto.ActorGroupId);
-        AddIfPresent(attributes, "organizerActorId", dto.OrganizerActorId);
-        AddIfPresent(attributes, "organizerUserId", dto.OrganizerUserId);
-        AddIfPresent(attributes, "organizerOrganizationId", dto.OrganizerOrganizationId);
-        AddIfPresent(attributes, "organizerGroupId", dto.OrganizerGroupId);
-        return attributes;
-    }
+    private static IAuthorizationFacts BuildEventFacts(PaidEventPublicationPreflightDto dto) =>
+        new EventAuthorizationFacts(
+            dto.TenantId,
+            dto.EventId,
+            dto.ActorId,
+            dto.ActorUserId,
+            dto.ActorOrganizationId,
+            dto.ActorGroupId,
+            dto.OrganizerActorId,
+            dto.OrganizerUserId,
+            dto.OrganizerOrganizationId,
+            dto.OrganizerGroupId,
+            ProvenanceType: null,
+            SubmittedByUserId: null);
 
     private static AuthorizationScope BuildScope(PaidEventPublicationPreflightDto dto) => new(TenantId: dto.TenantId.ToString("D"));
-
-    private static void AddIfPresent(Dictionary<string, object> attributes, string key, Guid? value)
-    {
-        if (value.HasValue)
-        {
-            attributes[key] = value.Value.ToString("D");
-        }
-    }
 }
 
 public sealed class PaidEventPublicationPreflightCollectionLinkPolicy : ICollectionLinkPolicy<PaidEventPublicationPreflightDto>

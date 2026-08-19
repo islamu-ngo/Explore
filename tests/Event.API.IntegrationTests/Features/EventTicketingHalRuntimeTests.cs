@@ -274,55 +274,26 @@ public sealed class EventTicketingHalRuntimeTests
         public int BatchCalls { get; private set; }
         public int LastBatchSize { get; private set; }
 
-        public async Task<AuthorizationDecision> AuthorizeAsync(
+        public Task<AuthorizationDecision> AuthorizeAsync(
             AuthorizationRequest request,
-            CancellationToken cancellationToken = default)
-        {
-            var allowed = await IsAllowedAsync(
-                request.ResourceKind,
-                request.ResourceId,
-                request.Action,
-                request.ResourceAttributes is null
-                    ? null
-                    : new Dictionary<string, object>(request.ResourceAttributes),
-                cancellationToken);
-            return allowed
-                ? AuthorizationDecision.Allow(AuthorizationProviderMetadata.Local)
-                : AuthorizationDecision.Deny(AuthorizationProviderMetadata.Local);
-        }
-
-        public async Task<IReadOnlyList<AuthorizationDecision>> AuthorizeBatchAsync(
-            IReadOnlyList<AuthorizationRequest> requests,
             CancellationToken cancellationToken = default) =>
-            (await IsAllowedBatchAsync(requests, cancellationToken))
-                .Select(allowed => allowed
-                    ? AuthorizationDecision.Allow(AuthorizationProviderMetadata.Local)
-                    : AuthorizationDecision.Deny(AuthorizationProviderMetadata.Local))
-                .ToArray();
+            Task.FromResult(AllowRequest
+                ? AuthorizationDecision.Allow(AuthorizationProviderMetadata.Local)
+                : AuthorizationDecision.Deny(AuthorizationProviderMetadata.Local));
 
-        public Task<bool> IsAllowedAsync(
-            string resourceKind,
-            string resourceId,
-            string action,
-            IDictionary<string, object>? resourceAttributes = null,
-            CancellationToken cancellationToken = default) => Task.FromResult(AllowRequest);
-
-        public Task<IReadOnlyList<bool>> IsAllowedBatchAsync(
-            IReadOnlyList<AuthorizationRequest> checks,
+        public Task<IReadOnlyList<AuthorizationDecision>> AuthorizeBatchAsync(
+            IReadOnlyList<AuthorizationRequest> requests,
             CancellationToken cancellationToken = default)
         {
             BatchCalls++;
-            LastBatchSize = checks.Count;
+            LastBatchSize = requests.Count;
             return ThrowFromBatch
                 ? throw new InvalidOperationException("Provider unavailable")
-                : Task.FromResult<IReadOnlyList<bool>>(checks.Select(_ => AllowBatch).ToArray());
+                : Task.FromResult<IReadOnlyList<AuthorizationDecision>>(requests
+                    .Select(_ => AllowBatch
+                        ? AuthorizationDecision.Allow(AuthorizationProviderMetadata.Local)
+                        : AuthorizationDecision.Deny(AuthorizationProviderMetadata.Local))
+                    .ToArray());
         }
-
-        public Task<bool> CheckSettingAccessAsync(
-            string settingKey,
-            string action,
-            Guid? tenantId = null,
-            Guid? organizationId = null,
-            CancellationToken cancellationToken = default) => Task.FromResult(AllowRequest);
     }
 }

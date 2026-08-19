@@ -42,8 +42,8 @@ public sealed class EventTeamAuthorizationBoundaryTests
             await Assert.That(attribute?.Action).IsEqualTo(AuthorizationActions.Events.ManageTeam);
             var secureRequest = (ISecureRequest)request;
             await Assert.That(secureRequest.ResourceId).IsEqualTo(eventId.ToString("D"));
-            await Assert.That(secureRequest.ResourceAttributes!["tenantId"]).IsEqualTo(tenantId.ToString("D"));
-            await Assert.That(secureRequest.ResourceAttributes["eventId"]).IsEqualTo(eventId.ToString("D"));
+            await Assert.That(secureRequest.AuthorizationFacts)
+                .IsEqualTo(new EventScopedAuthorizationFacts(tenantId, eventId));
         }
     }
 
@@ -85,7 +85,6 @@ public sealed class EventTeamAuthorizationBoundaryTests
         await Assert.That(captured!.ResourceKind).IsEqualTo(ResourceKinds.Event);
         await Assert.That(captured.Action).IsEqualTo(AuthorizationActions.Events.ManageTeam);
         await Assert.That(captured.ResourceId).IsEqualTo(eventId.ToString("D"));
-        await Assert.That(captured.ResourceAttributes).IsNull();
         await Assert.That(captured.Facts).IsTypeOf<EventAuthorizationFacts>();
         var facts = (EventAuthorizationFacts)captured.Facts!;
         await Assert.That(facts.TenantId).IsEqualTo(tenantId);

@@ -14,5 +14,4 @@ public class SetEventCustomPropertyValueCommand : IRequest<BaseCommandResponse<G
     public required SetEventCustomPropertyValueDto ValueDto { get; set; }
 
     string? ISecureRequest.ResourceId => null;
-    IDictionary<string, object>? ISecureRequest.ResourceAttributes => null;
 }

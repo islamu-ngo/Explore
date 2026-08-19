@@ -22,8 +22,6 @@ public class UpdateTenantCommand : IRequest<BaseCommandResponse<Guid>>, ISecureR
     public UpdateTenantDto Update { get; set; } = null!;
 
     string? ISecureRequest.ResourceId => TenantId.ToString();
-    IDictionary<string, object>? ISecureRequest.ResourceAttributes => new Dictionary<string, object>
-    {
-        ["tenantId"] = TenantId.ToString("D")
-    };
+    IAuthorizationFacts? ISecureRequest.AuthorizationFacts =>
+        new TenantScopedAuthorizationFacts(TenantId);
 }

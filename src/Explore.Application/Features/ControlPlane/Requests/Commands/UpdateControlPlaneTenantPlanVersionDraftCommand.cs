@@ -21,11 +21,8 @@ public sealed class UpdateControlPlaneTenantPlanVersionDraftCommand(
 
     string? ISecureRequest.ResourceId => SettingKey;
 
-    IDictionary<string, object>? ISecureRequest.ResourceAttributes => new Dictionary<string, object>
-    {
-        ["settingKey"] = SettingKey,
-        ["versionId"] = VersionId
-    };
+    IAuthorizationFacts? ISecureRequest.AuthorizationFacts =>
+        InstanceScopedAuthorizationFacts.Instance;
 }
 
 public sealed class PatchControlPlaneTenantPlanVersionDraftDto

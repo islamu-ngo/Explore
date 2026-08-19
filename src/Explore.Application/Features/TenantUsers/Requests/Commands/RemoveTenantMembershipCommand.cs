@@ -11,9 +11,6 @@ public sealed record RemoveTenantMembershipCommand(Guid TenantId, Guid UserId) :
 {
     string? ISecureRequest.ResourceId => UserId.ToString("D");
 
-    IDictionary<string, object>? ISecureRequest.ResourceAttributes => new Dictionary<string, object>
-    {
-        ["tenantId"] = TenantId.ToString("D"),
-        ["userId"] = UserId.ToString("D")
-    };
+    IAuthorizationFacts? ISecureRequest.AuthorizationFacts =>
+        new UserAuthorizationFacts(TenantId, null, null);
 }

@@ -123,30 +123,28 @@ public sealed class ProposeAiToolActionCommandHandler(
                     definition.RequiredAuthorization.ResourceKind,
                     definition.RequiredAuthorization.Action),
                 authorizationContext.Value.ResourceId,
-                ResourceAttributes: new Dictionary<string, object>(authorizationContext.Value.ResourceAttributes)),
+                Facts: authorizationContext.Value.Facts),
             cancellationToken);
         return decision.IsAllowed;
     }
 
-    private async Task<(string ResourceId, IDictionary<string, object> ResourceAttributes)?> BuildAuthorizationContextAsync(
+    /// <summary>
+    /// Builds trusted facts for a model-proposed tool action.
+    /// <para>
+    /// The tool payload is model output, so it may only name a target: the event it names is loaded and
+    /// supplies the tenant. Organization and group identifiers in the payload are deliberately ignored —
+    /// echoing them back as policy facts would let a proposed action claim an authority zone the
+    /// conversation never had.
+    /// </para>
+    /// </summary>
+    private async Task<(string ResourceId, IAuthorizationFacts? Facts)?> BuildAuthorizationContextAsync(
         AiToolAuthorizationRequirement requirement,
         AiConversation conversation,
         JsonElement payload,
         CancellationToken cancellationToken)
     {
-        var attributes = new Dictionary<string, object>(StringComparer.Ordinal)
-        {
-            ["tenantId"] = conversation.TenantId
-        };
-
-        if (conversation.ActorId is { } actorId)
-        {
-            attributes["actorId"] = actorId;
-        }
-
-        AddGuidAttribute(payload, attributes, "eventId");
-        AddGuidAttribute(payload, attributes, "organizationId");
-        AddGuidAttribute(payload, attributes, "groupId");
+        var tenantId = conversation.TenantId;
+        Guid? resolvedEventId = null;
 
         if (TryGetGuid(payload, "eventId", out var eventId))
         {
@@ -156,18 +154,20 @@ public sealed class ProposeAiToolActionCommandHandler(
                 return null;
             }
 
-            attributes["tenantId"] = targetEvent.TenantId;
+            tenantId = targetEvent.TenantId;
+            resolvedEventId = targetEvent.Id;
         }
 
-        if (requirement.ResourceKind == ResourceKinds.Event &&
-            requirement.Action == AuthorizationActions.Create)
-        {
-            attributes["authorizationPhase"] = AuthorizationPhases.PreCreate;
-        }
+        IAuthorizationFacts facts =
+            requirement.ResourceKind == ResourceKinds.Event && requirement.Action == AuthorizationActions.Create
+                ? new PreCreateAuthorizationFacts(tenantId)
+                : resolvedEventId is { } trustedEventId
+                    ? new EventScopedAuthorizationFacts(tenantId, trustedEventId)
+                    : new TenantScopedAuthorizationFacts(tenantId);
 
         return (
             ResolveResourceId(requirement.ResourceKind, payload, conversation.TenantId),
-            attributes);
+            facts);
     }
 
     private static string ResolveResourceId(string resourceKind, JsonElement payload, Guid tenantId)
@@ -206,17 +206,6 @@ public sealed class ProposeAiToolActionCommandHandler(
         }
 
         return tenantId.ToString();
-    }
-
-    private static void AddGuidAttribute(
-        JsonElement payload,
-        Dictionary<string, object> attributes,
-        string fieldName)
-    {
-        if (TryGetGuid(payload, fieldName, out var value))
-        {
-            attributes[fieldName] = value;
-        }
     }
 
     private static bool TryGetGuid(JsonElement payload, string fieldName, out Guid value)

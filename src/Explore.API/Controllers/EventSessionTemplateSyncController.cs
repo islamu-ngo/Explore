@@ -9,6 +9,7 @@ using Explore.API.Hateoas;
 using Explore.API.Hateoas.Resources;
 using Explore.API.Models;
 using Explore.Application.Contracts.Hateoas;
+using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.DTOs.EventSessionTemplateSync;
 using Explore.Application.Features.EventSessionTemplateSync.Commands.ApplyEventSessionTemplateSync;
 using Explore.Application.Features.EventSessionTemplateSync.Queries.GetEventSessionTemplateDiff;
@@ -39,17 +40,20 @@ public sealed class EventSessionTemplateSyncController : ExploreControllerBase
     private readonly IHateoasAuthorizationEvaluator _authorizationEvaluator;
     private readonly IHateoasLinkGenerator _linkGenerator;
     private readonly ILinkPolicy<EventSessionTemplateSyncResource> _syncLinkPolicy;
+    private readonly ITenantContext _tenantContext;
 
     public EventSessionTemplateSyncController(
         IMediator mediator,
         IHateoasAuthorizationEvaluator authorizationEvaluator,
         IHateoasLinkGenerator linkGenerator,
-        ILinkPolicy<EventSessionTemplateSyncResource> syncLinkPolicy)
+        ILinkPolicy<EventSessionTemplateSyncResource> syncLinkPolicy,
+        ITenantContext tenantContext)
     {
         _mediator = mediator;
         _authorizationEvaluator = authorizationEvaluator;
         _linkGenerator = linkGenerator;
         _syncLinkPolicy = syncLinkPolicy;
+        _tenantContext = tenantContext;
     }
 
     /// <summary>
@@ -90,7 +94,7 @@ public sealed class EventSessionTemplateSyncController : ExploreControllerBase
             diff.ModifiedOptions.Count > 0 ||
             diff.RetiredOptions.Count > 0;
 
-        var resource = new EventSessionTemplateSyncResource(sessionId, diff.TargetTemplateVersion, hasChanges);
+        var resource = new EventSessionTemplateSyncResource(_tenantContext.TenantId, sessionId, diff.TargetTemplateVersion, hasChanges);
         var halResource = new HalResource<TemplateDiffDto>(diff);
 
         var linkDefinitions = _syncLinkPolicy.GetLinks(resource, User).ToList();

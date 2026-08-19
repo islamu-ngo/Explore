@@ -14,8 +14,6 @@ public sealed record GetEventRegistrationOrdersQuery(Guid EventId) : IRequest<IR
 {
     string? ISecureRequest.ResourceId => EventId == Guid.Empty ? null : EventId.ToString();
 
-    IDictionary<string, object>? ISecureRequest.ResourceAttributes => new Dictionary<string, object>
-    {
-        ["eventId"] = EventId.ToString()
-    };
+    IAuthorizationFacts? ISecureRequest.AuthorizationFacts =>
+        new EventScopedAuthorizationFacts(Guid.Empty, EventId);
 }

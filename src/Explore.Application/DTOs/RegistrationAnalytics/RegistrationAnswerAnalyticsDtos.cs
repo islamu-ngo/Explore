@@ -4,6 +4,7 @@
 namespace Explore.Application.DTOs.RegistrationAnalytics;
 
 public sealed record RegistrationAnswerAnalyticsDto(
+    Guid TenantId,
     Guid EventId,
     Guid FormId,
     Guid FormVersionId,

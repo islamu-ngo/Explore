@@ -9,6 +9,7 @@ using Explore.API.Hateoas;
 using Explore.API.Hateoas.Resources;
 using Explore.API.Models;
 using Explore.Application.Contracts.Hateoas;
+using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.DTOs.EventTemplateSync;
 using Explore.Application.Features.EventTemplateSync.Commands.ApplyEventTemplateSync;
 using Explore.Application.Features.EventTemplateSync.Queries.GetEventTemplateDiff;
@@ -39,17 +40,20 @@ public sealed class EventTemplateSyncController : ExploreControllerBase
     private readonly IHateoasAuthorizationEvaluator _authorizationEvaluator;
     private readonly IHateoasLinkGenerator _linkGenerator;
     private readonly ILinkPolicy<EventTemplateSyncResource> _syncLinkPolicy;
+    private readonly ITenantContext _tenantContext;
 
     public EventTemplateSyncController(
         IMediator mediator,
         IHateoasAuthorizationEvaluator authorizationEvaluator,
         IHateoasLinkGenerator linkGenerator,
-        ILinkPolicy<EventTemplateSyncResource> syncLinkPolicy)
+        ILinkPolicy<EventTemplateSyncResource> syncLinkPolicy,
+        ITenantContext tenantContext)
     {
         _mediator = mediator;
         _authorizationEvaluator = authorizationEvaluator;
         _linkGenerator = linkGenerator;
         _syncLinkPolicy = syncLinkPolicy;
+        _tenantContext = tenantContext;
     }
 
     /// <summary>
@@ -90,7 +94,7 @@ public sealed class EventTemplateSyncController : ExploreControllerBase
             diff.ModifiedOptions.Count > 0 ||
             diff.RetiredOptions.Count > 0;
 
-        var resource = new EventTemplateSyncResource(eventId, diff.TargetTemplateVersion, hasChanges);
+        var resource = new EventTemplateSyncResource(_tenantContext.TenantId, eventId, diff.TargetTemplateVersion, hasChanges);
         var halResource = new HalResource<TemplateDiffDto>(diff);
 
         var linkDefinitions = _syncLinkPolicy.GetLinks(resource, User).ToList();

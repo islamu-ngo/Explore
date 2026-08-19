@@ -15,8 +15,6 @@ public sealed class ForceStopSupportAccessSessionCommand : IRequest<SupportAcces
 
     string? ISecureRequest.ResourceId => SessionId == Guid.Empty ? null : SessionId.ToString("D");
 
-    IDictionary<string, object>? ISecureRequest.ResourceAttributes => new Dictionary<string, object>
-    {
-        ["sessionId"] = SessionId.ToString("D")
-    };
+    IAuthorizationFacts? ISecureRequest.AuthorizationFacts =>
+        new SupportAccessSessionAuthorizationFacts(Guid.Empty, SessionId, null, null, null);
 }

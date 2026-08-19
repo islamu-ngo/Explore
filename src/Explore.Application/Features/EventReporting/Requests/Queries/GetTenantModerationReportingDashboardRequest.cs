@@ -15,9 +15,6 @@ public sealed record GetTenantModerationReportingDashboardRequest(Guid TenantId)
 
     string? ISecureRequest.ResourceId => $"{TenantId}:{SettingKey}";
 
-    IDictionary<string, object>? ISecureRequest.ResourceAttributes => new Dictionary<string, object>
-    {
-        ["tenantId"] = TenantId.ToString(),
-        ["settingKey"] = SettingKey
-    };
+    IAuthorizationFacts? ISecureRequest.AuthorizationFacts =>
+        new TenantSettingAuthorizationFacts(TenantId);
 }

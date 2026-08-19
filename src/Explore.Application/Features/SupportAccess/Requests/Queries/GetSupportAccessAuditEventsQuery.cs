@@ -17,9 +17,6 @@ public sealed class GetSupportAccessAuditEventsQuery : IRequest<PaginatedResult<
 
     string? ISecureRequest.ResourceId => SessionId == Guid.Empty ? null : SessionId.ToString("D");
 
-    IDictionary<string, object>? ISecureRequest.ResourceAttributes => new Dictionary<string, object>
-    {
-        ["tenantId"] = TargetTenantId.ToString("D"),
-        ["sessionId"] = SessionId.ToString("D")
-    };
+    IAuthorizationFacts? ISecureRequest.AuthorizationFacts =>
+        new SupportAccessSessionAuthorizationFacts(TargetTenantId, SessionId, null, null, null);
 }

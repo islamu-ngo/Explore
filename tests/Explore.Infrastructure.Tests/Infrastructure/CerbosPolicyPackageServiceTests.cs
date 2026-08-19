@@ -202,7 +202,6 @@ public class CerbosPolicyPackageServiceTests : IDisposable
             {
                 Endpoint = "tenant-grpc.example:3593",
                 Mode = CerbosMode.CustomEndpoint,
-                FailureMode = CerbosFailureMode.Closed,
                 AdminEndpoint = "https://tenant-cerbos.example/base",
                 AdminUsername = "tenant-user",
                 AdminPassword = "tenant-secret",
@@ -234,7 +233,6 @@ public class CerbosPolicyPackageServiceTests : IDisposable
         {
             Endpoint = "tenant-grpc.example:3593",
             Mode = CerbosMode.CustomEndpoint,
-            FailureMode = CerbosFailureMode.Closed,
             AdminEndpoint = "https://tenant-cerbos.example/base",
             AdminUsername = "tenant-user",
             AdminPassword = "tenant-secret",
@@ -267,7 +265,6 @@ public class CerbosPolicyPackageServiceTests : IDisposable
             {
                 Endpoint = "tenant-grpc.example:3593",
                 Mode = CerbosMode.CustomEndpoint,
-                FailureMode = CerbosFailureMode.Closed,
                 AdminEndpoint = "https://tenant-cerbos.example",
                 AdminUsername = "tenant-user",
                 AdminPassword = null,
@@ -302,7 +299,6 @@ public class CerbosPolicyPackageServiceTests : IDisposable
             {
                 Endpoint = "tenant-grpc.example:3593",
                 Mode = CerbosMode.CustomEndpoint,
-                FailureMode = CerbosFailureMode.Closed,
                 AdminEndpoint = adminEndpoint,
                 AdminUsername = "tenant-user",
                 AdminPassword = "tenant-secret",
@@ -457,23 +453,32 @@ public class CerbosPolicyPackageServiceTests : IDisposable
     }
 
     [Test]
-    public async Task GetStatusAsync_WithConfiguredAdminApi_ReturnsUnknownPackageStatusWithoutHttpRequest()
+    /// <summary>
+    /// Status now queries the store rather than assuming freshness. The package identity and hash are
+    /// still reported, and the request that verifies presence is the listing call.
+    /// </summary>
+    public async Task GetStatusAsync_WithConfiguredAdminApi_QueriesStoreAndReportsPackageIdentity()
     {
         var policiesRoot = CreatePackageRoot();
         await File.WriteAllTextAsync(Path.Combine(policiesRoot, "islamuevent_event.yaml"), CreatePolicyYaml("islamuevent_event"));
         await File.WriteAllTextAsync(Path.Combine(policiesRoot, "_schemas", "islamuevent_event.json"), "{\"type\":\"object\"}");
 
-        var handler = new RecordingMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.OK));
+        var handler = StoreHandler(
+            "{\"policyIds\":[\"resource.islamuevent_event.vdefault\"]}",
+            StoredPolicies(("resource.islamuevent_event.vdefault", "13466950985171780168")));
         var service = CreateService(policiesRoot, handler: handler);
 
         var result = await service.GetStatusAsync();
 
-        await Assert.That(result.IssueCode).IsEqualTo(PolicyPackageIssueCode.PackageStatusUnknown);
+        await Assert.That(result.IssueCode).IsEqualTo(PolicyPackageIssueCode.None);
         await Assert.That(result.IsHealthy).IsTrue();
-        await Assert.That(result.Message).Contains("remote package hash verification is not available");
         await Assert.That(result.PackageId).IsEqualTo("test-policy-package");
         await Assert.That(result.ContentHash.Length).IsEqualTo(64);
-        await Assert.That(handler.Requests).IsEmpty();
+        await Assert.That(result.ObservedRevision).IsNotNull();
+
+        // Presence and content are two separate questions and need two separate calls.
+        await Assert.That(handler.Requests.Select(request => request.RequestUri!.AbsolutePath))
+            .IsEquivalentTo(new[] { "/admin/policies", "/admin/policy" });
     }
 
     [Test]
@@ -491,7 +496,6 @@ public class CerbosPolicyPackageServiceTests : IDisposable
             {
                 Endpoint = "tenant-grpc.example:3593",
                 Mode = CerbosMode.CustomEndpoint,
-                FailureMode = CerbosFailureMode.Closed,
                 AdminEndpoint = "https://tenant-cerbos.example",
                 AdminUsername = "tenant-user",
                 AdminPassword = null,
@@ -522,6 +526,173 @@ public class CerbosPolicyPackageServiceTests : IDisposable
         return policiesRoot;
     }
 
+    /// <summary>
+    /// An empty store means the package was never published. Since Phase 2 removed the local carve-out,
+    /// nothing answers those checks as a fallback — every one of them fails closed — so this has to be
+    /// reported as a mismatch an operator can act on, not as an unknown they can ignore.
+    /// </summary>
+    [Test]
+    public async Task GetStatusAsync_WhenStoreIsEmpty_ReportsPackageMismatch()
+    {
+        var policiesRoot = await CreatePopulatedPackageRootAsync();
+        var handler = new RecordingMessageHandler(_ => JsonResponse("{\"policyIds\":[]}"));
+        var service = CreateService(policiesRoot, handler: handler);
+
+        var status = await service.GetStatusAsync();
+
+        await Assert.That(status.IssueCode).IsEqualTo(PolicyPackageIssueCode.PackageMismatch);
+        await Assert.That(status.IsHealthy).IsFalse();
+        await Assert.That(status.Message).Contains("empty");
+    }
+
+    [Test]
+    public async Task GetStatusAsync_WhenStoreHoldsFewerPoliciesThanDeclared_ReportsPartialPublish()
+    {
+        var policiesRoot = await CreatePopulatedPackageRootAsync();
+        var handler = new RecordingMessageHandler(_ =>
+            JsonResponse("{\"policyIds\":[\"resource.islamuevent_event.vdefault\"]}"));
+        var service = CreateService(policiesRoot, handler: handler);
+
+        var status = await service.GetStatusAsync();
+
+        await Assert.That(status.IssueCode).IsEqualTo(PolicyPackageIssueCode.PackageMismatch);
+        await Assert.That(status.Message).Contains("partial").Or.Contains("but this package declares");
+    }
+
+    [Test]
+    public async Task GetStatusAsync_WhenStoreCoversDeclaredPolicies_ReportsHealthyWithObservedRevision()
+    {
+        var policiesRoot = await CreatePopulatedPackageRootAsync();
+        var handler = StoreHandler(
+            "{\"policyIds\":[\"derived_roles.islamuevent_explore_admin_roles\",\"resource.islamuevent_event.vdefault\"]}",
+            StoredPolicies(
+                ("derived_roles.islamuevent_explore_admin_roles", "17613918467673392044"),
+                ("resource.islamuevent_event.vdefault", "13466950985171780168")));
+        var service = CreateService(policiesRoot, handler: handler);
+
+        var status = await service.GetStatusAsync();
+
+        await Assert.That(status.IssueCode).IsEqualTo(PolicyPackageIssueCode.None);
+        await Assert.That(status.IsHealthy).IsTrue();
+        await Assert.That(status.ObservedRevision).IsNotNull();
+
+        // A healthy store with a readable revision has nothing left to caveat. The old "content equality
+        // is unverifiable" warning was retired when the per-policy hash made it verifiable.
+        await Assert.That(status.Warnings).IsEmpty();
+    }
+
+    /// <summary>
+    /// The whole point of the revision: an operator edits a policy in the store without changing its
+    /// identifier. A listing still shows the same identifiers, so only the content hash can catch it.
+    /// </summary>
+    [Test]
+    public async Task GetStatusAsync_WhenAStoredPolicyBodyChanges_ReportsADifferentRevision()
+    {
+        var policiesRoot = await CreatePopulatedPackageRootAsync();
+        const string ListJson =
+            "{\"policyIds\":[\"derived_roles.islamuevent_explore_admin_roles\",\"resource.islamuevent_event.vdefault\"]}";
+
+        var before = await CreateService(
+            policiesRoot,
+            handler: StoreHandler(
+                ListJson,
+                StoredPolicies(
+                    ("derived_roles.islamuevent_explore_admin_roles", "17613918467673392044"),
+                    ("resource.islamuevent_event.vdefault", "13466950985171780168")))).GetStatusAsync();
+
+        var after = await CreateService(
+            policiesRoot,
+            handler: StoreHandler(
+                ListJson,
+                StoredPolicies(
+                    ("derived_roles.islamuevent_explore_admin_roles", "17613918467673392044"),
+                    ("resource.islamuevent_event.vdefault", "6065751633899809269")))).GetStatusAsync();
+
+        await Assert.That(before.IssueCode).IsEqualTo(PolicyPackageIssueCode.None);
+        await Assert.That(after.IssueCode).IsEqualTo(PolicyPackageIssueCode.None);
+        await Assert.That(before.ObservedRevision).IsNotNull();
+        await Assert.That(after.ObservedRevision).IsNotEqualTo(before.ObservedRevision);
+    }
+
+    /// <summary>
+    /// A complete store whose hashes cannot be read is still healthy for publication purposes, but the
+    /// revision is null and the caveat has to say so — that null is what makes sensitive actions deny.
+    /// </summary>
+    [Test]
+    public async Task GetStatusAsync_WhenPolicyHashesCannotBeRead_ReportsNoRevisionAndWarns()
+    {
+        var policiesRoot = await CreatePopulatedPackageRootAsync();
+        var handler = StoreHandler(
+            "{\"policyIds\":[\"derived_roles.islamuevent_explore_admin_roles\",\"resource.islamuevent_event.vdefault\"]}");
+        var service = CreateService(policiesRoot, handler: handler);
+
+        var status = await service.GetStatusAsync();
+
+        await Assert.That(status.IssueCode).IsEqualTo(PolicyPackageIssueCode.None);
+        await Assert.That(status.ObservedRevision).IsNull();
+        await Assert.That(string.Join(" ", status.Warnings)).Contains("in-place edit");
+    }
+
+    /// <summary>
+    /// A store that cannot be listed leaves freshness unverified. That must read as uncertainty rather
+    /// than health, because Phase 3 requires sensitive writes to deny on revision uncertainty.
+    /// </summary>
+    [Test]
+    public async Task GetStatusAsync_WhenStoreCannotBeListed_ReportsStatusUnknown()
+    {
+        var policiesRoot = await CreatePopulatedPackageRootAsync();
+        var handler = new RecordingMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.ServiceUnavailable));
+        var service = CreateService(policiesRoot, handler: handler);
+
+        var status = await service.GetStatusAsync();
+
+        await Assert.That(status.IssueCode).IsEqualTo(PolicyPackageIssueCode.PackageStatusUnknown);
+        await Assert.That(string.Join(" ", status.Warnings)).Contains("revision-uncertain");
+    }
+
+    private async Task<string> CreatePopulatedPackageRootAsync()
+    {
+        var policiesRoot = CreatePackageRoot();
+        await File.WriteAllTextAsync(
+            Path.Combine(policiesRoot, "islamuevent_event.yaml"),
+            "resourcePolicy:\n  resource: islamuevent_event\n");
+        await File.WriteAllTextAsync(
+            Path.Combine(policiesRoot, "derived_roles.yaml"),
+            "derivedRoles:\n  name: islamuevent_explore_admin_roles\n");
+        await File.WriteAllTextAsync(
+            Path.Combine(policiesRoot, "_schemas", "islamuevent_principal.json"),
+            "{\"type\":\"object\"}");
+        return policiesRoot;
+    }
+
+    private static HttpResponseMessage JsonResponse(string json) =>
+        new(HttpStatusCode.OK)
+        {
+            Content = new StringContent(json, Encoding.UTF8, "application/json")
+        };
+
+    /// <summary>
+    /// Status makes two different Admin API calls — <c>/admin/policies</c> to list identifiers and
+    /// <c>/admin/policy</c> to read each policy's content hash. They return different shapes, so a
+    /// handler that answers both with one body would silently exercise only the listing path.
+    /// </summary>
+    private static RecordingMessageHandler StoreHandler(string listJson, string? fetchJson = null) =>
+        new(request => request.RequestUri!.AbsolutePath switch
+        {
+            "/admin/policies" => JsonResponse(listJson),
+            "/admin/policy" when fetchJson is not null => JsonResponse(fetchJson),
+            _ => new HttpResponseMessage(HttpStatusCode.ServiceUnavailable)
+        });
+
+    /// <summary>Builds an <c>/admin/policy</c> body carrying the Cerbos-computed hash per policy.</summary>
+    private static string StoredPolicies(params (string Id, string Hash)[] policies) =>
+        "{\"policies\":["
+        + string.Join(
+            ',',
+            policies.Select(policy =>
+                $"{{\"metadata\":{{\"hash\":\"{policy.Hash}\",\"storeIdentifier\":\"{policy.Id}\"}}}}"))
+        + "]}";
+
     private static CerbosPolicyPackageService CreateService(
         string policiesRoot,
         int maxPoliciesPerRequest = 100,
@@ -549,7 +720,6 @@ public class CerbosPolicyPackageServiceTests : IDisposable
         {
             Endpoint = "instance-cerbos.example:3593",
             Mode = CerbosMode.Instance,
-            FailureMode = CerbosFailureMode.Closed,
             IsInstanceDefault = true
         });
 

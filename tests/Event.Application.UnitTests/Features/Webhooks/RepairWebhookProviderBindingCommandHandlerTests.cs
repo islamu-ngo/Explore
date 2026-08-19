@@ -155,7 +155,8 @@ public sealed class RepairWebhookProviderBindingCommandHandlerTests
         await Assert.That(attribute!.Resource).IsEqualTo(ResourceKinds.Webhook);
         await Assert.That(attribute.Action).IsEqualTo(AuthorizationActions.Webhooks.ManageProvider);
         await Assert.That(request.ResourceId).IsEqualTo(consumerId.ToString("D"));
-        await Assert.That(request.ResourceAttributes!["consumerId"]).IsEqualTo(consumerId.ToString("D"));
+        // Ownership is resolved server-side from the persisted consumer, not declared by the request.
+        await Assert.That(request.AuthorizationFacts).IsNull();
     }
 
     private sealed class Fixture

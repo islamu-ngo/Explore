@@ -33,11 +33,6 @@ public sealed class UpdateEventSessionSpeakerAuthorizationContextEnricher(
 
         return new AuthorizationContext(
             session.Id.ToString(),
-            new Dictionary<string, object>
-            {
-                ["eventSessionId"] = session.Id.ToString(),
-                ["eventId"] = session.EventId.ToString(),
-                ["tenantId"] = session.TenantId.ToString()
-            });
+            new EventScopedAuthorizationFacts(session.TenantId, session.EventId, session.Id));
     }
 }

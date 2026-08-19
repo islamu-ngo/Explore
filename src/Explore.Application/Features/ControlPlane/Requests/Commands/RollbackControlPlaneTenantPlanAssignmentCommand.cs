@@ -22,10 +22,6 @@ public sealed class RollbackControlPlaneTenantPlanAssignmentCommand(
 
     string? ISecureRequest.ResourceId => SettingKey;
 
-    IDictionary<string, object>? ISecureRequest.ResourceAttributes => new Dictionary<string, object>
-    {
-        ["settingKey"] = SettingKey,
-        ["tenantId"] = TenantId,
-        ["assignmentId"] = AssignmentId
-    };
+    IAuthorizationFacts? ISecureRequest.AuthorizationFacts =>
+        InstanceScopedAuthorizationFacts.Instance;
 }

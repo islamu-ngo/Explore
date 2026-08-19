@@ -28,11 +28,9 @@ public sealed class UpdateEventSessionAgendaItemAuthorizationContextEnricher(
 
         return new AuthorizationContext(
             assignment.Id.ToString(),
-            new Dictionary<string, object>
-            {
-                ["eventSessionId"] = assignment.EventSessionId.ToString(),
-                ["eventId"] = assignment.EventSession.EventId.ToString(),
-                ["tenantId"] = assignment.TenantId.ToString()
-            });
+            new EventScopedAuthorizationFacts(
+                assignment.TenantId,
+                assignment.EventSession.EventId,
+                assignment.EventSessionId));
     }
 }

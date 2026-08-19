@@ -16,5 +16,4 @@ public class UpdateEventAgendaItemCommand : IRequest<BaseCommandResponse<Guid>>,
     public required UpdateEventAgendaItemDto EventAgendaItemDto { get; set; }
 
     string? ISecureRequest.ResourceId => EventAgendaItemId.ToString();
-    IDictionary<string, object>? ISecureRequest.ResourceAttributes => null;
 }

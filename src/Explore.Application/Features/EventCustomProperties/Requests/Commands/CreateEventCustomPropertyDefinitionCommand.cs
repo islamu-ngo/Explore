@@ -14,5 +14,4 @@ public class CreateEventCustomPropertyDefinitionCommand : IRequest<BaseCommandRe
     public required CreateEventCustomPropertyDefinitionDto DefinitionDto { get; set; }
 
     string? ISecureRequest.ResourceId => null;
-    IDictionary<string, object>? ISecureRequest.ResourceAttributes => null;
 }

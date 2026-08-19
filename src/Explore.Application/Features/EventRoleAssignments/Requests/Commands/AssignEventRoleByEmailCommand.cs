@@ -23,11 +23,8 @@ public sealed class AssignEventRoleByEmailCommand : IRequest<BaseCommandResponse
 
     string? ISecureRequest.ResourceId => EventId == Guid.Empty ? null : EventId.ToString("D");
 
-    IDictionary<string, object>? ISecureRequest.ResourceAttributes => EventId == Guid.Empty
+    IAuthorizationFacts? ISecureRequest.AuthorizationFacts =>
+        EventId == Guid.Empty
         ? null
-        : new Dictionary<string, object>
-        {
-            ["tenantId"] = TenantId.ToString("D"),
-            ["eventId"] = EventId.ToString("D")
-        };
+        : new EventScopedAuthorizationFacts(TenantId, EventId);
 }

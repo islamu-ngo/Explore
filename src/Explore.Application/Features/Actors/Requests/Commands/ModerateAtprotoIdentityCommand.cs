@@ -17,10 +17,6 @@ public sealed class ModerateAtprotoIdentityCommand : IRequest<BaseCommandRespons
 
     string? ISecureRequest.ResourceId => SettingKey;
 
-    IDictionary<string, object>? ISecureRequest.ResourceAttributes => new Dictionary<string, object>
-    {
-        ["settingKey"] = SettingKey,
-        ["targetAtprotoIdentityId"] = AtprotoIdentityId.ToString(),
-        ["globalModerationAction"] = Moderation?.Action.ToString() ?? string.Empty
-    };
+    IAuthorizationFacts? ISecureRequest.AuthorizationFacts =>
+        InstanceScopedAuthorizationFacts.Instance;
 }

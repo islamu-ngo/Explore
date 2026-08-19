@@ -33,8 +33,8 @@ public sealed class TenantFooterSettingsLinkPolicyTests
         await Assert.That(edit.PermissionResourceKind).IsEqualTo(ResourceKinds.Tenant);
         await Assert.That(edit.PermissionAction).IsEqualTo(AuthorizationActions.Update);
         await Assert.That(edit.PermissionResourceId).IsEqualTo(tenantId.ToString("D"));
-        await Assert.That(edit.PermissionResourceAttributes!["tenantId"]).IsEqualTo(tenantId.ToString("D"));
-        await Assert.That(edit.PermissionResourceAttributes["settingGroup"]).IsEqualTo("footer");
+        // Footer settings are tenant-administered; the setting group names the document, not an authority zone.
+        await Assert.That(edit.PermissionFacts).IsEqualTo(new TenantScopedAuthorizationFacts(tenantId));
         await Assert.That(edit.PermissionScope!.TenantId).IsEqualTo(tenantId.ToString("D"));
         var manage = links.Single(link => link.Rel == "manage-link-groups");
         await Assert.That(manage.RouteName).IsEqualTo(RouteNames.GetFooterLinkGroups);

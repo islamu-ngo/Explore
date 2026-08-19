@@ -16,5 +16,4 @@ public class SetEventSessionCustomPropertyMultiValuesCommand : IRequest<BaseComm
     public required List<SetEventSessionCustomPropertyValueDto> Values { get; set; }
 
     string? ISecureRequest.ResourceId => null;
-    IDictionary<string, object>? ISecureRequest.ResourceAttributes => null;
 }

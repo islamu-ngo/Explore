@@ -14,9 +14,6 @@ public sealed class SubmitEventOrganizerClaimCommand : IRequest<BaseCommandRespo
     public Guid EventId { get; init; }
     public required SubmitEventOrganizerClaimDto Claim { get; init; }
     string? ISecureRequest.ResourceId => EventId == Guid.Empty ? null : EventId.ToString();
-    IDictionary<string, object>? ISecureRequest.ResourceAttributes => new Dictionary<string, object>
-    {
-        ["eventId"] = EventId.ToString(),
-        ["claimantActorId"] = Claim.ClaimantActorId.ToString()
-    };
+    IAuthorizationFacts? ISecureRequest.AuthorizationFacts =>
+        new EventScopedAuthorizationFacts(Guid.Empty, EventId);
 }

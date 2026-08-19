@@ -14,5 +14,6 @@ public sealed class UpdateEventTicketTypeCommand : IRequest<BaseCommandResponse<
     public Guid TicketTypeId { get; init; }
     public required ManageEventTicketTypeDto TicketType { get; init; }
     string? ISecureRequest.ResourceId => EventId == Guid.Empty ? null : EventId.ToString();
-    IDictionary<string, object>? ISecureRequest.ResourceAttributes => new Dictionary<string, object> { ["eventId"] = EventId.ToString() };
+    IAuthorizationFacts? ISecureRequest.AuthorizationFacts =>
+        new EventScopedAuthorizationFacts(Guid.Empty, EventId);
 }

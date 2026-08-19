@@ -13,5 +13,4 @@ public class DeleteLocationRoomCommand : IRequest<BaseCommandResponse<Guid>>, IS
     public Guid Id { get; set; }
 
     string? ISecureRequest.ResourceId => Id.ToString();
-    IDictionary<string, object>? ISecureRequest.ResourceAttributes => null;
 }

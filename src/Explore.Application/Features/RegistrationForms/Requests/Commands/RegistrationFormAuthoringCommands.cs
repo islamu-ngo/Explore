@@ -14,10 +14,10 @@ public interface IRegistrationFormAuthoringCommand : IRequest<BaseCommandRespons
 
     string? ISecureRequest.ResourceId => EventId == Guid.Empty ? null : EventId.ToString();
 
-    IDictionary<string, object>? ISecureRequest.ResourceAttributes => new Dictionary<string, object>
-    {
-        ["eventId"] = EventId.ToString()
-    };
+    // Form, version, and workflow identifiers select the payload, not the authority: registration
+    // authoring is decided against the parent event, which the resolver reloads server-side.
+    IAuthorizationFacts? ISecureRequest.AuthorizationFacts =>
+        new EventScopedAuthorizationFacts(Guid.Empty, EventId);
 }
 
 public interface IRegistrationFormScopedCommand : IRegistrationFormAuthoringCommand
@@ -25,24 +25,11 @@ public interface IRegistrationFormScopedCommand : IRegistrationFormAuthoringComm
     Guid FormId { get; }
 
     string? ISecureRequest.ResourceId => FormId == Guid.Empty ? null : FormId.ToString();
-
-    IDictionary<string, object>? ISecureRequest.ResourceAttributes => new Dictionary<string, object>
-    {
-        ["eventId"] = EventId.ToString(),
-        ["formId"] = FormId.ToString()
-    };
 }
 
 public interface IRegistrationFormVersionScopedCommand : IRegistrationFormScopedCommand
 {
     Guid VersionId { get; }
-
-    IDictionary<string, object>? ISecureRequest.ResourceAttributes => new Dictionary<string, object>
-    {
-        ["eventId"] = EventId.ToString(),
-        ["formId"] = FormId.ToString(),
-        ["versionId"] = VersionId.ToString()
-    };
 }
 
 [AuthorizeResource(ResourceKinds.Event, AuthorizationActions.Events.ManageRegistrationWorkflow)]
@@ -100,14 +87,7 @@ public sealed record CreateRegistrationFormCommand(
     string Key,
     string Name,
     string LanguageTag,
-    Guid ExpectedConcurrencyStamp) : IRegistrationFormAuthoringCommand
-{
-    IDictionary<string, object>? ISecureRequest.ResourceAttributes => new Dictionary<string, object>
-    {
-        ["eventId"] = EventId.ToString(),
-        ["workflowId"] = WorkflowId.ToString()
-    };
-}
+    Guid ExpectedConcurrencyStamp) : IRegistrationFormAuthoringCommand;
 
 [AuthorizeResource(ResourceKinds.RegistrationForm, AuthorizationActions.RegistrationForms.Create)]
 public sealed record CreateRegistrationFormVersionCommand(

@@ -18,9 +18,6 @@ public class UpdateEventSeriesCommand : IRequest<BaseCommandResponse<Guid>>, ISe
     public required UpdateEventSeriesDto EventSeriesDto { get; set; }
 
     string? ISecureRequest.ResourceId => ActorId.ToString();
-    IDictionary<string, object>? ISecureRequest.ResourceAttributes => new Dictionary<string, object>
-    {
-        ["actorId"] = ActorId.ToString(),
-        ["tenantId"] = TenantId.ToString()
-    };
+    IAuthorizationFacts? ISecureRequest.AuthorizationFacts =>
+        new ActorAuthorizationFacts(TenantId, ActorId);
 }

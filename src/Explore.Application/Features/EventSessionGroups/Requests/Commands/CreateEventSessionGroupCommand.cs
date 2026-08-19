@@ -16,9 +16,6 @@ public class CreateEventSessionGroupCommand : IRequest<BaseCommandResponse<Guid>
     public Guid TenantId { get; set; }
 
     string? ISecureRequest.ResourceId => EventSessionGroup.EventId.ToString();
-    IDictionary<string, object>? ISecureRequest.ResourceAttributes => new Dictionary<string, object>
-    {
-        ["tenantId"] = TenantId.ToString(),
-        ["eventId"] = EventSessionGroup.EventId.ToString()
-    };
+    IAuthorizationFacts? ISecureRequest.AuthorizationFacts =>
+        new EventScopedAuthorizationFacts(TenantId, EventSessionGroup.EventId);
 }

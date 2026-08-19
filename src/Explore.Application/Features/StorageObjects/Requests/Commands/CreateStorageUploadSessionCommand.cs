@@ -16,31 +16,6 @@ public class CreateStorageUploadSessionCommand : IRequest<BaseCommandResponse<St
 
     string? ISecureRequest.ResourceId => UploadSessionDto.OwningResourceId?.ToString();
 
-    IDictionary<string, object>? ISecureRequest.ResourceAttributes
-    {
-        get
-        {
-            var attributes = new Dictionary<string, object>();
-
-            if (TenantId != Guid.Empty)
-            {
-                attributes["tenantId"] = TenantId.ToString();
-            }
-
-            if (!string.IsNullOrWhiteSpace(UploadSessionDto.OwningResourceKind))
-            {
-                attributes["owningResourceKind"] = UploadSessionDto.OwningResourceKind;
-            }
-
-            if (UploadSessionDto.OwningResourceId.HasValue)
-            {
-                attributes["owningResourceId"] = UploadSessionDto.OwningResourceId.Value.ToString();
-            }
-
-            attributes["purpose"] = UploadSessionDto.Purpose;
-            attributes["visibility"] = UploadSessionDto.Visibility;
-
-            return attributes.Count == 0 ? null : attributes;
-        }
-    }
+    // Upload intent facts are established server-side by CreateStorageUploadSessionAuthorizationContextEnricher,
+    // which loads the owning resource. The request declares none: a requested owner is not evidence of one.
 }

@@ -15,8 +15,6 @@ public sealed class ArchiveEventCommand : IRequest<BaseCommandResponse<Guid>>, I
     public required ArchiveEventRequestDto Request { get; set; }
 
     string? ISecureRequest.ResourceId => Id.ToString();
-    IDictionary<string, object>? ISecureRequest.ResourceAttributes => new Dictionary<string, object>
-    {
-        ["eventId"] = Id.ToString()
-    };
+    IAuthorizationFacts? ISecureRequest.AuthorizationFacts =>
+        new EventScopedAuthorizationFacts(Guid.Empty, Id);
 }

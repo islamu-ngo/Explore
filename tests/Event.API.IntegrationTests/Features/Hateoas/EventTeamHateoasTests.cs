@@ -300,7 +300,6 @@ public sealed class EventTeamHateoasTests
         && check.Action == AuthorizationActions.Events.ManageTeam
         && check.ResourceId == eventId.ToString("D")
         && check.Scope?.TenantId == tenantId.ToString("D")
-        && check.ResourceAttributes is null
         && check.Facts is EventAuthorizationFacts facts
         && facts.TenantId == tenantId
         && facts.EventId == eventId;

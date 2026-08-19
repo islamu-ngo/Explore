@@ -19,7 +19,7 @@ public sealed class ProjectionStatusDetailLinkPolicy : ILinkPolicy<ProjectionSta
 {
     public IEnumerable<LinkDefinition> GetLinks(ProjectionStatusDto dto, ClaimsPrincipal? user)
     {
-        var attributes = ProjectionAttributes(dto.TenantId, dto.ProjectionName);
+        var facts = ProjectionFacts(dto.TenantId);
         var resourceId = ProjectionResourceId(dto.TenantId, dto.ProjectionName);
 
         var isSessionProjection = string.Equals(
@@ -39,7 +39,7 @@ public sealed class ProjectionStatusDetailLinkPolicy : ILinkPolicy<ProjectionSta
             .RequirePermission(AuthorizationActions.CustomPropertyProjections.View,
                 ResourceKinds.CustomPropertyProjection,
                 resourceId,
-                attributes);
+                facts: facts);
 
         yield return new LinkDefinition(
             "rebuild",
@@ -48,7 +48,7 @@ public sealed class ProjectionStatusDetailLinkPolicy : ILinkPolicy<ProjectionSta
             .RequirePermission(AuthorizationActions.CustomPropertyProjections.Update,
                 ResourceKinds.CustomPropertyProjection,
                 resourceId,
-                attributes);
+                facts: facts);
 
         yield return new LinkDefinition(
             "drain-dirty-scopes",
@@ -57,7 +57,7 @@ public sealed class ProjectionStatusDetailLinkPolicy : ILinkPolicy<ProjectionSta
             .RequirePermission(AuthorizationActions.CustomPropertyProjections.Update,
                 ResourceKinds.CustomPropertyProjection,
                 resourceId,
-                attributes);
+                facts: facts);
 
         yield return new LinkDefinition(
             "dirty-scopes",
@@ -67,18 +67,15 @@ public sealed class ProjectionStatusDetailLinkPolicy : ILinkPolicy<ProjectionSta
             .RequirePermission(AuthorizationActions.CustomPropertyProjections.View,
                 ResourceKinds.CustomPropertyProjection,
                 resourceId,
-                attributes);
+                facts: facts);
     }
 
     private static string ProjectionResourceId(Guid tenantId, string projectionName)
         => $"{tenantId:N}:{projectionName}";
 
-    private static Dictionary<string, object> ProjectionAttributes(Guid tenantId, string projectionName)
-        => new Dictionary<string, object>
-        {
-            ["tenantId"] = tenantId,
-            ["projectionName"] = projectionName
-        };
+    // Projection administration is tenant-scoped; the projection name selects the row.
+    private static IAuthorizationFacts ProjectionFacts(Guid tenantId)
+        => new CustomPropertyProjectionAuthorizationFacts(tenantId);
 }
 
 
@@ -145,13 +142,8 @@ public sealed class ProjectionDirtyScopeCollectionLinkPolicy : ICollectionLinkPo
 {
     public IEnumerable<LinkDefinition> GetItemLinks(ProjectionDirtyScopeDto dto, ClaimsPrincipal? user)
     {
-        var attributes = new Dictionary<string, object>
-        {
-            ["tenantId"] = dto.TenantId,
-            ["projectionName"] = dto.ProjectionName,
-            ["scopeType"] = dto.ScopeType,
-            ["scopeId"] = dto.ScopeId
-        };
+        // Scope type and id name the dirty row; tenant administration decides who may drain it.
+        var facts = new CustomPropertyProjectionAuthorizationFacts(dto.TenantId);
 
         yield return new LinkDefinition(
             "drain",
@@ -160,7 +152,7 @@ public sealed class ProjectionDirtyScopeCollectionLinkPolicy : ICollectionLinkPo
             .RequirePermission(AuthorizationActions.CustomPropertyProjections.Update,
                 ResourceKinds.CustomPropertyProjection,
                 dto.Id.ToString(CultureInfo.InvariantCulture),
-                attributes);
+                facts: facts);
     }
 
     public IEnumerable<LinkDefinition> GetCollectionLinks(ClaimsPrincipal? user)

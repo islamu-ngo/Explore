@@ -216,7 +216,6 @@ internal static class EventLocationManagementProjection
             descriptor.Kind,
             descriptor.GetResourceId(authorizationTarget),
             AuthorizationActions.Update,
-            ResourceAttributes: null,
             Scope: descriptor.GetScope(authorizationTarget),
             Facts: descriptor.GetFacts(authorizationTarget));
 

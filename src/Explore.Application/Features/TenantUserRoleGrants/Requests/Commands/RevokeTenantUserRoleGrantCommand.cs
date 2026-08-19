@@ -15,8 +15,6 @@ public class RevokeTenantUserRoleGrantCommand : IRequest<bool>, ISecureRequest
 
     string? ISecureRequest.ResourceId => Id == Guid.Empty ? null : Id.ToString("D");
 
-    IDictionary<string, object>? ISecureRequest.ResourceAttributes => new Dictionary<string, object>
-    {
-        ["tenantId"] = TenantId.ToString("D")
-    };
+    IAuthorizationFacts? ISecureRequest.AuthorizationFacts =>
+        new TenantScopedAuthorizationFacts(TenantId);
 }

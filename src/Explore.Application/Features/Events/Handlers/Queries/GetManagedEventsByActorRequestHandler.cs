@@ -80,7 +80,6 @@ public class GetManagedEventsByActorRequestHandler : IRequestHandler<GetManagedE
                 descriptor.Kind,
                 descriptor.GetResourceId(dto),
                 AuthorizationActions.Events.ViewManagement,
-                ResourceAttributes: null,
                 Scope: descriptor.GetScope(dto),
                 Facts: descriptor.GetFacts(dto)))
             .ToList();

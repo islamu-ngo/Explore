@@ -15,8 +15,6 @@ public sealed record ReviseInstancePaidEventPolicyCommand(RevisePaidEventPolicyD
 {
     string? ISecureRequest.ResourceId => GetInstancePaidEventPolicyQuery.SettingKey;
 
-    IDictionary<string, object>? ISecureRequest.ResourceAttributes => new Dictionary<string, object>
-    {
-        ["settingKey"] = GetInstancePaidEventPolicyQuery.SettingKey
-    };
+    IAuthorizationFacts? ISecureRequest.AuthorizationFacts =>
+        InstanceScopedAuthorizationFacts.Instance;
 }

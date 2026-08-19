@@ -31,12 +31,8 @@ public sealed class TenantFooterSettingsLinkPolicy : ILinkPolicy<TenantFooterSet
             .RequirePermission(AuthorizationActions.Update,
                 ResourceKinds.Tenant,
                 dto.TenantId.ToString("D"),
-                new Dictionary<string, object>
-                {
-                    ["tenantId"] = dto.TenantId.ToString("D"),
-                    ["settingGroup"] = "footer"
-                },
-                new AuthorizationScope(TenantId: dto.TenantId.ToString("D")));
+                new AuthorizationScope(TenantId: dto.TenantId.ToString("D")),
+                new TenantScopedAuthorizationFacts(dto.TenantId));
 
         if (!dto.LockTenantLinkGroups)
         {
@@ -50,12 +46,8 @@ public sealed class TenantFooterSettingsLinkPolicy : ILinkPolicy<TenantFooterSet
                 .RequirePermission(AuthorizationActions.Update,
                     ResourceKinds.Tenant,
                     dto.TenantId.ToString("D"),
-                    new Dictionary<string, object>
-                    {
-                        ["tenantId"] = dto.TenantId.ToString("D"),
-                        ["settingGroup"] = "footer"
-                    },
-                    new AuthorizationScope(TenantId: dto.TenantId.ToString("D")));
+                    new AuthorizationScope(TenantId: dto.TenantId.ToString("D")),
+                    new TenantScopedAuthorizationFacts(dto.TenantId));
         }
     }
 }

@@ -166,12 +166,19 @@ public sealed class EventTicketingLinkPolicyTests
 
         await Assert.That(publish.PermissionAction).IsEqualTo(AuthorizationActions.Events.ManageTickets);
         await Assert.That(publish.PermissionScope!.TenantId).IsEqualTo(tenantId.ToString("D"));
-        await Assert.That(publish.PermissionResourceAttributes!["eventId"]).IsEqualTo(eventId.ToString("D"));
-        await Assert.That(publish.PermissionResourceAttributes["tenantId"]).IsEqualTo(tenantId.ToString("D"));
-        await Assert.That(publish.PermissionResourceAttributes["actorId"]).IsEqualTo(actorId.ToString("D"));
-        await Assert.That(publish.PermissionResourceAttributes["userId"]).IsEqualTo(actorUserId.ToString("D"));
-        await Assert.That(publish.PermissionResourceAttributes["organizerActorId"]).IsEqualTo(organizerActorId.ToString("D"));
-        await Assert.That(publish.PermissionResourceAttributes["organizerOrganizationId"]).IsEqualTo(organizerOrganizationId.ToString("D"));
+        await Assert.That(publish.PermissionFacts).IsEqualTo(new EventAuthorizationFacts(
+            tenantId,
+            eventId,
+            actorId,
+            UserId: actorUserId,
+            OrganizationId: null,
+            GroupId: null,
+            OrganizerActorId: organizerActorId,
+            OrganizerUserId: null,
+            OrganizerOrganizationId: organizerOrganizationId,
+            OrganizerGroupId: null,
+            ProvenanceType: null,
+            SubmittedByUserId: null));
     }
 
     [Test]
@@ -200,12 +207,19 @@ public sealed class EventTicketingLinkPolicyTests
 
         await Assert.That(publish.PermissionAction).IsEqualTo(AuthorizationActions.Events.ManagePaidEventCommerce);
         await Assert.That(publish.PermissionScope!.TenantId).IsEqualTo(tenantId.ToString("D"));
-        await Assert.That(publish.PermissionResourceAttributes!["eventId"]).IsEqualTo(eventId.ToString("D"));
-        await Assert.That(publish.PermissionResourceAttributes["tenantId"]).IsEqualTo(tenantId.ToString("D"));
-        await Assert.That(publish.PermissionResourceAttributes["actorId"]).IsEqualTo(actorId.ToString("D"));
-        await Assert.That(publish.PermissionResourceAttributes["organizationId"]).IsEqualTo(actorOrganizationId.ToString("D"));
-        await Assert.That(publish.PermissionResourceAttributes["organizerActorId"]).IsEqualTo(organizerActorId.ToString("D"));
-        await Assert.That(publish.PermissionResourceAttributes["organizerGroupId"]).IsEqualTo(organizerGroupId.ToString("D"));
+        await Assert.That(publish.PermissionFacts).IsEqualTo(new EventAuthorizationFacts(
+            tenantId,
+            eventId,
+            actorId,
+            UserId: null,
+            OrganizationId: actorOrganizationId,
+            GroupId: null,
+            OrganizerActorId: organizerActorId,
+            OrganizerUserId: null,
+            OrganizerOrganizationId: null,
+            OrganizerGroupId: organizerGroupId,
+            ProvenanceType: null,
+            SubmittedByUserId: null));
     }
 
     [Test]

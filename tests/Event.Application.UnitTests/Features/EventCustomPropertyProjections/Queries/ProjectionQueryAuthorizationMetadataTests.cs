@@ -70,14 +70,9 @@ public class ProjectionQueryAuthorizationMetadataTests
         (ISecureRequest Request, string ExpectedResourceId, string ExpectedContextKey, string ExpectedContextValue) testCase)
     {
         await Assert.That(testCase.Request.ResourceId).IsEqualTo(testCase.ExpectedResourceId);
-        await Assert.That(testCase.Request.ResourceAttributes).IsNotNull();
-        await Assert.That(testCase.Request.ResourceAttributes![testCase.ExpectedContextKey]).IsEqualTo(testCase.ExpectedContextValue);
-
-        if (testCase.Request is GetEventCustomPropertyProjectionStatusQuery
-            or GetEventSessionCustomPropertyProjectionStatusQuery
-            or GetCustomPropertyProjectionDirtyScopesQuery)
-        {
-            await Assert.That(testCase.Request.ResourceAttributes.ContainsKey("tenantId")).IsTrue();
-        }
+        // Projection administration is tenant-scoped. The event or session in the resource id selects the
+        // projection scope; it never adds an authority zone of its own.
+        await Assert.That(testCase.Request.AuthorizationFacts)
+            .IsTypeOf<CustomPropertyProjectionAuthorizationFacts>();
     }
 }

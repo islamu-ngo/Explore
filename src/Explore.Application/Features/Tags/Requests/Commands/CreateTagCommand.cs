@@ -14,8 +14,6 @@ public class CreateTagCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequ
     public required CreateTagDto TagDto { get; set; }
 
     string? ISecureRequest.ResourceId => null;
-    IDictionary<string, object>? ISecureRequest.ResourceAttributes =>
-        TagDto.TenantId != Guid.Empty
-            ? new Dictionary<string, object> { ["tenantId"] = TagDto.TenantId.ToString() }
-            : null;
+    IAuthorizationFacts? ISecureRequest.AuthorizationFacts =>
+        new TenantScopedAuthorizationFacts(TagDto.TenantId);
 }

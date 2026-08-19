@@ -17,10 +17,6 @@ public class CreateEventSessionCommand : IRequest<BaseCommandResponse<Guid>>, IS
 
     string? ISecureRequest.ResourceId => EventSessionDto.EventId.ToString();
 
-    IDictionary<string, object>? ISecureRequest.ResourceAttributes => new Dictionary<string, object>
-    {
-        ["tenantId"] = TenantId.ToString(),
-        ["eventId"] = EventSessionDto.EventId.ToString(),
-        ["authorizationPhase"] = AuthorizationPhases.PreCreate
-    };
+    IAuthorizationFacts? ISecureRequest.AuthorizationFacts =>
+        new PreCreateAuthorizationFacts(TenantId, EventSessionDto.EventId, null, null);
 }

@@ -17,10 +17,6 @@ public sealed class ModerateActorCommand : IRequest<BaseCommandResponse<Guid>>, 
 
     string? ISecureRequest.ResourceId => SettingKey;
 
-    IDictionary<string, object>? ISecureRequest.ResourceAttributes => new Dictionary<string, object>
-    {
-        ["settingKey"] = SettingKey,
-        ["targetActorId"] = ActorId.ToString(),
-        ["globalModerationAction"] = Moderation?.Action.ToString() ?? string.Empty
-    };
+    IAuthorizationFacts? ISecureRequest.AuthorizationFacts =>
+        InstanceScopedAuthorizationFacts.Instance;
 }

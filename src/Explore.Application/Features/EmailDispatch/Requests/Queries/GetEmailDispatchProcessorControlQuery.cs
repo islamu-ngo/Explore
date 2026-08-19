@@ -12,8 +12,6 @@ public sealed class GetEmailDispatchProcessorControlQuery : IRequest<EmailDispat
 {
     string ISecureRequest.ResourceId => EmailDispatchProcessorControl.SettingKey;
 
-    IDictionary<string, object> ISecureRequest.ResourceAttributes => new Dictionary<string, object>
-    {
-        ["settingKey"] = EmailDispatchProcessorControl.SettingKey
-    };
+    IAuthorizationFacts? ISecureRequest.AuthorizationFacts =>
+        InstanceScopedAuthorizationFacts.Instance;
 }

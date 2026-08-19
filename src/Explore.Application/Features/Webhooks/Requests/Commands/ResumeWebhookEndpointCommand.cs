@@ -21,14 +21,6 @@ public sealed class ResumeWebhookEndpointCommand
 
     string? ISecureRequest.ResourceId => EndpointId == Guid.Empty ? null : EndpointId.ToString("D");
 
-    IDictionary<string, object>? ISecureRequest.ResourceAttributes => EndpointId == Guid.Empty
-        ? null
-        : new Dictionary<string, object>
-        {
-            ["endpointId"] = EndpointId.ToString("D"),
-            ["webhookOperation"] = "resume"
-        };
-
     WebhookOwnedResourceKind IWebhookPersistedOwnerRequest.OwnedResourceKind =>
         WebhookOwnedResourceKind.Endpoint;
 

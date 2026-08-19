@@ -16,5 +16,4 @@ public class UpdateEventDayCommand : IRequest<BaseCommandResponse<Guid>>, ISecur
     public required UpdateEventDayDto EventDayDto { get; set; }
 
     string? ISecureRequest.ResourceId => EventDayId.ToString();
-    IDictionary<string, object>? ISecureRequest.ResourceAttributes => null;
 }

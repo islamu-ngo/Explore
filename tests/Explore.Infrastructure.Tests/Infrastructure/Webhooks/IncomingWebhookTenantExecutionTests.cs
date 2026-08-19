@@ -159,8 +159,8 @@ public sealed class IncomingWebhookTenantExecutionTests
                 request.Action));
             await state.SynchronizeAsync(cancellationToken);
             var hasMatchingTenantAttribute =
-                request.ResourceAttributes?.TryGetValue("tenantId", out var tenantAttribute) == true &&
-                tenantAttribute?.ToString() == tenantId.ToString();
+                request.Facts is TenantScopedAuthorizationFacts tenantFacts &&
+                tenantFacts.TenantId == tenantId;
             var allowed = request.ResourceKind == ResourceKinds.Webhook &&
                           request.Action == AuthorizationActions.Webhooks.ProcessIncoming &&
                           principal is not null &&

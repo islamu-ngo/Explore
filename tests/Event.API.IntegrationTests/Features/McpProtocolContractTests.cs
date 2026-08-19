@@ -326,8 +326,7 @@ public sealed class McpProtocolContractTests
         await Assert.That(descriptor.RootElement.GetProperty("FailureCode").GetString()).IsEqualTo("tool_authorization_denied");
         await Assert.That(deniedChecks).HasSingleItem(check =>
             check.ResourceId == existingEvent.EventId.ToString() &&
-            HasGuidAttribute(check.ResourceAttributes, "eventId", existingEvent.EventId) &&
-            HasGuidAttribute(check.ResourceAttributes, "tenantId", PlatformDefaults.DefaultTenantId));
+            HasEventScopedFacts(check, existingEvent.EventId, PlatformDefaults.DefaultTenantId));
 
         using var detailRequest = CreateAuthenticatedRequest(
             HttpMethod.Get,
@@ -352,7 +351,7 @@ public sealed class McpProtocolContractTests
                     check.Action == AuthorizationActions.Events.ModerateHeavy)
                 {
                     moderationChecks.Add(check);
-                    return HasGuidAttribute(check.ResourceAttributes, "tenantId", targetTenantId);
+                    return check.Facts is EventScopedAuthorizationFacts facts && facts.TenantId == targetTenantId;
                 }
 
                 return true;
@@ -387,8 +386,7 @@ public sealed class McpProtocolContractTests
         await AssertSuccessfulToolResult(projectedModerationProposal);
         await Assert.That(moderationChecks).HasSingleItem(check =>
             check.ResourceId == existingEvent.EventId.ToString() &&
-            HasGuidAttribute(check.ResourceAttributes, "eventId", existingEvent.EventId) &&
-            HasGuidAttribute(check.ResourceAttributes, "tenantId", targetTenantId));
+            HasEventScopedFacts(check, existingEvent.EventId, targetTenantId));
         await Assert.That((await ReadEventStateAsync(factory, existingEvent.EventId))).IsEqualTo(eventStateBefore);
 
         using var detailRequest = CreateAuthenticatedRequest(
@@ -686,13 +684,14 @@ public sealed class McpProtocolContractTests
         return false;
     }
 
-    private static bool HasGuidAttribute(
-        IReadOnlyDictionary<string, object>? attributes,
-        string name,
-        Guid expected)
-        => attributes?.TryGetValue(name, out var value) == true &&
-            Guid.TryParse(value.ToString(), out var actual) &&
-            actual == expected;
+    /// <summary>
+    /// A model-proposed moderation action is decided against the event the server loaded, so the check must
+    /// carry that event and its owning tenant -- never identifiers echoed back from the tool payload.
+    /// </summary>
+    private static bool HasEventScopedFacts(AuthorizationRequest check, Guid eventId, Guid tenantId) =>
+        check.Facts is EventScopedAuthorizationFacts facts &&
+        facts.EventId == eventId &&
+        facts.TenantId == tenantId;
 
     private sealed record OwnedDraftEventSeed(
         Guid EventId,

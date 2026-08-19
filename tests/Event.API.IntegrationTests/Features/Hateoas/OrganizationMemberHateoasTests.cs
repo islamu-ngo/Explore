@@ -129,11 +129,7 @@ public sealed class OrganizationMemberHateoasTests
             return true;
         }
 
-        return check.ResourceId == organizationId.ToString()
-            || (check.ResourceAttributes?.TryGetValue("tenantId", out var tenantValue) == true
-                && tenantValue?.ToString() == tenantId.ToString()
-                && check.ResourceAttributes.TryGetValue("organizationId", out var organizationValue)
-                && organizationValue?.ToString() == organizationId.ToString());
+        return check.ResourceId == organizationId.ToString();
     }
 
     private static TestAssembler CreateAssembler(Func<AuthorizationRequest, bool> predicate)

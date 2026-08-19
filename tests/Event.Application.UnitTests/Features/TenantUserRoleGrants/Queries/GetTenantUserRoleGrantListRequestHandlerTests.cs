@@ -60,9 +60,9 @@ public sealed class GetTenantUserRoleGrantListRequestHandlerTests
         };
 
         await Assert.That(listRequest.ResourceId).IsEqualTo(tenantId.ToString("D"));
-        await Assert.That(listRequest.ResourceAttributes!["tenantId"]).IsEqualTo(tenantId.ToString("D"));
+        await Assert.That(listRequest.AuthorizationFacts).IsEqualTo(new TenantScopedAuthorizationFacts(tenantId));
         await Assert.That(detailRequest.ResourceId).IsEqualTo(grantId.ToString("D"));
-        await Assert.That(detailRequest.ResourceAttributes!["tenantId"]).IsEqualTo(tenantId.ToString("D"));
+        await Assert.That(detailRequest.AuthorizationFacts).IsEqualTo(new TenantScopedAuthorizationFacts(tenantId));
     }
 
     [Test]

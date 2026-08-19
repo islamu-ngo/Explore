@@ -14,5 +14,4 @@ public class CreateEventSessionTemplateCommand : IRequest<BaseCommandResponse<Gu
     public required CreateEventSessionTemplateDto SessionTemplateDto { get; set; }
 
     string? ISecureRequest.ResourceId => null;
-    IDictionary<string, object>? ISecureRequest.ResourceAttributes => null;
 }

@@ -1025,6 +1025,7 @@ public static class RouteNames
     public const string GetInstanceAuthorizationProviderConfigurationStatus = "GetInstanceAuthorizationProviderConfigurationStatus";
     public const string SyncInstanceAuthorizationPolicyPackage = "SyncInstanceAuthorizationPolicyPackage";
     public const string DownloadInstanceAuthorizationPolicyPackage = "DownloadInstanceAuthorizationPolicyPackage";
+    public const string GetInstanceAuthorizationPolicyPackageStatus = "GetInstanceAuthorizationPolicyPackageStatus";
 
     #endregion
 

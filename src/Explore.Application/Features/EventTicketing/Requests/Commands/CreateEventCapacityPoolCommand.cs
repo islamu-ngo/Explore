@@ -13,5 +13,6 @@ public sealed class CreateEventCapacityPoolCommand : IRequest<BaseCommandRespons
     public Guid EventId { get; init; }
     public required ManageEventCapacityPoolDto CapacityPool { get; init; }
     string? ISecureRequest.ResourceId => EventId == Guid.Empty ? null : EventId.ToString();
-    IDictionary<string, object>? ISecureRequest.ResourceAttributes => new Dictionary<string, object> { ["eventId"] = EventId.ToString() };
+    IAuthorizationFacts? ISecureRequest.AuthorizationFacts =>
+        new EventScopedAuthorizationFacts(Guid.Empty, EventId);
 }

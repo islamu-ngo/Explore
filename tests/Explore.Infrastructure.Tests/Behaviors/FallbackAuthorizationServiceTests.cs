@@ -1,6 +1,7 @@
 // ABOUTME: Unit tests for FallbackAuthorizationService verifying DB-driven authorization logic.
 // ABOUTME: Tests the Instance > Tenant > Organization hierarchy and lock semantics.
 
+using Explore.Infrastructure.Tests.Authorization;
 using Explore.Application.Authorization;
 using Explore.Application.Contracts.Identity;
 using Explore.Application.Contracts.Infrastructure;
@@ -196,11 +197,11 @@ public class FallbackAuthorizationServiceTests
         _adminContext.IsTenantAdminAsync(TestTenantId, Arg.Any<CancellationToken>()).Returns(false);
         _adminContext.IsOrganizationAdminAsync(TestOrgId, Arg.Any<CancellationToken>()).Returns(true);
 
-        var decision = await _service.AuthorizeAsync(new AuthorizationRequest(
+        var decision = await _service.AuthorizeAsync(TestAuthorizationRequest.Create(
             ResourceKinds.EventContactShareConsent,
             TestOrgId.ToString("D"),
             AuthorizationActions.ExportSharedContacts,
-            Facts: ContactShareFacts()));
+            facts: ContactShareFacts()));
 
         await Assert.That(decision.IsAllowed).IsTrue();
     }
@@ -211,11 +212,11 @@ public class FallbackAuthorizationServiceTests
         _adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(false);
         _adminContext.IsOrganizationAdminAsync(TestOrgId, Arg.Any<CancellationToken>()).Returns(true);
 
-        var decision = await _service.AuthorizeAsync(new AuthorizationRequest(
+        var decision = await _service.AuthorizeAsync(TestAuthorizationRequest.Create(
             ResourceKinds.EventContactShareConsent,
             TestOrgId.ToString("D"),
             AuthorizationActions.ExportSharedContacts,
-            Facts: ContactShareFacts(Guid.NewGuid())));
+            facts: ContactShareFacts(Guid.NewGuid())));
 
         await Assert.That(decision.IsAllowed).IsFalse();
     }
@@ -395,14 +396,14 @@ public class FallbackAuthorizationServiceTests
 
         var allowChecks = InstanceAdminUserAllowlistCases
             .Take(6)
-            .Select(pair => new AuthorizationRequest(
+            .Select(pair => TestAuthorizationRequest.Create(
                 pair.ResourceKind,
                 ResourceIdFor(pair.ResourceKind),
                 pair.Action,
                 AttributesFor(pair.ResourceKind)));
         var denyChecks = InstanceAdminUserDeniedShortcutCases
             .Take(6)
-            .Select(pair => new AuthorizationRequest(
+            .Select(pair => TestAuthorizationRequest.Create(
                 pair.ResourceKind,
                 ResourceIdFor(pair.ResourceKind),
                 pair.Action,
@@ -415,11 +416,13 @@ public class FallbackAuthorizationServiceTests
         for (var i = 0; i < checks.Length; i++)
         {
             var check = checks[i];
-            var singleResult = await _service.IsAllowedAsync(
+            var singleResult = await _service.IsAllowedWithFactsAsync(
                 check.ResourceKind,
                 check.ResourceId,
                 check.Action,
-                check.ResourceAttributes is null ? null : new Dictionary<string, object>(check.ResourceAttributes));
+                resourceAttributes: null,
+                CancellationToken.None,
+                check.Facts);
 
             await Assert.That(batchResults[i])
                 .IsEqualTo(singleResult)
@@ -452,7 +455,7 @@ public class FallbackAuthorizationServiceTests
 
         var checks = new[]
         {
-            new AuthorizationRequest(
+            TestAuthorizationRequest.Create(
                 ResourceKinds.TenantSetting,
                 "locked-key",
                 AuthorizationActions.TenantSettings.Update,
@@ -461,8 +464,8 @@ public class FallbackAuthorizationServiceTests
                     ["tenantId"] = TestTenantId.ToString("D"),
                     ["isLockedByInstance"] = true
                 }),
-            new AuthorizationRequest(ResourceKinds.User, Guid.NewGuid().ToString("D"), AuthorizationActions.Users.Update),
-            new AuthorizationRequest(ResourceKinds.InstanceSetting, "deployment.mode", AuthorizationActions.InstanceSettings.Update)
+            TestAuthorizationRequest.Create(ResourceKinds.User, Guid.NewGuid().ToString("D"), AuthorizationActions.Users.Update),
+            TestAuthorizationRequest.Create(ResourceKinds.InstanceSetting, "deployment.mode", AuthorizationActions.InstanceSettings.Update)
         };
 
         var results = await _service.IsAllowedBatchAsync(checks);
@@ -960,17 +963,17 @@ public class FallbackAuthorizationServiceTests
 
         var checks = new[]
         {
-            new AuthorizationRequest(
+            TestAuthorizationRequest.Create(
                 ResourceKinds.EmailDispatch,
                 Guid.NewGuid().ToString("D"),
                 AuthorizationActions.EmailDispatches.View,
                 new Dictionary<string, object> { ["tenantId"] = otherTenantId.ToString("D") }),
-            new AuthorizationRequest(
+            TestAuthorizationRequest.Create(
                 ResourceKinds.Webhook,
                 Guid.NewGuid().ToString("D"),
                 AuthorizationActions.Update,
                 new Dictionary<string, object> { ["tenantId"] = otherTenantId }),
-            new AuthorizationRequest(
+            TestAuthorizationRequest.Create(
                 ResourceKinds.Category,
                 Guid.NewGuid().ToString("D"),
                 AuthorizationActions.Update,
@@ -993,16 +996,16 @@ public class FallbackAuthorizationServiceTests
 
         var checks = new[]
         {
-            new AuthorizationRequest(
+            TestAuthorizationRequest.Create(
                 ResourceKinds.CustomPropertyProjection,
                 "projection-status",
                 AuthorizationActions.CustomPropertyProjections.View),
-            new AuthorizationRequest(
+            TestAuthorizationRequest.Create(
                 ResourceKinds.CustomPropertyProjection,
                 "projection-status",
                 AuthorizationActions.CustomPropertyProjections.Update,
                 new Dictionary<string, object> { ["tenantId"] = otherTenantId.ToString("D") }),
-            new AuthorizationRequest(
+            TestAuthorizationRequest.Create(
                 ResourceKinds.CustomPropertyProjection,
                 "projection-status",
                 AuthorizationActions.CustomPropertyProjections.View,
@@ -1117,21 +1120,21 @@ public class FallbackAuthorizationServiceTests
 
         var checks = new[]
         {
-            new AuthorizationRequest(
+            TestAuthorizationRequest.Create(
                 ResourceKinds.StorageObject,
                 Guid.NewGuid().ToString("D"),
                 AuthorizationActions.StorageObjects.View,
                 StorageObjectAttributes(StorageObjectVisibilities.PublicImage)),
-            new AuthorizationRequest(
+            TestAuthorizationRequest.Create(
                 ResourceKinds.StorageObject,
                 Guid.NewGuid().ToString("D"),
                 AuthorizationActions.StorageObjects.Create,
-                Facts: StorageUploadFacts()),
-            new AuthorizationRequest(
+                facts: StorageUploadFacts()),
+            TestAuthorizationRequest.Create(
                 ResourceKinds.StorageObject,
                 nameof(CreateStorageUploadSessionCommand),
                 AuthorizationActions.StorageObjects.Create,
-                Facts: StorageUploadFacts())
+                facts: StorageUploadFacts())
         };
 
         var results = await _service.IsAllowedBatchAsync(checks);
@@ -1197,17 +1200,17 @@ public class FallbackAuthorizationServiceTests
 
         var checks = new[]
         {
-            new AuthorizationRequest(
+            TestAuthorizationRequest.Create(
                 ResourceKinds.StorageObject,
                 Guid.NewGuid().ToString("D"),
                 AuthorizationActions.StorageObjects.View,
                 StorageObjectAttributes(StorageObjectVisibilities.PublicImage)),
-            new AuthorizationRequest(
+            TestAuthorizationRequest.Create(
                 ResourceKinds.StorageObject,
                 Guid.NewGuid().ToString("D"),
                 AuthorizationActions.StorageObjects.Download,
                 StorageObjectAttributes(StorageObjectVisibilities.PublicImage)),
-            new AuthorizationRequest(
+            TestAuthorizationRequest.Create(
                 ResourceKinds.StorageObject,
                 Guid.NewGuid().ToString("D"),
                 AuthorizationActions.StorageObjects.PresignedDownload,
@@ -1365,7 +1368,7 @@ public class FallbackAuthorizationServiceTests
 
         var attrs = SupportAccessAttributes();
         var checks = SupportAccessLifecycleActions
-            .Select(action => new AuthorizationRequest(
+            .Select(action => TestAuthorizationRequest.Create(
                 ResourceKinds.SupportAccessSession,
                 Guid.NewGuid().ToString("D"),
                 action,
@@ -2132,7 +2135,7 @@ public class FallbackAuthorizationServiceTests
 
         var checks = new List<AuthorizationRequest>
         {
-            new(
+            TestAuthorizationRequest.Create(
                 "islamuevent_tenant_setting",
                 "tenant-branding",
                 "update",
@@ -2142,8 +2145,8 @@ public class FallbackAuthorizationServiceTests
                     ["documentKey"] = "tenant.branding",
                     ["isLockedByInstance"] = true
                 }),
-            new("islamuevent_group", Guid.NewGuid().ToString(), "view"),
-            new("islamuevent_group_member", Guid.NewGuid().ToString(), "view")
+            TestAuthorizationRequest.Create("islamuevent_group", Guid.NewGuid().ToString(), "view"),
+            TestAuthorizationRequest.Create("islamuevent_group_member", Guid.NewGuid().ToString(), "view")
         };
 
         var results = await _service.IsAllowedBatchAsync(checks);
@@ -2160,10 +2163,10 @@ public class FallbackAuthorizationServiceTests
 
         var checks = new List<AuthorizationRequest>
         {
-            new("islamuevent_notification", Guid.NewGuid().ToString(), "view"),
-            new("islamuevent_tenant_user_role_grant", Guid.NewGuid().ToString(), "create"),
-            new("islamuevent_instance_setting", "key", "update"),
-            new("islamuevent_group", Guid.NewGuid().ToString(), "view"),
+            TestAuthorizationRequest.Create("islamuevent_notification", Guid.NewGuid().ToString(), "view"),
+            TestAuthorizationRequest.Create("islamuevent_tenant_user_role_grant", Guid.NewGuid().ToString(), "create"),
+            TestAuthorizationRequest.Create("islamuevent_instance_setting", "key", "update"),
+            TestAuthorizationRequest.Create("islamuevent_group", Guid.NewGuid().ToString(), "view"),
         };
 
         var results = await _service.IsAllowedBatchAsync(checks);
@@ -2184,12 +2187,12 @@ public class FallbackAuthorizationServiceTests
 
         var checks = new List<AuthorizationRequest>
         {
-            new(
+            TestAuthorizationRequest.Create(
                 "islamuevent_event_session",
                 Guid.NewGuid().ToString(),
                 "update",
                 new Dictionary<string, object> { ["tenantId"] = TestTenantId }),
-            new(
+            TestAuthorizationRequest.Create(
                 "islamuevent_event_session",
                 Guid.NewGuid().ToString(),
                 "update",
@@ -2218,8 +2221,8 @@ public class FallbackAuthorizationServiceTests
 
         var checks = new List<AuthorizationRequest>
         {
-            new("islamuevent_event_session", Guid.NewGuid().ToString(), "update", attrs),
-            new("islamuevent_notification", Guid.NewGuid().ToString(), "view")
+            TestAuthorizationRequest.Create("islamuevent_event_session", Guid.NewGuid().ToString(), "update", attrs),
+            TestAuthorizationRequest.Create("islamuevent_notification", Guid.NewGuid().ToString(), "view")
         };
 
         var results = await _service.IsAllowedBatchAsync(checks);
@@ -2243,9 +2246,9 @@ public class FallbackAuthorizationServiceTests
         var resourceId = attrs["eventId"]!.ToString()!;
         var checks = new List<AuthorizationRequest>
         {
-            new("islamuevent_event", resourceId, "update", attrs),
-            new("islamuevent_event", resourceId, "delete", attrs),
-            new("islamuevent_notification", Guid.NewGuid().ToString(), "view")
+            TestAuthorizationRequest.Create("islamuevent_event", resourceId, "update", attrs),
+            TestAuthorizationRequest.Create("islamuevent_event", resourceId, "delete", attrs),
+            TestAuthorizationRequest.Create("islamuevent_notification", Guid.NewGuid().ToString(), "view")
         };
 
         var results = await _service.IsAllowedBatchAsync(checks);
@@ -2268,11 +2271,11 @@ public class FallbackAuthorizationServiceTests
 
         var checks = new List<AuthorizationRequest>
         {
-            new("islamuevent_event", resourceId, "update", attrs),
-            new("islamuevent_event", resourceId, AuthorizationActions.Events.ModerateLight, attrs),
-            new("islamuevent_event", resourceId, AuthorizationActions.Events.ModerateHeavy, attrs),
-            new("islamuevent_event", resourceId, AuthorizationActions.Events.Unmoderate, attrs),
-            new(ResourceKinds.SupportAccessSession, Guid.NewGuid().ToString(), AuthorizationActions.SupportAccessSessions.ViewAudit, SupportAccessAttributes())
+            TestAuthorizationRequest.Create("islamuevent_event", resourceId, "update", attrs),
+            TestAuthorizationRequest.Create("islamuevent_event", resourceId, AuthorizationActions.Events.ModerateLight, attrs),
+            TestAuthorizationRequest.Create("islamuevent_event", resourceId, AuthorizationActions.Events.ModerateHeavy, attrs),
+            TestAuthorizationRequest.Create("islamuevent_event", resourceId, AuthorizationActions.Events.Unmoderate, attrs),
+            TestAuthorizationRequest.Create(ResourceKinds.SupportAccessSession, Guid.NewGuid().ToString(), AuthorizationActions.SupportAccessSessions.ViewAudit, SupportAccessAttributes())
         };
 
         var results = await _service.IsAllowedBatchAsync(checks);
@@ -2298,11 +2301,11 @@ public class FallbackAuthorizationServiceTests
 
         var checks = new List<AuthorizationRequest>
         {
-            new("islamuevent_event", resourceId, "update", attrs),
-            new("islamuevent_event", resourceId, AuthorizationActions.Events.ModerateLight, attrs),
-            new("islamuevent_event", resourceId, AuthorizationActions.Events.ModerateHeavy, attrs),
-            new("islamuevent_event", resourceId, AuthorizationActions.Events.Unmoderate, attrs),
-            new("islamuevent_notification", Guid.NewGuid().ToString(), "view")
+            TestAuthorizationRequest.Create("islamuevent_event", resourceId, "update", attrs),
+            TestAuthorizationRequest.Create("islamuevent_event", resourceId, AuthorizationActions.Events.ModerateLight, attrs),
+            TestAuthorizationRequest.Create("islamuevent_event", resourceId, AuthorizationActions.Events.ModerateHeavy, attrs),
+            TestAuthorizationRequest.Create("islamuevent_event", resourceId, AuthorizationActions.Events.Unmoderate, attrs),
+            TestAuthorizationRequest.Create("islamuevent_notification", Guid.NewGuid().ToString(), "view")
         };
 
         var results = await _service.IsAllowedBatchAsync(checks);
@@ -2329,11 +2332,11 @@ public class FallbackAuthorizationServiceTests
 
         var checks = new List<AuthorizationRequest>
         {
-            new("islamuevent_event", resourceId, "update", attrs),
-            new("islamuevent_event", resourceId, AuthorizationActions.Events.ModerateLight, attrs),
-            new("islamuevent_event", resourceId, AuthorizationActions.Events.ModerateHeavy, attrs),
-            new("islamuevent_event", resourceId, AuthorizationActions.Events.Unmoderate, attrs),
-            new("islamuevent_notification", Guid.NewGuid().ToString(), "view")
+            TestAuthorizationRequest.Create("islamuevent_event", resourceId, "update", attrs),
+            TestAuthorizationRequest.Create("islamuevent_event", resourceId, AuthorizationActions.Events.ModerateLight, attrs),
+            TestAuthorizationRequest.Create("islamuevent_event", resourceId, AuthorizationActions.Events.ModerateHeavy, attrs),
+            TestAuthorizationRequest.Create("islamuevent_event", resourceId, AuthorizationActions.Events.Unmoderate, attrs),
+            TestAuthorizationRequest.Create("islamuevent_notification", Guid.NewGuid().ToString(), "view")
         };
 
         var results = await _service.IsAllowedBatchAsync(checks);
@@ -2360,9 +2363,9 @@ public class FallbackAuthorizationServiceTests
         var attrs = CreateEventContextAttributes(eventId);
         var checks = new List<AuthorizationRequest>
         {
-            new("islamuevent_event_session", Guid.NewGuid().ToString(), "update", attrs),
-            new("islamuevent_event_session", Guid.NewGuid().ToString(), "delete", attrs),
-            new("islamuevent_notification", Guid.NewGuid().ToString(), "view")
+            TestAuthorizationRequest.Create("islamuevent_event_session", Guid.NewGuid().ToString(), "update", attrs),
+            TestAuthorizationRequest.Create("islamuevent_event_session", Guid.NewGuid().ToString(), "delete", attrs),
+            TestAuthorizationRequest.Create("islamuevent_notification", Guid.NewGuid().ToString(), "view")
         };
 
         var results = await _service.IsAllowedBatchAsync(checks);
@@ -2387,9 +2390,9 @@ public class FallbackAuthorizationServiceTests
         var attrs = CreateEventContextAttributes(eventId);
         var checks = new List<AuthorizationRequest>
         {
-            new("islamuevent_event_session", Guid.NewGuid().ToString(), "update", attrs),
-            new("islamuevent_event_session", Guid.NewGuid().ToString(), "delete", attrs),
-            new("islamuevent_notification", Guid.NewGuid().ToString(), "view")
+            TestAuthorizationRequest.Create("islamuevent_event_session", Guid.NewGuid().ToString(), "update", attrs),
+            TestAuthorizationRequest.Create("islamuevent_event_session", Guid.NewGuid().ToString(), "delete", attrs),
+            TestAuthorizationRequest.Create("islamuevent_notification", Guid.NewGuid().ToString(), "view")
         };
 
         await _service.IsAllowedBatchAsync(checks);
@@ -2415,9 +2418,9 @@ public class FallbackAuthorizationServiceTests
 
         var checks = new List<AuthorizationRequest>
         {
-            new("islamuevent_event_session", Guid.NewGuid().ToString(), "update", CreateEventContextAttributes(authorizedEventId)),
-            new("islamuevent_event_session", Guid.NewGuid().ToString(), "update", CreateEventContextAttributes(otherEventId)),
-            new("islamuevent_notification", Guid.NewGuid().ToString(), "view")
+            TestAuthorizationRequest.Create("islamuevent_event_session", Guid.NewGuid().ToString(), "update", CreateEventContextAttributes(authorizedEventId)),
+            TestAuthorizationRequest.Create("islamuevent_event_session", Guid.NewGuid().ToString(), "update", CreateEventContextAttributes(otherEventId)),
+            TestAuthorizationRequest.Create("islamuevent_notification", Guid.NewGuid().ToString(), "view")
         };
 
         var results = await _service.IsAllowedBatchAsync(checks);
@@ -2508,7 +2511,7 @@ public class FallbackAuthorizationServiceTests
 
         var batch = await _service.IsAllowedBatchAsync(
         [
-            new(
+            TestAuthorizationRequest.Create(
                 ResourceKinds.Event,
                 eventId.ToString(),
                 AuthorizationActions.Events.ManageRegistrationWorkflow,
@@ -2526,7 +2529,7 @@ public class FallbackAuthorizationServiceTests
 
         var crossTenantBatch = await _service.IsAllowedBatchAsync(
         [
-            new(
+            TestAuthorizationRequest.Create(
                 ResourceKinds.Event,
                 eventId.ToString(),
                 AuthorizationActions.Events.ManageRegistrationWorkflow,
@@ -2545,7 +2548,7 @@ public class FallbackAuthorizationServiceTests
 
         var deniedBatch = await _service.IsAllowedBatchAsync(
         [
-            new(
+            TestAuthorizationRequest.Create(
                 ResourceKinds.Event,
                 eventId.ToString(),
                 AuthorizationActions.Events.ManageRegistrationWorkflow,
@@ -2630,10 +2633,10 @@ public class FallbackAuthorizationServiceTests
 
         var results = await _service.IsAllowedBatchAsync(
         [
-            new(ResourceKinds.Event, organizerEventId.ToString(), AuthorizationActions.Events.ManageRegistrations, CreateVerifiedOrganizerAttributes(organizerEventId, userId: userId)),
-            new(ResourceKinds.Event, assignedEventId.ToString(), AuthorizationActions.Events.ManageRegistrations, CreateEventContextAttributes(assignedEventId)),
-            new(ResourceKinds.Event, communityEventId.ToString(), AuthorizationActions.Events.ManageRegistrations, communityAttributes),
-            new(ResourceKinds.Event, unrelatedEventId.ToString(), AuthorizationActions.Events.ManageRegistrations, unrelatedAttributes)
+            TestAuthorizationRequest.Create(ResourceKinds.Event, organizerEventId.ToString(), AuthorizationActions.Events.ManageRegistrations, CreateVerifiedOrganizerAttributes(organizerEventId, userId: userId)),
+            TestAuthorizationRequest.Create(ResourceKinds.Event, assignedEventId.ToString(), AuthorizationActions.Events.ManageRegistrations, CreateEventContextAttributes(assignedEventId)),
+            TestAuthorizationRequest.Create(ResourceKinds.Event, communityEventId.ToString(), AuthorizationActions.Events.ManageRegistrations, communityAttributes),
+            TestAuthorizationRequest.Create(ResourceKinds.Event, unrelatedEventId.ToString(), AuthorizationActions.Events.ManageRegistrations, unrelatedAttributes)
         ]);
 
         await Assert.That(results[0]).IsTrue();
@@ -2650,9 +2653,9 @@ public class FallbackAuthorizationServiceTests
 
         var results = await _service.IsAllowedBatchAsync(
         [
-            new(ResourceKinds.Event, eventId.ToString(), AuthorizationActions.Events.ManageRegistrations, CreateVerifiedOrganizerAttributes(eventId, userId: TestUserId)),
-            new(ResourceKinds.Event, Guid.NewGuid().ToString(), AuthorizationActions.Events.ManageRegistrations, CreateEventContextAttributes()),
-            new(ResourceKinds.Event, Guid.NewGuid().ToString(), AuthorizationActions.Events.ManageRegistrations, CreateEventContextAttributes())
+            TestAuthorizationRequest.Create(ResourceKinds.Event, eventId.ToString(), AuthorizationActions.Events.ManageRegistrations, CreateVerifiedOrganizerAttributes(eventId, userId: TestUserId)),
+            TestAuthorizationRequest.Create(ResourceKinds.Event, Guid.NewGuid().ToString(), AuthorizationActions.Events.ManageRegistrations, CreateEventContextAttributes()),
+            TestAuthorizationRequest.Create(ResourceKinds.Event, Guid.NewGuid().ToString(), AuthorizationActions.Events.ManageRegistrations, CreateEventContextAttributes())
         ]);
 
         await Assert.That(results).IsEquivalentTo([false, false, false]);
@@ -2733,8 +2736,8 @@ public class FallbackAuthorizationServiceTests
 
         var results = await _service.IsAllowedBatchAsync(
         [
-            new(ResourceKinds.RegistrationForm, Guid.NewGuid().ToString(), AuthorizationActions.RegistrationForms.View, CreateVerifiedOrganizerAttributes(eventId, userId: userId)),
-            new(ResourceKinds.RegistrationForm, Guid.NewGuid().ToString(), AuthorizationActions.RegistrationForms.Publish, CreateEventContextAttributes(eventId))
+            TestAuthorizationRequest.Create(ResourceKinds.RegistrationForm, Guid.NewGuid().ToString(), AuthorizationActions.RegistrationForms.View, CreateVerifiedOrganizerAttributes(eventId, userId: userId)),
+            TestAuthorizationRequest.Create(ResourceKinds.RegistrationForm, Guid.NewGuid().ToString(), AuthorizationActions.RegistrationForms.Publish, CreateEventContextAttributes(eventId))
         ]);
 
         await Assert.That(results).IsEquivalentTo([true, false]);
@@ -2764,10 +2767,10 @@ public class FallbackAuthorizationServiceTests
         var resourceId = attributes["eventId"].ToString()!;
         var checks = new List<AuthorizationRequest>
         {
-            new(ResourceKinds.Event, resourceId, AuthorizationActions.Events.ViewManagement, attributes),
-            new(ResourceKinds.Event, resourceId, AuthorizationActions.Events.ManageRegistrations, attributes),
-            new(ResourceKinds.Event, resourceId, AuthorizationActions.Events.ManageTickets, attributes),
-            new(ResourceKinds.Event, resourceId, AuthorizationActions.Events.ManageAttendees, attributes)
+            TestAuthorizationRequest.Create(ResourceKinds.Event, resourceId, AuthorizationActions.Events.ViewManagement, attributes),
+            TestAuthorizationRequest.Create(ResourceKinds.Event, resourceId, AuthorizationActions.Events.ManageRegistrations, attributes),
+            TestAuthorizationRequest.Create(ResourceKinds.Event, resourceId, AuthorizationActions.Events.ManageTickets, attributes),
+            TestAuthorizationRequest.Create(ResourceKinds.Event, resourceId, AuthorizationActions.Events.ManageAttendees, attributes)
         };
 
         var results = await _service.IsAllowedBatchAsync(checks);
@@ -2939,11 +2942,11 @@ public class FallbackAuthorizationServiceTests
 
         var results = await _service.IsAllowedBatchAsync(
         [
-            new(ResourceKinds.EventOrganizerClaim, Guid.NewGuid().ToString(), AuthorizationActions.Events.WithdrawOrganizerClaim, personal),
-            new(ResourceKinds.EventOrganizerClaim, Guid.NewGuid().ToString(), AuthorizationActions.Events.WithdrawOrganizerClaim, organization),
-            new(ResourceKinds.EventOrganizerClaim, Guid.NewGuid().ToString(), AuthorizationActions.Events.WithdrawOrganizerClaim, group),
-            new(ResourceKinds.EventOrganizerClaim, Guid.NewGuid().ToString(), AuthorizationActions.Events.WithdrawOrganizerClaim, unrelatedOrganization),
-            new(ResourceKinds.EventOrganizerClaim, Guid.NewGuid().ToString(), AuthorizationActions.Events.WithdrawOrganizerClaim, unrelatedGroup)
+            TestAuthorizationRequest.Create(ResourceKinds.EventOrganizerClaim, Guid.NewGuid().ToString(), AuthorizationActions.Events.WithdrawOrganizerClaim, personal),
+            TestAuthorizationRequest.Create(ResourceKinds.EventOrganizerClaim, Guid.NewGuid().ToString(), AuthorizationActions.Events.WithdrawOrganizerClaim, organization),
+            TestAuthorizationRequest.Create(ResourceKinds.EventOrganizerClaim, Guid.NewGuid().ToString(), AuthorizationActions.Events.WithdrawOrganizerClaim, group),
+            TestAuthorizationRequest.Create(ResourceKinds.EventOrganizerClaim, Guid.NewGuid().ToString(), AuthorizationActions.Events.WithdrawOrganizerClaim, unrelatedOrganization),
+            TestAuthorizationRequest.Create(ResourceKinds.EventOrganizerClaim, Guid.NewGuid().ToString(), AuthorizationActions.Events.WithdrawOrganizerClaim, unrelatedGroup)
         ]);
 
         await Assert.That(results[0]).IsTrue();
@@ -2998,8 +3001,8 @@ public class FallbackAuthorizationServiceTests
         var eventId = attributes["eventId"].ToString()!;
         var checks = new[]
         {
-            new AuthorizationRequest(ResourceKinds.EventOrganizerClaim, eventId, AuthorizationActions.Events.ViewOrganizerClaims, attributes),
-            new AuthorizationRequest(ResourceKinds.EventOrganizerClaim, eventId, AuthorizationActions.Events.ReviewOrganizerClaim, attributes)
+            TestAuthorizationRequest.Create(ResourceKinds.EventOrganizerClaim, eventId, AuthorizationActions.Events.ViewOrganizerClaims, attributes),
+            TestAuthorizationRequest.Create(ResourceKinds.EventOrganizerClaim, eventId, AuthorizationActions.Events.ReviewOrganizerClaim, attributes)
         };
 
         var results = await _service.IsAllowedBatchAsync(checks);
@@ -3046,10 +3049,10 @@ public class FallbackAuthorizationServiceTests
         var resourceId = attributes["eventId"].ToString()!;
         var checks = new[]
         {
-            new AuthorizationRequest(ResourceKinds.EventOrganizerClaim, resourceId, AuthorizationActions.Events.ClaimOrganizer, attributes),
-            new AuthorizationRequest(ResourceKinds.EventOrganizerClaim, resourceId, AuthorizationActions.Events.WithdrawOrganizerClaim, attributes),
-            new AuthorizationRequest(ResourceKinds.EventOrganizerClaim, resourceId, AuthorizationActions.Events.ViewOrganizerClaims, attributes),
-            new AuthorizationRequest(ResourceKinds.EventOrganizerClaim, resourceId, AuthorizationActions.Events.ReviewOrganizerClaim, attributes)
+            TestAuthorizationRequest.Create(ResourceKinds.EventOrganizerClaim, resourceId, AuthorizationActions.Events.ClaimOrganizer, attributes),
+            TestAuthorizationRequest.Create(ResourceKinds.EventOrganizerClaim, resourceId, AuthorizationActions.Events.WithdrawOrganizerClaim, attributes),
+            TestAuthorizationRequest.Create(ResourceKinds.EventOrganizerClaim, resourceId, AuthorizationActions.Events.ViewOrganizerClaims, attributes),
+            TestAuthorizationRequest.Create(ResourceKinds.EventOrganizerClaim, resourceId, AuthorizationActions.Events.ReviewOrganizerClaim, attributes)
         };
 
         var results = await _service.IsAllowedBatchAsync(checks);
@@ -3239,11 +3242,11 @@ public class FallbackAuthorizationServiceTests
 
         var results = await _service.IsAllowedBatchAsync(
         [
-            new(ResourceKinds.Event, organizerEventId.ToString(), AuthorizationActions.Events.ManageTickets, CreateVerifiedOrganizerAttributes(organizerEventId, userId: userId)),
-            new(ResourceKinds.Event, assignedEventId.ToString(), AuthorizationActions.Events.ManageTickets, CreateEventContextAttributes(assignedEventId)),
-            new(ResourceKinds.Event, contributorEventId.ToString(), AuthorizationActions.Events.ManageTickets, contributorAttributes),
-            new(ResourceKinds.Event, assignedEventId.ToString(), AuthorizationActions.Events.ManageTickets, new Dictionary<string, object> { ["eventId"] = assignedEventId }),
-            new(ResourceKinds.Event, assignedEventId.ToString(), AuthorizationActions.Events.ManageTickets, CreateEventContextAttributes(Guid.NewGuid()))
+            TestAuthorizationRequest.Create(ResourceKinds.Event, organizerEventId.ToString(), AuthorizationActions.Events.ManageTickets, CreateVerifiedOrganizerAttributes(organizerEventId, userId: userId)),
+            TestAuthorizationRequest.Create(ResourceKinds.Event, assignedEventId.ToString(), AuthorizationActions.Events.ManageTickets, CreateEventContextAttributes(assignedEventId)),
+            TestAuthorizationRequest.Create(ResourceKinds.Event, contributorEventId.ToString(), AuthorizationActions.Events.ManageTickets, contributorAttributes),
+            TestAuthorizationRequest.Create(ResourceKinds.Event, assignedEventId.ToString(), AuthorizationActions.Events.ManageTickets, new Dictionary<string, object> { ["eventId"] = assignedEventId }),
+            TestAuthorizationRequest.Create(ResourceKinds.Event, assignedEventId.ToString(), AuthorizationActions.Events.ManageTickets, CreateEventContextAttributes(Guid.NewGuid()))
         ]);
 
         await Assert.That(results).IsEquivalentTo([true, true, false, false, false]);
@@ -3358,11 +3361,11 @@ public class FallbackAuthorizationServiceTests
 
         var results = await _service.IsAllowedBatchAsync(
         [
-            new(ResourceKinds.Event, personalEventId.ToString(), action, CreateVerifiedOrganizerAttributes(personalEventId, userId: userId)),
-            new(ResourceKinds.Event, organizationEventId.ToString(), action, CreateVerifiedOrganizerAttributes(organizationEventId, organizationId: TestOrgId)),
-            new(ResourceKinds.Event, assignedEventId.ToString(), action, CreateEventContextAttributes(assignedEventId)),
-            new(ResourceKinds.Event, ambiguousEventId.ToString(), action, ambiguous),
-            new(ResourceKinds.Event, Guid.NewGuid().ToString(), action, CreateVerifiedOrganizerAttributes(Guid.NewGuid(), groupId: Guid.NewGuid()))
+            TestAuthorizationRequest.Create(ResourceKinds.Event, personalEventId.ToString(), action, CreateVerifiedOrganizerAttributes(personalEventId, userId: userId)),
+            TestAuthorizationRequest.Create(ResourceKinds.Event, organizationEventId.ToString(), action, CreateVerifiedOrganizerAttributes(organizationEventId, organizationId: TestOrgId)),
+            TestAuthorizationRequest.Create(ResourceKinds.Event, assignedEventId.ToString(), action, CreateEventContextAttributes(assignedEventId)),
+            TestAuthorizationRequest.Create(ResourceKinds.Event, ambiguousEventId.ToString(), action, ambiguous),
+            TestAuthorizationRequest.Create(ResourceKinds.Event, Guid.NewGuid().ToString(), action, CreateVerifiedOrganizerAttributes(Guid.NewGuid(), groupId: Guid.NewGuid()))
         ]);
 
         await Assert.That(results).IsEquivalentTo([true, true, false, false, false]);

@@ -54,8 +54,8 @@ public abstract class WebhooksControllerBase(IWebhookOwnershipScopeResolver webh
         Guid? messageId,
         Guid? endpointId) : ICollectionAuthorizationContext
     {
-        private readonly IReadOnlyDictionary<string, object> _authorizationResourceAttributes =
-            ResourceDescriptors.GetWebhookOwnerAttributes(ownership);
+        private readonly IAuthorizationFacts _authorizationFacts =
+            WebhookOwnershipAuthorizationFacts.From(ownership);
 
         public int OwnerKindId => (int)ownership.Kind;
 
@@ -71,7 +71,6 @@ public abstract class WebhooksControllerBase(IWebhookOwnershipScopeResolver webh
 
         string ICollectionAuthorizationContext.AuthorizationResourceId => ownership.OwnerId.ToString();
 
-        IReadOnlyDictionary<string, object> ICollectionAuthorizationContext.AuthorizationResourceAttributes =>
-            _authorizationResourceAttributes;
+        IAuthorizationFacts? ICollectionAuthorizationContext.AuthorizationFacts => _authorizationFacts;
     }
 }

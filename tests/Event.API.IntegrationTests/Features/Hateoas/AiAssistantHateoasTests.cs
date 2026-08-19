@@ -35,8 +35,10 @@ public sealed class AiAssistantHateoasTests
         await Assert.That(send.RequiresAuth).IsTrue();
         await Assert.That(send.PermissionResourceKind).IsEqualTo(ResourceKinds.AiConversation);
         await Assert.That(send.PermissionAction).IsEqualTo(AuthorizationActions.AiConversations.SendMessage);
-        await Assert.That(send.PermissionResourceAttributes).IsNotNull();
-        await Assert.That(send.PermissionResourceAttributes!["tenantId"]).IsEqualTo(links[0].PermissionResourceAttributes!["tenantId"]);
+        // Send and read affordances describe the same conversation, so they must publish identical facts —
+        // a divergence here would let one affordance be decided against a different owner.
+        await Assert.That(send.PermissionFacts).IsNotNull();
+        await Assert.That(send.PermissionFacts).IsEqualTo(self.PermissionFacts);
         await Assert.That(RouteValue(send.RouteValues, "conversationId")).IsEqualTo(conversationId);
     }
 

@@ -25,7 +25,7 @@ public class EventSessionLanguageCommandSecurityTests
         };
 
         await Assert.That(command.ResourceId).IsEqualTo(eventSessionId.ToString());
-        await Assert.That(command.ResourceAttributes).IsNull();
+        await Assert.That(command.AuthorizationFacts).IsNull();
     }
 
     [Test]
@@ -39,7 +39,7 @@ public class EventSessionLanguageCommandSecurityTests
         };
 
         await Assert.That(command.ResourceId).IsEqualTo(eventSessionId.ToString());
-        await Assert.That(command.ResourceAttributes).IsNull();
+        await Assert.That(command.AuthorizationFacts).IsNull();
     }
 
     [Test]
@@ -58,6 +58,6 @@ public class EventSessionLanguageCommandSecurityTests
         };
 
         await Assert.That(command.ResourceId).IsEqualTo(eventSessionId.ToString());
-        await Assert.That(command.ResourceAttributes).IsNull();
+        await Assert.That(command.AuthorizationFacts).IsNull();
     }
 }

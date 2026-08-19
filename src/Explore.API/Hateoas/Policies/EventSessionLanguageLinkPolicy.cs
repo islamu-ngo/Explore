@@ -47,19 +47,8 @@ public sealed class EventSessionLanguageDetailLinkPolicy : ILinkPolicy<EventSess
                 AuthorizationActions.Update,
                 ResourceKinds.EventSession,
                 eventSessionId.ToString(),
-                Attributes(eventSessionId, tenantId, eventId),
-                new AuthorizationScope(tenantId.ToString()));
-
-    private static IReadOnlyDictionary<string, object> Attributes(
-        Guid eventSessionId,
-        Guid tenantId,
-        Guid eventId) =>
-        new Dictionary<string, object>
-        {
-            ["eventSessionId"] = eventSessionId.ToString(),
-            ["eventId"] = eventId.ToString(),
-            ["tenantId"] = tenantId.ToString()
-        };
+                new AuthorizationScope(tenantId.ToString()),
+                new EventScopedAuthorizationFacts(tenantId, eventId, eventSessionId));
 }
 
 public sealed class EventSessionLanguageCollectionLinkPolicy : ICollectionLinkPolicy<EventSessionLanguageListDto>
@@ -84,17 +73,7 @@ public sealed class EventSessionLanguageCollectionLinkPolicy : ICollectionLinkPo
                 AuthorizationActions.Update,
                 ResourceKinds.EventSession,
                 dto.EventSessionId.ToString(),
-                new Dictionary<string, object>
-                {
-                    ["eventSessionId"] = dto.EventSessionId.ToString(),
-                    ["eventId"] = dto.EventId.ToString(),
-                    ["tenantId"] = dto.TenantId.ToString()
-                },
-                new AuthorizationScope(dto.TenantId.ToString()));
-    }
-
-    public IEnumerable<LinkDefinition> GetCollectionLinks(ClaimsPrincipal? user)
-    {
-        yield break;
+                new AuthorizationScope(dto.TenantId.ToString()),
+                new EventScopedAuthorizationFacts(dto.TenantId, dto.EventId, dto.EventSessionId));
     }
 }

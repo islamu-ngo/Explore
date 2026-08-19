@@ -14,5 +14,4 @@ public class CreateEventDayCommand : IRequest<BaseCommandResponse<Guid>>, ISecur
     public required CreateEventDayDto EventDayDto { get; set; }
 
     string? ISecureRequest.ResourceId => null;
-    IDictionary<string, object>? ISecureRequest.ResourceAttributes => null;
 }

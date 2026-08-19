@@ -36,6 +36,10 @@ public sealed class RegistrationAnswerAnalyticsQueryHandlerTests
         await Assert.That(dto!.MinimumCellSize).IsEqualTo(3);
         await Assert.That(dto.Fields.Single().Numeric!.Average).IsEqualTo(30);
         await repository.Received(1).GetEventFormVersionAnalyticsAsync(tenantId, eventId, formId, versionId, 3, Arg.Any<CancellationToken>());
+
+        // The handler is the trusted resolver for the tenant: the projection does not carry one, so if the
+        // handler stops publishing it the HAL self link loses its event context and is denied for every caller.
+        await Assert.That(dto.TenantId).IsEqualTo(tenantId);
     }
 
     [Test]
@@ -52,8 +56,8 @@ public sealed class RegistrationAnswerAnalyticsQueryHandlerTests
             .Cast<AuthorizeResourceAttribute>()
             .Single().Action).IsEqualTo(AuthorizationActions.Events.ManageRegistrations);
         await Assert.That(secure.ResourceId).IsEqualTo(eventId.ToString("D"));
-        await Assert.That(secure.ResourceAttributes!["formId"]).IsEqualTo(formId.ToString("D"));
-        await Assert.That(secure.ResourceAttributes["formVersionId"]).IsEqualTo(versionId.ToString("D"));
+        // The form and version identify which answers are aggregated; the parent event decides access.
+        await Assert.That(secure.AuthorizationFacts).IsTypeOf<EventScopedAuthorizationFacts>();
     }
 
     private sealed record Tenant(Guid TenantId) : ITenantContext;

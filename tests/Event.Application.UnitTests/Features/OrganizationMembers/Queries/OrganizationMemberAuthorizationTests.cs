@@ -52,10 +52,10 @@ public sealed class OrganizationMemberAuthorizationTests
         };
 
         await Assert.That(listRequest.ResourceId).IsEqualTo(organizationId.ToString("D"));
-        await Assert.That(listRequest.ResourceAttributes!["tenantId"]).IsEqualTo(tenantId.ToString("D"));
-        await Assert.That(listRequest.ResourceAttributes["organizationId"]).IsEqualTo(organizationId.ToString("D"));
+        await Assert.That(listRequest.AuthorizationFacts)
+            .IsEqualTo(new OrganizationMemberAuthorizationFacts(tenantId, organizationId, null, null));
         await Assert.That(detailRequest.ResourceId).IsEqualTo(memberId.ToString("D"));
-        await Assert.That(detailRequest.ResourceAttributes!["tenantId"]).IsEqualTo(tenantId.ToString("D"));
+        await Assert.That(detailRequest.AuthorizationFacts).IsTypeOf<OrganizationMemberAuthorizationFacts>();
     }
 
     [Test]
@@ -69,12 +69,11 @@ public sealed class OrganizationMemberAuthorizationTests
             UserId = Guid.NewGuid()
         };
 
-        var attributes = ResourceDescriptors.OrganizationMember.GetResourceAttributes(dto);
+        var facts = ResourceDescriptors.OrganizationMember.GetFacts(dto);
         var scope = ResourceDescriptors.OrganizationMember.GetScope(dto);
 
-        await Assert.That(attributes["tenantId"]).IsEqualTo(dto.TenantId.ToString());
-        await Assert.That(attributes["organizationId"]).IsEqualTo(dto.OrganizationId.ToString());
-        await Assert.That(attributes["userId"]).IsEqualTo(dto.UserId.ToString());
+        await Assert.That(facts)
+            .IsEqualTo(new OrganizationMemberAuthorizationFacts(dto.TenantId, dto.OrganizationId, dto.Id, dto.UserId));
         await Assert.That(scope.TenantId).IsEqualTo(dto.TenantId.ToString());
         await Assert.That(scope.OrganizationId).IsEqualTo(dto.OrganizationId.ToString());
     }
@@ -97,7 +96,7 @@ public sealed class OrganizationMemberAuthorizationTests
         };
 
         await Assert.That(command.ResourceId).IsEqualTo(organizationId.ToString("D"));
-        await Assert.That(command.ResourceAttributes!["tenantId"]).IsEqualTo(tenantId.ToString("D"));
-        await Assert.That(command.ResourceAttributes["organizationId"]).IsEqualTo(organizationId.ToString());
+        await Assert.That(command.AuthorizationFacts)
+            .IsEqualTo(new OrganizationMemberAuthorizationFacts(tenantId, organizationId, null, null));
     }
 }

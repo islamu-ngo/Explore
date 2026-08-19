@@ -30,7 +30,7 @@ public sealed class InstanceStorageSettingsLinkPolicy : ILinkPolicy<InstanceStor
             .RequirePermission(AuthorizationActions.InstanceSettings.View,
                 ResourceKinds.InstanceSetting,
                 ResourceId,
-                InstanceStorageAttributes());
+                facts: InstanceScopedAuthorizationFacts.Instance);
 
         yield return new LinkDefinition(
             LinkRelations.Edit,
@@ -42,7 +42,7 @@ public sealed class InstanceStorageSettingsLinkPolicy : ILinkPolicy<InstanceStor
             .RequirePermission(AuthorizationActions.InstanceSettings.Update,
                 ResourceKinds.InstanceSetting,
                 ResourceId,
-                InstanceStorageAttributes());
+                facts: InstanceScopedAuthorizationFacts.Instance);
 
         yield return new LinkDefinition(
             "provider-test",
@@ -54,7 +54,7 @@ public sealed class InstanceStorageSettingsLinkPolicy : ILinkPolicy<InstanceStor
             .RequirePermission(AuthorizationActions.InstanceSettings.Update,
                 ResourceKinds.InstanceSetting,
                 ResourceId,
-                InstanceStorageAttributes());
+                facts: InstanceScopedAuthorizationFacts.Instance);
 
         yield return new LinkDefinition(
             "recalculate-usage",
@@ -66,14 +66,8 @@ public sealed class InstanceStorageSettingsLinkPolicy : ILinkPolicy<InstanceStor
             .RequirePermission(AuthorizationActions.InstanceSettings.Update,
                 ResourceKinds.InstanceSetting,
                 ResourceId,
-                InstanceStorageAttributes());
+                facts: InstanceScopedAuthorizationFacts.Instance);
     }
-
-    private static IReadOnlyDictionary<string, object> InstanceStorageAttributes() =>
-        new Dictionary<string, object>
-        {
-            ["settingKey"] = SettingKey
-        };
 }
 
 public sealed class InstanceStorageSettingsCollectionLinkPolicy : ICollectionLinkPolicy<InstanceStorageSettingsDto>
@@ -99,8 +93,8 @@ public sealed class TenantStorageSettingsLinkPolicy : ILinkPolicy<TenantStorageS
             .RequirePermission(AuthorizationActions.TenantSettings.View,
                 ResourceKinds.TenantSetting,
                 TenantStorageResourceId(dto),
-                TenantStorageAttributes(dto),
-                TenantStorageScope(dto));
+                TenantStorageScope(dto),
+                TenantStorageFacts(dto));
 
         if (!CanUpdate(dto))
         {
@@ -117,8 +111,8 @@ public sealed class TenantStorageSettingsLinkPolicy : ILinkPolicy<TenantStorageS
             .RequirePermission(AuthorizationActions.TenantSettings.Update,
                 ResourceKinds.TenantSetting,
                 TenantStorageResourceId(dto),
-                TenantStorageAttributes(dto),
-                TenantStorageScope(dto));
+                TenantStorageScope(dto),
+                TenantStorageFacts(dto));
 
         yield return new LinkDefinition(
             "provider-test",
@@ -130,8 +124,8 @@ public sealed class TenantStorageSettingsLinkPolicy : ILinkPolicy<TenantStorageS
             .RequirePermission(AuthorizationActions.TenantSettings.Update,
                 ResourceKinds.TenantSetting,
                 TenantStorageResourceId(dto),
-                TenantStorageAttributes(dto),
-                TenantStorageScope(dto));
+                TenantStorageScope(dto),
+                TenantStorageFacts(dto));
     }
 
     private static bool CanUpdate(TenantStorageSettingsDto dto) =>
@@ -142,13 +136,8 @@ public sealed class TenantStorageSettingsLinkPolicy : ILinkPolicy<TenantStorageS
     private static string TenantStorageResourceId(TenantStorageSettingsDto dto) =>
         $"{dto.TenantId}:storage";
 
-    private static IReadOnlyDictionary<string, object> TenantStorageAttributes(TenantStorageSettingsDto dto) =>
-        new Dictionary<string, object>
-        {
-            ["tenantId"] = dto.TenantId.ToString(),
-            ["settingKey"] = SettingKey,
-            ["isLockedByInstance"] = dto.TenantStorageLocked || dto.IsReadOnly
-        };
+    private static IAuthorizationFacts TenantStorageFacts(TenantStorageSettingsDto dto) =>
+        new TenantSettingAuthorizationFacts(dto.TenantId, SettingKey, dto.TenantStorageLocked || dto.IsReadOnly);
 
     private static AuthorizationScope TenantStorageScope(TenantStorageSettingsDto dto) =>
         new(TenantId: dto.TenantId.ToString());

@@ -19,9 +19,4 @@ public sealed class GetWebhookMessagesQuery
 
     string? ISecureRequest.ResourceId => OwnerId?.ToString("D");
 
-    IDictionary<string, object>? ISecureRequest.ResourceAttributes => new Dictionary<string, object>
-    {
-        ["ownerKindId"] = OwnerKindId,
-        ["ownerId"] = OwnerId?.ToString("D") ?? string.Empty
-    };
 }

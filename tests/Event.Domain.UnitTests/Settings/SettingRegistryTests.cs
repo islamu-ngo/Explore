@@ -176,7 +176,6 @@ public class SettingRegistryTests
             GovernanceSettingKeys.Cerbos.TenantCustomizationEnabled,
             GovernanceSettingKeys.Cerbos.Mode,
             GovernanceSettingKeys.Cerbos.CustomEndpoint,
-            GovernanceSettingKeys.Cerbos.FailureMode,
             GovernanceSettingKeys.Cerbos.CustomAdminEndpoint,
             GovernanceSettingKeys.Analytics.Provider,
             GovernanceSettingKeys.Analytics.Enabled,

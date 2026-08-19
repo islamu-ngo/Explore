@@ -101,7 +101,7 @@ public sealed class InstanceOnboardingStatusLinkPolicy(
             .RequirePermission(AuthorizationActions.InstanceSettings.View,
                 ResourceKinds.InstanceSetting,
                 settingKey,
-                new Dictionary<string, object> { ["settingKey"] = settingKey });
+                facts: InstanceScopedAuthorizationFacts.Instance);
 }
 
 public sealed class InstanceOnboardingStatusCollectionLinkPolicy

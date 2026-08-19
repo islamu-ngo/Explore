@@ -14,10 +14,8 @@ public class GetActorSubscriptionRequest : IRequest<ActorSubscriptionDto?>, ISec
 
     public string? ResourceId => TargetActorId == Guid.Empty ? null : TargetActorId.ToString();
 
-    public IDictionary<string, object>? ResourceAttributes => TargetActorId == Guid.Empty
+    IAuthorizationFacts? ISecureRequest.AuthorizationFacts =>
+        TargetActorId == Guid.Empty
         ? null
-        : new Dictionary<string, object>
-        {
-            ["targetActorId"] = TargetActorId.ToString()
-        };
+        : new PersonalResourceAuthorizationFacts(Guid.Empty, null);
 }

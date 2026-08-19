@@ -56,10 +56,7 @@ public sealed class ControlPlaneOperationsLinkPolicy : ILinkPolicy<ControlPlaneO
             .RequirePermission(AuthorizationActions.InstanceSettings.View,
                 ResourceKinds.InstanceSetting,
                 settingKey,
-                new Dictionary<string, object>
-                {
-                    ["settingKey"] = settingKey
-                });
+                facts: InstanceScopedAuthorizationFacts.Instance);
 }
 
 public sealed class ControlPlaneOperationsCollectionLinkPolicy : ICollectionLinkPolicy<ControlPlaneOperationsDto>

@@ -72,18 +72,10 @@ public sealed class EmailDispatchAuthorizationMetadataTests
     public async Task EmailDispatchAdminRequestsExposeTenantAndResourceAuthorizationContext(
         (ISecureRequest Request, string ExpectedResourceId, string? ExpectedOperation) testCase)
     {
+        // The outbox row and the operation name identify what is being acted on. Email-dispatch
+        // administration is decided by tenant authority alone, so that is the only published fact.
         await Assert.That(testCase.Request.ResourceId).IsEqualTo(testCase.ExpectedResourceId);
-        await Assert.That(testCase.Request.ResourceAttributes).IsNotNull();
-        await Assert.That(testCase.Request.ResourceAttributes!["tenantId"]).IsEqualTo(TenantId.ToString("D"));
-
-        if (testCase.Request is ParkEmailDispatchCommand or ReplayEmailDispatchCommand or ResolveEmailDispatchWithoutReplayCommand or ReconcileUnknownEmailDispatchCommand)
-        {
-            await Assert.That(testCase.Request.ResourceAttributes["outboxId"]).IsEqualTo(OutboxId.ToString("D"));
-        }
-
-        if (testCase.ExpectedOperation is not null)
-        {
-            await Assert.That(testCase.Request.ResourceAttributes["emailDispatchOperation"]).IsEqualTo(testCase.ExpectedOperation);
-        }
+        await Assert.That(testCase.Request.AuthorizationFacts)
+            .IsEqualTo(new TenantScopedAuthorizationFacts(TenantId));
     }
 }

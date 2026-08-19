@@ -104,7 +104,7 @@ public sealed class GetStudioContextQueryHandlerTests
                 checks[0].ResourceKind == ResourceKinds.Event &&
                 checks[0].Action == AuthorizationActions.Events.ManageRegistrations &&
                 checks[0].ResourceId == managedEvent.Id.ToString("D") &&
-                checks.All(check => check.ResourceAttributes == null && check.Facts != null && check.Facts.GetType() == typeof(EventAuthorizationFacts)) &&
+                checks.All(check => check.Facts is EventAuthorizationFacts) &&
                 checks[1].Action == AuthorizationActions.Events.ManageRegistrationChannels &&
                 checks[2].Action == AuthorizationActions.Events.ViewRegistrationProviderHealth),
             Arg.Any<CancellationToken>());

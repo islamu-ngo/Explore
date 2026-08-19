@@ -15,9 +15,6 @@ public sealed class GetWebhookBulkReplayOperationQuery : IRequest<WebhookBulkRep
 
     string? ISecureRequest.ResourceId => OperationId.ToString("D");
 
-    IDictionary<string, object>? ISecureRequest.ResourceAttributes => new Dictionary<string, object>
-    {
-        ["tenantId"] = TenantId.ToString("D"),
-        ["bulkReplayOperationId"] = OperationId.ToString("D")
-    };
+    IAuthorizationFacts? ISecureRequest.AuthorizationFacts =>
+        new TenantScopedAuthorizationFacts(TenantId);
 }

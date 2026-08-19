@@ -360,16 +360,12 @@ public class CerbosAuthorizationService : IAuthorizationProvider
         return decisions;
     }
 
-    private static Dictionary<string, object>? TrustedAttributes(AuthorizationRequest request)
-    {
-        var factAttributes = AuthorizationFactsAttributeProjection.ToAttributes(request.Facts);
-        if (factAttributes is not null)
-            return factAttributes;
-
-        return request.ResourceAttributes is null
-            ? null
-            : new Dictionary<string, object>(request.ResourceAttributes);
-    }
+    /// <summary>
+    /// Resource attributes sent to the PDP are projected from the closed fact catalog only, so a caller
+    /// cannot influence <c>request.resource.attr.*</c> and therefore cannot influence a Cerbos rule.
+    /// </summary>
+    private static Dictionary<string, object>? TrustedAttributes(AuthorizationRequest request) =>
+        AuthorizationFactAttributeProjection.ToAttributes(request.Facts);
 
     private static Cerbos.Api.V1.Response.CheckResourcesResponse.Types.ResultEntry? FindResultEntry(
         CheckResourcesResponse response,

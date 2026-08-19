@@ -64,8 +64,10 @@ public sealed class RegistrationFormEventLinkPolicyTests
         await Assert.That(link.PermissionResourceKind).IsEqualTo(ResourceKinds.Event);
         await Assert.That(link.PermissionResourceId).IsEqualTo(eventId.ToString());
         await Assert.That(link.PermissionScope?.TenantId).IsEqualTo(tenantId.ToString());
-        await Assert.That(link.PermissionResourceAttributes!["eventId"]).IsEqualTo(eventId.ToString());
-        await Assert.That(link.PermissionResourceAttributes["tenantId"]).IsEqualTo(tenantId.ToString());
+        await Assert.That(link.PermissionFacts).IsTypeOf<EventAuthorizationFacts>();
+        var facts = (EventAuthorizationFacts)link.PermissionFacts!;
+        await Assert.That(facts.TenantId).IsEqualTo(tenantId);
+        await Assert.That(facts.EventId).IsEqualTo(eventId);
     }
 
     [Test]
@@ -311,7 +313,10 @@ public sealed class RegistrationFormEventLinkPolicyTests
         await Assert.That(route["eventId"]).IsEqualTo(eventId);
         await Assert.That(route["workflowId"]).IsEqualTo(workflowId);
         await Assert.That(route["requirementId"]).IsEqualTo(requirementId);
-        await Assert.That(create.PermissionResourceAttributes!["workflowId"]).IsEqualTo(workflowId.ToString("D"));
+        // Channel creation authorizes against the parent event; the workflow and requirement scope which
+        // channels are listed and stay in the route.
+        await Assert.That(create.PermissionFacts)
+            .IsEqualTo(new EventScopedAuthorizationFacts(tenantId, eventId));
     }
 
     [Test]

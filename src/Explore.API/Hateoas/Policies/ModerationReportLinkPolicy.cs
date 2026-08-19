@@ -51,11 +51,6 @@ public sealed class ModerationReportQueueCollectionLinkPolicy : ICollectionLinkP
             yield return link;
         }
     }
-
-    public IEnumerable<LinkDefinition> GetCollectionLinks(ClaimsPrincipal? user)
-    {
-        yield break;
-    }
 }
 
 file static class ModerationReportLinks

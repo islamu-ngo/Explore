@@ -15,9 +15,6 @@ public sealed class SetEmailDispatchGlobalRateLimitOverrideCommand : IRequest<Ba
 
     string ISecureRequest.ResourceId => EmailDispatchProcessorControl.SettingKey;
 
-    IDictionary<string, object> ISecureRequest.ResourceAttributes => new Dictionary<string, object>
-    {
-        ["settingKey"] = EmailDispatchProcessorControl.SettingKey,
-        ["emailDispatchOperation"] = RateLimitPerMinute.HasValue ? "set_rate_override" : "clear_rate_override"
-    };
+    IAuthorizationFacts? ISecureRequest.AuthorizationFacts =>
+        InstanceScopedAuthorizationFacts.Instance;
 }

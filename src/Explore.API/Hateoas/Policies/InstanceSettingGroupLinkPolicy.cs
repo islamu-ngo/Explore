@@ -22,7 +22,7 @@ public sealed class AtprotoInstanceSettingGroupLinkPolicy : ILinkPolicy<SettingG
             .RequirePermission(AuthorizationActions.InstanceSettings.View,
                 ResourceKinds.InstanceSetting,
                 AtprotoFederationSettingDefinitions.Category,
-                Attributes(AtprotoFederationSettingDefinitions.Category));
+                facts: Facts());
 
         foreach (var setting in dto.Settings.Where(setting =>
                      setting.CanEdit && AtprotoFederationSettingDefinitions.IsAdministratorKey(setting.Key)))
@@ -35,7 +35,7 @@ public sealed class AtprotoInstanceSettingGroupLinkPolicy : ILinkPolicy<SettingG
                 .RequirePermission(AuthorizationActions.InstanceSettings.Update,
                     ResourceKinds.InstanceSetting,
                     setting.Key,
-                    Attributes(setting.Key));
+                    facts: Facts());
 
             if (!setting.IsLockable)
             {
@@ -51,7 +51,7 @@ public sealed class AtprotoInstanceSettingGroupLinkPolicy : ILinkPolicy<SettingG
                     .RequirePermission(AuthorizationActions.InstanceSettings.Update,
                         ResourceKinds.InstanceSetting,
                         setting.Key,
-                        Attributes(setting.Key))
+                        facts: Facts())
                 : Link(
                     $"lock-{setting.Key}",
                     RouteNames.LockInstanceAtprotoFederationSetting,
@@ -60,7 +60,7 @@ public sealed class AtprotoInstanceSettingGroupLinkPolicy : ILinkPolicy<SettingG
                     .RequirePermission(AuthorizationActions.InstanceSettings.Update,
                         ResourceKinds.InstanceSetting,
                         setting.Key,
-                        Attributes(setting.Key));
+                        facts: Facts());
         }
     }
 
@@ -76,8 +76,9 @@ public sealed class AtprotoInstanceSettingGroupLinkPolicy : ILinkPolicy<SettingG
             method,
             RequiresAuth: true);
 
-    private static IReadOnlyDictionary<string, object> Attributes(string settingKey) =>
-        new Dictionary<string, object> { ["settingKey"] = settingKey };
+    // Instance settings have exactly one authority zone, so the setting key identifies the row and
+    // never the authority. Only instance administrators reach these links.
+    private static IAuthorizationFacts Facts() => InstanceScopedAuthorizationFacts.Instance;
 }
 
 public sealed class AtprotoInstanceSettingGroupCollectionLinkPolicy : ICollectionLinkPolicy<SettingGroupResponseDto>

@@ -4,6 +4,7 @@
 namespace Explore.Application.Contracts.Hateoas;
 
 using System.Security.Claims;
+using Explore.Application.Authorization;
 using Explore.Application.Hateoas;
 
 /// <summary>
@@ -20,7 +21,12 @@ public interface ILinkPolicy<in TDto> where TDto : class
     /// <param name="dto">The resource data.</param>
     /// <param name="user">The current user's claims principal (null if anonymous).</param>
     /// <returns>Collection of link definitions to generate.</returns>
-    IEnumerable<LinkDefinition> GetLinks(TDto dto, ClaimsPrincipal? user);
+    /// <remarks>
+    /// Defaults to no links. Emitting nothing is the fail-closed answer, so a policy that has no detail
+    /// affordances can simply not implement this rather than writing an empty body — and a policy that
+    /// forgets to implement it withholds affordances rather than publishing unguarded ones.
+    /// </remarks>
+    IEnumerable<LinkDefinition> GetLinks(TDto dto, ClaimsPrincipal? user) => [];
 }
 
 /// <summary>
@@ -36,14 +42,20 @@ public interface ICollectionLinkPolicy<in TDto> where TDto : class
     /// <param name="dto">The item data.</param>
     /// <param name="user">The current user's claims principal (null if anonymous).</param>
     /// <returns>Collection of link definitions for this item.</returns>
-    IEnumerable<LinkDefinition> GetItemLinks(TDto dto, ClaimsPrincipal? user);
+    /// <remarks>Defaults to no links, for the same fail-closed reason as <see cref="ILinkPolicy{TDto}.GetLinks"/>.</remarks>
+    IEnumerable<LinkDefinition> GetItemLinks(TDto dto, ClaimsPrincipal? user) => [];
 
     /// <summary>
     /// Gets the link definitions for the collection itself (create, search, etc.).
     /// </summary>
     /// <param name="user">The current user's claims principal (null if anonymous).</param>
     /// <returns>Collection of link definitions for the collection.</returns>
-    IEnumerable<LinkDefinition> GetCollectionLinks(ClaimsPrincipal? user);
+    /// <remarks>
+    /// Defaults to no links. Prefer overriding the <see cref="ICollectionAuthorizationContext"/> overload:
+    /// this parameterless form has no trusted collection owner to authorize against, so any affordance it
+    /// emits cannot be fact-scoped.
+    /// </remarks>
+    IEnumerable<LinkDefinition> GetCollectionLinks(ClaimsPrincipal? user) => [];
 
     /// <summary>
     /// Gets collection link definitions using canonical server-resolved authorization metadata.
@@ -64,5 +76,9 @@ public interface ICollectionAuthorizationContext
 {
     string AuthorizationResourceId { get; }
 
-    IReadOnlyDictionary<string, object> AuthorizationResourceAttributes { get; }
+    /// <summary>
+    /// Closed typed policy facts for the collection owner, resolved server-side. Returning <c>null</c>
+    /// means no trusted context exists and fact-dependent capabilities must fail closed.
+    /// </summary>
+    IAuthorizationFacts? AuthorizationFacts { get; }
 }

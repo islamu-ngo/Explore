@@ -10,13 +10,11 @@ using Explore.Domain.Enums;
 
 namespace Explore.API.Hateoas.Policies;
 
-public sealed class EventTeamMemberDetailLinkPolicy : ILinkPolicy<EventTeamMemberDto>
-{
-    public IEnumerable<LinkDefinition> GetLinks(EventTeamMemberDto dto, ClaimsPrincipal? user)
-    {
-        yield break;
-    }
-}
+/// <summary>
+/// Team membership exposes no detail affordances; revocation is an item link on the collection.
+/// The contract's empty default supplies that.
+/// </summary>
+public sealed class EventTeamMemberDetailLinkPolicy : ILinkPolicy<EventTeamMemberDto>;
 
 public sealed class EventTeamMemberCollectionLinkPolicy : ICollectionLinkPolicy<EventTeamMemberDto>
 {
@@ -41,11 +39,6 @@ public sealed class EventTeamMemberCollectionLinkPolicy : ICollectionLinkPolicy<
                 RequiresAuth: true),
             dto.TenantId,
             dto.EventId);
-    }
-
-    public IEnumerable<LinkDefinition> GetCollectionLinks(ClaimsPrincipal? user)
-    {
-        yield break;
     }
 
     public IEnumerable<LinkDefinition> GetCollectionLinks(
@@ -85,5 +78,7 @@ public sealed record EventTeamCollectionAuthorizationContext(
 {
     public string AuthorizationResourceId => EventId.ToString("D");
 
-    public IReadOnlyDictionary<string, object> AuthorizationResourceAttributes => new Dictionary<string, object>();
+    // The evaluator reloads the event to build full authority facts for manage-team candidates, so the
+    // collection context deliberately publishes none of its own.
+    public IAuthorizationFacts? AuthorizationFacts => null;
 }

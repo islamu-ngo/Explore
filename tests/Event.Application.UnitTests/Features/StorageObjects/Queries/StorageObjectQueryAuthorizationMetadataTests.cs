@@ -47,7 +47,7 @@ public sealed class StorageObjectQueryAuthorizationMetadataTests
         (ISecureRequest Request, string ExpectedResourceId) testCase)
     {
         await Assert.That(testCase.Request.ResourceId).IsEqualTo(testCase.ExpectedResourceId);
-        await Assert.That(testCase.Request.ResourceAttributes).IsNotNull();
-        await Assert.That(testCase.Request.ResourceAttributes!["tenantId"]).IsEqualTo(TenantId.ToString("D"));
+        await Assert.That(testCase.Request.AuthorizationFacts)
+            .IsEqualTo(new StorageObjectCollectionAuthorizationFacts(TenantId));
     }
 }

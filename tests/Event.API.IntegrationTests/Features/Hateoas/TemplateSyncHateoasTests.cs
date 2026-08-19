@@ -8,6 +8,7 @@ using Explore.API.Hateoas.Policies;
 using Explore.API.Hateoas.Resources;
 using Explore.Application.Authorization;
 using Explore.Application.Contracts.Hateoas;
+using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.DTOs.EventTemplate;
 using Explore.Application.Features.EventSessionTemplateSync.Queries.GetEventSessionTemplateDiff;
 using Explore.Application.Features.EventTemplateSync.Queries.GetEventTemplateDiff;
@@ -60,7 +61,7 @@ public sealed class TemplateSyncHateoasTests
         await Assert.That(edit.PermissionResourceKind).IsEqualTo(ResourceKinds.Tenant);
         await Assert.That(edit.PermissionAction).IsEqualTo(AuthorizationActions.Update);
         await Assert.That(edit.PermissionResourceId).IsEqualTo(tenantId.ToString());
-        await Assert.That(GetAttribute<string>(edit, "tenantId")).IsEqualTo(tenantId.ToString());
+        await Assert.That(edit.PermissionFacts).IsEqualTo(new TenantScopedAuthorizationFacts(tenantId));
         await Assert.That(GetRouteValue<Guid>(edit.RouteValues, "id")).IsEqualTo(templateId);
 
         await Assert.That(delete.RouteName).IsEqualTo(RouteNames.DeleteEventTemplate);
@@ -68,7 +69,7 @@ public sealed class TemplateSyncHateoasTests
         await Assert.That(delete.PermissionResourceKind).IsEqualTo(ResourceKinds.Tenant);
         await Assert.That(delete.PermissionAction).IsEqualTo(AuthorizationActions.Delete);
         await Assert.That(delete.PermissionResourceId).IsEqualTo(tenantId.ToString());
-        await Assert.That(GetAttribute<string>(delete, "tenantId")).IsEqualTo(tenantId.ToString());
+        await Assert.That(delete.PermissionFacts).IsEqualTo(new TenantScopedAuthorizationFacts(tenantId));
         await Assert.That(GetRouteValue<Guid>(delete.RouteValues, "id")).IsEqualTo(templateId);
     }
 
@@ -76,9 +77,12 @@ public sealed class TemplateSyncHateoasTests
     public async Task EventTemplateSyncLinks_ExposePermissionMetadataForDiffAndApply()
     {
         var eventId = Guid.NewGuid();
+        var tenantId = Guid.NewGuid();
         var policy = new EventTemplateSyncLinkPolicy();
 
-        var links = policy.GetLinks(new EventTemplateSyncResource(eventId, 7, HasChanges: true), user: null).ToList();
+        var links = policy.GetLinks(
+            new EventTemplateSyncResource(tenantId, eventId, 7, HasChanges: true),
+            user: null).ToList();
 
         var diff = links.Single(link => link.Rel == "sync-diff");
         await Assert.That(diff.RouteName).IsEqualTo(RouteNames.GetEventTemplateSyncDiff);
@@ -89,8 +93,9 @@ public sealed class TemplateSyncHateoasTests
         await Assert.That(diff.PermissionResourceId).IsEqualTo(eventId.ToString());
         await Assert.That(GetRouteValue<Guid>(diff.RouteValues, "eventId")).IsEqualTo(eventId);
         await Assert.That(GetRouteValue<int>(diff.RouteValues, "templateVersion")).IsEqualTo(7);
-        await Assert.That(GetAttribute<Guid>(diff, "eventId")).IsEqualTo(eventId);
-        await Assert.That(GetAttribute<int>(diff, "templateVersion")).IsEqualTo(7);
+        // Template sync is tenant-administered: the event, session and version identify the target row and
+        // travel in the route, not in the policy facts.
+        await Assert.That(diff.PermissionFacts).IsEqualTo(new TenantScopedAuthorizationFacts(tenantId));
 
         var apply = links.Single(link => link.Rel == "sync-apply");
         await Assert.That(apply.RouteName).IsEqualTo(RouteNames.ApplyEventTemplateSync);
@@ -110,9 +115,12 @@ public sealed class TemplateSyncHateoasTests
     public async Task EventSessionTemplateSyncLinks_ExposePermissionMetadataForDiffAndApply()
     {
         var sessionId = Guid.NewGuid();
+        var tenantId = Guid.NewGuid();
         var policy = new EventSessionTemplateSyncLinkPolicy();
 
-        var links = policy.GetLinks(new EventSessionTemplateSyncResource(sessionId, 4, HasChanges: true), user: null).ToList();
+        var links = policy.GetLinks(
+            new EventSessionTemplateSyncResource(tenantId, sessionId, 4, HasChanges: true),
+            user: null).ToList();
 
         var diff = links.Single(link => link.Rel == "sync-diff");
         await Assert.That(diff.RouteName).IsEqualTo(RouteNames.GetEventSessionTemplateSyncDiff);
@@ -123,8 +131,9 @@ public sealed class TemplateSyncHateoasTests
         await Assert.That(diff.PermissionResourceId).IsEqualTo(sessionId.ToString());
         await Assert.That(GetRouteValue<Guid>(diff.RouteValues, "sessionId")).IsEqualTo(sessionId);
         await Assert.That(GetRouteValue<int>(diff.RouteValues, "templateVersion")).IsEqualTo(4);
-        await Assert.That(GetAttribute<Guid>(diff, "sessionId")).IsEqualTo(sessionId);
-        await Assert.That(GetAttribute<int>(diff, "templateVersion")).IsEqualTo(4);
+        // Template sync is tenant-administered: the event, session and version identify the target row and
+        // travel in the route, not in the policy facts.
+        await Assert.That(diff.PermissionFacts).IsEqualTo(new TenantScopedAuthorizationFacts(tenantId));
 
         var apply = links.Single(link => link.Rel == "sync-apply");
         await Assert.That(apply.RouteName).IsEqualTo(RouteNames.ApplyEventSessionTemplateSync);
@@ -223,7 +232,12 @@ public sealed class TemplateSyncHateoasTests
         IHateoasLinkGenerator linkGenerator,
         ILinkPolicy<EventTemplateSyncResource> linkPolicy)
     {
-        var controller = new EventTemplateSyncController(mediator, authorizationEvaluator, linkGenerator, linkPolicy);
+        var controller = new EventTemplateSyncController(
+            mediator,
+            authorizationEvaluator,
+            linkGenerator,
+            linkPolicy,
+            Substitute.For<ITenantContext>());
         controller.ControllerContext = new ControllerContext { HttpContext = CreateHttpContext() };
         return controller;
     }
@@ -234,7 +248,12 @@ public sealed class TemplateSyncHateoasTests
         IHateoasLinkGenerator linkGenerator,
         ILinkPolicy<EventSessionTemplateSyncResource> linkPolicy)
     {
-        var controller = new EventSessionTemplateSyncController(mediator, authorizationEvaluator, linkGenerator, linkPolicy);
+        var controller = new EventSessionTemplateSyncController(
+            mediator,
+            authorizationEvaluator,
+            linkGenerator,
+            linkPolicy,
+            Substitute.For<ITenantContext>());
         controller.ControllerContext = new ControllerContext { HttpContext = CreateHttpContext() };
         return controller;
     }
@@ -284,14 +303,4 @@ public sealed class TemplateSyncHateoasTests
         return value is T typedValue ? typedValue : default;
     }
 
-    private static T? GetAttribute<T>(LinkDefinition link, string name)
-    {
-        if (link.PermissionResourceAttributes is null ||
-            !link.PermissionResourceAttributes.TryGetValue(name, out var value))
-        {
-            return default;
-        }
-
-        return value is T typedValue ? typedValue : default;
-    }
 }

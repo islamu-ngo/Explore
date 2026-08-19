@@ -75,7 +75,7 @@ public sealed class ActorDetailLinkPolicy : ILinkPolicy<ActorDto>
                 .RequirePermission(AuthorizationActions.ActorSubscriptions.View,
                     ResourceKinds.ActorSubscription,
                     dto.Id.ToString(),
-                    SubscriptionAttributes(dto.Id));
+                    facts: SubscriptionFacts(dto.TenantId));
 
             yield return new LinkDefinition(
                 "subscribe",
@@ -87,16 +87,16 @@ public sealed class ActorDetailLinkPolicy : ILinkPolicy<ActorDto>
                 .RequirePermission(AuthorizationActions.ActorSubscriptions.Create,
                     ResourceKinds.ActorSubscription,
                     dto.Id.ToString(),
-                    SubscriptionAttributes(dto.Id));
+                    facts: SubscriptionFacts(dto.TenantId));
         }
     }
 
     private static bool CanSubscribe(int actorTypeId) => actorTypeId is (int)ActorTypeEnum.Organization or (int)ActorTypeEnum.Group;
 
-    private static IReadOnlyDictionary<string, object> SubscriptionAttributes(Guid targetActorId) => new Dictionary<string, object>
-    {
-        ["targetActorId"] = targetActorId.ToString()
-    };
+    // The subscription belongs to the caller, not to the actor being followed; the handler enforces
+    // owner identity, so the tenant is the only policy fact.
+    private static IAuthorizationFacts SubscriptionFacts(Guid tenantId) =>
+        new PersonalResourceAuthorizationFacts(tenantId);
 }
 
 /// <summary>
@@ -127,7 +127,7 @@ public sealed class ActorCollectionLinkPolicy : ICollectionLinkPolicy<ActorListD
                 .RequirePermission(AuthorizationActions.ActorSubscriptions.View,
                     ResourceKinds.ActorSubscription,
                     dto.Id.ToString(),
-                    SubscriptionAttributes(dto.Id));
+                    facts: SubscriptionFacts(dto.TenantId));
 
             yield return new LinkDefinition(
                 "subscribe",
@@ -139,7 +139,7 @@ public sealed class ActorCollectionLinkPolicy : ICollectionLinkPolicy<ActorListD
                 .RequirePermission(AuthorizationActions.ActorSubscriptions.Create,
                     ResourceKinds.ActorSubscription,
                     dto.Id.ToString(),
-                    SubscriptionAttributes(dto.Id));
+                    facts: SubscriptionFacts(dto.TenantId));
         }
     }
 
@@ -152,8 +152,8 @@ public sealed class ActorCollectionLinkPolicy : ICollectionLinkPolicy<ActorListD
 
     private static bool CanSubscribe(int actorTypeId) => actorTypeId is (int)ActorTypeEnum.Organization or (int)ActorTypeEnum.Group;
 
-    private static IReadOnlyDictionary<string, object> SubscriptionAttributes(Guid targetActorId) => new Dictionary<string, object>
-    {
-        ["targetActorId"] = targetActorId.ToString()
-    };
+    // The subscription belongs to the caller, not to the actor being followed; the handler enforces
+    // owner identity, so the tenant is the only policy fact.
+    private static IAuthorizationFacts SubscriptionFacts(Guid tenantId) =>
+        new PersonalResourceAuthorizationFacts(tenantId);
 }

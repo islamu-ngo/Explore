@@ -14,8 +14,6 @@ public class CreateLocationCommand : IRequest<BaseCommandResponse<Guid>>, ISecur
     public required CreateLocationDto LocationDto { get; set; }
 
     string? ISecureRequest.ResourceId => null;
-    IDictionary<string, object>? ISecureRequest.ResourceAttributes =>
-        LocationDto.TenantId != Guid.Empty
-            ? new Dictionary<string, object> { ["tenantId"] = LocationDto.TenantId.ToString() }
-            : null;
+    IAuthorizationFacts? ISecureRequest.AuthorizationFacts =>
+        new TenantScopedAuthorizationFacts(LocationDto.TenantId);
 }

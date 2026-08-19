@@ -34,8 +34,7 @@ public sealed class ControlPlaneTenantPlanHateoasTests
         await Assert.That(self.PermissionResourceKind).IsEqualTo(ResourceKinds.InstanceSetting);
         await Assert.That(self.PermissionAction).IsEqualTo(AuthorizationActions.InstanceSettings.View);
         await Assert.That(self.PermissionResourceId).IsEqualTo(GetControlPlaneTenantPlanListQuery.SettingKey);
-        await Assert.That(self.PermissionResourceAttributes?["settingKey"]).IsEqualTo(GetControlPlaneTenantPlanListQuery.SettingKey);
-        await Assert.That(self.PermissionResourceAttributes?["planKey"]).IsEqualTo("community");
+        await Assert.That(self.PermissionFacts).IsEqualTo(InstanceScopedAuthorizationFacts.Instance);
 
         var collection = links.Single(link => link.Rel == LinkRelations.Collection);
         await Assert.That(collection.RouteName).IsEqualTo(RouteNames.GetControlPlaneTenantPlans);
@@ -56,7 +55,7 @@ public sealed class ControlPlaneTenantPlanHateoasTests
         await Assert.That(self.RouteName).IsEqualTo(RouteNames.GetControlPlaneTenantPlanByKey);
         await Assert.That(self.PermissionResourceKind).IsEqualTo(ResourceKinds.InstanceSetting);
         await Assert.That(self.PermissionAction).IsEqualTo(AuthorizationActions.InstanceSettings.View);
-        await Assert.That(self.PermissionResourceAttributes?["planKey"]).IsEqualTo("community");
+        await Assert.That(self.PermissionFacts).IsEqualTo(InstanceScopedAuthorizationFacts.Instance);
 
         var create = collectionLinks.Single(link => link.Rel == LinkRelations.Create);
         await Assert.That(create.RouteName).IsEqualTo(RouteNames.CreateControlPlaneTenantPlanDraft);
@@ -65,7 +64,7 @@ public sealed class ControlPlaneTenantPlanHateoasTests
         await Assert.That(create.PermissionResourceKind).IsEqualTo(ResourceKinds.InstanceSetting);
         await Assert.That(create.PermissionAction).IsEqualTo(AuthorizationActions.InstanceSettings.Update);
         await Assert.That(create.PermissionResourceId).IsEqualTo(CreateControlPlaneTenantPlanDraftCommand.SettingKey);
-        await Assert.That(create.PermissionResourceAttributes?["settingKey"]).IsEqualTo(CreateControlPlaneTenantPlanDraftCommand.SettingKey);
+        await Assert.That(create.PermissionFacts).IsEqualTo(InstanceScopedAuthorizationFacts.Instance);
 
         var validate = collectionLinks.Single(link => link.Rel == "validate");
         await Assert.That(validate.RouteName).IsEqualTo(RouteNames.ValidateControlPlaneTenantPlanDraft);
@@ -93,7 +92,7 @@ public sealed class ControlPlaneTenantPlanHateoasTests
         await Assert.That(RouteValues(createVersion)["key"]).IsEqualTo("community");
         await Assert.That(createVersion.PermissionAction).IsEqualTo(AuthorizationActions.InstanceSettings.Update);
         await Assert.That(createVersion.PermissionResourceId).IsEqualTo(CreateControlPlaneTenantPlanVersionDraftCommand.SettingKey);
-        await Assert.That(createVersion.PermissionResourceAttributes?["planKey"]).IsEqualTo("community");
+        await Assert.That(createVersion.PermissionFacts).IsEqualTo(InstanceScopedAuthorizationFacts.Instance);
 
         await Assert.That(links.Any(link => link.Rel == "update-version-draft")).IsFalse();
         await Assert.That(links.Any(link => link.Rel == LinkRelations.Publish)).IsFalse();

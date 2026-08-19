@@ -77,13 +77,7 @@ public sealed class ControlPlaneOverviewLinkPolicy : ILinkPolicy<ControlPlaneOve
             .RequirePermission(AuthorizationActions.InstanceSettings.View,
                 ResourceKinds.InstanceSetting,
                 settingKey,
-                InstanceSettingAttributes(settingKey));
-
-    private static IReadOnlyDictionary<string, object> InstanceSettingAttributes(string settingKey) =>
-        new Dictionary<string, object>
-        {
-            ["settingKey"] = settingKey
-        };
+                facts: InstanceScopedAuthorizationFacts.Instance);
 }
 
 public sealed class ControlPlaneOverviewCollectionLinkPolicy : ICollectionLinkPolicy<ControlPlaneOverviewDto>

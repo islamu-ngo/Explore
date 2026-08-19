@@ -16,10 +16,8 @@ public sealed class GetStorageObjectContentRequest : IRequest<StorageObjectConte
 
     string? ISecureRequest.ResourceId => StorageObjectId == Guid.Empty ? null : StorageObjectId.ToString("D");
 
-    IDictionary<string, object>? ISecureRequest.ResourceAttributes => TenantId == Guid.Empty
+    IAuthorizationFacts? ISecureRequest.AuthorizationFacts =>
+        TenantId == Guid.Empty
         ? null
-        : new Dictionary<string, object>
-        {
-            ["tenantId"] = TenantId.ToString("D")
-        };
+        : new StorageObjectCollectionAuthorizationFacts(TenantId);
 }

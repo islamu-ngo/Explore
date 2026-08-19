@@ -92,11 +92,6 @@ public sealed class WebhookMessageCollectionLinkPolicy(TimeProvider timeProvider
         }
     }
 
-    public IEnumerable<LinkDefinition> GetCollectionLinks(ClaimsPrincipal? user)
-    {
-        yield break;
-    }
-
     public IEnumerable<LinkDefinition> GetCollectionLinks(
         ClaimsPrincipal? user,
         ICollectionAuthorizationContext? authorizationContext)
@@ -116,9 +111,9 @@ public sealed class WebhookMessageCollectionLinkPolicy(TimeProvider timeProvider
             .RequirePermission(AuthorizationActions.Webhooks.ViewDelivery,
                 ResourceKinds.Webhook,
                 authorizationContext.AuthorizationResourceId,
-                authorizationContext.AuthorizationResourceAttributes);
+                facts: authorizationContext.AuthorizationFacts);
 
-        if (!HasTenantOwner(authorizationContext.AuthorizationResourceAttributes))
+        if (!HasTenantOwner(authorizationContext.AuthorizationFacts))
         {
             yield break;
         }
@@ -133,7 +128,7 @@ public sealed class WebhookMessageCollectionLinkPolicy(TimeProvider timeProvider
             .RequirePermission(AuthorizationActions.Webhooks.ViewDelivery,
                 ResourceKinds.Webhook,
                 authorizationContext.AuthorizationResourceId,
-                authorizationContext.AuthorizationResourceAttributes);
+                facts: authorizationContext.AuthorizationFacts);
 
         yield return new LinkDefinition(
             LinkRelations.BulkReplayPreview,
@@ -145,7 +140,7 @@ public sealed class WebhookMessageCollectionLinkPolicy(TimeProvider timeProvider
             .RequirePermission(AuthorizationActions.Webhooks.BulkReplay,
                 ResourceKinds.Webhook,
                 authorizationContext.AuthorizationResourceId,
-                authorizationContext.AuthorizationResourceAttributes);
+                facts: authorizationContext.AuthorizationFacts);
 
         yield return new LinkDefinition(
             LinkRelations.BulkReplays,
@@ -157,13 +152,13 @@ public sealed class WebhookMessageCollectionLinkPolicy(TimeProvider timeProvider
             .RequirePermission(AuthorizationActions.Webhooks.BulkReplay,
                 ResourceKinds.Webhook,
                 authorizationContext.AuthorizationResourceId,
-                authorizationContext.AuthorizationResourceAttributes);
+                facts: authorizationContext.AuthorizationFacts);
     }
 
-    private static bool HasTenantOwner(IReadOnlyDictionary<string, object> attributes) =>
-        attributes.TryGetValue("ownerKindId", out var ownerKindId)
-        && ownerKindId is int value
-        && value == (int)WebhookConsumerKind.Tenant;
+    // Provider publications and bulk replays are tenant-owned surfaces; delegated owners never see them.
+    private static bool HasTenantOwner(IAuthorizationFacts? facts) =>
+        facts is WebhookOwnershipAuthorizationFacts ownership
+        && ownership.Kind == WebhookConsumerKind.Tenant;
 }
 
 public sealed class WebhookDeliveryAttemptDetailLinkPolicy : ILinkPolicy<WebhookDeliveryAttemptDto>
@@ -208,11 +203,6 @@ public sealed class WebhookDeliveryAttemptCollectionLinkPolicy : ICollectionLink
     public IEnumerable<LinkDefinition> GetItemLinks(WebhookDeliveryAttemptDto dto, ClaimsPrincipal? user) =>
         _detailPolicy.GetLinks(dto, user);
 
-    public IEnumerable<LinkDefinition> GetCollectionLinks(ClaimsPrincipal? user)
-    {
-        yield break;
-    }
-
     public IEnumerable<LinkDefinition> GetCollectionLinks(
         ClaimsPrincipal? user,
         ICollectionAuthorizationContext? authorizationContext)
@@ -232,6 +222,6 @@ public sealed class WebhookDeliveryAttemptCollectionLinkPolicy : ICollectionLink
             .RequirePermission(AuthorizationActions.Webhooks.ViewDelivery,
                 ResourceKinds.Webhook,
                 authorizationContext.AuthorizationResourceId,
-                authorizationContext.AuthorizationResourceAttributes);
+                facts: authorizationContext.AuthorizationFacts);
     }
 }

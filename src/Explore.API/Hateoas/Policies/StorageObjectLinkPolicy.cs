@@ -127,8 +127,8 @@ public sealed class StorageObjectCollectionLinkPolicy : ICollectionLinkPolicy<St
                 .RequirePermission(AuthorizationActions.StorageObjects.Download,
                     ResourceKinds.StorageObject,
                     dto.Id.ToString(),
-                    StorageObjectAttributes(dto),
-                    new AuthorizationScope(TenantId: dto.TenantId.ToString()));
+                    new AuthorizationScope(TenantId: dto.TenantId.ToString()),
+                    StorageObjectFacts(dto));
         }
 
         if (CanReadPublicImage(dto))
@@ -152,8 +152,8 @@ public sealed class StorageObjectCollectionLinkPolicy : ICollectionLinkPolicy<St
                 .RequirePermission(AuthorizationActions.Update,
                     ResourceKinds.StorageObject,
                     dto.Id.ToString(),
-                    StorageObjectAttributes(dto),
-                    new AuthorizationScope(TenantId: dto.TenantId.ToString()));
+                    new AuthorizationScope(TenantId: dto.TenantId.ToString()),
+                    StorageObjectFacts(dto));
 
             yield return LinkDefinition.Delete(
                 RouteNames.DeleteStorageObject,
@@ -161,8 +161,8 @@ public sealed class StorageObjectCollectionLinkPolicy : ICollectionLinkPolicy<St
                 .RequirePermission(AuthorizationActions.Delete,
                     ResourceKinds.StorageObject,
                     dto.Id.ToString(),
-                    StorageObjectAttributes(dto),
-                    new AuthorizationScope(TenantId: dto.TenantId.ToString()));
+                    new AuthorizationScope(TenantId: dto.TenantId.ToString()),
+                    StorageObjectFacts(dto));
         }
     }
 
@@ -197,11 +197,13 @@ public sealed class StorageObjectCollectionLinkPolicy : ICollectionLinkPolicy<St
         dto.LifecycleState is not StorageObjectLifecycleStates.Deleted
             and not StorageObjectLifecycleStates.DeleteRequested;
 
-    private static IReadOnlyDictionary<string, object> StorageObjectAttributes(StorageObjectListDto dto) =>
-        new Dictionary<string, object>
-        {
-            ["tenantId"] = dto.TenantId.ToString(),
-            ["visibility"] = dto.Visibility,
-            ["lifecycleState"] = dto.LifecycleState
-        };
+    private static IAuthorizationFacts StorageObjectFacts(StorageObjectListDto dto) =>
+        new PersistedStorageObjectAuthorizationFacts(
+            dto.TenantId,
+            dto.Id,
+            dto.Visibility,
+            dto.LifecycleState,
+            CreatedBy: null,
+            OwningResourceKind: null,
+            OwningResourceId: null);
 }

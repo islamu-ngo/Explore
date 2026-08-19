@@ -186,7 +186,7 @@ public class AuthorizationBehaviorTests
     }
 
     [Test]
-    public async Task Handle_WithAuthorizeResourceAndISecureRequest_PassesResourceAttributes()
+    public async Task Handle_WithAuthorizeResourceAndISecureRequest_PassesDeclaredFacts()
     {
         // Arrange
         var secureBehavior = new AuthorizationBehavior<TestSecureCommandWithAttributes, BaseCommandResponse<Guid>>(
@@ -194,11 +194,11 @@ public class AuthorizationBehaviorTests
             Substitute.For<ILogger<AuthorizationBehavior<TestSecureCommandWithAttributes, BaseCommandResponse<Guid>>>>());
         var command = new TestSecureCommandWithAttributes();
         var expectedResponse = new BaseCommandResponse<Guid> { Success = true };
+        var expectedFacts = new OrganizationAuthorizationFacts(command.TenantId, command.OrganizationId);
 
         _authService.AuthorizeAsync(
             MatchesAuthorizationRequest(
-                "islamuevent_organization", command.OrganizationId.ToString(), "delete",
-                attributes => attributes != null && attributes.ContainsKey("tenantId")),
+                "islamuevent_organization", command.OrganizationId.ToString(), "delete", expectedFacts),
             Arg.Any<CancellationToken>())
             .Returns(AllowedDecision);
 
@@ -212,7 +212,7 @@ public class AuthorizationBehaviorTests
                 "islamuevent_organization",
                 command.OrganizationId.ToString(),
                 "delete",
-                attributes => attributes != null && attributes.ContainsKey("tenantId")),
+                expectedFacts),
             Arg.Any<CancellationToken>());
     }
 
@@ -240,16 +240,20 @@ public class AuthorizationBehaviorTests
         };
         var expectedResponse = new BaseCommandResponse<Guid> { Success = true };
 
+        // No event row exists yet, so the requested owning organization and group are the only context the
+        // create rules can weigh; the pre-create fact record is what carries them.
+        var expectedFacts = new PreCreateAuthorizationFacts(
+            Guid.Empty,
+            ParentEventId: null,
+            OrganizationId: organizationId,
+            GroupId: groupId);
+
         _authService.AuthorizeAsync(
             MatchesAuthorizationRequest(
                 ResourceKinds.Event,
                 CreateEventCommand.PreCreateResourceId,
                 AuthorizationActions.Create,
-                attributes =>
-                    attributes != null
-                    && attributes["authorizationPhase"].Equals(CreateEventCommand.PreCreateAuthorizationPhase)
-                    && attributes["organizationId"].Equals(organizationId.ToString())
-                    && attributes["groupId"].Equals(groupId.ToString())),
+                expectedFacts),
                 Arg.Any<CancellationToken>())
             .Returns(AllowedDecision);
 
@@ -261,11 +265,7 @@ public class AuthorizationBehaviorTests
             ResourceKinds.Event,
             CreateEventCommand.PreCreateResourceId,
             AuthorizationActions.Create,
-            attributes =>
-                attributes != null
-                && attributes["authorizationPhase"].Equals(CreateEventCommand.PreCreateAuthorizationPhase)
-                && attributes["organizationId"].Equals(organizationId.ToString())
-                && attributes["groupId"].Equals(groupId.ToString())),
+            expectedFacts),
             Arg.Any<CancellationToken>());
     }
 
@@ -290,14 +290,14 @@ public class AuthorizationBehaviorTests
         };
         var expectedResponse = new BaseCommandResponse<Guid> { Success = true };
 
+        var expectedFacts = new PreCreateAuthorizationFacts(Guid.Empty, null, null, null);
+
         _authService.AuthorizeAsync(
             MatchesAuthorizationRequest(
                 ResourceKinds.Organization,
                 CreateOrganizationCommand.PreCreateResourceId,
                 AuthorizationActions.Create,
-                attributes =>
-                    attributes != null
-                    && attributes["authorizationPhase"].Equals(CreateOrganizationCommand.PreCreateAuthorizationPhase)),
+                expectedFacts),
                 Arg.Any<CancellationToken>())
             .Returns(AllowedDecision);
 
@@ -309,14 +309,12 @@ public class AuthorizationBehaviorTests
             ResourceKinds.Organization,
             CreateOrganizationCommand.PreCreateResourceId,
             AuthorizationActions.Create,
-            attributes =>
-                attributes != null
-                && attributes["authorizationPhase"].Equals(CreateOrganizationCommand.PreCreateAuthorizationPhase)),
+            expectedFacts),
             Arg.Any<CancellationToken>());
     }
 
     [Test]
-    public async Task Handle_WithPublishEventCommand_PassesEventIdResourceAttribute()
+    public async Task Handle_WithPublishEventCommand_PassesEventScopedFacts()
     {
         var secureBehavior = new AuthorizationBehavior<PublishEventCommand, BaseCommandResponse<Guid>>(
             _authService,
@@ -334,7 +332,7 @@ public class AuthorizationBehaviorTests
                 ResourceKinds.Event,
                 eventId.ToString(),
                 AuthorizationActions.Update,
-                attributes => attributes != null && attributes["eventId"].Equals(eventId.ToString())),
+                new EventScopedAuthorizationFacts(Guid.Empty, eventId)),
                 Arg.Any<CancellationToken>())
             .Returns(AllowedDecision);
 
@@ -346,7 +344,7 @@ public class AuthorizationBehaviorTests
             ResourceKinds.Event,
             eventId.ToString(),
             AuthorizationActions.Update,
-            attributes => attributes != null && attributes["eventId"].Equals(eventId.ToString())),
+            new EventScopedAuthorizationFacts(Guid.Empty, eventId)),
             Arg.Any<CancellationToken>());
     }
 
@@ -408,14 +406,19 @@ public class AuthorizationBehaviorTests
                 ResourceKinds.Event,
                 eventId.ToString(),
                 AuthorizationActions.Update,
-                attributes =>
-                    attributes != null
-                    && attributes["eventId"].Equals(eventId.ToString())
-                    && attributes["tenantId"].Equals(tenantId.ToString())
-                    && attributes["actorId"].Equals(actorId.ToString())
-                    && attributes["organizerActorId"].Equals(organizerActorId.ToString())
-                    && attributes["organizerUserId"].Equals(organizerUserId.ToString())
-                    && attributes["organizationId"].Equals(organizationId.ToString())),
+                new EventAuthorizationFacts(
+                    tenantId,
+                    eventId,
+                    actorId,
+                    UserId: null,
+                    OrganizationId: organizationId,
+                    GroupId: null,
+                    OrganizerActorId: organizerActorId,
+                    OrganizerUserId: organizerUserId,
+                    OrganizerOrganizationId: null,
+                    OrganizerGroupId: null,
+                    ProvenanceType: UnsetProvenanceCode,
+                    SubmittedByUserId: null)),
                 Arg.Any<CancellationToken>())
             .Returns(AllowedDecision);
 
@@ -426,7 +429,7 @@ public class AuthorizationBehaviorTests
     }
 
     [Test]
-    public async Task Handle_WithRegistrationFormResource_ReplacesCallerAuthorizationAttributesFromPersistedEvent()
+    public async Task Handle_WithRegistrationFormResource_ReplacesCallerDeclaredFactsFromPersistedEvent()
     {
         var eventRepository = Substitute.For<IEventRepository>();
         var tenantContext = Substitute.For<ITenantContext>();
@@ -465,29 +468,27 @@ public class AuthorizationBehaviorTests
             EventFormat = null!,
             VisibilityType = null!
         });
-        var command = new TestRegistrationFormSecureCommand(
-            formId,
-            eventId,
-            new Dictionary<string, object>
-            {
-                ["tenantId"] = Guid.NewGuid().ToString("D"),
-                ["organizerActorId"] = attackerId.ToString("D"),
-                ["organizerUserId"] = attackerId.ToString("D"),
-                ["status"] = "DRAFT"
-            });
+        // The caller names a tenant it does not own. The resolver reloads the parent event, so the facts the
+        // provider sees describe the persisted event and carry nothing the caller supplied.
+        var command = new TestRegistrationFormSecureCommand(formId, eventId, attackerId);
         _authService.AuthorizeAsync(
             MatchesAuthorizationRequest(
                 ResourceKinds.RegistrationForm,
                 formId.ToString("D"),
                 AuthorizationActions.RegistrationForms.Update,
-                attributes =>
-                    attributes != null
-                    && attributes["tenantId"].Equals(tenantId.ToString("D"))
-                    && attributes["eventId"].Equals(eventId.ToString("D"))
-                    && attributes["organizerActorId"].Equals(organizerActorId.ToString("D"))
-                    && attributes["organizerUserId"].Equals(organizerUserId.ToString("D"))
-                    && attributes["status"].Equals("DRAFT")
-                    && !attributes.Values.Contains(attackerId.ToString("D"))),
+                new EventAuthorizationFacts(
+                    tenantId,
+                    eventId,
+                    actorId,
+                    UserId: null,
+                    OrganizationId: null,
+                    GroupId: null,
+                    OrganizerActorId: organizerActorId,
+                    OrganizerUserId: organizerUserId,
+                    OrganizerOrganizationId: null,
+                    OrganizerGroupId: null,
+                    ProvenanceType: UnsetProvenanceCode,
+                    SubmittedByUserId: null)),
                 Arg.Any<CancellationToken>())
             .Returns(AllowedDecision);
         var behavior = new AuthorizationBehavior<TestRegistrationFormSecureCommand, BaseCommandResponse<Guid>>(
@@ -557,7 +558,7 @@ public class AuthorizationBehaviorTests
             var behavior = new AuthorizationBehavior<TestAuthorizationPlatformCommand, BaseCommandResponse<Guid>>(
                 authService,
                 Substitute.For<ILogger<AuthorizationBehavior<TestAuthorizationPlatformCommand, BaseCommandResponse<Guid>>>>());
-            var command = new TestAuthorizationPlatformCommand(scenario.ResourceId, scenario.Attributes);
+            var command = new TestAuthorizationPlatformCommand(scenario.ResourceId, scenario.Facts);
             var nextCalled = false;
             var expectedResponse = new BaseCommandResponse<Guid> { Success = true };
 
@@ -566,7 +567,7 @@ public class AuthorizationBehaviorTests
                     ResourceKinds.Event,
                     scenario.ResourceId,
                     AuthorizationActions.Update,
-                    attributes => HasExactAuthorizationContext(attributes, scenario.Attributes)),
+                    scenario.Facts),
                     Arg.Any<CancellationToken>())
                 .Returns(scenario.AllowedByProvider ? AllowedDecision : DeniedDecision);
 
@@ -597,7 +598,7 @@ public class AuthorizationBehaviorTests
                 ResourceKinds.Event,
                 scenario.ResourceId,
                 AuthorizationActions.Update,
-                attributes => HasExactAuthorizationContext(attributes, scenario.Attributes)),
+                scenario.Facts),
                 Arg.Any<CancellationToken>());
         }
     }
@@ -663,11 +664,7 @@ public class AuthorizationBehaviorTests
                 ResourceKinds.EventSession,
                 eventSessionId.ToString(),
                 AuthorizationActions.Update,
-                attributes =>
-                    attributes != null
-                    && attributes["eventSessionId"].Equals(eventSessionId.ToString())
-                    && attributes["eventId"].Equals(eventId.ToString())
-                    && attributes["tenantId"].Equals(tenantId.ToString())),
+                new EventScopedAuthorizationFacts(tenantId, eventId, eventSessionId)),
                 Arg.Any<CancellationToken>())
             .Returns(AllowedDecision);
 
@@ -721,11 +718,7 @@ public class AuthorizationBehaviorTests
                 ResourceKinds.OrganizationMember,
                 memberId.ToString(),
                 AuthorizationActions.OrganizationMembers.View,
-                attributes =>
-                    attributes != null
-                    && attributes["tenantId"].Equals(tenantId.ToString())
-                    && attributes["organizationId"].Equals(organizationId.ToString())
-                    && attributes["userId"].Equals(userId.ToString())),
+                new OrganizationMemberAuthorizationFacts(tenantId, organizationId, memberId, userId)),
                 Arg.Any<CancellationToken>())
             .Returns(AllowedDecision);
 
@@ -783,10 +776,14 @@ public class AuthorizationBehaviorTests
                 ResourceKinds.StorageObject,
                 storageObjectId.ToString(),
                 AuthorizationActions.Update,
-                attributes =>
-                    attributes != null
-                    && attributes["storageObjectId"].Equals(storageObjectId.ToString("D"))
-                    && attributes["tenantId"].Equals(persistedTenantId.ToString("D"))),
+                new PersistedStorageObjectAuthorizationFacts(
+                    persistedTenantId,
+                    storageObjectId,
+                    StorageObjectVisibilities.PublicImage,
+                    StorageObjectLifecycleStates.Active,
+                    CreatedBy: null,
+                    OwningResourceKind: null,
+                    OwningResourceId: null)),
                 Arg.Any<CancellationToken>())
             .Returns(AllowedDecision);
 
@@ -830,10 +827,7 @@ public class AuthorizationBehaviorTests
                 ResourceKinds.CustomPropertyProjection,
                 eventId.ToString("D"),
                 AuthorizationActions.CustomPropertyProjections.View,
-                attributes =>
-                    attributes != null
-                    && attributes["eventId"].Equals(eventId.ToString("D"))
-                    && attributes["tenantId"].Equals(tenantId.ToString("D"))),
+                new CustomPropertyProjectionAuthorizationFacts(tenantId, eventId)),
                 Arg.Any<CancellationToken>())
             .Returns(AllowedDecision);
 
@@ -874,11 +868,7 @@ public class AuthorizationBehaviorTests
                 ResourceKinds.CustomPropertyProjection,
                 eventSessionId.ToString("D"),
                 AuthorizationActions.CustomPropertyProjections.View,
-                attributes =>
-                    attributes != null
-                    && attributes["eventSessionId"].Equals(eventSessionId.ToString("D"))
-                    && attributes["eventId"].Equals(eventId.ToString("D"))
-                    && attributes["tenantId"].Equals(tenantId.ToString("D"))),
+                new CustomPropertyProjectionAuthorizationFacts(tenantId, eventId, eventSessionId)),
                 Arg.Any<CancellationToken>())
             .Returns(AllowedDecision);
 
@@ -896,10 +886,7 @@ public class AuthorizationBehaviorTests
         var definitionId = Guid.NewGuid();
         var tenantId = Guid.NewGuid();
         var expectedConcurrencyStamp = Guid.NewGuid();
-        var expectedAuthorizationContext = new Dictionary<string, string>
-        {
-            ["tenantId"] = tenantId.ToString()
-        };
+        var expectedFacts = new TenantScopedAuthorizationFacts(tenantId);
         tenantContext.TenantId.Returns(tenantId);
         repository.GetDefinitionWithDetails(definitionId).Returns(new CustomPropertyDefinition
         {
@@ -925,7 +912,7 @@ public class AuthorizationBehaviorTests
                 ResourceKinds.Tenant,
                 tenantId.ToString(),
                 AuthorizationActions.Update,
-                attributes => attributes != null && attributes["tenantId"].Equals(tenantId.ToString())),
+                expectedFacts),
                 Arg.Any<CancellationToken>())
             .Returns(AllowedDecision);
         var behavior = new AuthorizationBehavior<UpdateCustomPropertyDefinitionCommand, BaseCommandResponse<Guid>>(
@@ -948,7 +935,7 @@ public class AuthorizationBehaviorTests
             ResourceKinds.Tenant,
             tenantId.ToString(),
             AuthorizationActions.Update,
-            attributes => HasExactAuthorizationContext(attributes, expectedAuthorizationContext)),
+            expectedFacts),
             Arg.Any<CancellationToken>());
     }
 
@@ -960,10 +947,7 @@ public class AuthorizationBehaviorTests
         var definitionId = Guid.NewGuid();
         var tenantId = Guid.NewGuid();
         var expectedConcurrencyStamp = Guid.NewGuid();
-        var expectedAuthorizationContext = new Dictionary<string, string>
-        {
-            ["tenantId"] = tenantId.ToString()
-        };
+        var expectedFacts = new TenantScopedAuthorizationFacts(tenantId);
         tenantContext.TenantId.Returns(tenantId);
         repository.GetDefinitionWithDetails(definitionId).Returns(new EventCustomPropertyDefinition
         {
@@ -988,7 +972,7 @@ public class AuthorizationBehaviorTests
                 ResourceKinds.Tenant,
                 tenantId.ToString(),
                 AuthorizationActions.Update,
-                attributes => HasExactAuthorizationContext(attributes, expectedAuthorizationContext)),
+                expectedFacts),
                 Arg.Any<CancellationToken>())
             .Returns(AllowedDecision);
         var behavior = new AuthorizationBehavior<UpdateEventCustomPropertyDefinitionCommand, BaseCommandResponse<Guid>>(
@@ -1011,7 +995,7 @@ public class AuthorizationBehaviorTests
             ResourceKinds.Tenant,
             tenantId.ToString(),
             AuthorizationActions.Update,
-            attributes => HasExactAuthorizationContext(attributes, expectedAuthorizationContext)),
+            expectedFacts),
             Arg.Any<CancellationToken>());
     }
 
@@ -1023,10 +1007,7 @@ public class AuthorizationBehaviorTests
         var definitionId = Guid.NewGuid();
         var tenantId = Guid.NewGuid();
         var expectedConcurrencyStamp = Guid.NewGuid();
-        var expectedAuthorizationContext = new Dictionary<string, string>
-        {
-            ["tenantId"] = tenantId.ToString()
-        };
+        var expectedFacts = new TenantScopedAuthorizationFacts(tenantId);
         tenantContext.TenantId.Returns(tenantId);
         repository.GetDefinitionWithDetails(definitionId).Returns(new EventSessionCustomPropertyDefinition
         {
@@ -1051,7 +1032,7 @@ public class AuthorizationBehaviorTests
                 ResourceKinds.Tenant,
                 tenantId.ToString(),
                 AuthorizationActions.Update,
-                attributes => HasExactAuthorizationContext(attributes, expectedAuthorizationContext)),
+                expectedFacts),
                 Arg.Any<CancellationToken>())
             .Returns(AllowedDecision);
         var behavior = new AuthorizationBehavior<UpdateEventSessionCustomPropertyDefinitionCommand, BaseCommandResponse<Guid>>(
@@ -1074,7 +1055,7 @@ public class AuthorizationBehaviorTests
             ResourceKinds.Tenant,
             tenantId.ToString(),
             AuthorizationActions.Update,
-            attributes => HasExactAuthorizationContext(attributes, expectedAuthorizationContext)),
+            expectedFacts),
             Arg.Any<CancellationToken>());
     }
 
@@ -1086,10 +1067,7 @@ public class AuthorizationBehaviorTests
         var templateId = Guid.NewGuid();
         var tenantId = Guid.NewGuid();
         var expectedConcurrencyStamp = Guid.NewGuid();
-        var expectedAuthorizationContext = new Dictionary<string, string>
-        {
-            ["tenantId"] = tenantId.ToString()
-        };
+        var expectedFacts = new TenantScopedAuthorizationFacts(tenantId);
         tenantContext.TenantId.Returns(tenantId);
         repository.GetTemplateWithDetails(templateId).Returns(new EventTemplate
         {
@@ -1112,7 +1090,7 @@ public class AuthorizationBehaviorTests
                 ResourceKinds.Tenant,
                 tenantId.ToString(),
                 AuthorizationActions.Update,
-                attributes => attributes != null && attributes["tenantId"].Equals(tenantId.ToString())),
+                expectedFacts),
                 Arg.Any<CancellationToken>())
             .Returns(AllowedDecision);
         var behavior = new AuthorizationBehavior<UpdateEventTemplateCommand, BaseCommandResponse<Guid>>(
@@ -1135,7 +1113,7 @@ public class AuthorizationBehaviorTests
             ResourceKinds.Tenant,
             tenantId.ToString(),
             AuthorizationActions.Update,
-            attributes => HasExactAuthorizationContext(attributes, expectedAuthorizationContext)),
+            expectedFacts),
             Arg.Any<CancellationToken>());
     }
 
@@ -1147,10 +1125,7 @@ public class AuthorizationBehaviorTests
         var sessionTemplateId = Guid.NewGuid();
         var tenantId = Guid.NewGuid();
         var expectedConcurrencyStamp = Guid.NewGuid();
-        var expectedAuthorizationContext = new Dictionary<string, string>
-        {
-            ["tenantId"] = tenantId.ToString()
-        };
+        var expectedFacts = new TenantScopedAuthorizationFacts(tenantId);
         tenantContext.TenantId.Returns(tenantId);
         repository.GetSessionTemplateWithDetails(sessionTemplateId).Returns(new EventSessionTemplate
         {
@@ -1174,7 +1149,7 @@ public class AuthorizationBehaviorTests
                 ResourceKinds.Tenant,
                 tenantId.ToString(),
                 AuthorizationActions.Update,
-                attributes => attributes != null && attributes["tenantId"].Equals(tenantId.ToString())),
+                expectedFacts),
                 Arg.Any<CancellationToken>())
             .Returns(AllowedDecision);
         var behavior = new AuthorizationBehavior<UpdateEventSessionTemplateCommand, BaseCommandResponse<Guid>>(
@@ -1197,7 +1172,7 @@ public class AuthorizationBehaviorTests
             ResourceKinds.Tenant,
             tenantId.ToString(),
             AuthorizationActions.Update,
-            attributes => HasExactAuthorizationContext(attributes, expectedAuthorizationContext)),
+            expectedFacts),
             Arg.Any<CancellationToken>());
     }
 
@@ -1212,12 +1187,7 @@ public class AuthorizationBehaviorTests
         var eventId = Guid.NewGuid();
         var tenantId = Guid.NewGuid();
         var expectedConcurrencyStamp = Guid.NewGuid();
-        var expectedAuthorizationContext = new Dictionary<string, string>
-        {
-            ["eventSessionId"] = persistedSessionId.ToString(),
-            ["eventId"] = eventId.ToString(),
-            ["tenantId"] = tenantId.ToString()
-        };
+        var expectedFacts = new EventScopedAuthorizationFacts(tenantId, eventId, persistedSessionId);
         assignmentRepository.GetById(assignmentId).Returns(new EventSessionLanguage
         {
             Id = assignmentId,
@@ -1251,7 +1221,7 @@ public class AuthorizationBehaviorTests
                 ResourceKinds.EventSession,
                 persistedSessionId.ToString(),
                 AuthorizationActions.Update,
-                attributes => HasExactAuthorizationContext(attributes, expectedAuthorizationContext)),
+                expectedFacts),
                 Arg.Any<CancellationToken>())
             .Returns(AllowedDecision);
         var behavior = new AuthorizationBehavior<UpdateEventSessionLanguageCommand, BaseCommandResponse<int>>(
@@ -1276,7 +1246,7 @@ public class AuthorizationBehaviorTests
             ResourceKinds.EventSession,
             persistedSessionId.ToString(),
             AuthorizationActions.Update,
-            attributes => HasExactAuthorizationContext(attributes, expectedAuthorizationContext)),
+            expectedFacts),
             Arg.Any<CancellationToken>());
     }
 
@@ -1317,13 +1287,19 @@ public class AuthorizationBehaviorTests
             persistedEventId,
             persistedTenantId,
             organizationId);
-        var expectedAuthorizationContext = new Dictionary<string, string>
-        {
-            ["eventId"] = persistedEventId.ToString(),
-            ["tenantId"] = persistedTenantId.ToString(),
-            ["actorId"] = authorizationEvent.ActorId.ToString(),
-            ["organizationId"] = organizationId.ToString()
-        };
+        var expectedFacts = new EventAuthorizationFacts(
+            persistedTenantId,
+            persistedEventId,
+            authorizationEvent.ActorId,
+            UserId: null,
+            OrganizationId: organizationId,
+            GroupId: null,
+            OrganizerActorId: null,
+            OrganizerUserId: null,
+            OrganizerOrganizationId: null,
+            OrganizerGroupId: null,
+            ProvenanceType: UnsetProvenanceCode,
+            SubmittedByUserId: null);
         eventRepository.GetEventWithDetails(persistedEventId).Returns(authorizationEvent);
         _authService.AuthorizeAsync(
                 MatchesAuthorizationRequest(
@@ -1351,7 +1327,7 @@ public class AuthorizationBehaviorTests
             ResourceKinds.Event,
             persistedEventId.ToString(),
             AuthorizationActions.Update,
-            attributes => HasExactAuthorizationContext(attributes, expectedAuthorizationContext)),
+            expectedFacts),
             Arg.Any<CancellationToken>());
     }
 
@@ -1392,13 +1368,19 @@ public class AuthorizationBehaviorTests
             persistedEventId,
             persistedTenantId,
             organizationId);
-        var expectedAuthorizationContext = new Dictionary<string, string>
-        {
-            ["eventId"] = persistedEventId.ToString(),
-            ["tenantId"] = persistedTenantId.ToString(),
-            ["actorId"] = authorizationEvent.ActorId.ToString(),
-            ["organizationId"] = organizationId.ToString()
-        };
+        var expectedFacts = new EventAuthorizationFacts(
+            persistedTenantId,
+            persistedEventId,
+            authorizationEvent.ActorId,
+            UserId: null,
+            OrganizationId: organizationId,
+            GroupId: null,
+            OrganizerActorId: null,
+            OrganizerUserId: null,
+            OrganizerOrganizationId: null,
+            OrganizerGroupId: null,
+            ProvenanceType: UnsetProvenanceCode,
+            SubmittedByUserId: null);
         eventRepository.GetEventWithDetails(persistedEventId).Returns(authorizationEvent);
         _authService.AuthorizeAsync(
                 MatchesAuthorizationRequest(
@@ -1426,7 +1408,7 @@ public class AuthorizationBehaviorTests
             ResourceKinds.Event,
             persistedEventId.ToString(),
             AuthorizationActions.Update,
-            attributes => HasExactAuthorizationContext(attributes, expectedAuthorizationContext)),
+            expectedFacts),
             Arg.Any<CancellationToken>());
     }
 
@@ -1439,12 +1421,7 @@ public class AuthorizationBehaviorTests
         var sessionId = Guid.NewGuid();
         var eventId = Guid.NewGuid();
         var tenantId = Guid.NewGuid();
-        var expectedAuthorizationContext = new Dictionary<string, string>
-        {
-            ["eventSessionId"] = sessionId.ToString(),
-            ["eventId"] = eventId.ToString(),
-            ["tenantId"] = tenantId.ToString()
-        };
+        var expectedFacts = new EventScopedAuthorizationFacts(tenantId, eventId, sessionId);
         tenantContext.TenantId.Returns(tenantId);
         var command = new UpdateEventSessionAgendaItemCommand
         {
@@ -1478,11 +1455,7 @@ public class AuthorizationBehaviorTests
                 ResourceKinds.EventSessionAgendaItem,
                 assignmentId.ToString(),
                 AuthorizationActions.Update,
-                attributes =>
-                    attributes != null
-                    && attributes["eventSessionId"].Equals(sessionId.ToString())
-                    && attributes["eventId"].Equals(eventId.ToString())
-                    && attributes["tenantId"].Equals(tenantId.ToString())),
+                expectedFacts),
                 Arg.Any<CancellationToken>())
             .Returns(AllowedDecision);
         var behavior = new AuthorizationBehavior<UpdateEventSessionAgendaItemCommand, BaseCommandResponse<Guid>>(
@@ -1502,7 +1475,7 @@ public class AuthorizationBehaviorTests
             ResourceKinds.EventSessionAgendaItem,
             assignmentId.ToString(),
             AuthorizationActions.Update,
-            attributes => HasExactAuthorizationContext(attributes, expectedAuthorizationContext)),
+            expectedFacts),
             Arg.Any<CancellationToken>());
     }
 
@@ -1515,11 +1488,7 @@ public class AuthorizationBehaviorTests
         var eventId = Guid.NewGuid();
         var tenantId = Guid.NewGuid();
         var expectedConcurrencyStamp = Guid.NewGuid();
-        var expectedAuthorizationContext = new Dictionary<string, string>
-        {
-            ["eventId"] = eventId.ToString(),
-            ["tenantId"] = tenantId.ToString()
-        };
+        var expectedFacts = new EventScopedAuthorizationFacts(tenantId, eventId);
         tenantContext.TenantId.Returns(tenantId);
         var command = new UpdateEventSessionGroupCommand
         {
@@ -1546,10 +1515,7 @@ public class AuthorizationBehaviorTests
                 ResourceKinds.EventSessionGroup,
                 assignmentId.ToString(),
                 AuthorizationActions.Update,
-                attributes =>
-                    attributes != null
-                    && attributes["eventId"].Equals(eventId.ToString())
-                    && attributes["tenantId"].Equals(tenantId.ToString())),
+                expectedFacts),
                 Arg.Any<CancellationToken>())
             .Returns(AllowedDecision);
         var behavior = new AuthorizationBehavior<UpdateEventSessionGroupCommand, BaseCommandResponse<Guid>>(
@@ -1569,7 +1535,7 @@ public class AuthorizationBehaviorTests
             ResourceKinds.EventSessionGroup,
             assignmentId.ToString(),
             AuthorizationActions.Update,
-            attributes => HasExactAuthorizationContext(attributes, expectedAuthorizationContext)),
+            expectedFacts),
             Arg.Any<CancellationToken>());
     }
 
@@ -1584,12 +1550,7 @@ public class AuthorizationBehaviorTests
         var eventId = Guid.NewGuid();
         var tenantId = Guid.NewGuid();
         var expectedConcurrencyStamp = Guid.NewGuid();
-        var expectedAuthorizationContext = new Dictionary<string, string>
-        {
-            ["eventSessionId"] = sessionId.ToString(),
-            ["eventId"] = eventId.ToString(),
-            ["tenantId"] = tenantId.ToString()
-        };
+        var expectedFacts = new EventScopedAuthorizationFacts(tenantId, eventId, sessionId);
         tenantContext.TenantId.Returns(tenantId);
         var command = new UpdateEventSessionSpeakerCommand
         {
@@ -1623,11 +1584,7 @@ public class AuthorizationBehaviorTests
                 ResourceKinds.EventSession,
                 sessionId.ToString(),
                 AuthorizationActions.Update,
-                attributes =>
-                    attributes != null
-                    && attributes["eventSessionId"].Equals(sessionId.ToString())
-                    && attributes["eventId"].Equals(eventId.ToString())
-                    && attributes["tenantId"].Equals(tenantId.ToString())),
+                expectedFacts),
                 Arg.Any<CancellationToken>())
             .Returns(AllowedDecision);
         var behavior = new AuthorizationBehavior<UpdateEventSessionSpeakerCommand, BaseCommandResponse<Guid>>(
@@ -1649,7 +1606,7 @@ public class AuthorizationBehaviorTests
             ResourceKinds.EventSession,
             sessionId.ToString(),
             AuthorizationActions.Update,
-            attributes => HasExactAuthorizationContext(attributes, expectedAuthorizationContext)),
+            expectedFacts),
             Arg.Any<CancellationToken>());
     }
 
@@ -1734,21 +1691,30 @@ public class AuthorizationBehaviorTests
         var claimId = Guid.NewGuid();
         var tenantId = Guid.NewGuid();
         var organizationId = Guid.NewGuid();
-        eventRepository.GetEventWithDetails(eventId).Returns(CreateAuthorizationEvent(
-            eventId,
-            tenantId,
-            organizationId));
+        var authorizationEvent = CreateAuthorizationEvent(eventId, tenantId, organizationId);
+        eventRepository.GetEventWithDetails(eventId).Returns(authorizationEvent);
+
+        // Reviewing a claim is decided by authority over the parent event, so the resolver replaces the
+        // request's event reference with the persisted event's facts. The claim identifier is not a policy
+        // input for review and is deliberately absent.
         _authService.AuthorizeAsync(
             MatchesAuthorizationRequest(
                 ResourceKinds.EventOrganizerClaim,
                 eventId.ToString(),
                 AuthorizationActions.Events.ReviewOrganizerClaim,
-                attributes =>
-                    attributes != null
-                    && attributes["claimId"].Equals(claimId.ToString())
-                    && attributes["eventId"].Equals(eventId.ToString())
-                    && attributes["tenantId"].Equals(tenantId.ToString())
-                    && attributes["organizationId"].Equals(organizationId.ToString())),
+                new EventAuthorizationFacts(
+                    tenantId,
+                    eventId,
+                    authorizationEvent.ActorId,
+                    UserId: null,
+                    OrganizationId: organizationId,
+                    GroupId: null,
+                    OrganizerActorId: null,
+                    OrganizerUserId: null,
+                    OrganizerOrganizationId: null,
+                    OrganizerGroupId: null,
+                    ProvenanceType: UnsetProvenanceCode,
+                    SubmittedByUserId: null)),
                 Arg.Any<CancellationToken>())
             .Returns(AllowedDecision);
         var behavior = new AuthorizationBehavior<ReviewEventOrganizerClaimCommand, BaseCommandResponse<Guid>>(
@@ -1812,27 +1778,22 @@ public class AuthorizationBehaviorTests
             persistedEventId,
             tenantId,
             organizationId);
-        var expectedAuthorizationContext = new Dictionary<string, string>
-        {
-            ["tenantId"] = tenantId.ToString("D"),
-            ["eventId"] = persistedEventId.ToString("D"),
-            ["claimId"] = claim.Id.ToString("D"),
-            ["claimantActorId"] = claimantActorId.ToString("D"),
-            ["status"] = claim.Status is null ? claim.StatusId.ToString() : claim.Status.MasterCode,
-            ["claimantUserId"] = claimantUserId.ToString("D")
-        };
+        var expectedFacts = new EventOrganizerClaimAuthorizationFacts(
+            tenantId,
+            persistedEventId,
+            claim.Id,
+            claimantActorId,
+            ClaimantUserId: claimantUserId,
+            ClaimantOrganizationId: null,
+            ClaimantGroupId: null,
+            Status: claim.Status?.MasterCode ?? claim.StatusId.ToString());
         eventRepository.GetEventWithDetails(persistedEventId).Returns(authorizationEvent);
         _authService.AuthorizeAsync(
             MatchesAuthorizationRequest(
                 ResourceKinds.EventOrganizerClaim,
                 claim.Id.ToString("D"),
                 AuthorizationActions.Events.WithdrawOrganizerClaim,
-                attributes =>
-                    attributes != null
-                    && attributes["eventId"].Equals(persistedEventId.ToString("D"))
-                    && attributes["claimId"].Equals(claim.Id.ToString("D"))
-                    && attributes["claimantActorId"].Equals(claimantActorId.ToString("D"))
-                    && attributes["claimantUserId"].Equals(claimantUserId.ToString("D"))),
+                expectedFacts),
                 Arg.Any<CancellationToken>())
             .Returns(AllowedDecision);
         var behavior = new AuthorizationBehavior<WithdrawEventOrganizerClaimCommand, BaseCommandResponse<Guid>>(
@@ -1865,7 +1826,7 @@ public class AuthorizationBehaviorTests
             ResourceKinds.EventOrganizerClaim,
             claim.Id.ToString("D"),
             AuthorizationActions.Events.WithdrawOrganizerClaim,
-            attributes => HasExactAuthorizationContext(attributes, expectedAuthorizationContext)),
+            expectedFacts),
             Arg.Any<CancellationToken>());
     }
 
@@ -1955,100 +1916,69 @@ public class AuthorizationBehaviorTests
         };
     }
 
-    private static bool HasRegistrationAuthorizationContext(
-        IDictionary<string, object>? attributes,
-        Guid tenantId,
-        Guid eventId,
-        Guid eventSessionId,
-        Guid attendeeUserId,
-        Guid organizationId) =>
-        attributes is not null
-        && attributes["tenantId"].Equals(tenantId.ToString("D"))
-        && attributes["eventId"].Equals(eventId.ToString("D"))
-        && attributes["eventSessionId"].Equals(eventSessionId.ToString("D"))
-        && attributes["userId"].Equals(attendeeUserId.ToString("D"))
-        && attributes["organizationId"].Equals(organizationId.ToString("D"));
-
+    /// <summary>
+    /// Matches the request the pipeline hands to the provider. When <paramref name="expectedFacts"/> is
+    /// supplied the match is exact: the facts the provider sees must be that record and nothing more, so a
+    /// request that publishes an extra identifier fails the test rather than silently widening the input.
+    /// </summary>
     private static AuthorizationRequest MatchesAuthorizationRequest(
         string resourceKind,
         string resourceId,
         string action,
-        Func<IReadOnlyDictionary<string, object>?, bool>? matchesAttributes = null) =>
+        IAuthorizationFacts? expectedFacts = null) =>
         Arg.Is<AuthorizationRequest>(request =>
             request != null &&
             request.ResourceKind == resourceKind &&
             request.ResourceId == resourceId &&
             request.Action == action &&
-            (matchesAttributes == null || matchesAttributes(
-                request.ResourceAttributes ?? AuthorizationFactsAttributeProjection.ToAttributes(request.Facts))));
+            (expectedFacts == null || Equals(request.Facts, expectedFacts)));
 
-    private static bool HasExactAuthorizationContext(
-        IReadOnlyDictionary<string, object>? attributes,
-        IReadOnlyDictionary<string, string> expectedAttributes) =>
-        attributes is not null &&
-        attributes.Count == expectedAttributes.Count &&
-        expectedAttributes.All(expected =>
-            attributes.TryGetValue(expected.Key, out var actual) && actual.Equals(expected.Value));
+    /// <summary>
+    /// Provenance code published for the test events below, which carry no provenance master row and so
+    /// fall back to the unset identifier.
+    /// </summary>
+    private const string UnsetProvenanceCode = "0";
 
+    /// <summary>
+    /// Pins the pipeline's provider-neutral outcomes: the behavior forwards whatever facts the request
+    /// declares and honours the provider's verdict, including when the declared facts are absent or name a
+    /// different resource than the one being addressed.
+    /// </summary>
     private static IReadOnlyList<PlatformAuthorizationScenario> PlatformAuthorizationScenarios()
     {
-        var tenantId = Guid.NewGuid().ToString("D");
-        var eventId = Guid.NewGuid().ToString("D");
-        var userId = Guid.NewGuid().ToString("D");
+        var tenantId = Guid.NewGuid();
+        var eventId = Guid.NewGuid();
 
         return
         [
             new(
                 "normal_allow",
-                eventId,
-                new Dictionary<string, string>
-                {
-                    ["tenantId"] = tenantId,
-                    ["eventId"] = eventId,
-                    ["userId"] = userId
-                },
+                eventId.ToString("D"),
+                new EventScopedAuthorizationFacts(tenantId, eventId),
                 true,
                 AuthorizationScenarioOutcome.Allowed),
             new(
                 "normal_deny",
-                eventId,
-                new Dictionary<string, string>
-                {
-                    ["tenantId"] = tenantId,
-                    ["eventId"] = eventId,
-                    ["userId"] = userId
-                },
+                eventId.ToString("D"),
+                new EventScopedAuthorizationFacts(tenantId, eventId),
                 false,
                 AuthorizationScenarioOutcome.ProviderDenied),
             new(
-                "missing_subject",
-                eventId,
-                new Dictionary<string, string>
-                {
-                    ["tenantId"] = tenantId,
-                    ["eventId"] = eventId
-                },
+                "missing_facts",
+                eventId.ToString("D"),
+                null,
                 false,
                 AuthorizationScenarioOutcome.ProviderDenied),
             new(
                 "missing_tenant",
-                eventId,
-                new Dictionary<string, string>
-                {
-                    ["eventId"] = eventId,
-                    ["userId"] = userId
-                },
+                eventId.ToString("D"),
+                new EventScopedAuthorizationFacts(Guid.Empty, eventId),
                 false,
                 AuthorizationScenarioOutcome.ProviderDenied),
             new(
                 "wrong_resource_facts",
-                eventId,
-                new Dictionary<string, string>
-                {
-                    ["tenantId"] = Guid.NewGuid().ToString("D"),
-                    ["eventId"] = Guid.NewGuid().ToString("D"),
-                    ["userId"] = userId
-                },
+                eventId.ToString("D"),
+                new EventScopedAuthorizationFacts(Guid.NewGuid(), Guid.NewGuid()),
                 false,
                 AuthorizationScenarioOutcome.ProviderDenied)
         ];
@@ -2081,7 +2011,7 @@ public enum AuthorizationScenarioOutcome
 public sealed record PlatformAuthorizationScenario(
     string Name,
     string ResourceId,
-    IReadOnlyDictionary<string, string> Attributes,
+    IAuthorizationFacts? Facts,
     bool AllowedByProvider,
     AuthorizationScenarioOutcome ExpectedOutcome);
 
@@ -2111,7 +2041,7 @@ public class TestSecureCommand : IRequest<BaseCommandResponse<Guid>>, ISecureReq
     string? ISecureRequest.ResourceId => OrganizationId.ToString();
 }
 
-// Test command with [AuthorizeResource] enum + ISecureRequest providing ResourceId and ResourceAttributes
+// Test command with [AuthorizeResource] enum + ISecureRequest providing ResourceId and typed facts
 [AuthorizeResource("islamuevent_organization", AuthorizationActions.Delete)]
 public class TestSecureCommandWithAttributes : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
 {
@@ -2119,8 +2049,8 @@ public class TestSecureCommandWithAttributes : IRequest<BaseCommandResponse<Guid
     public Guid TenantId { get; set; } = Guid.NewGuid();
 
     string? ISecureRequest.ResourceId => OrganizationId.ToString();
-    IDictionary<string, object>? ISecureRequest.ResourceAttributes =>
-        new Dictionary<string, object> { ["tenantId"] = TenantId.ToString() };
+    IAuthorizationFacts? ISecureRequest.AuthorizationFacts =>
+        new OrganizationAuthorizationFacts(TenantId, OrganizationId);
 }
 
 // Test command with [AuthorizeResource] enum + ISecureRequest but null ResourceId — should fall back to type name
@@ -2140,25 +2070,20 @@ public sealed class TestEventSessionSecureCommand(Guid eventSessionId) : IReques
 public sealed class TestRegistrationFormSecureCommand(
     Guid formId,
     Guid eventId,
-    IDictionary<string, object>? suppliedAttributes = null) : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
+    Guid tenantId = default) : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
 {
     string? ISecureRequest.ResourceId => formId.ToString("D");
 
-    IDictionary<string, object>? ISecureRequest.ResourceAttributes => new Dictionary<string, object>(
-        suppliedAttributes ?? new Dictionary<string, object>())
-    {
-        ["eventId"] = eventId.ToString("D")
-    };
+    IAuthorizationFacts? ISecureRequest.AuthorizationFacts =>
+        new EventScopedAuthorizationFacts(tenantId, eventId);
 }
 
 [AuthorizeResource(ResourceKinds.Event, AuthorizationActions.Update)]
 public sealed class TestAuthorizationPlatformCommand(
     string resourceId,
-    IReadOnlyDictionary<string, string> attributes) : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
+    IAuthorizationFacts? facts = null) : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
 {
     string? ISecureRequest.ResourceId => resourceId;
 
-    IDictionary<string, object>? ISecureRequest.ResourceAttributes => attributes.ToDictionary(
-        pair => pair.Key,
-        pair => (object)pair.Value);
+    IAuthorizationFacts? ISecureRequest.AuthorizationFacts => facts;
 }

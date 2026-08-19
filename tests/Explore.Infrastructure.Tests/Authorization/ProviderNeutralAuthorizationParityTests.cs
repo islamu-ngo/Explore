@@ -1,5 +1,14 @@
-// ABOUTME: Verifies local outcomes plus Cerbos response normalization and gRPC typed-request projection for a closed adapter corpus.
-// ABOUTME: The expected-seeded Cerbos mock is not a PDP; live policy execution belongs to the PolicyContract and runtime integration suites.
+// ABOUTME: Verifies Cerbos gRPC typed-request projection and response normalization for a closed adapter corpus.
+// ABOUTME: Decision parity lives in LocalProviderParityLaneTests and CerbosProviderParityLaneTests; this file is adapter-only.
+
+// This suite seeds the Cerbos response on purpose: its subject is the *adapter* — that a typed request
+// projects to the right gRPC shape and that a PDP response normalizes to the right decision. It cannot and
+// does not establish policy behaviour.
+//
+// Provider decision parity is established by the two lanes that share
+// tests/Shared/Authorization/ProviderNeutralCorpus.cs:
+//   - Explore.Infrastructure.Tests/Authorization/LocalProviderParityLaneTests.cs (real Local evaluator)
+//   - Event.API.IntegrationTests/Features/CerbosProviderParityLaneTests.cs      (live Cerbos PDP)
 
 using System.Text.Json;
 using Cerbos.Api.V1.Effect;

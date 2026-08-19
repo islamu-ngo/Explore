@@ -21,11 +21,6 @@ public sealed class UpdateWebhookEndpointCommand
 
     string? ISecureRequest.ResourceId => EndpointId.ToString("D");
 
-    IDictionary<string, object>? ISecureRequest.ResourceAttributes => new Dictionary<string, object>
-    {
-        ["endpointId"] = EndpointId.ToString("D")
-    };
-
     WebhookOwnedResourceKind IWebhookPersistedOwnerRequest.OwnedResourceKind =>
         WebhookOwnedResourceKind.Endpoint;
 

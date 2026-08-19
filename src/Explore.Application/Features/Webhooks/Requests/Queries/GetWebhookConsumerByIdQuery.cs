@@ -15,11 +15,6 @@ public sealed class GetWebhookConsumerByIdQuery
 
     string? ISecureRequest.ResourceId => ConsumerId.ToString("D");
 
-    IDictionary<string, object>? ISecureRequest.ResourceAttributes => new Dictionary<string, object>
-    {
-        ["consumerId"] = ConsumerId.ToString("D")
-    };
-
     WebhookOwnedResourceKind IWebhookPersistedOwnerRequest.OwnedResourceKind =>
         WebhookOwnedResourceKind.Consumer;
 

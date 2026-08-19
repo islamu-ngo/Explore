@@ -73,11 +73,6 @@ public sealed class EventReportOptionsCollectionLinkPolicy : ICollectionLinkPoli
                 .AdvertisedWhenAnonymous();
         }
     }
-
-    public IEnumerable<LinkDefinition> GetCollectionLinks(ClaimsPrincipal? user)
-    {
-        yield break;
-    }
 }
 
 public sealed class MyEventReportDetailLinkPolicy(ICurrentUserService currentUserService)
@@ -149,10 +144,5 @@ public sealed class MyEventReportCollectionLinkPolicy(ICurrentUserService curren
             "Update communication consent",
             RequiresAuth: true)
             .RequirePermission(AuthorizationActions.Users.Update, ResourceKinds.User, userId.ToString());
-    }
-
-    public IEnumerable<LinkDefinition> GetCollectionLinks(ClaimsPrincipal? user)
-    {
-        yield break;
     }
 }

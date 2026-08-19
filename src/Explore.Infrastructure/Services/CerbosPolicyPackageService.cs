@@ -303,13 +303,152 @@ public sealed class CerbosPolicyPackageService : IPolicyPackageService
                 Warnings: targetResolution.Warnings);
         }
 
+        return await CompareStoreContentsAsync(manifest, targetResolution.Target, cancellationToken);
+    }
+
+    /// <summary>
+    /// Compares what the store actually holds against what this deployment believes it published, and
+    /// observes the store's current revision.
+    /// <para>
+    /// Two independent signals. <c>GET /admin/policies</c> answers whether the package reached the store at
+    /// all and arrived complete — the difference between "the PDP is serving something" and "the PDP is
+    /// serving nothing, and every check fails closed for a reason nobody can see", which matters more now
+    /// that no local evaluator answers around it. <c>GET /admin/policy</c> then returns each policy's
+    /// Cerbos-computed content hash, and folding those detects an edit to a policy that kept its
+    /// identifier — the case a listing alone cannot see.
+    /// </para>
+    /// <para>
+    /// The observed revision is reported, never compared against the app-owned package hash: the two are
+    /// computed by different algorithms over different inputs and will never be equal. Its use is
+    /// comparison against a previous observation of the same store.
+    /// </para>
+    /// </summary>
+    private async Task<PolicyPackageStatusResult> CompareStoreContentsAsync(
+        PolicyPackageManifest manifest,
+        AdminApiTarget target,
+        CancellationToken cancellationToken)
+    {
+        var expectedPolicyCount = manifest.Artifacts.Count(artifact => artifact.Kind == PolicyArtifactKind.Policy);
+
+        IReadOnlyList<string>? storePolicyIds;
+        try
+        {
+            storePolicyIds = await ListStorePolicyIdsAsync(target, cancellationToken);
+        }
+        catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
+        {
+            _logger.LogWarning(
+                "Could not list Cerbos store policies to verify package freshness. FailureType={FailureType}",
+                ex.GetType().Name);
+
+            return new PolicyPackageStatusResult(
+                PackageId: manifest.PackageId,
+                ContentHash: manifest.ContentHash,
+                CheckedAt: DateTimeOffset.UtcNow,
+                IssueCode: PolicyPackageIssueCode.PackageStatusUnknown,
+                Message: "Cerbos Admin API target is configured, but the policy store could not be listed.",
+                Warnings: ["Package freshness is unverified. Treat authorization decisions as revision-uncertain until the store can be listed."]);
+        }
+
+        if (storePolicyIds is null || storePolicyIds.Count == 0)
+        {
+            return new PolicyPackageStatusResult(
+                PackageId: manifest.PackageId,
+                ContentHash: manifest.ContentHash,
+                CheckedAt: DateTimeOffset.UtcNow,
+                IssueCode: PolicyPackageIssueCode.PackageMismatch,
+                Message: "The Cerbos policy store is empty; this deployment's policy package has not been published.",
+                Warnings: ["Publish the policy package. Until then the PDP denies every check it is asked to decide."]);
+        }
+
+        var observedRevision = await ObserveStoreRevisionAsync(target, storePolicyIds, cancellationToken);
+
+        if (storePolicyIds.Count < expectedPolicyCount)
+        {
+            return new PolicyPackageStatusResult(
+                PackageId: manifest.PackageId,
+                ContentHash: manifest.ContentHash,
+                CheckedAt: DateTimeOffset.UtcNow,
+                IssueCode: PolicyPackageIssueCode.PackageMismatch,
+                Message: $"The Cerbos policy store holds {storePolicyIds.Count} polic(ies) but this package declares {expectedPolicyCount}.",
+                Warnings: ["Re-publish the policy package; the previous publish appears to have been partial."],
+                ObservedRevision: observedRevision);
+        }
+
+        var warnings = new List<string>(2);
+
+        if (storePolicyIds.Count > expectedPolicyCount)
+        {
+            warnings.Add(
+                $"The store holds {storePolicyIds.Count - expectedPolicyCount} polic(ies) this package does not declare. Confirm they were added deliberately.");
+        }
+
+        if (observedRevision is null)
+        {
+            warnings.Add(
+                "The store revision could not be read, so an in-place edit to a policy already in the store would not be visible here.");
+        }
+
         return new PolicyPackageStatusResult(
             PackageId: manifest.PackageId,
             ContentHash: manifest.ContentHash,
             CheckedAt: DateTimeOffset.UtcNow,
-            IssueCode: PolicyPackageIssueCode.PackageStatusUnknown,
-            Message: "Cerbos Admin API target is configured, but remote package hash verification is not available from Cerbos Admin API 0.53.",
-            Warnings: ["Use a successful policy package sync and reload result as the package freshness signal."]);
+            IssueCode: PolicyPackageIssueCode.None,
+            Message: $"The Cerbos policy store holds {storePolicyIds.Count} polic(ies), covering all {expectedPolicyCount} declared by this package.",
+            Warnings: warnings,
+            ObservedRevision: observedRevision);
+    }
+
+    /// <summary>
+    /// Reads the content hash of every stored policy and folds them into one revision token.
+    /// Returns <c>null</c> when the store cannot be read; a caller must treat that as uncertainty rather
+    /// than as an unchanged store.
+    /// </summary>
+    private async Task<string?> ObserveStoreRevisionAsync(
+        AdminApiTarget target,
+        IReadOnlyList<string> storePolicyIds,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var api = CreateAdminApi(target.PrimaryEndpoint);
+            var auth = GetBasicAuthHeader(target);
+
+            using var response = await api.GetPoliciesAsync(auth, storePolicyIds, cancellationToken);
+            if (!response.IsSuccessStatusCode || response.Content?.Policies is not { } policies)
+                return null;
+
+            return CerbosStoreRevision.Compute(
+                policies.Select(policy => (policy.Metadata?.StoreIdentifier, policy.Metadata?.Hash)));
+        }
+        catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
+        {
+            _logger.LogWarning(
+                "Could not read Cerbos store policy hashes to compute an observed revision. FailureType={FailureType}",
+                ex.GetType().Name);
+            return null;
+        }
+    }
+
+    private async Task<IReadOnlyList<string>?> ListStorePolicyIdsAsync(
+        AdminApiTarget target,
+        CancellationToken cancellationToken)
+    {
+        var api = CreateAdminApi(target.PrimaryEndpoint);
+        var auth = GetBasicAuthHeader(target);
+
+        var response = await api.ListPoliciesAsync(auth, includeDisabled: "true", cancellationToken);
+        using (response)
+        {
+            if (!response.IsSuccessStatusCode)
+            {
+                throw new CerbosAdminApiException(
+                    PolicyPackageIssueCode.AdminApiUnavailable,
+                    $"Cerbos Admin API returned {(int)response.StatusCode} when listing policies.");
+            }
+
+            return response.Content?.PolicyIds;
+        }
     }
 
     /// <inheritdoc />

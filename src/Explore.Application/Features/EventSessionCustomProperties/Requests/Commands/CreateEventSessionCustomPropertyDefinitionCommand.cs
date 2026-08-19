@@ -14,5 +14,4 @@ public class CreateEventSessionCustomPropertyDefinitionCommand : IRequest<BaseCo
     public required CreateEventSessionCustomPropertyDefinitionDto DefinitionDto { get; set; }
 
     string? ISecureRequest.ResourceId => null;
-    IDictionary<string, object>? ISecureRequest.ResourceAttributes => null;
 }

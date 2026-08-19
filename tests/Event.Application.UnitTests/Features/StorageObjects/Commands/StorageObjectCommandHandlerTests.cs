@@ -36,7 +36,7 @@ public sealed class StorageObjectCommandHandlerTests
         };
 
         await Assert.That(command.ResourceId).IsEqualTo(storageObjectId.ToString("D"));
-        await Assert.That(command.ResourceAttributes).IsNull();
+        await Assert.That(command.AuthorizationFacts).IsNull();
     }
 
     [Test]

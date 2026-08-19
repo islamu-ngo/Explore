@@ -119,11 +119,6 @@ public class CerbosConfigResolver : ICerbosConfigResolver
         if (mode == CerbosMode.Instance)
             return BuildInstanceDefault();
 
-        // Resolve failure mode
-        var failureModeStr = await _resolver.ResolveAsync<string>(
-            GovernanceSettingKeys.Cerbos.FailureMode, ctx, cancellationToken);
-        var failureMode = ParseFailureMode(failureModeStr);
-
         // BYO: resolve custom endpoint
         var customEndpoint = await _resolver.ResolveAsync<string>(
             GovernanceSettingKeys.Cerbos.CustomEndpoint, ctx, cancellationToken);
@@ -140,15 +135,13 @@ public class CerbosConfigResolver : ICerbosConfigResolver
         if (string.IsNullOrWhiteSpace(customEndpoint))
         {
             _logger.LogWarning(
-                "Tenant {TenantId} has cerbos.mode=custom_endpoint but no custom endpoint configured. Preserving BYO failure_mode={FailureMode} for runtime safe-mode handling",
-                tenantId,
-                failureMode);
+                "Tenant {TenantId} has cerbos.mode=custom_endpoint but no custom endpoint configured. Runtime authorization fails closed for this tenant",
+                tenantId);
 
             return new CerbosConfiguration
             {
                 Endpoint = string.Empty,
                 Mode = CerbosMode.CustomEndpoint,
-                FailureMode = failureMode,
                 AdminEndpoint = string.IsNullOrWhiteSpace(adminEndpoint)
                     ? null
                     : GrpcEndpointNormalizer.Normalize(adminEndpoint),
@@ -158,15 +151,12 @@ public class CerbosConfigResolver : ICerbosConfigResolver
             };
         }
 
-        _logger.LogDebug(
-            "Resolved BYO Cerbos for tenant {TenantId}: failureMode={FailureMode}",
-            tenantId, failureMode);
+        _logger.LogDebug("Resolved BYO Cerbos for tenant {TenantId}", tenantId);
 
         return new CerbosConfiguration
         {
             Endpoint = GrpcEndpointNormalizer.Normalize(customEndpoint),
             Mode = CerbosMode.CustomEndpoint,
-            FailureMode = failureMode,
             AdminEndpoint = string.IsNullOrWhiteSpace(adminEndpoint)
                 ? null
                 : GrpcEndpointNormalizer.Normalize(adminEndpoint),
@@ -182,7 +172,6 @@ public class CerbosConfigResolver : ICerbosConfigResolver
         {
             Endpoint = GrpcEndpointNormalizer.Normalize(_instanceSettings.GrpcEndpoint),
             Mode = CerbosMode.Instance,
-            FailureMode = CerbosFailureMode.Closed,
             IsInstanceDefault = true
         };
     }
@@ -194,12 +183,6 @@ public class CerbosConfigResolver : ICerbosConfigResolver
             _ => CerbosMode.Instance
         };
 
-    private static CerbosFailureMode ParseFailureMode(string? value) =>
-        value?.Trim().ToLowerInvariant() switch
-        {
-            "open" => CerbosFailureMode.Open,
-            _ => CerbosFailureMode.Closed
-        };
 }
 
 public sealed class CerbosConfigCacheRegistry

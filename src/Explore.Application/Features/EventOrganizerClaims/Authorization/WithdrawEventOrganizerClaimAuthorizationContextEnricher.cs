@@ -36,27 +36,16 @@ public sealed class WithdrawEventOrganizerClaimAuthorizationContextEnricher(
             throw new AuthorizationException(ResourceKinds.EventOrganizerClaim, AuthorizationActions.Events.WithdrawOrganizerClaim);
         }
 
-        var attributes = new Dictionary<string, object>
-        {
-            ["tenantId"] = claim.TenantId.ToString("D"),
-            ["eventId"] = claim.EventId.ToString("D"),
-            ["claimId"] = claim.Id.ToString("D"),
-            ["claimantActorId"] = claim.ClaimantActorId.ToString("D"),
-            ["status"] = claim.Status?.MasterCode ?? claim.StatusId.ToString()
-        };
-
-        AddIfPresent(attributes, "claimantUserId", claimantActor.UserId);
-        AddIfPresent(attributes, "claimantOrganizationId", claimantActor.OrganizationId);
-        AddIfPresent(attributes, "claimantGroupId", claimantActor.GroupId);
-
-        return new AuthorizationContext(claim.Id.ToString(), attributes);
-    }
-
-    private static void AddIfPresent(IDictionary<string, object> attributes, string key, Guid? value)
-    {
-        if (value.HasValue && value.Value != Guid.Empty)
-        {
-            attributes[key] = value.Value.ToString("D");
-        }
+        return new AuthorizationContext(
+            claim.Id.ToString(),
+            new EventOrganizerClaimAuthorizationFacts(
+                claim.TenantId,
+                claim.EventId,
+                claim.Id,
+                claim.ClaimantActorId,
+                claimantActor.UserId,
+                claimantActor.OrganizationId,
+                claimantActor.GroupId,
+                claim.Status?.MasterCode ?? claim.StatusId.ToString()));
     }
 }

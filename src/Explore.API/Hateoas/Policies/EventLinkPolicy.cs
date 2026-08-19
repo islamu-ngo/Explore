@@ -70,15 +70,10 @@ public sealed class EventDetailLinkPolicy : ILinkPolicy<EventDto>
                 "Program sections");
         }
 
-        var eventScopedResourceAttributes = new Dictionary<string, object>
-        {
-            ["tenantId"] = dto.TenantId.ToString(),
-            ["eventId"] = dto.Id.ToString()
-        };
-        var eventSessionPreCreateResourceAttributes = new Dictionary<string, object>(eventScopedResourceAttributes)
-        {
-            ["authorizationPhase"] = AuthorizationPhases.PreCreate
-        };
+        // Child resources of this event authorize through it: the session or section being created does
+        // not exist yet, so the parent event supplies every trusted fact.
+        var eventScopedFacts = new EventScopedAuthorizationFacts(dto.TenantId, dto.Id);
+        var eventSessionPreCreateFacts = new PreCreateAuthorizationFacts(dto.TenantId, dto.Id);
         var eventAuthorizationScope = new AuthorizationScope(TenantId: dto.TenantId.ToString());
 
         yield return new LinkDefinition(
@@ -91,8 +86,8 @@ public sealed class EventDetailLinkPolicy : ILinkPolicy<EventDto>
             .RequirePermission(AuthorizationActions.Create,
                 typeof(EventSessionDto),
                 dto.Id.ToString(),
-                eventSessionPreCreateResourceAttributes,
-                eventAuthorizationScope);
+                eventAuthorizationScope,
+                eventSessionPreCreateFacts);
 
         yield return new LinkDefinition(
             LinkRelations.CreateSessionDraft,
@@ -104,8 +99,8 @@ public sealed class EventDetailLinkPolicy : ILinkPolicy<EventDto>
             .RequirePermission(AuthorizationActions.Create,
                 typeof(EventSessionDto),
                 dto.Id.ToString(),
-                eventSessionPreCreateResourceAttributes,
-                eventAuthorizationScope);
+                eventAuthorizationScope,
+                eventSessionPreCreateFacts);
 
         yield return new LinkDefinition(
             LinkRelations.SessionCreateContext,
@@ -117,8 +112,8 @@ public sealed class EventDetailLinkPolicy : ILinkPolicy<EventDto>
             .RequirePermission(AuthorizationActions.Create,
                 typeof(EventSessionDto),
                 dto.Id.ToString(),
-                eventSessionPreCreateResourceAttributes,
-                eventAuthorizationScope);
+                eventAuthorizationScope,
+                eventSessionPreCreateFacts);
 
         yield return new LinkDefinition(
             LinkRelations.AddSessionGroup,
@@ -130,8 +125,8 @@ public sealed class EventDetailLinkPolicy : ILinkPolicy<EventDto>
             .RequirePermission(AuthorizationActions.Create,
                 typeof(EventSessionGroupDto),
                 dto.Id.ToString(),
-                eventScopedResourceAttributes,
-                eventAuthorizationScope);
+                eventAuthorizationScope,
+                eventScopedFacts);
 
         yield return new LinkDefinition(
             LinkRelations.Team,
@@ -321,12 +316,8 @@ public sealed class EventDetailLinkPolicy : ILinkPolicy<EventDto>
                             AuthorizationActions.ExportSharedContacts,
                             ResourceKinds.EventContactShareConsent,
                             organizerOrganizationId.ToString(),
-                            new Dictionary<string, object>
-                            {
-                                ["tenantId"] = dto.TenantId,
-                                ["organizationId"] = organizerOrganizationId
-                            },
-                            eventAuthorizationScope);
+                            eventAuthorizationScope,
+                            new ContactShareAuthorizationFacts(dto.TenantId, organizerOrganizationId));
                 }
             }
         }
@@ -430,7 +421,7 @@ public sealed class EventDetailLinkPolicy : ILinkPolicy<EventDto>
                     .RequirePermission(AuthorizationActions.ActorSubscriptions.View,
                         ResourceKinds.ActorSubscription,
                         dto.ActorId.ToString(),
-                        SubscriptionAttributes(dto.ActorId));
+                        facts: new PersonalResourceAuthorizationFacts(dto.TenantId));
 
                 yield return new LinkDefinition(
                     "subscribe-organizer",
@@ -442,7 +433,7 @@ public sealed class EventDetailLinkPolicy : ILinkPolicy<EventDto>
                     .RequirePermission(AuthorizationActions.ActorSubscriptions.Create,
                         ResourceKinds.ActorSubscription,
                         dto.ActorId.ToString(),
-                        SubscriptionAttributes(dto.ActorId));
+                        facts: new PersonalResourceAuthorizationFacts(dto.TenantId));
             }
         }
 
@@ -580,9 +571,7 @@ public sealed class EventDetailLinkPolicy : ILinkPolicy<EventDto>
                     .RequirePermission(
                         AuthorizationActions.Create,
                         ResourceKinds.RegistrationOrder,
-                        dto.Id.ToString(),
-                        resourceAttributes: null,
-                        scope: ResourceDescriptors.Event.GetScope(dto),
+                        dto.Id.ToString(),                        scope: ResourceDescriptors.Event.GetScope(dto),
                         facts: ResourceDescriptors.Event.GetFacts(dto));
                 }
                 else if (dto.ParticipationConfiguration?.IdentityAccessModeId is
@@ -659,10 +648,6 @@ public sealed class EventDetailLinkPolicy : ILinkPolicy<EventDto>
             RequiresAuth: true)
             .RequirePermission(AuthorizationActions.Update, ResourceDescriptors.Event, dto);
 
-    private static IReadOnlyDictionary<string, object> SubscriptionAttributes(Guid targetActorId) => new Dictionary<string, object>
-    {
-        ["targetActorId"] = targetActorId.ToString()
-    };
 }
 
 /// <summary>

@@ -16,8 +16,6 @@ public sealed class ListSupportAccessSessionsQuery : IRequest<PaginatedResult<Su
 
     string? ISecureRequest.ResourceId => TargetTenantId == Guid.Empty ? null : TargetTenantId.ToString("D");
 
-    IDictionary<string, object>? ISecureRequest.ResourceAttributes => new Dictionary<string, object>
-    {
-        ["tenantId"] = TargetTenantId.ToString("D")
-    };
+    IAuthorizationFacts? ISecureRequest.AuthorizationFacts =>
+        new SupportAccessSessionAuthorizationFacts(TargetTenantId, null, null, null, null);
 }

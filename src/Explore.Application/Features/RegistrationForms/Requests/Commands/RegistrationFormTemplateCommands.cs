@@ -25,10 +25,6 @@ public sealed record InstantiateRegistrationFormTemplateCommand(
 {
     string? ISecureRequest.ResourceId => Input.EventId == Guid.Empty ? null : Input.EventId.ToString();
 
-    IDictionary<string, object>? ISecureRequest.ResourceAttributes => new Dictionary<string, object>
-    {
-        ["templateId"] = TemplateId.ToString(),
-        ["eventId"] = Input.EventId.ToString(),
-        ["workflowId"] = Input.WorkflowId.ToString()
-    };
+    IAuthorizationFacts? ISecureRequest.AuthorizationFacts =>
+        new EventScopedAuthorizationFacts(Guid.Empty, Input.EventId);
 }

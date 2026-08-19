@@ -54,7 +54,9 @@ public sealed class StorageAdminHateoasTests
         await Assert.That(edit.PermissionResourceKind).IsEqualTo(ResourceKinds.StorageObject);
         await Assert.That(edit.PermissionAction).IsEqualTo(AuthorizationActions.StorageObjects.Update);
         await Assert.That(edit.PermissionResourceId).IsEqualTo(dto.Id.ToString());
-        await Assert.That(GetAttribute<string>(edit, "tenantId")).IsEqualTo(tenantId.ToString());
+        // Storage-object mutations are decided on the persisted object, so its visibility and lifecycle
+        // -- not the caller's claim about them -- are what reaches the provider.
+        await Assert.That(edit.PermissionFacts).IsTypeOf<PersistedStorageObjectAuthorizationFacts>();
 
         var delete = links.Single(link => link.Rel == LinkRelations.Delete);
         await Assert.That(delete.RouteName).IsEqualTo(RouteNames.DeleteStorageObject);
@@ -137,8 +139,8 @@ public sealed class StorageAdminHateoasTests
         await Assert.That(edit.PermissionResourceKind).IsEqualTo(ResourceKinds.TenantSetting);
         await Assert.That(edit.PermissionAction).IsEqualTo(AuthorizationActions.TenantSettings.Update);
         await Assert.That(edit.PermissionResourceId).IsEqualTo($"{tenantId}:storage");
-        await Assert.That(GetAttribute<string>(edit, "tenantId")).IsEqualTo(tenantId.ToString());
-        await Assert.That(GetAttribute<bool>(edit, "isLockedByInstance")).IsFalse();
+        await Assert.That(edit.PermissionFacts)
+            .IsEqualTo(new TenantSettingAuthorizationFacts(tenantId, "storage", IsLockedByInstance: false));
         await Assert.That(edit.PermissionScope!.TenantId).IsEqualTo(tenantId.ToString());
 
         var providerTest = editableLinks.Single(link => link.Rel == "provider-test");
@@ -307,17 +309,6 @@ public sealed class StorageAdminHateoasTests
             : new ClaimsPrincipal(new ClaimsIdentity());
 
         return context;
-    }
-
-    private static T? GetAttribute<T>(LinkDefinition link, string name)
-    {
-        if (link.PermissionResourceAttributes is null ||
-            !link.PermissionResourceAttributes.TryGetValue(name, out var value))
-        {
-            return default;
-        }
-
-        return value is T typed ? typed : default;
     }
 
     private sealed record InstanceAssemblerHarness(

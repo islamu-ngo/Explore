@@ -48,8 +48,9 @@ public sealed class RemoveTenantMembershipCommandHandlerTests
         await Assert.That(attribute.Resource).IsEqualTo(ResourceKinds.User);
         await Assert.That(attribute.Action).IsEqualTo(AuthorizationActions.Update);
         await Assert.That(secureRequest.ResourceId).IsEqualTo(userId.ToString("D"));
-        await Assert.That(secureRequest.ResourceAttributes!["tenantId"]).IsEqualTo(tenantId.ToString("D"));
-        await Assert.That(secureRequest.ResourceAttributes["userId"]).IsEqualTo(userId.ToString("D"));
+        // The membership row is addressed by user id; tenant administration is what the policy weighs.
+        await Assert.That(secureRequest.AuthorizationFacts)
+            .IsEqualTo(new UserAuthorizationFacts(tenantId, null, null));
     }
 
     [Test]

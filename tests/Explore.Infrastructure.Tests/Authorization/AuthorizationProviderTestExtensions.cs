@@ -1,8 +1,9 @@
-// ABOUTME: Test-only helpers for old authorization assertions during typed-port cutover.
-// ABOUTME: Keeps production provider contracts free of bool/string compatibility methods.
+// ABOUTME: Test-only helpers that express provider scenarios in the historical attribute vocabulary.
+// ABOUTME: Translates each scenario into typed facts so production keeps a dictionary-free boundary.
 
 using Explore.Application.Authorization;
 using Explore.Application.Contracts.Infrastructure;
+using Explore.Infrastructure.Tests.Authorization;
 
 namespace Explore.Application.Contracts.Infrastructure;
 
@@ -14,20 +15,14 @@ internal static class AuthorizationProviderTestExtensions
         string resourceId,
         string action,
         IDictionary<string, object>? resourceAttributes = null,
-        CancellationToken cancellationToken = default)
-    {
-        try
-        {
-            var decision = await provider.AuthorizeAsync(
-                new AuthorizationRequest(resourceKind, resourceId, action, resourceAttributes is null ? null : new Dictionary<string, object>(resourceAttributes)),
-                cancellationToken);
-            return decision.IsAllowed;
-        }
-        catch (ArgumentException)
-        {
-            return false;
-        }
-    }
+        CancellationToken cancellationToken = default) =>
+        await provider.IsAllowedWithFactsAsync(
+            resourceKind,
+            resourceId,
+            action,
+            resourceAttributes,
+            cancellationToken,
+            AuthorizationFactsTestFactory.Create(resourceKind, resourceId, resourceAttributes));
 
     public static async Task<bool> IsAllowedWithFactsAsync(
         this IAuthorizationProvider provider,
@@ -38,15 +33,12 @@ internal static class AuthorizationProviderTestExtensions
         CancellationToken cancellationToken,
         IAuthorizationFacts? facts)
     {
+        _ = resourceAttributes;
+
         try
         {
             var decision = await provider.AuthorizeAsync(
-                new AuthorizationRequest(
-                    resourceKind,
-                    resourceId,
-                    action,
-                    resourceAttributes is null ? null : new Dictionary<string, object>(resourceAttributes),
-                    Facts: facts),
+                new AuthorizationRequest(resourceKind, resourceId, action, Facts: facts),
                 cancellationToken);
             return decision.IsAllowed;
         }
@@ -72,22 +64,16 @@ internal static class AuthorizationProviderTestExtensions
         Guid? organizationId = null,
         CancellationToken cancellationToken = default)
     {
-        var attributes = new Dictionary<string, object> { ["settingKey"] = settingKey };
-        var resourceKind = ResourceKinds.InstanceSetting;
-
-        if (organizationId is { } organizationScope)
-        {
-            resourceKind = ResourceKinds.Organization;
-            attributes["organizationId"] = organizationScope.ToString("D");
-        }
-        else if (tenantId is { } tenantScope)
-        {
-            resourceKind = ResourceKinds.TenantSetting;
-            attributes["tenantId"] = tenantScope.ToString("D");
-        }
+        var (resourceKind, facts) = organizationId is { } organizationScope
+            ? (ResourceKinds.Organization,
+                (IAuthorizationFacts)new OrganizationAuthorizationFacts(Guid.Empty, organizationScope))
+            : tenantId is { } tenantScope
+                ? (ResourceKinds.TenantSetting,
+                    new TenantSettingAuthorizationFacts(tenantScope))
+                : (ResourceKinds.InstanceSetting, InstanceScopedAuthorizationFacts.Instance);
 
         var decision = await provider.AuthorizeAsync(
-            new AuthorizationRequest(resourceKind, settingKey, action, attributes),
+            new AuthorizationRequest(resourceKind, settingKey, action, Facts: facts),
             cancellationToken);
         return decision.IsAllowed;
     }

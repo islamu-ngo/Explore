@@ -16,8 +16,6 @@ public class CancelStorageUploadSessionCommand : IRequest<BaseCommandResponse<St
 
     string? ISecureRequest.ResourceId => UploadSessionId.ToString();
 
-    IDictionary<string, object>? ISecureRequest.ResourceAttributes =>
-        TenantId != Guid.Empty
-            ? new Dictionary<string, object> { ["tenantId"] = TenantId.ToString() }
-            : null;
+    IAuthorizationFacts? ISecureRequest.AuthorizationFacts =>
+        new StorageObjectCollectionAuthorizationFacts(TenantId);
 }

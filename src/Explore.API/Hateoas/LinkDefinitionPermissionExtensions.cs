@@ -1,15 +1,14 @@
 // ABOUTME: Extension methods that add permission requirements to HATEOAS link definitions.
-// ABOUTME: Resolves resource kinds from DTO types via registry and attaches action strings.
+// ABOUTME: Resolves resource kinds from DTO types via registry and attaches actions with typed facts.
 
 namespace Explore.API.Hateoas;
 
 using Explore.Application.Authorization;
-using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Hateoas;
 
 /// <summary>
 /// Extensions for attaching permission checks to <see cref="LinkDefinition"/> instances.
-/// Prefer the string-action overloads with <see cref="AuthorizationActions"/> constants.
+/// Prefer the descriptor overload; it publishes the closed typed facts the provider evaluates.
 /// </summary>
 public static class LinkDefinitionPermissionExtensions
 {
@@ -22,11 +21,10 @@ public static class LinkDefinitionPermissionExtensions
         string action,
         string resourceKind,
         string? resourceId = null,
-        IReadOnlyDictionary<string, object>? resourceAttributes = null,
         AuthorizationScope? scope = null,
         IAuthorizationFacts? facts = null)
     {
-        return definition.WithPermission(resourceKind, action, resourceId, resourceAttributes, scope, facts);
+        return definition.WithPermission(resourceKind, action, resourceId, scope, facts);
     }
 
     /// <summary>
@@ -38,19 +36,19 @@ public static class LinkDefinitionPermissionExtensions
         string action,
         Type resourceType,
         string? resourceId = null,
-        IReadOnlyDictionary<string, object>? resourceAttributes = null,
-        AuthorizationScope? scope = null)
+        AuthorizationScope? scope = null,
+        IAuthorizationFacts? facts = null)
     {
         var resourceKind = ResourceDescriptorRegistry.ResolveResourceKind(resourceType);
 
-        return definition.WithPermission(resourceKind, action, resourceId, resourceAttributes, scope);
+        return definition.WithPermission(resourceKind, action, resourceId, scope, facts);
     }
 
     /// <summary>
     /// Attaches a permission check using a resource descriptor to extract authorization metadata.
     /// <para>
-    /// Preferred overload for link policies — replaces manual dictionary construction with
-    /// centralized, type-safe metadata extraction from the DTO instance.
+    /// Preferred overload for link policies — it replaces manual dictionary construction with
+    /// centralized, type-safe fact extraction from the DTO instance.
     /// </para>
     /// </summary>
     /// <example>
@@ -67,13 +65,11 @@ public static class LinkDefinitionPermissionExtensions
         ArgumentNullException.ThrowIfNull(descriptor);
         ArgumentNullException.ThrowIfNull(resource);
 
-        var facts = descriptor.GetFacts(resource);
         return definition.WithPermission(
             descriptor.Kind,
             action,
             descriptor.GetResourceId(resource),
-            facts is null ? descriptor.GetResourceAttributes(resource) : null,
             descriptor.GetScope(resource),
-            facts);
+            descriptor.GetFacts(resource));
     }
 }

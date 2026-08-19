@@ -41,8 +41,8 @@ public sealed class TenantOnboardingStatusLinkPolicy : ILinkPolicy<TenantOnboard
                  .RequirePermission(AuthorizationActions.TenantSettings.Update,
                     ResourceKinds.TenantSetting,
                     $"{dto.TenantId}:{TenantOnboardingSettingKey}",
-                    TenantAttributes(dto.TenantId),
-                    new AuthorizationScope(TenantId: dto.TenantId.ToString()));
+                    new AuthorizationScope(TenantId: dto.TenantId.ToString()),
+                    new TenantSettingAuthorizationFacts(dto.TenantId, TenantOnboardingSettingKey, IsLockedByInstance: false));
 
             if (!dto.IsCompleted)
             {
@@ -55,8 +55,8 @@ public sealed class TenantOnboardingStatusLinkPolicy : ILinkPolicy<TenantOnboard
                     .RequirePermission(AuthorizationActions.TenantSettings.Update,
                         ResourceKinds.TenantSetting,
                         $"{dto.TenantId}:{TenantOnboardingSettingKey}",
-                        TenantAttributes(dto.TenantId),
-                        new AuthorizationScope(TenantId: dto.TenantId.ToString()));
+                        new AuthorizationScope(TenantId: dto.TenantId.ToString()),
+                        new TenantSettingAuthorizationFacts(dto.TenantId, TenantOnboardingSettingKey, IsLockedByInstance: false));
             }
         }
 
@@ -75,7 +75,7 @@ public sealed class TenantOnboardingStatusLinkPolicy : ILinkPolicy<TenantOnboard
             .RequirePermission(AuthorizationActions.InstanceSettings.View,
                 ResourceKinds.InstanceSetting,
                 GetControlPlaneTenantListQuery.SettingKey,
-                InstanceAttributes(dto.TenantId));
+                facts: InstanceScopedAuthorizationFacts.Instance);
 
         if (!dto.IsCompleted && !dto.IsCurrentUserTenantAdministrator)
         {
@@ -88,24 +88,9 @@ public sealed class TenantOnboardingStatusLinkPolicy : ILinkPolicy<TenantOnboard
                 .RequirePermission(AuthorizationActions.InstanceSettings.Update,
                     ResourceKinds.InstanceSetting,
                     GetControlPlaneTenantListQuery.SettingKey,
-                    InstanceAttributes(dto.TenantId));
+                    facts: InstanceScopedAuthorizationFacts.Instance);
         }
     }
-
-    private static Dictionary<string, object> TenantAttributes(Guid tenantId) =>
-        new Dictionary<string, object>
-        {
-            ["tenantId"] = tenantId.ToString(),
-            ["settingKey"] = TenantOnboardingSettingKey,
-            ["isLockedByInstance"] = false
-        };
-
-    private static Dictionary<string, object> InstanceAttributes(Guid tenantId) =>
-        new Dictionary<string, object>
-        {
-            ["settingKey"] = GetControlPlaneTenantListQuery.SettingKey,
-            ["tenantId"] = tenantId.ToString()
-        };
 }
 
 public sealed class TenantOnboardingStatusCollectionLinkPolicy

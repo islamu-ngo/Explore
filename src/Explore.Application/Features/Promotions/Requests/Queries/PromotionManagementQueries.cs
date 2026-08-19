@@ -13,10 +13,7 @@ public sealed record ListPromotionManagementQuery(Guid EventId, Guid TicketCatal
 {
     public string? ResourceId => EventId.ToString();
 
-    public IDictionary<string, object>? ResourceAttributes => new Dictionary<string, object>
-    {
-        ["eventId"] = EventId.ToString()
-    };
+    public IAuthorizationFacts? AuthorizationFacts => new EventScopedAuthorizationFacts(Guid.Empty, EventId);
 }
 
 [AuthorizeResource(ResourceKinds.Event, AuthorizationActions.Events.ManagePaidEventCommerce)]
@@ -25,8 +22,5 @@ public sealed record GetPromotionManagementQuery(Guid EventId, Guid PromotionDef
 {
     public string? ResourceId => EventId.ToString();
 
-    public IDictionary<string, object>? ResourceAttributes => new Dictionary<string, object>
-    {
-        ["eventId"] = EventId.ToString()
-    };
+    public IAuthorizationFacts? AuthorizationFacts => new EventScopedAuthorizationFacts(Guid.Empty, EventId);
 }

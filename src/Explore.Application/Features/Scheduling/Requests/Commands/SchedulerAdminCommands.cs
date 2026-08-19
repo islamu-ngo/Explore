@@ -18,10 +18,8 @@ public abstract class SchedulerAdminCommandBase : IRequest<BaseCommandResponse<s
 
     string? ISecureRequest.ResourceId => SettingKey;
 
-    IDictionary<string, object>? ISecureRequest.ResourceAttributes => new Dictionary<string, object>
-    {
-        ["settingKey"] = SettingKey
-    };
+    IAuthorizationFacts? ISecureRequest.AuthorizationFacts =>
+        InstanceScopedAuthorizationFacts.Instance;
 }
 
 /// <summary>Identifies one job by its scheduler group and name, both taken from the request route.</summary>

@@ -50,15 +50,8 @@ public sealed class EventSeriesDetailLinkPolicy : ILinkPolicy<EventSeriesDto>
             AuthorizationActions.Update,
             ResourceKinds.Actor,
             actorId.ToString(),
-            Attributes(actorId, tenantId),
-            new AuthorizationScope(tenantId.ToString()));
-
-    private static IReadOnlyDictionary<string, object> Attributes(Guid actorId, Guid tenantId) =>
-        new Dictionary<string, object>
-        {
-            ["actorId"] = actorId.ToString(),
-            ["tenantId"] = tenantId.ToString()
-        };
+            new AuthorizationScope(tenantId.ToString()),
+            new ActorAuthorizationFacts(tenantId, actorId));
 }
 
 public sealed class EventSeriesCollectionLinkPolicy : ICollectionLinkPolicy<EventSeriesListDto>
@@ -90,16 +83,7 @@ public sealed class EventSeriesCollectionLinkPolicy : ICollectionLinkPolicy<Even
                 AuthorizationActions.Update,
                 ResourceKinds.Actor,
                 dto.ActorId.ToString(),
-                new Dictionary<string, object>
-                {
-                    ["actorId"] = dto.ActorId.ToString(),
-                    ["tenantId"] = dto.TenantId.ToString()
-                },
-                new AuthorizationScope(dto.TenantId.ToString()));
-    }
-
-    public IEnumerable<LinkDefinition> GetCollectionLinks(ClaimsPrincipal? user)
-    {
-        yield break;
+                new AuthorizationScope(dto.TenantId.ToString()),
+                new ActorAuthorizationFacts(dto.TenantId, dto.ActorId));
     }
 }

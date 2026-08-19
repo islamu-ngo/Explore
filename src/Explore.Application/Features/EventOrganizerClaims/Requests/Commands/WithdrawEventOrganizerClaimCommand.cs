@@ -14,5 +14,4 @@ public sealed class WithdrawEventOrganizerClaimCommand : IRequest<BaseCommandRes
     public Guid ClaimId { get; init; }
     public Guid ExpectedConcurrencyStamp { get; init; }
     string? ISecureRequest.ResourceId => ClaimId == Guid.Empty ? null : ClaimId.ToString();
-    IDictionary<string, object>? ISecureRequest.ResourceAttributes => null;
 }

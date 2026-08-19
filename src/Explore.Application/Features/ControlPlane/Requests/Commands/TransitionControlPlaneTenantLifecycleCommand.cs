@@ -26,10 +26,6 @@ public sealed class TransitionControlPlaneTenantLifecycleCommand(
 
     string? ISecureRequest.ResourceId => SettingKey;
 
-    IDictionary<string, object>? ISecureRequest.ResourceAttributes => new Dictionary<string, object>
-    {
-        ["settingKey"] = SettingKey,
-        ["targetTenantId"] = TenantId.ToString(),
-        ["targetStatus"] = TargetStatus.ToString()
-    };
+    IAuthorizationFacts? ISecureRequest.AuthorizationFacts =>
+        InstanceScopedAuthorizationFacts.Instance;
 }

@@ -28,10 +28,6 @@ public class ExportSharedContactsCommand : IRequest<BaseCommandResponse<SharedCo
 
     string? ISecureRequest.ResourceId => OrganizationId.ToString();
 
-    IDictionary<string, object>? ISecureRequest.ResourceAttributes =>
-        new Dictionary<string, object>
-        {
-            ["tenantId"] = TenantId,
-            ["organizationId"] = OrganizationId
-        };
+    IAuthorizationFacts? ISecureRequest.AuthorizationFacts =>
+        new ContactShareAuthorizationFacts(TenantId, OrganizationId);
 }

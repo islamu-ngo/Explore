@@ -1,5 +1,5 @@
 // ABOUTME: Generic implementation of IAuthorizableResourceDescriptor using delegate-based property extraction.
-// ABOUTME: Each instance is configured with lambdas for extracting resource ID, facts, attributes, and scope from a DTO.
+// ABOUTME: Each instance is configured with lambdas for extracting resource ID, typed facts, and scope from a DTO.
 
 namespace Explore.Application.Authorization;
 
@@ -14,22 +14,18 @@ namespace Explore.Application.Authorization;
 /// <typeparam name="TResource">The DTO type from which authorization metadata is extracted.</typeparam>
 public sealed class ResourceDescriptor<TResource> : IAuthorizableResourceDescriptor<TResource>
 {
-    private static readonly IReadOnlyDictionary<string, object> EmptyAttributes =
-        new Dictionary<string, object>().AsReadOnly();
-
     private readonly Func<TResource, string> _getResourceId;
-    private readonly Func<TResource, IReadOnlyDictionary<string, object>>? _getResourceAttributes;
-    private readonly Func<TResource, IAuthorizationFacts?>? _getFacts;
+    private readonly Func<TResource, IAuthorizationFacts?> _getFacts;
     private readonly Func<TResource, AuthorizationScope>? _getScope;
 
     /// <summary>
     /// Creates a new resource descriptor with the given extraction functions.
     /// </summary>
-    /// <param name="kind">The Cerbos resource kind string. Must match a <see cref="ResourceKinds"/> constant.</param>
+    /// <param name="kind">The resource kind string. Must match a <see cref="ResourceKinds"/> constant.</param>
     /// <param name="getResourceId">Extracts the unique resource ID (typically primary key) from the DTO.</param>
-    /// <param name="getResourceAttributes">
-    /// Extracts resource attributes for Cerbos policy evaluation.
-    /// When <c>null</c>, returns an empty dictionary.
+    /// <param name="getFacts">
+    /// Extracts the closed typed policy facts for the DTO. Every descriptor must supply facts;
+    /// a resource without trusted facts cannot produce an allow decision.
     /// </param>
     /// <param name="getScope">
     /// Extracts the authorization scope for per-tenant/org policy resolution.
@@ -38,18 +34,17 @@ public sealed class ResourceDescriptor<TResource> : IAuthorizableResourceDescrip
     public ResourceDescriptor(
         string kind,
         Func<TResource, string> getResourceId,
-        Func<TResource, IReadOnlyDictionary<string, object>>? getResourceAttributes = null,
-        Func<TResource, AuthorizationScope>? getScope = null,
-        Func<TResource, IAuthorizationFacts?>? getFacts = null)
+        Func<TResource, IAuthorizationFacts?> getFacts,
+        Func<TResource, AuthorizationScope>? getScope = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(kind);
         ArgumentNullException.ThrowIfNull(getResourceId);
+        ArgumentNullException.ThrowIfNull(getFacts);
 
         Kind = kind;
         _getResourceId = getResourceId;
-        _getResourceAttributes = getResourceAttributes;
-        _getScope = getScope;
         _getFacts = getFacts;
+        _getScope = getScope;
     }
 
     /// <inheritdoc />
@@ -59,10 +54,7 @@ public sealed class ResourceDescriptor<TResource> : IAuthorizableResourceDescrip
     public string GetResourceId(TResource resource) => _getResourceId(resource);
 
     /// <inheritdoc />
-    public IReadOnlyDictionary<string, object> GetResourceAttributes(TResource resource) =>
-        _getResourceAttributes?.Invoke(resource) ?? EmptyAttributes;
-
-    public IAuthorizationFacts? GetFacts(TResource resource) => _getFacts?.Invoke(resource);
+    public IAuthorizationFacts? GetFacts(TResource resource) => _getFacts(resource);
 
     /// <inheritdoc />
     public AuthorizationScope GetScope(TResource resource) =>

@@ -4,9 +4,7 @@
 namespace Explore.Application.Contracts.Infrastructure;
 
 using System.Collections.Generic;
-using System.Globalization;
 using System.Reflection;
-using System.Text;
 using Explore.Application.Authorization;
 
 public interface IAuthorizationProvider
@@ -93,6 +91,13 @@ public static class AuthorizationDecisionReasonCodes
     public const string MissingSubject = "missing_subject";
     public const string ProviderUnavailable = "provider_unavailable";
     public const string ProviderError = "provider_error";
+
+    /// <summary>
+    /// The provider answered, but which policy set it answered from could not be established, and the
+    /// requested action mutates or discloses sensitive state. Denying is the only safe reading: an
+    /// allow here would be an allow from an unknown policy.
+    /// </summary>
+    public const string RevisionUncertain = "revision_uncertain";
 }
 
 public sealed record AuthorizationProviderMetadata(string ProviderId, string? ObservedRevision = null)
@@ -120,10 +125,14 @@ public sealed record AuthorizationDecision(
         new(AuthorizationDecisionOutcome.Deny, reasonCode, provider);
 }
 
+/// <summary>
+/// The single provider-neutral authorization question. Policy inputs are limited to the closed
+/// <see cref="IAuthorizationFacts"/> catalog: there is no caller-authored attribute dictionary, so a
+/// request can never widen its own authority by inventing policy inputs.
+/// </summary>
 public sealed record AuthorizationRequest(
     AuthorizationCapability Capability,
     string ResourceId,
-    IReadOnlyDictionary<string, object>? ResourceAttributes = null,
     AuthorizationScope? Scope = null,
     IAuthorizationFacts? Facts = null,
     AuthorizationSubject? Subject = null,
@@ -133,7 +142,6 @@ public sealed record AuthorizationRequest(
         string resourceKind,
         string resourceId,
         string action,
-        IReadOnlyDictionary<string, object>? ResourceAttributes = null,
         AuthorizationScope? Scope = null,
         IAuthorizationFacts? Facts = null,
         AuthorizationSubject? Subject = null,
@@ -141,7 +149,6 @@ public sealed record AuthorizationRequest(
         : this(
             AuthorizationCapabilityCatalog.Require(resourceKind, action),
             resourceId,
-            ResourceAttributes,
             Scope,
             Facts,
             Subject,
@@ -153,62 +160,23 @@ public sealed record AuthorizationRequest(
 
     public string Action => Capability.Action;
 
-    public string ToDeduplicationKey()
-    {
-        var builder = new StringBuilder();
-
-        AppendSegment(builder, ResourceKind);
-        AppendSegment(builder, ResourceId);
-        AppendSegment(builder, Action);
-        AppendScope(builder, Scope);
-        AppendAttributes(builder, ResourceAttributes);
-
-        return builder.ToString();
-    }
-
-    private static void AppendScope(StringBuilder builder, AuthorizationScope? scope)
-    {
-        AppendSegment(builder, scope?.TenantId ?? string.Empty);
-        AppendSegment(builder, scope?.OrganizationId ?? string.Empty);
-    }
-
-    private static void AppendAttributes(StringBuilder builder, IReadOnlyDictionary<string, object>? attributes)
-    {
-        if (attributes is null || attributes.Count == 0)
-        {
-            AppendSegment(builder, string.Empty);
-            return;
-        }
-
-        AppendSegment(builder, attributes.Count.ToString(CultureInfo.InvariantCulture));
-        foreach (var pair in attributes.OrderBy(pair => pair.Key, StringComparer.Ordinal))
-        {
-            AppendSegment(builder, pair.Key);
-            AppendSegment(builder, NormalizeAttributeValue(pair.Value));
-        }
-    }
-
-    private static string NormalizeAttributeValue(object? value)
-    {
-        if (value is null)
-            return "<null>";
-
-        var rendered = value switch
-        {
-            DateTime dateTime => dateTime.ToUniversalTime().ToString("O", CultureInfo.InvariantCulture),
-            DateTimeOffset dateTimeOffset => dateTimeOffset.ToUniversalTime().ToString("O", CultureInfo.InvariantCulture),
-            IFormattable formattable => formattable.ToString(null, CultureInfo.InvariantCulture),
-            _ => value.ToString() ?? string.Empty
-        };
-
-        return $"{value.GetType().FullName}:{rendered}";
-    }
-
-    private static void AppendSegment(StringBuilder builder, string value)
-    {
-        builder.Append(value.Length.ToString(CultureInfo.InvariantCulture));
-        builder.Append(':');
-        builder.Append(value);
-        builder.Append('|');
-    }
+    /// <summary>
+    /// Structural identity of the decision this request asks for. Facts are records, so equality is
+    /// value-based and two requests collapse only when their trusted policy inputs are identical.
+    /// </summary>
+    public AuthorizationRequestKey ToDeduplicationKey() => new(
+        ResourceKind,
+        ResourceId,
+        Action,
+        Scope?.TenantId,
+        Scope?.OrganizationId,
+        Facts);
 }
+
+public sealed record AuthorizationRequestKey(
+    string ResourceKind,
+    string ResourceId,
+    string Action,
+    string? TenantScope,
+    string? OrganizationScope,
+    IAuthorizationFacts? Facts);

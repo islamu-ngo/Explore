@@ -19,8 +19,6 @@ public class FinalizeStorageUploadSessionCommand : IRequest<BaseCommandResponse<
 
     string? ISecureRequest.ResourceId => UploadSessionId == Guid.Empty ? null : UploadSessionId.ToString();
 
-    IDictionary<string, object>? ISecureRequest.ResourceAttributes
-        => TenantId is { } tenantId && tenantId != Guid.Empty
-            ? new Dictionary<string, object> { ["tenantId"] = tenantId.ToString() }
-            : null;
+    IAuthorizationFacts? ISecureRequest.AuthorizationFacts =>
+        new StorageObjectCollectionAuthorizationFacts(TenantId ?? Guid.Empty);
 }

@@ -44240,6 +44240,75 @@
         "x-endpoint-class": "Authenticated"
       }
     },
+    "/api/instance/settings/authz-provider/package/status": {
+      "get": {
+        "tags": [
+          "InstanceAuthorizationSettings"
+        ],
+        "summary": "Get Authorization Policy Package Status",
+        "description": "Reports authorization policy package health, the observed policy store revision, and the recovery action. Requires instance administrator.",
+        "operationId": "GetInstanceAuthorizationPolicyPackageStatus",
+        "parameters": [
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthorizationPolicyPackageStatusDto"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthorizationPolicyPackageStatusDto"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthorizationPolicyPackageStatusDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "x-endpoint-class": "Authenticated"
+      }
+    },
     "/api/instance/settings/authz-provider/status": {
       "get": {
         "tags": [
@@ -85553,6 +85622,64 @@
           }
         }
       },
+      "AuthorizationPolicyPackageStatusDto": {
+        "required": [
+          "provider",
+          "packageId",
+          "packageContentHash",
+          "observedRevision",
+          "revisionCertain",
+          "isHealthy",
+          "issueCode",
+          "message",
+          "warnings",
+          "recoveryAction",
+          "checkedAt"
+        ],
+        "type": "object",
+        "properties": {
+          "provider": {
+            "type": "string"
+          },
+          "packageId": {
+            "type": "string"
+          },
+          "packageContentHash": {
+            "type": "string"
+          },
+          "observedRevision": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "revisionCertain": {
+            "type": "boolean"
+          },
+          "isHealthy": {
+            "type": "boolean"
+          },
+          "issueCode": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "warnings": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "recoveryAction": {
+            "type": "string"
+          },
+          "checkedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
       "AuthorizationProviderConfigurationDto": {
         "type": "object",
         "properties": {
@@ -117610,6 +117737,7 @@
       },
       "HalResourceOfRegistrationAnswerAnalyticsDto": {
         "required": [
+          "tenantId",
           "eventId",
           "formId",
           "formVersionId",
@@ -117618,6 +117746,10 @@
         ],
         "type": "object",
         "properties": {
+          "tenantId": {
+            "type": "string",
+            "format": "uuid"
+          },
           "eventId": {
             "type": "string",
             "format": "uuid"
@@ -132939,6 +133071,7 @@
       },
       "RegistrationAnswerAnalyticsDto": {
         "required": [
+          "tenantId",
           "eventId",
           "formId",
           "formVersionId",
@@ -132947,6 +133080,10 @@
         ],
         "type": "object",
         "properties": {
+          "tenantId": {
+            "type": "string",
+            "format": "uuid"
+          },
           "eventId": {
             "type": "string",
             "format": "uuid"

@@ -41,8 +41,10 @@ public sealed class EventAuthorityLinkPolicyTests
         await Assert.That(destination.RouteName).IsEqualTo(Explore.API.Hateoas.RouteNames.RedirectEventPublicAction);
         await Assert.That(destination.RouteValues?.ToString()).DoesNotContain(action.Url);
         var edit = links.Single(link => link.Rel == LinkRelations.Edit);
-        await Assert.That(edit.PermissionResourceAttributes!["tenantId"]).IsEqualTo(tenantId.ToString());
-        await Assert.That(edit.PermissionResourceAttributes["organizationId"]).IsEqualTo(organizationId.ToString());
+        await Assert.That(edit.PermissionFacts).IsTypeOf<EventAuthorizationFacts>();
+        var editFacts = (EventAuthorizationFacts)edit.PermissionFacts!;
+        await Assert.That(editFacts.TenantId).IsEqualTo(tenantId);
+        await Assert.That(editFacts.OrganizationId).IsEqualTo(organizationId);
     }
 
     [Test]
@@ -100,12 +102,14 @@ public sealed class EventAuthorityLinkPolicyTests
         await Assert.That(review.PermissionResourceKind).IsEqualTo(ResourceKinds.EventOrganizerClaim);
         await Assert.That(review.PermissionAction).IsEqualTo(AuthorizationActions.Events.ReviewOrganizerClaim);
         await Assert.That(review.PermissionResourceId).IsEqualTo(claim.EventId.ToString());
-        await Assert.That(review.PermissionResourceAttributes!["claimId"]).IsEqualTo(claim.Id.ToString());
-        await Assert.That(review.PermissionResourceAttributes["status"]).IsEqualTo("PENDING");
-        await Assert.That(review.PermissionResourceAttributes["tenantId"]).IsEqualTo(tenantId.ToString());
-        await Assert.That(review.PermissionResourceAttributes["organizationId"]).IsEqualTo(organizationId.ToString());
+        await Assert.That(review.PermissionFacts).IsTypeOf<EventOrganizerClaimAuthorizationFacts>();
+        var reviewFacts = (EventOrganizerClaimAuthorizationFacts)review.PermissionFacts!;
+        await Assert.That(reviewFacts.TenantId).IsEqualTo(tenantId);
+        await Assert.That(reviewFacts.ClaimId).IsEqualTo(claim.Id);
+        await Assert.That(reviewFacts.Status).IsEqualTo("PENDING");
         await Assert.That(withdraw.PermissionAction).IsEqualTo(AuthorizationActions.Events.WithdrawOrganizerClaim);
-        await Assert.That(withdraw.PermissionResourceAttributes!["claimantOrganizationId"]).IsEqualTo(claimantOrganizationId.ToString());
+        await Assert.That(((EventOrganizerClaimAuthorizationFacts)withdraw.PermissionFacts!).ClaimantOrganizationId)
+            .IsEqualTo(claimantOrganizationId);
     }
 
     [Test]

@@ -18,9 +18,6 @@ public class CreateEventSessionSpeakerCommand : IRequest<BaseCommandResponse<Gui
 
     string? ISecureRequest.ResourceId => SpeakerDto.EventSessionId.ToString();
 
-    IDictionary<string, object>? ISecureRequest.ResourceAttributes => new Dictionary<string, object>
-    {
-        ["tenantId"] = TenantId.ToString(),
-        ["eventId"] = EventId.ToString()
-    };
+    IAuthorizationFacts? ISecureRequest.AuthorizationFacts =>
+        new EventScopedAuthorizationFacts(TenantId, EventId);
 }

@@ -21,13 +21,6 @@ public sealed class RepairWebhookProviderBindingCommand
         ? null
         : ConsumerId.ToString("D");
 
-    IDictionary<string, object>? ISecureRequest.ResourceAttributes => new Dictionary<string, object>
-    {
-        ["consumerId"] = ConsumerId.ToString("D"),
-        ["provider"] = "svix",
-        ["webhookOperation"] = "repair-provider-binding"
-    };
-
     WebhookOwnedResourceKind IWebhookPersistedOwnerRequest.OwnedResourceKind =>
         WebhookOwnedResourceKind.Consumer;
 

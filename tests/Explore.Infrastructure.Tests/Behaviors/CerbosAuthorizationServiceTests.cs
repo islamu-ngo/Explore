@@ -1,6 +1,7 @@
 // ABOUTME: Unit tests for CerbosAuthorizationService gRPC SDK request/response mapping and deny semantics.
 // ABOUTME: Verifies principal construction, missing-user fail-closed behavior, and gRPC error handling.
 
+using Explore.Infrastructure.Tests.Authorization;
 using Cerbos.Api.V1.Effect;
 using Cerbos.Sdk;
 using Cerbos.Sdk.Builder;
@@ -104,8 +105,8 @@ public class CerbosAuthorizationServiceTests
         var service = CreateService();
         var checks = new List<AuthorizationRequest>
         {
-            new("islamuevent_organization", "org-1", "update", null),
-            new("islamuevent_tenant_setting", "setting-key", AuthorizationActions.View, null)
+            TestAuthorizationRequest.Create("islamuevent_organization", "org-1", "update", null),
+            TestAuthorizationRequest.Create("islamuevent_tenant_setting", "setting-key", AuthorizationActions.View, null)
         };
 
         var result = await service.AuthorizeBatchAsync(checks);
@@ -182,8 +183,8 @@ public class CerbosAuthorizationServiceTests
         var service = CreateService();
         var checks = new List<AuthorizationRequest>
         {
-            new("islamuevent_organization", "org-1", "update", null),
-            new("islamuevent_organization", "org-2", "delete", null)
+            TestAuthorizationRequest.Create("islamuevent_organization", "org-1", "update", null),
+            TestAuthorizationRequest.Create("islamuevent_organization", "org-2", "delete", null)
         };
 
         var result = await service.IsAllowedBatchAsync(checks);
@@ -216,9 +217,9 @@ public class CerbosAuthorizationServiceTests
         var service = CreateService();
         var checks = new List<AuthorizationRequest>
         {
-            new(ResourceKinds.Event, eventId, AuthorizationActions.Events.ManageTeam, null),
-            new(ResourceKinds.Event, eventId, AuthorizationActions.Update, null),
-            new(ResourceKinds.Event, eventId, AuthorizationActions.Delete, null)
+            TestAuthorizationRequest.Create(ResourceKinds.Event, eventId, AuthorizationActions.Events.ManageTeam, null),
+            TestAuthorizationRequest.Create(ResourceKinds.Event, eventId, AuthorizationActions.Update, null),
+            TestAuthorizationRequest.Create(ResourceKinds.Event, eventId, AuthorizationActions.Delete, null)
         };
 
         var result = await service.IsAllowedBatchAsync(checks);
@@ -267,11 +268,11 @@ public class CerbosAuthorizationServiceTests
         var service = CreateService();
         var checks = new[]
         {
-            new AuthorizationRequest(
+            TestAuthorizationRequest.Create(
                 ResourceKinds.StorageObject,
                 "CreateStorageUploadSessionCommand",
                 AuthorizationActions.StorageObjects.Create,
-                Facts: new StorageUploadIntentFacts(
+                facts: new StorageUploadIntentFacts(
                     userId,
                     Guid.NewGuid(),
                     StorageOwningResourceKinds.OrganizationTenant,
@@ -326,11 +327,11 @@ public class CerbosAuthorizationServiceTests
 
         var service = CreateService(eventAuthoritySnapshotService: eventAuthoritySnapshotService);
         var result = await service.AuthorizeBatchAsync([
-            new AuthorizationRequest(
+            TestAuthorizationRequest.Create(
                 ResourceKinds.Event,
                 eventId.ToString("D"),
                 AuthorizationActions.Update,
-                Facts: new EventAuthorizationFacts(
+                facts: new EventAuthorizationFacts(
                     tenantId,
                     eventId,
                     actorId,
@@ -478,7 +479,7 @@ public class CerbosAuthorizationServiceTests
         var service = CreateService();
         var checks = new List<AuthorizationRequest>
         {
-            new(
+            TestAuthorizationRequest.Create(
                 ResourceKinds.Event,
                 eventId,
                 AuthorizationActions.Update,
@@ -521,7 +522,7 @@ public class CerbosAuthorizationServiceTests
         var service = CreateService(usePolicyScope: true);
         var checks = new List<AuthorizationRequest>
         {
-            new(
+            TestAuthorizationRequest.Create(
                 ResourceKinds.Event,
                 eventId,
                 AuthorizationActions.Update,
@@ -556,8 +557,8 @@ public class CerbosAuthorizationServiceTests
         var service = CreateService();
         var checks = new List<AuthorizationRequest>
         {
-            new("islamuevent_organization", sharedId, "update", null),
-            new("islamuevent_tenant", sharedId, "update", null)
+            TestAuthorizationRequest.Create("islamuevent_organization", sharedId, "update", null),
+            TestAuthorizationRequest.Create("islamuevent_tenant", sharedId, "update", null)
         };
 
         var result = await service.IsAllowedBatchAsync(checks);
@@ -582,8 +583,8 @@ public class CerbosAuthorizationServiceTests
         var service = CreateService();
         var checks = new List<AuthorizationRequest>
         {
-            new("islamuevent_organization", "org-1", "update", null),
-            new("islamuevent_tenant_setting", "setting-1", "update", null)
+            TestAuthorizationRequest.Create("islamuevent_organization", "org-1", "update", null),
+            TestAuthorizationRequest.Create("islamuevent_tenant_setting", "setting-1", "update", null)
         };
 
         var result = await service.IsAllowedBatchAsync(checks);
@@ -653,7 +654,7 @@ public class CerbosAuthorizationServiceTests
             });
 
         var service = CreateService();
-        var decision = await service.AuthorizeAsync(new AuthorizationRequest(
+        var decision = await service.AuthorizeAsync(TestAuthorizationRequest.Create(
             ResourceKinds.TenantSetting,
             "events.require_approval",
             AuthorizationActions.Update,
@@ -786,18 +787,25 @@ public class CerbosAuthorizationServiceTests
 
     private static AuthorizationRequest CreateScenarioCheck(Phase0Scenario scenario)
     {
-        var attributes = new Dictionary<string, object>();
-        if (scenario.MissingFact != "eventId")
-            attributes["eventId"] = FixedEventId;
+        var scope = scenario.MissingFact is "tenantId" or "subject"
+            ? null
+            : new AuthorizationScope(TenantId: FixedTenantId);
 
-        return new AuthorizationRequest(
+        // The resource fact is what the resolver failed to produce, so the check carries tenant authority
+        // and nothing about the event itself — the resource id alone never becomes a policy attribute.
+        IAuthorizationFacts? facts = scenario.MissingFact == "eventId"
+            ? new TenantScopedAuthorizationFacts(Guid.Parse(FixedTenantId))
+            : null;
+
+        return TestAuthorizationRequest.Create(
             ResourceKinds.Event,
             FixedEventId,
             AuthorizationActions.Update,
-            attributes,
-            scenario.MissingFact == "tenantId" || scenario.MissingFact == "subject"
+            scenario.MissingFact == "eventId"
                 ? null
-                : new AuthorizationScope(TenantId: FixedTenantId));
+                : new Dictionary<string, object> { ["eventId"] = FixedEventId },
+            scope,
+            facts);
     }
 
     private async Task<bool> DidObserveGrpcCallAsync()

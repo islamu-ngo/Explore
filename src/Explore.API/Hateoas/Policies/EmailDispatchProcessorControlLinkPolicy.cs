@@ -32,9 +32,9 @@ public sealed class EmailDispatchProcessorControlDetailLinkPolicy
     private static LinkDefinition Link(string relation, string routeName, string method, bool isUpdate) =>
         isUpdate
             ? new LinkDefinition(relation, routeName, null, method, relation, RequiresAuth: true)
-                .RequirePermission(AuthorizationActions.InstanceSettings.Update, ResourceKinds.InstanceSetting, EmailDispatchProcessorControl.SettingKey, new Dictionary<string, object> { ["settingKey"] = EmailDispatchProcessorControl.SettingKey })
+                .RequirePermission(AuthorizationActions.InstanceSettings.Update, ResourceKinds.InstanceSetting, EmailDispatchProcessorControl.SettingKey, facts: InstanceScopedAuthorizationFacts.Instance)
             : new LinkDefinition(relation, routeName, null, method, relation, RequiresAuth: true)
-                .RequirePermission(AuthorizationActions.InstanceSettings.View, ResourceKinds.InstanceSetting, EmailDispatchProcessorControl.SettingKey, new Dictionary<string, object> { ["settingKey"] = EmailDispatchProcessorControl.SettingKey });
+                .RequirePermission(AuthorizationActions.InstanceSettings.View, ResourceKinds.InstanceSetting, EmailDispatchProcessorControl.SettingKey, facts: InstanceScopedAuthorizationFacts.Instance);
 }
 
 public sealed class EmailDispatchProcessorControlCollectionLinkPolicy

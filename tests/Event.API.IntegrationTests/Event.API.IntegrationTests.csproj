@@ -1,5 +1,11 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
+  <!-- The provider-neutral parity corpus is declared once and linked into every lane that evaluates it,
+       so Local and Cerbos can never drift onto different scenario sets. -->
+  <ItemGroup>
+    <Compile Include="..\Shared\Authorization\ProviderNeutralCorpus.cs" Link="Authorization\ProviderNeutralCorpus.cs" />
+  </ItemGroup>
+
   <ItemGroup>
     <ProjectReference Include="..\..\src\Explore.API\Explore.API.csproj" />
     <ProjectReference Include="..\..\src\Explore.ServiceDefaults\Explore.ServiceDefaults.csproj" />

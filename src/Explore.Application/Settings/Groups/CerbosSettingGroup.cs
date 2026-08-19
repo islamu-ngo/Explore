@@ -14,7 +14,6 @@ public class CerbosSettingGroup : ISettingGroup
     public bool TenantCustomizationEnabled { get; private set; }
     public string Mode { get; private set; } = "shared";
     public string? CustomEndpoint { get; private set; }
-    public string FailureMode { get; private set; } = "deny";
     public string? CustomAdminEndpoint { get; private set; }
     public string? CustomAdminUsername { get; private set; }
     public string? CustomAdminPassword { get; private set; }
@@ -24,7 +23,6 @@ public class CerbosSettingGroup : ISettingGroup
         GovernanceSettingKeys.Cerbos.TenantCustomizationEnabled,
         GovernanceSettingKeys.Cerbos.Mode,
         GovernanceSettingKeys.Cerbos.CustomEndpoint,
-        GovernanceSettingKeys.Cerbos.FailureMode,
         GovernanceSettingKeys.Cerbos.CustomAdminEndpoint,
         InfrastructureSecretSettingKeys.Cerbos.CustomAdminUsername,
         InfrastructureSecretSettingKeys.Cerbos.CustomAdminPassword
@@ -38,8 +36,6 @@ public class CerbosSettingGroup : ISettingGroup
             Mode = SettingValueSerializer.Deserialize(mode.Value, "shared");
         if (settings.TryGetValue(GovernanceSettingKeys.Cerbos.CustomEndpoint, out var ep))
             CustomEndpoint = SettingValueSerializer.DeserializeString(ep.Value);
-        if (settings.TryGetValue(GovernanceSettingKeys.Cerbos.FailureMode, out var fm))
-            FailureMode = SettingValueSerializer.Deserialize(fm.Value, "deny");
         if (settings.TryGetValue(GovernanceSettingKeys.Cerbos.CustomAdminEndpoint, out var aep))
             CustomAdminEndpoint = SettingValueSerializer.DeserializeString(aep.Value);
         if (settings.TryGetValue(InfrastructureSecretSettingKeys.Cerbos.CustomAdminUsername, out var user))

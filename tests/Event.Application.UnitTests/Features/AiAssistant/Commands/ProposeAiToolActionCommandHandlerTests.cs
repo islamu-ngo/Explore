@@ -153,15 +153,16 @@ public sealed class ProposeAiToolActionCommandHandlerTests
         await Assert.That(result.Success).IsTrue();
         await Assert.That(conversation.ProposedActions.Count).IsEqualTo(1);
         await Assert.That(conversation.ProposedActions.Single().Kind).IsEqualTo(AiProposedActionKind.HeavyModerateEvent);
+
+        // The facts describe the event that was actually loaded, not what the model asked for. The
+        // conversation's actor is not published: a proposal is decided on the caller's own authority.
         await _authorizationProvider.Received(1).AuthorizeAsync(
             Arg.Is<AuthorizationRequest>(request =>
                 request != null &&
                 request.ResourceKind == ResourceKinds.Event &&
                 request.ResourceId == eventId.ToString() &&
                 request.Action == AuthorizationActions.Events.ModerateHeavy &&
-                HasGuidAttribute(request.ResourceAttributes, "tenantId", _tenantId) &&
-                HasGuidAttribute(request.ResourceAttributes, "eventId", eventId) &&
-                HasGuidAttribute(request.ResourceAttributes, "actorId", actorId)),
+                Equals(request.Facts, new EventScopedAuthorizationFacts(_tenantId, eventId))),
             Arg.Any<CancellationToken>());
         await _conversationRepository.Received(1).Update(conversation);
     }
@@ -188,8 +189,7 @@ public sealed class ProposeAiToolActionCommandHandlerTests
                 request.ResourceKind == ResourceKinds.Event &&
                 request.ResourceId == eventId.ToString() &&
                 request.Action == AuthorizationActions.Events.ModerateHeavy &&
-                HasGuidAttribute(request.ResourceAttributes, "tenantId", targetTenantId) &&
-                HasGuidAttribute(request.ResourceAttributes, "eventId", eventId)),
+                Equals(request.Facts, new EventScopedAuthorizationFacts(targetTenantId, eventId))),
             Arg.Any<CancellationToken>());
     }
 
@@ -456,14 +456,6 @@ public sealed class ProposeAiToolActionCommandHandlerTests
             "acknowledgedConsequences": true
           }
           """;
-
-    private static bool HasGuidAttribute(
-        IReadOnlyDictionary<string, object>? attributes,
-        string name,
-        Guid expected)
-        => attributes?.TryGetValue(name, out var value) == true &&
-            value is Guid guidValue &&
-            guidValue == expected;
 
     private static string BuildMinimalPayloadJson(AiToolDefinition definition)
     {

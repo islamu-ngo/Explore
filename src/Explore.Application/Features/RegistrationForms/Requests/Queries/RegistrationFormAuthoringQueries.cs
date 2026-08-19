@@ -13,10 +13,10 @@ public interface IRegistrationFormAuthoringQuery<out TResponse> : IRequest<TResp
 
     string? ISecureRequest.ResourceId => EventId == Guid.Empty ? null : EventId.ToString();
 
-    IDictionary<string, object>? ISecureRequest.ResourceAttributes => new Dictionary<string, object>
-    {
-        ["eventId"] = EventId.ToString()
-    };
+    // Form and version identifiers select the payload, not the authority: registration authoring reads
+    // are decided against the parent event, which the resolver reloads server-side.
+    IAuthorizationFacts? ISecureRequest.AuthorizationFacts =>
+        new EventScopedAuthorizationFacts(Guid.Empty, EventId);
 }
 
 public interface IRegistrationFormScopedQuery<out TResponse> : IRegistrationFormAuthoringQuery<TResponse>
@@ -24,24 +24,11 @@ public interface IRegistrationFormScopedQuery<out TResponse> : IRegistrationForm
     Guid FormId { get; }
 
     string? ISecureRequest.ResourceId => FormId == Guid.Empty ? null : FormId.ToString();
-
-    IDictionary<string, object>? ISecureRequest.ResourceAttributes => new Dictionary<string, object>
-    {
-        ["eventId"] = EventId.ToString(),
-        ["formId"] = FormId.ToString()
-    };
 }
 
 public interface IRegistrationFormVersionScopedQuery<out TResponse> : IRegistrationFormScopedQuery<TResponse>
 {
     Guid VersionId { get; }
-
-    IDictionary<string, object>? ISecureRequest.ResourceAttributes => new Dictionary<string, object>
-    {
-        ["eventId"] = EventId.ToString(),
-        ["formId"] = FormId.ToString(),
-        ["versionId"] = VersionId.ToString()
-    };
 }
 
 [AuthorizeResource(ResourceKinds.Event, AuthorizationActions.Events.ManageRegistrationWorkflow)]

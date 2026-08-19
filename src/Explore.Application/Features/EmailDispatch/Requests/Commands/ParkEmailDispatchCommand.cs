@@ -17,11 +17,8 @@ public sealed class ParkEmailDispatchCommand : IRequest<BaseCommandResponse<Guid
 
     string? ISecureRequest.ResourceId => OutboxId == Guid.Empty ? null : OutboxId.ToString("D");
 
-    IDictionary<string, object>? ISecureRequest.ResourceAttributes => TenantId == Guid.Empty
+    IAuthorizationFacts? ISecureRequest.AuthorizationFacts =>
+        TenantId == Guid.Empty
         ? null
-        : new Dictionary<string, object>
-        {
-            ["tenantId"] = TenantId.ToString("D"),
-            ["outboxId"] = OutboxId.ToString("D")
-        };
+        : new TenantScopedAuthorizationFacts(TenantId);
 }

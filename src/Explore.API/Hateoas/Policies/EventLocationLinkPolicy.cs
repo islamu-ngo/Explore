@@ -34,8 +34,8 @@ public sealed class EventLocationManagementLinkPolicy(IHttpContextAccessor httpC
             .RequirePermission(AuthorizationActions.Update,
                 ResourceKinds.Event,
                 eventId.ToString("D"),
-                authorization.ResourceAttributes,
-                authorization.Scope);
+                authorization.Scope,
+                authorization.Facts);
 
         if (dto.NeedsPrivacyReview)
         {
@@ -49,8 +49,8 @@ public sealed class EventLocationManagementLinkPolicy(IHttpContextAccessor httpC
                 .RequirePermission(AuthorizationActions.Update,
                     ResourceKinds.Event,
                     eventId.ToString("D"),
-                    authorization.ResourceAttributes,
-                    authorization.Scope);
+                    authorization.Scope,
+                    authorization.Facts);
         }
     }
 
@@ -75,34 +75,27 @@ public sealed class EventLocationManagementLinkPolicy(IHttpContextAccessor httpC
         out AuthorizationRequest authorization)
     {
         authorization = dto.UpdateAuthorization!;
+
+        // The disclosure DTO carries the exact request the handler already authorized. Re-emitting it as a
+        // link is only safe when it still describes this event: same capability, same resource id, and
+        // trusted event facts whose tenant matches the scope the check will be evaluated under.
         if (authorization is null
             || authorization.ResourceKind != ResourceKinds.Event
             || authorization.Action != AuthorizationActions.Update
             || !Guid.TryParse(authorization.ResourceId, out Guid authorizationEventId)
             || authorizationEventId != eventId
-            || !TryGetAttributeGuid(authorization.ResourceAttributes, "eventId", out Guid attributeEventId)
-            || attributeEventId != eventId
-            || !TryGetAttributeGuid(authorization.ResourceAttributes, "tenantId", out Guid tenantId)
-            || !TryGetAttributeGuid(authorization.ResourceAttributes, "actorId", out _)
+            || authorization.Facts is not EventAuthorizationFacts facts
+            || facts.EventId != eventId
+            || facts.TenantId == Guid.Empty
+            || facts.ActorId == Guid.Empty
             || !Guid.TryParse(authorization.Scope?.TenantId, out Guid scopeTenantId)
-            || scopeTenantId != tenantId)
+            || scopeTenantId != facts.TenantId)
         {
             authorization = null!;
             return false;
         }
 
         return true;
-    }
-
-    private static bool TryGetAttributeGuid(
-        IReadOnlyDictionary<string, object>? attributes,
-        string name,
-        out Guid value)
-    {
-        value = Guid.Empty;
-        return attributes?.TryGetValue(name, out object? attribute) == true
-            && Guid.TryParse(attribute?.ToString(), out value)
-            && value != Guid.Empty;
     }
 }
 

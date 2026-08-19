@@ -305,7 +305,6 @@ public class SafeModeLatchTests : IAsyncDisposable
         {
             Endpoint = UnreachableByoEndpoint,
             Mode = CerbosMode.CustomEndpoint,
-            FailureMode = CerbosFailureMode.Closed,
             IsInstanceDefault = false
         });
         return resolver;

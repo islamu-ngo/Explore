@@ -90,8 +90,8 @@ public sealed class PaidEventPolicySettingsApiTests
         await Assert.That(tenantLinks.All(link => link.PermissionResourceKind == ResourceKinds.TenantSetting)).IsTrue();
         await Assert.That(tenantLinks.All(link => link.PermissionResourceId == $"{tenantId}:paid-event-policy")).IsTrue();
         await Assert.That(tenantLinks.All(link => link.PermissionScope?.TenantId == tenantId.ToString())).IsTrue();
-        await Assert.That(tenantLinks.All(link => Equals(link.PermissionResourceAttributes!["tenantId"], tenantId.ToString()))).IsTrue();
-        await Assert.That(tenantLinks.All(link => Equals(link.PermissionResourceAttributes!["settingKey"], "paid-event-policy"))).IsTrue();
+        await Assert.That(tenantLinks.All(link =>
+            Equals(link.PermissionFacts, new TenantSettingAuthorizationFacts(tenantId)))).IsTrue();
     }
 
     private static async Task AssertController(Type controller, EndpointClass endpointClass, string routeTemplate)

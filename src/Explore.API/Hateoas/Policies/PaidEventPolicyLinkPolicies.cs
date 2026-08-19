@@ -18,19 +18,15 @@ public sealed class InstancePaidEventPolicyLinkPolicy : ILinkPolicy<PaidEventPol
             .RequirePermission(AuthorizationActions.InstanceSettings.View,
                 ResourceKinds.InstanceSetting,
                 GetInstancePaidEventPolicyQuery.SettingKey,
-                Attributes());
+                facts: InstanceScopedAuthorizationFacts.Instance);
 
         yield return LinkDefinition.Edit(RouteNames.UpdateInstancePaidEventPolicySettings)
             .RequirePermission(AuthorizationActions.InstanceSettings.Update,
                 ResourceKinds.InstanceSetting,
                 GetInstancePaidEventPolicyQuery.SettingKey,
-                Attributes());
+                facts: InstanceScopedAuthorizationFacts.Instance);
     }
 
-    private static IReadOnlyDictionary<string, object> Attributes() => new Dictionary<string, object>
-    {
-        ["settingKey"] = GetInstancePaidEventPolicyQuery.SettingKey
-    };
 }
 
 public sealed class InstancePaidEventPolicyCollectionLinkPolicy : ICollectionLinkPolicy<PaidEventPolicyDto>
@@ -48,24 +44,18 @@ public sealed class TenantPaidEventPolicyConfigurationLinkPolicy : ILinkPolicy<T
             .RequirePermission(AuthorizationActions.TenantSettings.View,
                 ResourceKinds.TenantSetting,
                 ResourceId(dto.TenantId),
-                Attributes(dto.TenantId),
-                Scope(dto.TenantId));
+                Scope(dto.TenantId),
+                new TenantSettingAuthorizationFacts(dto.TenantId));
 
         yield return LinkDefinition.Edit(RouteNames.UpdateTenantPaidEventPolicySettings, new { tenantId = dto.TenantId })
             .RequirePermission(AuthorizationActions.TenantSettings.Update,
                 ResourceKinds.TenantSetting,
                 ResourceId(dto.TenantId),
-                Attributes(dto.TenantId),
-                Scope(dto.TenantId));
+                Scope(dto.TenantId),
+                new TenantSettingAuthorizationFacts(dto.TenantId));
     }
 
     private static string ResourceId(Guid tenantId) => $"{tenantId}:paid-event-policy";
-
-    private static IReadOnlyDictionary<string, object> Attributes(Guid tenantId) => new Dictionary<string, object>
-    {
-        ["tenantId"] = tenantId.ToString(),
-        ["settingKey"] = GetInstancePaidEventPolicyQuery.SettingKey
-    };
 
     private static AuthorizationScope Scope(Guid tenantId) => new(TenantId: tenantId.ToString());
 }

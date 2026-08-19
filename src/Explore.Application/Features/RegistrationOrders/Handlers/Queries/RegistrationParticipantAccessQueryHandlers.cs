@@ -83,7 +83,6 @@ public sealed class GetAuthenticatedRegistrationOrderParticipantsQueryHandler(
             new AuthorizationRequest(
                 AuthorizationCapabilityCatalog.Require(ResourceKinds.Event, AuthorizationActions.Events.ManageRegistrations),
                 eventEntity.Id.ToString("D"),
-                ResourceAttributes: null,
                 Scope: ResourceDescriptors.EventAuthorizationTarget.GetScope(eventEntity),
                 Facts: ResourceDescriptors.EventAuthorizationTarget.GetFacts(eventEntity)),
             cancellationToken);

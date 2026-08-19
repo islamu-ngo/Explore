@@ -56,9 +56,8 @@ public sealed class CreateEventSessionSpeakerCommandHandlerTests
         var secureRequest = (ISecureRequest)command;
 
         await Assert.That(secureRequest.ResourceId).IsEqualTo(sessionId.ToString());
-        await Assert.That(secureRequest.ResourceAttributes).IsNotNull();
-        await Assert.That(secureRequest.ResourceAttributes!["tenantId"]).IsEqualTo(tenantId.ToString());
-        await Assert.That(secureRequest.ResourceAttributes!["eventId"]).IsEqualTo(eventId.ToString());
+        await Assert.That(secureRequest.AuthorizationFacts)
+            .IsEqualTo(new EventScopedAuthorizationFacts(tenantId, eventId));
     }
 
     [Test]

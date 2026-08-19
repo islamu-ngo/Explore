@@ -85,7 +85,7 @@ public sealed class ControlPlaneTenantEffectiveConfigurationLinkPolicy
             .RequirePermission(AuthorizationActions.InstanceSettings.View,
                 ResourceKinds.InstanceSetting,
                 settingKey,
-                InstanceSettingAttributes(settingKey, tenantId));
+                facts: InstanceScopedAuthorizationFacts.Instance);
 
     private static LinkDefinition UpdateLink(
         string rel,
@@ -101,32 +101,7 @@ public sealed class ControlPlaneTenantEffectiveConfigurationLinkPolicy
             .RequirePermission(AuthorizationActions.InstanceSettings.Update,
                 ResourceKinds.InstanceSetting,
                 settingKey,
-                InstanceSettingAttributes(settingKey, tenantId, assignmentId, settingTargetKey));
-
-    private static IReadOnlyDictionary<string, object> InstanceSettingAttributes(
-        string settingKey,
-        Guid tenantId,
-        Guid? assignmentId = null,
-        string? targetKey = null)
-    {
-        var attributes = new Dictionary<string, object>
-        {
-            ["settingKey"] = settingKey,
-            ["tenantId"] = tenantId
-        };
-
-        if (assignmentId.HasValue)
-        {
-            attributes["assignmentId"] = assignmentId.Value;
-        }
-
-        if (!string.IsNullOrEmpty(targetKey))
-        {
-            attributes["targetKey"] = targetKey;
-        }
-
-        return attributes;
-    }
+                facts: InstanceScopedAuthorizationFacts.Instance);
 }
 
 internal static class ControlPlaneTenantEffectiveSettingLinks
@@ -200,12 +175,7 @@ internal static class ControlPlaneTenantEffectiveSettingLinks
             .RequirePermission(AuthorizationActions.InstanceSettings.Update,
                 ResourceKinds.InstanceSetting,
                 resourceId,
-                new Dictionary<string, object>
-                {
-                    ["settingKey"] = resourceId,
-                    ["tenantId"] = tenantId.ToString(),
-                    ["targetKey"] = settingKey
-                });
+                facts: InstanceScopedAuthorizationFacts.Instance);
 }
 
 public sealed class ControlPlaneTenantEffectiveConfigurationCollectionLinkPolicy

@@ -3,4 +3,8 @@
 
 namespace Explore.API.Hateoas.Resources;
 
-public sealed record EventSessionTemplateSyncResource(Guid SessionId, int TargetTemplateVersion, bool HasChanges);
+public sealed record EventSessionTemplateSyncResource(
+    Guid TenantId,
+    Guid SessionId,
+    int TargetTemplateVersion,
+    bool HasChanges);

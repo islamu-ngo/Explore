@@ -107,7 +107,7 @@ public sealed class RegistrationFormsControllerContractTests
         Guid versionId = Guid.CreateVersion7();
         var mediator = Substitute.For<IMediator>();
         var assembler = Substitute.For<IResourceAssembler<RegistrationAnswerAnalyticsDto, RegistrationAnswerAnalyticsDto>>();
-        var analytics = new RegistrationAnswerAnalyticsDto(eventId, formId, versionId, 3, []);
+        var analytics = new RegistrationAnswerAnalyticsDto(Guid.CreateVersion7(), eventId, formId, versionId, 3, []);
         var resource = new HalResource<RegistrationAnswerAnalyticsDto>(analytics);
         mediator.Send(Arg.Is<GetRegistrationAnswerAnalyticsQuery>(query =>
                 query.EventId == eventId && query.FormId == formId && query.FormVersionId == versionId),

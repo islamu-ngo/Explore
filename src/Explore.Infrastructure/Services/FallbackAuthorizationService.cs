@@ -101,16 +101,12 @@ public partial class FallbackAuthorizationService : IAuthorizationProvider
             : AuthorizationDecision.Deny(AuthorizationProviderMetadata.Local);
     }
 
-    private static Dictionary<string, object>? TrustedAttributes(AuthorizationRequest request)
-    {
-        var factAttributes = AuthorizationFactsAttributeProjection.ToAttributes(request.Facts);
-        if (factAttributes is not null)
-            return factAttributes;
-
-        return request.ResourceAttributes is null
-            ? null
-            : new Dictionary<string, object>(request.ResourceAttributes);
-    }
+    /// <summary>
+    /// Trusted policy inputs come only from the closed fact catalog. A request with no facts has no
+    /// attributes at all, so every fact-dependent rule below denies rather than reading caller input.
+    /// </summary>
+    private static Dictionary<string, object>? TrustedAttributes(AuthorizationRequest request) =>
+        AuthorizationFactAttributeProjection.ToAttributes(request.Facts);
 
     private async Task<Dictionary<string, object>?> AddTenantSettingLockAttributeAsync(
         AuthorizationRequest request,
@@ -369,8 +365,12 @@ public partial class FallbackAuthorizationService : IAuthorizationProvider
             or AuthorizationActions.InstanceSettings.Delete
             or AuthorizationActions.InstanceSettings.Lock
             or AuthorizationActions.InstanceSettings.Unlock,
+        // Provisioning a tenant has no tenant row to weigh yet, so instance authority is the only thing that
+        // can decide it. Cerbos grants instance admins every tenant action; omitting create here would make
+        // the local evaluator deny an operation the PDP allows.
         ResourceKinds.Tenant => action is AuthorizationActions.Tenants.View
-            or AuthorizationActions.Tenants.Update,
+            or AuthorizationActions.Tenants.Update
+            or AuthorizationActions.Tenants.Create,
         ResourceKinds.TenantUserRoleGrant => action is AuthorizationActions.TenantUserRoleGrants.View
             or AuthorizationActions.TenantUserRoleGrants.Create
             or AuthorizationActions.TenantUserRoleGrants.Delete,

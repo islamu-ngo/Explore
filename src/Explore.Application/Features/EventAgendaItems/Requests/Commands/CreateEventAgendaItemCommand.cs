@@ -14,5 +14,4 @@ public class CreateEventAgendaItemCommand : IRequest<BaseCommandResponse<Guid>>,
     public required CreateEventAgendaItemDto EventAgendaItemDto { get; set; }
 
     string? ISecureRequest.ResourceId => null;
-    IDictionary<string, object>? ISecureRequest.ResourceAttributes => null;
 }

@@ -44,10 +44,10 @@ public sealed class TenantBrandingSettingsDocumentLinkPolicyTests
         await Assert.That(edit.PermissionResourceKind).IsEqualTo(ResourceKinds.TenantSetting);
         await Assert.That(edit.PermissionAction).IsEqualTo(AuthorizationActions.Update);
         await Assert.That(edit.PermissionResourceId).IsEqualTo($"{tenantId}:tenant.branding");
-        await Assert.That(edit.PermissionResourceAttributes).IsNotNull();
-        await Assert.That(edit.PermissionResourceAttributes!["tenantId"]).IsEqualTo(tenantId.ToString());
-        await Assert.That(edit.PermissionResourceAttributes["documentKey"]).IsEqualTo("tenant.branding");
-        await Assert.That(edit.PermissionResourceAttributes["isLockedByInstance"]).IsEqualTo(true);
+        // The branding document key and its instance lock are both decision-relevant: the tenant-setting
+        // policy allows branding edits even while other settings are locked by the instance.
+        await Assert.That(edit.PermissionFacts)
+            .IsEqualTo(new TenantSettingAuthorizationFacts(tenantId, "tenant.branding", IsLockedByInstance: true));
         await Assert.That(edit.PermissionScope).IsNotNull();
         await Assert.That(edit.PermissionScope!.TenantId).IsEqualTo(tenantId.ToString());
     }

@@ -23,5 +23,4 @@ public sealed class CreateWebhookConsumerCommand
 
     string? ISecureRequest.ResourceId => OwnerId?.ToString("D");
 
-    IDictionary<string, object>? ISecureRequest.ResourceAttributes => null;
 }

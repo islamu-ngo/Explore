@@ -16,8 +16,6 @@ public sealed class GetOrganizationMemberDetailsRequest : IRequest<OrganizationM
 
     string? ISecureRequest.ResourceId => Id == Guid.Empty ? null : Id.ToString("D");
 
-    IDictionary<string, object>? ISecureRequest.ResourceAttributes => new Dictionary<string, object>
-    {
-        ["tenantId"] = TenantId.ToString("D")
-    };
+    IAuthorizationFacts? ISecureRequest.AuthorizationFacts =>
+        new OrganizationMemberAuthorizationFacts(TenantId, Guid.Empty, null, null);
 }

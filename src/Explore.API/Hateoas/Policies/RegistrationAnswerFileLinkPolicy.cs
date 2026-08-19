@@ -39,16 +39,9 @@ public sealed class RegistrationAnswerFileLinkPolicy : ILinkPolicy<RegistrationA
     }
 }
 
+/// <summary>
+/// Answer-file download affordances live on the detail policy, which carries the answer scope needed to
+/// authorize them. The collection shape adds none.
+/// </summary>
 public sealed class RegistrationAnswerFileCollectionLinkPolicy
-    : ICollectionLinkPolicy<RegistrationAnswerFileDto>
-{
-    public IEnumerable<LinkDefinition> GetItemLinks(RegistrationAnswerFileDto dto, ClaimsPrincipal? user)
-    {
-        yield break;
-    }
-
-    public IEnumerable<LinkDefinition> GetCollectionLinks(ClaimsPrincipal? user)
-    {
-        yield break;
-    }
-}
+    : ICollectionLinkPolicy<RegistrationAnswerFileDto>;

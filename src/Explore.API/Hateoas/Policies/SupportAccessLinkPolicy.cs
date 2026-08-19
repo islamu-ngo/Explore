@@ -107,9 +107,4 @@ public sealed class SupportAccessAuditEventCollectionLinkPolicy : ICollectionLin
 
     public IEnumerable<LinkDefinition> GetItemLinks(SupportAccessAuditEventDto dto, ClaimsPrincipal? user) =>
         _detailPolicy.GetLinks(dto, user);
-
-    public IEnumerable<LinkDefinition> GetCollectionLinks(ClaimsPrincipal? user)
-    {
-        yield break;
-    }
 }

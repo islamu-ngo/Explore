@@ -17,10 +17,6 @@ public sealed record ApplyControlPlaneTenantPlanAssignmentCommand(
 
     public string ResourceId => SettingKey;
 
-    public IDictionary<string, object> ResourceAttributes => new Dictionary<string, object>
-    {
-        ["settingKey"] = SettingKey,
-        ["tenantId"] = TenantId,
-        ["assignmentId"] = AssignmentId
-    };
+    IAuthorizationFacts? ISecureRequest.AuthorizationFacts =>
+        InstanceScopedAuthorizationFacts.Instance;
 }

@@ -217,7 +217,6 @@ public static class GovernanceSettingKeys
         public const string TenantCustomizationEnabled = "cerbos.tenant_customization_enabled";
         public const string Mode = "cerbos.mode";
         public const string CustomEndpoint = "cerbos.custom_endpoint";
-        public const string FailureMode = "cerbos.failure_mode";
         public const string CustomAdminEndpoint = "cerbos.custom_admin_endpoint";
     }
 

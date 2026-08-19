@@ -15,7 +15,8 @@ public class GetLocationRoomDetailRequest : IRequest<LocationRoomDto?>, ISecureR
 
     string? ISecureRequest.ResourceId => Id == Guid.Empty ? null : Id.ToString("D");
 
-    IDictionary<string, object>? ISecureRequest.ResourceAttributes => TenantId == Guid.Empty
+    IAuthorizationFacts? ISecureRequest.AuthorizationFacts =>
+        TenantId == Guid.Empty
         ? null
-        : new Dictionary<string, object> { ["tenantId"] = TenantId.ToString("D") };
+        : new TenantScopedAuthorizationFacts(TenantId);
 }

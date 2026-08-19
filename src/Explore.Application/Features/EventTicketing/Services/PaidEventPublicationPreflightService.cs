@@ -109,7 +109,6 @@ public sealed class PaidEventPublicationPreflightService(
             new AuthorizationRequest(
                 AuthorizationCapabilityCatalog.Require(ResourceKinds.Event, AuthorizationActions.Events.ManagePaidEventCommerce),
                 eventTarget.Id.ToString(),
-                ResourceAttributes: null,
                 Scope: ResourceDescriptors.EventAuthorizationTarget.GetScope(eventTarget),
                 Facts: ResourceDescriptors.EventAuthorizationTarget.GetFacts(eventTarget)),
             cancellationToken);

@@ -13,11 +13,9 @@ public sealed class EventSessionTemplateSyncLinkPolicy : ILinkPolicy<EventSessio
 {
     public IEnumerable<LinkDefinition> GetLinks(EventSessionTemplateSyncResource dto, ClaimsPrincipal? user)
     {
-        var attributes = new Dictionary<string, object>
-        {
-            ["sessionId"] = dto.SessionId,
-            ["templateVersion"] = dto.TargetTemplateVersion
-        };
+        // Custom-property templates are tenant-administered; the session and template version select
+        // the payload, not the authority zone.
+        var facts = new TenantScopedAuthorizationFacts(dto.TenantId);
 
         yield return new LinkDefinition(
             "sync-diff",
@@ -28,7 +26,7 @@ public sealed class EventSessionTemplateSyncLinkPolicy : ILinkPolicy<EventSessio
             .RequirePermission(AuthorizationActions.CustomPropertyTemplates.SyncDiff,
                 ResourceKinds.CustomPropertyTemplate,
                 dto.SessionId.ToString(),
-                attributes);
+                facts: facts);
 
         if (dto.HasChanges)
         {
@@ -41,7 +39,7 @@ public sealed class EventSessionTemplateSyncLinkPolicy : ILinkPolicy<EventSessio
                 .RequirePermission(AuthorizationActions.CustomPropertyTemplates.SyncApply,
                     ResourceKinds.CustomPropertyTemplate,
                     dto.SessionId.ToString(),
-                    attributes);
+                    facts: facts);
         }
 
         yield return new LinkDefinition(
@@ -53,6 +51,6 @@ public sealed class EventSessionTemplateSyncLinkPolicy : ILinkPolicy<EventSessio
             .RequirePermission(AuthorizationActions.CustomPropertyTemplates.View,
                 ResourceKinds.CustomPropertyTemplate,
                 dto.SessionId.ToString(),
-                attributes);
+                facts: facts);
     }
 }

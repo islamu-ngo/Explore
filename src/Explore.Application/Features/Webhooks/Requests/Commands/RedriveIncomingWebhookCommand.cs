@@ -22,13 +22,8 @@ public sealed class RedriveIncomingWebhookCommand : IRequest<BaseCommandResponse
         ? null
         : IncomingWebhookMessageId.ToString("D");
 
-    IDictionary<string, object>? ISecureRequest.ResourceAttributes => TenantId == Guid.Empty
+    IAuthorizationFacts? ISecureRequest.AuthorizationFacts =>
+        TenantId == Guid.Empty
         ? null
-        : new Dictionary<string, object>
-        {
-            ["tenantId"] = TenantId.ToString("D"),
-            ["incomingWebhookMessageId"] = IncomingWebhookMessageId.ToString("D"),
-            ["expectedProcessingGeneration"] = ExpectedProcessingGeneration,
-            ["webhookOperation"] = "redrive-incoming"
-        };
+        : new TenantScopedAuthorizationFacts(TenantId);
 }

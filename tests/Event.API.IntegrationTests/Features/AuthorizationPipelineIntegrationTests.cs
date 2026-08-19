@@ -9,6 +9,7 @@ using Event.Api.IntegrationTests.Fixtures;
 using Explore.Application.Authorization;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Domain.Enums;
+using Explore.Infrastructure.Services;
 using TUnit.Core;
 
 namespace Event.Api.IntegrationTests.Features;
@@ -240,21 +241,27 @@ public class AuthorizationPipelineIntegrationTests : IAsyncDisposable
 
     #region Cerbos Decision Verification
 
+    /// <summary>
+    /// Instance administration is an oversight role, not an authoring one. The PDP lets an instance admin
+    /// read and moderate any event, but authoring it still requires authority over that event, so a
+    /// compromised instance account cannot quietly rewrite tenant content.
+    /// </summary>
     [Test]
-    public async Task CerbosPDP_InstanceAdmin_ShouldAllowAllEventActions()
+    public async Task CerbosPDP_InstanceAdmin_ModeratesButDoesNotAuthorEvents()
     {
         var result = await CheckCerbosDecision(
             isInstanceAdmin: true,
             tenantMemberships: new Dictionary<string, string>(),
             orgMemberships: new Dictionary<string, string>(),
             resourceKind: ResourceKinds.Event,
-            actions: ["view", "create", "update", "delete"]);
+            actions: ["view", "moderate-heavy", "create", "update", "delete"]);
 
-        await Assert.That(result).HasCount(4);
+        await Assert.That(result).HasCount(5);
         await Assert.That(result["view"]).IsEqualTo("EFFECT_ALLOW");
-        await Assert.That(result["create"]).IsEqualTo("EFFECT_ALLOW");
-        await Assert.That(result["update"]).IsEqualTo("EFFECT_ALLOW");
-        await Assert.That(result["delete"]).IsEqualTo("EFFECT_ALLOW");
+        await Assert.That(result["moderate-heavy"]).IsEqualTo("EFFECT_ALLOW");
+        await Assert.That(result["create"]).IsEqualTo("EFFECT_DENY");
+        await Assert.That(result["update"]).IsEqualTo("EFFECT_DENY");
+        await Assert.That(result["delete"]).IsEqualTo("EFFECT_DENY");
     }
 
     [Test]
@@ -432,17 +439,8 @@ public class AuthorizationPipelineIntegrationTests : IAsyncDisposable
             AuthorizationRequest request,
             CancellationToken cancellationToken = default)
         {
-            var allowed = await IsAllowedAsync(
-                request.ResourceKind,
-                request.ResourceId,
-                request.Action,
-                request.ResourceAttributes is null
-                    ? null
-                    : new Dictionary<string, object>(request.ResourceAttributes),
-                cancellationToken);
-            return allowed
-                ? AuthorizationDecision.Allow(AuthorizationProviderMetadata.Cerbos)
-                : AuthorizationDecision.Deny(AuthorizationProviderMetadata.Cerbos);
+            var decisions = await AuthorizeBatchAsync([request], cancellationToken);
+            return decisions[0];
         }
 
         public async Task<IReadOnlyList<AuthorizationDecision>> AuthorizeBatchAsync(
@@ -454,24 +452,7 @@ public class AuthorizationPipelineIntegrationTests : IAsyncDisposable
                     : AuthorizationDecision.Deny(AuthorizationProviderMetadata.Cerbos))
                 .ToArray();
 
-        public async Task<bool> IsAllowedAsync(
-            string resourceKind,
-            string resourceId,
-            string action,
-            IDictionary<string, object>? resourceAttributes = null,
-            CancellationToken cancellationToken = default)
-        {
-            var results = await IsAllowedBatchAsync(
-                [new AuthorizationRequest(resourceKind, resourceId, action,
-                    resourceAttributes is not null
-                        ? new Dictionary<string, object>(resourceAttributes)
-                        : null)],
-                cancellationToken);
-
-            return results[0];
-        }
-
-        public async Task<IReadOnlyList<bool>> IsAllowedBatchAsync(
+        private async Task<IReadOnlyList<bool>> IsAllowedBatchAsync(
             IReadOnlyList<AuthorizationRequest> checks,
             CancellationToken cancellationToken = default)
         {
@@ -525,29 +506,22 @@ public class AuthorizationPipelineIntegrationTests : IAsyncDisposable
             return boolResults;
         }
 
-        public Task<bool> CheckSettingAccessAsync(
-            string settingKey, string action,
-            Guid? tenantId = null, Guid? organizationId = null,
-            CancellationToken cancellationToken = default)
-        {
-            return Task.FromResult(true);
-        }
-
+        /// <summary>
+        /// Sends the same wire attributes the production Cerbos adapter would, so this test exercises the real
+        /// fact projection rather than a parallel one that could drift from it.
+        /// </summary>
         private static object BuildResourceAttrs(AuthorizationRequest check)
         {
-            if (check.ResourceAttributes is null)
+            var attributes = AuthorizationFactAttributeProjection.ToAttributes(check.Facts);
+            if (attributes is null)
             {
                 return new { tenantId = "tenant-1", organizationId = "org-1" };
             }
 
-            var dict = new Dictionary<string, object>();
-            foreach (var kvp in check.ResourceAttributes)
-            {
-                dict[kvp.Key] = kvp.Value;
-            }
-            if (!dict.ContainsKey("tenantId")) dict["tenantId"] = "tenant-1";
-            if (!dict.ContainsKey("organizationId")) dict["organizationId"] = "org-1";
-            return dict;
+            var projected = new Dictionary<string, object>(attributes);
+            if (!projected.ContainsKey("tenantId")) projected["tenantId"] = "tenant-1";
+            if (!projected.ContainsKey("organizationId")) projected["organizationId"] = "org-1";
+            return projected;
         }
 
         public void Dispose()

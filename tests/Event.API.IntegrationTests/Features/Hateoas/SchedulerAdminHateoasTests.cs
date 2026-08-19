@@ -28,8 +28,7 @@ public sealed class SchedulerAdminHateoasTests
         await Assert.That(self.PermissionResourceKind).IsEqualTo(ResourceKinds.InstanceSetting);
         await Assert.That(self.PermissionAction).IsEqualTo(AuthorizationActions.InstanceSettings.View);
         await Assert.That(self.PermissionResourceId).IsEqualTo(GetSchedulerAdminOverviewQuery.SettingKey);
-        await Assert.That(self.PermissionResourceAttributes?["settingKey"])
-            .IsEqualTo(GetSchedulerAdminOverviewQuery.SettingKey);
+        await Assert.That(self.PermissionFacts).IsEqualTo(InstanceScopedAuthorizationFacts.Instance);
 
         var jobs = links.Single(link => link.Rel == LinkRelations.SchedulerJobs);
         await Assert.That(jobs.RouteName).IsEqualTo(RouteNames.GetSchedulerAdminJobs);
