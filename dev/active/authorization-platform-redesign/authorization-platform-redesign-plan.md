@@ -3,18 +3,20 @@
 
 # Authorization Platform Redesign — Implementation Plan
 
-Last Updated: 2026-08-15 Europe/Brussels
+Last Updated: 2026-08-18 Europe/Brussels
 
 ## 0. Planning Metadata
 
 - **Original request:** Improve the authorization redesign implementation plan after deep repository analysis and current industry research; do not implement runtime behavior.
 - **Task directory:** `dev/active/authorization-platform-redesign/`
-- **Status:** Implementation active. Phase 0 is complete; Phase 1 Task 1.1 and Phase 2 Tasks 2.1-2.3 are open after independent review found legacy dictionary influence, EventTeam enforcement drift, and incomplete provider-parity evidence.
-- **Implementation progress:** 5/18 implementation tasks complete; Phases 3-5 have not started.
+- **Status:** Implementation active. Phase 0 is complete; Phase 1 Task 1.1 and Phase 2 Tasks 2.1-2.3 are open after independent review found legacy dictionary influence, EventTeam enforcement drift, and incomplete provider-parity evidence. Phase 5 now also owns the deferred HAL policy/route-surface consolidation after parity is proven.
+- **Implementation progress:** 5/19 implementation tasks complete; Phases 3-5 have not started.
 - **Primary intent:** `cerbos-policy-change`.
 - **Supporting intents when their slices activate:** `add-cqrs-handler`, `add-get-endpoint`, `add-write-endpoint`, `add-hal-link`, `update-repository-query`, `add-ef-migration`, `blazor-component-affordance`, `bff-auth-bug`, `openapi-contract-change`, and `ip-clean-room-governance`.
 - **Breaking-change posture:** Development-only contracts may be removed directly. No compatibility adapters, dual production authorities, or legacy policy translation layer.
 - **Permission posture:** This plan may preserve or narrow grants. Widening any permission requires separate explicit approval.
+- **Primary layers:** Application authorization contracts, API HATEOAS policies/registration, API integration and architecture tests, and canonical authorization documentation.
+- **Required guidance:** `implementation-plan`, `clean-architecture-rules`, `auth-patterns`, and `api-hateoas`.
 - **Estimated implementation size:** Large, delivered as six independently reviewable phases rather than one mega-PR.
 
 ## 1. Senior CTO Decision
@@ -53,6 +55,7 @@ The approved target for this workstream is smaller:
 - Contact sharing, consent, guest capability, public visibility, and tenant BYO failure behavior need an explicit deny-first inventory before redesign work can safely proceed.
 - Provider safe-mode and failure behavior is not represented as a clear, reversible, observable state model.
 - Some protected collection paths may authorize after count, pagination, or projection, risking existence or count disclosure.
+- The HAL surface is structurally large: the `src/Explore.API/Hateoas/Policies/` directory contains 82 policy files totaling 9,978 lines, while `RouteNames.cs` contains 1,062 lines. The policies are not mere presentation helpers; they encode per-resource authorization candidates and must be consolidated as authorization behavior, not as an API-only cleanup.
 
 ### 2.3 External evidence translated into repository-native requirements
 
@@ -220,18 +223,21 @@ Each phase is a separate review boundary. At phase end, run exactly one Release 
 - No `IQueryable` or provider-specific policy representation escapes Persistence.
 - Query and detail authorization scenarios agree for equivalent resources.
 
-### Phase 5: Delete legacy surfaces and freeze the contract
+### Phase 5: Delete legacy surfaces, consolidate HAL, and freeze the contract
 
 **Risk owner:** Maintainability.
 **Purpose:** Finish the breaking cutover instead of preserving two systems.
 
 1. Delete obsolete provider contracts, pass-through kinds, bypass lists, duplicate evaluators, stale safe-mode behavior, compatibility adapters, and local UI/BFF authorization gates.
-2. Delete tests and documentation that describe removed contracts, replacing them with coverage and canonical docs for the typed path. Do not weaken behavioral assertions.
-3. Update `docs/AUTHORIZATION.md`, `docs/AUTHORIZATION_PATTERNS.md`, `docs/SECURITY-MODEL.md`, `docs/CONFIGURATION.md`, `docs/OPERATIONS.md`, API/OpenAPI contracts when changed, and operator recovery material.
+2. Consolidate the HAL policy and route surface only after Phase 2 provider parity: inventory every registered relation/action/route, classify repeated policy structure versus resource-specific authorization, then replace repetitive policy plumbing with feature-scoped compile-time modules and shared builders where the behavior is truly identical. Keep irreducible resource rules explicit.
+3. Delete tests and documentation that describe removed contracts, replacing them with coverage and canonical docs for the typed path. Do not weaken behavioral assertions.
+4. Update `docs/AUTHORIZATION.md`, `docs/AUTHORIZATION_PATTERNS.md`, `docs/SECURITY-MODEL.md`, `docs/CONFIGURATION.md`, `docs/OPERATIONS.md`, API/OpenAPI contracts when changed, and operator recovery material.
 
 **Acceptance criteria**
 
 - One canonical decision contract and enforcement model remains.
+- HAL policy consolidation preserves separate detail/collection policies, the four-phase authorization pipeline, typed facts, fail-closed omission, explicit compile-time registration, and exact controller route-name ownership; no giant policy class, reflection registry, dynamic route lookup, or policy DSL is introduced.
+- The relation/action/route inventory has no accidental drops or permission widenings; intentional removals are reflected in controller metadata, OpenAPI/generated contracts, and affected HAL/Blazor tests.
 - Search and architecture checks find no obsolete contract or forbidden dependency direction.
 - Local and Cerbos conformance, API authorization/HAL behavior, tenant isolation, BFF boundary, and self-hosting recovery are documented and verified.
 - No AST, compiler, policy store, admin API, external PDP, or Policy Studio scope remains hidden in implementation.
@@ -243,6 +249,7 @@ Each phase is a separate review boundary. At phase end, run exactly one Release 
 - Use API integration tests for endpoint authentication, MediatR denial, ProblemDetails, HAL link presence/absence, and provider failure behavior.
 - Use Persistence integration tests only when Phase 4 changes query specifications or a generated migration is required.
 - Use BFF/Blazor tests only when removing local affordance gates or changing generated contracts.
+- HAL policy consolidation must also satisfy the `api-hateoas` rule's `Event.API.IntegrationTests`, `Explore.Blazor.Client.Tests`, and `Event.Architecture.Tests` coverage requirements; the Phase 5 gate remains the single architecture-test command, with the other required projects distributed as implementation evidence rather than additional phase gates.
 - Include negative and cross-tenant cases first. No backward-compatibility assertions are required for removed development contracts.
 
 ## 7. Security And Privacy Requirements
@@ -260,6 +267,7 @@ Each phase is a separate review boundary. At phase end, run exactly one Release 
 - Do not run old and new providers as independent production authorities. A temporary differential test harness may observe both but must not influence production allow/deny results.
 - If provider configuration persistence changes, fix the entity/configuration model and generate the migration; never hand-edit migration or snapshot artifacts.
 - Local policy behavior deploys with the application version. Cerbos policy behavior uses Cerbos-native artifacts/revisions. Event-owned configuration changes use existing transactional patterns.
+- HAL consolidation is a breaking internal replacement: remove superseded policy types and route aliases directly, keep remaining route values compile-time and matched to controller `Name` metadata, and update generated contracts only for deliberate route changes.
 
 ## 9. Risks And Required Decisions
 
@@ -271,6 +279,8 @@ Each phase is a separate review boundary. At phase end, run exactly one Release 
 | Cache invalidation semantics are unclear | Reuse existing cache/outbox infrastructure and define a measured convergence bound before enabling cached authorization. |
 | Query predicates cannot represent a sensitive policy | Deny the query or redesign that named endpoint; do not post-filter after pagination. |
 | Operator recovery depends on unavailable external services | Keep Local mode self-contained and document Cerbos as optional with explicit readiness/failure behavior. |
+| HAL consolidation drops an affordance or changes its authorization semantics | Build a before/after relation-action-route inventory from registrations, controller metadata, and tests; require no accidental drops and no permission widening before deleting old policies. |
+| Repeated HAL structure is over-generalized into a policy god-class or dynamic registry | Keep resource-specific rules explicit, preserve detail/collection separation, and allow a small number of feature-scoped compile-time modules only where the authorization facts and state gates are identical. |
 
 ## 10. Definition Of Done
 
@@ -280,6 +290,7 @@ Each phase is a separate review boundary. At phase end, run exactly one Release 
 - Local and Cerbos pass one provider-neutral behavioral corpus.
 - Provider mode, health, revision, correlation, recovery, and bounded invalidation are operator-visible.
 - Named sensitive queries constrain authorization before count/pagination/projection.
+- HAL policy and route plumbing is consolidated without weakening per-resource authorization, typed-fact precedence, fail-closed behavior, or client HAL affordance gating.
 - Legacy contracts and speculative platform/product scope are deleted or deferred explicitly.
 - Canonical docs, configuration, operations, and security guidance describe the shipped behavior.
 

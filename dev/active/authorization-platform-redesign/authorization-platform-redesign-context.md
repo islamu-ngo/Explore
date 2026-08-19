@@ -3,7 +3,7 @@
 
 # Authorization Platform Redesign — Context
 
-Last Updated: 2026-08-15 Europe/Brussels
+Last Updated: 2026-08-18 Europe/Brussels
 
 ## SESSION PROGRESS (2026-08-15 Europe/Brussels)
 
@@ -24,6 +24,7 @@ Last Updated: 2026-08-15 Europe/Brussels
 - Removed the ambiguous unused generic `RequirePermission` overload while preserving resource-kind and descriptor call shapes.
 - Verified focused current-source lanes: API HATEOAS authorization 28/28, Application authorization 37/37 plus the exact follow-up 1/1, and authorization guardrails 6/6. Relevant Application/API compilation succeeded with the workload resolver disabled.
 - Fixed the focused Local contact-share regression: missing tenant metadata again uses the trusted current tenant while an explicit mismatch still denies. The exact test passed 1/1, full `FallbackAuthorizationServiceTests` passed 150/150, and the resolver-disabled Infrastructure Release build completed with 0 warnings and 0 errors.
+- Inspected the deferred HAL surface and verified 82 policy files in `src/Explore.API/Hateoas/Policies/` totaling 9,978 lines, `RouteNames.cs` at 1,062 lines, explicit `AddHalResource*` registration, separate detail/collection policy contracts, and the shared `HateoasAuthorizationEvaluator`/typed-fact path.
 
 ### 🟡 IN PROGRESS
 
@@ -31,12 +32,14 @@ Last Updated: 2026-08-15 Europe/Brussels
 - Protected Blazor fallbacks are removed for organization members, EventTeam, and event publisher selection. EventTeam now preserves collection `assign-event-role` and item `revoke` links through its service, but its CQRS requests still need the same canonical `events.manage-team` enforcement as HAL.
 - The six focused Cerbos/runtime regressions are repaired. The seven-case provider-neutral test is correctly classified as adapter/projection smoke coverage, not full Local/Cerbos policy parity; machine, support, missing tenant/resource, consent, guest, public, and live-policy cases remain open.
 - Do not mark Phase 2 parity or any Phase 3-5 work complete until their own acceptance and phase gates pass.
+- Phase 5 now includes HAL policy/route-surface consolidation, but it remains blocked behind Phase 2 parity and must preserve resource-specific authorization semantics.
 
 ### ⏭️ NEXT
 
 1. Put EventTeam reads, presets, assignment, and revocation behind the same typed `events.manage-team` request used for its HAL relations; keep the role-authority ceiling as a post-allow business invariant.
 2. Remove legacy dictionary influence from migrated request paths, then execute the complete Phase 0 provider-neutral corpus against Local and live Cerbos semantics.
 3. Record only capability/category/outcome/provider/reason/revision diagnostics, then run the prescribed Phase 1 and Phase 2 gates once their criteria are satisfied.
+4. After Phase 2 parity, execute the new Phase 5 HAL consolidation task from a complete relation/action/route inventory; do not collapse it into a generic policy language or dynamic registry.
 
 ### ⚠️ BLOCKERS
 
@@ -58,6 +61,8 @@ The typed provider port and both MediatR/HAL consumers exist, but Phase 1 Task 1
 - `RuntimeAuthorizationProvider` routes to Local and Cerbos behavior and currently contains provider-selection complexity.
 - Local behavior is distributed across `FallbackAuthorizationService` partials and feature-specific evaluators; Cerbos has separately maintained semantics.
 - `HateoasAuthorizationEvaluator` normalizes and deduplicates candidate links, then consumes `IAuthorizationProvider.AuthorizeBatchAsync`; `_links` is the sole client-side action-affordance authority.
+- `ILinkPolicy<TDto>` and `ICollectionLinkPolicy<TDto>` intentionally separate detail and collection behavior. `HateoasAssemblerRegistration` uses explicit compile-time `AddHalResource*` registrations, and `HateoasRegistrationGraphTests` protects the registration graph.
+- The current HAL inventory is 82 policy files in `src/Explore.API/Hateoas/Policies/` (9,978 lines) plus `src/Explore.API/Hateoas/RouteNames.cs` (1,062 lines). This is an authorization-bearing maintenance surface, not a presentation-only refactor.
 - `IAuthorizationProvider` exposes only typed `AuthorizeAsync`/`AuthorizeBatchAsync` production methods. Concrete Local/Cerbos test-helper vocabulary is not a second production interface authority.
 - Keycloak authenticates. Event domain facts, tenant state, membership, consent, legal entities, and resource state authorize.
 - Tenant query filters and entity-first repositories remain mandatory isolation boundaries.
@@ -75,10 +80,11 @@ The typed provider port and both MediatR/HAL consumers exist, but Phase 1 Task 1
 8. Query authorization is added only to named disclosure-sensitive collections and executes before count/pagination/projection.
 9. Breaking replacement is required; no compatibility shim or dual production authority.
 10. Permission behavior may be preserved or narrowed only unless explicit widening approval is added.
+11. HAL consolidation belongs in Phase 5 after provider parity; it may remove development-only policy types and route aliases directly, but it must retain typed facts, fail-closed omission, explicit registration, and exact route metadata ownership.
 
 ## Deleted And Deferred Scope
 
-Deleted from this workstream: Domain policy AST, persisted universal policy generations, AST-to-Cerbos compiler, generic policy store/control plane, compatibility translations, and BFF/UI-local authorization gates.
+Deleted from this workstream: Domain policy AST, persisted universal policy generations, AST-to-Cerbos compiler, generic policy store/control plane, compatibility translations, and BFF/UI-local authorization gates. HAL policy/route consolidation is no longer deferred, but remains a Phase 5 implementation slice constrained by the typed authorization path.
 
 Deferred to separate future workstreams: tenant external PDP, policy administration API, Policy Studio, user-authored DSL, policy import/export, Keycloak/OpenID CAEP integration, and database row-level security.
 
@@ -115,6 +121,7 @@ External sources were used only for neutral behavioral constraints. No source co
 - Existing cache/outbox infrastructure must be traced before setting the cross-replica convergence bound.
 - Disclosure-sensitive collection inventory is intentionally deferred to Phase 4 entry; a universal query planner is forbidden.
 - Cerbos observed-revision and health signals must be confirmed against the installed integration before implementation details are fixed.
+- The exact HAL consolidation shape remains an implementation-time decision: classify repeated, custom, and stateful policies from the relation/action/route inventory before choosing shared builders or feature modules. The plan forbids a single god-class and dynamic reflection-based registration.
 
 ## Handoff Notes
 
@@ -128,3 +135,14 @@ External sources were used only for neutral behavioral constraints. No source co
 - Preserve tenant filters, entity-returning repositories, handler DTO mapping, manual validators, BFF token secrecy, and generated-migration discipline.
 - Missing subject, tenant, resource, or trusted facts must continue to deny; Cerbos storage pre-create remains fail closed until its policy mapping is implemented.
 - Do not check Phase 2 parity, its acceptance criteria, or any Phase 3-5 item from the current focused receipts. Run and record each exact phase gate only when its phase criteria are actually met.
+
+### Handoff — 2026-08-18 Europe/Brussels
+
+- **Current state:** Planning artifacts now include the deferred HAL policy/route consolidation as Phase 5 work; runtime implementation state is unchanged at 5/19 tasks complete.
+- **Next action:** Finish Phase 1/2 typed-fact removal, EventTeam enforcement, and full Local/Cerbos parity before touching HAL policy structure.
+- **Blockers:** Phase 2 parity and the exact before/after HAL relation-action-route inventory are required before consolidation.
+- **Modified files:** `authorization-platform-redesign-plan.md`, `authorization-platform-redesign-context.md`, and `authorization-platform-redesign-tasks.md` only.
+- **Validation:** Planning-only update; no runtime code or tests were changed. Run the plan's phase gates during implementation, not during this planning update.
+- **Documentation impact:** The authorization plan now owns the previously deferred HAL policy/route work; canonical product docs remain implementation-phase work.
+- **Risks:** Dropping a relation or widening a policy during consolidation would be a security regression; preserve explicit registration and graph/integration coverage.
+- **Notes for next contributor/agent:** Use `HateoasRegistrationGraphTests` and the API HAL suites as the inventory/behavior anchors. Do not recreate the rejected generic policy DSL, compiler, or dynamic policy registry.

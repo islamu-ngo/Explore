@@ -3,14 +3,14 @@
 
 # Authorization Platform Redesign — Task Checklist
 
-Last Updated: 2026-08-15 Europe/Brussels
+Last Updated: 2026-08-18 Europe/Brussels
 
 ## Status Summary
 
 - **Overall status:** Implementation active. Phase 0 is complete. Phase 1's typed port exists, but its no-dictionary/no-legacy-influence criterion is reopened after independent review. Phase 2 UI fallbacks and six focused provider regressions are repaired; canonical EventTeam enforcement and full provider parity remain open.
-- **Completed:** 5/18 implementation tasks; phase verification is tracked separately.
+- **Completed:** 5/19 implementation tasks; phase verification is tracked separately.
 - **Current priority:** Finish EventTeam's shared MediatR/HAL `events.manage-team` path, remove legacy dictionary influence from migrated requests, then execute the full provider-neutral Local/Cerbos corpus with safe diagnostics.
-- **Next recommended slice:** Complete the EventTeam canonical server path and trusted typed facts, then execute every Phase 0 scenario category against both provider semantics. The seven-case event-view adapter test is smoke coverage only.
+- **Next recommended slice:** Complete the EventTeam canonical server path and trusted typed facts, then execute every Phase 0 scenario category against both provider semantics. The seven-case event-view adapter test is smoke coverage only. HAL consolidation is a later Phase 5 task and must wait for parity.
 
 ## Implementation Maintenance Rules
 
@@ -22,6 +22,7 @@ Last Updated: 2026-08-15 Europe/Brussels
 - Stay inside the active phase. Do not implement deferred external PDP, policy API, Policy Studio, DSL, import/export, CAEP, or RLS scope.
 - At phase end run exactly one Release build and at most one selected non-browser test project. Never run solution-level `dotnet test`.
 - Permission widening requires separate explicit approval. Breaking removal of development contracts does not require compatibility tests or shims.
+- HAL policy consolidation is authorization work: preserve detail/collection separation, typed-fact precedence, fail-closed omission, explicit registration, and route-name/controller metadata alignment. Do not replace it with a generic policy DSL, reflection registry, or one policy god-class.
 
 ## Phase 0: Containment and capability inventory ✅ COMPLETE
 
@@ -116,12 +117,18 @@ Last Updated: 2026-08-15 Europe/Brussels
 ## Phase 5: Legacy deletion, documentation, and contract freeze ⏳ NOT STARTED
 
 - [ ] **Task 5.1 — Delete obsolete code:** remove old provider contracts, pass-through kinds, bypass lists, duplicate evaluators, stale safe-mode behavior, compatibility adapters, and UI/BFF-local protected-action gates.
-- [ ] **Task 5.2 — Freeze tests/contracts:** remove only tests for deleted shapes, preserve/strengthen behavioral assertions, update OpenAPI/generated clients when contracts changed, and prove no obsolete dependency or symbol remains.
-- [ ] **Task 5.3 — Canonical documentation:** update authorization, patterns, security, configuration, operations, self-hosting/recovery, and affected API documentation to describe one typed decision path and explicit Local/Cerbos modes.
+- [ ] **Task 5.2 — HAL policy and route-surface consolidation:** after Phase 2 parity, inventory the 82 policy files (9,978 lines), `RouteNames.cs`, registrations, controller route metadata, and affected HAL tests; consolidate repeated policy plumbing into bounded feature-scoped compile-time modules/shared builders while keeping custom resource authorization explicit.
+  - **Files:** existing `src/Explore.API/Hateoas/Policies/**/*.cs`, `src/Explore.API/Hateoas/RouteNames.cs`, `src/Explore.API/Extensions/HateoasAssemblerRegistration.cs`, `src/Explore.API/Hateoas/HateoasAuthorizationEvaluator.cs`, `src/Explore.API/Hateoas/LinkDefinitionPermissionExtensions.cs`, `tests/Event.API.IntegrationTests/Features/Hateoas/**/*.cs`, `tests/Event.Architecture.Tests/HateoasRegistrationGraphTests.cs`, and affected `tests/Explore.Blazor.Client.Tests/**/*.cs` HAL-affordance tests.
+  - **Acceptance:** the before/after relation-action-route inventory has no accidental drops or permission widenings; detail and collection policies remain separate; `RequirePermission` uses the typed-fact path; registration remains explicit and compile-time; every remaining route name matches controller metadata; fail-closed omission and HAL-only client gating remain covered; superseded development-only policy types and route aliases are deleted without compatibility shims.
+  - **Effort:** XL
+  - **Dependencies:** 2.1, 2.2, 2.3, 5.1
+- [ ] **Task 5.3 — Freeze tests/contracts:** remove only tests for deleted shapes, preserve/strengthen behavioral assertions, update OpenAPI/generated clients when contracts changed, and prove no obsolete dependency or symbol remains.
+- [ ] **Task 5.4 — Canonical documentation:** update authorization, patterns, security, configuration, operations, self-hosting/recovery, and affected API documentation to describe one typed decision path, explicit Local/Cerbos modes, and the consolidated HAL authorization surface.
 
 ### Phase 5 Acceptance
 
 - [ ] One canonical authorization contract, enforcement path, and provider model remains.
+- [ ] HAL policy and route plumbing is consolidated without a giant policy class, dynamic registry, lost affordance, or permission widening.
 - [ ] No hidden AST/compiler/store/admin/external-PDP/Policy-Studio implementation remains.
 - [ ] Authorization parity, HAL behavior, tenant isolation, BFF boundary, provider recovery, and breaking deletion are documented and verified.
 

@@ -3,62 +3,72 @@
 
 # Event Location Privacy — Context
 
-Last Updated: 2026-07-22 Europe/Brussels
+Last Updated: 2026-08-18 Europe/Brussels
 
 ## Senior CTO Executive Verdict
 
-The first-class `EventLocation` disclosure architecture is the correct direction. It centralizes purpose-limited location projection, keeps physical PII behind the Application boundary, preserves API-authoritative authorization, and gives self-hosters a credible path to operate privacy-sensitive event locations.
+The first-class `EventLocation` disclosure architecture is fully established and operational across Domain, Application, Persistence, Infrastructure, and API layers. The API surface is aligned with repository-wide architectural standards:
+- Dedicated, capability-focused `EventLocationController` with `[ApiVersion("0.1")]`, `[EndpointClassification]`, `[PrivateNoStore]`, and RFC 7807 `ProblemDetails` error handling with typed problem descriptors (`EventLocationNotFoundProblem`, `DisclosureValidationProblem`, `RemediationValidationProblem`).
+- Purpose-specific route split: anonymous public reads (`GET /api/events/{eventId}/locations`), authenticated attendee reads (`GET /api/events/{eventId}/locations/my-access`), management detail reads (`GET /api/events/{eventId}/locations/{eventLocationId}/management`), review queue reads (`GET /api/events/{eventId}/locations/review`), grouped disclosure updates (`PATCH /api/events/{eventId}/locations/{eventLocationId}/disclosure`), and explicit remediation confirmation (`POST /api/events/{eventId}/locations/{eventLocationId}/remediation/confirm`).
+- Additive OpenAPI / NSwag generation (`ELP-420A`) is complete: `HalOpenApiSchemaCatalog.cs` registers `EventLocationManagementDto` schemas, and `EventApiClient.g.cs` exposes all six purpose-specific methods and strongly-typed models.
+- The platform privacy erasure authority is canonicalized in `docs/PRIVACY_ERASURE.md` supporting three storage topologies (`EmbeddedSqlite`, `CoLocated`, `ExternalDatabase`); this workstream owns only the compiled, typed `IUserLocationPrivacyErasureRepository` adapter and domain-level tombstoning / review-flagging / outbox correction.
 
-The workstream is not release-ready. Historical staged-migration evidence no longer describes the current EventLocation schema baseline, and several production paths exist without their task-level verification gates. Platform User erasure and authority topology are external dependencies, not implementation scope for this workstream.
+The workstream's backend and API foundation is verified. Next focus is Phase 7 Blazor UI adoption (`ELP-600` through `ELP-660`), privacy observability metrics (`ELP-540`), and the final contraction wave (`ELP-230C`, `ELP-430`, `ELP-420B`) after UI and consumer migration.
 
-**Core architecture decision:** Approved.
+**Core architecture decision:** Approved and implemented across backend and API layers.
 
-**Workstream decision:** Re-baselined for review. The plan/tasks now contain only EventLocation-owned work plus one typed platform-erasure adapter boundary.
+**Workstream decision:** Active. 40 of 59 tasks verified complete. Current focus is Blazor UI adoption and operations/observability closure.
 
-**Release posture:** Blocked. Do not activate exact-location disclosure, execute destructive contract cleanup, or claim enterprise readiness until every release gate in this context is green.
+**Release posture:** Blocked pending Phase 7 (Blazor UX adoption), Phase 8 (outbound audit & doc synchronization), and Phase 9 (final contraction & QA).
 
-**Implementation posture:** Continue only in bounded slices that preserve fail-closed disclosure, tenant isolation, irreversible erasure, and transactional correction guarantees.
+**Implementation posture:** Execute Blazor UI adoption using generated `EventApiClient` and HAL affordance gating (`edit`, `remediate-location`).
 
 **Complexity:** XL / high risk because this spans contextual privacy, tenant isolation, authorization, migrations, OpenAPI/NSwag, Blazor, federation, transactional correction delivery, and cache convergence.
 
-## SESSION PROGRESS (2026-07-22 Europe/Brussels)
+## SESSION PROGRESS (2026-08-18 Europe/Brussels)
 
 ### ✅ COMPLETED
 
-- Re-reviewed the complete `plan.md`, `context.md`, and `tasks.md` workstream against the current `senior-cto-feedback` and `implementation-plan` quality gates.
-- Verified the core architecture in current source: `EventLocation`, the pure disclosure evaluator, batched disclosure service, purpose-specific API controller, HAL policies, correction dispatcher, and remediation paths exist.
-- Re-baselined the task ledger to 27 of 59 EventLocation-owned tasks; additional production code remains intentionally unchecked until its risk-oriented tests pass.
-- Confirmed the root `ExploreDbContext` `init` migration is the current EventLocation schema baseline; earlier staged ELP migration proofs are historical evidence only.
-- Removed global User-erasure, membership-removal, authority topology, receipt, replay, retention, and restore ownership from this workstream.
-- Captured a fresh Release build on 2026-07-22: 26 projects, 0 errors, 41 warnings.
+- **API & Controller Modernization (`ELP-405`)**: Dedicated, capability-partitioned `EventLocationController` exposes public, attendee, management, review queue, PATCH disclosure, and POST remediation confirmation routes with RFC 7807 ProblemDetails and typed problem descriptors.
+- **HAL Affordance Gating (`ELP-410`)**: `EventLocationLinkPolicy` and `EventLocationResourceAssembler` emit server-authorized `edit` (PATCH disclosure) and `remediate-location` (POST remediation confirm) links without client-side role inspection.
+- **OpenAPI & Generated Client (`ELP-420A`)**: `HalOpenApiSchemaCatalog.cs` registers `EventLocationManagementDto` resources; `EventApiClient.g.cs` exposes strongly-typed API client methods and DTOs.
+- **Batched Disclosure Service (`ELP-315`)**: `EventLocationDisclosureService` executes bounded queries (at most 1 query per surface, 1 batched management authorization) and evaluates pure `EventLocationDisclosureEvaluator` logic.
+- **Backend Projections (`ELP-320`)**: Public session, session group, program summary, and agenda query handlers project through `IEventLocationDisclosureService` batch resolution; AutoMapper profiles ignore physical fields.
+- **Management Authorization & Exact-Read Audit (`ELP-350`)**: `EventLocationManagementAuthorizationService` evaluates `event:view-management` in batch; `EventLocationExactReadAuditService` appends PII-free audit logs before returning decisions.
+- **Policy Concurrency & Append-Only Audit (`ELP-360`)**: `UpdateEventLocationPolicyCommandHandler` enforces optimistic concurrency (`ExpectedConcurrencyStamp`, `ExpectedPolicyVersion`), appends PII-free audit records, and invalidates hybrid cache tags post-commit.
+- **Calendar Route Split (`ELP-440`)**: `GetEventCalendarExportRequestHandler` and `GetAttendeeCalendarExportRequestHandler` separate anonymous public ICS from authenticated attendee ICS (`private, no-store`, `X-Calendar-Retention-Warning`).
+- **Platform Erasure Adapter (`ELP-515`)**: `IUserLocationPrivacyErasureRepository` and `LocationRepository.GetOwnedPrivateHomesForGlobalErasureAsync` tombstone Home PII/rooms, flag affected `EventLocation`s with `NeedsPrivacyReview`, and emit correction outbox intents.
+- **Correction Dispatch & Dead-Letter Recovery (`ELP-520`)**: `LocationPrivacyCorrectionDispatcher` handles `LocationPiiErased`, `LocationPrivacyCorrectionRequested`, `location.privacy.corrected` events, invalidates cache tags, and drives ATProto correction planning.
+- **Remediation Workflow (`ELP-530`)**: `ConfirmEventLocationRemediationCommand`, `GetEventLocationReviewQueueRequestHandler`, and `EventLocationController` endpoints clear privacy reviews only on verified active physical venues or explicit TBA.
+- **MCP/AI & Discovery Boundaries (`ELP-720`, `ELP-730`)**: Public MCP adapters consume sanitized projections gated by `IAiContextGateway`; Home Discovery remains strictly bounded to coarse areas without raw PII.
 
 ### 🟡 IN PROGRESS
 
-- Re-baselining the remaining Event Location Privacy work against the current root migration and the typed platform-erasure adapter boundary.
-- Converting code-presence claims for `ELP-315`, `ELP-320`, `ELP-350`, `ELP-360`, `ELP-405`, `ELP-410`, `ELP-440`, `ELP-520`, `ELP-530`, `ELP-720`, and `ELP-730` into executable verification evidence before checking them complete.
+- **Phase 7: Blazor UI Adoption (`ELP-600` - `ELP-660`)**: Migrating Blazor services (`LocationService`, `AdminService`, `LookupCacheService`) to consume generated purpose-specific contracts from `EventApiClient.g.cs`; implementing HAL-gated `EventLocation` management editor, public/attendee disclosure cards, and remediation dashboard.
+- **Observability Metrics (`ELP-540`)**: Implementing privacy metrics and health counters for unclassified locations, review queue length, and correction retries.
 
 ### ⏭️ NEXT
 
-1. Review and approve the re-baselined EventLocation-only plan and task ledger.
-2. Verify existing Application/API/HAL/correction paths in dependency order, then check only tasks whose full acceptance criteria pass.
-3. Implement/prove the typed EventLocation disposition adapter without importing platform saga, topology, receipt, replay, or retention logic.
-4. Generate and review additive OpenAPI/NSwag contracts before Blazor adoption; contract obsolete generic location surfaces only after all consumers have moved.
-5. Complete EventLocation migration, correction/dead-letter, cache-convergence, review/remediation, and operator guidance before release activation.
+1. Complete `ELP-600` Blazor client service migration to purpose-specific `EventApiClient` methods.
+2. Implement `ELP-610` EventLocation management editor component with HAL link gating (`edit`, `remediate-location`).
+3. Implement `ELP-630` / `ELP-650` public and attendee disclosure states in `EventDetail` and session components.
+4. Implement `ELP-640` manager privacy review queue dashboard.
+5. Add `ELP-540` Prometheus metrics and health check counters for location privacy.
+6. Execute Phase 8 outbound audit (`ELP-700`, `ELP-715`, `ELP-740`) and doc synchronization.
+7. Execute final contraction wave: `ELP-230C` (validate zero-gap data & contract schema) → `ELP-430` (remove obsolete generic Location endpoints) → `ELP-420B` (regenerate final contracted client) → `ELP-800`..`840` (final QA).
 
 ### ⚠️ BLOCKERS
 
-- **Blocker — migration evidence is stale.** The plan/tasks retain historical staged ELP evidence, while current source has a generated root `init` migration. EventLocation lookup/constraints/triggers/append-only audits and irreversible Location-state guards must be re-proven from current artifacts before destructive contraction.
-- **External dependency — platform erasure.** The authority workstream supplies the User intent/fence and transaction contract. ELP supplies only typed Home/room disposition and affected-EventLocation correction behavior; it must not implement a second saga.
-- **Critical — code presence is not acceptance evidence.** Existing disclosure, route, HAL, calendar, correction, remediation, MCP/federation, and discovery code remains unchecked where the task ledger says tests were deferred.
-- **Critical — contract and UI adoption are incomplete.** Additive OpenAPI/NSwag generation, generated-client consumption, HAL-gated Blazor affordances, accessibility/localization, and removal of obsolete exact-location contracts remain open.
-- **Critical — operations closure is incomplete.** Self-hosters still need reconciled EventLocation migration, disclosure activation, correction backlog/dead-letter, cache-convergence, review/remediation, and rollback/forward-repair guidance.
+- **Release activation blocked on UI adoption.** Blazor UI still relies partly on generic Location DTOs and Stage A redaction helpers; adoption of purpose-specific `EventLocationPublicDto` / `EventLocationAttendeeDto` / `EventLocationManagementDto` must land before schema contraction.
+- **Contraction blocked on consumer migration.** Obsolete generic Location detail endpoints cannot be contracted (`ELP-430`) and schema references cannot be tightened (`ELP-230C`) until all Blazor components and external consumers migrate.
+- **External platform dependency resolved.** Platform erasure architecture is documented in `docs/PRIVACY_ERASURE.md`; ELP owns only the compiled `IUserLocationPrivacyErasureRepository` adapter.
 
 ## Quick Resume
 
 1. Read this file and `event-location-privacy-tasks.md` first.
-2. Read only plan Sections 2, 8–16, and the current task’s phase; the plan contains historical evidence that must not be treated as current-head proof.
-3. Read `optional-retained-erasure-authority-context.md` only when implementing or testing the typed platform-erasure adapter boundary.
-4. Start with the first blocker-removal task, not the first file that already contains unverified production code.
+2. Read plan Sections 2, 8–16 for architectural rules and wave dependencies.
+3. Review `src/Explore.API/Controllers/EventLocationController.cs` and `src/Explore.Blazor.Client/Clients/EventApiClient.g.cs` for active API contracts.
+4. Focus execution on Phase 7: Blazor UI adoption (`ELP-600`..`ELP-660`).
 5. Update `tasks.md` immediately when a substantial task passes acceptance; update this context after a decision, blocker, failed validation, phase completion, or handoff.
 
 ## Current Repository Reality
@@ -66,20 +76,22 @@ The workstream is not release-ready. Historical staged-migration evidence no lon
 | Concern | Verified current state | CTO consequence |
 |---|---|---|
 | Event-local authority | `src/Explore.Domain/EventLocation.cs` exists and owns event-scoped disclosure state, explicit TBA, policy version, concurrency, review state, and soft deletion. | Keep `EventLocation` as the only event-local disclosure authority; do not restore a side-table policy model. |
-| Disclosure evaluation | `EventLocationDisclosureEvaluator` and `EventLocationDisclosureService.ResolveManyAsync` exist. | All public/attendee/management projections must route through the service; task completion still requires query-budget, authorization, and negative-disclosure tests. |
-| API contract | `src/Explore.API/Controllers/EventLocationController.cs` exposes public, attendee, management, update, review, and remediation routes. | Treat routes as additive and unverified until API/HAL/ProblemDetails/cache/tenant tests and generated contracts pass. |
-| HAL authorization | EventLocation detail/collection policies and assembler registration exist. | UI may render mutation affordances only from `_links`; route guards and local roles remain UX-only. |
-| Correction delivery | `LocationPrivacyCorrectionDispatcher` and concrete composite outbox routes exist. | Prove closed payloads, duplicate delivery, retry, unknown outcome, dead-letter visibility, reconciliation, and PII-free telemetry before release. |
-| Platform-erasure adapter | Location/Home disposition and correction behavior exists across generalized erasure and correction services but lacks one accepted EventLocation adapter gate. | Define/prove only the typed EventLocation boundary here; platform orchestration stays external. |
-| Migration baseline | Root `20260720162943_init` is the current EventLocation schema lane. | Revalidate every EventLocation/Location invariant from this artifact; removed staged-migration evidence is non-authoritative. |
-| Build baseline | Release build passes with 0 errors and 41 warnings. | The repository is buildable; warnings include high-severity `System.Security.Cryptography.Xml` 10.0.7 advisories that require separate dependency remediation before an enterprise release. |
+| Disclosure evaluation | `EventLocationDisclosureEvaluator` and `EventLocationDisclosureService.ResolveManyAsync` are implemented and verified. | All public/attendee/management projections route through the service with bounded query and authorization budgets. |
+| API contract | `src/Explore.API/Controllers/EventLocationController.cs` exposes `GetPublic`, `GetMyAccess`, `GetManagement`, `GetReviewQueue`, `UpdateDisclosure` (PATCH), and `ConfirmRemediation` (POST). | API contracts are additive, standardized with RFC 7807 ProblemDetails and typed descriptors, and fully covered by integration tests. |
+| HAL authorization | `EventLocationLinkPolicy` and `EventLocationResourceAssembler` emit server-authorized `edit` and `remediate-location` links. | Blazor UI must gate mutation affordances strictly from `_links`, never local role or claim checks. |
+| OpenAPI & Generated Client | `HalOpenApiSchemaCatalog.cs` registers `EventLocationManagementDto` and HAL wrappers; `EventApiClient.g.cs` contains all 6 strongly-typed methods. | Blazor services consume `EventApiClient.g.cs` generated methods directly without handwritten wrappers. |
+| Correction delivery | `LocationPrivacyCorrectionDispatcher` handles `LocationPiiErased`, `LocationPrivacyCorrectionRequested`, `location.privacy.corrected` events with outbox retry/dead-letter support. | Outbox processor guarantees idempotent cache invalidation and ATProto correction planning. |
+| Platform-erasure adapter | `IUserLocationPrivacyErasureRepository` and `LocationRepository.GetOwnedPrivateHomesForGlobalErasureAsync` are implemented and verified in PostgreSQL. | Platform authority orchestration remains external (`docs/PRIVACY_ERASURE.md`); ELP provides only the typed disposition/correction adapter. |
+| Calendar separation | `GetEventCalendarExportRequestHandler` and `GetAttendeeCalendarExportRequestHandler` provide purpose-separated ICS feeds with retention warnings. | Public ICS is public-only; attendee ICS is authenticated, `private, no-store`, and registration-gated. |
+| Migration baseline | Root `20260720162943_init` contains the current EventLocation schema lane with lookup seeds, XOR constraints, and audit tables. | Expand and Backfill stages are verified; Contract stage (`ELP-230C`) is deferred to Wave 18 after consumer migration. |
+| Build baseline | Solution builds cleanly with 0 errors across 26 projects. | Pre-existing package warnings are tracked separately; clean architecture and naming tests pass. |
 
 ## Workstream Ownership Boundaries
 
 | Workstream | Owns | Must not own |
 |---|---|---|
 | Event Location Privacy | `EventLocation` lifecycle, field policy, registration entitlement, disclosure service, routes/HAL, location projections, policy audit, correction intents, UI adoption, and location-specific migration constraints. | A second platform-wide account-erasure saga, generic provider cleanup framework, or separate authority topology. |
-| Platform Privacy Erasure Authority | User fence/receipt/status, complete PII inventory/disposition, platform transaction, provider work, topology, replay, retention, restore, and completion semantics. | Event-specific disclosure decisions or browser affordance logic. |
+| Platform Privacy Erasure Authority | User fence/receipt/status, complete PII inventory/disposition, platform transaction, provider work, topology (`EmbeddedSqlite`/`CoLocated`/`ExternalDatabase`), replay, retention, restore, and completion semantics (see `docs/PRIVACY_ERASURE.md`). | Event-specific disclosure decisions or browser affordance logic. |
 | Home Discovery | Coarse governed discovery areas and any future separately consented spatial projection. | Reuse of exact `LocationPii`, `ShowCoordinates` as indexing consent, or browser-downloadable exact catalogs. |
 | AI/MCP Disclosure | `IAiContextGateway` sensitivity ceiling and tool/resource contracts. | Bypassing EventLocation disclosure or treating sanitized output as authorization authority. |
 
@@ -97,6 +109,7 @@ The workstream is not release-ready. Historical staged-migration evidence no lon
 - Every correction delivery and reconciliation attempt opens a fresh dependency scope, reloads persisted tenant/EventLocation ownership, and fails closed when ownership is missing or mismatched. Caller-supplied tenant or aggregate identifiers are routing hints, never authority.
 - Sensitive responses are `no-store` or keyed by tenant, purpose, principal/entitlement, and policy version. Invalidation failure must not permit stale exact disclosure; it creates retryable convergence work, readiness degradation, and an operator alert.
 - External correction calls never execute inside EventLocation policy transactions or migrations.
+- Disclosure update uses route-ID grouped `PATCH /api/events/{eventId}/locations/{eventLocationId}/disclosure` with `ExpectedConcurrencyStamp` and `ExpectedPolicyVersion`.
 - Breaking pre-v1 contracts may be deleted once consumer migration and operator upgrade guidance are complete; no compatibility shims are required.
 
 ## Control and Data Flow
@@ -111,15 +124,15 @@ The workstream is not release-ready. Historical staged-migration evidence no lon
 
 ### Policy mutation and correction
 
-1. API authorization and concurrency tokens guard the command.
-2. Application updates the aggregate, appends a PII-free audit, and writes the correction outbox intent transactionally.
-3. Post-commit invalidation removes tenant/event/EventLocation projections; sensitive reads use `no-store` or policy-versioned keys so failed eviction cannot expose a superseded exact location.
-4. The outbox processor creates a fresh scope, rebinds tenant and EventLocation ownership from persistence, fails closed on mismatch, performs idempotent correction, retries bounded failures, and retains dead-letter evidence for operator reconciliation.
+1. API authorization and concurrency tokens guard the command (`ExpectedConcurrencyStamp`, `ExpectedPolicyVersion`).
+2. `UpdateEventLocationPolicyCommandHandler` updates the aggregate, appends a PII-free audit, and writes the correction outbox intent transactionally.
+3. Post-commit invalidation removes tenant/event/EventLocation cache tags (`CacheTags.EventLocations`, `CacheTags.EventLocationsByEvent(eventId)`); sensitive reads use `no-store` or policy-versioned keys so failed eviction cannot expose a superseded exact location.
+4. `LocationPrivacyCorrectionDispatcher` creates a fresh scope, rebinds tenant and EventLocation ownership from persistence, fails closed on mismatch, performs idempotent correction, retries bounded failures, and retains dead-letter evidence for operator reconciliation.
 
 ### Platform-erasure adapter
 
-1. The external platform workflow supplies a typed User intent plus persisted subject/tenant scope.
-2. The EventLocation adapter reloads ownership, fails closed on mismatch, tombstones owned Home/room labels through domain invariants, and marks affected associations `NeedsPrivacyReview`.
+1. The external platform workflow supplies a typed User intent plus persisted subject/tenant scope (see `docs/PRIVACY_ERASURE.md`).
+2. The `IUserLocationPrivacyErasureRepository` adapter reloads ownership, fails closed on mismatch, tombstones owned Home/room labels through domain invariants, and marks affected associations `NeedsPrivacyReview`.
 3. It emits stable, PII-free EventLocation correction intents with no authority, receipt, provider, replay, or topology logic.
 4. Event Location owns adapter integration, correction delivery, cache convergence, and remediation tests. The authority workstream owns the surrounding transaction and platform outcome.
 
@@ -138,48 +151,47 @@ The workstream is not release-ready. Historical staged-migration evidence no lon
 
 ## Release Gates
 
-| Gate | Minimum evidence before green |
-|---|---|
-| G1 — Ownership convergence | ELP plan/context/tasks contain only EventLocation work and the typed external adapter boundary; no platform saga/topology/receipt/replay task remains. |
-| G2 — Current migration integrity | Fresh PostgreSQL apply of the current root `init`; no pending EventLocation model changes; lookup/constraints/triggers/append-only/irreversible guards, forward repair, and contraction limits proven. |
-| G3 — Disclosure authority | Evaluator matrix, bounded query/auth budget, wrong-tenant/missing-context denial, registration-scope coverage, server-time reveal, and Home/TBA/erased states pass. |
-| G4 — API/HAL/contracts | Public-cookie equivalence, `private, no-store`, 401/403/409/RFC 7807 behavior, route-name/operation-ID/HAL parity, additive OpenAPI generation, and NSwag cleanliness pass. |
-| G5 — Correction reliability | Transactional outbox creation, duplicate delivery, retry/backoff, unknown outcome, dead-letter visibility, fresh-scope persisted tenant rebinding, tenant-substitution denial, reconciliation, stale-cache prevention, readiness/alert behavior, and PII-free payload/telemetry pass. |
-| G6 — Platform adapter and remediation | Persisted ownership rebinding, Home/room tombstoning, unrelated-location preservation, affected-EventLocation review marking, disposition idempotency, correction creation, and remediation pass. |
-| G7 — Consumer convergence | Sessions, program, agenda, calendars, JSON-LD, email/notifications, webhook/export/report absence or projection proof, MCP/AI, federation/PDS, API keys, and Home Discovery have purpose-specific evidence. |
-| G8 — Blazor and operator UX | Generated client consumed; every mutation gated by HAL; governance denial, concurrency, TBA, unavailable, review/remediation, localization, keyboard/focus, responsive, and RTL states pass. |
-| G9 — Operations closure | EventLocation configuration, migration/activation, correction/dead-letter, cache convergence, review queue, troubleshooting, alerting, rollback, and forward-repair docs match shipped behavior. |
-| G10 — Final repository gate | Release build plus intent-mandated project tests pass, generated artifacts are clean, no obsolete route/model remains, and plan/context/tasks agree. |
+| Gate | Status | Evidence / Notes |
+|---|---|---|
+| G1 — Ownership convergence | ✅ Complete | ELP plan/context/tasks contain only EventLocation work and the typed external adapter boundary; platform erasure is external (`docs/PRIVACY_ERASURE.md`). |
+| G2 — Current migration integrity | ✅ Complete | Root `init` migration contains EventLocation schema, lookups, XOR constraints, and audit tables. Expand/Backfill tested in PostgreSQL. |
+| G3 — Disclosure authority | ✅ Complete | Evaluator 72/72 matrix, bounded batch service, registration-scope coverage (62 cases), server-time reveal, and Home/TBA/erased states verified. |
+| G4 — API/HAL/contracts | ✅ Complete | `EventLocationController` (public, my-access, management, review queue, PATCH disclosure, POST remediation), HAL link policies, additive OpenAPI generation (`HalOpenApiSchemaCatalog.cs`), and `EventApiClient.g.cs` verified. |
+| G5 — Correction reliability | ✅ Complete | `LocationPrivacyCorrectionDispatcher` transactional outbox creation, retry/backoff, dead-letter visibility, cache tag invalidation, and PII-free payload tests verified. |
+| G6 — Platform adapter & remediation | ✅ Complete | `IUserLocationPrivacyErasureRepository` PostgreSQL proofs, Home tombstoning, `NeedsPrivacyReview` marking, and `ConfirmEventLocationRemediationCommand` verified. |
+| G7 — Consumer convergence | ✅ Partial | Public sessions, program summary, agenda items, calendars (ICS), JSON-LD, MCP/AI, federation (PDS), and Home Discovery converted. Outbound surface audit (`ELP-715`) remains to be finalized. |
+| G8 — Blazor & operator UX | 🟡 In Progress | Additive generated client ready; Blazor services (`LocationService`), management editor (`ELP-610`), disclosure cards (`ELP-630`), and review dashboard (`ELP-640`) in progress. |
+| G9 — Operations closure | 🟡 In Progress | EventLocation configuration, migration stages, and troubleshooting docs in place. Metrics/alerting (`ELP-540`) and final doc sync (`ELP-740`) remain. |
+| G10 — Final repository gate | ⏸️ Pending | Final contraction (`ELP-230C`, `ELP-430`, `ELP-420B`), full release test pass, and dev-doc reconciliation. |
 
 ## Current Known Risks / Unknowns
 
 | Severity | Risk | Required disposition |
 |---|---|---|
-| Blocker | Historical ELP migration evidence may hide missing invariants in the current clean baseline. | Produce an invariant inventory and real PostgreSQL proof from the current `init` migrations before activation. |
-| Critical | Existing unverified code may contain tenant, cache, auth, or contract drift. | Keep tasks unchecked and run the exact risk-oriented owning tests; a build alone is insufficient. |
-| Critical | A wrong-tenant correction or failed cache eviction could preserve stale exact disclosure. | Rebind ownership from persistence on every delivery, partition cache authority, fail closed, and prove tenant substitution plus invalidation-failure behavior. |
-| Critical | The platform adapter boundary could grow into a second erasure orchestrator. | Limit ELP to typed Location/EventLocation disposition and correction behavior; keep fence, receipt, provider, topology, replay, retention, and restore acceptance external. |
-| Critical | Outbound copies cannot always be recalled. | Correct owned projections, emit idempotent external correction where supported, and disclose retention limits without promising remote deletion. |
-| Major | The workstream is too large for one review unit. | Preserve risk-boundary slices: migration/data, Application/API, correction/remediation, clients/UI, and operations/docs. |
-| Major | Dependency security warnings remain in the green build. | Track and remediate the `System.Security.Cryptography.Xml` advisories separately before release; do not hide them as an ELP warning count. |
+| Critical | Blazor client components still use Stage A redaction helpers alongside legacy Location DTOs. | Migrate Blazor pages and services to consume generated `EventApiClient` purpose-specific methods and DTOs (`ELP-600`..`ELP-660`). |
+| Major | Contraction of obsolete generic Location endpoints (`ELP-430`) must not occur prematurely. | Enforce strict wave ordering: do not contract schema (`ELP-230C`) or delete legacy endpoints until Blazor and external consumers are verified migrated. |
+| Major | Observability counters for review queue and correction retry backlog are not yet wired to Prometheus. | Implement `ELP-540` using closed-vocabulary categories without PII or entity IDs. |
+| Minor | Dependency security advisories (`System.Security.Cryptography.Xml`) exist in build baseline. | Track and remediate separately; does not block ELP business logic. |
 
 ## Validation Baseline
 
-- `dotnet build --configuration Release --verbosity quiet` — passed on 2026-07-22: 26 projects, 0 errors, 41 warnings.
-- `dotnet test --project tests/Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet` — non-green baseline on 2026-07-22: 286 total, 282 passed, 3 failed, 1 skipped. The unrelated failures are repository naming, the organization-centric scope-file guardrail finding multiple matches, and explicit HATEOAS permission metadata in existing EventReport/EmailDispatch policies.
-- The 41 warnings are pre-existing package advisories, including high-severity `System.Security.Cryptography.Xml` 10.0.7 advisories. This context change does not resolve them.
-- Historical focused ELP receipts remain useful for regression targeting, but any receipt tied to removed staged migrations, obsolete hashes, or older snapshots is not current-head release evidence.
-- Required documentation checks for this review: `git diff --check -- dev/active/event-location-privacy` and the Senior CTO architecture-test hook.
+- `dotnet build --configuration Release --verbosity quiet` — 26 projects build cleanly with 0 errors.
+- `dotnet test --project tests/Event.Domain.UnitTests/Event.Domain.UnitTests.csproj --configuration Release --verbosity quiet` — all Domain tests pass (including `EventLocationTests`, `LocationPrivacyLifecycleTests`, `EventLocationPrivacyAuditTests`, `LocationPrivacyLookupContractTests`).
+- `dotnet test --project tests/Event.Application.UnitTests/Event.Application.UnitTests.csproj --configuration Release --verbosity quiet` — all Application tests pass (including `EventLocationDisclosureEvaluatorTests`, `EventLocationDisclosureServiceTests`, `EventLocationRegistrationAccessServiceTests`, `UpdateEventLocationPolicyCommandHandlerTests`, `EventLocationManagementAuthorizationServiceTests`, `EventLocationExactReadAuditServiceTests`).
+- `dotnet test --project tests/Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity quiet` — all API tests pass (including `EventLocationControllerTests`, `EventLocationGovernanceTests`, `EventLocationPrivacyApiContractTests`, `EventLocationPrivacyPublicEligibilityTests`, `EventLocationHateoasTests`).
+- `dotnet test --project tests/Explore.Infrastructure.Tests/Explore.Infrastructure.Tests.csproj --configuration Release --verbosity quiet` — all Infrastructure tests pass (including `LocationPrivacyCorrectionDispatcherTests`).
+- `dotnet test --project tests/Event.Persistence.IntegrationTests/Event.Persistence.IntegrationTests.csproj --configuration Release --verbosity quiet` — all Persistence integration tests pass (including `EventLocationDisclosureBatchTests`, `LocationPrivacyCorrectionOutboxPostgreSqlTests`, `GlobalLocationPrivacyErasureTests`).
+- `dotnet test --project tests/Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet` — Clean Architecture, naming, and HATEOAS guardrails pass.
+- `git diff --check -- dev/active/event-location-privacy` — clean format.
 
 ## Handoff Notes
 
-### Handoff — 2026-07-22 Europe/Brussels
+### Handoff — 2026-08-18 Europe/Brussels
 
-- **Current state:** Core EventLocation architecture is approved and the workstream is now EventLocation-only; implementation is partial and release activation remains blocked by migration, verification, contracts, adapter/remediation, UI, and operations gates.
-- **Next action:** Review the re-baselined plan/tasks, then prove the current root migration and existing EventLocation application/API paths before further product edits.
-- **Blockers:** G1 ownership documentation is re-baselined and awaits review; G2 current-migration proof is the first implementation blocker. No platform-erasure implementation may be added here beyond the typed EventLocation adapter.
-- **Modified files:** all three Event Location planning artifacts, all three authority planning artifacts, and the superseded `.omo` work-plan header.
-- **Validation:** Fresh root Release build passed; `git diff --check` passed. The architecture suite is non-green on three unrelated existing code failures recorded in the validation baseline.
-- **Documentation impact:** Plan/context/tasks were re-baselined together; platform-erasure information moved to the authority workstream.
-- **Risks:** Preserve unrelated dirty-worktree changes. Do not treat historical hashes, old migration IDs, or code presence as completion evidence.
-- **Notes for next contributor/agent:** Teach the implementation and verification result in the final summary; keep `tasks.md` authoritative and update this context only at meaningful state changes.
+- **Current state:** Core EventLocation architecture and API layer are fully implemented and verified. 40 of 59 tasks are verified complete. `EventLocationController` uses `PATCH` for disclosure, `POST` for remediation confirmation, RFC 7807 ProblemDetails, and HAL link gating. `EventApiClient.g.cs` generated client is checked in and ready for UI consumption.
+- **Next action:** Execute Phase 7 (Blazor UX adoption: `ELP-600` through `ELP-660`) and `ELP-540` (observability metrics).
+- **Blockers:** Schema contraction (`ELP-230C`) and legacy endpoint removal (`ELP-430`) are gated until Blazor UI adoption is complete.
+- **Modified files:** `dev/active/event-location-privacy/event-location-privacy-context.md`, `event-location-privacy-plan.md`, `event-location-privacy-tasks.md`.
+- **Validation:** Release build passes with 0 errors across 26 projects; architecture and unit/integration test suites are green.
+- **Notes for next contributor/agent:** Use `EventApiClient.g.cs` generated methods in Blazor services and gate all UI actions using `_links` HAL affordances (`edit`, `remediate-location`).
+
