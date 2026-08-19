@@ -81,6 +81,7 @@ public class UpdateSettingCommandHandler
         {
             response.Success = false;
             response.Message = authError;
+            response.FailureCode = FailureCodes.AdminRequired;
             return response;
         }
 

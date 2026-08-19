@@ -274,7 +274,7 @@ public class SettingsControllerAuthenticatedTests
             .Returns(_ =>
             {
                 calls.Add("evict");
-                return ValueTask.CompletedTask;
+                return default;
             });
         var controller = CreateSettingsController(mediator);
 
