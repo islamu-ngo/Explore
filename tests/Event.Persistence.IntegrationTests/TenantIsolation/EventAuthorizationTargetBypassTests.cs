@@ -105,7 +105,7 @@ public class EventAuthorizationTargetBypassTests(PostgreSqlContainerFixture fixt
 
     private static DomainEvent CreateEvent(Guid tenantId, Guid actorId, string title)
     {
-        return new DomainEvent
+        return new DomainEvent(EventStatusEnum.Published)
         {
             Id = Guid.CreateVersion7(),
             Title = title,
@@ -116,7 +116,6 @@ public class EventAuthorizationTargetBypassTests(PostgreSqlContainerFixture fixt
             Tenant = null!,
             VisibilityTypeId = (int)VisibilityTypeEnum.Public,
             VisibilityType = null!,
-            EventStatusId = (int)EventStatusEnum.Published,
             EventStatus = null!,
             EventFormatId = (int)EventFormatEnum.Local,
             EventFormat = null!,

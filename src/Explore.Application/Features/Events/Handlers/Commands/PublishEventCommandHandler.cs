@@ -15,6 +15,7 @@ using Explore.Application.Services.Lifecycle;
 using Explore.Domain;
 using Explore.Domain.Enums;
 using Explore.Domain.Federation;
+using Explore.Domain.Services.Lifecycle;
 using MediatR;
 using Microsoft.Extensions.Caching.Hybrid;
 
@@ -29,7 +30,8 @@ public class PublishEventCommandHandler(
     IEventLifecyclePolicyProvider policyProvider,
     IEventLifecycleReadinessEvaluator readinessEvaluator,
     IUserContext userContext,
-    AtprotoEventPublicationPlanner atprotoPublicationPlanner) : IRequestHandler<PublishEventCommand, BaseCommandResponse<Guid>>
+    AtprotoEventPublicationPlanner atprotoPublicationPlanner,
+    TimeProvider timeProvider) : IRequestHandler<PublishEventCommand, BaseCommandResponse<Guid>>
 {
     private const string ConcurrencyConflictCode = "event_publish_concurrency_conflict";
     private const string ReadinessFailedCode = "event_publish_readiness_failed";
@@ -45,17 +47,51 @@ public class PublishEventCommandHandler(
             return Failure(request.Id, "Event publish request is invalid.", validationResult.Errors.Select(error => error.ErrorMessage));
         }
 
+        var @event = await eventRepository.GetById(request.Id);
+        if (@event is null)
+            return Failure(request.Id, "Event not found.", ["Event not found."]);
+
+        EventStatusEnum currentStatus = (EventStatusEnum)@event.EventStatusId;
+        if (currentStatus == EventStatusEnum.Published)
+            return Success(@event.Id, "Event is already published.");
+
+        if (@event.ConcurrencyStamp != request.Request.ExpectedConcurrencyStamp)
+        {
+            return Failure(
+                request.Id,
+                "Event was changed by another request.",
+                ["Refresh the event and try publishing again."],
+                ConcurrencyConflictCode);
+        }
+
+        if (!EventLifecycleRules.CanTransition(currentStatus, EventStatusEnum.Published))
+        {
+            return Failure(request.Id, "Event is not ready to publish.", [PublishTransitionReadinessError(currentStatus)], ReadinessFailedCode);
+        }
+
         var currentUserId = userContext.GetRequiredUserId();
         var federationOutboxId = Guid.CreateVersion7();
-        var federationCreatedAt = DateTime.UtcNow;
+        var notificationFanoutOutboxId = Guid.CreateVersion7();
+        DateTime occurredAt = timeProvider.GetUtcNow().UtcDateTime;
+        var federationCreatedAt = occurredAt;
+        Guid? tenantIdToInvalidate = null;
+        bool mutationAttempted = false;
 
-        return await unitOfWork.ExecuteInTransactionAsync(async token =>
+        BaseCommandResponse<Guid> response = await unitOfWork.ExecuteInTransactionAsync(async token =>
         {
-            var @event = await eventRepository.GetById(request.Id);
-            if (@event is null)
+            tenantIdToInvalidate = null;
+            var attemptEvent = await eventRepository.GetById(request.Id);
+            if (attemptEvent is null)
                 return Failure(request.Id, "Event not found.", ["Event not found."]);
 
-            if (@event.ConcurrencyStamp != request.Request.ExpectedConcurrencyStamp)
+            EventStatusEnum attemptStatus = (EventStatusEnum)attemptEvent.EventStatusId;
+            if (mutationAttempted && attemptStatus == EventStatusEnum.Published)
+            {
+                tenantIdToInvalidate = attemptEvent.TenantId;
+                return Success(attemptEvent.Id, "Event published successfully.");
+            }
+
+            if (attemptEvent.ConcurrencyStamp != request.Request.ExpectedConcurrencyStamp)
             {
                 return Failure(
                     request.Id,
@@ -64,42 +100,51 @@ public class PublishEventCommandHandler(
                     ConcurrencyConflictCode);
             }
 
-            EventLifecyclePolicy policy = await policyProvider.GetEffectivePolicyAsync(@event.TenantId, ValidationProfile.EventPublish, token);
-            LifecycleReadinessResult readiness = readinessEvaluator.Evaluate(@event, policy.Profile, policy);
+            if (!EventLifecycleRules.CanTransition(attemptStatus, EventStatusEnum.Published))
+                return Failure(request.Id, "Event is not ready to publish.", [PublishTransitionReadinessError(attemptStatus)], ReadinessFailedCode);
+
+            EventLifecyclePolicy policy = await policyProvider.GetEffectivePolicyAsync(attemptEvent.TenantId, ValidationProfile.EventPublish, token);
+            LifecycleReadinessResult readiness = readinessEvaluator.Evaluate(attemptEvent, policy.Profile, policy);
             IReadOnlyList<EventLocation> eventLocations = await eventLocationRepository.GetByEventIdAsync(
-                @event.Id,
+                attemptEvent.Id,
                 token);
             readiness = EventLocationPublicationReadinessEvaluator.Include(readiness, eventLocations);
             if (!readiness.IsReady)
                 return Failure(request.Id, "Event is not ready to publish.", readiness.Errors.Select(error => error.Message), ReadinessFailedCode);
 
-            if (@event.EventStatusId == (int)EventStatusEnum.Published)
-                return Success(@event.Id, "Event is already published.");
+            attemptEvent.Publish(occurredAt);
+            mutationAttempted = true;
 
-            @event.EventStatusId = (int)EventStatusEnum.Published;
-            @event.UpdatedAt = DateTime.UtcNow;
-
-            await eventRepository.Update(@event);
+            await eventRepository.Update(attemptEvent);
 
             await atprotoPublicationPlanner.PlanEventAsync(
                 new AtprotoEventPublicationInput(
-                    @event.TenantId,
+                    attemptEvent.TenantId,
                     currentUserId,
-                    @event.Id,
-                    @event.ConcurrencyStamp,
+                    attemptEvent.Id,
+                    attemptEvent.ConcurrencyStamp,
                     PdsSyncOperation.Create,
                     federationOutboxId,
                     federationCreatedAt),
                 token);
 
-            var publishedAt = DateTimeOffset.UtcNow;
-            await outboxRepository.Create(EventPublishedOutboxMessageFactory.CreateNotificationFanoutOutboxMessage(@event, publishedAt));
+            var publishedAt = new DateTimeOffset(occurredAt, TimeSpan.Zero);
+            await outboxRepository.Create(EventPublishedOutboxMessageFactory.CreateNotificationFanoutOutboxMessage(
+                notificationFanoutOutboxId,
+                attemptEvent,
+                publishedAt));
 
-            await cache.RemoveAsync($"event:detail:{@event.Id}", token);
-            await cache.RemoveByTagAsync(CacheTags.EventListByTenant(@event.TenantId), token);
-
-            return Success(@event.Id, "Event published successfully.");
+            tenantIdToInvalidate = attemptEvent.TenantId;
+            return Success(attemptEvent.Id, "Event published successfully.");
         }, cancellationToken);
+
+        if (response.Success && tenantIdToInvalidate.HasValue)
+        {
+            await cache.RemoveAsync($"event:detail:{request.Id}", cancellationToken);
+            await cache.RemoveByTagAsync(CacheTags.EventListByTenant(tenantIdToInvalidate.Value), cancellationToken);
+        }
+
+        return response;
     }
 
     private static BaseCommandResponse<Guid> Success(Guid id, string message) => new()
@@ -121,4 +166,12 @@ public class PublishEventCommandHandler(
             Errors = errors.ToList(),
             FailureCode = failureCode
         };
+
+    private static string PublishTransitionReadinessError(EventStatusEnum status) => status switch
+    {
+        EventStatusEnum.Cancelled => "Event is cancelled and cannot be published.",
+        EventStatusEnum.Moderated => "Event is moderated and cannot be published.",
+        EventStatusEnum.Archived => "Event is archived and cannot be published.",
+        _ => "Event cannot be published from its current status."
+    };
 }

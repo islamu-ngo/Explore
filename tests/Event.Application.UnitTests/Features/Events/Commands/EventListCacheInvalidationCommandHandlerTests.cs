@@ -37,12 +37,11 @@ public class EventListCacheInvalidationCommandHandlerTests
         var outboxRepository = Substitute.For<IOutboxRepository>();
         var cache = Substitute.For<HybridCache>();
         var calculator = new EventScheduleProjectionCalculator();
-        Explore.Domain.Event @event = CreateEvent(eventId, tenantId);
+        Explore.Domain.Event @event = CreateEvent(eventId, tenantId, Explore.Domain.Enums.EventStatusEnum.Published);
         @event.ConcurrencyStamp = expectedStamp;
-        @event.EventStatusId = (int)Explore.Domain.Enums.EventStatusEnum.Published;
         @event.EventTimeZoneId = "UTC";
         @event.Timezone = "UTC";
-        var session = new EventSession
+        var session = new EventSession(Explore.Domain.Enums.EventSessionStatusEnum.Published)
         {
             Id = sessionId,
             EventId = eventId,
@@ -50,7 +49,6 @@ public class EventListCacheInvalidationCommandHandlerTests
             TenantId = tenantId,
             Tenant = @event.Tenant,
             Title = "DST boundary session",
-            EventSessionStatusId = (int)Explore.Domain.Enums.EventSessionStatusEnum.Published,
             ConcurrencyStamp = Guid.CreateVersion7()
         };
         session.Reschedule(
@@ -219,7 +217,10 @@ public class EventListCacheInvalidationCommandHandlerTests
         await cache.Received(1).RemoveByTagAsync(CacheTags.EventListByTenant(tenantId), Arg.Any<CancellationToken>());
     }
 
-    private static Explore.Domain.Event CreateEvent(Guid eventId, Guid tenantId) => new()
+    private static Explore.Domain.Event CreateEvent(
+        Guid eventId,
+        Guid tenantId,
+        Explore.Domain.Enums.EventStatusEnum status = Explore.Domain.Enums.EventStatusEnum.Draft) => new(status)
     {
         Id = eventId,
         Title = "Tenant Event",

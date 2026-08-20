@@ -23,6 +23,7 @@ public sealed class EventModerationRecordRepositoryTests(PostgreSqlContainerFixt
         var (_, @event, user) = await SetupEventAsync(context);
         var repository = new EventModerationRecordRepository(context);
         var first = EventModerationRecord.CreateLightModeration(
+            Guid.CreateVersion7(),
             @event.TenantId,
             @event.Id,
             user.Id,
@@ -31,6 +32,7 @@ public sealed class EventModerationRecordRepositoryTests(PostgreSqlContainerFixt
             "first",
             DateTimeOffset.UtcNow.AddMinutes(-5));
         var second = EventModerationRecord.CreateUnmoderation(
+            Guid.CreateVersion7(),
             first,
             user.Id,
             "review_complete",
@@ -54,6 +56,7 @@ public sealed class EventModerationRecordRepositoryTests(PostgreSqlContainerFixt
         await using var setupContext = fixture.CreateDbContext();
         var (tenant, @event, user) = await SetupEventAsync(setupContext);
         setupContext.EventModerationRecords.Add(EventModerationRecord.CreateLightModeration(
+            Guid.CreateVersion7(),
             tenant.Id,
             @event.Id,
             user.Id,
@@ -75,6 +78,7 @@ public sealed class EventModerationRecordRepositoryTests(PostgreSqlContainerFixt
         await using var setupContext = fixture.CreateDbContext();
         var (tenant, @event, user) = await SetupEventAsync(setupContext);
         var record = EventModerationRecord.CreateHeavyRedaction(
+            Guid.CreateVersion7(),
             tenant.Id,
             @event.Id,
             user.Id,
@@ -105,6 +109,7 @@ public sealed class EventModerationRecordRepositoryTests(PostgreSqlContainerFixt
         var (tenant, @event, user) = await SetupEventAsync(context);
         const string correlationId = "same-correlation";
         context.EventModerationRecords.Add(EventModerationRecord.CreateLightModeration(
+            Guid.CreateVersion7(),
             tenant.Id,
             @event.Id,
             user.Id,
@@ -113,6 +118,7 @@ public sealed class EventModerationRecordRepositoryTests(PostgreSqlContainerFixt
             correlationId,
             DateTimeOffset.UtcNow));
         context.EventModerationRecords.Add(EventModerationRecord.CreateHeavyRedaction(
+            Guid.CreateVersion7(),
             tenant.Id,
             @event.Id,
             user.Id,
@@ -132,6 +138,7 @@ public sealed class EventModerationRecordRepositoryTests(PostgreSqlContainerFixt
         var (tenant, @event, user) = await SetupEventAsync(context);
         var (_, decision) = await CreateReportDecisionAsync(context, tenant.Id, @event.Id, user.Id);
         var moderationRecord = EventModerationRecord.CreateLightModeration(
+            Guid.CreateVersion7(),
             tenant.Id,
             @event.Id,
             user.Id,
@@ -166,6 +173,7 @@ public sealed class EventModerationRecordRepositoryTests(PostgreSqlContainerFixt
         var (tenantB, eventB, userB) = await SetupEventAsync(context);
         var (_, decisionA) = await CreateReportDecisionAsync(context, tenantA.Id, eventA.Id, userA.Id);
         var moderationRecord = EventModerationRecord.CreateLightModeration(
+            Guid.CreateVersion7(),
             tenantB.Id,
             eventB.Id,
             userB.Id,
@@ -263,7 +271,7 @@ public sealed class EventModerationRecordRepositoryTests(PostgreSqlContainerFixt
         context.Actors.Add(actor);
         await context.SaveChangesAsync();
 
-        var @event = new Explore.Domain.Event
+        var @event = new Explore.Domain.Event(EventStatusEnum.Published)
         {
             Id = Guid.NewGuid(),
             Title = "Moderation History Event",
@@ -274,7 +282,6 @@ public sealed class EventModerationRecordRepositoryTests(PostgreSqlContainerFixt
             Tenant = null!,
             VisibilityTypeId = (int)VisibilityTypeEnum.Public,
             VisibilityType = null!,
-            EventStatusId = (int)EventStatusEnum.Published,
             EventStatus = null!,
             EventFormatId = (int)EventFormatEnum.Digital,
             EventFormat = null!

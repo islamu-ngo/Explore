@@ -406,7 +406,7 @@ public class EventCustomPropertyProjectionUpdaterTests
         context.Actors.Add(actor);
         await context.SaveChangesAsync();
 
-        var @event = new Explore.Domain.Event
+        var @event = new Explore.Domain.Event(EventStatusEnum.Draft)
         {
             Id = Guid.NewGuid(),
             Title = "Proj Event",
@@ -415,7 +415,6 @@ public class EventCustomPropertyProjectionUpdaterTests
             Actor = null!,
             TenantId = tenant.Id,
             Tenant = null!,
-            EventStatusId = 1,
             EventStatus = null!,
             EventFormatId = 1,
             EventFormat = null!,

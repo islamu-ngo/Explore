@@ -130,7 +130,7 @@ public sealed class EventHeavyRedactionRepositoryTests(PostgreSqlContainerFixtur
         await context.SaveChangesAsync();
 
         var eventId = Guid.NewGuid();
-        var @event = new Explore.Domain.Event
+        var @event = new Explore.Domain.Event(EventStatusEnum.Published)
         {
             Id = eventId,
             Title = "Illegal Event",
@@ -148,12 +148,11 @@ public sealed class EventHeavyRedactionRepositoryTests(PostgreSqlContainerFixtur
             Tenant = null!,
             VisibilityTypeId = (int)VisibilityTypeEnum.Public,
             VisibilityType = null!,
-            EventStatusId = (int)EventStatusEnum.Published,
             EventStatus = null!,
             EventFormatId = (int)EventFormatEnum.Local,
             EventFormat = null!
         };
-        var session = new EventSession
+        var session = new EventSession(EventSessionStatusEnum.Draft)
         {
             Id = Guid.NewGuid(),
             EventId = eventId,
@@ -164,7 +163,6 @@ public sealed class EventHeavyRedactionRepositoryTests(PostgreSqlContainerFixtur
             FeaturedImageId = image.Id,
             TenantId = tenant.Id,
             Tenant = null!,
-            EventSessionStatusId = (int)EventSessionStatusEnum.Draft
         };
         var day = new EventDay
         {

@@ -393,7 +393,7 @@ public sealed class RegistrationWorkflowPostgreSqlPersistenceTests(PostgreSqlCon
         context.Actors.Add(actor);
         await context.SaveChangesAsync();
 
-        Explore.Domain.Event @event = new()
+        Explore.Domain.Event @event = new(EventStatusEnum.Draft)
         {
             Id = Guid.CreateVersion7(),
             Title = $"Task 7.1 {slugPrefix}",
@@ -401,7 +401,6 @@ public sealed class RegistrationWorkflowPostgreSqlPersistenceTests(PostgreSqlCon
             Actor = null!,
             TenantId = tenant.Id,
             Tenant = null!,
-            EventStatusId = 1,
             EventStatus = null!,
             EventFormatId = 1,
             EventFormat = null!,

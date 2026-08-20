@@ -120,7 +120,7 @@ public sealed class AtprotoEventProjectionDiscoveryDeduplicationTests(PostgreSql
             IndexedAt = now,
             UpdatedAt = now
         };
-        var importedEvent = new Explore.Domain.Event
+        var importedEvent = new Explore.Domain.Event(eventStatus)
         {
             Id = Guid.CreateVersion7(),
             Title = $"{eventStatus} imported event",
@@ -132,7 +132,6 @@ public sealed class AtprotoEventProjectionDiscoveryDeduplicationTests(PostgreSql
             Tenant = tenant,
             VisibilityTypeId = (int)VisibilityTypeEnum.Public,
             VisibilityType = null!,
-            EventStatusId = (int)eventStatus,
             EventStatus = null!,
             EventFormatId = (int)EventFormatEnum.Digital,
             EventFormat = null!,

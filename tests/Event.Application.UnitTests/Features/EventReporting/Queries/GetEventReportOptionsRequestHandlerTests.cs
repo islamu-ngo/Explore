@@ -117,7 +117,7 @@ public sealed class GetEventReportOptionsRequestHandlerTests
 
     private static Explore.Domain.Event CreateEvent(Guid eventId, Guid tenantId, EventStatusEnum status)
     {
-        return new Explore.Domain.Event
+        return new Explore.Domain.Event(status)
         {
             Id = eventId,
             TenantId = tenantId,
@@ -125,7 +125,6 @@ public sealed class GetEventReportOptionsRequestHandlerTests
             Title = "Reportable Event",
             Actor = null!,
             VisibilityType = null!,
-            EventStatusId = (int)status,
             EventStatus = null!,
             EventFormat = null!
         };

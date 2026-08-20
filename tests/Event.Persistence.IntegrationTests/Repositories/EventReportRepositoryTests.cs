@@ -383,7 +383,7 @@ public sealed class EventReportRepositoryTests(PostgreSqlContainerFixture fixtur
 
         var (user, actor) = await CreateUserActorAsync(context, tenant.Id, slugPrefix);
 
-        var @event = new Explore.Domain.Event
+        var @event = new Explore.Domain.Event(EventStatusEnum.Published)
         {
             Id = Guid.CreateVersion7(),
             Title = "Report Repository Event " + slugPrefix,
@@ -394,7 +394,6 @@ public sealed class EventReportRepositoryTests(PostgreSqlContainerFixture fixtur
             Tenant = null!,
             VisibilityTypeId = (int)VisibilityTypeEnum.Public,
             VisibilityType = null!,
-            EventStatusId = (int)EventStatusEnum.Published,
             EventStatus = null!,
             EventFormatId = (int)EventFormatEnum.Digital,
             EventFormat = null!

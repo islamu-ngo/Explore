@@ -61,7 +61,7 @@ public sealed class RegistrationFormTemplateCommandServiceTests
         RegistrationWorkflow workflow = RegistrationWorkflow.Create(
             tenantId, source.EventId, "registration", Now.AddMinutes(3));
         workflow.ConcurrencyStamp = Guid.CreateVersion7();
-        Explore.Domain.Event targetEvent = new()
+        Explore.Domain.Event targetEvent = new(EventStatusEnum.Draft)
         {
             Id = source.EventId,
             TenantId = tenantId,
@@ -69,7 +69,6 @@ public sealed class RegistrationFormTemplateCommandServiceTests
             ActorId = Guid.CreateVersion7(),
             Actor = null!,
             Title = "Target",
-            EventStatusId = 1,
             EventStatus = null!,
             EventFormatId = 1,
             EventFormat = null!,

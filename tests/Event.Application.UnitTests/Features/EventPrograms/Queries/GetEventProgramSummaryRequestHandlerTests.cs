@@ -142,8 +142,7 @@ public sealed class GetEventProgramSummaryRequestHandlerTests
     {
         var eventId = Guid.NewGuid();
         var tenant = CreateTenant(Guid.NewGuid());
-        var eventEntity = CreateEvent(eventId, tenant);
-        eventEntity.EventStatusId = (int)EventStatusEnum.Draft;
+        var eventEntity = CreateEvent(eventId, tenant, EventStatusEnum.Draft);
         eventEntity.VisibilityTypeId = (int)VisibilityTypeEnum.Private;
         var session = CreateSession(
             Guid.NewGuid(),
@@ -274,9 +273,12 @@ public sealed class GetEventProgramSummaryRequestHandlerTests
         };
     }
 
-    private static Explore.Domain.Event CreateEvent(Guid eventId, Tenant tenant)
+    private static Explore.Domain.Event CreateEvent(
+        Guid eventId,
+        Tenant tenant,
+        EventStatusEnum status = EventStatusEnum.Published)
     {
-        return new Explore.Domain.Event
+        return new Explore.Domain.Event(status)
         {
             Id = eventId,
             Title = "Program launch",
@@ -286,7 +288,6 @@ public sealed class GetEventProgramSummaryRequestHandlerTests
             VisibilityType = null!,
             EventStatus = null!,
             EventFormat = null!,
-            EventStatusId = (int)EventStatusEnum.Published,
             VisibilityTypeId = (int)VisibilityTypeEnum.Public,
             FirstSessionDate = new DateOnly(2026, 6, 1),
             LastSessionDate = new DateOnly(2026, 6, 2),

@@ -42,6 +42,7 @@ public sealed class GetEventModerationHistoryRequestHandlerTests
         var @event = CreateEvent();
         var moderatorUserId = Guid.NewGuid();
         var lightRecord = EventModerationRecord.CreateLightModeration(
+            Guid.CreateVersion7(),
             @event.TenantId,
             @event.Id,
             moderatorUserId,
@@ -50,6 +51,7 @@ public sealed class GetEventModerationHistoryRequestHandlerTests
             "case-light-1",
             DateTimeOffset.UtcNow.AddMinutes(-10));
         var heavyRecord = EventModerationRecord.CreateHeavyRedaction(
+            Guid.CreateVersion7(),
             @event.TenantId,
             @event.Id,
             moderatorUserId,
@@ -58,6 +60,7 @@ public sealed class GetEventModerationHistoryRequestHandlerTests
             "case-heavy-1",
             DateTimeOffset.UtcNow.AddMinutes(-5));
         var unmoderationRecord = EventModerationRecord.CreateUnmoderation(
+            Guid.CreateVersion7(),
             lightRecord,
             moderatorUserId,
             "appeal_approved",
@@ -113,7 +116,7 @@ public sealed class GetEventModerationHistoryRequestHandlerTests
         await Assert.That(projectedPropertyNames).DoesNotContain("Uri");
     }
 
-    private static Explore.Domain.Event CreateEvent() => new()
+    private static Explore.Domain.Event CreateEvent() => new(EventStatusEnum.Moderated)
     {
         Id = Guid.NewGuid(),
         TenantId = Guid.NewGuid(),
@@ -123,7 +126,6 @@ public sealed class GetEventModerationHistoryRequestHandlerTests
         Title = "Sensitive title must not be projected",
         Slug = "sensitive-title",
         Description = "Sensitive description must not be projected",
-        EventStatusId = (int)EventStatusEnum.Moderated,
         EventStatus = null!,
         VisibilityTypeId = 1,
         VisibilityType = null!,

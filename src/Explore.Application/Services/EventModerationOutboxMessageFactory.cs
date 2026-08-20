@@ -14,6 +14,7 @@ public static class EventModerationOutboxMessageFactory
     public const string EventHeavyRedactedNotificationFanoutRequestedEventType = "EventHeavyRedactedNotificationFanoutRequested";
 
     public static OutboxMessage CreateLightModerationNotificationFanoutMessage(
+        Guid id,
         Event @event,
         EventModerationRecord moderationRecord)
     {
@@ -29,7 +30,7 @@ public static class EventModerationOutboxMessageFactory
 
         return new OutboxMessage
         {
-            Id = Guid.CreateVersion7(),
+            Id = id,
             AggregateType = EventAggregateType,
             AggregateId = @event.Id,
             EventType = EventLightModeratedNotificationFanoutRequestedEventType,

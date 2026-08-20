@@ -573,7 +573,7 @@ public sealed class AtprotoEventPublicationPlannerTests
                     .Returns(false);
                 break;
             case "event":
-                graph.Event.EventStatusId = (int)Explore.Domain.Enums.EventStatusEnum.Moderated;
+                graph.Event.ApplyLightModeration(CreatedAt);
                 fixture.Events.IsPubliclyEligibleAsync(TenantId, EventId, Arg.Any<CancellationToken>())
                     .Returns(false);
                 break;
@@ -663,7 +663,7 @@ public sealed class AtprotoEventPublicationPlannerTests
                     .Returns(false);
                 break;
             case "event":
-                graph.Event.EventStatusId = (int)Explore.Domain.Enums.EventStatusEnum.Moderated;
+                graph.Event.ApplyLightModeration(CreatedAt);
                 fixture.Events.IsPubliclyEligibleAsync(TenantId, EventId, Arg.Any<CancellationToken>())
                     .Returns(false);
                 break;
@@ -1009,7 +1009,7 @@ public sealed class AtprotoEventPublicationPlannerTests
             IsActive = true,
             LastResolvedAt = CreatedAt
         });
-        var eventEntity = new Explore.Domain.Event
+        var eventEntity = new Explore.Domain.Event(Explore.Domain.Enums.EventStatusEnum.Published)
         {
             Id = EventId,
             TenantId = TenantId,
@@ -1019,7 +1019,6 @@ public sealed class AtprotoEventPublicationPlannerTests
             Title = "Published",
             VisibilityTypeId = 1,
             VisibilityType = new VisibilityType { Id = 1, MasterCode = "PUBLIC", FullName = "Public" },
-            EventStatusId = 2,
             EventStatus = new EventStatus { Id = 2, MasterCode = "PUBLISHED", FullName = "Published" },
             EventFormatId = 1,
             EventFormat = new EventFormat { Id = 1, MasterCode = "IN_PERSON", FullName = "In person" },

@@ -310,7 +310,7 @@ public sealed class AtprotoEventProjectionVisibilityTests(PostgreSqlContainerFix
             SourceVersion = presentationSourceVersion,
             EvaluatedAt = now
         };
-        var importedEvent = new Explore.Domain.Event
+        var importedEvent = new Explore.Domain.Event(EventStatusEnum.Draft)
         {
             Id = Guid.CreateVersion7(),
             Title = $"Visibility {key}",
@@ -322,7 +322,6 @@ public sealed class AtprotoEventProjectionVisibilityTests(PostgreSqlContainerFix
             Tenant = eventTenant,
             VisibilityTypeId = (int)VisibilityTypeEnum.Public,
             VisibilityType = null!,
-            EventStatusId = (int)EventStatusEnum.Draft,
             EventStatus = null!,
             EventFormatId = (int)EventFormatEnum.Digital,
             EventFormat = null!,
@@ -375,7 +374,7 @@ public sealed class AtprotoEventProjectionVisibilityTests(PostgreSqlContainerFix
             IndexedAt = now,
             UpdatedAt = now
         };
-        var @event = new Explore.Domain.Event
+        var @event = new Explore.Domain.Event(EventStatusEnum.Published)
         {
             Id = Guid.CreateVersion7(),
             Title = $"Local echo {key}",
@@ -387,7 +386,6 @@ public sealed class AtprotoEventProjectionVisibilityTests(PostgreSqlContainerFix
             Tenant = tenant,
             VisibilityTypeId = (int)VisibilityTypeEnum.Public,
             VisibilityType = null!,
-            EventStatusId = (int)EventStatusEnum.Published,
             EventStatus = null!,
             EventFormatId = (int)EventFormatEnum.Digital,
             EventFormat = null!,

@@ -22,7 +22,8 @@ public sealed class ImportEventCommandHandler(
     IUnitOfWork unitOfWork,
     HybridCache cache,
     IEventLifecyclePolicyProvider policyProvider,
-    IEventLifecycleReadinessEvaluator readinessEvaluator) : IRequestHandler<ImportEventCommand, BaseCommandResponse<Guid>>
+    IEventLifecycleReadinessEvaluator readinessEvaluator,
+    TimeProvider timeProvider) : IRequestHandler<ImportEventCommand, BaseCommandResponse<Guid>>
 {
     private const string ValidationFailedCode = "event_import_validation_failed";
     private const string ReadinessFailedCode = "event_import_readiness_failed";
@@ -50,11 +51,34 @@ public sealed class ImportEventCommandHandler(
                 ValidationFailedCode);
         }
 
-        return await unitOfWork.ExecuteInTransactionAsync(async token =>
+        DateTimeOffset now = timeProvider.GetUtcNow();
+        DateTime utcNow = now.UtcDateTime;
+        Guid eventId = Guid.CreateVersion7(now);
+        Guid? importedTenantId = null;
+        BaseCommandResponse<Guid> response = await unitOfWork.ExecuteInTransactionAsync(async token =>
         {
+            Event? existing = await eventRepository.GetById(eventId);
+            if (existing is not null)
+            {
+                if (existing.TenantId != request.TenantId
+                    || existing.EventProvenanceTypeId != (int)EventProvenanceTypeEnum.Imported
+                    || existing.ProvenanceSource != request.ProvenanceSource
+                    || existing.ProvenanceExternalId != request.ProvenanceExternalId)
+                {
+                    return Failure(
+                        eventId,
+                        "Event import identity verification failed.",
+                        ["The deterministic event identity belongs to a different import."],
+                        ValidationFailedCode);
+                }
+
+                importedTenantId = existing.TenantId;
+                return Success(existing.Id, "Event imported successfully.");
+            }
+
             var eventEntity = new Event
             {
-                Id = Guid.CreateVersion7(),
+                Id = eventId,
                 Title = request.Title,
                 Description = request.Description,
                 TenantId = request.TenantId,
@@ -71,10 +95,11 @@ public sealed class ImportEventCommandHandler(
                 EventFormat = null!,
                 Timezone = request.Timezone,
                 FeaturedImageId = request.FeaturedImageId,
-                EventStatusId = (int)EventStatusEnum.Draft,
                 EventStatus = null!,
                 Tenant = null!,
                 Actor = null!,
+                CreatedAt = utcNow,
+                UpdatedAt = utcNow,
                 TotalViews = 0
             };
 
@@ -85,7 +110,7 @@ public sealed class ImportEventCommandHandler(
                 request.ParticipationConfiguration.AdvanceRegistrationObligationId,
                 request.ParticipationConfiguration.IdentityAccessModeId,
                 request.ParticipationConfiguration.GuestRecoveryPolicy,
-                DateTime.UtcNow);
+                utcNow);
 
             EventLifecyclePolicy policy = await policyProvider.GetEffectivePolicyAsync(request.TenantId, ValidationProfile.EventImportCreate, token);
             LifecycleReadinessResult readiness = readinessEvaluator.Evaluate(eventEntity, ValidationProfile.EventImportCreate, policy);
@@ -95,11 +120,17 @@ public sealed class ImportEventCommandHandler(
             }
 
             Event created = await eventRepository.Create(eventEntity);
-
-            await cache.RemoveByTagAsync(CacheTags.EventListByTenant(created.TenantId), token);
+            importedTenantId = created.TenantId;
 
             return Success(created.Id, "Event imported successfully.");
         }, cancellationToken);
+
+        if (response.Success && importedTenantId.HasValue)
+        {
+            await cache.RemoveByTagAsync(CacheTags.EventListByTenant(importedTenantId.Value), cancellationToken);
+        }
+
+        return response;
     }
 
     private static BaseCommandResponse<Guid> Success(Guid id, string message) => new()

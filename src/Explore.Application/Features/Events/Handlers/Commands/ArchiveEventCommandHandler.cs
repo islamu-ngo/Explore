@@ -11,6 +11,7 @@ using Explore.Application.Responses;
 using Explore.Domain;
 using Explore.Domain.Enums;
 using Explore.Domain.Federation;
+using Explore.Domain.Services.Lifecycle;
 using FluentValidation;
 using MediatR;
 using Microsoft.Extensions.Caching.Hybrid;
@@ -22,10 +23,11 @@ public sealed class ArchiveEventCommandHandler(
     IUnitOfWork unitOfWork,
     HybridCache cache,
     IUserContext userContext,
-    AtprotoEventPublicationPlanner atprotoPublicationPlanner) : IRequestHandler<ArchiveEventCommand, BaseCommandResponse<Guid>>
+    AtprotoEventPublicationPlanner atprotoPublicationPlanner,
+    TimeProvider timeProvider) : IRequestHandler<ArchiveEventCommand, BaseCommandResponse<Guid>>
 {
     private const string ConcurrencyConflictCode = "event_archive_concurrency_conflict";
-    private const string AlreadyArchivedCode = "event_archive_already_archived";
+    private const string TransitionNotAllowedCode = "event_archive_transition_not_allowed";
 
     public async Task<BaseCommandResponse<Guid>> Handle(ArchiveEventCommand request, CancellationToken cancellationToken)
     {
@@ -36,46 +38,84 @@ public sealed class ArchiveEventCommandHandler(
             return Failure(request.Id, "Event archive request is invalid.", validationResult.Errors.Select(e => e.ErrorMessage));
         }
 
+        var @event = await eventRepository.GetById(request.Id);
+        if (@event is null)
+        {
+            return Failure(request.Id, "Event was not found.", new[] { "Event was not found." });
+        }
+
+        EventStatusEnum currentStatus = (EventStatusEnum)@event.EventStatusId;
+        if (currentStatus == EventStatusEnum.Archived)
+        {
+            return Success(@event.Id, "Event is already archived.");
+        }
+
+        if (@event.ConcurrencyStamp != request.Request.ExpectedConcurrencyStamp)
+        {
+            return Failure(request.Id, "Event was modified by another user.", new[] { "The event was modified by another user. Refresh and try again." }, ConcurrencyConflictCode);
+        }
+
+        if (!EventLifecycleRules.CanTransition(currentStatus, EventStatusEnum.Archived))
+        {
+            return Failure(request.Id, "Event cannot be archived from its current status.", new[] { "Event cannot be archived from its current status." }, TransitionNotAllowedCode);
+        }
+
         Guid currentUserId = userContext.GetRequiredUserId();
         Guid federationOutboxId = Guid.CreateVersion7();
-        DateTime federationCreatedAt = DateTime.UtcNow;
-        return await unitOfWork.ExecuteInTransactionAsync(async token =>
+        DateTime occurredAt = timeProvider.GetUtcNow().UtcDateTime;
+        DateTime federationCreatedAt = occurredAt;
+        Guid? tenantIdToInvalidate = null;
+        bool mutationAttempted = false;
+        BaseCommandResponse<Guid> response = await unitOfWork.ExecuteInTransactionAsync(async token =>
         {
-            var @event = await eventRepository.GetById(request.Id);
-            if (@event is null)
-            {
+            tenantIdToInvalidate = null;
+            var attemptEvent = await eventRepository.GetById(request.Id);
+            if (attemptEvent is null)
                 return Failure(request.Id, "Event was not found.", new[] { "Event was not found." });
+
+            EventStatusEnum attemptStatus = (EventStatusEnum)attemptEvent.EventStatusId;
+            if (mutationAttempted && attemptStatus == EventStatusEnum.Archived)
+            {
+                tenantIdToInvalidate = attemptEvent.TenantId;
+                return Success(attemptEvent.Id, "Event archived successfully.");
             }
 
-            if (@event.ConcurrencyStamp != request.Request.ExpectedConcurrencyStamp)
+            if (attemptEvent.ConcurrencyStamp != request.Request.ExpectedConcurrencyStamp)
             {
                 return Failure(request.Id, "Event was modified by another user.", new[] { "The event was modified by another user. Refresh and try again." }, ConcurrencyConflictCode);
             }
 
-            if (@event.EventStatusId == (int)EventStatusEnum.Archived)
+            if (!EventLifecycleRules.CanTransition(attemptStatus, EventStatusEnum.Archived))
             {
-                return Failure(request.Id, "Event is already archived.", new[] { "The event is already archived." }, AlreadyArchivedCode);
+                return Failure(request.Id, "Event cannot be archived from its current status.", new[] { "Event cannot be archived from its current status." }, TransitionNotAllowedCode);
             }
 
-            @event.EventStatusId = (int)EventStatusEnum.Archived;
-            @event.UpdatedAt = DateTime.UtcNow;
+            attemptEvent.Archive(occurredAt);
+            mutationAttempted = true;
 
-            await eventRepository.Update(@event);
+            await eventRepository.Update(attemptEvent);
             await atprotoPublicationPlanner.PlanEventAsync(
                 new AtprotoEventPublicationInput(
-                    @event.TenantId,
+                    attemptEvent.TenantId,
                     currentUserId,
-                    @event.Id,
-                    @event.ConcurrencyStamp,
+                    attemptEvent.Id,
+                    attemptEvent.ConcurrencyStamp,
                     PdsSyncOperation.Delete,
                     federationOutboxId,
                     federationCreatedAt),
                 token);
-            await cache.RemoveAsync($"event:detail:{@event.Id}", token);
-            await cache.RemoveByTagAsync(CacheTags.EventListByTenant(@event.TenantId), token);
 
-            return Success(@event.Id, "Event archived successfully.");
+            tenantIdToInvalidate = attemptEvent.TenantId;
+            return Success(attemptEvent.Id, "Event archived successfully.");
         }, cancellationToken);
+
+        if (response.Success && tenantIdToInvalidate.HasValue)
+        {
+            await cache.RemoveAsync($"event:detail:{request.Id}", cancellationToken);
+            await cache.RemoveByTagAsync(CacheTags.EventListByTenant(tenantIdToInvalidate.Value), cancellationToken);
+        }
+
+        return response;
     }
 
     private static BaseCommandResponse<Guid> Success(Guid id, string message) => new()

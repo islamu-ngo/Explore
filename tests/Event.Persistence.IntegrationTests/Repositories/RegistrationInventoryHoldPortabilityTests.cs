@@ -149,7 +149,7 @@ public sealed class RegistrationInventoryHoldPortabilityTests
         await context.SaveChangesAsync();
 
         Guid eventId = Guid.CreateVersion7();
-        var eventTarget = new DomainEvent
+        var eventTarget = new DomainEvent(EventStatusEnum.Draft)
         {
             Id = eventId,
             Title = "SQLite inventory expiry event",
@@ -167,7 +167,6 @@ public sealed class RegistrationInventoryHoldPortabilityTests
             Tenant = tenant,
             VisibilityTypeId = 1,
             VisibilityType = null!,
-            EventStatusId = 1,
             EventStatus = null!,
             EventFormatId = 1,
             EventFormat = null!,

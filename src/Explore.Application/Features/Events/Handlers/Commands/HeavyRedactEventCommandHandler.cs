@@ -1,5 +1,5 @@
 // ABOUTME: Handles irreversible heavy moderation by redacting event-owned content and triggering image deletion.
-// ABOUTME: Writes safe moderation history and cache invalidation inside the UnitOfWork transaction.
+// ABOUTME: Writes safe moderation history transactionally and invalidates caches only after commit.
 
 using Explore.Application.Authorization;
 using Explore.Application.Caching;
@@ -34,7 +34,8 @@ public sealed class HeavyRedactEventCommandHandler(
     HybridCache cache,
     BusinessMetrics metrics,
     ILogger<HeavyRedactEventCommandHandler> logger,
-    AtprotoEventPublicationPlanner atprotoPublicationPlanner) : IRequestHandler<HeavyRedactEventCommand, BaseCommandResponse<Guid>>
+    AtprotoEventPublicationPlanner atprotoPublicationPlanner,
+    TimeProvider timeProvider) : IRequestHandler<HeavyRedactEventCommand, BaseCommandResponse<Guid>>
 {
     private const int ImmediateDeletionBatchSize = 100;
     private const string ActionKind = "heavy_redacted";
@@ -80,21 +81,21 @@ public sealed class HeavyRedactEventCommandHandler(
         var eventId = Guid.Empty;
         var wasIdempotent = false;
         EventModerationRecord? moderationRecordForLog = null;
+        var moderationRecordId = Guid.CreateVersion7();
         var federationOutboxId = Guid.CreateVersion7();
-        var federationCreatedAt = DateTime.UtcNow;
+        DateTimeOffset redactedAt = timeProvider.GetUtcNow();
+        var federationCreatedAt = redactedAt.UtcDateTime;
         var occurrenceId = Guid.CreateVersion7();
         var pointerOutboxMessageId = Guid.CreateVersion7();
-        var redactedAt = DateTimeOffset.UtcNow;
+        var shouldInvalidateCache = false;
+        var eventNotFound = false;
         var transactionResponse = await unitOfWork.ExecuteInTransactionAsync(async token =>
         {
             var graph = await redactionRepository.GetForUpdateAsync(request.Id, token);
             if (graph is null)
             {
+                eventNotFound = true;
                 metrics.RecordEventModerationAction(null, ActionKind, "failed", "not_found", irreversible: true);
-                logger.LogWarning(
-                    "Heavy event moderation rejected because event {EventId} was not found.",
-                    request.Id);
-
                 return Failure(request.Id, "Event not found.", ["Event not found."]);
             }
 
@@ -111,14 +112,11 @@ public sealed class HeavyRedactEventCommandHandler(
             {
                 wasIdempotent = true;
                 moderationRecord = latestRecord;
-                logger.LogInformation(
-                    "Heavy event moderation skipped because event {EventId} in tenant {TenantId} is already heavy-redacted; delete-requested image cleanup will still be checked.",
-                    @event.Id,
-                    @event.TenantId);
             }
             else
             {
                 moderationRecord = EventModerationRecord.CreateHeavyRedaction(
+                    moderationRecordId,
                     @event.TenantId,
                     @event.Id,
                     moderatorUserId,
@@ -151,8 +149,7 @@ public sealed class HeavyRedactEventCommandHandler(
                     token);
                 await moderationRecordRepository.Create(moderationRecord);
 
-                await cache.RemoveAsync($"event:detail:{@event.Id}", token);
-                await cache.RemoveByTagAsync(CacheTags.EventListByTenant(@event.TenantId), token);
+                shouldInvalidateCache = true;
             }
 
             await EnsureHeavyModerationFanoutOccurrenceAsync(
@@ -170,7 +167,28 @@ public sealed class HeavyRedactEventCommandHandler(
 
         if (!transactionResponse.Success)
         {
+            if (eventNotFound)
+            {
+                logger.LogWarning(
+                    "Heavy event moderation rejected because event {EventId} was not found.",
+                    request.Id);
+            }
+
             return transactionResponse;
+        }
+
+        if (wasIdempotent)
+        {
+            logger.LogInformation(
+                "Heavy event moderation skipped because event {EventId} in tenant {TenantId} is already heavy-redacted; delete-requested image cleanup will still be checked.",
+                eventId,
+                tenantId);
+        }
+
+        if (shouldInvalidateCache)
+        {
+            await cache.RemoveAsync($"event:detail:{eventId}", cancellationToken);
+            await cache.RemoveByTagAsync(CacheTags.EventListByTenant(tenantId), cancellationToken);
         }
 
         var deletionResult = await storageObjectDeletionService.DeleteRequestedForResourceAsync(

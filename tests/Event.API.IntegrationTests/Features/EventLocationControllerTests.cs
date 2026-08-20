@@ -504,7 +504,7 @@ public sealed class EventLocationControllerRuntimeTests(EventLocationRouteRuntim
             EventLocationDisclosureAuditReasonEnum.OrganizerPolicyChange,
             now.AddMinutes(-10),
             needsPrivacyReview: false);
-        var session = new EventSession
+        var session = new EventSession(EventSessionStatusEnum.Published)
         {
             Id = Guid.CreateVersion7(),
             TenantId = tenant.TenantId,
@@ -513,7 +513,6 @@ public sealed class EventLocationControllerRuntimeTests(EventLocationRouteRuntim
             Event = @event,
             Title = "Registered location session",
             RegistrationModeId = (int)RegistrationModeEnum.Open,
-            EventSessionStatusId = (int)EventSessionStatusEnum.Published,
             EventSessionKindId = (int)EventSessionKindEnum.Talk,
             ConcurrencyStamp = Guid.CreateVersion7()
         };

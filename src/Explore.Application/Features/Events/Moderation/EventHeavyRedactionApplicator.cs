@@ -38,7 +38,7 @@ public static class EventHeavyRedactionApplicator
             session.SourceTemplateKey = null;
             session.FeaturedImageId = null;
             session.FeaturedImage = null;
-            session.EventSessionStatusId = (int)EventSessionStatusEnum.Moderated;
+            session.ApplyParentModeration(utcNow);
             Touch(session, moderatorUserId, utcNow);
 
             if (session.IslamicAspect is not null)
@@ -122,7 +122,7 @@ public static class EventHeavyRedactionApplicator
         @event.FeaturedImage = null;
         @event.BackgroundImageId = null;
         @event.BackgroundImage = null;
-        @event.EventStatusId = (int)EventStatusEnum.Moderated;
+        @event.ApplyHeavyModeration(utcNow);
         Touch(@event, moderatorUserId, utcNow);
     }
 

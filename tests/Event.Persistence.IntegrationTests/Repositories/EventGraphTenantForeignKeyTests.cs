@@ -248,7 +248,7 @@ public sealed class EventGraphTenantForeignKeyTests(PostgreSqlContainerFixture f
         TenantActorScope scope,
         string title)
     {
-        var @event = new Explore.Domain.Event
+        var @event = new Explore.Domain.Event(EventStatusEnum.Draft)
         {
             Id = Guid.NewGuid(),
             Title = title,
@@ -257,7 +257,6 @@ public sealed class EventGraphTenantForeignKeyTests(PostgreSqlContainerFixture f
             Actor = null!,
             TenantId = scope.TenantId,
             Tenant = null!,
-            EventStatusId = 1,
             EventStatus = null!,
             EventFormatId = 1,
             EventFormat = null!,

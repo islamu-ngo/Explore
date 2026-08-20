@@ -172,7 +172,7 @@ public sealed class RegistrationFormRulePostgreSqlTests(PostgreSqlContainerFixtu
         Actor actor = new() { Pii = new ActorPii { DisplayName = slug }, ActorTypeId = 1, ActorType = null!, UserId = user.Id };
         context.Actors.Add(actor);
         await context.SaveChangesAsync();
-        Explore.Domain.Event @event = new()
+        Explore.Domain.Event @event = new(EventStatusEnum.Draft)
         {
             Id = Guid.CreateVersion7(),
             Title = slug,
@@ -180,7 +180,6 @@ public sealed class RegistrationFormRulePostgreSqlTests(PostgreSqlContainerFixtu
             Actor = null!,
             TenantId = tenant.Id,
             Tenant = null!,
-            EventStatusId = 1,
             EventStatus = null!,
             EventFormatId = 1,
             EventFormat = null!,

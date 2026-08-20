@@ -13,7 +13,10 @@ public static class EventPublishedOutboxMessageFactory
     private const string EventAggregateType = "Event";
     public const string EventPublishedNotificationFanoutRequestedEventType = "EventPublishedNotificationFanoutRequested";
 
-    public static OutboxMessage CreateNotificationFanoutOutboxMessage(Event @event, DateTimeOffset publishedAt)
+    public static OutboxMessage CreateNotificationFanoutOutboxMessage(
+        Guid outboxMessageId,
+        Event @event,
+        DateTimeOffset publishedAt)
     {
         var payload = new EventPublishedNotificationFanoutRequested
         {
@@ -28,7 +31,7 @@ public static class EventPublishedOutboxMessageFactory
 
         return new OutboxMessage
         {
-            Id = Guid.CreateVersion7(),
+            Id = outboxMessageId,
             AggregateType = EventAggregateType,
             AggregateId = @event.Id,
             EventType = EventPublishedNotificationFanoutRequestedEventType,

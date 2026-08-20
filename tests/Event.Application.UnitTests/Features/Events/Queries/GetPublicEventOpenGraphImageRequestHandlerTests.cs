@@ -182,13 +182,12 @@ public sealed class GetPublicEventOpenGraphImageRequestHandlerTests
         SlugCode = "secure-event-code"
     };
 
-    private static DomainEvent CreatePublicEvent() => new()
+    private static DomainEvent CreatePublicEvent() => new(EventStatusEnum.Published)
     {
         Id = Guid.CreateVersion7(),
         TenantId = Guid.CreateVersion7(),
         FeaturedImageId = Guid.CreateVersion7(),
         Title = "Secure event",
-        EventStatusId = (int)EventStatusEnum.Published,
         VisibilityTypeId = (int)VisibilityTypeEnum.Public,
         FirstSessionDate = new DateOnly(2026, 8, 1),
         LastSessionDate = new DateOnly(2026, 8, 2),

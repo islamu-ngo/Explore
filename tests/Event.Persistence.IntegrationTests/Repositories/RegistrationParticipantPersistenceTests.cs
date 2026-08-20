@@ -193,7 +193,7 @@ public sealed class RegistrationParticipantPersistenceTests(PostgreSqlContainerF
         context.Actors.Add(actor);
         await context.SaveChangesAsync();
 
-        var eventEntity = new DomainEvent
+        var eventEntity = new DomainEvent(EventStatusEnum.Draft)
         {
             Id = Guid.CreateVersion7(),
             Title = "Participant persistence event",
@@ -211,7 +211,6 @@ public sealed class RegistrationParticipantPersistenceTests(PostgreSqlContainerF
             Tenant = tenant,
             VisibilityTypeId = 1,
             VisibilityType = null!,
-            EventStatusId = 1,
             EventStatus = null!,
             EventFormatId = 1,
             EventFormat = null!,

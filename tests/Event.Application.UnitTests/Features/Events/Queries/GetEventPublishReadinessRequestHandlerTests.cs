@@ -73,8 +73,7 @@ public class GetEventPublishReadinessRequestHandlerTests
     [Test]
     public async Task Handle_WhenCommunityProfileEventIsModerated_ReturnsHardInvariantError()
     {
-        var @event = CreateReadyEvent();
-        @event.EventStatusId = (int)EventStatusEnum.Moderated;
+        var @event = CreateReadyEvent(EventStatusEnum.Moderated);
         _eventRepository.GetById(@event.Id).Returns(@event);
         _policyProvider
             .GetEffectivePolicyAsync(@event.TenantId, ValidationProfile.EventPublish, Arg.Any<CancellationToken>())
@@ -100,7 +99,7 @@ public class GetEventPublishReadinessRequestHandlerTests
         await Assert.That(result).IsNull();
     }
 
-    private static Explore.Domain.Event CreateReadyEvent() => new()
+    private static Explore.Domain.Event CreateReadyEvent(EventStatusEnum status = EventStatusEnum.Draft) => new(status)
     {
         Id = Guid.NewGuid(),
         Title = "Ready Event",
@@ -114,7 +113,6 @@ public class GetEventPublishReadinessRequestHandlerTests
         Tenant = CreateTenant(),
         VisibilityTypeId = 1,
         VisibilityType = new VisibilityType { Id = 1, FullName = "Public", MasterCode = "public" },
-        EventStatusId = (int)EventStatusEnum.Draft,
         EventStatus = new EventStatus { Id = (int)EventStatusEnum.Draft, FullName = "Draft", MasterCode = "draft" },
         EventFormatId = 1,
         EventFormat = new EventFormat { Id = 1, FullName = "In person", MasterCode = "in_person" },

@@ -23,13 +23,12 @@ public class EventScheduleProjectionTests
             Tenant = tenant,
             LocalDate = new DateOnly(2026, 6, 15)
         };
-        var session = new EventSession
+        var session = new EventSession(EventSessionStatusEnum.Published)
         {
             Id = Guid.NewGuid(),
             EventId = eventId,
             Event = null!,
             Tenant = tenant,
-            EventSessionStatusId = (int)EventSessionStatusEnum.Published,
             StartTime = new DateTimeOffset(2026, 6, 15, 10, 0, 0, TimeSpan.Zero),
             EndTime = new DateTimeOffset(2026, 6, 15, 12, 0, 0, TimeSpan.Zero)
         };
@@ -67,14 +66,13 @@ public class EventScheduleProjectionTests
     {
         var eventId = Guid.NewGuid();
         var tenant = CreateTenant();
-        var session = new EventSession
+        var session = new EventSession(EventSessionStatusEnum.Published)
         {
             Id = Guid.NewGuid(),
             EventId = eventId,
             Event = null!,
             Tenant = tenant,
             EventDayId = Guid.NewGuid(),
-            EventSessionStatusId = (int)EventSessionStatusEnum.Published,
             StartTime = new DateTimeOffset(2026, 6, 15, 22, 30, 0, TimeSpan.Zero),
             EndTime = new DateTimeOffset(2026, 6, 15, 23, 30, 0, TimeSpan.Zero)
         };
@@ -104,13 +102,12 @@ public class EventScheduleProjectionTests
         var published = CreateSession(eventId, tenant, EventSessionStatusEnum.Published, 3, "Europe/Brussels");
         var draftEarlier = CreateSession(eventId, tenant, EventSessionStatusEnum.Draft, 1, "Europe/Brussels");
         var rejectedLater = CreateSession(eventId, tenant, EventSessionStatusEnum.Rejected, 5, "Europe/Brussels");
-        var unscheduledPublished = new EventSession
+        var unscheduledPublished = new EventSession(EventSessionStatusEnum.Published)
         {
             Id = Guid.NewGuid(),
             EventId = eventId,
             Event = null!,
-            Tenant = tenant,
-            EventSessionStatusId = (int)EventSessionStatusEnum.Published
+            Tenant = tenant
         };
         var @event = CreateEvent(eventId, tenant);
         @event.Sessions.Add(draftEarlier);
@@ -128,16 +125,56 @@ public class EventScheduleProjectionTests
     }
 
     [Test]
+    public async Task RecalculateScheduleSummaryFromSessions_WhenEarlierSessionEndsLast_UsesMaximumEnd()
+    {
+        var eventId = Guid.NewGuid();
+        var tenant = CreateTenant();
+        var earlier = CreateSession(eventId, tenant, EventSessionStatusEnum.Published, 0, "Europe/Brussels");
+        var later = CreateSession(eventId, tenant, EventSessionStatusEnum.Published, 1, "Europe/Brussels");
+        earlier.EndTime = later.EndTime!.Value.AddHours(1);
+        earlier.ReprojectLocalTimes("Europe/Brussels", _calculator);
+        var @event = CreateEvent(eventId, tenant);
+        @event.Sessions.Add(later);
+        @event.Sessions.Add(earlier);
+
+        @event.RecalculateScheduleSummaryFromSessions();
+
+        await Assert.That(@event.FirstSessionStartUtc).IsEqualTo(earlier.StartTime);
+        await Assert.That(@event.LastSessionStartUtc).IsEqualTo(later.StartTime);
+        await Assert.That(@event.LastSessionEndUtc).IsEqualTo(earlier.EndTime);
+    }
+
+    [Test]
+    public async Task RecalculateScheduleSummaryFromSessions_WhenAnySessionIsOpenEnded_ClearsLastEnd()
+    {
+        var eventId = Guid.NewGuid();
+        var tenant = CreateTenant();
+        var openEnded = CreateSession(eventId, tenant, EventSessionStatusEnum.Published, 0, "Europe/Brussels");
+        openEnded.EndTime = null;
+        openEnded.EndTimeType = SessionEndTimeType.OpenEnded;
+        openEnded.ReprojectLocalTimes("Europe/Brussels", _calculator);
+        var later = CreateSession(eventId, tenant, EventSessionStatusEnum.Published, 1, "Europe/Brussels");
+        var @event = CreateEvent(eventId, tenant);
+        @event.Sessions.Add(openEnded);
+        @event.Sessions.Add(later);
+
+        @event.RecalculateScheduleSummaryFromSessions();
+
+        await Assert.That(@event.FirstSessionStartUtc).IsEqualTo(openEnded.StartTime);
+        await Assert.That(@event.LastSessionStartUtc).IsEqualTo(later.StartTime);
+        await Assert.That(@event.LastSessionEndUtc).IsNull();
+    }
+
+    [Test]
     public async Task Reschedule_WhenInputHasNonUtcOffset_StoresUtcInstantsAndPreservesConfiguredLocalProjection()
     {
         var tenant = CreateTenant();
         var localStart = new DateTimeOffset(2026, 7, 10, 18, 0, 0, TimeSpan.FromHours(2));
         var localEnd = new DateTimeOffset(2026, 7, 10, 20, 0, 0, TimeSpan.FromHours(2));
-        var session = new EventSession
+        var session = new EventSession(EventSessionStatusEnum.Draft)
         {
             Event = null!,
-            Tenant = tenant,
-            EventSessionStatusId = (int)EventSessionStatusEnum.Draft
+            Tenant = tenant
         };
         var agendaItem = new EventAgendaItem
         {
@@ -165,16 +202,17 @@ public class EventScheduleProjectionTests
 
     private EventSession CreateSession(Guid eventId, Tenant tenant, EventSessionStatusEnum status, int dayOffset, string timezoneId)
     {
-        var session = new EventSession
+        var start = new DateTimeOffset(2026, 6, 15, 10, 0, 0, TimeSpan.Zero).AddDays(dayOffset);
+        var session = new EventSession(status)
         {
             Id = Guid.NewGuid(),
             EventId = eventId,
             Event = null!,
             Tenant = tenant,
-            EventSessionStatusId = (int)status
+            StartTime = start,
+            EndTime = start.AddHours(1)
         };
-        var start = new DateTimeOffset(2026, 6, 15, 10, 0, 0, TimeSpan.Zero).AddDays(dayOffset);
-        session.Reschedule(start, start.AddHours(1), timezoneId, _calculator);
+        session.ReprojectLocalTimes(timezoneId, _calculator);
         return session;
     }
 

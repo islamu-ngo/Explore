@@ -3,6 +3,7 @@
 
 using Bogus;
 using Explore.Domain;
+using Explore.Domain.Enums;
 
 namespace Event.Application.UnitTests.Common;
 
@@ -15,6 +16,7 @@ public static class DataBuilder
     #region Core Entities
 
     public static Faker<Explore.Domain.Event> Event => new Faker<Explore.Domain.Event>()
+        .CustomInstantiator(f => CreateEvent((EventStatusEnum)f.Random.Int(1, 4)))
         .RuleFor(e => e.Id, f => Guid.NewGuid())
         .RuleFor(e => e.Title, f => f.Lorem.Sentence())
         .RuleFor(e => e.Description, f => f.Lorem.Sentence(8))
@@ -26,11 +28,18 @@ public static class DataBuilder
         .RuleFor(e => e.AudienceGenderId, f => f.Random.Int(1, 4))
         .RuleFor(e => e.AudienceAgeId, f => f.Random.Int(1, 5))
         .RuleFor(e => e.VisibilityTypeId, f => f.Random.Int(1, 3))
-        .RuleFor(e => e.EventStatusId, f => f.Random.Int(1, 4))
         .RuleFor(e => e.EventFormatId, f => f.Random.Int(1, 3))
         .RuleFor(e => e.Slug, f => f.Lorem.Slug());
 
+    public static Faker<Explore.Domain.Event> EventWithStatus(EventStatusEnum status) =>
+        Event.CustomInstantiator(_ => CreateEvent(status));
+
     public static Faker<EventSession> EventSession => new Faker<EventSession>()
+        .CustomInstantiator(_ => new EventSession(EventSessionStatusEnum.Draft)
+        {
+            Event = null!,
+            Tenant = null!
+        })
         .RuleFor(e => e.Id, f => Guid.NewGuid())
         .RuleFor(e => e.Title, f => f.Lorem.Sentence())
         .RuleFor(e => e.Description, f => f.Lorem.Paragraph())
@@ -39,6 +48,16 @@ public static class DataBuilder
         .RuleFor(e => e.MaxAudienceAttendees, f => f.Random.Int(10, 500))
         .RuleFor(e => e.CurrentAudienceAttendees, f => 0)
         .RuleFor(e => e.Slug, f => f.Lorem.Slug());
+
+    private static Explore.Domain.Event CreateEvent(EventStatusEnum status) => new(status)
+    {
+        Title = null!,
+        Actor = null!,
+        Tenant = null!,
+        VisibilityType = null!,
+        EventStatus = null!,
+        EventFormat = null!
+    };
 
     public static Faker<EventSessionAgendaItem> EventSessionAgendaItem => new Faker<EventSessionAgendaItem>()
         .RuleFor(e => e.Id, f => Guid.NewGuid())

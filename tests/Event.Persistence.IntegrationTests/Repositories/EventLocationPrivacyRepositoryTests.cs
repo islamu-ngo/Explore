@@ -525,7 +525,7 @@ public sealed class EventLocationPrivacyRepositoryTests(ProjectionTestContainerF
         context.Actors.Add(actor);
         await context.SaveChangesAsync();
 
-        var eventEntity = new Explore.Domain.Event
+        var eventEntity = new Explore.Domain.Event(EventStatusEnum.Draft)
         {
             TenantId = tenant.Id,
             Tenant = null!,
@@ -534,7 +534,6 @@ public sealed class EventLocationPrivacyRepositoryTests(ProjectionTestContainerF
             Title = $"ELP {suffix}",
             EventProvenanceTypeId = (int)EventProvenanceTypeEnum.OrganizerCreated,
             Description = "Current-model persistence verification",
-            EventStatusId = (int)EventStatusEnum.Draft,
             EventStatus = null!,
             EventFormatId = (int)EventFormatEnum.Local,
             EventFormat = null!,

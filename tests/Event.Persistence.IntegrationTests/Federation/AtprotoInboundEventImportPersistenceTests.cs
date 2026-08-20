@@ -760,7 +760,7 @@ public sealed class AtprotoInboundEventImportPersistenceTests(PostgreSqlContaine
     [Arguments("#planned", EventStatusEnum.Draft, EventSessionStatusEnum.Draft)]
     [Arguments("#postponed", EventStatusEnum.Draft, EventSessionStatusEnum.Draft)]
     [Arguments("#cancelled", EventStatusEnum.Cancelled, EventSessionStatusEnum.Cancelled)]
-    public async Task JetstreamApply_MapsApprovedStatusMatrix(
+    public async Task JetstreamApply_MaterializesNewEventAndSessionWithApprovedStatusMatrix(
         string? status,
         EventStatusEnum expectedEventStatus,
         EventSessionStatusEnum expectedSessionStatus)
@@ -800,6 +800,8 @@ public sealed class AtprotoInboundEventImportPersistenceTests(PostgreSqlContaine
         await Assert.That(applied).IsTrue();
         await Assert.That(imported.EventStatusId).IsEqualTo((int)expectedEventStatus);
         await Assert.That(session.EventSessionStatusId).IsEqualTo((int)expectedSessionStatus);
+        await Assert.That(session.StartTime).IsEqualTo(UtcOffset(13));
+        await Assert.That(session.EndTime).IsEqualTo(UtcOffset(14));
         await Assert.That(await context.Events.CountAsync()).IsEqualTo(1);
         await Assert.That(await context.EventSessions.CountAsync()).IsEqualTo(1);
         await Assert.That(await context.PdsSyncOutbox.CountAsync()).IsEqualTo(0);
@@ -1054,6 +1056,115 @@ public sealed class AtprotoInboundEventImportPersistenceTests(PostgreSqlContaine
         await Assert.That(session.StartTime).IsEqualTo(updatedStart);
         await Assert.That(session.EndTime).IsEqualTo(updatedEnd);
         await Assert.That(await context.PdsSyncOutbox.CountAsync()).IsEqualTo(0);
+    }
+
+    [Test]
+    public async Task JetstreamApply_RescheduledRefreshPublishesCancelledSessionBeforeRefreshingSchedule()
+    {
+        await fixture.ResetAsync();
+        ImportScope scope = await SeedScopeAsync("atproto-import-cancelled-reschedule");
+        await using ExploreDbContext context = fixture.CreateDbContext();
+        var repository = new AtprotoJetstreamRepository(context);
+        DateTime observedAt = CurrentUtc();
+        AtprotoJetstreamClaim claim = await ClaimAsync(repository, observedAt);
+        AtprotoRecord cancelledRecord = Record(1, observedAt, "Cancelled title", "https://events.example/reschedule");
+        AtprotoJetstreamApplyRequest cancelledRequest = ApplyRequest(
+            claim,
+            0,
+            1,
+            cancelledRecord,
+            scope.TenantId,
+            "Cancelled title",
+            "https://events.example/reschedule",
+            observedAt);
+        cancelledRequest = cancelledRequest with
+        {
+            EventImports =
+            [
+                cancelledRequest.EventImports.Single() with { Status = "#cancelled" }
+            ]
+        };
+        await repository.TryApplyAndAdvanceAsync(cancelledRequest);
+
+        context.ChangeTracker.Clear();
+        EventSession cancelledSession = await context.EventSessions.AsNoTracking().SingleAsync();
+        await Assert.That(cancelledSession.EventSessionStatusId).IsEqualTo((int)EventSessionStatusEnum.Cancelled);
+
+        AtprotoRecord invalidRecord = Record(2, observedAt.AddSeconds(1), "Invalid reschedule", "https://events.example/reschedule");
+        AtprotoJetstreamApplyRequest invalidRequest = ApplyRequest(
+            claim,
+            1,
+            2,
+            invalidRecord,
+            scope.TenantId,
+            "Invalid reschedule",
+            "https://events.example/reschedule",
+            observedAt.AddSeconds(1));
+        invalidRequest = invalidRequest with
+        {
+            EventImports =
+            [
+                invalidRequest.EventImports.Single() with
+                {
+                    Status = "#rescheduled",
+                    StartsAt = UtcOffset(16),
+                    EndsAt = UtcOffset(15)
+                }
+            ]
+        };
+        bool invalidScheduleRejected = false;
+        try
+        {
+            await repository.TryApplyAndAdvanceAsync(invalidRequest);
+        }
+        catch (ArgumentException)
+        {
+            invalidScheduleRejected = true;
+        }
+
+        context.ChangeTracker.Clear();
+        EventSession afterInvalidSchedule = await context.EventSessions.AsNoTracking().SingleAsync();
+        await Assert.That(invalidScheduleRejected).IsTrue();
+        await Assert.That(afterInvalidSchedule.EventSessionStatusId).IsEqualTo((int)EventSessionStatusEnum.Cancelled);
+        await Assert.That(afterInvalidSchedule.StartTime).IsEqualTo(UtcOffset(13));
+        await Assert.That(afterInvalidSchedule.EndTime).IsEqualTo(UtcOffset(14));
+        await Assert.That(await context.AtprotoJetstreamConsumerStates.Select(value => value.Cursor).SingleAsync()).IsEqualTo(1);
+
+        DateTimeOffset refreshedStart = UtcOffset(15);
+        DateTimeOffset refreshedEnd = UtcOffset(16);
+        AtprotoRecord rescheduledRecord = Record(2, observedAt.AddSeconds(1), "Rescheduled title", "https://events.example/reschedule");
+        AtprotoJetstreamApplyRequest rescheduledRequest = ApplyRequest(
+            claim,
+            1,
+            2,
+            rescheduledRecord,
+            scope.TenantId,
+            "Rescheduled title",
+            "https://events.example/reschedule",
+            observedAt.AddSeconds(1));
+        rescheduledRequest = rescheduledRequest with
+        {
+            EventImports =
+            [
+                rescheduledRequest.EventImports.Single() with
+                {
+                    Status = "#rescheduled",
+                    StartsAt = refreshedStart,
+                    EndsAt = refreshedEnd
+                }
+            ]
+        };
+
+        bool applied = await repository.TryApplyAndAdvanceAsync(rescheduledRequest);
+
+        context.ChangeTracker.Clear();
+        Explore.Domain.Event imported = await context.Events.AsNoTracking().SingleAsync();
+        EventSession refreshedSession = await context.EventSessions.AsNoTracking().SingleAsync();
+        await Assert.That(applied).IsTrue();
+        await Assert.That(imported.EventStatusId).IsEqualTo((int)EventStatusEnum.Published);
+        await Assert.That(refreshedSession.EventSessionStatusId).IsEqualTo((int)EventSessionStatusEnum.Published);
+        await Assert.That(refreshedSession.StartTime).IsEqualTo(refreshedStart);
+        await Assert.That(refreshedSession.EndTime).IsEqualTo(refreshedEnd);
     }
 
     [Test]
@@ -2148,7 +2259,7 @@ public sealed class AtprotoInboundEventImportPersistenceTests(PostgreSqlContaine
             ]
         }, CancellationToken.None);
 
-        var localEvent = new Explore.Domain.Event
+        var localEvent = new Explore.Domain.Event(EventStatusEnum.Published)
         {
             Id = Guid.CreateVersion7(),
             TenantId = localScope.TenantId,
@@ -2160,14 +2271,13 @@ public sealed class AtprotoInboundEventImportPersistenceTests(PostgreSqlContaine
             EventProvenanceTypeId = (int)EventProvenanceTypeEnum.OrganizerCreated,
             VisibilityTypeId = (int)VisibilityTypeEnum.Public,
             VisibilityType = null!,
-            EventStatusId = (int)EventStatusEnum.Published,
             EventStatus = null!,
             EventFormatId = (int)EventFormatEnum.Local,
             EventFormat = null!,
             EventTimeZoneId = "UTC",
             Timezone = "UTC"
         };
-        var localSession = new EventSession
+        var localSession = new EventSession(EventSessionStatusEnum.Published)
         {
             Id = Guid.CreateVersion7(),
             TenantId = localScope.TenantId,
@@ -2175,7 +2285,6 @@ public sealed class AtprotoInboundEventImportPersistenceTests(PostgreSqlContaine
             EventId = localEvent.Id,
             Event = localEvent,
             Title = "Unrelated local event",
-            EventSessionStatusId = (int)EventSessionStatusEnum.Published
         };
         context.AddRange(localEvent, localSession);
         await context.SaveChangesAsync();

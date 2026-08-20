@@ -74,7 +74,8 @@ public class PublishEventCommandHandlerTests
             _policyProvider,
             new EventLifecycleReadinessEvaluator(),
             _userContext,
-            AtprotoPublicationPlannerTestFactory.Disabled());
+            AtprotoPublicationPlannerTestFactory.Disabled(),
+            TimeProvider.System);
     }
 
     [Test]
@@ -251,7 +252,8 @@ public class PublishEventCommandHandlerTests
             _policyProvider,
             new EventLifecycleReadinessEvaluator(),
             _userContext,
-            planner);
+            planner,
+            TimeProvider.System);
 
         var result = await handler.Handle(new PublishEventCommand
         {
@@ -285,6 +287,118 @@ public class PublishEventCommandHandlerTests
         await Assert.That(result.FailureCode).IsEqualTo("event_publish_concurrency_conflict");
         await _eventRepository.DidNotReceive().Update(Arg.Any<Explore.Domain.Event>());
         await _outboxRepository.DidNotReceive().Create(Arg.Any<OutboxMessage>());
+    }
+
+    [Test]
+    public async Task Handle_WhenAlreadyPublished_ReturnsSuccessWithoutMutationSideEffects()
+    {
+        var concurrencyStamp = Guid.CreateVersion7();
+        var @event = CreateReadyEvent(concurrencyStamp, EventStatusEnum.Published);
+        @event.FirstSessionStartUtc = null;
+        _eventRepository.GetById(@event.Id).Returns(@event);
+
+        var result = await _handler.Handle(new PublishEventCommand
+        {
+            Id = @event.Id,
+            Request = new() { ExpectedConcurrencyStamp = Guid.CreateVersion7() }
+        }, CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await Assert.That(@event.EventStatusId).IsEqualTo((int)EventStatusEnum.Published);
+        await _unitOfWork.DidNotReceive().ExecuteInTransactionAsync(
+            Arg.Any<Func<CancellationToken, Task<Explore.Application.Responses.BaseCommandResponse<Guid>>>>(),
+            Arg.Any<CancellationToken>());
+        await _policyProvider.DidNotReceive().GetEffectivePolicyAsync(Arg.Any<Guid?>(), ValidationProfile.EventPublish, Arg.Any<CancellationToken>());
+        await _eventLocationRepository.DidNotReceive().GetByEventIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+        await _eventRepository.DidNotReceive().Update(Arg.Any<Explore.Domain.Event>());
+        await _outboxRepository.DidNotReceive().Create(Arg.Any<OutboxMessage>());
+        await _cache.DidNotReceive().RemoveAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
+        await _cache.DidNotReceive().RemoveByTagAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
+        _userContext.DidNotReceive().GetRequiredUserId();
+    }
+
+    [Test]
+    public async Task Handle_WhenRolledBackAttemptIsRetried_ReloadsAndStagesStablePublicationIdentity()
+    {
+        Guid eventId = Guid.CreateVersion7();
+        Guid tenantId = Guid.CreateVersion7();
+        Guid concurrencyStamp = Guid.CreateVersion7();
+        var outerEvent = CreateReadyEvent(concurrencyStamp, id: eventId, tenantId: tenantId);
+        var firstAttemptEvent = CreateReadyEvent(concurrencyStamp, id: eventId, tenantId: tenantId);
+        var retryEvent = CreateReadyEvent(concurrencyStamp, id: eventId, tenantId: tenantId);
+        _eventRepository.GetById(eventId).Returns(outerEvent, firstAttemptEvent, retryEvent);
+        var messages = new List<OutboxMessage>();
+        _outboxRepository.Create(Arg.Any<OutboxMessage>()).Returns(call =>
+        {
+            var message = call.Arg<OutboxMessage>();
+            messages.Add(message);
+            return message;
+        });
+        _unitOfWork.ExecuteInTransactionAsync(
+                Arg.Any<Func<CancellationToken, Task<Explore.Application.Responses.BaseCommandResponse<Guid>>>>(),
+                Arg.Any<CancellationToken>())
+            .Returns(async call =>
+            {
+                var operation = call.Arg<Func<CancellationToken, Task<Explore.Application.Responses.BaseCommandResponse<Guid>>>>();
+                await operation(CancellationToken.None);
+                return await operation(CancellationToken.None);
+            });
+
+        var result = await _handler.Handle(new PublishEventCommand
+        {
+            Id = eventId,
+            Request = new() { ExpectedConcurrencyStamp = concurrencyStamp }
+        }, CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await _eventRepository.Received(3).GetById(eventId);
+        await _eventRepository.Received(1).Update(firstAttemptEvent);
+        await _eventRepository.Received(1).Update(retryEvent);
+        await Assert.That(messages).Count().IsEqualTo(2);
+        await Assert.That(messages.Select(message => message.Id).Distinct()).Count().IsEqualTo(1);
+        await _cache.Received(1).RemoveAsync($"event:detail:{eventId}", Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task Handle_WhenCommittedAttemptIsRetried_StagesPublicationOnceAndInvalidatesCacheOnce()
+    {
+        Guid eventId = Guid.CreateVersion7();
+        Guid tenantId = Guid.CreateVersion7();
+        Guid concurrencyStamp = Guid.CreateVersion7();
+        var outerEvent = CreateReadyEvent(concurrencyStamp, id: eventId, tenantId: tenantId);
+        var firstAttemptEvent = CreateReadyEvent(concurrencyStamp, id: eventId, tenantId: tenantId);
+        var committedEvent = CreateReadyEvent(Guid.CreateVersion7(), EventStatusEnum.Published, eventId, tenantId);
+        _eventRepository.GetById(eventId).Returns(outerEvent, firstAttemptEvent, committedEvent);
+        var messages = new List<OutboxMessage>();
+        _outboxRepository.Create(Arg.Any<OutboxMessage>()).Returns(call =>
+        {
+            var message = call.Arg<OutboxMessage>();
+            messages.Add(message);
+            return message;
+        });
+        _unitOfWork.ExecuteInTransactionAsync(
+                Arg.Any<Func<CancellationToken, Task<Explore.Application.Responses.BaseCommandResponse<Guid>>>>(),
+                Arg.Any<CancellationToken>())
+            .Returns(async call =>
+            {
+                var operation = call.Arg<Func<CancellationToken, Task<Explore.Application.Responses.BaseCommandResponse<Guid>>>>();
+                await operation(CancellationToken.None);
+                return await operation(CancellationToken.None);
+            });
+
+        var result = await _handler.Handle(new PublishEventCommand
+        {
+            Id = eventId,
+            Request = new() { ExpectedConcurrencyStamp = concurrencyStamp }
+        }, CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await _eventRepository.Received(3).GetById(eventId);
+        await _eventRepository.Received(1).Update(firstAttemptEvent);
+        await _eventRepository.DidNotReceive().Update(committedEvent);
+        await Assert.That(messages).Count().IsEqualTo(1);
+        await _cache.Received(1).RemoveAsync($"event:detail:{eventId}", Arg.Any<CancellationToken>());
+        await _cache.Received(1).RemoveByTagAsync(CacheTags.EventListByTenant(tenantId), Arg.Any<CancellationToken>());
     }
 
     [Test]
@@ -335,8 +449,7 @@ public class PublishEventCommandHandlerTests
     public async Task Handle_WhenCommunityProfileEventIsModerated_ReturnsReadinessFailureWithoutMutation()
     {
         var concurrencyStamp = Guid.CreateVersion7();
-        var @event = CreateReadyEvent(concurrencyStamp);
-        @event.EventStatusId = (int)EventStatusEnum.Moderated;
+        var @event = CreateReadyEvent(concurrencyStamp, EventStatusEnum.Moderated);
         _eventRepository.GetById(@event.Id).Returns(@event);
         _policyProvider
             .GetEffectivePolicyAsync(@event.TenantId, ValidationProfile.EventPublish, Arg.Any<CancellationToken>())
@@ -356,9 +469,13 @@ public class PublishEventCommandHandlerTests
         await _outboxRepository.DidNotReceive().Create(Arg.Any<OutboxMessage>());
     }
 
-    private static Explore.Domain.Event CreateReadyEvent(Guid concurrencyStamp) => new()
+    private static Explore.Domain.Event CreateReadyEvent(
+        Guid concurrencyStamp,
+        EventStatusEnum status = EventStatusEnum.Draft,
+        Guid? id = null,
+        Guid? tenantId = null) => new(status)
     {
-        Id = Guid.CreateVersion7(),
+        Id = id ?? Guid.CreateVersion7(),
         Title = "Draft Event",
         ActorId = Guid.CreateVersion7(),
         Actor = new Actor
@@ -366,11 +483,10 @@ public class PublishEventCommandHandlerTests
             ActorType = new ActorType { Id = 1, FullName = "User", MasterCode = "user" },
             Pii = new ActorPii { DisplayName = "Publisher" }
         },
-        TenantId = Guid.CreateVersion7(),
+        TenantId = tenantId ?? Guid.CreateVersion7(),
         Tenant = CreateTenant(),
         VisibilityTypeId = 1,
         VisibilityType = new VisibilityType { Id = 1, FullName = "Public", MasterCode = "public" },
-        EventStatusId = (int)EventStatusEnum.Draft,
         EventStatus = new EventStatus { Id = (int)EventStatusEnum.Draft, FullName = "Draft", MasterCode = "draft" },
         EventFormatId = 1,
         EventFormat = new EventFormat { Id = 1, FullName = "In person", MasterCode = "in_person" },

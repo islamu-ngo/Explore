@@ -483,7 +483,7 @@ public sealed class EventLocationDualWriteTests(PostgreSqlContainerFixture fixtu
             new TestTenantContext(graph.TenantId),
             new FixedTimeProvider(Now));
 
-    private static Explore.Domain.Event CreateEvent(Guid tenantId, Guid actorId, string title) => new()
+    private static Explore.Domain.Event CreateEvent(Guid tenantId, Guid actorId, string title) => new(EventStatusEnum.Draft)
     {
         Id = Guid.CreateVersion7(),
         TenantId = tenantId,
@@ -494,7 +494,6 @@ public sealed class EventLocationDualWriteTests(PostgreSqlContainerFixture fixtu
         PublicCode = Guid.CreateVersion7().ToString("N")[^12..],
         EventProvenanceTypeId = (int)EventProvenanceTypeEnum.OrganizerCreated,
         Description = "ELP dual-write PostgreSQL acceptance",
-        EventStatusId = (int)EventStatusEnum.Draft,
         EventStatus = null!,
         EventFormatId = (int)EventFormatEnum.Local,
         EventFormat = null!,
@@ -523,7 +522,7 @@ public sealed class EventLocationDualWriteTests(PostgreSqlContainerFixture fixtu
         Name = name
     };
 
-    private static EventSession CreateSession(DualWriteGraph graph, Guid eventId) => new()
+    private static EventSession CreateSession(DualWriteGraph graph, Guid eventId) => new(EventSessionStatusEnum.Draft)
     {
         Id = Guid.CreateVersion7(),
         TenantId = graph.TenantId,
@@ -531,7 +530,6 @@ public sealed class EventLocationDualWriteTests(PostgreSqlContainerFixture fixtu
         EventId = eventId,
         Event = null!,
         Title = $"ELP session {Guid.NewGuid():N}",
-        EventSessionStatusId = (int)EventSessionStatusEnum.Draft
     };
 
     private static EventSessionGroup CreateGroup(DualWriteGraph graph, Guid eventId) => new()

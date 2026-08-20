@@ -5,7 +5,9 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Linq;
+using Explore.Domain.Enums;
 using Explore.Domain.Interfaces;
+using Explore.Domain.Services.Lifecycle;
 using Explore.Domain.Services.Scheduling;
 
 namespace Explore.Domain;
@@ -14,6 +16,16 @@ public class Event : ITenantEntity, IAuditableEntity, ISoftDeletable, IConcurren
 {
     private readonly List<EventTicketCatalogVersion> _ticketCatalogVersions = [];
     private readonly List<EventCapacityPool> _capacityPools = [];
+
+    public Event()
+    {
+    }
+
+    public Event(EventStatusEnum status)
+    {
+        EventLifecycleRules.EnsureDefinedStatus(status, nameof(status));
+        EventStatusId = (int)status;
+    }
 
     public Guid Id { get; set; }
 
@@ -87,7 +99,7 @@ public class Event : ITenantEntity, IAuditableEntity, ISoftDeletable, IConcurren
     public int? SessionCount { get; set; }
 
     [ForeignKey("EventStatus")]
-    public int EventStatusId { get; set; }
+    public int EventStatusId { get; private set; } = (int)EventStatusEnum.Draft;
     public required EventStatus EventStatus { get; set; }
 
     public DateOnly? FirstSessionDate { get; set; }
@@ -165,6 +177,43 @@ public class Event : ITenantEntity, IAuditableEntity, ISoftDeletable, IConcurren
     public Guid? BackgroundImageId { get; set; }
     public StorageObject? BackgroundImage { get; set; }
 
+    public bool Publish(DateTime occurredAt) => TransitionLifecycle(EventStatusEnum.Published, occurredAt, useOrdinaryRules: true);
+
+    public bool Cancel(DateTime occurredAt) => TransitionLifecycle(EventStatusEnum.Cancelled, occurredAt, useOrdinaryRules: true);
+
+    public bool Archive(DateTime occurredAt) => TransitionLifecycle(EventStatusEnum.Archived, occurredAt, useOrdinaryRules: true);
+
+    public bool ApplyLightModeration(DateTime occurredAt) => TransitionLifecycle(EventStatusEnum.Moderated, occurredAt, useOrdinaryRules: true);
+
+    public bool ApplyHeavyModeration(DateTime occurredAt) => TransitionLifecycle(EventStatusEnum.Moderated, occurredAt, useOrdinaryRules: false);
+
+    public bool RestoreAfterLightModeration(DateTime occurredAt)
+    {
+        DateTime utcOccurredAt = EnsureUtc(occurredAt, nameof(occurredAt));
+        EventStatusEnum currentStatus = GetDefinedStatus();
+        if (currentStatus == EventStatusEnum.Published)
+        {
+            return false;
+        }
+
+        if (!EventLifecycleRules.CanRestoreAfterLightModeration(currentStatus))
+        {
+            throw new InvalidOperationException($"Event cannot restore from {currentStatus} after light moderation.");
+        }
+
+        return MutateStatus(EventStatusEnum.Published, utcOccurredAt);
+    }
+
+    public void EnsureDraftEditable() => EventLifecycleRules.EnsureDraftEditable(GetDefinedStatus());
+
+    public bool SynchronizeFederatedLifecycle(EventStatusEnum status, DateTime occurredAt)
+    {
+        EventLifecycleRules.EnsureDefinedStatus(status, nameof(status));
+        DateTime utcOccurredAt = EnsureUtc(occurredAt, nameof(occurredAt));
+        GetDefinedStatus();
+        return MutateStatus(status, utcOccurredAt);
+    }
+
     public string GetEffectiveScheduleTimeZoneId()
     {
         return ScheduleTimeZoneResolver.NormalizeOrUtc(EventTimeZoneId ?? Timezone);
@@ -229,6 +278,49 @@ public class Event : ITenantEntity, IAuditableEntity, ISoftDeletable, IConcurren
         LastSessionDate = last.LocalStartDate;
         FirstSessionStartUtc = first.StartTime;
         LastSessionStartUtc = last.StartTime;
-        LastSessionEndUtc = last.EndTime ?? (last.StartTime?.AddDays(1));
+        LastSessionEndUtc = activeSessions.Any(session => session.EndTimeType == SessionEndTimeType.OpenEnded && session.EndTime is null)
+            ? null
+            : activeSessions.Max(session => session.EndTime ?? session.StartTime!.Value.AddDays(1));
+    }
+
+    private bool TransitionLifecycle(EventStatusEnum desiredStatus, DateTime occurredAt, bool useOrdinaryRules)
+    {
+        DateTime utcOccurredAt = EnsureUtc(occurredAt, nameof(occurredAt));
+        EventStatusEnum currentStatus = GetDefinedStatus();
+        if (useOrdinaryRules)
+        {
+            EventLifecycleRules.EnsureCanTransition(currentStatus, desiredStatus);
+        }
+
+        return MutateStatus(desiredStatus, utcOccurredAt);
+    }
+
+    private bool MutateStatus(EventStatusEnum desiredStatus, DateTime occurredAt)
+    {
+        if ((EventStatusEnum)EventStatusId == desiredStatus)
+        {
+            return false;
+        }
+
+        EventStatusId = (int)desiredStatus;
+        UpdatedAt = occurredAt;
+        return true;
+    }
+
+    private EventStatusEnum GetDefinedStatus()
+    {
+        EventStatusEnum status = (EventStatusEnum)EventStatusId;
+        EventLifecycleRules.EnsureDefinedStatus(status, nameof(EventStatusId));
+        return status;
+    }
+
+    private static DateTime EnsureUtc(DateTime value, string parameterName)
+    {
+        if (value == default || value.Kind != DateTimeKind.Utc)
+        {
+            throw new ArgumentException("Timestamp must be a non-default UTC value.", parameterName);
+        }
+
+        return value;
     }
 }

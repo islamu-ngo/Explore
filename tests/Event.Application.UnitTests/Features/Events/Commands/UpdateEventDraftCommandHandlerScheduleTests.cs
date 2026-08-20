@@ -36,13 +36,12 @@ public class UpdateEventDraftCommandHandlerScheduleTests
             Tenant = tenant,
             LocalDate = new DateOnly(2026, 6, 15)
         };
-        var session = new EventSession
+        var session = new EventSession(EventSessionStatusEnum.Published)
         {
             Id = Guid.NewGuid(),
             EventId = eventId,
             Event = null!,
             Tenant = tenant,
-            EventSessionStatusId = (int)EventSessionStatusEnum.Published,
             StartTime = new DateTimeOffset(2026, 6, 15, 10, 0, 0, TimeSpan.Zero),
             EndTime = new DateTimeOffset(2026, 6, 15, 12, 0, 0, TimeSpan.Zero)
         };
@@ -118,7 +117,7 @@ public class UpdateEventDraftCommandHandlerScheduleTests
         AdvanceRegistrationObligationId = (int)AdvanceRegistrationObligationEnum.NotApplicable
     };
 
-    private static Explore.Domain.Event CreateEvent(Guid eventId, Tenant tenant, Guid concurrencyStamp) => new()
+    private static Explore.Domain.Event CreateEvent(Guid eventId, Tenant tenant, Guid concurrencyStamp) => new(EventStatusEnum.Draft)
     {
         Id = eventId,
         Title = "Original",
@@ -129,7 +128,6 @@ public class UpdateEventDraftCommandHandlerScheduleTests
         EventStatus = null!,
         EventFormat = null!,
         VisibilityTypeId = 1,
-        EventStatusId = 1,
         EventFormatId = 1,
         ConcurrencyStamp = concurrencyStamp
     };

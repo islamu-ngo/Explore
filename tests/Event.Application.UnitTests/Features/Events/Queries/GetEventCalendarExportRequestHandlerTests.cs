@@ -177,13 +177,12 @@ public sealed class GetEventCalendarExportRequestHandlerTests
         EventStatusEnum status,
         VisibilityTypeEnum visibility)
     {
-        return new Explore.Domain.Event
+        return new Explore.Domain.Event(status)
         {
             Id = eventId,
             Title = "Calendar Event",
             Description = "Calendar description",
             Slug = "calendar-event",
-            EventStatusId = (int)status,
             VisibilityTypeId = (int)visibility,
             Actor = null!,
             Tenant = null!,
@@ -200,7 +199,7 @@ public sealed class GetEventCalendarExportRequestHandlerTests
         DateTimeOffset endsAt,
         Guid? tenantId = null)
     {
-        return new EventSession
+        return new EventSession(EventSessionStatusEnum.Published)
         {
             Id = Guid.NewGuid(),
             EventId = eventId,
@@ -208,8 +207,7 @@ public sealed class GetEventCalendarExportRequestHandlerTests
             TenantId = tenantId ?? Guid.NewGuid(),
             Tenant = null!,
             StartTime = startsAt,
-            EndTime = endsAt,
-            EventSessionStatusId = (int)EventSessionStatusEnum.Published
+            EndTime = endsAt
         };
     }
 }

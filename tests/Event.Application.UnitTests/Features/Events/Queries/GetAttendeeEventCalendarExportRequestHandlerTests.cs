@@ -105,14 +105,13 @@ public sealed class GetAttendeeEventCalendarExportRequestHandlerTests
 
     private static Explore.Domain.Event CreatePublishedEvent(Guid eventId, Guid tenantId)
     {
-        return new Explore.Domain.Event
+        return new Explore.Domain.Event(EventStatusEnum.Published)
         {
             Id = eventId,
             TenantId = tenantId,
             Title = "Attendee Calendar Event",
             Description = "Registration-scoped calendar description",
             Slug = "attendee-calendar-event",
-            EventStatusId = (int)EventStatusEnum.Published,
             VisibilityTypeId = (int)VisibilityTypeEnum.Private,
             Actor = null!,
             Tenant = null!,
@@ -125,7 +124,7 @@ public sealed class GetAttendeeEventCalendarExportRequestHandlerTests
 
     private static EventSession CreateSessionWithPlacement(Guid eventId, Guid tenantId)
     {
-        var session = new EventSession
+        var session = new EventSession(EventSessionStatusEnum.Published)
         {
             Id = Guid.NewGuid(),
             TenantId = tenantId,
@@ -133,8 +132,7 @@ public sealed class GetAttendeeEventCalendarExportRequestHandlerTests
             Event = null!,
             Tenant = null!,
             StartTime = new DateTimeOffset(2026, 7, 19, 16, 0, 0, TimeSpan.Zero),
-            EndTime = new DateTimeOffset(2026, 7, 19, 17, 0, 0, TimeSpan.Zero),
-            EventSessionStatusId = (int)EventSessionStatusEnum.Published
+            EndTime = new DateTimeOffset(2026, 7, 19, 17, 0, 0, TimeSpan.Zero)
         };
         EventLocation placement = EventLocation.CreatePhysical(
             tenantId,

@@ -14,6 +14,7 @@ using Explore.Application.Services;
 using Explore.Domain;
 using Explore.Domain.Enums;
 using Explore.Domain.Federation;
+using Explore.Domain.Services.Lifecycle;
 using FluentValidation;
 using MediatR;
 using Microsoft.Extensions.Caching.Hybrid;
@@ -31,7 +32,7 @@ public sealed class CancelEventCommandHandler(
     TimeProvider timeProvider) : IRequestHandler<CancelEventCommand, BaseCommandResponse<Guid>>
 {
     private const string ConcurrencyConflictCode = "event_cancel_concurrency_conflict";
-    private const string AlreadyCancelledCode = "event_cancel_already_cancelled";
+    private const string TransitionNotAllowedCode = "event_cancel_transition_not_allowed";
     private const string FanoutSourceType = "event_cancel_command";
 
     public async Task<BaseCommandResponse<Guid>> Handle(CancelEventCommand request, CancellationToken cancellationToken)
@@ -43,48 +44,77 @@ public sealed class CancelEventCommandHandler(
             return Failure(request.Id, "Event cancel request is invalid.", validationResult.Errors.Select(e => e.ErrorMessage));
         }
 
+        var @event = await eventRepository.GetById(request.Id);
+        if (@event is null)
+        {
+            return Failure(request.Id, "Event was not found.", new[] { "Event was not found." });
+        }
+
+        EventStatusEnum currentStatus = (EventStatusEnum)@event.EventStatusId;
+        if (currentStatus == EventStatusEnum.Cancelled)
+        {
+            return Success(@event.Id, "Event is already cancelled.");
+        }
+
+        if (@event.ConcurrencyStamp != request.Request.ExpectedConcurrencyStamp)
+        {
+            return Failure(request.Id, "Event was modified by another user.", new[] { "The event was modified by another user. Refresh and try again." }, ConcurrencyConflictCode);
+        }
+
+        if (!EventLifecycleRules.CanTransition(currentStatus, EventStatusEnum.Cancelled))
+        {
+            return Failure(request.Id, "Event cannot be cancelled from its current status.", new[] { "Event cannot be cancelled from its current status." }, TransitionNotAllowedCode);
+        }
+
         Guid currentUserId = userContext.GetRequiredUserId();
         Guid federationOutboxId = Guid.CreateVersion7();
         Guid occurrenceId = Guid.CreateVersion7();
         Guid pointerOutboxMessageId = Guid.CreateVersion7();
         DateTime occurredAt = timeProvider.GetUtcNow().UtcDateTime;
-        Guid? cancelledTenantId = null;
+        Guid? tenantIdToInvalidate = null;
+        bool mutationAttempted = false;
 
         BaseCommandResponse<Guid> response = await unitOfWork.ExecuteInTransactionAsync(async token =>
         {
-            var @event = await eventRepository.GetById(request.Id);
-            if (@event is null)
-            {
+            tenantIdToInvalidate = null;
+            var attemptEvent = await eventRepository.GetById(request.Id);
+            if (attemptEvent is null)
                 return Failure(request.Id, "Event was not found.", new[] { "Event was not found." });
+
+            EventStatusEnum attemptStatus = (EventStatusEnum)attemptEvent.EventStatusId;
+            if (mutationAttempted && attemptStatus == EventStatusEnum.Cancelled)
+            {
+                tenantIdToInvalidate = attemptEvent.TenantId;
+                return Success(attemptEvent.Id, "Event cancelled successfully.");
             }
 
-            if (@event.ConcurrencyStamp != request.Request.ExpectedConcurrencyStamp)
+            if (attemptEvent.ConcurrencyStamp != request.Request.ExpectedConcurrencyStamp)
             {
                 return Failure(request.Id, "Event was modified by another user.", new[] { "The event was modified by another user. Refresh and try again." }, ConcurrencyConflictCode);
             }
 
-            if (@event.EventStatusId == (int)EventStatusEnum.Cancelled)
+            if (!EventLifecycleRules.CanTransition(attemptStatus, EventStatusEnum.Cancelled))
             {
-                return Failure(request.Id, "Event is already cancelled.", new[] { "The event is already cancelled." }, AlreadyCancelledCode);
+                return Failure(request.Id, "Event cannot be cancelled from its current status.", new[] { "Event cannot be cancelled from its current status." }, TransitionNotAllowedCode);
             }
 
-            @event.EventStatusId = (int)EventStatusEnum.Cancelled;
-            @event.UpdatedAt = occurredAt;
+            attemptEvent.Cancel(occurredAt);
+            mutationAttempted = true;
 
-            await eventRepository.Update(@event);
+            await eventRepository.Update(attemptEvent);
             await atprotoPublicationPlanner.PlanEventAsync(
                 new AtprotoEventPublicationInput(
-                    @event.TenantId,
+                    attemptEvent.TenantId,
                     currentUserId,
-                    @event.Id,
-                    @event.ConcurrencyStamp,
+                    attemptEvent.Id,
+                    attemptEvent.ConcurrencyStamp,
                     PdsSyncOperation.Update,
                     federationOutboxId,
                     occurredAt),
                 token);
 
             string snapshot = NotificationFanoutTemplateJson.Serialize(new NotificationFanoutSnapshotV1(
-                @event.Title,
+                attemptEvent.Title,
                 SessionTitle: null,
                 StartsAt: null,
                 EndsAt: null,
@@ -94,8 +124,8 @@ public sealed class CancelEventCommandHandler(
                 new NotificationFanoutOccurrenceCandidate(
                     occurrenceId,
                     pointerOutboxMessageId,
-                    @event.TenantId,
-                    @event.Id,
+                    attemptEvent.TenantId,
+                    attemptEvent.Id,
                     SessionId: null,
                     occurredAt,
                     occurredAt,
@@ -110,29 +140,28 @@ public sealed class CancelEventCommandHandler(
                     NotificationFanoutRecipientTemplateFactory.CurrentPolicyVersion,
                     occurredAt,
                     FanoutSourceType,
-                    @event.Id),
+                    attemptEvent.Id),
                 token);
             await eventLifecycleScheduler.SuppressEventRemindersInCurrentTransactionAsync(
                 new EventReminderSuppressionInput(
-                    @event.TenantId,
-                    @event.Id,
+                    attemptEvent.TenantId,
+                    attemptEvent.Id,
                     RegistrationOrderId: null,
                     SessionId: null,
                     occurredAt,
                     "event_cancelled"),
                 token);
-            cancelledTenantId = @event.TenantId;
-
-            return Success(@event.Id, "Event cancelled successfully.");
+            tenantIdToInvalidate = attemptEvent.TenantId;
+            return Success(attemptEvent.Id, "Event cancelled successfully.");
         }, cancellationToken);
 
-        if (!response.Success || !cancelledTenantId.HasValue)
+        if (!response.Success || !tenantIdToInvalidate.HasValue)
         {
             return response;
         }
 
         await cache.RemoveAsync($"event:detail:{request.Id}", cancellationToken);
-        await cache.RemoveByTagAsync(CacheTags.EventListByTenant(cancelledTenantId.Value), cancellationToken);
+        await cache.RemoveByTagAsync(CacheTags.EventListByTenant(tenantIdToInvalidate.Value), cancellationToken);
         return response;
     }
 

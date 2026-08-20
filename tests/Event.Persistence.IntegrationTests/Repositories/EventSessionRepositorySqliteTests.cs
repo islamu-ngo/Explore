@@ -57,7 +57,7 @@ public sealed class EventSessionRepositorySqliteTests
         var tenant = new Tenant { Id = tenantId, FullName = "Session SQLite Tenant", Slug = $"session-sqlite-{Guid.NewGuid():N}", TenantStatusId = (int)TenantStatusEnum.Active, TenantStatus = null! };
         var user = new User { Id = Guid.CreateVersion7(), Pii = new UserPii { Email = $"session-sqlite-{Guid.NewGuid():N}@example.test", FirstName = "Session", LastName = "Owner" } };
         var actor = new Actor { Id = Guid.CreateVersion7(), Pii = new ActorPii { DisplayName = "Session SQLite Actor" }, ActorTypeId = (int)ActorTypeEnum.User, ActorType = null!, UserId = user.Id };
-        var @event = new DomainEvent
+        var @event = new DomainEvent(EventStatusEnum.Draft)
         {
             Id = Guid.CreateVersion7(),
             TenantId = tenantId,
@@ -72,7 +72,6 @@ public sealed class EventSessionRepositorySqliteTests
             AudienceAgeId = 1,
             VisibilityTypeId = 1,
             VisibilityType = null!,
-            EventStatusId = 1,
             EventStatus = null!,
             EventFormatId = 1,
             EventFormat = null!,
@@ -84,7 +83,7 @@ public sealed class EventSessionRepositorySqliteTests
         return @event;
     }
 
-    private static EventSession CreateSession(DomainEvent @event, string title, DateTimeOffset startTime) => new()
+    private static EventSession CreateSession(DomainEvent @event, string title, DateTimeOffset startTime) => new(EventSessionStatusEnum.Published)
     {
         Id = Guid.CreateVersion7(),
         EventId = @event.Id,
@@ -95,7 +94,6 @@ public sealed class EventSessionRepositorySqliteTests
         StartTime = startTime,
         EndTime = startTime.AddHours(1),
         RegistrationModeId = (int)RegistrationModeEnum.Open,
-        EventSessionStatusId = (int)EventSessionStatusEnum.Published,
         ConcurrencyStamp = Guid.CreateVersion7()
     };
 

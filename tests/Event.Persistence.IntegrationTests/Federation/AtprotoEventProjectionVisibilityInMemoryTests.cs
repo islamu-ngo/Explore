@@ -355,7 +355,7 @@ public sealed class AtprotoEventProjectionVisibilityInMemoryTests
             SourceVersion = presentationSourceVersion,
             EvaluatedAt = DateTime.UtcNow
         };
-        var importedEvent = new Explore.Domain.Event
+        var importedEvent = new Explore.Domain.Event(eventStatus)
         {
             Id = Guid.CreateVersion7(),
             Title = $"In-memory {key}",
@@ -367,7 +367,6 @@ public sealed class AtprotoEventProjectionVisibilityInMemoryTests
             Tenant = null!,
             VisibilityTypeId = (int)visibility,
             VisibilityType = null!,
-            EventStatusId = (int)eventStatus,
             EventStatus = null!,
             EventFormatId = (int)EventFormatEnum.Digital,
             EventFormat = null!,
@@ -417,7 +416,7 @@ public sealed class AtprotoEventProjectionVisibilityInMemoryTests
             RecordHash = new string('b', 64),
             UpdatedAt = DateTime.UtcNow
         };
-        var @event = new Explore.Domain.Event
+        var @event = new Explore.Domain.Event(EventStatusEnum.Published)
         {
             Id = Guid.CreateVersion7(),
             Title = $"Local echo {key}",
@@ -429,7 +428,6 @@ public sealed class AtprotoEventProjectionVisibilityInMemoryTests
             Tenant = null!,
             VisibilityTypeId = (int)VisibilityTypeEnum.Public,
             VisibilityType = null!,
-            EventStatusId = (int)EventStatusEnum.Published,
             EventStatus = null!,
             EventFormatId = (int)EventFormatEnum.Digital,
             EventFormat = null!,

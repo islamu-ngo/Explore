@@ -102,6 +102,25 @@ EF/PostgreSQL check constraints enforce the fixed/relative field shapes, offset 
 
 Events remain a single aggregate table. Draft, published, cancelled, completed, archived, and moderated event states are represented by `Event.EventStatusId`; there is no separate event-draft table. Lifecycle writes use explicit commands such as publish, archive, cancel, moderation, and import instead of a generic public status update.
 
+Ordinary command handlers use a two-step validation model. They first perform transport/application checks (manual FluentValidation, authorization, tenant access, and optimistic concurrency) and then preflight the Domain lifecycle predicate before any mutation-side-effect I/O. Same-target retries such as Publish on an already Published event, Cancel on an already Cancelled event, or Archive on an already Archived event are successful no-ops: they do not run readiness evaluation, transactions that write state, federation/outbox/reminder work, cache invalidation, metrics, or timestamp changes. At most one structured idempotent outcome log may be emitted after the unit of work completes; that log is observability, not a lifecycle side effect. Non-idempotent invalid transitions return stable application failure codes without exposing Domain exception text.
+
+Domain lifecycle rules own fixed state-transition, parent-state, and schedule-shape predicates. Application readiness evaluation reuses those predicates but retains policy-selected required fields, validation profiles, provenance, and machine-readable blocker codes/messages. Event-publication preflight evaluates child-session parent compatibility against the intended Published target state rather than rejecting the still-Draft aggregate before mutation; direct session publication still requires an already Published parent. Location publication readiness remains Application-owned because it depends on repository-loaded location facts rather than a pure aggregate invariant.
+
+Ordinary Event transitions are:
+
+| From | Publish | Cancel | Archive | Notes |
+|---|---|---|---|---|
+| Draft | Allowed after readiness | Allowed | Allowed | Draft-only update commands may edit fields. |
+| Published | Same-target no-op | Allowed | Rejected | Published events must cancel before archive. |
+| Cancelled | Rejected | Same-target no-op | Allowed | Cancellation is the archive staging state for published events. |
+| Completed | Rejected | Rejected | Allowed | Completion can be archived but not re-published. |
+| Archived | Rejected | Rejected | Same-target no-op | Archived is terminal for ordinary handlers. |
+| Moderated | Rejected | Rejected | Rejected | Moderation restore has its own explicit command path. |
+
+Create Event supports only `Draft` and `Published` requested states. Input `0` is treated as the default Draft request; malformed, undefined, Cancelled, Completed, Archived, or Moderated creation states are rejected before actor resolution or persistence. New `Event` and `EventSession` instances default to Draft through Domain property initialization. For requested Published creation, the handler constructs the Event with the controlled explicit Published constructor before dynamic readiness evaluation so readiness sees the intended target state; after readiness succeeds, it constructs the sessions with controlled explicit Published constructors inside the transaction. It does not treat `Event.Publish(...)` or `EventSession.Publish(...)` as the creation mechanism. Those semantic methods remain the normal transition path for existing aggregates. Import remains Draft/default and emits no lifecycle side effects.
+
+Development seed repair does not force every known seed row to Published. `SeedData` uses controlled Published constructors for the canonical published graph; `DatabaseSeeder` only promotes an existing seed session when `EventSessionLifecycleRules.CanPublish(...)` accepts its current status, the Published parent state, and its schedule. Terminal or otherwise non-publishable states, including Moderated, are left unchanged.
+
 Event sessions also remain normal `EventSession` rows. Draft/internal sessions are represented by `EventSessionStatusId = Draft`, can be unscheduled, and are hidden from anonymous/public program surfaces until they are scheduled and published. This allows a published event to own an internal draft session without leaking it through public session list/detail, program summary, calendar export, agenda projection, or event-list schedule facets. Session publication is subordinate to event publication: an `EventSession` cannot move to `Published` unless its parent `Event` is already `Published`.
 
 Session moderation is event-scoped, not independently session-scoped. Light event moderation moves every session in the event to `Moderated`. Heavy event moderation also redacts event-owned session text/custom-property values to `Redacted`, clears session image references, and moves the sessions to `Moderated`. If one session violates listing rules, the entire event is removed from listing because sessions are tightly bound to the event container.

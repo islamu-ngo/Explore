@@ -438,7 +438,7 @@ public class EventVisibilityContractTests(ContractApiFixture fixture)
         Guid tenantId,
         DateTimeOffset startUtc)
     {
-        var session = new EventSession
+        var session = new EventSession(EventSessionStatusEnum.Published)
         {
             Id = Guid.NewGuid(),
             EventId = @event.Id,
@@ -446,7 +446,6 @@ public class EventVisibilityContractTests(ContractApiFixture fixture)
             TenantId = tenantId,
             Tenant = null!,
             Title = @event.Title,
-            EventSessionStatusId = (int)EventSessionStatusEnum.Published,
             SortOrder = 1,
             EventSessionKindId = (int)EventSessionKindEnum.Talk,
             RegistrationModeId = 1,

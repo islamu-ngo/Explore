@@ -123,7 +123,7 @@ public sealed class RegistrationConsentRecordPersistenceTests
             context.Tenants.AddRange(tenant, otherTenant);
             await context.SaveChangesAsync();
             Guid eventId = Guid.CreateVersion7();
-            Explore.Domain.Event @event = new()
+            Explore.Domain.Event @event = new(EventStatusEnum.Draft)
             {
                 Id = eventId,
                 Title = "Consent",
@@ -131,7 +131,6 @@ public sealed class RegistrationConsentRecordPersistenceTests
                 Actor = null!,
                 TenantId = tenant.Id,
                 Tenant = null!,
-                EventStatusId = 1,
                 EventStatus = null!,
                 EventFormatId = 1,
                 EventFormat = null!,

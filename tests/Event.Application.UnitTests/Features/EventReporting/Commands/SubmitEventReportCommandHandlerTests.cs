@@ -732,7 +732,7 @@ public sealed class SubmitEventReportCommandHandlerTests
         Guid actorId,
         EventStatusEnum status)
     {
-        return new Explore.Domain.Event
+        return new Explore.Domain.Event(status)
         {
             Id = Guid.CreateVersion7(),
             Title = "Reported Event",
@@ -742,7 +742,6 @@ public sealed class SubmitEventReportCommandHandlerTests
             Actor = null!,
             VisibilityTypeId = (int)VisibilityTypeEnum.Public,
             VisibilityType = null!,
-            EventStatusId = (int)status,
             EventStatus = null!,
             EventFormatId = (int)EventFormatEnum.Digital,
             EventFormat = null!

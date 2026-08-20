@@ -301,10 +301,8 @@ public class GetEventListRequestHandlerTests
 
     private static bool HasPublishedStatusFilter(EventQuerySpecification specification)
     {
-        var published = CreateEventProbe(Guid.NewGuid());
-        published.EventStatusId = (int)EventStatusEnum.Published;
-        var completed = CreateEventProbe(Guid.NewGuid());
-        completed.EventStatusId = (int)EventStatusEnum.Completed;
+        var published = CreateEventProbe(Guid.NewGuid(), EventStatusEnum.Published);
+        var completed = CreateEventProbe(Guid.NewGuid(), EventStatusEnum.Completed);
 
         return specification.Filters.Any(filter =>
             filter is EventFilter { FilterType: EventFilterType.Status } &&
@@ -312,10 +310,16 @@ public class GetEventListRequestHandlerTests
             !filter.Predicate.Compile()(completed));
     }
 
-    private static Explore.Domain.Event CreateEventProbe(Guid actorId) =>
-        CreateEventProbe(actorId, "probe", Guid.NewGuid());
+    private static Explore.Domain.Event CreateEventProbe(
+        Guid actorId,
+        EventStatusEnum status = EventStatusEnum.Draft) =>
+        CreateEventProbe(actorId, "probe", Guid.NewGuid(), status);
 
-    private static Explore.Domain.Event CreateEventProbe(Guid actorId, string title, Guid tenantId) => new()
+    private static Explore.Domain.Event CreateEventProbe(
+        Guid actorId,
+        string title,
+        Guid tenantId,
+        EventStatusEnum status = EventStatusEnum.Draft) => new(status)
     {
         Title = title,
         Actor = null!,

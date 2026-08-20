@@ -75,7 +75,7 @@ public sealed class GetPublicEventLocationsRequestHandlerTests
 
     private static Explore.Domain.Event CreatePublicEvent(Guid tenantId, Guid eventId)
     {
-        return new Explore.Domain.Event
+        return new Explore.Domain.Event(EventStatusEnum.Published)
         {
             Id = eventId,
             TenantId = tenantId,
@@ -113,7 +113,6 @@ public sealed class GetPublicEventLocationsRequestHandlerTests
                 FullName = "Public",
                 MasterCode = "PUBLIC"
             },
-            EventStatusId = (int)EventStatusEnum.Published,
             EventStatus = new EventStatus
             {
                 Id = (int)EventStatusEnum.Published,

@@ -671,7 +671,7 @@ public sealed class EmailDispatchRepositoriesSqliteTests
     {
         EventScope scope = await SeedEventScopeAsync(context, "reminder");
         DateTime now = DateTime.UtcNow;
-        var session = new EventSession
+        var session = new EventSession(EventSessionStatusEnum.Published)
         {
             Id = Guid.CreateVersion7(),
             TenantId = scope.TenantId,
@@ -679,7 +679,6 @@ public sealed class EmailDispatchRepositoriesSqliteTests
             EventId = scope.EventId,
             Event = null!,
             Title = "Portable session",
-            EventSessionStatusId = (int)EventSessionStatusEnum.Published,
             ConcurrencyStamp = Guid.CreateVersion7(),
             CreatedAt = now
         };
@@ -893,7 +892,7 @@ public sealed class EmailDispatchRepositoriesSqliteTests
             Pii = new ActorPii { DisplayName = "SQLite email source" },
             ConcurrencyStamp = Guid.CreateVersion7()
         };
-        var eventRow = new Explore.Domain.Event
+        var eventRow = new Explore.Domain.Event(EventStatusEnum.Published)
         {
             Id = Guid.CreateVersion7(),
             Title = "Portable Event",
@@ -904,7 +903,6 @@ public sealed class EmailDispatchRepositoriesSqliteTests
             Tenant = tenant,
             VisibilityTypeId = (int)VisibilityTypeEnum.Public,
             VisibilityType = null!,
-            EventStatusId = (int)EventStatusEnum.Published,
             EventStatus = null!,
             EventFormatId = (int)EventFormatEnum.Local,
             EventFormat = null!,

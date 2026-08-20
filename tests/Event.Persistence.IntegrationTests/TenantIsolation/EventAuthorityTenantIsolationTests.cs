@@ -81,7 +81,7 @@ public sealed class EventAuthorityTenantIsolationTests(PostgreSqlContainerFixtur
         context.Actors.Add(actor);
         await context.SaveChangesAsync();
 
-        var @event = new Explore.Domain.Event
+        var @event = new Explore.Domain.Event(EventStatusEnum.Draft)
         {
             Id = Guid.CreateVersion7(),
             Title = $"Event Authority Event {slugPrefix}",
@@ -90,7 +90,6 @@ public sealed class EventAuthorityTenantIsolationTests(PostgreSqlContainerFixtur
             EventProvenanceTypeId = (int)EventProvenanceTypeEnum.CommunityReported,
             TenantId = tenant.Id,
             Tenant = null!,
-            EventStatusId = 1,
             EventStatus = null!,
             VisibilityTypeId = 1,
             VisibilityType = null!,

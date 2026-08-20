@@ -24,6 +24,7 @@ public class EventModerationRecordTests
         var createdAt = DateTimeOffset.UtcNow;
 
         var record = EventModerationRecord.CreateLightModeration(
+            Guid.CreateVersion7(),
             tenantId,
             eventId,
             moderatorUserId,
@@ -50,6 +51,7 @@ public class EventModerationRecordTests
     public async Task CreateHeavyRedaction_IsIrreversibleAndCannotBeUnmoderated()
     {
         var record = EventModerationRecord.CreateHeavyRedaction(
+            Guid.CreateVersion7(),
             Guid.NewGuid(),
             Guid.NewGuid(),
             Guid.NewGuid(),
@@ -68,6 +70,7 @@ public class EventModerationRecordTests
     public async Task CreateUnmoderation_RejectsIrreversibleModerationRecord()
     {
         var heavyRecord = EventModerationRecord.CreateHeavyRedaction(
+            Guid.CreateVersion7(),
             Guid.NewGuid(),
             Guid.NewGuid(),
             Guid.NewGuid(),
@@ -79,6 +82,7 @@ public class EventModerationRecordTests
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
         {
             _ = EventModerationRecord.CreateUnmoderation(
+                Guid.CreateVersion7(),
                 heavyRecord,
                 Guid.NewGuid(),
                 "review_complete",
@@ -93,6 +97,7 @@ public class EventModerationRecordTests
     public async Task CreateUnmoderation_FromLightModerationReturnsPublishedStatus()
     {
         var lightRecord = EventModerationRecord.CreateLightModeration(
+            Guid.CreateVersion7(),
             Guid.NewGuid(),
             Guid.NewGuid(),
             Guid.NewGuid(),
@@ -102,6 +107,7 @@ public class EventModerationRecordTests
             DateTimeOffset.UtcNow);
 
         var unmoderationRecord = EventModerationRecord.CreateUnmoderation(
+            Guid.CreateVersion7(),
             lightRecord,
             Guid.NewGuid(),
             "review_complete",
@@ -119,6 +125,7 @@ public class EventModerationRecordTests
     public async Task LinkSourceReportDecision_StoresReportDecisionTraceability()
     {
         var record = EventModerationRecord.CreateLightModeration(
+            Guid.CreateVersion7(),
             Guid.NewGuid(),
             Guid.NewGuid(),
             Guid.NewGuid(),
@@ -139,6 +146,7 @@ public class EventModerationRecordTests
     public async Task CreateLightModeration_WithSourceDecision_AllowsNullModeratorForProviderEnforcement()
     {
         var record = EventModerationRecord.CreateLightModeration(
+            Guid.CreateVersion7(),
             Guid.NewGuid(),
             Guid.NewGuid(),
             moderatorUserId: null,
@@ -160,6 +168,7 @@ public class EventModerationRecordTests
     public async Task LinkSourceReportDecision_RejectsEmptyIds()
     {
         var record = EventModerationRecord.CreateLightModeration(
+            Guid.CreateVersion7(),
             Guid.NewGuid(),
             Guid.NewGuid(),
             Guid.NewGuid(),

@@ -203,7 +203,7 @@ public class UpdateEventSessionCommandHandlerTests
         parentEvent.TenantId = tenantId;
         parentEvent.Title = "Parent event";
         parentEvent.EventTimeZoneId = "Europe/Brussels";
-        var session = new EventSession
+        var session = new EventSession(EventSessionStatusEnum.Published)
         {
             Id = sessionId,
             EventId = eventId,
@@ -211,7 +211,6 @@ public class UpdateEventSessionCommandHandlerTests
             Title = "Published session",
             StartTime = previousStart,
             EndTime = previousEnd,
-            EventSessionStatusId = (int)EventSessionStatusEnum.Published,
             ConcurrencyStamp = concurrencyStamp,
             Event = null!,
             Tenant = null!
@@ -253,7 +252,7 @@ public class UpdateEventSessionCommandHandlerTests
         var parentEvent = DataBuilder.Event.Generate();
         parentEvent.Id = eventId;
         parentEvent.TenantId = tenantId;
-        var session = new EventSession
+        var session = new EventSession(EventSessionStatusEnum.Draft)
         {
             Id = sessionId,
             EventId = eventId,
@@ -261,7 +260,6 @@ public class UpdateEventSessionCommandHandlerTests
             Title = "Draft session",
             StartTime = previousStart,
             EndTime = previousStart.AddHours(1),
-            EventSessionStatusId = (int)EventSessionStatusEnum.Draft,
             ConcurrencyStamp = concurrencyStamp,
             Event = null!,
             Tenant = null!
@@ -296,13 +294,12 @@ public class UpdateEventSessionCommandHandlerTests
         var targetEvent = DataBuilder.Event.Generate();
         targetEvent.Id = targetEventId;
         targetEvent.TenantId = tenantId;
-        var session = new EventSession
+        var session = new EventSession(EventSessionStatusEnum.Published)
         {
             Id = sessionId,
             EventId = sourceEventId,
             TenantId = tenantId,
             Title = "Published session",
-            EventSessionStatusId = (int)EventSessionStatusEnum.Published,
             ConcurrencyStamp = concurrencyStamp,
             Event = null!,
             Tenant = null!
@@ -409,7 +406,7 @@ public class UpdateEventSessionCommandHandlerTests
         await Assert.That(template.Before.StartsAt).IsEqualTo(authoritativeStart);
         await Assert.That(template.After.StartsAt).IsEqualTo(newStart);
 
-        EventSession CreatePublishedSession(DateTimeOffset start) => new()
+        EventSession CreatePublishedSession(DateTimeOffset start) => new(EventSessionStatusEnum.Published)
         {
             Id = sessionId,
             EventId = eventId,
@@ -417,7 +414,6 @@ public class UpdateEventSessionCommandHandlerTests
             Title = "Published session",
             StartTime = start,
             EndTime = start.AddHours(1),
-            EventSessionStatusId = (int)EventSessionStatusEnum.Published,
             ConcurrencyStamp = concurrencyStamp,
             Event = null!,
             Tenant = null!

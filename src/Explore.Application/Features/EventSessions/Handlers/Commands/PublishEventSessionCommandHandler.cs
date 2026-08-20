@@ -1,9 +1,10 @@
 // ABOUTME: Handler for publishing an event session through the lifecycle policy path.
-// ABOUTME: Validates parent-event compatibility and session readiness before changing session status.
+// ABOUTME: Publishes the session and parent schedule summary atomically with retry-safe concurrency checks.
 
 using Explore.Application.Caching;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.EventSession.Validators;
+using Explore.Application.Exceptions;
 using Explore.Application.Features.EventSessions.Requests.Commands;
 using Explore.Application.Responses;
 using Explore.Application.Services.Lifecycle;
@@ -19,7 +20,9 @@ public sealed class PublishEventSessionCommandHandler(
     IEventRepository eventRepository,
     IEventLifecyclePolicyProvider policyProvider,
     IEventLifecycleReadinessEvaluator readinessEvaluator,
-    HybridCache cache) : IRequestHandler<PublishEventSessionCommand, BaseCommandResponse<Guid>>
+    IUnitOfWork unitOfWork,
+    HybridCache cache,
+    TimeProvider timeProvider) : IRequestHandler<PublishEventSessionCommand, BaseCommandResponse<Guid>>
 {
     private const string ConcurrencyConflictCode = "event_session_publish_concurrency_conflict";
     private const string ReadinessFailedCode = "event_session_publish_readiness_failed";
@@ -37,6 +40,11 @@ public sealed class PublishEventSessionCommandHandler(
         if (session is null)
         {
             return Failure(command.Id, "Event session was not found.", ["Event session was not found."]);
+        }
+
+        if (session.EventSessionStatusId == (int)EventSessionStatusEnum.Published)
+        {
+            return Success(session.Id, "Event session is already published.");
         }
 
         if (session.ConcurrencyStamp != command.Request.ExpectedConcurrencyStamp)
@@ -57,20 +65,89 @@ public sealed class PublishEventSessionCommandHandler(
             return Failure(command.Id, "Event session is not ready to publish.", readiness.Errors.Select(error => error.Message), ReadinessFailedCode);
         }
 
-        if (session.EventSessionStatusId == (int)EventSessionStatusEnum.Published)
+        DateTime occurredAt = timeProvider.GetUtcNow().UtcDateTime;
+        bool mutationAttempted = false;
+        (BaseCommandResponse<Guid> Response, Guid? ParentEventId, Guid? TenantId) result;
+        try
         {
-            return Success(session.Id, "Event session is already published.");
+            result = await unitOfWork.ExecuteInTransactionAsync(async token =>
+            {
+                EventSession? currentSession = await eventSessionRepository.GetByIdForEventAsync(
+                    command.Id,
+                    session.EventId,
+                    session.TenantId,
+                    token);
+                if (currentSession is null)
+                {
+                    return NoCache(Failure(command.Id, "Event session was not found.", ["Event session was not found."]));
+                }
+
+                Event? currentParentEvent = await eventRepository.GetById(currentSession.EventId);
+                if (currentParentEvent is null || currentParentEvent.TenantId != currentSession.TenantId)
+                {
+                    return NoCache(Failure(command.Id, "Parent event was not found in the current tenant.", ["Parent event was not found in the current tenant."]));
+                }
+
+                bool alreadyPublished = currentSession.EventSessionStatusId == (int)EventSessionStatusEnum.Published;
+                if (mutationAttempted && alreadyPublished)
+                {
+                    return WithCacheIdentity(Success(currentSession.Id, "Event session published successfully."), currentParentEvent);
+                }
+
+                if (currentSession.ConcurrencyStamp != command.Request.ExpectedConcurrencyStamp)
+                {
+                    return NoCache(Failure(
+                        command.Id,
+                        "Event session was modified by another request.",
+                        ["Refresh the event session and try publishing again."],
+                        ConcurrencyConflictCode));
+                }
+
+                EventLifecyclePolicy currentPolicy = await policyProvider.GetEffectivePolicyAsync(
+                    currentSession.TenantId,
+                    ValidationProfile.SessionPublish,
+                    token);
+                LifecycleReadinessResult currentReadiness = readinessEvaluator.Evaluate(
+                    currentSession,
+                    currentParentEvent,
+                    ValidationProfile.SessionPublish,
+                    currentPolicy);
+                if (!currentReadiness.IsReady)
+                {
+                    return NoCache(Failure(
+                        command.Id,
+                        "Event session is not ready to publish.",
+                        currentReadiness.Errors.Select(error => error.Message),
+                        ReadinessFailedCode));
+                }
+
+                currentSession.Publish((EventStatusEnum)currentParentEvent.EventStatusId, occurredAt);
+                mutationAttempted = true;
+                await eventSessionRepository.Update(currentSession);
+                await RefreshParentScheduleSummaryAsync(currentParentEvent.Id, token);
+
+                return WithCacheIdentity(Success(currentSession.Id, "Event session published successfully."), currentParentEvent);
+            }, cancellationToken);
+        }
+        catch (ConcurrencyConflictException)
+        {
+            return Failure(
+                command.Id,
+                "Event session was modified by another request.",
+                ["Refresh the event session and try publishing again."],
+                ConcurrencyConflictCode);
         }
 
-        session.EventSessionStatusId = (int)EventSessionStatusEnum.Published;
-        session.UpdatedAt = DateTime.UtcNow;
+        if (!result.Response.Success
+            || result.ParentEventId is not { } parentEventId
+            || result.TenantId is not { } tenantId)
+        {
+            return result.Response;
+        }
 
-        await eventSessionRepository.Update(session);
-        await RefreshParentScheduleSummaryAsync(parentEvent.Id, cancellationToken);
-        await cache.RemoveAsync($"event:detail:{parentEvent.Id}", cancellationToken);
-        await cache.RemoveByTagAsync(CacheTags.EventListByTenant(parentEvent.TenantId), cancellationToken);
-
-        return Success(session.Id, "Event session published successfully.");
+        await cache.RemoveAsync($"event:detail:{parentEventId}", cancellationToken);
+        await cache.RemoveByTagAsync(CacheTags.EventListByTenant(tenantId), cancellationToken);
+        return result.Response;
     }
 
     private static BaseCommandResponse<Guid> Success(Guid id, string message) => new()
@@ -89,12 +166,19 @@ public sealed class PublishEventSessionCommandHandler(
         FailureCode = failureCode
     };
 
+    private static (BaseCommandResponse<Guid> Response, Guid? ParentEventId, Guid? TenantId) NoCache(
+        BaseCommandResponse<Guid> response) => (response, null, null);
+
+    private static (BaseCommandResponse<Guid> Response, Guid? ParentEventId, Guid? TenantId) WithCacheIdentity(
+        BaseCommandResponse<Guid> response,
+        Event parentEvent) => (response, parentEvent.Id, parentEvent.TenantId);
+
     private async Task RefreshParentScheduleSummaryAsync(Guid eventId, CancellationToken cancellationToken)
     {
         Event? scheduleGraph = await eventRepository.GetScheduleGraphForUpdateAsync(eventId, cancellationToken);
         if (scheduleGraph is null)
         {
-            return;
+            throw new InvalidOperationException("Parent event schedule graph was not found during session publication.");
         }
 
         scheduleGraph.RecalculateScheduleSummaryFromSessions();

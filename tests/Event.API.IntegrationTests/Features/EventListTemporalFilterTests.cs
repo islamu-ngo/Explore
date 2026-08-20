@@ -259,7 +259,7 @@ public class EventListTemporalFilterTests : IAsyncDisposable
         DateTimeOffset startsAt,
         DateTimeOffset endsAt)
     {
-        var session = new EventSession
+        var session = new EventSession(EventSessionStatusEnum.Published)
         {
             Id = Guid.NewGuid(),
             EventId = @event.Id,
@@ -268,7 +268,6 @@ public class EventListTemporalFilterTests : IAsyncDisposable
             Tenant = null!,
             LocationId = null,
             Location = null!,
-            EventSessionStatusId = (int)EventSessionStatusEnum.Published,
             EventSessionKindId = (int)EventSessionKindEnum.Talk,
             RegistrationModeId = 1,
             Title = @event.Title,

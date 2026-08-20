@@ -19,6 +19,8 @@ namespace Event.Application.UnitTests.Features.Events.Commands;
 
 public sealed class ImportEventCommandHandlerTests
 {
+    private static readonly DateTimeOffset Now = new(2026, 8, 20, 12, 0, 0, TimeSpan.Zero);
+
     [Test]
     public async Task Handle_WhenImportOmitsPublicationFields_CreatesDraftWithStructuralDefaults()
     {
@@ -37,7 +39,8 @@ public sealed class ImportEventCommandHandlerTests
             unitOfWork,
             cache,
             policyProvider,
-            new EventLifecycleReadinessEvaluator());
+            new EventLifecycleReadinessEvaluator(),
+            TimeProvider.System);
 
         var request = CreateValidRequest();
         request.VisibilityTypeId = null;
@@ -60,6 +63,270 @@ public sealed class ImportEventCommandHandlerTests
     }
 
     [Test]
+    public async Task Handle_WhenTransactionFails_DoesNotInvalidateCache()
+    {
+        var eventRepository = Substitute.For<IEventRepository>();
+        var unitOfWork = Substitute.For<IUnitOfWork>();
+        var cache = Substitute.For<HybridCache>();
+        var policyProvider = Substitute.For<IEventLifecyclePolicyProvider>();
+        policyProvider
+            .GetEffectivePolicyAsync(Arg.Any<Guid?>(), ValidationProfile.EventImportCreate, Arg.Any<CancellationToken>())
+            .Returns(CreateImportPolicy());
+        unitOfWork
+            .ExecuteInTransactionAsync(Arg.Any<Func<CancellationToken, Task<BaseCommandResponse<Guid>>>>(), Arg.Any<CancellationToken>())
+            .Returns<Task<BaseCommandResponse<Guid>>>(_ => throw new InvalidOperationException("commit failed"));
+        var handler = new ImportEventCommandHandler(
+            eventRepository,
+            Substitute.For<IStorageObjectRepository>(),
+            unitOfWork,
+            cache,
+            policyProvider,
+            new EventLifecycleReadinessEvaluator(),
+            TimeProvider.System);
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => handler.Handle(new ImportEventCommand { Request = CreateValidRequest() }, CancellationToken.None));
+
+        await cache.DidNotReceive().RemoveByTagAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task Handle_WhenTransactionCommits_InvalidatesCacheAfterCommit()
+    {
+        var eventRepository = Substitute.For<IEventRepository>();
+        bool transactionCompleted = false;
+        bool cacheObservedCommit = false;
+        var unitOfWork = CreateUnitOfWork(() => transactionCompleted = true);
+        var cache = Substitute.For<HybridCache>();
+        var policyProvider = Substitute.For<IEventLifecyclePolicyProvider>();
+        policyProvider
+            .GetEffectivePolicyAsync(Arg.Any<Guid?>(), ValidationProfile.EventImportCreate, Arg.Any<CancellationToken>())
+            .Returns(CreateImportPolicy());
+        eventRepository.Create(Arg.Any<Explore.Domain.Event>())
+            .Returns(callInfo => callInfo.Arg<Explore.Domain.Event>());
+        cache.RemoveByTagAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(_ =>
+            {
+                cacheObservedCommit = transactionCompleted;
+                return ValueTask.CompletedTask;
+            });
+        var handler = new ImportEventCommandHandler(
+            eventRepository,
+            Substitute.For<IStorageObjectRepository>(),
+            unitOfWork,
+            cache,
+            policyProvider,
+            new EventLifecycleReadinessEvaluator(),
+            TimeProvider.System);
+        var request = CreateValidRequest();
+
+        var result = await handler.Handle(new ImportEventCommand { Request = request }, CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await Assert.That(cacheObservedCommit).IsTrue();
+        await cache.Received(1).RemoveByTagAsync(CacheTags.EventListByTenant(request.TenantId), Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task Handle_WhenTransactionDelegateRunsTwice_ReusesIdentityAndTimestamps()
+    {
+        var eventRepository = Substitute.For<IEventRepository>();
+        var unitOfWork = Substitute.For<IUnitOfWork>();
+        var cache = Substitute.For<HybridCache>();
+        var policyProvider = Substitute.For<IEventLifecyclePolicyProvider>();
+        var createdEntities = new List<Explore.Domain.Event>();
+        policyProvider
+            .GetEffectivePolicyAsync(Arg.Any<Guid?>(), ValidationProfile.EventImportCreate, Arg.Any<CancellationToken>())
+            .Returns(CreateImportPolicy());
+        eventRepository.Create(Arg.Any<Explore.Domain.Event>())
+            .Returns(callInfo =>
+            {
+                var entity = callInfo.Arg<Explore.Domain.Event>();
+                createdEntities.Add(entity);
+                return entity;
+            });
+        unitOfWork
+            .ExecuteInTransactionAsync(Arg.Any<Func<CancellationToken, Task<BaseCommandResponse<Guid>>>>(), Arg.Any<CancellationToken>())
+            .Returns(async callInfo =>
+            {
+                var operation = callInfo.Arg<Func<CancellationToken, Task<BaseCommandResponse<Guid>>>>();
+                await operation(CancellationToken.None);
+                return await operation(CancellationToken.None);
+            });
+        var handler = new ImportEventCommandHandler(
+            eventRepository,
+            Substitute.For<IStorageObjectRepository>(),
+            unitOfWork,
+            cache,
+            policyProvider,
+            new EventLifecycleReadinessEvaluator(),
+            new FixedTimeProvider(Now));
+        var request = CreateValidRequest();
+
+        var result = await handler.Handle(new ImportEventCommand { Request = request }, CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await Assert.That(createdEntities).HasCount().EqualTo(2);
+        await Assert.That(createdEntities[0].Id).IsEqualTo(createdEntities[1].Id);
+        await Assert.That(createdEntities[0].Id.Version).IsEqualTo(7);
+        await Assert.That(createdEntities[0].CreatedAt).IsEqualTo(Now.UtcDateTime);
+        await Assert.That(createdEntities[0].CreatedAt).IsEqualTo(createdEntities[1].CreatedAt);
+        await Assert.That(createdEntities[0].UpdatedAt).IsEqualTo(Now.UtcDateTime);
+        await Assert.That(createdEntities[0].UpdatedAt).IsEqualTo(createdEntities[1].UpdatedAt);
+        await Assert.That(createdEntities[0].ParticipationConfiguration!.CreatedAt).IsEqualTo(Now.UtcDateTime);
+        await Assert.That(createdEntities[0].ParticipationConfiguration!.CreatedAt)
+            .IsEqualTo(createdEntities[1].ParticipationConfiguration!.CreatedAt);
+        await cache.Received(1).RemoveByTagAsync(CacheTags.EventListByTenant(request.TenantId), Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task Handle_WhenCommittedFirstAttemptIsRetried_ReturnsExistingImportWithoutDuplicateCreate()
+    {
+        var eventRepository = Substitute.For<IEventRepository>();
+        var unitOfWork = Substitute.For<IUnitOfWork>();
+        var cache = Substitute.For<HybridCache>();
+        var policyProvider = Substitute.For<IEventLifecyclePolicyProvider>();
+        var request = CreateValidRequest();
+        Explore.Domain.Event? committedEvent = null;
+        Guid capturedEventId = Guid.Empty;
+        int lookupCount = 0;
+        policyProvider
+            .GetEffectivePolicyAsync(Arg.Any<Guid?>(), ValidationProfile.EventImportCreate, Arg.Any<CancellationToken>())
+            .Returns(CreateImportPolicy());
+        eventRepository.GetById(Arg.Any<Guid>())
+            .Returns(callInfo =>
+            {
+                capturedEventId = callInfo.Arg<Guid>();
+                return lookupCount++ == 0 ? null : committedEvent;
+            });
+        eventRepository.Create(Arg.Any<Explore.Domain.Event>())
+            .Returns(callInfo =>
+            {
+                var created = callInfo.Arg<Explore.Domain.Event>();
+                committedEvent = new Explore.Domain.Event(EventStatusEnum.Draft)
+                {
+                    Id = created.Id,
+                    Title = created.Title,
+                    TenantId = created.TenantId,
+                    Actor = null!,
+                    Tenant = null!,
+                    EventStatus = null!,
+                    VisibilityType = null!,
+                    EventFormat = null!,
+                    EventProvenanceTypeId = (int)EventProvenanceTypeEnum.Imported,
+                    ProvenanceSource = created.ProvenanceSource,
+                    ProvenanceExternalId = created.ProvenanceExternalId,
+                    ParticipationConfiguration = created.ParticipationConfiguration
+                };
+                return created;
+            });
+        unitOfWork
+            .ExecuteInTransactionAsync(Arg.Any<Func<CancellationToken, Task<BaseCommandResponse<Guid>>>>(), Arg.Any<CancellationToken>())
+            .Returns(async callInfo =>
+            {
+                var operation = callInfo.Arg<Func<CancellationToken, Task<BaseCommandResponse<Guid>>>>();
+                await operation(CancellationToken.None);
+                return await operation(CancellationToken.None);
+            });
+        var handler = new ImportEventCommandHandler(
+            eventRepository,
+            Substitute.For<IStorageObjectRepository>(),
+            unitOfWork,
+            cache,
+            policyProvider,
+            new EventLifecycleReadinessEvaluator(),
+            new FixedTimeProvider(Now));
+
+        var result = await handler.Handle(new ImportEventCommand { Request = request }, CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.Id).IsEqualTo(capturedEventId);
+        await Assert.That(committedEvent!.Id).IsEqualTo(capturedEventId);
+        await Assert.That(committedEvent.TenantId).IsEqualTo(request.TenantId);
+        await eventRepository.Received(2).GetById(capturedEventId);
+        await eventRepository.Received(1).Create(Arg.Any<Explore.Domain.Event>());
+        await cache.Received(1).RemoveByTagAsync(CacheTags.EventListByTenant(request.TenantId), Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    [Arguments(ExistingImportMismatch.Tenant)]
+    [Arguments(ExistingImportMismatch.ProvenanceType)]
+    [Arguments(ExistingImportMismatch.ProvenanceSource)]
+    [Arguments(ExistingImportMismatch.ProvenanceExternalId)]
+    public async Task Handle_WhenRetryFindsMismatchedImport_FailsClosedWithoutDuplicateCreate(
+        ExistingImportMismatch mismatch)
+    {
+        var eventRepository = Substitute.For<IEventRepository>();
+        var unitOfWork = Substitute.For<IUnitOfWork>();
+        var cache = Substitute.For<HybridCache>();
+        var policyProvider = Substitute.For<IEventLifecyclePolicyProvider>();
+        var request = CreateValidRequest();
+        Explore.Domain.Event? mismatchedEvent = null;
+        Guid capturedEventId = Guid.Empty;
+        int lookupCount = 0;
+        policyProvider
+            .GetEffectivePolicyAsync(Arg.Any<Guid?>(), ValidationProfile.EventImportCreate, Arg.Any<CancellationToken>())
+            .Returns(CreateImportPolicy());
+        eventRepository.GetById(Arg.Any<Guid>())
+            .Returns(callInfo =>
+            {
+                capturedEventId = callInfo.Arg<Guid>();
+                return lookupCount++ == 0 ? null : mismatchedEvent;
+            });
+        eventRepository.Create(Arg.Any<Explore.Domain.Event>())
+            .Returns(callInfo =>
+            {
+                var created = callInfo.Arg<Explore.Domain.Event>();
+                mismatchedEvent = new Explore.Domain.Event(EventStatusEnum.Draft)
+                {
+                    Id = created.Id,
+                    Title = created.Title,
+                    TenantId = mismatch == ExistingImportMismatch.Tenant ? Guid.NewGuid() : created.TenantId,
+                    Actor = null!,
+                    Tenant = null!,
+                    EventStatus = null!,
+                    VisibilityType = null!,
+                    EventFormat = null!,
+                    EventProvenanceTypeId = mismatch == ExistingImportMismatch.ProvenanceType
+                        ? (int)EventProvenanceTypeEnum.OrganizerCreated
+                        : (int)EventProvenanceTypeEnum.Imported,
+                    ProvenanceSource = mismatch == ExistingImportMismatch.ProvenanceSource
+                        ? "different-source"
+                        : created.ProvenanceSource,
+                    ProvenanceExternalId = mismatch == ExistingImportMismatch.ProvenanceExternalId
+                        ? "different-external-id"
+                        : created.ProvenanceExternalId,
+                    ParticipationConfiguration = created.ParticipationConfiguration
+                };
+                return created;
+            });
+        unitOfWork
+            .ExecuteInTransactionAsync(Arg.Any<Func<CancellationToken, Task<BaseCommandResponse<Guid>>>>(), Arg.Any<CancellationToken>())
+            .Returns(async callInfo =>
+            {
+                var operation = callInfo.Arg<Func<CancellationToken, Task<BaseCommandResponse<Guid>>>>();
+                await operation(CancellationToken.None);
+                return await operation(CancellationToken.None);
+            });
+        var handler = new ImportEventCommandHandler(
+            eventRepository,
+            Substitute.For<IStorageObjectRepository>(),
+            unitOfWork,
+            cache,
+            policyProvider,
+            new EventLifecycleReadinessEvaluator(),
+            new FixedTimeProvider(Now));
+
+        var result = await handler.Handle(new ImportEventCommand { Request = request }, CancellationToken.None);
+
+        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.FailureCode).IsEqualTo("event_import_validation_failed");
+        await Assert.That(mismatchedEvent!.Id).IsEqualTo(capturedEventId);
+        await eventRepository.Received(2).GetById(capturedEventId);
+        await eventRepository.Received(1).Create(Arg.Any<Explore.Domain.Event>());
+        await cache.DidNotReceive().RemoveByTagAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
+
+    [Test]
     public async Task Handle_WhenProvenanceIsMissing_ReturnsValidationFailure()
     {
         var eventRepository = Substitute.For<IEventRepository>();
@@ -69,7 +336,8 @@ public sealed class ImportEventCommandHandlerTests
             CreateUnitOfWork(),
             Substitute.For<HybridCache>(),
             Substitute.For<IEventLifecyclePolicyProvider>(),
-            new EventLifecycleReadinessEvaluator());
+            new EventLifecycleReadinessEvaluator(),
+            TimeProvider.System);
 
         var request = CreateValidRequest();
         request.ProvenanceSource = "";
@@ -95,7 +363,8 @@ public sealed class ImportEventCommandHandlerTests
             CreateUnitOfWork(),
             Substitute.For<HybridCache>(),
             policyProvider,
-            new EventLifecycleReadinessEvaluator());
+            new EventLifecycleReadinessEvaluator(),
+            TimeProvider.System);
 
         var result = await handler.Handle(new ImportEventCommand { Request = CreateValidRequest() }, CancellationToken.None);
 
@@ -104,12 +373,17 @@ public sealed class ImportEventCommandHandlerTests
         await eventRepository.DidNotReceive().Create(Arg.Any<Explore.Domain.Event>());
     }
 
-    private static IUnitOfWork CreateUnitOfWork()
+    private static IUnitOfWork CreateUnitOfWork(Action? onCompleted = null)
     {
         var unitOfWork = Substitute.For<IUnitOfWork>();
         unitOfWork
             .ExecuteInTransactionAsync(Arg.Any<Func<CancellationToken, Task<BaseCommandResponse<Guid>>>>(), Arg.Any<CancellationToken>())
-            .Returns(callInfo => callInfo.Arg<Func<CancellationToken, Task<BaseCommandResponse<Guid>>>>()(CancellationToken.None));
+            .Returns(async callInfo =>
+            {
+                var response = await callInfo.Arg<Func<CancellationToken, Task<BaseCommandResponse<Guid>>>>()(CancellationToken.None);
+                onCompleted?.Invoke();
+                return response;
+            });
         return unitOfWork;
     }
 
@@ -151,4 +425,17 @@ public sealed class ImportEventCommandHandlerTests
         },
         RequiredSessionFields = new HashSet<Enum>()
     };
+
+    private sealed class FixedTimeProvider(DateTimeOffset utcNow) : TimeProvider
+    {
+        public override DateTimeOffset GetUtcNow() => utcNow;
+    }
+
+    public enum ExistingImportMismatch
+    {
+        Tenant,
+        ProvenanceType,
+        ProvenanceSource,
+        ProvenanceExternalId
+    }
 }

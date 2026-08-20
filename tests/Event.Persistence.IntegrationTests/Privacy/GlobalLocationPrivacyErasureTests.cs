@@ -858,7 +858,7 @@ public sealed class GlobalLocationPrivacyErasureTests(ExternalDatabasePrivacyEra
             ]);
     }
 
-    private static Explore.Domain.Event CreateEvent(Guid tenantId, Guid actorId, string title) => new()
+    private static Explore.Domain.Event CreateEvent(Guid tenantId, Guid actorId, string title) => new(EventStatusEnum.Draft)
     {
         Id = Guid.CreateVersion7(),
         TenantId = tenantId,
@@ -866,7 +866,6 @@ public sealed class GlobalLocationPrivacyErasureTests(ExternalDatabasePrivacyEra
         ActorId = actorId,
         Actor = null!,
         Title = title,
-        EventStatusId = (int)EventStatusEnum.Draft,
         EventStatus = null!,
         EventFormatId = (int)EventFormatEnum.Local,
         EventFormat = null!,

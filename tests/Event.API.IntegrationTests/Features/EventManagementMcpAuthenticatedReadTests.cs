@@ -248,7 +248,7 @@ public sealed class EventManagementMcpAuthenticatedReadTests
         var userId = Guid.CreateVersion7();
         var title = $"MCP Readiness Published {Guid.NewGuid():N}";
         var seed = await SeedOwnedDraftEventAsync(factory, userId, title);
-        await SetEventStatusAsync(factory, seed.EventId, EventStatusEnum.Published);
+        await PublishEventAsync(factory, seed.EventId);
 
         using var restDetailRequest = CreateAuthenticatedRequest(HttpMethod.Get, $"/api/event/{seed.EventId}/management-detail", userId);
         using var restDetailResponse = await client.SendAsync(restDetailRequest);
@@ -566,16 +566,15 @@ public sealed class EventManagementMcpAuthenticatedReadTests
         CreatedAt = DateTime.UtcNow
     };
 
-    private static async Task SetEventStatusAsync(
+    private static async Task PublishEventAsync(
         AuthenticatedWebApplicationFactory factory,
-        Guid eventId,
-        EventStatusEnum status)
+        Guid eventId)
     {
         await using var scope = factory.Services.CreateAsyncScope();
         var context = scope.ServiceProvider.GetRequiredService<ExploreDbContext>();
         var @event = await context.Events.FindAsync(eventId);
         await Assert.That(@event).IsNotNull();
-        @event!.EventStatusId = (int)status;
+        @event!.Publish(DateTime.UtcNow);
         await context.SaveChangesAsync();
     }
 

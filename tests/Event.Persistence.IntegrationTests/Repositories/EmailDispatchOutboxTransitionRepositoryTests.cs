@@ -2004,7 +2004,7 @@ public sealed class EmailDispatchOutboxTransitionRepositoryTests(PostgreSqlConta
             Pii = new ActorPii { DisplayName = "Report receipt recipient" },
             CreatedAt = DateTime.UtcNow
         };
-        var @event = new Explore.Domain.Event
+        var @event = new Explore.Domain.Event(EventStatusEnum.Published)
         {
             Id = Guid.CreateVersion7(),
             Title = "Reported event",
@@ -2015,7 +2015,6 @@ public sealed class EmailDispatchOutboxTransitionRepositoryTests(PostgreSqlConta
             Tenant = tenant,
             VisibilityTypeId = (int)VisibilityTypeEnum.Public,
             VisibilityType = null!,
-            EventStatusId = (int)EventStatusEnum.Published,
             EventStatus = null!,
             EventFormatId = (int)EventFormatEnum.Digital,
             EventFormat = null!,

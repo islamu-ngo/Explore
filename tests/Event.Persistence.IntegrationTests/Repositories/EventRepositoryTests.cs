@@ -56,7 +56,7 @@ public class EventRepositoryTests
         await context.SaveChangesAsync();
 
         var eventId = Guid.NewGuid();
-        var @event = new Explore.Domain.Event
+        var @event = new Explore.Domain.Event(EventStatusEnum.Draft)
         {
             Id = eventId,
             Title = "Integration Test Event",
@@ -75,7 +75,6 @@ public class EventRepositoryTests
             Tenant = tenant,
             VisibilityTypeId = 1,
             VisibilityType = null!,
-            EventStatusId = 1,
             EventStatus = null!,
             EventFormatId = 1,
             EventFormat = null!,
@@ -133,7 +132,7 @@ public class EventRepositoryTests
         await context.SaveChangesAsync();
 
         var eventId = Guid.NewGuid();
-        var @event = new Explore.Domain.Event
+        var @event = new Explore.Domain.Event(EventStatusEnum.Draft)
         {
             Id = eventId,
             Title = "Detailed Event",
@@ -147,7 +146,6 @@ public class EventRepositoryTests
             Tenant = null!,
             VisibilityTypeId = 1,
             VisibilityType = null!,
-            EventStatusId = 1,
             EventStatus = null!,
             EventFormatId = 1,
             EventFormat = null!,

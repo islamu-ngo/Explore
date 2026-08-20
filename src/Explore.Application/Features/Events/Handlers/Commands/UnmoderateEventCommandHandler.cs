@@ -26,7 +26,8 @@ public sealed class UnmoderateEventCommandHandler(
     HybridCache cache,
     BusinessMetrics metrics,
     ILogger<UnmoderateEventCommandHandler> logger,
-    AtprotoEventPublicationPlanner atprotoPublicationPlanner) : IRequestHandler<UnmoderateEventCommand, BaseCommandResponse<Guid>>
+    AtprotoEventPublicationPlanner atprotoPublicationPlanner,
+    TimeProvider timeProvider) : IRequestHandler<UnmoderateEventCommand, BaseCommandResponse<Guid>>
 {
     private const string InvalidStatusFailureCode = "event_unmoderation_invalid_status";
     private const string NotReversibleFailureCode = "event_unmoderation_not_reversible";
@@ -68,35 +69,45 @@ public sealed class UnmoderateEventCommandHandler(
                 UserResolutionFailureCode);
         }
 
+        Guid unmoderationRecordId = Guid.CreateVersion7();
         Guid federationOutboxId = Guid.CreateVersion7();
-        DateTime federationCreatedAt = DateTime.UtcNow;
-        return await unitOfWork.ExecuteInTransactionAsync(async token =>
+        DateTimeOffset unmoderatedAt = timeProvider.GetUtcNow();
+        DateTime federationCreatedAt = unmoderatedAt.UtcDateTime;
+        UnmoderationCommandResult? postCommitResult = null;
+        UnmoderationCommandResult result = await unitOfWork.ExecuteInTransactionAsync(async token =>
         {
             var @event = await eventRepository.GetById(request.Id);
             if (@event is null)
             {
-                metrics.RecordEventModerationAction(null, ActionKind, "failed", "not_found", irreversible: false);
-                logger.LogWarning(
-                    "Event unmoderation rejected because event {EventId} was not found.",
-                    request.Id);
+                return new UnmoderationCommandResult(
+                    Failure(request.Id, "Event not found.", ["Event not found."]),
+                    null,
+                    "failed",
+                    "not_found",
+                    LogOutcome: "not_found");
+            }
 
-                return Failure(request.Id, "Event not found.", ["Event not found."]);
+            if (@event.EventStatusId == (int)EventStatusEnum.Published)
+            {
+                return new UnmoderationCommandResult(
+                    Success(@event.Id, "Event is already published."),
+                    @event.TenantId,
+                    null,
+                    LogOutcome: "idempotent");
             }
 
             if (@event.EventStatusId != (int)EventStatusEnum.Moderated)
             {
-                metrics.RecordEventModerationAction(@event.TenantId.ToString(), ActionKind, "failed", "invalid_status", irreversible: false);
-                logger.LogWarning(
-                    "Event unmoderation rejected for event {EventId} in tenant {TenantId} because current status {CurrentStatusId} is not Moderated.",
-                    @event.Id,
-                    @event.TenantId,
-                    @event.EventStatusId);
-
-                return Failure(
+                return new UnmoderationCommandResult(Failure(
                     @event.Id,
                     "Only moderated events can be unmoderated.",
                     ["Only moderated events can be unmoderated."],
-                    InvalidStatusFailureCode);
+                    InvalidStatusFailureCode),
+                    @event.TenantId,
+                    "failed",
+                    "invalid_status",
+                    LogOutcome: "invalid_status",
+                    CurrentStatusId: @event.EventStatusId);
             }
 
             var latestModerationRecord = await moderationRecordRepository.GetLatestByEventAsync(
@@ -106,29 +117,33 @@ public sealed class UnmoderateEventCommandHandler(
 
             if (latestModerationRecord?.AllowsUnmoderation != true)
             {
-                metrics.RecordEventModerationAction(@event.TenantId.ToString(), ActionKind, "failed", "not_reversible", irreversible: false);
-                logger.LogWarning(
-                    "Event unmoderation rejected for event {EventId} in tenant {TenantId} because the latest moderation record is not reversible.",
-                    @event.Id,
-                    @event.TenantId);
-
-                return Failure(
+                return new UnmoderationCommandResult(Failure(
                     @event.Id,
                     "Only reversibly light-moderated events can be unmoderated.",
                     ["Only reversibly light-moderated events can be unmoderated."],
-                    NotReversibleFailureCode);
+                    NotReversibleFailureCode),
+                    @event.TenantId,
+                    "failed",
+                    "not_reversible",
+                    LogOutcome: "not_reversible");
             }
 
-            var unmoderatedAt = DateTimeOffset.UtcNow;
             var unmoderationRecord = EventModerationRecord.CreateUnmoderation(
+                unmoderationRecordId,
                 latestModerationRecord,
                 moderatorUserId,
                 reasonMetadata.ReasonCode,
                 reasonMetadata.CorrelationId,
                 unmoderatedAt);
 
-            @event.EventStatusId = (int)EventStatusEnum.Published;
-            @event.UpdatedAt = unmoderatedAt.UtcDateTime;
+            if (!@event.RestoreAfterLightModeration(unmoderatedAt.UtcDateTime))
+            {
+                return new UnmoderationCommandResult(
+                    Success(@event.Id, "Event is already published."),
+                    @event.TenantId,
+                    null,
+                    LogOutcome: "idempotent");
+            }
 
             await moderationRecordRepository.Create(unmoderationRecord);
             await eventRepository.Update(@event);
@@ -144,22 +159,91 @@ public sealed class UnmoderateEventCommandHandler(
                     RestoreOnly: true),
                 token);
 
-            await cache.RemoveAsync($"event:detail:{@event.Id}", token);
-            await cache.RemoveByTagAsync(CacheTags.EventListByTenant(@event.TenantId), token);
-
-            metrics.RecordEventModerationAction(@event.TenantId.ToString(), ActionKind, "succeeded", irreversible: false);
-            logger.LogInformation(
-                "Event unmoderation succeeded for event {EventId} in tenant {TenantId}; moderation record {ModerationRecordId}, source record {SourceModerationRecordId}, moderator {ModeratorUserId}, reason {ReasonCode}, correlation {CorrelationId}.",
-                @event.Id,
+            var mutationResult = new UnmoderationCommandResult(
+                Success(@event.Id, "Event unmoderated successfully."),
                 @event.TenantId,
-                unmoderationRecord.Id,
-                unmoderationRecord.SourceModerationRecordId,
-                moderatorUserId,
-                unmoderationRecord.ReasonCode,
-                unmoderationRecord.CorrelationId);
-
-            return Success(@event.Id, "Event unmoderated successfully.");
+                "succeeded",
+                CacheEventId: @event.Id,
+                LogOutcome: "succeeded",
+                ModerationRecord: unmoderationRecord);
+            postCommitResult ??= mutationResult;
+            return mutationResult;
         }, cancellationToken);
+
+        if (result.Response.Success)
+        {
+            result = postCommitResult ?? result;
+        }
+        else if (postCommitResult is not null)
+        {
+            result = result with { MetricOutcome = null };
+        }
+
+        await ApplyPostCommitEffectsAsync(result, request.Id, moderatorUserId, cancellationToken);
+        return result.Response;
+    }
+
+    private async Task ApplyPostCommitEffectsAsync(
+        UnmoderationCommandResult result,
+        Guid requestedEventId,
+        Guid moderatorUserId,
+        CancellationToken cancellationToken)
+    {
+        if (result.CacheEventId is { } eventId && result.TenantId is { } tenantId)
+        {
+            await cache.RemoveAsync($"event:detail:{eventId}", cancellationToken);
+            await cache.RemoveByTagAsync(CacheTags.EventListByTenant(tenantId), cancellationToken);
+        }
+
+        if (result.MetricOutcome is not null)
+        {
+            metrics.RecordEventModerationAction(
+                result.TenantId?.ToString(),
+                ActionKind,
+                result.MetricOutcome,
+                result.FailureReason,
+                irreversible: false);
+        }
+
+        switch (result.LogOutcome)
+        {
+            case "not_found":
+                logger.LogWarning(
+                    "Event unmoderation rejected because event {EventId} was not found.",
+                    requestedEventId);
+                break;
+            case "idempotent":
+                logger.LogInformation(
+                    "Event unmoderation skipped because event {EventId} in tenant {TenantId} is already published.",
+                    result.Response.Id,
+                    result.TenantId);
+                break;
+            case "invalid_status":
+                logger.LogWarning(
+                    "Event unmoderation rejected for event {EventId} in tenant {TenantId} because current status {CurrentStatusId} is not Moderated.",
+                    result.Response.Id,
+                    result.TenantId,
+                    result.CurrentStatusId);
+                break;
+            case "not_reversible":
+                logger.LogWarning(
+                    "Event unmoderation rejected for event {EventId} in tenant {TenantId} because the latest moderation record is not reversible.",
+                    result.Response.Id,
+                    result.TenantId);
+                break;
+            case "succeeded":
+                EventModerationRecord unmoderationRecord = result.ModerationRecord!;
+                logger.LogInformation(
+                    "Event unmoderation succeeded for event {EventId} in tenant {TenantId}; moderation record {ModerationRecordId}, source record {SourceModerationRecordId}, moderator {ModeratorUserId}, reason {ReasonCode}, correlation {CorrelationId}.",
+                    result.Response.Id,
+                    result.TenantId,
+                    unmoderationRecord.Id,
+                    unmoderationRecord.SourceModerationRecordId,
+                    moderatorUserId,
+                    unmoderationRecord.ReasonCode,
+                    unmoderationRecord.CorrelationId);
+                break;
+        }
     }
 
     private static BaseCommandResponse<Guid> Success(Guid id, string message) => new()
@@ -181,4 +265,14 @@ public sealed class UnmoderateEventCommandHandler(
             Errors = errors.ToList(),
             FailureCode = failureCode
         };
+
+    private sealed record UnmoderationCommandResult(
+        BaseCommandResponse<Guid> Response,
+        Guid? TenantId,
+        string? MetricOutcome,
+        string? FailureReason = null,
+        Guid? CacheEventId = null,
+        string? LogOutcome = null,
+        int? CurrentStatusId = null,
+        EventModerationRecord? ModerationRecord = null);
 }

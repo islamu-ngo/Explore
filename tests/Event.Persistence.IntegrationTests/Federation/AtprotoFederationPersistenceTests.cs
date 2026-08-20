@@ -237,7 +237,7 @@ public sealed class AtprotoFederationPersistenceTests(PostgreSqlContainerFixture
                 LastSeenAt = Utc(10),
                 CreatedAt = Utc(10)
             });
-            seedContext.Events.Add(new Explore.Domain.Event
+            seedContext.Events.Add(new Explore.Domain.Event(EventStatusEnum.Draft)
             {
                 Id = Guid.CreateVersion7(),
                 Title = "Visible event",
@@ -249,7 +249,6 @@ public sealed class AtprotoFederationPersistenceTests(PostgreSqlContainerFixture
                 Tenant = null!,
                 VisibilityTypeId = (int)VisibilityTypeEnum.Public,
                 VisibilityType = null!,
-                EventStatusId = (int)EventStatusEnum.Draft,
                 EventStatus = null!,
                 EventFormatId = (int)EventFormatEnum.Digital,
                 EventFormat = null!,
@@ -903,7 +902,7 @@ public sealed class AtprotoFederationPersistenceTests(PostgreSqlContainerFixture
         DateTime now = Utc(10);
         await using var context = fixture.CreateDbContext();
         Actor actor = CreateActor(scope.UserId, "PDS event owner", now);
-        var eventEntity = new Explore.Domain.Event
+        var eventEntity = new Explore.Domain.Event(EventStatusEnum.Published)
         {
             Id = Guid.CreateVersion7(),
             Title = "Committed before PDS delivery",
@@ -914,7 +913,6 @@ public sealed class AtprotoFederationPersistenceTests(PostgreSqlContainerFixture
             Tenant = null!,
             VisibilityTypeId = (int)VisibilityTypeEnum.Public,
             VisibilityType = null!,
-            EventStatusId = (int)EventStatusEnum.Published,
             EventStatus = null!,
             EventFormatId = (int)EventFormatEnum.Digital,
             EventFormat = null!,
@@ -953,7 +951,7 @@ public sealed class AtprotoFederationPersistenceTests(PostgreSqlContainerFixture
         DateTime now = Utc(10);
         await using var context = fixture.CreateDbContext();
         Actor actor = CreateActor(scope.UserId, "Global moderation event owner", now);
-        var eventEntity = new Explore.Domain.Event
+        var eventEntity = new Explore.Domain.Event(EventStatusEnum.Published)
         {
             Id = Guid.CreateVersion7(),
             Title = "Deleted local event with live remote record",
@@ -964,7 +962,6 @@ public sealed class AtprotoFederationPersistenceTests(PostgreSqlContainerFixture
             Tenant = null!,
             VisibilityTypeId = (int)VisibilityTypeEnum.Public,
             VisibilityType = null!,
-            EventStatusId = (int)EventStatusEnum.Published,
             EventStatus = null!,
             EventFormatId = (int)EventFormatEnum.Digital,
             EventFormat = null!,

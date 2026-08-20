@@ -167,7 +167,7 @@ public sealed class EventAiReferenceRepositoryTests(PostgreSqlContainerFixture f
         VisibilityTypeEnum visibility,
         DateTimeOffset startsAt)
     {
-        return new DomainEvent
+        return new DomainEvent(status)
         {
             Id = Guid.CreateVersion7(),
             Title = title,
@@ -186,7 +186,6 @@ public sealed class EventAiReferenceRepositoryTests(PostgreSqlContainerFixture f
             Tenant = null!,
             VisibilityTypeId = (int)visibility,
             VisibilityType = null!,
-            EventStatusId = (int)status,
             EventStatus = null!,
             EventFormatId = 1,
             EventFormat = null!,

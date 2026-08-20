@@ -190,7 +190,7 @@ public sealed class EventLocationPrivacyPublicEligibilityTests(RealRuntimeApiFix
             .WithVisibility(visibility)
             .WithSessionDates(DateOnly.FromDateTime(start.UtcDateTime), DateOnly.FromDateTime(start.UtcDateTime))
             .Build();
-        var session = new EventSession
+        var session = new EventSession(sessionStatus)
         {
             Id = Guid.CreateVersion7(),
             EventId = @event.Id,
@@ -198,7 +198,6 @@ public sealed class EventLocationPrivacyPublicEligibilityTests(RealRuntimeApiFix
             TenantId = tenant.TenantId,
             Tenant = null!,
             Title = $"Session {marker}",
-            EventSessionStatusId = (int)sessionStatus,
             SortOrder = 1,
             ConcurrencyStamp = Guid.CreateVersion7()
         };

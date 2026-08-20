@@ -92,7 +92,7 @@ public sealed class AtprotoEventPublicationRepositoryTests(PostgreSqlContainerFi
         SetForeignKeyIfPresent(context, actor, "TenantId", tenant.Id);
         await context.SaveChangesAsync();
 
-        var eventEntity = new Explore.Domain.Event
+        var eventEntity = new Explore.Domain.Event(EventStatusEnum.Published)
         {
             Id = Guid.CreateVersion7(),
             Title = "Bounded publication graph",
@@ -103,7 +103,6 @@ public sealed class AtprotoEventPublicationRepositoryTests(PostgreSqlContainerFi
             Tenant = null!,
             VisibilityTypeId = (int)VisibilityTypeEnum.Public,
             VisibilityType = null!,
-            EventStatusId = (int)EventStatusEnum.Published,
             EventStatus = null!,
             EventFormatId = (int)EventFormatEnum.Digital,
             EventFormat = null!,
@@ -206,7 +205,7 @@ public sealed class AtprotoEventPublicationRepositoryTests(PostgreSqlContainerFi
         };
         context.EventDays.AddRange(dayOne, dayTwo);
 
-        var sessionOne = new EventSession
+        var sessionOne = new EventSession(EventSessionStatusEnum.Published)
         {
             Id = Guid.CreateVersion7(),
             EventId = eventEntity.Id,
@@ -216,14 +215,13 @@ public sealed class AtprotoEventPublicationRepositoryTests(PostgreSqlContainerFi
             Tenant = null!,
             Title = "Projection session one",
             SortOrder = 1,
-            EventSessionStatusId = (int)EventSessionStatusEnum.Published,
             EventSessionKindId = (int)EventSessionKindEnum.Talk,
             ConcurrencyStamp = Guid.CreateVersion7()
         };
         sessionOne.Reschedule(start, start.AddHours(1), "Europe/Brussels", calculator);
         sessionOne.AssignEventLocation(physicalPlacement);
         sessionOne.RoomId = room.Id;
-        var sessionTwo = new EventSession
+        var sessionTwo = new EventSession(EventSessionStatusEnum.Published)
         {
             Id = Guid.CreateVersion7(),
             EventId = eventEntity.Id,
@@ -233,7 +231,6 @@ public sealed class AtprotoEventPublicationRepositoryTests(PostgreSqlContainerFi
             Tenant = null!,
             Title = "Projection session two",
             SortOrder = 2,
-            EventSessionStatusId = (int)EventSessionStatusEnum.Published,
             EventSessionKindId = (int)EventSessionKindEnum.Workshop,
             ConcurrencyStamp = Guid.CreateVersion7()
         };

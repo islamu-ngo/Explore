@@ -37,6 +37,7 @@ public class EventModerationRecord : ITenantEntity
         && ResultingStatusId == (int)EventStatusEnum.Moderated;
 
     public static EventModerationRecord CreateLightModeration(
+        Guid id,
         Guid tenantId,
         Guid eventId,
         Guid? moderatorUserId,
@@ -46,6 +47,7 @@ public class EventModerationRecord : ITenantEntity
         DateTimeOffset createdAt)
     {
         return Create(
+            id,
             tenantId,
             eventId,
             moderatorUserId,
@@ -60,6 +62,7 @@ public class EventModerationRecord : ITenantEntity
     }
 
     public static EventModerationRecord CreateHeavyRedaction(
+        Guid id,
         Guid tenantId,
         Guid eventId,
         Guid? moderatorUserId,
@@ -69,6 +72,7 @@ public class EventModerationRecord : ITenantEntity
         DateTimeOffset createdAt)
     {
         return Create(
+            id,
             tenantId,
             eventId,
             moderatorUserId,
@@ -83,6 +87,7 @@ public class EventModerationRecord : ITenantEntity
     }
 
     public static EventModerationRecord CreateUnmoderation(
+        Guid id,
         EventModerationRecord sourceRecord,
         Guid? moderatorUserId,
         string reasonCode,
@@ -97,6 +102,7 @@ public class EventModerationRecord : ITenantEntity
         }
 
         return Create(
+            id,
             sourceRecord.TenantId,
             sourceRecord.EventId,
             moderatorUserId,
@@ -111,6 +117,7 @@ public class EventModerationRecord : ITenantEntity
     }
 
     private static EventModerationRecord Create(
+        Guid id,
         Guid tenantId,
         Guid eventId,
         Guid? moderatorUserId,
@@ -123,6 +130,11 @@ public class EventModerationRecord : ITenantEntity
         string? correlationId,
         DateTimeOffset createdAt)
     {
+        if (id == Guid.Empty)
+        {
+            throw new ArgumentException("Moderation record id is required.", nameof(id));
+        }
+
         if (tenantId == Guid.Empty)
         {
             throw new ArgumentException("Tenant id is required.", nameof(tenantId));
@@ -143,7 +155,7 @@ public class EventModerationRecord : ITenantEntity
 
         return new EventModerationRecord
         {
-            Id = Guid.CreateVersion7(),
+            Id = id,
             TenantId = tenantId,
             EventId = eventId,
             ModeratorUserId = moderatorUserId,

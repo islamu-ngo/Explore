@@ -16,32 +16,27 @@ using Explore.Application.Telemetry;
 using Explore.Domain;
 using Explore.Domain.Enums;
 using Microsoft.Extensions.Caching.Hybrid;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 
 namespace Event.Application.UnitTests.Features.Events.Commands;
 
+[NotInParallel("BusinessMetricsMeter")]
 public sealed class ModerateEventCommandHandlerTests
 {
+    private static readonly DateTimeOffset Now = new(2026, 7, 19, 20, 0, 0, TimeSpan.Zero);
     private readonly IEventRepository _eventRepository = Substitute.For<IEventRepository>();
     private readonly IEventSessionRepository _eventSessionRepository = Substitute.For<IEventSessionRepository>();
     private readonly IEventModerationRecordRepository _moderationRecordRepository = Substitute.For<IEventModerationRecordRepository>();
     private readonly IOutboxRepository _outboxRepository = Substitute.For<IOutboxRepository>();
-    private readonly IUnitOfWork _unitOfWork = Substitute.For<IUnitOfWork>();
+    private readonly IUnitOfWork _unitOfWork = new ImmediateUnitOfWork();
     private readonly ICurrentUserService _currentUserService = Substitute.For<ICurrentUserService>();
     private readonly HybridCache _cache = Substitute.For<HybridCache>();
     private readonly ModerateEventCommandHandler _handler;
 
     public ModerateEventCommandHandlerTests()
     {
-        _unitOfWork
-            .ExecuteInTransactionAsync(Arg.Any<Func<CancellationToken, Task<BaseCommandResponse<Guid>>>>(), Arg.Any<CancellationToken>())
-            .Returns(call =>
-            {
-                var operation = call.Arg<Func<CancellationToken, Task<BaseCommandResponse<Guid>>>>();
-                return operation(CancellationToken.None);
-            });
-
         _moderationRecordRepository.Create(Arg.Any<EventModerationRecord>())
             .Returns(call => call.Arg<EventModerationRecord>());
         _outboxRepository.Create(Arg.Any<OutboxMessage>())
@@ -59,7 +54,8 @@ public sealed class ModerateEventCommandHandlerTests
             _cache,
             CreateMetrics(),
             NullLogger<ModerateEventCommandHandler>.Instance,
-            AtprotoPublicationPlannerTestFactory.Disabled());
+            AtprotoPublicationPlannerTestFactory.Disabled(),
+            new FixedTimeProvider(Now));
     }
 
     [Test]
@@ -112,6 +108,7 @@ public sealed class ModerateEventCommandHandlerTests
         await Assert.That(record.PreviousStatusId).IsEqualTo((int)EventStatusEnum.Published);
         await Assert.That(record.ResultingStatusId).IsEqualTo((int)EventStatusEnum.Moderated);
         await Assert.That(record.IsIrreversible).IsFalse();
+        await Assert.That(record.CreatedAt).IsEqualTo(Now);
 
         await _eventRepository.Received(1).Update(@event);
         await Assert.That(createdMessages).Count().IsEqualTo(1);
@@ -134,16 +131,257 @@ public sealed class ModerateEventCommandHandlerTests
     [Test]
     public async Task Handle_WhenEventAlreadyModerated_ReturnsSuccessWithoutDuplicateAudit()
     {
+        using var metricsCapture = new MetricsCapture();
+        using var metrics = CreateMetrics();
         var @event = CreateEvent(EventStatusEnum.Moderated);
+        var unitOfWork = new RetryingUnitOfWork();
+        bool loggerObservedCommit = false;
+        var logger = new TestLogger<ModerateEventCommandHandler>(() => loggerObservedCommit = unitOfWork.Completed);
         _currentUserService.UserId.Returns(Guid.NewGuid());
         _eventRepository.GetById(@event.Id).Returns(@event);
+        var handler = new ModerateEventCommandHandler(
+            _eventRepository,
+            _eventSessionRepository,
+            _moderationRecordRepository,
+            _outboxRepository,
+            unitOfWork,
+            _currentUserService,
+            _cache,
+            metrics,
+            logger,
+            AtprotoPublicationPlannerTestFactory.Disabled(),
+            new FixedTimeProvider(Now));
 
-        var result = await _handler.Handle(new ModerateEventCommand { Id = @event.Id }, CancellationToken.None);
+        var result = await handler.Handle(new ModerateEventCommand { Id = @event.Id }, CancellationToken.None);
 
         await Assert.That(result.Success).IsTrue();
         await _moderationRecordRepository.DidNotReceive().Create(Arg.Any<EventModerationRecord>());
         await _outboxRepository.DidNotReceive().Create(Arg.Any<OutboxMessage>());
         await _eventRepository.DidNotReceive().Update(Arg.Any<Explore.Domain.Event>());
+        await _eventSessionRepository.DidNotReceive().Update(Arg.Any<EventSession>());
+        await _cache.DidNotReceive().RemoveAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
+        await _cache.DidNotReceive().RemoveByTagAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
+        await Assert.That(metricsCapture.Count("light_moderated")).IsEqualTo(0);
+        await Assert.That(loggerObservedCommit).IsTrue();
+        await Assert.That(logger.Entries).Count().IsEqualTo(1);
+        await Assert.That(logger.Entries[0].Level).IsEqualTo(LogLevel.Information);
+        await Assert.That(logger.Entries[0].Message).Contains("already moderated");
+    }
+
+    [Test]
+    public async Task Handle_WhenAlreadyModeratedSessionNeedsRepair_InvalidatesAndRecordsOnceAfterCommit()
+    {
+        using var metricsCapture = new MetricsCapture();
+        using var metrics = CreateMetrics();
+        var @event = CreateEvent(EventStatusEnum.Moderated);
+        var session = CreateSession(@event, EventSessionStatusEnum.Published);
+        _currentUserService.UserId.Returns(Guid.NewGuid());
+        _eventRepository.GetById(@event.Id).Returns(@event);
+        _eventSessionRepository.GetSessionsByEvent(@event.Id).Returns([session]);
+        var handler = new ModerateEventCommandHandler(
+            _eventRepository,
+            _eventSessionRepository,
+            _moderationRecordRepository,
+            _outboxRepository,
+            _unitOfWork,
+            _currentUserService,
+            _cache,
+            metrics,
+            NullLogger<ModerateEventCommandHandler>.Instance,
+            AtprotoPublicationPlannerTestFactory.Disabled(),
+            new FixedTimeProvider(Now));
+
+        BaseCommandResponse<Guid> result = await handler.Handle(
+            new ModerateEventCommand { Id = @event.Id },
+            CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await Assert.That(session.EventSessionStatusId).IsEqualTo((int)EventSessionStatusEnum.Moderated);
+        await Assert.That(session.UpdatedAt).IsEqualTo(Now.UtcDateTime);
+        await _eventSessionRepository.Received(1).Update(session);
+        await _cache.Received(1).RemoveAsync($"event:detail:{@event.Id}", Arg.Any<CancellationToken>());
+        await _cache.Received(1).RemoveByTagAsync(CacheTags.EventListByTenant(@event.TenantId), Arg.Any<CancellationToken>());
+        await Assert.That(metricsCapture.Count("light_moderated")).IsEqualTo(1);
+    }
+
+    [Test]
+    public async Task Handle_WhenTransactionDelegateRetries_AppliesCacheAndMetricOnceAfterCommit()
+    {
+        using var metricsCapture = new MetricsCapture();
+        using var metrics = CreateMetrics();
+        var firstAttemptEvent = CreateEvent(EventStatusEnum.Published);
+        var retryEvent = CreateEvent(EventStatusEnum.Published);
+        retryEvent.Id = firstAttemptEvent.Id;
+        retryEvent.TenantId = firstAttemptEvent.TenantId;
+        _currentUserService.UserId.Returns(Guid.NewGuid());
+        _eventRepository.GetById(firstAttemptEvent.Id).Returns(firstAttemptEvent, retryEvent);
+        var createdRecords = new List<EventModerationRecord>();
+        var createdMessages = new List<OutboxMessage>();
+        _moderationRecordRepository.Create(Arg.Do<EventModerationRecord>(createdRecords.Add))
+            .Returns(call => call.Arg<EventModerationRecord>());
+        _outboxRepository.Create(Arg.Do<OutboxMessage>(createdMessages.Add))
+            .Returns(call => call.Arg<OutboxMessage>());
+        var unitOfWork = new RetryingUnitOfWork();
+        var logger = new TestLogger<ModerateEventCommandHandler>();
+        bool cacheObservedCommit = false;
+        _cache.RemoveAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(_ =>
+            {
+                cacheObservedCommit = unitOfWork.Completed;
+                return ValueTask.CompletedTask;
+            });
+        var handler = new ModerateEventCommandHandler(
+            _eventRepository,
+            _eventSessionRepository,
+            _moderationRecordRepository,
+            _outboxRepository,
+            unitOfWork,
+            _currentUserService,
+            _cache,
+            metrics,
+            logger,
+            AtprotoPublicationPlannerTestFactory.Disabled(),
+            new FixedTimeProvider(Now));
+
+        BaseCommandResponse<Guid> result = await handler.Handle(
+            new ModerateEventCommand { Id = firstAttemptEvent.Id },
+            CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await _moderationRecordRepository.Received(2).Create(Arg.Any<EventModerationRecord>());
+        await _outboxRepository.Received(2).Create(Arg.Any<OutboxMessage>());
+        await Assert.That(createdRecords.Select(record => record.Id).Distinct()).Count().IsEqualTo(1);
+        await Assert.That(createdMessages.Select(message => message.Id).Distinct()).Count().IsEqualTo(1);
+        await _cache.Received(1).RemoveAsync($"event:detail:{firstAttemptEvent.Id}", Arg.Any<CancellationToken>());
+        await _cache.Received(1).RemoveByTagAsync(CacheTags.EventListByTenant(firstAttemptEvent.TenantId), Arg.Any<CancellationToken>());
+        await Assert.That(cacheObservedCommit).IsTrue();
+        await Assert.That(metricsCapture.Count("light_moderated")).IsEqualTo(1);
+        await Assert.That(logger.Entries).Count().IsEqualTo(1);
+        await Assert.That(logger.Entries[0].Level).IsEqualTo(LogLevel.Information);
+        await Assert.That(logger.Entries[0].Message).Contains("Light event moderation succeeded");
+    }
+
+    [Test]
+    public async Task Handle_WhenCommitAmbiguityRetryFindsEventModerated_PreservesPostCommitEffects()
+    {
+        using var metricsCapture = new MetricsCapture();
+        using var metrics = CreateMetrics();
+        var firstAttemptEvent = CreateEvent(EventStatusEnum.Published);
+        var retryEvent = CreateEvent(EventStatusEnum.Moderated);
+        retryEvent.Id = firstAttemptEvent.Id;
+        retryEvent.TenantId = firstAttemptEvent.TenantId;
+        _currentUserService.UserId.Returns(Guid.NewGuid());
+        _eventRepository.GetById(firstAttemptEvent.Id).Returns(firstAttemptEvent, retryEvent);
+        var unitOfWork = new RetryingUnitOfWork();
+        var logger = new TestLogger<ModerateEventCommandHandler>();
+        var handler = new ModerateEventCommandHandler(
+            _eventRepository,
+            _eventSessionRepository,
+            _moderationRecordRepository,
+            _outboxRepository,
+            unitOfWork,
+            _currentUserService,
+            _cache,
+            metrics,
+            logger,
+            AtprotoPublicationPlannerTestFactory.Disabled(),
+            new FixedTimeProvider(Now));
+
+        BaseCommandResponse<Guid> result = await handler.Handle(
+            new ModerateEventCommand { Id = firstAttemptEvent.Id },
+            CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await _moderationRecordRepository.Received(1).Create(Arg.Any<EventModerationRecord>());
+        await _outboxRepository.Received(1).Create(Arg.Any<OutboxMessage>());
+        await _eventRepository.Received(1).Update(firstAttemptEvent);
+        await _cache.Received(1).RemoveAsync($"event:detail:{firstAttemptEvent.Id}", Arg.Any<CancellationToken>());
+        await _cache.Received(1).RemoveByTagAsync(CacheTags.EventListByTenant(firstAttemptEvent.TenantId), Arg.Any<CancellationToken>());
+        await Assert.That(metricsCapture.Count("light_moderated")).IsEqualTo(1);
+        await Assert.That(logger.Entries).Count().IsEqualTo(1);
+        await Assert.That(logger.Entries[0].Message).Contains("Light event moderation succeeded");
+    }
+
+    [Test]
+    public async Task Handle_WhenRolledBackAttemptIsFollowedByInvalidStatus_ReturnsFailureWithoutPostCommitEffects()
+    {
+        using var metricsCapture = new MetricsCapture();
+        using var metrics = CreateMetrics();
+        var firstAttemptEvent = CreateEvent(EventStatusEnum.Published);
+        var retryEvent = CreateEvent(EventStatusEnum.Draft);
+        retryEvent.Id = firstAttemptEvent.Id;
+        retryEvent.TenantId = firstAttemptEvent.TenantId;
+        _currentUserService.UserId.Returns(Guid.NewGuid());
+        _eventRepository.GetById(firstAttemptEvent.Id).Returns(firstAttemptEvent, retryEvent);
+        var logger = new TestLogger<ModerateEventCommandHandler>();
+        var handler = new ModerateEventCommandHandler(
+            _eventRepository,
+            _eventSessionRepository,
+            _moderationRecordRepository,
+            _outboxRepository,
+            new RetryingUnitOfWork(),
+            _currentUserService,
+            _cache,
+            metrics,
+            logger,
+            AtprotoPublicationPlannerTestFactory.Disabled(),
+            new FixedTimeProvider(Now));
+
+        BaseCommandResponse<Guid> result = await handler.Handle(
+            new ModerateEventCommand { Id = firstAttemptEvent.Id },
+            CancellationToken.None);
+
+        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.FailureCode).IsEqualTo("event_light_moderation_invalid_status");
+        await _cache.DidNotReceive().RemoveAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
+        await _cache.DidNotReceive().RemoveByTagAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
+        await Assert.That(metricsCapture.Count("light_moderated")).IsEqualTo(0);
+        await Assert.That(logger.Entries.Count(entry => entry.Message.Contains("succeeded", StringComparison.Ordinal))).IsEqualTo(0);
+    }
+
+    [Test]
+    public async Task Handle_WhenCommitAmbiguityRetryFindsSessionsRepaired_PreservesPostCommitEffects()
+    {
+        using var metricsCapture = new MetricsCapture();
+        using var metrics = CreateMetrics();
+        var firstAttemptEvent = CreateEvent(EventStatusEnum.Moderated);
+        var retryEvent = CreateEvent(EventStatusEnum.Moderated);
+        retryEvent.Id = firstAttemptEvent.Id;
+        retryEvent.TenantId = firstAttemptEvent.TenantId;
+        var firstAttemptSession = CreateSession(firstAttemptEvent, EventSessionStatusEnum.Published);
+        var retrySession = CreateSession(retryEvent, EventSessionStatusEnum.Moderated);
+        _currentUserService.UserId.Returns(Guid.NewGuid());
+        _eventRepository.GetById(firstAttemptEvent.Id).Returns(firstAttemptEvent, retryEvent);
+        _eventSessionRepository.GetSessionsByEvent(firstAttemptEvent.Id)
+            .Returns([firstAttemptSession], [retrySession]);
+        var unitOfWork = new RetryingUnitOfWork();
+        var logger = new TestLogger<ModerateEventCommandHandler>();
+        var handler = new ModerateEventCommandHandler(
+            _eventRepository,
+            _eventSessionRepository,
+            _moderationRecordRepository,
+            _outboxRepository,
+            unitOfWork,
+            _currentUserService,
+            _cache,
+            metrics,
+            logger,
+            AtprotoPublicationPlannerTestFactory.Disabled(),
+            new FixedTimeProvider(Now));
+
+        BaseCommandResponse<Guid> result = await handler.Handle(
+            new ModerateEventCommand { Id = firstAttemptEvent.Id },
+            CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await _eventSessionRepository.Received(1).Update(firstAttemptSession);
+        await _moderationRecordRepository.DidNotReceive().Create(Arg.Any<EventModerationRecord>());
+        await _outboxRepository.DidNotReceive().Create(Arg.Any<OutboxMessage>());
+        await _cache.Received(1).RemoveAsync($"event:detail:{firstAttemptEvent.Id}", Arg.Any<CancellationToken>());
+        await _cache.Received(1).RemoveByTagAsync(CacheTags.EventListByTenant(firstAttemptEvent.TenantId), Arg.Any<CancellationToken>());
+        await Assert.That(metricsCapture.Count("light_moderated")).IsEqualTo(1);
+        await Assert.That(logger.Entries).Count().IsEqualTo(1);
+        await Assert.That(logger.Entries[0].Message).Contains("already moderated");
     }
 
     [Test]
@@ -193,7 +431,7 @@ public sealed class ModerateEventCommandHandlerTests
         await _eventRepository.DidNotReceive().Update(Arg.Any<Explore.Domain.Event>());
     }
 
-    private static Explore.Domain.Event CreateEvent(EventStatusEnum status) => new()
+    private static Explore.Domain.Event CreateEvent(EventStatusEnum status) => new(status)
     {
         Id = Guid.CreateVersion7(),
         TenantId = Guid.CreateVersion7(),
@@ -201,7 +439,6 @@ public sealed class ModerateEventCommandHandlerTests
         ActorId = Guid.CreateVersion7(),
         Actor = null!,
         Title = "Community Iftar",
-        EventStatusId = (int)status,
         EventStatus = null!,
         VisibilityTypeId = 1,
         VisibilityType = null!,
@@ -210,15 +447,14 @@ public sealed class ModerateEventCommandHandlerTests
         ConcurrencyStamp = Guid.CreateVersion7()
     };
 
-    private static EventSession CreateSession(Explore.Domain.Event @event, EventSessionStatusEnum status) => new()
+    private static EventSession CreateSession(Explore.Domain.Event @event, EventSessionStatusEnum status) => new(status)
     {
         Id = Guid.NewGuid(),
         EventId = @event.Id,
         Event = @event,
         TenantId = @event.TenantId,
         Tenant = null!,
-        Title = "Session",
-        EventSessionStatusId = (int)status
+        Title = "Session"
     };
 
     private static BusinessMetrics CreateMetrics()
@@ -226,5 +462,94 @@ public sealed class ModerateEventCommandHandlerTests
         var meterFactory = Substitute.For<IMeterFactory>();
         meterFactory.Create(Arg.Any<MeterOptions>()).Returns(new Meter(BusinessMetrics.MeterName));
         return new BusinessMetrics(meterFactory);
+    }
+
+    private sealed class RetryingUnitOfWork : IUnitOfWork
+    {
+        public bool Completed { get; private set; }
+
+        public async Task ExecuteInTransactionAsync(Func<CancellationToken, Task> operation, CancellationToken ct = default)
+        {
+            await operation(ct);
+            await operation(ct);
+            Completed = true;
+        }
+
+        public async Task<T> ExecuteInTransactionAsync<T>(Func<CancellationToken, Task<T>> operation, CancellationToken ct = default)
+        {
+            await operation(ct);
+            T result = await operation(ct);
+            Completed = true;
+            return result;
+        }
+
+        public Task<T> ExecuteSerializableAsync<T>(Func<CancellationToken, Task<T>> operation, CancellationToken ct = default) =>
+            throw new NotSupportedException();
+    }
+
+    private sealed class ImmediateUnitOfWork : IUnitOfWork
+    {
+        public Task ExecuteInTransactionAsync(Func<CancellationToken, Task> operation, CancellationToken ct = default) =>
+            operation(ct);
+
+        public Task<T> ExecuteInTransactionAsync<T>(Func<CancellationToken, Task<T>> operation, CancellationToken ct = default) =>
+            operation(ct);
+
+        public Task<T> ExecuteSerializableAsync<T>(Func<CancellationToken, Task<T>> operation, CancellationToken ct = default) =>
+            operation(ct);
+    }
+
+    private sealed class MetricsCapture : IDisposable
+    {
+        private readonly MeterListener _listener = new();
+        private readonly List<KeyValuePair<string, object?>[]> _measurements = [];
+
+        public MetricsCapture()
+        {
+            _listener.InstrumentPublished = (instrument, listener) =>
+            {
+                if (instrument.Meter.Name == BusinessMetrics.MeterName
+                    && instrument.Name == "explore.events.moderation_actions")
+                {
+                    listener.EnableMeasurementEvents(instrument);
+                }
+            };
+            _listener.SetMeasurementEventCallback<long>((_, _, tags, _) => _measurements.Add(tags.ToArray()));
+            _listener.Start();
+        }
+
+        public int Count(string actionKind) => _measurements.Count(tags =>
+            tags.Any(tag => tag.Key == "action_kind" && Equals(tag.Value, actionKind)));
+
+        public void Dispose() => _listener.Dispose();
+    }
+
+    private sealed class FixedTimeProvider(DateTimeOffset now) : TimeProvider
+    {
+        public override DateTimeOffset GetUtcNow() => now;
+    }
+
+    private sealed class TestLogger<T> : ILogger<T>
+    {
+        private readonly Action? _onLog;
+
+        public TestLogger(Action? onLog = null) => _onLog = onLog;
+
+        public List<(LogLevel Level, string Message)> Entries { get; } = [];
+
+        public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+
+        public bool IsEnabled(LogLevel logLevel) => true;
+
+        public void Log<TState>(
+            LogLevel logLevel,
+            EventId eventId,
+            TState state,
+            Exception? exception,
+            Func<TState, Exception?, string> formatter)
+        {
+            _onLog?.Invoke();
+            Entries.Add((logLevel, formatter(state, exception)));
+        }
     }
 }

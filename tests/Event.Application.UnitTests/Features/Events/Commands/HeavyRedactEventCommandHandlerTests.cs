@@ -27,6 +27,7 @@ namespace Event.Application.UnitTests.Features.Events.Commands;
 
 public sealed class HeavyRedactEventCommandHandlerTests
 {
+    private static readonly DateTimeOffset Now = new(2026, 7, 19, 21, 0, 0, TimeSpan.Zero);
     private readonly IEventHeavyRedactionRepository _redactionRepository = Substitute.For<IEventHeavyRedactionRepository>();
     private readonly IEventModerationRecordRepository _moderationRecordRepository = Substitute.For<IEventModerationRecordRepository>();
     private readonly INotificationFanoutOccurrenceRepository _fanoutOccurrenceRepository = Substitute.For<INotificationFanoutOccurrenceRepository>();
@@ -77,7 +78,8 @@ public sealed class HeavyRedactEventCommandHandlerTests
             _cache,
             CreateMetrics(),
             NullLogger<HeavyRedactEventCommandHandler>.Instance,
-            AtprotoPublicationPlannerTestFactory.Disabled());
+            AtprotoPublicationPlannerTestFactory.Disabled(),
+            new FixedTimeProvider(Now));
 
         _storageObjectDeletionService
             .DeleteRequestedForResourceAsync(
@@ -138,6 +140,7 @@ public sealed class HeavyRedactEventCommandHandlerTests
         }, CancellationToken.None);
 
         await Assert.That(result.Success).IsTrue();
+        await Assert.That(@event.UpdatedAt).IsEqualTo(Now.UtcDateTime);
         await Assert.That(@event.EventStatusId).IsEqualTo((int)EventStatusEnum.Moderated);
         await Assert.That(@event.Title).IsEqualTo(EventRedactionSentinelPolicy.DisplayText);
         await Assert.That(@event.FeaturedImageId).IsNull();
@@ -151,6 +154,7 @@ public sealed class HeavyRedactEventCommandHandlerTests
         await Assert.That(record.PreviousStatusId).IsEqualTo((int)EventStatusEnum.Published);
         await Assert.That(record.ResultingStatusId).IsEqualTo((int)EventStatusEnum.Moderated);
         await Assert.That(record.IsIrreversible).IsTrue();
+        await Assert.That(record.CreatedAt).IsEqualTo(Now);
         await Assert.That(record.ModeratorUserId).IsEqualTo(moderatorUserId);
         await Assert.That(record.ReasonCode).IsEqualTo(reasonCode);
         await Assert.That(record.CorrelationId).IsEqualTo(correlationId);
@@ -205,6 +209,7 @@ public sealed class HeavyRedactEventCommandHandlerTests
         var @event = CreateEvent(EventStatusEnum.Moderated, imageId: null);
         var graph = new EventHeavyRedactionGraph(@event, [], [], [], [], [], [], [], [], [], []);
         var latestRecord = EventModerationRecord.CreateHeavyRedaction(
+            Guid.CreateVersion7(),
             @event.TenantId,
             @event.Id,
             Guid.NewGuid(),
@@ -241,11 +246,85 @@ public sealed class HeavyRedactEventCommandHandlerTests
     }
 
     [Test]
+    public async Task Handle_WhenTransactionDelegateRetries_ReusesModerationRecordId()
+    {
+        var firstAttemptEvent = CreateEvent(EventStatusEnum.Published, imageId: null);
+        var retryEvent = CreateEvent(EventStatusEnum.Published, imageId: null);
+        retryEvent.Id = firstAttemptEvent.Id;
+        retryEvent.TenantId = firstAttemptEvent.TenantId;
+        var firstGraph = new EventHeavyRedactionGraph(firstAttemptEvent, [], [], [], [], [], [], [], [], [], []);
+        var retryGraph = new EventHeavyRedactionGraph(retryEvent, [], [], [], [], [], [], [], [], [], []);
+        var redactionRepository = Substitute.For<IEventHeavyRedactionRepository>();
+        var moderationRecordRepository = Substitute.For<IEventModerationRecordRepository>();
+        var occurrenceRepository = Substitute.For<INotificationFanoutOccurrenceRepository>();
+        var outboxRepository = Substitute.For<IOutboxRepository>();
+        var storageDeletionService = Substitute.For<IStorageObjectDeletionService>();
+        var currentUserService = Substitute.For<ICurrentUserService>();
+        var createdRecords = new List<EventModerationRecord>();
+        redactionRepository.GetForUpdateAsync(firstAttemptEvent.Id, Arg.Any<CancellationToken>())
+            .Returns(firstGraph, retryGraph);
+        moderationRecordRepository.GetLatestByEventAsync(
+                firstAttemptEvent.TenantId,
+                firstAttemptEvent.Id,
+                Arg.Any<CancellationToken>())
+            .Returns((EventModerationRecord?)null);
+        moderationRecordRepository.Create(Arg.Do<EventModerationRecord>(createdRecords.Add))
+            .Returns(call => call.Arg<EventModerationRecord>());
+        occurrenceRepository.GetPendingForEventCoordinationAsync(
+                Arg.Any<Guid>(),
+                Arg.Any<Guid>(),
+                Arg.Any<CancellationToken>())
+            .Returns(Array.Empty<NotificationFanoutOccurrence>());
+        occurrenceRepository.Create(Arg.Any<NotificationFanoutOccurrence>())
+            .Returns(call => call.Arg<NotificationFanoutOccurrence>());
+        outboxRepository.Create(Arg.Any<OutboxMessage>())
+            .Returns(call => call.Arg<OutboxMessage>());
+        currentUserService.UserId.Returns(Guid.NewGuid());
+        storageDeletionService.DeleteRequestedForResourceAsync(
+                Arg.Any<Guid>(),
+                Arg.Any<string>(),
+                Arg.Any<Guid>(),
+                Arg.Any<Guid?>(),
+                Arg.Any<int>(),
+                Arg.Any<CancellationToken>())
+            .Returns(new StorageObjectDeletionResult(0, 0, 0, 0));
+        var coordinator = new NotificationFanoutOccurrenceCoordinator(
+            occurrenceRepository,
+            Substitute.For<INotificationFanoutEmailSuppressionRepository>(),
+            outboxRepository,
+            new NotificationFanoutRecipientTemplateFactory());
+        using var metrics = CreateMetrics();
+        var handler = new HeavyRedactEventCommandHandler(
+            redactionRepository,
+            moderationRecordRepository,
+            occurrenceRepository,
+            coordinator,
+            Substitute.For<IEventLifecycleScheduler>(),
+            storageDeletionService,
+            new RetryingUnitOfWork(),
+            currentUserService,
+            Substitute.For<HybridCache>(),
+            metrics,
+            NullLogger<HeavyRedactEventCommandHandler>.Instance,
+            AtprotoPublicationPlannerTestFactory.Disabled(),
+            new FixedTimeProvider(Now));
+
+        BaseCommandResponse<Guid> result = await handler.Handle(
+            new HeavyRedactEventCommand { Id = firstAttemptEvent.Id },
+            CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await Assert.That(createdRecords).Count().IsEqualTo(2);
+        await Assert.That(createdRecords.Select(record => record.Id).Distinct()).Count().IsEqualTo(1);
+    }
+
+    [Test]
     public async Task Handle_WhenHeavyOccurrenceAlreadyExists_ReusesItWithoutDuplicatePointer()
     {
         var @event = CreateEvent(EventStatusEnum.Moderated, imageId: null);
         var graph = new EventHeavyRedactionGraph(@event, [], [], [], [], [], [], [], [], [], []);
         EventModerationRecord latestRecord = EventModerationRecord.CreateHeavyRedaction(
+            Guid.CreateVersion7(),
             @event.TenantId,
             @event.Id,
             Guid.NewGuid(),
@@ -392,7 +471,7 @@ public sealed class HeavyRedactEventCommandHandlerTests
             .DeleteRequestedForResourceAsync(default, default!, default, default, default, default);
     }
 
-    private static Explore.Domain.Event CreateEvent(EventStatusEnum status, Guid? imageId) => new()
+    private static Explore.Domain.Event CreateEvent(EventStatusEnum status, Guid? imageId) => new(status)
     {
         Id = Guid.CreateVersion7(),
         TenantId = Guid.CreateVersion7(),
@@ -402,7 +481,6 @@ public sealed class HeavyRedactEventCommandHandlerTests
         Title = "Illegal Event",
         FeaturedImageId = imageId,
         BackgroundImageId = imageId,
-        EventStatusId = (int)status,
         EventStatus = null!,
         VisibilityTypeId = (int)VisibilityTypeEnum.Public,
         VisibilityType = null!,
@@ -435,5 +513,28 @@ public sealed class HeavyRedactEventCommandHandlerTests
         var meterFactory = Substitute.For<IMeterFactory>();
         meterFactory.Create(Arg.Any<MeterOptions>()).Returns(new Meter(BusinessMetrics.MeterName));
         return new BusinessMetrics(meterFactory);
+    }
+
+    private sealed class FixedTimeProvider(DateTimeOffset now) : TimeProvider
+    {
+        public override DateTimeOffset GetUtcNow() => now;
+    }
+
+    private sealed class RetryingUnitOfWork : IUnitOfWork
+    {
+        public async Task ExecuteInTransactionAsync(Func<CancellationToken, Task> operation, CancellationToken ct = default)
+        {
+            await operation(ct);
+            await operation(ct);
+        }
+
+        public async Task<T> ExecuteInTransactionAsync<T>(Func<CancellationToken, Task<T>> operation, CancellationToken ct = default)
+        {
+            await operation(ct);
+            return await operation(ct);
+        }
+
+        public Task<T> ExecuteSerializableAsync<T>(Func<CancellationToken, Task<T>> operation, CancellationToken ct = default) =>
+            throw new NotSupportedException();
     }
 }

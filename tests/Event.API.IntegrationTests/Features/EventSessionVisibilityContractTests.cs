@@ -263,7 +263,7 @@ public class EventSessionVisibilityContractTests(ContractApiFixture fixture)
         int dayOffset)
     {
         var start = new DateTimeOffset(2026, 9, 1 + dayOffset, 9, 0, 0, TimeSpan.Zero);
-        var session = new EventSession
+        var session = new EventSession(status)
         {
             Id = Guid.NewGuid(),
             EventId = parentEvent.Id,
@@ -271,7 +271,6 @@ public class EventSessionVisibilityContractTests(ContractApiFixture fixture)
             TenantId = tenantId,
             Tenant = null!,
             Title = title,
-            EventSessionStatusId = (int)status,
             SortOrder = dayOffset,
             ConcurrencyStamp = Guid.NewGuid()
         };

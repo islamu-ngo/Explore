@@ -45,6 +45,7 @@ public sealed class EventModerationConcurrencyTests(PostgreSqlContainerFixture f
             await new EfCoreUnitOfWork(losingContext).ExecuteInTransactionAsync(async ct =>
             {
                 var moderationRecord = EventModerationRecord.CreateLightModeration(
+                    Guid.CreateVersion7(),
                     staleEvent!.TenantId,
                     staleEvent.Id,
                     user.Id,
@@ -53,13 +54,15 @@ public sealed class EventModerationConcurrencyTests(PostgreSqlContainerFixture f
                     "losing-light",
                     DateTimeOffset.UtcNow);
 
-                staleEvent.EventStatusId = (int)EventStatusEnum.Moderated;
-                staleEvent.UpdatedAt = DateTime.UtcNow;
+                staleEvent.ApplyLightModeration(DateTime.UtcNow);
 
                 await new EventModerationRecordRepository(losingContext).Create(moderationRecord);
                 await losingEventRepository.Update(staleEvent);
                 await new OutboxRepository(losingContext).Create(
-                    EventModerationOutboxMessageFactory.CreateLightModerationNotificationFanoutMessage(staleEvent, moderationRecord));
+                    EventModerationOutboxMessageFactory.CreateLightModerationNotificationFanoutMessage(
+                        Guid.CreateVersion7(),
+                        staleEvent,
+                        moderationRecord));
             }, CancellationToken.None);
         });
 
@@ -89,6 +92,7 @@ public sealed class EventModerationConcurrencyTests(PostgreSqlContainerFixture f
         await using var setupContext = fixture.CreateDbContext();
         var (_, @event, user, _) = await SetupEventAsync(setupContext, EventStatusEnum.Moderated);
         var sourceRecord = EventModerationRecord.CreateLightModeration(
+            Guid.CreateVersion7(),
             @event.TenantId,
             @event.Id,
             user.Id,
@@ -124,14 +128,14 @@ public sealed class EventModerationConcurrencyTests(PostgreSqlContainerFixture f
             await new EfCoreUnitOfWork(losingContext).ExecuteInTransactionAsync(async ct =>
             {
                 var unmoderationRecord = EventModerationRecord.CreateUnmoderation(
+                    Guid.CreateVersion7(),
                     staleSourceRecord!,
                     user.Id,
                     "review_complete",
                     "losing-unmoderate",
                     DateTimeOffset.UtcNow);
 
-                staleEvent!.EventStatusId = (int)EventStatusEnum.Published;
-                staleEvent.UpdatedAt = DateTime.UtcNow;
+                staleEvent!.RestoreAfterLightModeration(DateTime.UtcNow);
 
                 await losingModerationRepository.Create(unmoderationRecord);
                 await losingEventRepository.Update(staleEvent);
@@ -181,6 +185,7 @@ public sealed class EventModerationConcurrencyTests(PostgreSqlContainerFixture f
             {
                 var eventEntity = staleGraph!.Event;
                 var moderationRecord = EventModerationRecord.CreateHeavyRedaction(
+                    Guid.CreateVersion7(),
                     eventEntity.TenantId,
                     eventEntity.Id,
                     user.Id,
@@ -232,6 +237,7 @@ public sealed class EventModerationConcurrencyTests(PostgreSqlContainerFixture f
             var eventEntity = await eventRepository.GetById(eventId)
                 ?? throw new InvalidOperationException("Seeded event was not found.");
             var moderationRecord = EventModerationRecord.CreateLightModeration(
+                Guid.CreateVersion7(),
                 eventEntity.TenantId,
                 eventEntity.Id,
                 moderatorUserId,
@@ -240,13 +246,15 @@ public sealed class EventModerationConcurrencyTests(PostgreSqlContainerFixture f
                 correlationId,
                 DateTimeOffset.UtcNow);
 
-            eventEntity.EventStatusId = (int)EventStatusEnum.Moderated;
-            eventEntity.UpdatedAt = DateTime.UtcNow;
+            eventEntity.ApplyLightModeration(DateTime.UtcNow);
 
             await new EventModerationRecordRepository(context).Create(moderationRecord);
             await eventRepository.Update(eventEntity);
             await new OutboxRepository(context).Create(
-                EventModerationOutboxMessageFactory.CreateLightModerationNotificationFanoutMessage(eventEntity, moderationRecord));
+                EventModerationOutboxMessageFactory.CreateLightModerationNotificationFanoutMessage(
+                    Guid.CreateVersion7(),
+                    eventEntity,
+                    moderationRecord));
         }, CancellationToken.None);
     }
 
@@ -267,14 +275,14 @@ public sealed class EventModerationConcurrencyTests(PostgreSqlContainerFixture f
                 eventEntity.Id,
                 ct) ?? throw new InvalidOperationException("Seeded moderation record was not found.");
             var unmoderationRecord = EventModerationRecord.CreateUnmoderation(
+                Guid.CreateVersion7(),
                 sourceRecord,
                 moderatorUserId,
                 "review_complete",
                 correlationId,
                 DateTimeOffset.UtcNow);
 
-            eventEntity.EventStatusId = (int)EventStatusEnum.Published;
-            eventEntity.UpdatedAt = DateTime.UtcNow;
+            eventEntity.RestoreAfterLightModeration(DateTime.UtcNow);
 
             await moderationRepository.Create(unmoderationRecord);
             await eventRepository.Update(eventEntity);
@@ -294,6 +302,7 @@ public sealed class EventModerationConcurrencyTests(PostgreSqlContainerFixture f
                 ?? throw new InvalidOperationException("Seeded event graph was not found.");
             var eventEntity = graph.Event;
             var moderationRecord = EventModerationRecord.CreateHeavyRedaction(
+                Guid.CreateVersion7(),
                 eventEntity.TenantId,
                 eventEntity.Id,
                 moderatorUserId,
@@ -373,7 +382,7 @@ public sealed class EventModerationConcurrencyTests(PostgreSqlContainerFixture f
             await context.SaveChangesAsync();
         }
 
-        var eventEntity = new Explore.Domain.Event
+        var eventEntity = new Explore.Domain.Event(status)
         {
             Id = Guid.NewGuid(),
             Title = "Moderation Concurrency Event",
@@ -390,7 +399,6 @@ public sealed class EventModerationConcurrencyTests(PostgreSqlContainerFixture f
             Tenant = null!,
             VisibilityTypeId = (int)VisibilityTypeEnum.Public,
             VisibilityType = null!,
-            EventStatusId = (int)status,
             EventStatus = null!,
             EventFormatId = (int)EventFormatEnum.Local,
             EventFormat = null!

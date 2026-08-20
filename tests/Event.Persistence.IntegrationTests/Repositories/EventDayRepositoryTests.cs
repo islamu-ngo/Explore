@@ -200,7 +200,7 @@ public class EventDayRepositoryTests
         context.Actors.Add(actor);
         await context.SaveChangesAsync();
 
-        var @event = new Explore.Domain.Event
+        var @event = new Explore.Domain.Event(EventStatusEnum.Draft)
         {
             Id = Guid.NewGuid(),
             Title = "Day Test Event",
@@ -214,7 +214,6 @@ public class EventDayRepositoryTests
             Tenant = null!,
             VisibilityTypeId = 1,
             VisibilityType = null!,
-            EventStatusId = 1,
             EventStatus = null!,
             EventFormatId = 1,
             EventFormat = null!,

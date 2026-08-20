@@ -40,7 +40,7 @@ public sealed class SearchAiReferencesQueryHandlerTests
         var eventId = Guid.NewGuid();
         var events = new List<DomainEvent>
         {
-            new()
+            new(EventStatusEnum.Published)
             {
                 Id = eventId,
                 Title = "Community Iftar",
@@ -49,7 +49,6 @@ public sealed class SearchAiReferencesQueryHandlerTests
                 Content = "Full internal event content must not be returned.",
                 FirstSessionDate = new DateOnly(2026, 3, 1),
                 LastSessionDate = new DateOnly(2026, 3, 2),
-                EventStatusId = 2,
                 EventStatus = new EventStatus { Id = 2, MasterCode = "published", FullName = "Published" },
                 VisibilityTypeId = 1,
                 VisibilityType = new VisibilityType { Id = 1, MasterCode = "public", FullName = "Public" },

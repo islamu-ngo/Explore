@@ -822,7 +822,7 @@ public sealed class EventLocationPrivacyApiRuntimeTests(EventLocationPrivacyRunt
             tenant.UserId,
             DateTime.UtcNow);
         EventLocationDisclosureAudit eventLocationAudit = eventLocation.CreateInitialDisclosureAudit();
-        var session = new EventSession
+        var session = new EventSession(EventSessionStatusEnum.Published)
         {
             Id = Guid.CreateVersion7(),
             EventId = @event.Id,
@@ -834,7 +834,6 @@ public sealed class EventLocationPrivacyApiRuntimeTests(EventLocationPrivacyRunt
             TenantId = tenant.TenantId,
             Tenant = null!,
             Title = $"Public Session {marker}",
-            EventSessionStatusId = (int)EventSessionStatusEnum.Published,
             EventSessionKindId = (int)EventSessionKindEnum.Talk,
             RegistrationModeId = 1,
             SortOrder = 1,
@@ -919,7 +918,7 @@ public sealed class EventLocationPrivacyApiRuntimeTests(EventLocationPrivacyRunt
             tenant.UserId,
             DateTime.UtcNow);
         EventLocationDisclosureAudit unrelatedEventLocationAudit = unrelatedEventLocation.CreateInitialDisclosureAudit();
-        var unrelatedSession = new EventSession
+        var unrelatedSession = new EventSession(EventSessionStatusEnum.Draft)
         {
             Id = Guid.CreateVersion7(),
             EventId = unrelatedEvent.Id,
@@ -931,7 +930,6 @@ public sealed class EventLocationPrivacyApiRuntimeTests(EventLocationPrivacyRunt
             TenantId = tenant.TenantId,
             Tenant = null!,
             Title = $"Unrelated Private Session {marker}",
-            EventSessionStatusId = (int)EventSessionStatusEnum.Draft,
             EventSessionKindId = (int)EventSessionKindEnum.Talk,
             RegistrationModeId = 1,
             ConcurrencyStamp = Guid.CreateVersion7()

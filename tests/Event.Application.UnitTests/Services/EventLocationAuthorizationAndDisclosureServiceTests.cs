@@ -521,7 +521,7 @@ public sealed class EventLocationAuthorizationAndDisclosureServiceTests
         RequesterUserId,
         Now.UtcDateTime);
 
-    private static Explore.Domain.Event CreateEvent(Guid eventId) => new()
+    private static Explore.Domain.Event CreateEvent(Guid eventId) => new(EventStatusEnum.Draft)
     {
         Id = eventId,
         TenantId = TenantId,
@@ -529,7 +529,6 @@ public sealed class EventLocationAuthorizationAndDisclosureServiceTests
         ActorId = Guid.CreateVersion7(),
         Actor = null!,
         Title = $"Event {eventId:N}",
-        EventStatusId = (int)EventStatusEnum.Draft,
         EventStatus = null!,
         EventFormatId = (int)EventFormatEnum.Local,
         EventFormat = null!,

@@ -6,6 +6,7 @@ using Explore.Domain.Constants;
 using Explore.Domain.Enums;
 using Explore.Domain.Modules;
 using Explore.Domain.Secrets;
+using Explore.Domain.Services.Lifecycle;
 using Explore.Domain.Settings.Documents;
 using Explore.Persistence.QueryFilters;
 using Microsoft.EntityFrameworkCore;
@@ -369,7 +370,8 @@ public static class DatabaseSeeder
         ExploreDbContext context,
         CancellationToken ct)
     {
-        var seedSessionIds = SeedData.IslamicEventSessions.Select(session => session.Id).ToArray();
+        var seedSessions = SeedData.IslamicEventSessions.ToDictionary(session => session.Id);
+        var seedSessionIds = seedSessions.Keys.ToArray();
 
         if (seedSessionIds.Length == 0)
         {
@@ -384,7 +386,17 @@ public static class DatabaseSeeder
 
         foreach (var session in sessions)
         {
-            session.EventSessionStatusId = (int)EventSessionStatusEnum.Published;
+            if (!EventSessionLifecycleRules.CanPublish(
+                    (EventSessionStatusEnum)session.EventSessionStatusId,
+                    EventStatusEnum.Published,
+                    session.StartTime,
+                    session.EndTime,
+                    session.EndTimeType))
+            {
+                continue;
+            }
+
+            session.Publish(EventStatusEnum.Published, seedSessions[session.Id].CreatedAt);
         }
 
         await context.SaveChangesAsync(ct);

@@ -4,6 +4,7 @@
 namespace Event.Domain.UnitTests.Entities;
 
 using Explore.Domain;
+using Explore.Domain.Enums;
 using Explore.Domain.Interfaces;
 
 public class EventTests
@@ -165,14 +166,14 @@ public class EventTests
     }
 
     [Test]
-    public async Task ForeignKeyIds_WhenCreated_AreDefaultValue()
+    public async Task ForeignKeyIds_WhenCreated_HaveExpectedValues()
     {
         var entity = CreateEvent();
 
         await Assert.That(entity.ActorId).IsEqualTo(Guid.Empty);
         await Assert.That(entity.TenantId).IsEqualTo(Guid.Empty);
         await Assert.That(entity.VisibilityTypeId).IsEqualTo(0);
-        await Assert.That(entity.EventStatusId).IsEqualTo(0);
+        await Assert.That(entity.EventStatusId).IsEqualTo((int)EventStatusEnum.Draft);
         await Assert.That(entity.EventFormatId).IsEqualTo(0);
     }
 

@@ -27,12 +27,12 @@ public sealed class EventLifecycleTransitionCommandHandlerTests
     private static readonly DateTimeOffset Now = new(2026, 7, 19, 18, 30, 0, TimeSpan.Zero);
 
     [Test]
-    public async Task ArchiveEvent_WhenConcurrencyMatches_ArchivesEventAndInvalidatesCaches()
+    public async Task ArchiveEvent_WhenCancelledAndConcurrencyMatches_ArchivesEventAndInvalidatesCaches()
     {
         var eventRepository = Substitute.For<IEventRepository>();
         var unitOfWork = CreateUnitOfWork();
         var cache = Substitute.For<HybridCache>();
-        var eventEntity = CreateEvent(EventStatusEnum.Published);
+        var eventEntity = CreateEvent(EventStatusEnum.Cancelled);
         eventRepository.GetById(eventEntity.Id).Returns(eventEntity);
         var userContext = Substitute.For<IUserContext>();
         Guid ownerUserId = Guid.CreateVersion7();
@@ -47,7 +47,8 @@ public sealed class EventLifecycleTransitionCommandHandlerTests
                 eventEntity.TenantId,
                 eventEntity.Id,
                 ownerUserId,
-                federationOutbox));
+                federationOutbox),
+            TimeProvider.System);
 
         var result = await handler.Handle(new ArchiveEventCommand
         {
@@ -68,6 +69,72 @@ public sealed class EventLifecycleTransitionCommandHandlerTests
     }
 
     [Test]
+    public async Task ArchiveEvent_WhenPublished_ReturnsStableFailureWithoutMutation()
+    {
+        var eventRepository = Substitute.For<IEventRepository>();
+        var unitOfWork = CreateUnitOfWork();
+        var cache = Substitute.For<HybridCache>();
+        var eventEntity = CreateEvent(EventStatusEnum.Published);
+        eventRepository.GetById(eventEntity.Id).Returns(eventEntity);
+        var userContext = Substitute.For<IUserContext>();
+        userContext.GetRequiredUserId().Returns(Guid.CreateVersion7());
+        var handler = new ArchiveEventCommandHandler(
+            eventRepository,
+            unitOfWork,
+            cache,
+            userContext,
+            AtprotoPublicationPlannerTestFactory.Disabled(),
+            TimeProvider.System);
+
+        var result = await handler.Handle(new ArchiveEventCommand
+        {
+            Id = eventEntity.Id,
+            Request = new ArchiveEventRequestDto { ExpectedConcurrencyStamp = eventEntity.ConcurrencyStamp }
+        }, CancellationToken.None);
+
+        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.FailureCode).IsEqualTo("event_archive_transition_not_allowed");
+        await Assert.That(eventEntity.EventStatusId).IsEqualTo((int)EventStatusEnum.Published);
+        await eventRepository.DidNotReceive().Update(Arg.Any<Explore.Domain.Event>());
+        await cache.DidNotReceive().RemoveAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task ArchiveEvent_WhenAlreadyArchived_ReturnsSuccessWithoutMutationSideEffects()
+    {
+        var eventRepository = Substitute.For<IEventRepository>();
+        var unitOfWork = CreateUnitOfWork();
+        var cache = Substitute.For<HybridCache>();
+        var eventEntity = CreateEvent(EventStatusEnum.Archived);
+        eventRepository.GetById(eventEntity.Id).Returns(eventEntity);
+        var userContext = Substitute.For<IUserContext>();
+        userContext.GetRequiredUserId().Returns(Guid.CreateVersion7());
+        var handler = new ArchiveEventCommandHandler(
+            eventRepository,
+            unitOfWork,
+            cache,
+            userContext,
+            AtprotoPublicationPlannerTestFactory.Disabled(),
+            TimeProvider.System);
+
+        var result = await handler.Handle(new ArchiveEventCommand
+        {
+            Id = eventEntity.Id,
+            Request = new ArchiveEventRequestDto { ExpectedConcurrencyStamp = Guid.CreateVersion7() }
+        }, CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await Assert.That(eventEntity.EventStatusId).IsEqualTo((int)EventStatusEnum.Archived);
+        await unitOfWork.DidNotReceive().ExecuteInTransactionAsync(
+            Arg.Any<Func<CancellationToken, Task<BaseCommandResponse<Guid>>>>(),
+            Arg.Any<CancellationToken>());
+        await eventRepository.DidNotReceive().Update(Arg.Any<Explore.Domain.Event>());
+        await cache.DidNotReceive().RemoveAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
+        await cache.DidNotReceive().RemoveByTagAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
+        userContext.DidNotReceive().GetRequiredUserId();
+    }
+
+    [Test]
     public async Task ArchiveEvent_WhenConcurrencyDiffers_ReturnsConflictWithoutUpdating()
     {
         var eventRepository = Substitute.For<IEventRepository>();
@@ -82,7 +149,8 @@ public sealed class EventLifecycleTransitionCommandHandlerTests
             unitOfWork,
             cache,
             userContext,
-            AtprotoPublicationPlannerTestFactory.Disabled());
+            AtprotoPublicationPlannerTestFactory.Disabled(),
+            TimeProvider.System);
 
         var result = await handler.Handle(new ArchiveEventCommand
         {
@@ -152,7 +220,7 @@ public sealed class EventLifecycleTransitionCommandHandlerTests
     }
 
     [Test]
-    public async Task CancelEvent_WhenAlreadyCancelled_ReturnsFailureWithoutUpdating()
+    public async Task CancelEvent_WhenAlreadyCancelled_ReturnsSuccessWithoutMutationSideEffects()
     {
         var eventRepository = Substitute.For<IEventRepository>();
         var unitOfWork = CreateUnitOfWork();
@@ -175,15 +243,176 @@ public sealed class EventLifecycleTransitionCommandHandlerTests
         var result = await handler.Handle(new CancelEventCommand
         {
             Id = eventEntity.Id,
-            Request = new CancelEventRequestDto { ExpectedConcurrencyStamp = eventEntity.ConcurrencyStamp }
+            Request = new CancelEventRequestDto { ExpectedConcurrencyStamp = Guid.CreateVersion7() }
         }, CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
-        await Assert.That(result.FailureCode).IsEqualTo("event_cancel_already_cancelled");
+        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.FailureCode).IsNull();
+        await unitOfWork.DidNotReceive().ExecuteInTransactionAsync(
+            Arg.Any<Func<CancellationToken, Task<BaseCommandResponse<Guid>>>>(),
+            Arg.Any<CancellationToken>());
         await eventRepository.DidNotReceive().Update(Arg.Any<Explore.Domain.Event>());
         await Assert.That(fanout.CreatedOccurrences).IsEmpty();
         await Assert.That(fanout.OutboxPointers).IsEmpty();
         await cache.DidNotReceive().RemoveAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
+        userContext.DidNotReceive().GetRequiredUserId();
+    }
+
+    [Test]
+    public async Task ArchiveEvent_WhenRolledBackAttemptIsRetried_ReloadsAndStagesStableFederationIdentity()
+    {
+        Guid eventId = Guid.CreateVersion7();
+        Guid tenantId = Guid.CreateVersion7();
+        Guid stamp = Guid.CreateVersion7();
+        var outerEvent = CreateEvent(EventStatusEnum.Cancelled, eventId, tenantId, stamp);
+        var firstAttemptEvent = CreateEvent(EventStatusEnum.Cancelled, eventId, tenantId, stamp);
+        var retryEvent = CreateEvent(EventStatusEnum.Cancelled, eventId, tenantId, stamp);
+        var eventRepository = Substitute.For<IEventRepository>();
+        eventRepository.GetById(eventId).Returns(outerEvent, firstAttemptEvent, retryEvent);
+        var unitOfWork = CreateTwoAttemptUnitOfWork();
+        var cache = Substitute.For<HybridCache>();
+        var userContext = Substitute.For<IUserContext>();
+        Guid userId = Guid.CreateVersion7();
+        userContext.GetRequiredUserId().Returns(userId);
+        var federationOutbox = Substitute.For<IPdsSyncOutboxRepository>();
+        var stagedRows = new List<PdsSyncOutbox>();
+        federationOutbox.AddAsync(Arg.Any<PdsSyncOutbox>(), Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            stagedRows.Add(call.Arg<PdsSyncOutbox>());
+            return Task.CompletedTask;
+        });
+        var handler = new ArchiveEventCommandHandler(
+            eventRepository,
+            unitOfWork,
+            cache,
+            userContext,
+            AtprotoPublicationPlannerTestFactory.ExistingEventDelete(tenantId, eventId, userId, federationOutbox),
+            new FixedTimeProvider(Now));
+
+        var result = await handler.Handle(new ArchiveEventCommand
+        {
+            Id = eventId,
+            Request = new ArchiveEventRequestDto { ExpectedConcurrencyStamp = stamp }
+        }, CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await eventRepository.Received(1).Update(firstAttemptEvent);
+        await eventRepository.Received(1).Update(retryEvent);
+        await Assert.That(stagedRows).Count().IsEqualTo(2);
+        await Assert.That(stagedRows.Select(row => row.Id).Distinct()).Count().IsEqualTo(1);
+        await cache.Received(1).RemoveAsync($"event:detail:{eventId}", Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task ArchiveEvent_WhenCommittedAttemptIsRetried_DoesNotStageDuplicateFederationWork()
+    {
+        Guid eventId = Guid.CreateVersion7();
+        Guid tenantId = Guid.CreateVersion7();
+        Guid stamp = Guid.CreateVersion7();
+        var outerEvent = CreateEvent(EventStatusEnum.Cancelled, eventId, tenantId, stamp);
+        var firstAttemptEvent = CreateEvent(EventStatusEnum.Cancelled, eventId, tenantId, stamp);
+        var committedEvent = CreateEvent(EventStatusEnum.Archived, eventId, tenantId, Guid.CreateVersion7());
+        var eventRepository = Substitute.For<IEventRepository>();
+        eventRepository.GetById(eventId).Returns(outerEvent, firstAttemptEvent, committedEvent);
+        var unitOfWork = CreateTwoAttemptUnitOfWork();
+        var cache = Substitute.For<HybridCache>();
+        var userContext = Substitute.For<IUserContext>();
+        Guid userId = Guid.CreateVersion7();
+        userContext.GetRequiredUserId().Returns(userId);
+        var federationOutbox = Substitute.For<IPdsSyncOutboxRepository>();
+        var handler = new ArchiveEventCommandHandler(
+            eventRepository,
+            unitOfWork,
+            cache,
+            userContext,
+            AtprotoPublicationPlannerTestFactory.ExistingEventDelete(tenantId, eventId, userId, federationOutbox),
+            new FixedTimeProvider(Now));
+
+        var result = await handler.Handle(new ArchiveEventCommand
+        {
+            Id = eventId,
+            Request = new ArchiveEventRequestDto { ExpectedConcurrencyStamp = stamp }
+        }, CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await eventRepository.Received(1).Update(firstAttemptEvent);
+        await eventRepository.DidNotReceive().Update(committedEvent);
+        await federationOutbox.Received(1).AddAsync(Arg.Any<PdsSyncOutbox>(), Arg.Any<CancellationToken>());
+        await cache.Received(1).RemoveAsync($"event:detail:{eventId}", Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task CancelEvent_WhenRolledBackAttemptIsRetried_ReloadsAndRestagesDurableWork()
+    {
+        Guid eventId = Guid.CreateVersion7();
+        Guid tenantId = Guid.CreateVersion7();
+        Guid stamp = Guid.CreateVersion7();
+        var outerEvent = CreateEvent(EventStatusEnum.Published, eventId, tenantId, stamp);
+        var firstAttemptEvent = CreateEvent(EventStatusEnum.Published, eventId, tenantId, stamp);
+        var retryEvent = CreateEvent(EventStatusEnum.Published, eventId, tenantId, stamp);
+        var eventRepository = Substitute.For<IEventRepository>();
+        eventRepository.GetById(eventId).Returns(outerEvent, firstAttemptEvent, retryEvent);
+        var cache = Substitute.For<HybridCache>();
+        var fanout = new FanoutFixture();
+        var handler = new CancelEventCommandHandler(
+            eventRepository,
+            CreateTwoAttemptUnitOfWork(),
+            cache,
+            Substitute.For<IUserContext>(),
+            AtprotoPublicationPlannerTestFactory.Disabled(),
+            fanout.Coordinator,
+            Substitute.For<IEventLifecycleScheduler>(),
+            new FixedTimeProvider(Now));
+
+        var result = await handler.Handle(new CancelEventCommand
+        {
+            Id = eventId,
+            Request = new CancelEventRequestDto { ExpectedConcurrencyStamp = stamp }
+        }, CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await eventRepository.Received(1).Update(firstAttemptEvent);
+        await eventRepository.Received(1).Update(retryEvent);
+        await Assert.That(fanout.CreatedOccurrences).Count().IsEqualTo(2);
+        await Assert.That(fanout.CreatedOccurrences.Select(row => row.Id).Distinct()).Count().IsEqualTo(1);
+        await cache.Received(1).RemoveAsync($"event:detail:{eventId}", Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task CancelEvent_WhenCommittedAttemptIsRetried_DoesNotStageDuplicateFanout()
+    {
+        Guid eventId = Guid.CreateVersion7();
+        Guid tenantId = Guid.CreateVersion7();
+        Guid stamp = Guid.CreateVersion7();
+        var outerEvent = CreateEvent(EventStatusEnum.Published, eventId, tenantId, stamp);
+        var firstAttemptEvent = CreateEvent(EventStatusEnum.Published, eventId, tenantId, stamp);
+        var committedEvent = CreateEvent(EventStatusEnum.Cancelled, eventId, tenantId, Guid.CreateVersion7());
+        var eventRepository = Substitute.For<IEventRepository>();
+        eventRepository.GetById(eventId).Returns(outerEvent, firstAttemptEvent, committedEvent);
+        var cache = Substitute.For<HybridCache>();
+        var fanout = new FanoutFixture();
+        var handler = new CancelEventCommandHandler(
+            eventRepository,
+            CreateTwoAttemptUnitOfWork(),
+            cache,
+            Substitute.For<IUserContext>(),
+            AtprotoPublicationPlannerTestFactory.Disabled(),
+            fanout.Coordinator,
+            Substitute.For<IEventLifecycleScheduler>(),
+            new FixedTimeProvider(Now));
+
+        var result = await handler.Handle(new CancelEventCommand
+        {
+            Id = eventId,
+            Request = new CancelEventRequestDto { ExpectedConcurrencyStamp = stamp }
+        }, CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await eventRepository.Received(1).Update(firstAttemptEvent);
+        await eventRepository.DidNotReceive().Update(committedEvent);
+        await Assert.That(fanout.CreatedOccurrences).Count().IsEqualTo(1);
+        await Assert.That(fanout.OutboxPointers).Count().IsEqualTo(1);
+        await cache.Received(1).RemoveAsync($"event:detail:{eventId}", Arg.Any<CancellationToken>());
     }
 
     private static IUnitOfWork CreateUnitOfWork(Action? onCompleted = null)
@@ -197,6 +426,20 @@ public sealed class EventLifecycleTransitionCommandHandlerTests
                     .Arg<Func<CancellationToken, Task<BaseCommandResponse<Guid>>>>()(CancellationToken.None);
                 onCompleted?.Invoke();
                 return response;
+            });
+        return unitOfWork;
+    }
+
+    private static IUnitOfWork CreateTwoAttemptUnitOfWork()
+    {
+        var unitOfWork = Substitute.For<IUnitOfWork>();
+        unitOfWork
+            .ExecuteInTransactionAsync(Arg.Any<Func<CancellationToken, Task<BaseCommandResponse<Guid>>>>(), Arg.Any<CancellationToken>())
+            .Returns(async callInfo =>
+            {
+                var operation = callInfo.Arg<Func<CancellationToken, Task<BaseCommandResponse<Guid>>>>();
+                await operation(CancellationToken.None);
+                return await operation(CancellationToken.None);
             });
         return unitOfWork;
     }
@@ -245,20 +488,23 @@ public sealed class EventLifecycleTransitionCommandHandlerTests
         public override DateTimeOffset GetUtcNow() => now;
     }
 
-    private static Explore.Domain.Event CreateEvent(EventStatusEnum status) => new()
+    private static Explore.Domain.Event CreateEvent(
+        EventStatusEnum status,
+        Guid? id = null,
+        Guid? tenantId = null,
+        Guid? concurrencyStamp = null) => new(status)
     {
-        Id = Guid.CreateVersion7(),
+        Id = id ?? Guid.CreateVersion7(),
         Title = "Lifecycle event",
         ActorId = Guid.CreateVersion7(),
         Actor = null!,
-        TenantId = Guid.CreateVersion7(),
+        TenantId = tenantId ?? Guid.CreateVersion7(),
         Tenant = null!,
         VisibilityTypeId = (int)VisibilityTypeEnum.Public,
         VisibilityType = null!,
-        EventStatusId = (int)status,
         EventStatus = null!,
         EventFormatId = (int)EventFormatEnum.Local,
         EventFormat = null!,
-        ConcurrencyStamp = Guid.CreateVersion7()
+        ConcurrencyStamp = concurrencyStamp ?? Guid.CreateVersion7()
     };
 }

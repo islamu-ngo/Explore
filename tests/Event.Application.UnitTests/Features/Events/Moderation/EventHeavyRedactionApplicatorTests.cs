@@ -104,7 +104,7 @@ public sealed class EventHeavyRedactionApplicatorTests
         await Assert.That(image.UpdatedBy).IsEqualTo(moderatorUserId);
     }
 
-    private static Explore.Domain.Event CreateEvent(Guid imageId) => new()
+    private static Explore.Domain.Event CreateEvent(Guid imageId) => new(EventStatusEnum.Published)
     {
         Id = Guid.NewGuid(),
         TenantId = Guid.NewGuid(),
@@ -126,7 +126,6 @@ public sealed class EventHeavyRedactionApplicatorTests
         BackgroundEffect = "unsafe-effect",
         FeaturedImageId = imageId,
         BackgroundImageId = imageId,
-        EventStatusId = (int)EventStatusEnum.Published,
         EventStatus = null!,
         VisibilityTypeId = (int)VisibilityTypeEnum.Public,
         VisibilityType = null!,
@@ -134,7 +133,7 @@ public sealed class EventHeavyRedactionApplicatorTests
         EventFormat = null!
     };
 
-    private static EventSession CreateSession(Explore.Domain.Event @event, Guid imageId) => new()
+    private static EventSession CreateSession(Explore.Domain.Event @event, Guid imageId) => new(EventSessionStatusEnum.Draft)
     {
         Id = Guid.NewGuid(),
         EventId = @event.Id,
@@ -146,7 +145,6 @@ public sealed class EventHeavyRedactionApplicatorTests
         Slug = "illegal-session",
         SourceTemplateKey = "unsafe-session-template",
         FeaturedImageId = imageId,
-        EventSessionStatusId = (int)EventSessionStatusEnum.Draft,
         IslamicAspect = new EventSessionIslamicAspect { RitualRequirementsJson = "{\"unsafe\":true}" }
     };
 

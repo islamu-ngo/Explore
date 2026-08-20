@@ -4,6 +4,7 @@
 using Explore.Application.Caching;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.EventSession.Validators;
+using Explore.Application.Exceptions;
 using Explore.Application.Features.EventSessions.Requests.Commands;
 using Explore.Application.Responses;
 using Explore.Domain;
@@ -17,18 +18,17 @@ public abstract class EventSessionLifecycleTransitionCommandHandlerBase<TCommand
     IEventSessionRepository eventSessionRepository,
     IEventRepository eventRepository,
     IUnitOfWork unitOfWork,
-    HybridCache cache) : IRequestHandler<TCommand, BaseCommandResponse<Guid>>
+    HybridCache cache,
+    TimeProvider timeProvider) : IRequestHandler<TCommand, BaseCommandResponse<Guid>>
     where TCommand : IEventSessionLifecycleTransitionCommand
 {
-    protected abstract EventSessionStatusEnum TargetStatus { get; }
     protected abstract string ActionName { get; }
     protected abstract string PastTenseActionName { get; }
     protected abstract string ConcurrencyFailureCode { get; }
-    protected abstract string AlreadyInTargetStatusFailureCode { get; }
     protected abstract string InvalidStatusFailureCode { get; }
 
     protected virtual TransitionAttempt CreateTransitionAttempt() =>
-        new(DateTime.UtcNow, Guid.Empty, Guid.Empty);
+        new(timeProvider.GetUtcNow().UtcDateTime, Guid.Empty, Guid.Empty);
 
     protected virtual Task AfterTransitionInCurrentTransactionAsync(
         EventSession session,
@@ -50,71 +50,124 @@ public abstract class EventSessionLifecycleTransitionCommandHandlerBase<TCommand
                 validationResult.Errors.Select(error => error.ErrorMessage));
         }
 
+        var session = await eventSessionRepository.GetById(request.Id);
+        if (session is null)
+        {
+            return Failure(request.Id, "Event session was not found.", ["Event session was not found."]);
+        }
+
+        if (IsAlreadyApplied(session))
+        {
+            return Success(session.Id, $"Event session is already {PastTenseActionName}.");
+        }
+
+        if (session.ConcurrencyStamp != request.Request.ExpectedConcurrencyStamp)
+        {
+            return Failure(
+                request.Id,
+                "Event session was modified by another request.",
+                ["Refresh the event session and try again."],
+                ConcurrencyFailureCode);
+        }
+
+        var parentEvent = await eventRepository.GetById(session.EventId);
+        if (parentEvent is null || parentEvent.TenantId != session.TenantId)
+        {
+            return Failure(
+                request.Id,
+                "Parent event was not found in the current tenant.",
+                ["Parent event was not found in the current tenant."]);
+        }
+
         TransitionAttempt attempt = CreateTransitionAttempt();
         Guid? eventIdToInvalidate = null;
         Guid? tenantIdToInvalidate = null;
-        BaseCommandResponse<Guid> response = await unitOfWork.ExecuteInTransactionAsync(async token =>
+        BaseCommandResponse<Guid> response;
+        try
         {
-            var session = await eventSessionRepository.GetById(request.Id);
-            if (session is null)
+            response = await unitOfWork.ExecuteInTransactionAsync(async token =>
             {
-                return Failure(request.Id, "Event session was not found.", ["Event session was not found."]);
-            }
-
-            if (session.ConcurrencyStamp != request.Request.ExpectedConcurrencyStamp)
-            {
-                return Failure(
+                EventSession? currentSession = await eventSessionRepository.GetByIdForEventAsync(
                     request.Id,
-                    "Event session was modified by another request.",
-                    ["Refresh the event session and try again."],
-                    ConcurrencyFailureCode);
-            }
+                    session.EventId,
+                    session.TenantId,
+                    token);
+                if (currentSession is null)
+                {
+                    return Failure(request.Id, "Event session was not found.", ["Event session was not found."]);
+                }
 
-            var parentEvent = await eventRepository.GetById(session.EventId);
-            if (parentEvent is null || parentEvent.TenantId != session.TenantId)
-            {
-                return Failure(
-                    request.Id,
-                    "Parent event was not found in the current tenant.",
-                    ["Parent event was not found in the current tenant."]);
-            }
+                bool alreadyApplied = IsAlreadyApplied(currentSession);
+                bool priorAttemptMutated = eventIdToInvalidate.HasValue;
+                if (currentSession.ConcurrencyStamp != request.Request.ExpectedConcurrencyStamp
+                    && !(priorAttemptMutated && alreadyApplied))
+                {
+                    return Failure(
+                        request.Id,
+                        "Event session was modified by another request.",
+                        ["Refresh the event session and try again."],
+                        ConcurrencyFailureCode);
+                }
 
-            if (session.EventSessionStatusId == (int)TargetStatus)
-            {
-                return Failure(
-                    session.Id,
-                    $"Event session is already {PastTenseActionName}.",
-                    [$"The event session is already {PastTenseActionName}."],
-                    AlreadyInTargetStatusFailureCode);
-            }
+                Event? currentParentEvent = await eventRepository.GetById(currentSession.EventId);
+                if (currentParentEvent is null || currentParentEvent.TenantId != currentSession.TenantId)
+                {
+                    return Failure(
+                        request.Id,
+                        "Parent event was not found in the current tenant.",
+                        ["Parent event was not found in the current tenant."]);
+                }
 
-            if (!CanTransition(session.EventSessionStatusId, parentEvent.EventStatusId))
-            {
-                return Failure(
-                    session.Id,
-                    $"Event session cannot be {PastTenseActionName} from its current lifecycle state.",
-                    [$"Event session cannot be {PastTenseActionName} from its current lifecycle state."],
-                    InvalidStatusFailureCode);
-            }
+                if (alreadyApplied)
+                {
+                    return Success(currentSession.Id, $"Event session is already {PastTenseActionName}.");
+                }
 
-            int previousStatusId = session.EventSessionStatusId;
-            session.EventSessionStatusId = (int)TargetStatus;
-            session.UpdatedAt = attempt.OccurredAt;
+                int previousStatusId = currentSession.EventSessionStatusId;
+                try
+                {
+                    _ = ApplyTransition(currentSession, (EventStatusEnum)currentParentEvent.EventStatusId, attempt.OccurredAt);
+                }
+                catch (InvalidOperationException)
+                {
+                    return Failure(
+                        currentSession.Id,
+                        $"Event session cannot be {PastTenseActionName} from its current lifecycle state.",
+                        [$"Event session cannot be {PastTenseActionName} from its current lifecycle state."],
+                        InvalidStatusFailureCode);
+                }
+                catch (ArgumentException)
+                {
+                    return Failure(
+                        currentSession.Id,
+                        $"Event session cannot be {PastTenseActionName} from its current lifecycle state.",
+                        [$"Event session cannot be {PastTenseActionName} from its current lifecycle state."],
+                        InvalidStatusFailureCode);
+                }
 
-            await eventSessionRepository.Update(session);
-            await RefreshParentScheduleSummaryAsync(parentEvent.Id, token);
-            await AfterTransitionInCurrentTransactionAsync(
-                session,
-                parentEvent,
-                previousStatusId,
-                request.Request.ExpectedConcurrencyStamp,
-                attempt,
-                token);
-            eventIdToInvalidate = parentEvent.Id;
-            tenantIdToInvalidate = parentEvent.TenantId;
+                await eventSessionRepository.Update(currentSession);
+                await RefreshParentScheduleSummaryAsync(currentParentEvent.Id, token);
+                await AfterTransitionInCurrentTransactionAsync(
+                    currentSession,
+                    currentParentEvent,
+                    previousStatusId,
+                    request.Request.ExpectedConcurrencyStamp,
+                    attempt,
+                    token);
+                eventIdToInvalidate ??= currentParentEvent.Id;
+                tenantIdToInvalidate ??= currentParentEvent.TenantId;
 
-            return Success(session.Id, $"Event session {PastTenseActionName} successfully.");
-        }, cancellationToken);
+                return Success(currentSession.Id, $"Event session {PastTenseActionName} successfully.");
+            }, cancellationToken);
+        }
+        catch (ConcurrencyConflictException)
+        {
+            return Failure(
+                request.Id,
+                "Event session was modified by another request.",
+                ["Refresh the event session and try again."],
+                ConcurrencyFailureCode);
+        }
 
         if (!response.Success || !eventIdToInvalidate.HasValue || !tenantIdToInvalidate.HasValue)
         {
@@ -126,17 +179,9 @@ public abstract class EventSessionLifecycleTransitionCommandHandlerBase<TCommand
         return response;
     }
 
-    protected abstract bool CanTransition(int currentSessionStatusId, int parentEventStatusId);
+    protected abstract bool IsAlreadyApplied(EventSession session);
 
-    protected static bool IsParentEventMutable(int parentEventStatusId) =>
-        parentEventStatusId is not ((int)EventStatusEnum.Moderated or (int)EventStatusEnum.Archived);
-
-    protected static bool IsTerminalSessionStatus(int statusId) =>
-        statusId is (int)EventSessionStatusEnum.Rejected
-            or (int)EventSessionStatusEnum.Cancelled
-            or (int)EventSessionStatusEnum.Archived
-            or (int)EventSessionStatusEnum.Completed
-            or (int)EventSessionStatusEnum.Moderated;
+    protected abstract bool ApplyTransition(EventSession session, EventStatusEnum parentEventStatus, DateTime occurredAt);
 
     private async Task RefreshParentScheduleSummaryAsync(Guid eventId, CancellationToken cancellationToken)
     {

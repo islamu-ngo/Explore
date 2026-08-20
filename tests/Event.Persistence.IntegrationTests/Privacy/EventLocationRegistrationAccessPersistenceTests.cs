@@ -162,7 +162,7 @@ public sealed class EventLocationRegistrationAccessPersistenceTests(Registration
         context.Actors.Add(actor);
         await context.SaveChangesAsync();
 
-        var @event = new Explore.Domain.Event
+        var @event = new Explore.Domain.Event(EventStatusEnum.Draft)
         {
             Id = Guid.CreateVersion7(),
             TenantId = tenant.Id,
@@ -171,7 +171,6 @@ public sealed class EventLocationRegistrationAccessPersistenceTests(Registration
             Actor = null!,
             Title = "Registration coverage event",
             EventProvenanceTypeId = (int)EventProvenanceTypeEnum.OrganizerCreated,
-            EventStatusId = (int)EventStatusEnum.Draft,
             EventStatus = null!,
             EventFormatId = (int)EventFormatEnum.Local,
             EventFormat = null!,
@@ -318,7 +317,7 @@ public sealed class EventLocationRegistrationAccessPersistenceTests(Registration
         EventLocation placement,
         string title)
     {
-        var session = new EventSession
+        var session = new EventSession(EventSessionStatusEnum.Published)
         {
             Id = Guid.CreateVersion7(),
             TenantId = tenantId,
@@ -328,7 +327,6 @@ public sealed class EventLocationRegistrationAccessPersistenceTests(Registration
             EventDayId = dayId,
             Title = title,
             RegistrationModeId = (int)RegistrationModeEnum.Open,
-            EventSessionStatusId = (int)EventSessionStatusEnum.Published
         };
         session.AssignEventLocation(placement);
         return session;

@@ -48,7 +48,6 @@ public sealed class CreateDraftEventSessionCommandHandler(
             Event = null!,
             TenantId = parentEvent.TenantId,
             Tenant = null!,
-            EventSessionStatusId = (int)EventSessionStatusEnum.Draft,
             Title = command.Request.Title,
             Description = command.Request.Description,
             SortOrder = command.Request.SortOrder,

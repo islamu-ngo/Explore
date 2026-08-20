@@ -75,7 +75,7 @@ public class EventSoftDeleteTests(PostgreSqlContainerFixture fixture)
         var (tenantId, actorId, eventId) = await SeedEventWithDependencies(context, "Counted Event");
 
         // Seed another non-deleted event in the same tenant
-        var survivingEvent = new Explore.Domain.Event
+        var survivingEvent = new Explore.Domain.Event(EventStatusEnum.Draft)
         {
             Id = Guid.NewGuid(),
             Title = "Surviving Event",
@@ -84,7 +84,6 @@ public class EventSoftDeleteTests(PostgreSqlContainerFixture fixture)
             Actor = null!,
             TenantId = tenantId,
             Tenant = null!,
-            EventStatusId = 1,
             EventStatus = null!,
             VisibilityTypeId = 1,
             VisibilityType = null!,
@@ -152,7 +151,7 @@ public class EventSoftDeleteTests(PostgreSqlContainerFixture fixture)
         context.Actors.Add(actor);
         await context.SaveChangesAsync();
 
-        var @event = new Explore.Domain.Event
+        var @event = new Explore.Domain.Event(EventStatusEnum.Draft)
         {
             Id = Guid.NewGuid(),
             Title = eventTitle,
@@ -161,7 +160,6 @@ public class EventSoftDeleteTests(PostgreSqlContainerFixture fixture)
             Actor = null!,
             TenantId = tenant.Id,
             Tenant = null!,
-            EventStatusId = 1,
             EventStatus = null!,
             VisibilityTypeId = 1,
             VisibilityType = null!,

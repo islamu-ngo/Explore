@@ -79,12 +79,78 @@ Use these focused commands when changing nullable event-session scheduling, life
 
 ```bash
 dotnet build src/Explore.API/Explore.API.csproj --configuration Release --verbosity minimal --no-restore -maxcpucount:1
-dotnet msbuild src/Explore.Blazor.Client/Explore.Blazor.Client.csproj /t:GenerateApiClient /p:Configuration=Release /p:Restore=false /m:1 /v:minimal
-dotnet test tests/Event.Application.UnitTests/Event.Application.UnitTests.csproj --configuration Release --no-build --treenode-filter "/*/*/GetEventPublishReadinessRequestHandlerTests/*" --minimum-expected-tests 1
-dotnet test tests/Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --no-build --treenode-filter "/*/*/EventsControllerTests/*|/*/*/EventSessionControllerTests/*|/*/*/EventLifecycleHateoasPolicyTests/*" --minimum-expected-tests 1
-dotnet test tests/Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --no-build --treenode-filter "/*/*/EventSessionVisibilityContractTests/*" --minimum-expected-tests 1
-dotnet test tests/Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --no-build --treenode-filter "/*/*/*/*"
+
+# Domain rules (2 Event + 8 EventSession tests)
+dotnet test --project tests/Event.Domain.UnitTests/Event.Domain.UnitTests.csproj --configuration Release -- --treenode-filter "/*/*/EventLifecycleRulesTests/*" --minimum-expected-tests 2
+dotnet test --project tests/Event.Domain.UnitTests/Event.Domain.UnitTests.csproj --configuration Release -- --treenode-filter "/*/*/EventSessionLifecycleRulesTests/*" --minimum-expected-tests 8
+
+# Domain entities (3 Event + 7 EventSession tests)
+dotnet test --project tests/Event.Domain.UnitTests/Event.Domain.UnitTests.csproj --configuration Release -- --treenode-filter "/*/*/EventLifecycleTests/*" --minimum-expected-tests 3
+dotnet test --project tests/Event.Domain.UnitTests/Event.Domain.UnitTests.csproj --configuration Release -- --treenode-filter "/*/*/EventSessionLifecycleTests/*" --minimum-expected-tests 7
+
+# Application handlers and readiness (10 + 9 + 41 + 14 + 4 tests)
+dotnet test --project tests/Event.Application.UnitTests/Event.Application.UnitTests.csproj --configuration Release -- --treenode-filter "/*/*/EventLifecycleTransitionCommandHandlerTests/*" --minimum-expected-tests 10
+dotnet test --project tests/Event.Application.UnitTests/Event.Application.UnitTests.csproj --configuration Release -- --treenode-filter "/*/*/PublishEventCommandHandlerTests/*" --minimum-expected-tests 9
+dotnet test --project tests/Event.Application.UnitTests/Event.Application.UnitTests.csproj --configuration Release -- --treenode-filter "/*/*/EventSessionLifecycleCommandHandlerTests/*" --minimum-expected-tests 41
+dotnet test --project tests/Event.Application.UnitTests/Event.Application.UnitTests.csproj --configuration Release -- --treenode-filter "/*/*/EventLifecycleReadinessEvaluatorTests/*" --minimum-expected-tests 14
+dotnet test --project tests/Event.Application.UnitTests/Event.Application.UnitTests.csproj --configuration Release -- --treenode-filter "/*/*/GetEventPublishReadinessRequestHandlerTests/*" --minimum-expected-tests 4
+
+# Moderation, unmoderation, and import handlers (9 + 7 + 11 tests)
+dotnet test --project tests/Event.Application.UnitTests/Event.Application.UnitTests.csproj --configuration Release -- --treenode-filter "/*/*/ModerateEventCommandHandlerTests/*" --minimum-expected-tests 9
+dotnet test --project tests/Event.Application.UnitTests/Event.Application.UnitTests.csproj --configuration Release -- --treenode-filter "/*/*/UnmoderateEventCommandHandlerTests/*" --minimum-expected-tests 7
+dotnet test --project tests/Event.Application.UnitTests/Event.Application.UnitTests.csproj --configuration Release -- --treenode-filter "/*/*/ImportEventCommandHandlerTests/*" --minimum-expected-tests 11
+dotnet test --project tests/Event.Application.UnitTests/Event.Application.UnitTests.csproj --configuration Release -- --treenode-filter "/*/*/EventSessionLifecycleCommandHandlerTests/Publish_WhenSessionIsReadyAndParentPublished_TransitionsToPublished" --minimum-expected-tests 1
+
+# API lifecycle surfaces (11 + 16 + 4 + 6 tests)
+dotnet test --project tests/Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release -- --treenode-filter "/*/*/EventsControllerTests/*" --minimum-expected-tests 11
+dotnet test --project tests/Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release -- --treenode-filter "/*/*/EventSessionControllerTests/*" --minimum-expected-tests 16
+dotnet test --project tests/Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release -- --treenode-filter "/*/*/EventLifecycleHateoasPolicyTests/*" --minimum-expected-tests 4
+dotnet test --project tests/Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release -- --treenode-filter "/*/*/EventSessionVisibilityContractTests/*" --minimum-expected-tests 6
+
+# Persistence resilience and provider materialization (3 + 3 + 1 + 1 tests)
+dotnet test --project tests/Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release -- --treenode-filter "/*/*/DomainLifecycleArchitectureTests/*" --minimum-expected-tests 3
+dotnet test --project tests/Event.Persistence.IntegrationTests/Event.Persistence.IntegrationTests.csproj --configuration Release -- --treenode-filter "/*/*/EfCoreUnitOfWorkRetryTests/*" --minimum-expected-tests 3 --maximum-parallel-tests 1
+dotnet test --project tests/Event.Persistence.IntegrationTests/Event.Persistence.IntegrationTests.csproj --configuration Release -- --treenode-filter "/*/*/EventLifecycleStatusMaterializationTests/*" --minimum-expected-tests 1 --maximum-parallel-tests 1
+dotnet test --project tests/Event.Persistence.IntegrationTests/Event.Persistence.IntegrationTests.csproj --configuration Release -- --treenode-filter "/*/*/EventLifecycleStatusSqliteMaterializationTests/*" --minimum-expected-tests 1 --maximum-parallel-tests 1
+
+# PostgreSQL import, federation, seeding, and session constraints (1 + 6 + 1 + 10 + 4 + 8 tests)
+dotnet test --project tests/Event.Persistence.IntegrationTests/Event.Persistence.IntegrationTests.csproj --configuration Release -- --treenode-filter "/*/*/ImportEventAmbiguousCommitPersistenceTests/*" --minimum-expected-tests 1 --maximum-parallel-tests 1
+dotnet test --project tests/Event.Persistence.IntegrationTests/Event.Persistence.IntegrationTests.csproj --configuration Release -- --treenode-filter "/*/*/AtprotoInboundEventImportPersistenceTests/JetstreamApply_MaterializesNewEventAndSessionWithApprovedStatusMatrix" --minimum-expected-tests 6 --maximum-parallel-tests 1
+dotnet test --project tests/Event.Persistence.IntegrationTests/Event.Persistence.IntegrationTests.csproj --configuration Release -- --treenode-filter "/*/*/AtprotoInboundEventImportPersistenceTests/JetstreamApply_RescheduledRefreshPublishesCancelledSessionBeforeRefreshingSchedule" --minimum-expected-tests 1 --maximum-parallel-tests 1
+dotnet test --project tests/Event.Persistence.IntegrationTests/Event.Persistence.IntegrationTests.csproj --configuration Release -- --treenode-filter "/*/*/DatabaseSeederTests/SeedAsync_InDevelopment_RepairsOnlyPublishableSessionStatuses" --minimum-expected-tests 10 --maximum-parallel-tests 1
+dotnet test --project tests/Event.Persistence.IntegrationTests/Event.Persistence.IntegrationTests.csproj --configuration Release -- --treenode-filter "/*/*/DatabaseSeederTests/SeedAsync_InDevelopment_PreservesPublishableStatusWhenScheduleIsInvalid" --minimum-expected-tests 4 --maximum-parallel-tests 1
+dotnet test --project tests/Event.Persistence.IntegrationTests/Event.Persistence.IntegrationTests.csproj --configuration Release -- --treenode-filter "/*/*/EventSessionLifecycleConstraintTests/*" --minimum-expected-tests 8 --maximum-parallel-tests 1
+
+# Pending-model-change contract
+Database__Provider=PostgreSql \
+Database__Host=localhost \
+Database__Port=5432 \
+Database__Database=islamu_event_db \
+Database__Schema=islamu_event \
+Database__TlsMode=Prefer \
+Database__TrustServerCertificate=false \
+Database__Migrator__Username=explore \
+Database__Migrator__Password=explore \
+dotnet ef migrations has-pending-model-changes \
+  --context ExploreDbContext \
+  --project src/Explore.Persistence/Explore.Persistence.csproj \
+  --startup-project src/Explore.API/Explore.API.csproj \
+  --configuration Release
 ```
+
+Do not combine lifecycle selectors with `|`: each focused command has its own exact minimum count, so a skipped selector cannot make the command appear green. The SQLite materialization command above is separate from the PostgreSQL round-trip and uses the dedicated `EventLifecycleStatusSqliteMaterializationTests` test.
+
+The governed API-contract commands remain separate from lifecycle selectors:
+
+```bash
+dotnet build src/Explore.API/Explore.API.csproj --configuration Release --no-restore --verbosity minimal
+dotnet build tests/Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --no-restore --verbosity minimal
+dotnet run --project tests/Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --no-build -- --treenode-filter "/*/*/*/OpenApiDocument_*" --minimum-expected-tests 5 --no-progress
+dotnet run --project tests/Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --no-build -- --treenode-filter "/*/*/*/ApiContractInventory_Generate_WritesMarkdownToDocs" --minimum-expected-tests 1 --no-progress
+dotnet build src/Explore.Blazor.Client/Explore.Blazor.Client.csproj --configuration Release --no-restore --verbosity quiet
+```
+
+The determinism pass repeats the API build, inventory command, and Blazor client build, then requires zero diff in `schemas/openapi_islamu-event.json`, `docs/API_CONTRACT_INVENTORY.md`, and `src/Explore.Blazor.Client/Clients/EventApiClient.g.cs`.
 
 The solution-level build can be blocked by unrelated Blazor WebAssembly task-host issues on local SDK/tooling states where the WebAssembly workload is not installed. For the pinned .NET SDK `10.0.301`, verify the workload with `dotnet workload list` and install the official ASP.NET Core Blazor WebAssembly prerequisite with `dotnet workload install wasm-tools` when Release builds fail in `ComputeWasmBuildAssets`, `Microsoft.NETCore.App.Runtime.Mono.browser-wasm`, or `Microsoft.NET.Sdk.WebAssembly.Pack` resolution. When the change is API/Application/HAL-only, prefer the API project build plus focused tests above and report any broader build blocker separately instead of weakening lifecycle tests.
 

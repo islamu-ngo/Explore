@@ -112,7 +112,7 @@ public static class EventScenarioSeed
         DateTimeOffset startUtc,
         int sortOrder)
     {
-        var session = new EventSession
+        var session = new EventSession(EventSessionStatusEnum.Published)
         {
             Id = Guid.NewGuid(),
             EventId = @event.Id,
@@ -120,7 +120,6 @@ public static class EventScenarioSeed
             TenantId = tenantId,
             Tenant = null!,
             Title = @event.Title,
-            EventSessionStatusId = (int)EventSessionStatusEnum.Published,
             SortOrder = sortOrder,
             EventSessionKindId = (int)EventSessionKindEnum.Talk,
             RegistrationModeId = 1,

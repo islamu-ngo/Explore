@@ -199,7 +199,7 @@ public sealed class EventSitemapRepositoryTests(PostgreSqlContainerFixture fixtu
         VisibilityTypeEnum visibility,
         DateTimeOffset startsAt)
     {
-        return new DomainEvent
+        return new DomainEvent(status)
         {
             Id = Guid.CreateVersion7(),
             Title = title,
@@ -218,7 +218,6 @@ public sealed class EventSitemapRepositoryTests(PostgreSqlContainerFixture fixtu
             Tenant = null!,
             VisibilityTypeId = (int)visibility,
             VisibilityType = null!,
-            EventStatusId = (int)status,
             EventStatus = null!,
             EventFormatId = 1,
             EventFormat = null!,

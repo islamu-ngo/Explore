@@ -1079,7 +1079,7 @@ public sealed class UserLocationPrivacyErasureRepositoryProviderMetadataTests(
         int eventStatusId,
         int visibilityTypeId,
         int eventProvenanceTypeId,
-        string title) => new()
+        string title) => new((EventStatusEnum)eventStatusId)
         {
             Id = Guid.CreateVersion7(),
             TenantId = tenant.Id,
@@ -1090,7 +1090,6 @@ public sealed class UserLocationPrivacyErasureRepositoryProviderMetadataTests(
             PublicCode = Guid.CreateVersion7().ToString("N")[^12..],
             VisibilityTypeId = visibilityTypeId,
             VisibilityType = null!,
-            EventStatusId = eventStatusId,
             EventStatus = null!,
             EventFormatId = eventFormatId,
             EventFormat = null!,

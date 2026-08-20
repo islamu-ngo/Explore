@@ -2,13 +2,14 @@
 // ABOUTME: Replaces the static EventPublishReadinessEvaluator with an injectable, machine-readable error model.
 using Explore.Domain;
 using Explore.Domain.Enums;
+using Explore.Domain.Services.Lifecycle;
 
 namespace Explore.Application.Services.Lifecycle;
 
 /// <summary>
 /// Evaluates event lifecycle readiness by checking each required field in the
 /// <see cref="EventLifecyclePolicy.RequiredEventFields"/> set against the supplied <see cref="Event"/>.
-/// Hard invariants (cancelled/moderated/archived status blocks) are always evaluated regardless of profile.
+/// Fixed lifecycle invariants are delegated to Domain rules and translated to profile-aware diagnostics here.
 /// </summary>
 public sealed class EventLifecycleReadinessEvaluator : IEventLifecycleReadinessEvaluator
 {
@@ -45,47 +46,31 @@ public sealed class EventLifecycleReadinessEvaluator : IEventLifecycleReadinessE
             : LifecycleReadinessResult.Failure(profile, errors);
     }
 
-    /// <summary>
-    /// Hard invariants that apply to every profile: an event in Cancelled, Moderated, or Archived
-    /// status can never transition to a publish-ready state.
-    /// </summary>
     private static void AddHardInvariantErrors(Event @event, ValidationProfile profile, List<LifecycleReadinessError> errors)
     {
-        if (@event.EventStatusId == (int)EventStatusEnum.Cancelled)
+        EventStatusEnum status = (EventStatusEnum)@event.EventStatusId;
+        if (EventLifecycleRules.CanTransition(status, EventStatusEnum.Published))
         {
-            errors.Add(new LifecycleReadinessError(
-                Code: "event_cancelled",
-                FieldKey: EventFieldKey.Status,
-                FieldPath: "status",
-                Message: "Event is cancelled and cannot be published or transitioned to a ready state.",
-                Severity: ReadinessErrorSeverity.Error,
-                Source: ReadinessErrorSource.HardInvariant,
-                Profile: profile));
+            return;
         }
 
-        if (@event.EventStatusId == (int)EventStatusEnum.Moderated)
+        (string code, string message) = status switch
         {
-            errors.Add(new LifecycleReadinessError(
-                Code: "event_moderated",
-                FieldKey: EventFieldKey.Status,
-                FieldPath: "status",
-                Message: "Event is moderated and cannot be published or transitioned to a ready state.",
-                Severity: ReadinessErrorSeverity.Error,
-                Source: ReadinessErrorSource.HardInvariant,
-                Profile: profile));
-        }
+            EventStatusEnum.Cancelled => ("event_cancelled", "Event is cancelled and cannot be published or transitioned to a ready state."),
+            EventStatusEnum.Moderated => ("event_moderated", "Event is moderated and cannot be published or transitioned to a ready state."),
+            EventStatusEnum.Archived => ("event_archived", "Event is archived and cannot be published or transitioned to a ready state."),
+            EventStatusEnum.Completed => ("event_completed", "Event is completed and cannot be published or transitioned to a ready state."),
+            _ => ("event_status_not_publishable", "Event status does not allow publication.")
+        };
 
-        if (@event.EventStatusId == (int)EventStatusEnum.Archived)
-        {
-            errors.Add(new LifecycleReadinessError(
-                Code: "event_archived",
-                FieldKey: EventFieldKey.Status,
-                FieldPath: "status",
-                Message: "Event is archived and cannot be published or transitioned to a ready state.",
-                Severity: ReadinessErrorSeverity.Error,
-                Source: ReadinessErrorSource.HardInvariant,
-                Profile: profile));
-        }
+        errors.Add(new LifecycleReadinessError(
+            Code: code,
+            FieldKey: EventFieldKey.Status,
+            FieldPath: "status",
+            Message: message,
+            Severity: ReadinessErrorSeverity.Error,
+            Source: ReadinessErrorSource.HardInvariant,
+            Profile: profile));
     }
 
     /// <summary>
@@ -173,7 +158,7 @@ public sealed class EventLifecycleReadinessEvaluator : IEventLifecycleReadinessE
                 break;
 
             case EventFieldKey.ScheduleLastEnd:
-                if (@event.LastSessionStartUtc is null)
+                if (@event.LastSessionEndUtc is null)
                 {
                     errors.Add(MissingField(profile, EventFieldKey.ScheduleLastEnd, "schedule.last_end", "schedule_last_end_required", "Event schedule last end time is required."));
                 }
@@ -226,65 +211,30 @@ public sealed class EventLifecycleReadinessEvaluator : IEventLifecycleReadinessE
 
     private static void AddSessionHardInvariantErrors(EventSession session, ValidationProfile profile, List<LifecycleReadinessError> errors)
     {
-        if (session.EventSessionStatusId == (int)EventSessionStatusEnum.Cancelled)
+        EventSessionStatusEnum status = (EventSessionStatusEnum)session.EventSessionStatusId;
+        if (EventSessionLifecycleRules.CanSchedule(status))
         {
-            errors.Add(new LifecycleReadinessError(
-                Code: "session_cancelled",
-                FieldKey: EventSessionFieldKey.Status,
-                FieldPath: "status",
-                Message: "Event session is cancelled and cannot be transitioned to a ready state.",
-                Severity: ReadinessErrorSeverity.Error,
-                Source: ReadinessErrorSource.HardInvariant,
-                Profile: profile));
+            return;
         }
 
-        if (session.EventSessionStatusId == (int)EventSessionStatusEnum.Archived)
+        (string code, string message) = status switch
         {
-            errors.Add(new LifecycleReadinessError(
-                Code: "session_archived",
-                FieldKey: EventSessionFieldKey.Status,
-                FieldPath: "status",
-                Message: "Event session is archived and cannot be transitioned to a ready state.",
-                Severity: ReadinessErrorSeverity.Error,
-                Source: ReadinessErrorSource.HardInvariant,
-                Profile: profile));
-        }
+            EventSessionStatusEnum.Cancelled => ("session_cancelled", "Event session is cancelled and cannot be transitioned to a ready state."),
+            EventSessionStatusEnum.Archived => ("session_archived", "Event session is archived and cannot be transitioned to a ready state."),
+            EventSessionStatusEnum.Rejected => ("session_rejected", "Event session is rejected and cannot be transitioned to a ready state."),
+            EventSessionStatusEnum.Completed => ("session_completed", "Event session is completed and cannot be transitioned to a ready state."),
+            EventSessionStatusEnum.Moderated => ("session_moderated", "Event session is moderated by its parent event and cannot be transitioned independently."),
+            _ => ("session_status_not_ready", "Event session status does not allow a readiness transition.")
+        };
 
-        if (session.EventSessionStatusId == (int)EventSessionStatusEnum.Rejected)
-        {
-            errors.Add(new LifecycleReadinessError(
-                Code: "session_rejected",
-                FieldKey: EventSessionFieldKey.Status,
-                FieldPath: "status",
-                Message: "Event session is rejected and cannot be transitioned to a ready state.",
-                Severity: ReadinessErrorSeverity.Error,
-                Source: ReadinessErrorSource.HardInvariant,
-                Profile: profile));
-        }
-
-        if (session.EventSessionStatusId == (int)EventSessionStatusEnum.Completed)
-        {
-            errors.Add(new LifecycleReadinessError(
-                Code: "session_completed",
-                FieldKey: EventSessionFieldKey.Status,
-                FieldPath: "status",
-                Message: "Event session is completed and cannot be transitioned to a ready state.",
-                Severity: ReadinessErrorSeverity.Error,
-                Source: ReadinessErrorSource.HardInvariant,
-                Profile: profile));
-        }
-
-        if (session.EventSessionStatusId == (int)EventSessionStatusEnum.Moderated)
-        {
-            errors.Add(new LifecycleReadinessError(
-                Code: "session_moderated",
-                FieldKey: EventSessionFieldKey.Status,
-                FieldPath: "status",
-                Message: "Event session is moderated by its parent event and cannot be transitioned independently.",
-                Severity: ReadinessErrorSeverity.Error,
-                Source: ReadinessErrorSource.HardInvariant,
-                Profile: profile));
-        }
+        errors.Add(new LifecycleReadinessError(
+            Code: code,
+            FieldKey: EventSessionFieldKey.Status,
+            FieldPath: "status",
+            Message: message,
+            Severity: ReadinessErrorSeverity.Error,
+            Source: ReadinessErrorSource.HardInvariant,
+            Profile: profile));
     }
 
     private static void AddSessionFieldError(
@@ -336,7 +286,10 @@ public sealed class EventLifecycleReadinessEvaluator : IEventLifecycleReadinessE
                 {
                     errors.Add(MissingField(profile, EventSessionFieldKey.ScheduleEnd, "schedule.end", "session_schedule_end_required", "Session schedule end time is required."));
                 }
-                else if (session.StartTime is not null && session.EndTime is not null && session.EndTime <= session.StartTime)
+                else if (session.StartTime is not null && !EventSessionLifecycleRules.HasPublishableSchedule(
+                    session.StartTime,
+                    session.EndTime,
+                    session.EndTimeType))
                 {
                     errors.Add(new LifecycleReadinessError(
                         Code: "session_schedule_range_invalid",
@@ -392,16 +345,22 @@ public sealed class EventLifecycleReadinessEvaluator : IEventLifecycleReadinessE
                 {
                     errors.Add(MissingField(profile, EventSessionFieldKey.ParentEventCompatibility, "event.status", "session_parent_event_missing", "Parent event must be loaded to validate session publication."));
                 }
-                else if (parentEvent.EventStatusId != (int)EventStatusEnum.Published)
+                else
                 {
-                    errors.Add(new LifecycleReadinessError(
-                        Code: "session_parent_event_not_published",
-                        FieldKey: EventSessionFieldKey.ParentEventCompatibility,
-                        FieldPath: "event.status",
-                        Message: "Parent event must be published before the session can be published.",
-                        Severity: ReadinessErrorSeverity.Error,
-                        Source: ReadinessErrorSource.DomainRule,
-                        Profile: profile));
+                    EventStatusEnum targetParentStatus = profile is ValidationProfile.EventPublish or ValidationProfile.EventPublishCommunityLexicon
+                        ? EventStatusEnum.Published
+                        : (EventStatusEnum)parentEvent.EventStatusId;
+                    if (!EventSessionLifecycleRules.IsPublishParentCompatible(targetParentStatus))
+                    {
+                        errors.Add(new LifecycleReadinessError(
+                            Code: "session_parent_event_not_published",
+                            FieldKey: EventSessionFieldKey.ParentEventCompatibility,
+                            FieldPath: "event.status",
+                            Message: "Parent event must be published before the session can be published.",
+                            Severity: ReadinessErrorSeverity.Error,
+                            Source: ReadinessErrorSource.DomainRule,
+                            Profile: profile));
+                    }
                 }
                 break;
 

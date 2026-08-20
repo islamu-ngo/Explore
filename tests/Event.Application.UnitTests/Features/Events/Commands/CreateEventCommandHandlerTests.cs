@@ -223,7 +223,8 @@ public class CreateEventCommandHandlerTests
             _lifecyclePolicyProvider,
             _lifecycleReadinessEvaluator,
             eventLocationAttachmentService,
-            AtprotoPublicationPlannerTestFactory.Disabled()
+            AtprotoPublicationPlannerTestFactory.Disabled(),
+            TimeProvider.System
         );
     }
 
@@ -331,6 +332,27 @@ public class CreateEventCommandHandlerTests
     }
 
     [Test]
+    public async Task Handle_WithMalformedInput_ReturnsValidationFailureBeforeUserContext()
+    {
+        _userContext.GetRequiredUserId().Returns(_ => throw new InvalidOperationException("user context should not be read"));
+
+        var result = await _handler.Handle(new CreateEventCommand
+        {
+            EventDto = new CreateEventDto
+            {
+                Title = "",
+                ParticipationConfiguration = CreateParticipationConfiguration()
+            }
+        }, CancellationToken.None);
+
+        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.Message).IsEqualTo("Event creation failed due to validation errors.");
+        _userContext.DidNotReceive().GetRequiredUserId();
+        await _actorResolver.DidNotReceiveWithAnyArgs().ResolveAsync(default, default, default, default);
+        await _eventRepository.DidNotReceive().Create(Arg.Any<Explore.Domain.Event>());
+    }
+
+    [Test]
     public async Task Handle_WithOptionalFieldsNull_ReturnsSuccessResponse()
     {
         var userId = Guid.NewGuid();
@@ -434,7 +456,10 @@ public class CreateEventCommandHandlerTests
                 RequiredEventFields = new HashSet<Enum>(),
                 RequiredSessionFields = new HashSet<Enum>()
             });
-        _lifecycleReadinessEvaluator.Evaluate(Arg.Any<Explore.Domain.Event>(), ValidationProfile.EventPublish, Arg.Any<EventLifecyclePolicy>())
+        _lifecycleReadinessEvaluator.Evaluate(
+                Arg.Is<Explore.Domain.Event>(entity => entity.EventStatusId == (int)EventStatusEnum.Published),
+                ValidationProfile.EventPublish,
+                Arg.Any<EventLifecyclePolicy>())
             .Returns(LifecycleReadinessResult.Success(ValidationProfile.EventPublish));
 
         var result = await _handler.Handle(command, CancellationToken.None);
@@ -581,7 +606,10 @@ public class CreateEventCommandHandlerTests
                 RequiredEventFields = new HashSet<Enum>(),
                 RequiredSessionFields = new HashSet<Enum>()
             });
-        _lifecycleReadinessEvaluator.Evaluate(Arg.Any<Explore.Domain.Event>(), ValidationProfile.EventPublish, Arg.Any<EventLifecyclePolicy>())
+        _lifecycleReadinessEvaluator.Evaluate(
+                Arg.Is<Explore.Domain.Event>(entity => entity.EventStatusId == (int)EventStatusEnum.Published),
+                ValidationProfile.EventPublish,
+                Arg.Any<EventLifecyclePolicy>())
             .Returns(LifecycleReadinessResult.Success(ValidationProfile.EventPublish));
 
         var result = await _handler.Handle(command, CancellationToken.None);
@@ -982,6 +1010,69 @@ public class CreateEventCommandHandlerTests
         await Assert.That(result.Success).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("event_publish_readiness_failed");
         await _eventRepository.DidNotReceive().Create(Arg.Any<Explore.Domain.Event>());
+        await _outboxRepository.DidNotReceive().Create(Arg.Any<OutboxMessage>());
+    }
+
+    [Test]
+    [Arguments((int)EventStatusEnum.Cancelled)]
+    [Arguments(999)]
+    public async Task Handle_WithUnsupportedCreationStatus_ReturnsValidationFailureBeforeSideEffects(int statusId)
+    {
+        var userId = Guid.NewGuid();
+        var command = new CreateEventCommand
+        {
+            EventDto = new CreateEventDto
+            {
+                Title = "Unsupported status",
+                ParticipationConfiguration = CreateParticipationConfiguration(),
+                EventStatusId = statusId,
+                Sessions = [CreateSessionRequest()]
+            }
+        };
+
+        _userContext.GetRequiredUserId().Returns(userId);
+
+        var result = await _handler.Handle(command, CancellationToken.None);
+
+        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.FailureCode).IsEqualTo("event_create_status_not_supported");
+        await _actorResolver.DidNotReceiveWithAnyArgs().ResolveAsync(default, default, default, default);
+        await _lifecyclePolicyProvider.DidNotReceive().GetEffectivePolicyAsync(Arg.Any<Guid?>(), Arg.Any<ValidationProfile>(), Arg.Any<CancellationToken>());
+        await _eventRepository.DidNotReceive().Create(Arg.Any<Explore.Domain.Event>());
+        await _eventSessionRepository.DidNotReceive().Create(Arg.Any<EventSession>());
+        await _outboxRepository.DidNotReceive().Create(Arg.Any<OutboxMessage>());
+    }
+
+    [Test]
+    public async Task Handle_WithZeroStatus_CreatesDraftByDefault()
+    {
+        var userId = Guid.NewGuid();
+        var actorId = Guid.NewGuid();
+        var tenantId = Guid.NewGuid();
+        var command = new CreateEventCommand
+        {
+            EventDto = new CreateEventDto
+            {
+                Title = "Default draft status",
+                ParticipationConfiguration = CreateParticipationConfiguration(),
+                EventStatusId = 0,
+                Sessions = [CreateSessionRequest()]
+            }
+        };
+
+        _userContext.GetRequiredUserId().Returns(userId);
+        _tenantContext.TenantId.Returns(tenantId);
+        _actorResolver.ResolveAsync(userId, null, null, Arg.Any<CancellationToken>())
+            .Returns(EventActorResult.Success(actorId, isCommunitySubmission: true));
+
+        var result = await _handler.Handle(command, CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await _eventRepository.Received(1).Create(Arg.Is<Explore.Domain.Event>(entity =>
+            entity.EventStatusId == (int)EventStatusEnum.Draft));
+        await _eventSessionRepository.Received(1).Create(Arg.Is<EventSession>(session =>
+            session.EventSessionStatusId == (int)EventSessionStatusEnum.Draft));
+        await _lifecyclePolicyProvider.DidNotReceive().GetEffectivePolicyAsync(Arg.Any<Guid?>(), Arg.Any<ValidationProfile>(), Arg.Any<CancellationToken>());
         await _outboxRepository.DidNotReceive().Create(Arg.Any<OutboxMessage>());
     }
 

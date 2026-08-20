@@ -355,7 +355,7 @@ public sealed class EventReportPersistenceTests(PostgreSqlContainerFixture fixtu
         context.Actors.Add(actor);
         await context.SaveChangesAsync();
 
-        var @event = new Explore.Domain.Event
+        var @event = new Explore.Domain.Event(EventStatusEnum.Published)
         {
             Id = Guid.CreateVersion7(),
             Title = "Reporting Event " + slugPrefix,
@@ -366,7 +366,6 @@ public sealed class EventReportPersistenceTests(PostgreSqlContainerFixture fixtu
             Tenant = null!,
             VisibilityTypeId = (int)VisibilityTypeEnum.Public,
             VisibilityType = null!,
-            EventStatusId = (int)EventStatusEnum.Published,
             EventStatus = null!,
             EventFormatId = (int)EventFormatEnum.Digital,
             EventFormat = null!

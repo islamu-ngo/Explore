@@ -21,7 +21,7 @@ public sealed class EventBuilder
     private Guid _actorId;
     private Guid _tenantId;
     private int? _eventTypeId;
-    private int _eventStatusId = (int)EventStatusEnum.Draft;
+    private EventStatusEnum _eventStatus = EventStatusEnum.Draft;
     private int _visibilityTypeId = (int)VisibilityTypeEnum.Public;
     private int _eventFormatId = (int)EventFormatEnum.Local;
     private int _eventProvenanceTypeId = (int)EventProvenanceTypeEnum.OrganizerCreated;
@@ -38,7 +38,7 @@ public sealed class EventBuilder
     public EventBuilder WithActorId(Guid actorId) { _actorId = actorId; return this; }
     public EventBuilder WithTenantId(Guid tenantId) { _tenantId = tenantId; return this; }
     public EventBuilder WithEventType(EventTypeEnum type) { _eventTypeId = (int)type; return this; }
-    public EventBuilder WithStatus(EventStatusEnum status) { _eventStatusId = (int)status; return this; }
+    public EventBuilder WithStatus(EventStatusEnum status) { _eventStatus = status; return this; }
     public EventBuilder WithVisibility(VisibilityTypeEnum visibility) { _visibilityTypeId = (int)visibility; return this; }
     public EventBuilder WithFormat(EventFormatEnum format) { _eventFormatId = (int)format; return this; }
     public EventBuilder WithProvenance(EventProvenanceTypeEnum provenance) { _eventProvenanceTypeId = (int)provenance; return this; }
@@ -51,7 +51,7 @@ public sealed class EventBuilder
         return this;
     }
 
-    public Explore.Domain.Event Build() => new()
+    public Explore.Domain.Event Build() => new(_eventStatus)
     {
         Id = _id,
         Title = _title,
@@ -64,7 +64,6 @@ public sealed class EventBuilder
         Tenant = null!,
         EventProvenanceTypeId = _eventProvenanceTypeId,
         EventTypeId = _eventTypeId,
-        EventStatusId = _eventStatusId,
         EventStatus = null!,
         VisibilityTypeId = _visibilityTypeId,
         VisibilityType = null!,

@@ -29,7 +29,8 @@ public sealed class ModerateEventCommandHandler(
     HybridCache cache,
     BusinessMetrics metrics,
     ILogger<ModerateEventCommandHandler> logger,
-    AtprotoEventPublicationPlanner atprotoPublicationPlanner) : IRequestHandler<ModerateEventCommand, BaseCommandResponse<Guid>>
+    AtprotoEventPublicationPlanner atprotoPublicationPlanner,
+    TimeProvider timeProvider) : IRequestHandler<ModerateEventCommand, BaseCommandResponse<Guid>>
 {
     private const string InvalidStatusFailureCode = "event_light_moderation_invalid_status";
     private const string UserResolutionFailureCode = "event_light_moderation_user_unresolved";
@@ -71,57 +72,58 @@ public sealed class ModerateEventCommandHandler(
                 UserResolutionFailureCode);
         }
 
+        Guid moderationRecordId = Guid.CreateVersion7();
+        Guid notificationOutboxMessageId = Guid.CreateVersion7();
         Guid federationOutboxId = Guid.CreateVersion7();
-        DateTime federationCreatedAt = DateTime.UtcNow;
-        return await unitOfWork.ExecuteInTransactionAsync(async token =>
+        DateTimeOffset moderatedAt = timeProvider.GetUtcNow();
+        DateTime federationCreatedAt = moderatedAt.UtcDateTime;
+        ModerationCommandResult? postCommitResult = null;
+        ModerationCommandResult result = await unitOfWork.ExecuteInTransactionAsync(async token =>
         {
             var @event = await eventRepository.GetById(request.Id);
             if (@event is null)
             {
-                metrics.RecordEventModerationAction(null, ActionKind, "failed", "not_found", irreversible: false);
-                logger.LogWarning(
-                    "Light event moderation rejected because event {EventId} was not found.",
-                    request.Id);
-
-                return Failure(request.Id, "Event not found.", ["Event not found."]);
+                return new ModerationCommandResult(
+                    Failure(request.Id, "Event not found.", ["Event not found."]),
+                    null,
+                    "failed",
+                    "not_found",
+                    LogOutcome: "not_found");
             }
 
             if (@event.EventStatusId == (int)EventStatusEnum.Moderated)
             {
-                var repairedSessionCount = await CascadeModerationToSessionsAsync(@event.Id, DateTime.UtcNow);
+                var repairedSessionCount = await CascadeModerationToSessionsAsync(@event.Id, moderatedAt.UtcDateTime);
+                var attemptResult = new ModerationCommandResult(
+                    Success(@event.Id, "Event is already moderated."),
+                    @event.TenantId,
+                    repairedSessionCount > 0 ? "idempotent" : null,
+                    CacheEventId: repairedSessionCount > 0 ? @event.Id : null,
+                    LogOutcome: "idempotent");
                 if (repairedSessionCount > 0)
                 {
-                    await cache.RemoveAsync($"event:detail:{@event.Id}", token);
-                    await cache.RemoveByTagAsync(CacheTags.EventListByTenant(@event.TenantId), token);
+                    postCommitResult ??= attemptResult;
                 }
 
-                metrics.RecordEventModerationAction(@event.TenantId.ToString(), ActionKind, "idempotent", irreversible: false);
-                logger.LogInformation(
-                    "Light event moderation skipped because event {EventId} in tenant {TenantId} is already moderated.",
-                    @event.Id,
-                    @event.TenantId);
-
-                return Success(@event.Id, "Event is already moderated.");
+                return attemptResult;
             }
 
             if (@event.EventStatusId != (int)EventStatusEnum.Published)
             {
-                metrics.RecordEventModerationAction(@event.TenantId.ToString(), ActionKind, "failed", "invalid_status", irreversible: false);
-                logger.LogWarning(
-                    "Light event moderation rejected for event {EventId} in tenant {TenantId} because current status {CurrentStatusId} is not Published.",
-                    @event.Id,
-                    @event.TenantId,
-                    @event.EventStatusId);
-
-                return Failure(
+                return new ModerationCommandResult(Failure(
                     @event.Id,
                     "Only published events can be light moderated.",
                     ["Only published events can be light moderated."],
-                    InvalidStatusFailureCode);
+                    InvalidStatusFailureCode),
+                    @event.TenantId,
+                    "failed",
+                    "invalid_status",
+                    LogOutcome: "invalid_status",
+                    CurrentStatusId: @event.EventStatusId);
             }
 
-            var moderatedAt = DateTimeOffset.UtcNow;
             var moderationRecord = EventModerationRecord.CreateLightModeration(
+                moderationRecordId,
                 @event.TenantId,
                 @event.Id,
                 moderatorUserId,
@@ -132,15 +134,17 @@ public sealed class ModerateEventCommandHandler(
 
             if (!TryLinkSourceReportDecision(moderationRecord, request.SourceReportId, request.SourceReportDecisionId, out var sourceLinkError))
             {
-                return Failure(
+                return new ModerationCommandResult(Failure(
                     @event.Id,
                     "Source report decision link is invalid.",
                     [sourceLinkError],
-                    "event_light_moderation_source_report_decision_invalid");
+                    "event_light_moderation_source_report_decision_invalid"),
+                    @event.TenantId,
+                    "failed",
+                    "source_report_decision_invalid");
             }
 
-            @event.EventStatusId = (int)EventStatusEnum.Moderated;
-            @event.UpdatedAt = moderatedAt.UtcDateTime;
+            @event.ApplyLightModeration(moderatedAt.UtcDateTime);
 
             await CascadeModerationToSessionsAsync(@event.Id, moderatedAt.UtcDateTime);
             await moderationRecordRepository.Create(moderationRecord);
@@ -155,23 +159,89 @@ public sealed class ModerateEventCommandHandler(
                     federationOutboxId,
                     federationCreatedAt),
                 token);
-            await outboxRepository.Create(EventModerationOutboxMessageFactory.CreateLightModerationNotificationFanoutMessage(@event, moderationRecord));
+            await outboxRepository.Create(EventModerationOutboxMessageFactory.CreateLightModerationNotificationFanoutMessage(
+                notificationOutboxMessageId,
+                @event,
+                moderationRecord));
 
-            await cache.RemoveAsync($"event:detail:{@event.Id}", token);
-            await cache.RemoveByTagAsync(CacheTags.EventListByTenant(@event.TenantId), token);
-
-            metrics.RecordEventModerationAction(@event.TenantId.ToString(), ActionKind, "succeeded", irreversible: false);
-            logger.LogInformation(
-                "Light event moderation succeeded for event {EventId} in tenant {TenantId}; moderation record {ModerationRecordId}, moderator {ModeratorUserId}, reason {ReasonCode}, correlation {CorrelationId}.",
-                @event.Id,
+            var mutationResult = new ModerationCommandResult(
+                Success(@event.Id, "Event moderated successfully."),
                 @event.TenantId,
-                moderationRecord.Id,
-                moderatorUserId,
-                moderationRecord.ReasonCode,
-                moderationRecord.CorrelationId);
-
-            return Success(@event.Id, "Event moderated successfully.");
+                "succeeded",
+                CacheEventId: @event.Id,
+                LogOutcome: "succeeded",
+                ModerationRecord: moderationRecord);
+            postCommitResult ??= mutationResult;
+            return mutationResult;
         }, cancellationToken);
+
+        if (result.Response.Success)
+        {
+            result = postCommitResult ?? result;
+        }
+        else if (postCommitResult is not null)
+        {
+            result = result with { MetricOutcome = null };
+        }
+
+        await ApplyPostCommitEffectsAsync(result, request.Id, moderatorUserId, cancellationToken);
+        return result.Response;
+    }
+
+    private async Task ApplyPostCommitEffectsAsync(
+        ModerationCommandResult result,
+        Guid requestedEventId,
+        Guid? moderatorUserId,
+        CancellationToken cancellationToken)
+    {
+        if (result.CacheEventId is { } eventId && result.TenantId is { } tenantId)
+        {
+            await cache.RemoveAsync($"event:detail:{eventId}", cancellationToken);
+            await cache.RemoveByTagAsync(CacheTags.EventListByTenant(tenantId), cancellationToken);
+        }
+
+        if (result.MetricOutcome is not null)
+        {
+            metrics.RecordEventModerationAction(
+                result.TenantId?.ToString(),
+                ActionKind,
+                result.MetricOutcome,
+                result.FailureReason,
+                irreversible: false);
+        }
+
+        switch (result.LogOutcome)
+        {
+            case "not_found":
+                logger.LogWarning(
+                    "Light event moderation rejected because event {EventId} was not found.",
+                    requestedEventId);
+                break;
+            case "idempotent":
+                logger.LogInformation(
+                    "Light event moderation skipped because event {EventId} in tenant {TenantId} is already moderated.",
+                    result.Response.Id,
+                    result.TenantId);
+                break;
+            case "invalid_status":
+                logger.LogWarning(
+                    "Light event moderation rejected for event {EventId} in tenant {TenantId} because current status {CurrentStatusId} is not Published.",
+                    result.Response.Id,
+                    result.TenantId,
+                    result.CurrentStatusId);
+                break;
+            case "succeeded":
+                EventModerationRecord moderationRecord = result.ModerationRecord!;
+                logger.LogInformation(
+                    "Light event moderation succeeded for event {EventId} in tenant {TenantId}; moderation record {ModerationRecordId}, moderator {ModeratorUserId}, reason {ReasonCode}, correlation {CorrelationId}.",
+                    result.Response.Id,
+                    result.TenantId,
+                    moderationRecord.Id,
+                    moderatorUserId,
+                    moderationRecord.ReasonCode,
+                    moderationRecord.CorrelationId);
+                break;
+        }
     }
 
     private async Task<int> CascadeModerationToSessionsAsync(Guid eventId, DateTime moderatedAtUtc)
@@ -179,11 +249,13 @@ public sealed class ModerateEventCommandHandler(
         var sessions = await eventSessionRepository.GetSessionsByEvent(eventId);
         var updatedCount = 0;
 
-        foreach (var session in sessions.Where(session =>
-                     session.EventSessionStatusId != (int)EventSessionStatusEnum.Moderated))
+        foreach (var session in sessions)
         {
-            session.EventSessionStatusId = (int)EventSessionStatusEnum.Moderated;
-            session.UpdatedAt = moderatedAtUtc;
+            if (!session.ApplyParentModeration(moderatedAtUtc))
+            {
+                continue;
+            }
+
             await eventSessionRepository.Update(session);
             updatedCount++;
         }
@@ -241,4 +313,14 @@ public sealed class ModerateEventCommandHandler(
 
     private static bool HasSourceReportDecision(ModerateEventCommand request) =>
         request.SourceReportId.HasValue && request.SourceReportDecisionId.HasValue;
+
+    private sealed record ModerationCommandResult(
+        BaseCommandResponse<Guid> Response,
+        Guid? TenantId,
+        string? MetricOutcome,
+        string? FailureReason = null,
+        Guid? CacheEventId = null,
+        string? LogOutcome = null,
+        int? CurrentStatusId = null,
+        EventModerationRecord? ModerationRecord = null);
 }

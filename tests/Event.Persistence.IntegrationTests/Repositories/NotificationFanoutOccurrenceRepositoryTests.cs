@@ -1078,7 +1078,7 @@ public sealed class NotificationFanoutOccurrenceRepositoryTests(PostgreSqlContai
         Guid actorId = await context.Actors
             .Select(value => value.Id)
             .SingleAsync();
-        var @event = new Explore.Domain.Event
+        var @event = new Explore.Domain.Event(EventStatusEnum.Draft)
         {
             Id = Guid.CreateVersion7(),
             TenantId = tenantId,
@@ -1089,7 +1089,6 @@ public sealed class NotificationFanoutOccurrenceRepositoryTests(PostgreSqlContai
             Actor = null!,
             EventFormatId = (int)EventFormatEnum.Local,
             EventFormat = null!,
-            EventStatusId = (int)EventStatusEnum.Draft,
             EventStatus = null!,
             VisibilityTypeId = (int)VisibilityTypeEnum.Public,
             VisibilityType = await context.VisibilityTypes.SingleAsync(
@@ -1107,7 +1106,7 @@ public sealed class NotificationFanoutOccurrenceRepositoryTests(PostgreSqlContai
         Guid eventId,
         string title)
     {
-        var session = new EventSession
+        var session = new EventSession(EventSessionStatusEnum.Draft)
         {
             Id = Guid.CreateVersion7(),
             TenantId = tenantId,
@@ -1115,7 +1114,6 @@ public sealed class NotificationFanoutOccurrenceRepositoryTests(PostgreSqlContai
             EventId = eventId,
             Event = null!,
             Title = title,
-            EventSessionStatusId = (int)EventSessionStatusEnum.Draft,
             ConcurrencyStamp = Guid.CreateVersion7(),
             CreatedAt = DateTime.UtcNow
         };
@@ -1426,7 +1424,7 @@ public sealed class NotificationFanoutOccurrenceRepositoryTests(PostgreSqlContai
         context.Actors.Add(actor);
         await context.SaveChangesAsync();
 
-        var @event = new Explore.Domain.Event
+        var @event = new Explore.Domain.Event(EventStatusEnum.Published)
         {
             Id = Guid.CreateVersion7(),
             Title = "Fanout event",
@@ -1437,7 +1435,6 @@ public sealed class NotificationFanoutOccurrenceRepositoryTests(PostgreSqlContai
             Tenant = null!,
             VisibilityTypeId = (int)VisibilityTypeEnum.Public,
             VisibilityType = null!,
-            EventStatusId = (int)EventStatusEnum.Published,
             EventStatus = null!,
             EventFormatId = (int)EventFormatEnum.Local,
             EventFormat = null!,

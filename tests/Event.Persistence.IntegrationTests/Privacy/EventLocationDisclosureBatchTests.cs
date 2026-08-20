@@ -338,7 +338,7 @@ public sealed class EventLocationDisclosureBatchTests(RegistrationCoveragePostgr
         context.Actors.Add(actor);
         await context.SaveChangesAsync();
 
-        var @event = new Explore.Domain.Event
+        var @event = new Explore.Domain.Event(EventStatusEnum.Draft)
         {
             Id = Guid.CreateVersion7(),
             TenantId = tenant.Id,
@@ -347,7 +347,6 @@ public sealed class EventLocationDisclosureBatchTests(RegistrationCoveragePostgr
             Actor = null!,
             Title = $"Disclosure {suffix} event",
             EventProvenanceTypeId = (int)EventProvenanceTypeEnum.OrganizerCreated,
-            EventStatusId = (int)EventStatusEnum.Draft,
             EventStatus = null!,
             EventFormatId = (int)EventFormatEnum.Local,
             EventFormat = null!,

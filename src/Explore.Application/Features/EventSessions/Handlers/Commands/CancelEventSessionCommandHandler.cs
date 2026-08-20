@@ -24,19 +24,21 @@ public sealed class CancelEventSessionCommandHandler(
         eventSessionRepository,
         eventRepository,
         unitOfWork,
-        cache)
+        cache,
+        timeProvider)
 {
-    protected override EventSessionStatusEnum TargetStatus => EventSessionStatusEnum.Cancelled;
     protected override string ActionName => "cancel";
     protected override string PastTenseActionName => "cancelled";
     protected override string ConcurrencyFailureCode => "event_session_cancel_concurrency_conflict";
-    protected override string AlreadyInTargetStatusFailureCode => "event_session_cancel_already_cancelled";
     protected override string InvalidStatusFailureCode => "event_session_cancel_invalid_status";
 
     protected override TransitionAttempt CreateTransitionAttempt() => new(
         timeProvider.GetUtcNow().UtcDateTime,
         Guid.CreateVersion7(),
         Guid.CreateVersion7());
+
+    protected override bool IsAlreadyApplied(EventSession session) =>
+        session.EventSessionStatusId == (int)EventSessionStatusEnum.Cancelled;
 
     protected override async Task AfterTransitionInCurrentTransactionAsync(
         EventSession session,
@@ -92,11 +94,6 @@ public sealed class CancelEventSessionCommandHandler(
             cancellationToken);
     }
 
-    protected override bool CanTransition(int currentSessionStatusId, int parentEventStatusId) =>
-        IsParentEventMutable(parentEventStatusId)
-        && currentSessionStatusId is (int)EventSessionStatusEnum.Draft
-            or (int)EventSessionStatusEnum.Submitted
-            or (int)EventSessionStatusEnum.UnderReview
-            or (int)EventSessionStatusEnum.Approved
-            or (int)EventSessionStatusEnum.Published;
+    protected override bool ApplyTransition(EventSession session, EventStatusEnum parentEventStatus, DateTime occurredAt) =>
+        session.Cancel(parentEventStatus, occurredAt);
 }

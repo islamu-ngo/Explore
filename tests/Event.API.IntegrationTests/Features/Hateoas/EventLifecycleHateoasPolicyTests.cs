@@ -8,6 +8,7 @@ using Explore.Application.DTOs.Event;
 using Explore.Application.DTOs.EventSession;
 using Explore.Application.Hateoas;
 using Explore.Domain.Enums;
+using Explore.Domain.Services.Lifecycle;
 using TUnit.Assertions;
 using TUnit.Core;
 
@@ -33,72 +34,95 @@ public sealed class EventLifecycleHateoasPolicyTests
     }
 
     [Test]
-    public async Task EventDetailLinks_ExposeEventLifecycleActionsByStatus()
+    public async Task EventDetailLinks_MatchDomainLifecycleRulesForEveryStatusAndAction()
     {
-        var draftLinks = new EventDetailLinkPolicy().GetLinks(CreateEventDto(EventStatusEnum.Draft), user: null).ToArray();
-        var publishedLinks = new EventDetailLinkPolicy().GetLinks(CreateEventDto(EventStatusEnum.Published), user: null).ToArray();
-        var cancelledLinks = new EventDetailLinkPolicy().GetLinks(CreateEventDto(EventStatusEnum.Cancelled), user: null).ToArray();
+        var failures = new List<string>();
+        var actions = new[]
+        {
+            (LinkRelations.Publish, RouteNames.PublishEvent, EventStatusEnum.Published, AuthorizationActions.Update),
+            (LinkRelations.Cancel, RouteNames.CancelEvent, EventStatusEnum.Cancelled, AuthorizationActions.Update),
+            (LinkRelations.Archive, RouteNames.ArchiveEvent, EventStatusEnum.Archived, AuthorizationActions.Update),
+            (LinkRelations.ModerateLight, RouteNames.ModerateEventLight, EventStatusEnum.Moderated, AuthorizationActions.Events.ModerateLight)
+        };
 
-        await Assert.That(draftLinks.Any(link => link.Rel == LinkRelations.PublishReadiness && link.RouteName == RouteNames.GetEventPublishReadiness)).IsTrue();
-        await Assert.That(draftLinks.Any(link => link.Rel == LinkRelations.Publish && link.RouteName == RouteNames.PublishEvent)).IsTrue();
-        await Assert.That(draftLinks.Any(link => link.Rel == LinkRelations.Cancel && link.RouteName == RouteNames.CancelEvent)).IsTrue();
-        await Assert.That(draftLinks.Any(link => link.Rel == LinkRelations.Archive && link.RouteName == RouteNames.ArchiveEvent)).IsTrue();
-        await Assert.That(publishedLinks.Any(link => link.Rel == LinkRelations.Cancel && link.RouteName == RouteNames.CancelEvent)).IsTrue();
-        await Assert.That(publishedLinks.Any(link => link.Rel == LinkRelations.Publish)).IsFalse();
-        await Assert.That(cancelledLinks.Any(link => link.Rel == LinkRelations.Archive && link.RouteName == RouteNames.ArchiveEvent)).IsTrue();
+        foreach (var current in Enum.GetValues<EventStatusEnum>())
+        {
+            var links = new EventDetailLinkPolicy().GetLinks(CreateEventDto(current), user: null).ToArray();
+            foreach (var (relation, routeName, target, permission) in actions)
+            {
+                var link = links.SingleOrDefault(candidate => candidate.Rel == relation);
+                var expected = current != target && EventLifecycleRules.CanTransition(current, target);
+                RecordParityFailure(failures, $"Event {current} -> {target}", link is not null, expected);
+                RecordAuthorizationFailure(failures, $"Event {current} {relation}", link, routeName, permission, ResourceKinds.Event);
+            }
+
+            var readiness = links.SingleOrDefault(candidate => candidate.Rel == LinkRelations.PublishReadiness);
+            var publishExpected = current != EventStatusEnum.Published
+                && EventLifecycleRules.CanTransition(current, EventStatusEnum.Published);
+            RecordParityFailure(failures, $"Event {current} publish readiness", readiness is not null, publishExpected);
+            RecordAuthorizationFailure(failures, $"Event {current} publish readiness", readiness, RouteNames.GetEventPublishReadiness, AuthorizationActions.Update, ResourceKinds.Event);
+        }
+
+        await Assert.That(failures).IsEmpty().Because(string.Join(Environment.NewLine, failures));
     }
 
     [Test]
-    public async Task EventSessionDetailLinks_ExposeScheduleAndPublishFromSessionState()
+    public async Task EventDetailLinks_UseRestorationRuleAndPreserveModerationRecordEligibility()
     {
-        var unscheduledDraftLinks = new EventSessionDetailLinkPolicy()
-            .GetLinks(CreateSessionDto(EventSessionStatusEnum.Draft, isScheduled: false), user: null)
-            .ToArray();
-        var scheduledDraftLinks = new EventSessionDetailLinkPolicy()
-            .GetLinks(CreateSessionDto(EventSessionStatusEnum.Draft, isScheduled: true), user: null)
-            .ToArray();
-        var archivedLinks = new EventSessionDetailLinkPolicy()
-            .GetLinks(CreateSessionDto(EventSessionStatusEnum.Archived, isScheduled: true), user: null)
-            .ToArray();
-        var publishedLinks = new EventSessionDetailLinkPolicy()
-            .GetLinks(CreateSessionDto(EventSessionStatusEnum.Published, isScheduled: true), user: null)
-            .ToArray();
-        var cancelledLinks = new EventSessionDetailLinkPolicy()
-            .GetLinks(CreateSessionDto(EventSessionStatusEnum.Cancelled, isScheduled: true), user: null)
-            .ToArray();
-        var moderatedLinks = new EventSessionDetailLinkPolicy()
-            .GetLinks(CreateSessionDto(EventSessionStatusEnum.Moderated, isScheduled: true), user: null)
-            .ToArray();
+        var failures = new List<string>();
 
-        await Assert.That(unscheduledDraftLinks.Any(link => link.Rel == LinkRelations.Schedule && link.RouteName == RouteNames.ScheduleEventSession)).IsTrue();
-        await Assert.That(unscheduledDraftLinks.Any(link => link.Rel == LinkRelations.Publish)).IsFalse();
-        await Assert.That(scheduledDraftLinks.Any(link => link.Rel == LinkRelations.Publish && link.RouteName == RouteNames.PublishEventSession)).IsTrue();
-        await Assert.That(scheduledDraftLinks.Any(link => link.Rel == LinkRelations.Cancel && link.RouteName == RouteNames.CancelEventSession)).IsTrue();
-        await Assert.That(publishedLinks.Any(link => link.Rel == LinkRelations.Complete && link.RouteName == RouteNames.CompleteEventSession)).IsTrue();
-        await Assert.That(publishedLinks.Any(link => link.Rel == LinkRelations.Cancel && link.RouteName == RouteNames.CancelEventSession)).IsTrue();
-        await Assert.That(cancelledLinks.Any(link => link.Rel == LinkRelations.Archive && link.RouteName == RouteNames.ArchiveEventSession)).IsTrue();
-        await Assert.That(archivedLinks.Any(link => link.Rel == LinkRelations.Schedule)).IsFalse();
-        await Assert.That(archivedLinks.Any(link => link.Rel == LinkRelations.Publish)).IsFalse();
-        await Assert.That(moderatedLinks.Any(link => link.Rel is LinkRelations.Schedule or LinkRelations.Publish or LinkRelations.Cancel or LinkRelations.Complete or LinkRelations.Archive)).IsFalse();
-        await Assert.That(moderatedLinks.Any(link => link.Rel.StartsWith("moderate", StringComparison.OrdinalIgnoreCase))).IsFalse();
+        foreach (var status in Enum.GetValues<EventStatusEnum>())
+        foreach (var isEligible in new[] { false, true })
+        {
+            var dto = CreateEventDto(status);
+            dto.IsUnmoderationEligible = isEligible;
+            var links = new EventDetailLinkPolicy().GetLinks(dto, user: null).ToArray();
+            var restore = links.SingleOrDefault(candidate => candidate.Rel == LinkRelations.Unmoderate);
+            var restoreExpected = EventLifecycleRules.CanRestoreAfterLightModeration(status) && isEligible;
+            RecordParityFailure(failures, $"Event {status} restore eligible={isEligible}", restore is not null, restoreExpected);
+            RecordAuthorizationFailure(failures, $"Event {status} restore", restore, RouteNames.UnmoderateEvent, AuthorizationActions.Events.Unmoderate, ResourceKinds.Event);
+
+            var heavy = links.SingleOrDefault(candidate => candidate.Rel == LinkRelations.ModerateHeavy);
+            var heavyExpected = status != EventStatusEnum.Moderated || isEligible;
+            RecordParityFailure(failures, $"Event {status} heavy moderation eligible={isEligible}", heavy is not null, heavyExpected);
+            RecordAuthorizationFailure(failures, $"Event {status} heavy moderation", heavy, RouteNames.ModerateEventHeavy, AuthorizationActions.Events.ModerateHeavy, ResourceKinds.Event);
+        }
+
+        await Assert.That(failures).IsEmpty().Because(string.Join(Environment.NewLine, failures));
     }
 
     [Test]
-    public async Task EventSessionCollectionLinks_ExposeLifecycleItemAffordancesFromListState()
+    public async Task EventSessionDetailAndCollectionLinks_MatchDomainRulesForEveryLifecycleInput()
     {
-        var links = new EventSessionCollectionLinkPolicy()
-            .GetItemLinks(CreateSessionListDto(EventSessionStatusEnum.Draft, isScheduled: true), user: null)
-            .ToArray();
+        var failures = new List<string>();
+        var start = new DateTimeOffset(2030, 1, 1, 10, 0, 0, TimeSpan.Zero);
+        var schedules = new[]
+        {
+            (Start: (DateTimeOffset?)null, End: (DateTimeOffset?)null, Type: SessionEndTimeType.Fixed),
+            (Start: (DateTimeOffset?)start, End: (DateTimeOffset?)start.AddHours(1), Type: SessionEndTimeType.Fixed),
+            (Start: (DateTimeOffset?)start, End: (DateTimeOffset?)null, Type: SessionEndTimeType.Fixed),
+            (Start: (DateTimeOffset?)start, End: (DateTimeOffset?)start, Type: SessionEndTimeType.Fixed),
+            (Start: (DateTimeOffset?)start, End: (DateTimeOffset?)null, Type: SessionEndTimeType.OpenEnded),
+            (Start: (DateTimeOffset?)start, End: (DateTimeOffset?)start.AddHours(1), Type: SessionEndTimeType.OpenEnded),
+            (Start: (DateTimeOffset?)start, End: (DateTimeOffset?)null, Type: SessionEndTimeType.RelativeToPrayer),
+            (Start: (DateTimeOffset?)start, End: (DateTimeOffset?)start.AddHours(1), Type: SessionEndTimeType.RelativeToPrayer),
+            (Start: (DateTimeOffset?)start, End: (DateTimeOffset?)start, Type: SessionEndTimeType.RelativeToPrayer)
+        };
 
-        var schedule = links.Single(link => link.Rel == LinkRelations.Schedule);
-        var publish = links.Single(link => link.Rel == LinkRelations.Publish);
+        foreach (var current in Enum.GetValues<EventSessionStatusEnum>())
+        foreach (var parent in Enum.GetValues<EventStatusEnum>())
+        foreach (var schedule in schedules)
+        {
+            var detailDto = CreateSessionDto(current, parent, schedule.Start, schedule.End, schedule.Type);
+            var listDto = CreateSessionListDto(current, parent, schedule.Start, schedule.End, schedule.Type);
+            var detailLinks = new EventSessionDetailLinkPolicy().GetLinks(detailDto, user: null).ToArray();
+            var listLinks = new EventSessionCollectionLinkPolicy().GetItemLinks(listDto, user: null).ToArray();
 
-        await Assert.That(schedule.RouteName).IsEqualTo(RouteNames.ScheduleEventSession);
-        await Assert.That(schedule.PermissionResourceKind).IsEqualTo(ResourceKinds.EventSession);
-        await Assert.That(schedule.PermissionAction).IsEqualTo(AuthorizationActions.Update);
-        await Assert.That(publish.RouteName).IsEqualTo(RouteNames.PublishEventSession);
-        await Assert.That(publish.PermissionResourceKind).IsEqualTo(ResourceKinds.EventSession);
-        await Assert.That(publish.PermissionAction).IsEqualTo(AuthorizationActions.Update);
+            RecordSessionParityFailures(failures, "detail", current, parent, schedule, detailLinks);
+            RecordSessionParityFailures(failures, "list", current, parent, schedule, listLinks);
+        }
+
+        await Assert.That(failures).IsEmpty().Because(string.Join(Environment.NewLine, failures));
     }
 
     private static EventDto CreateEventDto(EventStatusEnum status) => new()
@@ -118,25 +142,96 @@ public sealed class EventLifecycleHateoasPolicyTests
         TenantId = Guid.NewGuid()
     };
 
-    private static EventSessionDto CreateSessionDto(EventSessionStatusEnum status, bool isScheduled) => new()
+    private static EventSessionDto CreateSessionDto(
+        EventSessionStatusEnum status,
+        EventStatusEnum parentStatus,
+        DateTimeOffset? startTime,
+        DateTimeOffset? endTime,
+        SessionEndTimeType endTimeType) => new()
     {
         Id = Guid.NewGuid(),
         EventId = Guid.NewGuid(),
         EventTitle = "Lifecycle Event",
         Title = "Lifecycle Session",
         EventSessionStatusId = (int)status,
-        IsScheduled = isScheduled,
+        ParentEventStatusId = (int)parentStatus,
+        StartTime = startTime,
+        EndTime = endTime,
+        EndTimeType = endTimeType,
+        IsScheduled = startTime is not null,
         TenantId = Guid.NewGuid()
     };
 
-    private static EventSessionListDto CreateSessionListDto(EventSessionStatusEnum status, bool isScheduled) => new()
+    private static EventSessionListDto CreateSessionListDto(
+        EventSessionStatusEnum status,
+        EventStatusEnum parentStatus,
+        DateTimeOffset? startTime,
+        DateTimeOffset? endTime,
+        SessionEndTimeType endTimeType) => new()
     {
         Id = Guid.NewGuid(),
         EventId = Guid.NewGuid(),
         EventTitle = "Lifecycle Event",
         Title = "Lifecycle Session",
         EventSessionStatusId = (int)status,
-        IsScheduled = isScheduled,
+        ParentEventStatusId = (int)parentStatus,
+        StartTime = startTime,
+        EndTime = endTime,
+        EndTimeType = endTimeType,
+        IsScheduled = startTime is not null,
         TenantId = Guid.NewGuid()
     };
+
+    private static void RecordSessionParityFailures(
+        List<string> failures,
+        string surface,
+        EventSessionStatusEnum current,
+        EventStatusEnum parent,
+        (DateTimeOffset? Start, DateTimeOffset? End, SessionEndTimeType Type) schedule,
+        IReadOnlyCollection<LinkDefinition> links)
+    {
+        var scenario = $"Session {surface} current={current} parent={parent} start={schedule.Start is not null} end={schedule.End is not null} type={schedule.Type}";
+        var actions = new[]
+        {
+            (LinkRelations.Schedule, RouteNames.ScheduleEventSession, EventSessionLifecycleRules.CanSchedule(current)),
+            (LinkRelations.Publish, RouteNames.PublishEventSession, EventSessionLifecycleRules.CanPublish(current, parent, schedule.Start, schedule.End, schedule.Type)),
+            (LinkRelations.Cancel, RouteNames.CancelEventSession, EventSessionLifecycleRules.CanCancel(current, parent)),
+            (LinkRelations.Complete, RouteNames.CompleteEventSession, EventSessionLifecycleRules.CanComplete(current, parent)),
+            (LinkRelations.Archive, RouteNames.ArchiveEventSession, EventSessionLifecycleRules.CanArchive(current, parent))
+        };
+
+        foreach (var (relation, routeName, expected) in actions)
+        {
+            var link = links.SingleOrDefault(candidate => candidate.Rel == relation);
+            RecordParityFailure(failures, $"{scenario} action={relation}", link is not null, expected);
+            RecordAuthorizationFailure(failures, $"{scenario} action={relation}", link, routeName, AuthorizationActions.Update, ResourceKinds.EventSession);
+        }
+    }
+
+    private static void RecordParityFailure(List<string> failures, string scenario, bool actual, bool expected)
+    {
+        if (actual != expected)
+        {
+            failures.Add($"{scenario}: HAL={actual}, Domain={expected}");
+        }
+    }
+
+    private static void RecordAuthorizationFailure(
+        List<string> failures,
+        string scenario,
+        LinkDefinition? link,
+        string routeName,
+        string permission,
+        string resourceKind)
+    {
+        if (link is null)
+        {
+            return;
+        }
+
+        if (!link.RequiresAuth || link.RouteName != routeName || link.PermissionAction != permission || link.PermissionResourceKind != resourceKind)
+        {
+            failures.Add($"{scenario}: authorization or route metadata drifted");
+        }
+    }
 }

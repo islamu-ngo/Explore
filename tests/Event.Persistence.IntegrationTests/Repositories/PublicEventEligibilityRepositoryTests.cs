@@ -158,7 +158,7 @@ public sealed class PublicEventEligibilityRepositoryTests
 
     private static PublicChildGraph CreatePublicChildren(ExploreDbContext context, DomainEvent @event, Guid tenantId)
     {
-        var session = new EventSession
+        var session = new EventSession(EventSessionStatusEnum.Published)
         {
             Id = Guid.CreateVersion7(),
             EventId = @event.Id,
@@ -166,7 +166,6 @@ public sealed class PublicEventEligibilityRepositoryTests
             TenantId = tenantId,
             Tenant = null!,
             Title = "Public session",
-            EventSessionStatusId = (int)EventSessionStatusEnum.Published,
             StartTime = new DateTimeOffset(2030, 1, 1, 9, 0, 0, TimeSpan.Zero),
             EndTime = new DateTimeOffset(2030, 1, 1, 10, 0, 0, TimeSpan.Zero)
         };
@@ -471,7 +470,7 @@ public sealed class PublicEventEligibilityRepositoryTests
             DateTimeOffset? startsAt = null,
             EventStatusEnum status = EventStatusEnum.Published,
             VisibilityTypeEnum visibility = VisibilityTypeEnum.Public,
-            bool isDeleted = false) => new()
+            bool isDeleted = false) => new(status)
             {
                 Id = Guid.CreateVersion7(),
                 Title = name,
@@ -480,7 +479,6 @@ public sealed class PublicEventEligibilityRepositoryTests
                 Actor = null!,
                 TenantId = _tenantId,
                 Tenant = null!,
-                EventStatusId = (int)status,
                 EventStatus = null!,
                 VisibilityTypeId = (int)visibility,
                 VisibilityType = null!,

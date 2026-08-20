@@ -13,6 +13,8 @@ using Explore.Application.Features.Events.Requests.Commands;
 using Explore.Application.Responses;
 using Explore.Application.Services;
 using Explore.Domain;
+using Explore.Domain.Enums;
+using Explore.Domain.Services.Lifecycle;
 using Explore.Domain.Services.Scheduling;
 using MediatR;
 using Microsoft.Extensions.Caching.Hybrid;
@@ -22,6 +24,7 @@ namespace Explore.Application.Features.Events.Handlers.Commands;
 public sealed class UpdateEventDraftCommandHandler : IRequestHandler<UpdateEventDraftCommand, BaseCommandResponse<Guid>>
 {
     public const string ConcurrencyConflictCode = "event_draft_concurrency_conflict";
+    private const string DraftNotEditableCode = "event_draft_not_editable";
 
     private readonly IEventRepository _eventRepository;
     private readonly IEventParticipationConfigurationRepository _participationConfigurationRepository;
@@ -103,6 +106,16 @@ public sealed class UpdateEventDraftCommandHandler : IRequestHandler<UpdateEvent
                 eventEntity.Id.ToString());
         }
 
+        EventStatusEnum currentStatus = (EventStatusEnum)eventEntity.EventStatusId;
+        if (!EventLifecycleRules.IsDraftEditable(currentStatus))
+        {
+            response.Success = false;
+            response.Message = "Event draft update failed.";
+            response.Errors = ["Only draft events can be updated through the draft workflow."];
+            response.FailureCode = DraftNotEditableCode;
+            return response;
+        }
+
         if (!await ImageReferenceEligibility.AreEligibleAsync(
                 _storageObjectRepository,
                 eventEntity.TenantId,
@@ -138,6 +151,7 @@ public sealed class UpdateEventDraftCommandHandler : IRequestHandler<UpdateEvent
                 eventEntity.Id.ToString());
         }
 
+        eventEntity.EnsureDraftEditable();
         participationConfiguration.Reconfigure(
             request.Draft.ParticipationConfiguration.ParticipationHandlingModeId,
             request.Draft.ParticipationConfiguration.AdvanceRegistrationObligationId,

@@ -230,7 +230,7 @@ public class EventAgendaItemRepositoryTests
         context.Actors.Add(actor);
         await context.SaveChangesAsync();
 
-        var @event = new Explore.Domain.Event
+        var @event = new Explore.Domain.Event(EventStatusEnum.Draft)
         {
             Id = Guid.NewGuid(),
             Title = "Agenda Test Event",
@@ -244,7 +244,6 @@ public class EventAgendaItemRepositoryTests
             Tenant = null!,
             VisibilityTypeId = 1,
             VisibilityType = null!,
-            EventStatusId = 1,
             EventStatus = null!,
             EventFormatId = 1,
             EventFormat = null!,

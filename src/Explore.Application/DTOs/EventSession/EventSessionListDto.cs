@@ -15,6 +15,7 @@ public class EventSessionListDto
     // Event relationship
     public Guid EventId { get; set; }
     public required string EventTitle { get; set; }
+    public int ParentEventStatusId { get; set; }
 
     // Day assignment
     public Guid? EventDayId { get; set; }

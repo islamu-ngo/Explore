@@ -65,11 +65,10 @@ public class GetEventAgendaProjectionRequestHandlerTests
         var eventId = Guid.NewGuid();
         var request = new GetEventAgendaProjectionRequest { EventId = eventId };
 
-        var parentEvent = DataBuilder.Event.Generate();
+        var parentEvent = DataBuilder.EventWithStatus(EventStatusEnum.Published).Generate();
         parentEvent.Id = eventId;
         parentEvent.Title = "Test Conference";
         parentEvent.Timezone = "Europe/Brussels";
-        parentEvent.EventStatusId = (int)EventStatusEnum.Published;
         parentEvent.VisibilityTypeId = (int)VisibilityTypeEnum.Public;
         _eventRepository.GetById(eventId).Returns(parentEvent);
         _eventRepository.IsPubliclyEligibleAsync(parentEvent.TenantId, eventId, Arg.Any<CancellationToken>()).Returns(true);
@@ -97,9 +96,8 @@ public class GetEventAgendaProjectionRequestHandlerTests
         var eventId = Guid.NewGuid();
         var request = new GetEventAgendaProjectionRequest { EventId = eventId };
 
-        var parentEvent = DataBuilder.Event.Generate();
+        var parentEvent = DataBuilder.EventWithStatus(EventStatusEnum.Draft).Generate();
         parentEvent.Id = eventId;
-        parentEvent.EventStatusId = (int)EventStatusEnum.Draft;
         parentEvent.VisibilityTypeId = (int)VisibilityTypeEnum.Public;
         _eventRepository.GetById(eventId).Returns(parentEvent);
         _eventRepository.IsPubliclyEligibleAsync(parentEvent.TenantId, eventId, Arg.Any<CancellationToken>()).Returns(false);
@@ -120,11 +118,10 @@ public class GetEventAgendaProjectionRequestHandlerTests
         var request = new GetEventAgendaProjectionRequest { EventId = eventId };
         var localDate = new DateOnly(2026, 7, 15);
 
-        var parentEvent = DataBuilder.Event.Generate();
+        var parentEvent = DataBuilder.EventWithStatus(EventStatusEnum.Published).Generate();
         parentEvent.Id = eventId;
         parentEvent.Title = "Multi-day Conference";
         parentEvent.Timezone = "Europe/Brussels";
-        parentEvent.EventStatusId = (int)EventStatusEnum.Published;
         parentEvent.VisibilityTypeId = (int)VisibilityTypeEnum.Public;
         _eventRepository.GetById(eventId).Returns(parentEvent);
         _eventRepository.IsPubliclyEligibleAsync(parentEvent.TenantId, eventId, Arg.Any<CancellationToken>()).Returns(true);
@@ -186,9 +183,8 @@ public class GetEventAgendaProjectionRequestHandlerTests
         var eventId = Guid.NewGuid();
         var localDate = new DateOnly(2026, 7, 15);
         var tenantId = Guid.NewGuid();
-        var parentEvent = DataBuilder.Event.Generate();
+        var parentEvent = DataBuilder.EventWithStatus(EventStatusEnum.Published).Generate();
         parentEvent.Id = eventId;
-        parentEvent.EventStatusId = (int)EventStatusEnum.Published;
         parentEvent.VisibilityTypeId = (int)VisibilityTypeEnum.Public;
         _eventRepository.GetById(eventId).Returns(parentEvent);
         _eventRepository.IsPubliclyEligibleAsync(parentEvent.TenantId, eventId, Arg.Any<CancellationToken>()).Returns(true);
@@ -252,9 +248,8 @@ public class GetEventAgendaProjectionRequestHandlerTests
         var eventId = Guid.NewGuid();
         var request = new GetEventAgendaProjectionRequest { EventId = eventId };
 
-        var parentEvent = DataBuilder.Event.Generate();
+        var parentEvent = DataBuilder.EventWithStatus(EventStatusEnum.Published).Generate();
         parentEvent.Id = eventId;
-        parentEvent.EventStatusId = (int)EventStatusEnum.Published;
         parentEvent.VisibilityTypeId = (int)VisibilityTypeEnum.Public;
         _eventRepository.GetById(eventId).Returns(parentEvent);
         _eventRepository.IsPubliclyEligibleAsync(parentEvent.TenantId, eventId, Arg.Any<CancellationToken>()).Returns(true);

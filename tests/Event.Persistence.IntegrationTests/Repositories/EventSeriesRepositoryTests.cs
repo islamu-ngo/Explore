@@ -45,7 +45,7 @@ public sealed class EventSeriesRepositoryTests
             ConcurrencyStamp = Guid.CreateVersion7()
         };
 
-        DomainEvent @event = new()
+        DomainEvent @event = new(EventStatusEnum.Published)
         {
             Id = eventId,
             Title = "Ticketed Event",
@@ -56,7 +56,6 @@ public sealed class EventSeriesRepositoryTests
             Tenant = null!,
             VisibilityTypeId = (int)VisibilityTypeEnum.Public,
             VisibilityType = null!,
-            EventStatusId = (int)EventStatusEnum.Published,
             EventStatus = null!,
             EventFormatId = (int)EventFormatEnum.Local,
             EventFormat = null!,

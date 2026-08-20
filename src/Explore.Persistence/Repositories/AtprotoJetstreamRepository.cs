@@ -912,9 +912,11 @@ public sealed class AtprotoJetstreamRepository : IAtprotoJetstreamRepository, IA
                     && value.AtprotoRecordId == canonical.Id,
                     cancellationToken);
             bool preserveHealthyEvent = importedEvent is not null && !updateExisting;
+            EventStatusEnum synchronizedEventStatus = MapEventStatus(import.Status);
+            bool isNewEvent = importedEvent is null;
             if (importedEvent is null)
             {
-                importedEvent = new Explore.Domain.Event
+                importedEvent = new Explore.Domain.Event(synchronizedEventStatus)
                 {
                     Id = Guid.CreateVersion7(),
                     TenantId = import.TenantId,
@@ -926,7 +928,6 @@ public sealed class AtprotoJetstreamRepository : IAtprotoJetstreamRepository, IA
                     Slug = SlugGenerator.FromTitle(import.Name, "event"),
                     VisibilityTypeId = (int)VisibilityTypeEnum.Public,
                     VisibilityType = null!,
-                    EventStatusId = MapEventStatus(import.Status),
                     EventStatus = null!,
                     EventFormatId = MapEventFormat(import.Mode),
                     EventFormat = null!,
@@ -948,7 +949,6 @@ public sealed class AtprotoJetstreamRepository : IAtprotoJetstreamRepository, IA
                 importedEvent.Content = import.Description;
                 importedEvent.Description = SummarizeDescription(import.Description);
                 importedEvent.EventFormatId = MapEventFormat(import.Mode);
-                importedEvent.EventStatusId = MapEventStatus(import.Status);
                 importedEvent.EventTimeZoneId = import.TimeZoneId;
                 importedEvent.Timezone = import.TimeZoneId;
                 importedEvent.AtprotoRecordId = canonical.Id;
@@ -1000,18 +1000,11 @@ public sealed class AtprotoJetstreamRepository : IAtprotoJetstreamRepository, IA
                     value.TenantId == import.TenantId
                     && value.EventId == importedEvent.Id,
                     cancellationToken);
+            EventSessionStatusEnum synchronizedSessionStatus = MapSessionStatus(import.Status);
+            bool isNewSession = session is null;
             if (session is null)
             {
-                session = new EventSession
-                {
-                    Id = Guid.CreateVersion7(),
-                    TenantId = import.TenantId,
-                    Tenant = null!,
-                    EventId = importedEvent.Id,
-                    Event = importedEvent,
-                    Slug = SlugGenerator.FromTitle($"{import.Name}-session-1", "session"),
-                    CreatedAt = import.CreatedAt.UtcDateTime
-                };
+                session = CreateFederatedSession(importedEvent, import, synchronizedSessionStatus);
                 await _dbContext.EventSessions.AddAsync(session, cancellationToken);
             }
             else if (preserveHealthyEvent && !session.IsDeleted)
@@ -1021,29 +1014,20 @@ public sealed class AtprotoJetstreamRepository : IAtprotoJetstreamRepository, IA
 
             session.Title = import.Name;
             session.Description = null;
-            session.EventSessionStatusId = MapSessionStatus(import.Status);
             session.CreatedAt = import.CreatedAt.UtcDateTime;
             session.UpdatedAt = observedAt;
             session.IsDeleted = false;
             session.DeletedAt = null;
             session.DeletedBy = null;
-            if (import.StartsAt is null)
+            if (!isNewSession && IsSchedulableFederatedStatus(synchronizedSessionStatus))
             {
-                session.StartTime = null;
-                session.EndTime = null;
-                session.EndTimeType = SessionEndTimeType.Fixed;
-                session.ReprojectLocalTimes(import.TimeZoneId, ScheduleProjectionCalculator);
+                session.SynchronizeFederatedLifecycle(synchronizedSessionStatus, observedAt);
+                ApplyFederatedScheduleRefresh(session, import);
             }
-            else
+            else if (!isNewSession)
             {
-                session.EndTimeType = import.EndsAt is null
-                    ? SessionEndTimeType.OpenEnded
-                    : SessionEndTimeType.Fixed;
-                session.Reschedule(
-                    import.StartsAt.Value,
-                    import.EndsAt,
-                    import.TimeZoneId,
-                    ScheduleProjectionCalculator);
+                ApplyNonSchedulableFederatedSchedule(session, import);
+                session.SynchronizeFederatedLifecycle(synchronizedSessionStatus, observedAt);
             }
 
             if (!importedEvent.Sessions.Contains(session))
@@ -1051,8 +1035,96 @@ public sealed class AtprotoJetstreamRepository : IAtprotoJetstreamRepository, IA
                 importedEvent.Sessions.Add(session);
             }
             importedEvent.RecalculateScheduleSummaryFromSessions();
+            if (!isNewEvent)
+            {
+                importedEvent.SynchronizeFederatedLifecycle(synchronizedEventStatus, observedAt);
+            }
         }
     }
+
+    private static EventSession CreateFederatedSession(
+        Explore.Domain.Event importedEvent,
+        AtprotoFederatedEventImportPlan import,
+        EventSessionStatusEnum status)
+    {
+        var session = new EventSession(status)
+        {
+            Id = Guid.CreateVersion7(),
+            TenantId = import.TenantId,
+            Tenant = null!,
+            EventId = importedEvent.Id,
+            Event = importedEvent,
+            Slug = SlugGenerator.FromTitle($"{import.Name}-session-1", "session"),
+            CreatedAt = import.CreatedAt.UtcDateTime
+        };
+        if (IsSchedulableFederatedStatus(status))
+        {
+            ApplyFederatedScheduleRefresh(session, import);
+        }
+        else
+        {
+            ApplyNonSchedulableFederatedSchedule(session, import);
+        }
+        return session;
+    }
+
+    private static void ApplyFederatedScheduleRefresh(
+        EventSession session,
+        AtprotoFederatedEventImportPlan import)
+    {
+        if (import.StartsAt is null)
+        {
+            session.StartTime = null;
+            session.EndTime = null;
+            session.EndTimeType = SessionEndTimeType.Fixed;
+            session.ReprojectLocalTimes(import.TimeZoneId, ScheduleProjectionCalculator);
+            return;
+        }
+
+        session.EndTimeType = import.EndsAt is null
+            ? SessionEndTimeType.OpenEnded
+            : SessionEndTimeType.Fixed;
+        session.Reschedule(
+            import.StartsAt.Value,
+            import.EndsAt,
+            import.TimeZoneId,
+            ScheduleProjectionCalculator);
+    }
+
+    private static void ApplyNonSchedulableFederatedSchedule(
+        EventSession session,
+        AtprotoFederatedEventImportPlan import)
+    {
+        if (import.StartsAt is null)
+        {
+            if (import.EndsAt is not null)
+            {
+                throw new ArgumentException("Federated event end time requires a start time.", nameof(import));
+            }
+
+            session.StartTime = null;
+            session.EndTime = null;
+            session.EndTimeType = SessionEndTimeType.Fixed;
+            session.ReprojectLocalTimes(import.TimeZoneId, ScheduleProjectionCalculator);
+            return;
+        }
+
+        if (import.EndsAt is not null && import.EndsAt <= import.StartsAt)
+        {
+            throw new ArgumentException("Federated event end time must be after its start time.", nameof(import));
+        }
+
+        session.StartTime = import.StartsAt.Value.ToUniversalTime();
+        session.EndTime = import.EndsAt?.ToUniversalTime();
+        session.EndTimeType = import.EndsAt is null
+            ? SessionEndTimeType.OpenEnded
+            : SessionEndTimeType.Fixed;
+        session.ReprojectLocalTimes(import.TimeZoneId, ScheduleProjectionCalculator);
+    }
+
+    private static bool IsSchedulableFederatedStatus(EventSessionStatusEnum status) => status is
+        EventSessionStatusEnum.Draft or
+        EventSessionStatusEnum.Published;
 
     private async Task EnsureParticipationConfigurationAsync(
         Explore.Domain.Event importedEvent,
@@ -1353,20 +1425,20 @@ public sealed class AtprotoJetstreamRepository : IAtprotoJetstreamRepository, IA
             _ => (int)EventFormatEnum.Local
         };
 
-    private static int MapEventStatus(string? status) =>
+    private static EventStatusEnum MapEventStatus(string? status) =>
         status switch
         {
-            null or "#scheduled" or "#rescheduled" => (int)EventStatusEnum.Published,
-            "#cancelled" => (int)EventStatusEnum.Cancelled,
-            _ => (int)EventStatusEnum.Draft
+            null or "#scheduled" or "#rescheduled" => EventStatusEnum.Published,
+            "#cancelled" => EventStatusEnum.Cancelled,
+            _ => EventStatusEnum.Draft
         };
 
-    private static int MapSessionStatus(string? status) =>
+    private static EventSessionStatusEnum MapSessionStatus(string? status) =>
         status switch
         {
-            null or "#scheduled" or "#rescheduled" => (int)EventSessionStatusEnum.Published,
-            "#cancelled" => (int)EventSessionStatusEnum.Cancelled,
-            _ => (int)EventSessionStatusEnum.Draft
+            null or "#scheduled" or "#rescheduled" => EventSessionStatusEnum.Published,
+            "#cancelled" => EventSessionStatusEnum.Cancelled,
+            _ => EventSessionStatusEnum.Draft
         };
 
     private static string? SummarizeDescription(string? description) =>

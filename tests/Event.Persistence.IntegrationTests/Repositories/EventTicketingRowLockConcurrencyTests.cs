@@ -316,7 +316,7 @@ public sealed class EventTicketingRowLockScenarioRunner(PostgreSqlContainerFixtu
 
         Guid eventId = Guid.CreateVersion7();
         DateTime now = DateTime.UtcNow;
-        var eventTarget = new DomainEvent
+        var eventTarget = new DomainEvent(EventStatusEnum.Draft)
         {
             Id = eventId,
             Title = "Ticket lock event",
@@ -334,7 +334,6 @@ public sealed class EventTicketingRowLockScenarioRunner(PostgreSqlContainerFixtu
             Tenant = tenant,
             VisibilityTypeId = 1,
             VisibilityType = null!,
-            EventStatusId = 1,
             EventStatus = null!,
             EventFormatId = 1,
             EventFormat = null!,

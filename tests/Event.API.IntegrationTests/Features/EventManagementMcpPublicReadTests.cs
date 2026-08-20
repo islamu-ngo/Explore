@@ -397,7 +397,7 @@ public sealed class EventManagementMcpPublicReadTests
         public Guid AddSession(Guid eventId, string title)
         {
             var start = DateTimeOffset.UtcNow.AddDays(7);
-            var session = new EventSession
+            var session = new EventSession(EventSessionStatusEnum.Published)
             {
                 Id = Guid.NewGuid(),
                 EventId = eventId,
@@ -405,7 +405,6 @@ public sealed class EventManagementMcpPublicReadTests
                 TenantId = _tenantId,
                 Tenant = null!,
                 Title = title,
-                EventSessionStatusId = (int)EventSessionStatusEnum.Published,
                 SortOrder = 1,
                 EventSessionKindId = (int)EventSessionKindEnum.Talk,
                 RegistrationModeId = 1,

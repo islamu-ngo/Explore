@@ -117,7 +117,7 @@ internal static class BenchmarkApiSeedData
             var sessionDate = DateOnly.FromDateTime(sessionStartUtc.UtcDateTime);
             bool requiresRegistration = index % 3 == 0;
 
-            yield return new Explore.Domain.Event
+            yield return new Explore.Domain.Event(EventStatusEnum.Published)
             {
                 Id = eventId,
                 Title = $"Benchmark API Event {index + 1:00}",
@@ -129,7 +129,6 @@ internal static class BenchmarkApiSeedData
                 Actor = null!,
                 TenantId = SeedIds.DefaultTenantId,
                 Tenant = null!,
-                EventStatusId = (int)EventStatusEnum.Published,
                 EventStatus = null!,
                 VisibilityTypeId = (int)VisibilityTypeEnum.Public,
                 VisibilityType = null!,

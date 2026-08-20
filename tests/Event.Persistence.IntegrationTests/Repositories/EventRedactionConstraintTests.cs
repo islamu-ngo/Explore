@@ -22,7 +22,7 @@ public sealed class EventRedactionConstraintTests(PostgreSqlContainerFixture fix
         await fixture.ResetAsync();
         await using var context = fixture.CreateDbContext();
         var (tenant, @event) = await SetupRedactedEventAsync(context);
-        var session = new EventSession
+        var session = new EventSession(EventSessionStatusEnum.Draft)
         {
             Id = Guid.NewGuid(),
             EventId = @event.Id,
@@ -32,7 +32,6 @@ public sealed class EventRedactionConstraintTests(PostgreSqlContainerFixture fix
             Description = EventRedactionSentinelPolicy.DisplayText,
             SourceTemplateKey = null,
             FeaturedImageId = null,
-            EventSessionStatusId = (int)EventSessionStatusEnum.Draft,
             TenantId = tenant.Id,
             Tenant = tenant
         };
@@ -183,7 +182,7 @@ public sealed class EventRedactionConstraintTests(PostgreSqlContainerFixture fix
         await context.SaveChangesAsync();
 
         var eventId = Guid.NewGuid();
-        var @event = new Explore.Domain.Event
+        var @event = new Explore.Domain.Event(EventStatusEnum.Moderated)
         {
             Id = eventId,
             Title = EventRedactionSentinelPolicy.DisplayText,
@@ -205,7 +204,6 @@ public sealed class EventRedactionConstraintTests(PostgreSqlContainerFixture fix
             Tenant = null!,
             VisibilityTypeId = (int)VisibilityTypeEnum.Public,
             VisibilityType = null!,
-            EventStatusId = (int)EventStatusEnum.Moderated,
             EventStatus = null!,
             EventFormatId = (int)EventFormatEnum.Local,
             EventFormat = null!,

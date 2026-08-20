@@ -404,7 +404,7 @@ public class EventQuerySpecificationTests(PostgreSqlContainerFixture fixture)
         int visibilityId = (int)VisibilityTypeEnum.Public,
         DateOnly? firstSessionDate = null)
     {
-        return new Explore.Domain.Event
+        return new Explore.Domain.Event((EventStatusEnum)statusId)
         {
             Id = Guid.NewGuid(),
             Title = title,
@@ -414,7 +414,6 @@ public class EventQuerySpecificationTests(PostgreSqlContainerFixture fixture)
             Actor = null!,
             TenantId = tenantId,
             Tenant = null!,
-            EventStatusId = statusId,
             EventStatus = null!,
             VisibilityTypeId = visibilityId,
             VisibilityType = null!,
@@ -434,7 +433,7 @@ public class EventQuerySpecificationTests(PostgreSqlContainerFixture fixture)
         DateTimeOffset startsAt,
         DateTimeOffset? endsAt = null)
     {
-        var session = new EventSession
+        var session = new EventSession(status)
         {
             EventId = eventId,
             Event = null!,
@@ -442,7 +441,6 @@ public class EventQuerySpecificationTests(PostgreSqlContainerFixture fixture)
             Tenant = null!,
             LocationId = locationId,
             Location = null!,
-            EventSessionStatusId = (int)status,
             Title = status == EventSessionStatusEnum.Published ? "Published session" : "Hidden session"
         };
 

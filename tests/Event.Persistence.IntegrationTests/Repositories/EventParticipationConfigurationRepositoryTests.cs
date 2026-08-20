@@ -183,7 +183,7 @@ public sealed class EventParticipationConfigurationRepositoryTests
             MasterCode = "LOCAL",
             FullName = "Local"
         });
-        var eventEntity = new Explore.Domain.Event
+        var eventEntity = new Explore.Domain.Event(EventStatusEnum.Draft)
         {
             Id = eventId,
             Title = "Participation details",
@@ -192,7 +192,6 @@ public sealed class EventParticipationConfigurationRepositoryTests
             EventProvenanceTypeId = 1,
             TenantId = tenantId,
             Tenant = null!,
-            EventStatusId = 1,
             EventStatus = null!,
             EventFormatId = 1,
             EventFormat = null!,

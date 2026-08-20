@@ -24,11 +24,10 @@ public sealed class GetRegistrationCheckoutCompositionQueryHandlerTests
         var events = Substitute.For<IEventRepository>();
         var catalogs = Substitute.For<IEventTicketCatalogRepository>();
         var feePolicies = Substitute.For<IPlatformFeePolicyRepository>();
-        var eventTarget = new DomainEvent
+        var eventTarget = new DomainEvent(EventStatusEnum.Published)
         {
             Id = eventId,
             TenantId = tenantId,
-            EventStatusId = (int)EventStatusEnum.Published,
             VisibilityTypeId = (int)VisibilityTypeEnum.Public,
             Title = "Community event",
             Actor = null!,

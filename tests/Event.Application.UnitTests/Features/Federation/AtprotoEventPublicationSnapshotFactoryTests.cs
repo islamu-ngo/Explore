@@ -324,7 +324,7 @@ public sealed class AtprotoEventPublicationSnapshotFactoryTests
             LastResolvedAt = DateTime.UtcNow,
             ConcurrencyStamp = Guid.CreateVersion7()
         });
-        var eventEntity = new Explore.Domain.Event
+        var eventEntity = new Explore.Domain.Event(EventStatusEnum.Draft)
         {
             Id = Guid.CreateVersion7(),
             TenantId = tenantId,
@@ -334,7 +334,6 @@ public sealed class AtprotoEventPublicationSnapshotFactoryTests
             Actor = actor,
             VisibilityTypeId = (int)VisibilityTypeEnum.Public,
             VisibilityType = new VisibilityType { Id = (int)VisibilityTypeEnum.Public, MasterCode = "PUBLIC", FullName = "Public" },
-            EventStatusId = (int)EventStatusEnum.Draft,
             EventStatus = new EventStatus { Id = (int)EventStatusEnum.Draft, MasterCode = "DRAFT", FullName = "Draft" },
             EventFormatId = (int)EventFormatEnum.Digital,
             EventFormat = new EventFormat { Id = (int)EventFormatEnum.Digital, MasterCode = "DIGITAL", FullName = "Digital" },
@@ -927,14 +926,13 @@ public sealed class AtprotoEventPublicationSnapshotFactoryTests
             .GetValue(owner)!).Add(item);
 
     private static EventSession CreateSession(Explore.Domain.Event eventEntity)
-        => new()
+        => new(EventSessionStatusEnum.Published)
         {
             Id = Guid.CreateVersion7(),
             EventId = eventEntity.Id,
             Event = eventEntity,
             TenantId = eventEntity.TenantId,
             Tenant = null!,
-            EventSessionStatusId = (int)EventSessionStatusEnum.Published,
             EventSessionStatus = new EventSessionStatus
             {
                 Id = (int)EventSessionStatusEnum.Published,

@@ -268,14 +268,12 @@ public class DatabaseSeederTests(PostgreSqlContainerFixture fixture)
                 catalogEvent.LastSessionEndUtc = null;
             }
 
-            var catalogSessions = await staleContext.EventSessions
+            await staleContext.EventSessions
                 .IgnoreQueryFilters()
                 .Where(session => SeedIds.IslamicEventCatalogIds.Contains(session.EventId))
-                .ToListAsync();
-            foreach (var catalogSession in catalogSessions)
-            {
-                catalogSession.EventSessionStatusId = (int)EventSessionStatusEnum.Draft;
-            }
+                .ExecuteUpdateAsync(setters => setters.SetProperty(
+                    session => session.EventSessionStatusId,
+                    (int)EventSessionStatusEnum.Draft));
 
             await staleContext.SaveChangesAsync();
         }
@@ -305,6 +303,101 @@ public class DatabaseSeederTests(PostgreSqlContainerFixture fixture)
             && e.LastSessionEndUtc.Value > e.FirstSessionStartUtc.Value)).IsTrue();
         await Assert.That(repairedSessions.All(session =>
             session.EventSessionStatusId == (int)EventSessionStatusEnum.Published)).IsTrue();
+    }
+
+    [Test]
+    [Arguments(EventSessionStatusEnum.Draft)]
+    [Arguments(EventSessionStatusEnum.Submitted)]
+    [Arguments(EventSessionStatusEnum.UnderReview)]
+    [Arguments(EventSessionStatusEnum.Approved)]
+    [Arguments(EventSessionStatusEnum.Published)]
+    [Arguments(EventSessionStatusEnum.Rejected)]
+    [Arguments(EventSessionStatusEnum.Cancelled)]
+    [Arguments(EventSessionStatusEnum.Archived)]
+    [Arguments(EventSessionStatusEnum.Completed)]
+    [Arguments(EventSessionStatusEnum.Moderated)]
+    public async Task SeedAsync_InDevelopment_RepairsOnlyPublishableSessionStatuses(
+        EventSessionStatusEnum status)
+    {
+        await fixture.ResetAsync();
+
+        await using (var context = fixture.CreateDbContext())
+        {
+            await DatabaseSeeder.SeedAsync(context, DevelopmentEnvironment);
+        }
+
+        Guid sessionId = SeedData.IslamicEventSessions[0].Id;
+        await using (var corruptContext = fixture.CreateDbContext())
+        {
+            await corruptContext.EventSessions
+                .IgnoreQueryFilters()
+                .Where(session => session.Id == sessionId)
+                .ExecuteUpdateAsync(setters => setters.SetProperty(
+                    session => session.EventSessionStatusId,
+                    (int)status));
+        }
+
+        await using (var context = fixture.CreateDbContext())
+        {
+            await DatabaseSeeder.SeedAsync(context, DevelopmentEnvironment);
+        }
+
+        EventSessionStatusEnum expected = status is
+            EventSessionStatusEnum.Draft or
+            EventSessionStatusEnum.Submitted or
+            EventSessionStatusEnum.UnderReview or
+            EventSessionStatusEnum.Approved
+                ? EventSessionStatusEnum.Published
+                : status;
+        await using var verifyContext = fixture.CreateDbContext();
+        int repairedStatusId = await verifyContext.EventSessions
+            .IgnoreQueryFilters()
+            .Where(session => session.Id == sessionId)
+            .Select(session => session.EventSessionStatusId)
+            .SingleAsync();
+
+        await Assert.That(repairedStatusId).IsEqualTo((int)expected);
+    }
+
+    [Test]
+    [Arguments(EventSessionStatusEnum.Draft)]
+    [Arguments(EventSessionStatusEnum.Submitted)]
+    [Arguments(EventSessionStatusEnum.UnderReview)]
+    [Arguments(EventSessionStatusEnum.Approved)]
+    public async Task SeedAsync_InDevelopment_PreservesPublishableStatusWhenScheduleIsInvalid(
+        EventSessionStatusEnum status)
+    {
+        await fixture.ResetAsync();
+
+        await using (var context = fixture.CreateDbContext())
+        {
+            await DatabaseSeeder.SeedAsync(context, DevelopmentEnvironment);
+        }
+
+        Guid sessionId = SeedData.IslamicEventSessions[0].Id;
+        await using (var corruptContext = fixture.CreateDbContext())
+        {
+            await corruptContext.EventSessions
+                .IgnoreQueryFilters()
+                .Where(session => session.Id == sessionId)
+                .ExecuteUpdateAsync(setters => setters
+                    .SetProperty(session => session.EventSessionStatusId, (int)status)
+                    .SetProperty(session => session.StartTime, (DateTimeOffset?)null));
+        }
+
+        await using (var context = fixture.CreateDbContext())
+        {
+            await DatabaseSeeder.SeedAsync(context, DevelopmentEnvironment);
+        }
+
+        await using var verifyContext = fixture.CreateDbContext();
+        int repairedStatusId = await verifyContext.EventSessions
+            .IgnoreQueryFilters()
+            .Where(session => session.Id == sessionId)
+            .Select(session => session.EventSessionStatusId)
+            .SingleAsync();
+
+        await Assert.That(repairedStatusId).IsEqualTo((int)status);
     }
 
     [Test]

@@ -80,6 +80,7 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
     private readonly IEventLifecycleReadinessEvaluator _lifecycleReadinessEvaluator;
     private readonly EventLocationAttachmentService _eventLocationAttachmentService;
     private readonly AtprotoEventPublicationPlanner _atprotoPublicationPlanner;
+    private readonly TimeProvider _timeProvider;
 
     public CreateEventCommandHandler(
         IEventRepository eventRepository,
@@ -130,7 +131,8 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
         IEventLifecyclePolicyProvider lifecyclePolicyProvider,
         IEventLifecycleReadinessEvaluator lifecycleReadinessEvaluator,
         EventLocationAttachmentService eventLocationAttachmentService,
-        AtprotoEventPublicationPlanner atprotoPublicationPlanner)
+        AtprotoEventPublicationPlanner atprotoPublicationPlanner,
+        TimeProvider timeProvider)
     {
         _eventRepository = eventRepository;
         _eventSessionRepository = eventSessionRepository;
@@ -181,13 +183,13 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
         _lifecycleReadinessEvaluator = lifecycleReadinessEvaluator;
         _eventLocationAttachmentService = eventLocationAttachmentService;
         _atprotoPublicationPlanner = atprotoPublicationPlanner;
+        _timeProvider = timeProvider;
     }
 
     public async Task<BaseCommandResponse<Guid>> Handle(CreateEventCommand request, CancellationToken cancellationToken)
     {
         var response = new BaseCommandResponse<Guid>();
         var dto = request.EventDto;
-        var currentUserId = _userContext.GetRequiredUserId();
 
         var validationErrors = await ValidateRequestAsync(dto, cancellationToken);
         if (validationErrors.Count > 0)
@@ -197,6 +199,18 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
             response.Errors = validationErrors;
             return response;
         }
+
+        int requestedStatusId = dto.EventStatusId == 0 ? (int)EventStatusEnum.Draft : dto.EventStatusId;
+        if (requestedStatusId is not ((int)EventStatusEnum.Draft or (int)EventStatusEnum.Published))
+        {
+            response.Success = false;
+            response.Message = "Event creation failed due to validation errors.";
+            response.Errors = ["Event creation supports only Draft or Published status."];
+            response.FailureCode = "event_create_status_not_supported";
+            return response;
+        }
+
+        var currentUserId = _userContext.GetRequiredUserId();
 
         Guid?[] imageIds =
         [
@@ -226,12 +240,16 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
         }
 
         var timezoneId = ResolveTimezoneId(dto);
-        var createdAt = DateTimeOffset.UtcNow;
-        var eventEntity = BuildEventEntity(dto, actorResult, timezoneId, currentUserId, createdAt);
+        DateTimeOffset now = _timeProvider.GetUtcNow();
+        var createdAt = now;
+        DateTime occurredAt = now.UtcDateTime;
+        bool publishOnCreate = requestedStatusId == (int)EventStatusEnum.Published;
+        var eventEntity = BuildEventEntity(dto, actorResult, timezoneId, currentUserId, createdAt, publishOnCreate);
         var federationOutboxId = Guid.CreateVersion7();
-        var federationCreatedAt = DateTime.UtcNow;
+        var notificationFanoutOutboxId = Guid.CreateVersion7();
+        var federationCreatedAt = occurredAt;
 
-        if (eventEntity.EventStatusId == (int)EventStatusEnum.Published)
+        if (publishOnCreate)
         {
             EventLifecyclePolicy policy = await _lifecyclePolicyProvider.GetEffectivePolicyAsync(eventEntity.TenantId, ValidationProfile.EventPublish, cancellationToken);
             LifecycleReadinessResult readiness = _lifecycleReadinessEvaluator.Evaluate(eventEntity, policy.Profile, policy);
@@ -243,6 +261,8 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
                 response.FailureCode = "event_publish_readiness_failed";
                 return response;
             }
+
+            eventEntity.Publish(occurredAt);
         }
 
         try
@@ -252,7 +272,7 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
                 eventEntity = await _eventRepository.Create(eventEntity);
                 await AssignFeaturedImageActorAsync(dto, actorResult.ActorId);
                 await CreateEventIslamicAspectAsync(dto, eventEntity, ct);
-                await AssignInitialEventOwnerAsync(eventEntity, currentUserId, ct);
+                await AssignInitialEventOwnerAsync(eventEntity, currentUserId, createdAt.UtcDateTime, ct);
 
                 var locationMap = await CreateLocationsAsync(dto, ct);
                 var dayMaps = await CreateEventDaysAsync(dto, eventEntity, timezoneId, ct);
@@ -262,7 +282,7 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
                 await CreateCategoryAndTagAssignmentsAsync(dto, eventEntity, ct);
                 await InstantiateTemplatePropertiesAsync(dto, eventEntity, currentUserId, createdAt, ct);
 
-                if (eventEntity.EventStatusId == (int)EventStatusEnum.Published)
+                if (publishOnCreate)
                 {
                     await _atprotoPublicationPlanner.PlanEventAsync(
                         new AtprotoEventPublicationInput(
@@ -274,8 +294,11 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
                             federationOutboxId,
                             federationCreatedAt),
                         ct);
-                    var publishedAt = DateTimeOffset.UtcNow;
-                    await _outboxRepository.Create(EventPublishedOutboxMessageFactory.CreateNotificationFanoutOutboxMessage(eventEntity, publishedAt));
+                    var publishedAt = now;
+                    await _outboxRepository.Create(EventPublishedOutboxMessageFactory.CreateNotificationFanoutOutboxMessage(
+                        notificationFanoutOutboxId,
+                        eventEntity,
+                        publishedAt));
                 }
 
                 return eventEntity.Id;
@@ -343,10 +366,10 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
         EventActorResult actorResult,
         string timezoneId,
         Guid currentUserId,
-        DateTimeOffset createdAt)
+        DateTimeOffset createdAt,
+        bool includePublicScheduleRollup)
     {
-        var eventStatusId = dto.EventStatusId == 0 ? (int)EventStatusEnum.Draft : dto.EventStatusId;
-        var publicSessionRequests = eventStatusId == (int)EventStatusEnum.Published
+        var publicSessionRequests = includePublicScheduleRollup
             ? dto.Sessions
             : [];
         var firstSession = publicSessionRequests.MinBy(s => s.StartTime);
@@ -358,7 +381,9 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
             ? (DateOnly?)null
             : _scheduleProjectionCalculator.Project(lastSession.StartTime, lastSession.EndTime, timezoneId).LocalStartDate;
 
-        var eventEntity = new Event
+        var eventEntity = new Event(includePublicScheduleRollup
+            ? EventStatusEnum.Published
+            : EventStatusEnum.Draft)
         {
             Id = Guid.CreateVersion7(),
             Title = dto.Title,
@@ -371,7 +396,6 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
             AudienceGenderId = dto.AudienceGenderId,
             AudienceAgeId = dto.AudienceAgeId,
             FeaturedImageId = dto.FeaturedImageId,
-            EventStatusId = eventStatusId,
             VisibilityTypeId = dto.VisibilityTypeId == 0 ? 1 : dto.VisibilityTypeId,
             EventFormatId = dto.EventFormatId == 0 ? 1 : dto.EventFormatId,
             MadhabId = dto.MadhabId ?? dto.IslamicAspect?.MadhabId,
@@ -452,6 +476,7 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
     private async Task AssignInitialEventOwnerAsync(
         Explore.Domain.Event eventEntity,
         Guid creatorUserId,
+        DateTime createdAtUtc,
         CancellationToken ct)
     {
         if (eventEntity.EventProvenanceTypeId == (int)EventProvenanceTypeEnum.CommunityReported)
@@ -465,7 +490,7 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
             creatorUserId,
             (int)RoleEnum.EventOwner,
             EventRoleAssignmentStatus.Active,
-            DateTime.UtcNow,
+            createdAtUtc,
             expiresAtUtc: null,
             createdByUserId: creatorUserId);
 
@@ -618,7 +643,9 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
         foreach (var sessionDto in dto.Sessions.OrderBy(s => s.StartTime).ThenBy(s => s.SortOrder))
         {
             index++;
-            var session = new EventSession
+            var session = new EventSession(eventEntity.EventStatusId == (int)EventStatusEnum.Published
+                ? EventSessionStatusEnum.Published
+                : EventSessionStatusEnum.Draft)
             {
                 EventId = eventEntity.Id,
                 Event = null!,
@@ -633,9 +660,6 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
                 MaxAudienceAttendees = sessionDto.MaxAudienceAttendees,
                 CurrentAudienceAttendees = 0,
                 EventSessionKindId = sessionDto.EventSessionKindId,
-                EventSessionStatusId = eventEntity.EventStatusId == (int)EventStatusEnum.Published
-                    ? (int)EventSessionStatusEnum.Published
-                    : (int)EventSessionStatusEnum.Draft,
                 RegistrationModeId = sessionDto.RegistrationModeId,
                 Slug = string.IsNullOrWhiteSpace(sessionDto.Slug)
                     ? SlugGenerator.FromTitle(sessionDto.Title ?? $"{eventEntity.Title}-session-{index}", "session")
@@ -672,7 +696,7 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
     {
         var roomId = ResolveDefaultRoomId(dto, roomMap);
         var locationId = ResolveDefaultLocationId(dto, locationMap, roomMap, roomId);
-        var session = new EventSession
+        var session = new EventSession(EventSessionStatusEnum.Published)
         {
             EventId = eventEntity.Id,
             Event = null!,
@@ -683,9 +707,6 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
             RoomId = roomId,
             SortOrder = 0,
             CurrentAudienceAttendees = 0,
-            EventSessionStatusId = eventEntity.EventStatusId == (int)EventStatusEnum.Published
-                ? (int)EventSessionStatusEnum.Published
-                : (int)EventSessionStatusEnum.Draft,
             Slug = SlugGenerator.FromTitle($"{eventEntity.Title}-session-1", "session")
         };
 

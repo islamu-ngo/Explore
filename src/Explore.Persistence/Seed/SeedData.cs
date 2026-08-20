@@ -1118,7 +1118,7 @@ public static class SeedData
         var lastSession = spec.Sessions.Max(session => session.StartUtc);
         var lastSessionEnd = spec.Sessions.Max(session => session.EndUtc);
 
-        return new Event
+        return new Event(EventStatusEnum.Published)
         {
             Id = spec.Id,
             Title = spec.Title,
@@ -1140,7 +1140,6 @@ public static class SeedData
             Tenant = null!,
             VisibilityTypeId = (int)VisibilityTypeEnum.Public,
             VisibilityType = null!,
-            EventStatusId = (int)EventStatusEnum.Published,
             EventStatus = null!,
             EventFormatId = (int)spec.EventFormat,
             EventFormat = null!,
@@ -1185,7 +1184,7 @@ public static class SeedData
         SessionSpec session,
         IEventScheduleProjectionCalculator calculator)
     {
-        var entity = new EventSession
+        var entity = new EventSession(EventSessionStatusEnum.Published)
         {
             Id = SeedIds.EventSessionId(spec.Number, session.Number),
             EventId = spec.Id,
@@ -1200,7 +1199,6 @@ public static class SeedData
             Title = session.Title,
             Slug = session.Slug,
             Description = session.Description,
-            EventSessionStatusId = (int)EventSessionStatusEnum.Published,
             EventSessionKindId = (int)session.Kind,
             TenantId = SeedIds.DefaultTenantId,
             Tenant = null!,

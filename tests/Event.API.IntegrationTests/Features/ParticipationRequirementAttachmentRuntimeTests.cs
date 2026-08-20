@@ -155,7 +155,7 @@ public sealed class ParticipationRequirementAttachmentRuntimeTests(
             scenario, scenario.OrganizerUserId, scenario.ConfigurationStamp);
         await Assert.That(attached.StatusCode).IsEqualTo(HttpStatusCode.OK);
 
-        await fixture.MarkEventDraftAsync(scenario);
+        await fixture.CancelEventAsync(scenario);
 
         using HttpResponseMessage questionnaire = await fixture.GetOptionalQuestionnaireAsync(scenario);
         await Assert.That(questionnaire.StatusCode).IsEqualTo(HttpStatusCode.NotFound);
@@ -720,13 +720,13 @@ public sealed class ParticipationRequirementAttachmentRuntimeFixture : IAsyncIni
     public Task<HttpResponseMessage> GetEventAsync(AttachmentRuntimeScenario scenario) =>
         _client.GetAsync($"/api/Event/{scenario.EventId:D}");
 
-    public async Task MarkEventDraftAsync(AttachmentRuntimeScenario scenario)
+    public async Task CancelEventAsync(AttachmentRuntimeScenario scenario)
     {
         await using AsyncServiceScope scope = _factory.Services.CreateAsyncScope();
         ExploreDbContext context = scope.ServiceProvider.GetRequiredService<ExploreDbContext>();
         Explore.Domain.Event @event = await context.Events.IgnoreQueryFilters().SingleAsync(value =>
             value.Id == scenario.EventId && value.TenantId == scenario.TenantId);
-        @event.EventStatusId = (int)EventStatusEnum.Draft;
+        @event.Cancel(DateTime.UtcNow);
         await context.SaveChangesAsync();
     }
 

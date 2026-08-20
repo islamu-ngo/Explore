@@ -64,7 +64,7 @@ public class SchedulingConstraintTests
     {
         using var context = _fixture.CreateDbContext();
         var (tenant, @event) = await SetupEventAsync(context);
-        var event2 = new Explore.Domain.Event
+        var event2 = new Explore.Domain.Event(EventStatusEnum.Draft)
         {
             Id = Guid.NewGuid(),
             Title = "Second Event",
@@ -78,7 +78,6 @@ public class SchedulingConstraintTests
             Tenant = tenant,
             VisibilityTypeId = 1,
             VisibilityType = null!,
-            EventStatusId = 1,
             EventStatus = null!,
             EventFormatId = 1,
             EventFormat = null!,
@@ -481,7 +480,7 @@ public class SchedulingConstraintTests
         context.Actors.Add(actor);
         await context.SaveChangesAsync();
 
-        var @event = new Explore.Domain.Event
+        var @event = new Explore.Domain.Event(EventStatusEnum.Draft)
         {
             Id = Guid.NewGuid(),
             Title = "Constraint Test Event",
@@ -495,7 +494,6 @@ public class SchedulingConstraintTests
             Tenant = null!,
             VisibilityTypeId = 1,
             VisibilityType = null!,
-            EventStatusId = 1,
             EventStatus = null!,
             EventFormatId = 1,
             EventFormat = null!,

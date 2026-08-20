@@ -14,6 +14,7 @@ using Explore.Application.DTOs.EventSession;
 using Explore.Application.DTOs.EventSessionGroup;
 using Explore.Application.Hateoas;
 using Explore.Domain.Enums;
+using Explore.Domain.Services.Lifecycle;
 using Explore.Domain.Services.Registration;
 
 /// <summary>
@@ -447,7 +448,11 @@ public sealed class EventDetailLinkPolicy : ILinkPolicy<EventDto>
             RequiresAuth: true)
             .RequirePermission(AuthorizationActions.Update, ResourceDescriptors.Event, dto);
 
-        if (dto.EventStatusId == (int)EventStatusEnum.Draft)
+        var eventStatus = (EventStatusEnum)dto.EventStatusId;
+        var canPublish = eventStatus != EventStatusEnum.Published
+            && EventLifecycleRules.CanTransition(eventStatus, EventStatusEnum.Published);
+
+        if (canPublish)
         {
             yield return new LinkDefinition(
                 LinkRelations.PublishReadiness,
@@ -467,19 +472,22 @@ public sealed class EventDetailLinkPolicy : ILinkPolicy<EventDto>
                 RequiresAuth: true)
                 .RequirePermission(AuthorizationActions.Update, ResourceDescriptors.Event, dto);
 
-            yield return CreateExplicitLifecycleLink(LinkRelations.Cancel, dto, "Cancel event", RouteNames.CancelEvent);
-            yield return CreateExplicitLifecycleLink(LinkRelations.Archive, dto, "Archive event", RouteNames.ArchiveEvent);
         }
-        else if (dto.EventStatusId == (int)EventStatusEnum.Published)
+
+        if (eventStatus != EventStatusEnum.Cancelled
+            && EventLifecycleRules.CanTransition(eventStatus, EventStatusEnum.Cancelled))
         {
             yield return CreateExplicitLifecycleLink(LinkRelations.Cancel, dto, "Cancel event", RouteNames.CancelEvent);
         }
-        else if (dto.EventStatusId is (int)EventStatusEnum.Cancelled or (int)EventStatusEnum.Completed)
+
+        if (eventStatus != EventStatusEnum.Archived
+            && EventLifecycleRules.CanTransition(eventStatus, EventStatusEnum.Archived))
         {
             yield return CreateExplicitLifecycleLink(LinkRelations.Archive, dto, "Archive event", RouteNames.ArchiveEvent);
         }
 
-        if (dto.EventStatusId == (int)EventStatusEnum.Published)
+        if (eventStatus != EventStatusEnum.Moderated
+            && EventLifecycleRules.CanTransition(eventStatus, EventStatusEnum.Moderated))
         {
             yield return new LinkDefinition(
                 LinkRelations.ModerateLight,
@@ -503,7 +511,7 @@ public sealed class EventDetailLinkPolicy : ILinkPolicy<EventDto>
                 .RequirePermission(AuthorizationActions.Events.ModerateHeavy, ResourceDescriptors.Event, dto);
         }
 
-        if (dto.EventStatusId == (int)EventStatusEnum.Moderated && dto.IsUnmoderationEligible)
+        if (EventLifecycleRules.CanRestoreAfterLightModeration(eventStatus) && dto.IsUnmoderationEligible)
         {
             yield return new LinkDefinition(
                 LinkRelations.Unmoderate,

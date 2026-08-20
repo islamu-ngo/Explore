@@ -135,8 +135,8 @@ public sealed class EventPublicActionQueryHandlerTests
         Explore.Domain.Event @event = CreateEvent(
             eventId,
             tenantId,
-            (int)ParticipationHandlingModeEnum.PlatformManaged);
-        @event.EventStatusId = eventStatusId;
+            (int)ParticipationHandlingModeEnum.PlatformManaged,
+            (EventStatusEnum)eventStatusId);
         @event.VisibilityTypeId = visibilityTypeId;
         var eventRepository = Substitute.For<IEventRepository>();
         eventRepository.GetById(eventId).Returns(@event);
@@ -272,7 +272,8 @@ public sealed class EventPublicActionQueryHandlerTests
     private static Explore.Domain.Event CreateEvent(
         Guid eventId,
         Guid tenantId,
-        int? participationHandlingModeId) => new()
+        int? participationHandlingModeId,
+        EventStatusEnum status = EventStatusEnum.Published) => new(status)
         {
             Id = eventId,
             TenantId = tenantId,
@@ -282,7 +283,6 @@ public sealed class EventPublicActionQueryHandlerTests
             Tenant = null!,
             VisibilityTypeId = (int)VisibilityTypeEnum.Public,
             VisibilityType = null!,
-            EventStatusId = (int)EventStatusEnum.Published,
             EventStatus = null!,
             EventFormat = null!,
             ParticipationConfiguration = participationHandlingModeId.HasValue

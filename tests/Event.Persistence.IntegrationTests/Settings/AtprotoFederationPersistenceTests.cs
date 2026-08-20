@@ -82,7 +82,7 @@ public sealed class AtprotoFederationPersistenceTests(PostgreSqlContainerFixture
         var eventId = Guid.NewGuid();
         var createdAt = DateTime.UtcNow;
         var repository = new EventRepository(context);
-        await repository.Create(new Explore.Domain.Event
+        await repository.Create(new Explore.Domain.Event(EventStatusEnum.Published)
         {
             Id = eventId,
             Title = "Community minimum event",
@@ -93,7 +93,6 @@ public sealed class AtprotoFederationPersistenceTests(PostgreSqlContainerFixture
             Tenant = null!,
             VisibilityTypeId = 1,
             VisibilityType = null!,
-            EventStatusId = (int)EventStatusEnum.Published,
             EventStatus = null!,
             EventFormatId = 1,
             EventFormat = null!,

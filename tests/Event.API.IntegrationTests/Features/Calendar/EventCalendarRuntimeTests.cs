@@ -182,7 +182,7 @@ public sealed class EventCalendarRuntimeTests(CalendarRouteRuntimeFixture fixtur
             now.AddMinutes(-10),
             needsPrivacyReview: false);
 
-        var session = new EventSession
+        var session = new EventSession(EventSessionStatusEnum.Published)
         {
             Id = Guid.CreateVersion7(),
             TenantId = tenant.TenantId,
@@ -193,7 +193,6 @@ public sealed class EventCalendarRuntimeTests(CalendarRouteRuntimeFixture fixtur
             StartTime = new DateTimeOffset(2026, 8, 1, 16, 0, 0, TimeSpan.Zero),
             EndTime = new DateTimeOffset(2026, 8, 1, 17, 0, 0, TimeSpan.Zero),
             RegistrationModeId = (int)RegistrationModeEnum.Open,
-            EventSessionStatusId = (int)EventSessionStatusEnum.Published,
             EventSessionKindId = (int)EventSessionKindEnum.Talk,
             CreatedAt = now,
             ConcurrencyStamp = Guid.CreateVersion7()

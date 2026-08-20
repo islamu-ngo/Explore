@@ -6,12 +6,23 @@ using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations.Schema;
 using Explore.Domain.Enums;
 using Explore.Domain.Interfaces;
+using Explore.Domain.Services.Lifecycle;
 using Explore.Domain.Services.Scheduling;
 
 namespace Explore.Domain;
 
 public class EventSession : ITenantEntity, IAuditableEntity, ISoftDeletable, IConcurrencyAware
 {
+    public EventSession()
+    {
+    }
+
+    public EventSession(EventSessionStatusEnum status)
+    {
+        EventSessionLifecycleRules.EnsureDefinedStatus(status, nameof(status));
+        EventSessionStatusId = (int)status;
+    }
+
     public Guid Id { get; set; }
     [ForeignKey("Event")]
     public Guid EventId { get; set; }
@@ -56,7 +67,7 @@ public class EventSession : ITenantEntity, IAuditableEntity, ISoftDeletable, ICo
     public int? EventSessionKindId { get; set; }
     public EventSessionKind? EventSessionKind { get; set; }
 
-    public int EventSessionStatusId { get; set; } = (int)EventSessionStatusEnum.Draft;
+    public int EventSessionStatusId { get; private set; } = (int)EventSessionStatusEnum.Draft;
     public EventSessionStatus? EventSessionStatus { get; set; }
 
     [ForeignKey("Tenant")]
@@ -102,6 +113,87 @@ public class EventSession : ITenantEntity, IAuditableEntity, ISoftDeletable, ICo
 
     public ICollection<EventSessionGroupSession> SessionGroups { get; set; } = new List<EventSessionGroupSession>();
 
+    public bool Publish(EventStatusEnum parentStatus, DateTime occurredAt)
+    {
+        if (CurrentStatus == EventSessionStatusEnum.Published)
+        {
+            return false;
+        }
+
+        EnsureUtc(occurredAt, nameof(occurredAt));
+        EventLifecycleRules.EnsureDefinedStatus(parentStatus, nameof(parentStatus));
+        EventSessionLifecycleRules.EnsureCanPublish(CurrentStatus, parentStatus, StartTime, EndTime, EndTimeType);
+        SetStatus(EventSessionStatusEnum.Published, occurredAt);
+        return true;
+    }
+
+    public bool Cancel(EventStatusEnum parentStatus, DateTime occurredAt)
+    {
+        if (CurrentStatus == EventSessionStatusEnum.Cancelled)
+        {
+            return false;
+        }
+
+        EnsureUtc(occurredAt, nameof(occurredAt));
+        EventLifecycleRules.EnsureDefinedStatus(parentStatus, nameof(parentStatus));
+        EventSessionLifecycleRules.EnsureCanCancel(CurrentStatus, parentStatus);
+        SetStatus(EventSessionStatusEnum.Cancelled, occurredAt);
+        return true;
+    }
+
+    public bool Complete(EventStatusEnum parentStatus, DateTime occurredAt)
+    {
+        if (CurrentStatus == EventSessionStatusEnum.Completed)
+        {
+            return false;
+        }
+
+        EnsureUtc(occurredAt, nameof(occurredAt));
+        EventLifecycleRules.EnsureDefinedStatus(parentStatus, nameof(parentStatus));
+        EventSessionLifecycleRules.EnsureCanComplete(CurrentStatus, parentStatus);
+        SetStatus(EventSessionStatusEnum.Completed, occurredAt);
+        return true;
+    }
+
+    public bool Archive(EventStatusEnum parentStatus, DateTime occurredAt)
+    {
+        if (CurrentStatus == EventSessionStatusEnum.Archived)
+        {
+            return false;
+        }
+
+        EnsureUtc(occurredAt, nameof(occurredAt));
+        EventLifecycleRules.EnsureDefinedStatus(parentStatus, nameof(parentStatus));
+        EventSessionLifecycleRules.EnsureCanArchive(CurrentStatus, parentStatus);
+        SetStatus(EventSessionStatusEnum.Archived, occurredAt);
+        return true;
+    }
+
+    public bool ApplyParentModeration(DateTime occurredAt)
+    {
+        if (CurrentStatus == EventSessionStatusEnum.Moderated)
+        {
+            return false;
+        }
+
+        EnsureUtc(occurredAt, nameof(occurredAt));
+        SetStatus(EventSessionStatusEnum.Moderated, occurredAt);
+        return true;
+    }
+
+    public bool SynchronizeFederatedLifecycle(EventSessionStatusEnum status, DateTime occurredAt)
+    {
+        if (CurrentStatus == status)
+        {
+            return false;
+        }
+
+        EnsureUtc(occurredAt, nameof(occurredAt));
+        EventSessionLifecycleRules.EnsureDefinedStatus(status, nameof(status));
+        SetStatus(status, occurredAt);
+        return true;
+    }
+
     /// <summary>
     /// Re-projects cached local fields from the current UTC times and the supplied IANA timezone id.
     /// This is the single authorized write path for LocalStart*/LocalEnd* properties.
@@ -142,6 +234,8 @@ public class EventSession : ITenantEntity, IAuditableEntity, ISoftDeletable, ICo
         string timezoneId,
         IEventScheduleProjectionCalculator calculator)
     {
+        EventSessionLifecycleRules.EnsureCanSchedule(CurrentStatus);
+
         if (endUtc.HasValue && endUtc.Value <= startUtc)
         {
             throw new ArgumentException("EndTime must be strictly greater than StartTime.", nameof(endUtc));
@@ -184,6 +278,22 @@ public class EventSession : ITenantEntity, IAuditableEntity, ISoftDeletable, ICo
     {
         EventLocationId = null;
         EventLocation = null;
+    }
+
+    private EventSessionStatusEnum CurrentStatus => (EventSessionStatusEnum)EventSessionStatusId;
+
+    private static void EnsureUtc(DateTime timestamp, string parameterName)
+    {
+        if (timestamp.Kind != DateTimeKind.Utc)
+        {
+            throw new ArgumentException("Event session lifecycle timestamps must be UTC.", parameterName);
+        }
+    }
+
+    private void SetStatus(EventSessionStatusEnum status, DateTime occurredAt)
+    {
+        EventSessionStatusId = (int)status;
+        UpdatedAt = occurredAt;
     }
 }
 

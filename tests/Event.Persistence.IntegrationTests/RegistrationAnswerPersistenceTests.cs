@@ -82,10 +82,10 @@ public sealed class RegistrationAnswerPersistenceContractTests
         Actor actor = new() { Pii = new ActorPii { DisplayName = "Analytics" }, ActorTypeId = 1, ActorType = null!, UserId = user.Id };
         context.Actors.Add(actor);
         context.SaveChanges();
-        Explore.Domain.Event @event = new()
+        Explore.Domain.Event @event = new(EventStatusEnum.Draft)
         {
             Id = Guid.CreateVersion7(), Title = "Analytics", ActorId = actor.Id, Actor = null!, TenantId = tenant.Id, Tenant = null!,
-            EventStatusId = 1, EventStatus = null!, EventFormatId = 1, EventFormat = null!, EventProvenanceTypeId = 1,
+            EventStatus = null!, EventFormatId = 1, EventFormat = null!, EventProvenanceTypeId = 1,
             VisibilityTypeId = 1, VisibilityType = null!, ConcurrencyStamp = Guid.CreateVersion7()
         };
         context.Events.Add(@event);
@@ -484,7 +484,7 @@ public sealed class RegistrationAnswerPostgreSqlPersistenceTests(PostgreSqlConta
         Actor actor = new() { Pii = new ActorPii { DisplayName = "Answers" }, ActorTypeId = 1, ActorType = null!, UserId = user.Id };
         context.Actors.Add(actor);
         await context.SaveChangesAsync();
-        Explore.Domain.Event @event = new()
+        Explore.Domain.Event @event = new(EventStatusEnum.Draft)
         {
             Id = Guid.CreateVersion7(),
             Title = "Answers",
@@ -492,7 +492,6 @@ public sealed class RegistrationAnswerPostgreSqlPersistenceTests(PostgreSqlConta
             Actor = null!,
             TenantId = tenant.Id,
             Tenant = null!,
-            EventStatusId = 1,
             EventStatus = null!,
             EventFormatId = 1,
             EventFormat = null!,

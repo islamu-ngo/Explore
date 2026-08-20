@@ -3,6 +3,7 @@
 
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Features.EventSessions.Requests.Commands;
+using Explore.Domain;
 using Explore.Domain.Enums;
 using Microsoft.Extensions.Caching.Hybrid;
 
@@ -12,22 +13,23 @@ public sealed class CompleteEventSessionCommandHandler(
     IEventSessionRepository eventSessionRepository,
     IEventRepository eventRepository,
     IUnitOfWork unitOfWork,
-    HybridCache cache)
+    HybridCache cache,
+    TimeProvider timeProvider)
     : EventSessionLifecycleTransitionCommandHandlerBase<CompleteEventSessionCommand>(
         eventSessionRepository,
         eventRepository,
         unitOfWork,
-        cache)
+        cache,
+        timeProvider)
 {
-    protected override EventSessionStatusEnum TargetStatus => EventSessionStatusEnum.Completed;
     protected override string ActionName => "complete";
     protected override string PastTenseActionName => "completed";
     protected override string ConcurrencyFailureCode => "event_session_complete_concurrency_conflict";
-    protected override string AlreadyInTargetStatusFailureCode => "event_session_complete_already_completed";
     protected override string InvalidStatusFailureCode => "event_session_complete_invalid_status";
 
-    protected override bool CanTransition(int currentSessionStatusId, int parentEventStatusId) =>
-        IsParentEventMutable(parentEventStatusId)
-        && parentEventStatusId == (int)EventStatusEnum.Published
-        && currentSessionStatusId == (int)EventSessionStatusEnum.Published;
+    protected override bool IsAlreadyApplied(EventSession session) =>
+        session.EventSessionStatusId == (int)EventSessionStatusEnum.Completed;
+
+    protected override bool ApplyTransition(EventSession session, EventStatusEnum parentEventStatus, DateTime occurredAt) =>
+        session.Complete(parentEventStatus, occurredAt);
 }

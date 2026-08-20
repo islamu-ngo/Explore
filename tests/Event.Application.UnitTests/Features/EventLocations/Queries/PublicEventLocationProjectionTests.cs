@@ -466,11 +466,10 @@ public sealed class PublicEventLocationProjectionTests
 
     private static Explore.Domain.Event CreatePublicEvent(Guid tenantId, Guid eventId)
     {
-        Explore.Domain.Event parentEvent = DataBuilder.Event.Generate();
+        Explore.Domain.Event parentEvent = DataBuilder.EventWithStatus(EventStatusEnum.Published).Generate();
         parentEvent.Id = eventId;
         parentEvent.TenantId = tenantId;
         parentEvent.Title = "Public event";
-        parentEvent.EventStatusId = (int)EventStatusEnum.Published;
         parentEvent.VisibilityTypeId = (int)VisibilityTypeEnum.Public;
         parentEvent.Timezone = "UTC";
         parentEvent.EventTimeZoneId = "UTC";
