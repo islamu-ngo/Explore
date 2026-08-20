@@ -3,6 +3,12 @@ ABOUTME: Keeps release notes short and focused on externally observable API beha
 
 # API Changelog
 
+## 2026-08-20
+
+- **Breaking (pre-v1): Event HAL no longer advertises `archive` for a Published Event.** Published Events retain authorized `cancel`, light/heavy moderation, and other applicable actions; ordinary fixed lifecycle affordances are owned by Domain predicates, while heavy redaction remains a distinct Application/API-owned irreversible safety override. Clients must render lifecycle controls from `_links` and remove any local status/claim fallback. Routes and operation IDs are unchanged, with no compatibility affordance before v1.0.
+- **Breaking (pre-v1): `EventSessionDto` and `EventSessionListDto` add `parentEventStatusId`.** Session detail and collection lifecycle links now evaluate the current session status, parent Event status, `startTime`, `endTime`, and `endTimeType` through the same Domain predicates as command execution. In particular, publish and complete require a Published parent Event. Generated clients must regenerate from `schemas/openapi_islamu-event.json`; there is no compatibility alias before v1.0.
+- **Behavioural: same-target ordinary fixed Event and EventSession lifecycle commands succeed as idempotent no-ops.** They do not mutate lifecycle state, audit timestamps, or downstream effects, and HAL omits the redundant same-target action. Already-Moderated light moderation may repair missing child-session moderation, but runs only actual repair effects and does not duplicate the moderation record, outbox, or federation work. This aggregate-level guarantee is independent of `Idempotency-Key` response replay.
+
 ## 2026-08-19
 
 - **Additive: `GET /api/instance/settings/authz-provider/package/status`** returns `AuthorizationPolicyPackageStatusDto` — provider mode, package id and content hash, the policy revision observed in the Cerbos store, whether that revision is certain, health, warnings, and a per-issue recovery action. Requires instance administrator or active setup-secret authority. Deliberately distinct from the anonymous `authz-provider/status` readiness probe, which must not disclose whether authorization is currently degraded.

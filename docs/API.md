@@ -728,6 +728,12 @@ Link policies use `ResourceDescriptors` to extract resource metadata from DTOs, 
 ### Fail-Closed Security
 If the batch authorization call fails (e.g., network error to Cerbos), all permission-bound links are **denied** by default. Non-permission links (e.g., `self`) remain unaffected.
 
+### Lifecycle Affordances
+
+Ordinary fixed Event and EventSession lifecycle links are emitted only when the matching Domain lifecycle predicate accepts the DTO's current facts. Event actions use the current `EventStatusId`; restoration additionally requires the server-projected reversible-moderation-record eligibility. Session detail and collection policies use `EventSessionStatusId`, `ParentEventStatusId`, `StartTime`, `EndTime`, and `EndTimeType`, so publish and complete require a Published parent Event and publish requires a valid schedule. A Published Event never advertises `archive`. Heavy redaction remains a distinct Application/API-owned irreversible safety override rather than an ordinary Domain transition affordance.
+
+HAL omits same-target ordinary fixed lifecycle actions because they do not change resource state, although sending such a command directly is a successful idempotent no-op. A true no-op may emit one structured idempotent outcome log after the unit of work completes for observability, but it does not change state or timestamps and produces no durable write, cache invalidation, or metric. Light moderation is the exception: applying it to an already-Moderated Event may repair missing child-session moderation, producing only the effects required by that repair and no duplicate moderation record, outbox, or federation work. Every advertised lifecycle mutation remains authenticated and permission-bound. Clients must follow `_links` rather than reconstructing these Domain decisions from status fields, parent status, schedule fields, roles, or claims.
+
 ### Blazor Client Consumption Pattern
 
 **The API's `_links` payload is the single source of truth for action affordances in the Blazor UI.** The server already evaluated every authorization check and only emitted the links the caller is allowed to follow — the client must trust that contract and render UI affordances directly from it.
@@ -1089,6 +1095,7 @@ Write operations support the `Idempotency-Key` HTTP header for safe retries:
 - Client sends `Idempotency-Key: <UUID>` on POST/PUT/PATCH/DELETE requests.
 - Server atomically persists an in-progress claim by `(Key, TenantId)` in PostgreSQL before dispatching the write.
 - Duplicate requests within 24 hours replay the cached response with original status code when the original response was persisted.
+- Ordinary fixed Event and EventSession lifecycle commands also treat a request for the current target status as a successful no-op: no lifecycle state, audit timestamp, or downstream side effect is changed. HAL does not advertise these same-target actions. Already-Moderated light moderation may instead repair missing child-session moderation; only actual repair effects run, without duplicating the moderation record, outbox, or federation work.
 - Reusing the same key for a different write request is rejected with `409 Conflict`. The request identity includes method, normalized target, content type, request-body hash, and a principal fingerprint.
 - A matching request while the original claim is in progress receives `409 Conflict` with code `idempotency_request_in_progress`; it must retry for the completed replay.
 - Required claim or result persistence failures return `503 Service Unavailable` with code `idempotency_unavailable`, never a successful write response.
@@ -1145,7 +1152,7 @@ Write operations support the `Idempotency-Key` HTTP header for safe retries:
    - `POST /api/eventsession/{id}/cancel` — cancel a draft/submitted/review/approved/published session after concurrency and parent-event lifecycle validation
    - `POST /api/eventsession/{id}/complete` — complete a published session after confirming the parent event is still published
    - `POST /api/eventsession/{id}/archive` — archive a draft, cancelled, or completed session after concurrency and parent-event lifecycle validation
-   - `EventSessionDto` and `EventSessionListDto` expose nullable `startTime`, `endTime`, and local projection fields. Use `isScheduled`, `eventSessionStatusId`, `eventSessionStatusMasterCode`, `concurrencyStamp`, and HAL `_links` to drive lifecycle UI.
+   - `EventSessionDto` and `EventSessionListDto` expose `parentEventStatusId`, nullable `startTime`, `endTime`, and local projection fields. Lifecycle `_links` are computed from the current session status, parent Event status, and full schedule shape; clients must not infer actions from those fields. Use `concurrencyStamp` when following advertised writes.
 3. Aspect endpoints:
    - Islamic: `GET /api/event/{id}/aspects/islamic` (`GetEventIslamicAspect`), `POST` (`CreateEventIslamicAspect`), grouped `PATCH` (`UpdateEventIslamicAspect`), and `DELETE` (`DeleteEventIslamicAspect`).
    - Tech: `GET /api/event/{id}/aspects/tech` (`GetEventTechAspect`), `POST` (`CreateEventTechAspect`), grouped `PATCH` (`UpdateEventTechAspect`), and `DELETE` (`DeleteEventTechAspect`).

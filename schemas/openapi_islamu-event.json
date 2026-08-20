@@ -96815,6 +96815,14 @@
           "eventTitle": {
             "type": "string"
           },
+          "parentEventStatusId": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
           "eventDayId": {
             "type": [
               "null",
@@ -97821,6 +97829,14 @@
           },
           "eventTitle": {
             "type": "string"
+          },
+          "parentEventStatusId": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
           },
           "eventDayId": {
             "type": [
@@ -110121,6 +110137,14 @@
           "eventTitle": {
             "type": "string"
           },
+          "parentEventStatusId": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
           "eventDayId": {
             "type": [
               "null",
@@ -111104,6 +111128,14 @@
           },
           "eventTitle": {
             "type": "string"
+          },
+          "parentEventStatusId": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
           },
           "eventDayId": {
             "type": [
