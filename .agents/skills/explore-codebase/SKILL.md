@@ -1,7 +1,12 @@
 ---
 name: explore-codebase
-description: Navigate and understand codebase structure using the knowledge graph
+description: "Load when asked where code lives, how modules relate, what calls a symbol, what implements a feature, or for an architecture/codebase tour using the knowledge graph; not for bug diagnosis, diff review, or refactoring."
+type: workflow
+enforcement: suggest
+priority: medium
 ---
+<!-- ABOUTME: Knowledge-graph workflow for locating code and understanding repository structure. -->
+<!-- ABOUTME: Moves from architecture overview to focused symbols, relationships, and flows. -->
 
 ## Explore Codebase
 

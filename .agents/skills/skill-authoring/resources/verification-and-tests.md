@@ -8,21 +8,19 @@
 Run these for a new or materially changed skill:
 
 ```bash
-dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet
+dotnet test --project tests/Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet
 ```
 
 Run a diff whitespace check for files touched:
 
 ```bash
-git diff --check -- .claude/contract/intents.yaml .agents/skills Event.Architecture.Tests/AgentContextLinkTests.cs
+git diff --check -- .agents/contract/intents.yaml .agents/skills tests/Event.Architecture.Tests/AgentContextPolicyTests.cs
 ```
 
-When the full architecture project has unrelated failures, still prove the agent-context lane with focused TUnit filters:
+When the full architecture project has unrelated failures, still prove the context-policy lane with its focused TUnit filter:
 
 ```bash
-dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet -- --treenode-filter "/*/*/AgentContextSchemaTests/*" --minimum-expected-tests 1 --no-progress --maximum-parallel-tests 1
-dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet -- --treenode-filter "/*/*/AgentContextIntentManifestTests/*" --minimum-expected-tests 1 --no-progress --maximum-parallel-tests 1
-dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet -- --treenode-filter "/*/*/AgentContextLinkTests/*" --minimum-expected-tests 1 --no-progress --maximum-parallel-tests 1
+dotnet test --project tests/Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet -- --treenode-filter "/*/*/AgentContextPolicyTests/*" --minimum-expected-tests 1 --no-progress --maximum-parallel-tests 1
 ```
 
 ## When To Run More
@@ -31,9 +29,10 @@ Run the full build when shared test infrastructure, project files, or applicatio
 
 ## Manual Checks
 
-- `SKILL.md` has required frontmatter and sections in order.
-- Top 5 lists have exactly five numbered items each.
-- Must-read links resolve.
+- `SKILL.md` has valid required frontmatter.
+- The description alone supports the pre-load decision and disambiguates adjacent skills.
+- The loaded body contains no repeated activation section.
+- Resource links resolve.
 - Resource index links every resource.
 - Resource files start with two `ABOUTME` comments.
 - No skip-list exception was added.

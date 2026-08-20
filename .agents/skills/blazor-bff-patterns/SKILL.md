@@ -1,7 +1,7 @@
 ---
 name: blazor-bff-patterns
-description: Backend for Frontend (BFF) patterns for Blazor applications. Covers YARP proxy, token forwarding, cookie-based auth, and service layer integration.
-type: domain
+description: "Load for Blazor BFF server work involving YARP proxy routes, cookie sessions, access-token forwarding/refresh, downstream API calls, BFF handlers, or browser-to-API auth failures; not for client component rendering or API JWT validation alone."
+type: pattern
 enforcement: suggest
 priority: high
 ---
@@ -14,13 +14,6 @@ ABOUTME: Read referenced resources before applying.
 > **Project-Agnostic BFF Patterns for Blazor Web Apps (InteractiveAuto)**
 >
 > Placeholders use `{Placeholder}` syntax - see [docs/TEMPLATE_GLOSSARY.md](../../../docs/TEMPLATE_GLOSSARY.md).
-
-## Purpose
-Keep tokens server‑side, proxy API calls via YARP, centralize auth state + service layer.
-
-## When This Skill Activates
-- Keywords: bff, yarp, proxy, token forwarding, cookie auth, auth state
-- File patterns: `**/*Blazor/Program.cs`, `**/*Blazor/Services/**/*.cs`, `**/*Blazor.Client/Services/**/*.cs`
 
 ## Non‑Inferable Rules (Must Follow)
 - **BFF boundary**: Browser never sees tokens; BFF uses HttpOnly cookies.

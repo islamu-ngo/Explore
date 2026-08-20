@@ -1,24 +1,12 @@
 ---
 name: auth-patterns
-description: Apply project authentication and authorization rules for BFF token handling, JWT validation, claim extraction, and handler-level access checks.
+description: "Load for authentication or authorization changes involving BFF cookies/tokens, JWT validation, claims/user ID extraction, policies, handler access checks, impersonation, or 401/403 bugs; not for UI affordance gating alone."
 type: pattern
 enforcement: suggest
 priority: critical
 ---
 <!-- ABOUTME: Authentication and authorization rules for BFF cookies, JWT validation, Keycloak claims, endpoint protection, and HAL-based UI affordances. -->
 <!-- ABOUTME: Keeps tokens out of the browser, preserves claim extraction order, and aligns API, handler, and client authorization behavior. -->
-
-## Purpose
-Use this skill for browser-to-BFF-to-API authentication flow, endpoint protection defaults, claim extraction, and resource authorization behavior. It keeps security logic consistent across controllers, handlers, and HAL-driven clients.
-
-## When to Load
-- Keywords: auth, JWT, OIDC, Keycloak, authorize, claim, audience, authorized party, cookie forwarding.
-- File patterns: `*Controller.cs`, `*Program.cs`, `**/Authorization/**/*.cs`, `Explore.API/**/*.cs`, `Explore.Blazor/**/*.cs`.
-- Intent IDs: `add-write-endpoint`, `add-get-endpoint`, `add-hal-link`, `blazor-component-affordance`.
-
-## When NOT to Load
-- Not for pure Blazor rendering, theming, or dialog issues; use [../blazor-ui-conventions/SKILL.md](../blazor-ui-conventions/SKILL.md).
-- Not for non-auth CQRS structure work where access rules are unchanged; use [../cqrs-mediatr-guidelines/SKILL.md](../cqrs-mediatr-guidelines/SKILL.md).
 
 ## Must-Read Docs
 - [../../../docs/SECURITY-MODEL.md](../../../docs/SECURITY-MODEL.md)
@@ -77,8 +65,8 @@ public sealed class UpdateEventHandler(IEventRepository repository)
 ```
 
 ## Verification Hooks
-- `dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet --filter FullyQualifiedName~Event.Architecture.Tests.AuthorizationParityTests`
-- `dotnet test --project Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity quiet`
+- `dotnet test --project tests/Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet -- --treenode-filter "/*/*/AuthorizationParityTests/*" --minimum-expected-tests 1 --no-progress --maximum-parallel-tests 1`
+- `dotnet test --project tests/Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity quiet`
 - `dotnet build --configuration Release --verbosity quiet`
 
 ## Related Skills

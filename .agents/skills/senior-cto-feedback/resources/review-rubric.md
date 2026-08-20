@@ -24,7 +24,40 @@ Questions:
 - Is the plan aligned with self-hostable and enterprise expectations?
 - Is the workstream narrow enough to execute without turning into an unreviewable mega-PR?
 
-## 2. Architecture Integrity
+## 2. Islamic Value-Sensitive Design
+
+| Score | Meaning |
+|---|---|
+| 5 | A dated, linked I-VSD report traces provider-controlled decisions from principles and stakeholders to evidence, mitigations, implementation tasks, uncertainty, and escalation |
+| 3 | The report exists, but traceability, evidence limits, or implementation ownership is incomplete |
+| 1 | The I-VSD deliverable is missing, unlinked, or reduced to unsupported moral claims |
+
+Check:
+
+- `plan.md`, `context.md`, and `tasks.md` link the same `islamic-value-sensitive-design/i-vsd-*.md`.
+- The report distinguishes provider responsibility from religious rulings or certification.
+- Applicable principles, stakeholders, risks, mitigations, and evidence are traceable to plan tasks.
+- Missing evidence and Sunni scholarly escalation needs are explicit.
+- Approval is blocked when the report or material traceability is missing.
+
+## 3. Socratic Stress-Testing
+
+| Score | Meaning |
+|---|---|
+| 5 | Material claims survived evidence-grounded challenge and every unresolved fork has a decision owner or approval blocker |
+| 3 | Major risks were challenged, but some thresholds, failure modes, or edge cases remain vague |
+| 1 | The plan relies on optimistic assumptions and generic assurance instead of adversarial validation |
+
+Check:
+
+- Rollback and recovery claims identify concrete failure points.
+- Tenant boundaries and authorization paths fail closed.
+- Performance claims state measurable thresholds and representative cardinality.
+- Operator actions and diagnostics are unambiguous.
+- Edge cases and external dependency failures have explicit outcomes.
+- Remaining material decisions were resolved through `grill-me` or block approval.
+
+## 4. Architecture Integrity
 
 | Score | Meaning |
 |---|---|
@@ -42,7 +75,7 @@ Check:
 - UI uses server-provided affordances where applicable.
 - Generated clients and OpenAPI stay stable and intentional.
 
-## 3. Security and Trust Boundaries
+## 5. Security and Trust Boundaries
 
 | Score | Meaning |
 |---|---|
@@ -60,7 +93,7 @@ Check:
 - Fail-closed behavior is explicit for authz and policy calls.
 - Admin/operator actions are separated from tenant/admin actions.
 
-## 4. Multi-Tenancy and Isolation
+## 6. Multi-Tenancy and Isolation
 
 | Score | Meaning |
 |---|---|
@@ -77,7 +110,7 @@ Check:
 - Single-tenant and multi-tenant mode behavior is defined.
 - Tenant-scoped configuration has governance/lock behavior where needed.
 
-## 5. Data Model and Migration Quality
+## 7. Data Model and Migration Quality
 
 | Score | Meaning |
 |---|---|
@@ -95,7 +128,7 @@ Check:
 - Migration order and data migration are explicit.
 - Breaking data changes have a reset, migration, or operator runbook.
 
-## 6. API and Contract Quality
+## 8. API and Contract Quality
 
 | Score | Meaning |
 |---|---|
@@ -113,7 +146,7 @@ Check:
 - OpenAPI export/client generation is sequenced.
 - Breaking contract changes are explicit.
 
-## 7. Self-Hosting and Operations
+## 9. Self-Hosting and Operations
 
 | Score | Meaning |
 |---|---|
@@ -132,7 +165,7 @@ Check:
 - External dependencies are optional or clearly required.
 - Single-server and constrained-resource scenarios are considered.
 
-## 8. Testability and Verification
+## 10. Testability and Verification
 
 | Score | Meaning |
 |---|---|
@@ -151,7 +184,7 @@ Check:
 - Tests are per-project, not solution-level.
 - Obsolete compatibility tests are deleted when breaking changes are accepted.
 
-## 9. Sequencing and Delivery Safety
+## 11. Sequencing and Delivery Safety
 
 | Score | Meaning |
 |---|---|
@@ -168,7 +201,7 @@ Check:
 - Each PR has clear exit criteria.
 - Rollback/reset path exists for self-hosters.
 
-## 10. Dev-Docs Quality
+## 12. Dev-Docs Quality
 
 | Score | Meaning |
 |---|---|

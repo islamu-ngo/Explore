@@ -12,6 +12,7 @@
 3. Prefer built-in `default`, `worker`, or `explorer` agents for generic work instead of duplicating them.
 4. Give mutating tools only to agents that own implementation files. Review and verification agents stay read-only.
 5. One agent owns a changed path at a time. Other agents may investigate or review but must not make overlapping edits.
+6. Assign the cheapest capable model tier: economical for broad read-only discovery, balanced for focused execution, and advanced for architecture, security, or adversarial judgement.
 
 ## 2. File And Frontmatter
 
@@ -24,11 +25,12 @@ description: <one sentence stating the job and invocation boundary>
 type: diagnostic | review | implementation | domain | research
 enforcement: suggest | inform
 priority: critical | high | medium | low
+model_tier: economical | balanced | advanced
 tools: Read, Write, Edit, Bash, Glob, Grep
 ---
 ```
 
-All six fields are required. `tools` is an allow-list. Read-only agents use `Read, Bash, Glob, Grep`; mutating agents add `Write, Edit`; research agents may add `WebSearch, WebFetch` when their workflow requires external sources.
+All seven fields are required. `model_tier` is a portable capability class, not a provider-specific model ID. `tools` is an allow-list. Read-only agents use `Read, Bash, Glob, Grep`; mutating agents add `Write, Edit`; research agents may add `WebSearch, WebFetch` only when their workflow requires external sources.
 
 ## 3. Required Sections In Order
 
@@ -46,7 +48,7 @@ Explicit negatives and the correct alternate agent or built-in role.
 
 ### `## Mandatory Reads`
 
-Always link `AGENTS.md`, `docs/QUICK_REFERENCE.md`, and `.agents/contract/intents.yaml`, followed by the smallest role-specific canonical docs. Every link must resolve.
+Link `AGENTS.md`, `docs/QUICK_REFERENCE.md`, `.agents/contract/intents.yaml`, and the smallest role-specific canonical docs. These links are retrieval locations, not instructions to reread whole files: use injected `AGENTS.md`, resolve one intent entry, and retrieve only relevant headings once.
 
 ### `## Skill Routing`
 
@@ -91,6 +93,8 @@ Link at least one sibling agent and describe the handoff boundary.
 - Do not hard-code the full test-project list; derive checks from the matched intent and `docs/OPERATIONS.md`.
 - If guidance already exists in `AGENTS.md`, canonical docs, rules, or a skill, link it.
 - Fifteen substantially identical consecutive lines across agent files is a duplication failure.
+- Read-only scout outputs use the cap in [Context Engineering](../CONTEXT_ENGINEERING.md) and contain findings plus locations, never raw source or logs.
+- Every profile follows [Context Engineering](../CONTEXT_ENGINEERING.md); repeated unchanged context is a schema failure even when the prose differs.
 
 ## 5. Portfolio Gate
 
@@ -105,6 +109,7 @@ A proposed agent is rejected when any answer is "no":
 ## 6. Authoring Checklist
 
 - Frontmatter and filename agree; tools follow least privilege.
+- `model_tier` matches the role's decision risk and broad discovery defaults to `economical`.
 - All 13 required sections exist in order.
 - Mandatory links resolve and skill names exist.
 - Workflow has an observable stop condition and handoff boundary.

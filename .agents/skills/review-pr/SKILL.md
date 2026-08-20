@@ -1,18 +1,20 @@
 ---
 name: "review-pr"
-description: "Execute the PR review checklist for the current change. Ties intent classification to evidence - the PR may not merge unless each checklist item has a verifiable answer."
+description: "Load for pre-PR self-review or pull-request review that must verify the matched intent, allowed scope, required tests/docs, forbidden actions, architecture gates, and merge readiness; not for a general code-quality diff review alone."
+type: guardrail
+enforcement: block
+priority: high
 ---
+<!-- ABOUTME: Pre-PR and PR review checklist driven by the matched intent. -->
+<!-- ABOUTME: Verifies paths in scope, tests, docs, rules, and forbidden actions before opening or approving a PR. -->
 
 # review-pr
 
 ## Command Template
 
-<!-- ABOUTME: Pre-PR and PR review checklist driven by the matched intent. -->
-<!-- ABOUTME: Verifies paths in scope, tests, docs, rules, and forbidden actions before opening or approving a PR. -->
-
 # /review-pr — Pull Request Review Checklist
 
-> **Primary reference:** [`.claude/contract/intents.yaml`](../../../.claude/contract/intents.yaml) — every intent owns its `pr_checklist`.
+> **Primary reference:** [`.agents/contract/intents.yaml`](../../contract/intents.yaml) — every intent owns its `pr_checklist`.
 > **Authority:** [`AGENTS.md`](../../../AGENTS.md) §5 CRITICAL RULES.
 
 ## When to Run
@@ -22,7 +24,7 @@ description: "Execute the PR review checklist for the current change. Ties inten
 
 ## Step 1 — Re-Identify the Intent
 
-Which intent in [`intents.yaml`](../../../.claude/contract/intents.yaml) does this PR implement? If the PR spans multiple intents, review each in turn and merge the checklists.
+Which matching entry in [`intents.yaml`](../../contract/intents.yaml) does this PR implement? If the PR spans multiple intents, review each in turn and merge the checklists without loading the full registry into task context.
 
 ## Step 2 — Execute the Intent's PR Checklist
 
@@ -63,7 +65,7 @@ dotnet test --project <MinimumTestProject>/<MinimumTestProject>.csproj --configu
 For architectural PRs, also run:
 
 ```bash
-dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet
+dotnet test --project tests/Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet
 ```
 
 ## Step 5 — Critical Rules Checklist (applies to every PR)
@@ -80,7 +82,7 @@ dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj -
 - [ ] `docs/QUICK_REFERENCE.md` updated if a new invariant was introduced.
 - [ ] `docs/API_CHANGELOG.md` updated if a public contract changed.
 - [ ] `dev/_journal/journal.md` appended if a non-obvious finding emerged.
-- [ ] `docs/index.md` cross-references still resolve (run `/docs-lint`).
+- [ ] `docs/index.md` cross-references still resolve; use [`AGENTS.md`](../../../AGENTS.md) and [`docs/OPERATIONS.md`](../../../docs/OPERATIONS.md) as the canonical verification entrypoints.
 
 ## Step 7 — Forbidden-Without-Approval Gate
 
@@ -111,6 +113,5 @@ Outstanding questions: <list or None>
 ## Related
 
 - [`AGENTS.md`](../../../AGENTS.md) — get to a valid PR state.
-- [`/check`](../../../.claude/commands/check.md) — run the verification commands.
-- [`/docs-lint`](../../../.claude/commands/docs-lint.md) — check doc link integrity.
-- [`AGENTS.md`](../../../AGENTS.md) — Contribution Contract authority.
+- [`docs/OPERATIONS.md`](../../../docs/OPERATIONS.md) — run the repository verification commands.
+- [`docs/DOCUMENTATION_STYLE_GUIDE.md`](../../../docs/DOCUMENTATION_STYLE_GUIDE.md) — review documentation accuracy and links.

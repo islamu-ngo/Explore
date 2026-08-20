@@ -1,119 +1,65 @@
-ABOUTME: AI agent rules for writing accessible Blazor components (WCAG 2.2 AA).
-ABOUTME: Read docs/ACCESSIBILITY.md for full platform rules before applying.
+---
+name: accessibility
+description: "Load for Blazor/MudBlazor UI changes involving forms, dialogs, focus, keyboard navigation, landmarks, ARIA, color contrast, RTL-safe styling, or WCAG 2.2 AA tests; not for backend-only changes."
+type: guardrail
+enforcement: block
+priority: high
+---
+<!-- ABOUTME: Accessibility guardrail for project Blazor and MudBlazor UI changes. -->
+<!-- ABOUTME: Routes agents to local WCAG 2.2 AA rules, implementation patterns, and verification evidence. -->
 
-# Accessibility Rules for Blazor Components
+## Must-Read Docs
+- [Accessibility Standards](../../../docs/ACCESSIBILITY.md)
+- [Accessibility Resources](resources/index.md)
+- [Blazor UI Conventions](../blazor-ui-conventions/SKILL.md)
 
-> **Standard**: WCAG 2.2 Level AA.
-> **Full reference**: [`docs/ACCESSIBILITY.md`](../../../docs/ACCESSIBILITY.md)
+## Top 5 Invariants
+1. Prefer native semantic HTML and MudBlazor's native control output; add ARIA only when semantics are missing, and keep each control's accessible name, role, state, value, and visible-label text accurate.
+2. Every routable page has a descriptive `PageTitle`, exactly one project-required `h1`, sequential headings, and logical DOM order while relying on `MainLayout` for skip navigation, landmarks, live regions, direction, and navigation focus.
+3. Every action is keyboard operable with its native or WAI-ARIA pattern, uses no positive `tabindex`, keeps focus visible and unobscured, and restores focus after dialogs or drawers through `IAccessibilityFocusService`.
+4. Every form control has a programmatic label and connected help/error text, while dynamic status is announced once with polite or assertive urgency only when focus does not already convey the change.
+5. Images, color, contrast, motion, pointer targets, dragging alternatives, reflow, zoom, forced colors, and RTL logical properties satisfy `docs/ACCESSIBILITY.md` and receive risk-proportionate rendered and manual verification.
 
-## Purpose
-Ensures every AI-generated Blazor component meets accessibility requirements.
+## Top 5 Anti-Patterns
+1. **Simulated native control:** A clickable `div`, `span`, or card recreates button or link semantics and leaves keyboard behavior incomplete.
+2. **ARIA guesswork:** Redundant, unsupported, or stale roles and `aria-*` values misrepresent the rendered interface to assistive technology.
+3. **Component-name trust:** Assuming MudBlazor is accessible without inspecting its rendered DOM misses missing names, descriptions, states, or version-specific behavior.
+4. **Focus and announcement noise:** Moving focus and announcing the same update, or using assertive live regions for routine status, creates duplicate or disruptive output.
+5. **Automation-as-certification:** Treating architecture tests, bUnit assertions, or an automated scanner as WCAG proof leaves keyboard, zoom, visual, and assistive-technology failures undiscovered.
 
-## When This Skill Activates
-- Keywords: accessibility, a11y, aria, screen reader, keyboard, focus, wcag
-- File patterns: `**/*.razor`, `**/*.razor.cs`, `**/*.razor.css`
-- Any new component creation or UI modification
+## Minimal Examples
+```razor
+<PageTitle>Event details</PageTitle>
+<MudText Typo="Typo.h4" HtmlTag="h1">Event details</MudText>
 
-## Non-Inferable Rules (Must Follow)
-
-### Page Shell (Provided by MainLayout — DO NOT duplicate)
-- Skip-to-content link → already in MainLayout
-- `<main id="main-content" tabindex="-1">` → already in MainLayout
-- `<header>` landmark → already in MainLayout
-- `<nav aria-label="Sidebar navigation">` → already in MainLayout
-- ARIA live regions (polite + assertive) → already in MainLayout
-- Focus-on-navigate → already in MainLayout code-behind
-- `MudRTLProvider` → already wraps MudLayout in MainLayout
-
-### Every Page Component MUST Have
-- One `<h1>` element — use `<MudText Typo="Typo.h4" HtmlTag="h1">` to get `<h1>` tag with h4 visual styling
-- `<PageTitle>` component for browser tab title
-- Sequential heading hierarchy (h1 → h2 → h3, never skip levels)
-- If no visible heading fits, use `<MudText HtmlTag="h1" Class="sr-only">Page Name</MudText>`
-
-### Images
-- `<img>` or `<MudImage>` MUST have `Alt` text describing the content
-- Decorative images: `Alt=""` (empty string, not omitted)
-- Never use `aria-hidden="true"` on informational images
-
-### Interactive Elements
-- Icon-only buttons: MUST have `aria-label` describing the **action**
-- Form inputs: MUST have associated label (MudBlazor `Label` param or `<label for="">`)
-- Custom interactive elements: MUST have `role`, `tabindex="0"`, and keyboard handlers (Enter/Space)
-- Links that open new windows: add `sr-only` text "(opens in new tab)"
-
-### Dynamic Content
-- Content updating without navigation → use `IAccessibilityAnnouncerService`
-  - Status/non-urgent: `AnnouncePoliteAsync(message)`
-  - Errors/critical: `AnnounceAssertiveAsync(message)`
-- Do NOT announce content that receives focus (focus already announces it)
-
-### Dialogs and Modals
-```csharp
-// Before opening — save focus for restoration
-await AccessibilityFocusService.SaveFocusAsync();
-// After closing — restore focus
-await AccessibilityFocusService.RestoreFocusAsync();
+<MudIconButton Icon="@Icons.Material.Filled.Delete"
+               aria-label="Delete event"
+               OnClick="DeleteAsync" />
 ```
-MudBlazor handles focus trap — do NOT add custom focus trap JS.
 
-### Error and Status Messages
-- Error displays → wrap in `<div role="alert">` for screen reader announcement
-- Success messages → wrap in `<div role="status">` for polite announcement
-- Data-loading pages → call `AnnouncerService.AnnouncePoliteAsync("{N} items loaded")` on completion
-- Error states → call `AnnouncerService.AnnounceAssertiveAsync(errorMessage)` on failure
+```csharp
+await Focus.SaveFocusAsync();
+try
+{
+    var options = new DialogOptions { CloseOnEscapeKey = true };
+    var dialog = await Dialogs.ShowAsync<DeleteDialog>("Delete event", options);
+    await dialog.Result;
+}
+finally
+{
+    await Focus.RestoreFocusAsync("#delete-event-trigger");
+}
+```
 
-### CSS Rules
-- **Banned**: `margin-left/right`, `padding-left/right`, `border-left/right`, `left/right` (positioning), `text-align: left/right`, `float: left/right`
-- **Use instead**: Logical properties (`margin-inline-start/end`, `padding-inline-start/end`, `inset-inline-start/end`, `text-align: start/end`)
-- **Never**: Remove focus indicators (`outline: none` without replacement)
-- **Screen reader text**: Use `class="sr-only"` (defined in utilities.css)
-- **Target size**: All interactive elements ≥ 24×24 CSS px (use `--isl-target-min: 1.5rem`)
+## Verification Hooks
+- `dotnet test --project tests/Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet -- --treenode-filter "/*/*/AccessibilityConventionTests/*" --minimum-expected-tests 1 --no-progress --maximum-parallel-tests 1`
+- `dotnet test --project tests/Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration Release --verbosity quiet`
+- `dotnet build --configuration Release --verbosity quiet`
+- `git diff --check -- .agents/skills/accessibility`
+- Manual: complete the risk-based keyboard, zoom/reflow, theme, RTL, motion, browser accessibility-tree, and screen-reader checks in [verification.md](resources/verification.md).
 
-### Color
-- Never use color alone to convey information
-- Text contrast: 4.5:1 minimum (3:1 for large text ≥24px or ≥18.67px bold)
-- Non-text contrast: 3:1 minimum for UI components and graphical objects
-- Palette colors are WCAG AA compliant — use `--mud-palette-*` CSS variables
-
-### Keyboard
-- All interactive elements must be reachable via Tab
-- Activation: Enter and/or Space
-- Dismissal: Escape key for dialogs, popovers, dropdowns
-- Arrow keys for composite widgets (tabs, menus, radio groups)
-
-### RTL Support
-- `MudRTLProvider` in MainLayout handles all MudBlazor components — no per-component RTL code needed
-- CSS: Use logical properties ONLY (PR-4) — they auto-flip in RTL
-- `MudDrawer Anchor="Anchor.Start"` auto-flips (left in LTR, right in RTL)
-- Direction preference: "auto" (language-based), "ltr", or "rtl" — user-configurable
-
-## Anti-Patterns (Blocked)
-- `aria-label` on non-interactive elements (divs, spans) — use `sr-only` text instead
-- `role="button"` on `<a>` tags — use `<button>` or MudBlazor button components
-- `tabindex` values > 0 — disrupts natural tab order
-- `aria-hidden="true"` on focusable elements — creates invisible focus traps
-- Autoplaying media without user consent
-- `outline: none` without a visible replacement focus style
-
-## Services Available (DI-registered, Scoped)
-- `IAccessibilityAnnouncerService` — ARIA live region announcements (`AnnouncePoliteAsync`, `AnnounceAssertiveAsync`)
-- `IAccessibilityFocusService` — Focus management (`FocusAsync`, `SaveFocusAsync`, `RestoreFocusAsync`, `FocusOnNavigateAsync`)
-
-## Common Mistakes (From Implementation)
-- Adding `role="banner"` when `<header>` exists → redundant ARIA. Use native elements.
-- Adding `aria-label` to non-interactive elements → use `sr-only` text instead.
-- Forgetting `SaveFocusAsync()` before dialog → focus lost on close.
-- Using `MudText Typo="Typo.h4"` without `HtmlTag="h1"` → renders as `<p>`, not heading.
-- Using `Alt="Image"` on content images → meaningless. Use entity-derived text like `Alt="@evt.Title"`.
-- Physical CSS like `padding-left` → use `padding-inline-start` for RTL support.
-- `tabindex="1"` or higher → disrupts tab order. Only use `0` (natural) or `-1` (programmatic).
-
-## Resources
-- [Full component checklist](../../../docs/ACCESSIBILITY.md#component-development-checklist)
-- [WCAG 2.2 criteria mapping](../../../docs/ACCESSIBILITY.md#wcag-22-aa-criteria-mapping)
-
-## Related Documentation
-- [`docs/ACCESSIBILITY.md`](../../../docs/ACCESSIBILITY.md) — Full platform rules, contrast tables, testing
-- [`blazor-ui-conventions`](../blazor-ui-conventions/SKILL.md) — MudBlazor component patterns
-- [`blazor-css-isolation`](../blazor-css-isolation/SKILL.md) — CSS scoping and BEM
+## Related Skills
+- [Blazor UI Conventions](../blazor-ui-conventions/SKILL.md)
+- [Blazor CSS Isolation](../blazor-css-isolation/SKILL.md)
+- [Design System](../design-system/SKILL.md)
+- [Agentic Research](../agentic-research/SKILL.md)

@@ -1,29 +1,12 @@
 ---
 name: ip-clean-room
-description: Enforce source-free external research, independent SSO design, dependency-license compatibility, and auditable provenance.
+description: "Load before external product/design research, competitor comparison, clean-room implementation, or adding/updating code, packages, images, fonts, datasets, generated artifacts, or other dependencies whose source/provenance/license may affect outbound licensing; not for purely internal source use with no dependency change."
 type: guardrail
 enforcement: block
 priority: critical
 ---
 <!-- ABOUTME: Blocking workflow skill for clean-room research, implementation handoffs, and dependency review. -->
 <!-- ABOUTME: Protects ISLAMU's CLA-backed outbound licensing options and produces audit-ready provenance evidence. -->
-
-## Purpose
-Use this skill whenever external behavior, third-party designs, or dependency terms may influence repository work. It separates observation from implementation, requires independent Structure/Sequence/Organization (SSO), and records evidence without claiming legal certification.
-
-## When to Load
-- The task researches, benchmarks, compares, clones, replaces, or interoperates with an external product or design.
-- A functional specification is derived from public UI, documentation, workflows, standards, or market benchmarks.
-- A package, library, image, font, asset, dataset, generator, or commercial version is added or updated.
-- Keywords include clean room, IP provenance, SSO, license compatibility, copyleft, source available, proprietary source, or audit readiness.
-- Intent ID is `ip-clean-room-governance` or a cross-cutting architecture intent loads this skill.
-
-## When NOT to Load
-- Not for a purely internal change proven to use only repository code/docs and no dependency change; record `Not externally informed` during PR review.
-- Not as permission to inspect source whose license or access terms are uncertain.
-- Not as a substitute for the CLA workflow, dependency scanner, security review, or qualified legal advice.
-- Not for copying compatibility code; exact interoperability elements require a recorded necessity and uncertain cases require legal review.
-- Not after source contamination as a way to salvage the same implementation context; stop and restart from a sanitized handoff.
 
 ## Must-Read Docs
 - [../../../AGENTS.md](../../../AGENTS.md)
@@ -69,11 +52,10 @@ Dependency decision:
 ## Verification Hooks
 - `dotnet run .ci/scripts/validate-dependency-license-policy.cs -- .`
 - `dotnet test --project tests/Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet`
-- `git diff --check -- AGENTS.md docs/legal docs/QUICK_REFERENCE.md .agents/skills/ip-clean-room .claude/rules/ip-clean-room.md .claude/contract/intents.yaml .claude/commands/review-pr.md .github/PULL_REQUEST_TEMPLATE.md dev/_journal/journal.md`
+- `git diff --check -- AGENTS.md docs/legal docs/QUICK_REFERENCE.md .agents/skills/ip-clean-room .agents/rules/ip-clean-room.md .agents/contract/intents.yaml .agents/skills/review-pr/SKILL.md .github/PULL_REQUEST_TEMPLATE.md dev/_journal/journal.md`
 - Manual: complete [SSO And Provenance Review](resources/sso-and-provenance-review.md) and link the evidence in the PR.
 
 ## Related Skills
 - [../agentic-research/SKILL.md](../agentic-research/SKILL.md)
 - [../skill-authoring/SKILL.md](../skill-authoring/SKILL.md)
 - [../clean-architecture-rules/SKILL.md](../clean-architecture-rules/SKILL.md)
-

@@ -21,7 +21,9 @@ Record:
 - planning status: Draft, User-reviewed, Approved, In implementation, or Re-baselined;
 - matched intents, relevant skills, and relevant rules;
 - primary layers touched;
-- S/M/L/XL complexity with evidence-based rationale.
+- S/M/L/XL complexity with evidence-based rationale;
+- **I-VSD Document:** `[islamic-value-sensitive-design/i-vsd-<task-name>.md](../../../islamic-value-sensitive-design/i-vsd-<task-name>.md)`;
+- **Grill-Me Intake:** a concise resolved-decisions summary, including recommendations accepted or rejected and any explicitly deferred branch.
 
 ## 1. Executive Summary
 
@@ -71,6 +73,8 @@ For each decision include:
 - **Consequences**
 - **Files/layers affected**
 
+When the decision is a major technology selection, external library, or competing architectural design, run `robin-neutral` steelmanning first. Record the strongest viable alternatives, their trade-offs, and why each rejected approach lost; do not mix this technical comparison into the I-VSD analysis.
+
 ## 6. Implementation Phases
 
 Use reviewable slices. Every phase includes:
@@ -104,6 +108,13 @@ Every task includes:
 
 Do not create standalone testing, QA, manual-review, documentation-review, reporting, dev-doc maintenance, or verification tasks. Fold necessary test-code and documentation changes into the task that owns the behavior. Run no build or test command until the phase implementation is complete.
 
+#### Final Phase Closing Rule: Changelog & Commit as the Final Task
+Every implementation plan MUST sequence its **Changelog Contribution & Commit Composition** as the **FINAL task of the FINAL phase** (e.g. `Task N.Last: Changelog Contribution & Final Commit Composition`). This ensures that:
+1. All functional implementation across layers is 100% complete.
+2. All tests are green and verified.
+3. All relevant documentation (docs, schemas, runbooks) has been updated.
+4. Only then is the appropriate changelog artifact created (`docs/releases/changes/CHG-YYYY-NNNN.yaml` for Tier 2) and the final Conventional Commit composed.
+
 ## 7. Testing Strategy
 
 Keep this section short. Assign exactly one fastest relevant non-browser test project to each phase, never repeat a project without a concrete reason, and never schedule more than one `dotnet test` command in a phase. Do not plan E2E, Playwright, browser automation, Chrome DevTools MCP, visual QA, live-app smoke, Aspire/Docker startup, or manual runtime verification.
@@ -114,36 +125,53 @@ Record additional intent-mandated projects as contract requirements, then distri
 
 Name the exact docs, schemas, generated artifacts, settings, environment variables, Aspire/Compose files, deployment material, and runbooks to update or state why none apply.
 
-## 9. Security, Authorization, Privacy, And Abuse Considerations
+### 8.1 Release & Changelog Strategy (Procedural Contribution)
+
+Every implementation plan MUST classify its procedural changelog approach across the 3-tier release model (executed in the plan's final closing task):
+
+1. **Tier 1 — Standard Feature or Fix (Conventional Commits):**
+   - Use public capability scopes from `eng/release/policy/scope-registry.yaml` (e.g. `feat(event): ...`, `fix(auth): ...`).
+   - The release engine automatically aggregates these into `What's Changed` at release time.
+2. **Tier 2 — High-Impact / Breaking / Migration / Security / Operator Impact (Change Fragment):**
+   - The plan's final phase MUST include a task creating an append-only change fragment under `docs/releases/changes/CHG-YYYY-NNNN.yaml`.
+   - The task acceptance criteria must enforce valid YAML structure, `ReleaseInputPolicy` validation, and terminal commit footer `Change-Id: CHG-YYYY-NNNN` (plus `BREAKING CHANGE:` where applicable).
+3. **Tier 3 — Internal Architecture / DevOps / Refactoring (Explicit Skip):**
+   - The plan must specify terminal trailers: `Changelog: skip` and `Changelog-Reason: <clear-reason>` to prevent internal plumbing noise from leaking into public release notes.
+
+## 9. Islamic Value-Sensitive Design (I-VSD) & Moral Boundaries
+
+Link the mapped `[I-VSD report](../../../islamic-value-sensitive-design/i-vsd-<task-name>.md)` and trace each applicable provider-controlled decision from principle and affected stakeholder to risk, mitigation, evidence, uncertainty, and implementation task. State scholarly escalation needs and non-applicable domains explicitly. The same report link must appear in the task-owned context and task ledger.
+
+## 10. Security, Authorization, Privacy, And Abuse Considerations
 
 Cover trust boundaries, authentication, server-side authorization, tenant isolation, HAL affordances, rate limiting, idempotency, auditability, privacy, sensitive-data handling, and abuse controls where relevant.
 
-## 10. Multi-Tenancy, Federation, Localization, Accessibility, And Product Considerations
+## 11. Multi-Tenancy, Federation, Localization, Accessibility, And Product Considerations
 
 Mark every concern Applicable, Not Applicable, or Needs Investigation and explain the classification.
 
-## 11. Observability And Operations
+## 12. Observability And Operations
 
 Plan bounded logs, metrics, traces, health/readiness, troubleshooting, operator-visible failure modes, and recovery where relevant.
 
-## 12. Migration And Compatibility Plan
+## 13. Migration And Compatibility Plan
 
 Cover database/schema/data migration, seed changes, generated contracts, deployment order, rollback/reset, and breaking-change notes. Do not add compatibility shims unless explicitly approved.
 
-## 13. Risk Register
+## 14. Risk Register
 
 Use a table with `Risk`, `Likelihood`, `Impact`, `Mitigation`, `Detection Signal`, and `Owner/Task`.
 
-## 14. Success Metrics And Definition Of Done
+## 15. Success Metrics And Definition Of Done
 
 Define observable functional success. For each phase, the automated gate is only one Release build plus at most one selected project test; do not add separate browser, runtime, manual-QA, migration-command, documentation-check, or operator-smoke gates.
 
-## 15. Implementation Agent Contract — KEEP DEV DOCS CURRENT
+## 16. Implementation Agent Contract — KEEP DEV DOCS CURRENT
 
 Require future implementation agents to:
 
-1. At the first implementation start, read plan, context, and tasks once; on a cold resume, read context and tasks first, then only the plan sections needed for the current phase or changed decision.
-2. During an uninterrupted session, do not reread unchanged plan/context/tasks after every task; keep the current task in working context and reopen only the exact section needed.
+1. At first implementation start or cold resume, read task-owned context and the current task first, then retrieve only the plan heading needed for the current phase or changed decision; never preload all three artifacts.
+2. Keep a `path + heading/symbol + revision` ledger. During an uninterrupted session, do not reread unchanged plan/context/tasks; reopen only an invalidated exact section.
 3. Start from the highest-priority unchecked task unless the user overrides it.
 4. Treat `tasks.md` as the hot execution ledger: check a substantial task immediately after its implementation acceptance criteria are met, and reconcile smaller completed tasks together no later than phase end.
 5. Keep implementation-task and phase-verification checkboxes separate; a task may be checked when its implementation is complete, but the phase is complete only after its build and selected test checkboxes pass.
@@ -164,7 +192,7 @@ Require every implementation summary to teach:
 - relevant repository conventions and reliability/security practices;
 - verification performed, remaining work, next work, and dev-doc update status.
 
-## 16. Progress Reporting Contract
+## 17. Progress Reporting Contract
 
 Require this response shape after each implementation slice:
 
@@ -178,6 +206,6 @@ Docs updated: yes/no with reason
 
 For completed implementation work, `Docs updated` must confirm that `tasks.md` was reconciled. Report context and plan separately as updated or unchanged because no trigger occurred.
 
-## 17. Potential Risks & Unknowns
+## 18. Potential Risks & Unknowns
 
 End with a candid, specific critique of the part most likely to fail, expand, or require a decision.

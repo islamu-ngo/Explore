@@ -46,7 +46,7 @@ Hooks are registered in `.claude/settings.json`:
     "UserPromptSubmit": [
       {
         "type": "command",
-        "command": "dotnet .claude/hooks/SkillTrigger.cs"
+        "command": "dotnet .agents/hooks/SkillTrigger.cs"
       }
     ],
     "PreToolUse": [
@@ -55,7 +55,7 @@ Hooks are registered in `.claude/settings.json`:
         "hooks": [
           {
             "type": "command",
-            "command": "dotnet .claude/hooks/SecurityCheck.cs"
+            "command": "dotnet .agents/hooks/SecurityCheck.cs"
           }
         ]
       }
@@ -66,7 +66,7 @@ Hooks are registered in `.claude/settings.json`:
         "hooks": [
           {
             "type": "command",
-            "command": "dotnet .claude/hooks/ContextTracker.cs"
+            "command": "dotnet .agents/hooks/ContextTracker.cs"
           }
         ]
       }
@@ -74,11 +74,11 @@ Hooks are registered in `.claude/settings.json`:
     "Stop": [
       {
         "type": "command",
-        "command": "dotnet .claude/hooks/FormatCode.cs"
+        "command": "dotnet .agents/hooks/FormatCode.cs"
       },
       {
         "type": "command",
-        "command": "dotnet .claude/hooks/BuildCheck.cs"
+        "command": "dotnet .agents/hooks/BuildCheck.cs"
       }
     ]
   }
@@ -102,7 +102,7 @@ Hooks are registered in `.claude/settings.json`:
 .NET SDK is not in PATH. Run `dotnet --version` to verify installation.
 
 ### Hooks failing on Windows
-Path separator issues. The C# scripts handle path normalization automatically. Use relative paths like `dotnet .claude/hooks/...` in settings.json.
+Path separator issues. The C# scripts handle path normalization automatically. Use relative paths like `dotnet .agents/hooks/...` in settings.json.
 
 ### Build is too slow
 ContextTracker identifies modified layers so BuildCheck can run targeted builds. Verify ContextTracker is correctly detecting layers in `.claude/build-cache/`.

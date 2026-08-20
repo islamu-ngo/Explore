@@ -7,7 +7,7 @@ ABOUTME: Includes architecture test requirements, CSS rules, DTO sync flow, and 
 > **Status:** Implemented
 > **Owner:** Contributor Experience
 > **Last Verified:** 2026-07-03
-> **Source Anchors:** `docs/FIRST_CONTRIBUTION.md`, `docs/TESTING.md`, `.github/PULL_REQUEST_TEMPLATE.md`, `.github/ISSUE_TEMPLATE/`, `dev/HANDOFF_TEMPLATE.md`
+> **Source Anchors:** `docs/FIRST_CONTRIBUTION.md`, `docs/TESTING.md`, `.github/PULL_REQUEST_TEMPLATE.md`, `.github/ISSUE_TEMPLATE/`, `.agents/CONTEXT_ENGINEERING.md`
 
 ## Prerequisites
 
@@ -260,7 +260,7 @@ Before submitting:
 - [ ] New CSS follows layer architecture and uses design tokens
 - [ ] API contract changes include docs updates (`docs/API.md`, `docs/API_CHANGELOG.md`)
 - [ ] Operator/release changes update `docs/SELF_HOSTING.md`, `docs/BACKUP_RESTORE_UPGRADE.md`, or `docs/RELEASE_CHECKLIST.md` when applicable
-- [ ] Multi-session work includes active dev docs or a handoff using [../dev/HANDOFF_TEMPLATE.md](../dev/HANDOFF_TEMPLATE.md)
+- [ ] Multi-session work records bounded resume and handoff state in its task-owned `*-context.md` following [Context Engineering](../.agents/CONTEXT_ENGINEERING.md#workstream-and-handoff-state)
 - [ ] Breaking changes are explicitly documented
 - [ ] No type error suppression (`as any`, `@ts-ignore`)
 - [ ] No empty catch blocks or deleted failing tests

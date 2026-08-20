@@ -663,7 +663,7 @@ intents:
     unique_acceptance:
       - "New SKILL.md satisfies the skill schema without adding a schema-test skip exception"
       - "Every resource linked from SKILL.md or resources/index.md exists and has two ABOUTME lines"
-      - "The skill states activation boundaries, anti-patterns, verification hooks, and output contract clearly enough for another agent to use without rereading the originating chat"
+      - "The description alone supports the pre-load routing decision, while the loaded body contains only non-inferable rules, workflow, just-in-time resources, and verification"
     forbidden_without_approval:
       - "Creating a skill that claims authority beyond its evidence or domain scope"
       - "Inlining long framework material in SKILL.md instead of resource files"
@@ -1225,225 +1225,107 @@ intents:
       - "dotnet ef migrations has-pending-model-changes --project src/Explore.Persistence/Explore.Persistence.csproj --startup-project src/Explore.API/Explore.API.csproj --configuration Release --context ExploreDbContext"
 
   - id: platform-privacy-erasure
-    title: "Implement platform-wide privacy erasure and restore-safe replay"
+    title: "Harden privacy-erasure authority topology and multi-database persistence contracts"
     category: cross-cutting
     triggers:
-      - "platform-wide privacy erasure"
-      - "platform privacy erasure"
-      - "privacy erasure authority"
-      - "implement account deletion erasure"
+      - "platform privacy erasure topology"
+      - "privacy erasure authority topology"
+      - "privacy-erasure authority topology"
+      - "multi-database persistence unification"
+      - "multi-database persistence contract hardening"
+      - "primary database provider composition"
+      - "provider migration ownership"
     must_read_docs:
       - AGENTS.md
       - docs/QUICK_REFERENCE.md
-      - docs/GOVERNANCE.md
-      - docs/ARCHITECTURE.md
-      - docs/DOMAIN.md
-      - docs/API.md
-      - docs/AUTHORIZATION.md
-      - docs/SECURITY-MODEL.md
-      - docs/MULTI_TENANCY.md
-      - docs/OUTBOX_PATTERN.md
-      - docs/OPERATIONS.md
-      - docs/TESTING.md
+      - docs/PRIVACY_ERASURE.md
       - docs/CONFIGURATION.md
-      - docs/SECRETS.md
       - docs/SELF_HOSTING.md
-      - docs/DEPLOYMENT_MODES.md
-      - docs/DEPLOYMENT_TIERS.md
       - docs/BACKUP_RESTORE_UPGRADE.md
       - docs/TROUBLESHOOTING.md
-      - docs/legal/IP_GOVERNANCE.md
-      - dev/active/optional-retained-erasure-authority/optional-retained-erasure-authority-plan.md
-      - dev/active/optional-retained-erasure-authority/optional-retained-erasure-authority-context.md
-      - dev/active/optional-retained-erasure-authority/optional-retained-erasure-authority-tasks.md
-      - .omo/plans/platform-wide-privacy-erasure-authority.md
-      - .omo/evidence/platform-wide-privacy-erasure-authority/rebaseline/migration-history-eligibility.md
-      - .omo/evidence/platform-wide-privacy-erasure-authority/rebaseline/migration-owned-sql-inventory.md
-      - .omo/evidence/platform-wide-privacy-erasure-authority/rebaseline/local-lite-authority-isolation-audit.md
-      - .omo/evidence/platform-wide-privacy-erasure-authority/rebaseline/clean-baseline-plan-review-v2.md
+      - docs/TESTING.md
+      - dev/active/multi-database-persistence-unification/multi-database-persistence-unification-plan.md
+      - dev/active/multi-database-persistence-unification/multi-database-persistence-unification-context.md
+      - dev/active/multi-database-persistence-unification/multi-database-persistence-unification-tasks.md
     load_skills:
       - clean-architecture-rules
-      - cqrs-mediatr-guidelines
       - dotnet-efcore-guidelines
-      - outbox-pattern
-      - auth-patterns
-      - ip-clean-room
     load_rules:
-      - .agents/rules/domain.md
-      - .agents/rules/application-layer.md
       - .agents/rules/efcore-persistence.md
       - .agents/rules/efcore-migrations.md
-      - .agents/rules/api-controllers.md
       - .agents/rules/tests.md
-      - .agents/rules/ip-clean-room.md
     paths_in_scope:
-      - ".agents/contract/intents.yaml"
-      - ".env"
-      - ".env.example"
-      - "docker-compose.yml"
-      - "docker/**"
-      - "src/Explore.Domain/**"
-      - "src/Explore.Application/**"
-      - "src/Explore.Persistence/ExploreDbContext*.cs"
-      - "src/Explore.Persistence/DataProtectionKeyContext*.cs"
-      - "src/Explore.Persistence/Privacy/**"
-      - "src/Explore.Persistence/Schema/ExploreDatabaseMigrator.cs"
-      - "src/Explore.Persistence/Migrations/*.cs"
-      - "src/Explore.Persistence/Migrations/DataProtection/**"
-      - "src/Explore.Persistence/Migrations/PrivacyErasureAuthority/**"
-      - "src/Explore.Persistence/Configurations/**"
-      - "src/Explore.Persistence/Repositories/**"
-      - "src/Explore.Persistence/Seed/LookupTableSeeder.cs"
+      - "src/Explore.Persistence/Database/PrimaryDatabaseProviderComposition.cs"
       - "src/Explore.Persistence/PersistenceServicesRegistration.cs"
-      - "src/Explore.Infrastructure/**"
-      - "src/Explore.API/**"
-      - "src/Event.MigrationService/**"
-      - "src/Explore.AppHost/**"
-      - "src/Explore.Blazor/**"
-      - "src/Explore.Blazor.Client/Clients/EventApiClient.g.cs"
-      - "tests/**"
-      - "schemas/openapi_islamu-event.json"
-      - "schemas/islamu-event.md"
-      - "docs/ARCHITECTURE.md"
-      - "docs/DOMAIN.md"
-      - "docs/API.md"
-      - "docs/API_CHANGELOG.md"
-      - "docs/AUTHORIZATION.md"
-      - "docs/SECURITY-MODEL.md"
-      - "docs/MULTI_TENANCY.md"
-      - "docs/OUTBOX_PATTERN.md"
-      - "docs/OPERATIONS.md"
-      - "docs/TESTING.md"
+      - "src/Explore.Persistence/Privacy/ErasureAuthority/EmbeddedPrivacyErasureAuthorityDbContextFactory.cs"
+      - "src/Explore.Persistence/Schema/ExploreDatabaseMigrator.cs"
+      - "src/Event.MigrationService/Worker.cs"
+      - "tests/Event.Persistence.IntegrationTests/Database/PrimaryDatabaseProviderCompositionTests.cs"
+      - "tests/Event.Persistence.IntegrationTests/Privacy/PrivacyErasureAuthorityCompositionValidationTests.cs"
+      - "tests/Event.Persistence.IntegrationTests/Privacy/PrivacyErasureAuthorityModelTests.cs"
+      - "tests/Event.Persistence.IntegrationTests/Migrations/GeneratedInitMigrationBehaviorTests.cs"
+      - "tests/Event.Architecture.Tests/ProviderMigrationOwnershipTests.cs"
+      - "tests/Event.Architecture.Tests/PrimaryDatabaseMigrationCompositionTests.cs"
+      - ".github/workflows/_build-test.yml"
+      - "docs/PRIVACY_ERASURE.md"
       - "docs/CONFIGURATION.md"
-      - "docs/SECRETS.md"
       - "docs/SELF_HOSTING.md"
-      - "docs/DEPLOYMENT_MODES.md"
-      - "docs/DEPLOYMENT_TIERS.md"
       - "docs/BACKUP_RESTORE_UPGRADE.md"
       - "docs/TROUBLESHOOTING.md"
-      - "docs/PRIVACY_ERASURE.md"
-      - "dev/active/optional-retained-erasure-authority/**"
-      - ".omo/evidence/optional-retained-erasure-authority/**"
-      - ".omo/evidence/platform-wide-privacy-erasure-authority/**"
+      - "docs/TESTING.md"
+      - "dev/active/multi-database-persistence-unification/multi-database-persistence-unification-plan.md"
+      - "dev/active/multi-database-persistence-unification/multi-database-persistence-unification-context.md"
+      - "dev/active/multi-database-persistence-unification/multi-database-persistence-unification-tasks.md"
+    paths_forbidden:
+      - "src/**/Migrations/**/*.cs"
+      - "src/**/*ModelSnapshot.cs"
+      - "src/**/*.Designer.cs"
     minimum_tests:
-      - Event.Domain.UnitTests
-      - Event.Application.UnitTests
-      - Event.Architecture.Tests
       - Event.Persistence.IntegrationTests
-      - Explore.Infrastructure.Tests
-      - Event.API.IntegrationTests
-      - Explore.Secrets.UnitTests
+      - Event.Architecture.Tests
     docs_to_update:
-      - docs/ARCHITECTURE.md
-      - docs/DOMAIN.md
-      - docs/API.md
-      - docs/API_CHANGELOG.md
-      - docs/AUTHORIZATION.md
-      - docs/SECURITY-MODEL.md
-      - docs/MULTI_TENANCY.md
-      - docs/OUTBOX_PATTERN.md
-      - docs/OPERATIONS.md
-      - docs/TESTING.md
+      - docs/PRIVACY_ERASURE.md
       - docs/CONFIGURATION.md
-      - docs/SECRETS.md
       - docs/SELF_HOSTING.md
-      - docs/DEPLOYMENT_MODES.md
-      - docs/DEPLOYMENT_TIERS.md
       - docs/BACKUP_RESTORE_UPGRADE.md
       - docs/TROUBLESHOOTING.md
-      - docs/PRIVACY_ERASURE.md
-      - schemas/islamu-event.md
+      - docs/TESTING.md
+      - dev/active/multi-database-persistence-unification/multi-database-persistence-unification-plan.md
+      - dev/active/multi-database-persistence-unification/multi-database-persistence-unification-context.md
+      - dev/active/multi-database-persistence-unification/multi-database-persistence-unification-tasks.md
     unique_acceptance:
-      - "Runtime, Domain, Application, Persistence, API, MigrationService, and AppHost authority surfaces use generalized PrivacyErasure* names; legacy LocationPrivacy* authority names remain only in migration-history evidence"
-      - "Exactly one authority-first workflow appends or reuses an immutable fact before application mutation; only the IPrivacyErasureAuthority storage adapter varies by topology"
-      - "PrivacyErasure:Authority:Topology accepts only EmbeddedSqlite, CoLocated, or ExternalDatabase; the default is EmbeddedSqlite, topology is never inferred from a connection string, EmbeddedSqlite never opens an external connection, CoLocated uses the primary PostgreSQL/SQLite database, and ExternalDatabase uses external PostgreSQL"
-      - "A present legacy PrivacyErasure:Durability:Mode key is rejected with actionable replacement-key and pre-v1 reset-only guidance; no compatibility shim or silent translation is allowed"
-      - "The application-side replay checkpoint remains active in all topologies and is atomically confirmed with local dispositions, provider work, cache authority, and receipt state"
-      - "User is the only executable subject kind; facts and work are typed and versioned, with no table, column, free-form JSON, or reflection-driven instruction surface"
-      - "The authority fact and User fence exist before PII enumeration; one serializable application transaction records local erasure state, policy coverage, specialized provider work, cache invalidation, and a fixed-time-verifiable hash of the once-revealed short-lived receipt"
-      - "All current durable User-PII copies have one machine-checked disposition, exact subject and tenant predicates, and canary proof that unrelated users and tenants remain unchanged"
-      - "Provider cleanup runs only after commit through specialized idempotent fenced outboxes with bounded retry, dead-letter or unknown settlement, and ownership checks"
-      - "Startup replay runs before API traffic and ordinary workers in all topologies; ExternalDatabase restore replay is protective only when its authority database has an independent restore lifecycle"
-      - "SQLite authority migrations solely own the ie_-prefixed authority tables in the selected embedded or co-located SQLite file, co-located PostgreSQL authority migrations solely own retained authority tables in the configured primary schema, application migrations solely own the replay checkpoint, and dedicated external authority migrations solely own external PostgreSQL tables, functions, roles, and grants"
-      - "For ExternalDatabase, API runtime and MigrationService receive separate runtime and migrator authority credentials mapped to structured privacy-prefixed database fields only in the owning process; EmbeddedSqlite and CoLocated receive no authority database credential and Blazor receives neither secret"
-      - "Authority identifiers are treated as linkable personal data, retained only through the maximum resurrection-capable backup horizon plus the approved safety margin, and protected by function-only least privilege, legal-hold pseudonymization, expiry cleanup, and redacted observability"
-      - "This workstream owns receipt/status, provider settlement, startup replay, retention, and restore behavior; Event Location contributes only its typed disposition and correction adapter"
-      - "Every minimum test project executes a nonzero test count; the Release build, MigrationService/AppHost builds, all pending-model checks, fresh migration apply, real-file EmbeddedSqlite, two-database external PostgreSQL, HTTP/SQL/provider, and old-backup restore rehearsals are evidenced"
+      - "Primary application and Data Protection persistence retain PostgreSQL, SQLite, SQL Server, MariaDB, and MySQL provider composition without collapsing provider migration owners or history tables"
+      - "PrivacyErasure:Authority:Topology keeps EmbeddedSqlite with any primary provider, CoLocated only for PostgreSQL or SQLite, and ExternalDatabase only for separate PostgreSQL"
+      - "Unsupported SQL Server, MariaDB, and MySQL CoLocated authority combinations fail during composition before adapter use and without exposing credentials, connection strings, or structured database values"
+      - "Provider-native authority adapters remain distinct because PostgreSQL row locking, SQLite single-writer behavior, and external PostgreSQL function-only access are separate safety contracts behind IPrivacyErasureAuthority"
+      - "MigrationService applies exactly one authority migration path for the selected topology while preserving application, Data Protection, embedded SQLite authority, co-located PostgreSQL authority, and external PostgreSQL authority ownership boundaries"
+      - "Operator documentation states the truthful backup, restoreReplayProtection, support-matrix, and fail-closed remediation contract without implying five-provider CoLocated authority support"
+      - "The existing CI provider matrix remains the real-engine release gate for primary provider migration and idempotency evidence"
     pr_checklist:
-      - "Verified zero third-party source or source-derived ingestion, a sanitized handoff and independent AFC/SSO review for external influence, and outbound-license compatibility for dependency changes"
-      - "PIN, RED, and GREEN evidence covers completeness, malformed facts/receipts/config/catalogs, cross-tenant isolation, concurrent retries, provider ambiguity, stale restore, cancellation/resume, and PII canaries"
-      - "Clean Architecture remains inward-only; repositories return entities, handlers map DTOs, validators are manually instantiated, and only one dedicated Persistence adapter may cross tenant filters with a named reason and exact predicates"
-      - "PrivacyErasure* naming, PrivacyErasure:Authority:Topology, EmbeddedSqlite/CoLocated/PostgreSQL and external PostgreSQL semantics, structured privacy-prefixed database fields, OpenAPI, schemas, Compose, AppHost, MigrationService, active planning, and operator docs agree"
-      - "Application and dedicated authority migrations have non-overlapping topology ownership, carry every classified current PostgreSQL invariant, follow the approved reset-only policy, and leave no pending model changes"
-      - "No provider call occurs in a handler, database transaction, migration, or startup replay transaction; specialized outboxes prove idempotency, fencing, retries, unknown outcomes, and ownership limits"
-      - "Logs, metrics, traces, health, ProblemDetails, receipts, ledgers, evidence, and support artifacts contain no PII, identifiers, credentials, provider payloads/responses, URLs, or free-text errors"
-      - "EmbeddedSqlite proves old-application-backup replay from its untouched authority file; CoLocated reports restoreReplayProtection=false and is backed up and restored atomically with the primary database; ExternalDatabase proves old-application-backup replay from untouched independently restored external PostgreSQL, bounded retention, legal-hold pseudonymization, and unrelated-user preservation"
-      - "Opening and closing hashes attribute dirty work; no unrelated file, test, database, container, volume, backup, process, port, or temporary artifact is changed or left behind"
+      - "Source, tests, CI, operator docs, and the active workstream state the same primary provider and privacy-erasure authority support matrix"
+      - "Focused provider-composition tests prove all five primary providers, supported authority topologies, unsupported CoLocated failures, singular adapter registration, and secret-safe diagnostics"
+      - "Focused migration-ownership tests prove provider migration assemblies, history tables, and authority migration owners remain explicit and collision-free"
+      - "No generated migration, designer, or model-snapshot artifact is hand-edited; source model changes, if any, are regenerated through dotnet ef under the add-ef-migration intent"
+      - "No tenant filter, named query filter, or exact tenant predicate is weakened while proving the persistence contract"
+      - "No provider fallback, backward-compatibility shim, generic authority adapter, or universal CoLocated repository is introduced"
     forbidden_without_approval:
-      - "Adding arbitrary JSON, table, column, SQL, reflection-driven, prompt-derived, or other executable erasure instructions"
-      - "Storing live PII in the authority database, joining it from normal request paths, or introducing a distributed transaction"
-      - "Bypassing tenant filters outside the one dedicated Persistence erasure adapter with a named reason and exact subject and tenant predicates"
-      - "Calling Keycloak, ATProto, Listmonk, SMTP, object storage, webhooks, or any provider inside a handler, database transaction, migration, or startup replay transaction"
-      - "Emitting PII, linkable identifiers, secrets, receipt credentials, provider payloads/responses, URLs, exception text, or unbounded values to logs, metrics, traces, health, ProblemDetails, evidence, or support artifacts"
-      - "Deleting an upstream identity or account the platform does not own, or claiming recipient-controlled, downloaded, federated, delivered, or third-party copies can always be recalled"
-      - "Adding executable Organization or Tenant erasure before its typed policy, handler, inventory, authorization, and verification ship atomically"
-      - "Restoring old migration IDs, hand-writing generated designer or snapshot files, or deleting, rewriting, or regenerating migration history outside the exact user-performed 2026-07-20 exception recorded below"
-      - "Deleting any database, container, volume, backup, unrelated file, or unrelated dirty-worktree change; agents have no such authority under the migration-history exception"
-      - "Adding a message broker, generic provider plugin, generic erasure interpreter, or new dependency for behavior the current platform already provides"
-      - "Weakening or deleting failing tests, tenant isolation, least-privilege ACLs, append-only guards, irreversible guards, legal holds, retention checks, receipt authorization, or HAL affordance rules"
-    migration_history_exception:
-      authorized_by_user_on: "2026-07-20"
-      evidence: ".omo/evidence/platform-wide-privacy-erasure-authority/rebaseline/migration-history-eligibility.md"
-      pre_deletion_manifest_sha256: "31f64320b5cd681e969eef13ee227bad9a50318869e60844da57708bcb4f03d8"
-      evidence_file_sha256_at_governance_pin: "349c447534aff035863a1ef635c219bf6faf795e49b32bb4bb07d7f23f9c1b3a"
-      dirty_ownership_at_evidence_pin: "16 artifacts across 3 contexts: 9 tracked, including 2 modified; 7 untracked-only"
-      release_and_disposability_caveat: "This recognizes the user's already-performed clean reset only; the discarded IDs are not an upgrade path, and no deployed or shared database may depend on either the upstream chain or local baseline IDs"
-      agent_authority: "Agents may validate the observed absence and later generate the three approved init lanes after the invariant inventory is complete; agents may not delete databases, containers, volumes, backups, these artifacts, or any unrelated file"
-      exact_user_deleted_artifacts:
-        - "src/Explore.Persistence/Migrations/20260720021848_AddApplicationDatabaseLocationPrivacyErasureLedger.Designer.cs"
-        - "src/Explore.Persistence/Migrations/20260720021848_AddApplicationDatabaseLocationPrivacyErasureLedger.cs"
-        - "src/Explore.Persistence/Migrations/20260720022047_RestoreEventLocationPrivacyDatabaseGuards.Designer.cs"
-        - "src/Explore.Persistence/Migrations/20260720022047_RestoreEventLocationPrivacyDatabaseGuards.cs"
-        - "src/Explore.Persistence/Migrations/LocationPrivacyAuthority/20260720072859_InitialLocationPrivacyAuthority.Designer.cs"
-        - "src/Explore.Persistence/Migrations/LocationPrivacyAuthority/20260720072859_InitialLocationPrivacyAuthority.cs"
-        - "src/Explore.Persistence/Migrations/LocationPrivacyAuthority/LocationPrivacyAuthorityDbContextModelSnapshot.cs"
-        - "src/Explore.Persistence/Migrations/20260719221539_init.Designer.cs"
-        - "src/Explore.Persistence/Migrations/20260719221539_init.cs"
-        - "src/Explore.Persistence/Migrations/20260719230250_AddEventReportDecisionExecution.Designer.cs"
-        - "src/Explore.Persistence/Migrations/20260719230250_AddEventReportDecisionExecution.cs"
-        - "src/Explore.Persistence/Migrations/20260720120000_MakeTrustSafetyPreferenceOptional.cs"
-        - "src/Explore.Persistence/Migrations/ExploreDbContextModelSnapshot.cs"
-        - "src/Explore.Persistence/Migrations/DataProtection/20260719221632_init.Designer.cs"
-        - "src/Explore.Persistence/Migrations/DataProtection/20260719221632_init.cs"
-        - "src/Explore.Persistence/Migrations/DataProtection/DataProtectionKeyContextModelSnapshot.cs"
-      exact_replacement_generation_commands:
-        - "dotnet ef migrations add init --context ExploreDbContext --project src/Explore.Persistence --startup-project src/Explore.API"
-        - "dotnet ef migrations add init --context DataProtectionKeyContext --project src/Explore.Persistence --startup-project src/Explore.API --output-dir Migrations/DataProtection"
-        - "dotnet ef migrations add init --context PrivacyErasureAuthorityDbContext --project src/Explore.Persistence --startup-project src/Explore.API --output-dir Migrations/PrivacyErasureAuthority"
+      - "Hand-editing generated migration, designer, or model-snapshot artifacts"
+      - "Weakening tenant filters, named query filters, subject predicates, or exact tenant predicates"
+      - "Collapsing PostgreSQL, SQLite, and external PostgreSQL provider-native authority adapters into one generic authority implementation"
+      - "Adding provider fallback, backward-compatibility translation, dual-write, or compatibility shims for unsupported topology/provider combinations"
+      - "Exposing secrets, credentials, generated connection strings, structured database values, provider payloads, or raw exception text in diagnostics, logs, health, ProblemDetails, CI output, or support artifacts"
+      - "Expanding CoLocated authority support beyond PostgreSQL and SQLite without an explicit product decision, updated recovery/security model, migration-ownership update, and real-engine test evidence"
+      - "Collapsing application, Data Protection, embedded authority, co-located authority, or external authority migration ownership into one project, schema, or history table"
     related_agents:
-      - architect-agent
       - backend-engineer-agent
       - platform-operations-agent
       - security-privacy-agent
       - quality-verifier-agent
       - change-reviewer-agent
     related_intents:
-      - add-write-endpoint
-      - add-cqrs-handler
       - add-ef-migration
       - update-repository-query
-      - openapi-contract-change
     verification_commands:
       - "dotnet build --configuration Release --verbosity quiet"
-      - "dotnet build src/Event.MigrationService/Event.MigrationService.csproj --configuration Release --verbosity quiet"
-      - "dotnet build src/Explore.AppHost/Explore.AppHost.csproj --configuration Release --verbosity quiet"
-      - "dotnet test --project tests/Event.Domain.UnitTests/Event.Domain.UnitTests.csproj --configuration Release --verbosity quiet"
-      - "dotnet test --project tests/Event.Application.UnitTests/Event.Application.UnitTests.csproj --configuration Release --verbosity quiet"
-      - "dotnet test --project tests/Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet"
-      - "dotnet test --project tests/Event.Persistence.IntegrationTests/Event.Persistence.IntegrationTests.csproj --configuration Release --verbosity quiet"
-      - "dotnet test --project tests/Explore.Infrastructure.Tests/Explore.Infrastructure.Tests.csproj --configuration Release --verbosity quiet -- --treenode-filter \"/*/*/*/*[Category!=Runtime]\" --minimum-expected-tests 1"
-      - "dotnet test --project tests/Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity quiet"
-      - "dotnet test --project tests/Explore.Secrets.UnitTests/Explore.Secrets.UnitTests.csproj --configuration Release --verbosity quiet"
-      - "dotnet ef migrations has-pending-model-changes --context ExploreDbContext --project src/Explore.Persistence --startup-project src/Explore.API --configuration Release"
-      - "dotnet ef migrations has-pending-model-changes --context DataProtectionKeyContext --project src/Explore.Persistence --startup-project src/Explore.API --configuration Release"
-      - "dotnet ef migrations has-pending-model-changes --context PrivacyErasureAuthorityDbContext --project src/Explore.Persistence --startup-project src/Explore.API --configuration Release"
+      - 'dotnet test --project tests/Event.Persistence.IntegrationTests/Event.Persistence.IntegrationTests.csproj --configuration Release -- --treenode-filter "/*/*/PrimaryDatabaseProviderCompositionTests/*" --minimum-expected-tests 1 --no-progress --maximum-parallel-tests 1'
+      - 'dotnet test --project tests/Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release -- --treenode-filter "/*/*/ProviderMigrationOwnershipTests/*" --minimum-expected-tests 1 --no-progress --maximum-parallel-tests 1'

@@ -1,7 +1,12 @@
 ---
 name: debug-issue
-description: Systematically debug issues using graph-powered code navigation
+description: "Load when diagnosing a bug, exception, regression, wrong result, failing flow, or unknown root cause in repository code using callers/callees, execution flows, recent changes, and impact analysis; not for implementing a known fix without investigation."
+type: workflow
+enforcement: suggest
+priority: high
 ---
+<!-- ABOUTME: Knowledge-graph workflow for tracing repository bugs to their root cause. -->
+<!-- ABOUTME: Uses callers, flows, recent changes, impact, and coverage before proposing a fix. -->
 
 ## Debug Issue
 

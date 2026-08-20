@@ -47,6 +47,14 @@ Use this structure for Senior CTO feedback.
 ### `...-tasks.md`
 [Are tasks executable, sequenced, and verifiable?]
 
+## Islamic Value-Sensitive Design (I-VSD) Assessment
+
+[Name the linked `islamic-value-sensitive-design/i-vsd-*.md` report. Assess provider-controlled moral risks, principle/stakeholder traceability, mitigations, evidence limits, and scholarly escalation needs. State explicitly when missing or inadequate I-VSD evidence blocks approval.]
+
+## Socratic Stress-Testing (Grill-Me Audit Findings)
+
+[List the strongest challenged claims and findings for rollback safety, tenant boundaries, query-performance thresholds, operator clarity, failure modes, and edge cases. For each unresolved material claim, name the evidence or decision required before approval.]
+
 ## Enterprise / Self-Hosting Assessment
 
 [Discuss config, secrets, deployment, health checks, operations, upgrades, backup/restore/recovery, and operator clarity.]

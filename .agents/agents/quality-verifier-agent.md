@@ -4,6 +4,7 @@ description: Reproduces failures and independently verifies changed behavior wit
 type: diagnostic
 enforcement: inform
 priority: high
+model_tier: balanced
 tools: Read, Bash, Glob, Grep
 ---
 

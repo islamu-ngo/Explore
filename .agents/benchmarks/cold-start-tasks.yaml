@@ -3,8 +3,16 @@
 # Version: 1 (synthetic). Target: replace each with real issue-based scenario within 4–6 weeks.
 
 version: 1
-last_updated: "2026-07-26"
+last_updated: "2026-08-20"
 owner: "context-system-maintainers"
+
+context_budget:
+  additional_bootstrap_bytes: 12288
+  discovery_result_bytes: 40960
+  single_retrieval_bytes: 12288
+  scout_result_characters: 1500
+  duplicate_unchanged_bytes: 0
+  full_registry_reads: 0
 
 scenarios:
   - id: add-get-endpoint
@@ -20,8 +28,8 @@ scenarios:
       - "AGENTS.md"
       - "docs/QUICK_REFERENCE.md"
       - "docs/API.md"
-      - ".claude/rules/api-controllers.md"
-      - ".claude/rules/api-hateoas.md"
+      - ".agents/rules/api-controllers.md"
+      - ".agents/rules/api-hateoas.md"
       - ".agents/skills/cqrs-mediatr-guidelines/SKILL.md"
     expected_paths_in_scope:
       - "Explore.API/Controllers/**/*.cs"
@@ -31,7 +39,7 @@ scenarios:
     expected_verification_commands:
       - "dotnet build --configuration Release --verbosity quiet"
       - "dotnet test --project Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity quiet"
-      - "dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet"
+      - "dotnet test --project tests/Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet"
     acceptance_criteria:
       - 'Controller action uses explicit `[HttpGet("resources/summaries", Name = RouteNames.ResourceSummariesList)]`.'
       - "Controller action has `[AllowAnonymous]` attribute."
@@ -57,7 +65,7 @@ scenarios:
       - "AGENTS.md"
       - "docs/QUICK_REFERENCE.md"
       - "docs/API.md"
-      - ".claude/rules/api-hateoas.md"
+      - ".agents/rules/api-hateoas.md"
       - ".agents/skills/auth-patterns/SKILL.md"
     expected_paths_in_scope:
       - "Explore.API/Hateoas/**/*.cs"
@@ -67,7 +75,7 @@ scenarios:
       - "Explore.Persistence/**"
     expected_verification_commands:
       - "dotnet build --configuration Release --verbosity quiet"
-      - "dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet"
+      - "dotnet test --project tests/Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet"
       - "dotnet test --project Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity quiet"
     acceptance_criteria:
       - "`EventDetailLinkPolicy` adds a `yield return` for `cancel` when status is Published and permission granted."
@@ -91,7 +99,7 @@ scenarios:
       - "AGENTS.md"
       - "docs/QUICK_REFERENCE.md"
       - "docs/ARCHITECTURE.md"
-      - ".claude/rules/application-layer.md"
+      - ".agents/rules/application-layer.md"
       - ".agents/skills/cqrs-mediatr-guidelines/SKILL.md"
       - ".agents/skills/clean-architecture-rules/SKILL.md"
     expected_paths_in_scope:
@@ -103,7 +111,7 @@ scenarios:
     expected_verification_commands:
       - "dotnet build --configuration Release --verbosity quiet"
       - "dotnet test --project Event.Application.UnitTests/Event.Application.UnitTests.csproj --configuration Release --verbosity quiet"
-      - "dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet"
+      - "dotnet test --project tests/Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet"
     acceptance_criteria:
       - "`ArchiveResourceCommand` is a record/class wrapping a DTO (not loose properties)."
       - "`ArchiveResourceCommandValidator : AbstractValidator<...>` exists and is instantiated with `new` inside the handler."
@@ -125,9 +133,9 @@ scenarios:
       - "AGENTS.md"
       - "docs/QUICK_REFERENCE.md"
       - "docs/DOMAIN.md"
-      - ".claude/rules/domain.md"
-      - ".claude/rules/efcore-persistence.md"
-      - ".claude/rules/efcore-migrations.md"
+      - ".agents/rules/domain.md"
+      - ".agents/rules/efcore-persistence.md"
+      - ".agents/rules/efcore-migrations.md"
       - ".agents/skills/dotnet-efcore-guidelines/SKILL.md"
     expected_paths_in_scope:
       - "Explore.Domain/**/*.cs"
@@ -137,7 +145,7 @@ scenarios:
     expected_verification_commands:
       - "dotnet build --configuration Release --verbosity quiet"
       - "dotnet test --project Event.Persistence.IntegrationTests/Event.Persistence.IntegrationTests.csproj --configuration Release --verbosity quiet"
-      - "dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet"
+      - "dotnet test --project tests/Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet"
     acceptance_criteria:
       - "Entity has no default values in the domain class (no `= DateTimeOffset.UtcNow` etc.)."
       - "Entity configuration uses `uuidv7()` as the PK default."
@@ -158,7 +166,7 @@ scenarios:
       - "AGENTS.md"
       - "docs/QUICK_REFERENCE.md"
       - "docs/ARCHITECTURE.md"
-      - ".claude/rules/efcore-persistence.md"
+      - ".agents/rules/efcore-persistence.md"
       - ".agents/skills/cqrs-mediatr-guidelines/SKILL.md"
       - ".agents/skills/dotnet-efcore-guidelines/SKILL.md"
     expected_paths_in_scope:
@@ -188,7 +196,7 @@ scenarios:
       - "AGENTS.md"
       - "docs/QUICK_REFERENCE.md"
       - "docs/BLAZOR.md"
-      - ".claude/rules/blazor-client.md"
+      - ".agents/rules/blazor-client.md"
       - ".agents/skills/blazor-ui-conventions/SKILL.md"
       - ".agents/skills/auth-patterns/SKILL.md"
     expected_paths_in_scope:
@@ -202,7 +210,7 @@ scenarios:
     expected_verification_commands:
       - "dotnet build --configuration Release --verbosity quiet"
       - "dotnet test --project Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration Release --verbosity quiet"
-      - "dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet"
+      - "dotnet test --project tests/Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet"
     acceptance_criteria:
       - 'Button rendering is guarded by `@if (Event.HasHalLink("edit"))` or equivalent helper.'
       - "No reference to `IsInRole`, `User.Claims`, or `RoleHelper.CanManage` in the component."
@@ -222,7 +230,7 @@ scenarios:
       - "docs/QUICK_REFERENCE.md"
       - "docs/SECURITY-MODEL."
       - "docs/AUTHORIZATION.md"
-      - ".claude/rules/blazor-server.md"
+      - ".agents/rules/blazor-server.md"
       - ".agents/skills/auth-patterns/SKILL.md"
       - ".agents/skills/blazor-bff-patterns/SKILL.md"
     expected_paths_in_scope:
@@ -259,7 +267,7 @@ scenarios:
       - "Event.Architecture.Tests/**/*AuthorizationParityTests*.cs"
     expected_verification_commands:
       - "dotnet build --configuration Release --verbosity quiet"
-      - "dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet"
+      - "dotnet test --project tests/Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet"
       - "dotnet test --project Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity quiet"
     acceptance_criteria:
       - "New Cerbos resource policy YAML validates against Cerbos schema."
@@ -285,8 +293,8 @@ scenarios:
       - "docs/SECRETS.md"
       - "docs/CONFIGURATION.md"
       - "docs/SELF_HOSTING.md"
-      - ".claude/rules/api-controllers.md"
-      - ".claude/rules/blazor-server.md"
+      - ".agents/rules/api-controllers.md"
+      - ".agents/rules/blazor-server.md"
       - ".agents/skills/auth-patterns/SKILL.md"
       - ".agents/skills/blazor-bff-patterns/SKILL.md"
       - ".agents/skills/clean-architecture-rules/SKILL.md"
@@ -311,7 +319,7 @@ scenarios:
       - "dotnet test --project Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity quiet"
       - "dotnet test --project Explore.Blazor.IntegrationTests/Explore.Blazor.IntegrationTests.csproj --configuration Release --verbosity quiet"
       - "dotnet test --project Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration Release --verbosity quiet"
-      - "dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet"
+      - "dotnet test --project tests/Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet"
     acceptance_criteria:
       - "Application owns DTOs, commands, validators, and service contracts; Infrastructure owns provider HTTP/Admin API details."
       - "The one-time admin credential is passed only through the active request/job and is never persisted or returned."
@@ -343,14 +351,14 @@ scenarios:
       - "dev/active/webhook-delivery-redesign/webhook-delivery-redesign-context.md"
       - "dev/active/webhook-delivery-redesign/webhook-delivery-redesign-plan.md"
       - "dev/active/webhook-delivery-redesign/webhook-delivery-redesign-tasks.md"
-      - ".claude/rules/domain.md"
-      - ".claude/rules/application-layer.md"
-      - ".claude/rules/efcore-persistence.md"
-      - ".claude/rules/efcore-migrations.md"
-      - ".claude/rules/api-controllers.md"
-      - ".claude/rules/api-hateoas.md"
-      - ".claude/rules/blazor-server.md"
-      - ".claude/rules/blazor-client.md"
+      - ".agents/rules/domain.md"
+      - ".agents/rules/application-layer.md"
+      - ".agents/rules/efcore-persistence.md"
+      - ".agents/rules/efcore-migrations.md"
+      - ".agents/rules/api-controllers.md"
+      - ".agents/rules/api-hateoas.md"
+      - ".agents/rules/blazor-server.md"
+      - ".agents/rules/blazor-client.md"
       - ".agents/skills/clean-architecture-rules/SKILL.md"
       - ".agents/skills/outbox-pattern/SKILL.md"
       - ".agents/skills/auth-patterns/SKILL.md"
@@ -419,12 +427,12 @@ scenarios:
       - "dev/active/registration-data-collection/registration-data-collection-plan.md"
       - "dev/active/registration-data-collection/registration-data-collection-context.md"
       - "dev/active/registration-data-collection/registration-data-collection-tasks.md"
-      - ".claude/rules/domain.md"
-      - ".claude/rules/application-layer.md"
-      - ".claude/rules/efcore-persistence.md"
-      - ".claude/rules/api-controllers.md"
-      - ".claude/rules/api-hateoas.md"
-      - ".claude/rules/blazor-client.md"
+      - ".agents/rules/domain.md"
+      - ".agents/rules/application-layer.md"
+      - ".agents/rules/efcore-persistence.md"
+      - ".agents/rules/api-controllers.md"
+      - ".agents/rules/api-hateoas.md"
+      - ".agents/rules/blazor-client.md"
       - ".agents/skills/clean-architecture-rules/SKILL.md"
       - ".agents/skills/cqrs-mediatr-guidelines/SKILL.md"
       - ".agents/skills/dotnet-efcore-guidelines/SKILL.md"

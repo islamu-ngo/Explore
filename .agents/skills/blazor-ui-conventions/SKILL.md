@@ -1,24 +1,12 @@
 ---
 name: blazor-ui-conventions
-description: Apply Blazor and MudBlazor v9 conventions for render modes, dialogs, HAL-driven actions, theming, and component communication.
+description: "Load for Blazor/MudBlazor component or page changes involving render modes, dialogs, parameters/events, HAL-gated actions, generated API clients, theming, or component tests; add accessibility or CSS-isolation skills only when those concerns are touched."
 type: pattern
 enforcement: suggest
 priority: high
 ---
 <!-- ABOUTME: Blazor UI conventions for Razor components, MudBlazor v9 usage, render modes, HAL-driven affordances, and shared design-system wrappers. -->
 <!-- ABOUTME: Keeps Explore.Blazor and Explore.Blazor.Client aligned with InteractiveAuto, wrapper components, immutable state flows, and BFF-safe UI behavior. -->
-
-## Purpose
-Use this skill when editing Razor components, Blazor client code, dialogs, render-mode interactions, or shared UI wrappers. It keeps the client aligned with MudBlazor v9, HAL affordances, and the design-token system.
-
-## When to Load
-- Keywords: Blazor, Razor, MudBlazor, render mode, dialog, state, theme, wrapper component, HAL link.
-- File patterns: `**/*.razor`, `**/*.razor.cs`, `Explore.Blazor.Client/**/*.cs`, `Explore.Blazor/**/*.cs`.
-- Intent IDs: `blazor-component-affordance`, `add-hal-link`.
-
-## When NOT to Load
-- Not for Blazor authentication or BFF transport issues; use [../blazor-bff-patterns/SKILL.md](../blazor-bff-patterns/SKILL.md) and [../auth-patterns/SKILL.md](../auth-patterns/SKILL.md).
-- Not for CSS-only edits where component structure and render-mode rules are unchanged; use [../blazor-css-isolation/SKILL.md](../blazor-css-isolation/SKILL.md).
 
 ## Must-Read Docs
 - [../../../docs/BLAZOR.md](../../../docs/BLAZOR.md)
@@ -76,9 +64,9 @@ public sealed class EventActions(IDialogService dialogService)
 ```
 
 ## Verification Hooks
-- `dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet --filter FullyQualifiedName~Event.Architecture.Tests.BlazorClientArchitectureTests`
-- `dotnet test --project Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration Release --verbosity quiet`
-- `dotnet test --project Explore.Blazor.IntegrationTests/Explore.Blazor.IntegrationTests.csproj --configuration Release --verbosity quiet`
+- `dotnet test --project tests/Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet -- --treenode-filter "/*/*/BlazorClientArchitectureTests/*" --minimum-expected-tests 1 --no-progress --maximum-parallel-tests 1`
+- `dotnet test --project tests/Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration Release --verbosity quiet`
+- `dotnet test --project tests/Explore.Blazor.IntegrationTests/Explore.Blazor.IntegrationTests.csproj --configuration Release --verbosity quiet`
 
 ## Related Skills
 - [../blazor-bff-patterns/SKILL.md](../blazor-bff-patterns/SKILL.md)

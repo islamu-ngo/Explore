@@ -1,24 +1,12 @@
 ---
 name: cqrs-mediatr-guidelines
-description: Apply project CQRS conventions for commands, queries, handlers, validators, caching, and specification-driven reads.
+description: "Load for MediatR/CQRS commands, queries, handlers, validators, pipeline behaviors, cache invalidation, idempotency, or specification-driven reads in `Explore.Application`; not for controller-only or repository-only edits."
 type: pattern
 enforcement: suggest
 priority: high
 ---
 <!-- ABOUTME: CQRS and MediatR guidance for commands, queries, handlers, validators, caching, and specification usage. -->
 <!-- ABOUTME: Keeps Explore.Application handlers thin, entity-first, cancellation-aware, and aligned with repository and response contracts. -->
-
-## Purpose
-Use this skill when shaping Application-layer requests, handlers, validators, and response contracts. It keeps MediatR flows predictable and consistent with repository, caching, and DTO-mapping rules.
-
-## When to Load
-- Keywords: command, query, handler, MediatR, CQRS, validator, cache invalidation, specification.
-- File patterns: `**/*Command.cs`, `**/*Query.cs`, `**/*Handler.cs`, `**/*Validator.cs`, `Explore.Application/**/*.cs`.
-- Intent IDs: `add-cqrs-handler`, `add-get-endpoint`, `add-write-endpoint`, `update-repository-query`.
-
-## When NOT to Load
-- Not for pure Domain-model questions where layer ownership is the real concern; use [../clean-architecture-rules/SKILL.md](../clean-architecture-rules/SKILL.md).
-- Not for pure Persistence migrations, repository configuration, or DbContext work; use [../dotnet-efcore-guidelines/SKILL.md](../dotnet-efcore-guidelines/SKILL.md).
 
 ## Must-Read Docs
 - [../../../docs/ARCHITECTURE.md](../../../docs/ARCHITECTURE.md)
@@ -70,8 +58,8 @@ IQuerySpecification<Event> spec = EventQuerySpecification.Create()
 ```
 
 ## Verification Hooks
-- `dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet --filter FullyQualifiedName~Event.Architecture.Tests.CqrsPatternTests`
-- `dotnet test --project Event.Application.UnitTests/Event.Application.UnitTests.csproj --configuration Release --verbosity quiet`
+- `dotnet test --project tests/Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet -- --treenode-filter "/*/*/CqrsPatternTests/*" --minimum-expected-tests 1 --no-progress --maximum-parallel-tests 1`
+- `dotnet test --project tests/Event.Application.UnitTests/Event.Application.UnitTests.csproj --configuration Release --verbosity quiet`
 - `dotnet build --configuration Release --verbosity quiet`
 
 ## Related Skills

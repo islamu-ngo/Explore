@@ -1,7 +1,7 @@
 ---
 name: blazor-css-isolation
-description: Blazor CSS isolation patterns with BEM methodology. Covers component.razor.css scoped styling, ::deep selector for child components, and BEM class naming conventions.
-type: ui
+description: "Load when editing Blazor `.razor.css`, scoped selectors, `::deep`, BEM class names, RTL/logical CSS properties, or styling nested MudBlazor components; not for global design tokens or non-Blazor CSS."
+type: pattern
 enforcement: suggest
 priority: high
 ---
@@ -14,13 +14,6 @@ ABOUTME: Read referenced resources before applying.
 > **Project-Agnostic CSS Isolation Patterns for Blazor**
 >
 > Placeholders use `{Placeholder}` syntax - see [docs/TEMPLATE_GLOSSARY.md](../../../docs/TEMPLATE_GLOSSARY.md).
-
-## Purpose
-Component‑scoped CSS with BEM; `::deep` only when required.
-
-## When This Skill Activates
-- Keywords: css isolation, scoped css, razor.css, ::deep, BEM, @layer, container queries, CSS nesting, oklch
-- File patterns: `**/*.razor.css`, `**/*.razor`, `**/wwwroot/css/*.css`
 
 ## Non‑Inferable Rules (Must Follow)
 - `.razor.css` file must match component name (colocated).

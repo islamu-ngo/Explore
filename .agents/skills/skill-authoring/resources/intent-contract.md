@@ -13,7 +13,7 @@ Primary files are:
 
 - `.agents/skills/<skill-name>/SKILL.md`
 - `.agents/skills/<skill-name>/resources/*.md`
-- `.claude/contract/intents.yaml`
+- `.agents/contract/intents.yaml`
 - `Event.Architecture.Tests/AgentContext*Tests.cs`
 - `dev/active/<task>/*` when an active workstream is driving the skill work
 

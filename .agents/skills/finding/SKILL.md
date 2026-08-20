@@ -1,6 +1,9 @@
 ---
 name: "finding"
-description: "Append a dated finding to dev/_journal/journal.md using the canonical template. Captures non-obvious behaviors, bug root causes, and durable insights for future sessions."
+description: "Load when asked to record/log a durable finding, or after discovering a non-obvious reusable root cause or repository behavior that should be appended to `dev/_journal/journal.md`; not for routine progress notes or facts already documented."
+type: workflow
+enforcement: suggest
+priority: medium
 ---
 
 # finding
@@ -60,7 +63,7 @@ Do NOT:
 
 ### 4. Cross-Reference (optional)
 
-If the finding closes a bug that a test should catch, add a comment in the test linking to the journal line. If it documents a pattern, consider opening an intent in `.Codex/contract/intents.yaml` or a rule in `.Codex/rules/`.
+If the finding closes a bug that a test should catch, add a comment in the test linking to the journal line. If it documents a pattern, consider opening an intent in `.agents/contract/intents.yaml` or a rule in `.agents/rules/`.
 
 ## Anti-Patterns
 

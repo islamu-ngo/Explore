@@ -1,8 +1,8 @@
 ---
 name: design-system
-description: CSS @layer architecture, 3-tier design tokens, and MudBlazor wrapper components.
-type: domain
-enforcement: enforce
+description: "Load for global UI-system changes involving CSS `@layer`, primitive/semantic/component tokens, themes, reusable MudBlazor wrappers, or design-token governance; not for one component's isolated CSS."
+type: reference
+enforcement: block
 priority: high
 ---
 
@@ -10,21 +10,6 @@ ABOUTME: CSS design system skill covering @layer architecture, design tokens, an
 ABOUTME: Enforces layer ordering, token usage, and MudBlazor wrapper patterns.
 
 # Design System
-
-## Keywords
-
-css layers, @layer, design tokens, wrapper component, AppButton, AppCard, AppTextField, AppIconButton, AppDialogShell, DialogOptionsFactory, AppearanceStyleBuilder, mudblazor override, display contents, ::deep
-
-## File Patterns
-
-- `wwwroot/css/layers.css`
-- `wwwroot/css/tokens.css`
-- `wwwroot/css/mudblazor-overrides.css`
-- `wwwroot/css/utilities.css`
-- `**/Components/Common/App*.razor`
-- `**/Components/Common/App*.razor.css`
-- `**/Helpers/AppearanceStyleBuilder.cs`
-- `**/Services/DialogOptionsFactory.cs`
 
 ## Non-Inferable Rules
 
@@ -36,15 +21,6 @@ css layers, @layer, design tokens, wrapper component, AppButton, AppCard, AppTex
 6. Typography is fluid: H1–H6 use `clamp()` between 320px and 1280px viewport widths.
 7. DialogOptionsFactory provides 4 standard presets: Small, Medium, Confirmation, Editor. Always use a preset — never create `DialogOptions` manually.
 8. AppearanceStyleBuilder has 4 background effects: None, SoftOverlay (0.24), StrongOverlay (0.40), Blur (0.18). Methods: `BuildStyle`, `BuildHeroStyle`, `BuildBannerStyle`.
-
-## Activation
-
-Load this skill when:
-- Creating or modifying CSS files in `wwwroot/css/`
-- Working on wrapper components in `Components/Common/`
-- Implementing appearance/theming features
-- Overriding MudBlazor styles
-- Creating or modifying dialog options
 
 ## Resources
 

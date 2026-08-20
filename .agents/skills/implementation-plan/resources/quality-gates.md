@@ -3,6 +3,13 @@
 
 # Quality Gates
 
+## Intake Gate (I-VSD & Grill-Me)
+
+- `islamic-value-sensitive-design/i-vsd-<task-name>.md` exists, contains `Last Updated: YYYY-MM-DD`, and is linked from the task-owned plan, context, and tasks files.
+- The I-VSD report traces applicable principles, stakeholders, provider-controlled decisions, evidence, mitigations, uncertainty, and escalation boundaries.
+- Architectural, product, failure-mode, and edge-case ambiguities were first resolved from repository evidence, then decided through `grill-me` with recommendations rather than filled with assumptions.
+- Any conditional `robin-neutral` technology or architecture comparison is recorded in plan Section 5 and remains separate from the I-VSD assessment.
+
 ## Evidence Gate
 
 - Every existing path, project, symbol, route, contract, setting, and test named in current state was verified by search and relevant file reads.
@@ -15,6 +22,7 @@
 
 - Every relevant implementation intent was captured.
 - Intent docs, skills, rules, scope, tests, docs impact, acceptance criteria, and forbidden moves are reflected in the plan.
+- The **Release & Changelog Strategy** is classified (Conventional Commit scopes, `docs/releases/changes/CHG-*.yaml` fragment requirement for high-impact/breaking changes, or explicit `Changelog: skip` trailers).
 - Security, authorization, privacy, abuse, multi-tenancy, federation, localization, accessibility, product, observability, operations, migration, and compatibility are each classified with rationale.
 - Clean Architecture ownership and API/HAL/BFF trust boundaries are explicit where applicable.
 - No compatibility shim, enforcement bypass, destructive migration, or scope exception is assumed without approval.
@@ -60,7 +68,7 @@ If this workflow skill or other agent-context infrastructure changed, also run:
 
 ```bash
 dotnet test --project tests/Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet
-git diff --check -- .agents/skills .claude/contract tests/Event.Architecture.Tests
+git diff --check -- .agents/skills .agents/contract tests/Event.Architecture.Tests
 ```
 
 Run the planned implementation test suite only during implementation, not while producing the plan. Record known baseline failures honestly in context and tasks.

@@ -13,7 +13,7 @@ Last Updated: 2026-04-24
 ## Cold-Start Sequence
 
 1. Open [`AGENTS.md`](../AGENTS.md) and follow the Contribution Contract (§1) and Cold-Start Flow (§3).
-2. Classify your task against [`.claude/contract/intents.yaml`](../.claude/contract/intents.yaml).
+2. Classify your task against [`.agents/contract/intents.yaml`](../.agents/contract/intents.yaml).
 3. Load only the files the matched intent specifies — respect `must_read_docs`, `paths_in_scope`, `paths_forbidden`, and `minimum_tests`.
 4. Follow Clean Architecture dependency direction: Domain → Application → Infrastructure → API/Blazor.
 5. Run the intent's `verification_commands` before considering the change complete.
@@ -27,14 +27,14 @@ Priority order (highest wins):
 1. [`AGENTS.md`](../AGENTS.md) §5 CRITICAL RULES
 2. [`docs/QUICK_REFERENCE.md`](../docs/QUICK_REFERENCE.md)
 3. [`docs/GOVERNANCE.md`](../docs/GOVERNANCE.md)
-4. Path-scoped rules in [`.claude/rules/`](../.claude/rules/) whose `paths:` glob matches your edit.
+4. Path-scoped rules in [`.agents/rules/`](../.agents/rules/) whose `paths:` glob matches your edit.
 5. Skills in [`.agents/skills/`](../.agents/skills/) — loaded on demand.
 
 ---
 
 ## Copilot-Specific Notes
 
-- Copilot does not auto-load `.claude/rules/*.md`. When suggesting code under `Explore.*/` or `Event.*Tests/`, manually open the matching rule file before generating multi-file changes.
+- Copilot does not auto-load `.agents/rules/*.md`. When suggesting code under `Explore.*/` or `Event.*Tests/`, retrieve the matching rule once before generating multi-file changes.
 - Inline completions that only fit `AGENTS.md §5` rules (e.g., ABOUTME header, file-scoped namespace, manual validator instantiation) are safe defaults.
 - For any change that crosses a layer (Domain → Application, Application → Persistence, etc.), stop and load the relevant skill before continuing.
 - Do not suggest:
@@ -53,6 +53,5 @@ Same as `AGENTS.md` §7 — do not duplicate here. Run via the `/check` slash co
 ## See Also
 
 - [`AGENTS.md`](../AGENTS.md) — tool-neutral entrypoint (canonical).
-- [`AGENTS.md`](../AGENTS.md) — Claude Code-specific bootloader.
 - [`docs/index.md`](../docs/index.md) — documentation navigation root.
-- [`.claude/contract/intents.yaml`](../.claude/contract/intents.yaml) — intent registry.
+- [`.agents/contract/intents.yaml`](../.agents/contract/intents.yaml) — intent registry.

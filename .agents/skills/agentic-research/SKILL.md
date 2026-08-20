@@ -1,7 +1,7 @@
 ---
 name: agentic-research
-description: Local-first research workflow for selecting the right evidence source before using official docs or external research.
-type: domain
+description: "Load when a task asks to research, verify, compare, or look up framework/package behavior, release notes, standards, RFCs, CVEs, or unfamiliar APIs; use repository evidence first, then official docs, and not for codebase navigation alone."
+type: workflow
 enforcement: suggest
 priority: high
 ---
@@ -11,16 +11,10 @@ ABOUTME: Read the linked resources before escalating beyond the repository.
 
 # Agentic Research
 
-> **Purpose**
->
-> Select the safest and most authoritative evidence source for the task. Start with this repository, escalate to official docs only when needed, and use external research sparingly and safely.
-
-## When This Skill Activates
-- Keywords: official docs, breaking change, migration, upgrade, nuget, package behavior, RFC, standard, security advisory, CVE
-- File patterns: `**/*.csproj`, `**/Directory.Packages.props`, `**/global.json`, `**/*.props`, `**/*.targets`
-
 ## Non-Inferable Rules (Must Follow)
-- Inspect the **local repository first**: code, tests, configuration, docs, and existing `.Codex` guidance outrank everything else for repo behavior.
+- Inspect the **local repository first**: code, tests, configuration, docs, and existing `.agents` guidance outrank everything else for repo behavior.
+- Route broad codebase inventories and documentation discovery to an economical read-only scout. Give exact queries and use the locations-only result cap in `.agents/CONTEXT_ENGINEERING.md`.
+- Keep a `path + heading/symbol + revision` ledger and never repeat an unchanged search or read already represented in the current context.
 - Use **official documentation tooling** for framework, library, runtime, package, or migration uncertainty.
 - Use **external research** only when the answer is not in the repo or official docs, or when you need standards, advisories, or ecosystem comparison.
 - Protect sensitive data: never paste secrets, tokens, connection strings, private tenant data, PII, or unnecessary proprietary code into external tools.
@@ -28,17 +22,12 @@ ABOUTME: Read the linked resources before escalating beyond the repository.
 - Validate relevance before continuing. If the source does not directly answer the repo question, keep searching or stop and state uncertainty.
 - Do not guess APIs, package defaults, or breaking-change details when the repo or official docs can prove them.
 
-## Activation Guidance
-- **Unfamiliar .NET / NuGet / framework API**: inspect local usage first, then use official docs.
-- **Migration or upgrade uncertainty**: compare repo config with official release notes and migration docs.
-- **Standards / RFC / advisory work**: use external research after local context is understood.
-- **Security or breaking change investigation**: verify against official docs and high-authority sources before proposing changes.
-- **Architecture comparison**: anchor the comparison in current repo constraints before looking outward.
+## Resources (Load Only For The Named Need)
+- [source-selection.md](resources/source-selection.md) - when the correct evidence tier is unclear.
+- [security-boundaries.md](resources/security-boundaries.md) - before any external query.
+- [verification-matrix.md](resources/verification-matrix.md) - when selecting verification for a changed artifact.
 
-## Resources (Read Before Applying)
-- [source-selection.md](resources/source-selection.md) - source hierarchy and escalation rules.
-- [security-boundaries.md](resources/security-boundaries.md) - safe external-tool usage and data minimization.
-- [verification-matrix.md](resources/verification-matrix.md) - proportional verification by change type.
+Do not load all resources by default. The scout returns findings and source handles, never raw files, search dumps, or copied documentation.
 
 ## Related Skills
 - `clean-architecture-rules`

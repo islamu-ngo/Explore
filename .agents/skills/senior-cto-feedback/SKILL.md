@@ -1,6 +1,6 @@
 ---
 name: senior-cto-feedback
-description: Senior CTO review workflow for repository-grounded implementation-plan workstreams used before coding.
+description: "Load when asked for blunt Senior CTO critique, approval/rejection, risk review, sequencing correction, or rewrite of an existing `dev/active/<task>` implementation plan/context/tasks workstream before coding; not for open-ended CTO advice or direct implementation."
 type: workflow
 enforcement: suggest
 priority: high
@@ -8,31 +8,13 @@ priority: high
 <!-- ABOUTME: Senior CTO review skill for repository-grounded implementation plans and active dev-doc workstreams. -->
 <!-- ABOUTME: Aligns plan critique and rewrites with the implementation-plan skill, ISLAMU Event guardrails, and self-hostable platform expectations. -->
 
-## Purpose
-Use this skill when the user wants blunt Senior CTO feedback on an implementation plan before coding starts. The primary target is the repository's `implementation-plan` workflow: `dev/active/[task-name]/[task-name]-plan.md`, `...-context.md`, and `...-tasks.md`. The goal is to decide whether the plan is executable, well-sequenced, safe for a self-hostable multi-tenant platform, and strong enough for another implementation agent to follow without rediscovering the problem.
-
-## When to Load
-- The user asks for CTO feedback, plan critique, approval/rejection, or plan rewrite.
-- The input is a `dev/active/...` workstream created with the `implementation-plan` skill.
-- The user wants stronger architecture, sequencing, security, multi-tenancy, operations, or verification expectations in a plan.
-- Breaking changes are acceptable, and the main question is whether the proposed direction is worth implementing.
-- The user wants the existing `plan.md`, `context.md`, and `tasks.md` improved before implementation.
-
-## When NOT to Load
-- Not for direct production implementation unless the user separately asks to implement.
-- Not for a vague product idea with no implementation plan; recommend creating an `implementation-plan` workstream first.
-- Not for narrow syntax or framework-doc questions where official docs are the primary need.
-- Not for a pure PRD or discovery artifact that is intentionally pre-implementation.
-- Not for generic praise; this skill is for decisive critique and correction.
-
 ## Must-Read Docs
 - [../../../AGENTS.md](../../../AGENTS.md)
-- [../../../docs/QUICK_REFERENCE.md](../../../docs/QUICK_REFERENCE.md)
-- [../../../docs/GOVERNANCE.md](../../../docs/GOVERNANCE.md)
-- [../../../docs/OPERATIONS.md](../../../docs/OPERATIONS.md)
-- [../../../dev/active/README.md](../../../dev/active/README.md)
+- [../../../.agents/CONTEXT_ENGINEERING.md](../../../.agents/CONTEXT_ENGINEERING.md)
 - [../implementation-plan/SKILL.md](../implementation-plan/SKILL.md)
 - [../implementation-plan/resources/quality-gates.md](../implementation-plan/resources/quality-gates.md)
+- [../i-vsd/SKILL.md](../i-vsd/SKILL.md)
+- [../grill-me/SKILL.md](../grill-me/SKILL.md)
 - [resources/input-contract.md](resources/input-contract.md)
 - [resources/islamu-event-guardrails.md](resources/islamu-event-guardrails.md)
 - [resources/review-rubric.md](resources/review-rubric.md)
@@ -42,11 +24,11 @@ Use this skill when the user wants blunt Senior CTO feedback on an implementatio
 - [resources/plan-rewrite-guidance.md](resources/plan-rewrite-guidance.md)
 
 ## Top 5 Invariants
-1. Review the entire `implementation-plan` workstream, not just the main plan; `plan.md`, `context.md`, and `tasks.md` must agree.
+1. Verify I-VSD compliance across the entire workstream: `plan.md`, `context.md`, and `tasks.md` must agree and link a valid `islamic-value-sensitive-design/i-vsd-*.md` report that addresses provider-controlled moral risks; block approval when the deliverable or traceability is missing.
 2. Distinguish verified codebase reality from plan aspiration. Do not approve claims you did not verify.
-3. Favor simpler, more operable, better-tested, more explicit designs over compatibility with weak pre-v1 architecture.
-4. Protect tenant isolation, authorization boundaries, and self-hosting/operator clarity before convenience or UI polish.
-5. If the plan is directionally right but too large or mixed, require a sharper sequence or PR split instead of giving a soft approval.
+3. Apply the `grill-me` Socratic stress test to the plan's technical claims, including rollback safety, tenant boundaries, query-performance thresholds, operator clarity, failure modes, and edge cases; unresolved material answers block approval.
+4. Favor simpler, more operable, better-tested designs while protecting tenant isolation, authorization boundaries, and self-hosting clarity before convenience or UI polish.
+5. Require a sharper sequence or PR split for large or mixed plans; when vendor or pattern dogmatism hides a material fork, invoke `robin-neutral` to steel-man alternatives before deciding.
 
 ## Top 5 Anti-Patterns
 1. Reviewing only the narrative architecture while ignoring stale or vague `context.md` and `tasks.md`.
@@ -75,6 +57,9 @@ The target architecture is reasonable, but I would not approve this as one works
 - `dotnet test --project tests/Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet`
 
 ## Related Skills
+- [../i-vsd/SKILL.md](../i-vsd/SKILL.md)
+- [../grill-me/SKILL.md](../grill-me/SKILL.md)
+- [../robin-neutral/SKILL.md](../robin-neutral/SKILL.md)
 - [../cto-consultation/SKILL.md](../cto-consultation/SKILL.md)
 - [../clean-architecture-rules/SKILL.md](../clean-architecture-rules/SKILL.md)
 - [../cqrs-mediatr-guidelines/SKILL.md](../cqrs-mediatr-guidelines/SKILL.md)

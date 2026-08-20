@@ -10,19 +10,19 @@ Use this workflow when a task asks for a new `.agents/skills/<name>/SKILL.md` or
 ## Sequence
 
 1. Classify the task as `create-agent-context-skill` when the work changes `.agents/skills/**`, skill resources, skill schema tests, or skill-related intent routing.
-2. Read `AGENTS.md`, `docs/QUICK_REFERENCE.md`, `docs/DOCUMENTATION_STYLE_GUIDE.md`, `docs/OPERATIONS.md`, `docs/TESTING.md`, `.agents/skills/_SKILL_SCHEMA.md`, and any active `dev/active/*` plan/context/tasks for the skill.
+2. Reuse injected `AGENTS.md`, resolve one intent, read `_SKILL_SCHEMA.md` once, then retrieve only the relevant headings from canonical docs and the task-owned current context. Do not preload plan/context/tasks together.
 3. Confirm whether an existing skill folder exists before creating files; do not overwrite unrelated work without reading it.
-4. Extract durable knowledge into categories: activation triggers, non-goals, invariants, anti-patterns, examples, verification hooks, and resource topics.
-5. Draft `SKILL.md` as the short router, not the full textbook.
+4. Write the `description` first: concrete positive triggers plus a compact exclusion when a neighboring skill could match.
+5. Draft the loaded body from non-inferable rules, ordered workflow steps, just-in-time resources, and realistic verification; delete activation prose and generic advice.
 6. Create `resources/index.md` plus focused resource files for depth, templates, checklists, decision frameworks, and domain-specific heuristics.
 7. Add or update the intent manifest only when the skill changes routing or should become a first-class task category.
 8. Run schema, link, intent-manifest, and diff-check verification before claiming completion.
-9. Update active dev docs with what changed, what was verified, and what remains if the work came from a `dev/active/*` workstream.
+9. Update the task-owned `*-context.md` with what changed, verification, next action, and risks only when the work already has a substantial active workstream.
 
 ## Quality Bar
 
-A good skill lets another agent execute the workflow from a cold start. It should state what to load, what to avoid, what is non-negotiable, where deeper material lives, and how to verify the result.
+A good description makes the load decision correctly without opening the file. A good body changes execution after loading without restating the task or repository-wide rules.
 
 ## Handoff Rule
 
-If context is getting large, update `dev/active/<task>/<task>-context.md` before compression or handoff. Preserve exact file paths, commands run, validation results, and remaining risks.
+If context is getting large, update `dev/active/<task>/<task>-context.md` before compression or handoff. Preserve exact evidence locations, commands and results, decisions, next action, and remaining risks; never paste source or conversation history.

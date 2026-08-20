@@ -41,6 +41,17 @@ CTO review implication:
 - review whether the workstream is resumable and executable by another agent;
 - challenge missing current-state evidence, stale context, or vague task breakdown as real planning defects.
 
+## Intake And Adversarial Review Gate
+
+Before approval:
+
+- verify that `plan.md`, `context.md`, and `tasks.md` link the same dated `islamic-value-sensitive-design/i-vsd-*.md`;
+- block approval when provider-controlled moral risks, evidence limits, mitigations, or scholarly escalation boundaries are missing;
+- apply the `grill-me` mindset to rollback safety, tenant boundaries, query-performance thresholds, operator clarity, dependency failures, and edge cases;
+- resolve challenges from repository evidence first, then require an explicit decision for every remaining material fork instead of accepting an assumption.
+
+Trigger `robin-neutral` when a plan treats one vendor, library, or architectural pattern as inevitable without examining a credible alternative. Require a technical trade-off matrix and rejected-approach rationale. Keep this steelmanning strictly separate from I-VSD moral/provider analysis.
+
 ## Architectural Baseline
 
 The repository uses:

@@ -4,6 +4,7 @@ description: Implements and reviews authentication, authorization, tenant isolat
 type: domain
 enforcement: suggest
 priority: critical
+model_tier: advanced
 tools: Read, Write, Edit, Bash, Glob, Grep
 ---
 

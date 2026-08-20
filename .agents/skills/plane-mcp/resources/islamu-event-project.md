@@ -2,7 +2,7 @@ ISLAMU Event Project (`EVENT`)
 
 > **Status:** DRAFT v1 — pending deduplication refinement against existing Plane work items.
 > **Generated:** 2026-06-14
-> **Source basis:** `docs/PROJECT.md`, `docs/CODEBASE_STRUCTURE.md`, `docs/index.md`, `README.md`, `dev/_journal/journal.md`, `AGENTS.md`, `.claude/contract/intents.yaml`.
+> **Source basis:** `docs/PROJECT.md`, `docs/CODEBASE_STRUCTURE.md`, `docs/index.md`, `README.md`, `dev/_journal/journal.md`, `AGENTS.md`, `.agents/contract/intents.yaml`.
 > **Scope:** Every implemented capability surfaced by documentation analysis (no deep source-code reading, per user instruction).
 > **Author:** Sisyphus (OhMyOpenCode), under user authorization.
 

@@ -4,6 +4,7 @@ description: Performs independent, read-only review of a diff or PR for correctn
 type: review
 enforcement: inform
 priority: critical
+model_tier: advanced
 tools: Read, Bash, Glob, Grep
 ---
 

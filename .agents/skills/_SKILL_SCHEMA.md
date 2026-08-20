@@ -1,11 +1,10 @@
 <!-- ABOUTME: Canonical schema every SKILL.md in this repo must satisfy. -->
-<!-- ABOUTME: Enforced by Event.Architecture.Tests.AgentContextSchemaTests. -->
+<!-- ABOUTME: Defines routing-first descriptions, progressive disclosure, and practical skill content. -->
 
 # Skill Schema (Authoritative)
 
-> Every `.agents/skills/*/SKILL.md` MUST conform to this schema.
-> `AgentContextSchemaTests` validates structure at build time.
-> Skills that intentionally skip migration must be listed in the test's `SkipSchemaMigration` set.
+> Every `.agents/skills/*/SKILL.md` MUST conform when it is created or materially revised.
+> The catalog exposes only `name` and `description` before loading, so the description owns the complete activation decision.
 
 ## 1. File Location
 
@@ -21,83 +20,76 @@
 ```yaml
 ---
 name: <kebab-case>           # Must match folder name
-description: <one sentence>  # When this skill applies; triggers
+description: <routing sentence>  # Concrete tasks/terms that should load it; add exclusions when nearby skills overlap
 type: guardrail | pattern | reference | workflow
 enforcement: block | suggest | inform
 priority: critical | high | medium | low
 ---
 ```
 
-All five fields are **required**. `AgentContextSchemaTests` asserts presence and validates `type`/`enforcement`/`priority` enums.
+All five fields are **required** for project-authored skills. The description is routing metadata, not a summary or marketing sentence.
 
-## 3. Required Sections (in order)
+### Description contract
 
-### `## Purpose` (≤3 sentences)
+- Name the user phrases, artifacts, technologies, failure modes, or file patterns that make the skill useful.
+- Include a compact `Do not use for ...` boundary when another skill is an easy false positive.
+- Prefer terms users actually request (`N+1`, `MCP server`, `PR review`) over abstract labels (`quality`, `best practices`).
+- Do not start with vague verbs such as “apply,” “guide,” or “support” unless the objects and triggers are concrete.
+- Do not repeat the description's routing logic inside the loaded body.
 
-What this skill protects, enforces, or accelerates. No stack context, no tech overview — point to AGENTS.md for that.
+## 3. Loaded Content
 
-### `## When to Load`
+The body exists to change execution after the skill has loaded. Keep only instructions the agent would not reliably infer from the task, repository contract, or normal engineering practice.
 
-Bulleted list. Triggers are explicit: keywords, file paths, intent IDs. If a task matches any line, the skill loads.
+### `## Rules`
 
-### `## When NOT to Load`
+Non-inferable constraints, defaults, stop conditions, or decision rules. Use descriptive headings for focused rule groups when that is clearer.
 
-Bulleted list. Explicit negatives to prevent context bloat. Example: "Not for pure domain-model questions — use `domain` rule instead."
+### `## Workflow` (only when order matters)
 
-### `## Must-Read Docs`
+The shortest executable sequence. Omit generic steps such as “understand the task,” “write code,” or “follow best practices.”
 
-Links only. No prose. Relative paths from repo root (`docs/ARCHITECTURE.md`, `docs/QUICK_REFERENCE.md`, etc.). Every link MUST resolve (`AgentContextLinkTests` verifies).
+### `## Resources` (only when deeper material exists)
 
-### `## Top 5 Invariants`
+Links with a one-line retrieval condition. Never say to load every resource by default.
 
-Numbered list, exactly 5 items. Each invariant is a single sentence describing a non-inferable rule. Anchor terminology to `docs/DOCUMENTATION_STYLE_GUIDE.md` baseline (Instance, Tenant, Organization, BFF, Client, API).
+### `## Verification`
 
-### `## Top 5 Anti-Patterns`
+Exact commands, observable checks, or output requirements that catch realistic failures. Omit checks unrelated to the skill's output.
 
-Numbered list, exactly 5 items. Each item: the anti-pattern name + one-sentence consequence. No long justifications — link to docs for context.
-
-### `## Minimal Examples`
-
-Optional but recommended. Use fenced code blocks. Keep to **≤40 lines per example**. Show the shortest code that illustrates correct usage. Avoid full-file examples.
-
-### `## Verification Hooks`
-
-Bulleted list of exact commands or test-project names that catch violations. Example: `dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj`. Commands must be copy-pasteable.
-
-### `## Related Skills`
-
-Bulleted cross-reference to sibling skills. Minimum 1 entry. Use relative paths.
+Section names beyond these are allowed when they communicate the domain more directly. `Purpose`, `When to Load`, `When NOT to Load`, arbitrary “Top 5” lists, and a duplicated tech overview are discouraged because they spend post-load context on routing or ceremony.
 
 ## 4. File Length
 
-- **Target**: 60–180 lines total.
-- **Hard max**: 250 lines. If longer, split into `resources/*.md` referenced from Must-Read Docs.
+- **Target**: 30–120 lines total.
+- **Hard max**: 250 lines. If longer, split into `resources/*.md` routed from `## Resources`.
+- **Initial-load target**: 6 KB. Larger existing skills are migration debt and must not grow when next modified.
 
-## 5. Forbidden Content
+## 5. Progressive Disclosure And Reuse
 
+- Follow [Context Engineering](../CONTEXT_ENGINEERING.md).
+- `SKILL.md` is the only default load. Resource indexes route deeper retrieval; resource files load only for the named unresolved decision.
+- Do not reread `AGENTS.md`, the resolved intent, a skill, rule, document heading, or source symbol already present at the same revision.
+- Prefer links and exact headings over copied canonical rules. Repetition with different wording is still duplication.
+- Broad read-only discovery belongs to an economical scout using the cap in [Context Engineering](../CONTEXT_ENGINEERING.md); the main agent owns decisions and synthesis.
+
+## 6. Forbidden Content
+
+- Activation sections or trigger lists already represented in `description`.
 - Stack/tech-overview paragraphs (reference `AGENTS.md`).
 - Duplicated invariants from `docs/QUICK_REFERENCE.md` (link, don't copy).
+- Fixed-count lists created to satisfy a shape rather than the skill's real decisions.
 - ASCII diagrams (per `docs/DOCUMENTATION_STYLE_GUIDE.md`).
 - "Why clean architecture matters" prose or similar meta-content.
+- Unconditional resource cascades that require every linked document before the task has identified a decision that needs it.
 
-## 6. Enforcement
+## 7. Enforcement
 
-`Event.Architecture.Tests.AgentContextSchemaTests` checks:
-- YAML frontmatter present with all 5 required fields.
-- All 8 required sections present in the documented order.
-- `Top 5 Invariants` and `Top 5 Anti-Patterns` each contain exactly 5 numbered items.
-- Must-Read Docs links resolve (via `AgentContextLinkTests`).
-- Total line count ≤ 250.
+`tests/Event.Architecture.Tests/AgentContextPolicyTests.cs` enforces canonical routes, agent model tiers, context-budget keys, and removal of generic dev context files. Routing quality remains a review judgment: tests can catch missing metadata and size limits, but cannot prove that a description selects the right tasks.
 
-Skills listed in the test's `SkipSchemaMigration` set are grandfathered but flagged as migration debt.
+## 8. Migration Debt (v1)
 
-## 7. Migration Debt (v1)
-
-All skills are schema-enforced unless their folder name appears in `AgentContextSchemaTests.SkipSchemaMigration`.
-
-New skills MUST NOT be added to the skip list. If a new skill needs more depth than the line cap allows, keep `SKILL.md` compact and move the detail into `resources/*.md`.
-
-`AgentContextLinkTests` also checks links for all schema-enforced skills and their resource files, so every resource link must resolve before the architecture tests pass.
+Existing nonconforming skills are migration debt and must not grow. New or changed skills follow this schema without skip-list exceptions. If a skill needs more depth than the line cap allows, keep `SKILL.md` compact and move detail into `resources/*.md`.
 
 ## Related
 

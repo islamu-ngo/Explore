@@ -145,7 +145,7 @@ When legal/regulatory conclusions depend on jurisdiction or current law, recomme
 
 Consultation may propose implementation slices, but it should not silently bypass the Contribution Contract. If the user asks to proceed with implementation:
 
-1. classify the implementation intent in `.claude/contract/intents.yaml`;
+1. classify the implementation intent in `.agents/contract/intents.yaml`;
 2. load the relevant docs, rules, and implementation skills;
 3. keep changes within scoped paths;
 4. update docs where the intent requires it;

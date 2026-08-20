@@ -1,29 +1,12 @@
 ---
 name: cto-consultation
-description: Professional CTO consultation workflow for feature strategy, architecture direction, infrastructure choices, market positioning, and enterprise self-hosting tradeoffs.
+description: "Load when the user asks for CTO advice on feature strategy, architecture direction, build-vs-buy, infrastructure, market positioning, roadmap, self-hosting, cost, or organizational tradeoffs; not for reviewing an existing implementation-plan workstream."
 type: workflow
 enforcement: suggest
 priority: high
 ---
 <!-- ABOUTME: CTO consultation skill for product, architecture, infrastructure, and market-facing feature decisions. -->
 <!-- ABOUTME: Grounds strategic advice in the ISLAMU Event architecture, governance docs, and self-hosting constraints. -->
-
-## Purpose
-Use this skill when the user wants strategic or architectural consultation rather than immediate implementation. It turns open-ended product, infrastructure, UX, market, compliance, or enterprise-readiness questions into a grounded recommendation with options, tradeoffs, risks, and a decision path.
-
-## When to Load
-- Keywords: CTO, consult, architecture decision, product direction, enterprise, self-hosting, market, competition, best practice, legal, juridical, infrastructure decision.
-- Feature questions where the user asks whether to build, defer, make optional, make required, expose in UI, or choose between alternatives.
-- Examples: scheduler status-surface optionality, organizer analytics dashboard, event discovery vs organization-centric UX, RabbitMQ/Cerbos/MinIO/provider choices, federation roadmap, extensibility packs.
-- Any consulting answer that must balance small community deployments, enterprise deployments, white-label tenants, and the public ISLAMU-hosted instance.
-- Use together with implementation skills if the consultation becomes a concrete code change.
-
-## When NOT to Load
-- Not for narrow code fixes where the desired behavior is already specified.
-- Not for pure PRDs where the user explicitly asks only for a requirements document; use [../prd/SKILL.md](../prd/SKILL.md).
-- Not for pure framework/API syntax questions where the answer is in official docs.
-- Not for legal advice as a substitute for counsel; provide implementation conventions and risk framing only.
-- Not for market or competitor claims unless current external evidence can be checked and dated.
 
 ## Must-Read Docs
 - [../../../AGENTS.md](../../../AGENTS.md)
@@ -71,8 +54,7 @@ Quartz.NET is the single internal scheduler, including for Basic Dispatch Mode. 
 ```
 
 ## Verification Hooks
-- `dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet --filter FullyQualifiedName~Event.Architecture.Tests.AgentContextSchemaTests`
-- `dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet --filter FullyQualifiedName~Event.Architecture.Tests.AgentContextLinkTests`
+- `dotnet test --project tests/Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet -- --treenode-filter "/*/*/AgentContextPolicyTests/*" --minimum-expected-tests 1 --no-progress --maximum-parallel-tests 1`
 - `dotnet build --configuration Release --verbosity quiet`
 
 ## Related Skills

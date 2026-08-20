@@ -15,7 +15,7 @@ Last Updated: 2026-04-24
 
 | File | Purpose |
 |---|---|
-| [`cold-start-tasks.yaml`](cold-start-tasks.yaml) | 8 canonical scenarios with acceptance criteria and expected intent classification |
+| [`cold-start-tasks.yaml`](cold-start-tasks.yaml) | 11 canonical scenarios with acceptance criteria, context budgets, and expected intent classification |
 
 The YAML structure is documented by the scenario format below.
 
@@ -36,23 +36,27 @@ Benchmarks are **manual** today. A future enhancement may wire them into CI as a
    - Did it make changes only inside `expected_paths_in_scope`?
    - Did it run the `expected_verification_commands`?
    - Does the final diff pass the scenario's `acceptance_criteria`?
+   - First-turn input tokens, maximum live context, cumulative input/cache-read tokens, and tool-result bytes.
+   - Duplicate unchanged bytes by content hash, full-file reads, full intent-registry reads, and scout result sizes.
 5. Mark the scenario `PASS` / `FAIL` / `PARTIAL` in a benchmark-report file under `dev/_journal/benchmark-reports/YYYY-MM-DD-<scenario-id>.md`.
 
 ### Scoring
 
 | Outcome | Meaning |
 |---|---|
-| `PASS` | All acceptance criteria met, correct intent classification, tests green. |
-| `PARTIAL` | Correct classification but missed 1 acceptance criterion OR correct output but misclassified intent. |
+| `PASS` | All acceptance criteria met, correct intent classification, tests green, and every top-level `context_budget` limit satisfied. |
+| `PARTIAL` | Correct result with one acceptance miss or one context-budget breach that did not affect correctness. |
 | `FAIL` | Incorrect classification OR missed ≥ 2 acceptance criteria OR tests red. |
 
-Target: ≥ 6 of 8 scenarios `PASS` on first attempt. If < 6 pass, the context system needs repair (see §4).
+Target: ≥ 9 of 11 scenarios `PASS` on first attempt. If < 9 pass, the context system needs repair (see §4).
+
+Context is product quality: prompt caching may reduce cost but does not satisfy a live-context or duplicate-content budget.
 
 ---
 
 ## 3. Scenarios (v1)
 
-Eight scenarios covering the primary contribution surfaces:
+Eleven scenarios covering the primary contribution surfaces:
 
 | ID | Intent Mapped | Acceptance Summary |
 |---|---|---|
@@ -64,6 +68,9 @@ Eight scenarios covering the primary contribution surfaces:
 | `blazor-component-affordance` | `blazor-component-affordance` | MudBlazor v9 Edit button gated by `dto.HasHalLink("edit")` |
 | `bff-auth-bug` | `bff-auth-bug` | Fix a UserId fallback failure returning 401 on valid Keycloak token |
 | `cerbos-policy-change` | `cerbos-policy-change` | New Cerbos policy file + `AuthorizationParityTests` passes |
+| `external-infrastructure-bootstrap` | `external-infrastructure-bootstrap` | Setup-time external infrastructure onboarding with bounded secrets and recovery evidence |
+| `webhook-delivery-redesign` | `webhook-delivery-redesign` | Provider-neutral durable webhook delivery and reconciliation contract |
+| `registration-data-collection` | `registration-data-collection` | Cross-layer registration workflow with tenant, durability, API/HAL, and provider boundaries |
 
 See [`cold-start-tasks.yaml`](cold-start-tasks.yaml) for the full scenario schema (prompt, expected intent, paths, tests, acceptance criteria).
 
@@ -75,14 +82,16 @@ A failing benchmark is a **signal**, not a bug. Triage in this order:
 
 1. **Intent misclassification** → the agent picked the wrong intent from `intents.yaml` or no intent.
    - Fix: tighten `triggers` in the correct intent; add disambiguating keywords.
-2. **Missing must-read** → the agent did not load a file it needed to succeed.
-   - Fix: add the file to the intent's `must_read_docs` or the relevant skill's `Must-Read Docs`.
-3. **Out-of-scope edits** → the agent touched files outside the intent's `paths_in_scope`.
+2. **Context overflow or duplication** → the agent loaded full registries/files, repeated unchanged context, or returned raw scout output.
+   - Fix: improve intent routing, retrieve one heading/symbol, deduplicate by `path + heading/symbol + revision`, or tighten the scout output contract. Do not solve this by adding more must-reads.
+3. **Missing evidence** → a concrete decision lacked required context.
+   - Fix: add the smallest canonical heading or symbol to the intent/skill route; a whole-file must-read is the last resort.
+4. **Out-of-scope edits** → the agent touched files outside the intent's `paths_in_scope`.
    - Fix: sharpen `paths_in_scope` / `paths_forbidden` on the intent.
-4. **Skipped verification** → the agent did not run `verification_commands`.
+5. **Skipped verification** → the agent did not run `verification_commands`.
    - Fix: reinforce the verification policy in `AGENTS.md` §7 and the intent's `pr_checklist`.
-5. **Architecture violation** → the agent produced code that breaks a rule in `docs/QUICK_REFERENCE.md`.
-   - Fix: promote the rule into the matching `.claude/rules/*.md` so it auto-loads when editing that path.
+6. **Architecture violation** → the agent produced code that breaks a rule in `docs/QUICK_REFERENCE.md`.
+   - Fix: promote the rule into the matching `.agents/rules/*.md` so it auto-loads when editing that path.
 
 Record every failure in a benchmark-report file (see §2). Promote recurring failures into the journal with `PROMOTION_RULES.md` guidance.
 
@@ -103,6 +112,6 @@ To propose a refinement:
 
 ## 6. Related
 
-- [`.claude/contract/intents.yaml`](../contract/intents.yaml) — intent registry that scenarios reference.
+- [`.agents/contract/intents.yaml`](../contract/intents.yaml) — intent registry that scenarios reference.
 - [`AGENTS.md`](../../AGENTS.md) — the contract being validated.
 - [`dev/_journal/PROMOTION_RULES.md`](../../dev/_journal/PROMOTION_RULES.md) — how to promote recurring benchmark failures.

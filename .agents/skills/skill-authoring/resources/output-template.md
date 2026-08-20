@@ -14,7 +14,7 @@ Changed:
 - .agents/skills/<skill-name>/SKILL.md: compact router with activation boundaries, invariants, anti-patterns, examples, verification hooks, and related skills.
 - .agents/skills/<skill-name>/resources/index.md: resource reading map.
 - .agents/skills/<skill-name>/resources/*.md: durable checklists/templates/frameworks.
-- .claude/contract/intents.yaml: intent routing if added or updated.
+- .agents/contract/intents.yaml: intent routing if added or updated.
 - Event.Architecture.Tests/...: enforcement updates if any.
 
 Architecture:

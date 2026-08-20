@@ -83,28 +83,29 @@ Every change must answer these eight questions **before editing any file**:
 | Pattern/Skill | [`.agents/skills/`](.agents/skills/) — load relevant `SKILL.md` |
 | Build/Test | [`docs/OPERATIONS.md#verification-policy`](docs/OPERATIONS.md) |
 | UI Workflow | [`docs/BLAZOR_DEV_WORKFLOW.md`](docs/BLAZOR_DEV_WORKFLOW.md) |
-| Agent Ops | [`docs/OPERATIONS.md#ai-agent-operational-rules`](docs/OPERATIONS.md) |
+| Agent Ops | [`.agents/CONTEXT_ENGINEERING.md`](.agents/CONTEXT_ENGINEERING.md) |
 | PR Review | [`.agents/skills/review-pr/SKILL.md`](.agents/skills/review-pr/SKILL.md) |
 | Log Finding | [`.agents/skills/finding/SKILL.md`](.agents/skills/finding/SKILL.md) |
 
 ---
 
-## 7. Absolute Fetch Rule
+## 7. Targeted Fetch And Reuse Rule
 
-When a task touches a topic covered by docs / skills / rules, you **MUST open the file(s)** first.
+When a task touches a topic covered by docs, skills, or rules, retrieve the **smallest relevant heading, symbol, or bounded range once**. Follow [`.agents/CONTEXT_ENGINEERING.md`](.agents/CONTEXT_ENGINEERING.md).
 
-**Minimum required reading:**
-- This file (`AGENTS.md`)
-- Relevant `docs/*.md` (see [`docs/index.md`](docs/index.md))
-- Matching `.agents/skills/*/SKILL.md`
-- Matching `.agents/rules/*.md` for the file paths you will edit
-- [`.agents/skills/ip-clean-room/SKILL.md`](.agents/skills/ip-clean-room/SKILL.md) and [`docs/legal/IP_GOVERNANCE.md`](docs/legal/IP_GOVERNANCE.md) before external functional research, third-party design analysis, or dependency-license selection
+**Required context:**
+- Use this file from injected session context; do not reread it when it is already present.
+- Resolve only the matching entry from [`.agents/contract/intents.yaml`](.agents/contract/intents.yaml); never load the full registry into task context.
+- Load only the required headings from relevant `docs/*.md`, the matching skill routers, and matching path rules.
+- Prefer graph, outline, symbol, heading, and diff retrieval over full-file reads.
+- Reuse an in-session `path + heading/symbol + revision` ledger. Reread only after the source changes, a concrete decision lacks evidence, or contradictory evidence appears.
+- Before external functional research, third-party design analysis, or dependency selection, load the relevant sections of [`.agents/skills/ip-clean-room/SKILL.md`](.agents/skills/ip-clean-room/SKILL.md) and [`docs/legal/IP_GOVERNANCE.md`](docs/legal/IP_GOVERNANCE.md); do not load the full legal chain for ordinary official framework documentation.
 
 ---
 
 ## 8. Verification Baseline
 
-Every session must start with a green build. Every PR must leave the build and minimum tests green.
+Before the first product edit, establish the green baseline once. Do not rerun an unchanged baseline; every PR must still leave the build and minimum tests green.
 
 **Build Command:**
 ```bash
@@ -117,10 +118,10 @@ dotnet build --configuration Release --verbosity quiet
 
 ## 9. Agent Operational Baseline
 
-- **Subagents**: Prefer delegation. Index: [`.agents/agents/README.md`](.agents/agents/README.md).
-- **Memory**: Short-term in `dev/active/`, Durable in `dev/_journal/`.
+- **Subagents**: Use the lowest-cost capable model. Broad read-only discovery goes to economical scouts with the bounded output contract in [`.agents/CONTEXT_ENGINEERING.md`](.agents/CONTEXT_ENGINEERING.md); the main agent keeps decisions and synthesis. Do not delegate atomic lookups. Index: [`.agents/agents/README.md`](.agents/agents/README.md).
+- **Memory**: Resume substantial work from its task-owned `*-context.md`; do not automatically load plan/context/tasks together. Durable findings live in `dev/_journal/`.
 - **Todos**: Create immediately for multi-step tasks.
-- **Rules**: See [`docs/OPERATIONS.md#ai-agent-operational-rules`](docs/OPERATIONS.md).
+- **Context**: Follow [`.agents/CONTEXT_ENGINEERING.md`](.agents/CONTEXT_ENGINEERING.md); duplicate unchanged context is a defect.
 
 ### Final Teaching Summary Requirement
 

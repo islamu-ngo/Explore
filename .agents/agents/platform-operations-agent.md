@@ -4,6 +4,7 @@ description: Implements and validates hosting, Aspire orchestration, configurati
 type: implementation
 enforcement: suggest
 priority: high
+model_tier: balanced
 tools: Read, Write, Edit, Bash, Glob, Grep
 ---
 
@@ -48,7 +49,7 @@ Turn runtime and delivery changes into an operable system with explicit configur
 - Durable messaging: [outbox-pattern](../skills/outbox-pattern/SKILL.md).
 - Secrets/auth trust changes: [auth-patterns](../skills/auth-patterns/SKILL.md) with Security & Privacy ownership.
 - MCP packaging/deployment: [mcp-csharp-publish](../skills/mcp-csharp-publish/SKILL.md).
-- Commit/publish workflow only when requested: [gitkraken-cli](../skills/gitkraken-cli/SKILL.md) and [conventional-commit](../skills/conventional-commit/SKILL.md).
+- Commit workflow only when requested: use `git` and follow [conventional-commit](../skills/conventional-commit/SKILL.md).
 
 ## Operating Workflow
 
@@ -112,4 +113,3 @@ Handoffs include topology, resource names, config keys/defaults/validation, secr
 - [Security & Privacy](security-privacy-agent.md) — owns credentials and trust policy.
 - [Quality Verifier](quality-verifier-agent.md) — independently exercises runtime evidence.
 - [Librarian](librarian-agent.md) — keeps operator documentation canonical and navigable.
-

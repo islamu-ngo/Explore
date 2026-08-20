@@ -1,7 +1,7 @@
 ---
 name: footer-management
-description: Footer customization system with templates, governance locking, and link management.
-type: domain
+description: "Load for footer settings, templates, social/legal links, copyright, tenant customization, instance governance locks, footer HAL capabilities, or footer admin UI/API changes; not for generic page layout footers."
+type: reference
 enforcement: suggest
 priority: medium
 ---
@@ -10,19 +10,6 @@ ABOUTME: Footer management skill covering templates, governance, and CQRS endpoi
 ABOUTME: Enforces governance locking, template selection, and footer data model patterns.
 
 # Footer Management
-
-## Keywords
-
-footer, footer template, footer link, footer settings, governance, lock, social links, link group, footer admin
-
-## File Patterns
-
-- `**/FooterController.cs`
-- `**/FooterAdminService.cs`
-- `**/PublicExperienceService.cs`
-- `**/TenantFooterLink*.cs`
-- `**/Footer*.razor`
-- `**/FooterSetting*.cs`
 
 ## Non-Inferable Rules
 
@@ -33,14 +20,6 @@ footer, footer template, footer link, footer settings, governance, lock, social 
 5. Link groups support reordering via dedicated `POST /api/footer/link-groups/reorder` endpoint.
 6. Governance locking is silently ignored in single-tenant mode (shown as info alert in admin UI).
 7. `GET /api/footer/config` is `[AllowAnonymous]` (public-facing). All other footer endpoints require `[Authorize]`.
-
-## Activation
-
-Load this skill when:
-- Modifying footer templates or settings
-- Working on footer admin UI pages
-- Implementing footer governance features
-- Adding or changing footer API endpoints
 
 ## Resources
 

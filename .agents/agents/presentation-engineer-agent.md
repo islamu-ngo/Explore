@@ -4,6 +4,7 @@ description: Implements API and HAL contracts, BFF transport, generated-client c
 type: implementation
 enforcement: suggest
 priority: high
+model_tier: balanced
 tools: Read, Write, Edit, Bash, Glob, Grep
 ---
 

@@ -1,7 +1,12 @@
 ---
 name: review-changes
-description: Perform a structured code review using change detection and impact
+description: "Load when asked to review a local diff/change set for correctness, regressions, blast radius, affected flows, and missing tests using the knowledge graph; use `review-pr` for intent/checklist/merge-gate evidence."
+type: workflow
+enforcement: suggest
+priority: high
 ---
+<!-- ABOUTME: Risk-aware local diff review using change, flow, impact, and coverage evidence. -->
+<!-- ABOUTME: Separates correctness review from the repository's intent-driven PR gate. -->
 
 ## Review Changes
 

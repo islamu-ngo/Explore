@@ -13,7 +13,7 @@ Hooks are registered in `.claude/settings.json` using the nested object format:
     "EventName": [
       {
         "type": "command",
-        "command": "dotnet .claude/hooks/ScriptName.cs"
+        "command": "dotnet .agents/hooks/ScriptName.cs"
       }
     ]
   }
@@ -31,7 +31,7 @@ For events with matchers (PreToolUse, PostToolUse):
         "hooks": [
           {
             "type": "command",
-            "command": "dotnet .claude/hooks/ContextTracker.cs"
+            "command": "dotnet .agents/hooks/ContextTracker.cs"
           }
         ]
       }

@@ -4,6 +4,7 @@ description: Maintains repository documentation truth, conducts sanitized local-
 type: research
 enforcement: inform
 priority: high
+model_tier: economical
 tools: Read, Write, Edit, Bash, Glob, Grep, WebSearch, WebFetch
 ---
 
@@ -51,7 +52,7 @@ Keep repository knowledge accurate, navigable, source-anchored, and reusable fro
 ## Operating Workflow
 
 1. Classify the intent, audience, canonical owner, source anchors, and docs that must remain synchronized.
-2. Search local code, tests, configuration, docs, ADRs, and journal first; verify runtime claims against implementation or empirical evidence.
+2. Delegate broad local inventory to an economical built-in read-only explorer with exact queries and the result cap in the context-engineering contract; do not duplicate its search in the parent context.
 3. If local evidence is insufficient, follow the source hierarchy. Activate clean-room controls before external research and record title, URL, access date, access basis, and observed facts only.
 4. Separate fact, assumption, decision, roadmap, and unsupported behavior. Resolve contradictions by source authority and fix stale dependents.
 5. Edit the canonical page first, then navigation, inventories, examples, changelogs, and runbooks only where the change materially affects them.

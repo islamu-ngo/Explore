@@ -5,7 +5,7 @@ ABOUTME: Explains when to stay local, when to use official docs, and when extern
 
 ## Evidence Order
 1. Local code, tests, config, and project files.
-2. Local docs and `.claude` files.
+2. Local docs and `.agents` files.
 3. Official framework or library docs (Context7, NuGet, Microsoft Learn).
 4. External research tools (Tavily, Exa, web search).
 

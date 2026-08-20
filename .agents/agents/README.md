@@ -13,16 +13,16 @@ Agent profiles are small operational contracts governed by [`_AGENT_SCHEMA.md`](
 
 ## Role Matrix
 
-| Agent | Invoke for | Owns | Mode |
-|---|---|---|---|
-| [Architect](architect-agent.md) | Cross-layer design, ADRs, implementation sequencing | Architecture decisions and planning artifacts | Docs-only mutation |
-| [Backend Engineer](backend-engineer-agent.md) | Domain, Application, Persistence, Infrastructure business flows | Backend implementation and focused tests | Mutation |
-| [Presentation Engineer](presentation-engineer-agent.md) | API/HAL contracts, BFF, generated-client consumption, Blazor UX | Presentation vertical slices and visual behavior | Mutation |
-| [Security & Privacy](security-privacy-agent.md) | Identity, authorization, tenancy, secrets, privacy, abuse boundaries | Security-sensitive implementation and threat evidence | Mutation |
-| [Platform Operations](platform-operations-agent.md) | Aspire, hosting, CI/CD, deployment, observability, recovery | Operational implementation and runbooks | Mutation |
-| [Quality Verifier](quality-verifier-agent.md) | Reproduce failures and run proportional verification | Build, tests, runtime evidence, failure classification | Read-only |
-| [Change Reviewer](change-reviewer-agent.md) | Review a diff or PR for real regressions and missing evidence | Risk-ranked review and merge recommendation | Read-only |
-| [Librarian](librarian-agent.md) | Repository docs, clean-room research, inventories, durable findings | Documentation truth and provenance | Docs-only mutation |
+| Agent | Invoke for | Owns | Mode | Model tier |
+|---|---|---|---|---|
+| [Architect](architect-agent.md) | Cross-layer design, ADRs, implementation sequencing | Architecture decisions and planning artifacts | Docs-only mutation | Advanced |
+| [Backend Engineer](backend-engineer-agent.md) | Domain, Application, Persistence, Infrastructure business flows | Backend implementation and focused tests | Mutation | Balanced |
+| [Presentation Engineer](presentation-engineer-agent.md) | API/HAL contracts, BFF, generated-client consumption, Blazor UX | Presentation vertical slices and visual behavior | Mutation | Balanced |
+| [Security & Privacy](security-privacy-agent.md) | Identity, authorization, tenancy, secrets, privacy, abuse boundaries | Security-sensitive implementation and threat evidence | Mutation | Advanced |
+| [Platform Operations](platform-operations-agent.md) | Aspire, hosting, CI/CD, deployment, observability, recovery | Operational implementation and runbooks | Mutation | Balanced |
+| [Quality Verifier](quality-verifier-agent.md) | Reproduce failures and run proportional verification | Build, tests, runtime evidence, failure classification | Read-only | Balanced |
+| [Change Reviewer](change-reviewer-agent.md) | Review a diff or PR for real regressions and missing evidence | Risk-ranked review and merge recommendation | Read-only | Advanced |
+| [Librarian](librarian-agent.md) | Repository docs, clean-room research, inventories, durable findings | Documentation truth and provenance | Docs-only mutation | Economical |
 
 ## Selection Rules
 
@@ -30,7 +30,9 @@ Agent profiles are small operational contracts governed by [`_AGENT_SCHEMA.md`](
 2. Select one primary agent by the highest-risk owned boundary, then add read-only specialists only for independent evidence.
 3. A cross-layer feature normally stays with one mutating agent until a real ownership boundary is reached; do not split files merely to use more agents.
 4. Use `quality-verifier-agent` after implementation for empirical checks and `change-reviewer-agent` for independent semantic review. Neither edits the fix.
-5. Never run mutating agents concurrently on overlapping paths. Handoffs name the exact files, decisions, and remaining acceptance criteria.
+5. Send broad codebase search, file inventories, documentation routing, and mechanical evidence collection to an economical built-in read-only explorer. Use Librarian only when documentation/research ownership or mutation is required. Give one narrow question and use the result cap in [Context Engineering](../CONTEXT_ENGINEERING.md).
+6. Keep goals, constraints, architecture decisions, and synthesis in the main agent. Escalate model tier only for a concrete unresolved judgement, never because the search surface is large.
+7. Never run mutating agents concurrently on overlapping paths. Handoffs name the exact files, decisions, and remaining acceptance criteria.
 
 ## Common Routing
 
@@ -53,9 +55,11 @@ Agent profiles are small operational contracts governed by [`_AGENT_SCHEMA.md`](
 
 ## Coordination Contract
 
-Every delegated task must state: goal, owned paths or read-only mode, required evidence, expected output, and stop condition. The primary agent remains accountable for synthesis and must verify returned claims against repository evidence before acting.
+Every delegated task must state: goal, owned paths or read-only mode, required evidence, expected output, stop condition, model tier, and result-size cap. Pass only the minimum task context, not the parent transcript. The primary agent remains accountable for synthesis and verifies returned claims against repository evidence before acting.
 
 Parallel work is preferred for independent read-heavy exploration, test execution, log analysis, and review. Write-heavy work is sequential unless file ownership is disjoint and explicitly assigned.
+
+All agents follow [Context Engineering](../CONTEXT_ENGINEERING.md). A subagent is a context firebreak only when its bounded result keeps a larger discovery body out of the main context; otherwise direct lookup is cheaper.
 
 Agent profiles and chat configuration are documentation/configuration artifacts. Validate their schema, links, and routing directly; do not add automated tests for them.
 

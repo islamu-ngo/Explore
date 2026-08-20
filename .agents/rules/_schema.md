@@ -1,4 +1,4 @@
-<!-- ABOUTME: Schema for path-scoped rule files under .claude/rules/. -->
+<!-- ABOUTME: Schema for path-scoped rule files under .agents/rules/. -->
 <!-- ABOUTME: Defines the frontmatter, sections, and validation expectations enforced by architecture tests. -->
 
 # Rule File Schema
@@ -17,7 +17,7 @@ Path-scoped rules are concise supplements to the intent contract. Claude Code au
 | `related_skills` | string[] | existing skill names only |
 | `related_docs` | string[] | existing repo docs only |
 | `minimum_tests` | string[] | existing test project names |
-| `related_intents` | string[] | ids from `.claude/contract/intents.yaml` |
+| `related_intents` | string[] | ids from `.agents/contract/intents.yaml` |
 
 ## Required Body Sections
 

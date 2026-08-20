@@ -7,27 +7,42 @@
 
 Stop after the three planning artifacts are complete, internally consistent, and ready for user review. Do not implement the planned change.
 
-## 1. Establish The Workstream
+## 1. Mandatory Intake Phase
+
+### 1A. I-VSD Assessment
 
 1. Derive a stable kebab-case task name from the request.
-2. Search `dev/active/` and `dev/pause/` for the same or overlapping work.
-3. Re-baseline the existing workstream when it represents the same task; do not create a duplicate.
-4. Record overlap, conflicts, inherited blockers, and still-relevant remaining work.
+2. Load `.agents/skills/i-vsd/SKILL.md` and follow its action routing for provider-responsibility analysis.
+3. Check `islamic-value-sensitive-design/` for an existing `i-vsd-<task-name>.md`; update the mapped report instead of creating a duplicate.
+4. Create or update `islamic-value-sensitive-design/i-vsd-<task-name>.md` with its evidence, principle, stakeholder, mitigation, uncertainty, and escalation traceability before plan drafting.
+
+### 1B. Grill-Me Intake
+
+1. Load `.agents/skills/grill-me/SKILL.md`.
+2. Identify open architectural, product, failure-mode, and edge-case branches.
+3. Resolve every branch answerable from repository evidence instead of asking the user.
+4. For each remaining material branch, give a recommended answer with rationale and ask one targeted decision question at a time.
+5. Do not draft the plan until material branches are resolved or the user explicitly defers them with the resulting risk recorded.
+
+## 2. Establish The Workstream
+
+1. Search `dev/active/` and `dev/pause/` for the same or overlapping work.
+2. Re-baseline the existing workstream when it represents the same task; do not create a duplicate.
+3. Record overlap, conflicts, inherited blockers, and still-relevant remaining work.
 
 Use persistent dev docs for complex, cross-layer, multi-session, or multi-contributor work. Skip them for an atomic change that can be implemented and verified safely in one short slice.
 
-## 2. Read The Contract Before Feature Sources
+## 3. Technical And Architectural Analysis
 
-Read:
+Identify major technology selections, external libraries, and competing architectural patterns. When a material fork exists, load `robin-neutral`, steel-man each viable option, and create a trade-off matrix grounded in repository constraints. Carry the selected approach and rejected alternatives into Section 5 of the plan, separate from the I-VSD report.
 
-1. `AGENTS.md`.
-2. `docs/QUICK_REFERENCE.md` and `docs/GOVERNANCE.md`.
-3. `dev/active/README.md`.
-4. `.claude/contract/intents.yaml`.
+## 4. Resolve The Contract Before Feature Sources
+
+Reuse injected `AGENTS.md`, resolve only the matching entry from `.agents/contract/intents.yaml`, and retrieve the relevant headings from `docs/QUICK_REFERENCE.md`, `docs/GOVERNANCE.md`, and `.agents/CONTEXT_ENGINEERING.md`. Record them in the context ledger and do not reread unchanged evidence.
 
 Treat platform descriptions as orientation only. Verify every feature-specific claim from current repository files.
 
-## 3. Classify The Requested Implementation
+## 5. Classify The Requested Implementation
 
 Match the planned work to one or more intent entries. For each match, copy into planning metadata and relevant tasks:
 
@@ -42,15 +57,15 @@ Match the planned work to one or more intent entries. For each match, copy into 
 
 If no intent matches, create a clearly labeled fallback contract from the agent contract, canonical docs, applicable skills/rules, inferred file scope, and proportional tests. Add a planning task to consider a reusable intent only when this work category is likely to recur.
 
-## 4. Load Scope-Specific Sources
+## 6. Load Scope-Specific Sources
 
-Read every document, skill, and path-scoped rule selected by the matched intents. Then load only the product, architecture, security, API, UI, persistence, deployment, federation, accessibility, localization, or operations docs relevant to the request.
+Load each selected skill router and matching path rule once. Retrieve only the headings or symbols needed from selected documents, then expand one named unresolved decision at a time.
 
 Do not cite a document as authority unless its relevant section was read. Use repository sources before official documentation, and external research only when local and official sources cannot answer a material question.
 
-## 5. Verify Current Repository Reality
+## 7. Verify Current Repository Reality
 
-Use `rg`, `rg --files`, AST-aware search, and LSP definitions/references where appropriate. Open the owning files and relevant tests rather than trusting filenames alone.
+Delegate broad inventory to an economical read-only scout with exact queries and the cap in `.agents/CONTEXT_ENGINEERING.md`. Use graph, structural outline, AST-aware search, and LSP definitions/references for focused follow-up; retrieve owning symbols and relevant tests rather than trusting filenames alone.
 
 Verify every claimed existing:
 
@@ -71,7 +86,7 @@ Not found: searched for "..."; task added to create or decide
 
 Distinguish verified facts, source-derived constraints, design decisions, assumptions, and unresolved questions.
 
-## 6. Report Current State Before Future State
+## 8. Report Current State Before Future State
 
 The current-state report must answer:
 
@@ -85,7 +100,7 @@ The current-state report must answer:
 
 Do not convert a search miss into proof of absence without recording what was searched.
 
-## 7. Design Executable Vertical Slices
+## 9. Design Executable Vertical Slices
 
 Design the future state only after the evidence report is complete. Follow repository layer ownership and prefer reviewable vertical slices over layer-wide mega-phases.
 
@@ -111,7 +126,7 @@ Keep the implementation checklist lean:
 - Never plan Playwright, browser automation, Chrome DevTools MCP, visual QA, live-app smoke tests, manual runtime walkthroughs, or E2E test projects.
 - Distribute repository-mandated test projects across existing phases without repeating them; never create extra phases solely to run more tests.
 
-## 8. Write And Synchronize The Artifacts
+## 10. Write And Synchronize The Artifacts
 
 Create or update:
 
@@ -124,6 +139,8 @@ dev/active/<task-name>/
 
 All three files must contain `Last Updated: YYYY-MM-DD Europe/Brussels`. Cross-check status, next action, blockers, decisions, risks, phase names, task ids, and validation commands across the files before stopping.
 
+Link `islamic-value-sensitive-design/i-vsd-<task-name>.md` from the plan, context, and tasks artifacts, and include the resolved Grill-Me decisions summary in their planning metadata or resume state.
+
 Write the maintenance contract into the artifacts themselves so implementation agents do not need to reload this skill repeatedly:
 
 - `tasks.md` is the hot execution ledger and must be updated during implementation, not by a later cleanup command.
@@ -131,4 +148,5 @@ Write the maintenance contract into the artifacts themselves so implementation a
 - Phase verification checkboxes remain separate from implementation checkboxes, and the phase becomes complete only after its build and selected test pass.
 - `context.md` is refreshed after a phase, a meaningful decision, a blocker, validation failure, scope discovery, or handoff.
 - `plan.md` changes only when scope, architecture, phase order, acceptance criteria, risk, or validation strategy changes.
+- On initial implementation and cold resume, agents read task-owned context and the current task first, then retrieve only the plan heading named by that state.
 - On an uninterrupted session, agents must not reread unchanged artifacts after every task; they use the current task entry and only reopen the exact section needed.

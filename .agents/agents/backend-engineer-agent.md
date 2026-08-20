@@ -4,6 +4,7 @@ description: Implements cohesive Domain, Application, Persistence, and Infrastru
 type: implementation
 enforcement: suggest
 priority: high
+model_tier: balanced
 tools: Read, Write, Edit, Bash, Glob, Grep
 ---
 

@@ -1,25 +1,12 @@
 ---
 name: clean-architecture-rules
-description: Enforce inward-only dependencies, correct layer ownership, and repository boundaries in Clean Architecture changes.
+description: "Load for cross-layer refactors, new services/interfaces/repositories, project references, dependency-direction failures, or deciding whether code belongs in Domain, Application, Persistence/Infrastructure, API, or Blazor; not for a local edit wholly inside an established layer pattern."
 type: guardrail
 enforcement: block
 priority: critical
 ---
 <!-- ABOUTME: Clean Architecture dependency guardrail for Explore.Domain, Explore.Application, and layer-boundary work. -->
 <!-- ABOUTME: Blocks upward dependencies, misplaced validation, and layer leakage that would violate the repository contract. -->
-
-## Purpose
-Use this skill to stop dependency-direction violations before they spread across Explore.Domain, Explore.Application, Explore.Persistence, and API or Blazor composition code. It protects the layer contract more than any single implementation detail.
-
-## When to Load
-- Keywords: dependency, reference, architecture, layer, boundary, composition root.
-- File patterns: `Explore.Domain/**/*.cs`, `Explore.Application/**/*.cs`, `Explore.Persistence/**/*.cs`, `Explore.API/**/*.cs`, `Explore.Blazor/**/*.cs`.
-- Intent IDs: `add-cqrs-handler`, `add-get-endpoint`, `add-write-endpoint`, `update-repository-query`, `add-ef-migration`.
-
-## When NOT to Load
-- Not for trivial property edits that do not change references, ownership, or boundaries.
-- Not for pure naming tweaks with no architectural impact.
-- Not for UI-only CSS changes where layer direction is irrelevant.
 
 ## Must-Read Docs
 - [../../../docs/ARCHITECTURE.md](../../../docs/ARCHITECTURE.md)
@@ -73,8 +60,8 @@ public sealed class GetEventByIdHandler(IEventRepository repository)
 ```
 
 ## Verification Hooks
-- `dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet --filter FullyQualifiedName~Event.Architecture.Tests.CleanArchitectureTests`
-- `dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet --filter FullyQualifiedName~Event.Architecture.Tests.NamingConventionTests`
+- `dotnet test --project tests/Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet -- --treenode-filter "/*/*/CleanArchitectureTests/*" --minimum-expected-tests 1 --no-progress --maximum-parallel-tests 1`
+- `dotnet test --project tests/Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet -- --treenode-filter "/*/*/NamingConventionTests/*" --minimum-expected-tests 1 --no-progress --maximum-parallel-tests 1`
 - `dotnet build --configuration Release --verbosity quiet`
 
 ## Related Skills

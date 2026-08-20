@@ -1,25 +1,12 @@
 ---
 name: slidev
-description: Create and maintain developer-focused Slidev presentations with Markdown slides, Vue components, code demos, diagrams, presenter notes, and export workflows.
+description: "Load when creating or editing a Slidev `slides.md` developer talk/workshop with Markdown slides, Vue components, live code, Mermaid/LaTeX, presenter notes, or Slidev PDF/PPTX export; not for native PowerPoint decks or general docs."
 type: workflow
 enforcement: suggest
 priority: medium
 ---
 <!-- ABOUTME: Slidev authoring workflow for Markdown/Vue developer presentations, exports, and live demos. -->
 <!-- ABOUTME: Keeps technical decks practical, accessible, and easy to verify without duplicating Slidev reference material inline. -->
-
-## Purpose
-Use this skill when creating or editing Slidev decks, developer talks, workshop material, or presentation exports. It keeps slides concise, verifiable, and aligned with project accessibility and design expectations.
-
-## When to Load
-- Keywords: Slidev, slides, presentation, deck, talk, workshop, presenter notes, export PDF, export PPTX.
-- File patterns: `**/slides.md`, `**/*.slides.md`, `**/slidev.config.*`, `**/pages/*.md`.
-- Tasks that need Markdown slides with live code, Mermaid diagrams, LaTeX, Monaco editor examples, or custom Vue components.
-
-## When NOT to Load
-- Not for `.pptx` or PowerPoint artifact generation; use the presentations plugin instead.
-- Not for general Blazor, API, or domain implementation work that does not touch a Slidev deck.
-- Not for repository documentation pages unless the requested output is explicitly a presentation deck.
 
 ## Must-Read Docs
 - [../../../docs/DESIGN_SYSTEM.md](../../../docs/DESIGN_SYSTEM.md)
@@ -66,7 +53,7 @@ pnpm run export
 - `pnpm run dev`
 - `pnpm run build`
 - `pnpm run export`
-- `dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet`
+- `dotnet test --project tests/Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet`
 
 ## Related Skills
 - [../design-system/SKILL.md](../design-system/SKILL.md)

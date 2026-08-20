@@ -26,11 +26,13 @@ The **Contribution Contract** is this repository's operating model for AI-assist
 
 ## How to use this contract (AI agent or contributor)
 
-1. **Classify**. Read the incoming request (issue, bug, PR description, user message). Match it against `intents.yaml` using the `triggers` field. If no match, either (a) request a clarifying question from the user, or (b) fall back to `AGENTS.md` generic flow.
-2. **Load**. Read every file in `must_read_docs`, activate every skill in `load_skills`, load every rule file in `load_rules`. **Do not load anything else unless absolutely required.**
+1. **Classify**. Read the incoming request and resolve only the matching intent entry from `intents.yaml`; the full registry is an index, not task context. If no match, either ask one material clarification or use the `AGENTS.md` generic flow.
+2. **Load once**. Retrieve only the headings or symbols needed from `must_read_docs`, activate only matching skill routers, and load only rules matching the paths being changed. Reuse the context ledger from [Context Engineering](../CONTEXT_ENGINEERING.md); do not reread unchanged content or preload every linked resource.
 3. **Edit**. Touch only files matching `paths_in_scope`. Reject changes proposed outside the allow-list unless the user explicitly widens scope.
 4. **Verify**. Run every command in `verification_commands`. Run every test project in `minimum_tests`. Satisfy every item in `pr_checklist`. Update every doc in `docs_to_update` in the same PR.
 5. **Escalate**. If any item in `forbidden_without_approval` is required for the change, stop and ask the user. Do not infer consent.
+
+The default bootstrap packet is the resolved intent, matching rules, selected skill routers, and exact evidence locations. Keep it under the repository budget; expand one named uncertainty at a time.
 
 ## Adding a new intent
 
@@ -57,7 +59,6 @@ The **Contribution Contract** is this repository's operating model for AI-assist
 ## Related
 
 - `AGENTS.md` — tool-neutral root entrypoint for any AI agent or contributor
-- `AGENTS.md` — Claude-specific bootloader shim
 - `docs/index.md` — canonical navigation root for the docs tree
 - `.agents/rules/` — path-scoped rule files, referenced from `intents.yaml`
 - `.agents/benchmarks/cold-start-tasks.yaml` — evaluation harness validating cold-start agent performance against these intents

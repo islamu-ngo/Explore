@@ -1,7 +1,12 @@
 ---
 name: refactor-safely
-description: Plan and execute safe refactoring using dependency analysis
+description: "Load for behavior-preserving rename, move, decomposition, dead-code removal, dependency cleanup, or structural refactoring that needs caller, flow, test, and impact analysis; not for feature work or a one-line local cleanup."
+type: workflow
+enforcement: suggest
+priority: high
 ---
+<!-- ABOUTME: Knowledge-graph workflow for behavior-preserving structural refactoring. -->
+<!-- ABOUTME: Requires preview, impact, affected-flow, and post-change verification. -->
 
 ## Refactor Safely
 

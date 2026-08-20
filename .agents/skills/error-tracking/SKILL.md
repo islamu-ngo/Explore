@@ -1,6 +1,6 @@
 ---
 name: error-tracking
-description: Implement error tracking and observability using Prometheus (metrics) and Loki (logs). Covers centralized exception handling, structured logging, and performance monitoring for .NET services.
+description: "Load for .NET observability changes involving structured logs/Loki, Prometheus metrics, OpenTelemetry traces, exception handling, correlation IDs, dashboards, alerts, or production error diagnosis; not for ordinary business validation errors."
 type: guardrail
 enforcement: suggest
 priority: high
@@ -14,13 +14,6 @@ ABOUTME: Read referenced resources before applying.
 > **Project-Agnostic Observability Patterns for .NET**
 >
 > Placeholders use `{Placeholder}` syntax - see [docs/TEMPLATE_GLOSSARY.md](../../../docs/TEMPLATE_GLOSSARY.md).
-
-## Purpose
-Standardize error handling + observability with OpenTelemetry, Prometheus, Loki.
-
-## When This Skill Activates
-- Keywords: error handling, logging, observability, metrics, tracing
-- File patterns: `**/Program.cs`, `**/*Controller.cs`, `**/*Handler.cs`, `**/*.razor`
 
 ## Non‑Inferable Rules (Must Follow)
 - **Do not swallow exceptions.**

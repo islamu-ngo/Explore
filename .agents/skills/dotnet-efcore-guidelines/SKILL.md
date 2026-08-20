@@ -1,24 +1,12 @@
 ---
 name: dotnet-efcore-guidelines
-description: Apply project EF Core conventions for repositories, DbContext setup, query filters, migrations, and seeded lookup data.
+description: "Load for EF Core entities/configurations, DbContext/query filters, repositories/specifications, migrations, model snapshots, transactions, or seeded lookup tables; use query-optimization skill specifically for N+1 or slow SQL diagnosis."
 type: pattern
 enforcement: suggest
 priority: high
 ---
 <!-- ABOUTME: EF Core guidance for Explore.Persistence repositories, DbContext configuration, migrations, query filters, and PostgreSQL-aligned data access. -->
 <!-- ABOUTME: Keeps persistence entity-first, tenant-safe, soft-delete-aware, and consistent with lookup seeding and migration discipline. -->
-
-## Purpose
-Use this skill when changing repositories, `ExploreDbContext`, EF configurations, migrations, or PostgreSQL-specific persistence behavior. It keeps runtime tenant isolation and data-shaping rules aligned with Application-layer expectations.
-
-## When to Load
-- Keywords: EF Core, DbContext, repository, migration, PostgreSQL, query filter, configuration, seed data.
-- File patterns: `Explore.Persistence/**/*.cs`, `**/*DbContext.cs`, `**/Configurations/**/*.cs`, `Explore.Persistence/Migrations/**/*.cs`.
-- Intent IDs: `add-ef-migration`, `update-repository-query`, `add-cqrs-handler`.
-
-## When NOT to Load
-- Not for Application-layer CQRS structure and handler design; use [../cqrs-mediatr-guidelines/SKILL.md](../cqrs-mediatr-guidelines/SKILL.md).
-- Not for pure Domain entity design or dependency-boundary questions; use [../clean-architecture-rules/SKILL.md](../clean-architecture-rules/SKILL.md).
 
 ## Must-Read Docs
 - [../../../docs/ARCHITECTURE.md](../../../docs/ARCHITECTURE.md)

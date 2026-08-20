@@ -1,7 +1,12 @@
 ---
 name: aspire
-description: "Orchestrates Aspire distributed applications using the Aspire CLI for running, debugging, and managing distributed apps. USE FOR: aspire start, aspire stop, start aspire app, aspire describe, list aspire integrations, debug aspire issues, view aspire logs, add aspire resource, aspire dashboard, update aspire apphost. DO NOT USE FOR: non-Aspire .NET apps (use dotnet CLI), container-only deployments (use docker/podman), Azure deployment after local testing (use azure-deploy skill). INVOKES: Aspire CLI commands (aspire start, aspire describe, aspire otel logs, aspire docs search, aspire add), bash. FOR SINGLE OPERATIONS: Use Aspire CLI commands directly for quick resource status or doc lookups."
+description: "Load for Aspire AppHost work: start/stop/wait resources, inspect dashboard/logs/traces, add integrations/resources, rebuild a service, run isolated worktrees, or diagnose Aspire orchestration; not for plain dotnet apps, container-only deployments, or cloud deployment."
+type: workflow
+enforcement: suggest
+priority: medium
 ---
+<!-- ABOUTME: Operational Aspire CLI workflow for the repository's distributed AppHost. -->
+<!-- ABOUTME: Keeps resource-level rebuild, isolation, logs, traces, and integration commands practical. -->
 
 # Aspire Skill
 
