@@ -5,7 +5,6 @@ namespace Explore.API.Extensions;
 
 using Explore.Domain.Constants;
 using Explore.Domain.Secrets;
-using Explore.Secrets.Bootstrap;
 using Explore.Secrets.Database;
 using Explore.Secrets.Extensions;
 
@@ -21,17 +20,13 @@ public static class ConfigurationExtensions
         configBuilder.AddInfisical(bootstrapConfig, source =>
         {
             source.Paths.Clear();
-            source.Paths.AddRange(["/keycloak", "/postgresql", "/privacy-erasure-authority", "/api", "/blazor", "/cerbos", "/mcp", "/ai", "/storage", "/smtp", "/integrations/listmonk"]);
+            source.Paths.AddRange(["/keycloak", "/database", "/database/erasure", "/api", "/blazor", "/cerbos", "/mcp", "/ai", "/storage", "/smtp", "/integrations/listmonk"]);
             source.ThrowOnFirstLoadFailure = false;
         });
 
         var configWithSecrets = configBuilder.Build();
         ApplyMapping(configBuilder, configWithSecrets);
         PrivacyErasureAuthorityDatabaseConfiguration.ProjectDiscreteConfiguration(configBuilder);
-        BootstrapSecretLoader.ProjectPostgresConfiguration(
-            configBuilder,
-            PrimaryDatabaseRole.Runtime,
-            infisicalAlreadyLoaded: true);
     }
 
     /// <summary>
@@ -39,6 +34,7 @@ public static class ConfigurationExtensions
     /// </summary>
     /// <remarks>
     /// Canonical Infisical keys:
+    ///   /database: DATABASE_PROVIDER, DATABASE_HOST, DATABASE_PORT, DATABASE_NAME, DATABASE_SCHEMA, etc.
     ///   /api:      DEPLOYMENT_MODE (single_tenant or multi_tenant)
     ///   /keycloak: KEYCLOAK_ENDPOINT, KEYCLOAK_REALM
     ///   /cerbos:   CERBOS_GRPC_ENDPOINT, CERBOS_HTTP_ENDPOINT, CERBOS_USE_POLICY_SCOPE
@@ -49,7 +45,6 @@ public static class ConfigurationExtensions
     ///   /api:      VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY, VAPID_SUBJECT
     ///   /api:      USE_COMMERCIAL_LUCKYPENNY, LUCKYPENNY_LICENSE_KEY (Lucky Penny dual-versioning)
     ///   S3 legacy: ISLAMU_EVENT_S3_ENDPOINT, ISLAMU_EVENT_REGION, etc.
-    /// Postgres is handled by BootstrapSecretLoader from discrete POSTGRESQL_* secrets.
     /// </remarks>
     private static void ApplyMapping(IConfigurationBuilder configBuilder, IConfiguration config)
     {
@@ -242,6 +237,37 @@ public static class ConfigurationExtensions
         TrySet(mappedConfig, config, "WebPush:VapidPrivateKey", vapidPrivateKey);
         TrySet(mappedConfig, config, "WebPush:VapidSubject", vapidSubject);
 
+        // Primary Database (agnostic /database or DATABASE_* in Infisical)
+        var dbName = ReadFirst(config, "DATABASE_NAME", "DATABASE_DATABASE", "Database:Name", "Database:Database");
+        TrySet(mappedConfig, config, "Database:Provider", ReadFirst(config, "DATABASE_PROVIDER", "Database:Provider"));
+        TrySet(mappedConfig, config, "Database:Host", ReadFirst(config, "DATABASE_HOST", "Database:Host"));
+        TrySet(mappedConfig, config, "Database:Port", ReadFirst(config, "DATABASE_PORT", "Database:Port"));
+        TrySet(mappedConfig, config, "Database:Database", dbName);
+        TrySet(mappedConfig, config, "Database:Name", dbName);
+        TrySet(mappedConfig, config, "Database:Schema", ReadFirst(config, "DATABASE_SCHEMA", "Database:Schema"));
+        TrySet(mappedConfig, config, "Database:Runtime:Username", ReadFirst(config, "DATABASE_RUNTIME_USERNAME", "Database:Runtime:Username", "DATABASE_USERNAME", "Database:Username"));
+        TrySet(mappedConfig, config, "Database:Runtime:Password", ReadFirst(config, "DATABASE_RUNTIME_PASSWORD", "Database:Runtime:Password", "DATABASE_PASSWORD", "Database:Password"));
+        TrySet(mappedConfig, config, "Database:Migrator:Username", ReadFirst(config, "DATABASE_MIGRATOR_USERNAME", "Database:Migrator:Username"));
+        TrySet(mappedConfig, config, "Database:Migrator:Password", ReadFirst(config, "DATABASE_MIGRATOR_PASSWORD", "Database:Migrator:Password"));
+        TrySet(mappedConfig, config, "Database:TlsMode", ReadFirst(config, "DATABASE_TLS_MODE", "Database:TlsMode"));
+        TrySet(mappedConfig, config, "Database:TrustServerCertificate", NormalizeBoolean(ReadFirst(config, "DATABASE_TRUST_SERVER_CERTIFICATE", "Database:TrustServerCertificate")));
+        TrySet(mappedConfig, config, "Database:ServerFlavor", ReadFirst(config, "DATABASE_SERVER_FLAVOR", "Database:ServerFlavor"));
+        TrySet(mappedConfig, config, "Database:ServerVersion", ReadFirst(config, "DATABASE_SERVER_VERSION", "Database:ServerVersion"));
+
+        // Privacy Erasure Authority Database (/database/erasure)
+        var erasureDbName = ReadFirst(config, "DATABASE_ERASURE_NAME", "DATABASE_ERASURE_DATABASE", "Database:Erasure:Name", "Database:Erasure:Database", "ERASURE_DATABASE_NAME", "ERASURE_DATABASE");
+        TrySet(mappedConfig, config, "Database:Erasure:Provider", ReadFirst(config, "DATABASE_ERASURE_PROVIDER", "Database:Erasure:Provider", "ERASURE_DATABASE_PROVIDER"));
+        TrySet(mappedConfig, config, "Database:Erasure:Host", ReadFirst(config, "DATABASE_ERASURE_HOST", "Database:Erasure:Host", "ERASURE_DATABASE_HOST"));
+        TrySet(mappedConfig, config, "Database:Erasure:Port", ReadFirst(config, "DATABASE_ERASURE_PORT", "Database:Erasure:Port", "ERASURE_DATABASE_PORT"));
+        TrySet(mappedConfig, config, "Database:Erasure:Database", erasureDbName);
+        TrySet(mappedConfig, config, "Database:Erasure:Name", erasureDbName);
+        TrySet(mappedConfig, config, "Database:Erasure:Runtime:Username", ReadFirst(config, "DATABASE_ERASURE_RUNTIME_USERNAME", "Database:Erasure:Runtime:Username", "ERASURE_DATABASE_RUNTIME_USERNAME"));
+        TrySet(mappedConfig, config, "Database:Erasure:Runtime:Password", ReadFirst(config, "DATABASE_ERASURE_RUNTIME_PASSWORD", "Database:Erasure:Runtime:Password", "ERASURE_DATABASE_RUNTIME_PASSWORD"));
+        TrySet(mappedConfig, config, "Database:Erasure:Migrator:Username", ReadFirst(config, "DATABASE_ERASURE_MIGRATOR_USERNAME", "Database:Erasure:Migrator:Username", "ERASURE_DATABASE_MIGRATOR_USERNAME"));
+        TrySet(mappedConfig, config, "Database:Erasure:Migrator:Password", ReadFirst(config, "DATABASE_ERASURE_MIGRATOR_PASSWORD", "Database:Erasure:Migrator:Password", "ERASURE_DATABASE_MIGRATOR_PASSWORD"));
+        TrySet(mappedConfig, config, "Database:Erasure:TlsMode", ReadFirst(config, "DATABASE_ERASURE_TLS_MODE", "Database:Erasure:TlsMode", "ERASURE_DATABASE_TLS_MODE"));
+        TrySet(mappedConfig, config, "Database:Erasure:TrustServerCertificate", NormalizeBoolean(ReadFirst(config, "DATABASE_ERASURE_TRUST_SERVER_CERTIFICATE", "Database:Erasure:TrustServerCertificate", "ERASURE_DATABASE_TRUST_SERVER_CERTIFICATE")));
+
         // Cerbos
         if (!string.IsNullOrWhiteSpace(cerbosGrpcEndpoint))
         {
@@ -262,7 +288,7 @@ public static class ConfigurationExtensions
         // Deployment
         TrySet(mappedConfig, config, "Deployment:Mode", deploymentMode);
         TrySet(mappedConfig, config, "PrivacyErasure:Authority:Topology",
-            ReadFirst(config, "PRIVACY_ERASURE_AUTHORITY_TOPOLOGY"));
+            ReadFirst(config, "PRIVACY_ERASURE_AUTHORITY_TOPOLOGY", "ERASURE_TOPOLOGY", "PrivacyErasure:Authority:Topology"));
         TrySet(mappedConfig, config, "ManagedControlPlane:Enabled", managedControlPlaneEnabled);
         TrySet(mappedConfig, config, "ManagedControlPlane:ControlPlaneUrl", managedControlPlaneUrl);
         TrySet(mappedConfig, config, "ManagedControlPlane:ManagedInstanceId", managedInstanceId);

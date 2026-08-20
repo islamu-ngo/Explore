@@ -74,9 +74,11 @@ Docker Compose uses `.env` for interpolation before starting containers. The Com
 
 The database contract is structured; do not store or inject a raw connection
 string. Endpoint metadata uses `DATABASE_PROVIDER`, `DATABASE_HOST`,
-`DATABASE_PORT`, `DATABASE_DATABASE`, `DATABASE_SCHEMA`, `DATABASE_TLS_MODE`, and
-`DATABASE_TRUST_SERVER_CERTIFICATE`. MariaDB/MySQL additionally require
-`DATABASE_SERVER_FLAVOR` and `DATABASE_SERVER_VERSION`.
+`DATABASE_PORT`, `DATABASE_NAME`, `DATABASE_SCHEMA`, `DATABASE_TLS_MODE`, and
+`DATABASE_TRUST_SERVER_CERTIFICATE`. MariaDB and MySQL automatically infer
+server flavor from `DATABASE_PROVIDER` and default to modern LTS versions (`11.4`
+for MariaDB, `8.4` for MySQL); operators on custom engine versions can optionally
+supply `DATABASE_SERVER_VERSION`.
 
 `DATABASE_SCHEMA` is non-secret namespace metadata. PostgreSQL and SQL Server
 use it as the application and Data Protection schema and keep clean table names
@@ -90,21 +92,19 @@ configurable prefix secret.
 | `DATABASE_RUNTIME_USERNAME`, `DATABASE_RUNTIME_PASSWORD` | `Database:Runtime:Username`, `Database:Runtime:Password` | API/runtime processes only |
 | `DATABASE_MIGRATOR_USERNAME`, `DATABASE_MIGRATOR_PASSWORD` | `Database:Migrator:Username`, `Database:Migrator:Password` | `Event.MigrationService` only |
 
-SQLite has no database credentials. Its `DATABASE_DATABASE` value is a
+SQLite has no database credentials. Its `DATABASE_NAME` value is a
 persisted local file path and is deployment configuration, not a secret. Do not
 give runtime services the migrator role, and never expose either role to the
 Blazor client.
 
 ### Privacy-erasure authority credentials
 
-| Compose key | Direct .NET key | Consumer |
+| Compose / Infisical key | Direct .NET key | Consumer |
 |---|---|---|
-| `PRIVACY_ERASURE_AUTHORITY_RUNTIME_USERNAME`, `PRIVACY_ERASURE_AUTHORITY_RUNTIME_PASSWORD` | `PrivacyErasureAuthorityDatabase:Runtime:Username`, `PrivacyErasureAuthorityDatabase:Runtime:Password` | API only, and only for `ExternalDatabase` |
-| `PRIVACY_ERASURE_AUTHORITY_MIGRATOR_USERNAME`, `PRIVACY_ERASURE_AUTHORITY_MIGRATOR_PASSWORD` | `PrivacyErasureAuthorityDatabase:Migrator:Username`, `PrivacyErasureAuthorityDatabase:Migrator:Password` | `Event.MigrationService` only |
+| `DATABASE_RUNTIME_USERNAME`, `DATABASE_RUNTIME_PASSWORD` (in `/database/erasure`) or `DATABASE_ERASURE_RUNTIME_USERNAME` | `Database:Erasure:Runtime:Username`, `Database:Erasure:Runtime:Password` | API only, and only for `ExternalDatabase` |
+| `DATABASE_MIGRATOR_USERNAME`, `DATABASE_MIGRATOR_PASSWORD` (in `/database/erasure`) or `DATABASE_ERASURE_MIGRATOR_USERNAME` | `Database:Erasure:Migrator:Username`, `Database:Erasure:Migrator:Password` | `Event.MigrationService` only |
 
-For `ExternalDatabase`, endpoint metadata is supplied separately through
-`PRIVACY_ERASURE_AUTHORITY_HOST`, `PORT`, `DATABASE`, `TLS_MODE`, and
-`TRUST_SERVER_CERTIFICATE`; the provider is fixed to PostgreSQL. Use separate
+For `ExternalDatabase`, endpoint metadata is supplied under `/database/erasure` in Infisical (or via `DATABASE_ERASURE_HOST`, `PORT`, `DATABASE_NAME`, `TLS_MODE`, and `TRUST_SERVER_CERTIFICATE` / `PrivacyErasureAuthorityDatabase:*`); the provider is fixed to PostgreSQL. Use separate
 roles: runtime receives only authority append/read function execution, while
 migrator owns schema and grants. Never pass either authority credential to
 `Explore.Blazor` or `Explore.Blazor.Client`. Rotate the migrator credential
@@ -122,9 +122,8 @@ There are two Infisical paths through the application:
 
 For full local runs, keep `SECRET_PROVIDER=None` and leave `INFISICAL_*` blank
 so local structured `DATABASE_*`, Keycloak, Cerbos, and storage values remain
-authoritative. The legacy PostgreSQL bootstrap loader still projects
-`/postgresql` and discrete `POSTGRESQL_*` inputs when a structured `Database`
-section is absent; new deployments should use `Database__*` / `DATABASE_*`.
+authoritative. Infisical loads primary database configuration directly from `/database`
+using `DATABASE_*` keys mapped to the structured `Database:*` configuration section.
 
 ### SecretRefresh Section
 
@@ -216,11 +215,29 @@ Infisical uses `SCREAMING_SNAKE_CASE` with path-based sections. The provider map
 | `/api/CONTROL_PLANE_REGISTRATION_CREDENTIALS` | `management.control_plane_registration_credentials` | Directional managed control-plane registration credentials. This key is instance-only and is bound only through managed inline-encrypted application secret storage, not as a startup bootstrap key. |
 | `/api` or `/cerbos` + `AUTHORIZATION_PROVIDER` | Non-secret `Authorization:Provider` deployment intent. Blank keeps manual Local-first onboarding; `local` or `cerbos` makes the provider deployment-owned and skips the choice page. |
 | root or AI path + `AI_TOOL_PROPOSALS_ENABLED` | `AiProvider:ToolProposalsEnabled` |
-| `/postgresql/POSTGRESQL_HOST` | PostgreSQL bootstrap host |
-| `/postgresql/POSTGRESQL_PORT` | PostgreSQL bootstrap port |
-| `/postgresql/POSTGRESQL_DATABASE` | PostgreSQL bootstrap database |
-| `/postgresql/POSTGRESQL_USERNAME` | PostgreSQL bootstrap username |
-| `/postgresql/POSTGRESQL_PASSWORD` | PostgreSQL bootstrap password |
+| `/database/DATABASE_PROVIDER` | Primary database provider: `PostgreSql`, `Sqlite`, `SqlServer`, `MariaDb`, `MySql` |
+| `/database/DATABASE_HOST` | Primary database host |
+| `/database/DATABASE_PORT` | Primary database port |
+| `/database/DATABASE_NAME` | Primary database name or SQLite file path |
+| `/database/DATABASE_SCHEMA` | Application schema (default: `islamu_event`; PostgreSQL and SQL Server) |
+| `/database/DATABASE_TLS_MODE` | TLS mode: `Prefer`, `Required`, `Disabled` |
+| `/database/DATABASE_TRUST_SERVER_CERTIFICATE` | `false` (default: strict CA verification) or `true` (accept self-signed certs) |
+| `/database/DATABASE_SERVER_VERSION` | Optional override for MariaDB/MySQL (defaults: MariaDB `11.4`, MySQL `8.4`; e.g. `10.11`, `8.0`) |
+| `/database/DATABASE_RUNTIME_USERNAME` | Runtime database username |
+| `/database/DATABASE_RUNTIME_PASSWORD` | Runtime database password |
+| `/database/DATABASE_MIGRATOR_USERNAME` | Migrator database username |
+| `/database/DATABASE_MIGRATOR_PASSWORD` | Migrator database password |
+| `/database/ERASURE_TOPOLOGY` | Privacy erasure topology: `EmbeddedSqlite`, `CoLocated`, `ExternalDatabase` |
+| `/database/erasure/DATABASE_PROVIDER` | External authority provider (fixed to `PostgreSql`) |
+| `/database/erasure/DATABASE_HOST` | External authority PostgreSQL host |
+| `/database/erasure/DATABASE_PORT` | External authority PostgreSQL port (default: `5432`) |
+| `/database/erasure/DATABASE_NAME` | External authority PostgreSQL database name |
+| `/database/erasure/DATABASE_TLS_MODE` | External authority TLS mode: `Prefer`, `Required`, `Disabled` |
+| `/database/erasure/DATABASE_TRUST_SERVER_CERTIFICATE` | `false` (default: strict CA verification) or `true` (accept self-signed certs) |
+| `/database/erasure/DATABASE_RUNTIME_USERNAME` | External authority runtime username (function-execution role) |
+| `/database/erasure/DATABASE_RUNTIME_PASSWORD` | External authority runtime password |
+| `/database/erasure/DATABASE_MIGRATOR_USERNAME` | External authority migrator username (schema/admin role) |
+| `/database/erasure/DATABASE_MIGRATOR_PASSWORD` | External authority migrator password |
 | storage path + `STORAGE_S3_*` | `Storage:S3*` (for example `/storage/STORAGE_S3_ENDPOINT` → `Storage:S3Endpoint`) |
 | `/smtp/MAIL_SMTP_HOST` | `smtp.host` secret binding default; Development seed maps it to `email.smtp_host` when no SMTP setting exists |
 | `/smtp/MAIL_SMTP_PORT` | `smtp.port` secret binding default; Development seed maps it to `email.smtp_port` when no SMTP setting exists |
@@ -295,7 +312,7 @@ Do not merge application-managed and deployment-managed values for the same fiel
 
 Reporting provider secrets are server-side tenant settings. API keys and webhook secrets for Osprey and Coop must never be returned in browser DTOs, HAL links, health checks, logs, metrics, traces, screenshots, issue templates, or support bundles; browser/control-plane surfaces may expose only configured/source/editability metadata. Routing update actions are write-only for secret values: supplying a new Osprey/Coop API key or webhook secret rotates that tenant value, while omitting the field or sending it blank preserves the currently stored secret. There is no implicit clear-secret endpoint and no readback path; confirm rotation through configured flags, provider readiness checks, and secret-provider audit trails.
 
-Current migrated surface: Cerbos authorization settings expose endpoint and Admin API credential ownership metadata. `AUTHORIZATION_PROVIDER` is non-secret deployment intent, while Cerbos Admin API credentials are registered in `SecretDefinitionRegistry`; the browser sees only configured flags, ownership badges, and safe reconciliation status. Explicit `cerbos` uses those server-owned values to verify the PDP and publish policies in the background without sending credentials to the browser. Reporting provider secret keys are registered as sensitive hierarchical settings for the moderation routing foundation. Listmonk API username/key values are registered server-side secret bindings; admin updates are write-only and browser DTOs expose configured flags only. Stripe `payments.stripe.platform_secret_key` and `payments.stripe.webhook_secret` are instance/server-only definitions for self-hoster-owned platform credentials. Promotion lookup resolves the qualified instance-only `promotions.code_lookup_hmac_key` binding for every digest operation. SMTP, S3, OAuth, localization/TMS, and AI keys still have area-specific storage/UI paths and must not be documented as fully migrated until their resolvers use the shared ownership metadata consistently.
+Current migrated surface: Cerbos authorization settings expose endpoint and Admin API credential ownership metadata. `AUTHORIZATION_PROVIDER` is non-secret deployment intent, while `CERBOS_ADMIN_USERNAME` and `CERBOS_ADMIN_PASSWORD` are server-side deployment secrets resolved from environment configuration or Infisical. The browser normally sees only configured flags and ownership metadata. During an explicit setup sync, an operator may instead submit a complete one-time pair; it exists only in the Blazor server circuit and request pipeline, overrides deployment credentials for that call, is cleared after the call, and is never written to `SystemSetting`, returned by an API, or logged. `CERBOS_ADMIN_PASSWORD_HASH` is the Cerbos server verifier and cannot authenticate an Admin API client; keep the matching plaintext password only in deployment secrets or enter it for one sync. Reporting provider secret keys are registered as sensitive hierarchical settings for the moderation routing foundation. Listmonk API username/key values are registered server-side secret bindings; admin updates are write-only and browser DTOs expose configured flags only. Stripe `payments.stripe.platform_secret_key` and `payments.stripe.webhook_secret` are instance/server-only definitions for self-hoster-owned platform credentials. Promotion lookup resolves the qualified instance-only `promotions.code_lookup_hmac_key` binding for every digest operation. SMTP, S3, OAuth, localization/TMS, and AI keys still have area-specific storage/UI paths and must not be documented as fully migrated until their resolvers use the shared ownership metadata consistently.
 
 Web Push VAPID keys are deployment configuration. Infisical `/api/VAPID_PRIVATE_KEY` maps to `WebPush:VapidPrivateKey`; it is a server-only secret and must never appear in browser configuration, API responses, HAL links, logs, traces, health data, screenshots, or support artifacts. `VAPID_PUBLIC_KEY` is intentionally public and is returned by `GET /vapid-public-key` as plain text and by `GET /api/notification/web-push/config`. Browser subscription endpoints and `p256dh`/`auth` material are stored tenant-scoped and are never echoed by subscription status DTOs.
 

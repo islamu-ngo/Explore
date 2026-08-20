@@ -122,9 +122,8 @@ dotnet run --project Explore.AppHost/Explore.AppHost.csproj --launch-profile loc
 All four launch profiles expose API at `https://localhost:7039` and Blazor at `https://localhost:7177`. Prefer `aspire run --apphost Explore.AppHost/Explore.AppHost.csproj` for the contributor path because it is shorter and works from a clean checkout.
 
 AppHost injects structured `Database__*` fields and the correct runtime or
-migrator role into each process. Explicit `Database:*` values win. The legacy
-PostgreSQL compatibility projection uses Infisical `/postgresql`, then
-`POSTGRESQL_*`, then `Postgresql:*` only when structured fields are absent. Raw
+migrator role into each process. Explicit `Database:*` values win. Infisical loads
+primary database settings directly from `/database` with `DATABASE_*` keys. Raw
 application connection strings are not a deployment input.
 
 ## Option B: Run The Compose Stack

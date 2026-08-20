@@ -98,36 +98,32 @@ public sealed class ConfigurationExtensionsTests
     }
 
     [Test]
-    public async Task AddInfisicalCompatibility_DoesNotMapLegacyPostgresPublicUrlToDefaultConnection()
+    public async Task AddInfisicalCompatibility_MapsDatabaseFolderAgnosticKeys()
     {
         var configuration = BuildConfiguration(new Dictionary<string, string?>
         {
-            ["POSTGRESQL_PUBLIC_URL"] = "postgres://user:secret@db:5432/event"
-        });
-
-        await Assert.That(configuration["ConnectionStrings:DefaultConnection"]).IsNull();
-    }
-
-    [Test]
-    public async Task AddInfisicalCompatibility_ProjectsDiscretePostgresIntoRuntimeDatabaseContract()
-    {
-        var configuration = BuildConfiguration(new Dictionary<string, string?>
-        {
-            ["POSTGRESQL_HOST"] = "pg.example.test",
-            ["POSTGRESQL_PORT"] = "6543",
-            ["POSTGRESQL_DATABASE"] = "event_db",
-            ["POSTGRESQL_USERNAME"] = "app_user",
-            ["POSTGRESQL_PASSWORD"] = "app-secret",
+            ["DATABASE_PROVIDER"] = "SqlServer",
+            ["DATABASE_HOST"] = "sql.example.test",
+            ["DATABASE_PORT"] = "1433",
+            ["DATABASE_NAME"] = "event_sql_db",
+            ["DATABASE_SCHEMA"] = "event_schema",
+            ["DATABASE_RUNTIME_USERNAME"] = "sql_runtime_user",
+            ["DATABASE_RUNTIME_PASSWORD"] = "sql-secret",
+            ["DATABASE_TLS_MODE"] = "Required",
+            ["DATABASE_TRUST_SERVER_CERTIFICATE"] = "true",
         });
 
         var options = PrimaryDatabaseConfiguration.BindRuntime(configuration);
 
-        await Assert.That(options.Provider).IsEqualTo(PrimaryDatabaseProvider.PostgreSql);
-        await Assert.That(options.Host).IsEqualTo("pg.example.test");
-        await Assert.That(options.Port).IsEqualTo(6543);
-        await Assert.That(options.Database).IsEqualTo("event_db");
-        await Assert.That(options.Username).IsEqualTo("app_user");
-        await Assert.That(options.Password).IsEqualTo("app-secret");
+        await Assert.That(options.Provider).IsEqualTo(PrimaryDatabaseProvider.SqlServer);
+        await Assert.That(options.Host).IsEqualTo("sql.example.test");
+        await Assert.That(options.Port).IsEqualTo(1433);
+        await Assert.That(options.Database).IsEqualTo("event_sql_db");
+        await Assert.That(options.Schema).IsEqualTo("event_schema");
+        await Assert.That(options.Username).IsEqualTo("sql_runtime_user");
+        await Assert.That(options.Password).IsEqualTo("sql-secret");
+        await Assert.That(options.TlsMode).IsEqualTo(PrimaryDatabaseTlsMode.Required);
+        await Assert.That(options.TrustServerCertificate).IsTrue();
     }
 
     [Test]
@@ -135,13 +131,13 @@ public sealed class ConfigurationExtensionsTests
     {
         var configuration = BuildConfiguration(new Dictionary<string, string?>
         {
-            ["POSTGRESQL_HOST"] = "projected-host",
-            ["POSTGRESQL_DATABASE"] = "projected_db",
-            ["POSTGRESQL_USERNAME"] = "projected_user",
-            ["POSTGRESQL_PASSWORD"] = "projected-secret",
+            ["DATABASE_HOST"] = "mapped-host",
+            ["DATABASE_NAME"] = "mapped_db",
+            ["DATABASE_RUNTIME_USERNAME"] = "mapped_user",
+            ["DATABASE_RUNTIME_PASSWORD"] = "mapped-secret",
             ["Database:Provider"] = "PostgreSql",
             ["Database:Host"] = "explicit-host",
-            ["Database:Database"] = "explicit_db",
+            ["Database:Name"] = "explicit_db",
             ["Database:Runtime:Username"] = "explicit_user",
             ["Database:Runtime:Password"] = "explicit-secret",
             ["Database:Runtime:TlsMode"] = "Required",
@@ -183,6 +179,45 @@ public sealed class ConfigurationExtensionsTests
             .IsEqualTo("runtime");
         await Assert.That(configuration["PrivacyErasureAuthorityDatabase:Migrator:Username"])
             .IsEqualTo("migrator");
+    }
+
+    [Test]
+    public async Task AddInfisicalCompatibility_MapsErasureFolderAliases()
+    {
+        var configuration = BuildConfiguration(new Dictionary<string, string?>
+        {
+            ["ERASURE_TOPOLOGY"] = "ExternalDatabase",
+            ["ERASURE_HOST"] = "erasure-authority",
+            ["ERASURE_PORT"] = "5432",
+            ["ERASURE_NAME"] = "erasure_db",
+            ["ERASURE_RUNTIME_USERNAME"] = "erasure_runtime",
+            ["ERASURE_RUNTIME_PASSWORD"] = "erasure-secret",
+            ["ERASURE_MIGRATOR_USERNAME"] = "erasure_migrator",
+            ["ERASURE_MIGRATOR_PASSWORD"] = "erasure-migrator-secret",
+        });
+
+        await Assert.That(configuration["PrivacyErasure:Authority:Topology"])
+            .IsEqualTo("ExternalDatabase");
+        await Assert.That(configuration["Database:Erasure:Provider"])
+            .IsEqualTo("PostgreSql");
+        await Assert.That(configuration["Database:Erasure:Host"])
+            .IsEqualTo("erasure-authority");
+        await Assert.That(configuration["Database:Erasure:Database"])
+            .IsEqualTo("erasure_db");
+        await Assert.That(configuration["Database:Erasure:Runtime:Username"])
+            .IsEqualTo("erasure_runtime");
+        await Assert.That(configuration["Database:Erasure:Migrator:Username"])
+            .IsEqualTo("erasure_migrator");
+        await Assert.That(configuration["PrivacyErasureAuthorityDatabase:Provider"])
+            .IsEqualTo("PostgreSql");
+        await Assert.That(configuration["PrivacyErasureAuthorityDatabase:Host"])
+            .IsEqualTo("erasure-authority");
+        await Assert.That(configuration["PrivacyErasureAuthorityDatabase:Database"])
+            .IsEqualTo("erasure_db");
+        await Assert.That(configuration["PrivacyErasureAuthorityDatabase:Runtime:Username"])
+            .IsEqualTo("erasure_runtime");
+        await Assert.That(configuration["PrivacyErasureAuthorityDatabase:Migrator:Username"])
+            .IsEqualTo("erasure_migrator");
     }
 
     [Test]

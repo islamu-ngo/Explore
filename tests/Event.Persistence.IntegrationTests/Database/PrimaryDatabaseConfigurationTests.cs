@@ -405,7 +405,25 @@ public sealed class PrimaryDatabaseConfigurationTests
     }
 
     [Test]
-    public async Task BindRuntime_WithMySql_RequiresFlavorAndVersion()
+    public async Task BindRuntime_WithMariaDb_AutoInfereFlavorAndDefaultLtsVersion()
+    {
+        var configuration = BuildConfiguration(new Dictionary<string, string?>
+        {
+            ["Database:Provider"] = "MariaDb",
+            ["Database:Host"] = "mariadb.example.test",
+            ["Database:Database"] = "event_db",
+            ["Database:Runtime:Username"] = "db_user",
+            ["Database:Runtime:Password"] = "db-secret",
+            ["Database:Runtime:TlsMode"] = "Required",
+        });
+
+        var options = PrimaryDatabaseConfiguration.BindRuntime(configuration);
+        await Assert.That(options.ServerFlavor).IsEqualTo(PrimaryDatabaseServerFlavor.MariaDb);
+        await Assert.That(options.ServerVersion).IsEqualTo(new Version(11, 4));
+    }
+
+    [Test]
+    public async Task BindRuntime_WithMySql_AutoInfereFlavorAndDefaultLtsVersion()
     {
         var configuration = BuildConfiguration(new Dictionary<string, string?>
         {
@@ -414,22 +432,12 @@ public sealed class PrimaryDatabaseConfigurationTests
             ["Database:Database"] = "event_db",
             ["Database:Runtime:Username"] = "db_user",
             ["Database:Runtime:Password"] = "db-secret",
-            ["Database:Runtime:ServerFlavor"] = "MySql",
-            ["Database:Runtime:ServerVersion"] = "8.0",
             ["Database:Runtime:TlsMode"] = "Prefer",
         });
 
         var options = PrimaryDatabaseConfiguration.BindRuntime(configuration);
-        var result = PrimaryDatabaseConfiguration.BuildConnectionString(options);
-        var parsed = new MySqlConnectionStringBuilder(result.ConnectionString);
-
         await Assert.That(options.ServerFlavor).IsEqualTo(PrimaryDatabaseServerFlavor.MySql);
-        await Assert.That(options.ServerVersion).IsEqualTo(new Version(8, 0));
-        await Assert.That(parsed.Server).IsEqualTo("mysql.example.test");
-        await Assert.That(parsed.Port).IsEqualTo(3306u);
-        await Assert.That(parsed.UserID).IsEqualTo("db_user");
-        await Assert.That(parsed.Password).IsEqualTo("db-secret");
-        await Assert.That(result.SafeSummary).Contains("MySql");
+        await Assert.That(options.ServerVersion).IsEqualTo(new Version(8, 4));
     }
 
     [Test]

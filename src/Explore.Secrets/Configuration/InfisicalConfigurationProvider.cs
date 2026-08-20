@@ -157,12 +157,26 @@ public sealed class InfisicalConfigurationProvider : ConfigurationProvider, IDis
             {
                 if (string.IsNullOrEmpty(secret.SecretKey)) continue;
 
+                var secretValue = secret.SecretValue;
+                if (string.IsNullOrWhiteSpace(secretValue)) continue;
+
                 // Convert to .NET configuration key format
                 var configKey = ConvertToConfigurationKey(secret.SecretKey, path);
-                newData[configKey] = secret.SecretValue ?? string.Empty;
+                newData[configKey] = secretValue;
 
                 // Also store with original key for direct access
-                newData[secret.SecretKey] = secret.SecretValue ?? string.Empty;
+                newData[secret.SecretKey] = secretValue;
+
+                if (configKey.Equals("Database:Name", StringComparison.OrdinalIgnoreCase))
+                {
+                    newData["Database:Database"] = secretValue;
+                }
+                else if (configKey.StartsWith("Database:Erasure:", StringComparison.OrdinalIgnoreCase))
+                {
+                    var suffix = configKey["Database:Erasure:".Length..];
+                    newData[$"PrivacyErasureAuthorityDatabase:{suffix}"] = secretValue;
+                    newData[$"DatabaseErasure:{suffix}"] = secretValue;
+                }
 
                 Console.Error.WriteLine($"[Infisical]   - {secret.SecretKey} -> {configKey}");
                 totalSecrets++;
@@ -243,38 +257,65 @@ public sealed class InfisicalConfigurationProvider : ConfigurationProvider, IDis
     /// <summary>
     /// Converts an Infisical secret key to .NET configuration format.
     /// </summary>
-    /// <remarks>
-    /// Conversion rules:
-    /// - Path becomes section prefix: "/keycloak" -> "Keycloak:"
-    /// - SCREAMING_SNAKE_CASE becomes PascalCase
-    /// - Double underscores become colons (subsections)
-    ///
-    /// Examples:
-    /// - "/keycloak/KEYCLOAK_REALM" -> "Keycloak:Realm"
-    /// - "/api/S3__ACCESS_KEY" -> "S3:AccessKey"
-    /// </remarks>
     private static string ConvertToConfigurationKey(string secretKey, string path)
     {
-        // Special mappings for common patterns
+        var normalizedPath = path.Trim('/');
+
+        // 1. Privacy Erasure Authority Database (/database/erasure) -> Database:Erasure:*
+        if (normalizedPath.Equals("database/erasure", StringComparison.OrdinalIgnoreCase))
+        {
+            return secretKey.ToUpperInvariant() switch
+            {
+                "DATABASE_HOST" or "HOST" => "Database:Erasure:Host",
+                "DATABASE_PORT" or "PORT" => "Database:Erasure:Port",
+                "DATABASE_NAME" or "DATABASE" or "NAME" => "Database:Erasure:Database",
+                "DATABASE_PROVIDER" or "PROVIDER" => "Database:Erasure:Provider",
+                "DATABASE_RUNTIME_USERNAME" or "RUNTIME_USERNAME" => "Database:Erasure:Runtime:Username",
+                "DATABASE_RUNTIME_PASSWORD" or "RUNTIME_PASSWORD" => "Database:Erasure:Runtime:Password",
+                "DATABASE_MIGRATOR_USERNAME" or "MIGRATOR_USERNAME" => "Database:Erasure:Migrator:Username",
+                "DATABASE_MIGRATOR_PASSWORD" or "MIGRATOR_PASSWORD" => "Database:Erasure:Migrator:Password",
+                "DATABASE_TLS_MODE" or "TLS_MODE" => "Database:Erasure:TlsMode",
+                "DATABASE_TRUST_SERVER_CERTIFICATE" or "TRUST_SERVER_CERTIFICATE" => "Database:Erasure:TrustServerCertificate",
+                _ => $"Database:Erasure:{ToPascalCase(secretKey)}"
+            };
+        }
+
+        // 2. Primary Database (/database)
+        if (normalizedPath.Equals("database", StringComparison.OrdinalIgnoreCase))
+        {
+            return secretKey.ToUpperInvariant() switch
+            {
+                "DATABASE_PROVIDER" or "PROVIDER" => "Database:Provider",
+                "DATABASE_HOST" or "HOST" => "Database:Host",
+                "DATABASE_PORT" or "PORT" => "Database:Port",
+                "DATABASE_NAME" or "DATABASE" or "NAME" => "Database:Name",
+                "DATABASE_SCHEMA" or "SCHEMA" => "Database:Schema",
+                "DATABASE_RUNTIME_USERNAME" or "RUNTIME_USERNAME" => "Database:Runtime:Username",
+                "DATABASE_RUNTIME_PASSWORD" or "RUNTIME_PASSWORD" => "Database:Runtime:Password",
+                "DATABASE_MIGRATOR_USERNAME" or "MIGRATOR_USERNAME" => "Database:Migrator:Username",
+                "DATABASE_MIGRATOR_PASSWORD" or "MIGRATOR_PASSWORD" => "Database:Migrator:Password",
+                "DATABASE_TLS_MODE" or "TLS_MODE" => "Database:TlsMode",
+                "DATABASE_TRUST_SERVER_CERTIFICATE" or "TRUST_SERVER_CERTIFICATE" => "Database:TrustServerCertificate",
+                "DATABASE_SERVER_FLAVOR" or "SERVER_FLAVOR" => "Database:ServerFlavor",
+                "DATABASE_SERVER_VERSION" or "SERVER_VERSION" => "Database:ServerVersion",
+                "ERASURE_TOPOLOGY" or "PRIVACY_ERASURE_AUTHORITY_TOPOLOGY" or "TOPOLOGY" => "PrivacyErasure:Authority:Topology",
+                _ => $"Database:{ToPascalCase(secretKey)}"
+            };
+        }
+
+        // 3. Special mappings for common patterns
         if (secretKey.Equals("AI_TOOL_PROPOSALS_ENABLED", StringComparison.OrdinalIgnoreCase))
         {
             return "AiProvider:ToolProposalsEnabled";
         }
 
-        // Normalize path to get section name
-        var section = path.Trim('/');
-        if (string.IsNullOrEmpty(section))
-        {
-            section = string.Empty;
-        }
-        else
-        {
-            section = ToPascalCase(section) + ":";
-        }
+        // 4. Default path to section conversion
+        var pathSegments = normalizedPath.Split('/', StringSplitOptions.RemoveEmptyEntries);
+        var section = pathSegments.Length == 0 ? string.Empty : string.Join(":", pathSegments.Select(ToPascalCase)) + ":";
 
         // Remove section prefix from key if present
         var keyWithoutSection = secretKey;
-        var sectionUpper = section.TrimEnd(':').ToUpperInvariant();
+        var sectionUpper = section.TrimEnd(':').Replace(":", "_", StringComparison.Ordinal).ToUpperInvariant();
         if (!string.IsNullOrEmpty(sectionUpper) &&
             secretKey.StartsWith(sectionUpper + "_", StringComparison.OrdinalIgnoreCase))
         {

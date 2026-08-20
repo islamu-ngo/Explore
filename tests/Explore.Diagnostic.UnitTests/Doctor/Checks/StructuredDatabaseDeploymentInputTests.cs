@@ -20,11 +20,9 @@ public class StructuredDatabaseDeploymentInputTests
             ("Provider", "PROVIDER"),
             ("Host", "HOST"),
             ("Port", "PORT"),
-            ("Database", "DATABASE"),
+            ("Database", "NAME"),
             ("TlsMode", "TLS_MODE"),
             ("TrustServerCertificate", "TRUST_SERVER_CERTIFICATE"),
-            ("ServerFlavor", "SERVER_FLAVOR"),
-            ("ServerVersion", "SERVER_VERSION"),
         ];
         foreach (var key in sharedKeys)
         {
@@ -41,21 +39,21 @@ public class StructuredDatabaseDeploymentInputTests
         await Assert.That(environmentExample).Contains("DATABASE_MIGRATOR_USERNAME=");
         await Assert.That(environmentExample).Contains("DATABASE_MIGRATOR_PASSWORD=");
 
-        await Assert.That(compose).Contains("PrivacyErasureAuthorityDatabase__Provider:");
-        await Assert.That(compose).Contains("PrivacyErasureAuthorityDatabase__Host:");
-        await Assert.That(compose).Contains("PrivacyErasureAuthorityDatabase__Runtime__Username:");
-        await Assert.That(compose).Contains("PrivacyErasureAuthorityDatabase__Runtime__Password:");
-        await Assert.That(compose).Contains("PrivacyErasureAuthorityDatabase__Migrator__Username:");
-        await Assert.That(compose).Contains("PrivacyErasureAuthorityDatabase__Migrator__Password:");
-        await Assert.That(environmentExample).Contains("PRIVACY_ERASURE_AUTHORITY_HOST=");
-        await Assert.That(environmentExample).Contains("PRIVACY_ERASURE_AUTHORITY_RUNTIME_USERNAME=");
-        await Assert.That(environmentExample).Contains("PRIVACY_ERASURE_AUTHORITY_MIGRATOR_USERNAME=");
-        await Assert.That(environmentExample).Contains("PRIVACY_ERASURE_AUTHORITY_TOPOLOGY=EmbeddedSqlite");
-        await Assert.That(environmentExample).Contains("PRIVACY_ERASURE_AUTHORITY_EMBEDDED_PATH=/app/data/privacy_erasure_authority.db");
-        await Assert.That(environmentExample).Contains("PRIVACY_ERASURE_AUTHORITY_WRITER_REPLICA_COUNT=1");
-        await Assert.That(environmentExample).Contains("PRIVACY_ERASURE_AUTHORITY_BUSY_TIMEOUT_SECONDS=30");
+        await Assert.That(compose).Contains("Database__Erasure__Provider:");
+        await Assert.That(compose).Contains("Database__Erasure__Host:");
+        await Assert.That(compose).Contains("Database__Erasure__Runtime__Username:");
+        await Assert.That(compose).Contains("Database__Erasure__Runtime__Password:");
+        await Assert.That(compose).Contains("Database__Erasure__Migrator__Username:");
+        await Assert.That(compose).Contains("Database__Erasure__Migrator__Password:");
+        await Assert.That(environmentExample).Contains("DATABASE_ERASURE_HOST=");
+        await Assert.That(environmentExample).Contains("DATABASE_ERASURE_RUNTIME_USERNAME=");
+        await Assert.That(environmentExample).Contains("DATABASE_ERASURE_MIGRATOR_USERNAME=");
+        await Assert.That(environmentExample).Contains("ERASURE_TOPOLOGY=EmbeddedSqlite");
+        await Assert.That(environmentExample).Contains("ERASURE_EMBEDDED_PATH=/app/data/privacy_erasure_authority.db");
+        await Assert.That(environmentExample).Contains("ERASURE_WRITER_REPLICA_COUNT=1");
+        await Assert.That(environmentExample).Contains("ERASURE_BUSY_TIMEOUT_SECONDS=30");
 
-        await Assert.That(compose).Contains("PrivacyErasure__Authority__Topology: ${PRIVACY_ERASURE_AUTHORITY_TOPOLOGY:-EmbeddedSqlite}");
+        await Assert.That(compose).Contains("PrivacyErasure__Authority__Topology: ${ERASURE_TOPOLOGY:-${PRIVACY_ERASURE_AUTHORITY_TOPOLOGY:-EmbeddedSqlite}}");
         await Assert.That(compose).Contains("PrivacyErasureAuthorityEmbedded__Path:");
         await Assert.That(compose).Contains("PrivacyErasureAuthorityEmbedded__WriterReplicaCount:");
         await Assert.That(compose).Contains("PrivacyErasureAuthorityEmbedded__BusyTimeoutSeconds:");
@@ -63,7 +61,7 @@ public class StructuredDatabaseDeploymentInputTests
         await Assert.That(compose).Contains("SETUP_SECRET_FILE: ${SETUP_SECRET_FILE:-/app/bootstrap/setup-secret}");
         await Assert.That(compose).Contains("setup_data:/app/bootstrap");
         await Assert.That(compose).Contains("\n  setup_data:");
-        await Assert.That(environmentExample).Contains("SETUP_SECRET_FILE=");
+        await Assert.That(environmentExample).Contains("SETUP_SECRET=");
         await Assert.That(compose).Contains("privacy-erasure-authority-volume-init:");
         await Assert.That(compose).Contains("event-migrationservice:");
         await Assert.That(compose).DoesNotContain("event-migrationservice:\n    profiles:");

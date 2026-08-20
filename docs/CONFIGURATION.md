@@ -291,8 +291,8 @@ role afterward.
 |---|---|---|---|
 | PostgreSql | `Database__Provider=PostgreSql`, `Database__Host=<db-host>`, `Database__Port=5432`, `Database__Database=<database>`, `Database__Schema=islamu_event`, `Database__TlsMode=Required`, `Database__TrustServerCertificate=false` | `Database__Migrator__Username=${DB_MIGRATOR_USERNAME}`, `Database__Migrator__Password=${DB_MIGRATOR_PASSWORD}` | `Database__Runtime__Username=${DB_RUNTIME_USERNAME}`, `Database__Runtime__Password=${DB_RUNTIME_PASSWORD}` |
 | SqlServer | `Database__Provider=SqlServer`, `Database__Host=<db-host>`, `Database__Port=1433`, `Database__Database=<database>`, `Database__Schema=islamu_event`, `Database__TlsMode=Required`, `Database__TrustServerCertificate=false` | `Database__Migrator__Username=${DB_MIGRATOR_USERNAME}`, `Database__Migrator__Password=${DB_MIGRATOR_PASSWORD}` | `Database__Runtime__Username=${DB_RUNTIME_USERNAME}`, `Database__Runtime__Password=${DB_RUNTIME_PASSWORD}` |
-| MariaDb | `Database__Provider=MariaDb`, `Database__Host=<db-host>`, `Database__Port=3306`, `Database__Database=<database>`, `Database__TlsMode=Required`, `Database__TrustServerCertificate=false`, `Database__ServerFlavor=MariaDb`, `Database__ServerVersion=<major.minor.patch>` | `Database__Migrator__Username=${DB_MIGRATOR_USERNAME}`, `Database__Migrator__Password=${DB_MIGRATOR_PASSWORD}` | `Database__Runtime__Username=${DB_RUNTIME_USERNAME}`, `Database__Runtime__Password=${DB_RUNTIME_PASSWORD}` |
-| MySql | `Database__Provider=MySql`, `Database__Host=<db-host>`, `Database__Port=3306`, `Database__Database=<database>`, `Database__TlsMode=Required`, `Database__TrustServerCertificate=false`, `Database__ServerFlavor=MySql`, `Database__ServerVersion=<major.minor.patch>` | `Database__Migrator__Username=${DB_MIGRATOR_USERNAME}`, `Database__Migrator__Password=${DB_MIGRATOR_PASSWORD}` | `Database__Runtime__Username=${DB_RUNTIME_USERNAME}`, `Database__Runtime__Password=${DB_RUNTIME_PASSWORD}` |
+| MariaDb | `Database__Provider=MariaDb`, `Database__Host=<db-host>`, `Database__Port=3306`, `Database__Database=<database>`, `Database__TlsMode=Required`, `Database__TrustServerCertificate=false` (defaults to LTS `11.4`; override with `Database__ServerVersion=<version>` e.g. `10.11`) | `Database__Migrator__Username=${DB_MIGRATOR_USERNAME}`, `Database__Migrator__Password=${DB_MIGRATOR_PASSWORD}` | `Database__Runtime__Username=${DB_RUNTIME_USERNAME}`, `Database__Runtime__Password=${DB_RUNTIME_PASSWORD}` |
+| MySql | `Database__Provider=MySql`, `Database__Host=<db-host>`, `Database__Port=3306`, `Database__Database=<database>`, `Database__TlsMode=Required`, `Database__TrustServerCertificate=false` (defaults to LTS `8.4`; override with `Database__ServerVersion=<version>` e.g. `8.0`) | `Database__Migrator__Username=${DB_MIGRATOR_USERNAME}`, `Database__Migrator__Password=${DB_MIGRATOR_PASSWORD}` | `Database__Runtime__Username=${DB_RUNTIME_USERNAME}`, `Database__Runtime__Password=${DB_RUNTIME_PASSWORD}` |
 
 For example, a PostgreSQL standalone `.env` uses native keys directly:
 
@@ -854,8 +854,9 @@ Cerbos runtime settings are the first implemented consumer of the shared secrets
 - Explicit `cerbos` is deployment-managed and selected by runtime authorization immediately, so failures deny rather than falling back to Local. The API background worker verifies the instance PDP gRPC health service and then publishes the bundled policy package specifically to the instance Admin API, never an ambient tenant BYO target. It retries transient startup failures within the configured bound. Configured status becomes ready only after both operations succeed; automatic navigation skips the choice page while reconciliation is pending or ready, and a final failure is exposed as locked remediation from the instance setup task.
 - `Cerbos:GrpcEndpoint` can prefill onboarding/admin forms as deployment bootstrap. Once an operator saves an application-managed endpoint, the saved setting takes precedence unless the key is explicitly deployment-managed.
 - `Cerbos:UsePolicyScope` defaults to `false`. Keep it false for bundled root policies; enable it only when the PDP has tenant-scoped policy files and `engine.lenientScopeSearch=true`.
-- `Cerbos:AdminApi:*` configures policy package sync/status operations, not runtime authorization checks. Admin API credentials are secret-bearing and must be treated as write-only/redacted in UI and API responses.
-- `Secrets:Ownership:DeploymentManagedKeys` can mark `cerbos.grpc_endpoint`, `Cerbos:AdminApi:AdminUsername`, `Cerbos:AdminApi:AdminPassword`, or `*` as deployment-managed. Deployment-managed fields are read-only in UI and ignore application-managed DB values for that field.
+- `Cerbos:AdminApi:*` configures explicit policy package sync/status operations only. Runtime authorization uses the gRPC PDP and never waits for the Admin API. Admin requests have a 10-second HTTP timeout.
+- `Cerbos:AdminApi:AdminUsername` and `Cerbos:AdminApi:AdminPassword` may come from environment variables or Infisical. When both are present, onboarding uses them by default and keeps the one-time override form collapsed. When either is missing, onboarding opens the one-time credential form. A complete UI pair overrides deployment credentials for one request and is never persisted.
+- `Secrets:Ownership:DeploymentManagedKeys` can mark `cerbos.grpc_endpoint` or `*` as deployment-managed. Deployment-managed endpoint fields are read-only in UI and ignore application-managed DB values for that field.
 - Setup and post-onboarding administration reuse the existing endpoint verification, package download/sync, and local-fallback capabilities. They do not add a Cerbos resource inventory or an arbitrary policy-decision test API.
 
 Background reconciliation binds from `Cerbos:PolicyBootSync`:
@@ -876,7 +877,7 @@ Endpoint and secret safety rules:
 - Runtime failure logs must not include raw PDP/Admin API endpoints, Admin API credentials, JWTs/tokens, response bodies, or exception objects/messages.
 - A tenant with `cerbos.mode=custom_endpoint` and a blank PDP endpoint remains in BYO mode. Runtime authorization activates safe mode instead of falling back to the instance PDP, while any explicit BYO Admin API configuration is still preserved for package operations.
 - Any BYO PDP failure activates provider-instance safe mode for local fallback decisions. There is no fail-open setting: the `cerbos.failure_mode` governance key was deleted because it was parsed and then ignored at runtime, so it could only mislead an operator into believing they had configured fallback behaviour.
-- `Authorization:DenySensitiveActionsOnUnknownRevision` (default `true`) denies writes and sensitive disclosures when the Cerbos policy store revision cannot be established. Set it to `false` only for a deployment that manages the policy store entirely out of band, where the application can never observe a revision and the gate would otherwise deny permanently.
+- The privileged package-status endpoint may inspect Admin API policy hashes for operator drift diagnostics. This inspection is explicit and never runs from runtime authorization or HAL capability planning.
 
 ### Email Dispatch Scheduler Configuration
 
@@ -1162,6 +1163,9 @@ After authentication, onboarding is presented as one server-derived task overvie
 - `CONTROL_PLANE_TENANT_ADMINISTRATOR_SIGN_IN_URL` -> `ManagedControlPlane:TenantAdministratorSignInUrl`
 - `AUTHORIZATION_PROVIDER` (Infisical `/api` or `/cerbos`) -> `Authorization:Provider` (blank, `local`, or `cerbos`)
 - `CERBOS_GRPC_ENDPOINT` (Infisical `/cerbos`) -> `Cerbos:GrpcEndpoint`
+- `CERBOS_HTTP_ENDPOINT` (Infisical `/cerbos`) -> `Cerbos:HttpEndpoint` and the instance Admin API endpoint list
+- `CERBOS_ADMIN_USERNAME` (Infisical `/cerbos`) -> `Cerbos:AdminApi:AdminUsername`
+- `CERBOS_ADMIN_PASSWORD` (Infisical `/cerbos`) -> `Cerbos:AdminApi:AdminPassword`
 - `CERBOS_USE_POLICY_SCOPE` (Infisical `/cerbos`) -> `Cerbos:UsePolicyScope` (`true`/`false`, also accepts `1`/`0`, `yes`/`no`, `on`/`off`)
 - S3 runtime values:
   - `ISLAMU_EVENT_REGION` -> `S3Settings:Region`
@@ -1247,7 +1251,7 @@ Platform monetization is application-managed instance data, not an `appsettings`
 | SMTP | `email.*` | `email.smtp_username`, `email.smtp_password` |
 | Optional S3-compatible storage | `s3.*` | `s3.access_key_id`, `s3.secret_access_key` |
 | Authentication | `auth.*` | `auth.keycloak_client_secret`, `auth.google_client_secret` |
-| Cerbos admin credentials | `cerbos.*` | `cerbos.custom_admin_username`, `cerbos.custom_admin_password` |
+| Cerbos admin credentials | `cerbos.*` | Deployment configuration or request-scoped one-time sync input; never persisted by onboarding |
 | AI assistant | `ai_assistant.*` | `ai_assistant.api_key` |
 | Support access | `support_access.*` | none |
 
@@ -1402,6 +1406,7 @@ Post-onboarding management note:
 - Instance admins can update analytics governance values through `PUT /api/InstanceOnboarding/analytics-governance`.
 - Instance admins can update authentication provider governance values through `PATCH /api/instance/settings/auth-provider`.
 - Instance admins can update the active authorization provider through `PATCH /api/instance/settings/authz-provider`.
+- Setup and instance-admin policy sync endpoints accept an optional complete one-time Admin API username/password pair. An empty request selects deployment credentials; partial pairs are rejected.
 - Secret values (`keycloak`/`google` client secrets) continue to use secret-setting storage, not plain governance values.
 
 ## Settings Cascade Rules

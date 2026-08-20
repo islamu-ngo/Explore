@@ -754,7 +754,9 @@ AUTHORIZATION_PROVIDER=cerbos docker compose --profile authz up -d
 | `CERBOS_HTTP_ENDPOINT` | PDP HTTP endpoint (default: `http://cerbos:3592`) |
 | `CERBOS_ADMIN_USERNAME` | Cerbos Admin API username |
 | `CERBOS_ADMIN_PASSWORD_HASH` | Base64 bcrypt hash for Cerbos server |
-| `CERBOS_ADMIN_PASSWORD` | Plaintext password for `cerbosctl` policy sync |
+| `CERBOS_ADMIN_PASSWORD` | Plaintext Admin API password for server-side or `cerbosctl` policy sync |
+
+When `CERBOS_ADMIN_USERNAME` and `CERBOS_ADMIN_PASSWORD` are both present, onboarding uses them server-side and collapses the optional one-time credential form. If the pair is absent, enter it in onboarding for a single sync; even when deployment secrets exist, expand **Use one-time credentials instead** to override them for that request. One-time values are not saved and are cleared after the call. Use TLS for a remote Admin API, rotate the plaintext secret and its matching `CERBOS_ADMIN_PASSWORD_HASH` together, and rerun sync after rotation. Database backup/restore does not capture these credentials; restore them through the deployment secret provider or enter them again for one sync.
 
 > [!WARNING]
 > When `AUTHORIZATION_PROVIDER=cerbos`, Cerbos PDP outages **fail closed** (deny all requests). The system does **not** automatically fall back to local RBAC. Set `AUTHORIZATION_PROVIDER=local` explicitly if you need to bypass Cerbos.
@@ -832,7 +834,7 @@ file or be restored merely because the primary database is restored.
 For `ExternalDatabase` topology:
 
 ```bash
-PRIVACY_ERASURE_AUTHORITY_TOPOLOGY=ExternalDatabase \
+ERASURE_TOPOLOGY=ExternalDatabase \
 docker compose --profile privacy-erasure-external up -d
 ```
 

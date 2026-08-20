@@ -9,6 +9,7 @@ using Explore.Application.Configuration;
 using Explore.Infrastructure.Configuration;
 using Explore.Infrastructure.Webhooks;
 using Explore.Secrets.Database;
+using Explore.Secrets.Extensions;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
@@ -23,14 +24,27 @@ var dotenvPath = Path.Combine(repositoryRoot, ".env");
 if (File.Exists(dotenvPath))
     Env.NoClobber().Load(dotenvPath);
 var builder = DistributedApplication.CreateBuilder(args);
+builder.Configuration.AddInfisical(builder.Configuration, source =>
+{
+    source.Paths.Clear();
+    source.Paths.AddRange(["/keycloak", "/database", "/database/erasure", "/api", "/blazor", "/cerbos", "/mcp", "/ai", "/storage", "/smtp", "/integrations/listmonk"]);
+    source.ThrowOnFirstLoadFailure = false;
+});
 var runMode = AspireRunModeExtensions.Parse(builder.Configuration["ISLAMU_ASPIRE_MODE"]);
 var hostingTopology = ParseHostingTopology(builder.Configuration["Hosting:Topology"]);
 var eventLocationPrivacyMigrationStage =
     builder.Configuration["Database:Migrations:EventLocationPrivacyStage"];
-var privacyErasureTopology = ParsePrivacyErasureTopology(ConfiguredValue(
-    builder.Configuration,
-    "PRIVACY_ERASURE_AUTHORITY_TOPOLOGY",
-    nameof(PrivacyErasureAuthorityTopology.EmbeddedSqlite)));
+var privacyErasureTopology = ParsePrivacyErasureTopology(
+    ConfiguredValue(
+        builder.Configuration,
+        "PrivacyErasure:Authority:Topology",
+        ConfiguredValue(
+            builder.Configuration,
+            "ERASURE_TOPOLOGY",
+            ConfiguredValue(
+                builder.Configuration,
+                "PRIVACY_ERASURE_AUTHORITY_TOPOLOGY",
+                nameof(PrivacyErasureAuthorityTopology.EmbeddedSqlite)))));
 var usesEmbeddedPrivacyErasureAuthority =
     privacyErasureTopology == PrivacyErasureAuthorityTopology.EmbeddedSqlite;
 var usesExternalPrivacyErasureAuthority =
@@ -1353,6 +1367,7 @@ static IResourceBuilder<ProjectResource> WithLocalPrivacyErasureAuthorityDatabas
     PrimaryDatabaseRole role)
 {
     var credentialPrefix = $"PrivacyErasureAuthorityDatabase__{role}__";
+    var canonicalCredentialPrefix = $"Database__Erasure__{role}__";
     var postgres = database.Resource.Parent;
 
     return project
@@ -1363,7 +1378,15 @@ static IResourceBuilder<ProjectResource> WithLocalPrivacyErasureAuthorityDatabas
         .WithEnvironment("PrivacyErasureAuthorityDatabase__TlsMode", PrimaryDatabaseTlsMode.Prefer.ToString())
         .WithEnvironment("PrivacyErasureAuthorityDatabase__TrustServerCertificate", "false")
         .WithEnvironment($"{credentialPrefix}Username", postgres.UserNameReference)
-        .WithEnvironment($"{credentialPrefix}Password", postgres.PasswordParameter);
+        .WithEnvironment($"{credentialPrefix}Password", postgres.PasswordParameter)
+        .WithEnvironment("Database__Erasure__Provider", PrimaryDatabaseProvider.PostgreSql.ToString())
+        .WithEnvironment("Database__Erasure__Host", postgres.PrimaryEndpoint.Property(EndpointProperty.Host))
+        .WithEnvironment("Database__Erasure__Port", postgres.PrimaryEndpoint.Property(EndpointProperty.Port))
+        .WithEnvironment("Database__Erasure__Database", database.Resource.DatabaseName)
+        .WithEnvironment("Database__Erasure__TlsMode", PrimaryDatabaseTlsMode.Prefer.ToString())
+        .WithEnvironment("Database__Erasure__TrustServerCertificate", "false")
+        .WithEnvironment($"{canonicalCredentialPrefix}Username", postgres.UserNameReference)
+        .WithEnvironment($"{canonicalCredentialPrefix}Password", postgres.PasswordParameter);
 }
 
 static IResourceBuilder<ProjectResource> WithExternalPrivacyErasureAuthorityDatabase(
@@ -1373,6 +1396,7 @@ static IResourceBuilder<ProjectResource> WithExternalPrivacyErasureAuthorityData
 {
     var database = PrivacyErasureAuthorityDatabaseConfiguration.Bind(builder.Configuration, role);
     var credentialPrefix = $"PrivacyErasureAuthorityDatabase__{role}__";
+    var canonicalCredentialPrefix = $"Database__Erasure__{role}__";
 
     project = project
         .WithEnvironment("PrivacyErasureAuthorityDatabase__Provider", database.Provider.ToString())
@@ -1385,14 +1409,27 @@ static IResourceBuilder<ProjectResource> WithExternalPrivacyErasureAuthorityData
         .WithEnvironment(
             "PrivacyErasureAuthorityDatabase__TrustServerCertificate",
             database.TrustServerCertificate.ToString())
-        .WithEnvironment($"{credentialPrefix}Username", database.Username!);
+        .WithEnvironment($"{credentialPrefix}Username", database.Username!)
+        .WithEnvironment("Database__Erasure__Provider", database.Provider.ToString())
+        .WithEnvironment("Database__Erasure__Host", database.Host!)
+        .WithEnvironment(
+            "Database__Erasure__Port",
+            (database.Port ?? 5432).ToString(System.Globalization.CultureInfo.InvariantCulture))
+        .WithEnvironment("Database__Erasure__Database", database.Database!)
+        .WithEnvironment("Database__Erasure__TlsMode", database.TlsMode.ToString())
+        .WithEnvironment(
+            "Database__Erasure__TrustServerCertificate",
+            database.TrustServerCertificate.ToString())
+        .WithEnvironment($"{canonicalCredentialPrefix}Username", database.Username!);
 
     var password = builder.AddParameter(
         $"privacy-authority-{role.ToString().ToLowerInvariant()}-{project.Resource.Name}-password",
         () => database.Password!,
         publishValueAsDefault: false,
         secret: true);
-    return project.WithEnvironment($"{credentialPrefix}Password", password);
+    return project
+        .WithEnvironment($"{credentialPrefix}Password", password)
+        .WithEnvironment($"{canonicalCredentialPrefix}Password", password);
 }
 
 static IResourceBuilder<ProjectResource> WithEmbeddedPrivacyErasureAuthority(

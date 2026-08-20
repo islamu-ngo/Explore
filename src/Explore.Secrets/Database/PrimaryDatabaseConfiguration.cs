@@ -40,14 +40,8 @@ public static partial class PrimaryDatabaseConfiguration
         RejectUnsupportedPrefixAlias(configuration);
 
         var root = configuration.GetSection(SectionName);
-        if (!root.Exists())
-        {
-            throw new InvalidOperationException(
-                $"Missing structured database configuration section '{SectionName}'.");
-        }
-
         var roleSection = root.GetSection(role == PrimaryDatabaseRole.Runtime ? RuntimeSectionName : MigratorSectionName);
-        var providerValue = ReadRequired(root, roleSection, "Provider");
+        var providerValue = ReadRequired(configuration, root, roleSection, "Provider", role);
         if (!TryParseNamedEnum(providerValue, out PrimaryDatabaseProvider provider))
         {
             throw new InvalidOperationException(
@@ -58,22 +52,36 @@ public static partial class PrimaryDatabaseConfiguration
         {
             Role = role,
             Provider = provider,
-            Host = ReadOptional(root, roleSection, "Host"),
-            Port = ReadOptionalInt(root, roleSection, "Port"),
-            Database = ReadOptional(root, roleSection, "Database"),
+            Host = ReadOptional(configuration, root, roleSection, "Host", role),
+            Port = ReadOptionalInt(configuration, root, roleSection, "Port", role),
+            Database = ReadDatabaseName(configuration, root, roleSection),
             Schema = ReadSchema(configuration, root),
-            Username = ReadOptional(root, roleSection, "Username"),
-            Password = ReadOptional(root, roleSection, "Password"),
+            Username = ReadOptional(configuration, root, roleSection, "Username", role),
+            Password = ReadOptional(configuration, root, roleSection, "Password", role),
             TlsMode = ReadOptionalEnum(
+                configuration,
                 root,
                 roleSection,
                 "TlsMode",
                 provider == PrimaryDatabaseProvider.Sqlite
                     ? PrimaryDatabaseTlsMode.Prefer
-                    : PrimaryDatabaseTlsMode.Required),
-            TrustServerCertificate = ReadOptionalBool(root, roleSection, "TrustServerCertificate") ?? false,
-            ServerFlavor = ReadOptionalNullableEnum<PrimaryDatabaseServerFlavor>(root, roleSection, "ServerFlavor"),
-            ServerVersion = ReadOptionalVersion(root, roleSection, "ServerVersion"),
+                    : PrimaryDatabaseTlsMode.Required,
+                role),
+            TrustServerCertificate = ReadOptionalBool(configuration, root, roleSection, "TrustServerCertificate", role) ?? false,
+            ServerFlavor = ReadOptionalNullableEnum<PrimaryDatabaseServerFlavor>(configuration, root, roleSection, "ServerFlavor", role)
+                ?? (provider switch
+                {
+                    PrimaryDatabaseProvider.MariaDb => PrimaryDatabaseServerFlavor.MariaDb,
+                    PrimaryDatabaseProvider.MySql => PrimaryDatabaseServerFlavor.MySql,
+                    _ => null
+                }),
+            ServerVersion = ReadOptionalVersion(configuration, root, roleSection, "ServerVersion", role)
+                ?? (provider switch
+                {
+                    PrimaryDatabaseProvider.MariaDb => new Version(11, 4),
+                    PrimaryDatabaseProvider.MySql => new Version(8, 4),
+                    _ => null
+                }),
         };
 
         Validate(options);
@@ -320,20 +328,12 @@ public static partial class PrimaryDatabaseConfiguration
 
     private static void ValidateFlavorAndVersion(List<string> errors, PrimaryDatabaseConnectionOptions options, PrimaryDatabaseServerFlavor expectedFlavor, bool hasFlavor, bool hasVersion)
     {
-        if (!hasFlavor)
-        {
-            errors.Add($"{options.Provider} requires ServerFlavor.");
-        }
-        else if (options.ServerFlavor != expectedFlavor)
+        if (options.ServerFlavor is not null && options.ServerFlavor != expectedFlavor)
         {
             errors.Add($"{options.Provider} requires ServerFlavor={expectedFlavor}.");
         }
 
-        if (!hasVersion)
-        {
-            errors.Add($"{options.Provider} requires ServerVersion.");
-        }
-        else if (options.ServerVersion is { Major: < 1 } or null)
+        if (options.ServerVersion is { Major: < 1 } or null)
         {
             errors.Add($"{options.Provider} requires a bounded positive ServerVersion.");
         }
@@ -443,10 +443,10 @@ public static partial class PrimaryDatabaseConfiguration
         return PasswordRegex().Replace(connectionString, "$1=***");
     }
 
-    private static string ReadRequired(IConfiguration root, IConfiguration role, string key)
-        => ReadOptional(root, role, key) ?? throw new InvalidOperationException($"Database:{key} is required.");
+    private static string ReadRequired(IConfiguration configuration, IConfiguration root, IConfiguration role, string key, PrimaryDatabaseRole? databaseRole = null)
+        => ReadOptional(configuration, root, role, key, databaseRole) ?? throw new InvalidOperationException($"Missing structured database configuration section '{SectionName}' or required setting Database:{key}.");
 
-    private static string? ReadOptional(IConfiguration root, IConfiguration role, string key)
+    private static string? ReadOptional(IConfiguration configuration, IConfiguration root, IConfiguration role, string key, PrimaryDatabaseRole? databaseRole = null)
     {
         var roleValue = role[key];
         if (!string.IsNullOrWhiteSpace(roleValue))
@@ -455,7 +455,64 @@ public static partial class PrimaryDatabaseConfiguration
         }
 
         var rootValue = root[key];
-        return string.IsNullOrWhiteSpace(rootValue) ? null : rootValue.Trim();
+        if (!string.IsNullOrWhiteSpace(rootValue))
+        {
+            return rootValue.Trim();
+        }
+
+        if (databaseRole is not null)
+        {
+            var roleFlatKey = $"DATABASE_{databaseRole.Value.ToString().ToUpperInvariant()}_{key.ToUpperInvariant()}";
+            var roleFlatValue = configuration[roleFlatKey];
+            if (!string.IsNullOrWhiteSpace(roleFlatValue))
+            {
+                return roleFlatValue.Trim();
+            }
+
+            var roleDotNetKey = $"Database:{databaseRole.Value}:{key}";
+            var roleDotNetValue = configuration[roleDotNetKey];
+            if (!string.IsNullOrWhiteSpace(roleDotNetValue))
+            {
+                return roleDotNetValue.Trim();
+            }
+        }
+
+        var genericFlatKey = $"DATABASE_{key.ToUpperInvariant()}";
+        var genericFlatValue = configuration[genericFlatKey];
+        if (!string.IsNullOrWhiteSpace(genericFlatValue))
+        {
+            return genericFlatValue.Trim();
+        }
+
+        var directDotNetKey = $"Database:{key}";
+        var directDotNetValue = configuration[directDotNetKey];
+        if (!string.IsNullOrWhiteSpace(directDotNetValue))
+        {
+            return directDotNetValue.Trim();
+        }
+
+        return null;
+    }
+
+    private static string? ReadDatabaseName(IConfiguration configuration, IConfiguration root, IConfiguration role)
+    {
+        var roleValue = role["Name"] ?? role["Database"];
+        if (!string.IsNullOrWhiteSpace(roleValue))
+        {
+            return roleValue.Trim();
+        }
+
+        var rootValue = root["Name"] ?? root["Database"];
+        if (!string.IsNullOrWhiteSpace(rootValue))
+        {
+            return rootValue.Trim();
+        }
+
+        var alias = configuration["DATABASE_NAME"]
+            ?? configuration["DATABASE_DATABASE"]
+            ?? configuration["Database:Name"]
+            ?? configuration["Database:Database"];
+        return string.IsNullOrWhiteSpace(alias) ? null : alias.Trim();
     }
 
     private static string ReadSchema(IConfiguration configuration, IConfiguration root)
@@ -495,9 +552,9 @@ public static partial class PrimaryDatabaseConfiguration
         }
     }
 
-    private static int? ReadOptionalInt(IConfiguration root, IConfiguration role, string key)
+    private static int? ReadOptionalInt(IConfiguration configuration, IConfiguration root, IConfiguration role, string key, PrimaryDatabaseRole? databaseRole = null)
     {
-        var value = ReadOptional(root, role, key);
+        var value = ReadOptional(configuration, root, role, key, databaseRole);
         if (string.IsNullOrWhiteSpace(value))
         {
             return null;
@@ -506,9 +563,9 @@ public static partial class PrimaryDatabaseConfiguration
         return int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsed) ? parsed : throw new InvalidOperationException($"Database:{key} must be a valid integer.");
     }
 
-    private static bool? ReadOptionalBool(IConfiguration root, IConfiguration role, string key)
+    private static bool? ReadOptionalBool(IConfiguration configuration, IConfiguration root, IConfiguration role, string key, PrimaryDatabaseRole? databaseRole = null)
     {
-        var value = ReadOptional(root, role, key);
+        var value = ReadOptional(configuration, root, role, key, databaseRole);
         if (string.IsNullOrWhiteSpace(value))
         {
             return null;
@@ -517,10 +574,10 @@ public static partial class PrimaryDatabaseConfiguration
         return bool.TryParse(value, out var parsed) ? parsed : throw new InvalidOperationException($"Database:{key} must be true or false.");
     }
 
-    private static TEnum ReadOptionalEnum<TEnum>(IConfiguration root, IConfiguration role, string key, TEnum defaultValue)
+    private static TEnum ReadOptionalEnum<TEnum>(IConfiguration configuration, IConfiguration root, IConfiguration role, string key, TEnum defaultValue, PrimaryDatabaseRole? databaseRole = null)
         where TEnum : struct, Enum
     {
-        var value = ReadOptional(root, role, key);
+        var value = ReadOptional(configuration, root, role, key, databaseRole);
         if (string.IsNullOrWhiteSpace(value))
         {
             return defaultValue;
@@ -531,10 +588,10 @@ public static partial class PrimaryDatabaseConfiguration
             : throw new InvalidOperationException($"Database:{key} is invalid.");
     }
 
-    private static TEnum? ReadOptionalNullableEnum<TEnum>(IConfiguration root, IConfiguration role, string key)
+    private static TEnum? ReadOptionalNullableEnum<TEnum>(IConfiguration configuration, IConfiguration root, IConfiguration role, string key, PrimaryDatabaseRole? databaseRole = null)
         where TEnum : struct, Enum
     {
-        var value = ReadOptional(root, role, key);
+        var value = ReadOptional(configuration, root, role, key, databaseRole);
         if (string.IsNullOrWhiteSpace(value))
         {
             return null;
@@ -545,9 +602,9 @@ public static partial class PrimaryDatabaseConfiguration
             : throw new InvalidOperationException($"Database:{key} is invalid.");
     }
 
-    private static Version? ReadOptionalVersion(IConfiguration root, IConfiguration role, string key)
+    private static Version? ReadOptionalVersion(IConfiguration configuration, IConfiguration root, IConfiguration role, string key, PrimaryDatabaseRole? databaseRole = null)
     {
-        var value = ReadOptional(root, role, key);
+        var value = ReadOptional(configuration, root, role, key, databaseRole);
         if (string.IsNullOrWhiteSpace(value))
         {
             return null;

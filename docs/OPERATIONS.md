@@ -195,10 +195,9 @@ Secret and connection priority:
   deployment input.
 - Mailpit SMTP is local in every Aspire profile. Non-isolated runs use the configured development Mailpit ports; isolated runs use Aspire-assigned dynamic ports. Development database seeding uses `MAIL_SMTP_*` values, then `SMTP_*` aliases, then local defaults when `email.smtp_host` is empty or still set to the retired `mailpit.openislamu.org` default. In `ISLAMU_ASPIRE_MODE=FullLocal`, seeding refreshes those Development SMTP rows on each run so persistent local database volumes follow the current isolated Mailpit port.
 - Self-hosted local Keycloak may also be configured to use Mailpit or shared SMTP for Keycloak realm email. That is Keycloak realm SMTP plumbing, not product Basic Dispatch configuration: identity lifecycle emails still come from Keycloak and do not create `EmailDispatchOutbox` rows.
-- Explicit structured `Database:*` values are authoritative. The PostgreSQL
-  compatibility bootstrap projects Infisical `/postgresql`, `POSTGRESQL_*`, or
-  `Postgresql:*` values only when the structured fields are absent.
-- `local-core` and `local-lite` are maintainer modes. If Infisical bootstrap credentials are present in user secrets or environment variables, raw Infisical bootstrap values can outrank local `POSTGRESQL_*` fallback values. Blank the Infisical bootstrap keys for env-only local debugging.
+- Explicit structured `Database:*` values are authoritative. Infisical loads
+  primary database configuration directly from `/database` with `DATABASE_*` keys.
+- `local-core` and `local-lite` are maintainer modes. If Infisical bootstrap credentials are present in user secrets or environment variables, Infisical `/database` values can outrank local default values. Blank the Infisical bootstrap keys for env-only local debugging.
 
 Keycloak local infrastructure imports the repository realm export from `docker/keycloak/realm-export.json`. Aspire mounts that file into `/opt/keycloak/data/import/realm-export.json` and starts Keycloak with `--import-realm`; Docker Compose mounts the same file and then runs `keycloak-init` to synchronize the confidential Blazor client secret plus managed realm/client security settings. The export contains no client secret. Aspire sets `KC_HTTP_RELATIVE_PATH=/auth`, so its management readiness probe is `/auth/health/ready`. Keycloak skips startup import when the realm already exists in the persistent database; `keycloak-init` repairs the managed policy/client fields, while a disposable database reset is still required for unrelated export-only changes.
 
@@ -1056,7 +1055,7 @@ Non-local Admin API/PDP endpoints must use safe TLS-capable URLs. Unsafe endpoin
 | Cerbos readiness health check | Follows fail-closed semantics when instance Cerbos mode is active; local mode skips PDP readiness. |
 | Package status issue code | Distinguishes Admin API not configured, auth failure, Admin API unavailable/rejected package, reload failure, generic publish failure, and Cerbos package-status unknown. |
 | BYO safe-mode log | Tenant BYO failure activated provider-instance fallback safe mode; non-instance-admin decisions deny. |
-| Policy revision unknown | Sensitive actions deny with reason code `revision_uncertain`. Check `GET api/instance/settings/authz-provider/package/status` for observed revision, health, and the recovery action. |
+| Policy revision unknown | Runtime authorization continues through the gRPC PDP. Check the privileged package-status endpoint for operational drift diagnostics, then restore Admin API read access if an observation is required. |
 | Runtime failure type metadata | Safe diagnostic context; no raw endpoints, credentials, JWTs, response bodies, or exception messages. |
 
 ### Incident Triage (Cerbos)
@@ -1347,7 +1346,7 @@ For delayed or failed publication, keep the local event authoritative. Inspect t
 
 ## AI Agent Operational Context
 
-AI-agent workflow rules are not runtime operations. Keep them in [../AGENTS.md](../AGENTS.md), [../AGENTS.md](../AGENTS.md), and [../dev/active/README.md](../dev/active/README.md) so operators do not have to scan agent tooling while diagnosing production behavior.
+AI-agent workflow rules are not runtime operations. Keep them in [../AGENTS.md](../AGENTS.md) and [the context-engineering contract](../.agents/CONTEXT_ENGINEERING.md) so operators do not have to scan agent tooling while diagnosing production behavior.
 
 
 ## Planned Capacity Work

@@ -83,10 +83,40 @@ public sealed class PrivacyErasureAuthorityDatabaseConfigurationTests
         PrivacyErasureAuthorityDatabaseConfiguration.ProjectDiscreteConfiguration(builder);
         IConfiguration configuration = builder.Build();
 
+        await Assert.That(configuration["Database:Erasure:Provider"]).IsEqualTo("PostgreSql");
+        await Assert.That(configuration["Database:Erasure:Host"]).IsEqualTo("authority");
+        await Assert.That(configuration["Database:Erasure:Runtime:Username"]).IsEqualTo("runtime");
+        await Assert.That(configuration["Database:Erasure:Migrator:Username"]).IsEqualTo("migrator");
         await Assert.That(configuration["PrivacyErasureAuthorityDatabase:Provider"]).IsEqualTo("PostgreSql");
         await Assert.That(configuration["PrivacyErasureAuthorityDatabase:Host"]).IsEqualTo("authority");
         await Assert.That(configuration["PrivacyErasureAuthorityDatabase:Runtime:Username"]).IsEqualTo("runtime");
         await Assert.That(configuration["PrivacyErasureAuthorityDatabase:Migrator:Username"]).IsEqualTo("migrator");
+    }
+
+    [Test]
+    public async Task DatabaseErasureCanonicalSectionBindsDirectly()
+    {
+        IConfiguration configuration = BuildConfiguration(new Dictionary<string, string?>
+        {
+            ["Database:Erasure:Provider"] = "PostgreSql",
+            ["Database:Erasure:Host"] = "erasure-db",
+            ["Database:Erasure:Port"] = "5432",
+            ["Database:Erasure:Database"] = "erasure_ledger",
+            ["Database:Erasure:Runtime:Username"] = "erasure_user",
+            ["Database:Erasure:Runtime:Password"] = "erasure_pass",
+            ["Database:Erasure:Migrator:Username"] = "erasure_admin",
+            ["Database:Erasure:Migrator:Password"] = "erasure_admin_pass",
+        });
+
+        var runtime = PrivacyErasureAuthorityDatabaseConfiguration.BindRuntime(configuration);
+        var migrator = PrivacyErasureAuthorityDatabaseConfiguration.BindMigrator(configuration);
+
+        await Assert.That(runtime.Host).IsEqualTo("erasure-db");
+        await Assert.That(runtime.Database).IsEqualTo("erasure_ledger");
+        await Assert.That(runtime.Username).IsEqualTo("erasure_user");
+        await Assert.That(runtime.Password).IsEqualTo("erasure_pass");
+        await Assert.That(migrator.Username).IsEqualTo("erasure_admin");
+        await Assert.That(migrator.Password).IsEqualTo("erasure_admin_pass");
     }
 
     [Test]

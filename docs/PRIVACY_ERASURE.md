@@ -50,7 +50,7 @@ erasure request -> append authority fact (committed first)
 
 ## 2. Storage Topologies: `EmbeddedSqlite`, `CoLocated`, `ExternalDatabase`
 
-The platform workflow code is **100% identical** regardless of deployment choice. The configuration setting `PrivacyErasure:Authority:Topology` (`PRIVACY_ERASURE_AUTHORITY_TOPOLOGY`) selects one of three persistence topologies for storing the authority ledger.
+The platform workflow code is **100% identical** regardless of deployment choice. The configuration setting `PrivacyErasure:Authority:Topology` (`ERASURE_TOPOLOGY` or `PRIVACY_ERASURE_AUTHORITY_TOPOLOGY`) selects one of three persistence topologies for storing the authority ledger.
 
 | Feature / Guarantee | `EmbeddedSqlite` Mode | `CoLocated` Mode | `ExternalDatabase` Mode |
 |---|---|---|---|

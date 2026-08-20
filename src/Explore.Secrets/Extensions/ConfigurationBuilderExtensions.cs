@@ -33,26 +33,38 @@ public static class ConfigurationBuilderExtensions
         IConfiguration configuration,
         Action<InfisicalConfigurationSource>? configure = null)
     {
-        var projectId = configuration["Infisical:ProjectId"];
-        var clientId = configuration["Infisical:ClientId"];
-        var clientSecret = configuration["Infisical:ClientSecret"];
+        var projectId = configuration["Infisical:ProjectId"]
+            ?? configuration["SecretProvider:Infisical:ProjectId"]
+            ?? configuration["INFISICAL_PROJECT_ID"];
+        var clientId = configuration["Infisical:ClientId"]
+            ?? configuration["SecretProvider:Infisical:ClientId"]
+            ?? configuration["INFISICAL_CLIENT_ID"];
+        var clientSecret = configuration["Infisical:ClientSecret"]
+            ?? configuration["SecretProvider:Infisical:ClientSecret"]
+            ?? configuration["INFISICAL_CLIENT_SECRET"];
 
         if (string.IsNullOrEmpty(projectId)
             || string.IsNullOrEmpty(clientId)
             || string.IsNullOrEmpty(clientSecret))
         {
             Console.WriteLine("[Infisical] Skipping: Infisical credentials not configured in user secrets.");
-            Console.WriteLine("[Infisical] Set Infisical:ProjectId, Infisical:ClientId, and Infisical:ClientSecret to enable.");
+            Console.WriteLine("[Infisical] Set Infisical:ProjectId (or INFISICAL_PROJECT_ID), Infisical:ClientId (or INFISICAL_CLIENT_ID), and Infisical:ClientSecret (or INFISICAL_CLIENT_SECRET) to enable.");
             return builder;
         }
 
         var source = new InfisicalConfigurationSource
         {
-            Url = configuration["Infisical:Url"] ?? "https://app.infisical.com",
+            Url = configuration["Infisical:Url"]
+                ?? configuration["SecretProvider:Infisical:Url"]
+                ?? configuration["INFISICAL_URL"]
+                ?? "https://app.infisical.com",
             ProjectId = projectId,
             ClientId = clientId,
             ClientSecret = clientSecret,
-            Environment = configuration["Infisical:Environment"] ?? "dev",
+            Environment = configuration["Infisical:Environment"]
+                ?? configuration["SecretProvider:Infisical:Environment"]
+                ?? configuration["INFISICAL_ENV"]
+                ?? "dev",
         };
 
         var paths = configuration.GetSection("Infisical:Paths").Get<List<string>>();
